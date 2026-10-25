@@ -15,7 +15,7 @@ import {
   RowButton,
   useTheme,
 } from "@forwend/ui-web";
-import { Bell, ChevronsUpDown, Coins, LogOut, MonitorX, Moon, Settings } from "lucide-react";
+import { Bell, ChevronsUpDown, Coins, LogOut, MonitorX, Moon, Settings, Users } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useRef } from "react";
 import { useSignOutEverywhereMutation } from "@/features/auth/api/auth-api";
@@ -25,11 +25,13 @@ import { APP_ROUTES } from "@/shared/config/routes";
 export interface AccountMenuProps {
   email: string;
   onSignOut: () => void;
+  /** The active profile's pages its role can open: the email setting, and a merchant's team (D-93). */
+  links: { notifications: boolean; team: boolean };
   trigger?: ReactNode;
   side?: "top" | "bottom" | "right";
 }
 
-export function AccountMenu({ email, onSignOut, trigger, side = "top" }: AccountMenuProps) {
+export function AccountMenu({ email, onSignOut, links, trigger, side = "top" }: AccountMenuProps) {
   const [theme, setTheme] = useTheme();
   const [signOutEverywhere, { isLoading, isError, reset }] = useSignOutEverywhereMutation();
   // The dialog opens once the menu has closed and given focus back, so it keeps focus (as on Delete client).
@@ -84,18 +86,28 @@ export function AccountMenu({ email, onSignOut, trigger, side = "top" }: Account
               <Moon aria-hidden className="size-[var(--fw-icon-md)]" />
               {AUTH_COPY.darkMode}
             </MenuCheckboxItem>
-            <MenuItem asChild>
-              <Link href={APP_ROUTES.notifications}>
-                <Bell aria-hidden className="size-[var(--fw-icon-md)]" />
-                {AUTH_COPY.notifications}
-              </Link>
-            </MenuItem>
+            {links.notifications ? (
+              <MenuItem asChild>
+                <Link href={APP_ROUTES.notifications}>
+                  <Bell aria-hidden className="size-[var(--fw-icon-md)]" />
+                  {AUTH_COPY.notifications}
+                </Link>
+              </MenuItem>
+            ) : null}
             <MenuItem asChild>
               <Link href={APP_ROUTES.networks}>
                 <Coins aria-hidden className="size-[var(--fw-icon-md)]" />
                 {AUTH_COPY.networks}
               </Link>
             </MenuItem>
+            {links.team ? (
+              <MenuItem asChild>
+                <Link href={APP_ROUTES.team}>
+                  <Users aria-hidden className="size-[var(--fw-icon-md)]" />
+                  {AUTH_COPY.team}
+                </Link>
+              </MenuItem>
+            ) : null}
             {/* Not built yet: shown as coming (the owner's choice), it does nothing. */}
             <MenuItem disabled>
               <Settings aria-hidden className="size-[var(--fw-icon-md)]" />

@@ -12,17 +12,20 @@ import { FirstRun } from "@/features/onboarding/components/first-run";
 import { afterOnboarding } from "@/features/onboarding/lib/onboarding";
 import { useSignUpQuery } from "@/features/profiles/api/profiles-api";
 import { ProfileSheet } from "@/features/profiles/components/profile-sheet";
+import { PERMISSIONS } from "@/features/profiles/constants/profile";
 import { AppSessionContext } from "@/features/profiles/hooks/use-app-session";
 import {
   chosenProfile,
   readChosenProfileId,
   saveChosenProfileId,
 } from "@/features/profiles/lib/chosen-profile";
+import { can } from "@/features/profiles/lib/profile";
 import type { AppSession } from "@/features/profiles/types/app-session";
 import { ReceiveSheet } from "@/features/receive/components/receive-sheet";
 import { AppHeader } from "@/screens/app-shell/app-header";
 import { AppSidebar } from "@/screens/app-shell/app-sidebar";
 import { CommandMenu } from "@/screens/app-shell/command-menu";
+import { firstPage, pageAllowed } from "@/screens/app-shell/lib/app-nav";
 import { PhoneTabBar } from "@/screens/app-shell/phone-tab-bar";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
@@ -53,7 +56,8 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const [choosing, setChoosing] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const active = profiles ? chosenProfile(profiles, activeId ?? savedId) : undefined;
-  const balances = useGetBalancesQuery(active ? active.profileId : skipToken, LIVE_QUERY);
+  const money = active ? can(active, PERMISSIONS.moneyRead) : false;
+  const balances = useGetBalancesQuery(active && money ? active.profileId : skipToken, LIVE_QUERY);
 
   const rememberProfile = useCallback(
     (profileId: string) => {
@@ -87,6 +91,12 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   useEffect(() => {
     if (ready && !authenticated) router.replace(APP_ROUTES.signIn);
   }, [ready, authenticated, router]);
+
+  // D-93: a page the profile's role can't use is hidden, so its address leads to the role's first page instead.
+  const allowed = !active || pageAllowed(active, pathname);
+  useEffect(() => {
+    if (active && !allowed) router.replace(firstPage(active));
+  }, [active, allowed, router]);
 
   useEffect(() => {
     try {
@@ -144,7 +154,15 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   }
   // Also after sign out, until the redirect: never show the shell to a signed-out visitor. And while the first run's
   // address is still being reached or left.
-  if (!ready || !authenticated || !profiles || !active || !session || firstRun !== onOnboarding) {
+  if (
+    !ready ||
+    !authenticated ||
+    !profiles ||
+    !active ||
+    !session ||
+    firstRun !== onOnboarding ||
+    !allowed
+  ) {
     return (
       <main className="grid min-h-dvh place-items-center bg-bg">
         <Spinner label={SHELL_COPY.loading} />
@@ -174,7 +192,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
         >
           {SHELL_COPY.skip}
         </a>
-        <PaymentToasts profileId={active.profileId} />
+        {money ? <PaymentToasts profileId={active.profileId} /> : null}
         <AppSidebar
           profiles={profiles}
           active={active}

@@ -95,6 +95,7 @@ func TestMembersReachOnlyWhatTheirRoleAllows(t *testing.T) {
 		{"GET", "/jobs", "", []string{alice, admin}},
 		{"GET", "/notifications", "", []string{alice}},
 		{"GET", "/stores", "", []string{alice, admin, dev, fin, idle}},
+		{"GET", "/members", "", []string{alice, admin}},
 	} {
 		for _, user := range []string{alice, admin, dev, fin, idle, stranger} {
 			want := http.StatusForbidden

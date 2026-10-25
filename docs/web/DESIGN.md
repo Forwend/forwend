@@ -230,6 +230,19 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A switch saves at once and says so in a toast.
   - The last token on can't be turned off; a quiet line under the panel says one stays on.
   - New invoice offers only the tokens on for the profile and the picked store.
+- Team (R-139) opens from the account menu, after Networks and tokens, for a merchant profile's owner and members.
+  - It is laid out like Networks and tokens: an intro line, then panels.
+  - An Admin sees Members, then Open invites, each a panel of rows with the email, its stores and a role badge.
+  - Invite sits beside the Members heading and opens a dialog: Email, a Role select with a hint, and store checkboxes.
+  - The checkboxes show for Developer and Finance only.
+  - A member's More actions menu holds Change role, a dialog like Invite without the email, and Remove, which confirms.
+  - An open invite has a Revoke button. A member who isn't the owner sees their role and Leave team, which confirms.
+- The invite page (`/invite/<token>`) is laid out like Stop reminders: the logo, then one centered panel.
+  - Signed out, it shows the sign-in form under a line asking for the invited address.
+  - Signed in, it names the team and role, with Accept invite.
+  - Signed in with another address, it says so in red with Sign out in place of Accept.
+- Navigation by role (D-93): the sidebar, the phone tabs, ⌘K and the account menu show only the pages a role can use.
+  - A role without the money pages has no Receive button and a bell with invoice events only.
 - Jobs (R-101) sits in a freelancer's Get paid group after Invoices. It is laid out like Clients:
   - The toolbar searches the title and client, with New job at its end (beside the title on phones).
   - The table shows the job, client, total, state and created day.

@@ -630,3 +630,51 @@ func TestDeliverRecordsClientEmailsInHistory(t *testing.T) {
 		}
 	}
 }
+
+// R-139: the invite goes to the address invited with its link; then only the token's hash is left. A revoked invite
+// sends nothing.
+func TestDeliverSendsTheInviteThenDropsItsToken(t *testing.T) {
+	pool, _ := setup(t, "owner@example.com")
+	ctx := context.Background()
+	exec(t, pool, "UPDATE profiles SET kind = 'merchant', name = 'Alice Shop'")
+	invite := func(address, token string) string {
+		t.Helper()
+		var id string
+		if err := pool.QueryRow(ctx, `INSERT INTO profile_invites (profile_id, email, role, token_hash, invited_by)
+			SELECT p.id, $1, 'developer', sha256(convert_to($2, 'UTF8')), p.user_id FROM profiles p RETURNING id::text`,
+			address, token).Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		if err := pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error { return outbox.QueueInvite(ctx, tx, id, token) }); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	sent, revoked, failing := strings.Repeat("ab", 32), strings.Repeat("cd", 32), strings.Repeat("ef", 32)
+	// An invite whose email is given up drops its token too.
+	invite("bounce@example.com", failing)
+	exec(t, pool, "UPDATE outbox_events SET attempts = $1", MaxAttempts-1)
+	if err := Deliver(ctx, pool, &fake{fail: true}, site); err != nil {
+		t.Fatal(err)
+	}
+	if n := count(t, pool, "kind = 'team.invite' AND failed_at IS NOT NULL AND NOT payload ? 'token'"); n != 1 {
+		t.Fatalf("%d given-up invites without their token, want 1", n)
+	}
+	id := invite("dev@example.com", sent)
+	exec(t, pool, "UPDATE profile_invites SET revoked_at = now() WHERE id = $1", invite("gone@example.com", revoked))
+	f := &fake{}
+	if err := Deliver(ctx, pool, f, site); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.sent) != 1 {
+		t.Fatalf("%d emails, want the open invite's alone", len(f.sent))
+	}
+	m := f.sent[0]
+	if m.To != "dev@example.com" || m.Subject != "Join Alice Shop on Forwend" || m.ReplyTo != "owner@example.com" ||
+		!strings.Contains(m.Text, web+"/invite/"+sent) || !strings.HasPrefix(m.Key, "forwend-invite-"+id+"-") {
+		t.Fatalf("invite %+v", m)
+	}
+	if n := count(t, pool, "kind = 'team.invite' AND (payload ? 'token' OR (published_at IS NULL AND failed_at IS NULL))"); n != 0 {
+		t.Fatalf("%d invite rows still hold a token or wait", n)
+	}
+}

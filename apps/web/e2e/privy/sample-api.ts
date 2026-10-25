@@ -3,6 +3,28 @@ import type { Page } from "@playwright/test";
 const MERCHANT_ID = "22222222-2222-2222-2222-222222222222";
 const USDC = "0x036cbd53842c5426634e7929541ec2318f3dcf7e";
 export const hash = (c: string) => `0x${c.repeat(64)}`;
+// GET /v1/me lists every permission for the owner (R-138).
+export const OWNER = {
+  role: "owner",
+  permissions: [
+    "invoices.read",
+    "invoices.write",
+    "stores.read",
+    "stores.write",
+    "clients.read",
+    "clients.write",
+    "money.read",
+    "money.write",
+    "billing.read",
+    "billing.write",
+    "tokens.read",
+    "tokens.write",
+    "jobs",
+    "notifications",
+    "team",
+    "team.leave",
+  ],
+};
 const NOW = Date.now();
 export const sampleInvoice = (
   number: number,
@@ -253,6 +275,7 @@ export async function mockApi(
               name: "Sample shop",
               walletAddress: `0x${"7a21".repeat(10)}`,
               createdAt: "2026-09-02T00:00:00Z",
+              ...OWNER,
             },
           ],
         },
@@ -351,6 +374,23 @@ export async function mockApi(
             },
           ],
           estimatedUsdTotal: "18420.35",
+        },
+      });
+    }
+    // The enabled tokens (R-136), which the invoice pages read for each token's symbol and decimals.
+    if (what === "tokens") {
+      return route.fulfill({
+        json: {
+          tokens: [
+            {
+              chainId: 84532,
+              token: USDC,
+              symbol: "USDC",
+              decimals: 6,
+              network: "base-sepolia",
+              on: true,
+            },
+          ],
         },
       });
     }

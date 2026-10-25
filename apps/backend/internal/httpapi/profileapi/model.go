@@ -3,6 +3,7 @@ package profileapi
 import (
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/auth"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 )
@@ -18,8 +19,9 @@ type profileJSON struct {
 	Name          *string `json:"name"`
 	WalletAddress *string `json:"walletAddress"`
 	CreatedAt     string  `json:"createdAt"`
-	// R-138: owner, admin, developer or finance.
-	Role string `json:"role"`
+	// R-138: owner, admin, developer or finance, and what that role may do, so the app shows only what it can use.
+	Role        string            `json:"role"`
+	Permissions []auth.Permission `json:"permissions"`
 }
 
 type meJSON struct {
@@ -163,7 +165,8 @@ func toMeJSON(list []profile.Profile, onboardedAt *time.Time) meJSON {
 }
 
 func toProfileJSON(p profile.Profile) profileJSON {
-	out := profileJSON{ProfileID: p.ID, Kind: p.Kind, CreatedAt: p.CreatedAt.UTC().Format(time.RFC3339), Role: p.Role}
+	out := profileJSON{ProfileID: p.ID, Kind: p.Kind, CreatedAt: p.CreatedAt.UTC().Format(time.RFC3339), Role: p.Role,
+		Permissions: auth.Access{Role: auth.Role(p.Role)}.Permissions()}
 	if p.Name != "" {
 		out.Name = &p.Name
 	}

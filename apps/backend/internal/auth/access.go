@@ -43,15 +43,22 @@ const (
 	Jobs Permission = "jobs"
 	// The profile's email setting, which emails the owner alone (D-93).
 	Notifications Permission = "notifications"
+	// The team's members, roles and stores, and its invites (R-139).
+	Team Permission = "team"
+	// Leaving the team. The owner has it as every permission, but can't leave (D-93).
+	Leave Permission = "team.leave"
 )
+
+var permissions = []Permission{InvoicesRead, InvoicesWrite, StoresRead, StoresWrite, ClientsRead, ClientsWrite, MoneyRead,
+	MoneyWrite, BillingRead, BillingWrite, TokensRead, TokensWrite, Jobs, Notifications, Team, Leave}
 
 // The one map of who may do what (D-93). The owner has every permission, these and the ones no role has.
 var rolePermissions = map[Role][]Permission{
 	Admin: {InvoicesRead, InvoicesWrite, StoresRead, StoresWrite, ClientsRead, ClientsWrite, MoneyRead, MoneyWrite,
-		BillingRead, BillingWrite, TokensRead, TokensWrite, Jobs},
-	Developer: {InvoicesRead, InvoicesWrite, StoresRead, StoresWrite, TokensRead},
+		BillingRead, BillingWrite, TokensRead, TokensWrite, Jobs, Team, Leave},
+	Developer: {InvoicesRead, InvoicesWrite, StoresRead, StoresWrite, TokensRead, Leave},
 	Finance: {InvoicesRead, InvoicesWrite, StoresRead, ClientsRead, ClientsWrite, MoneyRead, MoneyWrite, BillingRead,
-		TokensRead},
+		TokensRead, Leave},
 }
 
 // Access is what the signed-in user may do on one profile.
@@ -63,6 +70,11 @@ type Access struct {
 
 func (a Access) Can(p Permission) bool {
 	return a.Role == Owner || slices.Contains(rolePermissions[a.Role], p)
+}
+
+// Permissions are all a has, so the app shows only the pages it can use.
+func (a Access) Permissions() []Permission {
+	return slices.DeleteFunc(slices.Clone(permissions), func(p Permission) bool { return !a.Can(p) })
 }
 
 // StoreScoped reports whether p reaches only a member's assigned stores.

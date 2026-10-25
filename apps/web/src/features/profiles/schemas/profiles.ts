@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
+import { PROFILE_KINDS, ROLES } from "@/features/profiles/constants/profile";
 import { apiTime, count, evmAddress } from "@/shared/schemas/api";
 
 /** One profile as the API returns it (apps/backend/api/openapi.yaml, Profile). */
@@ -9,6 +9,9 @@ export const profileSchema = z.object({
   name: z.string().nullable(),
   walletAddress: evmAddress.nullable(),
   createdAt: apiTime,
+  // R-138: the user's role here, and its permissions; one the app doesn't know yet is kept and never matches.
+  role: z.enum(ROLES),
+  permissions: z.array(z.string()),
 });
 
 /** POST and GET /v1/me, and POST /v1/me/onboarding. */

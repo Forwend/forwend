@@ -4,7 +4,6 @@ import { Button, buttonClasses, EmptyState, Skeleton } from "@forwend/ui-web";
 import { IdCard } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useGetBalancesQuery } from "@/features/balances/api/balances-api";
 import { useListClientsQuery } from "@/features/clients/api/clients-api";
 import { useGetProfileInvoiceQuery } from "@/features/invoices/api/invoices-api";
 import { NewInvoiceForm } from "@/features/invoices/components/new-invoice-form";
@@ -20,10 +19,10 @@ import {
   useGetBillingDetailsQuery,
   useGetProfileTokensQuery,
 } from "@/features/profiles/api/profiles-api";
-import { BILLING_THEN, PROFILE_KINDS } from "@/features/profiles/constants/profile";
+import { BILLING_THEN, PERMISSIONS, PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
+import { can } from "@/features/profiles/lib/profile";
 import { useListStoresQuery } from "@/features/stores/api/stores-api";
-import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 // A personal profile makes a request here (D-52, R-71). ?from=<id> fills the form from that owned invoice (R-91,
@@ -33,7 +32,6 @@ export function NewInvoiceScreen() {
   const router = useRouter();
   const params = useSearchParams();
   const from = params.get(RESTART_PARAMS.from);
-  const balances = useGetBalancesQuery(profile.profileId, LIVE_QUERY);
   const owned = useGetProfileInvoiceQuery(
     { profileId: profile.profileId, invoiceId: from ?? "" },
     { skip: !from },
@@ -52,24 +50,25 @@ export function NewInvoiceScreen() {
   const loadingStart = Boolean(from) && owned.isLoading;
   // R-129: ?revise=1 replaces that invoice once this one is created.
   const replaced = params.has(RESTART_PARAMS.revise) ? owned.currentData : undefined;
-  // R-136: only the tokens the profile has on. Without the switches every token shows, and the API still checks.
+  // R-136: only the tokens the profile has on, from the enabled tokens every role reads (D-93).
   const switches = useGetProfileTokensQuery(profile.profileId);
-  const loadingSwitches = switches.currentData === undefined && !switches.isError;
-  const all = balances.currentData?.tokens;
-  const tokens =
-    all && switches.currentData
-      ? tokensOn(
-          all,
-          switches.currentData.filter((t) => !t.on),
-        )
-      : all;
+  const all = switches.currentData;
+  const tokens = all
+    ? tokensOn(
+        all,
+        all.filter((t) => !t.on),
+      )
+    : undefined;
   const request = profile.kind === PROFILE_KINDS.personal;
-  // R-92. If the billing details can't be read, the form shows and the API still checks.
-  const billing = useGetBillingDetailsQuery(profile.profileId, { skip: request });
-  const billingNeeded = !request && billing.currentData === null;
-  const loadingBilling = !request && billing.currentData === undefined && !billing.isError;
+  // R-92. If the billing details can't be read, or the role can't (D-93), the form shows and the API still checks.
+  const readsBilling = !request && can(profile, PERMISSIONS.billingRead);
+  const billing = useGetBillingDetailsQuery(profile.profileId, { skip: !readsBilling });
+  const billingNeeded = readsBilling && billing.currentData === null;
+  const loadingBilling = readsBilling && billing.currentData === undefined && !billing.isError;
   // A request has no client. Without the list the form still works: the picker just doesn't show.
-  const clients = useListClientsQuery(profile.profileId, { skip: request });
+  const clients = useListClientsQuery(profile.profileId, {
+    skip: request || !can(profile, PERMISSIONS.clientsRead),
+  });
   // R-134: the form starts from the store's close, so it waits for them; without them the API picks the first store.
   const merchant = profile.kind === PROFILE_KINDS.merchant;
   const stores = useListStoresQuery(profile.profileId, { skip: !merchant });
@@ -82,10 +81,10 @@ export function NewInvoiceScreen() {
         <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">{COPY.title}</h1>
         <p className="text-muted">{COPY.intro}</p>
       </div>
-      {!tokens && balances.isError ? (
+      {!tokens && switches.isError ? (
         <div role="alert" className="flex flex-wrap items-center gap-4 text-sm text-muted">
           {COPY.tokensFailed}
-          <Button size="sm" variant="secondary" onClick={() => void balances.refetch()}>
+          <Button size="sm" variant="secondary" onClick={() => void switches.refetch()}>
             {INVOICES_COPY.retry}
           </Button>
         </div>
@@ -97,7 +96,7 @@ export function NewInvoiceScreen() {
             {INVOICES_COPY.revise.retry}
           </Button>
         </div>
-      ) : !tokens || loadingStart || loadingBilling || loadingStores || loadingSwitches ? (
+      ) : !tokens || loadingStart || loadingBilling || loadingStores ? (
         <Skeleton className="h-96" />
       ) : billingNeeded ? (
         <EmptyState

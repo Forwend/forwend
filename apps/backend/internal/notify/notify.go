@@ -43,6 +43,10 @@ func Deliver(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, site 
 	return nil
 }
 
+// dropToken removes an invite's link token from its row once the email is sent, skipped or given up: then only its
+// hash is left (R-139).
+const dropToken = "payload = payload - 'token'"
+
 // deliverOne sends the oldest due event; false when none is due or a send fails other than by refusal.
 func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, site Site) (bool, error) {
 	tx, err := pool.Begin(ctx)
@@ -51,15 +55,15 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 	}
 	defer tx.Rollback(ctx)
 	var (
-		id                       int64
-		kind, invoice, user, job string
-		payload                  []byte
-		attempts                 int
+		id                               int64
+		kind, invoice, user, job, invite string
+		payload                          []byte
+		attempts                         int
 	)
 	err = tx.QueryRow(ctx, `SELECT id, kind, coalesce(invoice_id, ''), coalesce(user_id::text, ''),
-		    coalesce(job_id::text, ''), payload, attempts
+		    coalesce(job_id::text, ''), coalesce(invite_id::text, ''), payload, attempts
 		FROM outbox_events WHERE published_at IS NULL AND failed_at IS NULL AND next_attempt_at <= now()
-		ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED`).Scan(&id, &kind, &invoice, &user, &job, &payload, &attempts)
+		ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED`).Scan(&id, &kind, &invoice, &user, &job, &invite, &payload, &attempts)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	} else if err != nil {
@@ -83,6 +87,11 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 		if v, to, on, err = changeEmail(ctx, tx, job, payload, site.WebURL); err != nil {
 			return false, fmt.Errorf("read email event %d: %w", id, err)
 		}
+	case outbox.Invite:
+		scope = "invite-" + invite
+		if v, to, on, err = inviteEmail(ctx, tx, invite, payload, site.WebURL); err != nil {
+			return false, fmt.Errorf("read email event %d: %w", id, err)
+		}
 	default:
 		scope = invoice
 		if v, to, on, err = invoiceEmail(ctx, tx, kind, invoice, payload, site.WebURL); err != nil {
@@ -92,7 +101,8 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 	if !on || to == nil || *to == "" {
 		// Email off for this profile, or no login email ('' when the account has none; NULL when it was never read):
 		// nothing to send, and nothing waits for it.
-		if _, err := tx.Exec(ctx, "UPDATE outbox_events SET published_at = now() WHERE id = $1", id); err != nil {
+		if _, err := tx.Exec(ctx, "UPDATE outbox_events SET published_at = now(), "+dropToken+" WHERE id = $1",
+			id); err != nil {
 			return false, fmt.Errorf("skip email event %d: %w", id, err)
 		}
 		return true, tx.Commit(ctx)
@@ -109,7 +119,8 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 		attempts++
 		if attempts >= MaxAttempts {
 			slog.Error("email given up", "event", id, "kind", kind, "attempts", attempts, "err", sent)
-			_, err = tx.Exec(ctx, "UPDATE outbox_events SET attempts = $2, failed_at = now() WHERE id = $1", id, attempts)
+			_, err = tx.Exec(ctx, "UPDATE outbox_events SET attempts = $2, failed_at = now(), "+dropToken+" WHERE id = $1",
+				id, attempts)
 			if err == nil {
 				err = addHistory(ctx, tx, kind, invoice, payload, true)
 			}
@@ -125,7 +136,8 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 		// other failure stops the round, so a failing or hanging Resend doesn't hold up the worker's chain rounds.
 		return errors.Is(sent, email.ErrRefused), tx.Commit(ctx)
 	}
-	if _, err := tx.Exec(ctx, "UPDATE outbox_events SET attempts = attempts + 1, published_at = now() WHERE id = $1", id); err != nil {
+	if _, err := tx.Exec(ctx, "UPDATE outbox_events SET attempts = attempts + 1, published_at = now(), "+dropToken+
+		" WHERE id = $1", id); err != nil {
 		return false, fmt.Errorf("record email event %d: %w", id, err)
 	}
 	if err := addHistory(ctx, tx, kind, invoice, payload, false); err != nil {
@@ -333,6 +345,39 @@ func changeEmail(ctx context.Context, tx pgx.Tx, job string, payload []byte, web
 	}
 	return change(issuer, title, named, document.Amount(big.NewInt(cents), 2, "USD"), days, replyTo, webURL+"/w/"+token),
 		to, true, nil
+}
+
+// inviteEmail sends only while the invite is open: it may have been revoked or accepted since it was queued.
+func inviteEmail(ctx context.Context, tx pgx.Tx, invite string, payload []byte, webURL string) (view, *string, bool,
+	error) {
+	var p outbox.Payload
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return view{}, nil, false, err
+	}
+	var to, name, role, replyTo string
+	err := tx.QueryRow(ctx, `SELECT i.email, coalesce(p.name, ''), i.role, coalesce(u.login_email, '')
+		FROM profile_invites i JOIN profiles p ON p.id = i.profile_id JOIN users u ON u.id = i.invited_by
+		WHERE i.id = $1 AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now()`, invite).
+		Scan(&to, &name, &role, &replyTo)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return view{}, nil, false, nil
+	} else if err != nil {
+		return view{}, nil, false, fmt.Errorf("team invite: %w", err)
+	}
+	return invitation(name, roleNames[role], replyTo, webURL+"/invite/"+p.Token), &to, true, nil
+}
+
+var roleNames = map[string]string{"admin": "Admin", "developer": "Developer", "finance": "Finance"}
+
+// invitation is a team invite's email to the address invited (R-139).
+func invitation(team, role, replyTo, link string) view {
+	lead := "You are invited to join " + team + " on Forwend as " + role + "."
+	return view{Subject: "Join " + team + " on Forwend", Preheader: lead, Badge: "Invite", Tone: "neutral",
+		Title: "Join " + team, Button: button{"Accept the invite", link}, ReplyTo: replyTo,
+		Lead:    []string{lead, "Sign in to Forwend with this email address to accept. The link works for 7 days, once."},
+		Details: []row{{Label: "Team", Value: team}, {Label: "Role", Value: role}},
+		Reason: "You get this email because a member of " + team + " invited this address. If you did not expect it, " +
+			"ignore it: nothing happens until you accept."}
 }
 
 // change is a scope change's email to the client (R-107).

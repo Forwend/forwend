@@ -7,8 +7,7 @@ import { AccountInitial, AccountMenu } from "@/features/auth/components/account-
 import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 import { ProfileSwitcher } from "@/features/profiles/components/profile-switcher";
 import type { Profile } from "@/features/profiles/types/profile";
-import { APP_NAV } from "@/screens/app-shell/constants/app-nav";
-import { isCurrentPage } from "@/screens/app-shell/lib/app-nav";
+import { accountLinks, isCurrentPage, navFor } from "@/screens/app-shell/lib/app-nav";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 const SIDEBAR_COPY = {
@@ -82,7 +81,7 @@ export function AppSidebar({
         aria-label={SIDEBAR_COPY.nav}
         className={`flex-1 overflow-y-auto overscroll-contain py-6 ${collapsed ? "px-2" : "px-3"}`}
       >
-        {APP_NAV[active.kind].map((group) => (
+        {navFor(active).map((group) => (
           <div key={group.label} className={collapsed ? "mb-3" : "mb-5"}>
             <h2 className={collapsed ? "sr-only" : "px-3 pb-2 text-xs font-medium text-subtle"}>
               {group.label}
@@ -127,6 +126,7 @@ export function AppSidebar({
           <AccountMenu
             email={email}
             onSignOut={onSignOut}
+            links={accountLinks(active)}
             side="right"
             trigger={
               <IconButton label={`${AUTH_COPY.account}: ${email}`} size="md">
@@ -135,7 +135,7 @@ export function AppSidebar({
             }
           />
         ) : (
-          <AccountMenu email={email} onSignOut={onSignOut} />
+          <AccountMenu email={email} onSignOut={onSignOut} links={accountLinks(active)} />
         )}
       </div>
     </aside>

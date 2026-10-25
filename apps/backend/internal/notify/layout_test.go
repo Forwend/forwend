@@ -31,6 +31,7 @@ func samples() map[string]view {
 			"", web+"/pay/0xdef", web+"/api/v1/invoices/0xdef/invoice.pdf")),
 		"change": change("Alice Design GmbH", "Logo design", "Extra page", "150.00 USD", 7, "billing@alice.example",
 			web+"/w/"+strings.Repeat("cd", 32)),
+		"invite": invitation("Alice Shop", "Developer", "alice@example.com", web+"/invite/"+strings.Repeat("ef", 32)),
 	}
 }
 

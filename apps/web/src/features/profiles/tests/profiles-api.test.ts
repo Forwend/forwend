@@ -9,6 +9,8 @@ const personal: Profile = {
   name: null,
   walletAddress: "0x1111111111111111111111111111111111111111",
   createdAt: "2026-10-10T00:00:00Z",
+  role: "owner",
+  permissions: ["invoices.read", "money.read"],
 };
 const merchant: Profile = {
   ...personal,

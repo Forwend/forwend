@@ -155,6 +155,9 @@ with a test.
   for new invoices (R-136). An enabled token is on until it has a row here.
 - `profile_members(profile_id, user_id, role: admin|developer|finance)` and `member_stores(profile_id, user_id,
   store_id)`: a merchant profile's team (R-138). A trigger keeps members to merchant profiles, never the owner.
+- `profile_invites(profile_id, email, role, stores, token_hash, expires_at, accepted_at, revoked_at)` (R-139).
+  - `token_hash` is the SHA-256 of the link's token; the token itself is never kept here.
+  - One open invite per address and profile (a unique index); a new one revokes the last.
 - `chains(chain_id, chain_family, enabled)`, `tokens(chain_id, contract, decimals, enabled)`. One confirm rule for all
   chains (D-45), so no per-chain rule columns. From `00015` on, migrations add each planned network and its token
   switched off (Arbitrum Sepolia USDC in `00015`, Arc testnet USDC in `00016`, Tempo Moderato OUSD in `00017`), so
@@ -205,7 +208,8 @@ with a test.
   invoice) when sign-up stores a new account's login email; sent once by the worker with retries
   ([api.md](api.md#notifications)). `invoice.sent` rows carry the request's `idempotency_key`: the owner sent the
   invoice to its client (R-94). `invoice.reminder` rows carry their `step` in the payload (R-96). `job.change` rows
-  name a `job_id` (no invoice) and carry the change's key in the payload (R-107).
+  name a `job_id` (no invoice) and carry the change's key in the payload (R-107). `team.invite` rows name an
+  `invite_id` and carry the link's token until the worker sends the email or gives up, then drop it (R-139).
   `users.login_email` and `profiles.email_notifications` decide where and whether; `users.welcome` marks accounts made
   after welcome emails existed.
 - `history_events` (R-123, D-92): what happened to each invoice, one row per change.

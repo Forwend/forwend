@@ -3,138 +3,19 @@
   "nextId": 296,
   "tasks": [
     {
-      "id": "F294",
-      "type": "feat",
-      "behavior": "A merchant profile's members reach only what their role allows",
-      "acceptance": [
-        "profile_members holds Admin, Developer and Finance members of merchant profiles (never the owner), and Developer and Finance members have assigned stores; GET /v1/me lists the profiles a user belongs to with their role (owner, admin, developer, finance)",
-        "Every {profileId} route asks for one permission from one map in code (auth), never a role name, and a test fails when a route has none; a user who is neither owner nor member gets 403, and a member without the route's permission gets 403",
-        "Developer and Finance see only their stores: store and invoice lists, events and Owed leave the rest out, another store's invoice or store is 404, and create defaults to their first store and refuses another with 422; jobs are Admin only and notifications the owner's",
-        "R-138, D-93, api.md, openapi.yaml and architecture.md describe it; required checks and backend-e2e pass"
-      ],
-      "dependsOn": [
-        "F293"
-      ],
-      "state": "passing",
-      "verification": [
-        "unit",
-        "backend-e2e",
-        "docs-check"
-      ],
-      "refs": [
-        "R-138",
-        "D-93",
-        "D-30",
-        "D-61"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [
-        "2026-10-25 review fail by reviewer: BLOCKING: (1) apps/backend/internal/profile/signup.go:43-51 (via profile/list.go:16): SignUp and Onboard now repair wallets on member profiles with the member's Privy ID. Reproduced with a go -overlay test: a member's POST /v1/me on the owner's walletless merchant profile created a Privy wallet owned by the member and stored it in profile_wallets. The member would control the profile's receiving wallet (breaks D-61, D-46). Repair only profiles with Role owner. (2) apps/backend/internal/httpapi/invoiceapi/invoices.go:42-63 with internal/invoice/create.go:243 and :330: create's replaces names any invoice of the profile with no store check. Reproduced: a Developer of store B got 201 with replaces={invoiceId, number} of a store-A invoice, and that invoice was canceled. Refuse a replaced invoice outside access.Stores. (3) internal/httpapi/tests/members_test.go:112: the events and Owed store filters (invoice/events.go:37, owed.go:45 and :55) have no test; removing them passes every test, so acceptance 3 is unproven there. NON-BLOCKING: auth/access.go:88 array_agg has no ORDER BY, so a member's 'first store' default is arbitrary; order by stores.created_at, id like the owner's default. profile/list.go:16 the OR EXISTS join can't use the profiles.user_id index, so GET /v1/me and signup scan every profile; use a UNION. Finance sees every store's invoices (ids, numbers, amounts, client names) through activity, transactions, the CSV and statement.pdf; D-93 lists these for Finance but D-30 says Finance sees its assigned stores; record which one applies. A Developer sets a store's tokensOff through PUT store (StoresWrite), but D-93 says only Admin manages token switches; record it or gate it. An owner's cross-store revision still shows the replaced invoice's id and number to the other store's members. Stale docs: docs/backend/api.md:564-565 (RequireProfileOwner, ProfileScoped), api/openapi.yaml:1585 ('the signed-in user owns'), docs/backend/rules.md:21, auth/auth.go:1, and 'user owns the profile' comments at invoice/list.go:48, events.go:27, owed.go:28. D-84: docs/backend/api.md:547-548 is 30 words. The auth import sits in the stdlib group in invoiceapi, jobapi, moneyapi and profileapi routes.go. Structure: mid importing invoice and profile for not-found errors is fine (httpio does the same, no cycle); auth.InvoiceStore reads invoices from auth, which is acceptable but optional to move. CheckAccess SQL, the nil-versus-empty store list (the idle Developer case is tested), List, trigger, migration Down, the route-guard test and the removal of CheckProfileOwner are correct. Requested tests pass.",
-        "2026-10-25 review pass by reviewer: Re-review after fixes: no blocking findings. Fixed: profile/signup.go:45 repairs wallets only on owned profiles; invoice/create.go:330 replace() refuses an old invoice outside Request.Stores (404); events.go:37 and owed.go:45/55 filters are now tested. I checked by mutation through go -overlay, with no repo edits: turning off each of the events filter, both Owed filters, the replace store check, the signup owner check, the TokensFixed check, the invoice list filter and the store list filter makes TestMembersReachOnlyWhatTheirRoleAllows or TestMemberSignUpMakesNoWalletForTheirTeamsProfile fail. Clean run passes: httpapi/tests (members, owed, tokens, stores, route guards), invoice, profile and auth packages; gofmt, go vet and docs-check are clean. CheckAccess orders the stores by created_at, id; profile.List uses UNION ALL; SaveStore compares tokensOff inside the profile-locked transaction; profile importing auth adds no cycle. Docs match the code: R-138, D-93, api.md, openapi, rules.md, architecture.md. NON-BLOCKING: (1) An owner's Revise into another store still shows that store's members the replaced invoice's id and number, in replaces and in the history row's related. (2) The D-93 lines on jobs, notifications and the shared wallet are agent defaults; the owner should confirm them, mainly that Finance sees every store's activity and transactions while D-30 says assigned stores. (3) A Developer's ordinary store save still drops store_tokens_off rows for tokens that are now disabled; owners' saves already did this. (4) tests/invoices_owed_test.go:15: the R-95 tag now sits on the deposit helper, and TestOwedToYou lost it. (5) The default store order (first by created_at) is not tested with two assigned stores. (6) The web will show member profiles from GET /v1/me with pages that answer 403; F295 should handle that.",
-        "2026-10-25 review pass by reviewer: Re-review after the R-95 tag fix: invoices_owed_test.go has the // R-95. tag back above TestOwedToYou, and the deposit helper carries only its own comment. No blocking findings. The earlier non-blocking notes stand: an owner's cross-store Revise shows the replaced invoice's id and number to the other store's members; the owner should confirm D-93's agent defaults (jobs, notifications, and Finance seeing every store's activity under the shared wallet); a Developer's store save drops store_tokens_off rows for disabled tokens, as owners' saves already did; the first-store order is untested with two assigned stores; the web will show member profiles whose pages answer 403 (F295)."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-25T00:35:25Z",
-        "checks": [
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 175.8,
-            "log": "docs/runs/F294-20261025T003525Z-unit.log"
-          },
-          {
-            "id": "backend-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 19.9,
-            "log": "docs/runs/F294-20261025T003525Z-backend-e2e.log"
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.1,
-            "log": "docs/runs/F294-20261025T003525Z-docs-check.log"
-          },
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.6,
-            "log": "docs/runs/F294-20261025T003525Z-harness.log"
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.4,
-            "log": "docs/runs/F294-20261025T003525Z-lint.log"
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.2,
-            "log": "docs/runs/F294-20261025T003525Z-typecheck.log"
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 2.0,
-            "log": "docs/runs/F294-20261025T003525Z-build.log"
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 220.2,
-            "log": "docs/runs/F294-20261025T003525Z-e2e.log"
-          }
-        ],
-        "taskHash": "15ba0e640e42db1c",
-        "filesHash": "f5d0a0e7c10fa899",
-        "proof": {
-          "1": "unit: TestMembersReachOnlyWhatTheirRoleAllows and TestMemberSignUpMakesNoWalletForTheirTeamsProfile; migration 62 rolls back in TestMigrationsRollBackAndReapply",
-          "2": "unit: TestProfileRoutesAreAllListed fails when a {profileId} route asks for no permission; TestMembersReachOnlyWhatTheirRoleAllows checks routes for every role and a stranger",
-          "3": "unit: TestMembersReachOnlyWhatTheirRoleAllows (store-scoped lists, events, Owed with held money, 404 on read, cancel and Revise, 403 on token switches, create default and 422)",
-          "4": "docs-check: R-138, D-93, api.md, openapi.yaml, architecture.md, rules.md; backend-e2e passes"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Re-review after the R-95 tag fix: invoices_owed_test.go has the // R-95. tag back above TestOwedToYou, and the deposit helper carries only its own comment. No blocking findings. The earlier non-blocking notes stand: an owner's cross-store Revise shows the replaced invoice's id and number to the other store's members; the owner should confirm D-93's agent defaults (jobs, notifications, and Finance seeing every store's activity under the shared wallet); a Developer's store save drops store_tokens_off rows for disabled tokens, as owners' saves already did; the first-store order is untested with two assigned stores; the web will show member profiles whose pages answer 403 (F295).",
-          "at": "2026-10-25T00:42:47Z",
-          "filesHash": "f5d0a0e7c10fa899"
-        },
-        "commit": "e59e815",
-        "doneAt": "2026-10-25T10:44:00Z"
-      },
-      "branch": "feat/f294-a-merchant-profile-s-members-reach-only",
-      "baseCommit": "9e529ecd8fe7752295e8b1d535d45b3f47efc3cb",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f294-a-merchant-profile-s-members-reach-only",
-        "base": "main"
-      }
-    },
-    {
       "id": "F295",
       "type": "feat",
       "behavior": "A merchant invites team members by email and manages their roles",
       "acceptance": [
-        "Invites are single use, hashed, bound to the invited email and expire in 7 days; the invited user accepts at /invite/<token> signed in with that verified email; an Admin changes roles and stores with a fresh sign-in (D-63) and removes members; a member leaves; the last Admin can't leave or be demoted; the Team page lists members and invites; the app hides pages a role can't use"
+        "Invites are single use, hashed, bound to the invited email and expire in 7 days; the invited user accepts at /invite/<token> signed in with that verified email",
+        "An Admin changes roles and stores with a fresh sign-in (D-63) and removes members; a member leaves; the last Admin can't leave or be demoted",
+        "The Team page lists members and invites",
+        "The app hides pages a role can't use"
       ],
       "dependsOn": [
         "F294"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "e2e",
@@ -142,13 +23,100 @@
       ],
       "refs": [
         "D-93",
-        "D-63"
+        "D-63",
+        "R-139"
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-25 review fail by reviewer: Backend security holds: SHA-256 only, token dropped from outbox on send/skip/give-up (mutation-tested), accept bound to Privy login email under FOR UPDATE, owner untouchable, team routes Admin-only, token never logged (r.Pattern) or returned, Referrer-Policy strict-origin-when-cross-origin, migration Up/Down passes TestMigrationsRollBackAndReapply. Backend, notify and web unit tests pass.\nBLOCKING 1: apps/web/src/screens/invoices/invoices-screen.tsx:12, invoice-screen.tsx:15, new-invoice-screen.tsx:36 (+68 billing, +72 clients) still poll GET /balances (money.read) for a Developer, whose first page is Invoices: 403 every 15 s, list amounts stay skeletons (invoice-amount.tsx:16), and New invoice shows the tokens-failed alert, so a Developer cannot create an invoice. Breaks R-139 'hides the pages, links and polls a role can't use'; docs/web/architecture.md:46 claims otherwise. team.spec.ts misses it because mockApi answers balances 200 for every role.\nBLOCKING 2: apps/web/src/features/team/components/member-actions.tsx:45-52: role/stores state is seeded once from props and reset on close from the pre-refetch member, so after a successful change, reopening Change role shows the old role and stores, and Save reverts the change. Reset the state on open instead.\nNON-BLOCKING: (a) team-api.ts:96-107 / accept-invite.tsx:37-39: unwrap() resolves before the onQueryStarted signUp refetch, so /app can render the stale me (onboardedAt null for a new invitee) and bounce to /app/onboarding; the comment 'read again before the app opens it' is wrong; await the refetch before router.push. (b) team/invites.go: Accept locks the invite row, then needs FOR KEY SHARE on the profile (profile_members FK), while Invite holds the profile FOR UPDATE and then updates the same open invite: a re-invite racing its accept deadlocks (one 500). Lock the profile first in Accept. (c) members.go:90: removing or demoting an Admin leaves their open invites valid, so a removed Admin who invited an address they control can rejoin within 7 days; consider revoking by invited_by, or record a decision. (d) app-nav.ts:33-38: pageAllowed reads only APP_NAV[kind] and MENU_PAGES, so /app/jobs is open to a merchant Developer or Finance and polls /jobs (403); /app/stores/new is open to Finance without stores.write. (e) docs/web/architecture.md:90: the Team edge bullet sits between 'Two more edges lead to stores' and its sub-bullets, which now nest under Team. (f) D-84: the R-139 sentence 'An invite works once ... given up.' (PROJECT.md:191) and the apps/web/AGENTS.md intro sentence are 28 words. (g) Dead code: team.go:10 InviteFor is unused (the expiry is the migration DEFAULT); INVITE_COPY.signInTitle and PERMISSIONS.invoicesWrite are unused. (h) 'Stores deleted since the invite are left out' (invites.go:120, api.md, openapi) handles a case that can't happen: stores have no delete. (i) Tests: no 403 case for Developer or Finance on the team write routes, no cross-profile revoke or remove case, and no test of the give-up token drop. Acceptable, because routes.go puts auth.Team on every team route. (j) An Admin removing or demoting themselves keeps stale /v1/me permissions, so the Team page shows a load error until reload. (k) The invite dialog defaults to Admin, the widest role. (l) apps/web/test-results/.last-run.json was left from the Playwright run.",
+        "2026-10-25 review pass by reviewer: Re-review after fixes. Both blocking findings are fixed.\n(1) The invoice pages take symbols and decimals from GET /tokens, which lists the same enabled tokens as balances and which every role reads. New invoice skips billing details without billing.read and clients without clients.read. team.spec now answers 403 to any read the role lacks, records it, and asserts none for a Developer on Invoices and New invoice.\n(2) member-actions.tsx resets the Change role form from the current member before it opens.\nThe earlier non-blocking items are fixed:\n- AcceptInvite awaits me.refetch() before saving the profile and opening /app.\n- Accept locks the profile row before the invite, the same order as Invite and SetMember.\n- RemoveMember, Leave and SetMember away from Admin revoke the member's open invites. A mutation removing that revoke fails TestTeamInvitesAndRoles.\n- pageAllowed checks every NAV item and MENU_PAGES by the longest href. New store needs stores.write, and Add store hides without it.\n- The docs order and sentence lengths are fixed, and the dead code is gone. The invite dialog defaults to Developer.\nReran the backend team, members, routes, notify and auth tests, TestMigrationsRollBackAndReapply and web vitest (143/143): all pass.\nNON-BLOCKING:\n(a) members.go:100 and invites.go:46: an invite sent at the moment its Admin is removed or demoted can survive. RemoveMember takes no profile lock, and Invite checks the inviter's access outside its transaction. Fix: lock the profile in RemoveMember and recheck the inviter inside Invite's transaction.\n(b) docs/web/architecture.md:46 still says app-nav.ts hides the polls. The gating sits in app-shell, command-menu and notifications-menu through can(), and the invoice pages read /tokens.\n(c) No regression check for reopening Change role after a save (team.spec could reopen once), and the demotion path of the invite revoke has no test.\n(d) Carried over: self-demotion keeps stale /v1/me permissions until reload, the give-up token drop is untested, and apps/web/test-results/.last-run.json is still present.",
+        "2026-10-25 review pass by reviewer: Re-review of the last three changes. The removal race is closed: RemoveMember (and so Leave) takes lockMerchant first, and Invite checks again under the profile lock that the inviter is the owner or an Admin, else 403. Removal, demotion and an invite from that member now run one after the other, and a revoke sees an invite committed before it. docs/web/architecture.md:46-47 now matches the code. team.spec reopens Change role after a save and expects Admin. The duplicate Cancel name is gone: the close icon uses the kit's Close. Reran the backend team, members and routes tests, the notify tests and web vitest (143/143): all pass.\nNON-BLOCKING:\n(a) invites.go: the inviter check names the role 'admin' in SQL instead of asking auth's map for the team permission. It matches today, but D-93 keeps who-may-do-what in that one map.\n(b) RemoveMember and Leave now answer 409 not_merchant on a personal or freelancer profile, which only its owner reaches (it was 422 or 404). The openapi DELETE /members and POST /leave responses don't list 409.\n(c) Carried over: self-demotion keeps stale /v1/me permissions until reload, the give-up token drop is untested, and apps/web/test-results/.last-run.json is still present.",
+        "2026-10-25 review pass by reviewer: Re-review of the four open items; all four are closed. (1) Invite reads the inviter's role under the profile lock and asks auth.Access{Role}.Can(auth.Team), so the role name is gone from SQL. SetMember revokes invites when the new role lacks team. TestInviteChecksTheInviterAgain calls Invite without the route guard, and a mutation that turns the check off makes it fail. (2) openapi removeMember and leaveTeam list 409 NotMerchant, and api.md names the locking operations and the second inviter check. (3) setMember and removeMember read /v1/me again with subscribe: false, so no subscription is left behind. team-api.test.ts checks the third request is /v1/me and the cache holds the new permissions. (4) The notify test gives up on one invite and expects failed_at with no token. Reran internal/team, notify, the httpapi team, members and routes tests, and web vitest (144/144): all pass. NON-BLOCKING: docs/backend/api.md:207 says every invite and member change on a personal or freelancer profile is 409, but DELETE /invites/{inviteId} takes no profile lock and answers 404 invite_not_found there. Only that profile's owner can reach it.",
+        "2026-10-25 review pass by reviewer: Re-review of the api.md change only. docs/backend/api.md:207 now says inviting, changing a role, removing and leaving are 409 not_merchant on a personal or freelancer profile. That matches the code: Invite, SetMember, RemoveMember and Leave each call lockMerchant, and revoke, which answers 404, is left out. The sentence is 20 words. No findings."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-25T12:39:06Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 189.9,
+            "log": "docs/runs/F295-20261025T123906Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 250.2,
+            "log": "docs/runs/F295-20261025T123906Z-e2e.log"
+          },
+          {
+            "id": "a11y-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 16.9,
+            "log": "docs/runs/F295-20261025T123906Z-a11y-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.1,
+            "log": "docs/runs/F295-20261025T123906Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F295-20261025T123906Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F295-20261025T123906Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F295-20261025T123906Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": "docs/runs/F295-20261025T123906Z-build.log"
+          }
+        ],
+        "taskHash": "c2bb38924f172b5d",
+        "filesHash": "5e225e2f0778cf91",
+        "proof": {
+          "1": "unit: internal/httpapi/tests TestTeamInvitesAndRoles (profile_invites keeps the token's SHA-256, never the token; expires in 7 days; another signed-in user reads the link but accept is 403 invite_for_another_email, failing when the email check is removed; the invited address accepts once, then GET and accept are 404, failing when accepted_at isn't set; a replaced, revoked or expired invite is 404; a removed Admin's open invites are revoked; inviting needs a fresh sign-in); internal/team TestInviteChecksTheInviterAgain (under the profile lock the permission map refuses a Developer or stranger, failing without the check); TestInvitesCountTowardTheClientEmailCap (21st invite is 429); internal/notify TestDeliverSendsTheInviteThenDropsItsToken (the email links /invite/<token>; sent, skipped and given-up invites keep no token, each failing when its drop is removed)",
+          "2": "unit: TestTeamInvitesAndRoles (an Admin's role and stores change needs a fresh sign-in, then saves; changing or removing the owner and the owner leaving are 422, so the owner stays an Admin; a member leaves and loses access; an Admin removes a member who loses access; unknown member 404); TestMembersReachOnlyWhatTheirRoleAllows (GET members for owner and Admin only); TestProfileRoutesAreAllListed and TestProfilesBelongToTheirUser cover the 6 new {profileId} routes; src/features/team/tests/team-api.test.ts (a role change reads /v1/me again, failing without it)",
+          "3": "e2e: e2e/privy/team.spec.ts 'an Admin invites, changes a role and revokes an invite on the Team page' (lists members with stores and role, asks for a store, sends the invite body, changes a role and reopens on the saved one, revokes; axe clean); 'the invite link accepts for the invited address' (other address shows Sign out instead of Accept, the invited address accepts and opens the app, a gone link says so; axe clean, no sideways scroll on a phone)",
+          "4": "e2e: e2e/privy/team.spec.ts 'a Developer sees only its pages, and lands on Invoices' (no Overview, Balances, Transactions, Clients, Activity, Receive or Email notifications; invoice amounts and New invoice work from the enabled tokens; /app and /app/clients lead to /app/invoices; Team shows the role and Leave team; the mock refuses and records every read the role lacks, and none happens); unit: src/screens/app-shell/tests/app-nav.test.ts (also another kind's page and New store for Finance, failing with the old lookup)"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review of the api.md change only. docs/backend/api.md:207 now says inviting, changing a role, removing and leaving are 409 not_merchant on a personal or freelancer profile. That matches the code: Invite, SetMember, RemoveMember and Leave each call lockMerchant, and revoke, which answers 404, is left out. The sentence is 20 words. No findings.",
+          "at": "2026-10-25T12:47:13Z",
+          "filesHash": "5e225e2f0778cf91"
+        }
+      },
+      "branch": "feat/f295-a-merchant-invites-team-members-by-email",
+      "baseCommit": "584c23db70aaa59ee94b20a702c24e86c538ae3c",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

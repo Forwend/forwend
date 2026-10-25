@@ -1570,6 +1570,184 @@ paths:
         "404": { $ref: "#/components/responses/InvoiceNotFound" }
         "409": { $ref: "#/components/responses/InvoiceNotPaid" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/members:
+    get:
+      operationId: getTeam
+      summary: A merchant profile's team and open invites (R-139)
+      description: The owner first, then the members by when they joined, and the open invites newest first.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      responses:
+        "200":
+          description: The team
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Team" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/members/{memberId}:
+    put:
+      operationId: putMember
+      summary: Give a member another role and stores (R-139)
+      description: Needs a sign-in from the last 5 minutes (D-63). The owner is an Admin for good, so the owner is 422.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/MemberId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GrantRequest" }
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Member" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/ReauthRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/MemberNotFound" }
+        "409": { $ref: "#/components/responses/NotMerchant" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+    delete:
+      operationId: removeMember
+      summary: Take a member off the team (R-139)
+      description: |
+        Their next request no longer reaches the profile, and the open invites they sent are revoked. The owner is 422.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/MemberId"
+      responses:
+        "204": { description: Removed }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/MemberNotFound" }
+        "409": { $ref: "#/components/responses/NotMerchant" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/invites:
+    post:
+      operationId: invite
+      summary: Invite an email address to the team (R-139)
+      description: |
+        Needs a sign-in from the last 5 minutes (D-63). Queues an email with a link to /invite/<token> that works once,
+        for 7 days. The API keeps only the token's SHA-256. A new invite to the same address revokes the open one. The
+        email counts toward the client email cap (R-116); past it the answer is 429.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InviteRequest" }
+      responses:
+        "201":
+          description: Invited
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invite" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/ReauthRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: Not a merchant profile (not_merchant), or the address is already on the team (already_on_team)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/invites/{inviteId}:
+    delete:
+      operationId: revokeInvite
+      summary: Revoke an open invite, so its link no longer works (R-139)
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: inviteId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Revoked }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/InviteNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/leave:
+    post:
+      operationId: leaveTeam
+      summary: The signed-in member leaves the team (R-139)
+      description: The owner can't leave, so a team always keeps an Admin (D-93); the owner is 422.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      responses:
+        "204": { description: Left }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/NotMerchant" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/invites/{token}:
+    get:
+      operationId: getInvitation
+      summary: What an invite link offers, for any signed-in user who has it (R-139)
+      parameters:
+        - $ref: "#/components/parameters/InviteToken"
+      responses:
+        "200":
+          description: The invite
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invitation" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/InviteNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/invites/{token}/accept:
+    post:
+      operationId: acceptInvite
+      summary: Join the team with the invite's role (R-139)
+      description: |
+        The signed-in user's verified login email, read from Privy, must be the invited address. Accepting also marks
+        the first run done (R-50).
+      parameters:
+        - $ref: "#/components/parameters/InviteToken"
+      responses:
+        "200":
+          description: Joined
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [profileId]
+                properties:
+                  profileId: { type: string, format: uuid }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: The invite is for another email address (invite_for_another_email)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not signed up (not_signed_up), or the invite is used, revoked, expired or unknown (invite_not_found)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: The user is the owner or a member already (already_on_team)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
 components:
   securitySchemes:
     privyAccessToken:
@@ -1590,6 +1768,18 @@ components:
       required: true
       description: A saved client of this profile; a client of another profile is 404.
       schema: { type: string, format: uuid }
+    MemberId:
+      name: memberId
+      in: path
+      required: true
+      description: The member's user id, as GET /v1/profiles/{profileId}/members lists it.
+      schema: { type: string, format: uuid }
+    InviteToken:
+      name: token
+      in: path
+      required: true
+      description: The invite link's token, 64 hex characters; a secret link.
+      schema: { type: string, pattern: "^[0-9a-f]{64}$" }
     StoreId:
       name: storeId
       in: path
@@ -1653,9 +1843,77 @@ components:
         profiles:
           type: array
           items: { $ref: "#/components/schemas/Profile" }
+    GrantRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          type: string
+          enum: [admin, developer, finance]
+        stores:
+          type: array
+          description: A Developer's or Finance member's stores, one or more of the profile's; an Admin's are left out.
+          items: { type: string, format: uuid }
+    InviteRequest:
+      allOf:
+        - $ref: "#/components/schemas/GrantRequest"
+        - type: object
+          required: [email]
+          properties:
+            email: { type: string, description: Checked like a client email; kept in lower case. }
+    Member:
+      type: object
+      required: [memberId, email, role, stores, createdAt]
+      properties:
+        memberId: { type: string, format: uuid }
+        email:
+          type: [string, "null"]
+          description: The account's login email; null when it has none.
+        role:
+          type: string
+          enum: [owner, admin, developer, finance]
+        stores:
+          type: array
+          description: Empty for the owner and Admins, who reach every store.
+          items: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+    Invite:
+      type: object
+      required: [inviteId, email, role, stores, createdAt, expiresAt]
+      properties:
+        inviteId: { type: string, format: uuid }
+        email: { type: string }
+        role:
+          type: string
+          enum: [admin, developer, finance]
+        stores:
+          type: array
+          items: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+    Team:
+      type: object
+      required: [members, invites]
+      properties:
+        members:
+          type: array
+          items: { $ref: "#/components/schemas/Member" }
+        invites:
+          type: array
+          items: { $ref: "#/components/schemas/Invite" }
+    Invitation:
+      type: object
+      required: [profileName, email, role, expiresAt]
+      properties:
+        profileName: { type: string }
+        email: { type: string, description: The invited address. }
+        role:
+          type: string
+          enum: [admin, developer, finance]
+        expiresAt: { type: string, format: date-time }
     Profile:
       type: object
-      required: [profileId, kind, name, walletAddress, createdAt, role]
+      required: [profileId, kind, name, walletAddress, createdAt, role, permissions]
       properties:
         profileId: { type: string, format: uuid }
         kind:
@@ -1665,6 +1923,13 @@ components:
           type: string
           enum: [owner, admin, developer, finance]
           description: The user's role on the profile (R-138); the owner has every permission.
+        permissions:
+          type: array
+          description: What the role may do (D-93), so the app shows only the pages it can use. The API checks it anyway.
+          items:
+            type: string
+            enum: [invoices.read, invoices.write, stores.read, stores.write, clients.read, clients.write, money.read,
+              money.write, billing.read, billing.write, tokens.read, tokens.write, jobs, notifications, team, team.leave]
         name:
           type: [string, "null"]
           description: null when none was given; always null for the personal profile.
@@ -2968,8 +3233,18 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
+    MemberNotFound:
+      description: No member of this profile has this id (member_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    InviteNotFound:
+      description: The invite is used, revoked, expired or unknown (invite_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
     NotMerchant:
-      description: Only a merchant profile has stores (not_merchant)
+      description: Only a merchant profile has stores and a team (not_merchant)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

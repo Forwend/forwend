@@ -3,6 +3,7 @@ export const AUTH_COPY = {
   checkingSignIn: "Checking your sign-in",
   notifications: "Email notifications",
   networks: "Networks and tokens",
+  team: "Team",
   signOut: "Sign out",
   account: "Account",
   darkMode: "Dark mode",
