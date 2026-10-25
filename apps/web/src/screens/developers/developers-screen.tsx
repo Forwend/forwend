@@ -2,10 +2,13 @@
 
 import { ApiKeys } from "@/features/api-keys/components/api-keys";
 import { API_KEYS_COPY as COPY } from "@/features/api-keys/constants/api-keys-copy";
-import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
+import { PERMISSIONS, PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
+import { can } from "@/features/profiles/lib/profile";
+import { Webhooks } from "@/features/webhooks/components/webhooks";
 
 // R-145: the shell's guard keeps out a role without the keys permission; a personal profile has no API (R-144).
+// Webhooks need their own permission, which only owners and Admins have (R-149).
 export function DevelopersScreen() {
   const { profile } = useAppSession();
   return (
@@ -19,6 +22,13 @@ export function DevelopersScreen() {
       </div>
       {profile.kind === PROFILE_KINDS.personal ? null : (
         <ApiKeys
+          key={profile.profileId}
+          profileId={profile.profileId}
+          merchant={profile.kind === PROFILE_KINDS.merchant}
+        />
+      )}
+      {profile.kind === PROFILE_KINDS.personal || !can(profile, PERMISSIONS.webhooks) ? null : (
+        <Webhooks
           key={profile.profileId}
           profileId={profile.profileId}
           merchant={profile.kind === PROFILE_KINDS.merchant}

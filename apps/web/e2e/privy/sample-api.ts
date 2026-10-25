@@ -24,6 +24,7 @@ export const OWNER = {
     "team",
     "team.leave",
     "keys",
+    "webhooks",
   ],
 };
 const NOW = Date.now();
@@ -345,6 +346,7 @@ export async function mockApi(
     if (what === "statement.pdf")
       return route.fulfill({ contentType: "application/pdf", body: "%PDF-1.4" });
     if (what?.startsWith("events")) return route.fulfill({ json: { items: lists.events ?? [] } });
+    if (what === "webhooks") return route.fulfill({ json: { endpoints: [] } });
     if (what === "billing-details") {
       if (route.request().method() === "PUT")
         details = { ...route.request().postDataJSON(), updatedAt: "2026-10-17T12:00:00Z" };

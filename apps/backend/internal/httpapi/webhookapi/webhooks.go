@@ -1,7 +1,9 @@
 package webhookapi
 
 import (
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
 	"github.com/ensp1re/forwend/apps/backend/internal/webhook"
@@ -76,5 +78,69 @@ func rotateSecret(webhooks *webhook.Service) http.HandlerFunc {
 			return
 		}
 		httpio.WriteJSON(w, http.StatusCreated, toSecretsJSON(list))
+	}
+}
+
+func listDeliveries(webhooks *webhook.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		list, err := webhooks.Deliveries(r.Context(), r.PathValue("profileId"), r.PathValue("endpointId"))
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		out := struct {
+			Deliveries []deliveryJSON `json:"deliveries"`
+		}{Deliveries: []deliveryJSON{}}
+		for _, d := range list {
+			out.Deliveries = append(out.Deliveries, toDeliveryJSON(d))
+		}
+		httpio.WriteJSON(w, http.StatusOK, out)
+	}
+}
+
+func resendDelivery(webhooks *webhook.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := webhooks.Resend(r.Context(), r.PathValue("profileId"), r.PathValue("endpointId"),
+			r.PathValue("eventId")); err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func resendFailed(webhooks *webhook.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body resendFailedBody
+		if err := httpio.DecodeJSON(w, r, &body); err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		since, err := time.Parse(time.RFC3339, body.Since)
+		if err != nil {
+			httpio.WriteError(w, r, fmt.Errorf("%w: since must be an RFC 3339 time", webhook.ErrInvalid))
+			return
+		}
+		n, err := webhooks.ResendFailed(r.Context(), r.PathValue("profileId"), r.PathValue("endpointId"), since)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusOK, struct {
+			Resent int64 `json:"resent"`
+		}{n})
+	}
+}
+
+func sendTest(webhooks *webhook.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := webhooks.SendTest(r.Context(), r.PathValue("profileId"), r.PathValue("endpointId"))
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusCreated, struct {
+			EventID string `json:"eventId"`
+		}{id})
 	}
 }

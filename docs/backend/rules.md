@@ -41,7 +41,7 @@ apps/backend/
     team/                 a merchant profile's members and invites; what each role may do is auth's map
     link/                 payment links: templates a payer pays through
     apikey/               secret API keys: their text, scopes and checks
-    webhook/              webhook endpoints, sealed secrets, events and their signed delivery
+    webhook/              endpoints, sealed secrets, events, signed delivery and the public-address rule
     balance/
     activity/
     ledger/

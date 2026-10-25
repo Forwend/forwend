@@ -79,6 +79,8 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 			"webhooks are off on this server: it has no WEBHOOK_SECRET_KEY"
 	case errors.Is(err, webhook.ErrNotFound):
 		status, code, message = http.StatusNotFound, "endpoint_not_found", "webhook endpoint not found"
+	case errors.Is(err, webhook.ErrNoDelivery):
+		status, code, message = http.StatusNotFound, "delivery_not_found", "webhook delivery not found"
 	case errors.Is(err, webhook.ErrPersonal):
 		status, code, message = http.StatusConflict, "personal_profile", "a personal profile has no webhooks"
 	case errors.Is(err, apikey.ErrUnknownKey):

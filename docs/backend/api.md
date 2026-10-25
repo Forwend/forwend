@@ -343,6 +343,21 @@ R-148, D-98. `cmd/webhooks` sends each delivery as a `POST` of the event's body,
   - Its waiting deliveries go out once the owner turns it on again; events from while it was off are not sent to it.
 - Each attempt is kept with its status code, a short error without the URL, and how long it took.
 
+### Deliveries
+
+R-149, D-99. These need the `webhooks` permission and no fresh sign-in: they send only where the endpoint already sends.
+
+- `GET /v1/profiles/{profileId}/webhooks/{endpointId}/deliveries` lists the 50 newest, each with every attempt.
+  - A delivery has its event's type, the invoice and its number, `status`, and `nextAttemptAt` while pending.
+  - An attempt has its time, `statusCode` (null with no answer), `error` and `durationMs`.
+- `POST .../deliveries/{eventId}/resend` starts the delivery again from a first attempt, with its first body (204).
+  - Another endpoint's or profile's delivery is 404 `delivery_not_found`.
+- `POST .../deliveries/resend-failed` with `since` (RFC 3339) does that for every delivery that failed since then.
+  - It answers `{resent}`, how many.
+- `POST .../test` queues a `webhook.test` event for this endpoint alone and answers its `eventId` (201).
+  - Its body is `{id, type, livemode, timestamp, data: {}}`: no invoice and no sequence.
+- A resend or test waits while the endpoint is off, and goes once it is on.
+
 ## Invoices
 
 R-19 and R-42; the full schema is in openapi.yaml.

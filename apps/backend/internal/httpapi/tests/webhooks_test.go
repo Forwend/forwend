@@ -182,4 +182,16 @@ func TestWebhooksNeedTheWebhooksPermission(t *testing.T) {
 	if r := e.call(t, "GET", hooks, "did:privy:erin", "", ""); errorCode(r) != "forbidden" {
 		t.Errorf("a Developer lists endpoints: %d %v", r.status, r.body)
 	}
+	// R-149: a Developer has invoices.read, which none of these routes may take instead.
+	hook := hooks + "/cccccccc-0000-4000-8000-000000000001"
+	for _, c := range []struct{ method, path, body string }{
+		{"GET", hook + "/deliveries", ""},
+		{"POST", hook + "/deliveries/evt_" + strings.Repeat("0", 32) + "/resend", ""},
+		{"POST", hook + "/deliveries/resend-failed", `{"since": "2026-01-01T00:00:00Z"}`},
+		{"POST", hook + "/test", ""},
+	} {
+		if r := e.call(t, c.method, c.path, "did:privy:erin", "", c.body); errorCode(r) != "forbidden" {
+			t.Errorf("a Developer %s %s: %d %v", c.method, c.path, r.status, r.body)
+		}
+	}
 }

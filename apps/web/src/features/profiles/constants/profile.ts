@@ -41,6 +41,7 @@ export const PERMISSIONS = {
   team: "team",
   leave: "team.leave",
   keys: "keys",
+  webhooks: "webhooks",
 } as const;
 
 /** ?then= on the billing details page: where saving them leads instead of home (R-92). */

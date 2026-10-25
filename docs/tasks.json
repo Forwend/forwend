@@ -1234,7 +1234,7 @@
       "dependsOn": [
         "F305"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "e2e"
@@ -1245,9 +1245,84 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-25 review fail by reviewer: FAIL: 3 blocking issues, then non-blocking ones.\n\nBLOCKING\n1. apps/web/src/features/webhooks/components/endpoint-dialog.tsx:47,57,105. The Edit dialog keeps old values. useState(initial) runs once at mount. reset() runs on close, before the list refetch, so it uses the old endpoint prop. Scratchpad vitest probe results: after Turn off, Edit shows the switch on, and Save sends enabled:true, so the endpoint turns back on. After saving description \"Renamed\", the next Edit shows \"Orders\", and Save would undo the edit. Fix: load the values from the current endpoint when the dialog opens. Add a unit test for Turn off then Edit.\n2. apps/backend/internal/database/migrations/00071_webhook_resend.sql:8. CHECK ((type='webhook.test') = (all three NULL)) is weaker than the NOT NULLs it replaces. For an invoice event it only refuses all three NULL. Probe: an invoice.paid row with invoice_id NULL is accepted. A merged migration can't be changed, so fix it now: test events need all three NULL, other events need all three NOT NULL.\n3. Auth on the new routes has no failing test. go test -overlay mutations that pass the whole internal/httpapi/tests package: (m1) SendTest without \"AND profile_id = $2\" (deliveries.go:126); (m2) ResendFailed without its owned() call (deliveries.go:107); (m4) resend and test guarded by Can(auth.InvoicesRead), which would let Developers, Finance and keys in. Add test and resend-failed rows to the cross-profile table (webhook_delivery_test.go:433). In TestWebhooksNeedTheWebhooksPermission (webhooks_test.go:171), a Developer should get 403 on all four new routes. (m3, test livemode forced true, was caught.)\n\nNON-BLOCKING\n- endpoint-actions.tsx:137-140. onCloseAutoFocus calls preventDefault before toggle and reveal, which open nothing right away. Focus falls to <body>. Probe: after Turn off, activeElement is BODY; Escape (control) returns focus to the trigger. Call preventDefault only when a dialog or the sheet opens.\n- deliveries.go:112 filters created_at, but the UI label reads \"Failed in the Last hour\" (copy :76). A delivery made 3 days ago that failed an hour ago is not included. Filter updated_at, or change the label.\n- Note: Resend sets next_attempt_at=now() and attempts=0 on a claimed delivery. That breaks the lease, so a second round can send it again during the attempt. Then record() writes over attempts and status (on a last attempt, failed), and the resend is lost.\n- Rotate's pending.reset() has no test. The rotate test (tests/webhooks.test.tsx:175) does not check the store; only reveal is checked.\n- The deliveries list never refreshes. A test event shows Waiting until the sheet is reopened, after the 60 s cache.\n- The 422 copy (webhooks-copy.ts:106) ends \"...and plain text\", which is unclear. A non-ASCII host passes the client check, but the API refuses it with a punycode message the UI hides.\n- webhooks.tsx:37: if the stores query fails for a merchant, the skeleton never goes away.\n- lib/webhooks.ts:6: when new URL() throws, the catch returns the raw URL with its query. Cut at ? or #. Tokens in the path (Zapier/Make style) still show, as designed.\n- endpoint-dialog.tsx:151,169: the fixed id \"webhook-events-error\" is in a dialog mounted once per row; use useId. deliveries.tsx:198: key a.at+a.durationMs can collide, because times have whole seconds. Every row's button is named \"Resend\", so screen-reader users can't tell them apart.\n- SendTest and Resend answer 201/204 without WEBHOOK_SECRET_KEY, but nothing is sent (R-146 uses 503).\n- A row with no description shows the host and path twice. DEFAULT_EVENTS sits in a component, not in constants/. resentSchema could reuse the shared count schema. The unit test \"Delete asks first\" opens the dialog directly, so it doesn't test the asking.\n- TestMigrationsRollBackAndReapply runs Down on an empty DB. Probe: UpTo 71, then a test event, delivery and attempt, then DownTo 70. All three were removed, the trigger is back to ALWAYS (A), and Up runs again.\n\nOK: Resend uses the profile in its WHERE clause; list/resend-failed use owned(); claim needs w.enabled; test livemode is the endpoint's; history.Add still writes history_id, invoice_id and sequence. Permissions follow D-63: these routes don't change the URL or reveal a secret. Reveal's secret leaves the store (tested). Rows, titles, toasts and the sheet title use endpointPlace; only the edit input holds the full URL. Zod schemas match openapi. Toggle sends the full body. Structure and copy follow structure.md. DESIGN.md matches the page. Every sentence is at most 25 words (D-84). R-149's check ids are valid.\n\nRAN: go test ./internal/httpapi/tests -run (webhook, route, permission tests) ok; go test ./internal/database ./internal/webhook ./internal/history ok; overlay probes m1-m4 and the migration probe; vitest run src/features/webhooks 6/6 passed; 6 scratchpad vitest probes; check-docs.py 0 errors; status shows verify passed 22:42:04Z, and the diff is the same one reviewed.",
+        "2026-10-25 review pass by reviewer: PASS (re-review). All 3 earlier blockers are fixed, and each fix now has a test that fails without it. I found no new blocking issue.\n\nFIXED, AND CHECKED\n1. Stale Edit values. endpoint-dialog.tsx loadAndOpen runs load() before open() for both New endpoint and Edit. My 6 scratchpad probes now pass: after Turn off, Edit shows the switch off and saves enabled:false; after a rename, the next Edit shows \"Renamed\". Scratchpad vitest mutation (loadAndOpen without load()) fails \"Edit opens with the endpoint as it is now\".\n2. 00071 CHECK is now CASE WHEN type='webhook.test' THEN all NULL ELSE all NOT NULL END. My probe: invoice.paid with invoice_id NULL now fails with 23514. The new TestWebhookEventsNameTheirInvoice fails against the old CHECK (overlay of the embedded .sql): \"an invoice event with no invoice: want 23514, got <nil>\".\n3. Access tests. go test -overlay mutations now fail a test: m1 (SendTest without the profile filter), m2 (ResendFailed without owned()) and m5 (since on created_at) fail TestOwnerResendsAndTestsDeliveries. m4a-d (each new route on Can(auth.InvoicesRead)) fail TestWebhooksNeedTheWebhooksPermission.\n\nNON-BLOCKING ITEMS TAKEN, AND CHECKED\n- Focus: Turn off and Signing secret no longer call preventDefault. My probe shows focus back on the menu button. No repo test covers this.\n- ResendFailed filters updated_at (deliveries.go:112). For a failed row that is when it failed. api.md and openapi say so.\n- The rotate test checks the store. A mutation without pending.reset() fails it.\n- endpointPlace's fallback cuts at ? or #. useId replaces the fixed id. DEFAULT_EVENTS is in constants. The 422 text is fixed.\n- Resend has its own name per row. It starts with the visible \"Resend\", so the visible label is part of the name (WCAG 2.5.3).\n\nNON-BLOCKING NIT\n- docs/web/DESIGN.md: \"Its row: the description, then the host and path...\" A row with no description now shows the host and path as its title, once. The bullet could say that.\n\nLEFT OPEN, as the coordinator reported to the user: the resend race with an in-flight attempt, no auto refresh, the endless skeleton when stores fail, the attempt key, 503 for test and resend without a key, the Delete unit test.\n\nRAN: go test ./internal/httpapi/tests (webhook, route-list, permission tests) ok; go test ./internal/database ./internal/webhook ./internal/history ok; overlay mutations m1, m2, m5, m4a-d and the old-CHECK overlay, all caught; migration probe; vitest run src/features/webhooks 7/7; 6 scratchpad probes 6/6; 2 scratchpad web mutations, both caught; check-docs.py 0 errors; status: verify passed 22:59:23Z; the diff was the same before and after that run."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-25T22:59:23Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 186.0,
+            "log": "docs/runs/F306-20261025T225923Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 271.6,
+            "log": "docs/runs/F306-20261025T225923Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": "docs/runs/F306-20261025T225923Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F306-20261025T225923Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F306-20261025T225923Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": "docs/runs/F306-20261025T225923Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 6.1,
+            "log": "docs/runs/F306-20261025T225923Z-build.log"
+          }
+        ],
+        "taskHash": "a8ca69d67426c85f",
+        "filesHash": "85ee1cc6a24ac017",
+        "proof": {
+          "1": "e2e: e2e/privy/webhooks.spec.ts lists an endpoint by host and path without its query, adds one through the checked form with a store and events, turns one off keeping the rest, reveals the secret until Done, rotates it showing the old one's end, deletes one; axe clean at 1440 and 390 with no sideways scroll; unit: webhooks.test.tsx (7) shows Edit with the endpoint as it is now after Turn off and a rename, and the secrets never stay in the store after reveal or rotate",
+          "2": "unit: TestOwnerResendsAndTestsDeliveries lists deliveries with each attempt, resends one from a first attempt, sends a signed webhook.test to its endpoint alone, resends only those that failed since a time, and answers 404 for another profile's on every route; TestWebhooksNeedTheWebhooksPermission refuses a Developer on all four; TestWebhookEventsNameTheirInvoice; webhooks.spec.ts opens Deliveries, expands attempts, resends, sends a test event and resends the failed ones of the last 7 days",
+          "3": "docs-check: R-149, D-99, docs/web/DESIGN.md, api.md Deliveries, openapi.yaml paths and webhooks.testEvent, architecture.md describe it"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS (re-review). All 3 earlier blockers are fixed, and each fix now has a test that fails without it. I found no new blocking issue.\n\nFIXED, AND CHECKED\n1. Stale Edit values. endpoint-dialog.tsx loadAndOpen runs load() before open() for both New endpoint and Edit. My 6 scratchpad probes now pass: after Turn off, Edit shows the switch off and saves enabled:false; after a rename, the next Edit shows \"Renamed\". Scratchpad vitest mutation (loadAndOpen without load()) fails \"Edit opens with the endpoint as it is now\".\n2. 00071 CHECK is now CASE WHEN type='webhook.test' THEN all NULL ELSE all NOT NULL END. My probe: invoice.paid with invoice_id NULL now fails with 23514. The new TestWebhookEventsNameTheirInvoice fails against the old CHECK (overlay of the embedded .sql): \"an invoice event with no invoice: want 23514, got <nil>\".\n3. Access tests. go test -overlay mutations now fail a test: m1 (SendTest without the profile filter), m2 (ResendFailed without owned()) and m5 (since on created_at) fail TestOwnerResendsAndTestsDeliveries. m4a-d (each new route on Can(auth.InvoicesRead)) fail TestWebhooksNeedTheWebhooksPermission.\n\nNON-BLOCKING ITEMS TAKEN, AND CHECKED\n- Focus: Turn off and Signing secret no longer call preventDefault. My probe shows focus back on the menu button. No repo test covers this.\n- ResendFailed filters updated_at (deliveries.go:112). For a failed row that is when it failed. api.md and openapi say so.\n- The rotate test checks the store. A mutation without pending.reset() fails it.\n- endpointPlace's fallback cuts at ? or #. useId replaces the fixed id. DEFAULT_EVENTS is in constants. The 422 text is fixed.\n- Resend has its own name per row. It starts with the visible \"Resend\", so the visible label is part of the name (WCAG 2.5.3).\n\nNON-BLOCKING NIT\n- docs/web/DESIGN.md: \"Its row: the description, then the host and path...\" A row with no description now shows the host and path as its title, once. The bullet could say that.\n\nLEFT OPEN, as the coordinator reported to the user: the resend race with an in-flight attempt, no auto refresh, the endless skeleton when stores fail, the attempt key, 503 for test and resend without a key, the Delete unit test.\n\nRAN: go test ./internal/httpapi/tests (webhook, route-list, permission tests) ok; go test ./internal/database ./internal/webhook ./internal/history ok; overlay mutations m1, m2, m5, m4a-d and the old-CHECK overlay, all caught; migration probe; vitest run src/features/webhooks 7/7; 6 scratchpad probes 6/6; 2 scratchpad web mutations, both caught; check-docs.py 0 errors; status: verify passed 22:59:23Z; the diff was the same before and after that run.",
+          "at": "2026-10-25T23:07:41Z",
+          "filesHash": "85ee1cc6a24ac017"
+        }
+      },
+      "branch": "feat/f306-the-developers-page-manages-webhook-endp",
+      "baseCommit": "bc6a51455be90868e71f3342f1b51b655ec92a0e",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
