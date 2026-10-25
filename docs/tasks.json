@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 302,
+  "nextId": 303,
   "tasks": [
     {
       "id": "F295",
@@ -690,7 +690,7 @@
       "dependsOn": [
         "F300"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -698,6 +698,115 @@
       "refs": [
         "D-87",
         "D-61",
+        "D-63"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-25 review fail by reviewer: FAIL: one blocking contract miss; the security model holds.\nBLOCKING 1. apps/backend/api/openapi.yaml:2336-2337: the Profile.permissions enum has no `keys`. GET /v1/me now returns `keys` for every owner and Admin (auth/access.go:55,60; probe output ends in \"team.leave keys\"). That breaks \"Keep them equal to the spec\" (api.md Contract first) and acceptance 3. Fix: add `keys` to the enum.\nSecurity checks that passed (no finding):\n- text.go: 30 rejection-sampled base62 chars (178 bits) plus CRC32. A probe of 20k keys found no duplicates and an even spread. Every single-char change and the fw_live_ swap are refused; a trailing newline is refused.\n- Lookup is by SHA-256 with `working` (keys.go:27) in Authenticate, List and Revoke.\n- guards.go:40 sends only `Bearer fw_` to RequireKey. A Privy JWT starts with eyJ, and a key on a SignedIn route fails JWT checks (401).\n- A sweep of every profileRoutes entry with an all-scopes merchant key: 2xx/404 only on invoices, links, stores GET, tokens GET, owed and events. 403 on money, billing, clients, team, jobs, notifications, keys and store writes.\n- Another profile's key gets 403 on every route. An upper-case profileId works; brace and no-hyphen forms get 403. /v1/me, POST /v1/profiles, invites and sign-out-everywhere get 401.\n- Store reach: another store's invoice, link, Revise, create, list, owed and events are all refused or left out. An owner Idempotency-Key replay gives 409.\n- Roll: 8 concurrent rolls gave one 201 and seven 404. Overlap 0 stops the old key; -1 gives 422; 1.5, a huge number or \"1\" gives 400. Cross-profile revoke and roll give 404.\n- No secret reaches a log or a list answer.\nNon-blocking:\n2. Test gap: dropping `profile_id = $2` from Roll (keys.go:122) and Revoke (keys.go:145) still passes TestAPIKeys and TestProfilesBelongToTheirUser (mutation run). Add a cross-profile revoke and roll case.\n3. keys_test.go:97 says billing-details \"needs a person signed in\". It is refused by the scope check, so the RequestKey check in RequireFreshSignIn (mid/auth.go:131-134) never runs in any test. No FreshSignIn route has a key scope. Without that check it still fails closed with 401.\n4. Test mode is not checked: verify.go:28-30 has no key-mode vs chain-mode filter. It holds only because no live chain exists (00066 default false). Add a PLAN 11.4 \"before the first mainnet\" line like the payer-chooses one.\n5. openapi.yaml:13 puts secretApiKey on every non-public route, including /v1/me, POST /v1/profiles, invites and key management. The error enum (openapi.yaml:3509) lacks invalid_api_key and key_not_found (older link and team codes are also missing). The Unauthorized and Forbidden descriptions don't mention keys.\n6. api.md:631 still says FreshSignIn covers \"today that is billing details\", and keys create and roll are now in it. api.md:660 names no RequireKey. The api.md:679 rate-limit bullet is per Privy user only.\n7. Design notes for the owner:\n   - A removed Admin's key keeps working (probe: 200).\n   - Scopes are checked only at Create; Roll and Authenticate trust the stored text[], which has no value CHECK (00067:14).\n   - Keys per profile have no cap, and each key has its own bucket.\n   - A well-formed unknown key costs one DB lookup before any limit.\n8. Structure: keyapi has no model.go (JSON types are in keys.go:14-30). rules.md asks for one. DefaultOverlap (keyapi/keys.go:83) is a D-95 rule beside apikey.MaxOverlap.\nRan: the TestAPIKeys and Profile tests (pass); gofmt -l and go vet on the changed packages (clean); check-docs.py (0 errors); a D-84 length scan of the added doc lines (all at most 25 words). Throwaway probes went in through go test -overlay from the scratchpad: the route sweep, the text randomness, /v1/me permissions and the Roll/Revoke mutation.",
+        "2026-10-25 review pass by reviewer: PASS. All first-round findings are fixed. openapi Profile.permissions has keys, and the Error enum matches httpio/errors.go. TestAPIKeys catches dropping profile_id from Roll and Revoke (mutation run). The 00067 scopes CHECK refuses money.write (probe). PLAN 11.4 has the mode line. api.md covers fresh sign-in, RequireKey and per-key limits. keyapi/model.go exists, and DefaultOverlap is in apikey. Probes re-run with the same results: route sweep, 401 on person routes, store reach, rolls once, overlap bounds. Verify 18:35:44Z failed only on e2e balances.spec.ts:123, the known flaky phone-home test. It stuck on Loading your profiles, as in F133-F293 runs. It passed on the unchanged re-run at 18:43:52Z (49 passed). Ran: go test TestAPIKeys/Profile/Members/Team, overlay mutations, check-docs, gofmt and vet."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-25T18:43:52Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 185.7,
+            "log": "docs/runs/F301-20261025T184352Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 257.0,
+            "log": "docs/runs/F301-20261025T184352Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.7,
+            "log": "docs/runs/F301-20261025T184352Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F301-20261025T184352Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F301-20261025T184352Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F301-20261025T184352Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": "docs/runs/F301-20261025T184352Z-build.log"
+          }
+        ],
+        "taskHash": "5233277f732c4cf3",
+        "filesHash": "46e8ca8c285e9e7e",
+        "proof": {
+          "1": "unit: TestAPIKeys makes a key with a fresh sign-in, checks fw_test_ text with its last 4, only its SHA-256 stored, a merchant key's store and the scope rules; TestAPIKeysNeedTheKeysPermission lets an Admin and not a Developer manage keys",
+          "2": "unit: TestAPIKeys checks the key lists and makes invoices for its store only, is refused on another store, profile, scope, fresh sign-in and person route, shows lastUsedAt, can't be rolled or revoked through another profile, works during a roll's overlap and stops after it, and stops at once when revoked",
+          "3": "docs-check: R-144, D-95, api.md, openapi.yaml, architecture.md and rules.md describe it"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS. All first-round findings are fixed. openapi Profile.permissions has keys, and the Error enum matches httpio/errors.go. TestAPIKeys catches dropping profile_id from Roll and Revoke (mutation run). The 00067 scopes CHECK refuses money.write (probe). PLAN 11.4 has the mode line. api.md covers fresh sign-in, RequireKey and per-key limits. keyapi/model.go exists, and DefaultOverlap is in apikey. Probes re-run with the same results: route sweep, 401 on person routes, store reach, rolls once, overlap bounds. Verify 18:35:44Z failed only on e2e balances.spec.ts:123, the known flaky phone-home test. It stuck on Loading your profiles, as in F133-F293 runs. It passed on the unchanged re-run at 18:43:52Z (49 passed). Ran: go test TestAPIKeys/Profile/Members/Team, overlay mutations, check-docs, gofmt and vet.",
+          "at": "2026-10-25T18:51:40Z",
+          "filesHash": "46e8ca8c285e9e7e"
+        },
+        "commit": "740beb9",
+        "doneAt": "2026-10-25T18:52:01Z"
+      },
+      "branch": "feat/f301-an-owner-makes-secret-api-keys-for-test",
+      "baseCommit": "c347d5f7b79bd59719d9b40675e2f8960f8aca28",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f301-an-owner-makes-secret-api-keys-for-test",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F302",
+      "type": "feat",
+      "behavior": "An owner manages secret API keys on an API keys page",
+      "acceptance": [
+        "An API keys page for an owner or Admin lists each key with its name, the end of its text, store, scopes, last use and expiry",
+        "It makes a key and shows its text once with Copy, rolls a key with a chosen overlap, and revokes one after a confirm",
+        "R-145 describes it; required checks pass"
+      ],
+      "dependsOn": [
+        "F301"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "D-87",
         "D-63"
       ],
       "keep": [],

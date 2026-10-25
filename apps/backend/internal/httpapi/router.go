@@ -4,11 +4,13 @@ import (
 	"net/http"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/activity"
+	"github.com/ensp1re/forwend/apps/backend/internal/apikey"
 	"github.com/ensp1re/forwend/apps/backend/internal/auth"
 	"github.com/ensp1re/forwend/apps/backend/internal/balance"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/healthapi"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/invoiceapi"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/jobapi"
+	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/keyapi"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/linkapi"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/moneyapi"
@@ -27,7 +29,8 @@ import (
 // balances reads each chain's second RPC (D-15); webURL is the pay links' origin; userBurst 0 keeps mid.UserBurst.
 func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, balances ledger.BalanceOf,
 	webURL string, userBurst int) http.Handler {
-	guards := mid.NewGuards(verifier, auth.NewService(pool), wallets, userBurst)
+	keys := apikey.NewService(pool)
+	guards := mid.NewGuards(verifier, auth.NewService(pool), keys, wallets, userBurst)
 	mux := http.NewServeMux()
 	healthapi.Routes(mux, pool)
 	profiles := profile.NewService(pool, wallets)
@@ -38,5 +41,6 @@ func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, 
 	moneyapi.Routes(mux, guards, balance.NewService(pool, balances), activity.NewService(pool), profiles)
 	teamapi.Routes(mux, guards, team.NewService(pool, wallets))
 	linkapi.Routes(mux, guards, link.NewService(pool, invoices))
+	keyapi.Routes(mux, guards, keys)
 	return mid.SecureHeaders(mux)
 }

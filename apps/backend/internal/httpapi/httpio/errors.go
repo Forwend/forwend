@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/activity"
+	"github.com/ensp1re/forwend/apps/backend/internal/apikey"
 	"github.com/ensp1re/forwend/apps/backend/internal/auth"
 	"github.com/ensp1re/forwend/apps/backend/internal/balance"
 	"github.com/ensp1re/forwend/apps/backend/internal/document"
@@ -72,6 +73,13 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusConflict, "not_merchant", "only a merchant profile has stores"
 	case errors.Is(err, link.ErrNotFound):
 		status, code, message = http.StatusNotFound, "link_not_found", "payment link not found"
+	case errors.Is(err, apikey.ErrUnknownKey):
+		status, code, message = http.StatusUnauthorized, "invalid_api_key",
+			"the API key is unknown, revoked or past its overlap"
+	case errors.Is(err, apikey.ErrNotFound):
+		status, code, message = http.StatusNotFound, "key_not_found", "API key not found"
+	case errors.Is(err, apikey.ErrPersonal):
+		status, code, message = http.StatusConflict, "personal_profile", "a personal profile has no API keys"
 	case errors.Is(err, link.ErrOff):
 		status, code, message = http.StatusConflict, "link_off", "the owner turned this payment link off"
 	case errors.Is(err, link.ErrEnded):
@@ -122,6 +130,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusConflict, "idempotency_conflict", "Idempotency-Key was used with another request"
 	case errors.Is(err, invoice.ErrInvalid), errors.Is(err, profile.ErrInvalid), errors.Is(err, job.ErrInvalid),
 		errors.Is(err, activity.ErrInvalid), errors.Is(err, team.ErrInvalid), errors.Is(err, link.ErrInvalid),
+		errors.Is(err, apikey.ErrInvalid),
 		errors.Is(err, balance.ErrInvalid), errors.Is(err, search.ErrInvalid):
 		status, code, message = http.StatusUnprocessableEntity, "invalid_value", err.Error()
 	case errors.Is(err, activity.ErrTooMany):

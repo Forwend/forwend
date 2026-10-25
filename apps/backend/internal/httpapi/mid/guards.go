@@ -2,7 +2,9 @@ package mid
 
 import (
 	"net/http"
+	"strings"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/apikey"
 	"github.com/ensp1re/forwend/apps/backend/internal/auth"
 	"github.com/ensp1re/forwend/apps/backend/internal/privy"
 )
@@ -10,13 +12,15 @@ import (
 // Modules take Guards from the router, so every module shares one rate limit per user.
 type Guards struct {
 	SignedIn func(http.Handler) http.Handler
-	// Can guards a {profileId} route: the owner, or a member whose role has the permission (R-138).
+	// Can guards a {profileId} route: the owner, a member whose role has the permission (R-138), or the profile's
+	// secret API key with it in its scopes (R-144).
 	Can func(auth.Permission) func(http.Handler) http.Handler
-	// FreshSignIn is Can for money actions and the other changes D-63 names (R-137).
+	// FreshSignIn is Can for money actions and the other changes D-63 names (R-137); a key never passes it.
 	FreshSignIn func(auth.Permission) func(http.Handler) http.Handler
 }
 
-func NewGuards(verifier *auth.Verifier, owners *auth.Service, users *privy.Client, userBurst int) Guards {
+func NewGuards(verifier *auth.Verifier, owners *auth.Service, keys *apikey.Service, users *privy.Client,
+	userBurst int) Guards {
 	if userBurst == 0 {
 		userBurst = UserBurst
 	}
@@ -24,8 +28,22 @@ func NewGuards(verifier *auth.Verifier, owners *auth.Service, users *privy.Clien
 	signedIn := func(h http.Handler) http.Handler {
 		return RequireUser(verifier, owners, Limit(buckets, SignedInUser, h))
 	}
+	// A key has its own bucket, as a user does.
+	byKey := func(h http.Handler) http.Handler {
+		return RequireKey(keys, Limit(buckets, func(r *http.Request) string { return "key:" + RequestKey(r) }, h))
+	}
 	can := func(p auth.Permission) func(http.Handler) http.Handler {
-		return func(h http.Handler) http.Handler { return signedIn(RequireAccess(owners, p, h)) }
+		return func(h http.Handler) http.Handler {
+			access := RequireAccess(owners, p, h)
+			key, user := byKey(access), signedIn(access)
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if bearer, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer "); ok && apikey.IsKey(bearer) {
+					key.ServeHTTP(w, r)
+					return
+				}
+				user.ServeHTTP(w, r)
+			})
+		}
 	}
 	return Guards{
 		SignedIn: signedIn,

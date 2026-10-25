@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/apikey"
 	"github.com/ensp1re/forwend/apps/backend/internal/auth"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
@@ -39,17 +40,45 @@ func RequireUser(v *auth.Verifier, sessions *auth.Service, next http.Handler) ht
 
 type accessKey struct{}
 
-// RequireAccess lets through the profile's owner and members whose role has p (R-138). For an invoice or store
-// permission, a Developer's or Finance member's request about another store's invoice, payment link or store is not
-// found.
-func RequireAccess(s *auth.Service, p auth.Permission, next http.Handler) http.Handler {
+type keyKey struct{}
+
+// RequireKey lets through a request whose bearer is a working secret API key (R-144), for RequireAccess to check.
+func RequireKey(keys *apikey.Service, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := SignedInUser(r)
-		if user == "" { // not wrapped in RequireUser: deny
-			httpio.WriteError(w, r, auth.ErrUnauthorized)
+		bearer, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+		caller, err := keys.Authenticate(r.Context(), bearer)
+		if err != nil {
+			httpio.WriteError(w, r, err)
 			return
 		}
-		access, err := s.CheckAccess(r.Context(), user, r.PathValue("profileId"))
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), keyKey{}, caller)))
+	})
+}
+
+// RequestKey is the id of the key a request came with, "" for a person's.
+func RequestKey(r *http.Request) string {
+	caller, _ := r.Context().Value(keyKey{}).(apikey.Caller)
+	return caller.KeyID
+}
+
+// RequireAccess lets through the profile's owner and members whose role has p (R-138), and a key of the profile whose
+// scopes have it (R-144). For an invoice or store permission, a Developer's or Finance member's request, or a merchant
+// key's, about another store's invoice, payment link or store is not found.
+func RequireAccess(s *auth.Service, p auth.Permission, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var access auth.Access
+		var err error
+		if caller, ok := r.Context().Value(keyKey{}).(apikey.Caller); ok {
+			access = caller.Access
+			if !strings.EqualFold(caller.ProfileID, r.PathValue("profileId")) {
+				err = auth.ErrForbidden
+			}
+		} else if user := SignedInUser(r); user == "" { // not wrapped in RequireUser or RequireKey: deny
+			httpio.WriteError(w, r, auth.ErrUnauthorized)
+			return
+		} else {
+			access, err = s.CheckAccess(r.Context(), user, r.PathValue("profileId"))
+		}
 		if err == nil && !access.Can(p) {
 			err = auth.ErrForbidden
 		}
@@ -99,6 +128,10 @@ func ProfileAccess(r *http.Request) auth.Access {
 // each time; when Privy can't answer, nothing is let through.
 func RequireFreshSignIn(users *privy.Client, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if RequestKey(r) != "" { // only a person signs in (R-144)
+			httpio.WriteError(w, r, auth.ErrForbidden)
+			return
+		}
 		token, ok := r.Context().Value(tokenKey{}).(auth.Token)
 		if !ok { // not wrapped in RequireUser: deny
 			httpio.WriteError(w, r, auth.ErrUnauthorized)

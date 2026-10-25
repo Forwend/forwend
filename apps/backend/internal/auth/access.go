@@ -47,28 +47,36 @@ const (
 	Team Permission = "team"
 	// Leaving the team. The owner has it as every permission, but can't leave (D-93).
 	Leave Permission = "team.leave"
+	// The profile's secret API keys (R-144).
+	Keys Permission = "keys"
 )
 
 var permissions = []Permission{InvoicesRead, InvoicesWrite, StoresRead, StoresWrite, ClientsRead, ClientsWrite, MoneyRead,
-	MoneyWrite, BillingRead, BillingWrite, TokensRead, TokensWrite, Jobs, Notifications, Team, Leave}
+	MoneyWrite, BillingRead, BillingWrite, TokensRead, TokensWrite, Jobs, Notifications, Team, Leave, Keys}
 
 // The one map of who may do what (D-93). The owner has every permission, these and the ones no role has.
 var rolePermissions = map[Role][]Permission{
 	Admin: {InvoicesRead, InvoicesWrite, StoresRead, StoresWrite, ClientsRead, ClientsWrite, MoneyRead, MoneyWrite,
-		BillingRead, BillingWrite, TokensRead, TokensWrite, Jobs, Team, Leave},
+		BillingRead, BillingWrite, TokensRead, TokensWrite, Jobs, Team, Leave, Keys},
 	Developer: {InvoicesRead, InvoicesWrite, StoresRead, StoresWrite, TokensRead, Leave},
 	Finance: {InvoicesRead, InvoicesWrite, StoresRead, ClientsRead, ClientsWrite, MoneyRead, MoneyWrite, BillingRead,
 		TokensRead, Leave},
 }
 
-// Access is what the signed-in user may do on one profile.
+// Access is what the signed-in user, or a secret API key, may do on one profile.
 type Access struct {
 	Role Role
-	// Stores is nil when every store is in reach; otherwise a Developer's or Finance member's assigned stores.
+	// Stores is nil when every store is in reach; otherwise a Developer's or Finance member's assigned stores, or a
+	// merchant key's store.
 	Stores []string
+	// Scopes are a key's permissions (R-144); nil for a person, whose role decides.
+	Scopes []Permission
 }
 
 func (a Access) Can(p Permission) bool {
+	if a.Scopes != nil {
+		return slices.Contains(a.Scopes, p)
+	}
 	return a.Role == Owner || slices.Contains(rolePermissions[a.Role], p)
 }
 
