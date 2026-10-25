@@ -8,6 +8,8 @@ export const APP_ROUTES = {
   activity: "/app/activity",
   invoices: "/app/invoices",
   newInvoice: "/app/invoices/new",
+  links: "/app/links",
+  newLink: "/app/links/new",
   newProfile: "/app/profiles/new",
   clients: "/app/clients",
   newClient: "/app/clients/new",

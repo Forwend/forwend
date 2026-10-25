@@ -46,7 +46,7 @@ code; a wallet connects only to claim a refund (D-37).
 - 11.2 Team: email invites (single use, hashed, bound to the invited email); Admin, Developer and Finance roles with
   assigned stores; permissions in one map in code, and a test fails when a route has none; the last Admin cannot
   leave. Roles also decide which History rows a member reads (11.11). Only the owner moves money (D-61). After 11.1.
-- 11.3 Payment links `/l/<slug>` per store or freelancer, fixed or open amount (min, max, a default cap). Opening the
+- 11.3 Payment links `/l/<slug>` per store or freelancer, fixed or open amount (the owner's min and max, D-94). Opening the
   link creates nothing; Pay creates the invoice, and the same browser reuses its open one (D-54). Its number comes at
   the first deposit (D-50). Optional end date and use cap; rate limited; can be turned off; the owner sees visits and
   paid counts. After 11.1.

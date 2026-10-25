@@ -155,6 +155,8 @@ with a test.
   for new invoices (R-136). An enabled token is on until it has a row here.
 - `profile_members(profile_id, user_id, role: admin|developer|finance)` and `member_stores(profile_id, user_id,
   store_id)`: a merchant profile's team (R-138). A trigger keeps members to merchant profiles, never the owner.
+- `payment_links(profile_id, store_id, slug, title, amount_cents | min_cents, max_cents, ends_at, max_payments, active,
+  visits)` (R-140). Amounts are USD cents. `invoices.link_id` names the link an invoice was made from.
 - `profile_invites(profile_id, email, role, stores, token_hash, expires_at, accepted_at, revoked_at)` (R-139).
   - `token_hash` is the SHA-256 of the link's token; the token itself is never kept here.
   - One open invite per address and profile (a unique index); a new one revokes the last.

@@ -234,6 +234,26 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
   - A used, revoked, expired or unknown invite is 404 `invite_not_found`, on both routes.
   - The owner, or a member already, is 409 `already_on_team`.
 
+## Payment links
+
+R-140, D-54, D-94; the full schema is in openapi.yaml. Members reach them with `invoices.read` and `invoices.write` (D-93).
+
+- A payment link is a template a payer pays through at `/l/<slug>`; opening it creates nothing.
+- `GET /v1/profiles/{profileId}/links` lists the profile's links, newest first, each with its `visits` and `paid` counts.
+  - `paid` counts the link's invoices that are paid or settled.
+  - A Developer or Finance member sees only the links of their stores.
+- `GET /v1/profiles/{profileId}/links/{linkId}` reads one. Another profile's or another store's link is 404 `link_not_found`.
+- `PUT /v1/profiles/{profileId}/links/{linkId}` creates or replaces one by a lowercase UUID the caller picks.
+  - 201 the first time, 200 after. Forwend makes the `slug`, 12 random lowercase letters and digits, and never changes it.
+  - `title` is 1–200 characters of plain text on one line.
+  - A fixed link sends `amountUsd`. An open one leaves it out and may send `minUsd` and `maxUsd`.
+  - Amounts are USD with at most two decimals, above 0; `minUsd` is at most `maxUsd`. There is no default cap.
+  - `endsAt` (optional) is when the link stops; `maxPayments` (optional, 1–1000000) caps its paid invoices.
+  - `active` is the on or off switch; left out, the link is on.
+  - A merchant link is for `storeId`, the profile's first store when left out. A freelancer's link has no store.
+  - A member's link is for one of their stores, their first by default; another store is 422.
+  - A personal profile is 409 `personal_profile`.
+
 ## Invoices
 
 R-19 and R-42; the full schema is in openapi.yaml.

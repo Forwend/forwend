@@ -7,6 +7,7 @@ import {
   HandCoins,
   History,
   LayoutGrid,
+  Link2,
   ShoppingBag,
   Store,
   Users,
@@ -17,6 +18,7 @@ import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { CLIENTS_COPY } from "@/features/clients/constants/clients-copy";
 import { INVOICES_COPY, REQUESTS_COPY } from "@/features/invoices/constants/invoices-copy";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
+import { LINKS_COPY } from "@/features/links/constants/links-copy";
 import { PERMISSIONS, PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import type { Permission, ProfileKind } from "@/features/profiles/types/profile";
 import { STORES_COPY } from "@/features/stores/constants/stores-copy";
@@ -63,6 +65,13 @@ export const NAV = {
     icon: HandCoins,
     permission: PERMISSIONS.invoicesRead,
   },
+  // A link is an invoice template, so the invoice permissions reach it (R-140).
+  links: {
+    href: APP_ROUTES.links,
+    label: LINKS_COPY.title,
+    icon: Link2,
+    permission: PERMISSIONS.invoicesRead,
+  },
   clients: {
     href: APP_ROUTES.clients,
     label: CLIENTS_COPY.title,
@@ -96,14 +105,14 @@ export const APP_NAV: Readonly<Record<ProfileKind, readonly NavGroup[]>> = {
   ],
   [PROFILE_KINDS.freelancer]: [
     MONEY,
-    { label: "Get paid", items: [NAV.invoices, NAV.jobs, NAV.clients, NAV.activity] },
+    { label: "Get paid", items: [NAV.invoices, NAV.links, NAV.jobs, NAV.clients, NAV.activity] },
     INSIGHTS,
   ],
   [PROFILE_KINDS.merchant]: [
     MONEY,
     {
       label: "Payments",
-      items: [NAV.invoices, NAV.clients, NAV.stores, NAV.checkout, NAV.activity],
+      items: [NAV.invoices, NAV.links, NAV.clients, NAV.stores, NAV.checkout, NAV.activity],
     },
     { label: "Build", items: [NAV.developers] },
     INSIGHTS,

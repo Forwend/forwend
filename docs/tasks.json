@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 296,
+  "nextId": 299,
   "tasks": [
     {
       "id": "F295",
@@ -124,6 +124,165 @@
         "branch": "feat/f295-a-merchant-invites-team-members-by-email",
         "base": "main"
       }
+    },
+    {
+      "id": "F296",
+      "type": "feat",
+      "behavior": "An owner makes payment links with a fixed or open amount",
+      "acceptance": [
+        "A merchant store or a freelancer profile has payment links: a title, a fixed USD amount or an open one with the owner's optional min and max, an optional end date and payment cap, and an on or off switch; Forwend gives each a random 12-character slug that never changes",
+        "The owner's Payment links page lists each link with its amount, status and 'N visits, M paid', and makes and edits links; a link's page copies its address; members reach the links of their stores with the invoice permissions (D-93)",
+        "R-140, api.md, openapi.yaml and the architecture docs describe it; required checks pass"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "D-54",
+        "D-94",
+        "D-30",
+        "D-93"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-25 review fail by reviewer: BLOCKING: (1) apps/backend/internal/link/save.go:33,35 cents() parses with fmt.Sscan, which reads a leading 0 as octal and ignores the error: via PUT, amountUsd 19.09 and 19.08 save as 19.00, 010 as 8.00, 000000000012 as 10.00, and 0.08 is refused (422). Parse base 10 as job/create.go:60 does (strconv.ParseInt), and add 12.08/12.09/010 cases to links_test.go:44-53, which passes today. (2) apps/backend/internal/auth/access.go:116-118 LinkStore was put between InvoiceStore's doc comment and its func: LinkStore now carries InvoiceStore's comment and InvoiceStore has none. NON-BLOCKING: (a) migrations/00064_payment_links.sql:28 invoices.link_id is a plain FK; a composite (link_id, profile_id) FK like invoices.store_id (00058) would stop another profile's invoice counting toward a link's paid count, cheaper now than in a later migration. (b) link/save.go:77 maxPayments 0 is taken as no cap, while openapi says minimum 1 and the error says from 1. (c) features/links/tests/links.test.ts:25 amountLabel test restates copy text (Which tests to keep); e2e already checks the labels. (d) links-table.tsx:124 phone rows omit /l/<slug>; acceptance 2 says the list shows the address and copies the link, R-140 and DESIGN.md say the link page copies: align the acceptance line. (e) link-form.tsx:98 a server 422 (e.g. a title with a control character) shows only the generic failure. (f) link-form.tsx:190 the open-amount hint is not tied to the min/max inputs. (g) access.go LinkStore id::text = lower($1) skips the PK index. (h) linkapi/model.go:40 repeats job.USD formatting. Checked and fine: member store scope on GET/PUT/list and store moves, other-profile id takeover (ON CONFLICT WHERE), invalid ids give 404/422 not 500, slug 60 bits crypto/rand made once, min<=max, fixed with min/max refused, null/omitted fields, active default on, migration Up/Down and view, docs match code, D-84 ok. Ran: go test TestPaymentLinks|TestProfileRoutes|TestProfilesBelong|TestMembers ok, ./internal/database ok, vitest 146 passed, check-docs 0 errors.",
+        "2026-10-25 review pass by reviewer: Re-review after fixes: no blocking findings. Fixed and checked: (1) link/save.go cents() parses base 10 with strconv.ParseInt; TestPaymentLinks sends 12.08, 19.09, 010, 0.08, 000000000012 and 7.5 and checks the saved value; with the old fmt.Sscan parser swapped in through go test -overlay, five of the six fail. (2) auth/access.go InvoiceStore has its own doc comment again; LinkStore parses the id as pgtype.UUID (malformed is not found) and queries id = $1. Also fixed: migration 00064 UNIQUE (id, profile_id) plus invoices_link_fkey (link_id, profile_id), with a test that another profile's invoice can't name the link; Down drops the column and its key. maxPayments is *int: null or left out is no cap, 0 is 422, tested. linkapi usd() uses job.USD. The copy-only amountLabel test is gone. link-form maps a 422's named field to its error as store-form does, and min/max point aria-describedby at their error and the USD hint (TextField lets the prop override). Acceptance 2 now matches R-140. Non-blocking: invalidLinkField is the sixth copy of the same message-to-field parse (clients, invoices, stores, jobs, billing-details); a shared helper would be a separate refactor. Ran: go test TestPaymentLinks|TestProfileRoutes|TestProfilesBelong|TestMembers ok, ./internal/database ok, go vet ok, vitest 145 passed, check-docs 0 errors."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-25T14:06:31Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 183.1,
+            "log": "docs/runs/F296-20261025T140631Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 245.6,
+            "log": "docs/runs/F296-20261025T140631Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.2,
+            "log": "docs/runs/F296-20261025T140631Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F296-20261025T140631Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F296-20261025T140631Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.9,
+            "log": "docs/runs/F296-20261025T140631Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.9,
+            "log": "docs/runs/F296-20261025T140631Z-build.log"
+          }
+        ],
+        "taskHash": "57a697a246776b03",
+        "filesHash": "b22e0b20e74a560f",
+        "proof": {
+          "1": "unit: internal/httpapi/tests TestPaymentLinks (a fixed link gets a 12-character random slug, the first store and on by default; saved again it keeps the slug; amounts parse in base 10 whatever their zeros, 12.08, 19.09, 010, 0.08, failing with the octal parse; an open link takes the owner's min and max, or none (no default cap); bad amounts, a min above the max, a cap of 0 or out of range, another profile's store, a freelancer's store and an upper-case id are refused; a freelancer's link has no store; a personal profile is 409; another profile's link id is 404; newest first; the paid count counts paid invoices, and another profile's invoice can't name the link); migration 64 rolls back in TestMigrationsRollBackAndReapply",
+          "2": "e2e: e2e/privy/links.spec.ts (the list shows each link's amount, status and 'N visits, M paid'; a new open link sends the PUT body and opens on its page with the address and Copy; turning a link off saves; the list fits a phone; axe clean); unit: TestPaymentLinksOfAMembersStores (a Developer's links take their store, another store is 422 and another store's link is 404 on GET and PUT, failing without the scope check); src/features/links/tests/links.test.ts",
+          "3": "docs-check: R-140, D-94, api.md Payment links, openapi.yaml, backend architecture and rules, web DESIGN.md and architecture"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review after fixes: no blocking findings. Fixed and checked: (1) link/save.go cents() parses base 10 with strconv.ParseInt; TestPaymentLinks sends 12.08, 19.09, 010, 0.08, 000000000012 and 7.5 and checks the saved value; with the old fmt.Sscan parser swapped in through go test -overlay, five of the six fail. (2) auth/access.go InvoiceStore has its own doc comment again; LinkStore parses the id as pgtype.UUID (malformed is not found) and queries id = $1. Also fixed: migration 00064 UNIQUE (id, profile_id) plus invoices_link_fkey (link_id, profile_id), with a test that another profile's invoice can't name the link; Down drops the column and its key. maxPayments is *int: null or left out is no cap, 0 is 422, tested. linkapi usd() uses job.USD. The copy-only amountLabel test is gone. link-form maps a 422's named field to its error as store-form does, and min/max point aria-describedby at their error and the USD hint (TextField lets the prop override). Acceptance 2 now matches R-140. Non-blocking: invalidLinkField is the sixth copy of the same message-to-field parse (clients, invoices, stores, jobs, billing-details); a shared helper would be a separate refactor. Ran: go test TestPaymentLinks|TestProfileRoutes|TestProfilesBelong|TestMembers ok, ./internal/database ok, go vet ok, vitest 145 passed, check-docs 0 errors.",
+          "at": "2026-10-25T14:15:51Z",
+          "filesHash": "b22e0b20e74a560f"
+        }
+      },
+      "branch": "feat/f296-an-owner-makes-payment-links-with-a-fixe",
+      "baseCommit": "bfa378e34389628cd1b2cfe49cf719b16da481fc",
+      "failedVerifies": 0
+    },
+    {
+      "id": "F297",
+      "type": "feat",
+      "behavior": "A payment-link invoice takes its number at its first deposit",
+      "acceptance": [
+        "A payment-link invoice has no INV- number until its first deposit, then takes the profile's next number in the transaction that books it: no gaps, never changed",
+        "Until it has a number, the invoice reads and its pay page, PDF and emails show it without one, and the owner's Invoices list, search and Owed leave it out",
+        "R-141, api.md and openapi.yaml describe it; required checks pass"
+      ],
+      "dependsOn": [
+        "F296"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "backend-e2e"
+      ],
+      "refs": [
+        "D-50",
+        "D-54"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F298",
+      "type": "feat",
+      "behavior": "A payer pays through a payment link",
+      "acceptance": [
+        "/l/<slug> shows the link's title, issuer and branding and its amount or an amount field within the min and max; opening it counts a visit and creates nothing",
+        "Pressing Pay creates a payer-chooses invoice with the link's store, the tokens on for it and its default close, and opens /pay/<token>; the same browser reuses its open invoice for the same amount",
+        "A link that is off, past its end date or at its payment cap shows why and makes no invoice; Pay is rate limited per link and for everyone",
+        "R-142, api.md and openapi.yaml describe it; required checks pass"
+      ],
+      "dependsOn": [
+        "F297"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "e2e",
+        "a11y-e2e"
+      ],
+      "refs": [
+        "D-54",
+        "D-94",
+        "D-86"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

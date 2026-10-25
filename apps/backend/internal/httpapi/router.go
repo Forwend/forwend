@@ -9,6 +9,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/healthapi"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/invoiceapi"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/jobapi"
+	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/linkapi"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/moneyapi"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/profileapi"
@@ -16,6 +17,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/job"
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
+	"github.com/ensp1re/forwend/apps/backend/internal/link"
 	"github.com/ensp1re/forwend/apps/backend/internal/privy"
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 	"github.com/ensp1re/forwend/apps/backend/internal/team"
@@ -35,5 +37,6 @@ func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, 
 	jobapi.Routes(mux, guards, job.NewService(pool, invoices))
 	moneyapi.Routes(mux, guards, balance.NewService(pool, balances), activity.NewService(pool), profiles)
 	teamapi.Routes(mux, guards, team.NewService(pool, wallets))
+	linkapi.Routes(mux, guards, link.NewService(pool))
 	return mid.SecureHeaders(mux)
 }
