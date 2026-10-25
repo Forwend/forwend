@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/database"
 	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
+	"github.com/ensp1re/forwend/apps/backend/internal/history/historytest"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -311,6 +313,10 @@ func TestCanceledInvoiceHoldsEveryDeposit(t *testing.T) {
 	if err := s.pool.QueryRow(context.Background(), "SELECT count(*) FROM settlement_intents WHERE invoice_id = $1",
 		id).Scan(&settles); err != nil || settles != 0 {
 		t.Fatalf("%d settlement intents (%v), want none", settles, err)
+	}
+	history := []string{`invoice.held by system {"amount": "5000000", "reason": "canceled"}`}
+	if got := historytest.Events(t, s.pool, id); !reflect.DeepEqual(got, history) {
+		t.Fatalf("history\n got %q\nwant %q", got, history)
 	}
 }
 

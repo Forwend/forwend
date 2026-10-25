@@ -1,11 +1,13 @@
 package invoiceapi
 
 import (
+	"encoding/json"
 	"strconv"
 	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
+	"github.com/ensp1re/forwend/apps/backend/internal/webhook"
 )
 
 type createInvoiceBody struct {
@@ -433,4 +435,35 @@ type eventJSON struct {
 	Decimals  int    `json:"decimals"`
 	Amount    string `json:"amount"`
 	At        string `json:"at"`
+}
+
+// R-147: held is null except on invoice.held.
+type webhookEventJSON struct {
+	ID        string          `json:"id"`
+	Type      string          `json:"type"`
+	Livemode  bool            `json:"livemode"`
+	Sequence  int64           `json:"sequence"`
+	Timestamp string          `json:"timestamp"`
+	Data      webhookDataJSON `json:"data"`
+}
+
+type webhookDataJSON struct {
+	Invoice ownerInvoiceJSON `json:"invoice"`
+	Held    *heldJSON        `json:"held"`
+}
+
+type heldJSON struct {
+	Amount   string  `json:"amount"`
+	Reason   string  `json:"reason"`
+	OptionID *string `json:"optionId"`
+}
+
+// EventBody is what a webhook event sends (R-147): the event, and its invoice as the owner reads it when it is sent.
+func EventBody(e webhook.Event, inv invoice.Invoice) ([]byte, error) {
+	out := webhookEventJSON{ID: e.ID, Type: e.Type, Livemode: e.Livemode, Sequence: e.Sequence,
+		Timestamp: e.CreatedAt.UTC().Format(time.RFC3339), Data: webhookDataJSON{Invoice: toOwnerInvoiceJSON(inv)}}
+	if h := e.Held; h != nil {
+		out.Data.Held = &heldJSON{Amount: h.Amount, Reason: h.Reason, OptionID: httpio.OrNull(h.OptionID)}
+	}
+	return json.Marshal(out)
 }

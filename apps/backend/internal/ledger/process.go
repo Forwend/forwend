@@ -159,15 +159,27 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		return fmt.Errorf("read invoice %s deposits: %w", invoiceID, err)
 	}
 	final := Final(current)
-	newlyHeld := new(big.Int) // told to the owner once per run (R-80)
+	newlyHeld := new(big.Int)        // told to the owner once per run (R-80)
+	heldFor := map[string]*big.Int{} // the same by reason, for the history
+	hold := func(reason string, value *big.Int) {
+		if value.Sign() == 0 {
+			return
+		}
+		if heldFor[reason] == nil {
+			heldFor[reason] = new(big.Int)
+		}
+		heldFor[reason].Add(heldFor[reason], value)
+		newlyHeld.Add(newlyHeld, value)
+	}
 	for _, d := range deposits {
 		value, _ := new(big.Int).SetString(d.Amount, 10)
-		toCreator, toHeld := split(amount, owed, value, d.BlockTime > closesAt, final || superseded)
+		late := d.BlockTime > closesAt
+		toCreator, toHeld := split(amount, owed, value, late, final || superseded)
 		if err := book(ctx, tx, invoiceID, "deposit", &d.ID, value, toCreator, toHeld); err != nil {
 			return err
 		}
 		owed.Add(owed, toCreator)
-		newlyHeld.Add(newlyHeld, toHeld)
+		hold(heldReason(current, late, superseded), toHeld)
 	}
 	if len(deposits) > 0 { // new money: an unexplained balance may be explained now
 		if _, err := tx.Exec(ctx, "DELETE FROM invoice_balance_alerts WHERE invoice_id = $1", invoiceID); err != nil {
@@ -195,7 +207,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		if err := book(ctx, tx, invoiceID, "expiry", nil, new(big.Int), new(big.Int).Neg(owed), owed); err != nil {
 			return err
 		}
-		newlyHeld.Add(newlyHeld, owed)
+		hold(HeldExpired, owed)
 		// A reopen must end before the receiver's settle window does (R-130).
 		readCtx, cancel := context.WithTimeout(ctx, BalanceTimeout)
 		deployedAt, err := s.deployed(readCtx, chainID, factory, receive)
@@ -238,12 +250,17 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		if err := outbox.Queue(ctx, tx, outbox.Held, invoiceID, newlyHeld); err != nil {
 			return err
 		}
-		event := history.Data{Amount: newlyHeld.String()}
-		if options {
-			event.Option = invoiceID
-		}
-		if err := history.Add(ctx, tx, invoiceID, history.Held, history.System, event); err != nil {
-			return err
+		for _, reason := range heldReasons {
+			if heldFor[reason] == nil {
+				continue
+			}
+			event := history.Data{Amount: heldFor[reason].String(), Reason: reason}
+			if options {
+				event.Option = invoiceID
+			}
+			if err := history.Add(ctx, tx, invoiceID, history.Held, history.System, event); err != nil {
+				return err
+			}
 		}
 	}
 	if next == Paid && current != Paid {
