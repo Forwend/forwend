@@ -14,6 +14,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
+import { API_KEYS_COPY } from "@/features/api-keys/constants/api-keys-copy";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { CLIENTS_COPY } from "@/features/clients/constants/clients-copy";
 import { INVOICES_COPY, REQUESTS_COPY } from "@/features/invoices/constants/invoices-copy";
@@ -91,7 +92,13 @@ export const NAV = {
     permission: PERMISSIONS.storesRead,
   },
   checkout: { href: null, label: "Checkout", icon: ShoppingBag },
-  developers: { href: null, label: "Developers", icon: Code },
+  // R-145: the profile's secret API keys, for the owner and Admins (D-95).
+  developers: {
+    href: APP_ROUTES.developers,
+    label: API_KEYS_COPY.title,
+    icon: Code,
+    permission: PERMISSIONS.keys,
+  },
   analytics: { href: null, label: "Analytics", icon: ChartLine },
 } satisfies Record<string, NavItem>;
 
@@ -106,6 +113,7 @@ export const APP_NAV: Readonly<Record<ProfileKind, readonly NavGroup[]>> = {
   [PROFILE_KINDS.freelancer]: [
     MONEY,
     { label: "Get paid", items: [NAV.invoices, NAV.links, NAV.jobs, NAV.clients, NAV.activity] },
+    { label: "Build", items: [NAV.developers] },
     INSIGHTS,
   ],
   [PROFILE_KINDS.merchant]: [

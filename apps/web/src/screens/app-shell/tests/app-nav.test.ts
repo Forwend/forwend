@@ -32,6 +32,8 @@ describe("navigation by role", () => {
       APP_ROUTES.balances,
       APP_ROUTES.clients,
       APP_ROUTES.activity,
+      // R-145: only the owner and Admins manage API keys (D-95).
+      APP_ROUTES.developers,
     ])
       expect(pages).not.toContain(hidden);
   });
@@ -41,6 +43,7 @@ describe("navigation by role", () => {
     expect(pageAllowed(developer, APP_ROUTES.billingDetails)).toBe(false);
     expect(pageAllowed(developer, APP_ROUTES.newInvoice)).toBe(true);
     expect(pageAllowed(developer, APP_ROUTES.team)).toBe(true);
+    expect(pageAllowed(developer, APP_ROUTES.developers)).toBe(false);
     // Another kind's page is checked too, and a page under one is checked by the most specific.
     expect(pageAllowed(developer, `${APP_ROUTES.jobs}/new`)).toBe(false);
     const finance: Profile = { ...developer, role: "finance", permissions: ["stores.read"] };

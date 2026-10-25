@@ -237,6 +237,13 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A switch saves at once and says so in a toast.
   - The last token on can't be turned off; a quiet line under the panel says one stays on.
   - New invoice offers only the tokens on for the profile and the picked store.
+- Developers (R-145) is in the sidebar's Build group for a freelancer's or merchant's owner and Admins. It is laid out like Team.
+  - An intro line says keys belong on a server. API keys is a panel of rows, with New key beside its heading.
+  - A row: the name, then `fw_test_…` and the last 4, the store and the scopes, then the last use. A Test mode badge.
+  - New key is a dialog: Name, a Store select when there are two or more, and scope checkboxes.
+  - After it saves, a dialog shows the key's text once, with Copy focused and Done.
+  - A key's More actions menu holds Roll, with an overlap select, and Revoke, which confirms.
+  - Roll ends on the new key's text, shown once; a rolled key shows when it stops and offers only Revoke.
 - Team (R-139) opens from the account menu, after Networks and tokens, for a merchant profile's owner and members.
   - It is laid out like Networks and tokens: an intro line, then panels.
   - An Admin sees Members, then Open invites, each a panel of rows with the email, its stores and a role badge.

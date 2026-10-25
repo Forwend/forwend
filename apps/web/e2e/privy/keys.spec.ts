@@ -1,0 +1,208 @@
+import { expect, type Page, test } from "@playwright/test";
+import { sidewaysScroll } from "../sideways";
+import { blockingViolations } from "./axe";
+import { mockApi } from "./sample-api";
+import { session } from "./session";
+
+// R-145: the API answers are mocked; the Go API test covers the real ones.
+const SHOP = "22222222-2222-2222-2222-222222222222";
+const STORE = "66666666-6666-4666-8666-666666666666";
+const SECRET = `fw_test_${"A1b2C3d4E5".repeat(3)}Zz9Yx8`;
+const key = (keyId: string, fields: object) => ({
+  keyId,
+  name: "Production server",
+  storeId: STORE,
+  livemode: false,
+  last4: "q7Rt",
+  scopes: ["invoices.read", "invoices.write"],
+  createdAt: "2026-10-20T10:00:00Z",
+  lastUsedAt: "2026-10-25T09:30:00Z",
+  expiresAt: null as string | null,
+  ...fields,
+});
+
+// The list reads again after each change, so a change is the last call that isn't a GET.
+const writes = (calls: { method: string }[]) => calls.filter((c) => c.method !== "GET");
+
+async function mockKeys(page: Page) {
+  let keys = [key("aaaaaaaa-0000-4000-8000-000000000001", {})];
+  const calls: { method: string; path: string; body: unknown }[] = [];
+  await mockApi(page);
+  await page.route(`/api/v1/profiles/${SHOP}/**`, (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname.replace(`/api/v1/profiles/${SHOP}/`, "");
+    if (path === "stores") {
+      return route.fulfill({
+        json: {
+          stores: [
+            {
+              storeId: STORE,
+              name: "Sample shop",
+              defaultExpiresIn: 3600,
+              allowedOrigins: [],
+              brandColor: null,
+              logoAt: null,
+              tokensOff: [],
+              updatedAt: "2026-09-02T00:00:00Z",
+            },
+          ],
+        },
+      });
+    }
+    if (!path.startsWith("keys")) return route.fallback();
+    const body =
+      request.method() === "GET" || request.method() === "DELETE" ? null : request.postDataJSON();
+    calls.push({ method: request.method(), path, body });
+    if (path === "keys" && request.method() === "GET") return route.fulfill({ json: { keys } });
+    if (path === "keys") {
+      const made = key("aaaaaaaa-0000-4000-8000-000000000002", {
+        ...body,
+        last4: SECRET.slice(-4),
+        lastUsedAt: null,
+      });
+      keys = [made, ...keys];
+      return route.fulfill({ status: 201, json: { ...made, secret: SECRET } });
+    }
+    const [, id, action] = path.split("/");
+    if (action === "roll") {
+      const old = keys.find((k) => k.keyId === id);
+      const made = key("aaaaaaaa-0000-4000-8000-000000000003", {
+        last4: SECRET.slice(-4),
+        lastUsedAt: null,
+      });
+      // As the API lists only working keys: with no overlap, the old one is gone at once.
+      keys = [
+        made,
+        ...(body.overlapHours === 0
+          ? keys.filter((k) => k !== old)
+          : keys.map((k) => (k === old ? { ...k, expiresAt: "2026-11-01T09:30:00Z" } : k))),
+      ];
+      return route.fulfill({ status: 201, json: { ...made, secret: SECRET } });
+    }
+    keys = keys.filter((k) => k.keyId !== id);
+    return route.fulfill({ status: 204 });
+  });
+  return calls;
+}
+
+test("the owner makes an API key, sees its secret once, rolls a key and revokes one", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  const calls = await mockKeys(page);
+  await page.goto("/app/developers");
+  await expect(page.locator("aside").getByRole("link", { name: "Developers" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  const main = page.getByRole("main");
+  // After a roll two keys share the name, so the old one is found by the end of its text.
+  const row = main.getByRole("listitem").filter({ hasText: "q7Rt" });
+  await expect(row).toContainText(
+    "fw_test_…q7Rt · Sample shop · Read invoices, Create and change invoices",
+  );
+  await expect(row).toContainText("Last used");
+  await expect(row).toContainText("Test mode");
+  expect(await blockingViolations(page)).toEqual([]);
+
+  // New key: the form checks the name and the scopes before it sends anything.
+  await main.getByRole("button", { name: "New key" }).click();
+  const dialog = page.getByRole("dialog", { name: "New API key" });
+  await dialog.getByRole("checkbox", { name: "Read invoices" }).uncheck();
+  await dialog.getByRole("checkbox", { name: "Create and change invoices" }).uncheck();
+  await dialog.getByRole("button", { name: "Make key" }).click();
+  await expect(dialog.getByText("Enter a name of up to 100 characters.")).toBeVisible();
+  await expect(dialog.getByText("Pick at least one.")).toBeVisible();
+  expect(calls.filter((c) => c.method === "POST")).toEqual([]);
+  await dialog.getByRole("textbox", { name: "Name" }).fill("Staging");
+  await dialog.getByRole("checkbox", { name: "Read invoices" }).check();
+  await dialog.getByRole("button", { name: "Make key" }).click();
+  const secret = page.getByRole("dialog", { name: "Copy your key now" });
+  await expect(secret.getByText(SECRET)).toBeVisible();
+  await expect(secret.getByRole("button", { name: "Copy the secret key" })).toBeVisible();
+  expect(writes(calls).at(-1)).toEqual({
+    method: "POST",
+    path: "keys",
+    body: { name: "Staging", storeId: STORE, scopes: ["invoices.read"] },
+  });
+  expect(await blockingViolations(page)).toEqual([]);
+  await secret.getByRole("button", { name: "Done" }).click();
+  await expect(secret).toBeHidden();
+  // Once closed, the secret is gone for good.
+  await expect(page.getByText(SECRET)).toHaveCount(0);
+  await expect(main.getByRole("listitem").filter({ hasText: "Staging" })).toContainText(
+    "Never used",
+  );
+
+  // Roll: the old key keeps working for the chosen overlap, and the new one's secret shows once.
+  await row.getByRole("button", { name: "Actions for Production server" }).click();
+  await page.getByRole("menuitem", { name: "Roll" }).click();
+  const rolling = page.getByRole("dialog", { name: "Roll Production server, fw_test_…q7Rt" });
+  await rolling.getByRole("combobox", { name: "The old key keeps working" }).click();
+  await page.getByRole("option", { name: "For 7 days" }).click();
+  await rolling.getByRole("button", { name: "Roll key" }).click();
+  await expect(secret.getByText(SECRET)).toBeVisible();
+  // Copy takes the focus: the key's text is what the owner came for.
+  await expect(secret.getByRole("button", { name: "Copy the secret key" })).toBeFocused();
+  expect(writes(calls).at(-1)).toEqual({
+    method: "POST",
+    path: "keys/aaaaaaaa-0000-4000-8000-000000000001/roll",
+    body: { overlapHours: 168 },
+  });
+  await secret.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByText(SECRET)).toHaveCount(0);
+  await expect(row).toContainText("Stops Nov 1, 2026");
+  // A rolled key's new one rolls next; this one can only be revoked.
+  await row.getByRole("button", { name: "Actions for Production server" }).click();
+  await expect(page.getByRole("menuitem", { name: "Roll" })).toHaveCount(0);
+  await page.getByRole("menuitem", { name: "Revoke" }).click();
+  const revoking = page.getByRole("dialog", { name: "Revoke Production server, fw_test_…q7Rt?" });
+  await revoking.getByRole("button", { name: "Revoke" }).click();
+  await expect(row).toHaveCount(0);
+  expect(writes(calls).at(-1)).toEqual({
+    method: "DELETE",
+    path: "keys/aaaaaaaa-0000-4000-8000-000000000001",
+    body: null,
+  });
+  await context.close();
+});
+
+test("a roll whose old key stops now still shows the new key's text", async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await mockKeys(page);
+  await page.goto("/app/developers");
+  const row = page.getByRole("main").getByRole("listitem").filter({ hasText: "q7Rt" });
+  await row.getByRole("button", { name: /^Actions for Production server/ }).click();
+  await page.getByRole("menuitem", { name: "Roll" }).click();
+  await page.getByRole("combobox", { name: "The old key keeps working" }).click();
+  await page.getByRole("option", { name: "Stops now" }).click();
+  await page.getByRole("button", { name: "Roll key" }).click();
+  // The old key's row is gone with the refetch; the text still shows.
+  await expect(row).toHaveCount(0);
+  await expect(
+    page.getByRole("dialog", { name: "Copy your key now" }).getByText(SECRET),
+  ).toBeVisible();
+  await context.close();
+});
+
+test("the API keys list fits a phone", async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await mockKeys(page);
+  await page.goto("/app/developers");
+  await expect(page.getByRole("main").getByText("fw_test_…q7Rt", { exact: true })).toBeVisible();
+  expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
+  expect(await blockingViolations(page)).toEqual([]);
+  await context.close();
+});
