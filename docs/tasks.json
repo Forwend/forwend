@@ -389,7 +389,7 @@
         "Required checks pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "typecheck"
       ],
@@ -468,11 +468,18 @@
           "summary": "Re-review of the new diff: apps/web/tsconfig.json incremental:false (package.json flag reverted) and turbo.json globalDependencies [tsconfig.base.json]. Pass. Verify passed at 2026-10-25T16:37:47Z, after the change. I checked it in a copy-on-write clone outside the repo: apps/web at da6e023 plus the one nullable line, with the author's f297 cache. (A) Old tsconfig (incremental true) with the cache rewritten to paths relative to .next/cache, matching Next's own .next/cache/.tsbuildinfo: real next build exits 0 with Finished TypeScript in 993ms over 11 errors. So finding 1 reproduces through next build. The coordinator's copy kept paths relative to apps/web, so tsgo saw new files and checked everything. (B) New tsconfig, same cache: next build exits 1 with the 11 errors, and the cache file stays byte-identical. (C) New tsconfig, typecheck script (next typegen && tsc --noEmit -p tsconfig.json) with the stale apps/web/tsconfig.tsbuildinfo: exit 1, 11 errors in 5 files, and the cache stays untouched. Next build left incremental:false in tsconfig.json; Next adds incremental:true only when the key is missing. (D) With the new turbo.json, turbo run typecheck/build --dry=json lists tsconfig.base.json in the global files. Flipping noUncheckedIndexedAccess changed every typecheck and build hash. Notes, not blocking: globalDependencies also invalidates Go and contracts tasks on a root tsconfig change (rare, cheap); the old apps/web/.next/cache/.tsbuildinfo is now unused and gitignored; F299 still has no refs. No docs describe these settings. Clone removed; main tree unchanged.",
           "at": "2026-10-25T16:48:03Z",
           "filesHash": "22e8cb914ad44ac9"
-        }
+        },
+        "commit": "953925c",
+        "doneAt": "2026-10-25T16:48:27Z"
       },
       "branch": "fix/f299-the-web-typecheck-checks-every-file-each",
       "baseCommit": "f32f598b82bc7075a88bf3c0302fabecfe6b81ff",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f299-the-web-typecheck-checks-every-file-each",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
