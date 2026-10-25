@@ -1234,7 +1234,7 @@
       "dependsOn": [
         "F305"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -1318,11 +1318,18 @@
           "summary": "PASS (re-review). All 3 earlier blockers are fixed, and each fix now has a test that fails without it. I found no new blocking issue.\n\nFIXED, AND CHECKED\n1. Stale Edit values. endpoint-dialog.tsx loadAndOpen runs load() before open() for both New endpoint and Edit. My 6 scratchpad probes now pass: after Turn off, Edit shows the switch off and saves enabled:false; after a rename, the next Edit shows \"Renamed\". Scratchpad vitest mutation (loadAndOpen without load()) fails \"Edit opens with the endpoint as it is now\".\n2. 00071 CHECK is now CASE WHEN type='webhook.test' THEN all NULL ELSE all NOT NULL END. My probe: invoice.paid with invoice_id NULL now fails with 23514. The new TestWebhookEventsNameTheirInvoice fails against the old CHECK (overlay of the embedded .sql): \"an invoice event with no invoice: want 23514, got <nil>\".\n3. Access tests. go test -overlay mutations now fail a test: m1 (SendTest without the profile filter), m2 (ResendFailed without owned()) and m5 (since on created_at) fail TestOwnerResendsAndTestsDeliveries. m4a-d (each new route on Can(auth.InvoicesRead)) fail TestWebhooksNeedTheWebhooksPermission.\n\nNON-BLOCKING ITEMS TAKEN, AND CHECKED\n- Focus: Turn off and Signing secret no longer call preventDefault. My probe shows focus back on the menu button. No repo test covers this.\n- ResendFailed filters updated_at (deliveries.go:112). For a failed row that is when it failed. api.md and openapi say so.\n- The rotate test checks the store. A mutation without pending.reset() fails it.\n- endpointPlace's fallback cuts at ? or #. useId replaces the fixed id. DEFAULT_EVENTS is in constants. The 422 text is fixed.\n- Resend has its own name per row. It starts with the visible \"Resend\", so the visible label is part of the name (WCAG 2.5.3).\n\nNON-BLOCKING NIT\n- docs/web/DESIGN.md: \"Its row: the description, then the host and path...\" A row with no description now shows the host and path as its title, once. The bullet could say that.\n\nLEFT OPEN, as the coordinator reported to the user: the resend race with an in-flight attempt, no auto refresh, the endless skeleton when stores fail, the attempt key, 503 for test and resend without a key, the Delete unit test.\n\nRAN: go test ./internal/httpapi/tests (webhook, route-list, permission tests) ok; go test ./internal/database ./internal/webhook ./internal/history ok; overlay mutations m1, m2, m5, m4a-d and the old-CHECK overlay, all caught; migration probe; vitest run src/features/webhooks 7/7; 6 scratchpad probes 6/6; 2 scratchpad web mutations, both caught; check-docs.py 0 errors; status: verify passed 22:59:23Z; the diff was the same before and after that run.",
           "at": "2026-10-25T23:07:41Z",
           "filesHash": "85ee1cc6a24ac017"
-        }
+        },
+        "commit": "8a680d6",
+        "doneAt": "2026-10-25T23:08:18Z"
       },
       "branch": "feat/f306-the-developers-page-manages-webhook-endp",
       "baseCommit": "bc6a51455be90868e71f3342f1b51b655ec92a0e",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f306-the-developers-page-manages-webhook-endp",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
