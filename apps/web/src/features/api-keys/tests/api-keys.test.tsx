@@ -125,3 +125,30 @@ for (const [overlap, keepsOld] of [
     expect(container.textContent).not.toContain(SECRET);
   });
 }
+
+it("a merchant's failed stores load shows Try again, which then loads the keys", async () => {
+  let storesUp = false;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (request: Request) =>
+      request.url.endsWith("/stores")
+        ? storesUp
+          ? Response.json({ stores: [] })
+          : Response.json({}, { status: 500 })
+        : Response.json({ keys: [key(OLD)] }),
+    ),
+  );
+  const { container } = render(
+    <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+      <ToastProvider>
+        <ApiKeys profileId={PROFILE} merchant />
+      </ToastProvider>
+    </Provider>,
+  );
+  await settle();
+  expect(screen.getByRole("alert").textContent).toContain("could not load");
+  storesUp = true;
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+  await settle();
+  expect(container.textContent).toContain("Production server");
+});

@@ -147,7 +147,8 @@ func TestWebhookEndpoints(t *testing.T) {
 
 }
 
-// R-146: without WEBHOOK_SECRET_KEY no secret can be kept, so the routes that make or show one answer 503.
+// R-146, R-149: without WEBHOOK_SECRET_KEY no secret can be kept, so the routes that make, show or send with one
+// answer 503.
 func TestWebhooksWithoutAKey(t *testing.T) {
 	e := invoiceAPIWith(t, 0, nil)
 	hooks := "/v1/profiles/" + e.aliceProfile + "/webhooks/cccccccc-0000-4000-8000-000000000001"
@@ -155,6 +156,9 @@ func TestWebhooksWithoutAKey(t *testing.T) {
 		{"PUT", hooks, `{"url": "https://a.example/", "events": ["invoice.paid"]}`},
 		{"GET", hooks + "/secret", ""},
 		{"POST", hooks + "/secret/rotate", ""},
+		{"POST", hooks + "/test", ""},
+		{"POST", hooks + "/deliveries/evt_" + strings.Repeat("0", 32) + "/resend", ""},
+		{"POST", hooks + "/deliveries/resend-failed", `{"since": "2026-01-01T00:00:00Z"}`},
 	} {
 		if r := e.call(t, c.method, c.path, "did:privy:alice", "", c.body); r.status != http.StatusServiceUnavailable ||
 			errorCode(r) != "webhooks_not_configured" {

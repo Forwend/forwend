@@ -56,6 +56,15 @@ const open = (name: string) => {
   return dialog as HTMLDialogElement;
 };
 
+const choose = async (item: string) => {
+  fireEvent.keyDown(screen.getByRole("button", { name: /Actions for shop.example.com\/hooks/ }), {
+    key: "Enter",
+  });
+  await settle();
+  fireEvent.click(screen.getByRole("menuitem", { name: item }));
+  await settle();
+};
+
 afterEach(cleanup);
 
 type Call = { method: string; path: string; body: unknown };
@@ -140,14 +149,6 @@ it("the menu turns an endpoint off with the rest of it unchanged, and reveals th
       });
   });
   await settle();
-  const choose = async (item: string) => {
-    fireEvent.keyDown(screen.getByRole("button", { name: /Actions for shop.example.com\/hooks/ }), {
-      key: "Enter",
-    });
-    await settle();
-    fireEvent.click(screen.getByRole("menuitem", { name: item }));
-    await settle();
-  };
   await choose("Turn off");
   expect(writes()).toEqual([
     {
@@ -210,8 +211,13 @@ it("Delete asks first, then deletes", async () => {
     call.method === "DELETE" ? new Response(null, { status: 204 }) : undefined,
   );
   await settle();
-  open("Delete shop.example.com/hooks?");
-  fireEvent.click(screen.getByRole("button", { name: "Delete", hidden: true }));
+  await choose("Delete");
+  const confirm = [...document.querySelectorAll("dialog")].find(
+    (d) => d.querySelector("h2")?.textContent === "Delete shop.example.com/hooks?",
+  ) as HTMLDialogElement;
+  expect(confirm.hasAttribute("open")).toBe(true);
+  expect(writes()).toEqual([]);
+  fireEvent.click(within(confirm).getByRole("button", { name: "Delete" }));
   await settle();
   expect(writes().map((c) => `${c.method} ${c.path}`)).toEqual([
     `DELETE /v1/profiles/${PROFILE}/webhooks/${ID}`,
@@ -285,14 +291,6 @@ it("Edit opens with the endpoint as it is now: after Turn off and a rename it sh
     return Response.json({ endpoints: [current] });
   });
   await settle();
-  const choose = async (item: string) => {
-    fireEvent.keyDown(screen.getByRole("button", { name: /Actions for shop.example.com\/hooks/ }), {
-      key: "Enter",
-    });
-    await settle();
-    fireEvent.click(screen.getByRole("menuitem", { name: item }));
-    await settle();
-  };
   const editing = () =>
     within(
       [...document.querySelectorAll("dialog")].find((d) => d.hasAttribute("open")) as HTMLElement,
@@ -311,4 +309,23 @@ it("Edit opens with the endpoint as it is now: after Turn off and a rename it sh
   expect((editing().getByRole("textbox", { name: /Description/ }) as HTMLInputElement).value).toBe(
     "Renamed",
   );
+});
+
+it("a merchant's failed stores load shows Try again, which then loads the endpoints", async () => {
+  let storesUp = false;
+  const { container } = mount(
+    (call) =>
+      call.path.endsWith("/stores")
+        ? storesUp
+          ? Response.json({ stores: [] })
+          : Response.json({}, { status: 500 })
+        : undefined,
+    <Webhooks profileId={PROFILE} merchant />,
+  );
+  await settle();
+  expect(screen.getByRole("alert").textContent).toContain("could not load");
+  storesUp = true;
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+  await settle();
+  expect(container.textContent).toContain("shop.example.com/hooks");
 });
