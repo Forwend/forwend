@@ -690,7 +690,7 @@
       "dependsOn": [
         "F300"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -775,11 +775,18 @@
           "summary": "PASS. All first-round findings are fixed. openapi Profile.permissions has keys, and the Error enum matches httpio/errors.go. TestAPIKeys catches dropping profile_id from Roll and Revoke (mutation run). The 00067 scopes CHECK refuses money.write (probe). PLAN 11.4 has the mode line. api.md covers fresh sign-in, RequireKey and per-key limits. keyapi/model.go exists, and DefaultOverlap is in apikey. Probes re-run with the same results: route sweep, 401 on person routes, store reach, rolls once, overlap bounds. Verify 18:35:44Z failed only on e2e balances.spec.ts:123, the known flaky phone-home test. It stuck on Loading your profiles, as in F133-F293 runs. It passed on the unchanged re-run at 18:43:52Z (49 passed). Ran: go test TestAPIKeys/Profile/Members/Team, overlay mutations, check-docs, gofmt and vet.",
           "at": "2026-10-25T18:51:40Z",
           "filesHash": "46e8ca8c285e9e7e"
-        }
+        },
+        "commit": "740beb9",
+        "doneAt": "2026-10-25T18:52:01Z"
       },
       "branch": "feat/f301-an-owner-makes-secret-api-keys-for-test",
       "baseCommit": "c347d5f7b79bd59719d9b40675e2f8960f8aca28",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f301-an-owner-makes-secret-api-keys-for-test",
+        "base": "main"
+      }
     },
     {
       "id": "F302",
