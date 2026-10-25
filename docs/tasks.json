@@ -15,7 +15,7 @@
       "dependsOn": [
         "F294"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e",
@@ -101,10 +101,10 @@
         "taskHash": "c2bb38924f172b5d",
         "filesHash": "5e225e2f0778cf91",
         "proof": {
-          "1": "unit: internal/httpapi/tests TestTeamInvitesAndRoles (profile_invites keeps the token's SHA-256, never the token; expires in 7 days; another signed-in user reads the link but accept is 403 invite_for_another_email, failing when the email check is removed; the invited address accepts once, then GET and accept are 404, failing when accepted_at isn't set; a replaced, revoked or expired invite is 404; a removed Admin's open invites are revoked; inviting needs a fresh sign-in); internal/team TestInviteChecksTheInviterAgain (under the profile lock the permission map refuses a Developer or stranger, failing without the check); TestInvitesCountTowardTheClientEmailCap (21st invite is 429); internal/notify TestDeliverSendsTheInviteThenDropsItsToken (the email links /invite/<token>; sent, skipped and given-up invites keep no token, each failing when its drop is removed)",
-          "2": "unit: TestTeamInvitesAndRoles (an Admin's role and stores change needs a fresh sign-in, then saves; changing or removing the owner and the owner leaving are 422, so the owner stays an Admin; a member leaves and loses access; an Admin removes a member who loses access; unknown member 404); TestMembersReachOnlyWhatTheirRoleAllows (GET members for owner and Admin only); TestProfileRoutesAreAllListed and TestProfilesBelongToTheirUser cover the 6 new {profileId} routes; src/features/team/tests/team-api.test.ts (a role change reads /v1/me again, failing without it)",
-          "3": "e2e: e2e/privy/team.spec.ts 'an Admin invites, changes a role and revokes an invite on the Team page' (lists members with stores and role, asks for a store, sends the invite body, changes a role and reopens on the saved one, revokes; axe clean); 'the invite link accepts for the invited address' (other address shows Sign out instead of Accept, the invited address accepts and opens the app, a gone link says so; axe clean, no sideways scroll on a phone)",
-          "4": "e2e: e2e/privy/team.spec.ts 'a Developer sees only its pages, and lands on Invoices' (no Overview, Balances, Transactions, Clients, Activity, Receive or Email notifications; invoice amounts and New invoice work from the enabled tokens; /app and /app/clients lead to /app/invoices; Team shows the role and Leave team; the mock refuses and records every read the role lacks, and none happens); unit: src/screens/app-shell/tests/app-nav.test.ts (also another kind's page and New store for Finance, failing with the old lookup)"
+          "1": "unit: TestTeamInvitesAndRoles, TestInviteChecksTheInviterAgain, TestInvitesCountTowardTheClientEmailCap, TestDeliverSendsTheInviteThenDropsItsToken",
+          "2": "unit: TestTeamInvitesAndRoles, TestMembersReachOnlyWhatTheirRoleAllows, TestProfileRoutesAreAllListed, TestProfilesBelongToTheirUser, team-api.test.ts",
+          "3": "e2e: e2e/privy/team.spec.ts Team page and invite link tests",
+          "4": "e2e: e2e/privy/team.spec.ts Developer navigation test; unit: app-nav.test.ts"
         },
         "review": {
           "result": "pass",
@@ -112,11 +112,18 @@
           "summary": "Re-review of the api.md change only. docs/backend/api.md:207 now says inviting, changing a role, removing and leaving are 409 not_merchant on a personal or freelancer profile. That matches the code: Invite, SetMember, RemoveMember and Leave each call lockMerchant, and revoke, which answers 404, is left out. The sentence is 20 words. No findings.",
           "at": "2026-10-25T12:47:13Z",
           "filesHash": "5e225e2f0778cf91"
-        }
+        },
+        "commit": "d2c4f50",
+        "doneAt": "2026-10-25T13:02:20Z"
       },
       "branch": "feat/f295-a-merchant-invites-team-members-by-email",
       "baseCommit": "584c23db70aaa59ee94b20a702c24e86c538ae3c",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f295-a-merchant-invites-team-members-by-email",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
