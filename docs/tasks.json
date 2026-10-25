@@ -15,7 +15,7 @@
       "dependsOn": [
         "F293"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "backend-e2e",
@@ -100,10 +100,10 @@
         "taskHash": "15ba0e640e42db1c",
         "filesHash": "f5d0a0e7c10fa899",
         "proof": {
-          "1": "unit: internal/httpapi/tests TestMembersReachOnlyWhatTheirRoleAllows (a member's GET /v1/me lists the shop with role developer, the owner's with owner; the database refuses a member on a freelancer profile and the owner as a member); TestMemberSignUpMakesNoWalletForTheirTeamsProfile (a member's sign-in makes no wallet for the team's profile; failed before the fix); migration 62 rolls back in TestMigrationsRollBackAndReapply",
-          "2": "unit: TestProfileRoutesAreAllListed fails when a {profileId} route asks for no permission (checked by removing one); TestMembersReachOnlyWhatTheirRoleAllows checks 8 routes for owner, Admin, Developer, Finance, a Developer with no store and a stranger (a wrong role map fails it, checked by mutation); TestProfilesBelongToTheirUser keeps 403 for other users on every route",
-          "3": "unit: TestMembersReachOnlyWhatTheirRoleAllows (Developer and Finance list only their store's invoices, events and Owed, held money included; removing any of the three SQL store filters fails it; another store's invoice is 404 on read, cancel and Revise, and a refused Revise leaves it open; a Developer saves their store, gets 404 for another or a new one, and 403 for a token switch change; Finance can't save a store; a Developer's create takes their store and another store or none is 422; jobs Admin only, notifications the owner's)",
-          "4": "docs-check: R-138, D-93, api.md Auth, openapi.yaml Profile.role, ProfileId, Forbidden and store tokensOff, architecture.md data model, rules.md; backend-e2e passes"
+          "1": "unit: TestMembersReachOnlyWhatTheirRoleAllows and TestMemberSignUpMakesNoWalletForTheirTeamsProfile; migration 62 rolls back in TestMigrationsRollBackAndReapply",
+          "2": "unit: TestProfileRoutesAreAllListed fails when a {profileId} route asks for no permission; TestMembersReachOnlyWhatTheirRoleAllows checks routes for every role and a stranger",
+          "3": "unit: TestMembersReachOnlyWhatTheirRoleAllows (store-scoped lists, events, Owed with held money, 404 on read, cancel and Revise, 403 on token switches, create default and 422)",
+          "4": "docs-check: R-138, D-93, api.md, openapi.yaml, architecture.md, rules.md; backend-e2e passes"
         },
         "review": {
           "result": "pass",
@@ -111,11 +111,18 @@
           "summary": "Re-review after the R-95 tag fix: invoices_owed_test.go has the // R-95. tag back above TestOwedToYou, and the deposit helper carries only its own comment. No blocking findings. The earlier non-blocking notes stand: an owner's cross-store Revise shows the replaced invoice's id and number to the other store's members; the owner should confirm D-93's agent defaults (jobs, notifications, and Finance seeing every store's activity under the shared wallet); a Developer's store save drops store_tokens_off rows for disabled tokens, as owners' saves already did; the first-store order is untested with two assigned stores; the web will show member profiles whose pages answer 403 (F295).",
           "at": "2026-10-25T00:42:47Z",
           "filesHash": "f5d0a0e7c10fa899"
-        }
+        },
+        "commit": "e59e815",
+        "doneAt": "2026-10-25T10:44:00Z"
       },
       "branch": "feat/f294-a-merchant-profile-s-members-reach-only",
       "baseCommit": "9e529ecd8fe7752295e8b1d535d45b3f47efc3cb",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f294-a-merchant-profile-s-members-reach-only",
+        "base": "main"
+      }
     },
     {
       "id": "F295",
