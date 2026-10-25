@@ -62,7 +62,7 @@ column existed were set to their signup time (migration 00013), so they never se
 
 ## Notifications
 
-R-80, D-65; the full schema is in openapi.yaml. Owner only.
+R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notifications`, D-93).
 
 - `GET` and `PUT /v1/profiles/{profileId}/notifications`: `{email, address}`. `PUT` takes `{"email": true|false}`
   only. The address is the account's verified login email (email account, else Google), read from Privy once on
@@ -132,7 +132,7 @@ R-80, D-65; the full schema is in openapi.yaml. Owner only.
 
 ## Billing details
 
-R-43; the full schema is in openapi.yaml. Owner only, like every `{profileId}` route.
+R-43; the full schema is in openapi.yaml. Members reach it with `billing.read` and `billing.write` (D-93).
 
 - `PUT /v1/profiles/{profileId}/billing-details` creates or replaces them and answers 200 with what was saved. Body:
   `name` (≤ 200 characters), `address` (≤ 500), `country` (an assigned ISO 3166-1 alpha-2 code in upper case, like
@@ -147,7 +147,7 @@ R-43; the full schema is in openapi.yaml. Owner only, like every `{profileId}` r
 
 ## Clients
 
-R-86; the full schema is in openapi.yaml. Owner only, like every `{profileId}` route.
+R-86; the full schema is in openapi.yaml. Members reach it with `clients.read` and `clients.write` (D-93).
 
 - `GET /v1/profiles/{profileId}/clients` lists the saved clients by name; at most 1000 per profile, so it comes whole.
 - `PUT /v1/profiles/{profileId}/clients/{clientId}` creates or replaces one. The caller picks the id (a lowercase UUID),
@@ -164,7 +164,7 @@ R-86; the full schema is in openapi.yaml. Owner only, like every `{profileId}` r
 
 ## Networks and tokens
 
-R-136; the full schema is in openapi.yaml. Owner only, like every `{profileId}` route.
+R-136; the full schema is in openapi.yaml. Members reach it with `tokens.read` and `tokens.write` (D-93).
 
 - An enabled token is on for a profile until the owner turns it off.
 - `GET /v1/profiles/{profileId}/tokens` lists the enabled tokens with `on`, by chain id.
@@ -179,7 +179,7 @@ R-136; the full schema is in openapi.yaml. Owner only, like every `{profileId}` 
 
 ## Stores
 
-R-134; the full schema is in openapi.yaml. Owner only, like every `{profileId}` route.
+R-134; the full schema is in openapi.yaml. Members reach it with `stores.read` and `stores.write` (D-93).
 
 - A merchant profile's stores (D-30). The first is made with the profile, named after it (a database trigger).
 - `GET /v1/profiles/{profileId}/stores` lists them, the first first; a personal or freelancer profile has none.
@@ -199,6 +199,40 @@ R-134; the full schema is in openapi.yaml. Owner only, like every `{profileId}` 
   - Without a logo it is 404 `logo_not_found`.
   - Every invoice read, the public one too, has `brand` `{storeId, color, logoAt}`; null without a store.
   - The invoice and receipt PDFs show the logo in place of Forwend's mark and the color on the header rule.
+
+## Team
+
+R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members and invites (`internal/team`).
+
+- On a personal or freelancer profile, inviting, changing a role, removing and leaving are 409 `not_merchant`.
+- Invites, accepts, role changes and removals lock the profile row, so on one team they happen one after another.
+
+- `GET /v1/profiles/{profileId}/members` (`team`): the owner first, then the members, and the open invites newest first.
+  - A member has `memberId`, `email` (the account's login email, null without one), `role` and `stores`.
+  - An Admin's and the owner's `stores` are empty: they reach every store.
+- `POST /v1/profiles/{profileId}/invites` (`team`, fresh sign-in) takes `{email, role, stores}` and answers 201 with the invite.
+  - `role` is admin, developer or finance. A Developer or Finance member needs one store or more; an Admin none.
+  - The email is checked like a client email. An address already on the team is 409 `already_on_team`.
+  - Under the profile lock the inviter's `team` permission is checked again, so a member removed meanwhile sends nothing.
+  - A new invite to the same address revokes the open one.
+  - It counts toward the client email cap (R-116); past it the answer is 429 with `Retry-After`.
+- The invite's link token is 32 random bytes in hex. `profile_invites` keeps only its SHA-256.
+  - The `team.invite` outbox row carries the token for the email to `/invite/<token>`.
+  - The worker drops the token from the row once the email is sent, skipped or given up.
+  - A revoked, accepted or expired invite sends nothing. Reply-To is the inviter's login email.
+- `DELETE /v1/profiles/{profileId}/invites/{inviteId}` (`team`) revokes an open invite: 204, else 404 `invite_not_found`.
+- `PUT /v1/profiles/{profileId}/members/{memberId}` (`team`, fresh sign-in) takes `{role, stores}` and answers the member.
+- `DELETE /v1/profiles/{profileId}/members/{memberId}` (`team`) takes a member off the team: 204.
+- `POST /v1/profiles/{profileId}/leave` (`team.leave`) takes the signed-in member off the team: 204.
+  - Removing a member, leaving, or a change away from Admin revokes the open invites that member sent.
+  - The owner is an Admin for good: changing, removing or leaving as the owner is 422.
+  - An unknown member is 404 `member_not_found`.
+- `GET /v1/invites/{token}` (signed in): `{profileName, email, role, expiresAt}` for any user who has the link.
+- `POST /v1/invites/{token}/accept` (signed in) puts the user on the team and answers `{profileId}`.
+  - The user's verified login email, read from Privy, must be the invited address; else 403 `invite_for_another_email`.
+  - Accepting also marks the first run done.
+  - A used, revoked, expired or unknown invite is 404 `invite_not_found`, on both routes.
+  - The owner, or a member already, is 409 `already_on_team`.
 
 ## Invoices
 
@@ -263,7 +297,7 @@ R-19 and R-42; the full schema is in openapi.yaml.
 - Each of its `deposits` has the sender `from` (lowercase hex, as stored) and `blockTime` (the block's time, RFC 3339
   UTC), from the stored transfer.
 - `GET /v1/profiles/{profileId}/invoices?limit=&cursor=&status=&q=`: the list format above, highest number (newest)
-  first; items have no `deposits`. Owner only, like every `{profileId}` route.
+  first; items have no `deposits`. Members reach it with `invoices.read`, Developer and Finance for their stores (D-93).
 - `GET /v1/profiles/{profileId}/invoices/{invoiceId}`: the public GET plus `client`, `settlementWait`, `history` and `views`.
   Another profile's invoice is 404 (`invoice_not_found`), also when the same user owns both.
   - `history` (R-124) is every `history_events` row of the invoice, newest first, also in create and the other
@@ -555,6 +589,7 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   - A Revise of another store's invoice is 404 `invoice_not_found`.
   - A member without `tokens.write` who changes a store's `tokensOff` gets 403.
   - `GET /v1/me` lists the user's own profiles, then the ones they are a member of, each with `role`.
+  - Each profile also lists its `permissions`, so the app shows only what the role can use.
 - `internal/auth` verifies the token locally: ES256 only, issuer `privy.io`, audience = app ID, `exp` required,
   `sub` = the user's Privy DID, and a `sid` with no `linked_accounts`: Privy signs identity tokens for the app too,
   and they must not work as bearer tokens. The key is the one named by the token's `kid` among those published at

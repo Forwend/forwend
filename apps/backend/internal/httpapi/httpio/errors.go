@@ -15,6 +15,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/job"
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 	"github.com/ensp1re/forwend/apps/backend/internal/search"
+	"github.com/ensp1re/forwend/apps/backend/internal/team"
 )
 
 var ErrMalformed = errors.New("malformed request")
@@ -68,6 +69,17 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusNotFound, "logo_not_found", "the store has no logo"
 	case errors.Is(err, profile.ErrNotMerchant):
 		status, code, message = http.StatusConflict, "not_merchant", "only a merchant profile has stores"
+	case errors.Is(err, team.ErrNotMerchant):
+		status, code, message = http.StatusConflict, "not_merchant", "only a merchant profile has a team"
+	case errors.Is(err, team.ErrMemberNotFound):
+		status, code, message = http.StatusNotFound, "member_not_found", "member not found"
+	case errors.Is(err, team.ErrInviteNotFound):
+		status, code, message = http.StatusNotFound, "invite_not_found", "the invite is used, revoked, expired or unknown"
+	case errors.Is(err, team.ErrOtherEmail):
+		status, code, message = http.StatusForbidden, "invite_for_another_email",
+			"sign in with the email address the invite was sent to"
+	case errors.Is(err, team.ErrOnTeam):
+		status, code, message = http.StatusConflict, "already_on_team", "that account is already on the team"
 	case errors.Is(err, profile.ErrNotSignedUp):
 		status, code, message = http.StatusNotFound, "not_signed_up", "sign up first with POST /v1/me"
 	case errors.Is(err, document.ErrNotPaid):
@@ -97,7 +109,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, invoice.ErrConflict), errors.Is(err, profile.ErrConflict), errors.Is(err, job.ErrConflict):
 		status, code, message = http.StatusConflict, "idempotency_conflict", "Idempotency-Key was used with another request"
 	case errors.Is(err, invoice.ErrInvalid), errors.Is(err, profile.ErrInvalid), errors.Is(err, job.ErrInvalid),
-		errors.Is(err, activity.ErrInvalid),
+		errors.Is(err, activity.ErrInvalid), errors.Is(err, team.ErrInvalid),
 		errors.Is(err, balance.ErrInvalid), errors.Is(err, search.ErrInvalid):
 		status, code, message = http.StatusUnprocessableEntity, "invalid_value", err.Error()
 	case errors.Is(err, activity.ErrTooMany):

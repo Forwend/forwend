@@ -24,15 +24,15 @@ import {
 } from "react";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { NEW_REQUEST_COPY } from "@/features/invoices/constants/invoices-copy";
-import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
+import { PERMISSIONS, PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { PROFILES_COPY } from "@/features/profiles/constants/profiles-copy";
-import { profileLabel } from "@/features/profiles/lib/profile";
+import { can, profileLabel } from "@/features/profiles/lib/profile";
 import type { Profile } from "@/features/profiles/types/profile";
 import { useGetTransactionsQuery } from "@/features/transactions/api/transactions-api";
 import { TRANSACTION_DIRECTIONS } from "@/features/transactions/constants/transactions";
 import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transactions-copy";
 import { transactionKey } from "@/features/transactions/lib/transactions";
-import { APP_NAV } from "@/screens/app-shell/constants/app-nav";
+import { navFor } from "@/screens/app-shell/lib/app-nav";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { SEARCH_PARAM } from "@/shared/hooks/use-list-filters";
 import { chainName } from "@/shared/lib/chains";
@@ -87,9 +87,10 @@ export function CommandMenu({
   const [query, setQuery] = useState("");
   const [index, setIndex] = useState(0);
   const listId = useId();
+  const money = can(active, PERMISSIONS.moneyRead);
   const recent = useGetTransactionsQuery(
     { profileId: active.profileId, limit: 20 },
-    { skip: !open },
+    { skip: !open || !money },
   );
 
   useEffect(() => {
@@ -122,21 +123,25 @@ export function CommandMenu({
   };
 
   const commands: Command[] = [
-    ...APP_NAV[active.kind].flatMap((group) =>
+    ...navFor(active).flatMap((group) =>
       group.items.flatMap(({ href, label, icon }) =>
         href ? [{ id: href, group: COMMAND_COPY.pages, label, icon, run: go(href) }] : [],
       ),
     ),
-    {
-      id: "receive",
-      group: COMMAND_COPY.actions,
-      label: BALANCES_COPY.receive,
-      icon: ArrowDownLeft,
-      run: () => {
-        close();
-        onReceive();
-      },
-    },
+    ...(money
+      ? [
+          {
+            id: "receive",
+            group: COMMAND_COPY.actions,
+            label: BALANCES_COPY.receive,
+            icon: ArrowDownLeft,
+            run: () => {
+              close();
+              onReceive();
+            },
+          },
+        ]
+      : []),
     ...(active.kind === PROFILE_KINDS.personal
       ? [
           {

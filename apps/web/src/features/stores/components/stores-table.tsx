@@ -32,10 +32,12 @@ export interface StoresTableProps {
   profileId: string;
   /** When each store's checkout closes, by its seconds: New invoice's labels, which the screen passes in. */
   closeLabel: (seconds: number) => string;
+  /** Whether the user's role makes stores (D-93); a Finance member only reads them. */
+  canAdd: boolean;
 }
 
 // R-134. A merchant profile always has its first store, so the list is never empty.
-export function StoresTable({ profileId, closeLabel }: StoresTableProps) {
+export function StoresTable({ profileId, closeLabel, canAdd }: StoresTableProps) {
   const list = useListStoresQuery(profileId);
   const stores = list.currentData ?? [];
   const origins = (store: Store) =>
@@ -56,11 +58,11 @@ export function StoresTable({ profileId, closeLabel }: StoresTableProps) {
         <h1 id="stores-title" className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
           {COPY.title}
         </h1>
-        <AddStoreLink size="sm" className="lg:hidden" />
+        {canAdd ? <AddStoreLink size="sm" className="lg:hidden" /> : null}
       </div>
       <ListToolbar
         search={<p className="flex-1 text-sm text-muted">{COPY.intro}</p>}
-        actions={<AddStoreLink className="max-lg:hidden" />}
+        actions={canAdd ? <AddStoreLink className="max-lg:hidden" /> : null}
       />
 
       {list.isError && !list.currentData ? (

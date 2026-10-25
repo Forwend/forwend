@@ -23,17 +23,20 @@ const (
 	Sent    = "invoice.sent"    // the invoice, to its client's email when the owner presses Send to client (R-94)
 	// A payment reminder to the client's email (R-96); at most one per invoice and step.
 	Reminder = "invoice.reminder"
-	Change   = "job.change" // a scope change, to the email the client typed accepting the job (R-107)
+	Change   = "job.change"  // a scope change, to the email the client typed accepting the job (R-107)
+	Invite   = "team.invite" // a team invite, to the address invited (R-139)
 )
 
-// MaxClientEmails caps a user's client emails (Sent, reminders, job changes) in any 24 hours (R-116), so one account
-// can't mail strangers in bulk through Forwend or spend the shared Resend budget (D-65) for the money emails.
+// MaxClientEmails caps a user's client emails (Sent, reminders, job changes, invites) in any 24 hours (R-116), so one
+// account can't mail strangers in bulk through Forwend or spend the shared Resend budget (D-65) for the money emails.
 const MaxClientEmails = 20
 
 const ClientEmailsSQL = `SELECT p.user_id, count(*) AS sent, min(e.created_at) AS oldest FROM outbox_events e
 	LEFT JOIN invoices i ON i.id = e.invoice_id LEFT JOIN jobs j ON j.id = e.job_id
-	JOIN profiles p ON p.id = coalesce(i.profile_id, j.profile_id)
-	WHERE e.kind IN ('` + Sent + `', '` + Reminder + `', '` + Change + `') AND e.created_at > now() - interval '24 hours'
+	LEFT JOIN profile_invites v ON v.id = e.invite_id
+	JOIN profiles p ON p.id = coalesce(i.profile_id, j.profile_id, v.profile_id)
+	WHERE e.kind IN ('` + Sent + `', '` + Reminder + `', '` + Change + `', '` + Invite + `')
+	  AND e.created_at > now() - interval '24 hours'
 	GROUP BY p.user_id`
 
 // ClientEmailsLeft locks the profile's user row, so the user's client emails count one after the other, and says how
@@ -59,6 +62,8 @@ type Payload struct {
 	Step   string        `json:"step,omitempty"`
 	Change string        `json:"change,omitempty"`
 	By     history.Actor `json:"by,omitempty"` // who asked for a Send to client, for its history row (R-126)
+	// An invite's link token (R-139): the only copy, until the worker drops it once the email is sent or given up.
+	Token string `json:"token,omitempty"`
 }
 
 // QueueReceipt queues at most one receipt, and only once the payer gave an address (R-82).
@@ -115,6 +120,19 @@ func QueueChange(ctx context.Context, tx pgx.Tx, job, key string) error {
 	if _, err := tx.Exec(ctx, "INSERT INTO outbox_events (kind, job_id, payload) VALUES ($1, $2, $3)", Change, job,
 		payload); err != nil {
 		return fmt.Errorf("queue change for job %s: %w", job, err)
+	}
+	return nil
+}
+
+// QueueInvite adds the email of the team invite, carrying its link token (R-139).
+func QueueInvite(ctx context.Context, tx pgx.Tx, invite, token string) error {
+	payload, err := json.Marshal(Payload{Token: token})
+	if err != nil {
+		return fmt.Errorf("queue invite %s: %w", invite, err)
+	}
+	if _, err := tx.Exec(ctx, "INSERT INTO outbox_events (kind, invite_id, payload) VALUES ($1, $2, $3)", Invite, invite,
+		payload); err != nil {
+		return fmt.Errorf("queue invite %s: %w", invite, err)
 	}
 	return nil
 }

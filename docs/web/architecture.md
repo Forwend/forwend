@@ -42,6 +42,13 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   - Signing in again replaces the browser's Privy session; its other tabs share the new one (measured 2026-10-25).
 - Pages, the app shell and the dashboard look as [DESIGN.md](DESIGN.md) says. Wiring behind them:
   - Navigation comes from one `APP_NAV`; switching profile opens the new profile's `/app` (R-76).
+  - Each page names the permission it needs; `GET /v1/me` lists each profile's permissions (D-93).
+  - `screens/app-shell/lib/app-nav.ts` hides the pages a role can't use; the shell, ⌘K and the bell skip its polls.
+  - The invoice pages take token symbols and decimals from `GET /tokens`, which every role reads, not the balances.
+  - A role change or removal on the Team page reads `/v1/me` again, so an Admin who changed themselves sees what is left.
+  - A hidden page's address opens the role's first page instead. The API refuses those requests anyway.
+  - `/invite/<token>` (R-139) sits in the `(app)` group for Privy, outside `/app`: the invited user may have no account.
+  - It calls `POST /v1/me` first, so accepting finds the account, then opens the team's profile in `/app`.
   - Receive's choice is keyed by chain family (`features/receive/lib/receive-choice.ts`), so non-EVM families fit
     later; the address never shows without its exact network and token warning.
   - Balances and activity are read again every 15 s while the tab is visible and when it comes back. Money sent
@@ -85,6 +92,7 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   - invoices: the store a merchant invoice records, its return-link origins and the brand color's pattern (R-134, R-135).
   - pay: the logo's address (R-135).
 - invoices → profiles and stores → profiles: the token switches and their types (R-136).
+- Team (R-139) leads to profiles (roles, permissions and the profile list) and to stores (the store names it offers).
 - Checkout `/pay/<token>` (R-45) sits outside the `(app)` group: no Privy, no sign-in, `noindex`. A malformed token
   (an on-chain id too, D-86) is a 404; a token the API does not know shows the 404 page. It reads the public
   `GET /v1/invoices/{payToken}` every 15 s through a

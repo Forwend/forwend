@@ -7,14 +7,56 @@ import {
   NOTIFICATIONS_COPY,
   TOKENS_COPY,
 } from "@/features/profiles/constants/profiles-copy";
-import type { ProfileKind } from "@/features/profiles/types/profile";
+import { can } from "@/features/profiles/lib/profile";
+import type { Profile, ProfileKind } from "@/features/profiles/types/profile";
 import { STORES_COPY } from "@/features/stores/constants/stores-copy";
-import { APP_NAV, NAV } from "@/screens/app-shell/constants/app-nav";
-import type { Crumb } from "@/screens/app-shell/types/app-nav";
+import { TEAM_COPY } from "@/features/team/constants/team-copy";
+import { APP_NAV, MENU_PAGES, NAV } from "@/screens/app-shell/constants/app-nav";
+import type { Crumb, NavGroup, NavItem } from "@/screens/app-shell/types/app-nav";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 export function isCurrentPage(pathname: string, href: string): boolean {
   return pathname === href || (href !== APP_ROUTES.home && pathname.startsWith(`${href}/`));
+}
+
+/** The profile's sidebar with only the pages its role can use (D-93); a group left empty goes. */
+export function navFor(profile: Profile): NavGroup[] {
+  return APP_NAV[profile.kind]
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.permission || can(profile, item.permission)),
+    }))
+    .filter((group) => group.items.length > 0);
+}
+
+/** Whether the profile's role can use the page at pathname, by the most specific page that holds it. Every profile
+ *  kind's pages count, so another kind's page is checked too; a page no list names is open to every role. */
+export function pageAllowed(profile: Profile, pathname: string): boolean {
+  const pages: readonly Pick<NavItem, "href" | "permission">[] = [
+    ...Object.values(NAV),
+    ...MENU_PAGES,
+  ];
+  const page = pages
+    .filter((item) => item.href && isCurrentPage(pathname, item.href))
+    .sort((a, b) => (b.href?.length ?? 0) - (a.href?.length ?? 0))[0];
+  return !page?.permission || can(profile, page.permission);
+}
+
+/** The account menu's pages for the profile: the email setting is the owner's, and only a merchant has a team. */
+export function accountLinks(profile: Profile): { notifications: boolean; team: boolean } {
+  return {
+    notifications: pageAllowed(profile, APP_ROUTES.notifications),
+    team: profile.kind === PROFILE_KINDS.merchant && pageAllowed(profile, APP_ROUTES.team),
+  };
+}
+
+/** Where a role that can't open a page lands instead: the first sidebar page it can use. */
+export function firstPage(profile: Profile): string {
+  return (
+    navFor(profile)
+      .flatMap((group) => group.items)
+      .find((item) => item.href)?.href ?? APP_ROUTES.networks
+  );
 }
 
 /** The trail after the profile; on an invoice's page it stops at Invoices and returns the invoice's id to name. */
@@ -33,6 +75,9 @@ export function breadcrumb(
   }
   if (pathname === APP_ROUTES.networks) {
     return { trail: [{ label: TOKENS_COPY.title, href: APP_ROUTES.networks }], invoiceId: null };
+  }
+  if (pathname === APP_ROUTES.team) {
+    return { trail: [{ label: TEAM_COPY.title, href: APP_ROUTES.team }], invoiceId: null };
   }
   if (pathname === APP_ROUTES.billingDetails) {
     return {

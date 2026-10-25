@@ -18,4 +18,5 @@ export const APP_ROUTES = {
   billingDetails: "/app/billing-details",
   notifications: "/app/notifications",
   networks: "/app/networks",
+  team: "/app/team",
 } as const;

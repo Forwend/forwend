@@ -1,7 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import { sidewaysScroll } from "../sideways";
 import { blockingViolations } from "./axe";
-import { SETTLED_INVOICE, TRANSFERS } from "./sample-api";
+import { OWNER, SETTLED_INVOICE, TRANSFERS } from "./sample-api";
 import { session } from "./session";
 
 // R-50. The mock's POST /v1/me/onboarding adds the profiles the choices need, as the backend does.
@@ -14,6 +14,7 @@ const newProfile = (profileId: string, kind: string) => ({
   name: null,
   walletAddress: `0x${profileId.slice(0, 1).repeat(40)}`,
   createdAt: "2026-10-11T00:00:00Z",
+  ...OWNER,
 });
 interface NewUser {
   onboardedAt: string | null;

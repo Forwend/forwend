@@ -11,6 +11,36 @@ export const PROFILE_KIND_LABELS = {
   [PROFILE_KINDS.merchant]: "Merchant",
 } as const;
 
+/** The signed-in user's role on a profile (R-138); the owner has every permission. */
+export const ROLES = {
+  owner: "owner",
+  admin: "admin",
+  developer: "developer",
+  finance: "finance",
+} as const;
+
+export const ROLE_LABELS = {
+  [ROLES.owner]: "Owner",
+  [ROLES.admin]: "Admin",
+  [ROLES.developer]: "Developer",
+  [ROLES.finance]: "Finance",
+} as const;
+
+/** What a role may do, as GET /v1/me lists it for each profile (D-93); the app shows only what its role can use. */
+export const PERMISSIONS = {
+  invoicesRead: "invoices.read",
+  storesRead: "stores.read",
+  storesWrite: "stores.write",
+  clientsRead: "clients.read",
+  moneyRead: "money.read",
+  billingRead: "billing.read",
+  tokensRead: "tokens.read",
+  jobs: "jobs",
+  notifications: "notifications",
+  team: "team",
+  leave: "team.leave",
+} as const;
+
 /** ?then= on the billing details page: where saving them leads instead of home (R-92). */
 export const BILLING_THEN = {
   param: "then",

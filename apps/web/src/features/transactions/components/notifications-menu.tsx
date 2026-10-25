@@ -46,6 +46,8 @@ function readSeen(profileId: string): number {
 
 export interface NotificationsMenuProps {
   profileId: string;
+  /** Whether the profile's role reads its transactions (D-93); without, only the invoice events show. */
+  transfers: boolean;
   className?: string;
 }
 
@@ -57,8 +59,11 @@ const EVENT_LOOK = {
 } as const;
 
 // "New" means since the menu was last opened, remembered per profile in this browser.
-export function NotificationsMenu({ profileId, className }: NotificationsMenuProps) {
-  const list = useGetTransactionsQuery({ profileId, limit: 20 }, LIVE_QUERY);
+export function NotificationsMenu({ profileId, transfers, className }: NotificationsMenuProps) {
+  const list = useGetTransactionsQuery(
+    { profileId, limit: 20 },
+    { ...LIVE_QUERY, skip: !transfers },
+  );
   const events = useGetInvoiceEventsQuery(profileId, LIVE_QUERY);
   // currentData: after a profile switch, never the last profile's transfers or events.
   const rows = [

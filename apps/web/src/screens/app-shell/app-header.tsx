@@ -17,10 +17,11 @@ import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { useGetProfileInvoiceQuery } from "@/features/invoices/api/invoices-api";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
-import { profileLabel } from "@/features/profiles/lib/profile";
+import { PERMISSIONS } from "@/features/profiles/constants/profile";
+import { can, profileLabel } from "@/features/profiles/lib/profile";
 import type { Profile } from "@/features/profiles/types/profile";
 import { NotificationsMenu } from "@/features/transactions/components/notifications-menu";
-import { breadcrumb } from "@/screens/app-shell/lib/app-nav";
+import { accountLinks, breadcrumb } from "@/screens/app-shell/lib/app-nav";
 import type { Crumb } from "@/screens/app-shell/types/app-nav";
 import { APP_ROUTES } from "@/shared/config/routes";
 
@@ -61,12 +62,14 @@ export function AppHeader({
   onToggleCollapsed,
 }: AppHeaderProps) {
   const CollapseIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
+  const money = can(active, PERMISSIONS.moneyRead);
   return (
     <header className="sticky top-0 z-[var(--fw-z-nav)] flex min-h-16 items-center gap-3 border-b border-line bg-surface fw-safe-x pt-[env(safe-area-inset-top)]">
       <div className="lg:hidden">
         <AccountMenu
           email={email}
           onSignOut={onSignOut}
+          links={accountLinks(active)}
           side="bottom"
           trigger={
             <IconButton label={`${AUTH_COPY.account}: ${email}`} size="md">
@@ -103,7 +106,7 @@ export function AppHeader({
         </kbd>
       </button>
 
-      <NotificationsMenu profileId={active.profileId} />
+      <NotificationsMenu profileId={active.profileId} transfers={money} />
 
       <div className="hidden items-center gap-2 border-l border-line pl-3 lg:flex">
         <Tooltip content={BALANCES_COPY.comingSoon} side="bottom">
@@ -113,10 +116,12 @@ export function AppHeader({
             <span className="sr-only">: {BALANCES_COPY.sendSoon}</span>
           </Button>
         </Tooltip>
-        <Button onClick={onReceive}>
-          <ArrowDownLeft aria-hidden className="size-[var(--fw-icon-sm)]" />
-          {BALANCES_COPY.receive}
-        </Button>
+        {money ? (
+          <Button onClick={onReceive}>
+            <ArrowDownLeft aria-hidden className="size-[var(--fw-icon-sm)]" />
+            {BALANCES_COPY.receive}
+          </Button>
+        ) : null}
       </div>
     </header>
   );

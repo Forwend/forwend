@@ -9,8 +9,8 @@ import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { BILLING_DETAILS_COPY, PROFILES_COPY } from "@/features/profiles/constants/profiles-copy";
 import { profileLabel } from "@/features/profiles/lib/profile";
 import type { Profile } from "@/features/profiles/types/profile";
-import { APP_NAV, NAV } from "@/screens/app-shell/constants/app-nav";
-import { isCurrentPage } from "@/screens/app-shell/lib/app-nav";
+import { NAV } from "@/screens/app-shell/constants/app-nav";
+import { isCurrentPage, navFor, pageAllowed } from "@/screens/app-shell/lib/app-nav";
 import { DESKTOP_QUERY } from "@/shared/config/breakpoints";
 import { APP_ROUTES } from "@/shared/config/routes";
 
@@ -37,8 +37,9 @@ export interface PhoneTabBarProps {
 
 export function PhoneTabBar({ pathname, active, onProfiles }: PhoneTabBarProps) {
   const [open, setOpen] = useState(false);
-  const primary = TABS.some(({ href }) => isCurrentPage(pathname, href));
-  const items = APP_NAV[active.kind].map((group) => ({
+  const tabs = TABS.filter(({ href }) => pageAllowed(active, href));
+  const primary = tabs.some(({ href }) => isCurrentPage(pathname, href));
+  const items = navFor(active).map((group) => ({
     ...group,
     items: group.items.filter((item) => !TABS.some((tab) => tab.href === item.href)),
   }));
@@ -67,7 +68,7 @@ export function PhoneTabBar({ pathname, active, onProfiles }: PhoneTabBarProps) 
         className="fixed inset-x-0 bottom-0 z-[var(--fw-z-nav)] border-t border-line bg-surface pl-[max(.5rem,env(safe-area-inset-left))] pr-[max(.5rem,env(safe-area-inset-right))] pt-2 pb-[calc(.5rem+env(safe-area-inset-bottom,0px))] lg:hidden"
       >
         <ul className="mx-auto grid max-w-lg grid-cols-4 gap-1">
-          {TABS.map(({ href, label, icon: Icon }) => {
+          {tabs.map(({ href, label, icon: Icon }) => {
             const current = isCurrentPage(pathname, href);
             return (
               <li key={href} className="grid min-w-0">
@@ -120,7 +121,8 @@ export function PhoneTabBar({ pathname, active, onProfiles }: PhoneTabBarProps) 
               </span>
               <ChevronsUpDown aria-hidden className="size-5 shrink-0 text-muted" />
             </button>
-            {active.kind !== PROFILE_KINDS.personal ? (
+            {active.kind !== PROFILE_KINDS.personal &&
+            pageAllowed(active, APP_ROUTES.billingDetails) ? (
               <Link {...pageLink(APP_ROUTES.billingDetails)}>
                 <span className={ROW_ICON}>
                   <ReceiptText aria-hidden className="size-5" />
