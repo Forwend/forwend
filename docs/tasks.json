@@ -906,7 +906,7 @@
         "R-146, api.md and openapi.yaml describe it; required checks pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -991,11 +991,18 @@
           "summary": "Re-review: all three earlier blockers are fixed, and mutants now die. 1) Fresh sign-in: changing the three g.FreshSignIn to g.Can in webhookapi/routes.go fails TestWebhookEndpoints (webhooks_test.go:71: PUT 200, GET secret 200, rotate 201 with an old sign-in). 2) 503: removing the ErrNotConfigured case in httpio/errors.go fails TestWebhooksWithoutAKey (webhooks_test.go:161, 500 on all three routes). 3) address.go: each check dropped alone fails the refused-URL list (webhooks_test.go:51): the numeric last label (2130706433, 127.1, 0x7f000001, 0177.0.0.1, 0), the ASCII check (fullwidth localhost), the 64:ff9b::/96 prefix and the lowercase https:// prefix (HTTPS:// gave 500). Moving the Rotate read after commit fails the other-key check (count 3, want 2). Probes of checkURL: refused local%68ost, %30, 127.0.0.1., localhost.., foo.local.., 0x7f.1, 1.0X1, a.b.c.123, [::ffff:10.0.0.1], [FE80::1], and metadata.google.internal. with a trailing dot. Allowed example.com, xn-- names, 8.8.8.8 and 2606:4700::1111. The unique index webhook_secrets_current holds one current secret per endpoint. api.md and openapi now say 503 covers only save, reveal and rotate. Every new doc sentence is 25 words or fewer. Non-blocking: (a) PROJECT.md R-146 still says 'Without the key, the routes answer 503'; list and delete still work, as api.md says. (b) address.go TrimSuffix(host, \".\") only lets example.com. through: without it, the empty last label is refused anyway, so no test covers it. Keep it or drop it, both are safe. (c) A stray blank line at webhooks_test.go:147. (d) For F305: PublicAddr allows Teredo 2001::/32 and DNS-only names such as home.arpa. Check the dialed address in Dialer.Control. (e) For F304/F305: the ON DELETE CASCADE hard delete loses delivery records (D-42). Ran: go test ./internal/httpapi/tests -run 'TestWebhook|TestProfileRoutesAreAllListed|TestProfilesBelongToTheirUser|TestUserRateLimit' (pass); go vet ./internal/webhook ./internal/httpapi/... (ok); gofmt -l (clean); 7 overlay mutants (all killed except the trailing-dot strip, see b); overlay checkURL and PublicAddr probes; harness status showed verified (verify passed, run started 20:00:17Z).",
           "at": "2026-10-25T20:08:13Z",
           "filesHash": "64397cf42c4797c9"
-        }
+        },
+        "commit": "b0ea3d1",
+        "doneAt": "2026-10-25T20:08:46Z"
       },
       "branch": "feat/f303-an-owner-adds-webhook-endpoints-with-enc",
       "baseCommit": "27f68862cec9232a1813aed60112262152caab54",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f303-an-owner-adds-webhook-endpoints-with-enc",
+        "base": "main"
+      }
     },
     {
       "id": "F304",
