@@ -91,7 +91,18 @@ func (s *Service) attempt(ctx context.Context, client *http.Client, body Body, d
 		if err != nil {
 			return err
 		}
-		b, err := body(ctx, e)
+		var b []byte
+		if e.Type == Test {
+			b, err = json.Marshal(struct {
+				ID        string   `json:"id"`
+				Type      string   `json:"type"`
+				Livemode  bool     `json:"livemode"`
+				Timestamp string   `json:"timestamp"`
+				Data      struct{} `json:"data"`
+			}{ID: e.ID, Type: e.Type, Livemode: e.Livemode, Timestamp: e.CreatedAt.UTC().Format(time.RFC3339)})
+		} else {
+			b, err = body(ctx, e)
+		}
 		if err != nil {
 			return fmt.Errorf("build webhook event %s: %w", d.eventID, err)
 		}

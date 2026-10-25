@@ -223,6 +223,12 @@ var profileRoutes = []struct{ method, path, body string }{
 	{"DELETE", "/v1/profiles/%s/webhooks/00000000-0000-4000-8000-000000000000", ""},
 	{"GET", "/v1/profiles/%s/webhooks/00000000-0000-4000-8000-000000000000/secret", ""},
 	{"POST", "/v1/profiles/%s/webhooks/00000000-0000-4000-8000-000000000000/secret/rotate", ""},
+	{"GET", "/v1/profiles/%s/webhooks/00000000-0000-4000-8000-000000000000/deliveries", ""},
+	{"POST", "/v1/profiles/%s/webhooks/00000000-0000-4000-8000-000000000000/deliveries/evt_" + strings.Repeat("0", 32) +
+		"/resend", ""},
+	{"POST", "/v1/profiles/%s/webhooks/00000000-0000-4000-8000-000000000000/deliveries/resend-failed",
+		`{"since": "2026-01-01T00:00:00Z"}`},
+	{"POST", "/v1/profiles/%s/webhooks/00000000-0000-4000-8000-000000000000/test", ""},
 	{"PUT", "/v1/profiles/%s/stores/" + storeA + "/logo", ""},
 	{"DELETE", "/v1/profiles/%s/stores/" + storeA + "/logo", ""},
 	{"POST", "/v1/profiles/%s/invoices/0x" + strings.Repeat("0", 64) + "/send", ""},

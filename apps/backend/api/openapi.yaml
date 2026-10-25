@@ -2120,6 +2120,105 @@ paths:
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
         "503": { $ref: "#/components/responses/WebhooksNotConfigured" }
+  /v1/profiles/{profileId}/webhooks/{endpointId}/deliveries:
+    get:
+      operationId: listWebhookDeliveries
+      summary: The endpoint's 50 newest deliveries, each with every attempt (R-149)
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/EndpointId"
+      responses:
+        "200":
+          description: The deliveries, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deliveries]
+                properties:
+                  deliveries:
+                    type: array
+                    items: { $ref: "#/components/schemas/WebhookDelivery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/EndpointNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/webhooks/{endpointId}/deliveries/{eventId}/resend:
+    post:
+      operationId: resendWebhookDelivery
+      summary: Send a delivery again from a first attempt, with its first body (R-149)
+      description: It waits while the endpoint is off.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/EndpointId"
+        - name: eventId
+          in: path
+          required: true
+          schema: { type: string, pattern: "^evt_[0-9a-f]{32}$" }
+      responses:
+        "204": { description: Queued }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/DeliveryNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/webhooks/{endpointId}/deliveries/resend-failed:
+    post:
+      operationId: resendFailedWebhookDeliveries
+      summary: Send again every delivery to the endpoint that failed since a time (R-149)
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/EndpointId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [since]
+              properties:
+                since: { type: string, format: date-time }
+      responses:
+        "200":
+          description: How many go again
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [resent]
+                properties:
+                  resent: { type: integer, minimum: 0 }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/EndpointNotFound" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/webhooks/{endpointId}/test:
+    post:
+      operationId: sendWebhookTestEvent
+      summary: Queue a webhook.test event for this endpoint alone (R-149)
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/EndpointId"
+      responses:
+        "201":
+          description: Queued; it waits while the endpoint is off
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [eventId]
+                properties:
+                  eventId: { type: string, pattern: "^evt_[0-9a-f]{32}$" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/EndpointNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
 webhooks:
   invoiceEvent:
     post:
@@ -2133,6 +2232,17 @@ webhooks:
         content:
           application/json:
             schema: { $ref: "#/components/schemas/WebhookEvent" }
+      responses:
+        "200": { description: Taken }
+  testEvent:
+    post:
+      operationId: webhookTestEvent
+      summary: The owner's check of an endpoint, sent to it alone (R-149)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WebhookTestEvent" }
       responses:
         "200": { description: Taken }
 components:
@@ -2352,6 +2462,42 @@ components:
                       type: string
                       enum: [overpaid, late, expired, canceled, other_option]
                     optionId: { type: [string, "null"], description: "The option it is on, on a payer-chooses invoice." }
+    WebhookTestEvent:
+      type: object
+      required: [id, type, livemode, timestamp, data]
+      properties:
+        id: { type: string, pattern: "^evt_[0-9a-f]{32}$" }
+        type: { type: string, enum: [webhook.test] }
+        livemode: { type: boolean }
+        timestamp: { type: string, format: date-time }
+        data: { type: object, additionalProperties: false, description: Empty. }
+    WebhookDelivery:
+      type: object
+      required: [eventId, type, invoiceId, number, status, nextAttemptAt, createdAt, attempts]
+      properties:
+        eventId: { type: string, pattern: "^evt_[0-9a-f]{32}$" }
+        type:
+          type: string
+          enum: [invoice.detected, invoice.partially_paid, invoice.paid, invoice.settled, invoice.expired, invoice.canceled, invoice.held, webhook.test]
+        invoiceId: { type: [string, "null"], description: Null for a test event. }
+        number:
+          type: [integer, "null"]
+          minimum: 1
+          description: The invoice's; null for a test event and a link invoice before its first deposit.
+        status: { type: string, enum: [pending, succeeded, failed] }
+        nextAttemptAt: { type: [string, "null"], format: date-time, description: Set only while pending. }
+        createdAt: { type: string, format: date-time }
+        attempts:
+          type: array
+          description: Oldest first.
+          items:
+            type: object
+            required: [at, statusCode, error, durationMs]
+            properties:
+              at: { type: string, format: date-time }
+              statusCode: { type: [integer, "null"], description: Null when no answer came. }
+              error: { type: [string, "null"], description: "A short reason, never the URL." }
+              durationMs: { type: integer, minimum: 0 }
     WebhookSecrets:
       type: object
       required: [secrets]
@@ -3722,7 +3868,7 @@ components:
                 invoice_not_cancelable, invoice_not_editable, invoice_not_reopenable, receipt_sent, client_email_required, invoice_closed, due_date_required,
                 reminders_stopped, member_not_found, invite_not_found, invite_for_another_email, already_on_team,
                 link_not_found, personal_profile, link_off, link_ended, link_full, invalid_api_key, key_not_found,
-                endpoint_not_found, webhooks_not_configured,
+                endpoint_not_found, webhooks_not_configured, delivery_not_found,
                 invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
             message: { type: string }
   responses:
@@ -3856,6 +4002,11 @@ components:
                 items: { $ref: "#/components/schemas/TokenSwitch" }
     LogoNotFound:
       description: No store with this id has a logo (logo_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    DeliveryNotFound:
+      description: This endpoint has no delivery of that event (delivery_not_found)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

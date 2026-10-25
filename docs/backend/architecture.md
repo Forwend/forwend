@@ -171,6 +171,7 @@ with a test.
   - Events are append-only. The key `(invoice_id, sequence)` stops two writers that skip the invoice's lock.
 - A delivery also keeps `status`, `attempts`, `next_attempt_at` and the `body` first sent (R-148).
   - `webhook_attempts(endpoint_id, event_id, status_code, error, duration_ms)` logs each attempt.
+  - A `webhook.test` event (R-149) has no history row, invoice or sequence; a check ties those to its type.
   - `outbox_events.endpoint_id` names the endpoint of a `webhook.disabled` email.
 - `profile_invites(profile_id, email, role, stores, token_hash, expires_at, accepted_at, revoked_at)` (R-139).
   - `token_hash` is the SHA-256 of the link's token; the token itself is never kept here.

@@ -244,6 +244,14 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - After it saves, a dialog shows the key's text once, with Copy focused and Done.
   - A key's More actions menu holds Roll, with an overlap select, and Revoke, which confirms.
   - Roll ends on the new key's text, shown once; a rolled key shows when it stops and offers only Revoke.
+  - Webhooks (R-149) follows for owners and Admins: a heading with an intro line, then a panel of endpoint rows.
+  - Its row: the description, then the host and path, the store and the events. Off and Test mode badges.
+  - The row never shows the URL's query, which may hold the receiver's token.
+  - New endpoint is a dialog: URL, Description, a Store select for a merchant, event checkboxes and a Send events switch.
+  - An endpoint's More actions menu holds Deliveries, Edit, Turn on or off, Signing secret, Rotate secret and Delete.
+  - Signing secret shows the secrets with Copy, the old one with when it stops. Rotate and Delete confirm first.
+  - Deliveries is a sheet: Send test event, a window select with Resend failed, then the newest deliveries.
+  - A delivery row: the event and its invoice number, when, a status badge, Resend, and its attempts in a disclosure.
 - Team (R-139) opens from the account menu, after Networks and tokens, for a merchant profile's owner and members.
   - It is laid out like Networks and tokens: an intro line, then panels.
   - An Admin sees Members, then Open invites, each a panel of rows with the email, its stores and a role badge.

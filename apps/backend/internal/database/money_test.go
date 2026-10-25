@@ -208,6 +208,28 @@ func TestWebhookEventsAreAppendOnly(t *testing.T) {
 	wantCode(t, err, codeRaise, "DELETE in replica mode")
 }
 
+// R-149: only a test event lacks a history row, invoice and sequence; an invoice event has all three.
+func TestWebhookEventsNameTheirInvoice(t *testing.T) {
+	conn, profile := moneyDB(t)
+	ctx := context.Background()
+	must(t, insertInvoice(conn, profile, 1, hex20(100), "key-1", "5000000"))
+	insert := func(history, invoice, sequence any, kind string) error {
+		_, err := conn.Exec(ctx, `INSERT INTO webhook_events (history_id, profile_id, invoice_id, type, livemode, sequence)
+			VALUES ($1, $2, $3, $4, false, $5)`, history, profile, invoice, kind, sequence)
+		return err
+	}
+	must(t, insert(1, hex32(1), 1, "invoice.paid"))
+	must(t, insert(nil, nil, nil, "webhook.test"))
+	for what, err := range map[string]error{
+		"an invoice event with no invoice":     insert(2, nil, 2, "invoice.paid"),
+		"an invoice event with no history row": insert(nil, hex32(1), 3, "invoice.paid"),
+		"an invoice event with no sequence":    insert(4, hex32(1), nil, "invoice.paid"),
+		"a test event with an invoice":         insert(nil, hex32(1), nil, "webhook.test"),
+	} {
+		wantCode(t, err, codeCheck, what)
+	}
+}
+
 func TestLedgerTransactionsBalance(t *testing.T) {
 	conn, profile := moneyDB(t)
 	ctx := context.Background()

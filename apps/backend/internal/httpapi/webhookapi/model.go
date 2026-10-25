@@ -56,3 +56,43 @@ func toSecretsJSON(list []webhook.Secret) secretsJSON {
 	}
 	return out
 }
+
+// R-149: nextAttemptAt is null unless pending; statusCode is null when no answer came.
+type deliveryJSON struct {
+	EventID       string        `json:"eventId"`
+	Type          string        `json:"type"`
+	InvoiceID     *string       `json:"invoiceId"` // null for a test event
+	Number        *int64        `json:"number"`
+	Status        string        `json:"status"`
+	NextAttemptAt *string       `json:"nextAttemptAt"`
+	CreatedAt     string        `json:"createdAt"`
+	Attempts      []attemptJSON `json:"attempts"`
+}
+
+type attemptJSON struct {
+	At         string  `json:"at"`
+	StatusCode *int    `json:"statusCode"`
+	Error      *string `json:"error"`
+	DurationMS int64   `json:"durationMs"`
+}
+
+func toDeliveryJSON(d webhook.Delivery) deliveryJSON {
+	out := deliveryJSON{EventID: d.EventID, Type: d.Type, InvoiceID: httpio.OrNull(d.InvoiceID), Number: d.Number,
+		Status: d.Status, CreatedAt: d.CreatedAt.UTC().Format(time.RFC3339), Attempts: []attemptJSON{}}
+	if d.Status == "pending" {
+		out.NextAttemptAt = httpio.OrNullTime(d.NextAttemptAt.UTC())
+	}
+	for _, a := range d.Attempts {
+		j := attemptJSON{At: a.At.UTC().Format(time.RFC3339), Error: httpio.OrNull(a.Error),
+			DurationMS: a.Duration.Milliseconds()}
+		if a.StatusCode != 0 {
+			j.StatusCode = &a.StatusCode
+		}
+		out.Attempts = append(out.Attempts, j)
+	}
+	return out
+}
+
+type resendFailedBody struct {
+	Since string `json:"since"`
+}

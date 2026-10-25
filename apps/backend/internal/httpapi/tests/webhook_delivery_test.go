@@ -348,3 +348,99 @@ func TestAHostileAnswerIsLogged(t *testing.T) {
 		t.Fatalf("attempts %q, want the one failure logged", got)
 	}
 }
+
+// R-149: the owner reads an endpoint's deliveries with their attempts, resends one, sends a test event, and resends
+// every failed one since a time.
+func TestOwnerResendsAndTestsDeliveries(t *testing.T) {
+	h := newHookEnv(t)
+	const alice = "did:privy:alice"
+	hook := "/v1/profiles/" + h.shop + "/webhooks/" + h.endpoint
+	event := h.canceled(t, "key-1")
+	h.exec(t, "UPDATE webhook_deliveries SET attempts = $1", len(webhook.Retries))
+	h.recv.answer(http.StatusInternalServerError)
+	h.deliver(t)
+
+	r := h.call(t, "GET", hook+"/deliveries", alice, "", "")
+	list, _ := r.body["deliveries"].([]any)
+	if r.status != http.StatusOK || len(list) != 1 {
+		t.Fatalf("deliveries: %d %v", r.status, r.body)
+	}
+	d := list[0].(map[string]any)
+	attempts, _ := d["attempts"].([]any)
+	if d["eventId"] != event || d["type"] != "invoice.canceled" || d["invoiceId"] == nil || d["number"] != float64(1) ||
+		d["status"] != "failed" || d["nextAttemptAt"] != nil || len(attempts) != 1 ||
+		attempts[0].(map[string]any)["statusCode"] != float64(500) || attempts[0].(map[string]any)["error"] != nil {
+		t.Fatalf("the failed delivery: %v", d)
+	}
+
+	// A resend starts again from a first attempt; it waits while the endpoint is off, as its last failure left it.
+	if r := h.call(t, "POST", hook+"/deliveries/"+event+"/resend", alice, "", ""); r.status != http.StatusNoContent {
+		t.Fatalf("resend: %d %v", r.status, r.body)
+	}
+	if state, next := h.delivery(t, h.endpoint, event); state != "pending 0" || next > time.Second {
+		t.Fatalf("after the resend: %s, next in %v", state, next)
+	}
+	h.exec(t, "UPDATE webhook_endpoints SET enabled = true")
+	h.recv.answer(http.StatusOK)
+	r = h.call(t, "POST", hook+"/test", alice, "", "")
+	test, _ := r.body["eventId"].(string)
+	if r.status != http.StatusCreated || test == "" {
+		t.Fatalf("test event: %d %v", r.status, r.body)
+	}
+	h.deliver(t)
+	// The resend and the test event go in the same round, in either order.
+	i := slices.IndexFunc(h.recv.got, func(req *http.Request) bool { return req.Header.Get("webhook-id") == test })
+	if n := h.recv.requests(); n != 3 || i < 0 {
+		t.Fatalf("%d requests, the test event's at %d", n, i)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(h.recv.body[i], &body); err != nil {
+		t.Fatal(err)
+	}
+	if body["id"] != test || body["type"] != "webhook.test" || body["livemode"] != false ||
+		len(body["data"].(map[string]any)) != 0 || !signedBy(h.secrets(t)[0], h.recv.got[i], h.recv.body[i]) {
+		t.Fatalf("the test event's body %v", body)
+	}
+	list, _ = h.call(t, "GET", hook+"/deliveries", alice, "", "").body["deliveries"].([]any)
+	if len(list) != 2 || list[0].(map[string]any)["type"] != "webhook.test" || list[0].(map[string]any)["invoiceId"] != nil ||
+		list[0].(map[string]any)["status"] != "succeeded" || list[1].(map[string]any)["status"] != "succeeded" {
+		t.Fatalf("deliveries, newest first: %v", list)
+	}
+
+	// Only the ones that failed since the time go again, however old: one made long ago failed just now.
+	before, after := h.canceled(t, "key-2"), h.canceled(t, "key-3")
+	h.exec(t, "UPDATE webhook_deliveries SET status = 'failed', updated_at = now() - interval '2 hours' WHERE event_id = $1",
+		before)
+	h.exec(t, "UPDATE webhook_deliveries SET status = 'failed', created_at = now() - interval '3 days' WHERE event_id = $1",
+		after)
+	since := time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)
+	if r := h.call(t, "POST", hook+"/deliveries/resend-failed", alice, "", `{"since": "`+since+`"}`); r.status !=
+		http.StatusOK || r.body["resent"] != float64(1) {
+		t.Fatalf("resend failed: %d %v", r.status, r.body)
+	}
+	for event, want := range map[string]string{before: "failed 0", after: "pending 0"} {
+		if state, _ := h.delivery(t, h.endpoint, event); state != want {
+			t.Errorf("%s: %s, want %s", event, state, want)
+		}
+	}
+
+	for _, c := range []struct {
+		method, path, body, code string
+	}{
+		{"GET", "/v1/profiles/" + h.shop + "/webhooks/dddddddd-0000-4000-8000-00000000000f/deliveries", "", "endpoint_not_found"},
+		{"POST", "/v1/profiles/" + h.shop + "/webhooks/dddddddd-0000-4000-8000-00000000000f/test", "", "endpoint_not_found"},
+		{"POST", hook + "/deliveries/evt_" + strings.Repeat("0", 32) + "/resend", "", "delivery_not_found"},
+		{"POST", hook + "/deliveries/resend-failed", `{"since": "yesterday"}`, "invalid_value"},
+		// Another profile's endpoint is not found from this one.
+		{"POST", "/v1/profiles/" + h.aliceProfile + "/webhooks/" + h.endpoint + "/deliveries/" + event + "/resend", "",
+			"delivery_not_found"},
+		{"GET", "/v1/profiles/" + h.aliceProfile + "/webhooks/" + h.endpoint + "/deliveries", "", "endpoint_not_found"},
+		{"POST", "/v1/profiles/" + h.aliceProfile + "/webhooks/" + h.endpoint + "/test", "", "endpoint_not_found"},
+		{"POST", "/v1/profiles/" + h.aliceProfile + "/webhooks/" + h.endpoint + "/deliveries/resend-failed",
+			`{"since": "2026-01-01T00:00:00Z"}`, "endpoint_not_found"},
+	} {
+		if r := h.call(t, c.method, c.path, alice, "", c.body); errorCode(r) != c.code {
+			t.Errorf("%s %s: %d %v, want %s", c.method, c.path, r.status, r.body, c.code)
+		}
+	}
+}

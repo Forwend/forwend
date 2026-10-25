@@ -1,4 +1,4 @@
-// Package webhookapi serves a profile's webhook endpoints (R-146) of docs/backend/api.md.
+// Package webhookapi serves a profile's webhook endpoints (R-146) and their deliveries (R-149) of docs/backend/api.md.
 package webhookapi
 
 import (
@@ -19,4 +19,12 @@ func Routes(mux *http.ServeMux, g mid.Guards, webhooks *webhook.Service) {
 		g.FreshSignIn(auth.Webhooks)(revealSecrets(webhooks)))
 	mux.Handle("POST /v1/profiles/{profileId}/webhooks/{endpointId}/secret/rotate",
 		g.FreshSignIn(auth.Webhooks)(rotateSecret(webhooks)))
+	// R-149: a resend or test goes only where the endpoint already sends, so it needs no fresh sign-in.
+	mux.Handle("GET /v1/profiles/{profileId}/webhooks/{endpointId}/deliveries",
+		g.Can(auth.Webhooks)(listDeliveries(webhooks)))
+	mux.Handle("POST /v1/profiles/{profileId}/webhooks/{endpointId}/deliveries/{eventId}/resend",
+		g.Can(auth.Webhooks)(resendDelivery(webhooks)))
+	mux.Handle("POST /v1/profiles/{profileId}/webhooks/{endpointId}/deliveries/resend-failed",
+		g.Can(auth.Webhooks)(resendFailed(webhooks)))
+	mux.Handle("POST /v1/profiles/{profileId}/webhooks/{endpointId}/test", g.Can(auth.Webhooks)(sendTest(webhooks)))
 }
