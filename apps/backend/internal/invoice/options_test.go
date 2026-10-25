@@ -40,8 +40,8 @@ func TestCreatePayerChooses(t *testing.T) {
 	if len(inv.Options) != 2 || inv.Options[0].ChainID != 84532 || inv.Options[1].ChainID != 421614 {
 		t.Fatalf("options %+v, want Base Sepolia then Arbitrum Sepolia", inv.Options)
 	}
-	if inv.ID != inv.Options[0].ID || inv.OptionID != inv.ID || inv.OptionLocked || inv.Number != 1 || inv.Title != "Logo" {
-		t.Fatalf("invoice %s option %s locked %v number %d title %q", inv.ID, inv.OptionID, inv.OptionLocked, inv.Number,
+	if inv.ID != inv.Options[0].ID || inv.OptionID != inv.ID || inv.OptionLocked || *inv.Number != 1 || inv.Title != "Logo" {
+		t.Fatalf("invoice %s option %s locked %v number %d title %q", inv.ID, inv.OptionID, inv.OptionLocked, *inv.Number,
 			inv.Title)
 	}
 	for _, o := range inv.Options {
@@ -72,8 +72,8 @@ func TestCreatePayerChooses(t *testing.T) {
 		t.Fatalf("list: %d items, %v", len(page.Items), err)
 	}
 	fixed, _, err := s.Create(ctx, profile, "key-2", Request{ChainID: 84532, Token: usdc, Amount: "5000000"})
-	if err != nil || fixed.Number != 2 || len(fixed.Options) != 1 || fixed.Options[0].ID != fixed.ID {
-		t.Fatalf("fixed: number %d, %d options, %v", fixed.Number, len(fixed.Options), err)
+	if err != nil || *fixed.Number != 2 || len(fixed.Options) != 1 || fixed.Options[0].ID != fixed.ID {
+		t.Fatalf("fixed: number %v, %d options, %v", fixed.Number, len(fixed.Options), err)
 	}
 
 	// The same request again, written another way, is the same invoice; another amount with the key is a conflict.

@@ -93,12 +93,12 @@ func TestCreateLosesTheInsertRaceToTheSameKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	r := <-done
-	if r.err != nil || r.created || r.inv.ID != winner || r.inv.Number != 1 {
+	if r.err != nil || r.created || r.inv.ID != winner || *r.inv.Number != 1 {
 		t.Fatalf("got %+v, want the other request's invoice %s with number 1, not created", r, winner)
 	}
 	next, _, err := NewService(pool).Create(ctx, profile, "key-2", req)
-	if err != nil || next.Number != 2 {
-		t.Fatalf("next invoice: number %d, %v; want 2", next.Number, err)
+	if err != nil || *next.Number != 2 {
+		t.Fatalf("next invoice: number %v, %v; want 2", next.Number, err)
 	}
 }
 
@@ -116,7 +116,9 @@ func TestCreateNumbersInvoicesAtOnce(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			inv, _, err := s.Create(ctx, profile, fmt.Sprintf("key-%d", i), req)
-			numbers[i], errs[i] = inv.Number, err
+			if errs[i] = err; err == nil {
+				numbers[i] = *inv.Number
+			}
 		}()
 	}
 	wg.Wait()
@@ -130,8 +132,8 @@ func TestCreateNumbersInvoicesAtOnce(t *testing.T) {
 		t.Fatalf("numbers %v, want each of %v once", got, want)
 	}
 	again, created, err := s.Create(ctx, profile, "key-3", req)
-	if err != nil || created || again.Number != numbers[3] {
-		t.Fatalf("same key again: number %d, created %v, %v; want %d", again.Number, created, err, numbers[3])
+	if err != nil || created || *again.Number != numbers[3] {
+		t.Fatalf("same key again: number %v, created %v, %v; want %d", again.Number, created, err, numbers[3])
 	}
 }
 

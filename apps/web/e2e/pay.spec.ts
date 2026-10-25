@@ -249,6 +249,15 @@ test.describe("pay page", () => {
     for (const url of scripts) expect(new URL(url).origin, url).toBe(new URL(PUBLIC_URL).origin);
   });
 
+  test("a payment-link invoice before its first deposit shows no number (R-141)", async ({
+    page,
+  }) => {
+    await openPay(page, { ...OPEN, number: null });
+    await expect(page.getByText("Invoice", { exact: true })).toBeVisible();
+    await expect(page.getByText(/INV-/)).toHaveCount(0);
+    await expect(page.locator("[data-money]")).toHaveText("1,250.00 USDC");
+  });
+
   // R-55
   test("Check status says what it found and when the next check is allowed", async ({ page }) => {
     await openPay(page, OPEN);

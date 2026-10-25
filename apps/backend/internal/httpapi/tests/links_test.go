@@ -2,10 +2,14 @@ package tests
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 )
 
 var linkSlug = regexp.MustCompile(`^[a-z0-9]{12}$`)
@@ -163,5 +167,131 @@ func TestPaymentLinksOfAMembersStores(t *testing.T) {
 	links, _ := e.call(t, "GET", "/v1/profiles/"+shop+"/links", dev, "", "").body["links"].([]any)
 	if len(links) != 1 || links[0].(map[string]any)["linkId"] != theirs {
 		t.Errorf("a Developer's links: %v", links)
+	}
+}
+
+// R-141, D-50: a link invoice is its payer's alone until its first deposit gives it the profile's next number.
+func TestLinkInvoiceNumbers(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	const linkID = "cccccccc-0000-4000-8000-000000000001"
+	if r := e.call(t, "PUT", "/v1/profiles/"+e.aliceProfile+"/links/"+linkID, alice, "", `{"title": "Hourly"}`); r.status !=
+		http.StatusCreated {
+		t.Fatalf("PUT link: %d %v", r.status, r.body)
+	}
+	body := `{"chainId": 84532, "token": "` + usdc + `", "amount": "2000000"}`
+	first := e.post(t, alice, e.aliceProfile, "first", body)
+	yesterday := time.Now().UTC().AddDate(0, 0, -1).Format(time.DateOnly)
+	viaLink := func(key string) string {
+		t.Helper()
+		inv, _, err := invoice.NewService(e.pool).Create(t.Context(), e.aliceProfile, key, invoice.Request{ChainID: 84532,
+			Token: usdc, Amount: "2000000", Details: invoice.Details{DueDate: yesterday}, LinkID: linkID})
+		if err != nil || inv.Number != nil {
+			t.Fatalf("a link invoice: number %v, %v", inv.Number, err)
+		}
+		return inv.ID
+	}
+	linked := viaLink("linked")
+	second := e.post(t, alice, e.aliceProfile, "second", body)
+	if first.body["number"] != 1.0 || second.body["number"] != 2.0 {
+		t.Fatalf("numbers %v and %v, want 1 and 2", first.body["number"], second.body["number"])
+	}
+
+	// The payer's pay page and PDF show it without a number.
+	paying := e.get(t, linked)
+	if paying.status != http.StatusOK || paying.body["number"] != nil {
+		t.Fatalf("the payer's read: %d %v", paying.status, paying.body)
+	}
+	pdf := e.pdf(t, linked, "invoice.pdf", "")
+	if got := pdf.header.Get("Content-Disposition"); pdf.status != http.StatusOK ||
+		got != `attachment; filename="forwend-invoice.pdf"` || strings.Contains(pdfText(t, pdf.body), "INV-") {
+		t.Fatalf("the PDF: %d %q", pdf.status, got)
+	}
+	// Money can reach the owner's wallet from its address with no booked deposit: a settle or recover after its
+	// deadline.
+	e.exec(t, `INSERT INTO wallet_transfers (chain_id, chain_family, token_contract, wallet_address, direction,
+		    counterparty, tx_hash, log_index, block_hash, block_number, block_time, amount, status)
+		VALUES (84532, 'evm', $1, $2, 'in', $3, $4, 0, $4, 90, 90, 1000000, 'confirmed')`,
+		usdc, aliceWallet, paying.body["receiveAddress"], "0x"+strings.Repeat("e", 64))
+	// The owner's reads, lists, search, Owed, Activity and Transactions leave it out.
+	owner := "/v1/profiles/" + e.aliceProfile
+	unseen := func(when string) {
+		t.Helper()
+		for _, path := range []string{"/invoices/" + linked, "/invoices/" + linked + "/cancel"} {
+			method := map[bool]string{true: "POST", false: "GET"}[strings.HasSuffix(path, "cancel")]
+			if r := e.call(t, method, owner+path, alice, "", ""); errorCode(r) != "invoice_not_found" {
+				t.Errorf("%s: %s %s: %d %v", when, method, path, r.status, r.body)
+			}
+		}
+		for _, path := range []string{"/invoices", "/invoices?q=" + paying.body["receiveAddress"].(string), "/owed", "/activity",
+			"/transactions"} {
+			if r := e.call(t, "GET", owner+path, alice, "", ""); r.status != http.StatusOK ||
+				strings.Contains(fmt.Sprint(r.body), linked) {
+				t.Errorf("%s: GET %s: %d %v", when, path, r.status, r.body)
+			}
+		}
+		revise := `{"chainId": 84532, "token": "` + usdc + `", "amount": "1", "replaces": "` + linked + `"}`
+		if r := e.post(t, alice, e.aliceProfile, "revise-"+when, revise); errorCode(r) != "invoice_not_found" {
+			t.Errorf("%s: revise it: %d %v", when, r.status, r.body)
+		}
+	}
+	unseen("before money")
+	// A detected deposit is not booked yet.
+	e.exec(t, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
+		    block_hash, block_number, block_time, from_address, to_address, amount, status)
+		SELECT 84532, 'evm', $1, $2, $3, 0, $3, 95, extract(epoch FROM now())::bigint, $4, receive_address, 500000,
+		    'detected' FROM invoices WHERE id = $2`, usdc, linked, "0x"+strings.Repeat("d", 64), aliceWallet)
+	unseen("while detected")
+
+	// Its first booked deposit gives it the next number; later invoices follow it with no gap.
+	e.deposit(t, linked, "1000000")
+	got := e.call(t, "GET", owner+"/invoices/"+linked, alice, "", "")
+	third := e.post(t, alice, e.aliceProfile, "third", body)
+	if got.status != http.StatusOK || got.body["number"] != 3.0 || third.body["number"] != 4.0 {
+		t.Fatalf("after the deposit: %d %v, next %v", got.status, got.body["number"], third.body["number"])
+	}
+	numberedBy := ""
+	for _, h := range got.body["history"].([]any) {
+		if h := h.(map[string]any); h["kind"] == "invoice.numbered" {
+			numberedBy = h["actor"].(string)
+		}
+	}
+	if numberedBy != "system" {
+		t.Errorf("the history: %v", got.body["history"])
+	}
+	list := e.call(t, "GET", owner+"/invoices", alice, "", "")
+	if items, _ := list.body["items"].([]any); len(items) != 4 || items[1].(map[string]any)["invoiceId"] != linked {
+		t.Fatalf("the list: %v", list.body)
+	}
+	if r := e.call(t, "GET", owner+"/owed", alice, "", ""); !strings.Contains(fmt.Sprint(r.body), linked) {
+		t.Errorf("Owed: %v", r.body)
+	}
+	if r := e.get(t, linked); r.body["number"] != 3.0 {
+		t.Errorf("the payer's read: %v", r.body["number"])
+	}
+	// Another link invoice, still without money, doesn't use a number.
+	viaLink("unpaid")
+	if r := e.post(t, alice, e.aliceProfile, "fifth", body); r.body["number"] != 5.0 {
+		t.Errorf("the next number: %v", r.body["number"])
+	}
+	// When the payer picks the token, money on the second option numbers the whole invoice.
+	e.exec(t, `INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
+		VALUES (84532, 'evm', '0x3333333333333333333333333333333333333333', 'EURC', 2, true)`)
+	choosing, _, err := invoice.NewService(e.pool).Create(t.Context(), e.aliceProfile, "choosing",
+		invoice.Request{AmountUSD: "12.5", LinkID: linkID})
+	if err != nil || len(choosing.Options) != 2 || choosing.Options[1].Token != usdc {
+		t.Fatalf("a link invoice the payer picks the token of: %v %v", choosing.Options, err)
+	}
+	e.deposit(t, choosing.Options[1].ID, "1000000")
+	var numbers []*int64
+	if err := e.pool.QueryRow(context.Background(), `SELECT array_agg(number ORDER BY main_id NULLS FIRST)
+		FROM invoices WHERE coalesce(main_id, id) = $1`, choosing.ID).Scan(&numbers); err != nil || len(numbers) != 2 ||
+		numbers[0] == nil || *numbers[0] != 6 || numbers[1] == nil || *numbers[1] != 6 {
+		t.Fatalf("the main row's and its options' numbers: %v %v", numbers, err)
+	}
+	// The number never changes once set.
+	if _, err := e.pool.Exec(context.Background(), "UPDATE invoices SET number = NULL WHERE id = $1", linked); err == nil ||
+		!strings.Contains(err.Error(), "never change") {
+		t.Errorf("clearing the number: %v", err)
 	}
 }

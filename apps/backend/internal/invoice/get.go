@@ -42,6 +42,16 @@ func (s *Service) GetOfProfile(ctx context.Context, profileID, id string) (Invoi
 	return s.get(ctx, profileID, id)
 }
 
+// Unnumbered is true for a link invoice before its first deposit, which only its payer sees (R-141).
+func (s *Service) Unnumbered(ctx context.Context, id string) (bool, error) {
+	var unnumbered bool
+	if err := s.pool.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM invoices WHERE id = lower($1) AND number IS NULL)",
+		id).Scan(&unnumbered); err != nil {
+		return false, fmt.Errorf("read invoice %s number: %w", id, err)
+	}
+	return unnumbered, nil
+}
+
 // get reads any profile's invoice when profileID is "".
 func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error) {
 	id = strings.ToLower(id)

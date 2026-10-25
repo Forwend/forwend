@@ -70,7 +70,8 @@ func NewService(pool *pgxpool.Pool) *Service {
 }
 
 // List's status is "" or one of invoice.StatusFilters: a detected deposit is open, a confirmed one paid, a held
-// one under none. The caller has checked the user's access to the profile.
+// one under none. A link invoice and its deposits show once it has a number (R-141). The caller has checked the
+// user's access to the profile.
 func (s *Service) List(ctx context.Context, profileID, cursor string, limit int, status string, q search.Query) (Page, error) {
 	if limit < 1 || limit > MaxLimit {
 		return Page{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxLimit)
@@ -101,7 +102,7 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 		                     AND s.status = 'confirmed'), '') AS tx_hash, `+invoice.StatusFilterSQL+` AS status_filter,
 		           (SELECT count(*) FROM invoices o WHERE o.id = invoices.id OR o.main_id = invoices.id) AS option_count,
 		           `+invoice.ClosedSQL+` AS closed, false AS held
-		    FROM invoices_current invoices WHERE profile_id = $1
+		    FROM invoices_current invoices WHERE profile_id = $1 AND number IS NOT NULL
 		    UNION ALL
 		    SELECT 'deposit', t.created_at, t.id::text, coalesce(i.main_id, i.id), t.chain_id, t.token_contract, t.amount, t.status,
 		           '', t.tx_hash, CASE WHEN h.held THEN NULL WHEN t.status = 'confirmed' THEN 'paid' ELSE 'open' END, 1, false,
@@ -114,7 +115,7 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 		            AND e.account = 'recipient_payable') OR i.payment_status = 'expired_partially_paid'
 		        ELSE t.block_time > i.closes_at OR i.payment_status IN ('paid', 'expired', 'expired_partially_paid', 'canceled')
 		            OR coalesce(m.chosen_id <> i.id, false) END AS held) h
-		    WHERE i.profile_id = $1 AND t.status <> 'reorged'
+		    WHERE i.profile_id = $1 AND t.status <> 'reorged' AND m.number IS NOT NULL
 		) a JOIN tokens tk ON tk.chain_id = a.chain_id AND tk.contract = a.token
 		WHERE ($2::timestamptz IS NULL OR (at, kind, key) < ($2, $3, $4)) AND ($6::text IS NULL OR status_filter = $6)
 		  AND ($7::text IS NULL OR tx_hash ILIKE $7 OR tk.symbol ILIKE $7 OR amount = $8::numeric * 10::numeric ^ tk.decimals)

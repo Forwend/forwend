@@ -154,8 +154,8 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		if err != nil {
 			return Invoice{}, false, err
 		}
-		// The main row takes the profile's next number and copies its billing details; an option takes the main
-		// row's number (migrations 00008, 00009 and 00020).
+		// The main row takes the profile's next number, or none for a link invoice, and copies its billing details;
+		// an option takes the main row's number (migrations 00008, 00009, 00020 and 00065).
 		details, pay := r.Details, hex.EncodeToString(payToken[:])
 		if mainID != nil {
 			details, pay = Details{}, ""
@@ -171,16 +171,16 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 			    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
 			    request_hash, title, note, due_date, client_name, client_email, client_address, sender_name, return_url,
 			    client_country, client_tax_id, supply_date, reference, agreed_currency, agreed_amount, agreed_decimals,
-			    agreed_date, pay_token, store_id)
+			    agreed_date, pay_token, store_id, link_id)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'evm_create2', $11, $12, $13, $14, NULLIF($15, ''),
 			    NULLIF($16, ''), NULLIF($17, '')::date, NULLIF($18, ''), NULLIF($19, ''), NULLIF($20, ''), NULLIF($21, ''),
 			    NULLIF($22, ''), NULLIF($23, ''), NULLIF($24, ''), NULLIF($25, '')::date, NULLIF($26, ''), $27, $28, $29, $30::date,
-			    NULLIF($31, ''), $32)`,
+			    NULLIF($31, ''), $32, NULLIF($33, '')::uuid)`,
 			hexID(id), mainID, profileID, o.chainID, o.family, o.token, o.amount.String(), expiresAt.Unix(),
 			settleDeadline.Unix(), recipient, hexAddress(address.Factory), receive, idempotencyKey, hash, details.Title,
 			details.Note, details.DueDate, details.ClientName, details.ClientEmail, details.ClientAddress, details.SenderName,
 			details.ReturnURL, details.ClientCountry, details.ClientTaxID, details.SupplyDate, details.Reference,
-			agreedCurrency, agreedAmount, agreedDecimals, agreedDate, pay, storeID)
+			agreedCurrency, agreedAmount, agreedDecimals, agreedDate, pay, storeID, r.LinkID)
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.ConstraintName == "invoices_profile_idempotency_key" {
 			// A concurrent request with the same key won the insert.
@@ -327,13 +327,14 @@ func (s *Service) replay(ctx context.Context, profileID, idempotencyKey string, 
 }
 
 // replace cancels the profile's invoice old for next, made in tx (R-129), and returns what next's created row says.
-// With stores set, an old invoice of another store is not found (R-138).
+// With stores set, an old invoice of another store is not found (R-138); so is one without a number yet (R-141).
 func (s *Service) replace(ctx context.Context, tx pgx.Tx, profileID, old, next string, stores []string) (history.Data,
 	error) {
 	var oldNumber, nextNumber int64
 	var oldStore string
 	err := tx.QueryRow(ctx, `SELECT o.number, n.number, coalesce(o.store_id::text, '') FROM invoices o, invoices n
-		WHERE o.id = $1 AND o.profile_id = $2 AND o.main_id IS NULL AND n.id = $3`, old, profileID, next).
+		WHERE o.id = $1 AND o.profile_id = $2 AND o.main_id IS NULL AND o.number IS NOT NULL AND n.id = $3`, old,
+		profileID, next).
 		Scan(&oldNumber, &nextNumber, &oldStore)
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && stores != nil && !slices.Contains(stores, oldStore)) {
 		return history.Data{}, ErrNotFound

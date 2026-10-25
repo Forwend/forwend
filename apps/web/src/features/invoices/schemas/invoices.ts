@@ -85,7 +85,8 @@ export const invoiceSummarySchema = z.object({
   confirming: z.boolean(),
   // The checkout closed and it can no longer be paid, before paymentStatus catches up: show it expired (R-77).
   closed: z.boolean(),
-  number: z.number().int().positive(),
+  // Null for a payment-link invoice before its first deposit, when only its payer sees it (R-141).
+  number: z.number().int().positive().nullable(),
   title: z.string().nullable(),
   note: z.string().nullable(),
   // YYYY-MM-DD; shown only, payment closes at closesAt.

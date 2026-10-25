@@ -585,7 +585,9 @@ paths:
     get:
       operationId: getProfileInvoice
       summary: Read one of the profile's invoices with its client
-      description: The public GET /v1/invoices/{payToken} plus client. Another profile's invoice is not found here.
+      description: |
+        The public GET /v1/invoices/{payToken} plus client. Another profile's invoice is not found here. Neither is a
+        payment-link invoice before its first deposit, here or on any owner route with an invoiceId (R-141).
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - name: invoiceId
@@ -2984,8 +2986,9 @@ components:
                 newest first. kind is invoice.created, invoice.canceled, payer.email_given, payer.option_chosen,
                 invoice.held, invoice.settlement_queued, invoice.settled, "invoice." and the new payment status,
                 reminders.on, reminders.off, reminders.stopped, repeat.stopped, email.invoice_, email.reminder_ or
-                email.receipt_ and sent or failed (R-126), invoice.edited (R-127), invoice.replaced (R-129) or
-                invoice.reopened (R-130), whose until is the new close.
+                email.receipt_ and sent or failed (R-126), invoice.edited (R-127), invoice.replaced (R-129),
+                invoice.reopened (R-130), whose until is the new close, or invoice.numbered (R-141), when a payment-link
+                invoice took its number with its first deposit.
                 actor system is Forwend. optionId names the option chosen, or the one money is held on, when the payer
                 chooses; amount is the base units held, in that option's token, else the shown option's; txHash is the
                 settle transaction; step is a reminder email's step; field is the edited field, and from and to
@@ -3081,11 +3084,12 @@ components:
             An option received money, so it is the invoice's for good; money sent to any other option is held for the
             payer (D-76).
         number:
-          type: integer
+          type: [integer, "null"]
           minimum: 1
           description: |
             The profile's invoice number, from 1 in creation order, never changed. Clients show it as INV- and at
-            least 4 digits: 1 is INV-0001.
+            least 4 digits: 1 is INV-0001. Null only on the pay page's read of a payment-link invoice before its
+            first deposit (R-141); the owner's reads don't find such an invoice.
         title: { type: [string, "null"] }
         note: { type: [string, "null"] }
         dueDate:

@@ -174,7 +174,8 @@ with a test.
   `settle_deadline` as the contract's uint64 seconds, recipient, factory and receive address, `receive_method` (D-44)),
   separate **payment**, **settlement** and **refund** status columns, `idempotency_key` unique per profile with a
   SHA-256 `request_hash` of the create request. `number` is unique per profile, taken from `profiles.invoice_seq` by
-  the insert trigger (D-50); it and the details (`title`, `client_name`, `client_address`, `client_country`,
+  the insert trigger (D-50). A payment-link invoice has a null `number` until the ledger books its first deposit (R-141).
+  Once set, the number and the details (`title`, `client_name`, `client_address`, `client_country`,
   `client_tax_id`, `supply_date`, and the agreed value's `agreed_currency`, `agreed_amount` in minor units,
   `agreed_decimals` and `agreed_date`, R-93) never change. `client_email`, `return_url` and the owner's `memo` change
   at any time (R-127); `note`, `reference` and `due_date` only before any money (R-128). A saved

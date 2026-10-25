@@ -262,6 +262,12 @@ R-19 and R-42; the full schema is in openapi.yaml.
   `INV-` and at least 4 digits (`INV-0001`). The insert takes it from the profile's counter row (`profiles.invoice_seq`)
   in the invoice's own transaction, so a failed create uses no number and a repeated Idempotency-Key returns the
   stored one.
+- A payment-link invoice gets its `number` when the ledger books its first deposit, in that transaction (R-141).
+  - Until then the pay page's read shows `number: null`, and the PDF has no number.
+  - The owner's routes with an `{invoiceId}` answer 404 `invoice_not_found` for it, as does `replaces`.
+  - The invoice list, search, Owed and Activity leave it out, with its deposits.
+  - Transactions shows money from its address as not from an invoice. The balance's pending still counts its deposits.
+  - Its history gets `invoice.numbered` by `system` when the number comes.
 - Optional create fields: `title` (≤ 200 characters), `note` (≤ 2000), `dueDate` (`YYYY-MM-DD`, shown only; payment
   still closes at `expiresAt`, which the web form sets to the due date plus 60 days, at most 364 days from today, unless
   the owner picks another, D-80), `supplyDate` (`YYYY-MM-DD`, the day the work was done or delivered, R-89; part of the

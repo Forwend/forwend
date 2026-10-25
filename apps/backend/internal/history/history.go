@@ -26,6 +26,7 @@ const (
 	Edited           = "invoice.edited"   // data names the field, never its value (R-127)
 	Replaced         = "invoice.replaced" // canceled by a Revise; data names the new invoice (R-129)
 	Reopened         = "invoice.reopened" // data has the new close in until (R-130)
+	Numbered         = "invoice.numbered" // a link invoice took its number with its first deposit (R-141)
 )
 
 // Emails the worker sent to the client or payer, or gave up on (R-126); a reminder's data has its step.

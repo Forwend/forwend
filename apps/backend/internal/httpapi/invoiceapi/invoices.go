@@ -205,6 +205,21 @@ func stopReminders(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
+// numbered keeps a link invoice from its owner's routes until its first deposit gives it a number (R-141).
+func numbered(invoices *invoice.Service, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		unnumbered, err := invoices.Unnumbered(r.Context(), r.PathValue("invoiceId"))
+		if err == nil && unnumbered {
+			err = invoice.ErrNotFound
+		}
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func getProfileInvoice(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		inv, err := invoices.GetOfProfile(r.Context(), r.PathValue("profileId"), r.PathValue("invoiceId"))
