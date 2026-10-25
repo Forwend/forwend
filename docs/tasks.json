@@ -135,7 +135,7 @@
         "R-140, api.md, openapi.yaml and the architecture docs describe it; required checks pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -211,9 +211,9 @@
         "taskHash": "57a697a246776b03",
         "filesHash": "b22e0b20e74a560f",
         "proof": {
-          "1": "unit: internal/httpapi/tests TestPaymentLinks (a fixed link gets a 12-character random slug, the first store and on by default; saved again it keeps the slug; amounts parse in base 10 whatever their zeros, 12.08, 19.09, 010, 0.08, failing with the octal parse; an open link takes the owner's min and max, or none (no default cap); bad amounts, a min above the max, a cap of 0 or out of range, another profile's store, a freelancer's store and an upper-case id are refused; a freelancer's link has no store; a personal profile is 409; another profile's link id is 404; newest first; the paid count counts paid invoices, and another profile's invoice can't name the link); migration 64 rolls back in TestMigrationsRollBackAndReapply",
-          "2": "e2e: e2e/privy/links.spec.ts (the list shows each link's amount, status and 'N visits, M paid'; a new open link sends the PUT body and opens on its page with the address and Copy; turning a link off saves; the list fits a phone; axe clean); unit: TestPaymentLinksOfAMembersStores (a Developer's links take their store, another store is 422 and another store's link is 404 on GET and PUT, failing without the scope check); src/features/links/tests/links.test.ts",
-          "3": "docs-check: R-140, D-94, api.md Payment links, openapi.yaml, backend architecture and rules, web DESIGN.md and architecture"
+          "1": "unit: TestPaymentLinks covers fixed, open and no-limit links, base-10 amounts, validation, freelancer and personal profiles and the stable slug",
+          "2": "e2e: privy/links.spec.ts lists, makes an open link, turns one off and fits a phone; TestPaymentLinksOfAMembersStores covers member scope",
+          "3": "docs-check: R-140, api.md, openapi.yaml and architecture docs pass; every required check passed in verify F296"
         },
         "review": {
           "result": "pass",
@@ -221,11 +221,18 @@
           "summary": "Re-review after fixes: no blocking findings. Fixed and checked: (1) link/save.go cents() parses base 10 with strconv.ParseInt; TestPaymentLinks sends 12.08, 19.09, 010, 0.08, 000000000012 and 7.5 and checks the saved value; with the old fmt.Sscan parser swapped in through go test -overlay, five of the six fail. (2) auth/access.go InvoiceStore has its own doc comment again; LinkStore parses the id as pgtype.UUID (malformed is not found) and queries id = $1. Also fixed: migration 00064 UNIQUE (id, profile_id) plus invoices_link_fkey (link_id, profile_id), with a test that another profile's invoice can't name the link; Down drops the column and its key. maxPayments is *int: null or left out is no cap, 0 is 422, tested. linkapi usd() uses job.USD. The copy-only amountLabel test is gone. link-form maps a 422's named field to its error as store-form does, and min/max point aria-describedby at their error and the USD hint (TextField lets the prop override). Acceptance 2 now matches R-140. Non-blocking: invalidLinkField is the sixth copy of the same message-to-field parse (clients, invoices, stores, jobs, billing-details); a shared helper would be a separate refactor. Ran: go test TestPaymentLinks|TestProfileRoutes|TestProfilesBelong|TestMembers ok, ./internal/database ok, go vet ok, vitest 145 passed, check-docs 0 errors.",
           "at": "2026-10-25T14:15:51Z",
           "filesHash": "b22e0b20e74a560f"
-        }
+        },
+        "commit": "3943abb",
+        "doneAt": "2026-10-25T15:27:58Z"
       },
       "branch": "feat/f296-an-owner-makes-payment-links-with-a-fixe",
       "baseCommit": "bfa378e34389628cd1b2cfe49cf719b16da481fc",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f296-an-owner-makes-payment-links-with-a-fixe",
+        "base": "main"
+      }
     },
     {
       "id": "F297",
