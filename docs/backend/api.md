@@ -269,6 +269,8 @@ R-140, D-54, D-94; the full schema is in openapi.yaml. Members reach them with `
 
 R-19 and R-42; the full schema is in openapi.yaml.
 
+- `livemode` is the invoice's chain's mode (D-87, R-143): false on a testnet, whose tokens have no value.
+  - Both PDFs of a test-mode invoice say "Test mode: testnet tokens have no value" under the number.
 - `number` is an integer per profile: 1, 2, … in creation order (D-50). The API never formats it; the web shows
   `INV-` and at least 4 digits (`INV-0001`). The insert takes it from the profile's counter row (`profiles.invoice_seq`)
   in the invoice's own transaction, so a failed create uses no number and a repeated Idempotency-Key returns the

@@ -1,11 +1,13 @@
 "use client";
 
 import {
+  Badge,
   Button,
   buttonClasses,
   formatTokenAmount,
   PAYMENT_STATUS,
   Skeleton,
+  TONES,
 } from "@forwend/ui-web";
 import { ChevronLeft, FileDown } from "lucide-react";
 import Link from "next/link";
@@ -222,6 +224,12 @@ function Loaded({
               {invoice.title}
             </p>
           ) : null}
+          {/* R-143: testnet money must never pass for real money. */}
+          {invoice.livemode ? null : (
+            <div className="flex">
+              <Badge tone={TONES.warning}>{COPY.testMode}</Badge>
+            </div>
+          )}
           <NextStep
             profileId={profileId}
             invoiceId={invoice.invoiceId}

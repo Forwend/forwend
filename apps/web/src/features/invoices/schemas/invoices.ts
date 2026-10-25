@@ -108,6 +108,8 @@ export const invoiceSummarySchema = z.object({
   // The creator's https link, offered to the payer once paid (R-58).
   returnUrl: z.string().nullable(),
   chainId: count,
+  // False on a testnet: test mode, whose tokens have no value (D-87, R-143).
+  livemode: z.boolean(),
   token: evmAddress,
   amount: baseUnits,
   // The profile wallet that settlement pays.

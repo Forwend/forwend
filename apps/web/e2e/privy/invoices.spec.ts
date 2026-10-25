@@ -322,6 +322,8 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     // R-60
     await expect(page.getByRole("main").locator("header [data-status]")).toHaveCount(0);
     await expect(page.getByRole("main").locator("header")).not.toContainText("Checkout closes");
+    // R-143: Base Sepolia is a testnet.
+    await expect(page.getByRole("main").locator("header")).toContainText("Test mode");
     const client = page.getByRole("region", { name: "Billed to" });
     await expect(client).toContainText(clientName);
     await expect(client).toContainText("delivered@resend.dev");

@@ -381,6 +381,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - The box stays light in the dark theme too, since most logos are drawn for a light page.
     - The store's color is that box's or tile's edge. It never sits behind text, so any color keeps the contrast.
     - "Invoice INV-0001" under the name; a payment-link invoice before its first deposit reads "Invoice" alone (R-141).
+    - A test-mode invoice (R-143) starts the column with a warning box: its testnet tokens have no value.
     - The amount (Geist, tabular, featured size) and "on <network>". USD until the payer picks.
   - Left, then, as a hosted invoice page lists them:
     - Title, reference (R-90), agreed value (R-93), due date and "Closes in …": quiet rows with a small icon, no rules.
@@ -450,6 +451,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   Up to four steps always sit side by side (the payer's timeline, the landing's samples). The owner's five don't fit a
   phone, so in a container narrower than 28rem they stack into one upright path, the same bars running down beside
   larger labels, so no label is squeezed against the next.
+- A test-mode invoice's page (R-143) has a warning Test mode badge under its header's name.
 - The invoice page (R-60) says each thing once: the header only names the invoice (its title, or its number when there
   is none); the timeline says the status, and Details the times: when the checkout closes ("Checkout closed" once
   past) and, once canceled, Canceled on. So the header has no status pill or time. At its top right sits one More

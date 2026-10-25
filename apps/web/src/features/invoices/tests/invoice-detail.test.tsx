@@ -70,6 +70,7 @@ const OPEN = {
   client: { name: "Acme", email: null, address: null, country: null, taxId: null },
   issuer: null,
   chainId: 84532,
+  livemode: false,
   token: TOKEN.token,
   amount: "1250000000",
   recipient: "0x1111111111111111111111111111111111111111",

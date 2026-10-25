@@ -27,6 +27,7 @@ const invoice: Invoice = {
   senderName: null,
   returnUrl: null,
   chainId: 84532,
+  livemode: false,
   token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
   amount: "1000",
   recipient: `0x${"4".repeat(40)}`,

@@ -374,6 +374,7 @@ export const INVOICE_COPY = {
   lateHeld: (late: string) =>
     `${late} arrived after the checkout closed and is held for the payer.`,
   noun: { invoice: "invoice", request: "request" },
+  testMode: "Test mode",
   newInvoice: "New invoice",
   newRequest: "New request",
   newForRest: (noun: string) => `New ${noun} for the rest`,

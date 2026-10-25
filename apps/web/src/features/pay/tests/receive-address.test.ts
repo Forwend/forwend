@@ -66,6 +66,7 @@ describe("checkedReceiveAddress", () => {
     expiresAt: "2026-10-17T10:00:00Z",
     settleDeadline: "2026-10-18T10:00:00Z",
     chainId: 84532,
+    livemode: false,
   };
   const invoice: Invoice = {
     ...terms,

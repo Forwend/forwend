@@ -36,7 +36,8 @@ const invoiceColumns = `id, option_id, chosen_id IS NOT NULL,
 	agreed_decimals, to_char(agreed_date, 'YYYY-MM-DD'), coalesce(pay_token, ''), closes_at, receiver_deployed_at,
 	coalesce(store_id::text, ''), coalesce((SELECT name FROM stores s WHERE s.id = invoices.store_id), ''),
 	coalesce((SELECT brand_color FROM stores s WHERE s.id = invoices.store_id), ''),
-	(SELECT logo_at FROM stores s WHERE s.id = invoices.store_id)`
+	(SELECT logo_at FROM stores s WHERE s.id = invoices.store_id),
+	(SELECT livemode FROM chains c WHERE c.chain_id = invoices.chain_id)`
 
 // The invoices_current view (migration 00020) aliased as invoices, so filters written for the table work on it.
 const invoicesCurrent = "invoices_current invoices"
@@ -57,7 +58,8 @@ func scanInvoice(row pgx.Row) (Invoice, error) {
 		&inv.ReceiveAddress, &expiresAt, &settleDeadline, &inv.PaymentStatus, &inv.SettlementStatus, &inv.RefundStatus,
 		&inv.SettlementTxHash, &inv.CreatedAt, &inv.ClientCountry, &inv.ClientTaxID, &inv.Confirming, &inv.Closed, &canceledAt,
 		&inv.SupplyDate, &inv.Reference, &agreedCurrency, &agreedAmount, &agreedDecimals, &agreedDate, &inv.PayToken,
-		&closesAt, &inv.receiverDeployedAt, &inv.StoreID, &inv.StoreName, &inv.BrandColor, &inv.LogoAt}
+		&closesAt, &inv.receiverDeployedAt, &inv.StoreID, &inv.StoreName, &inv.BrandColor, &inv.LogoAt,
+		&inv.Livemode}
 	if err := row.Scan(dest...); errors.Is(err, pgx.ErrNoRows) {
 		return Invoice{}, ErrNotFound
 	} else if err != nil {

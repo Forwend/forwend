@@ -68,6 +68,7 @@ type invoiceJSON struct {
 	SenderName       *string     `json:"senderName"`
 	ReturnURL        *string     `json:"returnUrl"`
 	ChainID          uint64      `json:"chainId"`
+	Livemode         bool        `json:"livemode"` // false on a testnet: test mode, whose tokens have no value (D-87)
 	Token            string      `json:"token"`
 	Amount           string      `json:"amount"`
 	Recipient        string      `json:"recipient"`
@@ -277,7 +278,7 @@ type depositJSON struct {
 func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 	out := invoiceJSON{
 		InvoiceID: inv.ID, PayToken: httpio.OrNull(inv.PayToken), OptionID: inv.OptionID, OptionLocked: inv.OptionLocked, OptionCount: inv.OptionCount, Confirming: inv.Confirming, Closed: inv.Closed, Number: inv.Number, Title: httpio.OrNull(inv.Title), Note: httpio.OrNull(inv.Note),
-		DueDate: httpio.OrNull(inv.DueDate), SupplyDate: httpio.OrNull(inv.SupplyDate), Reference: httpio.OrNull(inv.Reference), SenderName: httpio.OrNull(inv.SenderName), ReturnURL: httpio.OrNull(inv.ReturnURL), ChainID: inv.ChainID, Token: inv.Token, Amount: inv.Amount.String(),
+		DueDate: httpio.OrNull(inv.DueDate), SupplyDate: httpio.OrNull(inv.SupplyDate), Reference: httpio.OrNull(inv.Reference), SenderName: httpio.OrNull(inv.SenderName), ReturnURL: httpio.OrNull(inv.ReturnURL), ChainID: inv.ChainID, Livemode: inv.Livemode, Token: inv.Token, Amount: inv.Amount.String(),
 		Recipient: inv.Recipient, Factory: inv.Factory, ReceiveAddress: inv.ReceiveAddress,
 		ExpiresAt: inv.ExpiresAt.Format(time.RFC3339), SettleDeadline: inv.SettleDeadline.Format(time.RFC3339),
 		PaymentStatus: inv.PaymentStatus, SettlementStatus: inv.SettlementStatus, RefundStatus: inv.RefundStatus,

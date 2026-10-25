@@ -254,6 +254,8 @@ type Invoice struct {
 	// The store's accent color ("" none) and when its logo was saved (nil none) (R-135).
 	BrandColor string
 	LogoAt     *time.Time
+	// Livemode is false on a testnet: test mode, whose tokens have no value (D-87).
+	Livemode bool
 }
 
 // Revision is the other invoice of a Revise (R-129); PayToken is set only for the replacement.
