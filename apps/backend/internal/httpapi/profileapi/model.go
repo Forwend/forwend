@@ -18,6 +18,8 @@ type profileJSON struct {
 	Name          *string `json:"name"`
 	WalletAddress *string `json:"walletAddress"`
 	CreatedAt     string  `json:"createdAt"`
+	// R-138: owner, admin, developer or finance.
+	Role string `json:"role"`
 }
 
 type meJSON struct {
@@ -161,7 +163,7 @@ func toMeJSON(list []profile.Profile, onboardedAt *time.Time) meJSON {
 }
 
 func toProfileJSON(p profile.Profile) profileJSON {
-	out := profileJSON{ProfileID: p.ID, Kind: p.Kind, CreatedAt: p.CreatedAt.UTC().Format(time.RFC3339)}
+	out := profileJSON{ProfileID: p.ID, Kind: p.Kind, CreatedAt: p.CreatedAt.UTC().Format(time.RFC3339), Role: p.Role}
 	if p.Name != "" {
 		out.Name = &p.Name
 	}

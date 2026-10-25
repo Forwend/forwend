@@ -12,10 +12,27 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
 )
 
+// deposit books a confirmed transfer of amount to the invoice id; the ledger reads 2.5 USDC on chain.
+func (e invoiceEnv) deposit(t *testing.T, id, amount string) {
+	t.Helper()
+	e.exec(t, `UPDATE chain_cursors SET last_scanned_block = 100, last_finalized_block = 100,
+		last_finalized_time = extract(epoch FROM now())::bigint WHERE chain_id = 84532`)
+	e.exec(t, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
+		    block_hash, block_number, block_time, from_address, to_address, amount, status)
+		SELECT 84532, 'evm', $1, $2, $2, 0, $2, 90, extract(epoch FROM now())::bigint, $3, receive_address, $4::numeric,
+		    'confirmed' FROM invoices WHERE id = $2`, usdc, id, aliceWallet, amount)
+	balances := func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
+		return big.NewInt(2500000), 100, nil
+	}
+	notDeployed := func(context.Context, uint64, string, string) (uint64, error) { return 0, nil }
+	if err := ledger.NewService(e.pool, balances, notDeployed).Process(context.Background(), id); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // R-95.
 func TestOwedToYou(t *testing.T) {
 	e := invoiceAPI(t)
-	ctx := context.Background()
 	day := func(days int) string { return time.Now().UTC().AddDate(0, 0, days).Format(time.DateOnly) }
 	create := func(key, amount, due string) string {
 		t.Helper()
@@ -29,40 +46,22 @@ func TestOwedToYou(t *testing.T) {
 		}
 		return r.body["invoiceId"].(string)
 	}
-	e.exec(t, `UPDATE chain_cursors SET last_scanned_block = 100, last_finalized_block = 100,
-		last_finalized_time = extract(epoch FROM now())::bigint WHERE chain_id = 84532`)
-	deposits := 0
-	deposit := func(id, amount string) {
-		t.Helper()
-		deposits++
-		e.exec(t, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
-			    block_hash, block_number, block_time, from_address, to_address, amount, status)
-			SELECT 84532, 'evm', $1, $2, $3, 0, $3, 90, extract(epoch FROM now())::bigint, $4, receive_address, $5::numeric,
-			    'confirmed' FROM invoices WHERE id = $2`, usdc, id, fmt.Sprintf("0x%064x", deposits), aliceWallet, amount)
-		balances := func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
-			return big.NewInt(2500000), 100, nil
-		}
-		notDeployed := func(context.Context, uint64, string, string) (uint64, error) { return 0, nil }
-		if err := ledger.NewService(e.pool, balances, notDeployed).Process(ctx, id); err != nil {
-			t.Fatal(err)
-		}
-	}
 
 	late3 := create("late-3", "5000000", day(-3))
-	deposit(late3, "1000000")
+	e.deposit(t, late3, "1000000")
 	late10 := create("late-10", "5000000", day(-10))
 	partly := create("partly", "5000000", day(7))
-	deposit(partly, "1500000")
+	e.deposit(t, partly, "1500000")
 	canceled := create("canceled", "5000000", "")
 	if r := e.call(t, "POST", "/v1/profiles/"+e.aliceProfile+"/invoices/"+canceled+"/cancel", "did:privy:alice", "", ""); r.status != http.StatusOK {
 		t.Fatalf("cancel: %d %v", r.status, r.body)
 	}
-	deposit(canceled, "2000000")
+	e.deposit(t, canceled, "2000000")
 	paid := create("paid", "2000000", day(-5))
-	deposit(paid, "2000000")
+	e.deposit(t, paid, "2000000")
 	// All of it booked, but the second RPC reads less than that, so it waits as detected: nothing is left.
 	waiting := create("waiting", "5000000", day(-1))
-	deposit(waiting, "5000000")
+	e.deposit(t, waiting, "5000000")
 	create("due-today", "5000000", day(0))
 	create("undated", "5000000", "")
 	closed := create("closed", "5000000", day(-20))

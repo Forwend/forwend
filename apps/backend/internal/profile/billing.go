@@ -85,7 +85,7 @@ func (d BillingDetails) check() error {
 	return nil
 }
 
-// Invoices made earlier keep their own copy. The caller has checked that the user owns the profile.
+// Invoices made earlier keep their own copy. The caller has checked the user's access to the profile.
 func (s *Service) SaveBillingDetails(ctx context.Context, profileID string, d BillingDetails) (BillingDetails, error) {
 	if err := d.check(); err != nil {
 		return BillingDetails{}, err
@@ -103,7 +103,7 @@ func (s *Service) SaveBillingDetails(ctx context.Context, profileID string, d Bi
 	return d, nil
 }
 
-// The caller has checked that the user owns the profile.
+// The caller has checked the user's access to the profile.
 func (s *Service) BillingDetails(ctx context.Context, profileID string) (BillingDetails, error) {
 	var d BillingDetails
 	err := s.pool.QueryRow(ctx, `SELECT name, address, country, coalesce(tax_id, ''), contact_email, updated_at FROM profile_billing_details WHERE profile_id = $1`, profileID).

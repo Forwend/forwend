@@ -4,6 +4,7 @@ package invoiceapi
 import (
 	"net/http"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/auth"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
@@ -33,17 +34,17 @@ func Routes(mux *http.ServeMux, g mid.Guards, invoices *invoice.Service, profile
 	rechecks := mid.NewBuckets(RecheckRate, RecheckBurst)
 	owners := mid.NewBuckets(RecheckOwnerRate, RecheckOwnerBurst)
 	emails := mid.NewBuckets(PayerEmailAllRate, PayerEmailAllBurst)
-	mux.Handle("POST /v1/profiles/{profileId}/invoices", g.ProfileScoped(createInvoice(invoices)))
-	mux.Handle("GET /v1/profiles/{profileId}/invoices", g.ProfileScoped(listInvoices(invoices)))
-	mux.Handle("GET /v1/profiles/{profileId}/invoices/{invoiceId}", g.ProfileScoped(getProfileInvoice(invoices)))
-	mux.Handle("POST /v1/profiles/{profileId}/invoices/{invoiceId}/cancel", g.ProfileScoped(cancelInvoice(invoices)))
-	mux.Handle("POST /v1/profiles/{profileId}/invoices/{invoiceId}/reopen", g.ProfileScoped(reopenInvoice(invoices)))
-	mux.Handle("POST /v1/profiles/{profileId}/invoices/{invoiceId}/send", g.ProfileScoped(sendInvoice(invoices, emails)))
-	mux.Handle("PUT /v1/profiles/{profileId}/invoices/{invoiceId}/reminders", g.ProfileScoped(putReminders(invoices)))
-	mux.Handle("PUT /v1/profiles/{profileId}/invoices/{invoiceId}/details", g.ProfileScoped(putDetails(invoices)))
-	mux.Handle("POST /v1/profiles/{profileId}/invoices/{invoiceId}/repeat/stop", g.ProfileScoped(stopRepeat(invoices)))
-	mux.Handle("GET /v1/profiles/{profileId}/events", g.ProfileScoped(listEvents(invoices)))
-	mux.Handle("GET /v1/profiles/{profileId}/owed", g.ProfileScoped(listOwed(invoices)))
+	mux.Handle("POST /v1/profiles/{profileId}/invoices", g.Can(auth.InvoicesWrite)(createInvoice(invoices)))
+	mux.Handle("GET /v1/profiles/{profileId}/invoices", g.Can(auth.InvoicesRead)(listInvoices(invoices)))
+	mux.Handle("GET /v1/profiles/{profileId}/invoices/{invoiceId}", g.Can(auth.InvoicesRead)(getProfileInvoice(invoices)))
+	mux.Handle("POST /v1/profiles/{profileId}/invoices/{invoiceId}/cancel", g.Can(auth.InvoicesWrite)(cancelInvoice(invoices)))
+	mux.Handle("POST /v1/profiles/{profileId}/invoices/{invoiceId}/reopen", g.Can(auth.InvoicesWrite)(reopenInvoice(invoices)))
+	mux.Handle("POST /v1/profiles/{profileId}/invoices/{invoiceId}/send", g.Can(auth.InvoicesWrite)(sendInvoice(invoices, emails)))
+	mux.Handle("PUT /v1/profiles/{profileId}/invoices/{invoiceId}/reminders", g.Can(auth.InvoicesWrite)(putReminders(invoices)))
+	mux.Handle("PUT /v1/profiles/{profileId}/invoices/{invoiceId}/details", g.Can(auth.InvoicesWrite)(putDetails(invoices)))
+	mux.Handle("POST /v1/profiles/{profileId}/invoices/{invoiceId}/repeat/stop", g.Can(auth.InvoicesWrite)(stopRepeat(invoices)))
+	mux.Handle("GET /v1/profiles/{profileId}/events", g.Can(auth.InvoicesRead)(listEvents(invoices)))
+	mux.Handle("GET /v1/profiles/{profileId}/owed", g.Can(auth.InvoicesRead)(listOwed(invoices)))
 	mux.Handle("GET /v1/invoices/{payToken}", getInvoice(invoices)) // checkout reads
 	mux.Handle("POST /v1/invoices/{payToken}/recheck", recheckInvoice(invoices, balances, rechecks, owners))
 	perInvoice := func(r *http.Request) string { return r.PathValue("payToken") }

@@ -544,8 +544,17 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   - Its `iat` must equal the `latest_verified_at` of the user's email or passkey account, read from Privy each time.
   - Otherwise 401 `reauth_required`; when Privy can't answer, 500, and nothing runs.
 - Public routes (checkout reads) are marked `security: []` in the spec. `/healthz` is also public and uses its own status response. No other route is public by default.
-- Profile-scoped routes check that the user owns the profile: 403 otherwise, also for an unknown or malformed
-  profile ID, so callers can't probe which profiles exist.
+- Profile-scoped routes let in the profile's owner and its members (R-138), and give anyone else 403.
+  - An unknown or malformed profile ID is 403 too, so callers can't probe which profiles exist.
+  - Each route asks for one permission from the map in `internal/auth/access.go`, never a role name (D-93).
+  - A member whose role lacks the permission gets 403. The owner has every permission.
+  - Developer and Finance members reach only their assigned stores for the invoice and store permissions.
+  - Their store and invoice lists, events and Owed leave the other stores out.
+  - Another store's invoice is 404 `invoice_not_found`, and another store is 404 `store_not_found`.
+  - Their create takes their first store by default; another store, or none to take, is 422.
+  - A Revise of another store's invoice is 404 `invoice_not_found`.
+  - A member without `tokens.write` who changes a store's `tokensOff` gets 403.
+  - `GET /v1/me` lists the user's own profiles, then the ones they are a member of, each with `role`.
 - `internal/auth` verifies the token locally: ES256 only, issuer `privy.io`, audience = app ID, `exp` required,
   `sub` = the user's Privy DID, and a `sid` with no `linked_accounts`: Privy signs identity tokens for the app too,
   and they must not work as bearer tokens. The key is the one named by the token's `kid` among those published at
@@ -554,8 +563,8 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   fetched again first, so a key Privy withdrew stops verifying (R-30); if Privy is unreachable, the last list verifies for
   10 more minutes (`KeyGrace`), then nothing does. `PRIVY_JWKS_URL` must be https. The Privy Go SDK (D-12) has no local token check, so this
   uses `golang-jwt/jwt/v5` as in Privy's Go guide (https://docs.privy.io/authentication/user-authentication/access-tokens).
-- `mid.RequireUser` and `mid.RequireProfileOwner` wrap the protected handlers, through `mid.Guards` (`SignedIn`,
-  `ProfileScoped`, `FreshSignIn`) that each module's `routes.go` applies. `/v1/me` and `POST /v1/profiles` act
+- `mid.RequireUser` and `mid.RequireAccess` wrap the protected handlers, through `mid.Guards` (`SignedIn`,
+  `Can`, `FreshSignIn`) that each module's `routes.go` applies. `/v1/me` and `POST /v1/profiles` act
   only for the token's user. Every `{profileId}` route is listed in `profileRoutes` in `internal/httpapi/tests/profiles_test.go`, which checks
   that another user gets 403 on each.
 

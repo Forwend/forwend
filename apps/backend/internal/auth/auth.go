@@ -1,4 +1,4 @@
-// Package auth checks who calls the API: Privy access tokens verified locally, and profile ownership (R-18).
+// Package auth checks who calls the API: Privy access tokens verified locally, and access to a profile (R-18, R-138).
 package auth
 
 import (
@@ -21,8 +21,8 @@ import (
 // ErrUnauthorized means the token is missing, malformed, expired, or not signed by Privy for this app.
 var ErrUnauthorized = errors.New("invalid access token")
 
-// ErrForbidden means the user does not own the profile, or it does not exist.
-var ErrForbidden = errors.New("profile not owned by user")
+// ErrForbidden means the user may not do this on the profile, or it does not exist.
+var ErrForbidden = errors.New("not allowed for this profile")
 
 // ErrReauthRequired means the action needs a token from a sign-in within FreshWindow, not from a refresh (D-49).
 var ErrReauthRequired = errors.New("fresh sign-in required")

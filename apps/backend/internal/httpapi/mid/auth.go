@@ -8,7 +8,9 @@ import (
 
 	"github.com/ensp1re/forwend/apps/backend/internal/auth"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/privy"
+	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 )
 
 type tokenKey struct{}
@@ -34,19 +36,52 @@ func RequireUser(v *auth.Verifier, sessions *auth.Service, next http.Handler) ht
 	})
 }
 
-func RequireProfileOwner(s *auth.Service, next http.Handler) http.Handler {
+type accessKey struct{}
+
+// RequireAccess lets through the profile's owner and members whose role has p (R-138). For an invoice or store
+// permission, a Developer's or Finance member's request about another store's invoice or store is not found.
+func RequireAccess(s *auth.Service, p auth.Permission, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user := SignedInUser(r)
 		if user == "" { // not wrapped in RequireUser: deny
 			httpio.WriteError(w, r, auth.ErrUnauthorized)
 			return
 		}
-		if err := s.CheckProfileOwner(r.Context(), user, r.PathValue("profileId")); err != nil {
+		access, err := s.CheckAccess(r.Context(), user, r.PathValue("profileId"))
+		if err == nil && !access.Can(p) {
+			err = auth.ErrForbidden
+		}
+		if err == nil && access.Stores != nil && auth.StoreScoped(p) {
+			err = inStores(r, s, access)
+		}
+		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), accessKey{}, access)))
 	})
+}
+
+func inStores(r *http.Request, s *auth.Service, access auth.Access) error {
+	if store := r.PathValue("storeId"); store != "" && !access.InStores(store) {
+		return profile.ErrStoreNotFound
+	}
+	if id := r.PathValue("invoiceId"); id != "" {
+		store, found, err := s.InvoiceStore(r.Context(), r.PathValue("profileId"), id)
+		if err != nil {
+			return err
+		}
+		if found && !access.InStores(store) {
+			return invoice.ErrNotFound
+		}
+	}
+	return nil
+}
+
+// ProfileAccess is the access RequireAccess found; handlers narrow lists to its stores.
+func ProfileAccess(r *http.Request) auth.Access {
+	access, _ := r.Context().Value(accessKey{}).(auth.Access)
+	return access
 }
 
 // RequireFreshSignIn lets through only a token from a sign-in within auth.FreshWindow (D-49, D-63). It asks Privy

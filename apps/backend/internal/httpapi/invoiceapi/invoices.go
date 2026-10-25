@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
@@ -38,6 +39,16 @@ func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 		if body.Repeat != nil {
 			repeat = &invoice.Repeat{EndDate: body.Repeat.EndDate}
 		}
+		// R-138: a Developer or Finance member invoices for their own stores, the first one by default.
+		if access := mid.ProfileAccess(r); access.Stores != nil {
+			if body.StoreID == "" && len(access.Stores) > 0 {
+				body.StoreID = access.Stores[0]
+			}
+			if !access.InStores(strings.ToLower(body.StoreID)) {
+				httpio.WriteError(w, r, fmt.Errorf("%w: storeId must be one of the stores you work with", invoice.ErrInvalid))
+				return
+			}
+		}
 		inv, created, err := invoices.Create(r.Context(), r.PathValue("profileId"), key, invoice.Request{
 			Lines:     lines,
 			Agreed:    agreed,
@@ -51,6 +62,7 @@ func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 				SenderName: body.SenderName, ReturnURL: body.ReturnURL, Reference: body.Reference},
 			Replaces: body.Replaces,
 			StoreID:  body.StoreID,
+			Stores:   mid.ProfileAccess(r).Stores,
 		})
 		if err != nil {
 			httpio.WriteError(w, r, err)
@@ -77,7 +89,8 @@ func listInvoices(invoices *invoice.Service) http.HandlerFunc {
 			return
 		}
 		query := r.URL.Query()
-		page, err := invoices.List(r.Context(), r.PathValue("profileId"), query.Get("cursor"), limit, query.Get("status"), q)
+		page, err := invoices.List(r.Context(), r.PathValue("profileId"), query.Get("cursor"), limit, query.Get("status"), q,
+			mid.ProfileAccess(r).Stores)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -206,7 +219,7 @@ func getProfileInvoice(invoices *invoice.Service) http.HandlerFunc {
 // R-95.
 func listOwed(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		owed, err := invoices.Owed(r.Context(), r.PathValue("profileId"))
+		owed, err := invoices.Owed(r.Context(), r.PathValue("profileId"), mid.ProfileAccess(r).Stores)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -234,7 +247,7 @@ func listEvents(invoices *invoice.Service) http.HandlerFunc {
 			}
 			limit = n
 		}
-		events, err := invoices.Events(r.Context(), r.PathValue("profileId"), limit)
+		events, err := invoices.Events(r.Context(), r.PathValue("profileId"), limit, mid.ProfileAccess(r).Stores)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

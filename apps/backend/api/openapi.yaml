@@ -1582,7 +1582,7 @@ components:
       name: profileId
       in: path
       required: true
-      description: A profile the signed-in user owns; any other value is 403.
+      description: A profile the signed-in user owns or is a member of (R-138); any other value is 403.
       schema: { type: string, format: uuid }
     ClientId:
       name: clientId
@@ -1655,12 +1655,16 @@ components:
           items: { $ref: "#/components/schemas/Profile" }
     Profile:
       type: object
-      required: [profileId, kind, name, walletAddress, createdAt]
+      required: [profileId, kind, name, walletAddress, createdAt, role]
       properties:
         profileId: { type: string, format: uuid }
         kind:
           type: string
           enum: [personal, freelancer, merchant]
+        role:
+          type: string
+          enum: [owner, admin, developer, finance]
+          description: The user's role on the profile (R-138); the owner has every permission.
         name:
           type: [string, "null"]
           description: null when none was given; always null for the personal profile.
@@ -1788,7 +1792,8 @@ components:
           items: { $ref: "#/components/schemas/TokenRef" }
           description: |
             Tokens off for the store's invoices on top of the profile's (R-136). Each must be an enabled token, and
-            one must stay on; otherwise 422. Left out means none.
+            one must stay on; otherwise 422. Left out means none. A member whose role lacks tokens.write gets 403 when
+            this differs from the store's (D-93).
     Store:
       type: object
       required: [storeId, name, defaultExpiresIn, allowedOrigins, brandColor, logoAt, tokensOff, updatedAt]
@@ -2850,7 +2855,9 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
     Forbidden:
-      description: The user does not own the profile, or it does not exist (forbidden)
+      description: |
+        The user is neither the profile's owner nor a member whose role has the route's permission, or the profile
+        does not exist (forbidden, R-138)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

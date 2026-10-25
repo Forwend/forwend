@@ -11,6 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/auth"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -41,6 +42,8 @@ type StoreDetails struct {
 	BrandColor       string // "#rrggbb" or "" (R-135)
 	// More tokens off for the store's invoices than the profile has off (R-136).
 	TokensOff []TokenPair
+	// TokensFixed refuses a change to TokensOff: only an Admin turns a store's tokens on or off (D-93).
+	TokensFixed bool
 }
 
 // Store's ID is its project ID: public, with no authority (D-31).
@@ -127,7 +130,7 @@ func scanStore(row pgx.CollectableRow) (Store, error) {
 	return s, err
 }
 
-// The callers below have checked that the user owns the profile; every query also names the profile, so a store id
+// The callers below have checked the user's access to the profile; every query also names the profile, so a store id
 // from another profile is not found.
 
 // Stores lists the profile's stores, the first one first; a personal or freelancer profile has none.
@@ -173,6 +176,7 @@ func (s *Service) SaveStore(ctx context.Context, profileID, id string, d StoreDe
 	// An id that belongs to another profile neither inserts (the conflict) nor updates (the WHERE), so no row comes back.
 	var st Store
 	var created bool
+	var was []string // the tokens off before this save, as "chainId:token"
 	err = tx.QueryRow(ctx, `
 		INSERT INTO stores (id, profile_id, name, default_expires_in, allowed_origins, brand_color)
 		SELECT $2, $1, $3, $4, $5, nullif($7, '')
@@ -183,7 +187,7 @@ func (s *Service) SaveStore(ctx context.Context, profileID, id string, d StoreDe
 		RETURNING `+storeColumns+`, xmax = 0`, profileID, id, d.Name, d.DefaultExpiresIn, d.AllowedOrigins, MaxStores,
 		d.BrandColor).
 		Scan(&st.ID, &st.Name, &st.DefaultExpiresIn, &st.AllowedOrigins, &st.BrandColor, &st.UpdatedAt, &st.LogoAt,
-			new([]string), &created)
+			&was, &created)
 	if errors.Is(err, pgx.ErrNoRows) {
 		var taken bool
 		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM stores WHERE id = $1)`, id).Scan(&taken); err != nil {
@@ -196,6 +200,17 @@ func (s *Service) SaveStore(ctx context.Context, profileID, id string, d StoreDe
 	}
 	if err != nil {
 		return Store{}, false, fmt.Errorf("save store: %w", err)
+	}
+	if d.TokensFixed {
+		now := make([]string, 0, len(off))
+		for _, t := range off {
+			now = append(now, fmt.Sprint(t.ChainID)+":"+t.Token)
+		}
+		slices.Sort(was)
+		slices.Sort(now)
+		if !slices.Equal(was, now) {
+			return Store{}, false, fmt.Errorf("%w: only an Admin turns a store's tokens on or off", auth.ErrForbidden)
+		}
 	}
 	if _, err := tx.Exec(ctx, "DELETE FROM store_tokens_off WHERE store_id = $1", id); err != nil {
 		return Store{}, false, fmt.Errorf("save store tokens off: %w", err)

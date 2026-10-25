@@ -41,7 +41,8 @@ func (s *Service) SignUp(ctx context.Context, privyUserID string) (profiles []Pr
 	repairCtx, cancel := context.WithTimeout(ctx, RepairBudget)
 	defer cancel()
 	for _, p := range profiles {
-		if p.WalletAddress != "" {
+		// A team's profile is its owner's: its wallet is made for them alone (D-61).
+		if p.WalletAddress != "" || p.Role != Owner {
 			continue
 		}
 		walletCtx := repairCtx

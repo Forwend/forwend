@@ -24,8 +24,9 @@ type Event struct {
 	At          time.Time
 }
 
-// The caller must check that the user owns the profile.
-func (s *Service) Events(ctx context.Context, profileID string, limit int) ([]Event, error) {
+// The caller must check the user's access to the profile.
+// stores, when not nil, keeps only those stores' invoices (R-138).
+func (s *Service) Events(ctx context.Context, profileID string, limit int, stores []string) ([]Event, error) {
 	if limit < 1 || limit > MaxEvents {
 		return nil, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxEvents)
 	}
@@ -33,9 +34,9 @@ func (s *Service) Events(ctx context.Context, profileID string, limit int) ([]Ev
 		    coalesce(e.payload->>'amount', o.amount::text), e.created_at
 		FROM outbox_events e JOIN invoices m ON m.id = e.invoice_id
 		JOIN invoices o ON o.id = e.payload->>'option' JOIN tokens t ON t.chain_id = o.chain_id AND t.contract = o.token_contract
-		WHERE m.profile_id = $1 AND m.main_id IS NULL
+		WHERE m.profile_id = $1 AND m.main_id IS NULL AND ($3::uuid[] IS NULL OR m.store_id = ANY($3))
 		  AND e.kind IN ('invoice.paid', 'invoice.settled', 'invoice.held') -- the owner's; not emails to the payer or client
-		ORDER BY e.id DESC LIMIT $2`, profileID, limit)
+		ORDER BY e.id DESC LIMIT $2`, profileID, limit, stores)
 	if err != nil {
 		return nil, fmt.Errorf("read events: %w", err)
 	}

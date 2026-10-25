@@ -28,7 +28,7 @@ type accepted struct {
 }
 
 // Create is idempotent per (profile, key): a repeat returns the stored invoice with created false.
-// The caller must check that the user owns the profile.
+// The caller must check the user's access to the profile.
 func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, r Request) (inv Invoice, created bool, err error) {
 	token, amount, usd, lines, expiresIn, err := r.normalize()
 	if err != nil {
@@ -241,7 +241,7 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	}
 	var replaced history.Data
 	if r.Replaces != "" {
-		if replaced, err = s.replace(ctx, tx, profileID, r.Replaces, *mainID); err != nil {
+		if replaced, err = s.replace(ctx, tx, profileID, r.Replaces, *mainID, r.Stores); err != nil {
 			return Invoice{}, false, err
 		}
 	}
@@ -327,12 +327,15 @@ func (s *Service) replay(ctx context.Context, profileID, idempotencyKey string, 
 }
 
 // replace cancels the profile's invoice old for next, made in tx (R-129), and returns what next's created row says.
-func (s *Service) replace(ctx context.Context, tx pgx.Tx, profileID, old, next string) (history.Data, error) {
+// With stores set, an old invoice of another store is not found (R-138).
+func (s *Service) replace(ctx context.Context, tx pgx.Tx, profileID, old, next string, stores []string) (history.Data,
+	error) {
 	var oldNumber, nextNumber int64
-	err := tx.QueryRow(ctx, `SELECT o.number, n.number FROM invoices o, invoices n
+	var oldStore string
+	err := tx.QueryRow(ctx, `SELECT o.number, n.number, coalesce(o.store_id::text, '') FROM invoices o, invoices n
 		WHERE o.id = $1 AND o.profile_id = $2 AND o.main_id IS NULL AND n.id = $3`, old, profileID, next).
-		Scan(&oldNumber, &nextNumber)
-	if errors.Is(err, pgx.ErrNoRows) {
+		Scan(&oldNumber, &nextNumber, &oldStore)
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && stores != nil && !slices.Contains(stores, oldStore)) {
 		return history.Data{}, ErrNotFound
 	} else if err != nil {
 		return history.Data{}, fmt.Errorf("read invoice %s to replace: %w", old, err)

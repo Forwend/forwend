@@ -4,6 +4,7 @@ package profileapi
 import (
 	"net/http"
 
+	"github.com/ensp1re/forwend/apps/backend/internal/auth"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 )
@@ -15,18 +16,18 @@ func Routes(mux *http.ServeMux, g mid.Guards, profiles *profile.Service) {
 	mux.Handle("POST /v1/me/sign-out-everywhere", g.SignedIn(signOutEverywhere(profiles)))
 	mux.Handle("POST /v1/profiles", g.SignedIn(createProfile(profiles)))
 	// D-63: the issuer every invoice copies, so changing it needs a fresh sign-in.
-	mux.Handle("PUT /v1/profiles/{profileId}/billing-details", g.FreshSignIn(putBillingDetails(profiles)))
-	mux.Handle("GET /v1/profiles/{profileId}/billing-details", g.ProfileScoped(getBillingDetails(profiles)))
-	mux.Handle("GET /v1/profiles/{profileId}/clients", g.ProfileScoped(listClients(profiles)))
-	mux.Handle("PUT /v1/profiles/{profileId}/clients/{clientId}", g.ProfileScoped(putClient(profiles)))
-	mux.Handle("DELETE /v1/profiles/{profileId}/clients/{clientId}", g.ProfileScoped(deleteClient(profiles)))
-	mux.Handle("GET /v1/profiles/{profileId}/stores", g.ProfileScoped(listStores(profiles)))
-	mux.Handle("PUT /v1/profiles/{profileId}/stores/{storeId}", g.ProfileScoped(putStore(profiles)))
-	mux.Handle("PUT /v1/profiles/{profileId}/stores/{storeId}/logo", g.ProfileScoped(putStoreLogo(profiles)))
-	mux.Handle("DELETE /v1/profiles/{profileId}/stores/{storeId}/logo", g.ProfileScoped(deleteStoreLogo(profiles)))
+	mux.Handle("PUT /v1/profiles/{profileId}/billing-details", g.FreshSignIn(auth.BillingWrite)(putBillingDetails(profiles)))
+	mux.Handle("GET /v1/profiles/{profileId}/billing-details", g.Can(auth.BillingRead)(getBillingDetails(profiles)))
+	mux.Handle("GET /v1/profiles/{profileId}/clients", g.Can(auth.ClientsRead)(listClients(profiles)))
+	mux.Handle("PUT /v1/profiles/{profileId}/clients/{clientId}", g.Can(auth.ClientsWrite)(putClient(profiles)))
+	mux.Handle("DELETE /v1/profiles/{profileId}/clients/{clientId}", g.Can(auth.ClientsWrite)(deleteClient(profiles)))
+	mux.Handle("GET /v1/profiles/{profileId}/stores", g.Can(auth.StoresRead)(listStores(profiles)))
+	mux.Handle("PUT /v1/profiles/{profileId}/stores/{storeId}", g.Can(auth.StoresWrite)(putStore(profiles)))
+	mux.Handle("PUT /v1/profiles/{profileId}/stores/{storeId}/logo", g.Can(auth.StoresWrite)(putStoreLogo(profiles)))
+	mux.Handle("DELETE /v1/profiles/{profileId}/stores/{storeId}/logo", g.Can(auth.StoresWrite)(deleteStoreLogo(profiles)))
 	mux.Handle("GET /v1/stores/{storeId}/logo.png", getStoreLogo(profiles)) // pay pages show it: no sign-in
-	mux.Handle("GET /v1/profiles/{profileId}/tokens", g.ProfileScoped(getTokens(profiles)))
-	mux.Handle("PUT /v1/profiles/{profileId}/tokens", g.ProfileScoped(putTokens(profiles)))
-	mux.Handle("GET /v1/profiles/{profileId}/notifications", g.ProfileScoped(getNotifications(profiles)))
-	mux.Handle("PUT /v1/profiles/{profileId}/notifications", g.ProfileScoped(putNotifications(profiles)))
+	mux.Handle("GET /v1/profiles/{profileId}/tokens", g.Can(auth.TokensRead)(getTokens(profiles)))
+	mux.Handle("PUT /v1/profiles/{profileId}/tokens", g.Can(auth.TokensWrite)(putTokens(profiles)))
+	mux.Handle("GET /v1/profiles/{profileId}/notifications", g.Can(auth.Notifications)(getNotifications(profiles)))
+	mux.Handle("PUT /v1/profiles/{profileId}/notifications", g.Can(auth.Notifications)(putNotifications(profiles)))
 }

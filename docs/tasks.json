@@ -1,137 +1,131 @@
 {
   "schemaVersion": 2,
-  "nextId": 295,
+  "nextId": 296,
   "tasks": [
     {
-      "id": "F293",
+      "id": "F294",
       "type": "feat",
-      "behavior": "Saving billing details needs a fresh sign-in, and Sign out everywhere ends every session",
+      "behavior": "A merchant profile's members reach only what their role allows",
       "acceptance": [
-        "PUT billing-details needs a token at most 5 minutes old whose iat equals the latest_verified_at of the user's email or passkey account at Privy; otherwise 401 reauth_required and nothing is saved; a Privy failure saves nothing",
-        "Every signed-in route refuses a token issued before the user's sessions_revoked_at with 401; POST /v1/me/sign-out-everywhere freezes and unfreezes the user at Privy, then sets it; a failed freeze sets nothing, the unfreeze is always sent, and a failed unfreeze still sets it",
-        "On reauth_required the web opens a dialog that sends a code to the login email, signs in again and repeats the request with the new token; Cancel leaves it unsaved; a user with no email login is told so",
-        "The account menu offers Sign out everywhere behind a confirm dialog and signs out; axe finds 0 serious or critical violations on both dialogs",
-        "R-137, api.md, openapi.yaml and the architecture docs describe it; required checks and a11y-e2e pass"
+        "profile_members holds Admin, Developer and Finance members of merchant profiles (never the owner), and Developer and Finance members have assigned stores; GET /v1/me lists the profiles a user belongs to with their role (owner, admin, developer, finance)",
+        "Every {profileId} route asks for one permission from one map in code (auth), never a role name, and a test fails when a route has none; a user who is neither owner nor member gets 403, and a member without the route's permission gets 403",
+        "Developer and Finance see only their stores: store and invoice lists, events and Owed leave the rest out, another store's invoice or store is 404, and create defaults to their first store and refuses another with 422; jobs are Admin only and notifications the owner's",
+        "R-138, D-93, api.md, openapi.yaml and architecture.md describe it; required checks and backend-e2e pass"
       ],
-      "dependsOn": [],
-      "state": "passing",
+      "dependsOn": [
+        "F293"
+      ],
+      "state": "verified",
       "verification": [
         "unit",
-        "e2e",
-        "a11y-e2e",
+        "backend-e2e",
         "docs-check"
       ],
       "refs": [
-        "R-137",
-        "D-49",
-        "D-63"
+        "R-138",
+        "D-93",
+        "D-30",
+        "D-61"
       ],
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-24 review fail by reviewer: BLOCKING 1: apps/backend/internal/privy/privy.go:101-111 EndSessions sends the freeze on the request context. If the client disconnects (closes the tab) or the SDK times out while the freeze is in flight, Privy may have frozen the user, but the function returns before the unfreeze. The comment says the unfreeze runs even if the caller gives up, which is false for this phase. Request contexts do get canceled here: the e2e log shows 'context canceled' errors. A retry then starts with Freeze on a user who is already frozen, and that case is not measured; if Privy refuses it, the unfreeze never runs again. The user is then locked out with no self-service way back. Fix: run EndSessions and the UPDATE in profile/sessions.go:15 on context.WithoutCancel, and send the unfreeze whenever a freeze was sent, even when the freeze failed. Add a test for an unfreeze failure: the fake's FailFreezes fails only POST. BLOCKING 2: docs/PROJECT.md:189 R-137, and accept 2, say sign-out-everywhere 'sets it, then freezes and unfreezes'. The code and api.md do Privy first, then the cutoff. The written order is the unsafe one: on a Privy failure the user is cut off, but the attacker's refresh tokens live and give post-cutoff tokens. Fix the row and the accept line. NON-BLOCKING: (a) profile/sessions.go:15 date_trunc plus auth/service.go:24 strict > let a token issued in the cutoff second, before the freeze, pass. Hard to exploit, but dropping date_trunc closes it at no cost. (b) httpapi/tests/auth_test.go:71 signedInAt is fixed at package init, so every billing PUT in the package fails once it has run 5 minutes. It runs about 61s now; -count=5 or a slow CI breaks it. (c) Test gaps: other account types (google_oauth, wallet) not shown to be ignored; the dialog's Cancel resolving false is untested, and a broken onClose would hang the save; no test that a second reauth_required is not asked again. (d) apps/web/e2e/privy/navigation.spec.ts:911: the reasoning holds (workers 1, file order, the next test mocks logout and the API). But the state is saved only at the end, so a failure after the re-sign-in leaves later tests on the replaced session; save it right after the dialog closes. Both API answers are mocked, so the real iat = latest_verified_at match rests on S-8 only. (e) mid/auth.go:29 CheckSession queries the DB before the rate limit, one query per flooded request; acceptable trade-off, worth knowing. (f) account-menu.tsx:34/121 the mutation's isError persists, so reopening the dialog shows the old error. (g) D-49 limit: a stolen session can link its own passkey at Privy, sign in with it and pass the fresh check; record it for D-49/F294. (h) docs/backend/api.md:555 the Guards list does not name FreshSignIn. Checked fine: guard order (user, cutoff, limit, owner, then Privy), every signed-in route goes through the guards, missing iat reads as epoch, a Privy failure gives 500 with nothing saved, logs hold only the route and the DID, web retry once with one shared dialog, public stores have no freshSignIn, kit Dialog onClose, the auth-api placement, doc sentence lengths. Backend tests TestBillingDetailsNeedAFreshSignIn and TestSignOutEverywhere pass; vitest src/shared/api and src/providers: 12 pass.",
-        "2026-10-24 review pass by reviewer: Re-review of the delta. Both blocking findings are fixed. (1) privy.go EndSessions runs on context.WithoutCancel, gives each call its own timeout and always sends the unfreeze. profile/sessions.go sets the cutoff only after a freeze that worked, also on WithoutCancel. TestSignOutEverywhere covers a failed freeze (unfreeze sent last, session kept) and a failed unfreeze (500, older token 401). The fake records failed calls and has FailUnfreezes. (2) R-137, accept 2, api.md and openapi.yaml give the code's order: freeze and unfreeze, then the cutoff. The earlier notes are addressed. The cutoff is now() with no date_trunc. signedInAt is set per invoiceAPI, and no test runs in parallel. There are tests for Google not counting, for a second reauth_required being the answer, and for Cancel in the live test. The live test saves the session right after the dialog closes. The menu dialog resets on close. Q-13 records the passkey-linking gap, and the api.md guards list names FreshSignIn. NON-BLOCKING: after a freeze that worked, a failed unfreeze (after the SDK's retries) still locks the user out. The cutoff now refuses their own token, so Try again in the dialog answers 401, and a frozen user can't sign in. Recovery is by hand at Privy, from the error log line that names the DID. This trade-off is chosen and documented. Consider an alert or a later retry. Ran: go test -race on TestBillingDetailsNeedAFreshSignIn, TestSignOutEverywhere, TestBusinessInvoiceNeedsBillingDetails and TestProfileRoutes*: ok. vitest src/shared/api and src/providers: 13 pass. The verify logs from 2026-10-24T23:01:30Z show the live suite at 44 passed, including both new tests."
+        "2026-10-25 review fail by reviewer: BLOCKING: (1) apps/backend/internal/profile/signup.go:43-51 (via profile/list.go:16): SignUp and Onboard now repair wallets on member profiles with the member's Privy ID. Reproduced with a go -overlay test: a member's POST /v1/me on the owner's walletless merchant profile created a Privy wallet owned by the member and stored it in profile_wallets. The member would control the profile's receiving wallet (breaks D-61, D-46). Repair only profiles with Role owner. (2) apps/backend/internal/httpapi/invoiceapi/invoices.go:42-63 with internal/invoice/create.go:243 and :330: create's replaces names any invoice of the profile with no store check. Reproduced: a Developer of store B got 201 with replaces={invoiceId, number} of a store-A invoice, and that invoice was canceled. Refuse a replaced invoice outside access.Stores. (3) internal/httpapi/tests/members_test.go:112: the events and Owed store filters (invoice/events.go:37, owed.go:45 and :55) have no test; removing them passes every test, so acceptance 3 is unproven there. NON-BLOCKING: auth/access.go:88 array_agg has no ORDER BY, so a member's 'first store' default is arbitrary; order by stores.created_at, id like the owner's default. profile/list.go:16 the OR EXISTS join can't use the profiles.user_id index, so GET /v1/me and signup scan every profile; use a UNION. Finance sees every store's invoices (ids, numbers, amounts, client names) through activity, transactions, the CSV and statement.pdf; D-93 lists these for Finance but D-30 says Finance sees its assigned stores; record which one applies. A Developer sets a store's tokensOff through PUT store (StoresWrite), but D-93 says only Admin manages token switches; record it or gate it. An owner's cross-store revision still shows the replaced invoice's id and number to the other store's members. Stale docs: docs/backend/api.md:564-565 (RequireProfileOwner, ProfileScoped), api/openapi.yaml:1585 ('the signed-in user owns'), docs/backend/rules.md:21, auth/auth.go:1, and 'user owns the profile' comments at invoice/list.go:48, events.go:27, owed.go:28. D-84: docs/backend/api.md:547-548 is 30 words. The auth import sits in the stdlib group in invoiceapi, jobapi, moneyapi and profileapi routes.go. Structure: mid importing invoice and profile for not-found errors is fine (httpio does the same, no cycle); auth.InvoiceStore reads invoices from auth, which is acceptable but optional to move. CheckAccess SQL, the nil-versus-empty store list (the idle Developer case is tested), List, trigger, migration Down, the route-guard test and the removal of CheckProfileOwner are correct. Requested tests pass.",
+        "2026-10-25 review pass by reviewer: Re-review after fixes: no blocking findings. Fixed: profile/signup.go:45 repairs wallets only on owned profiles; invoice/create.go:330 replace() refuses an old invoice outside Request.Stores (404); events.go:37 and owed.go:45/55 filters are now tested. I checked by mutation through go -overlay, with no repo edits: turning off each of the events filter, both Owed filters, the replace store check, the signup owner check, the TokensFixed check, the invoice list filter and the store list filter makes TestMembersReachOnlyWhatTheirRoleAllows or TestMemberSignUpMakesNoWalletForTheirTeamsProfile fail. Clean run passes: httpapi/tests (members, owed, tokens, stores, route guards), invoice, profile and auth packages; gofmt, go vet and docs-check are clean. CheckAccess orders the stores by created_at, id; profile.List uses UNION ALL; SaveStore compares tokensOff inside the profile-locked transaction; profile importing auth adds no cycle. Docs match the code: R-138, D-93, api.md, openapi, rules.md, architecture.md. NON-BLOCKING: (1) An owner's Revise into another store still shows that store's members the replaced invoice's id and number, in replaces and in the history row's related. (2) The D-93 lines on jobs, notifications and the shared wallet are agent defaults; the owner should confirm them, mainly that Finance sees every store's activity and transactions while D-30 says assigned stores. (3) A Developer's ordinary store save still drops store_tokens_off rows for tokens that are now disabled; owners' saves already did this. (4) tests/invoices_owed_test.go:15: the R-95 tag now sits on the deposit helper, and TestOwedToYou lost it. (5) The default store order (first by created_at) is not tested with two assigned stores. (6) The web will show member profiles from GET /v1/me with pages that answer 403; F295 should handle that.",
+        "2026-10-25 review pass by reviewer: Re-review after the R-95 tag fix: invoices_owed_test.go has the // R-95. tag back above TestOwedToYou, and the deposit helper carries only its own comment. No blocking findings. The earlier non-blocking notes stand: an owner's cross-store Revise shows the replaced invoice's id and number to the other store's members; the owner should confirm D-93's agent defaults (jobs, notifications, and Finance seeing every store's activity under the shared wallet); a Developer's store save drops store_tokens_off rows for disabled tokens, as owners' saves already did; the first-store order is untested with two assigned stores; the web will show member profiles whose pages answer 403 (F295)."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-24T23:01:30Z",
+        "at": "2026-10-25T00:35:25Z",
         "checks": [
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 180.2,
-            "log": "docs/runs/F293-20261024T230130Z-unit.log"
+            "seconds": 175.8,
+            "log": "docs/runs/F294-20261025T003525Z-unit.log"
           },
           {
-            "id": "e2e",
+            "id": "backend-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 230.2,
-            "log": "docs/runs/F293-20261024T230130Z-e2e.log"
-          },
-          {
-            "id": "a11y-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 15.6,
-            "log": "docs/runs/F293-20261024T230130Z-a11y-e2e.log"
+            "seconds": 19.9,
+            "log": "docs/runs/F294-20261025T003525Z-backend-e2e.log"
           },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.1,
-            "log": "docs/runs/F293-20261024T230130Z-docs-check.log"
+            "log": "docs/runs/F294-20261025T003525Z-docs-check.log"
           },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
             "seconds": 1.6,
-            "log": "docs/runs/F293-20261024T230130Z-harness.log"
+            "log": "docs/runs/F294-20261025T003525Z-harness.log"
           },
           {
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.4,
-            "log": "docs/runs/F293-20261024T230130Z-lint.log"
+            "log": "docs/runs/F294-20261025T003525Z-lint.log"
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.8,
-            "log": "docs/runs/F293-20261024T230130Z-typecheck.log"
+            "seconds": 0.2,
+            "log": "docs/runs/F294-20261025T003525Z-typecheck.log"
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.8,
-            "log": "docs/runs/F293-20261024T230130Z-build.log"
+            "seconds": 2.0,
+            "log": "docs/runs/F294-20261025T003525Z-build.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 220.2,
+            "log": "docs/runs/F294-20261025T003525Z-e2e.log"
           }
         ],
-        "taskHash": "9cc91265dfe4dba1",
-        "filesHash": "b51686cb1a21223a",
+        "taskHash": "15ba0e640e42db1c",
+        "filesHash": "f5d0a0e7c10fa899",
         "proof": {
-          "1": "unit: TestBillingDetailsNeedAFreshSignIn",
-          "2": "unit: TestSignOutEverywhere, TestProfilesBelongToTheirUser",
-          "3": "e2e: live navigation.spec.ts fresh sign-in test; fresh-sign-in.test.ts",
-          "4": "e2e: live navigation.spec.ts Sign out everywhere test; a11y-e2e",
-          "5": "docs-check: R-137, D-93, Q-13, api.md, openapi.yaml, architecture docs, DESIGN.md"
+          "1": "unit: internal/httpapi/tests TestMembersReachOnlyWhatTheirRoleAllows (a member's GET /v1/me lists the shop with role developer, the owner's with owner; the database refuses a member on a freelancer profile and the owner as a member); TestMemberSignUpMakesNoWalletForTheirTeamsProfile (a member's sign-in makes no wallet for the team's profile; failed before the fix); migration 62 rolls back in TestMigrationsRollBackAndReapply",
+          "2": "unit: TestProfileRoutesAreAllListed fails when a {profileId} route asks for no permission (checked by removing one); TestMembersReachOnlyWhatTheirRoleAllows checks 8 routes for owner, Admin, Developer, Finance, a Developer with no store and a stranger (a wrong role map fails it, checked by mutation); TestProfilesBelongToTheirUser keeps 403 for other users on every route",
+          "3": "unit: TestMembersReachOnlyWhatTheirRoleAllows (Developer and Finance list only their store's invoices, events and Owed, held money included; removing any of the three SQL store filters fails it; another store's invoice is 404 on read, cancel and Revise, and a refused Revise leaves it open; a Developer saves their store, gets 404 for another or a new one, and 403 for a token switch change; Finance can't save a store; a Developer's create takes their store and another store or none is 422; jobs Admin only, notifications the owner's)",
+          "4": "docs-check: R-138, D-93, api.md Auth, openapi.yaml Profile.role, ProfileId, Forbidden and store tokensOff, architecture.md data model, rules.md; backend-e2e passes"
         },
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "Re-review of the delta. Both blocking findings are fixed. (1) privy.go EndSessions runs on context.WithoutCancel, gives each call its own timeout and always sends the unfreeze. profile/sessions.go sets the cutoff only after a freeze that worked, also on WithoutCancel. TestSignOutEverywhere covers a failed freeze (unfreeze sent last, session kept) and a failed unfreeze (500, older token 401). The fake records failed calls and has FailUnfreezes. (2) R-137, accept 2, api.md and openapi.yaml give the code's order: freeze and unfreeze, then the cutoff. The earlier notes are addressed. The cutoff is now() with no date_trunc. signedInAt is set per invoiceAPI, and no test runs in parallel. There are tests for Google not counting, for a second reauth_required being the answer, and for Cancel in the live test. The live test saves the session right after the dialog closes. The menu dialog resets on close. Q-13 records the passkey-linking gap, and the api.md guards list names FreshSignIn. NON-BLOCKING: after a freeze that worked, a failed unfreeze (after the SDK's retries) still locks the user out. The cutoff now refuses their own token, so Try again in the dialog answers 401, and a frozen user can't sign in. Recovery is by hand at Privy, from the error log line that names the DID. This trade-off is chosen and documented. Consider an alert or a later retry. Ran: go test -race on TestBillingDetailsNeedAFreshSignIn, TestSignOutEverywhere, TestBusinessInvoiceNeedsBillingDetails and TestProfileRoutes*: ok. vitest src/shared/api and src/providers: 13 pass. The verify logs from 2026-10-24T23:01:30Z show the live suite at 44 passed, including both new tests.",
-          "at": "2026-10-24T23:10:28Z",
-          "filesHash": "b51686cb1a21223a"
-        },
-        "commit": "a6a8dbe",
-        "doneAt": "2026-10-24T23:50:15Z"
+          "summary": "Re-review after the R-95 tag fix: invoices_owed_test.go has the // R-95. tag back above TestOwedToYou, and the deposit helper carries only its own comment. No blocking findings. The earlier non-blocking notes stand: an owner's cross-store Revise shows the replaced invoice's id and number to the other store's members; the owner should confirm D-93's agent defaults (jobs, notifications, and Finance seeing every store's activity under the shared wallet); a Developer's store save drops store_tokens_off rows for disabled tokens, as owners' saves already did; the first-store order is untested with two assigned stores; the web will show member profiles whose pages answer 403 (F295).",
+          "at": "2026-10-25T00:42:47Z",
+          "filesHash": "f5d0a0e7c10fa899"
+        }
       },
-      "branch": "feat/f293-saving-billing-details-needs-a-fresh-sig",
-      "baseCommit": "571374f06d35a6a6ae3e3fc1f4b0ada8dcd21c89",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f293-saving-billing-details-needs-a-fresh-sig",
-        "base": "main"
-      }
+      "branch": "feat/f294-a-merchant-profile-s-members-reach-only",
+      "baseCommit": "9e529ecd8fe7752295e8b1d535d45b3f47efc3cb",
+      "failedVerifies": 0
     },
     {
-      "id": "F294",
+      "id": "F295",
       "type": "feat",
-      "behavior": "A merchant profile has a team with Admin, Developer and Finance roles",
+      "behavior": "A merchant invites team members by email and manages their roles",
       "acceptance": [
-        "Email invites are single use, hashed, bound to the invited email and expire in 7 days; roles follow D-93, every profile route asks for a permission from one map, and a test fails when a route has none; changing a role needs a fresh sign-in (D-63); the last Admin can't leave"
+        "Invites are single use, hashed, bound to the invited email and expire in 7 days; the invited user accepts at /invite/<token> signed in with that verified email; an Admin changes roles and stores with a fresh sign-in (D-63) and removes members; a member leaves; the last Admin can't leave or be demoted; the Team page lists members and invites; the app hides pages a role can't use"
       ],
       "dependsOn": [
-        "F293"
+        "F294"
       ],
       "state": "not_started",
       "verification": [
@@ -141,8 +135,7 @@
       ],
       "refs": [
         "D-93",
-        "D-30",
-        "D-61"
+        "D-63"
       ],
       "keep": [],
       "review": false,

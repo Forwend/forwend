@@ -88,6 +88,8 @@ type Request struct {
 	cycle    *cycle
 	// R-134: a merchant invoice's store; "" is the profile's first store.
 	StoreID string
+	// Stores, when not nil, are the only stores a Developer or Finance member reaches (R-138): Replaces must be in one.
+	Stores []string `json:"-"`
 	// After runs in the insert's transaction before commit, and not on an idempotent replay (R-100).
 	After func(ctx context.Context, tx pgx.Tx, invoiceID string) error `json:"-"`
 	// By is who makes the invoice, for its history (R-123); empty is the owner.

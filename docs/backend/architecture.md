@@ -153,7 +153,8 @@ with a test.
   - Its id is the project ID (D-31). `invoices.store_id` names a store of the same profile and never changes.
 - `profile_tokens_off(profile_id, chain_id, token_contract)` and `store_tokens_off(store_id, …)`: tokens turned off
   for new invoices (R-136). An enabled token is on until it has a row here.
-- Planned (PLAN 11.2): `team_members(role, store scope)`.
+- `profile_members(profile_id, user_id, role: admin|developer|finance)` and `member_stores(profile_id, user_id,
+  store_id)`: a merchant profile's team (R-138). A trigger keeps members to merchant profiles, never the owner.
 - `chains(chain_id, chain_family, enabled)`, `tokens(chain_id, contract, decimals, enabled)`. One confirm rule for all
   chains (D-45), so no per-chain rule columns. From `00015` on, migrations add each planned network and its token
   switched off (Arbitrum Sepolia USDC in `00015`, Arc testnet USDC in `00016`, Tempo Moderato OUSD in `00017`), so

@@ -49,7 +49,7 @@ func NewService(pool *pgxpool.Pool, read ledger.BalanceOf) *Service {
 	return &Service{pool: pool, read: read}
 }
 
-// The caller has checked that the user owns the profile.
+// The caller has checked the user's access to the profile.
 func (s *Service) Of(ctx context.Context, profileID string) (Balances, error) {
 	var wallet string
 	if err := s.pool.QueryRow(ctx, `SELECT coalesce((SELECT address FROM profile_wallets
