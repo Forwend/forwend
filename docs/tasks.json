@@ -363,7 +363,7 @@
       "dependsOn": [
         "F297"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e",
@@ -458,11 +458,18 @@
           "summary": "Short re-review of the three follow-ups; the earlier pass stands (R-117 fix in invoice/create.go:142-146, mutation-checked). (b) TestLinkPayRefusedByCreateSpendsNoSharedBudget now fails if a junk link's PUT is not 201 (link_checkout_test.go:215-217). (c) LINK_NOT_READY_CODE lives in features/links/constants/links.ts:11 beside LINK_CLOSED_CODES; link-checkout.tsx:16,144 imports it. (d) docs/web/architecture.md: invoices -> stores says the brand's schema; links -> stores adds the payer's read brand (R-142). Still open, non-blocking: no HTTP test that a real Pay is refused once the shared bucket is spent (linkapi/routes.go:30-31); no owner-side warning for a link without billing details. Ran: go test ./internal/httpapi/tests -run 'TestLinkPayRefusedByCreateSpendsNoSharedBudget|TestLinkPayIsRateLimited|TestLinkCheckout' -count=1 (ok); python3 scripts/check-docs.py (0 errors); status: verify passed at 2026-10-25T17:30:14Z.",
           "at": "2026-10-25T17:38:30Z",
           "filesHash": "eb73f6b8fa8b0848"
-        }
+        },
+        "commit": "1fb598a",
+        "doneAt": "2026-10-25T17:38:54Z"
       },
       "branch": "feat/f298-a-payer-pays-through-a-payment-link",
       "baseCommit": "a722a545aaca25f5b84a30d14766683c864dd0fd",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f298-a-payer-pays-through-a-payment-link",
+        "base": "main"
+      }
     },
     {
       "id": "F299",
