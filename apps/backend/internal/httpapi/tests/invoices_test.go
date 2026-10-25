@@ -45,6 +45,13 @@ type invoiceEnv struct {
 // invoiceAPI: wallet balances read 2500000 at block 100, and Base Sepolia has enabled USDC and a disabled token.
 func invoiceAPI(t *testing.T) invoiceEnv {
 	t.Helper()
+	return invoiceAPIWith(t, 0, webhookKey)
+}
+
+// invoiceAPIWith is invoiceAPI with each user's burst of requests (0 keeps mid.UserBurst) and a webhook key (nil for
+// none).
+func invoiceAPIWith(t *testing.T, userBurst int, webhookKey []byte) invoiceEnv {
+	t.Helper()
 	ctx := context.Background()
 	verifier, privyKey := testVerifier(t)
 	url := databasetest.New(t)
@@ -86,7 +93,7 @@ func invoiceAPI(t *testing.T) invoiceEnv {
 	e.srv = httptest.NewServer(httpapi.NewMux(pool, verifier, privy.NewClient(privytest.AppID, privytest.AppSecret, e.wallets.URL),
 		func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
 			return big.NewInt(2500000), 100, nil
-		}, webURL, 0))
+		}, webURL, userBurst, webhookKey))
 	t.Cleanup(e.srv.Close)
 	return e
 }

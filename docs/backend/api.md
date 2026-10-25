@@ -281,6 +281,31 @@ R-144, D-95; the full schema is in openapi.yaml. Owners and Admins manage keys w
   - `overlapHours` (0–168, default 24) is how long the old key keeps working. A key rolls once.
 - `DELETE /v1/profiles/{profileId}/keys/{keyId}` revokes the key at once (204). An unknown or stopped key is 404.
 
+## Webhooks
+
+R-146, D-96; the full schema is in openapi.yaml. Owners and Admins manage them with the `webhooks` permission (D-93).
+
+- Without `WEBHOOK_SECRET_KEY` (32 bytes in base64) the api keeps no secret.
+  - Saving an endpoint, and revealing or rotating its secret, then answer 503 `webhooks_not_configured`.
+  - The list and a delete still work.
+- `GET /v1/profiles/{profileId}/webhooks` lists the endpoints, newest first.
+- `PUT /v1/profiles/{profileId}/webhooks/{endpointId}` creates or replaces one by a lowercase UUID, with a fresh sign-in.
+  - 201 the first time, when it gets its first secret, which only the secret route shows; 200 after.
+  - Another profile's id is 404 `endpoint_not_found`.
+  - `url` is https, at most 2048 characters, with no credentials and no fragment.
+  - Its host must be public: no localhost, `.local` or `.internal` name, and no private, loopback, link-local or CGNAT address.
+  - A name must be ASCII, in its punycode form, and can't end in a number: resolvers read `127.1` as 127.0.0.1.
+  - IPv6 that carries an IPv4 address (IPv4-compatible, NAT64, 6to4) is refused too.
+  - A host name is not resolved here; deliveries check its addresses after DNS (PLAN 11.5).
+  - `events` are one or more of `invoice.detected`, `invoice.partially_paid`, `invoice.paid`, `invoice.settled`,
+    `invoice.expired`, `invoice.canceled` and `invoice.held`.
+  - `storeId` (optional) narrows a merchant's endpoint to one store; a freelancer's has none. `enabled` defaults to on.
+- `DELETE /v1/profiles/{profileId}/webhooks/{endpointId}` removes it and its secrets (204).
+- `GET /v1/profiles/{profileId}/webhooks/{endpointId}/secret` reveals the working secrets, newest first, with a fresh sign-in.
+  - A secret is `whsec_` and the base64 of 32 random bytes (Standard Webhooks). It is kept sealed, never as text.
+- `POST /v1/profiles/{profileId}/webhooks/{endpointId}/secret/rotate` makes a new secret (201, with a fresh sign-in).
+  - The old one keeps its `expiresAt`, 24 hours on, and signs until then.
+
 ## Invoices
 
 R-19 and R-42; the full schema is in openapi.yaml.

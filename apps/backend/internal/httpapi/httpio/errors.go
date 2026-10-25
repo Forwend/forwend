@@ -18,6 +18,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
 	"github.com/ensp1re/forwend/apps/backend/internal/search"
 	"github.com/ensp1re/forwend/apps/backend/internal/team"
+	"github.com/ensp1re/forwend/apps/backend/internal/webhook"
 )
 
 var ErrMalformed = errors.New("malformed request")
@@ -73,6 +74,13 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusConflict, "not_merchant", "only a merchant profile has stores"
 	case errors.Is(err, link.ErrNotFound):
 		status, code, message = http.StatusNotFound, "link_not_found", "payment link not found"
+	case errors.Is(err, webhook.ErrNotConfigured):
+		status, code, message = http.StatusServiceUnavailable, "webhooks_not_configured",
+			"webhooks are off on this server: it has no WEBHOOK_SECRET_KEY"
+	case errors.Is(err, webhook.ErrNotFound):
+		status, code, message = http.StatusNotFound, "endpoint_not_found", "webhook endpoint not found"
+	case errors.Is(err, webhook.ErrPersonal):
+		status, code, message = http.StatusConflict, "personal_profile", "a personal profile has no webhooks"
 	case errors.Is(err, apikey.ErrUnknownKey):
 		status, code, message = http.StatusUnauthorized, "invalid_api_key",
 			"the API key is unknown, revoked or past its overlap"
@@ -130,7 +138,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusConflict, "idempotency_conflict", "Idempotency-Key was used with another request"
 	case errors.Is(err, invoice.ErrInvalid), errors.Is(err, profile.ErrInvalid), errors.Is(err, job.ErrInvalid),
 		errors.Is(err, activity.ErrInvalid), errors.Is(err, team.ErrInvalid), errors.Is(err, link.ErrInvalid),
-		errors.Is(err, apikey.ErrInvalid),
+		errors.Is(err, apikey.ErrInvalid), errors.Is(err, webhook.ErrInvalid),
 		errors.Is(err, balance.ErrInvalid), errors.Is(err, search.ErrInvalid):
 		status, code, message = http.StatusUnprocessableEntity, "invalid_value", err.Error()
 	case errors.Is(err, activity.ErrTooMany):
