@@ -110,6 +110,9 @@ func accepted(inv invoice.Invoice) []string {
 	return out
 }
 
+// TestMode marks a test-mode invoice's PDFs (R-143).
+const TestMode = "Test mode: testnet tokens have no value"
+
 func Number(n int64) string {
 	return fmt.Sprintf("INV-%04d", n)
 }
@@ -197,6 +200,15 @@ func start(inv invoice.Invoice, kind string, logo []byte) doc {
 		date = inv.PaidAt
 	}
 	d := open(kind, InvoiceNumber(inv), author, date, logo)
+	// A forwarded PDF must not pass testnet tokens off as money (D-87).
+	if !inv.Livemode {
+		d.SetX(margin + width/2)
+		d.SetFont(font, "B", 10)
+		d.text(ink)
+		d.CellFormat(width/2, lineHeight, TestMode, "", 1, "R", false, 0, "")
+		d.SetFont(font, "", 10)
+		d.text(subtle)
+	}
 	// The client's accounts team matches the invoice by it (R-90). Never cut: each line holds at least one byte.
 	if text := "Reference " + inv.Reference; inv.Reference != "" {
 		for _, l := range d.fit(text, width/2, len(text)) {

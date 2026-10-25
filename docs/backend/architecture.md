@@ -161,7 +161,8 @@ with a test.
 - `profile_invites(profile_id, email, role, stores, token_hash, expires_at, accepted_at, revoked_at)` (R-139).
   - `token_hash` is the SHA-256 of the link's token; the token itself is never kept here.
   - One open invite per address and profile (a unique index); a new one revokes the last.
-- `chains(chain_id, chain_family, enabled)`, `tokens(chain_id, contract, decimals, enabled)`. One confirm rule for all
+- `chains(chain_id, chain_family, enabled, livemode)`, `tokens(chain_id, contract, decimals, enabled)`. `livemode` is
+  false unless whatever adds a chain says live: the testnets are test mode (D-87, R-143). One confirm rule for all
   chains (D-45), so no per-chain rule columns. From `00015` on, migrations add each planned network and its token
   switched off (Arbitrum Sepolia USDC in `00015`, Arc testnet USDC in `00016`, Tempo Moderato OUSD in `00017`), so
   isolated tests need no public RPCs or testnet gas. Schema migrations omit Base Sepolia; activation below adds it.

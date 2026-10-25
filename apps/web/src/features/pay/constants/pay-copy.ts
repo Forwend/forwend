@@ -10,6 +10,8 @@ export const PAY_COPY = {
   invoice: (number: string) => (number ? `Invoice ${number}` : "Invoice"),
   request: (number: string) => (number ? `Request ${number}` : "Request"),
   noIssuer: "Invoice",
+  testMode:
+    "Test mode: this invoice takes testnet tokens, which have no value. Don't send real money.",
   pdfLabel: "Download invoice PDF",
   amountDue: "Amount due",
   amount: "Amount",

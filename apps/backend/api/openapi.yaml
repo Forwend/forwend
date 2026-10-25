@@ -3159,8 +3159,8 @@ components:
     InvoiceSummary:
       type: object
       required: [invoiceId, payToken, optionId, optionLocked, optionCount, confirming, closed, number, title, note, dueDate, supplyDate, reference, agreedValue, senderName, returnUrl, issuer, chainId,
-        token, amount, recipient, factory, receiveAddress, expiresAt, closesAt, settleDeadline, paymentStatus, settlementStatus,
-        refundStatus, settlementTxHash, createdAt, brand]
+        livemode, token, amount, recipient, factory, receiveAddress, expiresAt, closesAt, settleDeadline, paymentStatus,
+        settlementStatus, refundStatus, settlementTxHash, createdAt, brand]
       description: |
         With several options (payer chooses), the terms and statuses are the current option's: the one that received
         money first, else the first listed.
@@ -3268,6 +3268,9 @@ components:
             - $ref: "#/components/schemas/Issuer"
             - type: "null"
         chainId: { type: integer }
+        livemode:
+          type: boolean
+          description: The chain's mode (D-87, R-143). False on a testnet, whose tokens have no value.
         token: { $ref: "#/components/schemas/Address" }
         amount: { $ref: "#/components/schemas/Uint256" }
         recipient:

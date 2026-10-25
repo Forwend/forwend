@@ -53,7 +53,8 @@ code; a wallet connects only to claim a refund (D-37).
 - 11.4 Test mode and secret API keys (D-87). Test mode runs on the testnets, live mode on mainnets; test mode reads
   chains through public RPCs, and a developer can add their own. Keys `fw_test_…` and `fw_live_…` with a checksum:
   shown once, hashed, scoped to a store, no scope moves money, rolled with an overlap, last use shown. Creating one
-  needs a fresh sign-in (D-63). After 12.1; build 12.1 first.
+  needs a fresh sign-in (D-63). After 12.1; build 12.1 first. Test mode's marks are R-143. Before the first mainnet,
+  a payer-chooses invoice takes options of one mode only, so its `livemode` never changes.
 - 11.5 Webhooks: Standard Webhooks signatures (D-42) with a separate signing secret, retries over days, replay,
   delivery log, "send test event" and secret rotation; the task picks the design from the research. Events:
   `invoice.detected`, `invoice.partially_paid`, `invoice.paid`, `invoice.settled`, `invoice.expired`,

@@ -65,6 +65,7 @@ export const sampleInvoice = (
   senderName: null,
   returnUrl: null,
   chainId: 84532,
+  livemode: false,
   token: USDC,
   amount: `${number}000000`,
   recipient: `0x${"7a21".repeat(10)}`,

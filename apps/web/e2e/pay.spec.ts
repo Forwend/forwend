@@ -60,6 +60,7 @@ const OPEN = {
     email: "billing@alice.example",
   },
   chainId: 84532,
+  livemode: false,
   token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
   amount: "1250000000",
   recipient: "0x1111111111111111111111111111111111111111",
@@ -256,6 +257,20 @@ test.describe("pay page", () => {
     await expect(page.getByText("Invoice", { exact: true })).toBeVisible();
     await expect(page.getByText(/INV-/)).toHaveCount(0);
     await expect(page.locator("[data-money]")).toHaveText("1,250.00 USDC");
+  });
+
+  test("a test-mode invoice says its tokens have no value, and a live one doesn't (R-143)", async ({
+    page,
+  }) => {
+    await openPay(page, OPEN);
+    const note = page.getByText(
+      "Test mode: this invoice takes testnet tokens, which have no value. Don't send real money.",
+    );
+    await expect(note).toBeVisible();
+    await mockInvoice(page, { ...OPEN, livemode: true });
+    await page.reload();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Alice Design GmbH");
+    await expect(note).toHaveCount(0);
   });
 
   // R-55

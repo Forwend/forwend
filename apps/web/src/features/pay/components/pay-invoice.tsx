@@ -237,6 +237,10 @@ function Summary({
     >
       {/* Top of the first column: the first thing on the page at any width (the grid pins every block's row). */}
       {stale}
+      {/* R-143: testnet money must never pass for real money. */}
+      {invoice.livemode ? null : (
+        <p className="rounded-md bg-warning-soft px-4 py-3 text-sm text-warning">{COPY.testMode}</p>
+      )}
       <Payee
         name={payee ?? COPY.noIssuer}
         subtitle={invoice.issuer ? COPY.invoice(number) : COPY.request(number)}

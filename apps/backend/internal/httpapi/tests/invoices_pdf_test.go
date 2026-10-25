@@ -144,7 +144,7 @@ func TestInvoicePDF(t *testing.T) {
 	mustContain(t, text, "Forwend\nInvoice\nINV-0002",
 		"FROM\nAlice Design GmbH\nHauptstr. 1\n10115 Berlin\nDE\nTax ID DE123456789\nbilling@alice.example",
 		"BILL TO\nBob Ltd\nMain St 1\nBerlin\nDE\nTax ID DE999999999",
-		"INV-0002\nReference PO-4500012345\n", "Issued\n"+created.Format("2006-01-02 15:04")+" UTC\nSupply date\n2026-10-31\nDue date\n2026-11-01\nCheckout closes\n"+
+		"INV-0002\nTest mode: testnet tokens have no value\nReference PO-4500012345\n", "Issued\n"+created.Format("2006-01-02 15:04")+" UTC\nSupply date\n2026-10-31\nDue date\n2026-11-01\nCheckout closes\n"+
 			expires.Format("2006-01-02 15:04")+" UTC",
 		"Description\nNetwork\nAmount\nLogo design\nBase Sepolia\nChain 84532\n5.00 USDC\nTotal due\n5.00 USDC\n"+
 			"Agreed value 1,000.50 EUR on 2026-10-01",
@@ -273,7 +273,7 @@ func TestReceiptPDF(t *testing.T) {
 	link := webURL + "/pay/" + e.link(t, id)
 	stamp := func(at time.Time) string { return at.UTC().Format("2006-01-02 15:04") + " UTC" }
 	text := pdfText(t, r.body)
-	mustContain(t, text, "Forwend\nReceipt\nINV-0001\nReference PO-7\n", "Supply date\n2026-10-01\nPaid\n"+stamp(paidAt),
+	mustContain(t, text, "Forwend\nReceipt\nINV-0001\nTest mode: testnet tokens have no value\nReference PO-7\n", "Supply date\n2026-10-01\nPaid\n"+stamp(paidAt),
 		"Base Sepolia\nChain 84532\n2.00 USDC\nAmount paid\n2.00 USDC\nAgreed value 300 JPY on 2026-10-01",
 		"PAYMENTS\n1.50 USDC · "+stamp(paidAt.Add(-time.Minute))+"\n"+first+"\nView on Basescan\n0.50 USDC · "+
 			stamp(paidAt)+"\n"+second+"\nView on Basescan\nCheck this receipt")
@@ -370,5 +370,22 @@ func TestInvoicePDFLines(t *testing.T) {
 	if text := pdfText(t, e.pdf(t, made["invoiceId"].(string), "invoice.pdf", "").body); strings.Contains(text, "…") ||
 		strings.Count(text, "W") != strings.Count(long, "W") {
 		t.Fatalf("a 200-character description is cut:\n%s", text)
+	}
+}
+
+// R-143, D-87: an invoice is in its chain's mode; a test-mode one says so on every read and PDF.
+func TestInvoiceModeFollowsItsChain(t *testing.T) {
+	e := invoiceAPI(t)
+	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
+	owner := "/v1/profiles/" + e.aliceProfile + "/invoices/"
+	for _, live := range []bool{false, true} {
+		e.exec(t, "UPDATE chains SET livemode = $1 WHERE chain_id = 84532", live)
+		read := e.get(t, id)
+		listed, _ := e.call(t, "GET", strings.TrimSuffix(owner, "/"), "did:privy:alice", "", "").body["items"].([]any)
+		marked := strings.Contains(pdfText(t, e.pdf(t, id, "invoice.pdf", "").body), "Test mode: testnet tokens have no value")
+		if read.body["livemode"] != live || e.call(t, "GET", owner+id, "did:privy:alice", "", "").body["livemode"] != live ||
+			len(listed) != 1 || listed[0].(map[string]any)["livemode"] != live || marked == live {
+			t.Errorf("livemode %v: payer %v, list %v, PDF marked %v", live, read.body["livemode"], listed, marked)
+		}
 	}
 }
