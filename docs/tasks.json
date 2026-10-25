@@ -246,7 +246,7 @@
       "dependsOn": [
         "F296"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "backend-e2e"
@@ -337,11 +337,18 @@
           "summary": "Re-review after the fixes; all earlier findings are resolved. Blocking, fixed: activity/transfers.go:60 adds 'AND m.number IS NOT NULL' to the invoice join, so scanTransfer never dereferences a nil number. TestLinkInvoiceNumbers puts a wallet_transfers row from the unnumbered receive address and checks GET /transactions before money and while detected. Mutation check in a scratch copy: removing the filter makes the test fail (the server panics, the client gets EOF at links_test.go:238). (a) Fixed: numbering in ledger/process.go:259-273 now runs last, after funded/balanced/deployed, under len(deposits) > 0. No early return between booking and Commit. Outbox rows commit in the same transaction, so emails see the number. (b, c, d) Fixed: api.md, R-141 and architecture.md are now accurate, and every new sentence is 25 words or fewer. (g) Fixed: the 00065 Down refuses while any number is NULL; TestMigrationsKeepAnUnnumberedLinkInvoice checks the refusal and that version 65 stays. (h) Fixed: TestLinkInvoiceNumbers numbers a link invoice where the payer picks the token, paid on its second option: the main and option rows both get 6. Non-blocking: invoice.numbered is now written after invoice.paid and settlement_queued in the same transaction, so the owner's newest-first History lists 'Number given' above 'Paid'. This is cosmetic. (e) goes in the commit message. (f) Refusing LinkID with Replaces, Repeat or Reminders is for F298. Ran with with-env.sh, all ok: go test ./internal/httpapi/tests -run 'TestLinkInvoiceNumbers|TestProfileRoutesAreAllListed|TestPaymentLinks|TestOwedToYou|Transaction|Statement|Money'; go test ./internal/database ./internal/activity ./internal/ledger ./internal/history ./internal/invoice. Status showed verify passed at 2026-10-25T16:05:10Z.",
           "at": "2026-10-25T16:12:48Z",
           "filesHash": "7b6961a7f5cbb748"
-        }
+        },
+        "commit": "ac41d21",
+        "doneAt": "2026-10-25T16:13:16Z"
       },
       "branch": "feat/f297-a-payment-link-invoice-takes-its-number",
       "baseCommit": "da6e023ce755c2f9c10e60ad89ae94636cdfebef",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f297-a-payment-link-invoice-takes-its-number",
+        "base": "main"
+      }
     },
     {
       "id": "F298",
