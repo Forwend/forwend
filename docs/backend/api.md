@@ -306,6 +306,26 @@ R-146, D-96; the full schema is in openapi.yaml. Owners and Admins manage them w
 - `POST /v1/profiles/{profileId}/webhooks/{endpointId}/secret/rotate` makes a new secret (201, with a fresh sign-in).
   - The old one keeps its `expiresAt`, 24 hours on, and signs until then.
 
+### Events
+
+R-147, D-97; the body is `WebhookEvent` under `webhooks` in openapi.yaml.
+
+- `history.Add` writes an event for each change an event type names, in the change's transaction.
+  - A status change writes its type; an expiry with money paid is `invoice.expired`.
+  - A cancel, also by a Revise, is `invoice.canceled`.
+  - Money held for the payer is `invoice.held`, one event per reason in a run.
+- Each event gets a delivery for each endpoint, fixed at the commit.
+  - The endpoint is the invoice's profile's, of the same `livemode`, on, and takes the type.
+  - A store's endpoint takes only that store's invoices.
+- The body is `{id, type, livemode, sequence, timestamp, data: {invoice, held}}`.
+  - `id` is `evt_` and 32 hex digits. It stays the same for every endpoint.
+  - `sequence` counts the invoice's events from 1, in commit order. A receiver can skip a change older than one it has.
+  - `data.invoice` is the invoice as `GET /v1/profiles/{profileId}/invoices/{invoiceId}` answers when the event is sent.
+  - `data.held` is null except on `invoice.held`: `amount` in base units, `reason`, and `optionId` on a payer-chooses invoice.
+  - A held `reason` is `overpaid` (more than the amount, or after paid), `late` (after the checkout closed), or `expired`.
+  - It can also be `canceled`, or `other_option` (sent to an option the payer did not choose, D-76).
+- A payment-link invoice's `invoice.detected` can come before it has a number (R-141).
+
 ## Invoices
 
 R-19 and R-42; the full schema is in openapi.yaml.

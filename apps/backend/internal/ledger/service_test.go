@@ -142,7 +142,7 @@ func TestDepositsMoveThePaymentStatus(t *testing.T) {
 	want(t, "run again", e.state(t, id), state{payment: Paid, refund: "held", receiver: 6000000, owed: 5000000, held: 1000000})
 
 	history := []string{"invoice.detected by system", "invoice.partially_paid by system", "invoice.paid by system",
-		`invoice.held by system {"amount": "1000000"}`, "invoice.settlement_queued by system"}
+		`invoice.held by system {"amount": "1000000", "reason": "overpaid"}`, "invoice.settlement_queued by system"}
 	if got := historytest.Events(t, e.pool, id); !reflect.DeepEqual(got, history) {
 		t.Fatalf("history\n got %q\nwant %q", got, history)
 	}
@@ -173,6 +173,7 @@ func TestPaidNeedsTheSecondRPCToAgree(t *testing.T) {
 func TestExpiryHoldsPartialAndLatePayments(t *testing.T) {
 	e := newChainEnv(t)
 	e.factory = e.anvil.DeployFactory() // the partial close reads it
+	e.endpoint(t, "all", allEvents, true, false)
 	expires := e.anvil.Now() + 1000
 	partial, receive := e.invoice(t, 1, 5000000, expires)
 	unpaid, _ := e.invoice(t, 2, 5000000, expires)
@@ -192,6 +193,17 @@ func TestExpiryHoldsPartialAndLatePayments(t *testing.T) {
 	e.anvil.Mine(2)
 	e.run(t)
 	want(t, "late deposit", e.state(t, partial), state{payment: ExpiredPartiallyPaid, refund: "held", receiver: 3000000, held: 3000000})
+
+	// R-147: the part paid is held as expired, and the late deposit as late.
+	for id, events := range map[string][]string{
+		partial: {"1 invoice.partially_paid to all", "2 invoice.expired to all", "3 invoice.held expired to all",
+			"4 invoice.held late to all"},
+		unpaid: {"1 invoice.expired to all"},
+	} {
+		if got := historytest.Webhooks(t, e.pool, id); !reflect.DeepEqual(got, events) {
+			t.Errorf("webhook events of %s\n got %q\nwant %q", id, got, events)
+		}
+	}
 }
 
 func TestOnTimeDepositPaysAfterExpiryFinalizes(t *testing.T) {
@@ -207,12 +219,18 @@ func TestOnTimeDepositPaysAfterExpiryFinalizes(t *testing.T) {
 // D-26.
 func TestLateFullPaymentIsHeldNotPaid(t *testing.T) {
 	e := newChainEnv(t)
+	e.endpoint(t, "all", allEvents, true, false)
 	id, receive := e.invoice(t, 1, 5000000, e.anvil.Now()+1000)
 	e.anvil.Wait(2000)
 	e.anvil.Transfer(e.token, receive, "5000000")
 	e.anvil.Mine(2)
 	e.run(t)
 	want(t, "late full payment", e.state(t, id), state{payment: Expired, refund: "held", receiver: 5000000, held: 5000000})
+	// Booked while the invoice was still open: held as late.
+	events := []string{"1 invoice.expired to all", "2 invoice.held late to all"}
+	if got := historytest.Webhooks(t, e.pool, id); !reflect.DeepEqual(got, events) {
+		t.Fatalf("webhook events\n got %q\nwant %q", got, events)
+	}
 }
 
 // D-27: a later deposit confirmed first waits for an earlier one still detected.

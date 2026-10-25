@@ -2120,6 +2120,21 @@ paths:
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
         "503": { $ref: "#/components/responses/WebhooksNotConfigured" }
+webhooks:
+  invoiceEvent:
+    post:
+      operationId: invoiceEvent
+      summary: An invoice change, sent to each endpoint that takes its type (R-147)
+      description: |
+        Signed with Standard Webhooks (D-42). The webhook-id header is the event's id. A receiver answers 2xx to take it;
+        the sequence orders one invoice's events, so a receiver can skip a change older than one it has.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WebhookEvent" }
+      responses:
+        "200": { description: Taken }
 components:
   securitySchemes:
     privyAccessToken:
@@ -2307,6 +2322,36 @@ components:
           minItems: 1
           items: { type: string, enum: [invoice.detected, invoice.partially_paid, invoice.paid, invoice.settled, invoice.expired, invoice.canceled, invoice.held] }
         enabled: { type: boolean, default: true }
+    WebhookEvent:
+      type: object
+      required: [id, type, livemode, sequence, timestamp, data]
+      properties:
+        id: { type: string, pattern: "^evt_[0-9a-f]{32}$", description: The same for every endpoint. }
+        type:
+          type: string
+          enum: [invoice.detected, invoice.partially_paid, invoice.paid, invoice.settled, invoice.expired, invoice.canceled, invoice.held]
+        livemode: { type: boolean, description: "False: test mode (D-87)." }
+        sequence: { type: integer, minimum: 1, description: "The invoice's events from 1, in commit order." }
+        timestamp: { type: string, format: date-time, description: "When the change was written: its transaction's start." }
+        data:
+          type: object
+          required: [invoice, held]
+          properties:
+            invoice:
+              $ref: "#/components/schemas/Invoice"
+              description: As the owner's read answers when the event is sent; a link invoice's number may be null.
+            held:
+              description: The money held for the payer on invoice.held; null on any other type.
+              oneOf:
+                - type: "null"
+                - type: object
+                  required: [amount, reason, optionId]
+                  properties:
+                    amount: { type: string, description: Base units of the invoice token. }
+                    reason:
+                      type: string
+                      enum: [overpaid, late, expired, canceled, other_option]
+                    optionId: { type: [string, "null"], description: "The option it is on, on a payer-chooses invoice." }
     WebhookSecrets:
       type: object
       required: [secrets]

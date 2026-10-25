@@ -163,6 +163,9 @@ with a test.
 - `webhook_endpoints(profile_id, store_id, url, description, events, enabled, livemode)` and
   `webhook_secrets(endpoint_id, sealed, expires_at)` (R-146). A secret is AES-256-GCM under `WEBHOOK_SECRET_KEY`, its
   endpoint's id as the associated data, so a sealed secret copied to another endpoint does not open.
+- `webhook_events(history_id, profile_id, invoice_id, type, livemode, sequence)` and `webhook_deliveries(endpoint_id,
+  event_id)` (R-147). `history.Add` writes both with the history row, so an event can't miss a change.
+  - Events are append-only. The key `(invoice_id, sequence)` stops two writers that skip the invoice's lock.
 - `profile_invites(profile_id, email, role, stores, token_hash, expires_at, accepted_at, revoked_at)` (R-139).
   - `token_hash` is the SHA-256 of the link's token; the token itself is never kept here.
   - One open invite per address and profile (a unique index); a new one revokes the last.

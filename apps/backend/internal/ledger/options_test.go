@@ -91,7 +91,7 @@ func TestFirstOptionPaidWinsAndOthersAreHeld(t *testing.T) {
 		"invoice.detected by system",
 		"invoice.paid by system",
 		"invoice.settlement_queued by system",
-		fmt.Sprintf(`invoice.held by system {"amount": "5000000", "option": "%s"}`, main),
+		fmt.Sprintf(`invoice.held by system {"amount": "5000000", "option": "%s", "reason": "other_option"}`, main),
 	}
 	slices.Sort(got) // the two options run in either order
 	slices.Sort(history)

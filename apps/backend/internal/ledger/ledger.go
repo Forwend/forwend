@@ -26,6 +26,30 @@ const (
 	Canceled             = "canceled"
 )
 
+// Why money is held for the payer (D-26), in the order a run writes them to the history.
+const (
+	HeldOverpaid    = "overpaid" // more than the amount, or sent after it was paid
+	HeldLate        = "late"     // sent after the checkout closed
+	HeldExpired     = "expired"  // what was paid of an invoice that expired unpaid; the owner may reopen it (R-130)
+	HeldCanceled    = "canceled"
+	HeldOtherOption = "other_option" // sent to an option the payer did not choose (D-76)
+)
+
+var heldReasons = []string{HeldOverpaid, HeldLate, HeldExpired, HeldCanceled, HeldOtherOption}
+
+// heldReason is why the held part of a deposit is the payer's.
+func heldReason(current string, late, superseded bool) string {
+	switch {
+	case current == Canceled:
+		return HeldCanceled
+	case superseded:
+		return HeldOtherOption
+	case late || current == Expired || current == ExpiredPartiallyPaid:
+		return HeldLate
+	}
+	return HeldOverpaid
+}
+
 // Final is a status that takes no more money for the creator: every later deposit is held for the payer (D-26).
 func Final(status string) bool {
 	return status == Paid || status == Expired || status == ExpiredPartiallyPaid || status == Canceled

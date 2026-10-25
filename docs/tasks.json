@@ -1016,7 +1016,7 @@
       "dependsOn": [
         "F303"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -1028,9 +1028,91 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-25 review pass by reviewer: PASS, no blocking findings. Checked: every history.Add caller (ledger process/reopen, settlement/reconcile confirm, invoice cancel and Revise, edit, notify, reminders, retainers, payer_email). No event type is missed or doubled. The ledger never writes invoice.canceled (status() keeps a final status). expired_partially_paid -> invoice.expired is right, and Replaced -> invoice.canceled. The SQL filter matches profile, livemode, enabled, type and store (NULL = all). Concurrency: ledger (all group rows FOR NO KEY UPDATE), cancel (FOR UPDATE) and the signer's UPDATE of the option row always share a row lock, so max+1 is safe. A unique violation rolls back and retries: ProcessChain next round, signer 30 s backoff, cancel 500. Neither wedges. heldReason order is correct, and R-80 still queues one outbox row with the total. historyJSON (invoiceapi/model.go:205) leaves out reason, so the owner read and web zod (non-strict z.object) do not change. Dropping the history_id FK is needed: the FK check runs before history's TRUNCATE guard (TestHistoryIsAppendOnly). The body matches openapi Invoice, and the YAML parses. Docs keep to D-84. NON-BLOCKING: (1) migrations/00069_webhook_events.sql:18-20 has no BEFORE TRUNCATE guard, unlike history_events and ledger tables. A probe showed TRUNCATE webhook_events, webhook_deliveries succeeds. No test covers the append-only trigger. (2) The canceled held reason is untested: changing ledger.go:44 to return HeldOverpaid passes all ledger tests. Add a historytest.Events check to TestCanceledInvoiceHoldsEveryDeposit (expiry_test.go:294). (3) R-80 for a multi-reason run is untested: moving outbox.Queue (process.go:250) into the per-reason loop passes all tests. (4) ON DELETE CASCADE (00069:23) is untested. A probe showed DELETE of an endpoint with a delivery returns 204 and removes the delivery. (5) ledger.go:29: the Final doc comment now sits above the Held const block, so func Final (ledger.go:54) has no doc. (6) openapi.yaml:2335 says the timestamp is when the change committed. It is now(), the transaction start, like history.at. (7) PROJECT.md:198 R-146 edit is outside F304. It is a correct fix to match F303 code; name it in the commit. NOTES: reorg detected->open and Reopen (R-130) send no event. A receiver that saw invoice.expired gets no word of a reopen. Owner may add a type. USD invoices take options on every enabled chain whatever its mode (invoice/create.go:284). Today all chains are test mode. Once a live chain exists, the event livemode (main chain) can differ from data.invoice.livemode. This is a pre-existing F300 gap to close before a live chain. F305 must inject invoiceapi.EventBody from cmd: domain packages can't import httpapi. RAN: go test ./internal/ledger/ ./internal/history/... ./internal/database/ ./internal/webhook/ (ok); go test ./internal/httpapi/... ./internal/invoice/ ./internal/settlement/ ./internal/notify/ (ok); go vet (ok); 3 go test -overlay probes (canceled reason, outbox per reason, delete cascade + TRUNCATE); pgrep anvil empty after each.",
+        "2026-10-25 review pass by reviewer: PASS on re-review of the follow-up changes; no blocking findings. (1) 00069_webhook_events.sql:20-23 adds webhook_events_no_truncate (BEFORE TRUNCATE, ENABLE ALWAYS). TestWebhookEventsAreAppendOnly (database/money_test.go:190) expects P0001 on UPDATE, DELETE, TRUNCATE of both tables, and DELETE in replica mode. With the trigger and its ALTER removed by an -overlay of the migration, it fails: 'TRUNCATE webhook_events, webhook_deliveries: want SQLSTATE P0001, got <nil>'. (2) TestCanceledInvoiceHoldsEveryDeposit (ledger/expiry_test.go:317) now checks the history is the one held row with reason canceled. It fails when heldReason's canceled case returns overpaid. (3) TestOneRunHoldsForTwoReasons (ledger/webhooks_test.go:54) checks one held outbox row of 3000000, and held late 1000000 then held expired 2000000. It fails with told [1000000 2000000] when outbox.Queue moves into the per-reason loop. (5) ledger.go: Final's doc comment is back above func Final. (6) openapi.yaml timestamp reads 'When the change was written: its transaction's start.' (7) R-146 wording goes in the commit message. Still open, reported to the user, not blocking: event types for reopen and reorg; mixed-mode USD options from F300; EventBody wiring for F305. RAN: sh scripts/with-env.sh go test ./internal/database/ ./internal/ledger/ -count=1 (ok). Three go test -overlay mutations, each failing the new check as stated. verify F304 passed at 20:46:40Z. pgrep anvil empty after; probe files removed."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-25T20:46:40Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 183.2,
+            "log": "docs/runs/F304-20261025T204640Z-unit.log"
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 254.8,
+            "log": "docs/runs/F304-20261025T204640Z-e2e.log"
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.1,
+            "log": "docs/runs/F304-20261025T204640Z-harness.log"
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": "docs/runs/F304-20261025T204640Z-docs-check.log"
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": "docs/runs/F304-20261025T204640Z-lint.log"
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": "docs/runs/F304-20261025T204640Z-typecheck.log"
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.7,
+            "log": "docs/runs/F304-20261025T204640Z-build.log"
+          }
+        ],
+        "taskHash": "5c66bf58b222e669",
+        "filesHash": "b9a21e5850970e4f",
+        "proof": {
+          "1": "unit: TestPaymentsBecomeWebhookEvents, TestExpiryHoldsPartialAndLatePayments and TestLateFullPaymentIsHeldNotPaid run the ledger on Anvil: detected, partially paid, paid, expired and held as overpaid, late or expired each write one event in the change's transaction, delivered only to endpoints that are on, of the invoice's mode and of the type; TestCanceledInvoiceHoldsEveryDeposit and TestOneRunHoldsForTwoReasons cover the canceled reason and one owner email for two reasons; TestInvoiceChangesBecomeWebhookEvents covers cancel, Revise, settled and held, a store's endpoint and another profile's; TestWebhookEventsAreAppendOnly refuses update, delete and truncate",
+          "2": "unit: TestInvoiceChangesBecomeWebhookEvents builds the body with invoiceapi.EventBody: id, type, livemode, sequence, timestamp, data.invoice as the owner reads it, and data.held with amount, reason and optionId",
+          "3": "docs-check: R-147, D-97, api.md Events, openapi.yaml webhooks.invoiceEvent and WebhookEvent, architecture.md describe it"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS on re-review of the follow-up changes; no blocking findings. (1) 00069_webhook_events.sql:20-23 adds webhook_events_no_truncate (BEFORE TRUNCATE, ENABLE ALWAYS). TestWebhookEventsAreAppendOnly (database/money_test.go:190) expects P0001 on UPDATE, DELETE, TRUNCATE of both tables, and DELETE in replica mode. With the trigger and its ALTER removed by an -overlay of the migration, it fails: 'TRUNCATE webhook_events, webhook_deliveries: want SQLSTATE P0001, got <nil>'. (2) TestCanceledInvoiceHoldsEveryDeposit (ledger/expiry_test.go:317) now checks the history is the one held row with reason canceled. It fails when heldReason's canceled case returns overpaid. (3) TestOneRunHoldsForTwoReasons (ledger/webhooks_test.go:54) checks one held outbox row of 3000000, and held late 1000000 then held expired 2000000. It fails with told [1000000 2000000] when outbox.Queue moves into the per-reason loop. (5) ledger.go: Final's doc comment is back above func Final. (6) openapi.yaml timestamp reads 'When the change was written: its transaction's start.' (7) R-146 wording goes in the commit message. Still open, reported to the user, not blocking: event types for reopen and reorg; mixed-mode USD options from F300; EventBody wiring for F305. RAN: sh scripts/with-env.sh go test ./internal/database/ ./internal/ledger/ -count=1 (ok). Three go test -overlay mutations, each failing the new check as stated. verify F304 passed at 20:46:40Z. pgrep anvil empty after; probe files removed.",
+          "at": "2026-10-25T20:54:35Z",
+          "filesHash": "b9a21e5850970e4f"
+        },
+        "commit": "c735e4d",
+        "doneAt": "2026-10-25T20:55:01Z"
+      },
+      "branch": "feat/f304-invoice-changes-become-webhook-events-wi",
+      "baseCommit": "b302b883352c813e572cf446a5b0d91bca605beb",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f304-invoice-changes-become-webhook-events-wi",
+        "base": "main"
+      }
     },
     {
       "id": "F305",

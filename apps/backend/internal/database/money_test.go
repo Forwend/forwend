@@ -187,6 +187,27 @@ func TestHistoryIsAppendOnly(t *testing.T) {
 	wantCode(t, err, codeRaise, "DELETE in replica mode")
 }
 
+func TestWebhookEventsAreAppendOnly(t *testing.T) {
+	conn, profile := moneyDB(t)
+	ctx := context.Background()
+	must(t, insertInvoice(conn, profile, 1, hex20(100), "key-1", "5000000"))
+	_, err := conn.Exec(ctx, `INSERT INTO webhook_events (history_id, profile_id, invoice_id, type, livemode, sequence)
+		VALUES (1, $1, $2, 'invoice.canceled', false, 1)`, profile, hex32(1))
+	must(t, err)
+	for _, stmt := range []string{
+		"UPDATE webhook_events SET livemode = true",
+		"DELETE FROM webhook_events",
+		"TRUNCATE webhook_events, webhook_deliveries",
+	} {
+		_, err := conn.Exec(ctx, stmt)
+		wantCode(t, err, codeRaise, stmt)
+	}
+	_, err = conn.Exec(ctx, "SET session_replication_role = replica")
+	must(t, err)
+	_, err = conn.Exec(ctx, "DELETE FROM webhook_events")
+	wantCode(t, err, codeRaise, "DELETE in replica mode")
+}
+
 func TestLedgerTransactionsBalance(t *testing.T) {
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
