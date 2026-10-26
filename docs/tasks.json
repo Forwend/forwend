@@ -2270,7 +2270,7 @@
         "PROJECT.md records the owner's status page choice in a D- row, and Q-14 is answered"
       ],
       "dependsOn": [],
-      "state": "blocked",
+      "state": "passing",
       "verification": [
         "docs-check"
       ],
@@ -2281,10 +2281,46 @@
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-26 blocked: Needs the owner's choice of status page (Q-14); a hosted provider needs an account and approval (Q-8)"
+        "2026-10-26 blocked: Needs the owner's choice of status page (Q-14); a hosted provider needs an account and approval (Q-8)",
+        "2026-10-26 review pass by reviewer: D-105 matches the owner choice: a hosted provider at status.forwend.com, provider picked with approval under Q-8. No contradiction with D-91 (status page shows incidents), Q-8 (approval before spending), PLAN 11.6 (docs with changelog and status page) or docs-content.ts (no status link yet, consistent with 'link it once it answers'). Q-14 row follows the Q-7 'Answered by D-NN (who, date)' pattern. D-105 sentences are 18, 12 and 8 words (D-84). Non-blocking: 'once it answers' is unclear wording; 'once it is live' reads plainer. Ran: harness show F316, git diff aad8f72, grep for status page/Q-14/D-105 across docs, PLAN.md, apps/web/src, packages; python3 scripts/check-docs.py (0 errors); harness status (F316 verified)."
       ],
-      "blockedReason": "Needs the owner's choice of status page (Q-14); a hosted provider needs an account and approval (Q-8)",
-      "evidence": null
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-26T15:12:17Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.1,
+            "log": ""
+          }
+        ],
+        "taskHash": "3386483edb9dbb3d",
+        "filesHash": "7238681ae921f82a",
+        "proof": {
+          "1": "docs-check: PROJECT.md has D-105 (owner choice 2026-10-26: a hosted provider at status.forwend.com, picked with approval under Q-8), and the Q-14 row says Answered by D-105; check-docs reports 0 errors"
+        },
+        "commit": "d5ac08e",
+        "doneAt": "2026-10-26T15:12:33Z"
+      },
+      "branch": "docs/f316-answer-q-14-which-status-page-shows-inci",
+      "baseCommit": "aad8f727d99815752a43d48da9b210a6aaf9fd5e",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f316-answer-q-14-which-status-page-shows-inci",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
