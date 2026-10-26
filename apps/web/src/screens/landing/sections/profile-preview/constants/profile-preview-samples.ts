@@ -52,6 +52,6 @@ export const SAMPLE_STORE_ACTIVITY: readonly (ActivityRowProps & { title: string
 
 export const SAMPLE_EVENTS = [
   { type: "invoice.detected", time: "12:04:11" },
-  { type: "invoice.confirmed", time: "12:04:52" },
+  { type: "invoice.paid", time: "12:04:52" },
   { type: "invoice.settled", time: "12:05:07" },
 ] as const;

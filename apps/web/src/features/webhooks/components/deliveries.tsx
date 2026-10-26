@@ -4,6 +4,7 @@ import {
   Badge,
   BUTTON_VARIANTS,
   Button,
+  buttonClasses,
   EmptyState,
   SelectField,
   TONES,
@@ -168,7 +169,7 @@ function DeliveryRow({
                 {" · "}
                 <Link
                   href={`${APP_ROUTES.invoices}/${d.invoiceId}`}
-                  className="fw-link whitespace-nowrap"
+                  className={buttonClasses({ variant: BUTTON_VARIANTS.link })}
                 >
                   {invoiceNumber(d.number)}
                 </Link>

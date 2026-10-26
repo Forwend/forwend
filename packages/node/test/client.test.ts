@@ -119,6 +119,25 @@ describe("Forwend", () => {
     }
   });
 
+  it("keeps a path in the base address, as for https://forwend.com/api", async () => {
+    const requests: Request[] = [];
+    for (const baseUrl of ["https://forwend.com/api", "https://forwend.com/api/"]) {
+      const client = new Forwend({
+        apiKey: KEY,
+        profileId: PROFILE,
+        baseUrl,
+        fetch: async (input, init) => {
+          requests.push(new Request(input, init));
+          return Response.json({ invoiceId: "0xa" });
+        },
+      });
+      await client.invoices.get("0xa");
+    }
+    expect(requests.map((r) => r.url)).toEqual(
+      Array(2).fill(`https://forwend.com/api/v1/profiles/${PROFILE}/invoices/0xa`),
+    );
+  });
+
   it("has no runtime dependencies", () => {
     const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
     expect(pkg.dependencies).toBeUndefined();

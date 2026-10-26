@@ -22,4 +22,5 @@ export const APP_ROUTES = {
   networks: "/app/networks",
   team: "/app/team",
   developers: "/app/developers",
+  docs: "/docs",
 } as const;

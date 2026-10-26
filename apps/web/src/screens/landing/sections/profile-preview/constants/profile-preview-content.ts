@@ -27,7 +27,7 @@ export const PROFILES = {
     developers: {
       label: "Developers",
       title: "Payments your backend can trust",
-      body: "Create an invoice with one call, then react to signed events. Detected and confirmed are separate events, never mixed up.",
+      body: "Create an invoice with one call, then react to signed events. Detected, paid and settled are separate events, never mixed up.",
     },
   },
 } as const;
