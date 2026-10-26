@@ -2447,7 +2447,7 @@
         "docs/staging.md lists WEBHOOK_SECRET_KEY, how to make it, and the webhooks ready log line"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "build",
         "backend-e2e",
@@ -2538,11 +2538,18 @@
           "summary": "Re-review pass, no blocking findings. Reviewed d31ceb47 against 68d34d18: only migrations.go, architecture.md, staging.md and tasks.json changed; infra and PROJECT.md are unchanged. verify passed 15:41:13Z. Fixes checked: (a) docs/staging.md:25 now names the webhooks sender among the services that wait for API health. (b) staging.md:79 now says Compose refuses to deploy without the key, and deliveries stop under another key. Both are true: an empty or missing key failed compose config earlier. With a wrong key, deliver.go attempt() fails in secrets() before any request is sent. (f) internal/database/migrations.go:48-49 and docs/backend/architecture.md:57-58 now name the webhooks sender. CheckSchema is called by cmd/worker:55, cmd/signer:52 and cmd/webhooks:43 only. The other 'worker and signer' lists (staging.md:75 POLL_INTERVAL, architecture.md:186, :316, :327) are about chains and RPC, which the sender does not use, so they stay correct. Non-blocking: architecture.md:57-58 'The worker, signer and webhooks sender only read ... (only the api migrates).' is 32 words, over D-84; it was 30 before. Split it at the semicolon. Optional, outside this task: apps/backend/AGENTS.md:3 says 'Go API, worker and signer'. (c), (d) and (e) were declined, with the owner to be told about (c); fine. Ran: harness status (waited for this verify); git diff 68d34d18 against the working tree and d31ceb47; check-docs.py 0 errors; gofmt -l migrations.go clean; sentence-length script on the changed lines; grep for CheckSchema callers and other worker/signer lists. No files edited; nothing sent outside this machine.",
           "at": "2026-10-26T15:50:12Z",
           "filesHash": "60cb107ec3053c6c"
-        }
+        },
+        "commit": "fa621a32",
+        "doneAt": "2026-10-26T15:50:36Z"
       },
       "branch": "build/f318-staging-runs-the-webhooks-sender",
       "baseCommit": "fcb00a81f1d2fbaf4b3538ba3523be180a3151ba",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "build/f318-staging-runs-the-webhooks-sender",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
