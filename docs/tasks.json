@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 318,
+  "nextId": 319,
   "tasks": [
     {
       "id": "F295",
@@ -2436,6 +2436,113 @@
         "branch": "refactor/f317-the-go-module-path-names-the-forwend-org",
         "base": "main"
       }
+    },
+    {
+      "id": "F318",
+      "type": "build",
+      "behavior": "Staging runs the webhooks sender",
+      "acceptance": [
+        "infra/docker-compose.yml runs a webhooks service from the backend image, with only DATABASE_URL and WEBHOOK_SECRET_KEY; the API also gets WEBHOOK_SECRET_KEY",
+        "The backend image builds cmd/webhooks, and docker compose config and build pass",
+        "docs/staging.md lists WEBHOOK_SECRET_KEY, how to make it, and the webhooks ready log line"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "build",
+        "backend-e2e",
+        "docs-check"
+      ],
+      "refs": [
+        "R-131"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-26 review pass by reviewer: Pass, no blocking findings. Reviewed commit 68d34d18 (same code as the reviewed working diff); verify passed 15:30:56Z. Checked OK: (1) infra/docker-compose.yml:7 x-database-url anchor renders the same DATABASE_URL in api, worker, signer and webhooks. Rendered config diffed against base: only the api key (:42), the webhooks service (:78-86) and the x- field changed. webhooks gets exactly DATABASE_URL and WEBHOOK_SECRET_KEY, matching apps/backend/scripts/with-env.sh:14-17; worker and signer lack the key. depends_on api service_healthy covers CheckSchema (cmd/webhooks/main.go:43). (2) Only config.go:103 LoadAPI and :127 LoadWebhooks read the key; LoadWebhooks needs nothing else. openssl rand -base64 32 gives 44 padded chars; the image's webhooks binary accepted it and stopped only at the unreachable DB; a 24-byte key gave 'invalid environment variables WEBHOOK_SECRET_KEY (32 bytes in base64)'. (3) Required (:?) is right: empty key would leave the sender idle (on=false) and api routes 503; compose fails at interpolation naming the variable, before containers change. (4) Several senders are safe: deliver.go:56-63 claims with SKIP LOCKED and a 1-minute lease; record() updates only when updated_at is unchanged (:192-195). (5) Every staging.md sentence is <=25 words; the env table matches the compose variables exactly; check-docs 0 errors. Non-blocking: (a) docs/staging.md:25 says 'worker, signer and web app wait' and omits the webhooks sender. (b) staging.md:79 'so keep it' is vague: say a lost or changed key leaves saved secrets unreadable and deliveries stop, and that compose refuses to deploy until the key is set. (c) The ignored apps/backend/.env.dokploy has no WEBHOOK_SECRET_KEY yet (name checked, no value read), so staging.md:93-94 and the Dokploy deploy fail until the owner adds it. (d) Optional: staging.md:31 could say more than one sender is safe. (e) No network-level egress deny; the app filter (IsPrivate in webhook/address.go:30) already refuses Docker ranges. (f) Pre-existing, out of scope: docs/backend/architecture.md:56-57 and database/migrations.go:48 name only worker and signer as schema checkers. Ran: harness show/status; git diff; docker compose config --quiet and --format json with fake values; base vs new rendered diff; missing and empty key cases; docker build -t f318-review-backend (removed); docker run --network none of the webhooks binary with no env, a 24-byte key and an openssl key; comm of compose vars vs env table; sentence-length script; check-docs.py. Scratch files and image removed; nothing sent outside this machine.",
+        "2026-10-26 review pass by reviewer: Re-review pass, no blocking findings. Reviewed d31ceb47 against 68d34d18: only migrations.go, architecture.md, staging.md and tasks.json changed; infra and PROJECT.md are unchanged. verify passed 15:41:13Z. Fixes checked: (a) docs/staging.md:25 now names the webhooks sender among the services that wait for API health. (b) staging.md:79 now says Compose refuses to deploy without the key, and deliveries stop under another key. Both are true: an empty or missing key failed compose config earlier. With a wrong key, deliver.go attempt() fails in secrets() before any request is sent. (f) internal/database/migrations.go:48-49 and docs/backend/architecture.md:57-58 now name the webhooks sender. CheckSchema is called by cmd/worker:55, cmd/signer:52 and cmd/webhooks:43 only. The other 'worker and signer' lists (staging.md:75 POLL_INTERVAL, architecture.md:186, :316, :327) are about chains and RPC, which the sender does not use, so they stay correct. Non-blocking: architecture.md:57-58 'The worker, signer and webhooks sender only read ... (only the api migrates).' is 32 words, over D-84; it was 30 before. Split it at the semicolon. Optional, outside this task: apps/backend/AGENTS.md:3 says 'Go API, worker and signer'. (c), (d) and (e) were declined, with the owner to be told about (c); fine. Ran: harness status (waited for this verify); git diff 68d34d18 against the working tree and d31ceb47; check-docs.py 0 errors; gofmt -l migrations.go clean; sentence-length script on the changed lines; grep for CheckSchema callers and other worker/signer lists. No files edited; nothing sent outside this machine."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-26T15:41:13Z",
+        "checks": [
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.9,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 20.5,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": ""
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.4,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 187.0,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 287.3,
+            "log": ""
+          }
+        ],
+        "taskHash": "0409d3948d9f9e42",
+        "filesHash": "60cb107ec3053c6c",
+        "proof": {
+          "1": "build: production builds pass; by hand, docker compose config with test values lists api, postgres, signer, web, webhooks and worker; webhooks runs command webhooks with exactly DATABASE_URL and WEBHOOK_SECRET_KEY, the api's database URL; the api has the key, worker and signer don't; without the key compose refuses: required variable WEBHOOK_SECRET_KEY is missing a value",
+          "2": "build: by hand, docker build of infra/backend.Dockerfile passes and /usr/local/bin holds api, signer, webhooks and worker; the image's webhooks command starts and stops only on the unreachable test database; backend-e2e runs the webhooks process with a key",
+          "3": "docs-check: docs/staging.md lists the webhooks sender among the services that wait for migrations, the WEBHOOK_SECRET_KEY row with openssl rand -base64 32, that compose refuses without it and that another key stops deliveries, and the webhooks ready on=true log check; R-131 names the webhooks sender"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review pass, no blocking findings. Reviewed d31ceb47 against 68d34d18: only migrations.go, architecture.md, staging.md and tasks.json changed; infra and PROJECT.md are unchanged. verify passed 15:41:13Z. Fixes checked: (a) docs/staging.md:25 now names the webhooks sender among the services that wait for API health. (b) staging.md:79 now says Compose refuses to deploy without the key, and deliveries stop under another key. Both are true: an empty or missing key failed compose config earlier. With a wrong key, deliver.go attempt() fails in secrets() before any request is sent. (f) internal/database/migrations.go:48-49 and docs/backend/architecture.md:57-58 now name the webhooks sender. CheckSchema is called by cmd/worker:55, cmd/signer:52 and cmd/webhooks:43 only. The other 'worker and signer' lists (staging.md:75 POLL_INTERVAL, architecture.md:186, :316, :327) are about chains and RPC, which the sender does not use, so they stay correct. Non-blocking: architecture.md:57-58 'The worker, signer and webhooks sender only read ... (only the api migrates).' is 32 words, over D-84; it was 30 before. Split it at the semicolon. Optional, outside this task: apps/backend/AGENTS.md:3 says 'Go API, worker and signer'. (c), (d) and (e) were declined, with the owner to be told about (c); fine. Ran: harness status (waited for this verify); git diff 68d34d18 against the working tree and d31ceb47; check-docs.py 0 errors; gofmt -l migrations.go clean; sentence-length script on the changed lines; grep for CheckSchema callers and other worker/signer lists. No files edited; nothing sent outside this machine.",
+          "at": "2026-10-26T15:50:12Z",
+          "filesHash": "60cb107ec3053c6c"
+        }
+      },
+      "branch": "build/f318-staging-runs-the-webhooks-sender",
+      "baseCommit": "fcb00a81f1d2fbaf4b3538ba3523be180a3151ba",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

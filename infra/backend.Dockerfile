@@ -3,7 +3,7 @@ WORKDIR /src
 COPY apps/backend/go.mod apps/backend/go.sum ./
 RUN go mod download
 COPY apps/backend/ ./
-RUN CGO_ENABLED=0 go build -trimpath -o /out/ ./cmd/api ./cmd/worker ./cmd/signer
+RUN CGO_ENABLED=0 go build -trimpath -o /out/ ./cmd/api ./cmd/worker ./cmd/signer ./cmd/webhooks
 
 FROM alpine:3.23
 RUN apk add --no-cache ca-certificates

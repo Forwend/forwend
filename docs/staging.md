@@ -20,9 +20,9 @@
 
 - Deployment source: [infra/docker-compose.yml](../infra/docker-compose.yml).
 - Local PostgreSQL uses [infra/docker-compose.local.yml](../infra/docker-compose.local.yml), through the existing backend commands.
-- The stack runs PostgreSQL, the API, worker, signer and web app.
+- The stack runs PostgreSQL, the API, worker, signer, webhooks sender and web app.
 - Only the web service receives a public domain. Browser API requests pass through its `/api/v1` rewrite.
-- The API applies migrations before becoming healthy. The worker, signer and web app wait for that check.
+- The API applies migrations before becoming healthy. The worker, signer, webhooks sender and web app wait for that check.
 - API startup enables USDC on Base Sepolia, Arbitrum Sepolia and Arc Testnet before checking their factories.
 - This applies to fresh and existing databases. Each API restart enables those three pairs again, without duplicating rows.
 - Other token pairs keep their existing settings. Tempo's OUSD stays disabled on a fresh database.
@@ -31,6 +31,7 @@
 - Keep one worker and one signer. Their existing database locks prevent duplicate work during restarts.
 - The executor must already be authorized by the deployed testnet factories and funded for gas on every enabled chain.
 - The API never receives the executor key. The signer never receives Privy or email credentials.
+- The webhooks sender receives only the database URL and `WEBHOOK_SECRET_KEY`.
 - The independent canary runs on another host; see [money safety](backend/money-safety.md#canary).
 
 ## Dokploy settings
@@ -75,6 +76,7 @@
 | `RESEND_API_KEY` | Existing send-only Resend key; empty leaves emails queued without sending them. |
 | `EMAIL_FROM` | `Forwend <notifications@mail.forwend.com>` by default; use a sender verified by Resend. |
 | `EMAIL_POSTAL_ADDRESS` | Optional sender address for email footers; empty omits it. |
+| `WEBHOOK_SECRET_KEY` | 32 random bytes in base64, from `openssl rand -base64 32`. Compose refuses to deploy without it. It opens the saved signing secrets; under another key, deliveries stop. |
 
 - Compose sets `DATABASE_URL`, `API_ADDR`, `CHAINS_FILE`, `PRIVY_APP_ID` and `PRIVY_JWKS_URL` internally.
 - The web build fixes `API_URL=http://api:8080`. Its runtime sets `NODE_ENV`, `HOSTNAME` and `PORT`.
@@ -93,6 +95,7 @@ docker compose --env-file apps/backend/.env.dokploy -f infra/docker-compose.yml 
 ```
 
 - In Dokploy, PostgreSQL, API and web must be healthy. Check worker and signer logs for `worker ready` and `signer ready`.
+- The webhooks log must show `webhooks ready` with `on=true`.
 - Redeploy all backend services after changing activation settings. The signer checks gas on every newly enabled chain before reporting ready.
 - Sign in and confirm Balances, Receive and New invoice list USDC on Base Sepolia, Arbitrum Sepolia and Arc Testnet.
 - Check the public homepage and API rewrite, replacing the example domain:
