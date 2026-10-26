@@ -14,7 +14,7 @@
       "dependsOn": [
         "F327"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend-affected",
         "backend-e2e",
@@ -118,11 +118,18 @@
           "summary": "Reviewed immutable link/source and request metadata guards, offer revisions and quote checks, original replay before mutable checks, readiness, store/key/mode boundaries, scoped edits, canonical reservations and reopen capacity. Concurrency regressions cover last slots, fresh post-lock snapshots and foreign-key lock cycles; NO KEY UPDATE preserves profile coordination. Real Postgres/Anvil tests reconcile independent purchases, settlement and late held funds without invoice numbers. Final selected checks passed; frontend reviewer reported no blockers with browser flows and phone/desktop inspection. Legacy hashes and documents remain; omitted legacy fixed/open input and old offer versions cannot be proven. No blockers remain.",
           "at": "2026-10-26T23:43:29Z",
           "filesHash": "7dafbe6b6fead514"
-        }
+        },
+        "commit": "a7a9a917",
+        "doneAt": "2026-10-26T23:43:47Z"
       },
       "branch": "fix/f328-make-reusable-link-purchases-independent",
       "baseCommit": "19016aae1a2752242a097c542db9be9fa84f11f6",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f328-make-reusable-link-purchases-independent",
+        "base": "main"
+      }
     },
     {
       "id": "F329",
