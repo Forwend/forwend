@@ -389,6 +389,13 @@ R-19 and R-42; the full schema is in openapi.yaml.
   (the rules of a saved client, R-86; `country` and `taxId` are part of the idempotency hash only when set). Empty means
   none and is returned as null. Characters, not bytes; no NUL. `email` is a plain address (`name@example.com`). A broken
   rule is 422 `invalid_value`; these fields are part of the idempotency hash.
+- Optional `metadata` (R-151, D-101): the creator's own keys and values, set at create only.
+  - An object of up to 20 keys; a key is 1 to 40 letters, digits, `_` or `-`.
+  - A value is plain text on one line of up to 500 characters. Any other shape is 422 `invalid_value`.
+  - The owner's reads, lists and webhook bodies return it, `{}` when none was sent.
+  - The pay page's GET and the PDFs never show it.
+  - It is part of the idempotency hash only when set, whatever the order of its keys.
+  - A retainer's later months keep it; a Revise takes only the metadata its own create sends.
 - Optional `storeId` (R-134): a merchant invoice's store, the profile's first store when left out.
   - A personal or freelancer profile's, or one that is not the profile's store, is 422.
   - Without `expiresIn` the checkout closes after the store's `defaultExpiresIn`.

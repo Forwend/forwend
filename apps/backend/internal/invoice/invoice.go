@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -193,7 +194,17 @@ type Details struct {
 	ClientTaxID   string
 	SenderName    string // the name the payer sees when the invoice has no issuer, such as a personal request (D-52)
 	ReturnURL     string // an https link to the creator's site, offered to the payer once paid (R-58)
+	// The creator's own keys and values (R-151), set at create; only the owner's reads return them.
+	Metadata map[string]string
 }
+
+// Metadata limits (D-101).
+const (
+	MaxMetadataKeys  = 20
+	MaxMetadataValue = 500
+)
+
+var metadataKey = regexp.MustCompile(`^[A-Za-z0-9_-]{1,40}$`)
 
 // With several options, the terms and statuses are the current option's: the chosen one, else the first.
 type Invoice struct {
@@ -443,6 +454,15 @@ func (d Details) check() error {
 			return fmt.Errorf("%w: returnUrl must be an https link of at most %d characters", ErrInvalid, MaxReturnURL)
 		}
 	}
+	badMetadata := len(d.Metadata) > MaxMetadataKeys
+	for k, v := range d.Metadata {
+		badMetadata = badMetadata || !metadataKey.MatchString(k) || !utf8.ValidString(v) ||
+			utf8.RuneCountInString(v) > MaxMetadataValue || !profile.PlainText(v, false)
+	}
+	if badMetadata {
+		return fmt.Errorf("%w: metadata must hold at most %d keys of 1 to 40 letters, digits, _ or -, each with plain "+
+			"text on one line of at most %d characters", ErrInvalid, MaxMetadataKeys, MaxMetadataValue)
+	}
 	for _, f := range []struct{ name, value string }{{"dueDate", d.DueDate}, {"supplyDate", d.SupplyDate}} {
 		// Postgres has no year 0.
 		if day, err := time.Parse(time.DateOnly, f.value); f.value != "" && (err != nil || day.Year() < 1) {
@@ -470,6 +490,10 @@ func requestHash(chainID uint64, token string, amount fmt.Stringer, expiresIn ti
 	}
 	if d.Reference != "" {
 		b = fmt.Appendf(b, "|reference=%q", d.Reference)
+	}
+	if len(d.Metadata) > 0 {
+		keys, _ := json.Marshal(d.Metadata) // sorted by key: the same metadata hashes the same
+		b = fmt.Appendf(b, "|metadata=%s", keys)
 	}
 	if a := d.Agreed; a != nil { // in minor units: "1000" and "1000.00" EUR are the same price
 		b = fmt.Appendf(b, "|agreedValue=%q|%d|%q", a.Currency, a.Amount, a.Date)

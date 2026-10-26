@@ -79,3 +79,19 @@ func TestAgreedCurrenciesMatchTheWeb(t *testing.T) {
 		t.Fatalf("the web offers %v, the API takes %v", web, AgreedCurrencies)
 	}
 }
+
+// R-151: metadata joins the hash only when set, so a request without it hashes as it did before.
+func TestRequestHashTakesMetadataOnlyWhenSet(t *testing.T) {
+	hash := func(m map[string]string) string {
+		return string(requestHash(84532, usdc, big.NewInt(5000000), DefaultExpiresIn, Details{Metadata: m}, nil, false, nil,
+			"", ""))
+	}
+	if hash(nil) != hash(map[string]string{}) || hash(nil) != string(requestHash(84532, usdc, big.NewInt(5000000),
+		DefaultExpiresIn, Details{}, nil, false, nil, "", "")) {
+		t.Fatal("no metadata changed the hash")
+	}
+	if hash(map[string]string{"a": "1", "b": "2"}) != hash(map[string]string{"b": "2", "a": "1"}) ||
+		hash(map[string]string{"a": "1"}) == hash(nil) || hash(map[string]string{"a": "1"}) == hash(map[string]string{"a": "2"}) {
+		t.Fatal("metadata does not decide the hash")
+	}
+}

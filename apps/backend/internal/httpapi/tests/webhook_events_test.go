@@ -116,7 +116,8 @@ func TestInvoiceChangesBecomeWebhookEvents(t *testing.T) {
 	invoiceData := got["data"].(map[string]any)["invoice"].(map[string]any)
 	if got["type"] != "invoice.canceled" || got["livemode"] != false || got["sequence"] != float64(1) ||
 		got["data"].(map[string]any)["held"] != nil || invoiceData["invoiceId"] != canceled ||
-		invoiceData["paymentStatus"] != "canceled" || invoiceData["history"] == nil {
+		invoiceData["paymentStatus"] != "canceled" || invoiceData["history"] == nil ||
+		!reflect.DeepEqual(invoiceData["metadata"], map[string]any{}) {
 		t.Errorf("the canceled event: %v", got)
 	}
 	got = body(revised, 1)

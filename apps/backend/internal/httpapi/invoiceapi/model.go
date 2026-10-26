@@ -38,7 +38,9 @@ type createInvoiceBody struct {
 		EndDate string `json:"endDate"`
 	} `json:"repeat"`
 	Replaces string `json:"replaces"`
-	StoreID  string `json:"storeId"`
+	// Raw, so a value of another shape is invalid_value, as other wrong values are, not a malformed body.
+	Metadata json.RawMessage `json:"metadata"`
+	StoreID  string          `json:"storeId"`
 	Client   struct {
 		Name    string `json:"name"`
 		Email   string `json:"email"`
@@ -49,41 +51,43 @@ type createInvoiceBody struct {
 }
 
 type invoiceJSON struct {
-	InvoiceID        string      `json:"invoiceId"`
-	PayToken         *string     `json:"payToken"` // null for an invoice made before D-86
-	OptionID         string      `json:"optionId"`
-	OptionLocked     bool        `json:"optionLocked"`
-	OptionCount      int         `json:"optionCount"`
-	Confirming       bool        `json:"confirming"`
-	Closed           bool        `json:"closed"`
-	Number           *int64      `json:"number"` // null for a link invoice before its first deposit (R-141)
-	Title            *string     `json:"title"`
-	Note             *string     `json:"note"`
-	DueDate          *string     `json:"dueDate"`
-	SupplyDate       *string     `json:"supplyDate"`
-	Reference        *string     `json:"reference"`
-	AgreedValue      *agreedJSON `json:"agreedValue"`
-	Client           *clientJSON `json:"client,omitempty"` // owner routes only
-	Store            *storeJSON  `json:"store,omitempty"`  // owner routes only; a merchant invoice's (R-134)
-	Brand            *brandJSON  `json:"brand"`            // a merchant invoice's store branding (R-135)
-	Issuer           *issuerJSON `json:"issuer"`
-	SenderName       *string     `json:"senderName"`
-	ReturnURL        *string     `json:"returnUrl"`
-	ChainID          uint64      `json:"chainId"`
-	Livemode         bool        `json:"livemode"` // false on a testnet: test mode, whose tokens have no value (D-87)
-	Token            string      `json:"token"`
-	Amount           string      `json:"amount"`
-	Recipient        string      `json:"recipient"`
-	Factory          string      `json:"factory"`
-	ReceiveAddress   string      `json:"receiveAddress"`
-	ExpiresAt        string      `json:"expiresAt"`
-	ClosesAt         string      `json:"closesAt"` // expiresAt, or the reopened close (R-130)
-	SettleDeadline   string      `json:"settleDeadline"`
-	PaymentStatus    string      `json:"paymentStatus"`
-	SettlementStatus string      `json:"settlementStatus"`
-	RefundStatus     string      `json:"refundStatus"`
-	SettlementTxHash *string     `json:"settlementTxHash"`
-	CreatedAt        string      `json:"createdAt"`
+	InvoiceID    string      `json:"invoiceId"`
+	PayToken     *string     `json:"payToken"` // null for an invoice made before D-86
+	OptionID     string      `json:"optionId"`
+	OptionLocked bool        `json:"optionLocked"`
+	OptionCount  int         `json:"optionCount"`
+	Confirming   bool        `json:"confirming"`
+	Closed       bool        `json:"closed"`
+	Number       *int64      `json:"number"` // null for a link invoice before its first deposit (R-141)
+	Title        *string     `json:"title"`
+	Note         *string     `json:"note"`
+	DueDate      *string     `json:"dueDate"`
+	SupplyDate   *string     `json:"supplyDate"`
+	Reference    *string     `json:"reference"`
+	AgreedValue  *agreedJSON `json:"agreedValue"`
+	Client       *clientJSON `json:"client,omitempty"` // owner routes only
+	Store        *storeJSON  `json:"store,omitempty"`  // owner routes only; a merchant invoice's (R-134)
+	// Owner routes only; {} when none was sent (R-151).
+	Metadata         *map[string]string `json:"metadata,omitempty"`
+	Brand            *brandJSON         `json:"brand"` // a merchant invoice's store branding (R-135)
+	Issuer           *issuerJSON        `json:"issuer"`
+	SenderName       *string            `json:"senderName"`
+	ReturnURL        *string            `json:"returnUrl"`
+	ChainID          uint64             `json:"chainId"`
+	Livemode         bool               `json:"livemode"` // false on a testnet: test mode, whose tokens have no value (D-87)
+	Token            string             `json:"token"`
+	Amount           string             `json:"amount"`
+	Recipient        string             `json:"recipient"`
+	Factory          string             `json:"factory"`
+	ReceiveAddress   string             `json:"receiveAddress"`
+	ExpiresAt        string             `json:"expiresAt"`
+	ClosesAt         string             `json:"closesAt"` // expiresAt, or the reopened close (R-130)
+	SettleDeadline   string             `json:"settleDeadline"`
+	PaymentStatus    string             `json:"paymentStatus"`
+	SettlementStatus string             `json:"settlementStatus"`
+	RefundStatus     string             `json:"refundStatus"`
+	SettlementTxHash *string            `json:"settlementTxHash"`
+	CreatedAt        string             `json:"createdAt"`
 }
 
 type clientJSON struct {
@@ -302,6 +306,12 @@ func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 		}
 	}
 	if withClient {
+		// The owner's only (R-151): the pay page's answer has no metadata at all.
+		metadata := inv.Metadata
+		if metadata == nil {
+			metadata = map[string]string{}
+		}
+		out.Metadata = &metadata
 		out.Client = &clientJSON{Name: httpio.OrNull(inv.ClientName), Email: httpio.OrNull(inv.ClientEmail),
 			Address: httpio.OrNull(inv.ClientAddress), Country: httpio.OrNull(inv.ClientCountry),
 			TaxID: httpio.OrNull(inv.ClientTaxID)}
