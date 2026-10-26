@@ -35,7 +35,7 @@ Phases 1–10 are done; their requirements are PROJECT R-1…R-122 and their rec
 
 ## Phase 11: merchants, developers, history log and refunds of held money
 
-Merchants after freelancers (D-55). Scope and evidence: [phase 11 research](docs/research/phase-11-merchants.md)
+Merchants after freelancers (D-55). Scope and evidence: local phase 11 research notes (`docs/research/phase-11-merchants.md`)
 (owner decisions 2026-10-22). Merchants lose most when a payment company holds or locks their money. Forwend pays the
 merchant's own wallet, so the phase builds merchant and developer tools around that. Payers pay only by address and QR
 code; a wallet connects only to claim a refund (D-37).
@@ -162,4 +162,4 @@ invoices, such as a customer who did not like the product; credit notes; a draft
 Each new chain or receive method needs its own spike. Planned Base/Arbitrum/Arc/Tempo expansion stays gated by D-38.
 Card payers (card, Apple Pay or Google Pay in, USDC to the invoice) need a card-acquirer spike first:
 the consumer on-ramps forbid buying for another person's address, and card payments bring chargebacks back
-([research](docs/research/phase-10-freelancers.md#card-payers-paying-by-card-receiving-stablecoins)).
+(local research notes (`docs/research/phase-10-freelancers.md#card-payers-paying-by-card-receiving-stablecoins`)).

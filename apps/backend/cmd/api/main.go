@@ -51,7 +51,7 @@ func run() error {
 		return err
 	}
 	if cfg.EnableTestnetUSDC {
-		if err := chain.EnableTestnetUSDC(ctx, pool); err != nil {
+		if err := chain.EnableTestnetTokens(ctx, pool); err != nil {
 			return err
 		}
 	}

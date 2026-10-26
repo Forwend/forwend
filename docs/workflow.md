@@ -3,9 +3,12 @@
 Entry point: `python3 scripts/harness.py`. Add `-h` after any command for options.
 Check definitions live only in [config.json](config.json); staging CI runs the required and CI-only checks. Checks that are neither (images-check, lighthouse,
 diagrams) run only when a task names them.
-Open task state lives in `tasks.json` (edit through the runner); completed records live in `archive/`;
+Open task state lives in `tasks.json` (edit through the runner); completed records live in local-only `archive/`;
 logs of checks that did not pass live in ignored `runs/`; a passed check leaves none.
 Runner regression tests live in `tests/test_harness.py`. No installed skill is needed to use this workflow.
+
+- `archive/`, `research/` and `spikes/` are optional local files, excluded from Git.
+- Keep requirements and decisions in tracked docs so a fresh checkout does not depend on those local files.
 
 ## One task at a time
 
@@ -18,7 +21,7 @@ Runner regression tests live in `tests/test_harness.py`. No installed skill is n
    Define unclear scope before coding. Split independent changes into tasks. Do not start unrelated queued product work.
 3. `start ID` creates the task branch from the latest base. Finish a pending PR before another task.
    On the task branch, run `archive` to move merged and dropped tasks out of the queue; `archive ID ...` selects
-   specific tasks. Commit `tasks.json` and `archive/` together. Unfinished and unmerged tasks stay in the queue.
+   specific tasks. Commit `tasks.json`; keep `archive/` local and ignored. Unfinished and unmerged tasks stay in the queue.
    `show ID` reads archived records, `list --all` lists them, and `reopen ID --reason "..."` restores work to the queue.
 4. Before creating or moving files, read the owning structure rules: [web/UI](web/structure.md), [backend](backend/rules.md).
    Identify the owner, filename and allowed dependencies; search for existing code before adding another shared helper.

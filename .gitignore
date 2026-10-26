@@ -1,3 +1,6 @@
+docs/archive/
+docs/research/
+docs/spikes/
 docs/runs/
 docs/.harness.lock
 node_modules/

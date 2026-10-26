@@ -38,6 +38,9 @@ func TestPlannedNetworksTakeInvoicesOnceEnabled(t *testing.T) {
 				VALUES ($1, 0, 0)`, n.chainID); err != nil {
 				t.Fatal(err)
 			}
+			if _, err := pool.Exec(ctx, `DELETE FROM profile_tokens_off WHERE profile_id = $1 AND chain_id = $2`, profile, n.chainID); err != nil {
+				t.Fatal(err)
+			}
 			created, _, err := s.Create(ctx, profile, "on", req)
 			if err != nil {
 				t.Fatal(err)

@@ -384,7 +384,7 @@ paths:
     get:
       operationId: listProfileTokens
       summary: The enabled tokens and whether the profile has each on (R-136)
-      description: Every enabled token is on until the profile turns it off.
+      description: Enabled tokens start on, except Tempo OUSD starts off. The owner can change each switch.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
       responses:

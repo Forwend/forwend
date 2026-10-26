@@ -25,7 +25,7 @@ type TokenSwitch struct {
 	On       bool
 }
 
-// Tokens lists every enabled token, each on until the profile turns it off.
+// Tokens lists every enabled token with its saved profile preference.
 func (s *Service) Tokens(ctx context.Context, profileID string) ([]TokenSwitch, error) {
 	rows, err := s.pool.Query(ctx, `SELECT t.chain_id, t.contract, t.symbol, t.decimals, c.name,
 		    NOT EXISTS (SELECT 1 FROM profile_tokens_off o
