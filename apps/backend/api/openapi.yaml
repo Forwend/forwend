@@ -3206,7 +3206,10 @@ components:
         amount: { $ref: "#/components/schemas/Uint256" }
         expiresIn:
           type: integer
-          description: Seconds until expiry; default 3600, or the store's defaultExpiresIn for a merchant invoice.
+          description: |
+            Seconds until expiry. Left out with a dueDate, the checkout closes at the end of the 60th UTC day after it
+            (R-152). That close stays within 15 minutes to 365 days from now. Otherwise it defaults to 3600, or to the
+            store's defaultExpiresIn for a merchant invoice.
           minimum: 900
           maximum: 31536000
         title:
@@ -3220,7 +3223,9 @@ components:
         dueDate:
           type: string
           format: date
-          description: Optional date the client should pay by (YYYY-MM-DD). Shown only; payment closes at expiresAt.
+          description: |
+            Optional date the client should pay by (YYYY-MM-DD). Payment closes at expiresAt; without expiresIn that is
+            60 days past this date (R-152).
         supplyDate:
           type: string
           format: date
