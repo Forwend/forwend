@@ -153,6 +153,46 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/webhook-events:
+    get:
+      operationId: listWebhookEvents
+      summary: The profile's invoice events of the last 30 days, newest first (R-153)
+      description: |
+        Each item is the body a webhook would carry now (WebhookEvent under webhooks), with the invoice as the owner
+        reads it. A store's member or key sees only its stores' events. Test events are not listed.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - name: type
+          in: query
+          description: One event type to keep.
+          schema:
+            type: string
+            enum: [invoice.detected, invoice.partially_paid, invoice.paid, invoice.settled, invoice.expired, invoice.canceled, invoice.held]
+        - name: cursor
+          in: query
+          description: The nextCursor of the page before.
+          schema: { type: string }
+      responses:
+        "200":
+          description: One page of events
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, nextCursor]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/WebhookEvent" }
+                  nextCursor: { type: [string, "null"], description: Null on the last page. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/owed:
     get:
       operationId: listOwed

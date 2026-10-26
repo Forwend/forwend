@@ -9,6 +9,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
 	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
 	"github.com/ensp1re/forwend/apps/backend/internal/profile"
+	"github.com/ensp1re/forwend/apps/backend/internal/webhook"
 )
 
 // Check status reads a chain RPC per call, so this bounds those reads per api process (R-55). Each owner's invoices
@@ -30,7 +31,7 @@ const ViewRate, ViewBurst = 0.2, 5
 
 // balances reads each chain's second RPC (D-15); webURL is the web app's origin, for the pay link in PDFs.
 func Routes(mux *http.ServeMux, g mid.Guards, invoices *invoice.Service, profiles *profile.Service,
-	balances ledger.BalanceOf, webURL string) {
+	balances ledger.BalanceOf, webURL string, hooks *webhook.Service) {
 	rechecks := mid.NewBuckets(RecheckRate, RecheckBurst)
 	owners := mid.NewBuckets(RecheckOwnerRate, RecheckOwnerBurst)
 	emails := mid.NewBuckets(PayerEmailAllRate, PayerEmailAllBurst)
@@ -44,6 +45,9 @@ func Routes(mux *http.ServeMux, g mid.Guards, invoices *invoice.Service, profile
 	mux.Handle("PUT /v1/profiles/{profileId}/invoices/{invoiceId}/details", g.Can(auth.InvoicesWrite)(numbered(invoices, putDetails(invoices))))
 	mux.Handle("POST /v1/profiles/{profileId}/invoices/{invoiceId}/repeat/stop", g.Can(auth.InvoicesWrite)(numbered(invoices, stopRepeat(invoices))))
 	mux.Handle("GET /v1/profiles/{profileId}/events", g.Can(auth.InvoicesRead)(listEvents(invoices)))
+	// R-153: each with the body a webhook would carry now.
+	mux.Handle("GET /v1/profiles/{profileId}/webhook-events",
+		g.Can(auth.InvoicesRead)(listWebhookEvents(invoices, hooks)))
 	mux.Handle("GET /v1/profiles/{profileId}/owed", g.Can(auth.InvoicesRead)(listOwed(invoices)))
 	mux.Handle("GET /v1/invoices/{payToken}", getInvoice(invoices)) // checkout reads
 	mux.Handle("POST /v1/invoices/{payToken}/recheck", recheckInvoice(invoices, balances, rechecks, owners))

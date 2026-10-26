@@ -328,6 +328,18 @@ R-147, D-97; the body is `WebhookEvent` under `webhooks` in openapi.yaml.
   - It can also be `canceled`, or `other_option` (sent to an option the payer did not choose, D-76).
 - A payment-link invoice's `invoice.detected` can come before it has a number (R-141).
 
+### Events list
+
+R-153, D-102. `GET /v1/profiles/{profileId}/webhook-events` needs `invoices.read`, so a key can read it too.
+
+- It lists the profile's invoice events of the last 30 days, newest first.
+- A page holds `limit` events, 1 to 100 and 50 by default, and `nextCursor`, null on the last page.
+  - Pass `cursor` for the next page. A page never repeats an event.
+  - An event that commits while you page can be missed: to catch it, start again from the first page.
+- `type` keeps one event type. A wrong `limit`, `type` or `cursor` is 422 `invalid_value`.
+- Each item is the body a webhook would carry now, with the invoice as the owner reads it.
+- A store's member or key sees only its stores' events. Test events are not listed.
+
 ### Delivery
 
 R-148, D-98. `cmd/webhooks` sends each delivery as a `POST` of the event's body, `Content-Type: application/json`.

@@ -1943,7 +1943,7 @@
       "dependsOn": [
         "F312"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit"
       ],
@@ -1954,9 +1954,84 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-26 review fail by reviewer: BLOCKING 1: docs/backend/api.md:337 and internal/webhook/events.go:89 say a page never skips an event. False: history_id is taken at insert, not commit. Probe (overlay test): W,Z committed, A inserted but not committed, Y committed; page1 limit=2 = [Y Z] next=6; A commits; page2 = [W]; fresh list = [Y A Z W]. A pager, or a poller that stops at the newest id it has, misses A for good. Fix the wording (never repeats; an event committed while paging can be missed, start again from page 1), and the proof text 'no repeat or gap'. BLOCKING 2: tests miss profile scoping and the owner-read body. Overlay mutations that pass the whole internal/httpapi/tests package: (M1) drop e.profile_id = $1 at events.go:100; (M2) GetOfProfile(ctx, \"\", id) at invoices.go:391. M1 alone 404s every list once another profile has an event; M1+M2 leak another profile's invoice. Add a second profile with a recent event (not listed, still 200) and assert one owner-only body field (e.g. data.invoice history) or compare an item to the delivered body. Non-blocking: (a) N+1: 100 events on 100 invoices = 350-361 ms per page locally vs 5 ms for the invoice list; bounded by limit 100 and the per-user/key rate limit; D-102 needs the owner read. (b) The 30-day cutoff is not in the index: last page or a sparse type/store filter reads every event the profile ever had; probe with 50000 rows 40 days old: Rows Removed by Filter 50000 to return 2. Upgrade: index (profile_id, created_at, history_id) or bound history_id by the window start. (c) invoices.go:369 hand-rolls limit parsing; httpio.IntQuery exists (would make limit=x 400, not the documented 422). (d) Store-scoped API key not tested directly; same Access.Stores path as the tested Developer, so not blocking. Checked OK: profile + store filter (NULL store_id hidden from store-scoped callers, matches InStores and other lists), invoices.read roles/keys, GetOfProfile gets the path profile, test events excluded by inner joins, main invoice id, unnumbered link invoices listed like deliveries, limit+1, type vs EventTypes, 422 mapping, ErrNotFound unreachable (FK, no deletes), openapi/api.md match code, D-84 sentence length. Author's mutations confirmed by reading the test; my M3 (limit=100 refused) also survives, minor. Ran: go test ./internal/httpapi/tests -run 'TestWebhookEventsList|TestProfileRoutesAreAllListed|TestProfilesBelongToTheirUser|TestWebhook' (pass), go test ./internal/httpapi (pass), go test ./internal/webhook ./internal/history (pass), go vet (clean), check-docs.py (0 errors), overlay mutation and probe runs.",
+        "2026-10-26 review pass by reviewer: Re-review after fail. Both blockers fixed. (1) Paging claim: docs/backend/api.md:337-338 now says a page never repeats an event and one that commits while paging can be missed (restart from page 1); events.go:89-90 comment and proof text say the same; matches my late-commit probe. (2) Tests: webhook_events_list_test.go:43-48 adds an event on Alice's freelancer profile, :82-86 asserts data.invoice history (owner read only), :102 takes limit=100. Overlay mutations now fail TestWebhookEventsList: M1 drop e.profile_id=$1 (events.go:100) -> 404 at :77; M2 GetOfProfile(ctx, \"\", id) (invoices.go:391) -> 'history []' at :85; M3 refuse limit=100 -> 422 at :102. Code otherwise unchanged (only the comment). Non-blocking, not taken and reported to the user by the coordinator: N+1 owner reads (about 350 ms per 100-invoice page locally), 30-day cutoff not in the index (last page reads the profile's whole history), hand-written limit parsing (invoices.go:369, kept for the documented 422), no direct store-scoped key test (same Access.Stores path as the tested Developer). Ran: go test ./internal/httpapi/tests -run 'TestWebhookEventsList|TestProfileRoutesAreAllListed|TestProfilesBelongToTheirUser|TestWebhook' (8 pass), the 3 overlay mutations (all fail as intended), go vet (clean), check-docs.py (0 errors); verify F313 passed at 13:17:08Z (all 7 checks)."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-26T13:17:08Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 177.7,
+            "log": ""
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.7,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 267.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "7c6677baaaf1dbbd",
+        "filesHash": "bbf8707611b5dd6b",
+        "proof": {
+          "1": "unit: TestWebhookEventsList lists the profile's invoice events of the last 30 days newest first, leaves out one from 31 days ago and another profile's, pages them 2 at a time with nextCursor and no repeat, takes a page of 100, and refuses limit 0, 101 or x and a bad cursor with 422",
+          "2": "unit: TestWebhookEventsList keeps only canceled with type=invoice.canceled, refuses invoice.created and webhook.test, and each item is the webhook body with the invoice as its owner reads it: id, type, livemode, sequence, data.invoice with its history, and data.held",
+          "3": "unit: TestWebhookEventsList shows a second store's Developer only that store's events and never a test event; TestProfilesBelongToTheirUser and the openapi route test cover the new route"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review after fail. Both blockers fixed. (1) Paging claim: docs/backend/api.md:337-338 now says a page never repeats an event and one that commits while paging can be missed (restart from page 1); events.go:89-90 comment and proof text say the same; matches my late-commit probe. (2) Tests: webhook_events_list_test.go:43-48 adds an event on Alice's freelancer profile, :82-86 asserts data.invoice history (owner read only), :102 takes limit=100. Overlay mutations now fail TestWebhookEventsList: M1 drop e.profile_id=$1 (events.go:100) -> 404 at :77; M2 GetOfProfile(ctx, \"\", id) (invoices.go:391) -> 'history []' at :85; M3 refuse limit=100 -> 422 at :102. Code otherwise unchanged (only the comment). Non-blocking, not taken and reported to the user by the coordinator: N+1 owner reads (about 350 ms per 100-invoice page locally), 30-day cutoff not in the index (last page reads the profile's whole history), hand-written limit parsing (invoices.go:369, kept for the documented 422), no direct store-scoped key test (same Access.Stores path as the tested Developer). Ran: go test ./internal/httpapi/tests -run 'TestWebhookEventsList|TestProfileRoutesAreAllListed|TestProfilesBelongToTheirUser|TestWebhook' (8 pass), the 3 overlay mutations (all fail as intended), go vet (clean), check-docs.py (0 errors); verify F313 passed at 13:17:08Z (all 7 checks).",
+          "at": "2026-10-26T13:25:07Z",
+          "filesHash": "bbf8707611b5dd6b"
+        }
+      },
+      "branch": "feat/f313-the-api-lists-the-profile-s-webhook-even",
+      "baseCommit": "51fa0f840a0ffa1894ae43fe915c2f07475cb4a7",
+      "failedVerifies": 0
     },
     {
       "id": "F314",
