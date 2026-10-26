@@ -389,6 +389,21 @@ class HarnessTests(unittest.TestCase):
         os.kill(check, 9)
         self.fail('the check kept running after the harness got SIGTERM')
 
+    def test_only_a_failed_check_keeps_its_log(self):
+        passed = h.run_check(self.root, {'id': 'ok', 'argv': [sys.executable, '-c', 'print(1)']}, self.root / 'ok.log')
+        failed = h.run_check(self.root, {'id': 'bad', 'argv': [sys.executable, '-c', 'raise SystemExit(3)']},
+                             self.root / 'bad.log')
+        self.assertEqual((passed['outcome'], passed['log']), ('passed', ''))
+        self.assertFalse((self.root / 'ok.log').exists())
+        self.assertEqual((failed['outcome'], failed['log']), ('failed', 'bad.log'))
+        self.assertTrue((self.root / 'bad.log').exists())
+        for argv, timeout, outcome in [(['/does/not/exist'], 900, 'missing-command'),
+                                        ([sys.executable, '-c', 'import time; time.sleep(10)'], .05, 'timeout')]:
+            result = h.run_check(self.root, {'id': outcome, 'argv': argv, 'timeoutSeconds': timeout},
+                                 self.root / f'{outcome}.log')
+            self.assertEqual((result['outcome'], result['log']), (outcome, f'{outcome}.log'))
+            self.assertTrue((self.root / f'{outcome}.log').exists())
+
     def test_missing_package_script_fails_before_pnpm(self):
         (self.root / 'package.json').write_text(json.dumps({'scripts': {}}))
         check = {'id': 'gate', 'argv': ['pnpm', 'e2e'], 'package': '.', 'script': 'e2e'}

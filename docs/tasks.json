@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 308,
+  "nextId": 309,
   "tasks": [
     {
       "id": "F295",
@@ -1439,6 +1439,102 @@
         "branch": "fix/f307-webhooks-follow-ups-the-developers-page",
         "base": "main"
       }
+    },
+    {
+      "id": "F308",
+      "type": "chore",
+      "behavior": "The harness keeps a log only for a check that did not pass",
+      "acceptance": [
+        "A passed check leaves no log in docs/runs; a failed, timed-out or missing check keeps its log",
+        "workflow.md says which logs docs/runs keeps"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "harness"
+      ],
+      "refs": [
+        "R-25"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-26 review pass by reviewer: Pass; no blocking finding. Code readers of a passed check's log: none. evidence_line (harness.py:527), the verify tail (1115), check (1440), wrapup found (1505) and precommit (1566) read or tail only non-passed results. pr_body (1219) prints only id and outcome. done's PR body file in docs/runs is not a check log and is untouched. No CI workflow, script or agent config reads docs/runs. Timeout and missing-command return inside the with block, before the unlink, so they keep their log. The unlink runs after the file is closed. The keep log is written only on a hit: probed in a temp git root, no hit gives no file, a hit gives the file and its tail. Non-blocking: (a) check prints 'ok: passed ()' (harness.py:1439). verify (1112), wrapup (1521) and show --history (860) print a trailing space. Print the log only when there is one. (b) Reviewers lose a passed run's log. In F307 I used docs/runs/F307-*-e2e.log to confirm the privy webhooks spec ran, since reviewers may not run e2e. Keeping the latest verify's logs until done would keep that evidence; the owner's call. (c) The new test covers passed and failed only. Acceptance 1 also names timed-out and missing; two more asserts would pin them. (d) The run_check comment (harness.py:503) holds history ('grew to thousands'); AGENTS.md puts history in the commit message. (e) refs is empty, but workflow step 1 asks for one; R-25 (harness checks) fits. Adding it changes the task hash, so verify again. (f) docs/README.md:20 ('ignored logs') still holds. workflow.md step 4 (screenshots in docs/runs) is unaffected; line 7 is at most 25 words. Ran: python3 -m unittest discover -s tests (39 OK). The same suite on the HEAD harness.py in scratch (test_only_a_failed_check_keeps_its_log fails: ('passed','ok.log') != ('passed','')). In a temp git root: harness check/verify/show --history/wrapup, plus a keep rule with no hit and with a hit.",
+        "2026-10-26 review pass by reviewer: Re-review after the fixes; pass, no blocking finding. (a) check prints the log only when there is one (harness.py:1439). verify (1112), wrapup (1521) and show --history (860) rstrip the line. Probed in a temp git root: 'ok: passed' with no parens or trailing space; a failed check still prints its log path and tail. (c) test_only_a_failed_check_keeps_its_log now also checks that missing-command and timeout results keep their logs. (d) The run_check comment (harness.py:503) gives a reason and no history. (e) refs is R-25. (b) Keeping passed logs until done stays the owner's call; non-blocking. The e2e failure before the 00:21:58Z verify (onboarding.spec and team.spec, 'Loading your profiles') came from reusing the owner's dev api with its lower rate limit. F308 changes only the harness, so it is not related; the rerun passed. Ran: python3 -m unittest discover -s tests (39 OK); git diff scripts/harness.py tests/test_harness.py docs/workflow.md; harness check/verify/show --history/wrapup in a temp git root (removed after)."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-26T00:21:58Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.3,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 180.5,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 295.7,
+            "log": ""
+          }
+        ],
+        "taskHash": "ef12d9c111674790",
+        "filesHash": "52cbdf57a472f83c",
+        "proof": {
+          "1": "harness: test_only_a_failed_check_keeps_its_log covers passed, failed, timeout and missing; fails on the old runner",
+          "2": "docs-check: workflow.md line 7"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review after the fixes; pass, no blocking finding. (a) check prints the log only when there is one (harness.py:1439). verify (1112), wrapup (1521) and show --history (860) rstrip the line. Probed in a temp git root: 'ok: passed' with no parens or trailing space; a failed check still prints its log path and tail. (c) test_only_a_failed_check_keeps_its_log now also checks that missing-command and timeout results keep their logs. (d) The run_check comment (harness.py:503) gives a reason and no history. (e) refs is R-25. (b) Keeping passed logs until done stays the owner's call; non-blocking. The e2e failure before the 00:21:58Z verify (onboarding.spec and team.spec, 'Loading your profiles') came from reusing the owner's dev api with its lower rate limit. F308 changes only the harness, so it is not related; the rerun passed. Ran: python3 -m unittest discover -s tests (39 OK); git diff scripts/harness.py tests/test_harness.py docs/workflow.md; harness check/verify/show --history/wrapup in a temp git root (removed after).",
+          "at": "2026-10-26T00:30:36Z",
+          "filesHash": "52cbdf57a472f83c"
+        }
+      },
+      "branch": "chore/f308-the-harness-keeps-a-log-only-for-a-check",
+      "baseCommit": "f176b2f15872152e3324c68975a1cca06fa8f9fa",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
