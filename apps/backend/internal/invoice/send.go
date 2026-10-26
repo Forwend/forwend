@@ -48,7 +48,7 @@ func (s *Service) Send(ctx context.Context, profileID, id, key string, allow fun
 		}
 		var email, status string
 		err = tx.QueryRow(ctx, "SELECT coalesce(client_email, ''), "+StatusFilterSQL+" FROM "+invoicesCurrent+
-			" WHERE id = $1 AND profile_id = $2", id, profileID).Scan(&email, &status)
+			" WHERE id = $1 AND profile_id = $2 AND document_kind <> 'none'", id, profileID).Scan(&email, &status)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		} else if err != nil {

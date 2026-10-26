@@ -259,12 +259,84 @@ test.describe("pay page", () => {
     await expect(page.locator("[data-money]")).toHaveText("1,250.00 USDC");
   });
 
+  test("checkout shows purchase items and a receipt without an invoice document", async ({
+    page,
+  }) => {
+    const checkout = {
+      ...OPEN,
+      purpose: "checkout",
+      documentKind: "none",
+      number: null,
+      dueDate: null,
+      agreedValue: null,
+      lines: [
+        { description: "Coffee", quantity: "2.00", unitPrice: "625000000", amount: "1250000000" },
+      ],
+    };
+    await openPay(page, checkout);
+    await expect(page.getByText("Checkout", { exact: true })).toBeVisible();
+    await expect(page.getByText("Coffee", { exact: true })).toBeVisible();
+    await expect(page.getByText("2 × 625.00 USD", { exact: true })).toBeVisible();
+    await expect(
+      page
+        .getByRole("region", { name: "Items", exact: true })
+        .getByText("1,250.00 USD", { exact: true }),
+    ).toHaveCount(2);
+    await expect(page.getByRole("link", { name: "Download invoice PDF" })).toHaveCount(0);
+    await expect(page.getByText(/INV-/)).toHaveCount(0);
+    await showAddress(page).click();
+    await expect(page.getByText(RECEIVE, { exact: true })).toBeVisible();
+    await mockInvoice(page, {
+      ...PAID,
+      ...checkout,
+      paymentStatus: "paid",
+      paidAt: PAID.paidAt,
+      deposits: PAID.deposits,
+    });
+    await page.clock.fastForward(POLL_MS);
+    await expect(page.getByRole("link", { name: "Download receipt" })).toHaveAttribute(
+      "href",
+      pdfPath("receipt.pdf"),
+    );
+    await expect(page.getByRole("link", { name: "Download invoice PDF" })).toHaveCount(0);
+  });
+
+  test("checkout items keep their base units when the customer picks another network", async ({
+    page,
+  }) => {
+    await openPay(page, {
+      ...CHOOSING,
+      purpose: "checkout",
+      documentKind: "none",
+      number: null,
+      options: CHOOSING.options.map((option) => ({ ...option, decimals: 18 })),
+      lines: [
+        { description: "Coffee", quantity: "2.00", unitPrice: "625000000", amount: "1250000000" },
+      ],
+    });
+    await expect(
+      page
+        .getByRole("region", { name: "Items", exact: true })
+        .getByText("1,250.00 USD", { exact: true }),
+    ).toHaveCount(2);
+    await page.getByRole("combobox", { name: "Network" }).click();
+    await page.getByRole("option", { name: "Arbitrum Sepolia" }).click();
+    await showAddress(page).click();
+    await expect(page.getByText(OPTION_RECEIVE, { exact: true })).toBeVisible();
+    await expect(page.getByText("2 × 625.00 USD", { exact: true })).toBeVisible();
+    await expect(
+      page
+        .getByRole("region", { name: "Items", exact: true })
+        .getByText("1,250.00 USD", { exact: true }),
+    ).toHaveCount(2);
+  });
+
   test("a test-mode invoice says its tokens have no value, and a live one doesn't (R-143)", async ({
     page,
   }) => {
     await openPay(page, OPEN);
     const note = page.getByText(
-      "Test mode: this invoice takes testnet tokens, which have no value. Don't send real money.",
+      "Test mode: this payment takes testnet tokens, which have no value. Don't send real money.",
     );
     await expect(note).toBeVisible();
     await mockInvoice(page, { ...OPEN, livemode: true });
@@ -495,7 +567,7 @@ test.describe("pay page", () => {
       call++ === 0 ? route.fulfill({ status: 500, json: {} }) : route.fulfill({ json: OPEN }),
     );
     await page.goto(`/pay/${PAY}`);
-    const alert = page.getByRole("alert").filter({ hasText: "We could not load this invoice" });
+    const alert = page.getByRole("alert").filter({ hasText: "We could not load this payment" });
     await expect(alert).toBeVisible();
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 900 });
@@ -515,7 +587,7 @@ test.describe("pay page", () => {
   test("tells the payer a canceled invoice takes no money", async ({ page }) => {
     await openPay(page, CANCELED);
     await expect(status(page)).toHaveText(
-      "Alice Design GmbH canceled this invoice. Do not send money.",
+      "Alice Design GmbH closed this payment. Do not send money.",
     );
     await expect(showAddress(page)).toHaveCount(0);
     await expect(page.getByText("Amount", { exact: true })).toBeVisible();
@@ -552,7 +624,7 @@ test.describe("pay page", () => {
     ]);
     await page.clock.runFor(POLL_MS);
     await expect(status(page)).toHaveText(
-      "This invoice is closed. If you already sent money, it is not lost: contact Alice Design GmbH.",
+      "This payment is closed. If you already sent money, it is not lost: contact Alice Design GmbH.",
     );
     await expect(showAddress(page)).toHaveCount(0);
     await expect(page.getByText(/Copy the address from this page/)).toHaveCount(0);
@@ -682,8 +754,7 @@ test.describe("pay page", () => {
     await openPay(page, { ...OPEN, amount: "1250000001" });
     await expect(
       page.getByRole("alert").filter({
-        hasText:
-          "This payment page does not match the invoice. Do not pay; contact the invoice's creator.",
+        hasText: "This payment page does not match the payment. Do not pay; contact the recipient.",
       }),
     ).toBeVisible();
     await expect(showAddress(page)).toHaveCount(0);

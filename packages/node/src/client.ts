@@ -1,10 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { ForwendError } from "./errors.js";
 import type {
+  CheckoutSession,
+  CreateCheckoutSession,
   CreateInvoice,
   Invoice,
   ListInvoices,
+  ListPayments,
   ListWebhookEvents,
+  Payment,
   WebhookEvent,
 } from "./types.js";
 
@@ -26,8 +30,22 @@ interface Page<T> {
 
 type Query = Record<string, string | number | undefined>;
 
-/** A client for one profile's invoices and webhook events. */
+/** Server operations for one profile, restricted by its API key's store, mode and scopes. */
 export class Forwend {
+  readonly checkoutSessions: {
+    create(
+      body: CreateCheckoutSession,
+      options?: { idempotencyKey?: string },
+    ): Promise<CheckoutSession>;
+    get(sessionId: string): Promise<CheckoutSession>;
+    list(params?: ListPayments): AsyncGenerator<CheckoutSession>;
+    /** Refuses expiration once any payment has been seen. Repeated expiration is safe. */
+    expire(sessionId: string): Promise<CheckoutSession>;
+  };
+  readonly payments: {
+    get(paymentId: string): Promise<Payment>;
+    list(params?: ListPayments): AsyncGenerator<Payment>;
+  };
   readonly invoices: {
     /** Creates an invoice. The same idempotencyKey and body return the same invoice; one is made when none is given. */
     create(body: CreateInvoice, options?: { idempotencyKey?: string }): Promise<Invoice>;
@@ -45,6 +63,25 @@ export class Forwend {
   constructor(options: ForwendOptions) {
     this.#options = options;
     const profile = `/v1/profiles/${encodeURIComponent(options.profileId)}`;
+    this.checkoutSessions = {
+      create: (body, { idempotencyKey = randomUUID() } = {}) =>
+        this.#request("POST", `${profile}/checkout-sessions`, {}, body, {
+          "Idempotency-Key": idempotencyKey,
+        }),
+      get: (sessionId) =>
+        this.#request("GET", `${profile}/checkout-sessions/${encodeURIComponent(sessionId)}`),
+      list: (params = {}) => this.#pages(`${profile}/checkout-sessions`, { ...params }),
+      expire: (sessionId) =>
+        this.#request(
+          "POST",
+          `${profile}/checkout-sessions/${encodeURIComponent(sessionId)}/expire`,
+        ),
+    };
+    this.payments = {
+      get: (paymentId) =>
+        this.#request("GET", `${profile}/payments/${encodeURIComponent(paymentId)}`),
+      list: (params = {}) => this.#pages(`${profile}/payments`, { ...params }),
+    };
     this.invoices = {
       create: (body, { idempotencyKey = randomUUID() } = {}) =>
         this.#request("POST", `${profile}/invoices`, {}, body, {

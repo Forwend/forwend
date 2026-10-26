@@ -3,92 +3,6 @@
   "nextId": 336,
   "tasks": [
     {
-      "id": "F326",
-      "type": "fix",
-      "behavior": "Separate billing documents from checkout attempts",
-      "acceptance": [
-        "Immutable purpose, attached document kind and source distinguish invoice, checkout and personal requests without changing existing receiver terms, IDs or issued numbers.",
-        "New checkout attempts allocate no invoice number or document. Existing unnumbered link attempts retain delayed numbering, PDF access and original request hashes, with migration and replay regressions. Legacy invoice APIs and personal requests remain valid."
-      ],
-      "dependsOn": [
-        "F325"
-      ],
-      "state": "passing",
-      "verification": [
-        "backend-affected",
-        "backend-e2e"
-      ],
-      "refs": [
-        "R-161"
-      ],
-      "keep": [
-        "packages/contracts/src/*"
-      ],
-      "review": true,
-      "notes": [
-        "2026-10-26 review pass by reviewer: No blocking findings in the additive storage foundation. Reviewed migration 76 preservation of existing IDs, terms, numbers, snapshots and replay hashes; delayed legacy-link numbering and documents; immutable purpose/document kind, option alignment, checkout hash separation, ledger numbering exclusion and optional notification numbers. Final docs, race backend and end-to-end verification passed. Before F327 exposes checkout HTTP operations, guard invoice-only Send and related document actions, provide a valid payment notification target and hide unavailable invoice documents in public checkout. Legacy HTTP behavior remains unchanged in F326."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-26T22:16:18Z",
-        "checks": [
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "backend-affected",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 182.8,
-            "log": ""
-          },
-          {
-            "id": "backend-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 22.7,
-            "log": ""
-          },
-          {
-            "id": "keep",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          }
-        ],
-        "taskHash": "716b89d1ecead44c",
-        "filesHash": "ce2eaef580b6649e",
-        "proof": {
-          "1": "backend-affected: migration preserves legacy records byte-for-byte, purpose and document kind are immutable, and accepted options share the main record classification",
-          "2": "backend-affected: checkout stays unnumbered through booked payment, invoice PDF is absent, receipt and notifications work, and legacy numbering, request fingerprints and retries remain valid"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "No blocking findings in the additive storage foundation. Reviewed migration 76 preservation of existing IDs, terms, numbers, snapshots and replay hashes; delayed legacy-link numbering and documents; immutable purpose/document kind, option alignment, checkout hash separation, ledger numbering exclusion and optional notification numbers. Final docs, race backend and end-to-end verification passed. Before F327 exposes checkout HTTP operations, guard invoice-only Send and related document actions, provide a valid payment notification target and hide unavailable invoice documents in public checkout. Legacy HTTP behavior remains unchanged in F326.",
-          "at": "2026-10-26T22:20:06Z",
-          "filesHash": "ce2eaef580b6649e"
-        },
-        "commit": "206465a7",
-        "doneAt": "2026-10-26T22:20:29Z"
-      },
-      "branch": "fix/f326-separate-billing-documents-from-checkout",
-      "baseCommit": "4004a270b7d7b2adb04d87a0093a16365e781bcc",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f326-separate-billing-documents-from-checkout",
-        "base": "main"
-      }
-    },
-    {
       "id": "F327",
       "type": "feat",
       "behavior": "Add explicit store-scoped checkout sessions and server SDK operations",
@@ -100,7 +14,7 @@
       "dependsOn": [
         "F326"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend-affected",
         "backend-e2e",
@@ -113,9 +27,105 @@
         "packages/contracts/src/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-26 review pass by reviewer: Reviewed checkout and canonical payment routes, purpose guards, exact request replay, expiration races, tenant/store/role/key/mode isolation, precise creation-order pagination, OpenAPI and Node SDK contracts, shared paymentio ownership and public document behavior. Last-cap concurrency replay and neutral legacy wording findings are fixed with regression coverage. Real-binary checkout evidence checks confirmation refusal, settlement, receiver ledger and wallet chain balances without invoice numbering. All selected harness checks passed; no blockers remain."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-26T22:37:52Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 180.5,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 26.7,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.7,
+            "log": ""
+          },
+          {
+            "id": "node-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 26.3,
+            "log": ""
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "fbb76f1f0c62e417",
+        "filesHash": "326b3e077d5d037f",
+        "proof": {
+          "1": "backend-e2e: real checkout API to transfer, finality, settlement and independent ledger/chain balances completes without invoice numbering",
+          "2": "backend-affected: router authorization, exact and conflicting retries, expiration and last-slot concurrent retry regressions pass under race detection",
+          "3": "node-unit: checkout create/get/list/expire and canonical payments preserve existing invoice and webhook methods"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Reviewed checkout and canonical payment routes, purpose guards, exact request replay, expiration races, tenant/store/role/key/mode isolation, precise creation-order pagination, OpenAPI and Node SDK contracts, shared paymentio ownership and public document behavior. Last-cap concurrency replay and neutral legacy wording findings are fixed with regression coverage. Real-binary checkout evidence checks confirmation refusal, settlement, receiver ledger and wallet chain balances without invoice numbering. All selected harness checks passed; no blockers remain.",
+          "at": "2026-10-26T22:42:09Z",
+          "filesHash": "326b3e077d5d037f"
+        }
+      },
+      "branch": "feat/f327-add-explicit-store-scoped-checkout-sessi",
+      "baseCommit": "75b2cb35244ea3c6d61e88134fd717754b8ba2ac",
+      "failedVerifies": 0
     },
     {
       "id": "F328",

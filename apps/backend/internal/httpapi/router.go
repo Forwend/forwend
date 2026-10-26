@@ -7,6 +7,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/apikey"
 	"github.com/forwend/forwend/apps/backend/internal/auth"
 	"github.com/forwend/forwend/apps/backend/internal/balance"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/checkoutapi"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/healthapi"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/invoiceapi"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/jobapi"
@@ -14,6 +15,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/linkapi"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/mid"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/moneyapi"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/paymentapi"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/profileapi"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/teamapi"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/webhookapi"
@@ -40,6 +42,8 @@ func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, 
 	profileapi.Routes(mux, guards, profiles)
 	invoices, hooks := invoice.NewService(pool), webhook.NewService(pool, webhookKey)
 	invoiceapi.Routes(mux, guards, invoices, profiles, balances, webURL, hooks)
+	checkoutapi.Routes(mux, guards, invoices, webURL)
+	paymentapi.Routes(mux, guards, invoices, webURL)
 	jobapi.Routes(mux, guards, job.NewService(pool, invoices))
 	moneyapi.Routes(mux, guards, balance.NewService(pool, balances), activity.NewService(pool), profiles)
 	teamapi.Routes(mux, guards, team.NewService(pool, wallets))

@@ -31,8 +31,10 @@ import { notFound, usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useCountViewMutation, useGetInvoiceQuery } from "@/features/invoices/api/invoices-api";
 import { CheckStatus } from "@/features/invoices/components/check-status";
+import { InvoiceLines } from "@/features/invoices/components/invoice-lines";
 import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
 import {
+  DOCUMENT_KINDS,
   HISTORY_FIELDS,
   INVOICE_PDFS,
   INVOICE_STEPS,
@@ -243,7 +245,13 @@ function Summary({
       )}
       <Payee
         name={payee ?? COPY.noIssuer}
-        subtitle={invoice.issuer ? COPY.invoice(number) : COPY.request(number)}
+        subtitle={
+          invoice.documentKind === DOCUMENT_KINDS.none
+            ? COPY.checkout
+            : invoice.issuer
+              ? COPY.invoice(number)
+              : COPY.request(number)
+        }
         brand={brand}
       />
       <div className="flex flex-col gap-1.5">
@@ -283,10 +291,28 @@ function Terms({
   now: number;
 }) {
   const closesAt = checkoutClosesAt(invoice);
+  const main = invoice.options.find((o) => o.optionId === invoice.invoiceId);
+  const lineToken = main
+    ? payToken({ ...invoice, chainId: main.chainId, token: main.token })
+    : null;
   return (
     <div className="flex min-w-0 flex-col items-start gap-4 lg:col-start-1 lg:row-start-2 lg:gap-5">
       {invoice.title ? (
         <p className="text-base font-medium break-words text-ink">{invoice.title}</p>
+      ) : null}
+      {invoice.lines.length > 0 && main && lineToken ? (
+        <div className="w-full">
+          <InvoiceLines
+            lines={invoice.lines}
+            decimals={lineToken.decimals}
+            unit={
+              invoice.documentKind === DOCUMENT_KINDS.none || invoice.optionCount > 1
+                ? MONEY_COPY.usd
+                : lineToken.symbol
+            }
+            total={BigInt(main.amount)}
+          />
+        </div>
       ) : null}
       {invoice.reference || invoice.agreedValue || invoice.dueDate || pay.canSend ? (
         <ul className="flex max-w-full flex-col gap-2.5 text-sm text-muted">
@@ -351,13 +377,15 @@ function Terms({
           </ul>
         </section>
       ) : null}
-      <a
-        href={invoicePdfUrl(linkToken, INVOICE_PDFS.invoice)}
-        className="-mx-1 inline-flex items-center gap-2 rounded-sm px-1 text-sm font-medium text-ink underline decoration-line-strong underline-offset-4 outline-none hover:decoration-ink focus-visible:outline-2 focus-visible:outline-focus"
-      >
-        <FileDown aria-hidden className={ICON} />
-        {COPY.pdfLabel}
-      </a>
+      {invoice.documentKind !== DOCUMENT_KINDS.none ? (
+        <a
+          href={invoicePdfUrl(linkToken, INVOICE_PDFS.invoice)}
+          className="-mx-1 inline-flex items-center gap-2 rounded-sm px-1 text-sm font-medium text-ink underline decoration-line-strong underline-offset-4 outline-none hover:decoration-ink focus-visible:outline-2 focus-visible:outline-focus"
+        >
+          <FileDown aria-hidden className={ICON} />
+          {COPY.pdfLabel}
+        </a>
+      ) : null}
     </div>
   );
 }

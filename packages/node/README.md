@@ -26,3 +26,19 @@ const event = verifyWebhook({ payload: rawBody, headers, secrets: [process.env.F
 ```
 
 Every network is a testnet for now, so every key and invoice is in test mode. Docs: https://forwend.com/docs
+
+Checkout and payment methods are available in the repository for the next release. npm 0.1.0 retains its original invoice methods.
+
+```ts
+const session = await forwend.checkoutSessions.create(
+  { storeId, amountUsd: "25.00", reference: "order-1042",
+    items: [{ description: "Coffee", quantity: "2", unitPrice: "12.50" }] },
+  { idempotencyKey: "purchase-1042" },
+);
+// Redirect the customer to session.payment.hostedUrl.
+const payment = await forwend.payments.get(session.payment.paymentId);
+// Fulfill only after a verified event and canonical paymentStatus === "paid".
+```
+
+Use `checkoutSessions.get`, `.list` and `.expire` to manage attempts. `payments.list` includes purchases without invoice numbers.
+Keep the same idempotency key after an uncertain response. A new purchase needs a fresh key.
