@@ -2331,7 +2331,7 @@
         "The backend builds and its unit and end-to-end tests pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "backend-e2e"
@@ -2424,11 +2424,18 @@
           "summary": "Pass. Commit 6f6df23 vs base 8bd25a2: 185 files = 183 .go + apps/backend/go.mod:1 + docs/tasks.json. (1) git grep -i ensp1re outside docs/archive finds only the proof text in docs/tasks.json:2416; grep -rl over ignored files (.env etc.) finds none. No golangci config, ldflags, Makefile or go.work exists; infra/backend.Dockerfile, .github/workflows/ci.yml and apps/backend/package.json name no module path. (2) Only non-import module string is internal/canary/canary_test.go:171 const module = github.com/forwend/forwend/. go list -m = github.com/forwend/forwend/apps/backend; go list -deps ./cmd/canary under the new prefix = internal/config, internal/canary, cmd/canary (exactly the allow-list); old prefix matches 0 packages; ./cmd/api matches 34, so the check is live. (3) For each of the 183 .go files, base content with sed old->new path piped to gofmt equals the committed file byte-for-byte except canary_test.go:171 (the prefix). No mode changes. (4) Lowercase is safe: go.sum lists only dependencies, no replace directives, no go.work; Docker builds from the local copy and never fetches the module; go install/proxy fetch github.com/forwend/forwend case-insensitively and go.mod matches the lowercase path (an uppercase Forwend import path would fail, so docs must use lowercase; none show one). runtime.Caller in internal/chaintest/chaintest.go:269 uses file paths, not the module path. Minor, non-blocking: F317 has no refs (no PROJECT row covers the module path; 44 archived tasks also have none); the canary test would pass vacuously if the prefix went stale again, deriving it from go list -m would prevent that (out of scope). Ran: go list -m, go list ./..., go list -deps ./cmd/canary and ./cmd/api, go build -o /dev/null ./..., go vet -tags e2e,privylive,loadtest ./..., gofmt -l ., go mod verify, git grep, git diff --summary, per-file sed+gofmt+cmp.",
           "at": "2026-10-26T15:26:36Z",
           "filesHash": "d5bed9529f8d1d4d"
-        }
+        },
+        "commit": "3071c83",
+        "doneAt": "2026-10-26T15:27:00Z"
       },
       "branch": "refactor/f317-the-go-module-path-names-the-forwend-org",
       "baseCommit": "8bd25a2d48885430393ff937f10d5d32ed282f98",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "refactor/f317-the-go-module-path-names-the-forwend-org",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
