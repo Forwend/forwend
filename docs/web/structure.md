@@ -182,8 +182,8 @@ packages/ui-web/src/
   small client boundaries; see [Next.js server and client components](https://nextjs.org/docs/app/getting-started/server-and-client-components).
 - Put unit tests in a `tests/` folder inside their owner: the feature (`features/balances/tests/`), the shared
   capability (`shared/api/tests/`), the screen, or the UI component family (`components/payments/tests/`,
-  `hooks/tests/`). No repository-wide folder for application tests. `packages/design-tokens` keeps its `test/`
-  folder. Flow and browser tests stay in `apps/web/e2e/`; the live Privy tests share their sign-in setup in
+  `hooks/tests/`). No repository-wide folder for application tests. `packages/design-tokens` and `packages/node` keep
+  their `test/` folders. Flow and browser tests stay in `apps/web/e2e/`; the live Privy tests share their sign-in setup in
   `e2e/privy/`. Go tests follow [backend rules](../backend/rules.md#layout).
 - When moving existing tests, update Vitest discovery and prove the same tests still run. Update aliases, package
   exports, fixtures and docs with a move.

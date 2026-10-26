@@ -60,7 +60,7 @@ code; a wallet connects only to claim a refund (D-37).
   delivery log, "send test event" and secret rotation; the task picks the design from the research. Events:
   `invoice.detected`, `invoice.partially_paid`, `invoice.paid`, `invoice.settled`, `invoice.expired`,
   `invoice.canceled`, `invoice.held` (with its reason), `refund.completed`. After 11.11.1.
-- 11.6 Public API v1 (idempotent create, get, list, events), OpenAPI, generated Node SDK, webhook verification
+- 11.6 Public API v1 (idempotent create, get, list, events), OpenAPI, a hand-written Node package (D-103), webhook verification
   helper; create takes `returnUrl`, `reference` and `metadata`. A create with `dueDate` and no `expiresIn` closes the
   checkout 60 days after the due date, as the form does (D-80), with a retry-stable idempotency hash. Developer docs
   with a changelog and a status page; breaking changes get 90 days' notice (D-91). After 11.4, 11.5.
@@ -78,8 +78,9 @@ code; a wallet connects only to claim a refund (D-37).
     origin as UI hints (D-29). After 11.1, 11.9.1.
   - 11.9.3 `@forwend/js` and `@forwend/react` (`PayButton`, `Checkout`, `PaymentElement`): no remote script; a theme
     and a few variables mapped to the design tokens and checked for contrast; React 18 and 19. After 11.9.2.
-  - 11.9.4 Publish both packages: npm org (owner approval), CI publish with provenance, `0.x` until the message
-    protocol is stable, a changelog file, size and type checks. After 11.9.3.
+  - 11.9.4 Publish `@forwend/js`, `@forwend/react` and `forwend` (D-103) once the owner approves, from the npm org.
+    CI publishes with provenance. The browser packages stay `0.x` until the message protocol is stable. Each package
+    has a changelog file, size and type checks. After 11.9.3.
   - 11.9.5 `apps/example-merchant` uses the button and the components and verifies the webhook, with a browser test:
     merchant code cannot read the frame, a forged message never marks an order paid, a strict CSP works, and an
     origin off the list is blocked. After 11.9.3.

@@ -17,6 +17,7 @@ Read only the task's requirement rows and the relevant package instructions.
 | Shared UI / tokens | [packages/ui-web/AGENTS.md](packages/ui-web/AGENTS.md), [packages/design-tokens/AGENTS.md](packages/design-tokens/AGENTS.md) |
 | Backend | [apps/backend/AGENTS.md](apps/backend/AGENTS.md) |
 | Contracts | [packages/contracts/AGENTS.md](packages/contracts/AGENTS.md) |
+| Node package | [packages/node/AGENTS.md](packages/node/AGENTS.md) |
 
 ## Shared rules
 
@@ -34,6 +35,7 @@ Read only the task's requirement rows and the relevant package instructions.
 - Money is integer base units plus decimals (`bigint`, `*big.Int`, `NUMERIC(78,0)`). Identify tokens by chain + contract.
 - Secrets only in the ignored `.env` of the package that reads them (`apps/backend`, `apps/web`, `packages/contracts`); no root `.env`.
   Each package lists its names in `.env.example`. Never print, log or commit keys, tokens or request bodies.
+  - The npm publish token is the one root secret: the ignored `.npmrc`, made from `.npmrc.example`.
 - Every change uses a task branch and PR. No direct base-branch commits or pushes; no skipped hooks.
 - Follow the user's authorization for commits and publishing. Spending, deployments and provider accounts require explicit approval.
 - Before finishing a task, stop its temporary Anvil processes and remove the Anvil state files, temporary files and
