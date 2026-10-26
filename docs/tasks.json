@@ -1,127 +1,357 @@
 {
   "schemaVersion": 2,
-  "nextId": 325,
+  "nextId": 336,
   "tasks": [
     {
-      "id": "F324",
-      "type": "fix",
-      "behavior": "Finish the phase 11.6 release follow-ups",
+      "id": "F325",
+      "type": "docs",
+      "behavior": "Define coherent merchant payment workflows and ordered corrections",
       "acceptance": [
-        "The SDK ships under MIT and publication claims match npm; research, spikes and archive folders stay local.",
-        "Payment links keep one mode and test keys cannot reach live links; invoice creation never falls back because preferences disable live tokens.",
-        "A profile and each store keep at least one enabled token per available mode.",
-        "A retainer started from Revise creates later months once, without replacing the original again.",
-        "Signup and settlement regression tests check their rules without the reported timing or nonce race."
+        "Repository traces and primary-source research establish distinct workflows, financial invariants, ownership and migration constraints before application changes.",
+        "An ordered task plan covers foundational repairs, merchant operations, onboarding and checkout integrations, with acceptance and verification for each task."
       ],
       "dependsOn": [],
-      "state": "passing",
+      "state": "verified",
       "verification": [
-        "unit",
-        "build",
-        "e2e"
+        "docs-check"
       ],
       "refs": [
-        "R-159",
+        "R-160",
+        "R-25",
         "R-157",
-        "R-156",
-        "R-136",
-        "R-98",
-        "R-129",
-        "D-87",
-        "D-103",
-        "R-25"
+        "D-106",
+        "D-107",
+        "D-108",
+        "D-109",
+        "D-110",
+        "D-111",
+        "D-112"
       ],
       "keep": [],
-      "review": false,
+      "review": true,
       "notes": [
-        "2026-10-26 review pass by reviewer: No blockers. Reviewed permanent payment-link modes across key authorization, lists, upserts and public payment creation; profile/store token invariants and rollback; retainer templates including stored Revise actions; deterministic signup deadline and distinct-chain signer cap tests; public and owner test-mode UI; migration and structure ownership. Independently confirmed npm forwend 0.1.0 MIT with matching packed integrity. Final seven-check verification passed, and documentation and assertion follow-ups are resolved.",
-        "2026-10-26 F324 verified: all seven checks passed in 207.2s; independent review passed. Published forwend0.1.0 under MIT, confirmed registry integrity and clean-install imports. Mode/token/retainer/test fixes are ready locally. Local webhook encryption key configured without exposing its value. Temporary Anvil processes and chain31338 files, preview spec and package/install temporary files were removed. Phone screenshot kept as evidence. Commit and PR need owner authorization; status provider remains outside this change.",
-        "2026-10-26 F324 committed as b5e30d56 and opened in PR322: https://github.com/Forwend/forwend/pull/322. All seven local checks and independent review passed. Package forwend0.1.0 is published under MIT. Temporary chain processes and files were cleaned. PR remains open for review; no staging promotion or deployment was requested."
+        "2026-10-26 review pass by reviewer: Reviewed repository traces, primary-source workflow distinctions, legacy numbering and document compatibility, replay hashes, link retry and cap semantics, store and wallet boundaries, ordered dependencies and acceptance criteria. Research limits and optional scope are explicit. No blockers remain.",
+        "2026-10-26 review pass by reviewer: Final review found no blockers. Tracked model, requirements and ordered task acceptance agree on immutable purposes, legacy unnumbered invoice documents and replay hashes, independent link attempts and capacity, chronological receiver refund/settlement evidence, explicit unreconciled observations and exact movement exports. Compared outflow rules with receiver contracts and checked scope, dependencies and verification limits. git diff --check and docs-check passed."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-26T21:22:35Z",
+        "at": "2026-10-26T22:08:24Z",
         "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
           {
             "id": "docs-check",
             "outcome": "passed",
             "exit": 0,
             "seconds": 0.0,
             "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.2,
-            "log": ""
-          },
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 179.4,
-            "log": ""
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 5.8,
-            "log": ""
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 21.5,
-            "log": ""
           }
         ],
-        "taskHash": "7de682e9b13fc3ea",
-        "filesHash": "d25babb1fe51a43f",
+        "taskHash": "ba6aef5b655bffde",
+        "filesHash": "2c76a6a5225abe1b",
         "proof": {
-          "1": "unit: SDK tests pass; build: MIT package compiles; docs-check: publication claims match npm 0.1.0 MIT and a clean install loads all exports; harness: recursive working-folder ignores are confirmed",
-          "2": "unit: API regressions cover key/link mode isolation and disabled-live-token fallback; e2e: public test-mode warning and existing checkout flows",
-          "3": "unit: profile and store token tests reject empty modes and combined preferences atomically",
-          "4": "unit: legacy Revise templates create two later months once and replace only the first invoice",
-          "5": "unit: signup cancellation and distinct-chain signer cap tests pass; missing deadline mutation fails; concurrency stress passed five repetitions"
+          "1": "docs-check: repository traces, primary citations and independent financial review establish product boundaries, legacy compatibility and ordered outflow/reconciliation rules",
+          "2": "docs-check: F326 through F335 define dependent frontend/backend corrections, data changes, acceptance and evidence before implementation"
         },
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "No blockers. Reviewed permanent payment-link modes across key authorization, lists, upserts and public payment creation; profile/store token invariants and rollback; retainer templates including stored Revise actions; deterministic signup deadline and distinct-chain signer cap tests; public and owner test-mode UI; migration and structure ownership. Independently confirmed npm forwend 0.1.0 MIT with matching packed integrity. Final seven-check verification passed, and documentation and assertion follow-ups are resolved.",
-          "at": "2026-10-26T21:26:43Z",
-          "filesHash": "d25babb1fe51a43f"
-        },
-        "commit": "0cb1f2c1",
-        "doneAt": "2026-10-26T21:45:23Z"
+          "summary": "Final review found no blockers. Tracked model, requirements and ordered task acceptance agree on immutable purposes, legacy unnumbered invoice documents and replay hashes, independent link attempts and capacity, chronological receiver refund/settlement evidence, explicit unreconciled observations and exact movement exports. Compared outflow rules with receiver contracts and checked scope, dependencies and verification limits. git diff --check and docs-check passed.",
+          "at": "2026-10-26T22:11:43Z",
+          "filesHash": "2c76a6a5225abe1b"
+        }
       },
-      "branch": "chore/f324-publish-the-mit-licensed-node-package-an",
-      "baseCommit": "ae0b0293676c115e72c713ecf16cbc8d2a120bab",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "chore/f324-publish-the-mit-licensed-node-package-an",
-        "base": "main"
-      }
+      "branch": "docs/f325-define-coherent-merchant-payment-workflo",
+      "baseCommit": "e061a9b1bb2392813bd3b7469164304e7a413ddd",
+      "failedVerifies": 0
+    },
+    {
+      "id": "F326",
+      "type": "fix",
+      "behavior": "Separate billing documents from checkout attempts",
+      "acceptance": [
+        "Immutable purpose, attached document kind and source distinguish invoice, checkout and personal requests without changing existing receiver terms, IDs or issued numbers.",
+        "New checkout attempts allocate no invoice number or document. Existing unnumbered link attempts retain delayed numbering, PDF access and original request hashes, with migration and replay regressions. Legacy invoice APIs and personal requests remain valid."
+      ],
+      "dependsOn": [
+        "F325"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend-affected",
+        "backend-e2e"
+      ],
+      "refs": [
+        "R-161"
+      ],
+      "keep": [
+        "packages/contracts/src/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F327",
+      "type": "feat",
+      "behavior": "Add explicit store-scoped checkout sessions and server SDK operations",
+      "acceptance": [
+        "Checkout create, get, list and expire endpoints expose hosted URLs, external references and separate session/payment state, including unnumbered attempts.",
+        "Exact original requests replay; altered amount/items/reference/store/mode conflict; tenant, role, key and mode boundaries are enforced through router tests.",
+        "The Node SDK supports checkout and payment operations while every existing invoice method remains compatible."
+      ],
+      "dependsOn": [
+        "F326"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend-affected",
+        "backend-e2e",
+        "node-unit"
+      ],
+      "refs": [
+        "R-162"
+      ],
+      "keep": [
+        "packages/contracts/src/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F328",
+      "type": "fix",
+      "behavior": "Make reusable-link purchases independent and recoverable",
+      "acceptance": [
+        "Each purchase has independent identity; refresh resumes it and another purchase creates another checkout, verified with independent customer browsers.",
+        "An original request replays after link changes or disable; store attribution is immutable and activation requires merchant readiness.",
+        "Concurrent requests cannot reserve the same final capacity slot; reserved and paid counts are distinct and expiry releases unused reservations."
+      ],
+      "dependsOn": [
+        "F327"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend-affected",
+        "backend-e2e",
+        "web-e2e"
+      ],
+      "refs": [
+        "R-163"
+      ],
+      "keep": [
+        "packages/contracts/src/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F329",
+      "type": "fix",
+      "behavior": "Reconcile receiver outflows and exact settlement attribution",
+      "acceptance": [
+        "Receiver refund and settlement observations preserve unique block/log identity, durable historical coverage and finalized independent-provider evidence.",
+        "Complete preceding records support balanced idempotent refunds held-first/payable-second and settlements payable-first/held-second; policy exceptions and unreconciled observations stay explicit without invented or negative balances.",
+        "Confirmed returns prevent reopen, later deposits remain visible, and already broadcast settlement is reconciled rather than assumed revoked.",
+        "Real-contract tests cover repeated/partial returns, paid-unsettled refunds, catch-up, multiple logs, reorgs, external settlement, native mismatch and refund-to-wallet attribution; independent balances and ledger equations reconcile."
+      ],
+      "dependsOn": [
+        "F328"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend-affected",
+        "backend-e2e"
+      ],
+      "refs": [
+        "R-164"
+      ],
+      "keep": [
+        "packages/contracts/src/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F330",
+      "type": "feat",
+      "behavior": "Add merchant payment operations and store reconciliation APIs",
+      "acceptance": [
+        "Payments include all permitted attempts with stable paging and source/store/status filters; detail separates deposits, settlement, refunds, reconciliation and delivery state.",
+        "Attention identifies partial/held/uncertain payments, delayed/refused settlements and failed/disabled delivery with evidence-backed reasons and valid next actions.",
+        "Exact movement CSV rows preserve store, source, invoice/order reference, chain/token/decimals and transaction/log evidence, without repeating independently summable aggregate totals.",
+        "Tenant, assigned-store and key-mode tests pass; exports and canonical snapshot totals reconcile to ledger and independent finalized chain records, with verification coverage and unmatched observations explicit."
+      ],
+      "dependsOn": [
+        "F329"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend-affected",
+        "backend-e2e"
+      ],
+      "refs": [
+        "R-165"
+      ],
+      "keep": [
+        "packages/contracts/src/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F331",
+      "type": "fix",
+      "behavior": "Give merchants distinct payments, links and invoice workflows",
+      "acceptance": [
+        "Payments and Needs attention expose coherent store-filtered operational lists and detail; links show resulting payments with explicit Edit; invoices remain customer billing.",
+        "Overview, lists, detail, checkout, receipts and exports use matching payment/settlement/refund meanings and resource cross-links.",
+        "Failed store/token loading never silently chooses a default or restores invalid acceptance; customer invoice composition identifies its recipient.",
+        "Desktop and phone walkthroughs, accessibility and authorization checks pass while valid legacy invoice URLs remain usable."
+      ],
+      "dependsOn": [
+        "F330"
+      ],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "web-e2e"
+      ],
+      "refs": [
+        "R-166"
+      ],
+      "keep": [
+        "packages/contracts/src/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F332",
+      "type": "feat",
+      "behavior": "Guide merchants through supported setup tasks",
+      "acceptance": [
+        "Merchant and developer setup guides sharing a link, billing a customer or integrating checkout using actual billing/store/branding/acceptance/key/origin/webhook state.",
+        "The existing first store is reused; completion survives reload through actual resources and respects role permissions.",
+        "KYB honestly remains not_required and never blocks test keys or invoices; obsolete API-later messaging is removed."
+      ],
+      "dependsOn": [
+        "F331"
+      ],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "web-e2e"
+      ],
+      "refs": [
+        "R-167"
+      ],
+      "keep": [
+        "packages/contracts/src/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F333",
+      "type": "feat",
+      "behavior": "Implement hosted and origin-restricted embedded checkout",
+      "acceptance": [
+        "Hosted integration works without a browser package; full and element embeds reuse trusted checkout and support existing payment lifecycles.",
+        "Only configured exact origins can frame an embed; normal pay pages remain unframeable; loopback HTTP is test-only and live returns require HTTPS.",
+        "Message origin/source checks, strict CSP, revocation, expiration and forged parent/redirect events are tested; browser hints never prove fulfillment."
+      ],
+      "dependsOn": [
+        "F332"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend-affected",
+        "backend-e2e",
+        "web-e2e"
+      ],
+      "refs": [
+        "R-168"
+      ],
+      "keep": [
+        "packages/contracts/src/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F334",
+      "type": "feat",
+      "behavior": "Build minimal JavaScript and React checkout packages",
+      "acceptance": [
+        "Browser packages provide PayButton, Checkout and PaymentElement over existing checkout URLs, without secret keys or client-authoritative financial state.",
+        "Typed messages verify origin/source and mount lifecycle cleans listeners; React 18 and 19 compatibility, type/build/size and packed-install checks pass.",
+        "Release artifacts, changelogs and provenance CI are prepared; publishing remains gated by separate approval."
+      ],
+      "dependsOn": [
+        "F333"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "build",
+        "e2e"
+      ],
+      "refs": [
+        "R-169"
+      ],
+      "keep": [
+        "packages/contracts/src/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F335",
+      "type": "feat",
+      "behavior": "Prove merchant checkout fulfillment and reconciliation end to end",
+      "acceptance": [
+        "The example merchant prices a cart on its server, creates real checkouts, verifies events and fulfills an order once across hosted and embedded flows.",
+        "Independent shared-link customers, client invoicing, multi-store isolation, expiration, partial payment, delivery recovery and spoofed prices/messages have automated workflow coverage.",
+        "Ledger/export totals reconcile against receiver and wallet chain balances; duplicate/reordered events cannot double-fulfill.",
+        "Quickstart and integration docs match implemented packages; provider limitations, actual user testing and release approvals are reported truthfully."
+      ],
+      "dependsOn": [
+        "F334"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "build",
+        "e2e"
+      ],
+      "refs": [
+        "R-170"
+      ],
+      "keep": [
+        "packages/contracts/src/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

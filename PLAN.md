@@ -65,6 +65,28 @@ code; a wallet connects only to claim a refund (D-37).
   helper; create takes `returnUrl`, `reference` and `metadata`. A create with `dueDate` and no `expiresIn` closes the
   checkout 60 days after the due date, as the form does (D-80), with a retry-stable idempotency hash. Developer docs
   with a changelog and a status page; breaking changes get 90 days' notice (D-91). After 11.4, 11.5.
+### Merchant workflow correction order
+
+- Research: F325 documents current behavior and primary evidence in local `docs/research/merchant-payment-workflows.md`.
+- The durable model is [merchant payments](docs/merchant-payments.md), PROJECT R-160–R-170 and D-106–D-112.
+- Correct foundations before building 11.7–11.9 screens; existing section scope remains below.
+- F326: explicit invoice, checkout and personal-request purposes; preserve issued documents and legacy API behavior.
+- F327: store-scoped checkout-session API, order correlation and Node SDK operations.
+- F328: independent reusable-link purchases, original-request replay, capacity reservations and immutable store attribution.
+- F329: actual receiver refund observation, balanced accounting and chain/token-exact settlement attribution.
+- F330: merchant payment, attention and reconciliation APIs with store filtering and exact CSV exports.
+- F331: Payments and link-result screens, customer invoice workflow, coherent navigation and explicit configuration failures.
+- F332: task-based merchant onboarding using actual setup state and D-64's not_required KYB status.
+- F333: hosted integration and secure full/element embedded checkout.
+- F334: minimal JavaScript/React packages and verified release artifacts.
+- F335: merchant example, fulfillment/delivery recovery, end-to-end reconciliation and complete integration documentation.
+- F326–F335 execute in order; F329 also supplies the financial evidence required by 11.7.
+- Full refund claims, Safe execution and wrong-network recovery retain 11.10's scope and gates.
+- New package publication, deployments and provider accounts require separate approval.
+- Detailed local task rationale lives in `docs/research/merchant-payment-tasks.md`; the tracked task queue owns progress.
+
+### Remaining phase 11 deliverables
+
 - 11.7 Merchant ops: attention list (exceptions, held money with its reason, refund claims waiting, failed webhooks),
   store filter, and a CSV with store, invoice, chain, transaction hash, settlement and USD value.
 - 11.8 Merchant onboarding: business name and website, first store, branding preview, team invites, developer steps
