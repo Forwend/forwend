@@ -188,7 +188,7 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 	var (
 		on                   bool
 		to, payer            *string
-		number               int64
+		number               *int64
 		symbol, amount, hash string
 		issuer, typed        string
 		client, replyTo, due string
@@ -222,21 +222,36 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 		amount = p.Amount
 	}
 	units, _ := new(big.Int).SetString(amount, 10)
+	reference := "Payment " + invoice[2:14]
+	ownerPath := "/app/payments/"
+	if number != nil {
+		reference = document.Number(*number)
+		ownerPath = "/app/invoices/"
+	}
 	if kind == outbox.Sent {
 		// The owner sent it, so the owner's setting doesn't apply (R-94).
 		network := document.NetworkName(chainID)
 		if options > 1 { // the client chooses the token and network, each at 1 USD (D-75)
 			symbol, network = "USD", ""
 		}
-		return sent(document.Number(number), document.Amount(units, decimals, symbol), network, issuer, typed, due,
+		return sent(reference, document.Amount(units, decimals, symbol), network, issuer, typed, due,
 			replyTo, webURL+"/pay/"+pay, webURL+"/api/v1/invoices/"+pay+"/invoice.pdf"), &client, true, nil
 	}
+	var v view
 	if kind == outbox.Receipt {
-		return receipt(document.Number(number), document.Amount(units, decimals, symbol), symbol, document.NetworkName(chainID), issuer, typed,
-			document.TxURL(chainID, hash), webURL+"/api/v1/invoices/"+pay+"/receipt.pdf"), to, on, nil
+		v = receipt(reference, document.Amount(units, decimals, symbol), symbol, document.NetworkName(chainID), issuer, typed,
+			document.TxURL(chainID, hash), webURL+"/api/v1/invoices/"+pay+"/receipt.pdf")
+	} else {
+		v = compose(kind, reference, document.Amount(units, decimals, symbol), symbol, document.NetworkName(chainID),
+			webURL+ownerPath+invoice, webURL+"/app/notifications")
+		if number == nil {
+			v.Button.Label = "View payment"
+		}
 	}
-	return compose(kind, document.Number(number), document.Amount(units, decimals, symbol), symbol, document.NetworkName(chainID),
-		webURL+"/app/invoices/"+invoice, webURL+"/app/notifications"), to, on, nil
+	if number == nil {
+		v.Details[0].Label = "Payment"
+	}
+	return v, to, on, nil
 }
 
 func compose(kind, number, amount, symbol, network, link, settings string) view {

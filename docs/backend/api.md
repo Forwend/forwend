@@ -392,6 +392,13 @@ R-149, D-99. These need the `webhooks` permission and no fresh sign-in: they sen
 
 ## Invoices
 
+- Reads include immutable `purpose` (`invoice`, `checkout`, `request`) and `documentKind` (`invoice`, `request`, `none`).
+- Owner reads include `linkId` when a reusable link created the attempt.
+- Existing link attempts retain invoice documents and delayed numbering, including unnumbered attempts made before migration.
+- Dedicated checkout operations create document-free attempts; deposits never assign them an invoice number.
+- `invoice.pdf` returns 404 for document-free checkout; paid receipts remain available.
+- Existing invoice creation and retry hashes remain compatible. Checkout purpose has a separate request fingerprint.
+
 R-19 and R-42; the full schema is in openapi.yaml.
 
 - `livemode` is the invoice's chain's mode (D-87, R-143): false on a testnet, whose tokens have no value.

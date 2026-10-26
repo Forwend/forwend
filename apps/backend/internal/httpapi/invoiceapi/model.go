@@ -51,22 +51,25 @@ type createInvoiceBody struct {
 }
 
 type invoiceJSON struct {
-	InvoiceID    string      `json:"invoiceId"`
-	PayToken     *string     `json:"payToken"` // null for an invoice made before D-86
-	OptionID     string      `json:"optionId"`
-	OptionLocked bool        `json:"optionLocked"`
-	OptionCount  int         `json:"optionCount"`
-	Confirming   bool        `json:"confirming"`
-	Closed       bool        `json:"closed"`
-	Number       *int64      `json:"number"` // null for a link invoice before its first deposit (R-141)
-	Title        *string     `json:"title"`
-	Note         *string     `json:"note"`
-	DueDate      *string     `json:"dueDate"`
-	SupplyDate   *string     `json:"supplyDate"`
-	Reference    *string     `json:"reference"`
-	AgreedValue  *agreedJSON `json:"agreedValue"`
-	Client       *clientJSON `json:"client,omitempty"` // owner routes only
-	Store        *storeJSON  `json:"store,omitempty"`  // owner routes only; a merchant invoice's (R-134)
+	Purpose      invoice.Purpose      `json:"purpose"`
+	DocumentKind invoice.DocumentKind `json:"documentKind"`
+	LinkID       *string              `json:"linkId,omitempty"`
+	InvoiceID    string               `json:"invoiceId"`
+	PayToken     *string              `json:"payToken"` // null for an invoice made before D-86
+	OptionID     string               `json:"optionId"`
+	OptionLocked bool                 `json:"optionLocked"`
+	OptionCount  int                  `json:"optionCount"`
+	Confirming   bool                 `json:"confirming"`
+	Closed       bool                 `json:"closed"`
+	Number       *int64               `json:"number"` // null for a link invoice before its first deposit (R-141)
+	Title        *string              `json:"title"`
+	Note         *string              `json:"note"`
+	DueDate      *string              `json:"dueDate"`
+	SupplyDate   *string              `json:"supplyDate"`
+	Reference    *string              `json:"reference"`
+	AgreedValue  *agreedJSON          `json:"agreedValue"`
+	Client       *clientJSON          `json:"client,omitempty"` // owner routes only
+	Store        *storeJSON           `json:"store,omitempty"`  // owner routes only; a merchant invoice's (R-134)
 	// Owner routes only; {} when none was sent (R-151).
 	Metadata         *map[string]string `json:"metadata,omitempty"`
 	Brand            *brandJSON         `json:"brand"` // a merchant invoice's store branding (R-135)
@@ -283,6 +286,7 @@ type depositJSON struct {
 // withClient is for the owner only.
 func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 	out := invoiceJSON{
+		Purpose: inv.Purpose, DocumentKind: inv.DocumentKind,
 		InvoiceID: inv.ID, PayToken: httpio.OrNull(inv.PayToken), OptionID: inv.OptionID, OptionLocked: inv.OptionLocked, OptionCount: inv.OptionCount, Confirming: inv.Confirming, Closed: inv.Closed, Number: inv.Number, Title: httpio.OrNull(inv.Title), Note: httpio.OrNull(inv.Note),
 		DueDate: httpio.OrNull(inv.DueDate), SupplyDate: httpio.OrNull(inv.SupplyDate), Reference: httpio.OrNull(inv.Reference), SenderName: httpio.OrNull(inv.SenderName), ReturnURL: httpio.OrNull(inv.ReturnURL), ChainID: inv.ChainID, Livemode: inv.Livemode, Token: inv.Token, Amount: inv.Amount.String(),
 		Recipient: inv.Recipient, Factory: inv.Factory, ReceiveAddress: inv.ReceiveAddress,
@@ -306,6 +310,7 @@ func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 		}
 	}
 	if withClient {
+		out.LinkID = httpio.OrNull(inv.LinkID)
 		// The owner's only (R-151): the pay page's answer has no metadata at all.
 		metadata := inv.Metadata
 		if metadata == nil {
