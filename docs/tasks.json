@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 309,
+  "nextId": 317,
   "tasks": [
     {
       "id": "F295",
@@ -1542,6 +1542,255 @@
         "branch": "chore/f308-the-harness-keeps-a-log-only-for-a-check",
         "base": "main"
       }
+    },
+    {
+      "id": "F309",
+      "type": "docs",
+      "behavior": "PLAN 11.6 is defined: its requirements, decisions and open question are in PROJECT.md, and its tasks are queued",
+      "acceptance": [
+        "PROJECT.md has R-150 to R-155, D-100 to D-104 and Q-14 for the public API v1",
+        "The queue holds a task for each of R-150 to R-155, and one for Q-14"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "docs-check"
+      ],
+      "refs": [
+        "R-150",
+        "R-151",
+        "R-152",
+        "R-153",
+        "R-154",
+        "R-155"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-26T00:34:14Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.8,
+            "log": ""
+          }
+        ],
+        "taskHash": "ad5dd6bdd788dbe3",
+        "filesHash": "cf2a8f7ce9993b78",
+        "proof": {
+          "1": "docs-check: PROJECT.md rows",
+          "2": "docs-check: queue"
+        },
+        "commit": "857d2c2",
+        "doneAt": "2026-10-26T00:34:33Z"
+      },
+      "branch": "docs/f309-plan-11-6-is-defined-its-requirements-de",
+      "baseCommit": "a2f9f033da587b4601990d7d342a5c2cac0805ba",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f309-plan-11-6-is-defined-its-requirements-de",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F310",
+      "type": "test",
+      "behavior": "A test ties openapi.yaml to the registered routes",
+      "acceptance": [
+        "Each registered method and path has an operation in openapi.yaml, and each operation has a registered route",
+        "A route without its operation, or an operation without its route, fails the test"
+      ],
+      "dependsOn": [
+        "F309"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit"
+      ],
+      "refs": [
+        "R-150",
+        "D-100"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F311",
+      "type": "feat",
+      "behavior": "An invoice create takes metadata, and every owner read returns it",
+      "acceptance": [
+        "A create keeps metadata of up to 20 keys (1 to 40 letters, digits, _ or -) with plain-text values of up to 500 characters; another shape is 422 invalid_value",
+        "The owner's reads, lists and webhook bodies return it, as {} when none was sent; the pay page and its PDFs never show it",
+        "metadata is part of the idempotency hash only when set"
+      ],
+      "dependsOn": [
+        "F310"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit"
+      ],
+      "refs": [
+        "R-151",
+        "D-101"
+      ],
+      "keep": [
+        "the public pay page response shape"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F312",
+      "type": "feat",
+      "behavior": "A create with a due date and no expiresIn keeps the checkout open 60 days past the due date",
+      "acceptance": [
+        "With dueDate and no expiresIn, the checkout closes at the end of the 60th UTC day after the due date, within 15 minutes to 365 days from now",
+        "A store's default close does not apply then, and a retry a minute later returns the same invoice",
+        "With expiresIn, the invoice uses it as before"
+      ],
+      "dependsOn": [
+        "F311"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit"
+      ],
+      "refs": [
+        "R-152",
+        "D-80",
+        "D-18"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F313",
+      "type": "feat",
+      "behavior": "The API lists the profile's webhook events from the last 30 days",
+      "acceptance": [
+        "GET /v1/profiles/{id}/webhook-events returns the last 30 days of invoice events, newest first, in pages of up to 100 (50 by default) with nextCursor",
+        "type narrows to one event type; each event has the body a webhook would carry now",
+        "A store's key or member sees only its stores' events; test events and older events are not listed"
+      ],
+      "dependsOn": [
+        "F312"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit"
+      ],
+      "refs": [
+        "R-153",
+        "D-102",
+        "D-97"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F314",
+      "type": "feat",
+      "behavior": "A Node package calls the API and verifies webhooks",
+      "acceptance": [
+        "@forwend/node creates, gets and lists invoices and lists webhook events with a key; list pages through nextCursor",
+        "A create sends an Idempotency-Key, and makes one when none is given; an error answer throws a ForwendError with the status and code",
+        "verifyWebhook checks Standard Webhooks headers against any of the secrets, refuses a timestamp more than 5 minutes off, and returns the event",
+        "The package has no runtime dependencies"
+      ],
+      "dependsOn": [
+        "F313"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit"
+      ],
+      "refs": [
+        "R-154",
+        "D-103",
+        "D-42"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F315",
+      "type": "feat",
+      "behavior": "Public developer docs explain the API and how it changes",
+      "acceptance": [
+        "/docs explains keys, test mode, idempotency, pages, errors, metadata, webhooks and their verification, and the Node package",
+        "It states the versioning rule and lists the changelog, newest first",
+        "The page needs no sign-in, fits a phone and passes axe"
+      ],
+      "dependsOn": [
+        "F314"
+      ],
+      "state": "not_started",
+      "verification": [
+        "e2e"
+      ],
+      "refs": [
+        "R-155",
+        "D-104",
+        "D-91"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F316",
+      "type": "docs",
+      "behavior": "Answer Q-14: which status page shows incidents",
+      "acceptance": [
+        "PROJECT.md records the owner's status page choice in a D- row, and Q-14 is answered"
+      ],
+      "dependsOn": [],
+      "state": "blocked",
+      "verification": [
+        "docs-check"
+      ],
+      "refs": [
+        "Q-14",
+        "D-91"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-26 blocked: Needs the owner's choice of status page (Q-14); a hosted provider needs an account and approval (Q-8)"
+      ],
+      "blockedReason": "Needs the owner's choice of status page (Q-14); a hosted provider needs an account and approval (Q-8)",
+      "evidence": null
     }
   ],
   "lastWrapup": {
