@@ -3,15 +3,16 @@ import type { PayState } from "@/features/pay/types/pay";
 
 /** Amounts arrive formatted with their symbol, like "1,250.00 USDC". */
 export const PAY_COPY = {
-  title: "Pay invoice",
-  failedTitle: "We could not load this invoice",
+  title: "Pay",
+  failedTitle: "We could not load this payment",
   failed: "Check your connection and try again.",
   retry: "Try again",
   invoice: (number: string) => (number ? `Invoice ${number}` : "Invoice"),
   request: (number: string) => (number ? `Request ${number}` : "Request"),
-  noIssuer: "Invoice",
+  noIssuer: "Payment",
+  checkout: "Checkout",
   testMode:
-    "Test mode: this invoice takes testnet tokens, which have no value. Don't send real money.",
+    "Test mode: this payment takes testnet tokens, which have no value. Don't send real money.",
   pdfLabel: "Download invoice PDF",
   amountDue: "Amount due",
   amount: "Amount",
@@ -35,7 +36,7 @@ export const PAY_COPY = {
   },
   closesIn: (left: string) => `Closes in ${left}`,
   stale: "Can't reach Forwend right now. This page keeps retrying.",
-  loading: "Loading invoice",
+  loading: "Loading payment",
   payWith: "Pay with",
   payingWith: "Paying with",
   progress: "Payment progress",
@@ -57,10 +58,9 @@ export const PAY_COPY = {
     `Paying from an exchange? Withdraw on ${network}, and make sure ${amount} arrives after its fee.`,
   closingSoon: "Less than 30 minutes left.",
   qr: "QR code of the address to pay",
-  mismatch:
-    "This payment page does not match the invoice. Do not pay; contact the invoice's creator.",
+  mismatch: "This payment page does not match the payment. Do not pay; contact the recipient.",
   unknownToken:
-    "This page does not support the token this invoice asks for. Do not pay; contact the invoice's creator.",
+    "This page does not support the token this payment asks for. Do not pay; contact the recipient.",
   // One status line (R-68); confirming adds its block count (ConfirmingStatus).
   states: {
     [PAY_STATES.waiting]: () => "Waiting for payment…",
@@ -72,8 +72,8 @@ export const PAY_COPY = {
     [PAY_STATES.paid]: () => "Paid",
     [PAY_STATES.settled]: () => "Paid",
     [PAY_STATES.closed]: ({ payee }) =>
-      `This invoice is closed. If you already sent money, it is not lost: contact ${payee}.`,
-    [PAY_STATES.canceled]: ({ payee }) => `${payee} canceled this invoice. Do not send money.`,
+      `This payment is closed. If you already sent money, it is not lost: contact ${payee}.`,
+    [PAY_STATES.canceled]: ({ payee }) => `${payee} closed this payment. Do not send money.`,
     [PAY_STATES.closedPartial]: ({ received, payee }) =>
       `Closed before the full amount arrived. The ${received} you sent is held for you; ask ${payee} to get it back.`,
   } satisfies Record<PayState, (v: StateValues) => string>,
@@ -84,7 +84,7 @@ export const PAY_COPY = {
   receiptPdf: "Download receipt",
   backTo: (host: string) => `Back to ${host}`,
   // Who asked for the money: the name on the invoice, never "the sender", who could be read as the payer.
-  creator: "the invoice's creator",
+  creator: "the recipient",
   // Address poisoning: a look-alike address planted in the payer's wallet history after the first payment (R-77).
   copyFromHere:
     "Copy the address from this page for the rest, not from your wallet's history: scammers plant look-alike addresses there.",
@@ -121,9 +121,9 @@ export const PAY_COPY = {
   help: "Need help?",
   host: "You are on",
   hostHint: "Check that this is the site your link opened.",
-  unverifiedName: "The name is what the invoice's creator gave; Forwend doesn't check it.",
+  unverifiedName: "The name is what the recipient gave; Forwend doesn't check it.",
   refund:
-    "If you send more, or pay after the checkout closes, the extra is held for you and not paid out. Ask the invoice's creator to get it back.",
+    "If you send more, or pay after the checkout closes, the extra is held for you and not paid out. Ask the recipient to get it back.",
   scam: "Forwend never asks you to pay a different address or an extra fee.",
   paymentsBy: "Payments by",
   forwend: "Forwend",

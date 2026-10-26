@@ -24,6 +24,47 @@ function fake(answers: Array<{ status?: number; json: unknown }>) {
 }
 
 describe("Forwend", () => {
+  it("creates, reads and expires checkout while reading canonical payments without invoice numbers", async () => {
+    const payment = { paymentId: "0xa", number: null, paymentStatus: "open" };
+    const session = { sessionId: "0xa", status: "open", payment };
+    const { client, requests } = fake([
+      { status: 201, json: session },
+      { json: session },
+      { json: payment },
+      { json: { items: [session], nextCursor: null } },
+      { json: { items: [payment], nextCursor: "next" } },
+      { json: { items: [], nextCursor: null } },
+      { json: { ...session, status: "expired" } },
+    ]);
+    const body = { storeId: PROFILE, amountUsd: "12.50", reference: "order-42" };
+    expect(await client.checkoutSessions.create(body, { idempotencyKey: "purchase-42" })).toEqual(
+      session,
+    );
+    expect(await client.checkoutSessions.get("0xa")).toEqual(session);
+    expect(await client.payments.get("0xa")).toEqual(payment);
+    const sessions = [];
+    for await (const item of client.checkoutSessions.list({ storeId: PROFILE }))
+      sessions.push(item);
+    expect(sessions).toEqual([session]);
+    const payments = [];
+    for await (const item of client.payments.list({ storeId: PROFILE })) payments.push(item);
+    expect(payments).toEqual([payment]);
+    expect((await client.checkoutSessions.expire("0xa")).status).toBe("expired");
+    expect(
+      requests.map((r) => r.url.replace(`https://api.example.com/v1/profiles/${PROFILE}`, "")),
+    ).toEqual([
+      "/checkout-sessions",
+      "/checkout-sessions/0xa",
+      "/payments/0xa",
+      `/checkout-sessions?storeId=${PROFILE}`,
+      `/payments?storeId=${PROFILE}`,
+      `/payments?storeId=${PROFILE}&cursor=next`,
+      "/checkout-sessions/0xa/expire",
+    ]);
+    expect(requests[0]?.headers.get("Idempotency-Key")).toBe("purchase-42");
+    expect(await requests[0]?.json()).toEqual(body);
+    expect(requests[6]?.method).toBe("POST");
+  });
   it("creates an invoice with the key and an Idempotency-Key, made when none is given", async () => {
     const { client, requests } = fake([
       { status: 201, json: { invoiceId: "0xa" } },

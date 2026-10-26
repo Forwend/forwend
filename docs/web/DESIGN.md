@@ -385,6 +385,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 
 ## Checkout
 
+- Document-free checkout shows "Checkout" under the payee and offers no invoice PDF.
+- Issued invoices and legacy link documents keep their existing invoice labels and PDF access.
+- Both workflows offer a receipt after canonical payment success.
+
 - `/l/<slug>` (R-142), a payment link's page, is one narrow column with the pay page's logo and footer.
   - Top: the pay page's payee tile and name, "Payment link" under it, then the link's title.
   - A fixed link shows its amount in USD; an open one has an Amount (USD) field whose hint gives the limits.

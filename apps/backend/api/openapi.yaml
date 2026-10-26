@@ -12,6 +12,237 @@ security:
   - privyAccessToken: []
   - secretApiKey: []
 paths:
+  /v1/profiles/{profileId}/checkout-sessions:
+    get:
+      operationId: listCheckoutSessions
+      summary: List store-scoped checkout-sessions, including unnumbered attempts
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: storeId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Newest first by creation time and ID
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, nextCursor]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/CheckoutSession" } }
+                  nextCursor: { type: [string, "null"] }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: Payment or checkout not found within the caller's profile, stores and mode.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Idempotency conflict, missing billing details, or checkout cannot expire after payment was seen.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/NetworkNotReady" }
+        "500": { $ref: "#/components/responses/Internal" }
+    post:
+      operationId: createCheckoutSession
+      summary: Create one purchase attempt once per Idempotency-Key
+      description: |
+        Needs invoices.write. Requires an explicit store. API keys retain their store and mode.
+        Exact retries replay immutable purchase terms; changed amount, items, reference, store or key mode conflict.
+        No invoice number or invoice document is issued. A browser redirect never proves payment.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateCheckoutSession" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CheckoutSession" }
+        "200":
+          description: Original attempt replayed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CheckoutSession" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: Payment or checkout not found within the caller's profile, stores and mode.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Idempotency conflict, missing billing details, or checkout cannot expire after payment was seen.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/NetworkNotReady" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/checkout-sessions/{sessionId}:
+    get:
+      operationId: getCheckoutSession
+      summary: Read canonical checkout-sessions state within the caller's stores and mode
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: sessionId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/InvoiceId" }
+      responses:
+        "200":
+          description: Canonical state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CheckoutSession" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: Payment or checkout not found within the caller's profile, stores and mode.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Idempotency conflict, missing billing details, or checkout cannot expire after payment was seen.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/NetworkNotReady" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/checkout-sessions/{sessionId}/expire:
+    post:
+      operationId: expireCheckoutSession
+      summary: Close an unpaid checkout without any observed payment
+      description: |
+        Needs invoices.write. Idempotent once expired. Payment seen or confirming refuses expiration with 409.
+        Financial records and receive addresses remain unchanged. Later funds remain held for the payer.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: sessionId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/InvoiceId" }
+      responses:
+        "200":
+          description: Closed checkout
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CheckoutSession" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: Payment or checkout not found within the caller's profile, stores and mode.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Idempotency conflict, missing billing details, or checkout cannot expire after payment was seen.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/NetworkNotReady" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/payments:
+    get:
+      operationId: listPayments
+      summary: List store-scoped payments, including unnumbered attempts
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: storeId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Newest first by creation time and ID
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, nextCursor]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Payment" } }
+                  nextCursor: { type: [string, "null"] }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: Payment or checkout not found within the caller's profile, stores and mode.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Idempotency conflict, missing billing details, or checkout cannot expire after payment was seen.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/NetworkNotReady" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/payments/{paymentId}:
+    get:
+      operationId: getPayment
+      summary: Read canonical payments state within the caller's stores and mode
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: paymentId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/InvoiceId" }
+      responses:
+        "200":
+          description: Canonical state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Payment" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: Payment or checkout not found within the caller's profile, stores and mode.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Idempotency conflict, missing billing details, or checkout cannot expire after payment was seen.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/NetworkNotReady" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/me:
     post:
       operationId: signUp
@@ -2387,6 +2618,69 @@ components:
       description: 1 to 255 bytes of UTF-8.
       schema: { type: string, minLength: 1, maxLength: 255 }
   schemas:
+    CreateCheckoutSession:
+      type: object
+      additionalProperties: false
+      required: [storeId, amountUsd]
+      properties:
+        storeId: { type: string, format: uuid }
+        amountUsd: { type: string, description: Exact USD decimal, above zero. }
+        reference: { type: string, maxLength: 100, description: Immutable external order reference. }
+        title: { type: string, maxLength: 200 }
+        expiresIn: { type: integer, minimum: 900, maximum: 31536000 }
+        returnUrl: { type: string, format: uri, description: HTTPS URL on a store's allowed origin. }
+        metadata: { type: object, additionalProperties: { type: string }, maxProperties: 20 }
+        customer:
+          type: object
+          additionalProperties: false
+          properties:
+            name: { type: string, maxLength: 200 }
+            email: { type: string, format: email }
+        items:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            additionalProperties: false
+            required: [description, quantity, unitPrice]
+            properties:
+              description: { type: string, maxLength: 200 }
+              quantity: { type: string, description: Exact positive decimal with up to two places. }
+              unitPrice: { type: string, description: Exact USD decimal. Items must sum to amountUsd. }
+    Payment:
+      type: object
+      required: [paymentId, purpose, documentKind, number, storeId, storeName, linkId, livemode, title,
+        reference, chainId, token, amount, paymentStatus, settlementStatus, refundStatus, confirming,
+        closed, createdAt, closesAt, hostedUrl]
+      properties:
+        paymentId: { $ref: "#/components/schemas/InvoiceId" }
+        purpose: { type: string, enum: [invoice, checkout, request] }
+        documentKind: { type: string, enum: [invoice, request, none] }
+        number: { type: [integer, "null"] }
+        storeId: { type: [string, "null"], format: uuid }
+        storeName: { type: [string, "null"] }
+        linkId: { type: [string, "null"], format: uuid }
+        livemode: { type: boolean }
+        title: { type: [string, "null"] }
+        reference: { type: [string, "null"] }
+        chainId: { type: integer }
+        token: { $ref: "#/components/schemas/Address" }
+        amount: { $ref: "#/components/schemas/Uint256" }
+        paymentStatus: { type: string, enum: [open, detected, partially_paid, paid, expired, expired_partially_paid, canceled] }
+        settlementStatus: { type: string, enum: [none, pending, settled] }
+        refundStatus: { type: string, enum: [none, held, refund_pending, refunded] }
+        confirming: { type: boolean }
+        closed: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        closesAt: { type: string, format: date-time }
+        hostedUrl: { type: [string, "null"], format: uri }
+    CheckoutSession:
+      type: object
+      required: [sessionId, status, payment]
+      properties:
+        sessionId: { $ref: "#/components/schemas/InvoiceId" }
+        status: { type: string, enum: [open, complete, expired] }
+        payment: { $ref: "#/components/schemas/Payment" }
     InvoiceId:
       type: string
       description: The on-chain invoice id; a main invoice's is keccak256 of its pay link's token (D-86).

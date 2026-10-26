@@ -5,7 +5,12 @@ import type {
   ApiSettlementStatus,
 } from "@/features/activity/types/activity";
 import { clientBodySchema } from "@/features/clients/schemas/clients";
-import { PAY_TOKEN_PATTERN, SETTLEMENT_WAITS } from "@/features/invoices/constants/invoices";
+import {
+  DOCUMENT_KINDS,
+  PAY_TOKEN_PATTERN,
+  PAYMENT_PURPOSES,
+  SETTLEMENT_WAITS,
+} from "@/features/invoices/constants/invoices";
 import type {
   HistoryActor,
   HistoryField,
@@ -72,6 +77,9 @@ export const agreedValueSchema = z.object({
 
 /** openapi.yaml, InvoiceSummary. */
 export const invoiceSummarySchema = z.object({
+  purpose: z.enum(PAYMENT_PURPOSES).optional(),
+  documentKind: z.enum(DOCUMENT_KINDS).optional(),
+  linkId: z.guid().optional(),
   // keccak256 of payToken; the chain shows it, so it opens no public route (D-86).
   invoiceId: hash32,
   // The pay link's token; null for an invoice made before D-86, which has no pay link.

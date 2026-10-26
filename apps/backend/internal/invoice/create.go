@@ -71,21 +71,6 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		return inv, false, err
 	}
 
-	options, err := s.accepted(ctx, r.ChainID, token, amount, usd)
-	if err != nil {
-		return Invoice{}, false, err
-	}
-	live := slices.ContainsFunc(options, func(o accepted) bool { return o.live })
-	var recipient string
-	err = s.pool.QueryRow(ctx, "SELECT address FROM profile_wallets WHERE profile_id = $1 AND chain_family = $2",
-		profileID, options[0].family).Scan(&recipient)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Invoice{}, false, fmt.Errorf("%w: the profile has no wallet for this chain", ErrInvalid)
-	}
-	if err != nil {
-		return Invoice{}, false, fmt.Errorf("read profile wallet: %w", err)
-	}
-
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return Invoice{}, false, fmt.Errorf("insert invoice: %w", err)
@@ -100,8 +85,16 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		profileID).Scan(&kind, &billed); err != nil {
 		return Invoice{}, false, fmt.Errorf("lock profile: %w", err)
 	}
-	if kind != profile.Personal && !billed {
-		return Invoice{}, false, ErrBillingDetailsRequired
+	// A concurrent create may have committed while this request waited for the profile lock.
+	var exists bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM invoices WHERE profile_id = $1
+	    AND idempotency_key = $2 AND main_id IS NULL)`, profileID, idempotencyKey).Scan(&exists); err != nil {
+		return Invoice{}, false, fmt.Errorf("read concurrent payment request: %w", err)
+	}
+	if exists {
+		tx.Rollback(ctx)
+		inv, err := s.replay(ctx, profileID, idempotencyKey, hash, r.Livemode)
+		return inv, false, err
 	}
 	if r.Purpose == PurposeCheckout && kind == profile.Personal {
 		return Invoice{}, false, fmt.Errorf("%w: personal profiles use payment requests", ErrInvalid)
@@ -112,6 +105,24 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		purpose = &r.Purpose
 		document := DocumentNone
 		documentKind = &document
+	}
+	options, err := s.accepted(ctx, tx, r.ChainID, token, amount, usd)
+	if err != nil {
+		return Invoice{}, false, err
+	}
+	live := slices.ContainsFunc(options, func(o accepted) bool { return o.live })
+	var recipient string
+	err = tx.QueryRow(ctx, "SELECT address FROM profile_wallets WHERE profile_id = $1 AND chain_family = $2",
+		profileID, options[0].family).Scan(&recipient)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Invoice{}, false, fmt.Errorf("%w: the profile has no wallet for this chain", ErrInvalid)
+	}
+	if err != nil {
+		return Invoice{}, false, fmt.Errorf("read profile wallet: %w", err)
+	}
+
+	if kind != profile.Personal && !billed {
+		return Invoice{}, false, ErrBillingDetailsRequired
 	}
 	var storeID *string
 	switch {
@@ -324,11 +335,11 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	return inv, err == nil, err
 }
 
-func (s *Service) accepted(ctx context.Context, chainID uint64, token string, amount *big.Int, usd *big.Rat) ([]accepted, error) {
+func (s *Service) accepted(ctx context.Context, tx pgx.Tx, chainID uint64, token string, amount *big.Int, usd *big.Rat) ([]accepted, error) {
 	if usd == nil {
 		var family string
 		var live, watched bool
-		err := s.pool.QueryRow(ctx, `
+		err := tx.QueryRow(ctx, `
 			SELECT c.chain_family, c.livemode, EXISTS (SELECT 1 FROM chain_cursors cur WHERE cur.chain_id = c.chain_id)
 			FROM chains c JOIN tokens t ON t.chain_id = c.chain_id
 			WHERE c.chain_id = $1 AND c.enabled AND t.contract = $2 AND t.enabled`, chainID, token).Scan(&family, &live,
@@ -346,7 +357,7 @@ func (s *Service) accepted(ctx context.Context, chainID uint64, token string, am
 	}
 	// A chain the worker has not scanned yet is left out: a payment there before its first scan would never be seen
 	// (SEC-02). Only EVM chains for now: one recipient wallet serves them all.
-	rows, err := s.pool.Query(ctx, `
+	rows, err := tx.Query(ctx, `
 		SELECT c.chain_id, c.chain_family, c.livemode, t.contract, t.symbol, t.decimals
 		FROM chains c JOIN tokens t ON t.chain_id = c.chain_id
 		WHERE c.enabled AND t.enabled AND c.chain_family = 'evm'

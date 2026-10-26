@@ -36,8 +36,66 @@ export type RefundStatus = (typeof REFUND_STATUSES)[number];
 export type ListStatus = (typeof LIST_STATUSES)[number];
 export type HeldReason = (typeof HELD_REASONS)[number];
 
+export const PAYMENT_PURPOSES = ["invoice", "checkout", "request"] as const;
+export const DOCUMENT_KINDS = ["invoice", "request", "none"] as const;
+export const CHECKOUT_STATES = ["open", "complete", "expired"] as const;
+export type PaymentPurpose = (typeof PAYMENT_PURPOSES)[number];
+export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
+export type CheckoutState = (typeof CHECKOUT_STATES)[number];
+
+export interface Payment {
+  paymentId: string;
+  purpose: PaymentPurpose;
+  documentKind: DocumentKind;
+  number: number | null;
+  storeId: string | null;
+  storeName: string | null;
+  linkId: string | null;
+  livemode: boolean;
+  title: string | null;
+  reference: string | null;
+  chainId: number;
+  token: string;
+  amount: string;
+  paymentStatus: PaymentStatus;
+  settlementStatus: SettlementStatus;
+  refundStatus: RefundStatus;
+  confirming: boolean;
+  closed: boolean;
+  createdAt: string;
+  closesAt: string;
+  hostedUrl: string | null;
+}
+
+export interface CheckoutSession {
+  sessionId: string;
+  status: CheckoutState;
+  payment: Payment;
+}
+
+export interface CreateCheckoutSession {
+  storeId: string;
+  amountUsd: string;
+  reference?: string;
+  title?: string;
+  expiresIn?: number;
+  returnUrl?: string;
+  metadata?: CreateInvoice["metadata"];
+  customer?: Pick<NonNullable<CreateInvoice["client"]>, "name" | "email">;
+  items?: CreateInvoice["lines"];
+}
+
+export interface ListPayments {
+  limit?: number;
+  cursor?: string;
+  storeId?: string;
+}
+
 /** An invoice as its owner reads it. The fields a server most often needs are typed; the rest stay as sent. */
 export interface Invoice {
+  purpose?: PaymentPurpose;
+  documentKind?: DocumentKind;
+  linkId?: string;
   invoiceId: string;
   /** Null for a payment-link invoice before its first deposit. */
   number: number | null;

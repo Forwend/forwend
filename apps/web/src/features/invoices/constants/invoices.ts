@@ -7,6 +7,13 @@ import type {
 
 export const INVOICES_PAGE_SIZE = 20;
 
+export const PAYMENT_PURPOSES = {
+  invoice: "invoice",
+  checkout: "checkout",
+  request: "request",
+} as const;
+export const DOCUMENT_KINDS = { invoice: "invoice", request: "request", none: "none" } as const;
+
 /** In seconds, within the API's bounds. */
 export const EXPIRY_CHOICES = {
   hour: 3_600,

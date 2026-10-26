@@ -184,6 +184,12 @@ func TestCreateProfileRoute(t *testing.T) {
 
 // Every route with a {profileId}; TestProfileRoutesAreAllListed fails until a new one is added here.
 var profileRoutes = []struct{ method, path, body string }{
+	{"POST", "/v1/profiles/%s/checkout-sessions", `{"storeId":"` + storeA + `","amountUsd":"2"}`},
+	{"GET", "/v1/profiles/%s/checkout-sessions", ""},
+	{"GET", "/v1/profiles/%s/checkout-sessions/0x" + strings.Repeat("0", 64), ""},
+	{"POST", "/v1/profiles/%s/checkout-sessions/0x" + strings.Repeat("0", 64) + "/expire", ""},
+	{"GET", "/v1/profiles/%s/payments", ""},
+	{"GET", "/v1/profiles/%s/payments/0x" + strings.Repeat("0", 64), ""},
 	{"PUT", "/v1/profiles/%s/billing-details", billingBody},
 	{"GET", "/v1/profiles/%s/billing-details", ""},
 	{"POST", "/v1/profiles/%s/invoices", basicBody},

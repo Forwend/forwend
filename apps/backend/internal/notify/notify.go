@@ -223,10 +223,10 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 	}
 	units, _ := new(big.Int).SetString(amount, 10)
 	reference := "Payment " + invoice[2:14]
-	ownerPath := "/app/payments/"
+	ownerURL := webURL + "/pay/" + pay
 	if number != nil {
 		reference = document.Number(*number)
-		ownerPath = "/app/invoices/"
+		ownerURL = webURL + "/app/invoices/" + invoice
 	}
 	if kind == outbox.Sent {
 		// The owner sent it, so the owner's setting doesn't apply (R-94).
@@ -243,7 +243,7 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 			document.TxURL(chainID, hash), webURL+"/api/v1/invoices/"+pay+"/receipt.pdf")
 	} else {
 		v = compose(kind, reference, document.Amount(units, decimals, symbol), symbol, document.NetworkName(chainID),
-			webURL+ownerPath+invoice, webURL+"/app/notifications")
+			ownerURL, webURL+"/app/notifications")
 		if number == nil {
 			v.Button.Label = "View payment"
 		}

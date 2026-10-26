@@ -186,6 +186,65 @@ func TestInvoicesPerProfilePerDayAreCapped(t *testing.T) {
 	}
 }
 
+func TestConcurrentRetryReplaysWhenTheWinnerUsesTheLastDailySlot(t *testing.T) {
+	ctx := t.Context()
+	pool, profileID := open(t)
+	if _, err := pool.Exec(ctx, `INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount,
+		expires_at, settle_deadline, recipient_address, receive_method, factory_address, receive_address,
+		idempotency_key, request_hash)
+		SELECT '0x' || lpad(to_hex(n), 64, '0'), $1, 84532, 'evm', $2, 1, 1, 86401,
+		'0x' || repeat('11', 20), 'evm_create2', '0x' || repeat('22', 20), '0x' || lpad(to_hex(n), 40, '0'),
+		'day-' || n, decode(repeat('00', 32), 'hex') FROM generate_series(1, $3::int) n`, profileID, usdc, MaxPerDay-1); err != nil {
+		t.Fatal(err)
+	}
+	lock, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lock.Rollback(ctx)
+	if _, err := lock.Exec(ctx, "SELECT 1 FROM profiles WHERE id = $1 FOR UPDATE", profileID); err != nil {
+		t.Fatal(err)
+	}
+	type result struct {
+		inv     Invoice
+		created bool
+		err     error
+	}
+	results := make(chan result, 2)
+	for range 2 {
+		go func() {
+			inv, created, err := NewService(pool).Create(ctx, profileID, "same-purchase",
+				Request{Purpose: PurposeCheckout, AmountUSD: "2"})
+			results <- result{inv, created, err}
+		}()
+	}
+	deadline := time.NewTimer(10 * time.Second)
+	defer deadline.Stop()
+	for {
+		var waiting int
+		if err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_stat_activity WHERE datname = current_database()
+			AND wait_event_type = 'Lock' AND query LIKE '%FOR UPDATE%'`).Scan(&waiting); err != nil {
+			t.Fatal(err)
+		}
+		if waiting >= 2 {
+			break
+		}
+		select {
+		case <-deadline.C:
+			t.Fatal("concurrent creates did not reach the locked profile")
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+	if err := lock.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	a, b := <-results, <-results
+	if a.err != nil || b.err != nil || a.inv.ID != b.inv.ID || a.created == b.created {
+		t.Fatalf("first: id %s, created %v, error %v; second: id %s, created %v, error %v",
+			a.inv.ID, a.created, a.err, b.inv.ID, b.created, b.err)
+	}
+}
+
 func capRace(t *testing.T, fill, count string, limit, n int) (ok, rows int) {
 	t.Helper()
 	ctx := context.Background()

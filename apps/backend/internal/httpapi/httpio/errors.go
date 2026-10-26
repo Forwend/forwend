@@ -37,6 +37,12 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusForbidden, "forbidden", "not allowed for this profile"
 	case errors.Is(err, invoice.ErrNotFound):
 		status, code, message = http.StatusNotFound, "invoice_not_found", "invoice not found"
+	case errors.Is(err, invoice.ErrPaymentNotFound):
+		status, code, message = http.StatusNotFound, "payment_not_found", "payment not found"
+	case errors.Is(err, invoice.ErrCheckoutNotFound):
+		status, code, message = http.StatusNotFound, "checkout_not_found", "checkout session not found"
+	case errors.Is(err, invoice.ErrCheckoutNotExpirable):
+		status, code, message = http.StatusConflict, "checkout_not_expirable", "checkout cannot expire after payment is seen"
 	case errors.Is(err, activity.ErrNotFound):
 		status, code, message = http.StatusNotFound, "transaction_not_found", "transaction not found"
 	case errors.Is(err, activity.ErrNotLabelable):

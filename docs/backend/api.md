@@ -239,6 +239,25 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
   - A used, revoked, expired or unknown invite is 404 `invite_not_found`, on both routes.
   - The owner, or a member already, is 409 `already_on_team`.
 
+## Checkout sessions and payments
+
+- `POST /v1/profiles/{profileId}/checkout-sessions` needs `invoices.write`, an Idempotency-Key, explicit `storeId` and exact `amountUsd`.
+- Optional `items` contain description, quantity and USD unit price; their exact sum must equal `amountUsd`.
+- `reference` identifies the merchant's order; it never changes after creation.
+- Optional customer name and email do not create a billing document or require a saved client.
+- Exact retries return the original session, including concurrent retries that fill the last creation slot.
+- Changed prices, items, references, stores or key modes conflict; current store settings do not alter a retry.
+- Responses contain `sessionId`, session `status` and a canonical `payment` with its `paymentId`, states and `hostedUrl`.
+- Session status is `open`, `complete` or `expired`; payment and settlement states remain separate.
+- `GET /v1/profiles/{profileId}/checkout-sessions` and `/{sessionId}` read checkout attempts without document-number restrictions.
+- `POST /v1/profiles/{profileId}/checkout-sessions/{sessionId}/expire` closes an open attempt without observed money.
+- Repeated expiration returns the closed session; seen payments refuse expiration with 409 `checkout_not_expirable`.
+- `GET /v1/profiles/{profileId}/payments` and `/{paymentId}` read every workflow, including unnumbered attempts.
+- Lists accept `limit`, opaque `cursor` and `storeId`; creation time and ID provide stable pagination.
+- Payment and checkout reads honor tenant, role, assigned stores, key scopes and key mode.
+- Invoice-only sending rejects document-free checkout; payment notifications currently open its working hosted page.
+- Public checkout shows item snapshots using the main option's trusted token decimals, independent of the chosen payment option.
+
 ## Payment links
 
 R-140, D-54, D-94; the full schema is in openapi.yaml. Members reach them with `invoices.read` and `invoices.write` (D-93).

@@ -98,13 +98,20 @@ func inStores(r *http.Request, s *auth.Service, access auth.Access) error {
 	if store := r.PathValue("storeId"); store != "" && !access.InStores(store) {
 		return profile.ErrStoreNotFound
 	}
-	if id := r.PathValue("invoiceId"); id != "" {
+	id, notFound := r.PathValue("invoiceId"), invoice.ErrNotFound
+	if r.PathValue("paymentId") != "" {
+		id, notFound = r.PathValue("paymentId"), invoice.ErrPaymentNotFound
+	}
+	if r.PathValue("sessionId") != "" {
+		id, notFound = r.PathValue("sessionId"), invoice.ErrCheckoutNotFound
+	}
+	if id != "" {
 		store, live, found, err := s.InvoiceStore(r.Context(), r.PathValue("profileId"), id)
 		if err != nil {
 			return err
 		}
 		if found && (!access.InStores(store) || access.Livemode != nil && *access.Livemode != live) {
-			return invoice.ErrNotFound
+			return notFound
 		}
 	}
 	if id := r.PathValue("linkId"); id != "" {
