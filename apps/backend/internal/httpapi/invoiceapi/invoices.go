@@ -1,6 +1,7 @@
 package invoiceapi
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -49,6 +50,13 @@ func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 				return
 			}
 		}
+		var metadata map[string]string
+		if len(body.Metadata) > 0 {
+			if err := json.Unmarshal(body.Metadata, &metadata); err != nil {
+				httpio.WriteError(w, r, fmt.Errorf("%w: metadata must be an object of text values", invoice.ErrInvalid))
+				return
+			}
+		}
 		inv, created, err := invoices.Create(r.Context(), r.PathValue("profileId"), key, invoice.Request{
 			Lines:     lines,
 			Agreed:    agreed,
@@ -59,7 +67,7 @@ func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 			Details: invoice.Details{Title: body.Title, Note: body.Note, DueDate: body.DueDate, SupplyDate: body.SupplyDate,
 				ClientName: body.Client.Name, ClientEmail: body.Client.Email, ClientAddress: body.Client.Address,
 				ClientCountry: body.Client.Country, ClientTaxID: body.Client.TaxID,
-				SenderName: body.SenderName, ReturnURL: body.ReturnURL, Reference: body.Reference},
+				SenderName: body.SenderName, ReturnURL: body.ReturnURL, Reference: body.Reference, Metadata: metadata},
 			Replaces: body.Replaces,
 			StoreID:  body.StoreID,
 			Stores:   mid.ProfileAccess(r).Stores,

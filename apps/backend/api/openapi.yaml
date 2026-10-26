@@ -3260,6 +3260,14 @@ components:
           description: |
             Optional https link to the creator's site, offered to the payer once paid (R-58, R-62); empty means none.
             No user or password in it. A merchant invoice's must start with one of its store's allowedOrigins (R-134).
+        metadata:
+          type: object
+          maxProperties: 20
+          propertyNames: { pattern: "^[A-Za-z0-9_-]{1,40}$" }
+          additionalProperties: { type: string, maxLength: 500 }
+          description: |
+            Optional keys and values of the creator's own, set at create only (R-151, D-101). A value is plain text on
+            one line. Part of the idempotency hash only when set.
         reminders:
           type: boolean
           description: |
@@ -3738,6 +3746,10 @@ components:
         returnUrl:
           type: [string, "null"]
           description: The creator's https link for the payer once paid. In every response, the public GET too.
+        metadata:
+          type: object
+          additionalProperties: { type: string }
+          description: The create's metadata, {} when none was sent (R-151). Only in the owner's responses.
         client:
           type: object
           required: [name, email, address, country, taxId]

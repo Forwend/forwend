@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -176,16 +177,16 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 			    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
 			    request_hash, title, note, due_date, client_name, client_email, client_address, sender_name, return_url,
 			    client_country, client_tax_id, supply_date, reference, agreed_currency, agreed_amount, agreed_decimals,
-			    agreed_date, pay_token, store_id, link_id)
+			    agreed_date, pay_token, store_id, link_id, metadata)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'evm_create2', $11, $12, $13, $14, NULLIF($15, ''),
 			    NULLIF($16, ''), NULLIF($17, '')::date, NULLIF($18, ''), NULLIF($19, ''), NULLIF($20, ''), NULLIF($21, ''),
 			    NULLIF($22, ''), NULLIF($23, ''), NULLIF($24, ''), NULLIF($25, '')::date, NULLIF($26, ''), $27, $28, $29, $30::date,
-			    NULLIF($31, ''), $32, NULLIF($33, '')::uuid)`,
+			    NULLIF($31, ''), $32, NULLIF($33, '')::uuid, $34)`,
 			hexID(id), mainID, profileID, o.chainID, o.family, o.token, o.amount.String(), expiresAt.Unix(),
 			settleDeadline.Unix(), recipient, hexAddress(address.Factory), receive, idempotencyKey, hash, details.Title,
 			details.Note, details.DueDate, details.ClientName, details.ClientEmail, details.ClientAddress, details.SenderName,
 			details.ReturnURL, details.ClientCountry, details.ClientTaxID, details.SupplyDate, details.Reference,
-			agreedCurrency, agreedAmount, agreedDecimals, agreedDate, pay, storeID, r.LinkID)
+			agreedCurrency, agreedAmount, agreedDecimals, agreedDate, pay, storeID, r.LinkID, metadataJSON(details.Metadata))
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.ConstraintName == "invoices_profile_idempotency_key" {
 			// A concurrent request with the same key won the insert.
@@ -358,4 +359,13 @@ func derefOr(s *string) string {
 		return ""
 	}
 	return *s
+}
+
+// metadataJSON is the column's value: NULL for none, so an option row and an invoice made before it read as {}.
+func metadataJSON(m map[string]string) []byte {
+	if len(m) == 0 {
+		return nil
+	}
+	b, _ := json.Marshal(m) // only strings: it can't fail
+	return b
 }
