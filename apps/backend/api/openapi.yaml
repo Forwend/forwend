@@ -3720,13 +3720,25 @@ components:
         payToken: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/PayToken" }] }
     InvoiceSummary:
       type: object
-      required: [invoiceId, payToken, optionId, optionLocked, optionCount, confirming, closed, number, title, note, dueDate, supplyDate, reference, agreedValue, senderName, returnUrl, issuer, chainId,
+      required: [purpose, documentKind, invoiceId, payToken, optionId, optionLocked, optionCount, confirming, closed, number, title, note, dueDate, supplyDate, reference, agreedValue, senderName, returnUrl, issuer, chainId,
         livemode, token, amount, recipient, factory, receiveAddress, expiresAt, closesAt, settleDeadline, paymentStatus,
         settlementStatus, refundStatus, settlementTxHash, createdAt, brand]
       description: |
         With several options (payer chooses), the terms and statuses are the current option's: the one that received
         money first, else the first listed.
       properties:
+        purpose:
+          type: string
+          enum: [invoice, checkout, request]
+          description: Immutable workflow purpose, independent of attached billing documents.
+        documentKind:
+          type: string
+          enum: [invoice, request, none]
+          description: Legacy checkout attempts retain invoice documents. New checkout sessions have none.
+        linkId:
+          type: string
+          format: uuid
+          description: Source payment link, on owner reads only when present.
         invoiceId:
           allOf: [{ $ref: "#/components/schemas/InvoiceId" }]
           description: >-

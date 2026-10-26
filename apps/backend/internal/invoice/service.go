@@ -38,7 +38,8 @@ const invoiceColumns = `id, option_id, chosen_id IS NOT NULL,
 	coalesce((SELECT brand_color FROM stores s WHERE s.id = invoices.store_id), ''),
 	(SELECT logo_at FROM stores s WHERE s.id = invoices.store_id),
 	(SELECT livemode FROM chains c WHERE c.chain_id = invoices.chain_id),
-	coalesce((SELECT metadata FROM invoices m WHERE m.id = invoices.id), '{}')`
+	coalesce((SELECT metadata FROM invoices m WHERE m.id = invoices.id), '{}'), purpose, document_kind,
+	coalesce(link_id::text, '')`
 
 // The invoices_current view (migration 00020) aliased as invoices, so filters written for the table work on it.
 const invoicesCurrent = "invoices_current invoices"
@@ -60,7 +61,7 @@ func scanInvoice(row pgx.Row) (Invoice, error) {
 		&inv.SettlementTxHash, &inv.CreatedAt, &inv.ClientCountry, &inv.ClientTaxID, &inv.Confirming, &inv.Closed, &canceledAt,
 		&inv.SupplyDate, &inv.Reference, &agreedCurrency, &agreedAmount, &agreedDecimals, &agreedDate, &inv.PayToken,
 		&closesAt, &inv.receiverDeployedAt, &inv.StoreID, &inv.StoreName, &inv.BrandColor, &inv.LogoAt,
-		&inv.Livemode, &inv.Metadata}
+		&inv.Livemode, &inv.Metadata, &inv.Purpose, &inv.DocumentKind, &inv.LinkID}
 	if err := row.Scan(dest...); errors.Is(err, pgx.ErrNoRows) {
 		return Invoice{}, ErrNotFound
 	} else if err != nil {

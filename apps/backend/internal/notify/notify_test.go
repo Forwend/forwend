@@ -134,6 +134,34 @@ func TestDeliverSendsOneEmailPerEvent(t *testing.T) {
 	}
 }
 
+func TestDeliverSendsCheckoutNotificationsWithoutInvoiceNumbers(t *testing.T) {
+	pool, original := setup(t, "owner@example.com")
+	id := "0x" + strings.Repeat("ac", 32)
+	exec(t, pool, `INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at,
+		settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
+		request_hash, pay_token, purpose, document_kind, payer_email)
+		SELECT $1, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
+		recipient_address, receive_method, factory_address, '0x' || repeat('44', 20), 'checkout', request_hash,
+		repeat('cd', 32), 'checkout', 'none', 'payer@example.com' FROM invoices WHERE id = $2`, id, original)
+	queue(t, pool, outbox.Paid, id, nil)
+	queue(t, pool, outbox.Receipt, id, nil)
+	f := &fake{}
+	if err := Deliver(t.Context(), pool, f, site); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.sent) != 2 || count(t, pool, "published_at IS NULL") != 0 {
+		t.Fatalf("sent %d, unpublished %d", len(f.sent), count(t, pool, "published_at IS NULL"))
+	}
+	for _, m := range f.sent {
+		if strings.Contains(m.Text, "INV-") || !strings.Contains(m.Text, "Payment acacacacacac") {
+			t.Fatalf("checkout email invented or omitted its reference: %+v", m)
+		}
+	}
+	if !strings.Contains(f.sent[0].Text, web+"/app/payments/"+id) || f.sent[1].To != "payer@example.com" {
+		t.Fatalf("owner or payer delivery: %+v", f.sent)
+	}
+}
+
 func TestDeliverSkipsWhenOffOrNoAddress(t *testing.T) {
 	for _, c := range []struct {
 		name, login string

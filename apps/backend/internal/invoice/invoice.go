@@ -58,6 +58,22 @@ var (
 	ErrBillingDetailsRequired = errors.New("billing details required")
 )
 
+type Purpose string
+
+const (
+	PurposeInvoice  Purpose = "invoice"
+	PurposeCheckout Purpose = "checkout"
+	PurposeRequest  Purpose = "request"
+)
+
+type DocumentKind string
+
+const (
+	DocumentInvoice DocumentKind = "invoice"
+	DocumentRequest DocumentKind = "request"
+	DocumentNone    DocumentKind = "none"
+)
+
 var (
 	evmAddress = regexp.MustCompile(`^0x[0-9a-fA-F]{40}$`)
 	digits     = regexp.MustCompile(`^[0-9]+$`)
@@ -69,6 +85,8 @@ var (
 // A fixed invoice sets ChainID, Token and Amount in base units; payer chooses (R-56) sets only AmountUSD,
 // a decimal like "12.50", paid in any enabled token at 1 USD each (D-75).
 type Request struct {
+	// Purpose is set only by dedicated checkout operations. Empty preserves legacy creation and replay semantics.
+	Purpose          Purpose `json:"-"`
 	ChainID          uint64
 	Token            string
 	Amount           string
@@ -211,7 +229,10 @@ var metadataKey = regexp.MustCompile(`^[A-Za-z0-9_-]{1,40}$`)
 // With several options, the terms and statuses are the current option's: the chosen one, else the first.
 type Invoice struct {
 	Details
-	Lines []Line // set by Get
+	Purpose      Purpose
+	DocumentKind DocumentKind
+	LinkID       string
+	Lines        []Line // set by Get
 	// A copy taken at creation; later billing changes don't reach it.
 	Issuer       *profile.Issuer
 	ID           string // the main row's on-chain id: keccak256 of PayToken
@@ -226,7 +247,7 @@ type Invoice struct {
 	Closed           bool
 	NextCheckAt      time.Time // when Check status may run again; zero when it may now. Set by Get
 	Options          []Option  // every accepted option, the current one included; set by Get
-	Number           *int64    // per profile, from 1; shown as INV-0001. Nil until a link invoice's first deposit
+	Number           *int64    // per profile; nil for document-free checkout and legacy link attempts before their first deposit
 	chain.Asset                // Symbol and Decimals set by Get
 	Amount           *big.Int
 	Recipient        string
