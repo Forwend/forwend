@@ -63,7 +63,8 @@ func RequestKey(r *http.Request) string {
 
 // RequireAccess lets through the profile's owner and members whose role has p (R-138), and a key of the profile whose
 // scopes have it (R-144). For an invoice or store permission, a Developer's or Finance member's request, or a merchant
-// key's, about another store's invoice, payment link or store is not found.
+// key's, about another store's invoice, payment link or store is not found, and so is a key's about an invoice of the
+// other mode (D-87).
 func RequireAccess(s *auth.Service, p auth.Permission, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var access auth.Access
@@ -82,7 +83,7 @@ func RequireAccess(s *auth.Service, p auth.Permission, next http.Handler) http.H
 		if err == nil && !access.Can(p) {
 			err = auth.ErrForbidden
 		}
-		if err == nil && access.Stores != nil && auth.StoreScoped(p) {
+		if err == nil && (access.Stores != nil || access.Livemode != nil) && auth.StoreScoped(p) {
 			err = inStores(r, s, access)
 		}
 		if err != nil {
@@ -98,11 +99,11 @@ func inStores(r *http.Request, s *auth.Service, access auth.Access) error {
 		return profile.ErrStoreNotFound
 	}
 	if id := r.PathValue("invoiceId"); id != "" {
-		store, found, err := s.InvoiceStore(r.Context(), r.PathValue("profileId"), id)
+		store, live, found, err := s.InvoiceStore(r.Context(), r.PathValue("profileId"), id)
 		if err != nil {
 			return err
 		}
-		if found && !access.InStores(store) {
+		if found && (!access.InStores(store) || access.Livemode != nil && *access.Livemode != live) {
 			return invoice.ErrNotFound
 		}
 	}

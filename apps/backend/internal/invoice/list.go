@@ -46,9 +46,10 @@ type Page struct {
 }
 
 // Newest first by number, which only grows. The caller must check the user's access to the profile.
-// stores, when not nil, keeps only those stores' invoices: a Developer's or Finance member's (R-138).
+// stores, when not nil, keeps only those stores' invoices: a Developer's or Finance member's (R-138). live, when not
+// nil, keeps only that mode's: a key's (D-87).
 func (s *Service) List(ctx context.Context, profileID, cursor string, limit int, status string, q search.Query,
-	stores []string) (Page, error) {
+	stores []string, live *bool) (Page, error) {
 	if limit < 1 || limit > MaxLimit {
 		return Page{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxLimit)
 	}
@@ -74,6 +75,10 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 	if stores != nil {
 		args = append(args, stores)
 		where += fmt.Sprintf(" AND store_id = ANY($%d::uuid[])", len(args))
+	}
+	if live != nil {
+		args = append(args, *live)
+		where += fmt.Sprintf(" AND (SELECT livemode FROM chains c WHERE c.chain_id = invoices.chain_id) = $%d", len(args))
 	}
 	if q.Like != nil {
 		args = append(args, *q.Like)

@@ -68,7 +68,7 @@ func TestCreatePayerChooses(t *testing.T) {
 	if _, err := s.Get(ctx, inv.Options[1].ID); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("public get by option: %v, want ErrNotFound", err)
 	}
-	if page, err := s.List(ctx, profile, "", 10, "", search.Query{}, nil); err != nil || len(page.Items) != 1 {
+	if page, err := s.List(ctx, profile, "", 10, "", search.Query{}, nil, nil); err != nil || len(page.Items) != 1 {
 		t.Fatalf("list: %d items, %v", len(page.Items), err)
 	}
 	fixed, _, err := s.Create(ctx, profile, "key-2", Request{ChainID: 84532, Token: usdc, Amount: "5000000"})

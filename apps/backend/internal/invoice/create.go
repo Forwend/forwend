@@ -23,6 +23,7 @@ import (
 type accepted struct {
 	chainID       uint64
 	family, token string
+	live          bool
 	amount        *big.Int
 	// scale turns request amounts into base units: 0 for a fixed invoice, the token's decimals for USD (D-75).
 	scale int
@@ -54,7 +55,7 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		hash = requestHash(r.ChainID, token, amount, expiresIn, r.Details, lines, r.Reminders, r.Repeat, r.Replaces,
 			r.StoreID)
 	}
-	if inv, err := s.replay(ctx, profileID, idempotencyKey, hash); !errors.Is(err, ErrNotFound) {
+	if inv, err := s.replay(ctx, profileID, idempotencyKey, hash, r.Livemode); !errors.Is(err, ErrNotFound) {
 		return inv, false, err
 	}
 
@@ -126,6 +127,32 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		if len(options) == 0 {
 			return Invoice{}, false, fmt.Errorf("%w: every token is turned off for this profile or its store", ErrInvalid)
 		}
+	}
+	// D-87: an invoice's options are all of one mode, so its livemode never changes. A key's invoice is of the key's
+	// mode, and a Revise or a retainer's later month keeps the mode of the invoice it follows. Any other create takes
+	// live options when there are some.
+	live := slices.ContainsFunc(options, func(o accepted) bool { return o.live })
+	follows, err := followedMode(ctx, tx, profileID, r)
+	if err != nil {
+		return Invoice{}, false, err
+	}
+	if follows != nil {
+		live = *follows
+	}
+	if r.Livemode != nil {
+		if follows != nil && *follows != *r.Livemode {
+			return Invoice{}, false, ErrNotFound // a key's Revise of an invoice of the other mode
+		}
+		live = *r.Livemode
+	}
+	options = slices.DeleteFunc(options, func(o accepted) bool { return o.live != live })
+	if len(options) == 0 && usd == nil {
+		return Invoice{}, false, fmt.Errorf("%w: this invoice must be %s mode, and the token is in the other mode",
+			ErrInvalid, modeName(live))
+	}
+	if len(options) == 0 {
+		return Invoice{}, false, fmt.Errorf("%w: this invoice must be %s mode, and no token of that mode is enabled",
+			ErrInvalid, modeName(live))
 	}
 	var open, today int
 	if err := tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE closes_at > $2),
@@ -204,7 +231,7 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		if errors.As(err, &pgErr) && pgErr.ConstraintName == "invoices_profile_idempotency_key" {
 			// A concurrent request with the same key won the insert.
 			tx.Rollback(ctx)
-			inv, err := s.replay(ctx, profileID, idempotencyKey, hash)
+			inv, err := s.replay(ctx, profileID, idempotencyKey, hash, r.Livemode)
 			return inv, false, err
 		}
 		if err != nil {
@@ -277,11 +304,12 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 func (s *Service) accepted(ctx context.Context, chainID uint64, token string, amount *big.Int, usd *big.Rat) ([]accepted, error) {
 	if usd == nil {
 		var family string
-		var watched bool
+		var live, watched bool
 		err := s.pool.QueryRow(ctx, `
-			SELECT c.chain_family, EXISTS (SELECT 1 FROM chain_cursors cur WHERE cur.chain_id = c.chain_id)
+			SELECT c.chain_family, c.livemode, EXISTS (SELECT 1 FROM chain_cursors cur WHERE cur.chain_id = c.chain_id)
 			FROM chains c JOIN tokens t ON t.chain_id = c.chain_id
-			WHERE c.chain_id = $1 AND c.enabled AND t.contract = $2 AND t.enabled`, chainID, token).Scan(&family, &watched)
+			WHERE c.chain_id = $1 AND c.enabled AND t.contract = $2 AND t.enabled`, chainID, token).Scan(&family, &live,
+			&watched)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("%w: token is not enabled on this chain", ErrInvalid)
 		}
@@ -291,12 +319,12 @@ func (s *Service) accepted(ctx context.Context, chainID uint64, token string, am
 		if !watched {
 			return nil, ErrNotWatched
 		}
-		return []accepted{{chainID: chainID, family: family, token: token, amount: amount}}, nil
+		return []accepted{{chainID: chainID, family: family, token: token, live: live, amount: amount}}, nil
 	}
 	// A chain the worker has not scanned yet is left out: a payment there before its first scan would never be seen
 	// (SEC-02). Only EVM chains for now: one recipient wallet serves them all.
 	rows, err := s.pool.Query(ctx, `
-		SELECT c.chain_id, c.chain_family, t.contract, t.symbol, t.decimals
+		SELECT c.chain_id, c.chain_family, c.livemode, t.contract, t.symbol, t.decimals
 		FROM chains c JOIN tokens t ON t.chain_id = c.chain_id
 		WHERE c.enabled AND t.enabled AND c.chain_family = 'evm'
 		  AND EXISTS (SELECT 1 FROM chain_cursors cur WHERE cur.chain_id = c.chain_id)
@@ -310,7 +338,7 @@ func (s *Service) accepted(ctx context.Context, chainID uint64, token string, am
 		var a accepted
 		var symbol string
 		var decimals int
-		if err := rows.Scan(&a.chainID, &a.family, &a.token, &symbol, &decimals); err != nil {
+		if err := rows.Scan(&a.chainID, &a.family, &a.live, &a.token, &symbol, &decimals); err != nil {
 			return nil, fmt.Errorf("read enabled tokens: %w", err)
 		}
 		a.scale = decimals
@@ -328,7 +356,9 @@ func (s *Service) accepted(ctx context.Context, chainID uint64, token string, am
 	return out, nil
 }
 
-func (s *Service) replay(ctx context.Context, profileID, idempotencyKey string, hash []byte) (Invoice, error) {
+// replay returns the invoice an earlier create with this key made. A key of the other mode can't read it (D-87).
+func (s *Service) replay(ctx context.Context, profileID, idempotencyKey string, hash []byte, live *bool) (Invoice,
+	error) {
 	var id string
 	var stored []byte
 	err := s.pool.QueryRow(ctx, `SELECT id, request_hash FROM invoices
@@ -342,7 +372,11 @@ func (s *Service) replay(ctx context.Context, profileID, idempotencyKey string, 
 	if !bytes.Equal(stored, hash) {
 		return Invoice{}, ErrConflict
 	}
-	return s.get(ctx, profileID, id)
+	inv, err := s.get(ctx, profileID, id)
+	if err == nil && live != nil && inv.Livemode != *live {
+		return Invoice{}, ErrConflict
+	}
+	return inv, err
 }
 
 // replace cancels the profile's invoice old for next, made in tx (R-129), and returns what next's created row says.
@@ -381,4 +415,35 @@ func metadataJSON(m map[string]string) []byte {
 	}
 	b, _ := json.Marshal(m) // only strings: it can't fail
 	return b
+}
+
+// followedMode is the mode of the invoice a Revise replaces, or of a retainer's first month; nil for neither.
+func followedMode(ctx context.Context, tx pgx.Tx, profileID string, r Request) (*bool, error) {
+	var live bool
+	var err error
+	switch {
+	case r.cycle != nil:
+		err = tx.QueryRow(ctx, `SELECT c.livemode FROM retainer_invoices x JOIN invoices i ON i.id = x.invoice_id
+			JOIN chains c ON c.chain_id = i.chain_id WHERE x.retainer_id = $1 ORDER BY x.cycle LIMIT 1`,
+			r.cycle.retainer).Scan(&live)
+	case r.Replaces != "":
+		err = tx.QueryRow(ctx, `SELECT c.livemode FROM invoices i JOIN chains c ON c.chain_id = i.chain_id
+			WHERE i.id = $1 AND i.profile_id = $2`, r.Replaces, profileID).Scan(&live)
+	default:
+		return nil, nil
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil // replace answers for an invoice the profile doesn't have
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read the mode of the invoice it follows: %w", err)
+	}
+	return &live, nil
+}
+
+func modeName(live bool) string {
+	if live {
+		return "live"
+	}
+	return "test"
 }
