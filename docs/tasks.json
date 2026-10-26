@@ -2270,7 +2270,7 @@
         "PROJECT.md records the owner's status page choice in a D- row, and Q-14 is answered"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check"
       ],
@@ -2309,11 +2309,18 @@
         "filesHash": "7238681ae921f82a",
         "proof": {
           "1": "docs-check: PROJECT.md has D-105 (owner choice 2026-10-26: a hosted provider at status.forwend.com, picked with approval under Q-8), and the Q-14 row says Answered by D-105; check-docs reports 0 errors"
-        }
+        },
+        "commit": "d5ac08e",
+        "doneAt": "2026-10-26T15:12:33Z"
       },
       "branch": "docs/f316-answer-q-14-which-status-page-shows-inci",
       "baseCommit": "aad8f727d99815752a43d48da9b210a6aaf9fd5e",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f316-answer-q-14-which-status-page-shows-inci",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
