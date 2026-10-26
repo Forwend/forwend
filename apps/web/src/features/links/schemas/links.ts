@@ -24,6 +24,8 @@ export const linkSchema = linkBodySchema.extend({
   storeId: z.guid().nullable(),
   visits: count,
   paid: count,
+  reserved: count.optional(),
+  ready: z.boolean().optional(),
   createdAt: apiTime,
   updatedAt: apiTime,
 });
@@ -33,6 +35,10 @@ export const linksSchema = z.object({ links: z.array(linkSchema) });
 
 /** GET /v1/links/{slug}: the link as its payer sees it (R-142). payee is the billing name, null before it is saved. */
 export const publicLinkSchema = z.object({
+  version: z
+    .string()
+    .regex(/^[1-9][0-9]{0,18}$/)
+    .optional(),
   livemode: z.boolean(),
   slug: z.string().regex(LINK_SLUG_PATTERN),
   title: z.string(),
@@ -51,5 +57,10 @@ export const linkPaySchema = z.object({ payToken: z.string().regex(PAY_TOKEN_PAT
 export const linkPayArgSchema = z.object({
   slug: z.string().regex(LINK_SLUG_PATTERN),
   amountUsd: usdAmount.nullable(),
+  expectedAmountUsd: usdAmount,
+  expectedVersion: z
+    .string()
+    .regex(/^[1-9][0-9]{0,18}$/)
+    .optional(),
   idempotencyKey: z.string().min(1),
 });

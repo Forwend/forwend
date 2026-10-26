@@ -1,6 +1,7 @@
 package linkapi
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
@@ -34,6 +35,8 @@ type linkJSON struct {
 	Livemode    bool    `json:"livemode"`
 	Visits      int64   `json:"visits"`
 	Paid        int64   `json:"paid"`
+	Reserved    int64   `json:"reserved"`
+	Ready       bool    `json:"ready"`
 	CreatedAt   string  `json:"createdAt"`
 	UpdatedAt   string  `json:"updatedAt"`
 }
@@ -49,7 +52,7 @@ func usd(cents int64) *string {
 
 func toLinkJSON(l link.Link) linkJSON {
 	out := linkJSON{LinkID: l.ID, Slug: l.Slug, Title: l.Title, AmountUSD: usd(l.AmountCents), MinUSD: usd(l.MinCents),
-		MaxUSD: usd(l.MaxCents), Active: l.Active, Visits: l.Visits, Paid: l.Paid, Livemode: l.Livemode,
+		MaxUSD: usd(l.MaxCents), Active: l.Active, Visits: l.Visits, Paid: l.Paid, Reserved: l.Reserved, Ready: l.Ready, Livemode: l.Livemode,
 		CreatedAt: l.CreatedAt.UTC().Format(time.RFC3339), UpdatedAt: l.UpdatedAt.UTC().Format(time.RFC3339)}
 	if l.StoreID != "" {
 		out.StoreID = &l.StoreID
@@ -66,6 +69,7 @@ func toLinkJSON(l link.Link) linkJSON {
 
 // publicLinkJSON is a link as /l/<slug> shows it to its payer (R-142).
 type publicLinkJSON struct {
+	Version   string           `json:"version"`
 	Slug      string           `json:"slug"`
 	Title     string           `json:"title"`
 	Payee     *string          `json:"payee"` // the billing name; null before the owner saves billing details
@@ -84,7 +88,7 @@ type publicBrandJSON struct {
 }
 
 func toPublicLinkJSON(p link.Public) publicLinkJSON {
-	out := publicLinkJSON{Slug: p.Slug, Title: p.Title, Payee: httpio.OrNull(p.Payee), AmountUSD: usd(p.AmountCents),
+	out := publicLinkJSON{Version: strconv.FormatInt(p.Revision, 10), Slug: p.Slug, Title: p.Title, Payee: httpio.OrNull(p.Payee), AmountUSD: usd(p.AmountCents),
 		MinUSD: usd(p.MinCents), MaxUSD: usd(p.MaxCents), State: p.State, Livemode: p.Livemode}
 	if p.StoreID != "" {
 		out.Brand = &publicBrandJSON{StoreID: p.StoreID, Color: httpio.OrNull(p.BrandColor)}

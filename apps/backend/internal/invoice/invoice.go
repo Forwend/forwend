@@ -113,6 +113,8 @@ type Request struct {
 	Livemode *bool `json:"-"`
 	// After runs in the insert's transaction before commit, and not on an idempotent replay (R-100).
 	After func(ctx context.Context, tx pgx.Tx, invoiceID string) error `json:"-"`
+	// Before checks source-specific constraints under the profile lock, before the public request budget is spent.
+	Before func(ctx context.Context, tx pgx.Tx) error `json:"-"`
 	// By is who makes the invoice, for its history (R-123); empty is the owner.
 	By history.Actor `json:"-"`
 	// LinkID is the payment link a payer made it from: it has no number until its first deposit (R-141).

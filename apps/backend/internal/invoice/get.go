@@ -142,7 +142,15 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 		until := reopenClose(inv.SettleDeadline, inv.receiverDeployedAt)
 		if inv.PaymentStatus == ledger.ExpiredPartiallyPaid && inv.RefundStatus == "held" &&
 			inv.ClosesAt.Equal(inv.ExpiresAt) && s.now().Before(until) {
-			inv.ReopenUntil = until
+			capacity := true
+			if inv.LinkID != "" {
+				if err := s.pool.QueryRow(ctx, linkCapacitySQL, inv.LinkID).Scan(&capacity); err != nil {
+					return Invoice{}, fmt.Errorf("read payment link capacity: %w", err)
+				}
+			}
+			if capacity {
+				inv.ReopenUntil = until
+			}
 		}
 		inv.Retainer, err = s.retainer(ctx, inv.ID)
 		return inv, err

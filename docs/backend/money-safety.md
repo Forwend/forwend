@@ -129,3 +129,13 @@ Limits:
 - A payer-chooses invoice picks its option only once every other enabled option chain was read past the payment
   (R-119). Before a choice it closes only once they were read past its close. A chain whose scan stops (its RPCs
   down) holds both, and the R-120 alert waits with them; disabling the chain lets them go on.
+
+## Reusable-link capacity
+
+- Paid purchases consume slots; canonical open, detected and partly paid purchases reserve slots.
+- Expiry releases unused slots only after ledger reconciliation; late held deposits do not count as sales.
+- Creation and legacy reopening lock the link before reading fresh capacity in a separate READ COMMITTED statement.
+- Profile coordination uses `FOR NO KEY UPDATE` in creation, link saves and invoice sending.
+- This serializes merchant operations while permitting event foreign-key checks under invoice and link locks.
+- Strong profile locks would form a cycle: create waits for link; reopen holds link and records an event referencing profile.
+- [PostgreSQL row lock compatibility](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-ROWS) explains the compatible key-share lock.

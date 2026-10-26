@@ -70,8 +70,14 @@ flowchart LR
 - Existing issued numbers, document URLs, IDs, invoice API defaults and public webhook names remain compatible under D-104.
 - New payment/session read models expose origin independently of document numbering.
 - Existing link retries replay original requests after template changes; new purchases use fresh attempt identities.
+- The purchase URL preserves original input and quoted offer version across refresh, Back and storage failures.
+- An uncertain uncommitted request must match its original quote before creating checkout.
+- Legacy request hashes remain unchanged; supplied amounts must match original terms.
+- Legacy storage cannot prove omitted fixed/open input or old offer versions; new immutable request metadata records both.
 - Links retain their original store; moving a selling channel requires another link.
-- Capacity checks and reservations happen in the payment transaction.
+- Capacity checks and reservations happen in the payment transaction, including legacy reopening.
+- Canonical open, detected and partly paid purchases reserve slots; paid purchases consume them.
+- Canonical expiry frees unused slots; wall time alone cannot release unresolved funds.
 - Merchant readiness and failed configuration loads are explained before a customer reaches an unusable payment.
 - Wallet activity stays profile-wide under D-93; store payment views and exports honor store access.
 - Hosted checkout comes first; embedded checkout is restricted to the store's allowed origins.

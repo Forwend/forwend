@@ -5,13 +5,13 @@ import { WifiOff } from "lucide-react";
 import { notFound, useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { useLazyGetInvoiceQuery } from "@/features/invoices/api/invoices-api";
 import {
   useCountLinkVisitMutation,
   useGetPublicLinkQuery,
   usePayLinkMutation,
 } from "@/features/links/api/links-api";
 import {
+  LINK_CHANGED_CODE,
   LINK_CLOSED_CODES,
   LINK_NOT_READY_CODE,
   LINK_STATES,
@@ -20,15 +20,14 @@ import {
 import { amountLabel } from "@/features/links/lib/links";
 import type { PublicLink } from "@/features/links/types/links";
 import { Payee } from "@/features/pay/components/payee";
-import { PAY_STATES } from "@/features/pay/constants/pay";
 import { LINK_PAY_COPY as COPY, PAY_COPY } from "@/features/pay/constants/pay-copy";
-import { savedInvoice, saveInvoice, usdCents } from "@/features/pay/lib/link-pay";
-import { payState } from "@/features/pay/lib/pay";
+import { purchaseSearch, readPurchase, usdCents, usdFromCents } from "@/features/pay/lib/link-pay";
+import type { LinkPurchase } from "@/features/pay/types/link-pay";
 
 const NOT_FOUND = 404;
 const TOO_MANY = 429;
 
-/** R-142: a payment link's page. Opening it counts a visit and makes nothing (D-54); Pay makes the payer's invoice. */
+/** R-142: a payment link's page. Opening it counts a visit and makes nothing (D-54); Pay creates checkout. */
 export function LinkCheckout({ slug }: { slug: string }) {
   const link = useGetPublicLinkQuery(slug);
   const [countVisit] = useCountLinkVisitMutation();
@@ -40,7 +39,7 @@ export function LinkCheckout({ slug }: { slug: string }) {
     countVisit(slug);
   }, [countVisit, slug]);
   const failure = link.error as { status?: unknown } | undefined;
-  if (link.data) return <Loaded link={link.data} onClosed={link.refetch} />;
+  if (link.data) return <Loaded key={link.data.slug} link={link.data} onClosed={link.refetch} />;
   if (failure?.status === NOT_FOUND) notFound();
   if (link.isError) {
     return (
@@ -72,12 +71,11 @@ export function LinkCheckout({ slug }: { slug: string }) {
 function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) {
   const router = useRouter();
   const [pay] = usePayLinkMutation();
-  const [readInvoice] = useLazyGetInvoiceQuery();
-  // One key per page load and amount: a retried Pay gets its invoice back, another amount makes another invoice.
-  const attempt = useRef(crypto.randomUUID());
+  const [purchase, setPurchase] = useState(() => readPurchase(window.location.search));
   const [error, setError] = useState("");
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
+  const section = useRef<HTMLElement>(null);
   // A Pay refused because the link closed meanwhile: the reason takes the focus Pay had.
   const [refused, setRefused] = useState(false);
   const reason = useRef<HTMLParagraphElement>(null);
@@ -86,6 +84,58 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
   }, [refused, link.state]);
   const fixed = link.amountUsd !== null;
   const limits = amountLabel(link);
+
+  const keepPurchase = (next: LinkPurchase | null) => {
+    const url = new URL(window.location.href);
+    url.search = purchaseSearch(url.search, next);
+    window.history.replaceState(window.history.state, "", url);
+    flushSync(() => {
+      setPurchase(next);
+      setRefused(false);
+      setFormError("");
+    });
+    const target = next
+      ? section.current?.querySelector<HTMLElement>("#link-amount")
+      : (reason.current ??
+        section.current?.querySelector<HTMLElement>(
+          'input[name="amountUsd"], #link-amount:not(.sr-only)',
+        ));
+    target?.focus();
+  };
+
+  const startPurchase = async (request: LinkPurchase) => {
+    flushSync(() => {
+      setBusy(true);
+      setFormError("");
+    });
+    section.current?.querySelector<HTMLElement>("#link-amount")?.focus();
+    try {
+      const { payToken } = await pay({
+        slug: link.slug,
+        amountUsd: request.amountUsd,
+        idempotencyKey: request.idempotencyKey,
+        expectedAmountUsd: usdFromCents(BigInt(request.cents)),
+        expectedVersion: request.offerVersion ?? undefined,
+      }).unwrap();
+      router.push(`/pay/${payToken}`);
+    } catch (err) {
+      const failure = err as { status?: unknown; data?: { error?: { code?: string } } };
+      const code = failure.data?.error?.code ?? "";
+      if (LINK_CLOSED_CODES.includes(code)) {
+        keepPurchase(null);
+        setRefused(true);
+        onClosed();
+      } else if (code === LINK_CHANGED_CODE) {
+        setFormError(COPY.errors.changed);
+        onClosed();
+      } else if (code === LINK_NOT_READY_CODE) {
+        keepPurchase(null);
+        setFormError(COPY.errors.notReady);
+      } else if (failure.status === TOO_MANY) setFormError(COPY.errors.busy);
+      else setFormError(COPY.errors.failed);
+      setBusy(false);
+    }
+  };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -108,58 +158,54 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
       form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
       return;
     }
-    setBusy(true);
-    try {
-      // The same browser goes back to its invoice for this amount while that one can still be paid.
-      const saved = savedInvoice(link.slug, cents);
-      if (saved) {
-        const read = await readInvoice(saved);
-        // A failed read is no answer: another invoice now could have the payer pay twice.
-        if (read.error && (read.error as { status?: unknown }).status !== NOT_FOUND)
-          throw read.error;
-        const state = read.data ? payState(read.data, Date.now()) : null;
-        if (
-          state &&
-          !state.closed &&
-          state.state !== PAY_STATES.paid &&
-          state.state !== PAY_STATES.settled
-        ) {
-          router.push(`/pay/${saved}`);
-          return;
-        }
-      }
-      const { payToken } = await pay({
-        slug: link.slug,
-        amountUsd: typed,
-        idempotencyKey: `${attempt.current}:${cents}`,
-      }).unwrap();
-      saveInvoice(link.slug, cents, payToken);
-      router.push(`/pay/${payToken}`);
-    } catch (err) {
-      const failure = err as { status?: unknown; data?: { error?: { code?: string } } };
-      const code = failure.data?.error?.code ?? "";
-      if (LINK_CLOSED_CODES.includes(code)) {
-        setRefused(true);
-        onClosed();
-      } else if (code === LINK_NOT_READY_CODE) setFormError(COPY.errors.notReady);
-      else if (failure.status === TOO_MANY) setFormError(COPY.errors.busy);
-      else setFormError(COPY.errors.failed);
-      setBusy(false);
-    }
+    const next = {
+      idempotencyKey: `${crypto.randomUUID()}:${cents}`,
+      amountUsd: typed,
+      cents: cents.toString(),
+      offerVersion: link.version ?? null,
+    };
+    keepPurchase(next);
+    await startPurchase(next);
   };
 
   return (
-    <section aria-labelledby="link-amount" className="flex flex-col gap-6">
+    <section ref={section} aria-labelledby="link-amount" className="flex flex-col gap-6">
       <Payee name={link.payee ?? link.title} subtitle={COPY.title} brand={link.brand} />
       {link.livemode ? null : (
         <p className="rounded-md bg-warning-soft px-4 py-3 text-sm text-warning">{COPY.testMode}</p>
       )}
-      {link.payee ? <p className="text-base break-words text-ink">{link.title}</p> : null}
-      {link.state === LINK_STATES.on ? (
+      {link.payee && !purchase ? (
+        <p className="text-base break-words text-ink">{link.title}</p>
+      ) : null}
+      {purchase ? (
+        <div className="flex flex-col gap-4">
+          <h2 id="link-amount" tabIndex={-1} className="text-sm text-muted outline-none">
+            {COPY.previous}
+          </h2>
+          <Money
+            baseUnits={BigInt(purchase.cents)}
+            decimals={2}
+            token="USD"
+            className="text-amount-lg text-ink"
+          />
+          <p className="text-sm text-muted">{COPY.purchaseHelp}</p>
+          <div className="flex flex-wrap gap-3">
+            <Button loading={busy} onClick={() => void startPurchase(purchase)}>
+              {COPY.continue}
+            </Button>
+            <Button variant="secondary" disabled={busy} onClick={() => keepPurchase(null)}>
+              {COPY.another}
+            </Button>
+          </div>
+          <p role="alert" className="min-h-5 text-sm text-danger">
+            {formError}
+          </p>
+        </div>
+      ) : link.state === LINK_STATES.on ? (
         <Form onSubmit={submit} noValidate>
           {fixed ? (
             <div className="flex flex-col gap-1.5">
-              <h2 id="link-amount" className="text-sm text-muted">
+              <h2 id="link-amount" tabIndex={-1} className="text-sm text-muted outline-none">
                 {COPY.amount}
               </h2>
               <Money

@@ -71,17 +71,18 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		return inv, false, err
 	}
 
-	tx, err := s.pool.Begin(ctx)
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
 		return Invoice{}, false, fmt.Errorf("insert invoice: %w", err)
 	}
 	defer tx.Rollback(ctx)
 	// The profile row lock makes concurrent creates count one after another, so none passes a cap on a stale count.
+	// NO KEY UPDATE allows payment events to check their profile foreign key while holding invoice or link locks.
 	// Billing details are never removed, so once there they stay for the insert trigger to copy.
 	var kind string
 	var billed bool
 	if err := tx.QueryRow(ctx, `SELECT kind,
-		EXISTS (SELECT 1 FROM profile_billing_details WHERE profile_id = $1) FROM profiles WHERE id = $1 FOR UPDATE`,
+		EXISTS (SELECT 1 FROM profile_billing_details WHERE profile_id = $1) FROM profiles WHERE id = $1 FOR NO KEY UPDATE`,
 		profileID).Scan(&kind, &billed); err != nil {
 		return Invoice{}, false, fmt.Errorf("lock profile: %w", err)
 	}
@@ -199,6 +200,11 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	}
 	if today+len(options) > MaxPerDay {
 		return Invoice{}, false, fmt.Errorf("%w: a profile creates at most %d receive addresses a day", ErrInvalid, MaxPerDay)
+	}
+	if r.Before != nil {
+		if err := r.Before(ctx, tx); err != nil {
+			return Invoice{}, false, err
+		}
 	}
 	if r.Allow != nil {
 		if wait := r.Allow(); wait > 0 {

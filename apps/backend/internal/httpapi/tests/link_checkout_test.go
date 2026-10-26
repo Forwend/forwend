@@ -56,7 +56,7 @@ func TestLinkCheckout(t *testing.T) {
 	// The page reads the link and counts a visit; it makes nothing (D-54).
 	r := e.call(t, "GET", "/v1/links/"+fixed, "", "", "")
 	brand, _ := r.body["brand"].(map[string]any)
-	if r.status != http.StatusOK || len(r.body) != 9 || r.body["livemode"] != false ||
+	if r.status != http.StatusOK || len(r.body) != 10 || r.body["livemode"] != false ||
 		r.body["title"] != "Logo design" || r.body["payee"] != "Alice Shop Ltd" ||
 		r.body["amountUsd"] != "2.00" || r.body["minUsd"] != nil || r.body["state"] != "on" || brand["storeId"] != store ||
 		brand["color"] != "#1f6a8c" || brand["logoAt"] != nil {
@@ -176,16 +176,16 @@ func TestLinkPayIsRateLimited(t *testing.T) {
 	off := e.call(t, "PUT", "/v1/profiles/"+e.aliceProfile+"/links/eeeeeeee-0000-4000-8000-000000000002",
 		"did:privy:alice", "", `{"title": "Old", "amountUsd": "1", "active": false}`).body["slug"].(string)
 	for _, c := range []struct{ slug, amount string }{{"zzzzzzzzzzzz", ""}, {"Bad", ""}, {off, ""}, {slug, "5"}} {
-		if _, _, err := links.Pay(t.Context(), c.slug, c.amount, "k-x", refuse); err == nil {
+		if _, _, err := links.Pay(t.Context(), c.slug, "k-x", link.PayRequest{AmountUSD: c.amount, Allow: refuse}); err == nil {
 			t.Errorf("Pay %s %q: no error", c.slug, c.amount)
 		}
 	}
-	if _, _, err := links.Pay(t.Context(), slug, "", strings.Repeat("k", link.MaxPayKey+1), refuse); !errors.Is(err,
+	if _, _, err := links.Pay(t.Context(), slug, strings.Repeat("k", link.MaxPayKey+1), link.PayRequest{Allow: refuse}); !errors.Is(err,
 		link.ErrInvalid) {
 		t.Errorf("a key over %d bytes: %v", link.MaxPayKey, err)
 	}
 	// A repeated key gets its invoice back from create's replay, before the budget is asked.
-	if _, created, err := links.Pay(t.Context(), slug, "", "k-0", refuse); err != nil || created {
+	if _, created, err := links.Pay(t.Context(), slug, "k-0", link.PayRequest{Allow: refuse}); err != nil || created {
 		t.Errorf("Pay with a used key: created %v, %v", created, err)
 	}
 	var before, after int
@@ -197,7 +197,7 @@ func TestLinkPayIsRateLimited(t *testing.T) {
 		}
 	}
 	count(&before)
-	_, _, err := links.Pay(t.Context(), slug, "", "k-6", refuse)
+	_, _, err := links.Pay(t.Context(), slug, "k-6", link.PayRequest{Allow: refuse})
 	count(&after)
 	var soon *invoice.TooSoonError
 	if !errors.As(err, &soon) || asked != 1 || after != before {
@@ -208,14 +208,15 @@ func TestLinkPayIsRateLimited(t *testing.T) {
 // R-117: a Pay that makes no invoice, refused by invoice create itself, spends none of the budget for everyone.
 func TestLinkPayRefusedByCreateSpendsNoSharedBudget(t *testing.T) {
 	e := invoiceAPI(t)
-	// Alice's second profile has no wallet and no billing details, so invoice create refuses each Pay.
+	// An active legacy link can still have incomplete setup. It must not spend the shared creation budget.
 	for i := range 5 {
 		r := e.call(t, "PUT", "/v1/profiles/"+e.walletless+"/links/ffffffff-0000-4000-8000-00000000000"+strconv.Itoa(i),
-			"did:privy:alice", "", `{"title": "Junk", "amountUsd": "1"}`)
+			"did:privy:alice", "", `{"title": "Junk", "amountUsd": "1", "active": false}`)
 		slug, _ := r.body["slug"].(string)
 		if r.status != http.StatusCreated {
 			t.Fatalf("PUT junk link %d: %d %v", i, r.status, r.body)
 		}
+		e.exec(t, "UPDATE payment_links SET active = true WHERE slug = $1", slug)
 		for j := range 5 {
 			if r := e.call(t, "POST", "/v1/links/"+slug+"/pay", "", "j-"+strconv.Itoa(j), `{}`); r.status ==
 				http.StatusTooManyRequests {

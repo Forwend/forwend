@@ -14,20 +14,7 @@ import (
 func TestCheckoutPurchaseSettlesWithoutIssuingAnInvoice(t *testing.T) {
 	ctx := t.Context()
 	st := newStack(t)
-	const merchantWallet = "0x5555555555555555555555555555555555555555"
-	var profile, store string
-	if err := st.conn.QueryRow(ctx, `WITH p AS (INSERT INTO profiles (user_id, kind, name)
-		SELECT user_id, 'merchant', 'Coffee shop' FROM profiles WHERE id = $1 RETURNING id),
-		w AS (INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)
-		SELECT id, 'privy', 'checkout-wallet', 'evm', $2 FROM p),
-		b AS (INSERT INTO profile_billing_details (profile_id, name, address, country, contact_email)
-		SELECT p.id, d.name, d.address, d.country, d.contact_email FROM p JOIN profile_billing_details d ON d.profile_id = $1)
-		SELECT id FROM p`, st.profile, merchantWallet).Scan(&profile); err != nil {
-		t.Fatal(err)
-	}
-	if err := st.conn.QueryRow(ctx, "SELECT id FROM stores WHERE profile_id = $1", profile).Scan(&store); err != nil {
-		t.Fatal(err)
-	}
+	profile, store, merchantWallet := st.merchant(t)
 	start(t, st.bin, "worker", st.loop)
 	start(t, st.bin, "signer", append(st.loop, "EXECUTOR_PRIVATE_KEY="+chaintest.Key))
 	st.waitScanned(t)

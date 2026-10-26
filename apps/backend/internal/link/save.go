@@ -79,16 +79,32 @@ func (s *Service) Save(ctx context.Context, profileID, id string, d Details) (l 
 	}
 	slug := newSlug()
 	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
-		var live bool
-		if d.Livemode != nil {
-			live = *d.Livemode
-		} else if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM tokens t JOIN chains c ON c.chain_id = t.chain_id
-			WHERE t.enabled AND c.enabled AND c.livemode)`).Scan(&live); err != nil {
-			return fmt.Errorf("read payment link mode: %w", err)
-		}
 		var kind string
-		if err := tx.QueryRow(ctx, "SELECT kind FROM profiles WHERE id = $1", profileID).Scan(&kind); err != nil {
+		if err := tx.QueryRow(ctx, "SELECT kind FROM profiles WHERE id = $1 FOR NO KEY UPDATE", profileID).Scan(&kind); err != nil {
 			return fmt.Errorf("read profile: %w", err)
+		}
+		var oldStore string
+		var live bool
+		prior := tx.QueryRow(ctx, `SELECT coalesce(store_id::text, ''), livemode FROM payment_links
+            WHERE id = $1 AND profile_id = $2 FOR UPDATE`, id, profileID).Scan(&oldStore, &live)
+		if prior != nil && !errors.Is(prior, pgx.ErrNoRows) {
+			return fmt.Errorf("read payment link identity: %w", prior)
+		}
+		if prior == nil {
+			if d.Livemode != nil && *d.Livemode != live {
+				return ErrNotFound
+			}
+			if d.StoreID != "" && strings.ToLower(d.StoreID) != oldStore {
+				return fmt.Errorf("%w: storeId never changes; create another link for another store", ErrInvalid)
+			}
+			d.StoreID = oldStore
+		} else {
+			if d.Livemode != nil {
+				live = *d.Livemode
+			} else if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM tokens t JOIN chains c ON c.chain_id = t.chain_id
+			WHERE t.enabled AND c.enabled AND c.livemode)`).Scan(&live); err != nil {
+				return fmt.Errorf("read payment link mode: %w", err)
+			}
 		}
 		store := ""
 		switch kind {
@@ -105,12 +121,21 @@ func (s *Service) Save(ctx context.Context, profileID, id string, d Details) (l 
 				return fmt.Errorf("%w: storeId: only a merchant profile has stores", ErrInvalid)
 			}
 		}
+		if d.Active {
+			ready, err := profile.ReadPaymentReadiness(ctx, tx, profileID, store, live)
+			if err != nil {
+				return err
+			}
+			if !ready.Ready() {
+				return ErrNotReady
+			}
+		}
 		// An id of another profile's link neither inserts (the conflict) nor updates (the WHERE): no row comes back.
 		err := tx.QueryRow(ctx, `
 			INSERT INTO payment_links (id, profile_id, store_id, slug, title, amount_cents, min_cents, max_cents, ends_at,
 			    max_payments, active, livemode)
 			VALUES ($1, $2, nullif($3, '')::uuid, $4, $5, nullif($6, 0), nullif($7, 0), nullif($8, 0), $9, nullif($10, 0), $11, $12)
-			ON CONFLICT (id) DO UPDATE SET store_id = excluded.store_id, title = excluded.title,
+			ON CONFLICT (id) DO UPDATE SET title = excluded.title,
 			    amount_cents = excluded.amount_cents, min_cents = excluded.min_cents, max_cents = excluded.max_cents,
 			    ends_at = excluded.ends_at, max_payments = excluded.max_payments, active = excluded.active,
 			    updated_at = now()

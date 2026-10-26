@@ -7,8 +7,7 @@ export const LINKS_COPY = {
   add: "New link",
   newTitle: "New payment link",
   editTitle: "Edit payment link",
-  intro:
-    "Share one link for a price or a top-up. Opening it creates nothing; each payer who presses Pay gets their own invoice.",
+  intro: "Share a reusable offer. Each purchase creates its own checkout and payment record.",
   columns: {
     link: "Link",
     amount: "Amount",
@@ -20,9 +19,10 @@ export const LINKS_COPY = {
     [LINK_STATES.off]: "Off",
     [LINK_STATES.ended]: "Ended",
     [LINK_STATES.full]: "Cap reached",
+    [LINK_STATES.notReady]: "Setup needed",
   },
-  activity: (visits: number, paid: number) =>
-    `${visits === 1 ? "1 visit" : `${visits} visits`}, ${paid} paid`,
+  activity: (visits: number, paid: number, reserved = 0) =>
+    `${visits === 1 ? "1 visit" : `${visits} visits`}, ${paid} paid, ${reserved} reserved`,
   anyAmount: "Any amount",
   from: (min: string) => `From ${min} USD`,
   upTo: (max: string) => `Up to ${max} USD`,
@@ -31,12 +31,14 @@ export const LINKS_COPY = {
   empty: "No payment links yet",
   emptyBody: "Make one for a product, a service or a top-up, and share it anywhere.",
   failed: "We could not load your payment links.",
+  noStores:
+    "You need an available store before creating a payment link. Ask the account owner to check your store access.",
   retry: "Try again",
   gone: "This link is not in your list anymore.",
   backToList: "Back to payment links",
   linkGroup: "Link",
   linkTitle: "Title",
-  titleHint: "The payer sees it on the link's page and on the invoice.",
+  titleHint: "Customers see it on the offer and checkout.",
   store: "Store",
   address: "Address",
   addressHint: "Anyone with the address can pay. It never changes.",
@@ -56,9 +58,10 @@ export const LINKS_COPY = {
   endsOnHint: "The link works through this day, UTC.",
   clearDate: "Clear the last day",
   maxPayments: "Payment cap (optional)",
-  maxPaymentsHint: "The link stops after this many paid invoices.",
+  maxPaymentsHint:
+    "Each open checkout reserves a slot. Unused slots return only after confirmed expiration or cancellation.",
   active: "The link is on",
-  activeHint: "Off, the link's page says so and makes no invoices.",
+  activeHint: "Turning this off stops new purchases. Existing checkouts remain available.",
   save: "Save link",
   cancel: "Cancel",
   saved: (title: string) => `${title} saved`,
@@ -68,6 +71,8 @@ export const LINKS_COPY = {
     range: "The minimum must be at most the maximum.",
     maxPayments: `Enter a whole number from 1 to ${LINK_LIMITS.maxPayments.toLocaleString("en-US")}.`,
     failed: "We could not save the link. Try again.",
+    notReady:
+      "Complete billing details, wallet setup and accepted tokens before turning on this link. You can save it while off.",
     // What the API refused, by the field it names.
     invalid: {
       title: `Use 1 to ${LINK_LIMITS.title} characters of plain text on one line.`,
