@@ -1724,7 +1724,7 @@
       "dependsOn": [
         "F310"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit"
       ],
@@ -1809,11 +1809,18 @@
           "summary": "PASS. Both blockers are fixed.\n1. TestInvoiceMetadata checks invoice.pdf text for \"A-1001\" and \"order_id\". An overlay mutation drawing inv.Metadata[\"order_id\"] in document.Invoice fails it at invoices_metadata_test.go:39.\n2. 501 emoji and 501 \"a\" are 422; 500 emoji is 201 at key-500. The len(v) byte-count mutation of invoice.go:460 now fails at invoices_metadata_test.go:76.\nTaken: the error says \"plain text on one line\" (probe: newline gives that text). The redundant null check is gone; null and {} still replay as none (probe: 201 {}, then 200, same invoice). api.md names retainer months and Revise.\nNon-blocking: receipt.pdf has no metadata test, because it needs a paid invoice. Its shared parts (start, lines, footer) are covered through invoice.pdf; a receipt-only addition would pass. Items a, b, e and f stay as the user was told.\nRan: go test ./internal/httpapi/tests ./internal/invoice -run TestInvoiceMetadata|TestCreateInvoice$|TestInvoiceChangesBecomeWebhookEvents|TestRequestHash|TestCreate (ok); 2 overlay mutations (both caught); an overlay probe for null, {} and error texts; check-docs.py (0 errors); gofmt -l and go vet (clean). The longest new doc sentence is 17 words. verify passed at 12:27:29Z.",
           "at": "2026-10-26T12:35:10Z",
           "filesHash": "04461bf1f3c31543"
-        }
+        },
+        "commit": "db63bcc",
+        "doneAt": "2026-10-26T12:35:34Z"
       },
       "branch": "feat/f311-an-invoice-create-takes-metadata-and-eve",
       "baseCommit": "c6cebf4baf155b2f6336b8250a44b0caf717e689",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f311-an-invoice-create-takes-metadata-and-eve",
+        "base": "main"
+      }
     },
     {
       "id": "F312",
