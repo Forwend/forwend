@@ -3,7 +3,7 @@ import { parseEnv } from "node:util";
 import { defineConfig, devices } from "@playwright/test";
 
 // The live suite: the real Privy test app and backend api. Privy accepts only the origin http://localhost:3000,
-// so the app runs there; a dev server or api already running there is reused.
+// so the app runs there. Stop local servers first: verification must run the current source.
 const readEnv = (path: string) => {
   try {
     return parseEnv(readFileSync(path, "utf8")) as Record<string, string>;
@@ -41,13 +41,14 @@ export default defineConfig({
         API_USER_BURST: "1000",
       },
       url: new URL("/healthz", apiURL).href,
-      reuseExistingServer: true,
+      reuseExistingServer: false,
       timeout: 120_000,
     },
     {
-      command: "pnpm build && pnpm start -p 3000 -H localhost",
+      command:
+        "pnpm --workspace-root exec turbo run build --filter=@forwend/web && pnpm start -p 3000 -H localhost",
       url: APP_URL,
-      reuseExistingServer: true,
+      reuseExistingServer: false,
       timeout: 240_000,
     },
   ],

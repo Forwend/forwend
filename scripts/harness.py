@@ -19,6 +19,8 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+import verification
+
 TASKS = 'docs/tasks.json'
 ARCHIVE = 'docs/archive'
 CONFIG = 'docs/config.json'
@@ -404,6 +406,24 @@ def problems(state):
             found.append(f'{CONFIG}: duplicate check {check["id"]}')
         else:
             check_ids.add(check['id'])
+    policy = state.config.get('verification')
+    if policy is not None:
+        if not isinstance(policy, dict) or not all(isinstance(policy.get(k), list) for k in ('always', 'fallback', 'rules')):
+            found.append(f'{CONFIG}: verification needs always, fallback and rules lists')
+        else:
+            names = policy['always'] + policy['fallback']
+            for rule in policy['rules']:
+                if not isinstance(rule, dict) or not isinstance(rule.get('paths'), list) or not rule['paths'] or not isinstance(rule.get('checks'), list):
+                    found.append(f'{CONFIG}: each verification rule needs paths and checks lists')
+                else:
+                    names += rule['checks']
+            if any(not isinstance(name, str) or name not in checks for name in names):
+                found.append(f'{CONFIG}: verification names an unknown check')
+    for check in state.config.get('checks') or []:
+        if isinstance(check, dict):
+            for key in ('inputs', 'localInputs'):
+                if key in check and (not isinstance(check[key], list) or not all(isinstance(p, str) and not Path(p).is_absolute() and '..' not in Path(p).parts for p in check[key])):
+                    found.append(f'{CONFIG}: {check.get("id")} has invalid {key}')
     for entry in state.config.get('fingerprintPaths') or []:
         target = (state.root / entry).resolve()
         if target != state.root and state.root not in target.parents:
@@ -449,13 +469,9 @@ def problems(state):
 
 
 def run_order(state, task):
-    """The task's own checks, then the required ones; a docs-only change skips required checks not marked "docs"."""
-    order = list(task.get('verification') or [])
-    docs = docs_only(changed_since(state.root, task.get('baseCommit')))
-    order += [check['id'] for check in state.config.get('checks') or []
-              if isinstance(check, dict) and check.get('required') and (check.get('docs') or not docs)
-              and check.get('id') not in order]
-    return order
+    """Explicit task checks plus changed-path checks, in registry order."""
+    return verification.select(state.config, changed_since(state.root, task.get('baseCommit')),
+                               task.get('verification') or [])
 
 
 def tail(path):
@@ -851,7 +867,7 @@ def cmd_show(root, args):
         print(f'accept {index}: {item}')
     for check_id in run_order(state, task):
         argv = checks.get(check_id, {}).get('argv')
-        own = '' if check_id in (task.get('verification') or []) else ' (required for every task)'
+        own = '' if check_id in (task.get('verification') or []) else ' (selected for these changes)'
         print(f'check {check_id}: ' + (' '.join(argv) if argv else 'MISSING') + own)
     evidence = task.get('evidence') or {}
     print('last: ' + evidence_line(task))
@@ -1071,7 +1087,9 @@ def cmd_verify(root, args):
     stamp = started.replace('-', '').replace(':', '')
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))  # lets run_check stop the check's process group
     before = state.file_digests()
-    results = [run_check(root, checks[check_id], runs / f'{task["id"]}-{stamp}-{check_id}.log') for check_id in order]
+    results = verification.run(root, checks, order,
+        lambda check: run_check(root, check, runs / f'{task["id"]}-{stamp}-{check["id"]}.log'),
+        before, changed_since(root, task.get('baseCommit')), getattr(args, 'fresh', False), state.file_digests)
     path_rules = [rule for rule in task.get('keep') or [] if is_path_rule(rule)]
     if path_rules:
         touched = changed_since(root, task.get('baseCommit'))
@@ -1087,7 +1105,7 @@ def cmd_verify(root, args):
                             'seconds': 0.0, 'log': keep_log.relative_to(root).as_posix() if hits else ''})
     after = state.file_digests()
     changed = sorted(name for name in set(before) | set(after) if before.get(name) != after.get(name))
-    passed = not changed and all(result['outcome'] == 'passed' for result in results)
+    passed = not changed and len(results) >= len(order) and all(result['outcome'] == 'passed' for result in results)
     with Lock(root):
         state = State(root)
         task = state.task(args.id)
@@ -1422,19 +1440,31 @@ def cmd_validate(root, args):
     return 1 if found else 0
 
 
+def cmd_plan(root, args):
+    state = State(root)
+    task = state.task(args.id) if args.id else None
+    paths = args.paths if args.paths is not None else changed_since(root, task.get('baseCommit') if task else 'HEAD')
+    names = verification.select(state.config, paths, task.get('verification', []) if task else [])
+    print('Changed paths: ' + ', '.join(paths or ['unknown or none']))
+    print('Checks: ' + ', '.join(names))
+    return 0
+
+
 def cmd_check(root, args):
     """Run the shared check registry without changing task state (also used by CI)."""
     state = State(root)
     checks = state.checks()
-    selected = args.ids or [check['id'] for check in checks.values()
-                            if check.get('required') or (args.ci and check.get('ci'))]
+    selected = args.ids or ([check['id'] for check in checks.values() if check.get('required') or check.get('ci')]
+                            if args.ci else verification.select(state.config, changed_since(root, 'HEAD')))
     unknown = [name for name in selected if name not in checks]
     if unknown or not selected:
         raise Refused('unknown or empty check selection: ' + ', '.join(unknown), 2)
     runs = root / RUNS
     runs.mkdir(parents=True, exist_ok=True)
     stamp = now().replace('-', '').replace(':', '')
-    results = [run_check(root, checks[name], runs / f'check-{stamp}-{name}.log') for name in selected]
+    results = verification.run(root, checks, selected,
+        lambda check: run_check(root, check, runs / f'check-{stamp}-{check["id"]}.log'),
+        state.file_digests(), changed_since(root, 'HEAD'), args.ci or getattr(args, 'fresh', False), state.file_digests)
     for result in results:
         print(f'{result["id"]}: {result["outcome"]}' + (f' ({result["log"]})' if result['log'] else ''))
         if result['outcome'] != 'passed':
@@ -1495,14 +1525,11 @@ def cmd_wrapup(root, args):
     if in_progress and not args.note:
         raise Refused(f'{in_progress[0]["id"]} is {in_progress[0]["state"]}: add --note "what is done, what is next" '
                       'so the next session can continue', 2)
-    checks = state.checks()
-    selected = [check['id'] for check in state.config.get('checks') or []
-                if isinstance(check, dict) and check.get('id') and (check.get('required') or check.get('wrapup'))]
-    runs = root / RUNS
-    runs.mkdir(parents=True, exist_ok=True)
-    stamp = now().replace('-', '').replace(':', '')
-    results = [run_check(root, checks[check_id], runs / f'wrapup-{stamp}-{check_id}.log') for check_id in selected]
-    found = [f'{result["id"]} {result["outcome"]} (log {result["log"]})' for result in results if result['outcome'] != 'passed']
+    found = problems(state)
+    for task in in_progress:
+        reason = stale_reason(state, task)
+        if task.get('state') != 'verified' or reason:
+            found.append(f'{task["id"]}: {reason or "verification not passed"}; run verify')
     leftovers = debug_leftovers(root)
     found += [f'debug leftover {hit}' for hit in (leftovers or [])[:10]]
     pending = uncommitted(root) or []
@@ -1517,8 +1544,6 @@ def cmd_wrapup(root, args):
             task.setdefault('notes', []).append(f'{now()[:10]} {args.note}')
         state.data['lastWrapup'] = {'at': now(), 'clean': not found, 'problems': found[:10], 'note': args.note}
         state.save()
-    for result in results:
-        print(f'  {result["id"]}: {result["outcome"]} exit {result["exit"]} {result["seconds"]}s {result["log"]}'.rstrip())
     if leftovers is None:
         print('debug leftovers were not checked: this is not a git repository')
     if pending:
@@ -1557,11 +1582,15 @@ def cmd_hook(root, args):
     runs.mkdir(parents=True, exist_ok=True)
     stamp = now().replace('-', '').replace(':', '')
     staged = (git(root, 'diff', '--cached', '--name-only', '--no-renames') or '').splitlines()
-    docs = docs_only([name for name in staged if name and not name.startswith(BOOKKEEPING)])
-    results = [run_check(root, check, runs / f'precommit-{stamp}-{check["id"]}.log')
-               for check in state.config.get('checks') or []
-               if isinstance(check, dict) and check.get('precommit') and check.get('id') and check.get('argv')
-               and (check.get('docs') or not docs)]
+    paths = [name for name in staged if name and not name.startswith(BOOKKEEPING)]
+    unstaged = git(root, 'diff', '--name-only')
+    if unstaged is None or any(p not in BOOKKEEPING for p in unstaged.splitlines()):
+        raise Refused('stage the complete change before verification and commit; unstaged files cannot prove the index')
+    selected = [name for name in verification.select(state.config, paths)
+                if state.checks()[name].get('precommit')]
+    results = verification.run(root, state.checks(), selected,
+        lambda check: run_check(root, check, runs / f'precommit-{stamp}-{check["id"]}.log'),
+        state.file_digests(), paths, snapshot=state.file_digests)
     failed = [result for result in results if result['outcome'] != 'passed']
     for result in failed:
         print(f'pre-commit: {result["id"]} {result["outcome"]} (exit {result["exit"]}), log {result["log"]}\n'
@@ -1613,10 +1642,11 @@ def parser():
             (['--fail'], {'dest': 'result', 'action': 'store_const', 'const': 'fail'}),
             (['--summary'], {'required': True, 'help': 'findings, with evidence'}),
             (['--by'], {'default': 'reviewer', 'help': 'who reviewed, e.g. subagent or a name'}))
-    command('wrapup', cmd_wrapup, 'end-of-session check: required checks, debug leftovers, uncommitted work',
+    command('wrapup', cmd_wrapup, 'report verification, debug leftovers and uncommitted work without running tests',
             (['--note'], {'help': 'what is done and what is next; required while a task is in progress'}))
     command('start', cmd_start, 'make a ready task active on its own branch (one task in progress at a time)', task_id)
-    command('verify', cmd_verify, 'run checks and record evidence for each acceptance criterion', task_id,
+    command('verify', cmd_verify, 'run relevant checks and record evidence for each acceptance criterion', task_id,
+            (['--fresh'], {'action': 'store_true', 'help': 'rerun even matching successful checks'}),
             (['--proof'], dict(many, help='N=check-id: evidence (one per acceptance criterion)')))
     command('done', cmd_done, 'finish a verified, committed task: push, pull request, checks, merge', task_id,
             (['--proof'], dict(many, help='N=test or check that proves acceptance criterion N (one per criterion)')))
@@ -1626,8 +1656,10 @@ def parser():
     command('reopen', cmd_reopen, 'return a verified or passing task to active', task_id, (['--reason'], {'required': True}))
     command('note', cmd_note, 'append a short dated note: decision, finding, or next step', task_id, (['text'], {}))
     command('validate', cmd_validate, 'check docs/tasks.json and docs/config.json for structural problems')
+    command('plan', cmd_plan, 'show selected checks without executing them',
+            (['id'], {'nargs': '?'}), (['--paths'], {'nargs': '+'}))
     command('check', cmd_check, 'run named checks, or the required checks; does not change task state',
-            (['ids'], {'nargs': '*'}), (['--ci'], {'action': 'store_true', 'help': 'include CI-only checks'}))
+            (['ids'], {'nargs': '*'}), (['--fresh'], {'action': 'store_true'}), (['--ci'], {'action': 'store_true', 'help': 'include CI-only checks'}))
     command('hook', cmd_hook, 'git hooks: pre-commit runs the checks marked "precommit", pre-push blocks pushes to the '
             'base branch; `hook install` sets them up (`start` does it too)', (['name'], {'choices': ('install',) + HOOKS}))
     return top

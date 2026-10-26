@@ -116,12 +116,12 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
 ## Tests
 
 Vitest for logic, Playwright for flows, axe for accessibility, Lighthouse for performance (D-10, R-10, R-11).
-`pnpm e2e` also runs the live sign-in (`e2e/privy`, `playwright.privy.config.ts`) when `apps/web/.env` holds the Privy
-test account: the real Privy app and backend api, on `http://localhost:3000` (the only origin Privy allows) and
-`API_URL`; running servers there are reused, so a server already on port 3000 or the api port must be this checkout's
-(`pnpm dev`, `pnpm --filter @forwend/backend api`). CI has no test account and skips it. Privy throttles repeated
-sign-ins, so a setup project (`e2e/privy/session.setup.ts`) signs in once and saves the session in the ignored
-`test-results/`; the spec files, one per behavior, reuse it and run in one worker in name order.
+- `pnpm e2e` runs deterministic browser tests without contacting Privy.
+- `pnpm --filter @forwend/web e2e:live` explicitly runs live sign-in tests using the configured test account.
+- Live checks use `http://localhost:3000` and `API_URL`; stop existing servers first so verification runs the current source.
+- CI has no test account and does not select live checks.
+- The setup project signs in once and saves the session under ignored `test-results/`.
+- Live spec files share that account and run sequentially to avoid Privy throttling.
 Every run shares that account and the dev database, so its data must not pile up toward a profile cap (D-85).
 Its invoices and requests close within 2 days, and Send to client is mocked.
 A repeating invoice is stopped, and a job deleted, in the same test.

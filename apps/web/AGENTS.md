@@ -10,7 +10,8 @@ stop reminders page `/reminders/<token>`, the public quote page `/w/<token>`, th
   worker and signer; it needs `EXECUTOR_PRIVATE_KEY` in `apps/backend/.env`).
   `/kit` works in dev; a production build needs `KIT_ENABLED=1`. Sign-in and `/app` need
   `apps/web/.env` (copy `.env.example`) and the backend api at `API_URL`.
-- `pnpm --filter @forwend/web test` (Vitest), `e2e` (Playwright), `lighthouse`.
+- `pnpm --filter @forwend/web test` (Vitest), `e2e` (deterministic Playwright), `e2e:live` (explicit Privy tests), `lighthouse`.
+- Live tests require free ports 3000 and the configured API port; they refuse to reuse existing servers.
 
 ## What to read
 

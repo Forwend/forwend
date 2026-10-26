@@ -14,6 +14,7 @@ import unittest
 from unittest.mock import patch
 
 sys.dont_write_bytecode = True
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 spec = importlib.util.spec_from_file_location('harness', Path(__file__).resolve().parents[1] / 'scripts/harness.py')
 h = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(h)
@@ -508,6 +509,43 @@ class HarnessTests(unittest.TestCase):
         self.save()
         self.assertEqual(self.run_cli('validate'), 2)
         self.assertEqual(self.run_cli('check', '--ci'), 2)
+
+    def test_wrapup_does_not_execute_checks(self):
+        self.config["checks"][0]["required"] = True
+        self.save()
+        self.verify()
+        with patch.object(h, 'run_check', side_effect=AssertionError('wrapup ran tests')):
+            self.assertEqual(self.run_cli('wrapup', '--note', 'ready'), 0)
+
+    def test_verification_stops_after_first_failure(self):
+        self.config['checks'][0]['argv'] = [sys.executable, '-c', 'raise SystemExit(1)']
+        self.config['checks'].append({'id': 'later', 'argv': [sys.executable, '-c', 'pass'], 'required': True})
+        self.save()
+        with patch.object(h, 'run_check', wraps=h.run_check) as run:
+            self.assertEqual(self.verify(), 1)
+            self.assertEqual(run.call_count, 1)
+
+    def test_repeat_verification_reuses_matching_success(self):
+        self.config['checks'][0]['cache'] = True
+        self.save()
+        self.assertEqual(self.verify(), 0)
+        with patch.object(h, 'run_check', side_effect=AssertionError('unchanged check reran')):
+            self.assertEqual(self.verify(), 0)
+
+    def test_ci_forces_fresh_full_checks(self):
+        self.config['checks'][0].update(required=True, cache=True)
+        self.config['checks'].append({'id': 'extra', 'argv': [sys.executable, '-c', 'pass'], 'ci': True})
+        self.save()
+        self.verify()
+        with patch.object(h, 'run_check', wraps=h.run_check) as run:
+            self.assertEqual(self.run_cli('check', '--ci'), 0)
+            self.assertEqual(run.call_count, 2)
+
+    def test_explicit_task_check_survives_coverage_deduplication(self):
+        config = {'checks': [{'id': 'all', 'covers': ['unit']}, {'id': 'unit'}],
+                  'verification': {'always': ['all', 'unit'], 'fallback': ['all'], 'rules': []}}
+        self.assertEqual(h.verification.select(config, []), ['all'])
+        self.assertEqual(h.verification.select(config, [], ['unit']), ['all', 'unit'])
 
 
 if __name__ == '__main__':

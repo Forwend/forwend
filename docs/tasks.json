@@ -1,51 +1,45 @@
 {
   "schemaVersion": 2,
-  "nextId": 323,
+  "nextId": 324,
   "tasks": [
     {
-      "id": "F322",
+      "id": "F323",
       "type": "fix",
-      "behavior": "Show Tempo as an optional staging network and keep working notes local",
+      "behavior": "Select relevant checks and reuse fresh results without duplicate verification",
       "acceptance": [
-        "Staging enables Tempo OUSD alongside the three USDC pairs, and the Networks API lists Tempo off for existing and new profiles.",
-        "Owners can turn Tempo on and off; restarts preserve their choice and invoice options follow it.",
-        "Archive, research and spikes are ignored and untracked, local files remain, and tracked docs pass without them."
+        "Local verification selects checks by changed responsibility, keeps broad staging checks, and exposes its plan.",
+        "Passing checks are reused only for matching inputs; failures stop execution; wrapup never reruns tests.",
+        "Live provider tests are explicit and browser verification does not silently reuse existing servers.",
+        "Measured before and after timings cover documentation, backend changes and repeated verification."
       ],
       "dependsOn": [],
       "state": "passing",
       "verification": [
-        "unit"
+        "harness",
+        "docs-check"
       ],
       "refs": [
-        "R-132",
-        "R-136",
-        "R-157"
+        "R-158"
       ],
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-26 Tempo is available with a default-off profile switch; archive, research and spikes are local-only. Independent review found no blockers. Full verify passed all checks except a Team-page browser loading timeout; that exact test passed alone. No commit or deployment authorized. Final verification and review recording remain before delivery.",
-        "2026-10-26 review pass by reviewer: Independent review found no blocking findings. Tempo startup activation, default-off profiles, migration preservation, toggles and invoice acceptance have passing regression coverage. All 298 untracked files remain locally in the requested folders. A tracked-only checkout passes documentation checks and task validation. New files follow the existing structure."
+        "2026-10-26 review pass by reviewer: No blockers. Reviewed check selection, dependency and cache invalidation, fail-fast execution, hook compatibility, provider isolation, CI coverage and file ownership. All findings resolved. 59 regression tests pass, including real Git-hook reuse and tool-call metadata. Final full verification passed all seven checks; unchanged-source repeat passed in 0.960 seconds with six cached checks and fresh documentation validation.",
+        "2026-10-26 F323 implemented and verified. Full checks passed208.7s; unchanged verify0.960s. Measurement report retained in docs/runs; benchmark script removed. No commit or publication requested."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-26T20:12:04Z",
+        "at": "2026-10-26T20:58:35Z",
         "checks": [
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 184.5,
-            "log": ""
-          },
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.2,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "docs-check",
@@ -58,62 +52,75 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.5,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.2,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 302.5,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           }
         ],
-        "taskHash": "842ed88e45cad9bc",
-        "filesHash": "e16248d6ccde12b7",
+        "taskHash": "4733fb0302a91036",
+        "filesHash": "16cded182f3d8dc3",
         "proof": {
-          "1": "unit: Startup and API regression tests cover Tempo availability and default-off profiles; migration tests cover existing profiles.",
-          "2": "unit: API regression covers toggles, repeated startup and invoice acceptance.",
-          "3": "docs-check: Ignored directories have no tracked files and remain locally; a temporary tracked-only checkout passed docs-check and harness validation."
+          "1": "harness: Path selection, dependency callers, coverage deduplication and fresh CI regression tests.",
+          "2": "harness: Cache invalidation, real Git hook and tool-call reuse, fail-fast and no-test wrapup regressions.",
+          "3": "harness: Explicit live selection and refusal to reuse live servers are tested.",
+          "4": "harness: Real check timings are in docs/runs/verification-benchmark.json and F323-verification-timings.md; disposable benchmark script removed after measurement."
         },
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "Independent review found no blocking findings. Tempo startup activation, default-off profiles, migration preservation, toggles and invoice acceptance have passing regression coverage. All 298 untracked files remain locally in the requested folders. A tracked-only checkout passes documentation checks and task validation. New files follow the existing structure.",
-          "at": "2026-10-26T20:20:37Z",
-          "filesHash": "e16248d6ccde12b7"
+          "summary": "No blockers. Reviewed check selection, dependency and cache invalidation, fail-fast execution, hook compatibility, provider isolation, CI coverage and file ownership. All findings resolved. 59 regression tests pass, including real Git-hook reuse and tool-call metadata. Final full verification passed all seven checks; unchanged-source repeat passed in 0.960 seconds with six cached checks and fresh documentation validation.",
+          "at": "2026-10-26T20:58:46Z",
+          "filesHash": "16cded182f3d8dc3"
         },
-        "commit": "84bace98",
-        "doneAt": "2026-10-26T20:21:17Z"
+        "commit": "96012efc",
+        "doneAt": "2026-10-26T21:00:08Z"
       },
-      "branch": "fix/f322-show-tempo-in-staging-networks-with-its",
-      "baseCommit": "89a730ac207530638b4fcfc35dfce920c5b27597",
+      "branch": "fix/f323-select-relevant-checks-and-reuse-fresh-r",
+      "baseCommit": "3719f3508e35fc084b469c3619ce08c7d6edd562",
       "failedVerifies": 0,
       "delivery": {
         "mode": "pr",
-        "branch": "fix/f322-show-tempo-in-staging-networks-with-its",
+        "branch": "fix/f323-select-relevant-checks-and-reuse-fresh-r",
         "base": "main"
       }
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-26T20:10:54Z",
+    "at": "2026-10-26T20:58:49Z",
     "clean": true,
     "problems": [],
-    "note": "Tempo is available with a default-off profile switch; archive, research and spikes are local-only. Independent review found no blockers. Full verify passed all checks except a Team-page browser loading timeout; that exact test passed alone. No commit or deployment authorized. Final verification and review recording remain before delivery."
+    "note": "F323 implemented and verified. Full checks passed208.7s; unchanged verify0.960s. Measurement report retained in docs/runs; benchmark script removed. No commit or publication requested."
   }
 }
