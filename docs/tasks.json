@@ -2672,7 +2672,7 @@
         "The web's event choices, the forwend package's types, openapi.yaml, the API docs and the public docs page list both new events"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "unit"
@@ -2761,11 +2761,18 @@
           "summary": "Pass; no blocking issues. Re-review after the follow-up, now in commit c704c641. Its diff from 7eb17741 is the follow-up I read. Earlier findings stand: invoice.open is sent only after a reorg (00054 guard :61-70, status() ledger.go:80-100, process.go:73, watcher.go:507); body and delivery code are type-generic; all product lists agree. Suggestions taken: (3) docs-content.ts:200 changelog says an endpoint gets the new events once chosen. (4) httpapi/tests/webhook_events_test.go:19-20 allEvents and PLAN.md:62-63 name both types. (5) ledger/webhooks_test.go:88-91 adds endpoints all and paid-only and expects 'to all', so delivery goes to endpoints that take the types and none to paid-only. (6) webhooks-copy.ts:29 'Payment dropped' matches the invoice history label. Before this, in a scratch copy, removing either mapping failed the test (webhooks_test.go:94, :108). A scratch test with endpoints showed delivery of both types. Ran: harness status/show, git diff 7eb17741, waited for verify (passed 2026-10-26T17:53:15Z). Ran no Go tests during verify; scratch deleted.",
           "at": "2026-10-26T18:04:07Z",
           "filesHash": "252a3938036b0828"
-        }
+        },
+        "commit": "fda632f3",
+        "doneAt": "2026-10-26T18:04:30Z"
       },
       "branch": "feat/f320-webhooks-tell-when-a-reorg-undoes-a-paym",
       "baseCommit": "a1399b3049953ca7a6187b2a3dd26ea19e364cc1",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f320-webhooks-tell-when-a-reorg-undoes-a-paym",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
