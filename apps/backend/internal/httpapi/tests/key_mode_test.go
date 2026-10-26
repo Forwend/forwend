@@ -173,3 +173,80 @@ func TestKeyMode(t *testing.T) {
 		t.Errorf("the retainer's months live %v (%v), want two in test mode", months, err)
 	}
 }
+
+func TestUSDInvoiceDoesNotFallBackWhenLiveTokensAreOff(t *testing.T) {
+	e := invoiceAPI(t)
+	e.enableArbUSDC(t)
+	e.exec(t, "UPDATE chains SET livemode = true WHERE chain_id = 421614")
+	e.exec(t, `INSERT INTO profile_tokens_off (profile_id, chain_id, token_contract) VALUES ($1, 421614, $2)`,
+		e.aliceProfile, arbUSDC)
+	r := e.post(t, "did:privy:alice", e.aliceProfile, "no-fallback", `{"amountUsd": "5"}`)
+	if r.status != http.StatusUnprocessableEntity || errorCode(r) != "invalid_value" {
+		t.Fatalf("all live tokens off: %d %v, want 422", r.status, r.body)
+	}
+}
+
+func TestPaymentLinksStayInTheirMode(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	path := "/v1/profiles/" + e.aliceProfile
+	const testID = "aaaaaaaa-0000-4000-8000-000000000031"
+	const liveID = "aaaaaaaa-0000-4000-8000-000000000032"
+	test := e.call(t, "PUT", path+"/links/"+testID, alice, "", `{"title": "Test", "amountUsd": "5"}`)
+	if test.status != http.StatusCreated || test.body["livemode"] != false {
+		t.Fatalf("test link: %d %v", test.status, test.body)
+	}
+	e.enableArbUSDC(t)
+	e.exec(t, "UPDATE chains SET livemode = true WHERE chain_id = 421614")
+	live := e.call(t, "PUT", path+"/links/"+liveID, alice, "", `{"title": "Live", "amountUsd": "5"}`)
+	if live.status != http.StatusCreated || live.body["livemode"] != true {
+		t.Fatalf("live link: %d %v", live.status, live.body)
+	}
+	key := e.call(t, "POST", path+"/keys", alice, "", `{"name": "Test server", "scopes": ["invoices.read", "invoices.write"]}`).body["secret"].(string)
+	const byKeyID = "aaaaaaaa-0000-4000-8000-000000000033"
+	if r := e.withKey(t, "PUT", path+"/links/"+byKeyID, key, `{"title": "Key test", "amountUsd": "5"}`); r.status != http.StatusCreated || r.body["livemode"] != false {
+		t.Fatalf("test key creates beside live networks: %d %v", r.status, r.body)
+	}
+	for _, method := range []string{"GET", "PUT"} {
+		body := ""
+		if method == "PUT" {
+			body = `{"title": "Changed", "amountUsd": "5"}`
+		}
+		if r := e.withKey(t, method, path+"/links/"+liveID, key, body); r.status != http.StatusNotFound {
+			t.Fatalf("%s live link with test key: %d %v", method, r.status, r.body)
+		}
+	}
+	list := e.withKey(t, "GET", path+"/links", key, "")
+	links, _ := list.body["links"].([]any)
+	if list.status != http.StatusOK || len(links) != 2 || links[0].(map[string]any)["linkId"] != byKeyID ||
+		links[1].(map[string]any)["linkId"] != testID {
+		t.Fatalf("test key's links: %d %v", list.status, list.body)
+	}
+	if r := e.call(t, "PUT", path+"/links/"+testID, alice, "", `{"title": "Still test", "amountUsd": "5"}`); r.status != http.StatusOK || r.body["livemode"] != false {
+		t.Fatalf("edited test link: %d %v", r.status, r.body)
+	}
+	for _, l := range []reply{test, live} {
+		slug := l.body["slug"].(string)
+		public := e.call(t, "GET", "/v1/links/"+slug, "", "", "")
+		if public.body["livemode"] != l.body["livemode"] {
+			t.Fatalf("public mode: %v, want %v", public.body, l.body["livemode"])
+		}
+		paid := e.call(t, "POST", "/v1/links/"+slug+"/pay", "", "pay-mode", `{}`)
+		if paid.status != http.StatusCreated {
+			t.Fatalf("pay: %d %v", paid.status, paid.body)
+		}
+		inv := e.call(t, "GET", "/v1/invoices/"+paid.body["payToken"].(string), "", "", "")
+		if inv.body["livemode"] != l.body["livemode"] {
+			t.Fatalf("invoice mode: %v, want %v", inv.body, l.body["livemode"])
+		}
+	}
+	e.exec(t, "UPDATE api_keys SET livemode = true")
+	list = e.withKey(t, "GET", path+"/links", key, "")
+	links, _ = list.body["links"].([]any)
+	if list.status != http.StatusOK || len(links) != 1 || links[0].(map[string]any)["linkId"] != liveID {
+		t.Fatalf("live key's links: %d %v", list.status, list.body)
+	}
+	if r := e.withKey(t, "PUT", path+"/links/"+testID, key, `{"title": "Changed", "amountUsd": "5"}`); r.status != http.StatusNotFound {
+		t.Fatalf("live key edits a test link: %d %v", r.status, r.body)
+	}
+}

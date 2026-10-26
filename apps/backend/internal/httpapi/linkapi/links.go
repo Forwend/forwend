@@ -17,7 +17,8 @@ import (
 
 func listLinks(links *link.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		list, err := links.List(r.Context(), r.PathValue("profileId"), mid.ProfileAccess(r).Stores)
+		access := mid.ProfileAccess(r)
+		list, err := links.List(r.Context(), r.PathValue("profileId"), access.Stores, access.Livemode)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -64,7 +65,8 @@ func putLink(links *link.Service) http.HandlerFunc {
 		active := body.Active == nil || *body.Active
 		l, created, err := links.Save(r.Context(), r.PathValue("profileId"), r.PathValue("linkId"), link.Details{
 			Title: body.Title, StoreID: body.StoreID, AmountUSD: body.AmountUSD, MinUSD: body.MinUSD,
-			MaxUSD: body.MaxUSD, EndsAt: body.EndsAt, MaxPayments: body.MaxPayments, Active: active})
+			MaxUSD: body.MaxUSD, EndsAt: body.EndsAt, MaxPayments: body.MaxPayments, Active: active,
+			Livemode: mid.ProfileAccess(r).Livemode})
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

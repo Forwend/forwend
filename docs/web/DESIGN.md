@@ -230,6 +230,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - It is laid out like Stores: a one-line intro with New link at its end, then a table.
   - The table shows the link with its `/l/<slug>`, the amount, a status badge and "N visits, M paid".
   - The status is On, Off, Ended (past its last day) or Cap reached; only On is green.
+  - Test links have a Test mode badge in lists and details, and the invoice warning on their public page.
   - New and Edit are form pages like Edit store, with Link, Amount and Limits panels.
   - Amount has two choice cards: A fixed amount, or The payer enters it with an optional min and max.
   - A new link opens on its page after saving, where the address shows with a Copy button.

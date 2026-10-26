@@ -2,9 +2,15 @@ package profile
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/forwend/forwend/apps/backend/internal/privy"
+	"github.com/forwend/forwend/apps/backend/internal/privy/privytest"
 )
 
 func TestSignUpOnce(t *testing.T) {
@@ -92,15 +98,25 @@ func TestSignUpRepairIsBounded(t *testing.T) {
 	}
 	defer func(old time.Duration) { RepairBudget = old }(RepairBudget)
 	RepairBudget = 300 * time.Millisecond
-	f.Lock()
-	f.Delay = 5 * time.Second
-	f.Unlock()
-	start := time.Now()
+	defer func(old time.Duration) { privy.Timeout = old }(privy.Timeout)
+	privy.Timeout = time.Second
+	var requests atomic.Int64
+	slow := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		<-r.Context().Done()
+	}))
+	defer slow.Close()
+	s.wallets = privy.NewClient(privytest.AppID, privytest.AppSecret, slow.URL)
 	got, _, err := s.SignUp(ctx, alice)
 	if err != nil || len(got) != 3 {
 		t.Fatalf("signup with a slow Privy: %+v, %v; want the three profiles", got, err)
 	}
-	if d := time.Since(start); d > 2*time.Second {
-		t.Fatalf("signup took %v; want about RepairBudget (%v)", d, RepairBudget)
+	if n := requests.Load(); n > 1 {
+		t.Fatalf("%d Privy requests; wallet repairs must share one budget", n)
+	}
+	for _, p := range got {
+		if p.Kind == Merchant && p.WalletAddress != "" {
+			t.Fatal("a timed-out repair stored a wallet")
+		}
 	}
 }

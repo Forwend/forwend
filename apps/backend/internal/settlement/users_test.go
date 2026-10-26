@@ -4,14 +4,45 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/forwend/forwend/apps/backend/internal/chaintest"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
+	"github.com/forwend/forwend/apps/backend/internal/watcher"
 )
 
 func TestConcurrentSignersRespectTheUserCap(t *testing.T) {
 	e := setup(t)
 	e.sponsoredHistory(t, SponsoredPerDay-1, "0x0000000000000000000000000000000000000001")
 	e.pay(t, 71)
-	e.pay(t, 72)
-	first, second := e.signer(t), e.signer(t)
+	const otherChain = chaintest.ChainID + 1
+	a := chaintest.StartChain(t, otherChain)
+	a.DeployFactory()
+	token := a.DeployToken()
+	a.Mint(token, "1000000000")
+	if _, err := e.pool.Exec(t.Context(), `
+		INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES ($1, 'evm', 'second-anvil', true);
+	`, otherChain); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.pool.Exec(t.Context(), `INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
+		VALUES ($1, 'evm', $2, 'USDC', 6, true)`, otherChain, token); err != nil {
+		t.Fatal(err)
+	}
+	client, err := ethclient.Dial(a.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(client.Close)
+	clients := map[uint64]*ethclient.Client{otherChain: client}
+	other := env{chainID: otherChain, anvil: a, pool: e.pool, client: client, token: token,
+		watch:  watcher.NewChain(e.pool, otherChain, a.RPC),
+		ledger: ledger.NewService(e.pool, ledger.BalanceFrom(clients), ledger.DeployedFrom(clients))}
+	if err := other.watch.Scan(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	other.pay(t, 72)
+	first, second := e.signer(t), other.signer(t)
 	second.users = first.users
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()

@@ -79,6 +79,13 @@ func (s *Service) Save(ctx context.Context, profileID, id string, d Details) (l 
 	}
 	slug := newSlug()
 	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		var live bool
+		if d.Livemode != nil {
+			live = *d.Livemode
+		} else if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM tokens t JOIN chains c ON c.chain_id = t.chain_id
+			WHERE t.enabled AND c.enabled AND c.livemode)`).Scan(&live); err != nil {
+			return fmt.Errorf("read payment link mode: %w", err)
+		}
 		var kind string
 		if err := tx.QueryRow(ctx, "SELECT kind FROM profiles WHERE id = $1", profileID).Scan(&kind); err != nil {
 			return fmt.Errorf("read profile: %w", err)
@@ -101,15 +108,16 @@ func (s *Service) Save(ctx context.Context, profileID, id string, d Details) (l 
 		// An id of another profile's link neither inserts (the conflict) nor updates (the WHERE): no row comes back.
 		err := tx.QueryRow(ctx, `
 			INSERT INTO payment_links (id, profile_id, store_id, slug, title, amount_cents, min_cents, max_cents, ends_at,
-			    max_payments, active)
-			VALUES ($1, $2, nullif($3, '')::uuid, $4, $5, nullif($6, 0), nullif($7, 0), nullif($8, 0), $9, nullif($10, 0), $11)
+			    max_payments, active, livemode)
+			VALUES ($1, $2, nullif($3, '')::uuid, $4, $5, nullif($6, 0), nullif($7, 0), nullif($8, 0), $9, nullif($10, 0), $11, $12)
 			ON CONFLICT (id) DO UPDATE SET store_id = excluded.store_id, title = excluded.title,
 			    amount_cents = excluded.amount_cents, min_cents = excluded.min_cents, max_cents = excluded.max_cents,
 			    ends_at = excluded.ends_at, max_payments = excluded.max_payments, active = excluded.active,
 			    updated_at = now()
 			    WHERE payment_links.profile_id = excluded.profile_id
+			      AND ($13::boolean IS NULL OR payment_links.livemode = $13)
 			RETURNING xmax = 0`, id, profileID, store, slug, d.Title, amount, low, high, d.EndsAt, maxPayments,
-			d.Active).Scan(&created)
+			d.Active, live, d.Livemode).Scan(&created)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}

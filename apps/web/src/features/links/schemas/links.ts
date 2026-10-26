@@ -18,6 +18,7 @@ export const linkBodySchema = z.object({
 
 /** One payment link (apps/backend/api/openapi.yaml, PaymentLink); storeId is null for a freelancer. */
 export const linkSchema = linkBodySchema.extend({
+  livemode: z.boolean(),
   linkId: z.guid(),
   slug: z.string().regex(LINK_SLUG_PATTERN),
   storeId: z.guid().nullable(),
@@ -32,6 +33,7 @@ export const linksSchema = z.object({ links: z.array(linkSchema) });
 
 /** GET /v1/links/{slug}: the link as its payer sees it (R-142). payee is the billing name, null before it is saved. */
 export const publicLinkSchema = z.object({
+  livemode: z.boolean(),
   slug: z.string().regex(LINK_SLUG_PATTERN),
   title: z.string(),
   payee: z.string().nullable(),

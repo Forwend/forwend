@@ -7,6 +7,49 @@ import (
 	"time"
 )
 
+func TestRetainerStartedFromReviseMakesLaterMonths(t *testing.T) {
+	ctx := context.Background()
+	pool, profile := open(t)
+	s := NewService(pool)
+	now, _ := time.Parse(time.DateOnly, "2027-01-10")
+	s.now = func() time.Time { return now }
+	original, _, err := s.Create(ctx, profile, "original", Request{AmountUSD: "5"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, _, err := s.Create(ctx, profile, "revised", Request{AmountUSD: "6", Replaces: original.ID,
+		Repeat: &Repeat{}, Details: Details{DueDate: "2027-01-31", ClientEmail: "ap@bob.example"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A stored template can contain the first invoice's one-time Revise action.
+	if _, err := pool.Exec(ctx, `UPDATE retainers SET request = request || jsonb_build_object('Replaces', $1::text)`,
+		original.ID); err != nil {
+		t.Fatal(err)
+	}
+	for _, day := range []string{"2027-02-21", "2027-03-24"} {
+		now, _ = time.Parse(time.DateOnly, day)
+		for range 2 {
+			if err := s.MakeRetainerInvoices(ctx); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	var months, sends, replacements int
+	if err := pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM retainer_invoices),
+		(SELECT count(*) FROM outbox_events WHERE kind = 'invoice.sent'),
+		(SELECT count(*) FROM history_events WHERE kind = 'invoice.replaced')`).Scan(&months, &sends, &replacements); err != nil {
+		t.Fatal(err)
+	}
+	if months != 3 || sends != 2 || replacements != 1 {
+		t.Fatalf("months %d, sends %d, replacements %d; want 3, 2, 1", months, sends, replacements)
+	}
+	old, err := s.GetOfProfile(ctx, profile, original.ID)
+	if err != nil || old.ReplacedBy == nil || old.ReplacedBy.ID != first.ID {
+		t.Fatalf("original replacement: %+v (%v), want %s", old.ReplacedBy, err, first.ID)
+	}
+}
+
 // R-98: each month's due day is the first due date's day, or the month's last day when shorter.
 func TestRetainerMakesEachMonthOnce(t *testing.T) {
 	ctx := context.Background()

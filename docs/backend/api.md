@@ -106,6 +106,7 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   - Past a cap the change is still added, and the owner's read has `clientEmailed: false` for it.
 - Retainers (R-98): each worker round (`invoice.MakeRetainerInvoices`) makes a running retainer's next invoice.
   - Each later month is due on the first due date's day, or the month's last day when it is shorter.
+  - A retainer started from Revise replaces the old invoice only once; later months never repeat that action.
   - It is made 7 UTC days before that due date, from the stored request, with its own number and receive address.
   - A month whose due date passed unmade is skipped: a past first due date or an outage sends no late invoices.
   - Its checkout stays open to the end of the 60th day after the due date (D-80).
@@ -171,8 +172,9 @@ R-136; the full schema is in openapi.yaml. Members reach it with `tokens.read` a
 - An enabled token is on for a profile until the owner turns it off.
 - `GET /v1/profiles/{profileId}/tokens` lists the enabled tokens with `on`, by chain id.
 - `PUT /v1/profiles/{profileId}/tokens` takes `{"off": [{chainId, token}]}` and replaces the list.
-  - An unknown or disabled token is 422, and so is turning every token off; nothing changes then.
-- A store's `tokensOff` turns more off for its invoices, with the same rules.
+  - An unknown or disabled token is 422. Each available mode keeps at least one token on; otherwise nothing changes.
+- A store's `tokensOff` combines with its profile preferences, keeping one token on per available mode.
+  - Profile changes that would leave any store without a token in a mode are refused.
   - Reads list only enabled tokens: one switched off for everyone leaves the lists, and the next save drops it.
 - Create leaves out the tokens off for the profile or its store; a fixed token that is off is 422.
   - Nothing left is 422 too.
@@ -242,6 +244,10 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
 R-140, D-54, D-94; the full schema is in openapi.yaml. Members reach them with `invoices.read` and `invoices.write` (D-93).
 
 - A payment link is a template a payer pays through at `/l/<slug>`; opening it creates nothing.
+  - Each link has permanent `livemode`; every payer invoice keeps that mode.
+  - A key creates links in its mode and only reads, lists or edits links in that mode.
+  - Owner creates choose live mode when enabled live tokens exist; otherwise test mode.
+  - Owner edits preserve the original mode, including links made before live networks exist.
 - `GET /v1/profiles/{profileId}/links` lists the profile's links, newest first, each with its `visits` and `paid` counts.
   - `paid` counts the link's invoices that are paid or settled.
   - A Developer or Finance member sees only the links of their stores.
@@ -284,7 +290,9 @@ R-144, D-95; the full schema is in openapi.yaml. Owners and Admins manage keys w
   - Its lists, reads, actions, activity, owed and webhook events leave out the other mode; such an invoice is 404.
   - Its creates are of its mode: a token of the other mode is 422, and a replay of another mode's create is 409.
   - A Revise of the other mode's invoice is 404. A Revise or a retainer's later month keeps the mode it follows.
-  - A payer-chooses invoice's options are all of one mode. A create without a key takes live options when there are some.
+  - A payer-chooses invoice's options are all of one mode.
+  - An unscoped USD create chooses live mode before profile and store token preferences when enabled live options exist.
+  - Filtering out those live tokens returns 422; it never falls back to test mode.
 - `POST /v1/profiles/{profileId}/keys/{keyId}/roll` makes its new key, with a fresh sign-in, and answers 201 with it.
   - `overlapHours` (0–168, default 24) is how long the old key keeps working. A key rolls once.
 - `DELETE /v1/profiles/{profileId}/keys/{keyId}` revokes the key at once (204). An unknown or stopped key is 404.

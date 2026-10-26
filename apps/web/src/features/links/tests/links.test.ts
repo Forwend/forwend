@@ -3,6 +3,7 @@ import { endsAtOf, linkState } from "@/features/links/lib/links";
 import type { Link } from "@/features/links/types/links";
 
 const link: Link = {
+  livemode: false,
   linkId: "aaaaaaaa-0000-4000-8000-000000000001",
   slug: "k3f9q2m7x1ab",
   title: "Logo design",

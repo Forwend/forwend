@@ -3,6 +3,7 @@ import { LINK_LIMITS, LINK_STATES } from "@/features/links/constants/links";
 /** R-140. */
 export const LINKS_COPY = {
   title: "Payment links",
+  testMode: "Test mode",
   add: "New link",
   newTitle: "New payment link",
   editTitle: "Edit payment link",

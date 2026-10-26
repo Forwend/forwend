@@ -151,6 +151,9 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
   return (
     <section aria-labelledby="link-amount" className="flex flex-col gap-6">
       <Payee name={link.payee ?? link.title} subtitle={COPY.title} brand={link.brand} />
+      {link.livemode ? null : (
+        <p className="rounded-md bg-warning-soft px-4 py-3 text-sm text-warning">{COPY.testMode}</p>
+      )}
       {link.payee ? <p className="text-base break-words text-ink">{link.title}</p> : null}
       {link.state === LINK_STATES.on ? (
         <Form onSubmit={submit} noValidate>

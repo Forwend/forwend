@@ -133,6 +133,8 @@ export const PAY_COPY = {
 /** R-142: a payment link's page, before Pay makes the payer's invoice. */
 export const LINK_PAY_COPY = {
   title: "Payment link",
+  testMode:
+    "Test mode: payments through this link use testnet tokens, which have no value. Don't send real money.",
   loading: "Loading the payment link",
   amount: "Amount",
   amountField: "Amount (USD)",

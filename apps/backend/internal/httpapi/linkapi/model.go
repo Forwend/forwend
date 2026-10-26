@@ -31,6 +31,7 @@ type linkJSON struct {
 	EndsAt      *string `json:"endsAt"`
 	MaxPayments *int    `json:"maxPayments"`
 	Active      bool    `json:"active"`
+	Livemode    bool    `json:"livemode"`
 	Visits      int64   `json:"visits"`
 	Paid        int64   `json:"paid"`
 	CreatedAt   string  `json:"createdAt"`
@@ -48,7 +49,7 @@ func usd(cents int64) *string {
 
 func toLinkJSON(l link.Link) linkJSON {
 	out := linkJSON{LinkID: l.ID, Slug: l.Slug, Title: l.Title, AmountUSD: usd(l.AmountCents), MinUSD: usd(l.MinCents),
-		MaxUSD: usd(l.MaxCents), Active: l.Active, Visits: l.Visits, Paid: l.Paid,
+		MaxUSD: usd(l.MaxCents), Active: l.Active, Visits: l.Visits, Paid: l.Paid, Livemode: l.Livemode,
 		CreatedAt: l.CreatedAt.UTC().Format(time.RFC3339), UpdatedAt: l.UpdatedAt.UTC().Format(time.RFC3339)}
 	if l.StoreID != "" {
 		out.StoreID = &l.StoreID
@@ -73,6 +74,7 @@ type publicLinkJSON struct {
 	MinUSD    *string          `json:"minUsd"`
 	MaxUSD    *string          `json:"maxUsd"`
 	State     string           `json:"state"`
+	Livemode  bool             `json:"livemode"`
 }
 
 type publicBrandJSON struct {
@@ -83,7 +85,7 @@ type publicBrandJSON struct {
 
 func toPublicLinkJSON(p link.Public) publicLinkJSON {
 	out := publicLinkJSON{Slug: p.Slug, Title: p.Title, Payee: httpio.OrNull(p.Payee), AmountUSD: usd(p.AmountCents),
-		MinUSD: usd(p.MinCents), MaxUSD: usd(p.MaxCents), State: p.State}
+		MinUSD: usd(p.MinCents), MaxUSD: usd(p.MaxCents), State: p.State, Livemode: p.Livemode}
 	if p.StoreID != "" {
 		out.Brand = &publicBrandJSON{StoreID: p.StoreID, Color: httpio.OrNull(p.BrandColor)}
 		if p.LogoAt != nil {

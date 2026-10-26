@@ -108,11 +108,11 @@ func inStores(r *http.Request, s *auth.Service, access auth.Access) error {
 		}
 	}
 	if id := r.PathValue("linkId"); id != "" {
-		store, found, err := s.LinkStore(r.Context(), r.PathValue("profileId"), id)
+		store, live, found, err := s.LinkStore(r.Context(), r.PathValue("profileId"), id)
 		if err != nil {
 			return err
 		}
-		if found && !access.InStores(store) {
+		if found && (!access.InStores(store) || access.Livemode != nil && *access.Livemode != live) {
 			return link.ErrNotFound
 		}
 	}

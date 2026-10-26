@@ -33,6 +33,7 @@ type Link struct {
 	EndsAt      *time.Time
 	MaxPayments int // 0 for no cap
 	Active      bool
+	Livemode    bool
 	Visits      int64
 	Paid        int64
 	CreatedAt   time.Time
@@ -41,6 +42,7 @@ type Link struct {
 
 // Details are what the owner sets; the amounts are USD decimals like "12.50", "" for none.
 type Details struct {
+	Livemode    *bool
 	Title       string
 	StoreID     string
 	AmountUSD   string
