@@ -1552,7 +1552,7 @@
         "The queue holds a task for each of R-150 to R-155, and one for Q-14"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check"
       ],
@@ -1591,13 +1591,20 @@
         "taskHash": "ad5dd6bdd788dbe3",
         "filesHash": "cf2a8f7ce9993b78",
         "proof": {
-          "1": "docs-check: R-150 to R-155, D-100 to D-104 and Q-14 in docs/PROJECT.md",
-          "2": "docs-check: F310 to F315 and F316 queued"
-        }
+          "1": "docs-check: PROJECT.md rows",
+          "2": "docs-check: queue"
+        },
+        "commit": "857d2c2",
+        "doneAt": "2026-10-26T00:34:33Z"
       },
       "branch": "docs/f309-plan-11-6-is-defined-its-requirements-de",
       "baseCommit": "a2f9f033da587b4601990d7d342a5c2cac0805ba",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f309-plan-11-6-is-defined-its-requirements-de",
+        "base": "main"
+      }
     },
     {
       "id": "F310",
