@@ -499,7 +499,11 @@ def run_check(root, check, log_path):
         except BaseException:
             stop(process)
             raise
-    return result('passed' if code == 0 else 'failed', code)
+    if code == 0:
+        # Only a failure's log is ever read; a passed one would only pile up in docs/runs.
+        log_path.unlink(missing_ok=True)
+        return {**result('passed', 0), 'log': ''}
+    return result('failed', code)
 
 
 def stop(process):
@@ -853,7 +857,7 @@ def cmd_show(root, args):
     print('last: ' + evidence_line(task))
     if args.history:
         for check in evidence.get('checks') or []:
-            print(f'  {check.get("id")}: {check.get("outcome")} exit {check.get("exit")} {check.get("seconds")}s {check.get("log")}')
+            print(f'  {check.get("id")}: {check.get("outcome")} exit {check.get("exit")} {check.get("seconds")}s {check.get("log")}'.rstrip())
     if evidence.get('changedDuringRun'):
         print('  checks changed files: ' + ', '.join(evidence['changedDuringRun']))
     if evidence.get('commit'):
@@ -1076,10 +1080,11 @@ def cmd_verify(root, args):
         else:
             hits = [f'{name} (matches {rule})' for name in touched for rule in path_rules if fnmatch.fnmatch(name, rule)]
             keep_log = runs / f'{task["id"]}-{stamp}-keep.log'
-            keep_log.write_text(''.join(f'changed a must-not-change path: {hit}\n' for hit in hits)
-                                or 'no must-not-change path changed\n', encoding='utf-8')
+            if hits:
+                keep_log.write_text(''.join(f'changed a must-not-change path: {hit}\n' for hit in hits),
+                                    encoding='utf-8')
             results.append({'id': 'keep', 'outcome': 'failed' if hits else 'passed', 'exit': 1 if hits else 0,
-                            'seconds': 0.0, 'log': keep_log.relative_to(root).as_posix()})
+                            'seconds': 0.0, 'log': keep_log.relative_to(root).as_posix() if hits else ''})
     after = state.file_digests()
     changed = sorted(name for name in set(before) | set(after) if before.get(name) != after.get(name))
     passed = not changed and all(result['outcome'] == 'passed' for result in results)
@@ -1104,7 +1109,7 @@ def cmd_verify(root, args):
     else:
         print(f'verify {task["id"]}: FAILED')
     for result in results:
-        print(f'  {result["id"]}: {result["outcome"]} exit {result["exit"]} {result["seconds"]}s {result["log"]}')
+        print(f'  {result["id"]}: {result["outcome"]} exit {result["exit"]} {result["seconds"]}s {result["log"]}'.rstrip())
     if changed:
         print('verification rejected: inputs changed during checks: ' + ', '.join(changed[:5]))
     for result in [result for result in results if result['outcome'] != 'passed'][:2]:
@@ -1431,7 +1436,7 @@ def cmd_check(root, args):
     stamp = now().replace('-', '').replace(':', '')
     results = [run_check(root, checks[name], runs / f'check-{stamp}-{name}.log') for name in selected]
     for result in results:
-        print(f'{result["id"]}: {result["outcome"]} ({result["log"]})')
+        print(f'{result["id"]}: {result["outcome"]}' + (f' ({result["log"]})' if result['log'] else ''))
         if result['outcome'] != 'passed':
             print(tail(root / result['log']))
     return 0 if all(result['outcome'] == 'passed' for result in results) else 1
@@ -1513,7 +1518,7 @@ def cmd_wrapup(root, args):
         state.data['lastWrapup'] = {'at': now(), 'clean': not found, 'problems': found[:10], 'note': args.note}
         state.save()
     for result in results:
-        print(f'  {result["id"]}: {result["outcome"]} exit {result["exit"]} {result["seconds"]}s {result["log"]}')
+        print(f'  {result["id"]}: {result["outcome"]} exit {result["exit"]} {result["seconds"]}s {result["log"]}'.rstrip())
     if leftovers is None:
         print('debug leftovers were not checked: this is not a git repository')
     if pending:

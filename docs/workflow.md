@@ -4,7 +4,7 @@ Entry point: `python3 scripts/harness.py`. Add `-h` after any command for option
 Check definitions live only in [config.json](config.json); staging CI runs the required and CI-only checks. Checks that are neither (images-check, lighthouse,
 diagrams) run only when a task names them.
 Open task state lives in `tasks.json` (edit through the runner); completed records live in `archive/`;
-logs live in ignored `runs/`.
+logs of checks that did not pass live in ignored `runs/`; a passed check leaves none.
 Runner regression tests live in `tests/test_harness.py`. No installed skill is needed to use this workflow.
 
 ## One task at a time
