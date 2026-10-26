@@ -10,6 +10,8 @@ test-results/
 playwright-report/
 .env*
 !.env.example
+# npm auth: the publish token stays on this machine
+.npmrc
 .DS_Store
 apps/web/.impeccable/review/
 
@@ -17,3 +19,6 @@ __pycache__/
 
 # Impeccable design hook cache (local tool state)
 **/.impeccable/hook.cache.json
+
+# The forwend package's build output
+packages/node/dist/

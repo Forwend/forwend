@@ -2045,7 +2045,7 @@
       "type": "feat",
       "behavior": "A Node package calls the API and verifies webhooks",
       "acceptance": [
-        "@forwend/node creates, gets and lists invoices and lists webhook events with a key; list pages through nextCursor",
+        "The forwend package creates, gets and lists invoices and lists webhook events with a key; list pages through nextCursor",
         "A create sends an Idempotency-Key, and makes one when none is given; an error answer throws a ForwendError with the status and code",
         "verifyWebhook checks Standard Webhooks headers against any of the secrets, refuses a timestamp more than 5 minutes off, and returns the event",
         "The package has no runtime dependencies"
@@ -2053,7 +2053,7 @@
       "dependsOn": [
         "F313"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit"
       ],
@@ -2064,9 +2064,86 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-26 review fail by reviewer: BLOCKING 1: packages/node/src/webhooks.ts:50-53 accepts an empty HMAC key. A secret of \"\", \"whsec_\" or \"whsec_!!!!\" decodes to 0 bytes, and a signature made with an empty key verifies: a probe got {\"forged\":true} back. A common config like secrets: process.env.X ?? \"\" lets anyone forge invoice.paid. The Standard Webhooks and Svix libraries throw on an empty secret. Fix: refuse a secret whose decoded key is empty, plus a test. BLOCKING 2: packages/node/src/client.ts:91-92 calls JSON.parse before the response.ok check. An HTML 502 or a text 429 from a proxy throws SyntaxError with no status, not ForwendError (acceptance 2, R-154). The fallback at :97-98 is unreachable for these bodies; only an empty body works. Fix: tolerate a non-JSON error body, plus a test. NON-BLOCKING: webhooks.ts:36-37 an invalid now Date or toleranceSeconds NaN turns the timestamp check off (NaN compares false); !(abs<=tol) fails closed. webhooks.ts:18 name.toLowerCase() is dead, since names are already lowercase; Title-Case plain-object keys fail closed as missing. webhooks.ts:17 instanceof Headers misses polyfilled Headers (fails closed). webhooks.ts:40-43 both ternary branches are the same; Buffer.from(string|Uint8Array) typechecks. Test gaps: removing the digits regex or the length check is not caught; Authorization is checked only on create; q is untested. types.ts:37 CreateInvoice lacks lines, agreedValue, reminders, replaces and repeat. paymentStatus, settlementStatus, refundStatus, ListInvoices.status and Held.reason are string, not unions of the openapi enums. turbo.json build outputs lack dist/**, so a cache hit won't restore packages/node/dist; there is no consumer yet. PLAN.md:63 still says generated Node SDK (D-103 says hand-written). PLAN.md:81 (11.9.4) does not name @forwend/node. docs/web/structure.md:183-186 names only design-tokens as a test/ exception. The .gitignore line sits under the Impeccable comment. OK: routes and list params match openapi and api.md; Idempotency-Key is randomUUID per call; paging stops on null nextCursor; a 204 returns undefined; the key is never logged; JSON.parse runs only after a match; timingSafeEqual has a length guard; v1 prefix and multiple signatures work; the tolerance applies both ways and exactly 300 s passes; the spec vector matches, and Go client_test.go:15 pins the same vector; a Uint8Array view with an offset and Title-Case fetch Headers verify; no runtime deps; private:true blocks publish; the lockfile adds only the importer; TS 7 NodeNext emit works and dist imports in plain Node 26. RAN: pnpm exec vitest run (7 passed); tsc --noEmit -p tsconfig.json (0); tsc -p tsconfig.build.json --outDir into the scratchpad (0); node probes on that dist; biome check packages/node (0); scripts/check-docs.py (0 errors). packages/node/dist (15:32) came from verify's root build, not this review.",
+        "2026-10-26 review fail by reviewer: Re-review after the fixes, the .npmrc additions and the rename. Both earlier blockers are fixed and each test fails when its fix is reverted (mutation run). BLOCKING: package.json:2 (root) and packages/node/package.json:2 are both named forwend. pnpm --filter forwend exec pwd selects the repo root and packages/node. So packages/node/AGENTS.md:6 pnpm --filter forwend test and build also run the root's turbo run test and turbo run build for the whole repo. .npmrc.example:3 selects the root too. A later workspace dependency on forwend (PLAN 11.9.5) would be ambiguous. Fix: rename the root package (such as forwend-monorepo), or use --filter ./packages/node. turbo ls is fine: it lists 6 packages, root excluded. NON-BLOCKING: webhooks.test.ts:121-127 signs the 16-byte case with the empty key, so the signature check refuses it. Changing MIN_KEY_BYTES to 1 passes all 9 tests. Sign it with the 16-byte key. client.ts:97-103 the non-JSON 2xx invalid_response path is untested; removing it passes all tests. client.test.ts:106,112 the requests array is never read. errors.ts:1 says code is the API's error code; the client also makes unknown and invalid_response. PLAN.md:81 the 11.9.4 sentence is 28 words (D-84 max 25), and 0.x until the message protocol is stable now reads as covering forwend. AGENTS.md:36-37 the secrets rule names only package .env files; the root .npmrc token is an exception not written there. .npmrc.example:3 publishing fails today (private: true, no version); say it waits for the 11.9.4 approval. webhooks.ts:33-36 a bad secret throws the same class as a forged request; its message says whsec_ is required, but the code accepts raw base64. Optional. Agree that instanceof Headers can stay; it fails safe. OK: the 24-byte minimum refuses empty, short and junk secrets and a mixed list; a 32-byte newSecret-style secret verifies. HTML 502, text 429 and empty 503 are ForwendError with status, code unknown; HTML 200 is invalid_response; JSON 404 keeps its code; the key is not in any error. The NaN-safe timestamp check works. Status unions match openapi enums, and CreateInvoice now covers every CreateInvoiceRequest field. turbo dist/** affects no other package. .npmrc is ignored at any depth, and .npmrc.example is tracked with only a placeholder. No @forwend/node left except the old review note. RAN: vitest run (9 passed), tsc --noEmit (0), biome check packages/node turbo.json (0), check-docs (0 errors), a tsc build into the scratchpad with node probes, 5 mutations on a scratch copy, pnpm --filter forwend exec pwd, pnpm -r ls --depth -1, turbo ls. Waited for verify 13:55:26Z: passed, 7 of 7 checks.",
+        "2026-10-26 review pass by reviewer: Third review, of the final tree. No blocking findings. The earlier blocker is fixed: root package.json:2 is now forwend-monorepo. pnpm --filter forwend exec pwd and pnpm --filter ./packages/node exec pwd each select only packages/node. git grep finds no other use of the root's old name; the Go lock-key comments and CI Postgres names are unrelated. The lockfile still adds only the packages/node importer. packages/node/AGENTS.md:6 and .npmrc.example:3 use --filter ./packages/node. The non-blocking fixes are confirmed. webhooks.test.ts:120-135 signs each short secret with its own key, and MIN_KEY_BYTES=1 now fails it. client.test.ts covers an HTML 502 (unknown) and an HTML 200 (invalid_response). Removing the invalid_response branch fails it, and so does reverting to a plain JSON.parse. Removing the key-length check also fails. errors.ts:1-4 names both client codes. The bad-secret message says whsec_ is optional. PLAN.md:81-83 is in short sentences, with 0.x limited to the browser packages. AGENTS.md:38 records the root .npmrc as the one root secret. .npmrc.example:4 says publishing waits for 11.9.4. NON-BLOCKING: instanceof Headers misses a polyfilled Headers but fails safe; agreed to leave it. packages/node/dist exists from verify's root build; it is gitignored, so remove it before finishing (AGENTS.md cleanup rule). RAN: tests in an isolated scratch copy, with Vitest caches kept in scratch (a marker check found no new files under the repo's node_modules): baseline 9 of 9 passed, and 4 mutations each failed their test. tsc --noEmit (0), biome check packages/node turbo.json package.json (0), check-docs (0 errors), pnpm filter checks with exec pwd, git grep for the root name. Waited for verify 14:07:28Z: passed, 7 of 7."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-26T14:07:28Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 183.4,
+            "log": ""
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 263.1,
+            "log": ""
+          }
+        ],
+        "taskHash": "6b4ff1be36ee808c",
+        "filesHash": "a44a41077ee72c01",
+        "proof": {
+          "1": "unit: packages/node/test/client.test.ts (package forwend; the root is now forwend-monorepo, so the filter selects only it) gets an invoice, lists invoices with limit, status and q and webhook events through every nextCursor page, with the key's Bearer header on each request",
+          "2": "unit: client.test.ts sends a given Idempotency-Key on create and makes a UUID one when none is given, and turns a 409 idempotency_conflict JSON answer, an HTML 502 and a non-JSON 200 into a ForwendError with the status and code",
+          "3": "unit: packages/node/test/webhooks.test.ts verifies the Standard Webhooks spec's example, both signatures of a rotation with either secret in any order and fetch Headers, and refuses a wrong secret, a changed body, a v2 or cut-off signature, a timestamp 301 s off either way or not an integer, a broken clock or tolerance, missing headers, and a secret under 24 bytes even when the request is signed with it",
+          "4": "unit: client.test.ts checks package.json has no dependencies or peerDependencies"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Third review, of the final tree. No blocking findings. The earlier blocker is fixed: root package.json:2 is now forwend-monorepo. pnpm --filter forwend exec pwd and pnpm --filter ./packages/node exec pwd each select only packages/node. git grep finds no other use of the root's old name; the Go lock-key comments and CI Postgres names are unrelated. The lockfile still adds only the packages/node importer. packages/node/AGENTS.md:6 and .npmrc.example:3 use --filter ./packages/node. The non-blocking fixes are confirmed. webhooks.test.ts:120-135 signs each short secret with its own key, and MIN_KEY_BYTES=1 now fails it. client.test.ts covers an HTML 502 (unknown) and an HTML 200 (invalid_response). Removing the invalid_response branch fails it, and so does reverting to a plain JSON.parse. Removing the key-length check also fails. errors.ts:1-4 names both client codes. The bad-secret message says whsec_ is optional. PLAN.md:81-83 is in short sentences, with 0.x limited to the browser packages. AGENTS.md:38 records the root .npmrc as the one root secret. .npmrc.example:4 says publishing waits for 11.9.4. NON-BLOCKING: instanceof Headers misses a polyfilled Headers but fails safe; agreed to leave it. packages/node/dist exists from verify's root build; it is gitignored, so remove it before finishing (AGENTS.md cleanup rule). RAN: tests in an isolated scratch copy, with Vitest caches kept in scratch (a marker check found no new files under the repo's node_modules): baseline 9 of 9 passed, and 4 mutations each failed their test. tsc --noEmit (0), biome check packages/node turbo.json package.json (0), check-docs (0 errors), pnpm filter checks with exec pwd, git grep for the root name. Waited for verify 14:07:28Z: passed, 7 of 7.",
+          "at": "2026-10-26T14:15:20Z",
+          "filesHash": "a44a41077ee72c01"
+        }
+      },
+      "branch": "feat/f314-a-node-package-calls-the-api-and-verifie",
+      "baseCommit": "14622e5c32e2c3c432dbce6ea51a1251cee4dfe6",
+      "failedVerifies": 0
     },
     {
       "id": "F315",
