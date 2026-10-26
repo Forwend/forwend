@@ -1617,7 +1617,7 @@
       "dependsOn": [
         "F309"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit"
       ],
@@ -1690,8 +1690,8 @@
         "taskHash": "b2aa774dc4dcb29e",
         "filesHash": "e06d7d145cee7e0c",
         "proof": {
-          "1": "unit: TestOpenAPINamesEveryRoute (internal/httpapi) passes on the current 83 routes",
-          "2": "unit: it fails on an extra or a missing operation, an options op, a quoted path, and routes with no method, a split line, a const or in another file"
+          "1": "unit: TestOpenAPINamesEveryRoute",
+          "2": "unit: TestOpenAPINamesEveryRoute mutation probes"
         },
         "review": {
           "result": "pass",
@@ -1699,11 +1699,18 @@
           "summary": "Re-review after the fail; pass, no blocking finding. The test is now apps/backend/internal/httpapi/openapi_test.go (package httpapi_test, beside server_test.go); tests/openapi_test.go is gone. It reads every non-test *.go and */*.go file in internal/httpapi. Probed through go test -overlay on copies in a fresh scratch folder (removed). These now fail with file:line, 'write the route as one literal': a pattern with no method, a split line, a const pattern. A route in another module file fails with 'has no operation'. On the spec side these fail too: a method mismatch (both ways); an options op with no route ('has no route'); a quoted path and a path line with a trailing comment ('openapi.yaml:2202: write a path as a plain /path: line'). Path-level parameters: and an extra post under webhooks: are ignored. Baseline passes: 83 routes, 83 operations. Non-blocking: (a) a route two folders down (internal/httpapi/keyapi/sub/x.go) is still missed; none exists today, and filepath.WalkDir would cover every depth. (b) The literal regex leaves out TRACE while methodLine reads trace:. A TRACE route fails with the misleading 'write the route as one literal'; pick one method list. (c) A column-0 comment inside paths: drops every later operation, so the error names routes, not the comment; still loud. The /healthz exception and the docs are fine: the new api.md bullets are 15 and 19 words. Ran: go test ./internal/httpapi/ -run TestOpenAPINamesEveryRoute -count=1 -v (PASS); go test -overlay with a copy that moves into a scratch copy of internal/httpapi, 7 route probes and 6 spec probes.",
           "at": "2026-10-26T00:59:30Z",
           "filesHash": "e06d7d145cee7e0c"
-        }
+        },
+        "commit": "81c95ea",
+        "doneAt": "2026-10-26T00:59:54Z"
       },
       "branch": "test/f310-a-test-ties-openapi-yaml-to-the-register",
       "baseCommit": "3dbe95cf1d78acca72b0ec4bbf2bd99148a7becc",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "test/f310-a-test-ties-openapi-yaml-to-the-register",
+        "base": "main"
+      }
     },
     {
       "id": "F311",
