@@ -590,8 +590,8 @@ paths:
         the same number. The insert also copies the profile's billing details as issuer (null without them). The number,
         title, note, due and supply dates, line items, agreed value, sender name, client and issuer never change after
         creation. Send chainId, token and amount for one fixed token and network, or amountUsd alone to let the payer
-        choose (R-56): the invoice then accepts every enabled token on every chain the worker watches, less the ones the
-        profile or its store has off (R-136), each as its own
+        choose (R-56): the invoice then accepts every enabled token on every chain the worker watches, of one mode (R-156),
+        less the ones the profile or its store has off (R-136), each as its own
         option with the amount in its decimals at 1 USD per stablecoin (D-75), its own on-chain id and receive address
         (D-76). Each option counts toward the profile's limits on open receive addresses.
       parameters:
@@ -2562,7 +2562,7 @@ components:
         keyId: { type: string, format: uuid }
         name: { type: string, minLength: 1, maxLength: 100 }
         storeId: { type: [string, "null"], format: uuid, description: "A merchant key's store; null for a freelancer's." }
-        livemode: { type: boolean, description: "False: a test-mode key (D-87). Live keys wait for a live chain." }
+        livemode: { type: boolean, description: "False: a test-mode key (D-87). Live keys wait for a live chain. A key reaches only invoices of its mode (R-156)." }
         last4: { type: string, pattern: "^[0-9A-Za-z]{4}$", description: The last 4 characters of its text. }
         scopes:
           type: array

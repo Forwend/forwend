@@ -72,6 +72,7 @@ func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 			Replaces: body.Replaces,
 			StoreID:  body.StoreID,
 			Stores:   mid.ProfileAccess(r).Stores,
+			Livemode: mid.ProfileAccess(r).Livemode,
 		})
 		if err != nil {
 			httpio.WriteError(w, r, err)
@@ -98,8 +99,9 @@ func listInvoices(invoices *invoice.Service) http.HandlerFunc {
 			return
 		}
 		query := r.URL.Query()
+		access := mid.ProfileAccess(r)
 		page, err := invoices.List(r.Context(), r.PathValue("profileId"), query.Get("cursor"), limit, query.Get("status"), q,
-			mid.ProfileAccess(r).Stores)
+			access.Stores, access.Livemode)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -243,7 +245,8 @@ func getProfileInvoice(invoices *invoice.Service) http.HandlerFunc {
 // R-95.
 func listOwed(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		owed, err := invoices.Owed(r.Context(), r.PathValue("profileId"), mid.ProfileAccess(r).Stores)
+		access := mid.ProfileAccess(r)
+		owed, err := invoices.Owed(r.Context(), r.PathValue("profileId"), access.Stores, access.Livemode)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -271,7 +274,8 @@ func listEvents(invoices *invoice.Service) http.HandlerFunc {
 			}
 			limit = n
 		}
-		events, err := invoices.Events(r.Context(), r.PathValue("profileId"), limit, mid.ProfileAccess(r).Stores)
+		access := mid.ProfileAccess(r)
+		events, err := invoices.Events(r.Context(), r.PathValue("profileId"), limit, access.Stores, access.Livemode)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -374,7 +378,8 @@ func listWebhookEvents(invoices *invoice.Service, hooks *webhook.Service) http.H
 			limit = n
 		}
 		profileID := r.PathValue("profileId")
-		page, err := hooks.Events(r.Context(), profileID, mid.ProfileAccess(r).Stores, q.Get("type"), q.Get("cursor"),
+		access := mid.ProfileAccess(r)
+		page, err := hooks.Events(r.Context(), profileID, access.Stores, access.Livemode, q.Get("type"), q.Get("cursor"),
 			limit)
 		if err != nil {
 			httpio.WriteError(w, r, err)

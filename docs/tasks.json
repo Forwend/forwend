@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 319,
+  "nextId": 320,
   "tasks": [
     {
       "id": "F295",
@@ -2548,6 +2548,118 @@
       "delivery": {
         "mode": "pr",
         "branch": "build/f318-staging-runs-the-webhooks-sender",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F319",
+      "type": "fix",
+      "behavior": "An invoice and an API key each stay in one mode",
+      "acceptance": [
+        "A payer-chooses invoice takes options of one mode: a key's create takes the key's mode, any other create takes live options when there are some; a key's fixed-token create in the other mode is 422",
+        "A key's invoice list, reads, actions, activity, owed and webhook events show only its mode, another mode's invoice is 404, and a key's replay of another mode's create is 409"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-156",
+        "D-87"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-26 review fail by reviewer: FAIL. BLOCKING 1: a key changes another mode's invoice through a create's replaces. apps/backend/internal/invoice/create.go:278 passes only r.Stores to replace(); replace() (create.go:372-380) checks store, not mode. Probe: chain 421614 set live, owner makes a USD (live) invoice, test key POSTs {amountUsd:6, replaces:<live id>} -> 201 and the live invoice is canceled. R-156 says a key's actions on another mode's invoice are 404. Fix: pass r.Livemode to replace and return ErrNotFound when the old invoice's mode differs; add the case to key_mode_test.go.\nBLOCKING 2: a test key's USD retainer makes live-mode later months. invoice.go:95 Request.Livemode is json:\"-\", so retainers.request (retainers.go:75) drops it; MakeRetainerInvoices (retainers.go:156) calls Create with Livemode nil, which takes live options. Probe: test key creates amountUsd + repeat with dueDate one month minus 2 days ago, MakeRetainerInvoices -> month 0 livemode=false, month 1 livemode=true. The key then gets 404 on its own series' invoice and its test webhooks never see it (D-87). Fix: a later month takes the mode of the retainer's month 0 (also keeps a person's series in one mode), or store the key's mode in the request.\nNon-blocking: (a) docs/backend/api.md:550 and apps/backend/api/openapi.yaml:593 still say a payer-chooses invoice accepts every enabled token; the one-mode rule belongs there too (owning doc). (b) Owed's held branch filter (owed.go:57) is not covered: mutating it to always-true keeps TestKeyMode green. (c) link paid count (link/read.go:17) counts both modes for a key; links have no mode, so a test key can edit a link that makes live invoices: owner question. (d) a person's cross-mode Revise makes replacedBy (with payToken) of the other mode visible to a key reading the old invoice (get.go:138). (e) with every live token off, an app USD create quietly becomes test mode (probe: 201 livemode=false); matches R-156 wording, worth a note. (f) comments: auth/access.go:145 InvoiceStore and webhook/events.go:80 don't mention the new live return/param.\nChecked OK: middleware covers every {invoiceId} key route (get, cancel, reopen, send, reminders, details, repeat/stop) before numbered; invoices.chain_id is NOT NULL with FK, so the subqueries never yield NULL; main vs option rows are the same mode after the filter; unnumbered link invoices 404 either way; placeholders in List ($n dynamic), Events $4, Owed $3, webhook Events $7 are right; replay and in-tx race replay both pass r.Livemode; error texts fit; wallet lookup via options[0].family is safe (all evm). Docs sentences are under 25 words.\nRan (scratch copy of HEAD + working tree): go test -run TestKeyMode (pass); same test on HEAD code (fails at the first create); 9 mutations, one per part of the fix: all but Owed held caught; gofmt clean; go vet -tags e2e,privylive,loadtest ./... ok; go test -race -count=1 ./... pass except canary/document/invoice web-copy tests that need apps/web (absent in scratch; verify passed them); probe tests for findings 1, 2, (e).",
+        "2026-10-26 review pass by reviewer: PASS (re-review of the fix for both earlier blockers). No blocking findings.\nFixed: create.go followedMode gives a Revise the replaced invoice's mode and a retainer's later month its month 0's mode; a key whose mode differs gets ErrNotFound before replace() runs. Probes: a test key's replaces of a live invoice is 404 and leaves it open; a test key's USD retainer makes months [false false]; a person's Revise test->fixed live token is 422 \"this invoice must be test mode, and the token is in the other mode\"; a key's Revise of an unknown id is 404; a key's same-mode Revise works (201). An option or unnumbered id in replaces still ends in replace()'s 404. Owed's held branch is now covered.\nNon-blocking: (1) The Revise and retainer mode rule sits only in the API-keys bullet (docs/backend/api.md:285). The Revise section (api.md:494-499) and the retainer tokens line (api.md:179, \"a payer-chooses month offers what is on then\") don't state it, though they own those rules. (2) Behavior change for people: a Revise can no longer move a test invoice to a live token. Once mainnet exists, the app's Revise form should offer only the old invoice's mode. (3) Earlier owner questions stay open: (c) links have no mode, and (e) USD falls back to test when every live token is off. (4) Unrelated and already broken at f1556484: a retainer started as a Revise (repeat + replaces) stores replaces in retainers.request, so every later month fails with \"invoice can't be canceled\". Proved by a probe on base f1556484; not F319's scope.\nRan (scratch copies; DATABASE_URL from apps/backend/.env): TestKeyMode passes on the new code. On round-1 code (45beb663) plus the new test it fails at the Revise checks. 13 mutations, one per part of the fix, all caught, except an equivalent one: the retainer reading its latest month instead of its first. gofmt clean. go vet -tags e2e,privylive,loadtest ./... ok. go test -race -count=1 ./... passes, except canary/document/invoice tests that compare against apps/web, which my scratch copy lacked; verify passed them. Edge probes as above. Commit e8706f8d holds the same code I tested. Scratch removed; I started no Anvil processes.",
+        "2026-10-26 review pass by reviewer: PASS. No blocking findings. This re-review follows the docs-only change after my 16:21 pass.\nChecked: git diff e8706f8d HEAD -- apps docs/backend shows only two new lines in docs/backend/api.md, with no code change. tasks.json holds harness records only.\n- api.md:180 \"A later month keeps the first month's mode (R-156).\" True: followedMode reads the retainer's first month (ORDER BY cycle LIMIT 1). 9 words.\n- api.md:498 \"The new invoice keeps the old one's mode (R-156): a token of the other mode is 422, and a key's other-mode invoice 404.\" True per my earlier probes (person 422, key 404). 23 words.\nNit, left as is by the coordinator: the second sentence drops \"is\" before 404.\nVerify: the 17:27:21Z run passed all 8 checks. The two failed runs before it, at 17:01 and 17:14, each failed one timing-sensitive test in a package F319 does not change: profile TestSignUpRepairIsBounded (it passed 3 times alone) and settlement TestConcurrentSignersRespectTheUserCap (nonce too low).\nCode findings and runs are as in my 16:21 pass. Follow-ups for the owner, none blocking: link mode; USD falling back to test when every live token is off; the app's Revise form offering only the old invoice's mode; and the older retainer-from-Revise bug that predates F319."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-26T17:27:21Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 176.4,
+            "log": ""
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 180.4,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 268.3,
+            "log": ""
+          }
+        ],
+        "taskHash": "6a8d1ba9c471cffe",
+        "filesHash": "21b09644f0a2462f",
+        "proof": {
+          "1": "backend: TestKeyMode makes Arbitrum Sepolia live beside test-mode Base Sepolia. The app's amountUsd invoice has only the live option, the test key's only the test option; the key's fixed create on the live chain is 422 'must be test mode'. The owner's Revise of a test invoice stays test mode, and a test key's retainer makes month 1 in test mode. Without the fix each of these fails",
+          "2": "backend: TestKeyMode: the test key's list, /events, /owed (overdue and held) and /webhook-events show only the test invoice while the owner sees both; GET, cancel and a Revise (replaces) of the live invoice with the key are 404 invoice_not_found and leave it open; once the key is live its replay of the test-mode create is 409 and its list shows only the live invoice"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS. No blocking findings. This re-review follows the docs-only change after my 16:21 pass.\nChecked: git diff e8706f8d HEAD -- apps docs/backend shows only two new lines in docs/backend/api.md, with no code change. tasks.json holds harness records only.\n- api.md:180 \"A later month keeps the first month's mode (R-156).\" True: followedMode reads the retainer's first month (ORDER BY cycle LIMIT 1). 9 words.\n- api.md:498 \"The new invoice keeps the old one's mode (R-156): a token of the other mode is 422, and a key's other-mode invoice 404.\" True per my earlier probes (person 422, key 404). 23 words.\nNit, left as is by the coordinator: the second sentence drops \"is\" before 404.\nVerify: the 17:27:21Z run passed all 8 checks. The two failed runs before it, at 17:01 and 17:14, each failed one timing-sensitive test in a package F319 does not change: profile TestSignUpRepairIsBounded (it passed 3 times alone) and settlement TestConcurrentSignersRespectTheUserCap (nonce too low).\nCode findings and runs are as in my 16:21 pass. Follow-ups for the owner, none blocking: link mode; USD falling back to test when every live token is off; the app's Revise form offering only the old invoice's mode; and the older retainer-from-Revise bug that predates F319.",
+          "at": "2026-10-26T17:38:18Z",
+          "filesHash": "21b09644f0a2462f"
+        },
+        "commit": "9ff14099",
+        "doneAt": "2026-10-26T17:38:39Z"
+      },
+      "branch": "fix/f319-an-invoice-and-an-api-key-each-stay-in-o",
+      "baseCommit": "f15564849442c0a0095b7725e23013857b8220b8",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f319-an-invoice-and-an-api-key-each-stay-in-o",
         "base": "main"
       }
     }

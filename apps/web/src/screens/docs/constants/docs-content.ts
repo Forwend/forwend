@@ -52,7 +52,7 @@ export const DOCS = {
       title: "Test mode",
       paragraphs: [
         "An invoice on a testnet is in test mode: its `livemode` is `false`, and its tokens have no value. Every invoice, webhook and event says which mode it is in.",
-        "Live mode comes with mainnet networks. Objects of one mode never reach the other.",
+        "Live mode comes with mainnet networks. Objects of one mode never reach the other: a key works only with invoices of its own mode.",
       ],
     },
     {

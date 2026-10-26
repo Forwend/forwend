@@ -177,6 +177,7 @@ R-136; the full schema is in openapi.yaml. Members reach it with `tokens.read` a
 - Create leaves out the tokens off for the profile or its store; a fixed token that is off is 422.
   - Nothing left is 422 too.
   - A fixed retainer's later month keeps its token; a payer-chooses month offers what is on then.
+  - A later month keeps the first month's mode (R-156).
   - Invoices made earlier keep their options.
 
 ## Stores
@@ -279,6 +280,11 @@ R-144, D-95; the full schema is in openapi.yaml. Owners and Admins manage keys w
   - It is `fw_test_`, 30 random base62 characters and a 6-character CRC32 of the rest. Live keys wait for a live chain.
   - `name` is 1–100 characters of plain text; `scopes` are one or more of the four D-95 names.
   - A merchant key needs `storeId`, one of the profile's stores. A freelancer's key has none; a personal profile is 409.
+- A key reaches only invoices of its own mode (D-87, R-156).
+  - Its lists, reads, actions, activity, owed and webhook events leave out the other mode; such an invoice is 404.
+  - Its creates are of its mode: a token of the other mode is 422, and a replay of another mode's create is 409.
+  - A Revise of the other mode's invoice is 404. A Revise or a retainer's later month keeps the mode it follows.
+  - A payer-chooses invoice's options are all of one mode. A create without a key takes live options when there are some.
 - `POST /v1/profiles/{profileId}/keys/{keyId}/roll` makes its new key, with a fresh sign-in, and answers 201 with it.
   - `overlapHours` (0–168, default 24) is how long the old key keeps working. A key rolls once.
 - `DELETE /v1/profiles/{profileId}/keys/{keyId}` revokes the key at once (204). An unknown or stopped key is 404.
@@ -489,6 +495,7 @@ R-19 and R-42; the full schema is in openapi.yaml.
 - Create with `replaces` (R-129) is a Revise: it makes the new invoice and cancels the old one in one transaction.
   - The old one is canceled with Cancel's checks and locks; otherwise 409 `invoice_not_cancelable` and nothing is made.
   - Another profile's or an unknown invoice is 404. `replaces` is part of the idempotency hash only when set.
+  - The new invoice keeps the old one's mode (R-156): a token of the other mode is 422, and a key's other-mode invoice 404.
   - Both reads of the old invoice return `replacedBy` `{invoiceId, number, payToken}`, the new one's pay link.
   - The owner's reads of the new one return `replaces` `{invoiceId, number, payToken: null}`.
   - History: `invoice.replaced` on the old one and the new one's `invoice.created` name each other in `related`.
@@ -544,7 +551,7 @@ R-19 and R-42; the full schema is in openapi.yaml.
   the intent's status and the wait kind the signer stores with it, never from log text.
 - Payer chooses (R-56, D-75, D-76): create with `amountUsd` alone (a decimal like `"12.50"`) instead of `chainId`,
   `token` and `amount`. The invoice accepts every enabled token on every enabled chain the worker already watches
-  (others would miss payments), each at 1 USD per token: the amount in the token's decimals, 422 when they
+  (others would miss payments), of one mode (R-156), each at 1 USD per token: the amount in the token's decimals, 422 when they
   can't hold it exactly. It leaves out the tokens the profile or its store has off (R-136). Each option is an `invoices` row of its own with its own on-chain id (the first random, the
   others `keccak256(abi.encode(first id, chain id, token))`, so the pay page can tie them to the link), terms and
   receive address, so the watcher, ledger and signer treat it as any invoice; the first row is the invoice (its token is the pay

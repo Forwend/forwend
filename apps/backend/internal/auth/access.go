@@ -73,6 +73,8 @@ type Access struct {
 	Stores []string
 	// Scopes are a key's permissions (R-144); nil for a person, whose role decides.
 	Scopes []Permission
+	// Livemode is a key's mode: it reaches only that mode's invoices (D-87). Nil for a person, who reaches both.
+	Livemode *bool
 }
 
 func (a Access) Can(p Permission) bool {
@@ -140,16 +142,18 @@ func (s *Service) LinkStore(ctx context.Context, profileID, linkID string) (stor
 	return store, true, nil
 }
 
-// InvoiceStore is the store of the profile's invoice with this id, "" when it has none; found is false for an id
-// the profile doesn't have.
-func (s *Service) InvoiceStore(ctx context.Context, profileID, invoiceID string) (store string, found bool, err error) {
-	err = s.pool.QueryRow(ctx, `SELECT coalesce(store_id::text, '') FROM invoices
-		WHERE id = lower($1) AND profile_id = $2::uuid`, invoiceID, profileID).Scan(&store)
+// InvoiceStore is the store of the profile's invoice with this id, "" when it has none, and whether it is live mode;
+// found is false for an id the profile doesn't have.
+func (s *Service) InvoiceStore(ctx context.Context, profileID, invoiceID string) (store string, live, found bool,
+	err error) {
+	err = s.pool.QueryRow(ctx, `SELECT coalesce(store_id::text, ''),
+		    (SELECT livemode FROM chains c WHERE c.chain_id = invoices.chain_id)
+		FROM invoices WHERE id = lower($1) AND profile_id = $2::uuid`, invoiceID, profileID).Scan(&store, &live)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", false, nil
+		return "", false, false, nil
 	}
 	if err != nil {
-		return "", false, fmt.Errorf("read invoice store: %w", err)
+		return "", false, false, fmt.Errorf("read invoice store: %w", err)
 	}
-	return store, true, nil
+	return store, live, true, nil
 }

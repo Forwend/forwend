@@ -77,8 +77,9 @@ type EventsPage struct {
 }
 
 // Events lists the profile's invoice events of the last EventsKept, newest first; test events are not listed.
-// stores, when not nil, keeps only those stores' invoices; kind, when set, one event type.
-func (s *Service) Events(ctx context.Context, profileID string, stores []string, kind, cursor string,
+// stores, when not nil, keeps only those stores' invoices; live, when not nil, only that mode's (D-87); kind, when
+// set, one event type.
+func (s *Service) Events(ctx context.Context, profileID string, stores []string, live *bool, kind, cursor string,
 	limit int) (EventsPage, error) {
 	if limit < 1 || limit > MaxEventsPage {
 		return EventsPage{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxEventsPage)
@@ -100,8 +101,8 @@ func (s *Service) Events(ctx context.Context, profileID string, stores []string,
 		FROM webhook_events e JOIN history_events h ON h.id = e.history_id JOIN invoices m ON m.id = e.invoice_id
 		WHERE e.profile_id = $1 AND e.created_at > now() - $2 * interval '1 second'
 		  AND ($3::uuid[] IS NULL OR m.store_id = ANY ($3)) AND ($4 = '' OR e.type = $4)
-		  AND ($5::bigint IS NULL OR e.history_id < $5)
-		ORDER BY e.history_id DESC LIMIT $6`, profileID, int64(EventsKept.Seconds()), stores, kind, after, limit+1)
+		  AND ($5::bigint IS NULL OR e.history_id < $5) AND ($7::boolean IS NULL OR e.livemode = $7)
+		ORDER BY e.history_id DESC LIMIT $6`, profileID, int64(EventsKept.Seconds()), stores, kind, after, limit+1, live)
 	if err != nil {
 		return EventsPage{}, fmt.Errorf("list webhook events: %w", err)
 	}
