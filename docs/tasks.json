@@ -2053,7 +2053,7 @@
       "dependsOn": [
         "F313"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit"
       ],
@@ -2139,11 +2139,18 @@
           "summary": "Third review, of the final tree. No blocking findings. The earlier blocker is fixed: root package.json:2 is now forwend-monorepo. pnpm --filter forwend exec pwd and pnpm --filter ./packages/node exec pwd each select only packages/node. git grep finds no other use of the root's old name; the Go lock-key comments and CI Postgres names are unrelated. The lockfile still adds only the packages/node importer. packages/node/AGENTS.md:6 and .npmrc.example:3 use --filter ./packages/node. The non-blocking fixes are confirmed. webhooks.test.ts:120-135 signs each short secret with its own key, and MIN_KEY_BYTES=1 now fails it. client.test.ts covers an HTML 502 (unknown) and an HTML 200 (invalid_response). Removing the invalid_response branch fails it, and so does reverting to a plain JSON.parse. Removing the key-length check also fails. errors.ts:1-4 names both client codes. The bad-secret message says whsec_ is optional. PLAN.md:81-83 is in short sentences, with 0.x limited to the browser packages. AGENTS.md:38 records the root .npmrc as the one root secret. .npmrc.example:4 says publishing waits for 11.9.4. NON-BLOCKING: instanceof Headers misses a polyfilled Headers but fails safe; agreed to leave it. packages/node/dist exists from verify's root build; it is gitignored, so remove it before finishing (AGENTS.md cleanup rule). RAN: tests in an isolated scratch copy, with Vitest caches kept in scratch (a marker check found no new files under the repo's node_modules): baseline 9 of 9 passed, and 4 mutations each failed their test. tsc --noEmit (0), biome check packages/node turbo.json package.json (0), check-docs (0 errors), pnpm filter checks with exec pwd, git grep for the root name. Waited for verify 14:07:28Z: passed, 7 of 7.",
           "at": "2026-10-26T14:15:20Z",
           "filesHash": "a44a41077ee72c01"
-        }
+        },
+        "commit": "d8e0bae",
+        "doneAt": "2026-10-26T14:15:51Z"
       },
       "branch": "feat/f314-a-node-package-calls-the-api-and-verifie",
       "baseCommit": "14622e5c32e2c3c432dbce6ea51a1251cee4dfe6",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f314-a-node-package-calls-the-api-and-verifie",
+        "base": "main"
+      }
     },
     {
       "id": "F315",
