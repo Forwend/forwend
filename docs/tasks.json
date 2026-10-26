@@ -13,7 +13,7 @@
       "dependsOn": [
         "F325"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend-affected",
         "backend-e2e"
@@ -75,11 +75,18 @@
           "summary": "No blocking findings in the additive storage foundation. Reviewed migration 76 preservation of existing IDs, terms, numbers, snapshots and replay hashes; delayed legacy-link numbering and documents; immutable purpose/document kind, option alignment, checkout hash separation, ledger numbering exclusion and optional notification numbers. Final docs, race backend and end-to-end verification passed. Before F327 exposes checkout HTTP operations, guard invoice-only Send and related document actions, provide a valid payment notification target and hide unavailable invoice documents in public checkout. Legacy HTTP behavior remains unchanged in F326.",
           "at": "2026-10-26T22:20:06Z",
           "filesHash": "ce2eaef580b6649e"
-        }
+        },
+        "commit": "206465a7",
+        "doneAt": "2026-10-26T22:20:29Z"
       },
       "branch": "fix/f326-separate-billing-documents-from-checkout",
       "baseCommit": "4004a270b7d7b2adb04d87a0093a16365e781bcc",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f326-separate-billing-documents-from-checkout",
+        "base": "main"
+      }
     },
     {
       "id": "F327",
