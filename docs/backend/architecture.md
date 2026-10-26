@@ -54,8 +54,8 @@ Read only the sections your task touches:
 
 Each binary checks what it needs before it serves. A setup mistake stops it with one message naming the item (exit 1,
 D-71); a chain whose RPCs don't answer is logged and skipped:
-- `DATABASE_URL` answers within 10 s. The api then applies migrations. The worker and signer only read that every
-  migration they embed is applied; if not, they stop and ask for the api to be started first (only the api migrates).
+- `DATABASE_URL` answers within 10 s. The api then applies migrations. The worker, signer and webhooks sender only read
+  that every migration they embed is applied; if not, they stop and ask for the api to be started first (only the api migrates).
 - With `ENABLE_TESTNET_USDC=1`, the API then enables the three USDC testnet pairs before chain checks.
   - Dokploy defaults to 1. Local development leaves it off; `0` leaves existing network settings unchanged.
   - Repeated startup enables those pairs again. Other pairs keep their settings; see [staging](../staging.md#dokploy-staging).

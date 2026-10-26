@@ -4,8 +4,10 @@ x-backend: &backend
     dockerfile: infra/backend.Dockerfile
   restart: unless-stopped
 
+x-database-url: &database-url postgres://${POSTGRES_USER:?set POSTGRES_USER}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB}?sslmode=disable&pool_max_conns=20
+
 x-chain-environment: &chain-environment
-  DATABASE_URL: postgres://${POSTGRES_USER:?set POSTGRES_USER}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB}?sslmode=disable&pool_max_conns=20
+  DATABASE_URL: *database-url
   CHAINS_FILE: /app/chains.json
   INFURA_API_KEYS: ${INFURA_API_KEYS:-}
   RPC_RATE_PER_SECOND: ${RPC_RATE_PER_SECOND:-10}
@@ -37,6 +39,7 @@ services:
       PRIVY_JWKS_URL: https://auth.privy.io/api/v1/apps/${NEXT_PUBLIC_PRIVY_APP_ID:?set NEXT_PUBLIC_PRIVY_APP_ID}/jwks.json
       PRIVY_APP_SECRET: ${PRIVY_APP_SECRET:?set PRIVY_APP_SECRET}
       PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:?set PUBLIC_WEB_URL}
+      WEBHOOK_SECRET_KEY: ${WEBHOOK_SECRET_KEY:?set WEBHOOK_SECRET_KEY}
     depends_on:
       postgres:
         condition: service_healthy
@@ -68,6 +71,16 @@ services:
       <<: *chain-environment
       POLL_INTERVAL: ${POLL_INTERVAL:-5s}
       EXECUTOR_PRIVATE_KEY: ${EXECUTOR_PRIVATE_KEY:?set EXECUTOR_PRIVATE_KEY}
+    depends_on:
+      api:
+        condition: service_healthy
+
+  webhooks:
+    <<: *backend
+    command: ["webhooks"]
+    environment:
+      DATABASE_URL: *database-url
+      WEBHOOK_SECRET_KEY: ${WEBHOOK_SECRET_KEY:?set WEBHOOK_SECRET_KEY}
     depends_on:
       api:
         condition: service_healthy

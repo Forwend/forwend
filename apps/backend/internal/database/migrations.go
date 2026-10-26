@@ -45,8 +45,8 @@ func Migrate(ctx context.Context, url string) error {
 	return nil
 }
 
-// CheckSchema errors unless every embedded migration is applied. Only the api migrates: the worker and signer call
-// this at startup so they never run against an older schema.
+// CheckSchema errors unless every embedded migration is applied. Only the api migrates: the worker, signer and webhooks
+// sender call this at startup so they never run against an older schema.
 func CheckSchema(ctx context.Context, pool *pgxpool.Pool) error {
 	names, err := fs.Glob(migrations, "migrations/*.sql")
 	if err != nil {
