@@ -14,7 +14,7 @@
       "dependsOn": [
         "F326"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend-affected",
         "backend-e2e",
@@ -121,11 +121,18 @@
           "summary": "Reviewed checkout and canonical payment routes, purpose guards, exact request replay, expiration races, tenant/store/role/key/mode isolation, precise creation-order pagination, OpenAPI and Node SDK contracts, shared paymentio ownership and public document behavior. Last-cap concurrency replay and neutral legacy wording findings are fixed with regression coverage. Real-binary checkout evidence checks confirmation refusal, settlement, receiver ledger and wallet chain balances without invoice numbering. All selected harness checks passed; no blockers remain.",
           "at": "2026-10-26T22:42:09Z",
           "filesHash": "326b3e077d5d037f"
-        }
+        },
+        "commit": "97d64a54",
+        "doneAt": "2026-10-26T22:42:50Z"
       },
       "branch": "feat/f327-add-explicit-store-scoped-checkout-sessi",
       "baseCommit": "75b2cb35244ea3c6d61e88134fd717754b8ba2ac",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f327-add-explicit-store-scoped-checkout-sessi",
+        "base": "main"
+      }
     },
     {
       "id": "F328",
