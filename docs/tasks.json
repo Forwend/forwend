@@ -1834,7 +1834,7 @@
       "dependsOn": [
         "F311"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit"
       ],
@@ -1918,11 +1918,18 @@
           "summary": "Re-review after the fix. Blocker fixed: DueDateGrace is gone, invoice.go matches its base, and create.go:154 uses DueGraceDays (retainers.go:22), the constant retainers and jobs use. Docs fixed: R-152 and api.md:394-395 say the hash takes the due date and 3600 for a missing expiresIn, and that the same key with expiresIn 3600 replays. R-134 and api.md:405 say 'Without expiresIn or a dueDate'. D-80 names R-152. Every new openapi sentence is at most 25 words. Non-blocking: the code comment at create.go:150 and the test comment at due_close_test.go:33 still say the hash 'took the request as sent'. R-152 now says 3600 for a missing expiresIn, so the comments could match it. Not taken, owner informed: the form closes at 17:00 local time, the API at 00:00 UTC; the open-address cap holds these invoices about 90 days. Earlier checks still hold: due+61 d at 00:00 UTC, clamps match D-18, Create callers are unchanged, and the store default is overridden after the store lookup. Ran: go vet ./internal/invoice/; go test ./internal/invoice/ ./internal/job/ -count=1 (ok); go test ./internal/httpapi/tests/ -run 'TestDueDateOutranksTheStoreDefault|Store|Retainer|Revise|Metadata|Idempot' -count=1 (ok). I also ran the one-day-short mutant via -overlay against the fixed code; TestDueDateKeepsTheCheckoutOpen fails as it should. verify F312 passed at 12:50:47Z.",
           "at": "2026-10-26T12:58:57Z",
           "filesHash": "800b54917c0e36da"
-        }
+        },
+        "commit": "1567dcb",
+        "doneAt": "2026-10-26T12:59:23Z"
       },
       "branch": "feat/f312-a-create-with-a-due-date-and-no-expiresi",
       "baseCommit": "ed77fd5304b3691651dc04a2cb7121f6548e1bd2",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f312-a-create-with-a-due-date-and-no-expiresi",
+        "base": "main"
+      }
     },
     {
       "id": "F313",
