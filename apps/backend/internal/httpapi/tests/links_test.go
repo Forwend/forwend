@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
 
 var linkSlug = regexp.MustCompile(`^[a-z0-9]{12}$`)

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/address"
-	"github.com/ensp1re/forwend/apps/backend/internal/search"
+	"github.com/forwend/forwend/apps/backend/internal/address"
+	"github.com/forwend/forwend/apps/backend/internal/search"
 )
 
 func mustHexID(t *testing.T, id string) []byte {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 317,
+  "nextId": 318,
   "tasks": [
     {
       "id": "F295",
@@ -2321,6 +2321,114 @@
         "branch": "docs/f316-answer-q-14-which-status-page-shows-inci",
         "base": "main"
       }
+    },
+    {
+      "id": "F317",
+      "type": "refactor",
+      "behavior": "The Go module path names the Forwend organization",
+      "acceptance": [
+        "apps/backend/go.mod and every Go import use github.com/forwend/forwend/apps/backend, and no Go file names the old owner",
+        "The backend builds and its unit and end-to-end tests pass"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "backend",
+        "backend-e2e"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-26 review pass by reviewer: Pass. Commit 6f6df23 vs base 8bd25a2: 185 files = 183 .go + apps/backend/go.mod:1 + docs/tasks.json. (1) git grep -i ensp1re outside docs/archive finds only the proof text in docs/tasks.json:2416; grep -rl over ignored files (.env etc.) finds none. No golangci config, ldflags, Makefile or go.work exists; infra/backend.Dockerfile, .github/workflows/ci.yml and apps/backend/package.json name no module path. (2) Only non-import module string is internal/canary/canary_test.go:171 const module = github.com/forwend/forwend/. go list -m = github.com/forwend/forwend/apps/backend; go list -deps ./cmd/canary under the new prefix = internal/config, internal/canary, cmd/canary (exactly the allow-list); old prefix matches 0 packages; ./cmd/api matches 34, so the check is live. (3) For each of the 183 .go files, base content with sed old->new path piped to gofmt equals the committed file byte-for-byte except canary_test.go:171 (the prefix). No mode changes. (4) Lowercase is safe: go.sum lists only dependencies, no replace directives, no go.work; Docker builds from the local copy and never fetches the module; go install/proxy fetch github.com/forwend/forwend case-insensitively and go.mod matches the lowercase path (an uppercase Forwend import path would fail, so docs must use lowercase; none show one). runtime.Caller in internal/chaintest/chaintest.go:269 uses file paths, not the module path. Minor, non-blocking: F317 has no refs (no PROJECT row covers the module path; 44 archived tasks also have none); the canary test would pass vacuously if the prefix went stale again, deriving it from go list -m would prevent that (out of scope). Ran: go list -m, go list ./..., go list -deps ./cmd/canary and ./cmd/api, go build -o /dev/null ./..., go vet -tags e2e,privylive,loadtest ./..., gofmt -l ., go mod verify, git grep, git diff --summary, per-file sed+gofmt+cmp."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-26T15:14:01Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 177.4,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 20.8,
+            "log": ""
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.2,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 175.8,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.8,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 263.4,
+            "log": ""
+          }
+        ],
+        "taskHash": "3dbba12929c44322",
+        "filesHash": "d5bed9529f8d1d4d",
+        "proof": {
+          "1": "backend: go.mod says module github.com/forwend/forwend/apps/backend; git grep finds ensp1re only in docs/archive history; canary TestImportsNoAppCode now matches the 3 allowed packages under the new path",
+          "2": "backend-e2e: go build and go vet pass; the backend unit and end-to-end suites pass under the new module path"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass. Commit 6f6df23 vs base 8bd25a2: 185 files = 183 .go + apps/backend/go.mod:1 + docs/tasks.json. (1) git grep -i ensp1re outside docs/archive finds only the proof text in docs/tasks.json:2416; grep -rl over ignored files (.env etc.) finds none. No golangci config, ldflags, Makefile or go.work exists; infra/backend.Dockerfile, .github/workflows/ci.yml and apps/backend/package.json name no module path. (2) Only non-import module string is internal/canary/canary_test.go:171 const module = github.com/forwend/forwend/. go list -m = github.com/forwend/forwend/apps/backend; go list -deps ./cmd/canary under the new prefix = internal/config, internal/canary, cmd/canary (exactly the allow-list); old prefix matches 0 packages; ./cmd/api matches 34, so the check is live. (3) For each of the 183 .go files, base content with sed old->new path piped to gofmt equals the committed file byte-for-byte except canary_test.go:171 (the prefix). No mode changes. (4) Lowercase is safe: go.sum lists only dependencies, no replace directives, no go.work; Docker builds from the local copy and never fetches the module; go install/proxy fetch github.com/forwend/forwend case-insensitively and go.mod matches the lowercase path (an uppercase Forwend import path would fail, so docs must use lowercase; none show one). runtime.Caller in internal/chaintest/chaintest.go:269 uses file paths, not the module path. Minor, non-blocking: F317 has no refs (no PROJECT row covers the module path; 44 archived tasks also have none); the canary test would pass vacuously if the prefix went stale again, deriving it from go list -m would prevent that (out of scope). Ran: go list -m, go list ./..., go list -deps ./cmd/canary and ./cmd/api, go build -o /dev/null ./..., go vet -tags e2e,privylive,loadtest ./..., gofmt -l ., go mod verify, git grep, git diff --summary, per-file sed+gofmt+cmp.",
+          "at": "2026-10-26T15:26:36Z",
+          "filesHash": "d5bed9529f8d1d4d"
+        }
+      },
+      "branch": "refactor/f317-the-go-module-path-names-the-forwend-org",
+      "baseCommit": "8bd25a2d48885430393ff937f10d5d32ed282f98",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/auth/authtest"
+	"github.com/forwend/forwend/apps/backend/internal/auth/authtest"
 	"github.com/golang-jwt/jwt/v5"
 )
 

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/profile"
+	"github.com/forwend/forwend/apps/backend/internal/profile"
 )
 
 // USDCents is the USD value in cents; Other the records-currency value in minor units, nil without a rate (R-112).

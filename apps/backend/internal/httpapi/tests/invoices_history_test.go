@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/history"
-	"github.com/ensp1re/forwend/apps/backend/internal/history/historytest"
+	"github.com/forwend/forwend/apps/backend/internal/history"
+	"github.com/forwend/forwend/apps/backend/internal/history/historytest"
 )
 
 // R-124.

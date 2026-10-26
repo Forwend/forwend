@@ -3,7 +3,7 @@ package teamapi
 import (
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/team"
+	"github.com/forwend/forwend/apps/backend/internal/team"
 )
 
 type grantBody struct {

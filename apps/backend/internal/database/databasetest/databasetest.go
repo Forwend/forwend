@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/config"
+	"github.com/forwend/forwend/apps/backend/internal/config"
 	"github.com/jackc/pgx/v5"
 )
 

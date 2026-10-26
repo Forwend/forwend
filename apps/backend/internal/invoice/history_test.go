@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/history/historytest"
+	"github.com/forwend/forwend/apps/backend/internal/history/historytest"
 )
 
 func TestInvoiceChangesKeepHistory(t *testing.T) {

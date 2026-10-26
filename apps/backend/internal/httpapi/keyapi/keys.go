@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/apikey"
-	"github.com/ensp1re/forwend/apps/backend/internal/auth"
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
+	"github.com/forwend/forwend/apps/backend/internal/apikey"
+	"github.com/forwend/forwend/apps/backend/internal/auth"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/mid"
 )
 
 func listKeys(keys *apikey.Service) http.HandlerFunc {

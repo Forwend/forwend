@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 )
 
 func TestUnminedReceiptDoesNotHammerTheProvider(t *testing.T) {

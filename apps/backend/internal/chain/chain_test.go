@@ -14,9 +14,9 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 )
 
 // D-15: a chain needs two hosts; endpoint names go to logs, so they never hold a key.

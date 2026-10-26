@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
-	"github.com/ensp1re/forwend/apps/backend/internal/config"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/forwend/forwend/apps/backend/internal/chaintest"
+	"github.com/forwend/forwend/apps/backend/internal/config"
 )
 
 func TestAPI(t *testing.T) {

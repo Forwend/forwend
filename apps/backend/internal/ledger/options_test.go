@@ -7,8 +7,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
-	"github.com/ensp1re/forwend/apps/backend/internal/history/historytest"
+	"github.com/forwend/forwend/apps/backend/internal/chaintest"
+	"github.com/forwend/forwend/apps/backend/internal/history/historytest"
 )
 
 // option adds an accepted option of invoice main (R-56): its own id and receive address, the main row's other terms.

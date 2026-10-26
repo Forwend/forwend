@@ -9,10 +9,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/history"
-	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
-	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
-	"github.com/ensp1re/forwend/apps/backend/internal/profile"
+	"github.com/forwend/forwend/apps/backend/internal/history"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
+	"github.com/forwend/forwend/apps/backend/internal/outbox"
+	"github.com/forwend/forwend/apps/backend/internal/profile"
 	"github.com/jackc/pgx/v5"
 )
 

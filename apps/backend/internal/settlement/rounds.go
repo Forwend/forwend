@@ -5,8 +5,8 @@ import (
 	"crypto/ecdsa"
 	"log/slog"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/chain"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 

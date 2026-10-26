@@ -4,9 +4,9 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/activity"
-	"github.com/ensp1re/forwend/apps/backend/internal/chain"
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/forwend/forwend/apps/backend/internal/activity"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
 )
 
 type tokenJSON struct {

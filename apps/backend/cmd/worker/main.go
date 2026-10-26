@@ -10,14 +10,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/chain"
-	"github.com/ensp1re/forwend/apps/backend/internal/config"
-	"github.com/ensp1re/forwend/apps/backend/internal/database"
-	"github.com/ensp1re/forwend/apps/backend/internal/ecb"
-	"github.com/ensp1re/forwend/apps/backend/internal/email"
-	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
-	"github.com/ensp1re/forwend/apps/backend/internal/notify"
-	"github.com/ensp1re/forwend/apps/backend/internal/worker"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
+	"github.com/forwend/forwend/apps/backend/internal/config"
+	"github.com/forwend/forwend/apps/backend/internal/database"
+	"github.com/forwend/forwend/apps/backend/internal/ecb"
+	"github.com/forwend/forwend/apps/backend/internal/email"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
+	"github.com/forwend/forwend/apps/backend/internal/notify"
+	"github.com/forwend/forwend/apps/backend/internal/worker"
 )
 
 func main() {

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/mid"
 )
 
 func (e invoiceEnv) send(t *testing.T, path, user string) (status int, code, retryAfter string) {

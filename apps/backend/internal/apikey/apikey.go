@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/auth"
+	"github.com/forwend/forwend/apps/backend/internal/auth"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 

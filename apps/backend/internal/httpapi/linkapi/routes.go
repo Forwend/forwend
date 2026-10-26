@@ -4,9 +4,9 @@ package linkapi
 import (
 	"net/http"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/auth"
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
-	"github.com/ensp1re/forwend/apps/backend/internal/link"
+	"github.com/forwend/forwend/apps/backend/internal/auth"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/mid"
+	"github.com/forwend/forwend/apps/backend/internal/link"
 )
 
 // A payer's Pay makes an invoice and watches its receive addresses, so each link and all links together are limited

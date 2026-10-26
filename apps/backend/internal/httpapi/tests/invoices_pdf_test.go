@@ -13,7 +13,7 @@ import (
 	"time"
 	"unicode/utf16"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
 type pdfReply struct {

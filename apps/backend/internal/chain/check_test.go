@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
-	"github.com/ensp1re/forwend/apps/backend/internal/database"
-	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
+	"github.com/forwend/forwend/apps/backend/internal/chaintest"
+	"github.com/forwend/forwend/apps/backend/internal/database"
+	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
 )
 
 // D-71: a mistake stops the process; a chain whose hosts don't answer is logged and skipped.

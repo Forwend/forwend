@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
 )
 
 // Tabs poll about six routes every 15 s and a page load sends about ten, well under this; a looping script is not.

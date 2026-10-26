@@ -15,8 +15,8 @@ import (
 	"codeberg.org/go-pdf/fpdf"
 	"github.com/boombuler/barcode/qr"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
-	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
 var ErrNotPaid = errors.New("invoice not paid")

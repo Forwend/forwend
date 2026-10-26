@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
 // deposit books a confirmed transfer of amount to the invoice id; the ledger reads 2.5 USDC on chain.

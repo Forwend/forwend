@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/address"
-	"github.com/ensp1re/forwend/apps/backend/internal/finality"
-	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
-	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
+	"github.com/forwend/forwend/apps/backend/internal/address"
+	"github.com/forwend/forwend/apps/backend/internal/finality"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
+	"github.com/forwend/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
 )
 

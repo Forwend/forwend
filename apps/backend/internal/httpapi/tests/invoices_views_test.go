@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/invoiceapi"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/invoiceapi"
 )
 
 // R-125.

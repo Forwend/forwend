@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/balance"
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/forwend/forwend/apps/backend/internal/balance"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
 )
 
 func getBalances(balances *balance.Service) http.HandlerFunc {

@@ -14,11 +14,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/canary"
-	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
-	"github.com/ensp1re/forwend/apps/backend/internal/config"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/forwend/forwend/apps/backend/internal/canary"
+	"github.com/forwend/forwend/apps/backend/internal/chaintest"
+	"github.com/forwend/forwend/apps/backend/internal/config"
 )
 
 const (
@@ -168,7 +168,7 @@ func TestImportsNoAppCode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("go list: %v\n%s", err, out)
 	}
-	const module = "github.com/ensp1re/forwend/"
+	const module = "github.com/forwend/forwend/"
 	allowed := map[string]bool{module + "apps/backend/cmd/canary": true, module + "apps/backend/internal/canary": true,
 		module + "apps/backend/internal/config": true}
 	for _, pkg := range strings.Fields(string(out)) {

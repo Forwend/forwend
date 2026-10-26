@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi"
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/invoiceapi"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/invoiceapi"
 )
 
 func (e invoiceEnv) recheck(t *testing.T, srv *httptest.Server, id string) reply {

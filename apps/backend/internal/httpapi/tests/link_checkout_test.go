@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
-	"github.com/ensp1re/forwend/apps/backend/internal/link"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
+	"github.com/forwend/forwend/apps/backend/internal/link"
 )
 
 // R-142, D-54: a payer pays through a payment link. Each link takes at most 5 Pay calls here, its rate limit's burst.
