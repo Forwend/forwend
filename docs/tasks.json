@@ -2783,7 +2783,7 @@
         "npm pack holds only dist, README.md and package.json, and the docs say how to install it"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "docs-check"
@@ -2865,11 +2865,18 @@
           "summary": "PASS: nothing that must not be published. Checked commit c1ce4e15, the same diff as the reviewed working tree. Verify passed 7 of 7. OK: npm pack --dry-run lists 12 files: README.md, package.json and 10 dist .js/.d.ts. No test, src, .env, .npmrc, map or tsbuildinfo. A tsc build of src into the scratchpad equals dist, before and after verify. The packed tarball has only the forwend.com/api and forwend.com/docs URLs: no internal host, email or key. README.md:12-25 typechecks against the packed d.ts (NodeNext and bundler), once rawBody and headers are declared; a wrong option fails (negative control). Forwend options, invoices.create(body, {idempotencyKey}) and verifyWebhook({payload, headers, secrets}) match src. node imports the tarball and gets all 10 exports. The docs-content.ts node snippet uses the same API. Test-mode line is true (R-143, D-87: chains are test mode unless added as live). npm needs only name and version; UNLICENSED is valid. No repository field is right while the repo is private: it would be a dead link. All new doc sentences are at most 18 words (D-84); check-docs 0 errors. No other reader says not on npm (git grep). NON-BLOCKING: (1) packages/node/package.json:20 has no prepack build and dist is gitignored, so publish ships whatever dist is on disk; build and run npm pack --dry-run right before publishing, or add prepack later. (2) src/types.ts:1,16,61 and src/webhooks.ts:27 put D-42, R-147, docs/backend/api.md and openapi.yaml in the published d.ts/js; they point strangers at a private repo; harmless but frozen in 0.1.0. (3) docs/PROJECT.md:317, PLAN.md:83, .npmrc.example:4 promise CI provenance; as far as I know, npm refuses provenance from a private GitHub repo, and it needs a repository field. (4) D-103, AGENTS.md, .npmrc.example and the docs page say 0.1.0 is published, with the date 2026-10-26; true only once the publish succeeds that day; confirm with npm view forwend version. (5) .npmrc.example:5: a granular token limited to selected packages likely cannot cover a not-yet-existing unscoped name; the first publish may need all-packages write. (6) No top-level main/types: TS projects on old node10 resolution get no types; ESM-only by D-103; can be added in 0.1.1. (7) README says nothing about UNLICENSED; npm shows it in the sidebar. (8) I did not fetch https://forwend.com/docs (no network); the homepage is frozen in 0.1.0. RAN: harness show/status; git diff; npm pack --dry-run; npm pack into the scratchpad, unpacked, diffed and deleted; tsc build into the scratchpad and diff -r with dist (twice); tsc on a consumer of the tarball; node import of the tarball; grep for URLs/emails/keys; scripts/check-docs.py; sentence word counts.",
           "at": "2026-10-26T18:14:25Z",
           "filesHash": "4ae2331441a8329f"
-        }
+        },
+        "commit": "fc307d46",
+        "doneAt": "2026-10-26T18:15:03Z"
       },
       "branch": "build/f321-the-forwend-package-is-ready-to-publish",
       "baseCommit": "d4a8b5f5c7337c54cc89fae04cfffaf6cddc3237",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "build/f321-the-forwend-package-is-ready-to-publish",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
