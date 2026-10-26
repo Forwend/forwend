@@ -1,6 +1,9 @@
 {
   "name": "forwend",
-  "private": true,
+  "version": "0.1.0",
+  "description": "The Forwend API for Node: invoices, webhook events and webhook verification.",
+  "license": "UNLICENSED",
+  "homepage": "https://forwend.com/docs",
   "type": "module",
   "engines": {
     "node": ">=20"
