@@ -217,6 +217,7 @@ var profileRoutes = []struct{ method, path, body string }{
 	{"POST", "/v1/profiles/%s/keys", `{"name": "Server", "scopes": ["invoices.read"]}`},
 	{"POST", "/v1/profiles/%s/keys/00000000-0000-4000-8000-000000000000/roll", "{}"},
 	{"DELETE", "/v1/profiles/%s/keys/00000000-0000-4000-8000-000000000000", ""},
+	{"GET", "/v1/profiles/%s/webhook-events", ""},
 	{"GET", "/v1/profiles/%s/webhooks", ""},
 	{"PUT", "/v1/profiles/%s/webhooks/00000000-0000-4000-8000-000000000000",
 		`{"url": "https://example.com/hooks", "events": ["invoice.paid"]}`},

@@ -13,6 +13,7 @@ import (
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
 	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
 	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
+	"github.com/ensp1re/forwend/apps/backend/internal/webhook"
 )
 
 func createInvoice(invoices *invoice.Service) http.HandlerFunc {
@@ -357,5 +358,49 @@ func reopenInvoice(invoices *invoice.Service) http.HandlerFunc {
 			return
 		}
 		httpio.WriteJSON(w, http.StatusOK, toOwnerInvoiceJSON(inv))
+	}
+}
+
+func listWebhookEvents(invoices *invoice.Service, hooks *webhook.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		limit := webhook.DefaultEventsPage
+		if v := q.Get("limit"); v != "" {
+			n, err := strconv.Atoi(v)
+			if err != nil {
+				httpio.WriteError(w, r, fmt.Errorf("%w: limit must be a number", webhook.ErrInvalid))
+				return
+			}
+			limit = n
+		}
+		profileID := r.PathValue("profileId")
+		page, err := hooks.Events(r.Context(), profileID, mid.ProfileAccess(r).Stores, q.Get("type"), q.Get("cursor"),
+			limit)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		out := struct {
+			Items      []json.RawMessage `json:"items"`
+			NextCursor *string           `json:"nextCursor"`
+		}{Items: []json.RawMessage{}, NextCursor: httpio.OrNull(page.NextCursor)}
+		read := map[string]invoice.Invoice{} // one read per invoice a page names
+		for _, e := range page.Events {
+			inv, ok := read[e.InvoiceID]
+			if !ok {
+				if inv, err = invoices.GetOfProfile(r.Context(), profileID, e.InvoiceID); err != nil {
+					httpio.WriteError(w, r, err)
+					return
+				}
+				read[e.InvoiceID] = inv
+			}
+			body, err := EventBody(e, inv)
+			if err != nil {
+				httpio.WriteError(w, r, err)
+				return
+			}
+			out.Items = append(out.Items, body)
+		}
+		httpio.WriteJSON(w, http.StatusOK, out)
 	}
 }
