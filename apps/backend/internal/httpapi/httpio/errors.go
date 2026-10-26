@@ -100,8 +100,12 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusConflict, "link_off", "the owner turned this payment link off"
 	case errors.Is(err, link.ErrEnded):
 		status, code, message = http.StatusConflict, "link_ended", "this payment link has ended"
-	case errors.Is(err, link.ErrFull):
-		status, code, message = http.StatusConflict, "link_full", "this payment link has taken all its payments"
+	case errors.Is(err, link.ErrFull), errors.Is(err, invoice.ErrLinkAtCapacity):
+		status, code, message = http.StatusConflict, "link_full", "this payment link has no available purchase slots"
+	case errors.Is(err, link.ErrNotReady):
+		status, code, message = http.StatusConflict, "link_not_ready", link.ErrNotReady.Error()
+	case errors.Is(err, link.ErrChanged):
+		status, code, message = http.StatusConflict, "link_changed", "this link changed; review the current offer and try again"
 	case errors.Is(err, link.ErrPersonal):
 		status, code, message = http.StatusConflict, "personal_profile",
 			"a personal profile asks for money with requests, not payment links"

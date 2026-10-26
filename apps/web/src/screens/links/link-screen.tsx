@@ -25,7 +25,9 @@ export function LinkScreen({ linkId }: LinkScreenProps) {
   const stores = useListStoresQuery(profile.profileId, { skip: !merchant });
   const loading =
     (linkId && !list.currentData) || (merchant && !stores.currentData && !stores.isError);
-  const failed = linkId && list.isError && !list.currentData;
+  const failed =
+    (linkId && list.isError && !list.currentData) ||
+    (merchant && stores.isError && !stores.currentData);
   return (
     <div className="flex flex-col gap-6">
       <header className="flex min-w-0 flex-col gap-2">
@@ -43,12 +45,23 @@ export function LinkScreen({ linkId }: LinkScreenProps) {
       {failed ? (
         <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-muted">
           {COPY.failed}
-          <Button size="sm" variant="secondary" onClick={() => void list.refetch()}>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              if (list.isError) void list.refetch();
+              if (stores.isError) void stores.refetch();
+            }}
+          >
             {COPY.retry}
           </Button>
         </div>
       ) : loading ? (
         <Skeleton className="h-96" />
+      ) : merchant && stores.currentData?.length === 0 ? (
+        <p role="status" className="text-sm text-muted">
+          {COPY.noStores}
+        </p>
       ) : !linkId || link ? (
         // A new form per link, so it never keeps another link's values.
         <LinkForm

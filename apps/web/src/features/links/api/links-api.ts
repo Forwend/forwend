@@ -43,13 +43,13 @@ export const linksApi = apiSlice.enhanceEndpoints({ addTagTypes: [LINKS_TAG] }).
       extraOptions: { answerFirst: true },
       query: (slug) => ({ url: `/v1/links/${encodeURIComponent(slug)}/visits`, method: "POST" }),
     }),
-    /** Makes the payer's invoice; the same key again answers with the same one. A 429 says to try again later. */
+    /** Creates a quoted purchase or replays the original request after an uncertain response. */
     payLink: build.mutation<LinkPay, LinkPayArg>({
       extraOptions: { answerFirst: true },
-      query: ({ slug, amountUsd, idempotencyKey }) => ({
+      query: ({ slug, amountUsd, expectedAmountUsd, expectedVersion, idempotencyKey }) => ({
         url: `/v1/links/${encodeURIComponent(slug)}/pay`,
         method: "POST",
-        body: amountUsd ? { amountUsd } : {},
+        body: { ...(amountUsd ? { amountUsd } : {}), expectedAmountUsd, expectedVersion },
         headers: { "Idempotency-Key": idempotencyKey },
       }),
       argSchema: linkPayArgSchema,

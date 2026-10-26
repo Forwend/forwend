@@ -1,6 +1,15 @@
 /** Where a link stands (R-140, R-142): off by the owner, past its end date, or at its payment cap; only "on" takes
  * payments. */
-export const LINK_STATES = { on: "on", off: "off", ended: "ended", full: "full" } as const;
+export const LINK_STATES = {
+  on: "on",
+  off: "off",
+  ended: "ended",
+  full: "full",
+  notReady: "not_ready",
+} as const;
+
+export const LINK_CHANGED_CODE = "link_changed";
+export const LINK_SETUP_REQUIRED_CODE = `link_${LINK_STATES.notReady}`;
 
 /** Pay's answer for a link that is not on (R-142): its error code names the state. */
 export const LINK_CLOSED_CODES = Object.values(LINK_STATES)

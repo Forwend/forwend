@@ -228,12 +228,13 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The return link's hint names the store's origins. The invoice list adds the store after the title.
 - Payment links (R-140) sits after Invoices in a merchant's Payments group and a freelancer's Get paid group.
   - It is laid out like Stores: a one-line intro with New link at its end, then a table.
-  - The table shows the link with its `/l/<slug>`, the amount, a status badge and "N visits, M paid".
-  - The status is On, Off, Ended (past its last day) or Cap reached; only On is green.
+  - The table shows the link with its `/l/<slug>`, the amount, a status badge and visits, paid purchases and reserved slots.
+  - The status is On, Off, Ended, Cap reached or Setup needed; only On is green.
   - Test links have a Test mode badge in lists and details, and the invoice warning on their public page.
   - New and Edit are form pages like Edit store, with Link, Amount and Limits panels.
   - Amount has two choice cards: A fixed amount, or The payer enters it with an optional min and max.
   - A new link opens on its page after saving, where the address shows with a Copy button.
+  - Editing keeps the store selector disabled; failed store loading blocks the form with a retry action.
 - Networks and tokens (R-136) opens from the account menu, after Email notifications, for every profile.
   - It is laid out like Email notifications: one panel with a switch per token, named "USDC on Base Sepolia".
   - A switch saves at once and says so in a toast.
@@ -393,7 +394,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Top: the pay page's payee tile and name, "Payment link" under it, then the link's title.
   - A fixed link shows its amount in USD; an open one has an Amount (USD) field whose hint gives the limits.
   - Pay is the one button, with "You pick the token and network on the next page" under it.
-  - A link that is off, ended or full shows why in a quiet box, with no Pay.
+  - A link that is off, ended, full or unready explains why, with no Pay.
+  - Pay first records one purchase identity, original amount and offer version in the URL.
+  - Returning or refreshing offers Continue this checkout and Start another purchase; independent visitors never share an attempt.
+  - Uncertain failures preserve that identity; changed offers require reviewing a new purchase.
+  - Focus moves to the pending heading, then to the amount or offer heading when starting another purchase.
   - A bad amount shows on the field and focuses it; a busy or failed Pay says so under the button.
 - `/pay/<token>` (R-68) is one short screen. The logo links home.
   - Wide screens: the invoice on the left, how to pay on the right.

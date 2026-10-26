@@ -118,7 +118,9 @@ export function LinksTable({ profileId }: LinksTableProps) {
                     <td>
                       <StateBadge link={link} />
                     </td>
-                    <td className="text-muted">{COPY.activity(link.visits, link.paid)}</td>
+                    <td className="text-muted">
+                      {COPY.activity(link.visits, link.paid, link.reserved)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -134,7 +136,7 @@ export function LinksTable({ profileId }: LinksTableProps) {
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium text-ink">{link.title}</span>
                     <span className="block truncate text-xs text-muted">
-                      {amountLabel(link)} · {COPY.activity(link.visits, link.paid)}
+                      {amountLabel(link)} · {COPY.activity(link.visits, link.paid, link.reserved)}
                     </span>
                   </span>
                   <StateBadge link={link} />

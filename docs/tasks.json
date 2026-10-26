@@ -3,38 +3,41 @@
   "nextId": 336,
   "tasks": [
     {
-      "id": "F327",
-      "type": "feat",
-      "behavior": "Add explicit store-scoped checkout sessions and server SDK operations",
+      "id": "F328",
+      "type": "fix",
+      "behavior": "Make reusable-link purchases independent and recoverable",
       "acceptance": [
-        "Checkout create, get, list and expire endpoints expose hosted URLs, external references and separate session/payment state, including unnumbered attempts.",
-        "Exact original requests replay; altered amount/items/reference/store/mode conflict; tenant, role, key and mode boundaries are enforced through router tests.",
-        "The Node SDK supports checkout and payment operations while every existing invoice method remains compatible."
+        "Each purchase has independent identity; refresh resumes it and another purchase creates another checkout, verified with independent customer browsers.",
+        "An original request replays after link changes or disable; store attribution is immutable and activation requires merchant readiness.",
+        "Concurrent requests cannot reserve the same final capacity slot; reserved and paid counts are distinct and expiry releases unused reservations."
       ],
       "dependsOn": [
-        "F326"
+        "F327"
       ],
-      "state": "passing",
+      "state": "verified",
       "verification": [
         "backend-affected",
         "backend-e2e",
-        "node-unit"
+        "web-e2e"
       ],
       "refs": [
-        "R-162"
+        "R-163",
+        "R-130",
+        "R-117"
       ],
       "keep": [
         "packages/contracts/src/*"
       ],
       "review": true,
       "notes": [
-        "2026-10-26 review pass by reviewer: Reviewed checkout and canonical payment routes, purpose guards, exact request replay, expiration races, tenant/store/role/key/mode isolation, precise creation-order pagination, OpenAPI and Node SDK contracts, shared paymentio ownership and public document behavior. Last-cap concurrency replay and neutral legacy wording findings are fixed with regression coverage. Real-binary checkout evidence checks confirmation refusal, settlement, receiver ledger and wallet chain balances without invoice numbering. All selected harness checks passed; no blockers remain."
+        "2026-10-26 Independent backend review found the same profile-lock/event-FK cycle in invoice sending; corrected Create, link.Save and Send only. Other profile lock callers inspected and excluded because no reversed invoice/link dependency was found. Phone390 and desktop1280 screenshots inspected in docs/runs/f328-purchase-*.png. Legacy omitted fixed/open input and prior offer revision cannot be reconstructed; new immutable metadata records both.",
+        "2026-10-26 review pass by reviewer: Reviewed immutable link/source and request metadata guards, offer revisions and quote checks, original replay before mutable checks, readiness, store/key/mode boundaries, scoped edits, canonical reservations and reopen capacity. Concurrency regressions cover last slots, fresh post-lock snapshots and foreign-key lock cycles; NO KEY UPDATE preserves profile coordination. Real Postgres/Anvil tests reconcile independent purchases, settlement and late held funds without invoice numbers. Final selected checks passed; frontend reviewer reported no blockers with browser flows and phone/desktop inspection. Legacy hashes and documents remain; omitted legacy fixed/open input and old offer versions cannot be proven. No blockers remain."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-26T22:37:52Z",
+        "at": "2026-10-26T23:42:05Z",
         "checks": [
           {
             "id": "harness",
@@ -62,42 +65,36 @@
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.1,
+            "seconds": 1.3,
             "log": ""
           },
           {
             "id": "backend-affected",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 180.5,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "backend-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 26.7,
+            "seconds": 37.7,
             "log": ""
           },
           {
             "id": "web-unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.7,
-            "log": ""
-          },
-          {
-            "id": "node-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.4,
+            "seconds": 3.6,
             "log": ""
           },
           {
             "id": "web-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 26.3,
+            "seconds": 26.5,
             "log": ""
           },
           {
@@ -108,60 +105,24 @@
             "log": ""
           }
         ],
-        "taskHash": "fbb76f1f0c62e417",
-        "filesHash": "326b3e077d5d037f",
+        "taskHash": "877d354fb7959392",
+        "filesHash": "7dafbe6b6fead514",
         "proof": {
-          "1": "backend-e2e: real checkout API to transfer, finality, settlement and independent ledger/chain balances completes without invoice numbering",
-          "2": "backend-affected: router authorization, exact and conflicting retries, expiration and last-slot concurrent retry regressions pass under race detection",
-          "3": "node-unit: checkout create/get/list/expire and canonical payments preserve existing invoice and webhook methods"
+          "1": "web-e2e: Independent browsers create distinct attempts; refresh, Back and storage failure preserve original input and quote; another purchase creates a new identity. Inspected phone390 and desktop1280 screenshots.",
+          "2": "backend-affected: Router retries preserve original terms after edits and disable; stale quotes fail, legacy hashes survive, SQL guards pin ownership and metadata, activation requires readiness.",
+          "3": "backend-e2e: One-slot reservations reject competitors; canonical expiration frees capacity; two distinct real-chain purchases settle independently and late funds remain held."
         },
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "Reviewed checkout and canonical payment routes, purpose guards, exact request replay, expiration races, tenant/store/role/key/mode isolation, precise creation-order pagination, OpenAPI and Node SDK contracts, shared paymentio ownership and public document behavior. Last-cap concurrency replay and neutral legacy wording findings are fixed with regression coverage. Real-binary checkout evidence checks confirmation refusal, settlement, receiver ledger and wallet chain balances without invoice numbering. All selected harness checks passed; no blockers remain.",
-          "at": "2026-10-26T22:42:09Z",
-          "filesHash": "326b3e077d5d037f"
-        },
-        "commit": "97d64a54",
-        "doneAt": "2026-10-26T22:42:50Z"
+          "summary": "Reviewed immutable link/source and request metadata guards, offer revisions and quote checks, original replay before mutable checks, readiness, store/key/mode boundaries, scoped edits, canonical reservations and reopen capacity. Concurrency regressions cover last slots, fresh post-lock snapshots and foreign-key lock cycles; NO KEY UPDATE preserves profile coordination. Real Postgres/Anvil tests reconcile independent purchases, settlement and late held funds without invoice numbers. Final selected checks passed; frontend reviewer reported no blockers with browser flows and phone/desktop inspection. Legacy hashes and documents remain; omitted legacy fixed/open input and old offer versions cannot be proven. No blockers remain.",
+          "at": "2026-10-26T23:43:29Z",
+          "filesHash": "7dafbe6b6fead514"
+        }
       },
-      "branch": "feat/f327-add-explicit-store-scoped-checkout-sessi",
-      "baseCommit": "75b2cb35244ea3c6d61e88134fd717754b8ba2ac",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f327-add-explicit-store-scoped-checkout-sessi",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F328",
-      "type": "fix",
-      "behavior": "Make reusable-link purchases independent and recoverable",
-      "acceptance": [
-        "Each purchase has independent identity; refresh resumes it and another purchase creates another checkout, verified with independent customer browsers.",
-        "An original request replays after link changes or disable; store attribution is immutable and activation requires merchant readiness.",
-        "Concurrent requests cannot reserve the same final capacity slot; reserved and paid counts are distinct and expiry releases unused reservations."
-      ],
-      "dependsOn": [
-        "F327"
-      ],
-      "state": "not_started",
-      "verification": [
-        "backend-affected",
-        "backend-e2e",
-        "web-e2e"
-      ],
-      "refs": [
-        "R-163"
-      ],
-      "keep": [
-        "packages/contracts/src/*"
-      ],
-      "review": true,
-      "notes": [],
-      "blockedReason": null,
-      "evidence": null
+      "branch": "fix/f328-make-reusable-link-purchases-independent",
+      "baseCommit": "19016aae1a2752242a097c542db9be9fa84f11f6",
+      "failedVerifies": 0
     },
     {
       "id": "F329",

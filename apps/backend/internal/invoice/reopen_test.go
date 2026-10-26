@@ -107,3 +107,54 @@ func TestReopenEndsBeforeAnEarlyDeployStopsSettling(t *testing.T) {
 		}
 	}
 }
+
+func TestReopenCannotTakeAnotherCustomersReservedLinkSlot(t *testing.T) {
+	pool, profileID := open(t)
+	ctx := t.Context()
+	s := NewService(pool)
+	closed := closedPartly(t, pool, s, profileID, 1, 0)
+	const linkID = "eeeeeeee-0000-4000-8000-000000000050"
+	if _, err := pool.Exec(ctx, `INSERT INTO payment_links (id, profile_id, slug, title, max_payments)
+		VALUES ($1, $2, 'abcdefghijkl', 'One seat', 1)`, linkID, profileID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, "UPDATE invoices SET link_id = $2 WHERE id = $1", closed.ID, linkID); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.Create(ctx, profileID, "another-purchase", Request{AmountUSD: "5", LinkID: linkID}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Reopen(ctx, profileID, closed.ID); !errors.Is(err, ErrLinkAtCapacity) {
+		t.Fatalf("reopening took capacity already reserved by another customer: %v", err)
+	}
+	if got, err := s.GetOfProfile(ctx, profileID, closed.ID); err != nil || !got.ReopenUntil.IsZero() {
+		t.Fatalf("reopen offered without capacity: %v, %v", got.ReopenUntil, err)
+	}
+}
+
+func TestLegacyLinkReopenAllowsConcurrentProfileCoordination(t *testing.T) {
+	pool, profileID := open(t)
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancel()
+	s := NewService(pool)
+	closed := closedPartly(t, pool, s, profileID, 1, 0)
+	const linkID = "eeeeeeee-0000-4000-8000-000000000052"
+	if _, err := pool.Exec(ctx, `INSERT INTO payment_links (id, profile_id, slug, title, max_payments)
+		VALUES ($1, $2, 'abcdefghijkl', 'One seat', 1)`, linkID, profileID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, "UPDATE invoices SET link_id = $2 WHERE id = $1", closed.ID, linkID); err != nil {
+		t.Fatal(err)
+	}
+	profileLock, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer profileLock.Rollback(t.Context())
+	if _, err := profileLock.Exec(ctx, "SELECT 1 FROM profiles WHERE id = $1 FOR NO KEY UPDATE", profileID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Reopen(ctx, profileID, closed.ID); err != nil {
+		t.Fatalf("reopen waited for the profile, which can deadlock with Revise: %v", err)
+	}
+}

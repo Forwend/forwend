@@ -18,6 +18,7 @@ var (
 	ErrNotFound = errors.New("payment link not found")
 	// ErrPersonal: a personal profile asks for money with requests (D-52), not payment links.
 	ErrPersonal = errors.New("a personal profile has no payment links")
+	ErrNotReady = errors.New("finish billing details, wallet setup and accepted tokens before activating this payment link")
 )
 
 // Link is a payment link. Amounts are USD cents: a fixed link has AmountCents, an open one has 0 there and the
@@ -36,6 +37,9 @@ type Link struct {
 	Livemode    bool
 	Visits      int64
 	Paid        int64
+	Reserved    int64
+	Ready       bool
+	Revision    int64
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }

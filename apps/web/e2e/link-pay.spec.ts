@@ -6,6 +6,7 @@ import { sidewaysScroll } from "./sideways";
 // R-142: the API answers are mocked; the Go API test covers the real ones.
 const SLUG = "k3f9q2m7x1ab";
 const FIXED = {
+  version: "1",
   livemode: false,
   slug: SLUG,
   title: "Logo design",
@@ -28,7 +29,6 @@ async function mockLink(
 ) {
   const calls = { visits: 0, pays: [] as { key: string | undefined; body: unknown }[] };
   let link = first;
-  let invoice: object | null = INVOICE;
   await page.route(`**/api/v1/links/${SLUG}`, (route) => route.fulfill({ json: link }));
   await page.route(`**/api/v1/links/${SLUG}/visits`, (route) => {
     calls.visits++;
@@ -48,20 +48,12 @@ async function mockLink(
   await page.route("**/api/v1/invoices/*", (route) =>
     route.request().method() !== "GET"
       ? route.fulfill({ status: 204 })
-      : invoice
-        ? route.fulfill({ json: invoice })
-        : route.fulfill({
-            status: 500,
-            json: { error: { code: "internal", message: "internal" } },
-          }),
+      : route.fulfill({ json: INVOICE }),
   );
   return {
     calls,
     setLink: (next: object) => {
       link = next;
-    },
-    setInvoice: (next: object | null) => {
-      invoice = next;
     },
   };
 }
@@ -69,40 +61,109 @@ async function mockLink(
 const payButton = (page: Page) => page.getByRole("button", { name: "Pay", exact: true });
 
 test.describe("payment link page", () => {
-  test("shows who asks and the amount, counts one visit, and Pay opens the payer's invoice, reused while open", async ({
+  test("a purchase resumes after Back and reload, while another purchase uses a fresh identity", async ({
     page,
   }) => {
-    const { calls, setInvoice } = await mockLink(page, FIXED);
+    const { calls } = await mockLink(page, FIXED);
     await page.goto(`/l/${SLUG}`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Alice Shop Ltd");
     await expect(page.getByText("Logo design", { exact: true })).toBeVisible();
     await expect(page.getByText(/^Test mode:.*testnet tokens/)).toBeVisible();
     await expect(page.locator("[data-money]")).toHaveText("50.00 USD");
-    await expect(page.getByText("You pick the token and network on the next page.")).toBeVisible();
     await expect.poll(() => calls.visits).toBe(1);
-
     await payButton(page).click();
     await expect(page).toHaveURL(new RegExp(`/pay/${INVOICE.payToken}$`));
-    expect(calls.pays).toEqual([{ key: expect.stringMatching(/:5000$/), body: {} }]);
-
-    // The same browser goes back to its open invoice for the same amount.
-    await page.goto(`/l/${SLUG}`);
-    await payButton(page).click();
+    const first = calls.pays[0];
+    expect(first).toEqual({
+      key: expect.stringMatching(/:5000$/),
+      body: { expectedAmountUsd: "50.00", expectedVersion: "1" },
+    });
+    await page.goBack();
+    await expect(page.getByRole("button", { name: "Continue payment", exact: true })).toBeVisible();
+    await page.reload();
+    await page.getByRole("button", { name: "Continue payment", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/pay/${INVOICE.payToken}$`));
-    expect(calls.pays).toHaveLength(1);
+    expect(calls.pays).toEqual([first, first]);
+    await page.goBack();
+    await page.getByRole("button", { name: "Start another purchase", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Amount", exact: true })).toBeFocused();
+    await payButton(page).click();
+    await expect.poll(() => calls.pays.length).toBe(3);
+    expect(calls.pays[2]?.key).not.toBe(first?.key);
+  });
 
-    // A read of it that fails makes no second invoice: the first may already be paid.
-    setInvoice(null);
+  test("an uncertain response survives reload when browser storage is unavailable", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      for (const name of ["localStorage", "sessionStorage"]) {
+        Object.defineProperty(window, name, {
+          get: () => {
+            throw new Error("storage unavailable");
+          },
+        });
+      }
+    });
+    const { calls } = await mockLink(page, FIXED, { status: 500, code: "internal" });
     await page.goto(`/l/${SLUG}`);
     await payButton(page).click();
-    await expect(page.getByText("We could not start the payment. Try again.")).toBeVisible();
-    expect(calls.pays).toHaveLength(1);
+    await expect(
+      page.getByText("We could not check whether checkout started. Continue payment to try again."),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Your previous payment", exact: true }),
+    ).toBeFocused();
+    const first = calls.pays[0];
+    await page.reload();
+    await page.getByRole("button", { name: "Continue payment", exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`/pay/${INVOICE.payToken}$`));
+    expect(calls.pays).toEqual([first, first]);
+  });
 
-    // Once that one is paid, Pay makes another.
-    setInvoice({ ...sampleInvoice(2, "paid", "pending", "Logo design", null), deposits: [] });
+  test("recovery retains the quoted price and offer revision after the seller changes them", async ({
+    page,
+  }) => {
+    const { calls, setLink } = await mockLink(
+      page,
+      FIXED,
+      { status: 500, code: "internal" },
+      { status: 409, code: "link_changed" },
+    );
     await page.goto(`/l/${SLUG}`);
     await payButton(page).click();
-    await expect.poll(() => calls.pays.length).toBe(2);
+    await expect(
+      page.getByText("We could not check whether checkout started. Continue payment to try again."),
+    ).toBeVisible();
+    setLink({ ...FIXED, amountUsd: "100.00", version: "2" });
+    await page.reload();
+    await expect(page.locator("[data-money]")).toHaveText("50.00 USD");
+    await page.getByRole("button", { name: "Continue payment", exact: true }).click();
+    await expect(
+      page.getByText("This offer changed. Start another purchase to review the current price."),
+    ).toBeVisible();
+    expect(calls.pays[1]).toEqual(calls.pays[0]);
+    expect(calls.pays[1]?.body).toEqual({ expectedAmountUsd: "50.00", expectedVersion: "1" });
+    await page.getByRole("button", { name: "Start another purchase", exact: true }).click();
+    await expect(page.locator("[data-money]")).toHaveText("100.00 USD");
+  });
+
+  test("independent customers receive independent purchase identities", async ({ browser }) => {
+    const contexts = await Promise.all([browser.newContext(), browser.newContext()]);
+    try {
+      const pages = await Promise.all(contexts.map((context) => context.newPage()));
+      const mocks = await Promise.all(pages.map((page) => mockLink(page, FIXED)));
+      await Promise.all(pages.map((page) => page.goto(`/l/${SLUG}`)));
+      await Promise.all(pages.map((page) => payButton(page).click()));
+      await Promise.all(
+        pages.map((page) => expect(page).toHaveURL(new RegExp(`/pay/${INVOICE.payToken}$`))),
+      );
+      const keys = mocks.map((mock) => mock.calls.pays[0]?.key);
+      expect(keys[0]).toBeTruthy();
+      expect(keys[1]).toBeTruthy();
+      expect(keys[0]).not.toBe(keys[1]);
+    } finally {
+      await Promise.all(contexts.map((context) => context.close()));
+    }
   });
 
   test("an open link takes the payer's amount within its limits", async ({ page }) => {
@@ -130,12 +191,18 @@ test.describe("payment link page", () => {
     await expect(
       page.getByText("Many payments are starting right now. Try again in a minute."),
     ).toBeVisible();
-    await payButton(page).click();
+    await page.getByRole("button", { name: "Continue payment", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/pay/${INVOICE.payToken}$`));
     // A retry of the same amount sends the same key, so the API makes one invoice.
     expect(calls.pays).toEqual([
-      { key: expect.stringMatching(/:2500$/), body: { amountUsd: "25" } },
-      { key: calls.pays[0]?.key, body: { amountUsd: "25" } },
+      {
+        key: expect.stringMatching(/:2500$/),
+        body: { amountUsd: "25", expectedAmountUsd: "25.00", expectedVersion: "1" },
+      },
+      {
+        key: calls.pays[0]?.key,
+        body: { amountUsd: "25", expectedAmountUsd: "25.00", expectedVersion: "1" },
+      },
     ]);
   });
 
@@ -143,7 +210,8 @@ test.describe("payment link page", () => {
     for (const [state, message] of [
       ["off", "This link is off. Ask the seller for another way to pay."],
       ["ended", "This link has ended. Ask the seller for another way to pay."],
-      ["full", "This link has taken all the payments it allows."],
+      ["full", "This link has no available payment slots right now."],
+      ["not_ready", "This seller can't take payments yet. Ask them for another way to pay."],
     ] as const) {
       await page.unrouteAll();
       const { calls } = await mockLink(page, { ...FIXED, state });

@@ -260,38 +260,47 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
 
 ## Payment links
 
-R-140, D-54, D-94; the full schema is in openapi.yaml. Members reach them with `invoices.read` and `invoices.write` (D-93).
+R-140, R-163, D-54, D-94; openapi.yaml owns the schema. Members use `invoices.read` and `invoices.write` (D-93).
 
-- A payment link is a template a payer pays through at `/l/<slug>`; opening it creates nothing.
-  - Each link has permanent `livemode`; every payer invoice keeps that mode.
-  - A key creates links in its mode and only reads, lists or edits links in that mode.
-  - Owner creates choose live mode when enabled live tokens exist; otherwise test mode.
-  - Owner edits preserve the original mode, including links made before live networks exist.
-- `GET /v1/profiles/{profileId}/links` lists the profile's links, newest first, each with its `visits` and `paid` counts.
-  - `paid` counts the link's invoices that are paid or settled.
-  - A Developer or Finance member sees only the links of their stores.
-- `GET /v1/profiles/{profileId}/links/{linkId}` reads one. Another profile's or another store's link is 404 `link_not_found`.
-- `PUT /v1/profiles/{profileId}/links/{linkId}` creates or replaces one by a lowercase UUID the caller picks.
-  - 201 the first time, 200 after. Forwend makes the `slug`, 12 random lowercase letters and digits, and never changes it.
+- A link is a reusable offer at `/l/<slug>`; opening it creates nothing.
+- Its profile, store, mode and random 12-character slug never change.
+- Keys create and read links only in their mode; owner creates choose live mode when enabled live tokens exist.
+- Owner edits preserve mode; missing `storeId` preserves the original store.
+- `GET /v1/profiles/{profileId}/links` lists newest first; scoped members see only their stores.
+  - `paid` counts canonically paid purchases, including settled purchases.
+  - `reserved` counts canonical open, detected and partly paid purchases.
+  - `ready` requires billing details, a wallet and an accepted watched token in the link's mode.
+- `GET /v1/profiles/{profileId}/links/{linkId}` reads one; another profile's or inaccessible store's link returns 404 `link_not_found`.
+- `PUT /v1/profiles/{profileId}/links/{linkId}` saves a caller-chosen lowercase UUID: 201 on creation, otherwise 200.
   - `title` is 1–200 characters of plain text on one line.
-  - A fixed link sends `amountUsd`. An open one leaves it out and may send `minUsd` and `maxUsd`.
-  - Amounts are USD with at most two decimals, above 0; `minUsd` is at most `maxUsd`. There is no default cap.
-  - `endsAt` (optional) is when the link stops; `maxPayments` (optional, 1–1000000) caps its paid invoices.
-  - `active` is the on or off switch; left out, the link is on.
-  - A merchant link is for `storeId`, the profile's first store when left out. A freelancer's link has no store.
-  - A member's link is for one of their stores, their first by default; another store is 422.
-  - A personal profile is 409 `personal_profile`.
-- The payer's routes need no sign-in (R-142). A slug that isn't 12 lowercase letters and digits, or no link's, is 404.
-  - `GET /v1/links/{slug}` gives `title`, `payee` (the billing name), a merchant store's `brand` and the amounts.
-  - Its `state` is `on`, `off`, `ended` or `full`; only `on` takes payments.
-  - `POST /v1/links/{slug}/visits` counts one load of the page (204). The page makes nothing (D-54).
-  - `POST /v1/links/{slug}/pay` makes the payer's invoice and answers its `payToken`: 201, or 200 for a key it saw.
-  - The invoice is payer-chooses (R-56), with the link's title, store, that store's tokens and its default close.
-  - Its history says the payer made it, and it has no number until its first deposit (R-141).
-  - An open link takes `amountUsd` within its limits; a fixed link takes none. Either mistake is 422.
-  - A link that is off, ended or full is 409 `link_off`, `link_ended` or `link_full`, and nothing is made.
-  - An owner with no billing details yet is 409 `billing_details_required`.
-  - The Idempotency-Key is at most 200 bytes. A payer's key is kept apart from the owner's, so it never replays theirs.
+  - Fixed links send `amountUsd`; open links omit it and may send `minUsd` and `maxUsd`.
+  - USD amounts have at most two decimals, above zero; minimum cannot exceed maximum.
+  - Optional `endsAt` stops new purchases; `maxPayments`, from 1–1000000, limits paid plus reserved purchases.
+  - `active` defaults true; activation requires readiness, otherwise 409 `link_not_ready`.
+  - Inactive drafts need no readiness; personal profiles return 409 `personal_profile`.
+  - New merchant links default to the first accessible store; freelancer links have no store.
+  - Changing an existing store returns 422; use another link for another store.
+- Public routes require no sign-in; malformed or unknown slugs return 404.
+  - `GET /v1/links/{slug}` returns title, payee, store branding, amounts and decimal-string `version`.
+  - State is `on`, `off`, `ended`, `full` or `not_ready`; only `on` starts new purchases.
+  - Version changes with offer terms or availability settings; visits and identical saves leave it unchanged.
+  - `POST /v1/links/{slug}/visits` counts a load and returns 204.
+  - `POST /v1/links/{slug}/pay` creates document-free checkout: 201, or 200 when replaying the same request.
+  - Response includes `paymentId`, `sessionId` and `payToken`; `/pay/<token>` remains its hosted checkout.
+  - Open links require `amountUsd` within limits; fixed links omit it. Invalid amounts return 422.
+  - Optional `expectedAmountUsd` and `expectedVersion` bind a purchase to the displayed offer.
+  - A changed quote returns 409 `link_changed`; an already committed request replays its original terms first.
+  - The idempotency key, at most 200 bytes, is isolated from owner keys and other links.
+  - Original input and quotes are immutable; reusing a key with different input returns 409 `idempotency_conflict`.
+  - Existing requests replay even after disabling, expiry, capacity exhaustion or template changes.
+  - New closed requests return `link_off`, `link_ended`, `link_full` or `link_not_ready`, without creating anything.
+  - Checkout keeps the link's store, mode, title, accepted tokens and store close default; no invoice number is allocated.
+- Creation reserves capacity transactionally; rejected reservations spend no shared creation budget.
+- Canonical expiry releases unused reservations; elapsed wall time alone does not release an unresolved payment.
+- Reopening a legacy partly paid purchase also reserves capacity; unavailable capacity returns 409 `link_full`.
+- Deploy backend and migration before frontend; old clients remain accepted without optional quote fields.
+- Legacy requests preserve hashes and documents; supplied amounts must match original terms.
+- Legacy storage cannot prove omitted fixed/open input or old offer versions; new request metadata provides that guarantee.
 
 ## API keys
 
@@ -361,7 +370,7 @@ R-147, D-97; the body is `WebhookEvent` under `webhooks` in openapi.yaml.
   - `data.held` is null except on `invoice.held`: `amount` in base units, `reason`, and `optionId` on a payer-chooses invoice.
   - A held `reason` is `overpaid` (more than the amount, or after paid), `late` (after the checkout closed), or `expired`.
   - It can also be `canceled`, or `other_option` (sent to an option the payer did not choose, D-76).
-- A payment-link invoice's `invoice.detected` can come before it has a number (R-141).
+- A legacy payment-link invoice's `invoice.detected` can come before it has a number (R-141).
 
 ### Events list
 
@@ -426,7 +435,7 @@ R-19 and R-42; the full schema is in openapi.yaml.
   `INV-` and at least 4 digits (`INV-0001`). The insert takes it from the profile's counter row (`profiles.invoice_seq`)
   in the invoice's own transaction, so a failed create uses no number and a repeated Idempotency-Key returns the
   stored one.
-- A payment-link invoice gets its `number` when the ledger books its first deposit, in that transaction (R-141).
+- A legacy payment-link invoice gets its `number` when the ledger books its first deposit, in that transaction (R-141).
   - Until then the pay page's read shows `number: null`, and the PDF has no number.
   - The owner's routes with an `{invoiceId}` answer 404 `invoice_not_found` for it, as does `replaces`.
   - The invoice list, search, Owed and Activity leave it out, with its deposits.
@@ -839,7 +848,7 @@ seconds (when the next token is back) and runs nothing else.
 - `POST /v1/invoices/{payToken}/views` (R-125): per link, 5 at once, then one every 5 s. It slows a run-up of one link's
   count; it can't stop one.
 - `POST /v1/links/{slug}/visits` (R-142): per link, 5 at once, then one every 5 s.
-- `POST /v1/links/{slug}/pay` makes an invoice, so it has limits in `linkapi/routes.go` (R-142).
+- `POST /v1/links/{slug}/pay` makes a checkout, so it has limits in `linkapi/routes.go` (R-142).
   - Per link: 5 at once, then one every 10 s.
   - For all links together: 20 at once, then one a second, spent only by a Pay that makes an invoice (R-117).
   - It is asked just before the insert, so any Pay that makes no invoice spends none, a repeated key included.

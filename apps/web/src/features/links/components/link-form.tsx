@@ -18,7 +18,12 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useSaveLinkMutation } from "@/features/links/api/links-api";
-import { AMOUNT_KINDS, LINK_LIMITS, USD_PATTERN } from "@/features/links/constants/links";
+import {
+  AMOUNT_KINDS,
+  LINK_LIMITS,
+  LINK_SETUP_REQUIRED_CODE,
+  USD_PATTERN,
+} from "@/features/links/constants/links";
 import { LINKS_COPY as COPY } from "@/features/links/constants/links-copy";
 import { endsAtOf, invalidLinkField, linkAddress } from "@/features/links/lib/links";
 import type {
@@ -106,6 +111,11 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
       if (field) {
         flushSync(() => setErrors({ [field]: COPY.errors.invalid[field] }));
         form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+      } else if (
+        (error as { data?: { error?: { code?: string } } }).data?.error?.code ===
+        LINK_SETUP_REQUIRED_CODE
+      ) {
+        setFormError(COPY.errors.notReady);
       } else setFormError(COPY.errors.failed);
       setBusy(false);
     }
@@ -124,10 +134,11 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
             hint={COPY.titleHint}
             error={errors.title}
           />
-          {stores.length > 1 ? (
+          {stores.length > 0 ? (
             <SelectField
               label={COPY.store}
               value={store}
+              disabled={!!link}
               onValueChange={setStore}
               options={stores.map((s) => ({ value: s.storeId, label: s.name }))}
             />

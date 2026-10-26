@@ -8,7 +8,9 @@ const FIELDS: LinkField[] = ["title", "amountUsd", "minUsd", "maxUsd", "maxPayme
 export function linkState(link: Link, now: number): LinkState {
   if (!link.active) return LINK_STATES.off;
   if (link.endsAt && Date.parse(link.endsAt) < now) return LINK_STATES.ended;
-  if (link.maxPayments !== null && link.paid >= link.maxPayments) return LINK_STATES.full;
+  if (link.maxPayments !== null && link.paid + (link.reserved ?? 0) >= link.maxPayments)
+    return LINK_STATES.full;
+  if (link.ready === false) return LINK_STATES.notReady;
   return LINK_STATES.on;
 }
 

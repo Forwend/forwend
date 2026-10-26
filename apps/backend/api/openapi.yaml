@@ -2887,8 +2887,9 @@ components:
           items: { type: string, enum: [invoices.read, invoices.write, stores.read, tokens.read] }
     PublicPaymentLink:
       type: object
-      required: [slug, title, payee, brand, amountUsd, minUsd, maxUsd, state, livemode]
+      required: [slug, title, payee, brand, amountUsd, minUsd, maxUsd, state, livemode, version]
       properties:
+        version: { type: string, pattern: "^[1-9][0-9]{0,18}$", description: Opaque offer revision. Visits do not change it. }
         slug: { type: string, pattern: "^[a-z0-9]{12}$" }
         title: { type: string }
         payee: { type: [string, "null"], description: "The billing name; null before the owner saves billing details." }
@@ -2906,23 +2907,32 @@ components:
         maxUsd: { type: [string, "null"], description: "An open link's greatest amount, if any." }
         state:
           type: string
-          enum: [on, off, ended, full]
-          description: Only on takes payments; off is the owner's switch, ended past its last day, full at its cap.
+          enum: [on, off, ended, full, not_ready]
+          description: Only on takes payments; off is the owner's switch, ended past its last day, full when paid uses and reservations fill its cap, not_ready when acceptance setup is incomplete.
     LinkPayRequest:
       type: object
       additionalProperties: false
       properties:
+        expectedAmountUsd:
+          type: string
+          description: Quoted USD amount. New attempts reject changed prices; committed attempts replay original terms.
+        expectedVersion:
+          type: string
+          pattern: "^[1-9][0-9]{0,18}$"
+          description: Public offer version shown to the customer. New attempts reject revised offers.
         amountUsd:
           type: string
           description: An open link's amount, USD with at most two decimals within its limits; left out for a fixed link.
     LinkPay:
       type: object
-      required: [payToken]
+      required: [payToken, paymentId, sessionId]
       properties:
+        paymentId: { $ref: "#/components/schemas/InvoiceId" }
+        sessionId: { $ref: "#/components/schemas/InvoiceId" }
         payToken: { $ref: "#/components/schemas/PayToken" }
     PaymentLink:
       type: object
-      required: [linkId, slug, title, storeId, amountUsd, minUsd, maxUsd, endsAt, maxPayments, active, visits, paid,
+      required: [linkId, slug, title, storeId, amountUsd, minUsd, maxUsd, endsAt, maxPayments, active, visits, paid, reserved, ready,
         createdAt, updatedAt, livemode]
       properties:
         linkId: { type: string, format: uuid }
@@ -2931,7 +2941,7 @@ components:
           pattern: "^[a-z0-9]{12}$"
           description: The /l/<slug> address; random, and it never changes (D-94).
         title: { type: string }
-        storeId: { type: [string, "null"], format: uuid, description: null for a freelancer. }
+        storeId: { type: [string, "null"], format: uuid, description: Immutable selling store; null for a freelancer. }
         amountUsd: { type: [string, "null"], description: "Two decimals; null for an open amount." }
         minUsd: { type: [string, "null"] }
         maxUsd: { type: [string, "null"] }
@@ -2939,7 +2949,9 @@ components:
         maxPayments: { type: [integer, "null"] }
         active: { type: boolean }
         visits: { type: integer, description: Times the link's page was opened. }
-        paid: { type: integer, description: The link's invoices that are paid or settled. }
+        paid: { type: integer, description: Successful purchases, independent of settlement. }
+        ready: { type: boolean, description: Billing details, wallet and accepted tokens are ready in this store and mode. }
+        reserved: { type: integer, description: Open attempts awaiting canonical payment or expiration. }
         livemode: { type: boolean, description: "The link's permanent mode; a key reaches only links of its mode (D-87)." }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }

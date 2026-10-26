@@ -54,8 +54,16 @@ func putLink(links *link.Service) http.HandlerFunc {
 		}
 		// R-138: a Developer or Finance member makes links for their own stores, the first one by default.
 		if access := mid.ProfileAccess(r); access.Stores != nil {
-			if body.StoreID == "" && len(access.Stores) > 0 {
-				body.StoreID = access.Stores[0]
+			if body.StoreID == "" {
+				prior, err := links.Get(r.Context(), r.PathValue("profileId"), r.PathValue("linkId"))
+				if err == nil {
+					body.StoreID = prior.StoreID
+				} else if !errors.Is(err, link.ErrNotFound) {
+					httpio.WriteError(w, r, err)
+					return
+				} else if len(access.Stores) > 0 {
+					body.StoreID = access.Stores[0]
+				}
 			}
 			if !access.InStores(strings.ToLower(body.StoreID)) {
 				httpio.WriteError(w, r, fmt.Errorf("%w: storeId must be one of the stores you work with", link.ErrInvalid))
@@ -110,14 +118,19 @@ func payLink(links *link.Service, all *mid.Buckets) http.HandlerFunc {
 			return
 		}
 		var body struct {
-			AmountUSD string `json:"amountUsd"`
+			AmountUSD         string `json:"amountUsd"`
+			ExpectedAmountUSD string `json:"expectedAmountUsd"`
+			ExpectedVersion   string `json:"expectedVersion"`
 		}
 		if err := httpio.DecodeJSON(w, r, &body); err != nil {
 			httpio.WriteError(w, r, err)
 			return
 		}
 		allow := func() time.Duration { return all.Wait(mid.Everyone(r)) }
-		inv, created, err := links.Pay(r.Context(), r.PathValue("slug"), strings.TrimSpace(body.AmountUSD), key, allow)
+		inv, created, err := links.Pay(r.Context(), r.PathValue("slug"), key, link.PayRequest{
+			AmountUSD: strings.TrimSpace(body.AmountUSD), ExpectedAmountUSD: strings.TrimSpace(body.ExpectedAmountUSD),
+			ExpectedVersion: body.ExpectedVersion, Allow: allow,
+		})
 		var soon *invoice.TooSoonError
 		if errors.As(err, &soon) {
 			w.Header().Set("Retry-After", strconv.Itoa(max(1, int(math.Ceil(soon.Wait.Seconds())))))
@@ -133,7 +146,9 @@ func payLink(links *link.Service, all *mid.Buckets) http.HandlerFunc {
 			status = http.StatusCreated
 		}
 		httpio.WriteJSON(w, status, struct {
-			PayToken string `json:"payToken"`
-		}{inv.PayToken})
+			PayToken  string `json:"payToken"`
+			PaymentID string `json:"paymentId"`
+			SessionID string `json:"sessionId"`
+		}{inv.PayToken, inv.ID, inv.ID})
 	}
 }

@@ -33,7 +33,7 @@ func (s *Service) Send(ctx context.Context, profileID, id, key string, allow fun
 	queued bool, err error) {
 	id = strings.ToLower(id)
 	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
-		if _, err := tx.Exec(ctx, "SELECT 1 FROM profiles WHERE id = $1 FOR UPDATE", profileID); err != nil {
+		if _, err := tx.Exec(ctx, "SELECT 1 FROM profiles WHERE id = $1 FOR NO KEY UPDATE", profileID); err != nil {
 			return fmt.Errorf("lock profile %s: %w", profileID, err)
 		}
 		var keyed string

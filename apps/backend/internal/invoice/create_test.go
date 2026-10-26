@@ -223,7 +223,7 @@ func TestConcurrentRetryReplaysWhenTheWinnerUsesTheLastDailySlot(t *testing.T) {
 	for {
 		var waiting int
 		if err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_stat_activity WHERE datname = current_database()
-			AND wait_event_type = 'Lock' AND query LIKE '%FOR UPDATE%'`).Scan(&waiting); err != nil {
+			AND wait_event_type = 'Lock' AND query LIKE '%profiles%FOR NO KEY UPDATE%'`).Scan(&waiting); err != nil {
 			t.Fatal(err)
 		}
 		if waiting >= 2 {
