@@ -389,6 +389,10 @@ R-19 and R-42; the full schema is in openapi.yaml.
   (the rules of a saved client, R-86; `country` and `taxId` are part of the idempotency hash only when set). Empty means
   none and is returned as null. Characters, not bytes; no NUL. `email` is a plain address (`name@example.com`). A broken
   rule is 422 `invalid_value`; these fields are part of the idempotency hash.
+- A `dueDate` with no `expiresIn` (R-152) closes the checkout at the end of the 60th UTC day after it (D-80).
+  - The close stays 15 minutes to 365 days from now, and a store's `defaultExpiresIn` doesn't apply.
+  - The idempotency hash takes the due date and 3600 for the missing `expiresIn`, so a later retry returns the same invoice.
+  - So does the same key with `expiresIn: 3600`, as with a store's default.
 - Optional `metadata` (R-151, D-101): the creator's own keys and values, set at create only.
   - An object of up to 20 keys; a key is 1 to 40 letters, digits, `_` or `-`.
   - A value is plain text on one line of up to 500 characters. Any other shape is 422 `invalid_value`.
@@ -398,7 +402,7 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - A retainer's later months keep it; a Revise takes only the metadata its own create sends.
 - Optional `storeId` (R-134): a merchant invoice's store, the profile's first store when left out.
   - A personal or freelancer profile's, or one that is not the profile's store, is 422.
-  - Without `expiresIn` the checkout closes after the store's `defaultExpiresIn`.
+  - Without `expiresIn` or a `dueDate` the checkout closes after the store's `defaultExpiresIn`.
   - `returnUrl` must start with one of the store's `allowedOrigins`; a store without origins takes no return link.
   - The idempotency hash has `storeId` only when sent, and 3600 for a missing `expiresIn`, whatever the store's default.
   - The store never changes (a trigger). The owner's reads return `store` `{storeId, name}`; others leave it out.

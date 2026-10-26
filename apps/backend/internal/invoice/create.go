@@ -145,7 +145,20 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 			return Invoice{}, false, &TooSoonError{Wait: wait}
 		}
 	}
-	expiresAt := s.now().UTC().Truncate(time.Second).Add(expiresIn)
+	now := s.now().UTC().Truncate(time.Second)
+	expiresAt := now.Add(expiresIn)
+	// R-152: a due date with no expiresIn keeps the checkout open to the end of its 60th UTC day after (D-80), within
+	// D-18's limits from now. The hash took the request as sent, so a retry a minute later still replays.
+	if r.ExpiresInSeconds == nil && r.DueDate != "" {
+		due, _ := time.Parse(time.DateOnly, r.DueDate) // checked with the details
+		expiresAt = due.AddDate(0, 0, DueGraceDays+1)
+		if earliest := now.Add(MinExpiresIn); expiresAt.Before(earliest) {
+			expiresAt = earliest
+		}
+		if latest := now.Add(MaxExpiresIn); expiresAt.After(latest) {
+			expiresAt = latest
+		}
+	}
 	settleDeadline := expiresAt.Add(SettleWindow)
 	var mainID *string
 	var payToken [32]byte

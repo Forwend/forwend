@@ -1834,7 +1834,7 @@
       "dependsOn": [
         "F311"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "unit"
       ],
@@ -1845,9 +1845,91 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-26 review fail by reviewer: BLOCKING: apps/backend/internal/invoice/invoice.go:33-34 adds DueDateGrace = 60, a second constant for D-80's 60 days. DueGraceDays = 60 already exists in internal/invoice/retainers.go:21-22, used by retainers.go:153 and job/accept.go:98. Use DueGraceDays in create.go:154 and drop DueDateGrace; two constants for one rule can drift. Non-blocking: (a) the hash takes 3600 for a missing expiresIn (create.go:49-56), so with the same key, {dueDate X} and then {dueDate X, expiresIn 3600} replay the first invoice (closes due+61 d) instead of returning 409. A probe confirmed it. Merchants already had this with the store default (api.md:406). A different dueDate with the same key still returns 409, and a retry 400 days later still replays. (b) The web form closes on due+60 at 17:00 local time, capped at today+364 (new-invoice-form.tsx:383,436; lib/invoices.ts:147-157). The API closes at due+61 00:00 UTC. The two differ by up to about a day, so PLAN.md:64's 'as the form does' is only approximate. Retainers (retainers.go:153) match the API. (c) PROJECT.md R-134 ('Without expiresIn ... store's default') and D-80 ('the API takes expiresIn as sent until PLAN 11.6') were not updated. openapi.yaml:3210 has a 26-word sentence (D-84). (d) Longer closes keep receive addresses counted toward MaxOpen for about 90 days. That is intended by R-152. Confirmed correct: due+61 d at 00:00 UTC is the end of the 60th UTC day. time.Parse(DateOnly) returns UTC, so DST does not apply, and leap years work (2027-12-31 -> 2028-03-01). The clamps match D-18. settleDeadline is always expiresAt+7d, and neither the contract nor buildTerms has an expiry limit that a clamped value could break. Callers: link checkout sends no dueDate; jobs and retainer later months set ExpiresInSeconds; the web form always sends expiresIn, so New invoice and Revise are unchanged. A retainer's first API month now matches its later months. The store default is overridden after the store lookup (create.go:102 then 152). Tests: 7 mutants run with go test -overlay were all caught: one day short, no lower clamp, no upper clamp, overriding expiresIn, store default winning, hash on the computed close, and local midnight. The API test cannot flake at midnight because its expected close comes only from the due string, about 91 days from now. Ran: the two new tests; go test ./internal/invoice/ ./internal/job/ ./internal/link/ ./internal/httpapi/... -count=1 (all ok); the mutants and the hash probe via -overlay; a go run leap check. verify F312 passed.",
+        "2026-10-26 review pass by reviewer: Re-review after the fix. Blocker fixed: DueDateGrace is gone, invoice.go matches its base, and create.go:154 uses DueGraceDays (retainers.go:22), the constant retainers and jobs use. Docs fixed: R-152 and api.md:394-395 say the hash takes the due date and 3600 for a missing expiresIn, and that the same key with expiresIn 3600 replays. R-134 and api.md:405 say 'Without expiresIn or a dueDate'. D-80 names R-152. Every new openapi sentence is at most 25 words. Non-blocking: the code comment at create.go:150 and the test comment at due_close_test.go:33 still say the hash 'took the request as sent'. R-152 now says 3600 for a missing expiresIn, so the comments could match it. Not taken, owner informed: the form closes at 17:00 local time, the API at 00:00 UTC; the open-address cap holds these invoices about 90 days. Earlier checks still hold: due+61 d at 00:00 UTC, clamps match D-18, Create callers are unchanged, and the store default is overridden after the store lookup. Ran: go vet ./internal/invoice/; go test ./internal/invoice/ ./internal/job/ -count=1 (ok); go test ./internal/httpapi/tests/ -run 'TestDueDateOutranksTheStoreDefault|Store|Retainer|Revise|Metadata|Idempot' -count=1 (ok). I also ran the one-day-short mutant via -overlay against the fixed code; TestDueDateKeepsTheCheckoutOpen fails as it should. verify F312 passed at 12:50:47Z."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-26T12:50:47Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 186.9,
+            "log": ""
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.8,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.2,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 269.8,
+            "log": ""
+          }
+        ],
+        "taskHash": "01d14b9b1aa7a1b7",
+        "filesHash": "800b54917c0e36da",
+        "proof": {
+          "1": "unit: TestDueDateKeepsTheCheckoutOpen closes a 2026-11-30 due date's checkout at the end of 2027-01-29 UTC, a past due date's 15 minutes from now and a far one's 365 days from now, using DueGraceDays as retainers and jobs do",
+          "2": "unit: TestDueDateOutranksTheStoreDefault closes a merchant's due-date invoice 60 days past it despite the store's one-hour default, which still applies without a due date; TestDueDateKeepsTheCheckoutOpen replays the same request a minute later as the same invoice with the same close",
+          "3": "unit: TestDueDateKeepsTheCheckoutOpen keeps expiresIn when sent, with or without a due date, and the one-hour default with neither"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review after the fix. Blocker fixed: DueDateGrace is gone, invoice.go matches its base, and create.go:154 uses DueGraceDays (retainers.go:22), the constant retainers and jobs use. Docs fixed: R-152 and api.md:394-395 say the hash takes the due date and 3600 for a missing expiresIn, and that the same key with expiresIn 3600 replays. R-134 and api.md:405 say 'Without expiresIn or a dueDate'. D-80 names R-152. Every new openapi sentence is at most 25 words. Non-blocking: the code comment at create.go:150 and the test comment at due_close_test.go:33 still say the hash 'took the request as sent'. R-152 now says 3600 for a missing expiresIn, so the comments could match it. Not taken, owner informed: the form closes at 17:00 local time, the API at 00:00 UTC; the open-address cap holds these invoices about 90 days. Earlier checks still hold: due+61 d at 00:00 UTC, clamps match D-18, Create callers are unchanged, and the store default is overridden after the store lookup. Ran: go vet ./internal/invoice/; go test ./internal/invoice/ ./internal/job/ -count=1 (ok); go test ./internal/httpapi/tests/ -run 'TestDueDateOutranksTheStoreDefault|Store|Retainer|Revise|Metadata|Idempot' -count=1 (ok). I also ran the one-day-short mutant via -overlay against the fixed code; TestDueDateKeepsTheCheckoutOpen fails as it should. verify F312 passed at 12:50:47Z.",
+          "at": "2026-10-26T12:58:57Z",
+          "filesHash": "800b54917c0e36da"
+        },
+        "commit": "1567dcb",
+        "doneAt": "2026-10-26T12:59:23Z"
+      },
+      "branch": "feat/f312-a-create-with-a-due-date-and-no-expiresi",
+      "baseCommit": "ed77fd5304b3691651dc04a2cb7121f6548e1bd2",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f312-a-create-with-a-due-date-and-no-expiresi",
+        "base": "main"
+      }
     },
     {
       "id": "F313",
