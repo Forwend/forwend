@@ -13,7 +13,7 @@
         "Measured before and after timings cover documentation, backend changes and repeated verification."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "harness",
         "docs-check"
@@ -103,11 +103,18 @@
           "summary": "No blockers. Reviewed check selection, dependency and cache invalidation, fail-fast execution, hook compatibility, provider isolation, CI coverage and file ownership. All findings resolved. 59 regression tests pass, including real Git-hook reuse and tool-call metadata. Final full verification passed all seven checks; unchanged-source repeat passed in 0.960 seconds with six cached checks and fresh documentation validation.",
           "at": "2026-10-26T20:58:46Z",
           "filesHash": "16cded182f3d8dc3"
-        }
+        },
+        "commit": "96012efc",
+        "doneAt": "2026-10-26T21:00:08Z"
       },
       "branch": "fix/f323-select-relevant-checks-and-reuse-fresh-r",
       "baseCommit": "3719f3508e35fc084b469c3619ce08c7d6edd562",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f323-select-relevant-checks-and-reuse-fresh-r",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
