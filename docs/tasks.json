@@ -12,7 +12,7 @@
         "Archive, research and spikes are ignored and untracked, local files remain, and tracked docs pass without them."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit"
       ],
@@ -96,11 +96,18 @@
           "summary": "Independent review found no blocking findings. Tempo startup activation, default-off profiles, migration preservation, toggles and invoice acceptance have passing regression coverage. All 298 untracked files remain locally in the requested folders. A tracked-only checkout passes documentation checks and task validation. New files follow the existing structure.",
           "at": "2026-10-26T20:20:37Z",
           "filesHash": "e16248d6ccde12b7"
-        }
+        },
+        "commit": "84bace98",
+        "doneAt": "2026-10-26T20:21:17Z"
       },
       "branch": "fix/f322-show-tempo-in-staging-networks-with-its",
       "baseCommit": "89a730ac207530638b4fcfc35dfce920c5b27597",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f322-show-tempo-in-staging-networks-with-its",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
