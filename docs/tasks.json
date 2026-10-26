@@ -2164,7 +2164,7 @@
       "dependsOn": [
         "F314"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "e2e"
       ],
@@ -2249,11 +2249,18 @@
           "summary": "Third review: no blocking findings. The earlier blockers stay fixed. docs-content.ts:82 now reads '400 malformed_request: the JSON or a header is broken. The invoice list also answers 400 to a limit that is not a number.' That matches httpio/query.go:19-26; other bad query values are 422 (invoiceapi/invoices.go:265-271, 367-372, invoice/list.go:56-63). 401 unauthorized for no key or a header that is not 'Bearer fw_…' matches mid/guards.go:40 and auth.go:107-113 (a non-fw_ bearer fails the Privy check and wraps ErrUnauthorized). The billing details point and 409 billing_details_required match invoice/create.go:89-91 and httpio/errors.go:136-138. 'Each body holds the invoice as it is when you list it' matches D-102. 403/404/422, the kit link style on all four former fw-link uses, and the landing invoice.paid all still hold. app/docs/page.tsx sets openGraph and twitter with images ['/opengraph-image']. The build's .next/app-path-routes-manifest.json has '/opengraph-image/route': '/opengraph-image', and metadataBase makes it https://forwend.com/opengraph-image. DESIGN.md index has an API docs row; the longest new sentence is 21 words. Non-blocking, no action needed: a baseUrl with a query or # still builds a wrong URL (packages/node client.ts:79), not a real input. RAN: apps/web vitest 159 passed (after the metadata change); packages/node vitest 10 passed. tsc --strict on the 3 TS samples against packages/node/src: exit 0. Earlier: the new client test fails on the old URL line (1 failed / 9 passed). Verify passed at 2026-10-26T14:53:41Z.",
           "at": "2026-10-26T15:01:46Z",
           "filesHash": "58b676b926e9865c"
-        }
+        },
+        "commit": "222192c",
+        "doneAt": "2026-10-26T15:02:24Z"
       },
       "branch": "feat/f315-public-developer-docs-explain-the-api-an",
       "baseCommit": "6c16088ae02192be629e102acab34be8311b76f2",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f315-public-developer-docs-explain-the-api-an",
+        "base": "main"
+      }
     },
     {
       "id": "F316",
