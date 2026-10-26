@@ -1449,7 +1449,7 @@
         "workflow.md says which logs docs/runs keeps"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "harness"
       ],
@@ -1521,8 +1521,8 @@
         "taskHash": "ef12d9c111674790",
         "filesHash": "52cbdf57a472f83c",
         "proof": {
-          "1": "harness: test_only_a_failed_check_keeps_its_log covers passed, failed, timeout and missing; fails on the old runner",
-          "2": "docs-check: workflow.md line 7"
+          "1": "harness: test_only_a_failed_check_keeps_its_log",
+          "2": "docs-check: workflow.md"
         },
         "review": {
           "result": "pass",
@@ -1530,11 +1530,18 @@
           "summary": "Re-review after the fixes; pass, no blocking finding. (a) check prints the log only when there is one (harness.py:1439). verify (1112), wrapup (1521) and show --history (860) rstrip the line. Probed in a temp git root: 'ok: passed' with no parens or trailing space; a failed check still prints its log path and tail. (c) test_only_a_failed_check_keeps_its_log now also checks that missing-command and timeout results keep their logs. (d) The run_check comment (harness.py:503) gives a reason and no history. (e) refs is R-25. (b) Keeping passed logs until done stays the owner's call; non-blocking. The e2e failure before the 00:21:58Z verify (onboarding.spec and team.spec, 'Loading your profiles') came from reusing the owner's dev api with its lower rate limit. F308 changes only the harness, so it is not related; the rerun passed. Ran: python3 -m unittest discover -s tests (39 OK); git diff scripts/harness.py tests/test_harness.py docs/workflow.md; harness check/verify/show --history/wrapup in a temp git root (removed after).",
           "at": "2026-10-26T00:30:36Z",
           "filesHash": "52cbdf57a472f83c"
-        }
+        },
+        "commit": "8d6bcaf",
+        "doneAt": "2026-10-26T00:30:48Z"
       },
       "branch": "chore/f308-the-harness-keeps-a-log-only-for-a-check",
       "baseCommit": "f176b2f15872152e3324c68975a1cca06fa8f9fa",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "chore/f308-the-harness-keeps-a-log-only-for-a-check",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
