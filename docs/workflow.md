@@ -1,8 +1,7 @@
 # Development workflow
 
 Entry point: `python3 scripts/harness.py`. Add `-h` after any command for options.
-Check definitions live only in [config.json](config.json); staging CI runs the required and CI-only checks. Checks that are neither (images-check, lighthouse,
-diagrams) run only when a task names them.
+Check commands and path rules live in [config.json](config.json). Staging CI runs the full required and CI-only checks without cached results.
 Open task state lives in `tasks.json` (edit through the runner); completed records live in local-only `archive/`;
 logs of checks that did not pass live in ignored `runs/`; a passed check leaves none.
 Runner regression tests live in `tests/test_harness.py`. No installed skill is needed to use this workflow.
@@ -27,13 +26,13 @@ Runner regression tests live in `tests/test_harness.py`. No installed skill is n
    Identify the owner, filename and allowed dependencies; search for existing code before adding another shared helper.
    Reproduce bugs first. Make the smallest fix and run its direct checks. Keep a test only when the rule in
    [Which tests to keep](#which-tests-to-keep) says so; prove a visual change with screenshots in `docs/runs/`.
-5. `verify ID --proof "1=CHECK: evidence" ...` runs task and required checks. Each acceptance line needs a named check.
+5. `plan ID` shows selected checks. `verify ID --proof "1=CHECK: evidence" ...` runs explicit task checks plus checks selected by changed paths. Each acceptance line needs a named check.
 6. Review is required for every task that changes more than docs (`done` refuses it otherwise; outside a git
    repository the harness can't tell, so only `--review` tasks need it) and for tasks added with `--review`. A fresh reviewer reads `show ID` and the diff, then runs `review ID --pass|--fail --summary "findings"`.
 7. With commit/push/merge authorization, commit the verified files and run `done ID`. It pushes, opens the PR,
    checks the delivery policy ([staging.md](staging.md)) and merges.
    Pending CI: repeat `done ID`. Failed CI: fix, verify, review and commit again. Approval or closed PR: ask the owner.
-8. Before stopping: `wrapup --note "result; next step"`. Resolve failures or report the exact remaining blocker.
+8. Before stopping: `wrapup --note "result; next step"` reports verification status and cleanup without running tests. Resolve failures or report the exact remaining blocker.
 
 ## Structure review
 
@@ -58,10 +57,27 @@ manual until a task explicitly adds import-boundary checks; do not claim that pa
 
 ## Evidence and scope
 
-- `check` runs required checks without changing task state; `check CHECK` runs one; `check --ci` adds CI-only checks.
-- When every file a task changed is Markdown or under `docs/archive/`, `verify` and the pre-commit hook skip the required
-  checks not marked `"docs": true` in config.json; the task's own checks still run.
-- `verify` rejects changed inputs during a run. Later source, config or task-constraint edits require another verify.
+- `plan ID` lists local checks for the task. `plan --paths PATH ...` previews selection without running anything.
+- `check` selects checks for changes since HEAD. Named checks run exactly those checks.
+- `check --ci` runs every required and CI-only check fresh, regardless of changed paths.
+- Explicit task checks always run, even when path rules would select fewer checks. Choose the smallest checks that prove acceptance.
+- Markdown edits run documentation validation. UI wording runs lint, types and web unit tests.
+- Web behavior includes web unit tests, build and deterministic browser tests. Shared UI also checks its consuming web application.
+- Backend Go edits test changed packages and transitive callers, including test imports. Deleted packages and non-Go backend edits use all backend packages.
+- Money, authentication and migration changes also run backend integration tests. Contracts check contracts and backend integration.
+- Unknown paths, dependency manifests and root build configuration select the full suite.
+- A passing check is reused only when its input contents, command, runner, execution environment, selected packages and tool versions match.
+- Ignored package environment files participate in applicable fingerprints. Their values are never written into check records.
+- Local results expire after 24 hours. Use `verify ID --fresh` or `check --fresh` to force execution.
+- Failed checks are never reused. Verification stops at the first failure and preserves earlier successful results.
+- Source changes during execution invalidate the result. Changes to task wording require fresh evidence binding, but unchanged checks can be reused.
+- Git-injected commit identity and index-location metadata do not invalidate results; execution configuration still does.
+- Pre-commit checks use the same selection and cache. Stage the complete change first; partially staged inputs are refused.
+- `wrapup` never executes tests or grants verification. Delivery uses the recorded successful verification and independent review.
+- Auth and Privy integration changes must select live tests when deterministic tests cannot prove the behavior.
+- Live provider checks are explicit: `check live-e2e` or `pnpm --filter @forwend/web e2e:live`.
+- Live browser checks require configured test credentials and free application ports. They never reuse local servers or cached results.
+- For wording changes, inspect the affected screen. Filename rules cannot establish that a change only alters text.
 - Proof names must refer to checks that passed. The description explains relevance; independent review checks that claim.
 - `--keep` path globs are enforced. Behavioral constraints need tests and review; prose alone is not a machine check.
 - Missing scripts, commands, remotes or required CI results never imply success. Explicitly disabled remote checks

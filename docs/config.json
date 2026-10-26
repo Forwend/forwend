@@ -6,91 +6,180 @@
       "argv": ["python3", "-m", "unittest", "discover", "-s", "tests"],
       "required": true,
       "precommit": true,
-      "docs": true
+      "docs": true,
+      "cache": true,
+      "inputs": [
+        "scripts/*",
+        "tests/*",
+        "docs/config.json",
+        "apps/web/scripts/e2e.mjs",
+        "apps/web/playwright.privy.config.ts"
+      ],
+      "versions": [["node", "--version"]]
     },
     {
       "id": "docs-check",
       "argv": ["python3", "scripts/check-docs.py"],
       "required": true,
       "precommit": true,
-      "docs": true
+      "docs": true,
+      "cache": false
     },
     {
       "id": "lint",
       "argv": ["pnpm", "lint"],
       "required": true,
-      "precommit": true
+      "precommit": true,
+      "cache": true,
+      "versions": [["node", "--version"], ["pnpm", "--version"]]
     },
     {
       "id": "typecheck",
       "argv": ["pnpm", "typecheck"],
       "required": true,
-      "precommit": true
+      "precommit": true,
+      "cache": true,
+      "versions": [["node", "--version"], ["pnpm", "--version"]]
     },
     {
       "id": "unit",
       "argv": ["pnpm", "test"],
-      "required": true
+      "required": true,
+      "cache": true,
+      "versions": [
+        ["node", "--version"],
+        ["pnpm", "--version"],
+        ["go", "version"],
+        ["forge", "--version"],
+        ["anvil", "--version"]
+      ],
+      "localInputs": [
+        "apps/backend/.env*",
+        "packages/contracts/.env*",
+        "apps/web/.env*",
+        "packages/contracts/lib/**/*.sol"
+      ],
+      "covers": [
+        "web-unit",
+        "ui-unit",
+        "tokens-unit",
+        "node-unit",
+        "backend",
+        "backend-affected",
+        "contracts"
+      ]
     },
     {
       "id": "build",
       "argv": ["pnpm", "build"],
       "required": true,
-      "timeoutSeconds": 600
+      "timeoutSeconds": 600,
+      "cache": true,
+      "versions": [
+        ["node", "--version"],
+        ["pnpm", "--version"],
+        ["go", "version"],
+        ["forge", "--version"]
+      ],
+      "localInputs": [
+        "apps/backend/.env*",
+        "packages/contracts/.env*",
+        "apps/web/.env*",
+        "packages/contracts/lib/**/*.sol"
+      ],
+      "covers": ["web-build"]
     },
     {
       "id": "e2e",
       "argv": ["pnpm", "e2e"],
       "required": true,
-      "wrapup": true,
-      "timeoutSeconds": 600
+      "timeoutSeconds": 600,
+      "cache": true,
+      "versions": [
+        ["node", "--version"],
+        ["pnpm", "--version"],
+        ["go", "version"],
+        ["forge", "--version"],
+        ["anvil", "--version"]
+      ],
+      "localInputs": [
+        "apps/backend/.env*",
+        "apps/web/.env*",
+        "packages/contracts/.env*",
+        "packages/contracts/lib/**/*.sol"
+      ],
+      "covers": ["backend-e2e", "web-build", "web-e2e"]
     },
     {
       "id": "tokens-unit",
-      "argv": ["pnpm", "--filter", "@forwend/design-tokens", "test"]
+      "argv": ["pnpm", "--filter", "@forwend/design-tokens", "test"],
+      "cache": true,
+      "inputs": ["packages/design-tokens/*"],
+      "versions": [["node", "--version"], ["pnpm", "--version"]]
     },
     {
       "id": "ui-unit",
-      "argv": ["pnpm", "--filter", "@forwend/ui-web", "test"]
+      "argv": ["pnpm", "--filter", "@forwend/ui-web", "test"],
+      "cache": true,
+      "inputs": ["packages/ui-web/*", "packages/design-tokens/*"],
+      "versions": [["node", "--version"], ["pnpm", "--version"]]
     },
     {
       "id": "kit-e2e",
       "argv": ["pnpm", "--filter", "@forwend/web", "e2e", "e2e/kit.spec.ts"],
-      "timeoutSeconds": 600
+      "timeoutSeconds": 600,
+      "cache": false,
+      "versions": [["node", "--version"], ["pnpm", "--version"]]
     },
     {
       "id": "landing-e2e",
       "argv": ["pnpm", "--filter", "@forwend/web", "e2e", "e2e/landing.spec.ts"],
-      "timeoutSeconds": 600
+      "timeoutSeconds": 600,
+      "cache": false,
+      "versions": [["node", "--version"], ["pnpm", "--version"]]
     },
     {
       "id": "waitlist-e2e",
       "argv": ["pnpm", "--filter", "@forwend/web", "e2e", "e2e/waitlist.spec.ts"],
-      "timeoutSeconds": 600
+      "timeoutSeconds": 600,
+      "cache": false,
+      "versions": [["node", "--version"], ["pnpm", "--version"]]
     },
     {
       "id": "a11y-e2e",
       "argv": ["pnpm", "--filter", "@forwend/web", "e2e", "e2e/a11y.spec.ts"],
-      "timeoutSeconds": 600
+      "timeoutSeconds": 600,
+      "cache": false,
+      "versions": [["node", "--version"], ["pnpm", "--version"]]
     },
     {
       "id": "seo-e2e",
       "argv": ["pnpm", "--filter", "@forwend/web", "e2e", "e2e/seo.spec.ts"],
-      "timeoutSeconds": 600
+      "timeoutSeconds": 600,
+      "cache": false,
+      "versions": [["node", "--version"], ["pnpm", "--version"]]
     },
     {
       "id": "images-check",
-      "argv": ["node", "scripts/check-images.mjs"]
+      "argv": ["node", "scripts/check-images.mjs"],
+      "cache": true,
+      "versions": [["node", "--version"], ["pnpm", "--version"]]
     },
     {
       "id": "lighthouse",
       "argv": ["pnpm", "--filter", "@forwend/web", "lighthouse"],
-      "timeoutSeconds": 900
+      "timeoutSeconds": 900,
+      "cache": false,
+      "versions": [["node", "--version"], ["pnpm", "--version"]]
     },
     {
       "id": "contracts",
       "argv": ["pnpm", "--filter", "@forwend/contracts", "test"],
-      "timeoutSeconds": 900
+      "timeoutSeconds": 900,
+      "cache": true,
+      "inputs": ["packages/contracts/*"],
+      "versions": [["forge", "--version"]],
+      "localInputs": ["packages/contracts/lib/**/*.sol"]
     },
     {
       "id": "diagrams",
@@ -98,11 +187,42 @@
         "sh",
         "-c",
         "for f in docs/diagrams/*.json; do npx -y mapgrain@0.2.5 validate \"$f\" || exit 1; done"
-      ]
+      ],
+      "cache": true,
+      "versions": [["node", "--version"], ["pnpm", "--version"]]
     },
     {
       "id": "backend",
       "argv": ["pnpm", "--filter", "@forwend/backend", "test"],
+      "timeoutSeconds": 900,
+      "cache": true,
+      "inputs": ["apps/backend/*", "packages/contracts/*"],
+      "versions": [
+        ["node", "--version"],
+        ["pnpm", "--version"],
+        ["go", "version"],
+        ["forge", "--version"],
+        ["anvil", "--version"]
+      ],
+      "localInputs": [
+        "apps/backend/.env*",
+        "packages/contracts/.env*",
+        "apps/web/.env*",
+        "packages/contracts/lib/**/*.sol"
+      ]
+    },
+    {
+      "id": "backend-affected",
+      "argv": ["python3", "scripts/check-backend.py"],
+      "changedPaths": true,
+      "cache": true,
+      "inputs": ["scripts/check-backend.py", "apps/backend/*", "packages/contracts/*"],
+      "localInputs": [
+        "apps/backend/.env*",
+        "packages/contracts/.env*",
+        "packages/contracts/lib/**/*.sol"
+      ],
+      "versions": [["go", "version"], ["forge", "--version"], ["anvil", "--version"]],
       "timeoutSeconds": 900
     },
     {
@@ -110,14 +230,68 @@
       "argv": ["pnpm", "--filter", "@forwend/backend", "e2e"],
       "timeoutSeconds": 900,
       "package": "apps/backend",
-      "script": "e2e"
+      "script": "e2e",
+      "cache": true,
+      "versions": [
+        ["node", "--version"],
+        ["pnpm", "--version"],
+        ["go", "version"],
+        ["forge", "--version"],
+        ["anvil", "--version"]
+      ],
+      "localInputs": [
+        "apps/backend/.env*",
+        "apps/web/.env*",
+        "packages/contracts/.env*",
+        "packages/contracts/lib/**/*.sol"
+      ]
     },
     {
       "id": "symbolic",
       "argv": ["sh", "-c", "forge clean && pipx run halmos==0.3.3 --match-contract Symbolic"],
       "cwd": "packages/contracts",
       "ci": true,
+      "timeoutSeconds": 900,
+      "cache": false,
+      "versions": [["node", "--version"], ["pnpm", "--version"]]
+    },
+    {
+      "id": "web-unit",
+      "argv": ["pnpm", "--filter", "@forwend/web", "test"],
+      "cache": true,
+      "inputs": ["apps/web/*", "packages/ui-web/*", "packages/design-tokens/*"],
+      "versions": [["node", "--version"], ["pnpm", "--version"]]
+    },
+    {
+      "id": "node-unit",
+      "argv": ["pnpm", "--filter", "forwend", "test"],
+      "cache": true,
+      "inputs": ["packages/node/*"],
+      "versions": [["node", "--version"], ["pnpm", "--version"]]
+    },
+    {
+      "id": "web-build",
+      "argv": ["pnpm", "--filter", "@forwend/web", "build"],
+      "cache": true,
+      "inputs": ["apps/web/*", "packages/ui-web/*", "packages/design-tokens/*"],
+      "localInputs": ["apps/web/.env*"],
+      "versions": [["node", "--version"], ["pnpm", "--version"]]
+    },
+    {
+      "id": "live-e2e",
+      "argv": ["pnpm", "--filter", "@forwend/web", "e2e:live"],
+      "cache": false,
       "timeoutSeconds": 900
+    },
+    {
+      "id": "web-e2e",
+      "argv": ["pnpm", "--filter", "@forwend/web", "e2e"],
+      "cache": true,
+      "timeoutSeconds": 600,
+      "inputs": ["apps/web/*", "packages/ui-web/*", "packages/design-tokens/*"],
+      "localInputs": ["apps/web/.env*"],
+      "versions": [["node", "--version"], ["pnpm", "--version"]],
+      "covers": ["web-build"]
     }
   ],
   "delivery": {
@@ -126,5 +300,103 @@
     "requireRemoteChecks": false,
     "merge": "squash",
     "checksWaitSeconds": 90
+  },
+  "verification": {
+    "always": ["docs-check"],
+    "fallback": ["harness", "docs-check", "lint", "typecheck", "unit", "build", "e2e"],
+    "rules": [
+      {
+        "paths": ["*.md", "docs/archive/*.json", "docs/tasks.json"],
+        "checks": []
+      },
+      {
+        "paths": [
+          "apps/*/package.json",
+          "packages/*/package.json",
+          "apps/backend/go.mod",
+          "apps/backend/go.sum",
+          "apps/web/next.config.*",
+          "apps/web/tsconfig*"
+        ],
+        "checks": ["harness", "docs-check", "lint", "typecheck", "unit", "build", "e2e"]
+      },
+      {
+        "paths": [
+          "scripts/harness.py",
+          "scripts/verification.py",
+          "scripts/check-backend.py",
+          "scripts/check-docs.py",
+          "tests/*",
+          "docs/config.json",
+          ".husky/*",
+          ".gitignore"
+        ],
+        "checks": ["harness", "lint"]
+      },
+      {
+        "paths": ["apps/web/scripts/*", "apps/web/playwright*", "apps/web/e2e/*"],
+        "checks": ["harness", "lint", "typecheck", "web-unit", "web-build", "web-e2e"]
+      },
+      {
+        "paths": ["apps/web/src/features/*/constants/*-copy.ts"],
+        "checks": ["lint", "typecheck", "web-unit"]
+      },
+      {
+        "paths": ["apps/web/*"],
+        "checks": ["lint", "typecheck", "web-unit", "web-build", "web-e2e"]
+      },
+      {
+        "paths": ["packages/ui-web/*", "packages/design-tokens/*"],
+        "checks": [
+          "lint",
+          "typecheck",
+          "tokens-unit",
+          "ui-unit",
+          "web-unit",
+          "web-build",
+          "web-e2e"
+        ]
+      },
+      {
+        "paths": [
+          "apps/backend/internal/database/*",
+          "apps/backend/internal/ledger/*",
+          "apps/backend/internal/settlement/*",
+          "apps/backend/internal/watcher/*",
+          "apps/backend/internal/invoice/*",
+          "apps/backend/internal/auth/*",
+          "apps/backend/internal/httpapi/mid/*",
+          "apps/backend/internal/balance/*",
+          "apps/backend/internal/chain/*",
+          "apps/backend/internal/privy/*",
+          "apps/backend/internal/config/*",
+          "apps/backend/internal/worker/*",
+          "apps/backend/internal/address/*",
+          "apps/backend/internal/finality/*",
+          "apps/backend/internal/profile/*",
+          "apps/backend/internal/job/*",
+          "apps/backend/internal/link/*",
+          "apps/backend/internal/apikey/*",
+          "apps/backend/internal/webhook/*",
+          "apps/backend/internal/httpapi/*",
+          "apps/backend/internal/canary/*",
+          "apps/backend/internal/team/*",
+          "apps/backend/cmd/*"
+        ],
+        "checks": ["backend-affected", "backend-e2e"]
+      },
+      {
+        "paths": ["apps/backend/*"],
+        "checks": ["backend-affected"]
+      },
+      {
+        "paths": ["packages/contracts/*"],
+        "checks": ["contracts", "backend", "backend-e2e"]
+      },
+      {
+        "paths": ["packages/node/*"],
+        "checks": ["lint", "typecheck", "node-unit"]
+      }
+    ]
   }
 }

@@ -15,7 +15,7 @@ export default defineConfig({
   // Playwright starts these in order: the first builds, the second reuses that build.
   webServer: [
     {
-      command: `pnpm build && pnpm start -p ${PUBLIC_PORT}`,
+      command: `pnpm --workspace-root exec turbo run build --filter=@forwend/web && pnpm start -p ${PUBLIC_PORT}`,
       url: PUBLIC_URL,
       reuseExistingServer: false,
       timeout: 240_000,

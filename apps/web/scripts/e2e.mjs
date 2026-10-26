@@ -31,24 +31,15 @@ function playwright(args) {
   });
 }
 
-// The live Privy sign-in runs only with the test account in apps/web/.env (never in CI, which has no account).
-function hasTestAccount() {
-  try {
-    const { PRIVY_TEST_EMAIL, PRIVY_TEST_OTP } = parseEnv(readFileSync(".env", "utf8"));
-    return Boolean(PRIVY_TEST_EMAIL && PRIVY_TEST_OTP);
-  } catch {
-    return false;
+// Provider checks are explicit: local credentials never expand an ordinary browser run.
+const args = process.argv.slice(2);
+const live = args[0] === "--live";
+if (live) {
+  const { PRIVY_TEST_EMAIL, PRIVY_TEST_OTP } = parseEnv(readFileSync(".env", "utf8"));
+  if (!PRIVY_TEST_EMAIL || !PRIVY_TEST_OTP) {
+    throw new Error("Live browser tests require PRIVY_TEST_EMAIL and PRIVY_TEST_OTP");
   }
 }
-
-let code = await playwright(process.argv.slice(2));
-if (code === 0 && process.argv.length <= 2) {
-  if (hasTestAccount()) {
-    code = await playwright(["-c", "playwright.privy.config.ts"]);
-  } else {
-    console.log(
-      "Skipped the live Privy sign-in: no PRIVY_TEST_EMAIL and PRIVY_TEST_OTP in apps/web/.env",
-    );
-  }
-}
-process.exitCode = code;
+process.exitCode = await playwright(
+  live ? ["-c", "playwright.privy.config.ts", ...args.slice(1)] : args,
+);
