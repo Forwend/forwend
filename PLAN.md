@@ -80,7 +80,7 @@ code; a wallet connects only to claim a refund (D-37).
   - 11.9.3 `@forwend/js` and `@forwend/react` (`PayButton`, `Checkout`, `PaymentElement`): no remote script; a theme
     and a few variables mapped to the design tokens and checked for contrast; React 18 and 19. After 11.9.2.
   - 11.9.4 Publish `@forwend/js`, `@forwend/react` and `forwend` (D-103) once the owner approves, from the npm org.
-    CI publishes with provenance. The browser packages stay `0.x` until the message protocol is stable. Each package
+    `forwend` 0.1.0 is out, to hold the name. CI publishes with provenance. The browser packages stay `0.x` until the message protocol is stable. Each package
     has a changelog file, size and type checks. After 11.9.3.
   - 11.9.5 `apps/example-merchant` uses the button and the components and verifies the webhook, with a browser test:
     merchant code cannot read the frame, a forged message never marks an order paid, a strict CSP works, and an

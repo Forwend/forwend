@@ -155,7 +155,7 @@ app.post("/forwend/webhooks", express.raw({ type: "application/json" }), (req, r
       id: "node",
       title: "The forwend package",
       paragraphs: [
-        "`forwend` is a client for Node 20 or later, with no dependencies. It creates, reads and lists invoices, lists events page by page, and verifies webhooks. It is not on npm yet.",
+        "`forwend` is a client for Node 20 or later, with no dependencies. It creates, reads and lists invoices, lists events page by page, and verifies webhooks. Install it with `npm install forwend`.",
       ],
       code: {
         language: "TypeScript",
@@ -198,7 +198,7 @@ for await (const event of forwend.webhookEvents.list({ type: "invoice.paid" })) 
           "Invoice create takes `metadata`.",
           "A `dueDate` with no `expiresIn` keeps the checkout open 60 days past it.",
           "Webhook events `invoice.open` and `invoice.reopened`. An endpoint gets them once you choose them on it.",
-          "The `forwend` package for Node, not on npm yet.",
+          "The `forwend` package for Node, 0.1.0 on npm.",
         ],
       },
       {
