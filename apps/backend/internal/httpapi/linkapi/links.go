@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
-	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
-	"github.com/ensp1re/forwend/apps/backend/internal/link"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/mid"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
+	"github.com/forwend/forwend/apps/backend/internal/link"
 )
 
 func listLinks(links *link.Service) http.HandlerFunc {

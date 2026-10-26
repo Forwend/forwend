@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
-	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
 // R-104: record times come from the server; PaidAt is the completing deposit's block time.

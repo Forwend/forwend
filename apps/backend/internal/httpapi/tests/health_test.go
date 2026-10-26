@@ -7,9 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/database"
-	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi"
+	"github.com/forwend/forwend/apps/backend/internal/database"
+	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi"
 )
 
 func TestHealthz(t *testing.T) {

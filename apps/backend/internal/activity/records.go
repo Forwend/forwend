@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/jackc/pgx/v5"
 )
 

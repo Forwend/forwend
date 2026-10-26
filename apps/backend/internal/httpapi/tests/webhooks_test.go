@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/webhook"
+	"github.com/forwend/forwend/apps/backend/internal/webhook"
 )
 
 // webhookKey stands in for WEBHOOK_SECRET_KEY.

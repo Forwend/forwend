@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/jackc/pgx/v5"
 )
 

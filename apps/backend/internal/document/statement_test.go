@@ -11,7 +11,7 @@ import (
 	"time"
 	"unicode/utf16"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/profile"
+	"github.com/forwend/forwend/apps/backend/internal/profile"
 )
 
 func statement(n int) Statement {

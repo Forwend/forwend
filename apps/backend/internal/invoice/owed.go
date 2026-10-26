@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/chain"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/jackc/pgx/v5"
 )
 

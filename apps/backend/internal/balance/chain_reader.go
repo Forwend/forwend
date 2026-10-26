@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/chain"
-	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
 const (

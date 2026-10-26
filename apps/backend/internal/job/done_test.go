@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
-	"github.com/ensp1re/forwend/apps/backend/internal/profile"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
+	"github.com/forwend/forwend/apps/backend/internal/profile"
 )
 
 func threeSteps() Request {

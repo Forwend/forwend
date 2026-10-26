@@ -4,9 +4,9 @@ package keyapi
 import (
 	"net/http"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/apikey"
-	"github.com/ensp1re/forwend/apps/backend/internal/auth"
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
+	"github.com/forwend/forwend/apps/backend/internal/apikey"
+	"github.com/forwend/forwend/apps/backend/internal/auth"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/mid"
 )
 
 // Making or rolling a key gives out its text, so it needs a fresh sign-in (D-63); revoking one does not.

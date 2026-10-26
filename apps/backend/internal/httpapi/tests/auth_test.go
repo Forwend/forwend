@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/auth"
-	"github.com/ensp1re/forwend/apps/backend/internal/auth/authtest"
-	"github.com/ensp1re/forwend/apps/backend/internal/database"
-	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
+	"github.com/forwend/forwend/apps/backend/internal/auth"
+	"github.com/forwend/forwend/apps/backend/internal/auth/authtest"
+	"github.com/forwend/forwend/apps/backend/internal/database"
+	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/mid"
 	"github.com/golang-jwt/jwt/v5"
 )
 

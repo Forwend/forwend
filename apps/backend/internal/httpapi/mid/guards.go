@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/apikey"
-	"github.com/ensp1re/forwend/apps/backend/internal/auth"
-	"github.com/ensp1re/forwend/apps/backend/internal/privy"
+	"github.com/forwend/forwend/apps/backend/internal/apikey"
+	"github.com/forwend/forwend/apps/backend/internal/auth"
+	"github.com/forwend/forwend/apps/backend/internal/privy"
 )
 
 // Modules take Guards from the router, so every module shares one rate limit per user.

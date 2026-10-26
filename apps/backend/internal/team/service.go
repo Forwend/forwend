@@ -7,9 +7,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/auth"
-	"github.com/ensp1re/forwend/apps/backend/internal/privy"
-	"github.com/ensp1re/forwend/apps/backend/internal/profile"
+	"github.com/forwend/forwend/apps/backend/internal/auth"
+	"github.com/forwend/forwend/apps/backend/internal/privy"
+	"github.com/forwend/forwend/apps/backend/internal/profile"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )

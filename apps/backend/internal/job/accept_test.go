@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/database"
-	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
-	"github.com/ensp1re/forwend/apps/backend/internal/history/historytest"
-	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
-	"github.com/ensp1re/forwend/apps/backend/internal/profile"
+	"github.com/forwend/forwend/apps/backend/internal/database"
+	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
+	"github.com/forwend/forwend/apps/backend/internal/history/historytest"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
+	"github.com/forwend/forwend/apps/backend/internal/profile"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 

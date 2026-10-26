@@ -12,8 +12,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/canary"
-	"github.com/ensp1re/forwend/apps/backend/internal/config"
+	"github.com/forwend/forwend/apps/backend/internal/canary"
+	"github.com/forwend/forwend/apps/backend/internal/config"
 )
 
 func main() {

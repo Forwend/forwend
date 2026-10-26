@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
-	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
+	"github.com/forwend/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
 )
 

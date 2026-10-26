@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/chain"
-	"github.com/ensp1re/forwend/apps/backend/internal/search"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
+	"github.com/forwend/forwend/apps/backend/internal/search"
 	"github.com/jackc/pgx/v5"
 )
 

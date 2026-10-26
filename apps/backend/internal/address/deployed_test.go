@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/address"
-	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/forwend/forwend/apps/backend/internal/address"
+	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 )
 
 func TestFactoryDeployed(t *testing.T) {

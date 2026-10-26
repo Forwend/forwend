@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/database"
-	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
+	"github.com/forwend/forwend/apps/backend/internal/database"
+	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
 )
 
 func TestOpenNamesAnUnreachableDatabase(t *testing.T) {

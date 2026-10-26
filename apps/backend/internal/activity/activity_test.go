@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/database"
-	"github.com/ensp1re/forwend/apps/backend/internal/database/databasetest"
-	"github.com/ensp1re/forwend/apps/backend/internal/search"
+	"github.com/forwend/forwend/apps/backend/internal/database"
+	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
+	"github.com/forwend/forwend/apps/backend/internal/search"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 

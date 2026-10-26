@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/chain"
-	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
 
 func TestAmount(t *testing.T) {

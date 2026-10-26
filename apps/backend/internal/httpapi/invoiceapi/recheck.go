@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
-	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
-	"github.com/ensp1re/forwend/apps/backend/internal/ledger"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/mid"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
 // Public (R-55): the payer presses Check status.

@@ -4,9 +4,9 @@ package webhookapi
 import (
 	"net/http"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/auth"
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
-	"github.com/ensp1re/forwend/apps/backend/internal/webhook"
+	"github.com/forwend/forwend/apps/backend/internal/auth"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/mid"
+	"github.com/forwend/forwend/apps/backend/internal/webhook"
 )
 
 // Saving an endpoint decides where events go, and a secret signs them, so both need a fresh sign-in (D-63); a

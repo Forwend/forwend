@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/privy/privytest"
+	"github.com/forwend/forwend/apps/backend/internal/privy/privytest"
 )
 
 const (

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
+	"github.com/forwend/forwend/apps/backend/internal/outbox"
 )
 
 // R-116. Send to client past the cap waits too.

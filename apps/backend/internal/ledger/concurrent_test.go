@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
-	"github.com/ensp1re/forwend/apps/backend/internal/watcher"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/forwend/forwend/apps/backend/internal/chaintest"
+	"github.com/forwend/forwend/apps/backend/internal/watcher"
 )
 
 func TestConcurrentOptionsChooseAndBookOnlyOnce(t *testing.T) {

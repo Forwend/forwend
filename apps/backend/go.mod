@@ -1,4 +1,4 @@
-module github.com/ensp1re/forwend/apps/backend
+module github.com/forwend/forwend/apps/backend
 
 go 1.27.3
 

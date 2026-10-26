@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/search"
+	"github.com/forwend/forwend/apps/backend/internal/search"
 )
 
 // A present but blank ?q= is refused, not read as no search.

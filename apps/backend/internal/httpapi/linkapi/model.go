@@ -3,9 +3,9 @@ package linkapi
 import (
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
-	"github.com/ensp1re/forwend/apps/backend/internal/job"
-	"github.com/ensp1re/forwend/apps/backend/internal/link"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/forwend/forwend/apps/backend/internal/job"
+	"github.com/forwend/forwend/apps/backend/internal/link"
 )
 
 type linkBody struct {

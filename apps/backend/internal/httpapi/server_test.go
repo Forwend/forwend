@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi"
 )
 
 func TestServeDrainsActiveResponse(t *testing.T) {

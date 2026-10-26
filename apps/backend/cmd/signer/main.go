@@ -9,12 +9,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/chain"
-	"github.com/ensp1re/forwend/apps/backend/internal/config"
-	"github.com/ensp1re/forwend/apps/backend/internal/database"
-	"github.com/ensp1re/forwend/apps/backend/internal/settlement"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
+	"github.com/forwend/forwend/apps/backend/internal/config"
+	"github.com/forwend/forwend/apps/backend/internal/database"
+	"github.com/forwend/forwend/apps/backend/internal/settlement"
 )
 
 func main() {

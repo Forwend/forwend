@@ -3,9 +3,9 @@ package profileapi
 import (
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/auth"
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
-	"github.com/ensp1re/forwend/apps/backend/internal/profile"
+	"github.com/forwend/forwend/apps/backend/internal/auth"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/forwend/forwend/apps/backend/internal/profile"
 )
 
 type createProfileBody struct {

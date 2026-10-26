@@ -3,8 +3,8 @@ package jobapi
 import (
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
-	"github.com/ensp1re/forwend/apps/backend/internal/job"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/forwend/forwend/apps/backend/internal/job"
 )
 
 type createJobBody struct {

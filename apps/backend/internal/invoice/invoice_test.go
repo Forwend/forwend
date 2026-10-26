@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/address"
+	"github.com/forwend/forwend/apps/backend/internal/address"
 )
 
 // Mirrors InvoiceTypes.sol safeToSettle.

@@ -3,9 +3,9 @@ package keyapi
 import (
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/apikey"
-	"github.com/ensp1re/forwend/apps/backend/internal/auth"
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/forwend/forwend/apps/backend/internal/apikey"
+	"github.com/forwend/forwend/apps/backend/internal/auth"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
 )
 
 type keyJSON struct {

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/activity"
+	"github.com/forwend/forwend/apps/backend/internal/activity"
 )
 
 // R-118.

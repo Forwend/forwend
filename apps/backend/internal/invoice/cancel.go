@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/history"
+	"github.com/forwend/forwend/apps/backend/internal/history"
 	"github.com/jackc/pgx/v5"
 )
 

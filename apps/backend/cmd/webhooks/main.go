@@ -10,11 +10,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/config"
-	"github.com/ensp1re/forwend/apps/backend/internal/database"
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/invoiceapi"
-	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
-	"github.com/ensp1re/forwend/apps/backend/internal/webhook"
+	"github.com/forwend/forwend/apps/backend/internal/config"
+	"github.com/forwend/forwend/apps/backend/internal/database"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/invoiceapi"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
+	"github.com/forwend/forwend/apps/backend/internal/webhook"
 )
 
 // poll is how often due deliveries are looked for: the first retry comes 5 seconds after a failure.

@@ -4,9 +4,9 @@ package profileapi
 import (
 	"net/http"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/auth"
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/mid"
-	"github.com/ensp1re/forwend/apps/backend/internal/profile"
+	"github.com/forwend/forwend/apps/backend/internal/auth"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/mid"
+	"github.com/forwend/forwend/apps/backend/internal/profile"
 )
 
 func Routes(mux *http.ServeMux, g mid.Guards, profiles *profile.Service) {

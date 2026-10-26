@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/history"
-	"github.com/ensp1re/forwend/apps/backend/internal/history/historytest"
-	"github.com/ensp1re/forwend/apps/backend/internal/httpapi/invoiceapi"
-	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
-	"github.com/ensp1re/forwend/apps/backend/internal/webhook"
+	"github.com/forwend/forwend/apps/backend/internal/history"
+	"github.com/forwend/forwend/apps/backend/internal/history/historytest"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/invoiceapi"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
+	"github.com/forwend/forwend/apps/backend/internal/webhook"
 	"github.com/jackc/pgx/v5"
 )
 

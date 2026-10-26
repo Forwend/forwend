@@ -15,12 +15,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/document"
-	"github.com/ensp1re/forwend/apps/backend/internal/email"
-	"github.com/ensp1re/forwend/apps/backend/internal/history"
-	"github.com/ensp1re/forwend/apps/backend/internal/invoice"
-	"github.com/ensp1re/forwend/apps/backend/internal/outbox"
-	"github.com/ensp1re/forwend/apps/backend/internal/webhook"
+	"github.com/forwend/forwend/apps/backend/internal/document"
+	"github.com/forwend/forwend/apps/backend/internal/email"
+	"github.com/forwend/forwend/apps/backend/internal/history"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
+	"github.com/forwend/forwend/apps/backend/internal/outbox"
+	"github.com/forwend/forwend/apps/backend/internal/webhook"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )

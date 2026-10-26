@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ensp1re/forwend/apps/backend/internal/chaintest"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
