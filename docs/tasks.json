@@ -14,7 +14,7 @@
         "Signup and settlement regression tests check their rules without the reported timing or nonce race."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "build",
@@ -110,11 +110,18 @@
           "summary": "No blockers. Reviewed permanent payment-link modes across key authorization, lists, upserts and public payment creation; profile/store token invariants and rollback; retainer templates including stored Revise actions; deterministic signup deadline and distinct-chain signer cap tests; public and owner test-mode UI; migration and structure ownership. Independently confirmed npm forwend 0.1.0 MIT with matching packed integrity. Final seven-check verification passed, and documentation and assertion follow-ups are resolved.",
           "at": "2026-10-26T21:26:43Z",
           "filesHash": "d25babb1fe51a43f"
-        }
+        },
+        "commit": "0cb1f2c1",
+        "doneAt": "2026-10-26T21:45:23Z"
       },
       "branch": "chore/f324-publish-the-mit-licensed-node-package-an",
       "baseCommit": "ae0b0293676c115e72c713ecf16cbc8d2a120bab",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "chore/f324-publish-the-mit-licensed-node-package-an",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
