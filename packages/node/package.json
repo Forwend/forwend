@@ -2,7 +2,7 @@
   "name": "forwend",
   "version": "0.1.0",
   "description": "The Forwend API for Node: invoices, webhook events and webhook verification.",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "homepage": "https://forwend.com/docs",
   "type": "module",
   "engines": {

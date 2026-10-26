@@ -16,20 +16,21 @@ const linkColumns = `l.id::text, coalesce(l.store_id::text, ''), l.slug, l.title
 	coalesce(l.min_cents, 0), coalesce(l.max_cents, 0), l.ends_at, coalesce(l.max_payments, 0), l.active, l.visits,
 	(SELECT count(*) FROM ` + "invoices_current invoices" + ` WHERE invoices.link_id = l.id
 	   AND ` + invoice.StatusFilterSQL + ` IN ('paid', 'settled')),
-	l.created_at, l.updated_at`
+	l.created_at, l.updated_at, l.livemode`
 
 func scanLink(row pgx.CollectableRow) (Link, error) {
 	var l Link
 	err := row.Scan(&l.ID, &l.StoreID, &l.Slug, &l.Title, &l.AmountCents, &l.MinCents, &l.MaxCents, &l.EndsAt,
-		&l.MaxPayments, &l.Active, &l.Visits, &l.Paid, &l.CreatedAt, &l.UpdatedAt)
+		&l.MaxPayments, &l.Active, &l.Visits, &l.Paid, &l.CreatedAt, &l.UpdatedAt, &l.Livemode)
 	return l, err
 }
 
 // List is the profile's links, newest first. stores, when not nil, keeps only those stores' links (R-138).
-func (s *Service) List(ctx context.Context, profileID string, stores []string) ([]Link, error) {
+func (s *Service) List(ctx context.Context, profileID string, stores []string, live *bool) ([]Link, error) {
 	rows, err := s.pool.Query(ctx, `SELECT `+linkColumns+` FROM payment_links l
 		WHERE l.profile_id = $1 AND ($2::uuid[] IS NULL OR l.store_id = ANY($2))
-		ORDER BY l.created_at DESC, l.id`, profileID, stores)
+		AND ($3::boolean IS NULL OR l.livemode = $3)
+		ORDER BY l.created_at DESC, l.id`, profileID, stores, live)
 	if err != nil {
 		return nil, fmt.Errorf("list payment links: %w", err)
 	}

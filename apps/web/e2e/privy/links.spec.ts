@@ -9,6 +9,7 @@ const SHOP = "22222222-2222-2222-2222-222222222222";
 const STORE = "66666666-6666-4666-8666-666666666666";
 const FIXED = "aaaaaaaa-0000-4000-8000-000000000001";
 const link = (linkId: string, fields: object) => ({
+  livemode: false,
   linkId,
   slug: "k3f9q2m7x1ab",
   title: "Logo design",

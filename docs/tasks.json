@@ -1,37 +1,48 @@
 {
   "schemaVersion": 2,
-  "nextId": 324,
+  "nextId": 325,
   "tasks": [
     {
-      "id": "F323",
+      "id": "F324",
       "type": "fix",
-      "behavior": "Select relevant checks and reuse fresh results without duplicate verification",
+      "behavior": "Finish the phase 11.6 release follow-ups",
       "acceptance": [
-        "Local verification selects checks by changed responsibility, keeps broad staging checks, and exposes its plan.",
-        "Passing checks are reused only for matching inputs; failures stop execution; wrapup never reruns tests.",
-        "Live provider tests are explicit and browser verification does not silently reuse existing servers.",
-        "Measured before and after timings cover documentation, backend changes and repeated verification."
+        "The SDK ships under MIT and publication claims match npm; research, spikes and archive folders stay local.",
+        "Payment links keep one mode and test keys cannot reach live links; invoice creation never falls back because preferences disable live tokens.",
+        "A profile and each store keep at least one enabled token per available mode.",
+        "A retainer started from Revise creates later months once, without replacing the original again.",
+        "Signup and settlement regression tests check their rules without the reported timing or nonce race."
       ],
       "dependsOn": [],
       "state": "passing",
       "verification": [
-        "harness",
-        "docs-check"
+        "unit",
+        "build",
+        "e2e"
       ],
       "refs": [
-        "R-158"
+        "R-159",
+        "R-157",
+        "R-156",
+        "R-136",
+        "R-98",
+        "R-129",
+        "D-87",
+        "D-103",
+        "R-25"
       ],
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-26 review pass by reviewer: No blockers. Reviewed check selection, dependency and cache invalidation, fail-fast execution, hook compatibility, provider isolation, CI coverage and file ownership. All findings resolved. 59 regression tests pass, including real Git-hook reuse and tool-call metadata. Final full verification passed all seven checks; unchanged-source repeat passed in 0.960 seconds with six cached checks and fresh documentation validation.",
-        "2026-10-26 F323 implemented and verified. Full checks passed208.7s; unchanged verify0.960s. Measurement report retained in docs/runs; benchmark script removed. No commit or publication requested."
+        "2026-10-26 review pass by reviewer: No blockers. Reviewed permanent payment-link modes across key authorization, lists, upserts and public payment creation; profile/store token invariants and rollback; retainer templates including stored Revise actions; deterministic signup deadline and distinct-chain signer cap tests; public and owner test-mode UI; migration and structure ownership. Independently confirmed npm forwend 0.1.0 MIT with matching packed integrity. Final seven-check verification passed, and documentation and assertion follow-ups are resolved.",
+        "2026-10-26 F324 verified: all seven checks passed in 207.2s; independent review passed. Published forwend0.1.0 under MIT, confirmed registry integrity and clean-install imports. Mode/token/retainer/test fixes are ready locally. Local webhook encryption key configured without exposing its value. Temporary Anvil processes and chain31338 files, preview spec and package/install temporary files were removed. Phone screenshot kept as evidence. Commit and PR need owner authorization; status provider remains outside this change.",
+        "2026-10-26 F324 committed as b5e30d56 and opened in PR322: https://github.com/Forwend/forwend/pull/322. All seven local checks and independent review passed. Package forwend0.1.0 is published under MIT. Temporary chain processes and files were cleaned. PR remains open for review; no staging promotion or deployment was requested."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-26T20:58:35Z",
+        "at": "2026-10-26T21:22:35Z",
         "checks": [
           {
             "id": "harness",
@@ -52,75 +63,71 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
+            "seconds": 0.3,
+            "log": ""
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
+            "seconds": 0.2,
+            "log": ""
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
+            "seconds": 179.4,
+            "log": ""
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
+            "seconds": 5.8,
+            "log": ""
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
+            "seconds": 21.5,
+            "log": ""
           }
         ],
-        "taskHash": "4733fb0302a91036",
-        "filesHash": "16cded182f3d8dc3",
+        "taskHash": "7de682e9b13fc3ea",
+        "filesHash": "d25babb1fe51a43f",
         "proof": {
-          "1": "harness: Path selection, dependency callers, coverage deduplication and fresh CI regression tests.",
-          "2": "harness: Cache invalidation, real Git hook and tool-call reuse, fail-fast and no-test wrapup regressions.",
-          "3": "harness: Explicit live selection and refusal to reuse live servers are tested.",
-          "4": "harness: Real check timings are in docs/runs/verification-benchmark.json and F323-verification-timings.md; disposable benchmark script removed after measurement."
+          "1": "unit: SDK tests pass; build: MIT package compiles; docs-check: publication claims match npm 0.1.0 MIT and a clean install loads all exports; harness: recursive working-folder ignores are confirmed",
+          "2": "unit: API regressions cover key/link mode isolation and disabled-live-token fallback; e2e: public test-mode warning and existing checkout flows",
+          "3": "unit: profile and store token tests reject empty modes and combined preferences atomically",
+          "4": "unit: legacy Revise templates create two later months once and replace only the first invoice",
+          "5": "unit: signup cancellation and distinct-chain signer cap tests pass; missing deadline mutation fails; concurrency stress passed five repetitions"
         },
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "No blockers. Reviewed check selection, dependency and cache invalidation, fail-fast execution, hook compatibility, provider isolation, CI coverage and file ownership. All findings resolved. 59 regression tests pass, including real Git-hook reuse and tool-call metadata. Final full verification passed all seven checks; unchanged-source repeat passed in 0.960 seconds with six cached checks and fresh documentation validation.",
-          "at": "2026-10-26T20:58:46Z",
-          "filesHash": "16cded182f3d8dc3"
+          "summary": "No blockers. Reviewed permanent payment-link modes across key authorization, lists, upserts and public payment creation; profile/store token invariants and rollback; retainer templates including stored Revise actions; deterministic signup deadline and distinct-chain signer cap tests; public and owner test-mode UI; migration and structure ownership. Independently confirmed npm forwend 0.1.0 MIT with matching packed integrity. Final seven-check verification passed, and documentation and assertion follow-ups are resolved.",
+          "at": "2026-10-26T21:26:43Z",
+          "filesHash": "d25babb1fe51a43f"
         },
-        "commit": "96012efc",
-        "doneAt": "2026-10-26T21:00:08Z"
+        "commit": "0cb1f2c1",
+        "doneAt": "2026-10-26T21:45:23Z"
       },
-      "branch": "fix/f323-select-relevant-checks-and-reuse-fresh-r",
-      "baseCommit": "3719f3508e35fc084b469c3619ce08c7d6edd562",
+      "branch": "chore/f324-publish-the-mit-licensed-node-package-an",
+      "baseCommit": "ae0b0293676c115e72c713ecf16cbc8d2a120bab",
       "failedVerifies": 0,
       "delivery": {
         "mode": "pr",
-        "branch": "fix/f323-select-relevant-checks-and-reuse-fresh-r",
+        "branch": "chore/f324-publish-the-mit-licensed-node-package-an",
         "base": "main"
       }
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-26T20:58:49Z",
+    "at": "2026-10-26T21:30:23Z",
     "clean": true,
     "problems": [],
-    "note": "F323 implemented and verified. Full checks passed208.7s; unchanged verify0.960s. Measurement report retained in docs/runs; benchmark script removed. No commit or publication requested."
+    "note": "F324 committed as b5e30d56 and opened in PR322: https://github.com/Forwend/forwend/pull/322. All seven local checks and independent review passed. Package forwend0.1.0 is published under MIT. Temporary chain processes and files were cleaned. PR remains open for review; no staging promotion or deployment was requested."
   }
 }

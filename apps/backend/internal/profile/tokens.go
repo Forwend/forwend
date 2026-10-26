@@ -66,7 +66,7 @@ func (s *Service) SetTokensOff(ctx context.Context, profileID string, off []Toke
 				return fmt.Errorf("save tokens off: %w", err)
 			}
 		}
-		return nil
+		return checkTokensOn(ctx, tx, profileID, "")
 	})
 	if err != nil {
 		return nil, err
@@ -74,8 +74,7 @@ func (s *Service) SetTokensOff(ctx context.Context, profileID string, off []Toke
 	return s.Tokens(ctx, profileID)
 }
 
-// enabledOff puts off in its stored form, without repeats. Each must be an enabled token, and one must stay on, so
-// the profile or store can still invoice. field names the list in an error.
+// enabledOff puts off in its stored form, without repeats. Each must be an enabled token.
 func enabledOff(ctx context.Context, tx pgx.Tx, field string, off []TokenPair) ([]TokenPair, error) {
 	rows, err := tx.Query(ctx, `SELECT t.chain_id, t.contract FROM tokens t JOIN chains c ON c.chain_id = t.chain_id
 		WHERE t.enabled AND c.enabled`)
@@ -96,14 +95,37 @@ func enabledOff(ctx context.Context, tx pgx.Tx, field string, off []TokenPair) (
 			out = append(out, t)
 		}
 	}
-	// With nothing enabled, as on a new database, out is empty and there is nothing to keep on.
-	if len(out) > 0 && len(out) == len(enabled) {
-		return nil, fmt.Errorf("%w: %s can't list every token: one stays on", ErrInvalid, field)
-	}
 	slices.SortFunc(out, func(a, b TokenPair) int {
 		return cmp.Or(cmp.Compare(a.ChainID, b.ChainID), strings.Compare(a.Token, b.Token))
 	})
 	return out, nil
+}
+
+// The caller holds the profile lock. A profile save checks every store; a store save checks that store.
+func checkTokensOn(ctx context.Context, tx pgx.Tx, profileID, storeID string) error {
+	var empty bool
+	err := tx.QueryRow(ctx, `WITH scopes AS (
+		SELECT nullif($2, '')::uuid AS id
+		UNION ALL SELECT id FROM stores WHERE profile_id = $1 AND $2 = '')
+		SELECT EXISTS (SELECT s.id, c.livemode FROM scopes s CROSS JOIN tokens t
+		JOIN chains c ON c.chain_id = t.chain_id WHERE t.enabled AND c.enabled
+		GROUP BY s.id, c.livemode HAVING count(*) FILTER (WHERE
+		    NOT EXISTS (SELECT 1 FROM profile_tokens_off o WHERE o.profile_id = $1
+		                AND o.chain_id = t.chain_id AND o.token_contract = t.contract)
+		    AND NOT EXISTS (SELECT 1 FROM store_tokens_off o WHERE o.store_id = s.id
+		                    AND o.chain_id = t.chain_id AND o.token_contract = t.contract)) = 0)`,
+		profileID, storeID).Scan(&empty)
+	if err != nil {
+		return fmt.Errorf("check tokens on: %w", err)
+	}
+	if empty {
+		field := "off"
+		if storeID != "" {
+			field = "tokensOff"
+		}
+		return fmt.Errorf("%w: %s: at least one token must stay on in each mode for the profile and every store", ErrInvalid, field)
+	}
+	return nil
 }
 
 // TokensOff are the tokens a new invoice of the profile, and of its store when storeID is set, can't take.

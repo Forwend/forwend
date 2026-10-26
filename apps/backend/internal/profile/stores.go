@@ -221,6 +221,9 @@ func (s *Service) SaveStore(ctx context.Context, profileID, id string, d StoreDe
 			return Store{}, false, fmt.Errorf("save store tokens off: %w", err)
 		}
 	}
+	if err := checkTokensOn(ctx, tx, profileID, id); err != nil {
+		return Store{}, false, err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return Store{}, false, fmt.Errorf("save store: %w", err)
 	}

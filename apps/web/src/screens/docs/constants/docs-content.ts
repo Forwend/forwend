@@ -198,7 +198,7 @@ for await (const event of forwend.webhookEvents.list({ type: "invoice.paid" })) 
           "Invoice create takes `metadata`.",
           "A `dueDate` with no `expiresIn` keeps the checkout open 60 days past it.",
           "Webhook events `invoice.open` and `invoice.reopened`. An endpoint gets them once you choose them on it.",
-          "The `forwend` package for Node, 0.1.0 on npm.",
+          "The `forwend` package for Node, 0.1.0 on npm under the MIT license.",
         ],
       },
       {

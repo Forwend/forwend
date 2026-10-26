@@ -2593,11 +2593,12 @@ components:
           items: { type: string, enum: [invoices.read, invoices.write, stores.read, tokens.read] }
     PublicPaymentLink:
       type: object
-      required: [slug, title, payee, brand, amountUsd, minUsd, maxUsd, state]
+      required: [slug, title, payee, brand, amountUsd, minUsd, maxUsd, state, livemode]
       properties:
         slug: { type: string, pattern: "^[a-z0-9]{12}$" }
         title: { type: string }
         payee: { type: [string, "null"], description: "The billing name; null before the owner saves billing details." }
+        livemode: { type: boolean, description: "The link's permanent mode; each payer invoice keeps it (D-87)." }
         brand:
           type: [object, "null"]
           required: [storeId, color, logoAt]
@@ -2628,7 +2629,7 @@ components:
     PaymentLink:
       type: object
       required: [linkId, slug, title, storeId, amountUsd, minUsd, maxUsd, endsAt, maxPayments, active, visits, paid,
-        createdAt, updatedAt]
+        createdAt, updatedAt, livemode]
       properties:
         linkId: { type: string, format: uuid }
         slug:
@@ -2645,6 +2646,7 @@ components:
         active: { type: boolean }
         visits: { type: integer, description: Times the link's page was opened. }
         paid: { type: integer, description: The link's invoices that are paid or settled. }
+        livemode: { type: boolean, description: "The link's permanent mode; a key reaches only links of its mode (D-87)." }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
     GrantRequest:

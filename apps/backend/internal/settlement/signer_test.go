@@ -35,12 +35,13 @@ import (
 const wallet = "0x1111111111111111111111111111111111111111"
 
 type env struct {
-	anvil  *chaintest.Anvil
-	pool   *pgxpool.Pool
-	client *ethclient.Client
-	token  string
-	watch  *watcher.Chain
-	ledger *ledger.Service
+	chainID uint64
+	anvil   *chaintest.Anvil
+	pool    *pgxpool.Pool
+	client  *ethclient.Client
+	token   string
+	watch   *watcher.Chain
+	ledger  *ledger.Service
 }
 
 // setup: the real factory at its compiled address, Anvil's key as executor, a mock USDC and a profile wallet.
@@ -79,7 +80,7 @@ func setup(t *testing.T) env {
 	}
 	t.Cleanup(client.Close)
 	clients := map[uint64]*ethclient.Client{chaintest.ChainID: client}
-	e := env{anvil: a, pool: pool, client: client, token: token, watch: watcher.NewChain(pool, chaintest.ChainID, a.RPC),
+	e := env{chainID: chaintest.ChainID, anvil: a, pool: pool, client: client, token: token, watch: watcher.NewChain(pool, chaintest.ChainID, a.RPC),
 		ledger: ledger.NewService(pool, ledger.BalanceFrom(clients), ledger.DeployedFrom(clients))}
 	if err := e.watch.Scan(ctx); err != nil {
 		t.Fatal(err)
@@ -93,7 +94,7 @@ func (e env) signer(t *testing.T) *Signer {
 	if err != nil {
 		t.Fatal(err)
 	}
-	clients := map[uint64]*ethclient.Client{chaintest.ChainID: e.client}
+	clients := map[uint64]*ethclient.Client{e.chainID: e.client}
 	return NewSigner(e.pool, key, clients, clients)
 }
 
@@ -112,7 +113,7 @@ func (e env) pay(t *testing.T, n int) (id, receive string) {
 	if err := e.watch.Scan(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if err := e.ledger.ProcessChain(ctx, chaintest.ChainID); err != nil {
+	if err := e.ledger.ProcessChain(ctx, e.chainID); err != nil {
 		t.Fatal(err)
 	}
 	return id, receive
@@ -124,7 +125,7 @@ func (e env) create(t *testing.T, n int) (id, receive string) {
 	now := e.anvil.Now()
 	terms := address.Terms{InvoiceID: [32]byte(common.FromHex(fmt.Sprintf("0x%064x", n))), Recipient: common.HexToAddress(wallet),
 		Token: common.HexToAddress(e.token), Amount: big.NewInt(5000000), ExpiresAt: uint64(now + 3600),
-		SettleDeadline: uint64(now + 3600 + 86400), IntendedChainID: chaintest.ChainID}
+		SettleDeadline: uint64(now + 3600 + 86400), IntendedChainID: e.chainID}
 	addr, err := address.Receive(terms)
 	if err != nil {
 		t.Fatal(err)
@@ -134,7 +135,7 @@ func (e env) create(t *testing.T, n int) (id, receive string) {
 		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
 		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
 		SELECT $1, profile_id, $2, 'evm', $3, 5000000, $4, $5, $6, 'evm_create2', $7, $8, $9, decode(repeat('00', 32), 'hex')
-		FROM profile_wallets`, id, chaintest.ChainID, e.token, terms.ExpiresAt, terms.SettleDeadline, wallet,
+		FROM profile_wallets`, id, e.chainID, e.token, terms.ExpiresAt, terms.SettleDeadline, wallet,
 		strings.ToLower(common.Address(address.Factory).Hex()), receive, fmt.Sprintf("k%d", n))
 	if err != nil {
 		t.Fatal(err)
@@ -162,8 +163,8 @@ func (e env) nonce(t *testing.T) uint64 {
 
 func (e env) balance(t *testing.T, holder string) int64 {
 	t.Helper()
-	b, _, err := ledger.BalanceFrom(map[uint64]*ethclient.Client{chaintest.ChainID: e.client})(
-		context.Background(), chaintest.ChainID, e.token, holder)
+	b, _, err := ledger.BalanceFrom(map[uint64]*ethclient.Client{e.chainID: e.client})(
+		context.Background(), e.chainID, e.token, holder)
 	if err != nil {
 		t.Fatal(err)
 	}

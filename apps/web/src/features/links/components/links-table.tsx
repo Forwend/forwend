@@ -36,9 +36,12 @@ function NewLinkLink({ className = "", size = "md" }: { className?: string; size
 function StateBadge({ link }: { link: PaymentLink }) {
   const state = linkState(link, Date.now());
   return (
-    <Badge tone={state === LINK_STATES.on ? TONES.success : TONES.neutral}>
-      {COPY.states[state]}
-    </Badge>
+    <span className="inline-flex flex-wrap gap-2">
+      <Badge tone={state === LINK_STATES.on ? TONES.success : TONES.neutral}>
+        {COPY.states[state]}
+      </Badge>
+      {link.livemode ? null : <Badge tone={TONES.warning}>{COPY.testMode}</Badge>}
+    </span>
   );
 }
 

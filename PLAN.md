@@ -80,7 +80,7 @@ code; a wallet connects only to claim a refund (D-37).
   - 11.9.3 `@forwend/js` and `@forwend/react` (`PayButton`, `Checkout`, `PaymentElement`): no remote script; a theme
     and a few variables mapped to the design tokens and checked for contrast; React 18 and 19. After 11.9.2.
   - 11.9.4 Publish `@forwend/js`, `@forwend/react` and `forwend` (D-103) once the owner approves, from the npm org.
-    `forwend` 0.1.0 is out, to hold the name. CI publishes with provenance. The browser packages stay `0.x` until the message protocol is stable. Each package
+    `forwend` 0.1.0 is published on npm under MIT. CI publishes with provenance. The browser packages stay `0.x` until the message protocol is stable. Each package
     has a changelog file, size and type checks. After 11.9.3.
   - 11.9.5 `apps/example-merchant` uses the button and the components and verifies the webhook, with a browser test:
     merchant code cannot read the frame, a forged message never marks an order paid, a strict CSP works, and an
@@ -128,6 +128,8 @@ code; a wallet connects only to claim a refund (D-37).
 - 12.2a Settings pages: account settings (security from 12.2, passkey sign-in) apart from each profile's settings.
   Freelancer and personal profiles: billing details (now `/app/billing-details`, reached from the checklist) and
   profile name; merchant profiles add stores and team (11.1, 11.2).
+  - Add the Test mode / Live mode switch after phase 12 or 13, once production contracts exist.
+  - Until then, staging uses testnets only. Test mode uses testnet tokens; live mode uses mainnets and real money.
 - 12.3 Same-chain send to your own profiles and outside addresses. Review recipient, profile, chain, token, debit,
   network fee and amount received; fresh sign-in; Privy client signing with sponsored gas (D-46). After 12.1.
 - 12.4 Handles (D-67) and saved contacts; new addresses are confirmed. After 12.3.

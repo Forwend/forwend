@@ -72,6 +72,7 @@ func (s *Service) startRetainer(ctx context.Context, tx pgx.Tx, profileID, invoi
 	// migration of retainers.request.
 	t := r
 	t.DueDate, t.SupplyDate, t.ExpiresInSeconds, t.Repeat, t.Details.Agreed = "", "", nil, nil, nil
+	t.Replaces = ""
 	request, err := json.Marshal(t)
 	if err != nil {
 		return fmt.Errorf("save retainer: %w", err)
@@ -149,6 +150,8 @@ func (s *Service) MakeRetainerInvoices(ctx context.Context) error {
 			errs = append(errs, fmt.Errorf("retainer %s: %w", m.retainer, err))
 			continue
 		}
+		// A Revise belongs only to the first month, including templates saved with that action.
+		r.Replaces = ""
 		// D-80: the checkout stays open to the end of the 60th day after the due date, in whole seconds rounded up.
 		seconds := int64((m.due.AddDate(0, 0, DueGraceDays+1).Sub(s.now()) + time.Second - 1) / time.Second)
 		r.DueDate, r.ExpiresInSeconds = m.due.Format(time.DateOnly), &seconds

@@ -56,7 +56,8 @@ func TestLinkCheckout(t *testing.T) {
 	// The page reads the link and counts a visit; it makes nothing (D-54).
 	r := e.call(t, "GET", "/v1/links/"+fixed, "", "", "")
 	brand, _ := r.body["brand"].(map[string]any)
-	if r.status != http.StatusOK || len(r.body) != 8 || r.body["title"] != "Logo design" || r.body["payee"] != "Alice Shop Ltd" ||
+	if r.status != http.StatusOK || len(r.body) != 9 || r.body["livemode"] != false ||
+		r.body["title"] != "Logo design" || r.body["payee"] != "Alice Shop Ltd" ||
 		r.body["amountUsd"] != "2.00" || r.body["minUsd"] != nil || r.body["state"] != "on" || brand["storeId"] != store ||
 		brand["color"] != "#1f6a8c" || brand["logoAt"] != nil {
 		t.Fatalf("the fixed link's page: %d %v", r.status, r.body)

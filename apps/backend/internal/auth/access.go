@@ -126,20 +126,20 @@ func (s *Service) CheckAccess(ctx context.Context, privyUserID, profileID string
 }
 
 // LinkStore is the store of the profile's payment link; found is false for an unknown or malformed link id.
-func (s *Service) LinkStore(ctx context.Context, profileID, linkID string) (store string, found bool, err error) {
+func (s *Service) LinkStore(ctx context.Context, profileID, linkID string) (store string, live, found bool, err error) {
 	var id pgtype.UUID
 	if id.Scan(linkID) != nil {
-		return "", false, nil
+		return "", false, false, nil
 	}
-	err = s.pool.QueryRow(ctx, `SELECT coalesce(store_id::text, '') FROM payment_links
-		WHERE id = $1 AND profile_id = $2::uuid`, id, profileID).Scan(&store)
+	err = s.pool.QueryRow(ctx, `SELECT coalesce(store_id::text, ''), livemode FROM payment_links
+		WHERE id = $1 AND profile_id = $2::uuid`, id, profileID).Scan(&store, &live)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", false, nil
+		return "", false, false, nil
 	}
 	if err != nil {
-		return "", false, fmt.Errorf("read payment link store: %w", err)
+		return "", false, false, fmt.Errorf("read payment link store: %w", err)
 	}
-	return store, true, nil
+	return store, live, true, nil
 }
 
 // InvoiceStore is the store of the profile's invoice with this id, "" when it has none, and whether it is live mode;

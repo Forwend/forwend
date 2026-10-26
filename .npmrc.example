@@ -1,6 +1,6 @@
 # Copy to .npmrc in this folder (git ignores it) and put your npm token in place of the placeholder.
 # pnpm reads it when it publishes a package from this workspace, such as:
 #   pnpm --filter ./packages/node publish
-# forwend 0.1.0 went out this way; later versions publish from CI with provenance (PLAN 11.9.4).
+# The first release publishes this way; later versions publish from CI with provenance (PLAN 11.9.4).
 # Use a granular token limited to the Forwend packages, with an expiry date. Never commit the real token.
 //registry.npmjs.org/:_authToken=YOUR_NPM_TOKEN

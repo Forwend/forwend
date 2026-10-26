@@ -111,15 +111,28 @@ func TestTokensOff(t *testing.T) {
 		t.Fatalf("a store with every token off: %d %v", r.status, r.body)
 	}
 	if r := e.call(t, "PUT", "/v1/profiles/"+shop+"/tokens", alice, "", `{"off": [{"chainId": 421614,
-		"token": "`+arbUSDC+`"}]}`); r.status != http.StatusOK {
-		t.Fatalf("PUT the shop's tokens: %d %v", r.status, r.body)
+		"token": "`+arbUSDC+`"}]}`); r.status != http.StatusUnprocessableEntity {
+		t.Fatalf("turning off the store's last token: %d %v", r.status, r.body)
 	}
-	if r := e.post(t, alice, shop, "key-4", `{"amountUsd": "5"}`); r.status != http.StatusUnprocessableEntity ||
-		errorCode(r) != "invalid_value" {
-		t.Fatalf("nothing left between the profile and the store: %d %v", r.status, r.body)
+	if r := e.post(t, alice, shop, "key-4", `{"amountUsd": "5"}`); r.status != http.StatusCreated {
+		t.Fatalf("store still has its token after the refused save: %d %v", r.status, r.body)
+	}
+	if r := e.call(t, "PUT", storePath, alice, "", `{"name": "Shop", "defaultExpiresIn": 3600}`); r.status != http.StatusOK {
+		t.Fatal(r.body)
+	}
+	if r := e.call(t, "PUT", "/v1/profiles/"+shop+"/tokens", alice, "", `{"off": [{"chainId": 421614,
+		"token": "`+arbUSDC+`"}]}`); r.status != http.StatusOK {
+		t.Fatal(r.body)
+	}
+	if r := e.call(t, "PUT", storePath, alice, "", `{"name": "Shop", "defaultExpiresIn": 3600,
+		"tokensOff": [{"chainId": 84532, "token": "`+usdc+`"}]}`); r.status != http.StatusUnprocessableEntity {
+		t.Fatalf("store turns off the profile's last token: %d %v", r.status, r.body)
 	}
 
 	// A token an operator disables later leaves the lists, so what a read gives back saves again.
+	if r := e.call(t, "PUT", "/v1/profiles/"+shop+"/tokens", alice, "", `{"off": []}`); r.status != http.StatusOK {
+		t.Fatal(r.body)
+	}
 	if _, err := e.pool.Exec(context.Background(), "UPDATE tokens SET enabled = false WHERE chain_id = 84532"); err != nil {
 		t.Fatal(err)
 	}
@@ -140,6 +153,28 @@ func TestTokensOff(t *testing.T) {
 	}
 	if r := e.call(t, "PUT", path, alice, "", `{"off": []}`); r.status != http.StatusOK {
 		t.Fatalf("PUT the switches with no token enabled: %d %v", r.status, r.body)
+	}
+}
+
+func TestTokenPreferencesKeepOneTokenPerMode(t *testing.T) {
+	e := invoiceAPI(t)
+	e.enableArbUSDC(t)
+	e.exec(t, "UPDATE chains SET livemode = true WHERE chain_id = 421614")
+	const alice = "did:privy:alice"
+	path := "/v1/profiles/" + e.aliceProfile + "/tokens"
+	for _, off := range []string{
+		`{"chainId": 84532, "token": "` + usdc + `"}`,
+		`{"chainId": 421614, "token": "` + arbUSDC + `"}`,
+	} {
+		if r := e.call(t, "PUT", path, alice, "", `{"off": [`+off+`]}`); r.status != http.StatusUnprocessableEntity {
+			t.Fatalf("last token of one mode off: %d %v", r.status, r.body)
+		}
+	}
+	shop := e.merchant(t)
+	store := storeIDs(t, e, shop)[0]
+	if r := e.call(t, "PUT", "/v1/profiles/"+shop+"/stores/"+store, alice, "", `{"name": "Shop",
+		"defaultExpiresIn": 3600, "tokensOff": [{"chainId": 421614, "token": "`+arbUSDC+`"}]}`); r.status != http.StatusUnprocessableEntity {
+		t.Fatalf("store's last live token off: %d %v", r.status, r.body)
 	}
 }
 

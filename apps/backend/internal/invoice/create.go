@@ -63,6 +63,7 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	if err != nil {
 		return Invoice{}, false, err
 	}
+	live := slices.ContainsFunc(options, func(o accepted) bool { return o.live })
 	var recipient string
 	err = s.pool.QueryRow(ctx, "SELECT address FROM profile_wallets WHERE profile_id = $1 AND chain_family = $2",
 		profileID, options[0].family).Scan(&recipient)
@@ -131,7 +132,6 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	// D-87: an invoice's options are all of one mode, so its livemode never changes. A key's invoice is of the key's
 	// mode, and a Revise or a retainer's later month keeps the mode of the invoice it follows. Any other create takes
 	// live options when there are some.
-	live := slices.ContainsFunc(options, func(o accepted) bool { return o.live })
 	follows, err := followedMode(ctx, tx, profileID, r)
 	if err != nil {
 		return Invoice{}, false, err

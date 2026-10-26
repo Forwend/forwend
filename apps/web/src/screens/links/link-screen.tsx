@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, buttonClasses, Skeleton } from "@forwend/ui-web";
+import { Badge, Button, buttonClasses, Skeleton, TONES } from "@forwend/ui-web";
 import Link from "next/link";
 import { useListLinksQuery } from "@/features/links/api/links-api";
 import { LinkForm } from "@/features/links/components/link-form";
@@ -34,6 +34,11 @@ export function LinkScreen({ linkId }: LinkScreenProps) {
           {linkId ? (link?.title ?? COPY.editTitle) : COPY.newTitle}
         </h1>
         <p className="text-muted">{COPY.intro}</p>
+        {link && !link.livemode ? (
+          <span>
+            <Badge tone={TONES.warning}>{COPY.testMode}</Badge>
+          </span>
+        ) : null}
       </header>
       {failed ? (
         <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-muted">

@@ -6,6 +6,7 @@ import { sidewaysScroll } from "./sideways";
 // R-142: the API answers are mocked; the Go API test covers the real ones.
 const SLUG = "k3f9q2m7x1ab";
 const FIXED = {
+  livemode: false,
   slug: SLUG,
   title: "Logo design",
   payee: "Alice Shop Ltd",
@@ -75,6 +76,7 @@ test.describe("payment link page", () => {
     await page.goto(`/l/${SLUG}`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Alice Shop Ltd");
     await expect(page.getByText("Logo design", { exact: true })).toBeVisible();
+    await expect(page.getByText(/^Test mode:.*testnet tokens/)).toBeVisible();
     await expect(page.locator("[data-money]")).toHaveText("50.00 USD");
     await expect(page.getByText("You pick the token and network on the next page.")).toBeVisible();
     await expect.poll(() => calls.visits).toBe(1);
