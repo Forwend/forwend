@@ -5,6 +5,8 @@ Routes: `apps/backend/api/openapi.yaml`; each module mounts its own in `internal
 ## Contract first
 
 - `apps/backend/api/openapi.yaml` (OpenAPI 3.1) describes every route except `/healthz`; change it before code.
+  - `TestOpenAPINamesEveryRoute` fails on a route without its operation, or an operation without its route (R-150).
+  - It reads each route from one literal `"METHOD /path"` on its `Handle` line, and fails on any other form.
 - Go request and response types are written by hand in each module's `model.go` (`internal/httpapi/invoiceapi/model.go`)
   until a generator is added (oapi-codegen for Go); the web app's are Zod schemas in its features
   (`apps/web/src/features/*/schemas/`, see docs/web/architecture.md). Keep them equal to the spec.

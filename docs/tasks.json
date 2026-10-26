@@ -1611,13 +1611,13 @@
       "type": "test",
       "behavior": "A test ties openapi.yaml to the registered routes",
       "acceptance": [
-        "Each registered method and path has an operation in openapi.yaml, and each operation has a registered route",
+        "Each registered method and path but /healthz has an operation in openapi.yaml, and each operation has a registered route",
         "A route without its operation, or an operation without its route, fails the test"
       ],
       "dependsOn": [
         "F309"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "unit"
       ],
@@ -1627,9 +1627,90 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-26 review fail by reviewer: BLOCKING: the route side of apps/backend/internal/httpapi/tests/openapi_test.go misses routes silently, so acceptance 2 ('a route without its operation fails the test') holds only for today's style. Probed by overlaying a copy of the test on scratch route files. Each of these undocumented routes passed: (1) a pattern with no method, mux.Handle(\"/v1/ghost\", h), which Go serves for every method; (2) a call with the pattern on the next line; (3) a const pattern, mux.Handle(ghostPath, h); (4) a route in a module file other than routes.go. Today all 84 mux.Handle calls are literal one-line 'METHOD /path' calls in routes.go, 83 after /healthz, so the current spec is fully covered. Fix: read every non-test .go file under internal/httpapi (../*.go and ../*/*.go). Fail when a .Handle( or .HandleFunc( call does not parse as a literal 'METHOD /path'. Non-blocking: (a) methodLine reads only get, put, post, patch and delete. An options:, head: or trace: operation with no route passes; add them to the regex. (b) A quoted path or a path line with a trailing comment fails loudly, but with a misleading message. Its methods count toward the path above, and the error says the route has no operation. Failing on any 2-space line under paths: that does not parse would name the real cause. (c) docs/backend/rules.md:33 and :80 say tests/ holds API tests through httpapi.NewMux, one file per module. This test reads source files, so internal/httpapi/openapi_test.go beside router.go and server_test.go fits the rule better. Checked OK: a method mismatch fails both ways (POST has no operation; PUT has no route). The webhooks: and components: sections are skipped. Path-level parameters: is ignored. A column-0 comment inside paths: fails loudly. A {path...} wildcard fails loudly. Today's spec has 69 paths, only get/post/put/delete, no quoted paths, no CRLF and no tabs. The /healthz exception is right: healthapi/routes.go says the load balancer and the deploy check call it. api.md:7 already leaves it out, D-100 scopes v1 to /v1/profiles/{profileId}, and documenting it would fail the test loudly. The api.md bullet is 15 words. Ran: go test ./internal/httpapi/tests/ -run TestOpenAPINamesEveryRoute -count=1 -v (PASS). go test -overlay with a copy of the test that reads ROUTES and SPEC from the environment, over 6 YAML probes and 5 route probes in scratch (removed).",
+        "2026-10-26 review pass by reviewer: Re-review after the fail; pass, no blocking finding. The test is now apps/backend/internal/httpapi/openapi_test.go (package httpapi_test, beside server_test.go); tests/openapi_test.go is gone. It reads every non-test *.go and */*.go file in internal/httpapi. Probed through go test -overlay on copies in a fresh scratch folder (removed). These now fail with file:line, 'write the route as one literal': a pattern with no method, a split line, a const pattern. A route in another module file fails with 'has no operation'. On the spec side these fail too: a method mismatch (both ways); an options op with no route ('has no route'); a quoted path and a path line with a trailing comment ('openapi.yaml:2202: write a path as a plain /path: line'). Path-level parameters: and an extra post under webhooks: are ignored. Baseline passes: 83 routes, 83 operations. Non-blocking: (a) a route two folders down (internal/httpapi/keyapi/sub/x.go) is still missed; none exists today, and filepath.WalkDir would cover every depth. (b) The literal regex leaves out TRACE while methodLine reads trace:. A TRACE route fails with the misleading 'write the route as one literal'; pick one method list. (c) A column-0 comment inside paths: drops every later operation, so the error names routes, not the comment; still loud. The /healthz exception and the docs are fine: the new api.md bullets are 15 and 19 words. Ran: go test ./internal/httpapi/ -run TestOpenAPINamesEveryRoute -count=1 -v (PASS); go test -overlay with a copy that moves into a scratch copy of internal/httpapi, 7 route probes and 6 spec probes."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-26T00:49:48Z",
+        "checks": [
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 178.7,
+            "log": ""
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.8,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 293.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "b2aa774dc4dcb29e",
+        "filesHash": "e06d7d145cee7e0c",
+        "proof": {
+          "1": "unit: TestOpenAPINamesEveryRoute",
+          "2": "unit: TestOpenAPINamesEveryRoute mutation probes"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review after the fail; pass, no blocking finding. The test is now apps/backend/internal/httpapi/openapi_test.go (package httpapi_test, beside server_test.go); tests/openapi_test.go is gone. It reads every non-test *.go and */*.go file in internal/httpapi. Probed through go test -overlay on copies in a fresh scratch folder (removed). These now fail with file:line, 'write the route as one literal': a pattern with no method, a split line, a const pattern. A route in another module file fails with 'has no operation'. On the spec side these fail too: a method mismatch (both ways); an options op with no route ('has no route'); a quoted path and a path line with a trailing comment ('openapi.yaml:2202: write a path as a plain /path: line'). Path-level parameters: and an extra post under webhooks: are ignored. Baseline passes: 83 routes, 83 operations. Non-blocking: (a) a route two folders down (internal/httpapi/keyapi/sub/x.go) is still missed; none exists today, and filepath.WalkDir would cover every depth. (b) The literal regex leaves out TRACE while methodLine reads trace:. A TRACE route fails with the misleading 'write the route as one literal'; pick one method list. (c) A column-0 comment inside paths: drops every later operation, so the error names routes, not the comment; still loud. The /healthz exception and the docs are fine: the new api.md bullets are 15 and 19 words. Ran: go test ./internal/httpapi/ -run TestOpenAPINamesEveryRoute -count=1 -v (PASS); go test -overlay with a copy that moves into a scratch copy of internal/httpapi, 7 route probes and 6 spec probes.",
+          "at": "2026-10-26T00:59:30Z",
+          "filesHash": "e06d7d145cee7e0c"
+        },
+        "commit": "81c95ea",
+        "doneAt": "2026-10-26T00:59:54Z"
+      },
+      "branch": "test/f310-a-test-ties-openapi-yaml-to-the-register",
+      "baseCommit": "3dbe95cf1d78acca72b0ec4bbf2bd99148a7becc",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "test/f310-a-test-ties-openapi-yaml-to-the-register",
+        "base": "main"
+      }
     },
     {
       "id": "F311",

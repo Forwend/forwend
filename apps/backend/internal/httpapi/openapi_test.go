@@ -1,0 +1,92 @@
+package httpapi_test
+
+import (
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"testing"
+)
+
+// R-150, D-100: openapi.yaml is written by hand, so this keeps it to the routes: each route has its operation, and
+// each operation its route. Path parameters match by place, not name. A route must be written so this test can read
+// it: one literal "METHOD /path" on its Handle line.
+func TestOpenAPINamesEveryRoute(t *testing.T) {
+	param := regexp.MustCompile(`\{\w+\}`)
+	call := regexp.MustCompile(`\.Handle(?:Func)?\(`)
+	literal := regexp.MustCompile(`\.Handle(?:Func)?\("(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS) (/[^" ]*)"`)
+	files, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	modules, err := filepath.Glob("*/*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	routes := map[string]bool{}
+	for _, file := range append(files, modules...) {
+		if strings.HasSuffix(file, "_test.go") {
+			continue
+		}
+		src, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i, line := range strings.Split(string(src), "\n") {
+			if !call.MatchString(line) {
+				continue
+			}
+			m := literal.FindStringSubmatch(line)
+			if m == nil || len(call.FindAllString(line, -1)) > 1 {
+				t.Errorf(`%s:%d: write the route as one literal "METHOD /path" on its Handle line`, file, i+1)
+				continue
+			}
+			routes[m[1]+" "+param.ReplaceAllString(m[2], "{}")] = true
+		}
+	}
+	if len(routes) == 0 {
+		t.Fatal("no routes read")
+	}
+	delete(routes, "GET /healthz") // the load balancer's, not the API's (docs/backend/api.md)
+
+	spec, err := os.ReadFile("../../api/openapi.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pathLine := regexp.MustCompile(`^  (/\S*):$`)
+	methodLine := regexp.MustCompile(`^    (get|head|post|put|patch|delete|options|trace):`)
+	operations := map[string]bool{}
+	inPaths, path := false, ""
+	for i, line := range strings.Split(string(spec), "\n") {
+		switch {
+		case line != "" && line[0] != ' ':
+			inPaths = line == "paths:"
+		case !inPaths:
+		case strings.HasPrefix(line, "  ") && !strings.HasPrefix(line, "   "):
+			m := pathLine.FindStringSubmatch(line)
+			if m == nil {
+				t.Errorf("openapi.yaml:%d: write a path as a plain `/path:` line", i+1)
+				path = ""
+				continue
+			}
+			path = param.ReplaceAllString(m[1], "{}")
+		default:
+			if m := methodLine.FindStringSubmatch(line); m != nil && path != "" {
+				operations[strings.ToUpper(m[1])+" "+path] = true
+			}
+		}
+	}
+	if len(operations) == 0 {
+		t.Fatal("no operations read from openapi.yaml")
+	}
+	for route := range routes {
+		if !operations[route] {
+			t.Errorf("%s has no operation in openapi.yaml", route)
+		}
+	}
+	for operation := range operations {
+		if !routes[operation] {
+			t.Errorf("openapi.yaml's %s has no route", operation)
+		}
+	}
+}
