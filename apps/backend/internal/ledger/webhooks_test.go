@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"reflect"
 	"slices"
@@ -13,7 +14,7 @@ import (
 )
 
 const allEvents = "{invoice.detected,invoice.partially_paid,invoice.paid,invoice.settled,invoice.expired,invoice.canceled," +
-	"invoice.held}"
+	"invoice.held,invoice.open,invoice.reopened}"
 
 // endpoint gives the profile a webhook endpoint named by its description.
 func (e chainEnv) endpoint(t *testing.T, name, events string, enabled, livemode bool) {
@@ -77,5 +78,37 @@ func TestOneRunHoldsForTwoReasons(t *testing.T) {
 		`invoice.held by system {"amount": "2000000", "reason": "expired"}`}
 	if !reflect.DeepEqual(held, want) {
 		t.Fatalf("held history\n got %q\nwant %q", held, want)
+	}
+}
+
+// R-147: a reorg that takes away the only payment seen, and an owner's reopen, are events too.
+func TestReorgAndReopenBecomeWebhookEvents(t *testing.T) {
+	s := newSim(t)
+	ctx := context.Background()
+	for name, events := range map[string]string{"all": allEvents, "paid": "{invoice.paid}"} {
+		s.exec(`INSERT INTO webhook_endpoints (id, profile_id, url, description, events, enabled, livemode)
+			SELECT gen_random_uuid(), id, 'https://hooks.example/', $1, $2::text[], true, false FROM profiles`, name, events)
+	}
+	id, receive := s.invoice()
+	seen := s.transfer(id, receive, 1000000, 900, "detected")
+	s.process(id)
+	s.exec("UPDATE chain_transfers SET status = 'reorged' WHERE id = $1", seen)
+	s.process(id)
+	if got, want := historytest.Webhooks(t, s.pool, id), []string{"1 invoice.detected to all", "2 invoice.open to all"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("after the reorg\n got %q\nwant %q", got, want)
+	}
+
+	short, shortReceive := s.invoice()
+	s.transfer(short, shortReceive, 1000000, 900, "confirmed")
+	s.finalizedAt(1100)
+	s.process(short)
+	if err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		return Reopen(ctx, tx, short, 50000)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	got := historytest.Webhooks(t, s.pool, short)
+	if want := fmt.Sprintf("%d invoice.reopened to all", len(got)); len(got) < 2 || got[len(got)-1] != want {
+		t.Fatalf("after the reopen %q, want it to end with %q", got, want)
 	}
 }

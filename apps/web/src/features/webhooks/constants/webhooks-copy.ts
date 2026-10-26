@@ -26,6 +26,8 @@ export const WEBHOOKS_COPY = {
     "invoice.expired": "Expired",
     "invoice.canceled": "Canceled",
     "invoice.held": "Money held for the payer",
+    "invoice.open": "Payment dropped",
+    "invoice.reopened": "Reopened",
   } satisfies Record<WebhookEvent, string>,
   testEvent: "Test event",
   enabled: "Send events",

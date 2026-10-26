@@ -107,7 +107,8 @@ export const DOCS = {
         "Add an endpoint on the Developers page: an `https` address on your server and the events it takes. A merchant's endpoint takes one store or all of them.",
       ],
       points: [
-        "Events: `invoice.detected`, `invoice.partially_paid`, `invoice.paid`, `invoice.settled`, `invoice.expired`, `invoice.canceled` and `invoice.held`.",
+        "Events: `invoice.detected`, `invoice.partially_paid`, `invoice.paid`, `invoice.settled`, `invoice.expired`, `invoice.canceled`, `invoice.held`, `invoice.open` and `invoice.reopened`.",
+        "`invoice.open`: a chain reorganization took away the payment an invoice was detected with, so it waits for payment again. `invoice.reopened`: you reopened an expired, partly paid invoice.",
         "A body is `{id, type, livemode, sequence, timestamp, data: {invoice, held}}`. `data.invoice` is the invoice as you read it when the webhook is sent.",
         "`sequence` counts an invoice's events from 1. Webhooks can arrive out of order: skip one older than the newest you have.",
         "Answer with a 2xx within 15 seconds. Anything else, a redirect too, is tried again after 5 s, 5 min, 30 min, 2 h and 5 h, then every 10 h: 12 tries in about 3 days.",
@@ -196,6 +197,7 @@ for await (const event of forwend.webhookEvents.list({ type: "invoice.paid" })) 
           "`GET /v1/profiles/{profileId}/webhook-events` lists the last 30 days of events.",
           "Invoice create takes `metadata`.",
           "A `dueDate` with no `expiresIn` keeps the checkout open 60 days past it.",
+          "Webhook events `invoice.open` and `invoice.reopened`. An endpoint gets them once you choose them on it.",
           "The `forwend` package for Node, not on npm yet.",
         ],
       },

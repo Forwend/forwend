@@ -17,10 +17,12 @@ const (
 	InvoiceExpired       = "invoice.expired"
 	InvoiceCanceled      = "invoice.canceled"
 	InvoiceHeld          = "invoice.held"
+	InvoiceOpen          = "invoice.open"     // a reorg took away the payment it was detected with: it waits again
+	InvoiceReopened      = "invoice.reopened" // the owner reopened it after it expired partly paid (R-130)
 )
 
 var EventTypes = []string{InvoiceDetected, InvoicePartiallyPaid, InvoicePaid, InvoiceSettled, InvoiceExpired,
-	InvoiceCanceled, InvoiceHeld}
+	InvoiceCanceled, InvoiceHeld, InvoiceOpen, InvoiceReopened}
 
 // Overlap is how long a rotated secret keeps signing beside its new one.
 const Overlap = 24 * time.Hour

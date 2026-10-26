@@ -7,6 +7,8 @@ export const WEBHOOK_EVENT_TYPES = [
   "invoice.expired",
   "invoice.canceled",
   "invoice.held",
+  "invoice.open",
+  "invoice.reopened",
 ] as const;
 
 export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number];

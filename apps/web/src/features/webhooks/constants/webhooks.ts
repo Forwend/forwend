@@ -7,6 +7,8 @@ export const WEBHOOK_EVENTS = [
   "invoice.expired",
   "invoice.canceled",
   "invoice.held",
+  "invoice.open",
+  "invoice.reopened",
 ] as const;
 
 /** A new endpoint's events: paid and settled are what most servers act on; anything more is a choice. */
