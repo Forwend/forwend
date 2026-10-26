@@ -11,7 +11,7 @@
         "An ordered task plan covers foundational repairs, merchant operations, onboarding and checkout integrations, with acceptance and verification for each task."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check"
       ],
@@ -59,11 +59,18 @@
           "summary": "Final review found no blockers. Tracked model, requirements and ordered task acceptance agree on immutable purposes, legacy unnumbered invoice documents and replay hashes, independent link attempts and capacity, chronological receiver refund/settlement evidence, explicit unreconciled observations and exact movement exports. Compared outflow rules with receiver contracts and checked scope, dependencies and verification limits. git diff --check and docs-check passed.",
           "at": "2026-10-26T22:11:43Z",
           "filesHash": "2c76a6a5225abe1b"
-        }
+        },
+        "commit": "e43e9025",
+        "doneAt": "2026-10-26T22:11:57Z"
       },
       "branch": "docs/f325-define-coherent-merchant-payment-workflo",
       "baseCommit": "e061a9b1bb2392813bd3b7469164304e7a413ddd",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f325-define-coherent-merchant-payment-workflo",
+        "base": "main"
+      }
     },
     {
       "id": "F326",
