@@ -306,7 +306,7 @@ R-146, D-96; the full schema is in openapi.yaml. Owners and Admins manage them w
   - IPv6 that carries an IPv4 address (IPv4-compatible, NAT64, 6to4) is refused too.
   - A host name is not resolved here; deliveries check its addresses after DNS (PLAN 11.5).
   - `events` are one or more of `invoice.detected`, `invoice.partially_paid`, `invoice.paid`, `invoice.settled`,
-    `invoice.expired`, `invoice.canceled` and `invoice.held`.
+    `invoice.expired`, `invoice.canceled`, `invoice.held`, `invoice.open` and `invoice.reopened`.
   - `storeId` (optional) narrows a merchant's endpoint to one store; a freelancer's has none. `enabled` defaults to on.
 - `DELETE /v1/profiles/{profileId}/webhooks/{endpointId}` removes it and its secrets (204).
 - `GET /v1/profiles/{profileId}/webhooks/{endpointId}/secret` reveals the working secrets, newest first, with a fresh sign-in.
@@ -322,6 +322,8 @@ R-147, D-97; the body is `WebhookEvent` under `webhooks` in openapi.yaml.
   - A status change writes its type; an expiry with money paid is `invoice.expired`.
   - A cancel, also by a Revise, is `invoice.canceled`.
   - Money held for the payer is `invoice.held`, one event per reason in a run.
+  - A reorg that takes away the payment an invoice was detected with is `invoice.open`: it waits for payment again.
+  - An owner's reopen of an expired, partly paid invoice is `invoice.reopened` (R-130).
 - Each event gets a delivery for each endpoint, fixed at the commit.
   - The endpoint is the invoice's profile's, of the same `livemode`, on, and takes the type.
   - A store's endpoint takes only that store's invoices.

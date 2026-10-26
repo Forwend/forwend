@@ -170,7 +170,7 @@ paths:
           description: One event type to keep.
           schema:
             type: string
-            enum: [invoice.detected, invoice.partially_paid, invoice.paid, invoice.settled, invoice.expired, invoice.canceled, invoice.held]
+            enum: [invoice.detected, invoice.partially_paid, invoice.paid, invoice.settled, invoice.expired, invoice.canceled, invoice.held, invoice.open, invoice.reopened]
         - name: cursor
           in: query
           description: The nextCursor of the page before.
@@ -2454,7 +2454,7 @@ components:
         storeId: { type: [string, "null"], format: uuid, description: "A merchant endpoint's one store; null for all, and for a freelancer." }
         events:
           type: array
-          items: { type: string, enum: [invoice.detected, invoice.partially_paid, invoice.paid, invoice.settled, invoice.expired, invoice.canceled, invoice.held] }
+          items: { type: string, enum: [invoice.detected, invoice.partially_paid, invoice.paid, invoice.settled, invoice.expired, invoice.canceled, invoice.held, invoice.open, invoice.reopened] }
         enabled: { type: boolean }
         livemode: { type: boolean, description: "False: test mode (D-87)." }
         createdAt: { type: string, format: date-time }
@@ -2473,7 +2473,7 @@ components:
         events:
           type: array
           minItems: 1
-          items: { type: string, enum: [invoice.detected, invoice.partially_paid, invoice.paid, invoice.settled, invoice.expired, invoice.canceled, invoice.held] }
+          items: { type: string, enum: [invoice.detected, invoice.partially_paid, invoice.paid, invoice.settled, invoice.expired, invoice.canceled, invoice.held, invoice.open, invoice.reopened] }
         enabled: { type: boolean, default: true }
     WebhookEvent:
       type: object
@@ -2482,7 +2482,7 @@ components:
         id: { type: string, pattern: "^evt_[0-9a-f]{32}$", description: The same for every endpoint. }
         type:
           type: string
-          enum: [invoice.detected, invoice.partially_paid, invoice.paid, invoice.settled, invoice.expired, invoice.canceled, invoice.held]
+          enum: [invoice.detected, invoice.partially_paid, invoice.paid, invoice.settled, invoice.expired, invoice.canceled, invoice.held, invoice.open, invoice.reopened]
         livemode: { type: boolean, description: "False: test mode (D-87)." }
         sequence: { type: integer, minimum: 1, description: "The invoice's events from 1, in commit order." }
         timestamp: { type: string, format: date-time, description: "When the change was written: its transaction's start." }
@@ -2521,7 +2521,7 @@ components:
         eventId: { type: string, pattern: "^evt_[0-9a-f]{32}$" }
         type:
           type: string
-          enum: [invoice.detected, invoice.partially_paid, invoice.paid, invoice.settled, invoice.expired, invoice.canceled, invoice.held, webhook.test]
+          enum: [invoice.detected, invoice.partially_paid, invoice.paid, invoice.settled, invoice.expired, invoice.canceled, invoice.held, invoice.open, invoice.reopened, webhook.test]
         invoiceId: { type: [string, "null"], description: Null for a test event. }
         number:
           type: [integer, "null"]

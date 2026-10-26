@@ -17,7 +17,7 @@ import (
 )
 
 const allEvents = `["invoice.detected", "invoice.partially_paid", "invoice.paid", "invoice.settled", "invoice.expired",
-	"invoice.canceled", "invoice.held"]`
+	"invoice.canceled", "invoice.held", "invoice.open", "invoice.reopened"]`
 
 // R-147: an endpoint takes its own profile's events of its types, and a store's endpoint only that store's.
 func TestInvoiceChangesBecomeWebhookEvents(t *testing.T) {

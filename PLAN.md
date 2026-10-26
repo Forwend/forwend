@@ -59,7 +59,8 @@ code; a wallet connects only to claim a refund (D-37).
 - 11.5 Webhooks: Standard Webhooks signatures (D-42) with a separate signing secret, retries over days, replay,
   delivery log, "send test event" and secret rotation; the task picks the design from the research. Events:
   `invoice.detected`, `invoice.partially_paid`, `invoice.paid`, `invoice.settled`, `invoice.expired`,
-  `invoice.canceled`, `invoice.held` (with its reason), `refund.completed`. After 11.11.1.
+  `invoice.canceled`, `invoice.held` (with its reason), `invoice.open` (after a reorg), `invoice.reopened`,
+  `refund.completed`. After 11.11.1.
 - 11.6 Public API v1 (idempotent create, get, list, events), OpenAPI, a hand-written Node package (D-103), webhook verification
   helper; create takes `returnUrl`, `reference` and `metadata`. A create with `dueDate` and no `expiresIn` closes the
   checkout 60 days after the due date, as the form does (D-80), with a retry-stable idempotency hash. Developer docs

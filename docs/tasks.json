@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 320,
+  "nextId": 321,
   "tasks": [
     {
       "id": "F295",
@@ -2660,6 +2660,117 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f319-an-invoice-and-an-api-key-each-stay-in-o",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F320",
+      "type": "feat",
+      "behavior": "Webhooks tell when a reorg undoes a payment and when an owner reopens an invoice",
+      "acceptance": [
+        "A reorg that takes away the payment an invoice was detected with sends invoice.open, and an owner's reopen sends invoice.reopened, to endpoints that take them",
+        "The web's event choices, the forwend package's types, openapi.yaml, the API docs and the public docs page list both new events"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend",
+        "unit"
+      ],
+      "refs": [
+        "R-147"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-26 review pass by reviewer: Pass; no blocking issues. Reviewed commit 7eb17741, the same code as the working-tree diff. (1) invoice.open is sent only after a reorg. The newest guard, 00054_invoice_reopen.sql:61-70, allows only detected->open into open. The only writer is Process via status() (ledger.go:80-100). It returns Open from Detected only when no transfer is left that is not reorged (process.go:73) and nothing is owed. Transfers become reorged only in watcher.go:507, and none are deleted. History is written for the shown option only. (2) The name follows 'invoice.' + new status, the same as the history kind. The docs page and api.md:325-326 are accurate. (3) Existing endpoints don't get the new types (D-97/D-104 additive, acceptable). The web form defaults to paid+settled and has no all-events choice; the edit dialog shows the new boxes unchecked. Not stated anywhere: suggest the changelog line (docs-content.ts:200) say to choose them on an endpoint. (4) Every product list is updated: Go EventTypes, 5 openapi enums, web WEBHOOK_EVENTS and labels, node types, api.md, R-147, docs page. All are in the same order. Two lists are left out: httpapi/tests/webhook_events_test.go:18-19 allEvents (its name is now wrong), and PLAN.md:60-62 (roadmap). (5) The test is real. In a scratch copy, removing 'invoice.open' fails it at webhooks_test.go:94; removing Reopened fails it at :108. The body (invoiceapi EventBody) and delivery SQL work for any type, and the CHECK regex in 00069 allows both. A scratch test with endpoints {invoice.open,invoice.reopened} and {invoice.detected,invoice.paid} showed '2 invoice.open to new' and '3 invoice.reopened to new'. The committed test only checks 'to none'; suggest adding an endpoint so it covers 'to endpoints that take them'. (6) Labels are plain. But webhooks-copy.ts:29 'Payment undone by the network' differs from the history label 'Payment dropped' (invoices-copy.ts:541) for the same change; suggest one wording. (7) D-84: every added docs sentence is 25 words or fewer. Ran: harness show/status, git diff. After verify passed, in scratch with apps/backend/.env: go test ./internal/ledger -run TestReorgAndReopenBecomeWebhookEvents (pass, then 2 mutation runs that failed), plus the scratch endpoint test. Scratch deleted.",
+        "2026-10-26 review pass by reviewer: Pass; no blocking issues. Re-review after the follow-up, now in commit c704c641. Its diff from 7eb17741 is the follow-up I read. Earlier findings stand: invoice.open is sent only after a reorg (00054 guard :61-70, status() ledger.go:80-100, process.go:73, watcher.go:507); body and delivery code are type-generic; all product lists agree. Suggestions taken: (3) docs-content.ts:200 changelog says an endpoint gets the new events once chosen. (4) httpapi/tests/webhook_events_test.go:19-20 allEvents and PLAN.md:62-63 name both types. (5) ledger/webhooks_test.go:88-91 adds endpoints all and paid-only and expects 'to all', so delivery goes to endpoints that take the types and none to paid-only. (6) webhooks-copy.ts:29 'Payment dropped' matches the invoice history label. Before this, in a scratch copy, removing either mapping failed the test (webhooks_test.go:94, :108). A scratch test with endpoints showed delivery of both types. Ran: harness status/show, git diff 7eb17741, waited for verify (passed 2026-10-26T17:53:15Z). Ran no Go tests during verify; scratch deleted."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-26T17:53:15Z",
+        "checks": [
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 178.1,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 176.3,
+            "log": ""
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.7,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.4,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 265.9,
+            "log": ""
+          }
+        ],
+        "taskHash": "282c514eb93a930f",
+        "filesHash": "252a3938036b0828",
+        "proof": {
+          "1": "backend: TestReorgAndReopenBecomeWebhookEvents (internal/ledger/webhooks_test.go) with an all-events endpoint and a paid-only one: a detected transfer that is then reorged gives 1 invoice.detected to all and 2 invoice.open to all; an expired, partly paid invoice's reopen ends with invoice.reopened to all; the paid-only endpoint gets none. Without the history mapping the test fails",
+          "2": "unit: WEBHOOK_EVENTS and their labels in apps/web (invoice.open reads Payment dropped, as in the invoice history), WEBHOOK_EVENT_TYPES in packages/node, the five event enums in openapi.yaml, docs/backend/api.md, R-147, PLAN 11.5 and the docs page with its changelog line list invoice.open and invoice.reopened; web and package tests and typecheck pass"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass; no blocking issues. Re-review after the follow-up, now in commit c704c641. Its diff from 7eb17741 is the follow-up I read. Earlier findings stand: invoice.open is sent only after a reorg (00054 guard :61-70, status() ledger.go:80-100, process.go:73, watcher.go:507); body and delivery code are type-generic; all product lists agree. Suggestions taken: (3) docs-content.ts:200 changelog says an endpoint gets the new events once chosen. (4) httpapi/tests/webhook_events_test.go:19-20 allEvents and PLAN.md:62-63 name both types. (5) ledger/webhooks_test.go:88-91 adds endpoints all and paid-only and expects 'to all', so delivery goes to endpoints that take the types and none to paid-only. (6) webhooks-copy.ts:29 'Payment dropped' matches the invoice history label. Before this, in a scratch copy, removing either mapping failed the test (webhooks_test.go:94, :108). A scratch test with endpoints showed delivery of both types. Ran: harness status/show, git diff 7eb17741, waited for verify (passed 2026-10-26T17:53:15Z). Ran no Go tests during verify; scratch deleted.",
+          "at": "2026-10-26T18:04:07Z",
+          "filesHash": "252a3938036b0828"
+        },
+        "commit": "fda632f3",
+        "doneAt": "2026-10-26T18:04:30Z"
+      },
+      "branch": "feat/f320-webhooks-tell-when-a-reorg-undoes-a-paym",
+      "baseCommit": "a1399b3049953ca7a6187b2a3dd26ea19e364cc1",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f320-webhooks-tell-when-a-reorg-undoes-a-paym",
         "base": "main"
       }
     }

@@ -97,7 +97,8 @@ func Add(ctx context.Context, tx pgx.Tx, option, kind string, by Actor, data Dat
 // name for it; a Revise cancels the invoice it replaces.
 func webhookType(kind string) string {
 	switch kind {
-	case "invoice.detected", "invoice.partially_paid", "invoice.paid", "invoice.expired", Canceled, Held, Settled:
+	case "invoice.detected", "invoice.partially_paid", "invoice.paid", "invoice.expired", "invoice.open", Canceled, Held,
+		Settled, Reopened:
 		return kind
 	case "invoice.expired_partially_paid":
 		return "invoice.expired"
