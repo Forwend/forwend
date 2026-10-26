@@ -40,4 +40,4 @@ The refund-authority Safe and deploys. Design: [architecture.md](architecture.md
 - `packages/contracts/script/deploy.sh <chain> [<token> <amount>]`: deploys the factory (idempotent) and probe;
   with a token it also pays, settles, refunds the extra and checks `statusOf`.
 - Record it in `packages/contracts/deployments.json`; a replaced factory moves to `superseded`.
-- Every deploy needs Sasha's explicit yes. Results: [docs/spikes/s5-s6-testnets.md](../spikes/s5-s6-testnets.md).
+- Every deploy needs Sasha's explicit yes. Results: local docs/spikes/s5-s6-testnets.md notes (`../spikes/s5-s6-testnets.md`).

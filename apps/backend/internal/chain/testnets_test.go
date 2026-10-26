@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func TestEnableTestnetUSDC(t *testing.T) {
+func TestEnableTestnetTokens(t *testing.T) {
 	for _, existingBase := range []bool{false, true} {
 		name := "missing Base"
 		if existingBase {
@@ -42,7 +42,7 @@ func TestEnableTestnetUSDC(t *testing.T) {
 				t.Fatal(err)
 			}
 			for range 2 {
-				if err := EnableTestnetUSDC(ctx, db); err != nil {
+				if err := EnableTestnetTokens(ctx, db); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -67,8 +67,8 @@ func TestEnableTestnetUSDC(t *testing.T) {
 			}
 			var chainEnabled, tokenEnabled bool
 			if err := db.QueryRow(ctx, `SELECT c.enabled, t.enabled FROM chains c
-				JOIN tokens t ON t.chain_id = c.chain_id WHERE c.chain_id = 42431`).Scan(&chainEnabled, &tokenEnabled); err != nil || chainEnabled != existingBase || tokenEnabled != existingBase {
-				t.Fatalf("Tempo settings: chain %v, token %v, %v; want %v", chainEnabled, tokenEnabled, err, existingBase)
+				JOIN tokens t ON t.chain_id = c.chain_id WHERE c.chain_id = 42431`).Scan(&chainEnabled, &tokenEnabled); err != nil || !chainEnabled || !tokenEnabled {
+				t.Fatalf("Tempo settings: chain %v, token %v, %v; want %v", chainEnabled, tokenEnabled, err, true)
 			}
 		})
 	}

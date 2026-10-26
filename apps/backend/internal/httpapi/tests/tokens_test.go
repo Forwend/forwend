@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"reflect"
 	"testing"
+
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 )
 
 const arbUSDC = "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d"
@@ -139,4 +141,56 @@ func TestTokensOff(t *testing.T) {
 	if r := e.call(t, "PUT", path, alice, "", `{"off": []}`); r.status != http.StatusOK {
 		t.Fatalf("PUT the switches with no token enabled: %d %v", r.status, r.body)
 	}
+}
+
+func TestTempoAppearsOffAndCanBeEnabled(t *testing.T) {
+	e := invoiceAPI(t)
+	ctx := context.Background()
+	const tempo = "0x20c0000000000000000000006a37da5c996874be"
+	path := "/v1/profiles/" + e.aliceProfile + "/tokens"
+	startup := func() {
+		t.Helper()
+		if err := chain.EnableTestnetTokens(ctx, e.pool); err != nil {
+			t.Fatal(err)
+		}
+	}
+	check := func(want bool) {
+		t.Helper()
+		r := e.call(t, "GET", path, "did:privy:alice", "", "")
+		if r.status != http.StatusOK {
+			t.Fatalf("list tokens: %d %v", r.status, r.body)
+		}
+		for _, item := range r.body["tokens"].([]any) {
+			tok := item.(map[string]any)
+			if tok["token"] == tempo {
+				if tok["on"] != want {
+					t.Fatalf("Tempo on = %v; want %v", tok["on"], want)
+				}
+				return
+			}
+		}
+		t.Fatal("Tempo is missing from Networks")
+	}
+	startup()
+	check(false)
+	e.exec(t, `INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block) VALUES (42431, 0, 0)`)
+	fixed := `{"chainId":42431,"token":"` + tempo + `","amount":"1"}`
+	if r := e.post(t, "did:privy:alice", e.aliceProfile, "tempo-off", fixed); r.status != http.StatusUnprocessableEntity {
+		t.Fatalf("invoice while Tempo off: %d %v", r.status, r.body)
+	}
+	if r := e.call(t, "PUT", path, "did:privy:alice", "", `{"off":[]}`); r.status != http.StatusOK {
+		t.Fatalf("turn Tempo on: %d %v", r.status, r.body)
+	}
+	startup()
+	check(true)
+	if r := e.post(t, "did:privy:alice", e.aliceProfile, "tempo-on", fixed); r.status != http.StatusCreated {
+		t.Fatalf("invoice while Tempo on: %d %v", r.status, r.body)
+	}
+	if r := e.call(t, "PUT", path, "did:privy:alice", "", `{"off":[{"chainId":42431,"token":"`+tempo+`"}]}`); r.status != http.StatusOK {
+		t.Fatalf("turn Tempo off: %d %v", r.status, r.body)
+	}
+	startup()
+	check(false)
+	path = "/v1/profiles/" + e.merchant(t) + "/tokens"
+	check(false)
 }

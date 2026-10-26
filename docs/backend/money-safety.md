@@ -44,7 +44,7 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 - A deposit is received when seen and paid only at or below the chain's `finalized` block (D-45); show blocks and
   time left until then (`internal/finality`). Read headers, logs and receipts only, and compare block hashes the RPC
   returns: go-ethereum can't decode Base, Arbitrum and Tempo system transactions, and its `Header.Hash()` is wrong on
-  Tempo ([S-4](../spikes/s4-chains.md)).
+  Tempo (local S-4 notes (`../spikes/s4-chains.md`)).
 
 ## Checkout
 
