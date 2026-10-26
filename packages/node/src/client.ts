@@ -13,7 +13,7 @@ export interface ForwendOptions {
   apiKey: string;
   /** The profile the key was made for. */
   profileId: string;
-  /** The API's origin, such as https://api.example.com. */
+  /** The API's address, such as https://forwend.com/api; the routes' /v1/… paths go after it. */
   baseUrl: string;
   /** Another fetch, for tests or another runtime; the global one by default. */
   fetch?: typeof fetch;
@@ -75,7 +75,8 @@ export class Forwend {
     body?: unknown,
     headers: Record<string, string> = {},
   ): Promise<T> {
-    const url = new URL(path, this.#options.baseUrl);
+    // Appended, not resolved: new URL("/v1/…", "https://forwend.com/api") would drop /api.
+    const url = new URL(this.#options.baseUrl.replace(/\/+$/, "") + path);
     for (const [name, value] of Object.entries(query)) {
       if (value !== undefined) url.searchParams.set(name, String(value));
     }

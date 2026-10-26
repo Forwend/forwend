@@ -15,6 +15,7 @@ Read only the sections your change touches. Any new control also needs
 | [Controls](#controls) | Heights, buttons, segmented controls, selects, search, toolbars, forms, settings rows |
 | [App shell](#app-shell) | `/app`: sidebar, header, search, sheets, panels, overviews, charts, lists, tables, first run, onboarding, the invoice forms, money actions, toasts |
 | [Checkout](#checkout) | The pay page `/pay/<token>`, PDF links, the confirming row, the owner's invoice page |
+| [API docs](#api-docs) | The public developer docs `/docs` |
 | [Emails](#emails) | The email layout |
 | [Theme and behavior](#theme-and-behavior) | Empty lists, theme, loading, motion, touch targets, accessibility, width checks |
 | [Interaction and device rules](#interaction-and-device-rules) | Phone titles, filters, Receive, safe areas, skip link |
@@ -238,7 +239,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The last token on can't be turned off; a quiet line under the panel says one stays on.
   - New invoice offers only the tokens on for the profile and the picked store.
 - Developers (R-145) is in the sidebar's Build group for a freelancer's or merchant's owner and Admins. It is laid out like Team.
-  - An intro line says keys belong on a server. API keys is a panel of rows, with New key beside its heading.
+  - An intro line says keys belong on a server, with a Read the API docs link to `/docs`.
+  - The profile ID follows, with Copy: the API's routes name it. API keys is a panel of rows, with New key beside its heading.
   - A row: the name, then `fw_test_…` and the last 4, the store and the scopes, then the last use. A Test mode badge.
   - New key is a dialog: Name, a Store select when there are two or more, and scope checkboxes.
   - After it saves, a dialog shows the key's text once, with Copy focused and Done.
@@ -562,6 +564,14 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A change withdrawn before the accept: a notice in danger text opens the Payments panel and takes focus.
   - The quote's and the change's forms are one consent form: the change's is the compact one.
   - Record follows The work, as on the job page, without the client's email.
+
+## API docs
+
+- The public API docs at `/docs` (R-155) need no sign-in. A slim header holds the logo, linked home, and the theme switch.
+  - One column of reading width: the heading, an intro, then an On this page panel of links to each section.
+  - Each section is a heading, short text and bullets, with `code` set in mono, and a code block where it helps.
+  - Links use the shared link style: accent and underlined, as `buttonClasses({ variant: "link" })` gives.
+  - The changelog closes the page, newest date first. The landing page's developer section links here.
 
 ## Emails
 

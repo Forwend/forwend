@@ -99,21 +99,22 @@ export const DEVELOPERS = {
   body: "Built around the problems developers report most with crypto payments.",
   points: [
     "Idempotent invoice creation: retries never create a second invoice",
-    "Separate detected, confirmed and settled events",
+    "Separate detected, paid and settled events",
     "Signed webhooks with retries and manual replay",
     "Fetch the current state of any invoice at any time",
   ],
-  note: "Preview. The API is in design and names may change.",
-  code: `// Create an invoice (preview)
+  note: "Test mode only for now: every network is a testnet.",
+  docs: { label: "Read the API docs", href: "/docs" },
+  code: `// Create an invoice: a retry with the same key returns the same one
 const invoice = await forwend.invoices.create(
-  { amount: "1250.00", token: "USDC", network: "base" },
+  { amountUsd: "1250.00", metadata: { order_id: "1042" } },
   { idempotencyKey: "order-1042" },
 );
 
 // Handle a signed webhook
-const event = forwend.webhooks.verify(rawBody, headers, secret);
+const event = verifyWebhook({ payload: rawBody, headers, secrets: [secret] });
 if (event.type === "invoice.settled") {
-  await markOrderPaid(event.data.reference);
+  await markOrderPaid(event.data.invoice.metadata.order_id);
 }`,
 } as const;
 

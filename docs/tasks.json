@@ -2164,7 +2164,7 @@
       "dependsOn": [
         "F314"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "e2e"
       ],
@@ -2175,9 +2175,85 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-26 review fail by reviewer: BLOCKING 1: apps/web/src/screens/docs/constants/docs-content.ts:92 says '403 forbidden: the key lacks the scope or the store'. False for the store: a merchant key on another store's invoice gets 404 invoice_not_found (internal/httpapi/mid/auth.go:96-108), and a create naming another store gets 422 invalid_value (invoiceapi/invoices.go:45-52). No route answers 403 for a store. The real 403s are a missing scope or another profile's route (mid/auth.go:73-84). BLOCKING 2: the class fw-link is not defined in any web CSS (it exists only in apps/backend/internal/notify/layout.html.tmpl). Tailwind 4 preflight sets a { color: inherit; text-decoration: inherit }, so the new links look like plain text: developers-screen.tsx:25 and landing sections/developers.tsx:28 (inline in muted text), docs-screen.tsx:75 (the On this page links). axe passes because a link the same color as its text is allowed. Use buttonClasses({ variant: 'link' }). The same bug already exists in features/webhooks/components/deliveries.tsx:171 (F306). There is no docs/runs screenshot. BLOCKING 3: this change fixed 'detected, confirmed and settled' to 'paid' in landing-content.ts:102, but the landing's Developers tab still shows a non-existent invoice.confirmed event (profile-preview-samples.ts:55) and says 'Detected and confirmed are separate events' (profile-preview-content.ts:30). AGENTS.md: a fix covers every place. NON-BLOCKING: docs-content.ts:36: with expiresIn sent, 'Otherwise ... an hour' reads wrong, and expiresIn (seconds, 900-31536000) is never explained. :31/:34: no mention that billing details must be saved first (409 billing_details_required hits the curl sample on a new profile). 'A token amount' does not say chainId + token contract + base units. :31 omits 'Bearer'. The error list omits 401 unauthorized (missing or non-fw_ bearer), 503 network_not_ready on a fixed-token create, and 400 on a non-number invoice-list limit. :122 'with the same bodies': the events list carries the invoice as it is now (D-102), not as sent. e2e/docs.spec.ts:57-60 switches to dark after load with emulateMedia and never asserts that data-theme flipped (a11y.spec.ts:31-38 asserts it). The phone check runs only at 390 px. app/docs/page.tsx inherits the root openGraph (url /, home title). DocsSection interface sits in constants/ (structure.md wants types/). nav aria-label repeats its h2 (use aria-labelledby). /docs is missing from the route lists in apps/web/AGENTS.md:3-5 and docs/web/architecture.md:3-5. DESIGN.md:258 puts /docs under App shell (/app). packages/node client.ts:79: a baseUrl with a query or fragment builds a wrong URL (the old code did too; not a realistic input). VERIFIED TRUE: routes, the 4 scopes, fw_test_, 7-day roll, revoke; all 4 chains are testnets (chains.json, migration 00066). Idempotency-Key 1-255 bytes and required (httpio/json.go:26-31), 409 idempotency_conflict. Paging 50 / 1-100 / nextCursor null. invalid_api_key covers an expired (rolled) key via the working filter (apikey/keys.go:27). Metadata limits (invoice.go:203-207). 7 events and the body shape. Retries deliver.go:24 (12 tries, about 2.8 days), 15 s (client.go:18), 410 or last failure turns the endpoint off and emails (deliver.go:181-205). 30 days (events.go:70). Signature scheme; 24 h overlap (webhook.go:26). Package names and options, 300 s tolerance, Node>=20, private. /api rewrite (next.config.ts). An amountUsd-only create works. Changelog dates match git log. The baseUrl fix is right with and without a trailing slash and for an origin with no path. DESIGN.md new sentences are 7-21 words. Code ink on sunken: 13.8:1 light, 17.3:1 dark. RAN: tsc --strict on all 3 TS samples (docs Express, docs Node, landing) against packages/node/src with an Express stand-in (IncomingHttpHeaders, body any): exit 0. The new client test against the old URL line: 1 failed / 9 passed. packages/node vitest: 10 passed. apps/web vitest: 159 passed. Node probe of baseUrl edge cases. Read the e2e log: docs.spec both tests passed.",
+        "2026-10-26 review fail by reviewer: Re-review. The 3 earlier blockers are fixed. 403/404/422 now match mid/auth.go:73-108 and invoiceapi/invoices.go:45-52. No fw-link is left; buttonClasses link is accent and underlined, and docs.spec.ts:37 checks the underline. The landing preview shows invoice.paid and 'Detected, paid and settled'. BLOCKING (new): apps/web/src/screens/docs/constants/docs-content.ts:82 says '400 malformed_request: ... a query value such as limit is broken'. Only the invoice list answers 400 to a non-number limit (httpio/query.go:19-26). The webhook-events list the page documents answers limit=abc with 422 invalid_value (invoiceapi/invoices.go:367-372), and so does /events (:265-271). A bad status, cursor or q on the invoice list is 422 too (invoice/list.go:56-63, search.ErrInvalid in httpio/errors.go:141-145). Fix: '400 malformed_request: the JSON or a header is broken. The invoice list also answers 400 to a limit that is not a number.' NON-BLOCKING: docs-content.ts:23 'make a key ... once its billing details are saved': a key doesn't need them (apikey/keys.go Create); a create does (409 billing_details_required, which the page never names). docs-content.ts:83 '401 unauthorized: no key was sent': also a key sent without 'Bearer ' or not starting fw_ (mid/guards.go:40, mid/auth.go:23-26). docs-content.ts:115 'Like a delivery, each body holds the invoice as it is now' reads as if a delivery's body changes. A delivery keeps its first body (deliver.go). app/docs/page.tsx:11-17: a page's own openGraph replaces the parent's whole (next 16.4.2 metadata-resolution-primitives.js:145-147), and the root opengraph-image merges only at the root segment (:113-122). So /docs now has no og:image, and twitter keeps the home title and description. docs/web/DESIGN.md: the new '## API docs' section (line 567) is missing from the index table at lines 11-20. CHECKED TRUE: Getting started (amountUsd, or chainId + token + base units; Bearer; expiresIn 900-31536000 per invoice.go:351-357; dueDate and default rules per create.go:100-160). 503 network_not_ready (errors.go:149). Nav aria-labelledby on its h2. DocsSection in screens/docs/types/docs.ts. /docs in apps/web/AGENTS.md and docs/web/architecture.md. DESIGN sentences at most 21 words. docs.spec: axe per new context with a data-theme check, 360 and 390 px, more than one changelog date. RAN: apps/web vitest 159 passed. packages/node vitest 10 passed. tsc --strict on the 3 current TS samples against packages/node/src with an Express stand-in: exit 0 (probe files deleted). Verify passed at 2026-10-26T14:44:15Z.",
+        "2026-10-26 review pass by reviewer: Third review: no blocking findings. The earlier blockers stay fixed. docs-content.ts:82 now reads '400 malformed_request: the JSON or a header is broken. The invoice list also answers 400 to a limit that is not a number.' That matches httpio/query.go:19-26; other bad query values are 422 (invoiceapi/invoices.go:265-271, 367-372, invoice/list.go:56-63). 401 unauthorized for no key or a header that is not 'Bearer fw_…' matches mid/guards.go:40 and auth.go:107-113 (a non-fw_ bearer fails the Privy check and wraps ErrUnauthorized). The billing details point and 409 billing_details_required match invoice/create.go:89-91 and httpio/errors.go:136-138. 'Each body holds the invoice as it is when you list it' matches D-102. 403/404/422, the kit link style on all four former fw-link uses, and the landing invoice.paid all still hold. app/docs/page.tsx sets openGraph and twitter with images ['/opengraph-image']. The build's .next/app-path-routes-manifest.json has '/opengraph-image/route': '/opengraph-image', and metadataBase makes it https://forwend.com/opengraph-image. DESIGN.md index has an API docs row; the longest new sentence is 21 words. Non-blocking, no action needed: a baseUrl with a query or # still builds a wrong URL (packages/node client.ts:79), not a real input. RAN: apps/web vitest 159 passed (after the metadata change); packages/node vitest 10 passed. tsc --strict on the 3 TS samples against packages/node/src: exit 0. Earlier: the new client test fails on the old URL line (1 failed / 9 passed). Verify passed at 2026-10-26T14:53:41Z."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-26T14:53:41Z",
+        "checks": [
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 264.5,
+            "log": ""
+          },
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.8,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 174.6,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.4,
+            "log": ""
+          }
+        ],
+        "taskHash": "9f0f949412e348a3",
+        "filesHash": "58b676b926e9865c",
+        "proof": {
+          "1": "e2e: e2e/docs.spec.ts opens /docs and finds every section, linked from On this page with underlined links: getting started, API keys, test mode, idempotency, lists and pages, errors, metadata, webhooks, verifying webhooks, the forwend package; it also finds fw_test_, Idempotency-Key, nextCursor, invalid_value, invoice.held, webhook-signature and verifyWebhook",
+          "2": "e2e: docs.spec.ts finds Versioning with the 90 days' notice and a Changelog whose dates run newest first",
+          "3": "e2e: docs.spec.ts loads /docs with no sign-in, passes axe in the light and dark themes with data-theme set, and has no sideways scroll at 360 and 390 px; the live keys spec shows the profile ID and the docs link on the Developers page; packages/node keeps a base path such as /api"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Third review: no blocking findings. The earlier blockers stay fixed. docs-content.ts:82 now reads '400 malformed_request: the JSON or a header is broken. The invoice list also answers 400 to a limit that is not a number.' That matches httpio/query.go:19-26; other bad query values are 422 (invoiceapi/invoices.go:265-271, 367-372, invoice/list.go:56-63). 401 unauthorized for no key or a header that is not 'Bearer fw_…' matches mid/guards.go:40 and auth.go:107-113 (a non-fw_ bearer fails the Privy check and wraps ErrUnauthorized). The billing details point and 409 billing_details_required match invoice/create.go:89-91 and httpio/errors.go:136-138. 'Each body holds the invoice as it is when you list it' matches D-102. 403/404/422, the kit link style on all four former fw-link uses, and the landing invoice.paid all still hold. app/docs/page.tsx sets openGraph and twitter with images ['/opengraph-image']. The build's .next/app-path-routes-manifest.json has '/opengraph-image/route': '/opengraph-image', and metadataBase makes it https://forwend.com/opengraph-image. DESIGN.md index has an API docs row; the longest new sentence is 21 words. Non-blocking, no action needed: a baseUrl with a query or # still builds a wrong URL (packages/node client.ts:79), not a real input. RAN: apps/web vitest 159 passed (after the metadata change); packages/node vitest 10 passed. tsc --strict on the 3 TS samples against packages/node/src: exit 0. Earlier: the new client test fails on the old URL line (1 failed / 9 passed). Verify passed at 2026-10-26T14:53:41Z.",
+          "at": "2026-10-26T15:01:46Z",
+          "filesHash": "58b676b926e9865c"
+        }
+      },
+      "branch": "feat/f315-public-developer-docs-explain-the-api-an",
+      "baseCommit": "6c16088ae02192be629e102acab34be8311b76f2",
+      "failedVerifies": 0
     },
     {
       "id": "F316",

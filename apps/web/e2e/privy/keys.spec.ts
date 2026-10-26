@@ -107,6 +107,12 @@ test("the owner makes an API key, sees its secret once, rolls a key and revokes 
   );
   await expect(row).toContainText("Last used");
   await expect(row).toContainText("Test mode");
+  // The routes name the profile, so the page shows its ID, and links the public docs (R-155).
+  await expect(main.getByText(SHOP, { exact: true })).toBeVisible();
+  await expect(main.getByRole("link", { name: "Read the API docs" })).toHaveAttribute(
+    "href",
+    "/docs",
+  );
   expect(await blockingViolations(page)).toEqual([]);
 
   // New key: the form checks the name and the scopes before it sends anything.

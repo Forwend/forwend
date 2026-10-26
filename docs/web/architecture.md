@@ -1,8 +1,8 @@
 # Web architecture
 
 One Next.js app (App Router, TypeScript strict) for every surface: landing `/`, private `/kit`, the signed-in
-app `/app`, the public checkout `/pay/<token>`, the public stop reminders page `/reminders/<token>` and the public
-quote page `/w/<token>` (PROJECT D-2, R-96, R-102). Rules: [rules.md](rules.md).
+app `/app`, the public checkout `/pay/<token>`, the public stop reminders page `/reminders/<token>`, the public
+quote page `/w/<token>` and the public API docs `/docs` (PROJECT D-2, R-96, R-102, R-155). Rules: [rules.md](rules.md).
 Whole system: [architecture.md](../architecture.md).
 
 ## Parts

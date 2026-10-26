@@ -1,5 +1,6 @@
-import { CodeBlock } from "@forwend/ui-web";
+import { BUTTON_VARIANTS, buttonClasses, CodeBlock } from "@forwend/ui-web";
 import { Check } from "lucide-react";
+import Link from "next/link";
 import { DEVELOPERS, LANDING_SECTIONS } from "@/screens/landing/constants/landing-content";
 import { Section } from "@/screens/landing/layout/section";
 
@@ -22,7 +23,15 @@ export function Developers() {
         </ul>
         <div data-testid="developer-code">
           <CodeBlock code={DEVELOPERS.code} language="TypeScript" />
-          <p className="mt-3 text-sm text-muted">{DEVELOPERS.note}</p>
+          <p className="mt-3 text-sm text-muted">
+            {DEVELOPERS.note}{" "}
+            <Link
+              href={DEVELOPERS.docs.href}
+              className={buttonClasses({ variant: BUTTON_VARIANTS.link })}
+            >
+              {DEVELOPERS.docs.label}
+            </Link>
+          </p>
         </div>
       </div>
     </Section>
