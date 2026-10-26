@@ -2560,7 +2560,7 @@
         "A key's invoice list, reads, actions, activity, owed and webhook events show only its mode, another mode's invoice is 404, and a key's replay of another mode's create is 409"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -2650,11 +2650,18 @@
           "summary": "PASS. No blocking findings. This re-review follows the docs-only change after my 16:21 pass.\nChecked: git diff e8706f8d HEAD -- apps docs/backend shows only two new lines in docs/backend/api.md, with no code change. tasks.json holds harness records only.\n- api.md:180 \"A later month keeps the first month's mode (R-156).\" True: followedMode reads the retainer's first month (ORDER BY cycle LIMIT 1). 9 words.\n- api.md:498 \"The new invoice keeps the old one's mode (R-156): a token of the other mode is 422, and a key's other-mode invoice 404.\" True per my earlier probes (person 422, key 404). 23 words.\nNit, left as is by the coordinator: the second sentence drops \"is\" before 404.\nVerify: the 17:27:21Z run passed all 8 checks. The two failed runs before it, at 17:01 and 17:14, each failed one timing-sensitive test in a package F319 does not change: profile TestSignUpRepairIsBounded (it passed 3 times alone) and settlement TestConcurrentSignersRespectTheUserCap (nonce too low).\nCode findings and runs are as in my 16:21 pass. Follow-ups for the owner, none blocking: link mode; USD falling back to test when every live token is off; the app's Revise form offering only the old invoice's mode; and the older retainer-from-Revise bug that predates F319.",
           "at": "2026-10-26T17:38:18Z",
           "filesHash": "21b09644f0a2462f"
-        }
+        },
+        "commit": "9ff14099",
+        "doneAt": "2026-10-26T17:38:39Z"
       },
       "branch": "fix/f319-an-invoice-and-an-api-key-each-stay-in-o",
       "baseCommit": "f15564849442c0a0095b7725e23013857b8220b8",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f319-an-invoice-and-an-api-key-each-stay-in-o",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
