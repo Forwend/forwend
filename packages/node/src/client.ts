@@ -5,6 +5,7 @@ import type {
   CreateCheckoutSession,
   CreateInvoice,
   Invoice,
+  ListCheckoutSessions,
   ListInvoices,
   ListPayments,
   ListWebhookEvents,
@@ -38,7 +39,7 @@ export class Forwend {
       options?: { idempotencyKey?: string },
     ): Promise<CheckoutSession>;
     get(sessionId: string): Promise<CheckoutSession>;
-    list(params?: ListPayments): AsyncGenerator<CheckoutSession>;
+    list(params?: ListCheckoutSessions): AsyncGenerator<CheckoutSession>;
     /** Refuses expiration once any payment has been seen. Repeated expiration is safe. */
     expire(sessionId: string): Promise<CheckoutSession>;
   };

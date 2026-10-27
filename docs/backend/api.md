@@ -258,6 +258,51 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
 - Invoice-only sending rejects document-free checkout; payment notifications currently open its working hosted page.
 - Public checkout shows item snapshots using the main option's trusted token decimals, independent of the chosen payment option.
 
+### Payment operations
+
+- Payment lists accept `source`, `storeId`, `status`, `paymentStatus`, `settlementStatus` and `refundStatus`; filters intersect permitted stores and key mode.
+- Sources are `invoice`, `request`, `payment_link` and direct `checkout`; source differs from the attached document kind.
+- List cursors use immutable creation time and payment ID, including unpaid attempts.
+- Payment detail preserves its existing root fields and adds customer, metadata, options, source coverage, settlement intent, deposits, deliveries and problems.
+- Detail includes each option's exact receiver, merchant payable, payer-held, settled and returned amounts.
+- Deposit and delivery details are bounded at 100; truncation flags and delivery count disclose omitted records.
+- `GET /v1/profiles/{profileId}/payments/attention` returns payment problems separately from financial truth.
+- Ordinary confirmation and historical verification suggest waiting; conflicting evidence requires review.
+- Partial payments suggest sharing checkout only while open and reconciled; held funds never imply an initiated refund.
+- Settlement intent appears delayed after 15 minutes; explicit waits and refusals remain visible immediately.
+- Delivery problems preserve payment status and expose safe attempt metadata without endpoint secrets, URLs, payloads or raw errors.
+- Owners and Admins also receive endpoint problem summaries, including test events without payments.
+- Endpoint summaries follow store and mode filters; payment source and status filters apply only to payment rows.
+- Endpoint summaries disclose truncation; the existing Developers page manages the full endpoint list.
+- Members without webhook permission receive `ask_admin` actions and cannot manage endpoints.
+- `GET /v1/profiles/{profileId}/payments/movements` returns paged journals and separate unbooked source observations.
+- `GET /v1/profiles/{profileId}/payments/{paymentId}/movements` restricts the same movement read to one permitted payment.
+- Movements retain source, store, document number, order reference, token identity, decimals, transaction, event index and token-transfer index.
+- Booked rows contain signed receiver, payable and held deltas; observed rows leave all booked financial columns null.
+- Expiry and reopening produce noncash allocation rows; summing receiver deltas never counts those allocations as new money.
+- `GET /v1/profiles/{profileId}/payments.csv` exports the same records; `/{paymentId}/movements.csv` restricts them to one payment.
+- CSV streams database rows into a bounded output buffer; more than 10000 records returns 422 `too_many_movements` before sending CSV.
+- CSV headers include snapshot time and record count; text cells prevent spreadsheet formulas while signed financial numbers remain numeric.
+- Movement pages are live views; booking can replace an observation between pages.
+- Use CSV for a complete period from one consistent snapshot.
+- Deposit verification fields identify its certification checkpoint; outflow verification fields identify the certified source-event block and hash.
+- Internal allocation rows use their own checkpoint and never inherit the original deposit transaction identity.
+- Missing cash sources leave source amount, destination and transaction identity unknown; only journal deltas remain summable.
+- Unpositioned or unproved cash bookings suppress numerical checkpoint comparisons while remaining explicitly unreconciled.
+- Movement dates filter the UTC day recorded in Forwend, not block time; `from` and `to` are inclusive.
+- Block time remains a separate field; records discovered later enter later recorded periods.
+- USD deltas use exact decimal units and the accepted stablecoin's nominal one-dollar value, without a market-price claim.
+- `GET /v1/profiles/{profileId}/payments/reconciliation` returns opening balances, period changes, closing balances, settlements and returns by store, chain and token.
+- `GET /v1/profiles/{profileId}/payments/{paymentId}/reconciliation` restricts that report to one payment.
+- Reconciliation dates use journal recorded time; its response `to` is exclusive UTC midnight after the requested inclusive day.
+- Opening plus changes equals closing; receiver equals merchant payable plus payer-held funds.
+- Source checkpoints include coverage ranges and pending, unproved, unbooked, exceptional and other-asset movement counts.
+- Receiver checkpoints can reference different finalized blocks; their sum is not a global balance at one common chain block.
+- Checkpoint differences appear only for current periods with comparable booked cash positions; historical closing balances never compare against current checkpoints.
+- Missing source evidence stays explicit; financial journals and immutable source records remain independently inspectable.
+- Every operation uses one repeatable-read database snapshot; CSV snapshot headers identify its cutoff.
+- Wallet transaction exports and statements also read their records-currency setting inside the same snapshot as their rows.
+
 ## Payment links
 
 R-140, R-163, D-54, D-94; openapi.yaml owns the schema. Members use `invoices.read` and `invoices.write` (D-93).

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -223,13 +224,23 @@ func (s *Service) deposits(ctx context.Context, id string, chainID uint64) ([]De
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.pool.Query(ctx, `SELECT tx_hash, log_index, from_address, amount::text, block_number, block_time, status,
+	return readDeposits(ctx, s.pool, id, head, 0)
+}
+
+func readDeposits(ctx context.Context, db paymentReader, id string, head finality.Block, limit int) ([]Deposit, error) {
+	order := " ORDER BY block_number,log_index"
+	args := []any{id}
+	if limit > 0 {
+		order = " ORDER BY block_number DESC,log_index DESC LIMIT $2"
+		args = append(args, limit)
+	}
+	rows, err := db.Query(ctx, `SELECT tx_hash, log_index, from_address, amount::text, block_number, block_time, status,
 		       coalesce(detected_finalized_block, 0),
 		       (SELECT coalesce(-sum(e.amount) FILTER (WHERE e.account = 'recipient_payable'), 0)::text
 		        FROM ledger_transactions x JOIN ledger_entries e ON e.transaction_id = x.id
 		        WHERE x.chain_transfer_id = t.id AND x.kind IN ('deposit', 'reopen') HAVING count(*) > 0),
 		       t.block_time > (SELECT closes_at FROM invoices WHERE id = t.invoice_id)
-		FROM chain_transfers t WHERE invoice_id = $1 AND status <> 'reorged' ORDER BY block_number, log_index`, id)
+		FROM chain_transfers t WHERE invoice_id = $1 AND status <> 'reorged'`+order, args...)
 	if err != nil {
 		return nil, fmt.Errorf("read invoice %s deposits: %w", id, err)
 	}
@@ -258,6 +269,9 @@ func (s *Service) deposits(ctx context.Context, id string, chainID uint64) ([]De
 		}
 		out = append(out, d)
 	}
+	if limit > 0 {
+		slices.Reverse(out)
+	}
 	return out, rows.Err()
 }
 
@@ -272,23 +286,36 @@ func (s *Service) head(ctx context.Context, chainID uint64) (finality.Block, err
 }
 
 func (s *Service) options(ctx context.Context, id string) ([]Option, error) {
-	rows, err := s.pool.Query(ctx, `
-		SELECT i.id, i.chain_id, i.token_contract, t.symbol, t.decimals, c.name, i.amount::text, i.receive_address, i.closes_at
-		FROM invoices i JOIN tokens t ON t.chain_id = i.chain_id AND t.contract = i.token_contract
-		JOIN chains c ON c.chain_id = i.chain_id
-		WHERE i.id = $1 OR i.main_id = $1 ORDER BY i.chain_id, t.symbol, i.token_contract`, id)
+	return readPaymentOptions(ctx, s.pool, id)
+}
+
+func readPaymentOptions(ctx context.Context, db paymentReader, id string) ([]Option, error) {
+	options, err := readPaymentOptionsFor(ctx, db, []string{id})
+	return options[id], err
+}
+
+func readPaymentOptionsFor(ctx context.Context, db paymentReader, ids []string) (map[string][]Option, error) {
+	rows, err := db.Query(ctx, `SELECT coalesce(i.main_id,i.id),i.id,i.chain_id,i.token_contract,t.symbol,t.decimals,c.name,
+        i.amount::text,i.receive_address,i.closes_at FROM invoices i
+        JOIN tokens t ON t.chain_id = i.chain_id AND t.contract = i.token_contract JOIN chains c ON c.chain_id = i.chain_id
+        WHERE coalesce(i.main_id,i.id) = ANY($1::text[]) ORDER BY coalesce(i.main_id,i.id),i.chain_id,t.symbol,i.token_contract`, ids)
 	if err != nil {
-		return nil, fmt.Errorf("read invoice %s options: %w", id, err)
+		return nil, fmt.Errorf("read payment options: %w", err)
 	}
-	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Option, error) {
-		var o Option
-		var amount string
+	defer rows.Close()
+	result := make(map[string][]Option, len(ids))
+	for rows.Next() {
+		var main, amount string
 		var closes int64
-		err := row.Scan(&o.ID, &o.ChainID, &o.Token, &o.Symbol, &o.Decimals, &o.Network, &amount, &o.ReceiveAddress, &closes)
-		o.ClosesAt = time.Unix(closes, 0).UTC()
-		o.Amount, _ = new(big.Int).SetString(amount, 10)
-		return o, err
-	})
+		var option Option
+		if err := rows.Scan(&main, &option.ID, &option.ChainID, &option.Token, &option.Symbol, &option.Decimals, &option.Network, &amount, &option.ReceiveAddress, &closes); err != nil {
+			return nil, err
+		}
+		option.Amount, _ = new(big.Int).SetString(amount, 10)
+		option.ClosesAt = time.Unix(closes, 0).UTC()
+		result[main] = append(result[main], option)
+	}
+	return result, rows.Err()
 }
 
 // R-88.

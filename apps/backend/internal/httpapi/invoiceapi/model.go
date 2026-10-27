@@ -272,20 +272,7 @@ type invoicesJSON struct {
 	NextCursor *string       `json:"nextCursor"`
 }
 
-type depositJSON struct {
-	TxHash      string  `json:"txHash"`
-	LogIndex    uint64  `json:"logIndex"`
-	From        string  `json:"from"`
-	Amount      string  `json:"amount"`
-	BlockNumber uint64  `json:"blockNumber"`
-	BlockTime   string  `json:"blockTime"`
-	Status      string  `json:"status"`
-	Late        bool    `json:"late"`
-	Paid        *string `json:"paid"` // the part booked to the creator (R-121); null until the ledger books it
-	BlocksLeft  uint64  `json:"blocksLeft"`
-	BlocksTotal uint64  `json:"blocksTotal"`
-	SecondsLeft int64   `json:"secondsLeft"`
-}
+type depositJSON = paymentio.Deposit
 
 // withClient is for the owner only.
 func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
@@ -354,17 +341,7 @@ func toInvoiceDetailJSON(inv invoice.Invoice, withClient bool) invoiceDetailJSON
 }
 
 func toDepositsJSON(deposits []invoice.Deposit) []depositJSON {
-	out := []depositJSON{}
-	for _, d := range deposits {
-		dj := depositJSON{TxHash: d.TxHash, LogIndex: d.LogIndex, From: d.From,
-			Amount: d.Amount.String(), BlockNumber: d.BlockNumber, BlockTime: d.BlockTime.Format(time.RFC3339),
-			Status: d.Status, Late: d.Late, BlocksLeft: d.BlocksLeft, BlocksTotal: d.BlocksTotal, SecondsLeft: int64(d.TimeLeft / time.Second)}
-		if d.Paid != nil {
-			dj.Paid = httpio.OrNull(d.Paid.String())
-		}
-		out = append(out, dj)
-	}
-	return out
+	return paymentio.Deposits(deposits)
 }
 
 func toOwnerInvoiceJSON(inv invoice.Invoice) ownerInvoiceJSON {

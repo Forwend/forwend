@@ -30,6 +30,10 @@ var ErrRateLimited = errors.New("rate limited")
 func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	status, code, message := http.StatusInternalServerError, "internal", "internal error"
 	switch {
+	case errors.Is(err, ErrInvalidQuery):
+		status, code, message = http.StatusUnprocessableEntity, "invalid_value", err.Error()
+	case errors.Is(err, invoice.ErrTooManyMovements):
+		status, code, message = http.StatusUnprocessableEntity, "too_many_movements", "choose a shorter period or one store"
 	case errors.Is(err, ErrMalformed):
 		status, code, message = http.StatusBadRequest, "malformed_request", err.Error()
 	case errors.Is(err, auth.ErrUnauthorized):

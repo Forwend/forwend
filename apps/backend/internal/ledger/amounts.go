@@ -14,37 +14,58 @@ type Amounts struct {
 }
 
 func ReadAmounts(ctx context.Context, db interface {
-	QueryRow(context.Context, string, ...any) pgx.Row
+	Query(context.Context, string, ...any) (pgx.Rows, error)
 }, invoiceID string) (*Amounts, error) {
-	var receiver, payable, held, settled, refunded, observed string
-	a := &Amounts{}
-	err := db.QueryRow(ctx, `WITH entries AS (
-  SELECT t.kind, e.account, e.amount FROM ledger_transactions t JOIN ledger_entries e ON e.transaction_id = t.id
-  WHERE t.invoice_id = $1
- ) SELECT coalesce(sum(amount) FILTER (WHERE account = 'receiver'),0)::text,
-  (-coalesce(sum(amount) FILTER (WHERE account = 'recipient_payable'),0))::text,
-  (-coalesce(sum(amount) FILTER (WHERE account = 'payer_held'),0))::text,
-  (-coalesce(sum(amount) FILTER (WHERE account = 'receiver' AND kind = 'settlement'),0))::text,
-  (-coalesce(sum(amount) FILTER (WHERE account = 'receiver' AND kind = 'refund'),0))::text,
-  coalesce((SELECT sum(amount) FROM receiver_outflows WHERE invoice_id = $1 AND kind = 'refund'),0)::text,
-  coalesce((SELECT tx_hash FROM receiver_outflows WHERE invoice_id = $1 AND kind = 'refund'
-            ORDER BY block_number DESC,log_index DESC LIMIT 1),'') AS last_return,
- `+UnreconciledSQL("$1")+`,
- EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = $1 AND policy_exception IS NOT NULL)
- FROM entries`, invoiceID).Scan(&receiver, &payable, &held, &settled, &refunded, &observed, &a.LastReturnTxHash, &a.Unreconciled, &a.HasPolicyException)
+	amounts, err := ReadAmountsFor(ctx, db, []string{invoiceID})
 	if err != nil {
 		return nil, err
 	}
-	a.Receiver, _ = new(big.Int).SetString(receiver, 10)
-	a.Payable, _ = new(big.Int).SetString(payable, 10)
-	a.Held, _ = new(big.Int).SetString(held, 10)
-	a.Settled, _ = new(big.Int).SetString(settled, 10)
-	a.Refunded, _ = new(big.Int).SetString(refunded, 10)
-	a.ObservedRefunded, _ = new(big.Int).SetString(observed, 10)
-	if a.Receiver.Sign() < 0 || a.Payable.Sign() < 0 || a.Held.Sign() < 0 {
-		a.Unreconciled = true
+	if a, ok := amounts[invoiceID]; ok {
+		return a, nil
 	}
-	return a, nil
+	return nil, pgx.ErrNoRows
+}
+
+func ReadAmountsFor(ctx context.Context, db interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+}, invoiceIDs []string) (map[string]*Amounts, error) {
+	rows, err := db.Query(ctx, `WITH entries AS (
+      SELECT t.invoice_id,
+        sum(e.amount) FILTER (WHERE e.account = 'receiver') AS receiver,
+        -sum(e.amount) FILTER (WHERE e.account = 'recipient_payable') AS payable,
+        -sum(e.amount) FILTER (WHERE e.account = 'payer_held') AS held,
+        -sum(e.amount) FILTER (WHERE e.account = 'receiver' AND t.kind = 'settlement') AS settled,
+        -sum(e.amount) FILTER (WHERE e.account = 'receiver' AND t.kind = 'refund') AS refunded
+      FROM ledger_transactions t JOIN ledger_entries e ON e.transaction_id = t.id
+      WHERE t.invoice_id = ANY($1::text[]) GROUP BY t.invoice_id
+    ) SELECT i.id,coalesce(e.receiver,0)::text,coalesce(e.payable,0)::text,coalesce(e.held,0)::text,
+      coalesce(e.settled,0)::text,coalesce(e.refunded,0)::text,
+      coalesce((SELECT sum(amount) FROM receiver_outflows WHERE invoice_id = i.id AND kind = 'refund'),0)::text,
+      coalesce((SELECT tx_hash FROM receiver_outflows WHERE invoice_id = i.id AND kind = 'refund'
+        ORDER BY block_number DESC,log_index DESC LIMIT 1),''),
+      `+UnreconciledSQL("i.id")+`,
+      EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = i.id AND policy_exception IS NOT NULL)
+    FROM invoices i LEFT JOIN entries e ON e.invoice_id = i.id WHERE i.id = ANY($1::text[])`, invoiceIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := make(map[string]*Amounts, len(invoiceIDs))
+	for rows.Next() {
+		var id, receiver, payable, held, settled, refunded, observed string
+		a := &Amounts{}
+		if err := rows.Scan(&id, &receiver, &payable, &held, &settled, &refunded, &observed, &a.LastReturnTxHash, &a.Unreconciled, &a.HasPolicyException); err != nil {
+			return nil, err
+		}
+		a.Receiver, _ = new(big.Int).SetString(receiver, 10)
+		a.Payable, _ = new(big.Int).SetString(payable, 10)
+		a.Held, _ = new(big.Int).SetString(held, 10)
+		a.Settled, _ = new(big.Int).SetString(settled, 10)
+		a.Refunded, _ = new(big.Int).SetString(refunded, 10)
+		a.ObservedRefunded, _ = new(big.Int).SetString(observed, 10)
+		result[id] = a
+	}
+	return result, rows.Err()
 }
 
 // invoiceID is a trusted SQL expression, never request text.
@@ -53,8 +74,11 @@ func UnreconciledSQL(invoiceID string) string {
  OR EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = ` + invoiceID + ` AND kind <> 'recovery' AND ledger_transaction_id IS NULL)
  OR EXISTS (SELECT 1 FROM chain_transfers d WHERE d.invoice_id = ` + invoiceID + ` AND d.status = 'confirmed'
             AND (NOT d.booked OR NOT EXISTS (SELECT 1 FROM receiver_deposit_proofs p WHERE p.chain_transfer_id = d.id)))
- OR EXISTS (SELECT 1 FROM ledger_transactions t WHERE t.invoice_id = ` + invoiceID + ` AND t.kind IN ('settlement','refund')
-            AND NOT EXISTS (SELECT 1 FROM receiver_outflows evidence WHERE evidence.ledger_transaction_id = t.id))
+ OR ` + unpositionedCashSQL(invoiceID) + `
+ OR EXISTS (SELECT 1 FROM receiver_scans scan WHERE scan.invoice_id = ` + invoiceID + ` AND scan.balance IS NOT NULL
+     AND (` + ComparableReceiverSQL(invoiceID, "scan.scanned_block") + `) AND scan.balance <> (
+       SELECT coalesce(sum(entry.amount),0) FROM ledger_entries entry JOIN ledger_transactions journal ON journal.id = entry.transaction_id
+       WHERE journal.invoice_id = ` + invoiceID + ` AND entry.account = 'receiver'))
  OR ` + negativeBalancesSQL(invoiceID)
 
 }

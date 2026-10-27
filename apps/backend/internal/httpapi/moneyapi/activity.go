@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -81,9 +80,6 @@ func getTransactions(activities *activity.Service) http.HandlerFunc {
 	}
 }
 
-// Also after quotes: a cell that starts with a quote ends at the next lone quote, and what follows is added to it.
-var formulaAfterSemicolon = regexp.MustCompile(`;("*[=+\-@\t\r])`)
-
 // R-108.
 var transactionsCSVHeader = []string{"Date (UTC)", "Direction", "Amount", "Token", "Network", "Counterparty",
 	"Transaction", "Status", "USD value", "Classification", "Invoice", "Client"}
@@ -96,22 +92,20 @@ func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		currency, err := activities.RecordsCurrency(r.Context(), r.PathValue("profileId"))
-		if err != nil {
-			httpio.WriteError(w, r, err)
-			return
-		}
-		header := transactionsCSVHeader
-		if currency != "" {
-			header = append(slices.Clip(header), currency+" value", "ECB rate date")
-		}
-		header = append(header, "Payment ID")
-		// Rows go to the buffer as the database sends them, so the request holds the file, not every transfer.
+		var currency string
 		var body bytes.Buffer
 		out := csv.NewWriter(&body)
 		out.UseCRLF = true
-		_ = out.Write(header)
-		err = activities.EachTransfer(r.Context(), r.PathValue("profileId"), from, to, func(t activity.Transfer) error {
+		var header []string
+		err = activities.ExportTransfers(r.Context(), r.PathValue("profileId"), from, to, func(value string) error {
+			currency = value
+			header = slices.Clone(transactionsCSVHeader)
+			if currency != "" {
+				header = append(header, currency+" value", "ECB rate date")
+			}
+			header = append(header, "Payment ID")
+			return out.Write(header)
+		}, func(t activity.Transfer) error {
 			invoice, client := "", ""
 			if t.Invoice != nil {
 				invoice, client = document.Number(t.Invoice.Number), t.Invoice.ClientName
@@ -134,16 +128,9 @@ func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 			}
 			row = append(row, paymentID)
 			for i, cell := range row {
-				// A spreadsheet runs a cell that starts like a formula; an apostrophe makes it text. One that splits on
-				// ";" (de-DE, fr-FR) starts a cell after each ";" too.
-				if cell != "" && strings.ContainsRune("=+-@\t\r", rune(cell[0])) {
-					cell = "'" + cell
-				}
-				if strings.Contains(cell, ";") { // only then: a regexp on every cell of a big export costs gigabytes
-					cell = formulaAfterSemicolon.ReplaceAllString(cell, ";'$1")
-				}
-				row[i] = cell
+				row[i] = httpio.CSVText(cell)
 			}
+
 			return out.Write(row)
 		})
 		if err != nil {
@@ -158,23 +145,7 @@ func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 }
 
 func dayRange(from, to string) (time.Time, time.Time, error) {
-	start, end := time.Unix(0, 0).UTC(), time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC)
-	var err error
-	if from != "" {
-		if start, err = time.Parse(time.DateOnly, from); err != nil {
-			return start, end, fmt.Errorf("%w: from must be a day like 2026-10-01", activity.ErrInvalid)
-		}
-	}
-	if to != "" {
-		if end, err = time.Parse(time.DateOnly, to); err != nil {
-			return start, end, fmt.Errorf("%w: to must be a day like 2026-10-31", activity.ErrInvalid)
-		}
-		end = end.AddDate(0, 0, 1)
-	}
-	if !start.Before(end) {
-		return start, end, fmt.Errorf("%w: from must not be after to", activity.ErrInvalid)
-	}
-	return start, end, nil
+	return httpio.DayRange(from, to)
 }
 
 // R-108.
@@ -265,16 +236,12 @@ func getStatement(activities *activity.Service, profiles *profile.Service) http.
 			httpio.WriteError(w, r, err)
 			return
 		}
-		currency, err := activities.RecordsCurrency(r.Context(), id)
-		if err != nil {
-			httpio.WriteError(w, r, err)
-			return
-		}
-		s := document.Statement{Holder: holder.Issuer, From: from, To: to.AddDate(0, 0, -1),
-			Issued: time.Now().UTC().Truncate(time.Second), Currency: currency,
-			Decimals: invoice.AgreedCurrencies[currency]}
-		// A transfer still confirming is no income yet.
-		err = activities.EachTransfer(r.Context(), id, from, to, func(t activity.Transfer) error {
+		s := document.Statement{Holder: holder.Issuer, From: from, To: to.AddDate(0, 0, -1), Issued: time.Now().UTC().Truncate(time.Second)}
+		err = activities.ExportTransfers(r.Context(), id, from, to, func(currency string) error {
+			s.Currency = currency
+			s.Decimals = invoice.AgreedCurrencies[currency]
+			return nil
+		}, func(t activity.Transfer) error {
 			if t.Status != "confirmed" {
 				return nil
 			}

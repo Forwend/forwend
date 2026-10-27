@@ -37,6 +37,8 @@ export type ListStatus = (typeof LIST_STATUSES)[number];
 export type HeldReason = (typeof HELD_REASONS)[number];
 
 export const PAYMENT_PURPOSES = ["invoice", "checkout", "request"] as const;
+export const PAYMENT_SOURCES = [...PAYMENT_PURPOSES, "payment_link"] as const;
+export type PaymentSource = (typeof PAYMENT_SOURCES)[number];
 export const DOCUMENT_KINDS = ["invoice", "request", "none"] as const;
 export const CHECKOUT_STATES = ["open", "complete", "expired"] as const;
 export type PaymentPurpose = (typeof PAYMENT_PURPOSES)[number];
@@ -58,6 +60,7 @@ export interface PaymentAmounts {
 export interface Payment {
   amounts?: PaymentAmounts;
   paymentId: string;
+  source: PaymentSource;
   purpose: PaymentPurpose;
   documentKind: DocumentKind;
   number: number | null;
@@ -98,7 +101,15 @@ export interface CreateCheckoutSession {
   items?: CreateInvoice["lines"];
 }
 
-export interface ListPayments {
+export interface ListPayments extends ListCheckoutSessions {
+  source?: PaymentSource;
+  status?: ListStatus;
+  paymentStatus?: PaymentStatus;
+  settlementStatus?: SettlementStatus;
+  refundStatus?: RefundStatus;
+}
+
+export interface ListCheckoutSessions {
   limit?: number;
   cursor?: string;
   storeId?: string;
