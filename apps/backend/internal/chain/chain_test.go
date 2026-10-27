@@ -6,10 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
-	"os"
-	"path/filepath"
-	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -18,36 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 )
-
-// D-15: a chain needs two hosts; endpoint names go to logs, so they never hold a key.
-func TestNewRPCsUsesEveryKeyThenThePublicRPCs(t *testing.T) {
-	base := Spec{ChainID: 84532, Infura: "base-sepolia", Public: []string{"https://sepolia.base.org"}}
-	r, err := NewRPCs(base, []string{"key1", "key2"}, 10)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer r.Close()
-	var got []string
-	for _, e := range r.pool.endpoints {
-		got = append(got, e.host)
-		if strings.Contains(e.name, "key") {
-			t.Fatalf("endpoint name %q holds a key", e.name)
-		}
-	}
-	if want := []string{"base-sepolia.infura.io", "base-sepolia.infura.io", "sepolia.base.org"}; !slices.Equal(got, want) {
-		t.Fatalf("hosts %v, want %v", got, want)
-	}
-	// Public RPCs only: one host is too few for D-15; three are enough.
-	if _, err := NewRPCs(base, nil, 10); err == nil {
-		t.Fatal("one public host was accepted for both roles")
-	}
-	arc, err := NewRPCs(Spec{ChainID: 5042002, Infura: "arc-testnet", Public: []string{"https://rpc.testnet.arc.io",
-		"https://rpc.drpc.testnet.arc.io", "https://rpc.blockdaemon.testnet.arc.io"}}, nil, 10)
-	if err != nil || len(arc.pool.endpoints) != 3 {
-		t.Fatalf("public-only Arc: %v", err)
-	}
-	arc.Close()
-}
 
 func TestWrongChainRPCIsNeverUsed(t *testing.T) {
 	var asked atomic.Int64
@@ -67,14 +33,14 @@ func TestWrongChainRPCIsNeverUsed(t *testing.T) {
 	if asked.Load() != 1 {
 		t.Fatalf("the wrong-chain RPC was asked %d times, want once", asked.Load())
 	}
-	if _, err := NewRPCs(Spec{ChainID: chaintest.ChainID, Public: []string{a.URL, a.URL}}, nil, 10); err == nil {
+	if _, err := NewRPCs(testSpec(chaintest.ChainID, a.URL, a.URL), 10); err == nil {
 		t.Fatal("one host was accepted for both roles")
 	}
 }
 
 func newRPCs(t *testing.T, urls ...string) RPCs {
 	t.Helper()
-	r, err := NewRPCs(Spec{ChainID: chaintest.ChainID, Public: urls}, nil, 1000)
+	r, err := NewRPCs(testSpec(chaintest.ChainID, urls...), 1000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,38 +85,20 @@ func TestRedactHidesInfuraKeys(t *testing.T) {
 	}
 }
 
-// Without Infura keys every chain still has two hosts, so D-15's second balance read has an independent provider.
-func TestEveryChainListsTwoPublicHosts(t *testing.T) {
-	specs, err := Specs("../../../../packages/contracts/chains.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for id, s := range specs {
-		hosts := map[string]bool{}
-		for _, u := range s.Public {
-			parsed, err := url.Parse(u)
-			if err != nil {
-				t.Fatal(err)
+func testSpec(id uint64, urls ...string) Spec {
+	spec := Spec{ChainID: id, AllowLoopback: true}
+	hosts := map[string]Role{}
+	for i, u := range urls {
+		host := hostOf(u)
+		r, ok := hosts[host]
+		if !ok {
+			r = Primary
+			if len(hosts)%2 == 1 {
+				r = Confirmation
 			}
-			hosts[parsed.Host] = true
+			hosts[host] = r
 		}
-		if len(hosts) < 2 {
-			t.Errorf("chain %d lists %d public hosts, want at least 2", id, len(hosts))
-		}
+		spec.Endpoints = append(spec.Endpoints, Endpoint{ID: fmt.Sprintf("rpc-%d", i), Provider: fmt.Sprintf("provider-%d", len(hosts)), Role: r, Tier: Public, Priority: i, URL: u, BudgetGroup: fmt.Sprintf("budget-%d", i)})
 	}
-}
-
-func TestChainListRefusesPlainHTTP(t *testing.T) {
-	for list, ok := range map[string]bool{
-		`{"a": {"chainId": 1, "public": ["https://rpc.example", "http://127.0.0.1:8545", "http://localhost:8545"]}}`: true,
-		`{"a": {"chainId": 1, "public": ["https://rpc.example", "http://rpc.example"]}}`:                             false,
-	} {
-		path := filepath.Join(t.TempDir(), "chains.json")
-		if err := os.WriteFile(path, []byte(list), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := Specs(path); (err == nil) != ok {
-			t.Errorf("%s: err %v", list, err)
-		}
-	}
+	return spec
 }

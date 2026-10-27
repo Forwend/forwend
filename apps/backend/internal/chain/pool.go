@@ -11,7 +11,7 @@ import (
 	"math"
 	"math/rand/v2"
 	"net/http"
-	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -28,10 +28,13 @@ const (
 )
 
 type endpoint struct {
-	url    string // may hold an Infura key: never log it or put it in an error
-	host   string
-	name   string // host and list position, safe to log
-	second bool   // serves the Second role only; the roles never share a host
+	url         string // secret: never log or return
+	host        string
+	name        string // configured non-secret endpoint ID
+	second      bool
+	budgetGroup string
+	checkedAt   time.Time
+	probing     bool
 
 	checked   bool
 	wrong     bool // serves another chain: never used
@@ -41,14 +44,16 @@ type endpoint struct {
 }
 
 type pool struct {
-	chainID uint64
-	perCall time.Duration
-	timeout time.Duration // per attempt
-	http    *http.Client
-	budget  *Budget
+	chainID    uint64
+	perCall    time.Duration
+	timeout    time.Duration // per attempt
+	maxHeadAge time.Duration
+	http       *http.Client
+	budget     *Budget
 
 	mu        sync.Mutex
-	endpoints []*endpoint // every Infura key, then the public RPCs, in list order
+	changed   chan struct{}
+	endpoints []*endpoint // private before public, then priority and ID
 }
 
 // role replaces the HTTP transport of a role's go-ethereum client, so each request (a call or a batch) goes to the pool.
@@ -66,111 +71,128 @@ func (r role) RoundTrip(req *http.Request) (*http.Response, error) {
 	return r.p.do(req.Context(), r.second, req.Header, body)
 }
 
-// do rests a failing endpoint (timeout, connection or HTTP error, rate limit) and moves the request to the next,
-// up to once per endpoint and once more. Any other answer, a JSON-RPC revert included, is returned as it is.
+var ErrUnavailable = errors.New("RPC endpoints unavailable")
+
+const RequestTimeout = 30 * time.Second
+const HealthInterval = 30 * time.Second
+
 func (p *pool) do(ctx context.Context, second bool, header http.Header, body []byte) (*http.Response, error) {
-	calls := 1
-	if b := bytes.TrimSpace(body); len(b) > 0 && b[0] == '[' {
-		var batch []json.RawMessage
-		if json.Unmarshal(b, &batch) == nil {
-			calls = len(batch)
-		}
+	calls, err := requestCalls(body)
+	if err != nil {
+		return nil, err
 	}
-	var res *http.Response
-	var err error
-	for tries := 0; tries <= len(p.endpoints); {
-		e, at, ready, perr := p.pick(ctx, second, calls)
-		if perr != nil {
-			return nil, perr
-		}
-		if deadline, ok := ctx.Deadline(); ok && at.After(deadline) {
-			break
-		}
-		if werr := sleepUntil(ctx, at); werr != nil {
-			return nil, werr
-		}
-		if !ready || p.resting(e) {
-			continue // it rests, or began to while this request waited: pick again
-		}
-		tries++
-		res, err = p.send(ctx, e, header, body)
-		var budgetErr budgetError
-		if errors.As(err, &budgetErr) {
+	ctx, cancel := context.WithTimeout(ctx, RequestTimeout)
+	defer cancel()
+	tried := map[*endpoint]bool{}
+	for len(tried) < len(p.endpoints) {
+		e, at, probe, err := p.pick(ctx, second, calls, tried)
+		if err != nil {
+			var pending probePending
+			if errors.As(err, &pending) {
+				select {
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				case <-pending.done:
+					continue
+				}
+			}
 			return nil, err
 		}
-		if err == nil {
-			p.done(e, nil)
-			return res, nil
+		tried[e] = true
+		if err = sleepUntil(ctx, at); err != nil {
+			p.release(e, probe)
+			return nil, err
+		}
+		if p.resting(e) {
+			p.release(e, probe)
+			continue
+		}
+		res, err := p.send(ctx, e, header, body, probe)
+		var budgetErr budgetError
+		if errors.As(err, &budgetErr) {
+			p.release(e, probe)
+			return nil, err
 		}
 		if errors.Is(ctx.Err(), context.Canceled) {
-			return nil, ctx.Err() // the caller gave up: that says nothing about the endpoint
+			p.release(e, probe)
+			return nil, ctx.Err()
 		}
-		p.done(e, err)
+		p.done(e, err, probe)
 		if ctx.Err() != nil {
-			break
+			return nil, ctx.Err()
+		}
+		if err == nil {
+			return res, nil
 		}
 	}
-	if res != nil {
-		return res, nil // the last endpoint's own answer: an HTTP error status or a rate limit
-	}
-	if err == nil {
-		err = fmt.Errorf("chain %d: no %s RPC can answer in time; the others rest", p.chainID, roleName(second))
-	}
-	return nil, err
+	return nil, fmt.Errorf("chain %d %s: %w", p.chainID, roleName(second), ErrUnavailable)
 }
 
-// pick takes the role's first non-resting host in list order and its endpoint free soonest, adding calls to its
-// pace. When every endpoint rests, ready is false and at is when the first one is back.
-func (p *pool) pick(ctx context.Context, second bool, calls int) (e *endpoint, at time.Time, ready bool, err error) {
+type probePending struct{ done <-chan struct{} }
+
+func (probePending) Error() string { return "RPC health probe pending" }
+
+func (p *pool) changedLocked() {
+	if p.changed != nil {
+		close(p.changed)
+	}
+	p.changed = make(chan struct{})
+}
+
+func (p *pool) release(e *endpoint, probe bool) {
+	if !probe {
+		return
+	}
+	p.mu.Lock()
+	e.probing = false
+	p.changedLocked()
+	p.mu.Unlock()
+}
+
+func (p *pool) pick(ctx context.Context, second bool, calls int, tried map[*endpoint]bool) (*endpoint, time.Time, bool, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	now := time.Now()
-	e = p.best(now, second)
-	if e == nil {
-		return nil, time.Time{}, false, fmt.Errorf("chain %d: no %s RPC host serves this chain; D-15 needs two",
-			p.chainID, roleName(second))
-	}
-	if e.restUntil.After(now) {
-		return e, e.restUntil, false, nil
-	}
-	at = now
-	if e.next.After(now) {
-		at = e.next
-	}
-	if deadline, ok := ctx.Deadline(); ok && at.After(deadline) {
-		return nil, time.Time{}, false, context.DeadlineExceeded
-	}
-	e.next = at.Add(time.Duration(calls) * p.perCall)
-	return e, at, true, nil
-}
-
-func (p *pool) best(now time.Time, second bool) *endpoint {
-	var host string
-	var free, back *endpoint
+	pending := false
 	for _, e := range p.endpoints {
-		switch {
-		case e.wrong || e.second != second:
-		case e.restUntil.After(now):
-			if back == nil || e.restUntil.Before(back.restUntil) {
-				back = e
-			}
-		case host == "" || e.host == host:
-			host = e.host
-			if free == nil || e.next.Before(free.next) {
-				free = e
-			}
+		if !tried[e] && !e.wrong && e.second == second && e.probing {
+			pending = true
 		}
+		if tried[e] || e.wrong || e.second != second || e.probing || e.restUntil.After(now) {
+			continue
+		}
+		at := now
+		if e.next.After(at) {
+			at = e.next
+		}
+		if deadline, ok := ctx.Deadline(); ok && at.After(deadline) {
+			return nil, time.Time{}, false, context.DeadlineExceeded
+		}
+		e.next = at.Add(time.Duration(calls) * p.perCall)
+		if !e.checked || e.failures > 0 || now.Sub(e.checkedAt) >= HealthInterval {
+			e.probing = true
+		}
+		return e, at, e.probing, nil
 	}
-	if free != nil {
-		return free
+	if pending {
+		if p.changed == nil {
+			p.changed = make(chan struct{})
+		}
+		return nil, time.Time{}, false, probePending{p.changed}
 	}
-	return back
+	return nil, time.Time{}, false, fmt.Errorf("chain %d %s: %w", p.chainID, roleName(second), ErrUnavailable)
 }
 
-func (p *pool) done(e *endpoint, failure error) {
+func (p *pool) done(e *endpoint, failure error, probe bool) {
 	p.mu.Lock()
+	if probe {
+		e.probing = false
+		p.changedLocked()
+	}
 	if failure == nil {
-		e.failures = 0
+		if !e.restUntil.After(time.Now()) {
+			e.failures = 0
+		}
 		p.mu.Unlock()
 		return
 	}
@@ -184,11 +206,17 @@ func (p *pool) done(e *endpoint, failure error) {
 		n = math.MaxInt
 	}
 	rest := restFor(n, rand.Float64())
+	var retry retryAfter
+	if errors.As(failure, &retry) {
+		rest = max(rest, retry.delay)
+	}
 	e.restUntil = time.Now().Add(rest)
+	e.checked = false
 	if errors.As(failure, new(hostDown)) {
 		for _, other := range p.endpoints {
 			if other.host == e.host && other.restUntil.Before(e.restUntil) {
 				other.failures, other.restUntil = max(other.failures, e.failures), e.restUntil
+				other.checked = false
 			}
 		}
 	}
@@ -235,36 +263,59 @@ func restFor(failures int, jitter float64) time.Duration {
 	return d/2 + time.Duration(jitter*float64(d/2))
 }
 
-func (p *pool) send(ctx context.Context, e *endpoint, header http.Header, body []byte) (*http.Response, error) {
-	p.mu.Lock()
-	checked := e.checked
-	p.mu.Unlock()
-	if !checked {
+func (p *pool) send(ctx context.Context, e *endpoint, header http.Header, body []byte, probe bool) (*http.Response, error) {
+	if probe {
 		if err := p.check(ctx, e, header); err != nil {
 			return nil, err
 		}
 	}
+
 	return p.post(ctx, e, header, body)
 }
 
-// check runs once per endpoint before its first call: a URL is used only after its chain ID matches (D-15).
 func (p *pool) check(ctx context.Context, e *endpoint, header http.Header) error {
 	res, err := p.post(ctx, e, header, []byte(`{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}`))
 	if err != nil {
 		return err
 	}
+	defer res.Body.Close()
 	var answer struct{ Result *hexutil.Uint64 }
 	if json.NewDecoder(res.Body).Decode(&answer) != nil || answer.Result == nil {
 		return fmt.Errorf("%s: no chain ID", e.name)
 	}
-	p.mu.Lock()
-	defer p.mu.Unlock()
 	if uint64(*answer.Result) != p.chainID {
+		p.mu.Lock()
 		e.wrong = true
-		slog.Error("RPC serves another chain; not used", "chain", p.chainID, "rpc", e.name, "serves", uint64(*answer.Result))
-		return fmt.Errorf("%s: serves chain %d", e.name, uint64(*answer.Result))
+		p.mu.Unlock()
+		return lasting{fmt.Errorf("%s: wrong chain", e.name)}
 	}
-	e.checked = true
+	if p.maxHeadAge > 0 {
+		for _, tag := range []string{"latest", "finalized"} {
+			body := fmt.Appendf(nil, `{"jsonrpc":"2.0","id":1,"method":"eth_getBlockByNumber","params":[%q,false]}`, tag)
+			res, err := p.post(ctx, e, header, body)
+			if err != nil {
+				return err
+			}
+			var head struct {
+				Result *struct {
+					Number    *hexutil.Uint64
+					Timestamp *hexutil.Uint64
+					Hash      string
+				}
+			}
+			err = json.NewDecoder(res.Body).Decode(&head)
+			res.Body.Close()
+			if err != nil || head.Result == nil || head.Result.Number == nil || head.Result.Timestamp == nil || len(head.Result.Hash) != 66 {
+				return fmt.Errorf("%s: required %s header unavailable", e.name, tag)
+			}
+			if tag == "latest" && time.Since(time.Unix(int64(*head.Result.Timestamp), 0)) > p.maxHeadAge {
+				return fmt.Errorf("%s: stale latest head", e.name)
+			}
+		}
+	}
+	p.mu.Lock()
+	e.checked, e.checkedAt = true, time.Now()
+	p.mu.Unlock()
 	return nil
 }
 
@@ -273,7 +324,7 @@ const maxAnswer = 64 << 20
 
 func (p *pool) post(ctx context.Context, e *endpoint, header http.Header, body []byte) (*http.Response, error) {
 	if p.budget != nil {
-		if err := p.budget.wait(ctx, e.url, body); err != nil {
+		if err := p.budget.wait(ctx, e.budgetGroup, body); err != nil {
 			return nil, err
 		}
 	}
@@ -296,30 +347,75 @@ func (p *pool) post(ctx context.Context, e *endpoint, header http.Header, body [
 	if len(raw) > maxAnswer {
 		return nil, fmt.Errorf("%s: answer over %d bytes", e.name, maxAnswer)
 	}
-	res.Body = io.NopCloser(bytes.NewReader(raw))
-	if BatchTooLarge(rpc.HTTPError{StatusCode: res.StatusCode, Body: raw}) {
+	// Classify the provider text before discarding it. No untrusted error body crosses this boundary.
+	batchLimit := BatchTooLarge(rpc.HTTPError{StatusCode: http.StatusBadRequest, Body: raw})
+	batchRequest := len(bytes.TrimSpace(body)) > 0 && bytes.TrimSpace(body)[0] == '['
+	queryLimit := res.StatusCode/100 == 2 && batchRequest && batchLimit || BatchTooLarge(rpc.HTTPError{StatusCode: res.StatusCode, Body: raw}) ||
+		(res.StatusCode == 400 || res.StatusCode == 413) && TooLarge(rpc.HTTPError{StatusCode: res.StatusCode, Body: raw})
+	if queryLimit {
+		message := "log result size too large"
+		if batchLimit {
+			message = "batch too large"
+		}
+		safe := fmt.Appendf(nil, `{"jsonrpc":"2.0","id":null,"error":{"code":-32005,"message":%q}}`, message)
+		if res.StatusCode/100 == 2 {
+			res.StatusCode = http.StatusBadRequest
+		}
+		res.Status = fmt.Sprintf("%d %s", res.StatusCode, http.StatusText(res.StatusCode))
+		res.Header = make(http.Header)
+		res.Body = io.NopCloser(bytes.NewReader(safe))
+		res.ContentLength = int64(len(safe))
 		return res, nil
 	}
-	if (res.StatusCode == http.StatusBadRequest || res.StatusCode == http.StatusRequestEntityTooLarge) &&
-		TooLarge(rpc.HTTPError{StatusCode: res.StatusCode, Body: raw}) {
-		return res, nil // The caller can narrow this query; the provider is still available.
-	}
-	if res.StatusCode/100 != 2 {
-		err := fmt.Errorf("%s: HTTP %s", e.name, res.Status)
-		switch res.StatusCode {
-		case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound: // a refused key or region, a wrong path
-			return res, lasting{err}
+
+	if res.StatusCode/100 != 2 && !queryLimit {
+		failure := fmt.Errorf("%s: HTTP %d", e.name, res.StatusCode)
+		if res.StatusCode == 429 {
+			return nil, retryAfter{failure, retryDelay(res.Header.Get("Retry-After"))}
 		}
-		return res, err
+		if res.StatusCode == 401 || res.StatusCode == 403 || res.StatusCode == 404 {
+			return nil, lasting{failure}
+		}
+		return nil, failure
 	}
 	if reason := outage(raw); reason != "" {
-		err := fmt.Errorf("%s: %s", e.name, reason)
-		if reason == notJSONRPC { // a host that answers in a form we can't read keeps doing so
-			return res, lasting{err}
+		failure := fmt.Errorf("%s: %s", e.name, reason)
+		if reason == notJSONRPC {
+			return nil, lasting{failure}
 		}
-		return res, err
+		return nil, failure
 	}
+	safe, err := safeResponse(raw, body)
+	if err != nil {
+		return nil, lasting{fmt.Errorf("%s: invalid RPC response", e.name)}
+	}
+	res.Header = make(http.Header)
+	res.Header.Set("Content-Type", "application/json")
+	res.StatusCode, res.Status = 200, "200 OK"
+	res.Body = io.NopCloser(bytes.NewReader(safe))
+	res.ContentLength = int64(len(safe))
 	return res, nil
+}
+
+type retryAfter struct {
+	error
+	delay time.Duration
+}
+
+func retryDelay(raw string) time.Duration {
+	if seconds, err := strconv.ParseInt(raw, 10, 64); err == nil {
+		if seconds < 0 {
+			return 0
+		}
+		if seconds >= int64(RestMax/time.Second) {
+			return RestMax
+		}
+		return time.Duration(seconds) * time.Second
+	}
+	if at, err := http.ParseTime(raw); err == nil {
+		return min(RestMax, max(0, time.Until(at)))
+	}
+	return 0
 }
 
 // lasting is a failure that doesn't heal in seconds: its endpoint rests RestMax at once.
@@ -327,17 +423,12 @@ type lasting struct{ error }
 
 const notJSONRPC = "answer is not JSON-RPC"
 
-// unanswered describes a request without an answer, leaving out the URL: net/http puts it, Infura key included, in
-// its errors.
+// Network errors may contain the entire URL or reflected credentials; return only a safe category.
 func (p *pool) unanswered(e *endpoint, err error) error {
 	if errors.Is(err, context.DeadlineExceeded) {
-		return hostDown{fmt.Errorf("%s: no answer in time: %w", e.name, context.DeadlineExceeded)}
+		return hostDown{fmt.Errorf("%s: timeout: %w", e.name, context.DeadlineExceeded)}
 	}
-	var u *url.Error
-	if errors.As(err, &u) {
-		err = u.Err
-	}
-	return hostDown{fmt.Errorf("%s: %w", e.name, err)}
+	return hostDown{fmt.Errorf("%s: connection failed", e.name)}
 }
 
 // hostDown is a request its host didn't answer (a timeout, a refused or broken connection): every endpoint of that
@@ -369,8 +460,11 @@ func outage(raw []byte) string {
 		answers = []answer{one}
 	}
 	for _, a := range answers {
+		if a.Error != nil && a.Error.Code == -32002 {
+			return "resource unavailable"
+		}
 		if a.Error != nil && rateLimited(a.Error.Code, a.Error.Message) {
-			return fmt.Sprintf("rate limited (%d %s)", a.Error.Code, a.Error.Message)
+			return "rate limited"
 		}
 	}
 	return ""

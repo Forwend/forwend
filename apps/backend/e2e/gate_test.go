@@ -253,7 +253,6 @@ func newStack(t *testing.T, apiEnv ...string) *stack {
 	dbURL := databasetest.New(t)
 	bin := build(t)
 
-	chains := filepath.Join(t.TempDir(), "chains.json")
 	// Two host names for the one Anvil give the second, independent RPC for balances (D-15).
 	limited, requests := anvil.Proxy(), 0
 	limited.Fail(func(chaintest.Call) chaintest.Fault {
@@ -263,10 +262,7 @@ func newStack(t *testing.T, apiEnv ...string) *stack {
 		return chaintest.Forward
 	})
 	second := strings.Replace(anvil.URL, "127.0.0.1", "localhost", 1)
-	if err := os.WriteFile(chains, fmt.Appendf(nil, `{"anvil": {"chainId": %d, "infura": null, "public": [%q, %q, %q]}}`,
-		chaintest.ChainID, limited.URL, anvil.URL, second), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	configureRPCs(t, dbURL, limited.URL, anvil.URL, second)
 	// The worker's ECB rates (R-110).
 	ecbFake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `<Envelope><Cube><Cube time="2026-10-16"><Cube currency="USD" rate="1.1253"/></Cube></Cube></Envelope>`)
@@ -274,7 +270,7 @@ func newStack(t *testing.T, apiEnv ...string) *stack {
 	t.Cleanup(ecbFake.Close)
 	apiAddr := freeAddr(t)
 	common := []string{"DATABASE_URL=" + dbURL}
-	rpcs := []string{"CHAINS_FILE=" + chains, "INFURA_API_KEYS=", "RPC_RATE_PER_SECOND=100"}
+	rpcs := []string{"RPC_ENDPOINT_SECRETS=", "RPC_ALLOW_LOOPBACK=1", "RPC_RATE_PER_SECOND=100"}
 	start(t, bin, "api", append(append(append(common, rpcs...), "API_ADDR="+apiAddr, "PRIVY_APP_ID="+appID,
 		"PRIVY_JWKS_URL="+privy.JWKSURL, "PRIVY_APP_SECRET=unused", // this test makes its profile in the database
 		"PUBLIC_WEB_URL=http://localhost:3000", "WEBHOOK_SECRET_KEY="+webhookKey), apiEnv...))
@@ -294,7 +290,7 @@ func newStack(t *testing.T, apiEnv ...string) *stack {
 	t.Cleanup(func() { conn.Close(ctx) })
 	var profile string
 	err = conn.QueryRow(ctx, `
-		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES ($1, 'evm', 'anvil', true)),
+		WITH c AS (UPDATE chains SET enabled = true WHERE chain_id = $1),
 		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
 		            VALUES ($1, 'evm', $2, 'USDC', 6, true)),
 		     u AS (INSERT INTO users (privy_user_id, login_email) VALUES ('did:privy:gate', 'owner@example.com') RETURNING id),
@@ -463,4 +459,35 @@ func inOrder(seen []string, want ...string) bool {
 		}
 	}
 	return i == len(want)
+}
+
+func configureRPCs(t *testing.T, dbURL string, urls ...string) {
+	t.Helper()
+	ctx := t.Context()
+	if err := database.Migrate(ctx, dbURL); err != nil {
+		t.Fatal(err)
+	}
+	conn, err := pgx.Connect(ctx, dbURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close(ctx)
+	if _, err := conn.Exec(ctx, `INSERT INTO chains(chain_id,chain_family,name,enabled,rpc_max_head_age_seconds)
+ VALUES($1,'evm','anvil',true,3600) ON CONFLICT(chain_id) DO NOTHING`, chaintest.ChainID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.Exec(ctx, `DELETE FROM rpc_endpoints WHERE chain_id=$1`, chaintest.ChainID); err != nil {
+		t.Fatal(err)
+	}
+	for i, u := range urls {
+		role := "primary"
+		if i%2 == 1 {
+			role = "confirmation"
+		}
+		id := fmt.Sprintf("test-%d", i)
+		if _, err := conn.Exec(ctx, `INSERT INTO rpc_endpoints(chain_id,id,provider,role,tier,priority,public_url,budget_group)
+   VALUES($1,$2,$2,$3,'public',$4,$5,$2)`, chaintest.ChainID, id, role, i, u); err != nil {
+			t.Fatal(err)
+		}
+	}
 }

@@ -2,14 +2,13 @@ package balance
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
-	"strconv"
 	"time"
 
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
@@ -30,11 +29,11 @@ type ChainReader struct {
 }
 
 // NewChainReader sends each RPC at most rate calls per second.
-func NewChainReader(specs map[uint64]chain.Spec, keys []string, rate float64, budgets ...*chain.Budget) *ChainReader {
+func NewChainReader(specs map[uint64]chain.Spec, rate float64, budgets ...*chain.Budget) *ChainReader {
 	c := &ChainReader{rpcs: map[uint64]chain.RPCs{}, errs: map[uint64]error{}, clients: map[uint64]*ethclient.Client{},
 		cache: newMemoryCache()}
 	for id, spec := range specs {
-		r, err := chain.NewRPCs(spec, keys, rate, budgets...)
+		r, err := chain.NewRPCs(spec, rate, budgets...)
 		if err != nil {
 			c.errs[id] = err
 			continue
@@ -56,19 +55,24 @@ func (c *ChainReader) Read(ctx context.Context, chainID uint64, token, holder st
 	}
 	head, err := c.cache.get(ctx, fmt.Sprintf("finalized/%d", chainID), finalizedTTL,
 		func(ctx context.Context) (string, error) {
-			final, err := client.HeaderByNumber(ctx, big.NewInt(int64(rpc.FinalizedBlockNumber)))
+			final, err := chain.Finalized(ctx, client)
 			if err != nil {
 				return "", fmt.Errorf("chain %d: read finalized block: %w", chainID, err)
 			}
-			return final.Number.String(), nil
+			encoded, err := json.Marshal(final)
+			return string(encoded), err
 		})
 	if err != nil {
 		return nil, 0, err
 	}
-	block, _ := strconv.ParseUint(head, 10, 64) // the cache holds what the read above returned
-	raw, err := c.cache.get(ctx, fmt.Sprintf("balance/%d/%s/%s/%d", chainID, token, holder, block), balanceTTL,
+	var final chain.Block
+	if err := json.Unmarshal([]byte(head), &final); err != nil {
+		return nil, 0, err
+	}
+	block := final.Number
+	raw, err := c.cache.get(ctx, fmt.Sprintf("balance/%d/%s/%s/%s", chainID, token, holder, final.Hash.Hex()), balanceTTL,
 		func(ctx context.Context) (string, error) {
-			balance, err := ledger.BalanceAt(ctx, client, chainID, token, holder, block)
+			balance, err := chain.TokenBalanceAtHash(ctx, client, chainID, token, holder, final.Hash)
 			if errors.Is(err, ledger.ErrNoToken) {
 				balance, err = new(big.Int), nil // a token deployed after that block holds nothing there
 			}

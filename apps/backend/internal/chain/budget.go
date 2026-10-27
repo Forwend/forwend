@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -65,12 +63,7 @@ func (b *Budget) wait(ctx context.Context, endpoint string, body []byte) error {
 }
 
 func budgetKey(endpoint string) string {
-	u, _ := url.Parse(endpoint)
-	key := endpoint
-	if u != nil && strings.HasSuffix(u.Hostname(), ".infura.io") && strings.HasPrefix(u.Path, "/v3/") {
-		key = "infura/" + strings.TrimPrefix(u.Path, "/v3/")
-	}
-	hash := sha256.Sum256([]byte(key))
+	hash := sha256.Sum256([]byte(endpoint))
 	return hex.EncodeToString(hash[:])
 }
 

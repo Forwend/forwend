@@ -1,162 +1,7 @@
 {
   "schemaVersion": 2,
-  "nextId": 337,
+  "nextId": 338,
   "tasks": [
-    {
-      "id": "F331",
-      "type": "fix",
-      "behavior": "Give merchants distinct payments, links and invoice workflows",
-      "acceptance": [
-        "Payments and Needs attention expose coherent store-filtered operational lists and detail; links show resulting payments with explicit Edit; invoices remain customer billing.",
-        "Overview, lists, detail, checkout, receipts and exports use matching payment/settlement/refund meanings and resource cross-links.",
-        "Failed store/token loading never silently chooses a default or restores invalid acceptance; customer invoice composition identifies its recipient.",
-        "Desktop and phone walkthroughs, accessibility and authorization checks pass while valid legacy invoice URLs remain usable."
-      ],
-      "dependsOn": [
-        "F330"
-      ],
-      "state": "passing",
-      "verification": [
-        "docs-check",
-        "web-unit",
-        "web-e2e",
-        "live-e2e"
-      ],
-      "refs": [
-        "R-166",
-        "R-165",
-        "R-138",
-        "R-156",
-        "R-118",
-        "R-161",
-        "R-150",
-        "R-81"
-      ],
-      "keep": [
-        "packages/contracts/src/*"
-      ],
-      "review": true,
-      "notes": [
-        "2026-10-27 review pass by reviewer: Independent backend/API review found no blockers. Reviewed canonical token and option metadata, tenant/store/key-mode intersection for link filters, nullable document-free checkout notifications, owner payment navigation and legacy document compatibility. Pending-versus-review classification distinguishes automatic rescans, explained unbooked cash and unrelated recoveries while preserving financial safety guards and genuine conflict warnings. Domain/SQL ownership and shared API/Node contracts align. Focused race regressions independently passed3.035s; diff check is clean. Final verification passed all11 checks, including backend race, real-binary integration, live browser suite and public browser tests. Review covers F331 only; later tasks remain outside the requested scope."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-27T08:07:11Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "backend-affected",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "backend-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "node-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "live-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 237.3,
-            "log": ""
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 21.6,
-            "log": ""
-          },
-          {
-            "id": "keep",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          }
-        ],
-        "taskHash": "a6f34a25003a6ed9",
-        "filesHash": "55391c2006ad2bc5",
-        "proof": {
-          "1": "live-e2e: Authenticated merchant walkthroughs cover store-filtered payments, attention, detail, reconciliation, CSV, explicit link editing and existing invoice flows.",
-          "2": "web-e2e: Public payment and receipt regressions preserve trusted token amounts, actual returns, grouped verification warnings and blocked unsafe payment actions.",
-          "3": "web-unit: Disabled-token intersections remain empty, invoice recipient validation supports individual customers, and four unscanned options produce one pending-verification notice.",
-          "4": "live-e2e: Desktop and phone flows check accessibility, width, store-load retry, export scope validation and role navigation; backend checks retain tenant/store/key-mode tests."
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Independent backend/API review found no blockers. Reviewed canonical token and option metadata, tenant/store/key-mode intersection for link filters, nullable document-free checkout notifications, owner payment navigation and legacy document compatibility. Pending-versus-review classification distinguishes automatic rescans, explained unbooked cash and unrelated recoveries while preserving financial safety guards and genuine conflict warnings. Domain/SQL ownership and shared API/Node contracts align. Focused race regressions independently passed3.035s; diff check is clean. Final verification passed all11 checks, including backend race, real-binary integration, live browser suite and public browser tests. Review covers F331 only; later tasks remain outside the requested scope.",
-          "at": "2026-10-27T08:11:53Z",
-          "filesHash": "55391c2006ad2bc5"
-        },
-        "commit": "63a2c517",
-        "doneAt": "2026-10-27T08:12:21Z"
-      },
-      "branch": "fix/f331-give-merchants-distinct-payments-links-a",
-      "baseCommit": "02d98935c551dea323d44d0c94100b72251f54db",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f331-give-merchants-distinct-payments-links-a",
-        "base": "main"
-      }
-    },
     {
       "id": "F332",
       "type": "feat",
@@ -274,53 +119,51 @@
       "evidence": null
     },
     {
-      "id": "F336",
-      "type": "fix",
-      "behavior": "Restore payment progress and simplify merchant payment screens",
+      "id": "F337",
+      "type": "refactor",
+      "behavior": "Centralize backend RPC configuration and safe provider failover",
       "acceptance": [
-        "Reproduce F329 and F331 regressions and measure baseline RPC requests against pre-F329 behavior.",
-        "Active payments use durable incremental verification independently of bounded historical recovery without weakening payment or settlement evidence.",
-        "Payments, invoices, links, Activity and notifications share payment meanings and navigation; used amounts are clear and supporting transactions and diagnostics load on demand.",
-        "Demonstrate create-pay-paid, partial, expired, refunded and failed payments, desktop and phone layouts, and controlled load with measured requests and confirmation delay."
+        "Database endpoint metadata, secure secret resolution and process wiring replace backend provider-specific configuration.",
+        "Priority, failover, recovery, network consistency, safe errors and identical transaction retries pass regression tests.",
+        "Public API contracts and real invoice payment, independent confirmation and settlement workflows remain correct.",
+        "Research, operations, migration and deferred architecture are documented; changed paths and imports receive independent review."
       ],
       "dependsOn": [],
-      "state": "passing",
+      "state": "verified",
       "verification": [
-        "backend-e2e",
-        "web-e2e"
+        "unit",
+        "e2e"
       ],
       "refs": [
-        "R-171",
-        "R-119",
-        "R-164",
-        "R-165",
-        "R-166"
+        "R-172",
+        "R-133",
+        "R-21",
+        "R-22",
+        "R-51",
+        "D-15",
+        "D-45",
+        "D-71"
       ],
-      "keep": [
-        "packages/contracts/src/*"
-      ],
-      "review": false,
+      "keep": [],
+      "review": true,
       "notes": [
-        "2026-10-27 review pass by reviewer: Independent review found no remaining code-safety blocker. Incremental coverage retains dual-provider evidence, deposit proofs, competing-option checks and settlement attribution. Regression reproductions cover finalized reorgs, batch error isolation, pacing reservations and active payments during blocked history. New files stay with their owning watcher, worker, API and payment UI responsibilities. Full verification passed all nine checks; separate UI review covered desktop, phone and lazy diagnostics. Measured local load improves on F331, but hundreds of paid orders per second and production/archive provider access remain unverified and must not be claimed.",
-        "2026-10-27 F336: all 9 required checks and independent review passed. Real local payment and settlement flow, partial/failure cases, UI and 200/500-payment load demonstrated. Hundreds of paid orders per second and public/archive RPC access remain unproven. No commit or publishing authorized. Cleanup and restored dev server checked before final report.",
-        "2026-10-27 F336 verified and independently reviewed. Real local flow, partial/failure cases, desktop/phone UI, 300-option summaries and measured 200/500-payment load pass. Production throughput and public/archive provider access remain unproven. Temporary Anvil state, baseline binaries and task scratch files cleaned; development server restored and healthy. Persistent E2E invoice records and active dev files preserved. No commit or publishing authorized.",
-        "2026-10-27 review pass by reviewer: Final review refreshed after verification passed. Removed browser console output leaves all request-count and lazy-diagnostics assertions intact. Prior safety and structure findings remain resolved: incremental dual-provider evidence, deposit proofs, competing-option checks, settlement attribution and historical-job isolation are preserved. Required checks passed; production throughput of hundreds of paid orders per second and public/archive provider access remain unverified.",
-        "2026-10-27 review pass by reviewer: Independent review passes for the implementation and local evidence. Incremental receiver checkpoints, bounded retries, provider-limit handling and historical-job separation retain dual-source proof and settlement checks. Observed receipts remain distinct from booked money; summary reads retain relevant options; canonical confirming states and notifications agree across owner reads. New queries use indexed payment identities and source ownership remains focused. All ten final verification checks passed. Final 200-payment load completed in 3.229s with 2150 logical RPC calls. Hundreds of paid orders per second remains unmet; public/archive-provider operation remains blocked or unverified, and the original pruned payment record cannot be reproduced. This review does not authorize commit or delivery.",
-        "2026-10-27 F336 local verification passed: 10 checks, independent backend/UI review, real create-pay-paid-settled flow, 16 browser checks and final 200-payment load. Final load: 3.229s, 61.9 paid/s, 914 HTTP, 2150 RPC, 48 log queries. Hundreds paid/s remains unmet; original record was pruned and public/archive providers remain blocked or unverified. Development services restored and ready; task test processes and temporary measurement files cleaned, report and screenshots retained. No commit, push or deployment."
+        "2026-10-27 Research and design recorded in docs/research/rpc-infrastructure.md. Database metadata and startup secret resolution implemented first, then safe routing and finalized hash reads. Credential reflection reproduced before fixing. Focused chain/config/balance tests and real-binary TestMoneyLoop passed; full verification and independent review remain.",
+        "2026-10-27 F337 implementation and independent review passed; first full verification passed seven checks. Final environment-override and documentation cleanup is being reverified. No commit, push, deployment, secret migration or persistent database change.",
+        "2026-10-27 review pass by reviewer: Independent review passed. Reviewed configuration and secret boundaries, provider role separation, safe errors, recovery ownership, canonical RPC block hashes, migration behavior, and public API contracts. Confirmed fixes for canary HTTPS validation, hostname aliases, concurrent health probes, and whole-batch provider errors with targeted race tests. Reviewed final Playwright environment cleanup and wrong-chain quarantine documentation. No blocking findings.",
+        "2026-10-27 F337 locally verified: seven final checks passed (harness, docs-check, lint, typecheck, unit including backend race tests, build, e2e); independent review passed. Four real-binary money workflows passed with RPC fault injection. Research and operating guide retained. No temporary Anvil or test application processes remain; tests used disposable databases and task-specific temporary directories. Shared caches and existing secrets/services preserved. No commit, push, deployment or persistent RPC configuration migration. Private endpoint metadata and RPC_ENDPOINT_SECRETS must be configured before deployment; snapshot updates require restart."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-27T13:39:07Z",
+        "at": "2026-10-27T14:25:05Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
+            "seconds": 3.9,
+            "log": ""
           },
           {
             "id": "docs-check",
@@ -340,84 +183,56 @@
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.8,
+            "seconds": 1.4,
             "log": ""
           },
           {
-            "id": "backend-affected",
+            "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 241.1,
+            "seconds": 243.4,
             "log": ""
           },
           {
-            "id": "backend-e2e",
+            "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 41.7,
+            "seconds": 5.3,
             "log": ""
           },
           {
-            "id": "web-unit",
+            "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.5,
-            "log": ""
-          },
-          {
-            "id": "node-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.4,
-            "log": ""
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 20.8,
-            "log": ""
-          },
-          {
-            "id": "keep",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
+            "seconds": 45.7,
             "log": ""
           }
         ],
-        "taskHash": "03c5db4c6c23e3ac",
-        "filesHash": "b003e24eaaae7be0",
+        "taskHash": "8752f9922ba85a44",
+        "filesHash": "504e8dcc949f7295",
         "proof": {
-          "1": "backend-affected: Provider-limit regressions reproduced before fixes; pre-F329 and F331 measurements retained in docs/runs/f336-validation.md.",
-          "2": "backend-affected: Incremental checkpoints, bounded historical retries, persistent provider limits and independent evidence regressions.",
-          "3": "web-e2e: Checkout and shared statuses; separate 16-test live browser run compares six states across Payments, invoices, links, Activity and notifications at desktop and phone widths.",
-          "4": "backend-e2e: Real create-pay-paid-settled flow compares API readers; partial and failure tests and measured local load. Production capacity and the pruned original payment remain unverified."
+          "1": "unit: Database metadata, private secret references, validation and binary wiring pass backend tests.",
+          "2": "unit: Real Anvil fault proxies cover priority, failover, recovery, errors, chain identity, stale nodes, transaction retries, hash consistency and secret protection.",
+          "3": "e2e: Real API, worker and signer preserve invoice, checkout, payment-link, confirmation and settlement flows.",
+          "4": "docs-check: Research and tracked operating design document migration, limits and future work; independent review covers ownership and imports."
         },
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "Independent review passes for the implementation and local evidence. Incremental receiver checkpoints, bounded retries, provider-limit handling and historical-job separation retain dual-source proof and settlement checks. Observed receipts remain distinct from booked money; summary reads retain relevant options; canonical confirming states and notifications agree across owner reads. New queries use indexed payment identities and source ownership remains focused. All ten final verification checks passed. Final 200-payment load completed in 3.229s with 2150 logical RPC calls. Hundreds of paid orders per second remains unmet; public/archive-provider operation remains blocked or unverified, and the original pruned payment record cannot be reproduced. This review does not authorize commit or delivery.",
-          "at": "2026-10-27T13:45:07Z",
-          "filesHash": "b003e24eaaae7be0"
-        },
-        "commit": "48515bc0",
-        "doneAt": "2026-10-27T13:49:41Z"
+          "summary": "Independent review passed. Reviewed configuration and secret boundaries, provider role separation, safe errors, recovery ownership, canonical RPC block hashes, migration behavior, and public API contracts. Confirmed fixes for canary HTTPS validation, hostname aliases, concurrent health probes, and whole-batch provider errors with targeted race tests. Reviewed final Playwright environment cleanup and wrong-chain quarantine documentation. No blocking findings.",
+          "at": "2026-10-27T14:30:43Z",
+          "filesHash": "504e8dcc949f7295"
+        }
       },
-      "branch": "fix/f336-restore-payment-progress-and-simplify-me",
-      "baseCommit": "ef494bab9c122ad1f4e0725171bf320da079f917",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f336-restore-payment-progress-and-simplify-me",
-        "base": "main"
-      }
+      "branch": "refactor/f337-centralize-backend-rpc-configuration-and",
+      "baseCommit": "74e0e2efc3d8321e6c39c171506e773afed0a98b",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-27T13:46:01Z",
+    "at": "2026-10-27T14:31:12Z",
     "clean": true,
     "problems": [],
-    "note": "F336 local verification passed: 10 checks, independent backend/UI review, real create-pay-paid-settled flow, 16 browser checks and final 200-payment load. Final load: 3.229s, 61.9 paid/s, 914 HTTP, 2150 RPC, 48 log queries. Hundreds paid/s remains unmet; original record was pruned and public/archive providers remain blocked or unverified. Development services restored and ready; task test processes and temporary measurement files cleaned, report and screenshots retained. No commit, push or deployment."
+    "note": "F337 locally verified: seven final checks passed (harness, docs-check, lint, typecheck, unit including backend race tests, build, e2e); independent review passed. Four real-binary money workflows passed with RPC fault injection. Research and operating guide retained. No temporary Anvil or test application processes remain; tests used disposable databases and task-specific temporary directories. Shared caches and existing secrets/services preserved. No commit, push, deployment or persistent RPC configuration migration. Private endpoint metadata and RPC_ENDPOINT_SECRETS must be configured before deployment; snapshot updates require restart."
   }
 }

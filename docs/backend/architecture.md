@@ -24,7 +24,7 @@ Read only the sections your task touches:
 ## Processes
 - `api`: public HTTP API + dashboard API. Verifies Privy tokens, authorizes the active profile,
   creates invoices, serves state. Reads profile wallet balances from each chain's second RPC at its finalized block
-  (D-15, D-45), picked from the chain list like the worker's, through a short cache ([scaling](#scaling)). Holds **no**
+  (D-15, D-45), configured through the same registry as the worker's, through a short cache ([scaling](#scaling)). Holds **no**
   private keys: each process gets only its own secrets (`scripts/with-env.sh` drops the executor key for the api and
   worker). In production it listens on a private address behind the edge, never a public port, and every database
   URL uses `sslmode=verify-full`.
@@ -59,10 +59,10 @@ D-71); a chain whose RPCs don't answer is logged and skipped:
 - With `ENABLE_TESTNET_USDC=1`, the API then enables the three USDC testnet pairs before chain checks.
   - Dokploy defaults to 1. Local development leaves it off; `0` leaves existing network settings unchanged.
   - Repeated startup enables those pairs again. Other pairs keep their settings; see [staging](../staging.md#dokploy-staging).
-- Every chain enabled in the `chains` table is in the chain list and answers through a primary and a second RPC on
+- Every chain enabled in the `chains` table has validated endpoint metadata and answers through primary and confirmation RPCs on
   different hosts (D-15), within 30 s per chain.
-  - A mistake stops the process: the chain is missing from the list or lists one host, or every host of a role
-    serves another chain. Fix the list, disable the chain in the database, or give it a second host.
+  - A mistake stops the process: endpoint metadata is missing or lacks an independent provider group, or every host of a role
+    serves another chain. Fix the endpoint metadata, disable the chain in the database, or give it a second host.
   - A chain whose hosts don't answer, or refuse us (HTTP 401, 403 or 404), is an outage, not a mistake (D-71). The
     process logs `chain unavailable at startup` with the chain and how many of its hosts answered, and starts.
   - Its factory and gas checks (below) don't run then. Restart the process once the chain answers, so they do.
@@ -180,8 +180,8 @@ with a test.
   false unless whatever adds a chain says live: the testnets are test mode (D-87, R-143). One confirm rule for all
   chains (D-45), so no per-chain rule columns. From `00015` on, migrations add each planned network and its token
   switched off (Arbitrum Sepolia USDC in `00015`, Arc testnet USDC in `00016`, Tempo Moderato OUSD in `00017`), so
-  isolated tests need no public RPCs or testnet gas. Schema migrations omit Base Sepolia; activation below adds it.
-  An operator can enable another pair after the executor has gas and the chain list has two working hosts:
+  isolated tests need no public RPCs or testnet gas. Migration 82 adds Base Sepolia disabled, with public RPC metadata. Activation below adds its token.
+  An operator can enable another pair after the executor has gas and the endpoint registry has two independent working providers:
   `UPDATE chains SET enabled = true WHERE chain_id = 421614; UPDATE tokens SET enabled = true WHERE chain_id = 421614;`
   Then restart the api, worker and signer so their startup checks cover it. A chain they log as unavailable at
   startup is not checked yet: restart them again once it answers.
@@ -301,33 +301,26 @@ never holds the app's load.
 
 ## Running the loop
 
-`worker` and `signer` read the shared chain list (`CHAINS_FILE`, `packages/contracts/chains.json`),
-`INFURA_API_KEYS` and `RPC_RATE_PER_SECOND`, and serve the chains enabled in the `chains` table. `internal/chain` gives
-each chain one pool of endpoints in `script/rpc.mjs` order: every Infura key (all on one host), then the public RPCs;
-public RPCs only when `INFURA_API_KEYS` is empty. An endpoint is used only after its `eth_chainId` matches. Hosts
-alternate between the two roles in list order (first host primary, second host second, third primary, ...), and a role
-uses only its own hosts: the primary (reading the chain, signing) and the second (balances, D-15) never share a host,
-even after an outage, so one provider can't supply both a deposit and the balance that confirms it. When all
-of a role's hosts rest, that role waits; paid and settled wait with it. So the list order decides the roles, and each
-role needs a host that answers. Arc lists dRPC, its own RPC, QuickNode, then Blockdaemon: with Infura keys, dRPC and
-QuickNode serve the second role. Blockdaemon answers Go's client in Brotli, which it can't read. From regions that
-Cloudflare blocks (error 1009), Arc's own RPC and QuickNode refuse too. There Arc needs Infura keys: without them its
-second role has no host that answers. A list with fewer than two hosts is refused; every chain lists at least two
-public hosts from different operators (`TestEveryChainListsTwoPublicHosts`). Every call, or batch, goes to its role's endpoint. No answer within 5 s, a connection error, an HTTP error
-status or a rate-limit JSON-RPC error (429, -32005, -32007, or a message saying so) rests that endpoint (1 s doubled
-per failure in a row, up to 5 min, half of it random) and sends the call to the next endpoint at once; when every
-endpoint of the role rests, the call waits for the first one back if that comes before its deadline, else fails. Any
-other answer, a revert or invalid params included, is the call's. HTTP 401, 403 or 404, or an answer that is not
-JSON-RPC, rests the endpoint 5 min at once (half of it random). A refused key, a blocked region or an unreadable
-answer doesn't heal in seconds, and each try of such a host would delay a call. No answer in time or a connection
-error rests every endpoint of that host: its other keys would each hang a call the same way. Each endpoint keeps its local pacing, with every batch item counted.
+- API, worker and signer load enabled chains and endpoint metadata from Postgres at startup.
+- [RPC operations](rpc.md) defines configuration, secret references, routing, recovery, migration and the deferred architecture.
+- `internal/chain` owns configuration validation and go-ethereum client construction.
+- Payment services receive resolved chain specifications; they never read secrets or construct provider URLs.
+- Each chain has explicit primary and confirmation provider groups; providers and hosts cannot cross those groups.
+- Within each group, private endpoints precede public endpoints, ordered by priority and then endpoint ID.
+- Reordering endpoints changes selection priority without changing their payment safety role.
+- Each request tries each eligible endpoint once, bounded by its caller deadline and a 30-second transport deadline.
+- HTTP exchanges have a five-second timeout; exhausted groups return a controlled unavailable error.
+- Failed endpoints cool down with exponential jitter; one recovery probe validates them before reuse.
+- Health checks validate chain identity, latest-head freshness and finalized-header support.
+- Error responses retain codes and safe categories; provider text, URLs and error data cannot enter logs or public errors.
+- Node-managed signing and unknown RPC methods are refused; signed transaction retries retain identical bytes.
+- Every batch stays together on one endpoint per attempt; independent evidence still comes from the other provider group.
 - API, worker and signer also share a weighted budget in PostgreSQL (`rpc_budgets`, R-133).
 - Its rate is `RPC_RATE_PER_SECOND × 80` units per second.
 - Ordinary calls cost 80 units; `eth_chainId` costs 5, logs 255, gas estimates 300, and block receipts 1,000.
-- These weights follow [Infura's credit costs](https://docs.infura.io/get-started/pricing/credit-cost/).
-- Public endpoints use the same conservative weights; these are pacing units, not their billing prices.
-- Each Infura key shares one bucket across chain hosts; other URLs have separate buckets.
-- Only SHA-256 bucket identifiers are stored. URLs and credentials never enter the table or logs.
+- These conservative weights are pacing units, not provider billing prices.
+- Endpoints with the same configured `budget_group` share one bucket across chains and processes.
+- Only hashed budget-group identifiers enter the budget table; URLs and credentials never enter its rows or logs.
 - Every attempt and chain-ID probe takes budget; waiting releases the database connection.
 - Budget exhaustion or a database failure stops the request without marking the provider unhealthy.
 - The budget uses a separate two-connection pool because ledger reads can hold invoice transactions.
@@ -542,8 +535,7 @@ Refused intents (`status = 'refused'`) also carry their reason; waiting ones are
   - Migration 54 refuses to roll back once an invoice reopened: the old ledger has no row for that money.
 - The second RPC reads `balanceOf` at its own finalized block and reports that block, so a primary RPC that calls a
   deposit final too early can't get an invoice paid (D-15, D-45). An answer from behind the watcher's finalized block
-  may miss final deposits, so it decides nothing (neither paid nor expired) until the node catches up. Every RPC in
-  the chain list serves `eth_call` at the finalized block (checked 2026-10-09).
+  may miss final deposits, so it decides nothing (neither paid nor expired) until the node catches up. Finalized state reads identify the block by its RPC-supplied hash. Providers must support canonical block-hash `eth_call`.
 - `paid`, `expired`, `expired_partially_paid` and `canceled` are final (`ledger.Final`), but for the one reopen above.
   Only the owner cancels, from `open` before any transfer (`invoice.Cancel`, R-79); every later deposit is held. A
   trigger rejects any other status change, any change to invoice terms, and an invoice created with any status but

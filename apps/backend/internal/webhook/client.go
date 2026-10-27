@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
+	"github.com/forwend/forwend/apps/backend/internal/outbound"
 	"net"
 	"net/http"
 	"net/netip"
@@ -27,7 +28,7 @@ func Client() *http.Client {
 		if err != nil {
 			return err
 		}
-		if addr, err := netip.ParseAddr(host); err != nil || !PublicAddr(addr) {
+		if addr, err := netip.ParseAddr(host); err != nil || !outbound.PublicAddr(addr) {
 			return errNotPublic
 		}
 		return nil

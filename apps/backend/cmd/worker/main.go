@@ -35,10 +35,6 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	specs, err := chain.Specs(cfg.Chains.File)
-	if err != nil {
-		return err
-	}
 	pool, err := database.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return err
@@ -55,17 +51,21 @@ func run() error {
 	if err := database.CheckSchema(ctx, pool); err != nil {
 		return err
 	}
+	specs, err := chain.Specs(ctx, pool, cfg.Chains.RPCSecrets, cfg.Chains.AllowLoopback)
+	if err != nil {
+		return err
+	}
 	budget, err := chain.NewBudget(ctx, pool, cfg.Chains.RPCRate)
 	if err != nil {
 		return err
 	}
 	defer budget.Close()
 
-	if err := chain.CheckEnabled(ctx, pool, specs, cfg.Chains.InfuraKeys, cfg.Chains.RPCRate, nil, budget); err != nil {
+	if err := chain.CheckEnabled(ctx, pool, specs, cfg.Chains.RPCRate, nil, budget); err != nil {
 		return err
 	}
 
-	w := worker.New(pool, specs, cfg.Chains.InfuraKeys, cfg.Chains.RPCRate, budget)
+	w := worker.New(pool, specs, cfg.Chains.RPCRate, budget)
 	defer w.Close()
 	// Owner email (R-80): without a key nothing is sent, and the events wait in the outbox.
 	var sender email.Sender

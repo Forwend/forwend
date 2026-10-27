@@ -67,7 +67,7 @@ func invoiceAPIWith(t *testing.T, userBurst int, webhookKey []byte) invoiceEnv {
 	signedInAt = time.Now()
 	e.wallets.PasskeySignIn = signedInAt.Unix()
 	err = pool.QueryRow(ctx, `
-		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true)
+		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true) ON CONFLICT (chain_id) DO UPDATE SET enabled = true
 		            RETURNING chain_id),
 		     cur AS (INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block) SELECT chain_id, 0, 0 FROM c),
 		     t1 AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)

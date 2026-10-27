@@ -1,7 +1,6 @@
 package config_test
 
 import (
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -17,8 +16,8 @@ func TestAPI(t *testing.T) {
 	t.Setenv("PRIVY_APP_ID", "app")
 	t.Setenv("PRIVY_JWKS_URL", "https://jwks")
 	t.Setenv("PRIVY_APP_SECRET", "secret")
-	t.Setenv("CHAINS_FILE", "chains.json")
-	t.Setenv("INFURA_API_KEYS", "a, b,")
+	t.Setenv("RPC_ALLOW_LOOPBACK", "0")
+	t.Setenv("RPC_ENDPOINT_SECRETS", `{"FIRST":"https://a.example/private","SECOND":"https://b.example/private"}`)
 	t.Setenv("RPC_RATE_PER_SECOND", "2.5")
 	t.Setenv("PUBLIC_WEB_URL", "https://forwend.app/")
 	t.Setenv("API_USER_BURST", "")
@@ -28,7 +27,7 @@ func TestAPI(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got.DatabaseURL != "postgres://x" || got.Addr != ":9" || got.PrivyAppID != "app" || got.PrivyJWKSURL != "https://jwks" ||
-		got.PrivyAppSecret != "secret" || got.ChainsFile != "chains.json" || !slices.Equal(got.InfuraKeys, []string{"a", "b"}) ||
+		got.PrivyAppSecret != "secret" || got.RPCAllowLoopback || got.RPCSecrets["SECOND"] != "https://b.example/private" ||
 		got.RPCRate != 2.5 || got.PublicWebURL != "https://forwend.app" || got.UserBurst != 0 || got.EnableTestnetUSDC {
 		t.Fatalf("got %+v", got)
 	}
@@ -76,14 +75,14 @@ func TestAPINamesEveryMissingVariable(t *testing.T) {
 	t.Setenv("PRIVY_APP_ID", "")
 	t.Setenv("PRIVY_JWKS_URL", "")
 	t.Setenv("PRIVY_APP_SECRET", "")
-	t.Setenv("CHAINS_FILE", "")
-	t.Setenv("INFURA_API_KEYS", "")
+	t.Setenv("RPC_ALLOW_LOOPBACK", "")
+	t.Setenv("RPC_ENDPOINT_SECRETS", "")
 	t.Setenv("RPC_RATE_PER_SECOND", "")
 	t.Setenv("PUBLIC_WEB_URL", "")
 	_, err := config.LoadAPI()
 	if err == nil || !strings.Contains(err.Error(),
-		"DATABASE_URL, API_ADDR, PRIVY_APP_ID, PRIVY_JWKS_URL, PRIVY_APP_SECRET, CHAINS_FILE, RPC_RATE_PER_SECOND, PUBLIC_WEB_URL") ||
-		strings.Contains(err.Error(), "INFURA_API_KEYS") {
+		"DATABASE_URL, API_ADDR, PRIVY_APP_ID, PRIVY_JWKS_URL, PRIVY_APP_SECRET, RPC_RATE_PER_SECOND, PUBLIC_WEB_URL") ||
+		strings.Contains(err.Error(), "RPC_ENDPOINT_SECRETS") {
 		t.Fatalf("got %v", err)
 	}
 }
@@ -91,19 +90,19 @@ func TestAPINamesEveryMissingVariable(t *testing.T) {
 func TestWorkerAndSigner(t *testing.T) {
 	t.Setenv("RESEND_API_KEY", "") // never a real key in a failure message
 	t.Setenv("DATABASE_URL", "postgres://x")
-	t.Setenv("CHAINS_FILE", "chains.json")
-	t.Setenv("INFURA_API_KEYS", "a, b,")
+	t.Setenv("RPC_ALLOW_LOOPBACK", "0")
+	t.Setenv("RPC_ENDPOINT_SECRETS", `{"FIRST":"https://a.example/private","SECOND":"https://b.example/private"}`)
 	t.Setenv("RPC_RATE_PER_SECOND", "10")
 	t.Setenv("POLL_INTERVAL", "3s")
 	t.Setenv("EXECUTOR_PRIVATE_KEY", chaintest.Key)
 	w, err := config.LoadWorker()
-	if err != nil || w.Chains.File != "chains.json" || len(w.Chains.InfuraKeys) != 2 || w.Chains.InfuraKeys[1] != "b" ||
+	if err != nil || w.Chains.AllowLoopback || len(w.Chains.RPCSecrets) != 2 || w.Chains.RPCSecrets["SECOND"] != "https://b.example/private" ||
 		w.Chains.RPCRate != 10 || w.Chains.PollInterval != 3*time.Second {
 		t.Fatalf("worker: %+v, %v", w, err)
 	}
 	s, err := config.LoadSigner()
 	if err != nil || !strings.EqualFold(crypto.PubkeyToAddress(s.ExecutorKey.PublicKey).Hex(), chaintest.Sender) ||
-		s.Chains.File != "chains.json" || s.Chains.RPCRate != 10 {
+		s.Chains.RPCRate != 10 {
 		t.Fatalf("signer: %+v, %v", s.Chains, err)
 	}
 	t.Setenv("EXECUTOR_PRIVATE_KEY", "0xnot-a-key")
@@ -112,9 +111,9 @@ func TestWorkerAndSigner(t *testing.T) {
 		t.Fatalf("bad key: got %v", err)
 	}
 
-	t.Setenv("INFURA_API_KEYS", "")
-	if w, err := config.LoadWorker(); err != nil || len(w.Chains.InfuraKeys) != 0 {
-		t.Fatalf("worker without Infura keys: %+v, %v", w, err)
+	t.Setenv("RPC_ENDPOINT_SECRETS", "")
+	if w, err := config.LoadWorker(); err != nil || len(w.Chains.RPCSecrets) != 0 {
+		t.Fatalf("worker without private endpoints: %+v, %v", w, err)
 	}
 
 	t.Setenv("POLL_INTERVAL", "soon")
@@ -147,7 +146,10 @@ func TestCanary(t *testing.T) {
 	}
 	// One RPC host twice is not a second opinion; a bad value is named, never shown.
 	for _, bad := range []string{`{"84532": ["https://a.example/v3/secret", "https://a.example/v3/other"]}`,
-		`{"84532": ["https://a.example/v3/secret"]}`, `{"84532": ["https://a.example/v3/secret", "b.example"]}`, `{}`, "a,b"} {
+		`{"84532": ["https://a.example/v3/secret"]}`,
+		`{"84532": ["http://a.example/secret", "https://b.example"]}`,
+		`{"84532": ["https://a.example/secret", "https://a.example.:443"]}`,
+		`{"84532": ["https://user:secret@a.example", "https://b.example"]}`, `{"84532": ["https://a.example/v3/secret", "b.example"]}`, `{}`, "a,b"} {
 		t.Setenv("CANARY_RPC_URLS", bad)
 		if _, err := config.LoadCanary(); err == nil || !strings.Contains(err.Error(), "invalid environment variables CANARY_RPC_URLS") ||
 			strings.Contains(err.Error(), "secret") {
@@ -159,5 +161,19 @@ func TestCanary(t *testing.T) {
 	if _, err := config.LoadCanary(); err == nil || !strings.Contains(err.Error(), "CANARY_FACTORY_CODE_HASH") ||
 		!strings.Contains(err.Error(), "invalid environment variables CANARY_FACTORY (") {
 		t.Fatalf("bad factory, missing hash: got %v", err)
+	}
+}
+
+func TestRPCSecretsRejectMalformedInputWithoutEchoingIt(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://test")
+	t.Setenv("RPC_RATE_PER_SECOND", "10")
+	t.Setenv("POLL_INTERVAL", "1s")
+	t.Setenv("RESEND_API_KEY", "")
+	for _, value := range []string{`{"KEY":"SECRET"`, `{"bad-name":"SECRET"}`, `{"KEY":null}`, `null`, `["SECRET"]`} {
+		t.Setenv("RPC_ENDPOINT_SECRETS", value)
+		_, err := config.LoadWorker()
+		if err == nil || !strings.Contains(err.Error(), "RPC_ENDPOINT_SECRETS") || strings.Contains(err.Error(), "SECRET\"") {
+			t.Fatalf("unsafe secret validation error: %v", err)
+		}
 	}
 }

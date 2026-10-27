@@ -36,7 +36,6 @@ export default defineConfig({
       env: {
         ...backend,
         API_ADDR: `${apiURL.hostname}:${apiURL.port}`,
-        CHAINS_FILE: "../../packages/contracts/chains.json",
         // Every test signs in as the one test account, so the suite would use up a person's limit (D-85).
         API_USER_BURST: "1000",
       },

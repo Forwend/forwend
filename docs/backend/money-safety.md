@@ -89,7 +89,7 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 
 `cmd/canary` (R-51) checks open invoices' receive addresses apart from the code that makes them. It imports no
 address code or constants from the api or `apps/web`: of this repository it builds only `internal/canary` and
-`internal/config` (a test fails otherwise), and its browser script `apps/web/scripts/canary-pay-page.ts` reads the
+`internal/config` and the destination-only `internal/outbound` package (a test fails otherwise), and its browser script `apps/web/scripts/canary-pay-page.ts` reads the
 DOM and imports nothing from `src/`. It reads only its own `CANARY_*` variables (names in
 `apps/backend/.env.example`): the api and web origins, the factory address, the factory's code hash, two RPCs on
 different hosts per chain ID and the script path.
