@@ -25,7 +25,7 @@ func TestWrongChainRPCIsNeverUsed(t *testing.T) {
 	a := chaintest.Start(t)
 	r := newRPCs(t, wrong.URL, a.URL, localhost(a.URL))
 	want := number(t, context.Background(), a.RPC)
-	for _, c := range []*rpc.Client{r.Primary, r.Second, r.Primary} {
+	for _, c := range []*rpc.Client{r.Client, r.Client, r.Client} {
 		if got := number(t, context.Background(), c); got != want {
 			t.Fatalf("block %d, want %d", got, want)
 		}

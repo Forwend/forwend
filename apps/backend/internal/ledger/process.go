@@ -439,7 +439,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	}
 	if depositsBooked > 0 {
 		// A payment-link invoice takes the profile's next number with its first booked deposit (D-50, R-141). Last,
-		// so the profile row isn't locked while the second RPC is read.
+		// so the profile row isn't locked while the selected RPC is read.
 		tag, err := tx.Exec(ctx, `WITH n AS (UPDATE profiles p SET invoice_seq = invoice_seq + 1 FROM invoices m
 			    WHERE m.id = $1 AND m.number IS NULL AND m.document_kind <> 'none' AND p.id = m.profile_id RETURNING p.invoice_seq)
 			UPDATE invoices i SET number = n.invoice_seq FROM n WHERE coalesce(i.main_id, i.id) = $1`, group)
@@ -455,7 +455,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	return tx.Commit(ctx)
 }
 
-// funded asks the second RPC whether the receive address holds at least every booked deposit (D-15).
+// funded asks the selected RPC whether the receive address holds at least every booked deposit (D-15).
 func (s *Service) funded(ctx context.Context, tx pgx.Tx, invoiceID string, chainID, finalized uint64, token, receive string) (bool, error) {
 	booked, onChain, err := s.compare(ctx, tx, invoiceID, chainID, finalized, token, receive)
 	if err != nil || onChain == nil {
@@ -469,7 +469,7 @@ func (s *Service) funded(ctx context.Context, tx pgx.Tx, invoiceID string, chain
 	return true, nil
 }
 
-// balanced asks the second RPC whether the receive address holds exactly what is booked.
+// balanced asks the selected RPC whether the receive address holds exactly what is booked.
 func (s *Service) balanced(ctx context.Context, tx pgx.Tx, invoiceID string, chainID, finalized uint64, token, receive string) (bool, error) {
 	var waiting bool
 	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM invoice_balance_alerts WHERE invoice_id = $1
@@ -508,7 +508,7 @@ func alertAgainLater(ctx context.Context, tx pgx.Tx, invoiceID string) error {
 	return nil
 }
 
-// onChain is nil when the second RPC is behind the watcher's finalized block: nothing is decided until it catches up.
+// onChain is nil when the RPC snapshot is behind the watcher's finalized block: nothing is decided until it catches up.
 // ponytail: the RPC call runs inside the transaction holding the invoice lock, bounded by BalanceTimeout.
 func (s *Service) compare(ctx context.Context, tx pgx.Tx, invoiceID string, chainID, finalized uint64, token, receive string) (booked, onChain *big.Int, err error) {
 	if booked, err = accountBalance(ctx, tx, invoiceID, "receiver"); err != nil {
@@ -521,7 +521,7 @@ func (s *Service) compare(ctx context.Context, tx pgx.Tx, invoiceID string, chai
 		return nil, nil, fmt.Errorf("check invoice %s balance: %w", invoiceID, err)
 	}
 	if block < finalized {
-		slog.Warn("second RPC is behind the finalized block; deciding later", "invoice", invoiceID,
+		slog.Warn("RPC snapshot is behind the finalized block; deciding later", "invoice", invoiceID,
 			"rpcBlock", block, "finalized", finalized)
 		return booked, nil, nil
 	}

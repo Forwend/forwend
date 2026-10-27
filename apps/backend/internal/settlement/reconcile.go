@@ -145,7 +145,7 @@ func (s *Signer) fillGap(ctx context.Context, client *ethclient.Client, chainID 
 		int64(chainID), strings.ToLower(s.sender.Hex()), int64(nonce)).Scan(&saved); err != nil || saved {
 		return err
 	}
-	tip, feeCap, err := s.fees(ctx, client, chainID)
+	tip, feeCap, err := fees(ctx, client, chainID)
 	if err != nil {
 		return err
 	}
@@ -177,7 +177,7 @@ func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, i
 		if block.Number.Cmp(r.BlockNumber) != 0 {
 			return fmt.Errorf("settlement receipt block number disagrees with header")
 		}
-		// This observation is display-only; finality and independent booking still decide settlement.
+		// This observation is display-only; finality and evidence-backed booking still decide settlement.
 		if _, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET receipt_tx_hash = $2,
  receipt_block = $3, receipt_time = $4 WHERE id = $1`, in.id, r.TxHash.Hex(), r.BlockNumber.Uint64(), block.Time); err != nil {
 			return err
@@ -197,12 +197,12 @@ func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, i
 }
 
 func (s *Signer) confirm(ctx context.Context, in intent) error {
-	primary, second := s.clients[in.chainID], s.seconds[in.chainID]
-	if primary == nil || second == nil {
-		return fmt.Errorf("chain %d needs both RPC roles for receiver evidence", in.chainID)
+	primary := s.clients[in.chainID]
+	if primary == nil {
+		return fmt.Errorf("chain %d has no RPC for receiver evidence", in.chainID)
 	}
 	watch := watcher.NewChain(s.pool, in.chainID, primary.Client())
-	complete, err := watch.Receiver(ctx, second.Client(), in.invoiceID)
+	complete, err := watch.Receiver(ctx, in.invoiceID)
 	if err != nil || !complete {
 		return err
 	}
@@ -214,7 +214,7 @@ func (s *Signer) confirm(ctx context.Context, in intent) error {
 		return nil
 	}
 	if ready {
-		clients := map[uint64]*ethclient.Client{in.chainID: second}
+		clients := map[uint64]*ethclient.Client{in.chainID: primary}
 		book := ledger.NewService(s.pool, ledger.BalanceFrom(clients), ledger.DeployedFrom(clients))
 		if err := book.Process(ctx, in.invoiceID); err != nil {
 			return err

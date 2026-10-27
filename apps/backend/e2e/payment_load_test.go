@@ -21,7 +21,7 @@ import (
 )
 
 func TestPaymentLoad(t *testing.T) {
-	st := newStack(t, "API_USER_BURST=10000")
+	st := newStack(t, false, "API_USER_BURST=10000")
 	st.limited.Fail(nil)
 	second := st.anvil.Proxy()
 	configureRPCs(t, st.db, st.limited.URL, strings.Replace(second.URL, "127.0.0.1", "localhost", 1))

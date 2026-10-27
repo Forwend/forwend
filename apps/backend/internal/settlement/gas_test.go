@@ -2,12 +2,11 @@ package settlement
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"strings"
 	"testing"
-
-	"encoding/json"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -137,44 +136,5 @@ func TestCheckGasInFeeToken(t *testing.T) {
 				t.Fatalf("funded, with no native coin: %v", err)
 			}
 		})
-	}
-}
-
-func TestOneRPCCannotRaiseTheTip(t *testing.T) {
-	e := setup(t)
-	ctx := context.Background()
-	id, _ := e.paidInvoice(t)
-	_, honestCap, err := fees(ctx, e.client, chaintest.ChainID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	proxy := e.anvil.Proxy()
-	proxy.Stale(func(c chaintest.Call) json.RawMessage {
-		if c.Method == "eth_maxPriorityFeePerGas" {
-			return json.RawMessage(`"0xe8d4a51000"`) // 1,000 gwei
-		}
-		return nil
-	})
-	sender := common.HexToAddress(chaintest.Sender)
-	before, err := e.client.BalanceAt(ctx, sender, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := e.signerVia(t, proxy.URL).Run(ctx); err != nil {
-		t.Fatal(err)
-	}
-	if status, _, reason := e.intent(t, id); status != "sent" {
-		t.Fatalf("intent %s (%s), want sent", status, reason)
-	}
-	after, err := e.client.BalanceAt(ctx, sender, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	spent := new(big.Int).Sub(before, after)
-	bound := new(big.Int).Mul(honestCap, big.NewInt(MinGas*MaxFeeFactor))
-	t.Logf("executor spent %s wei on one deploy and settle; honest fee cap %s wei, bound %s wei", spent, honestCap, bound)
-	if spent.Cmp(bound) > 0 {
-		t.Fatalf("executor spent %s wei, %s times the bound %s wei: the tip one RPC reported was signed",
-			spent, new(big.Int).Div(spent, bound), bound)
 	}
 }

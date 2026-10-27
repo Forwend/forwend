@@ -30,7 +30,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// balances reads each chain's second RPC (D-15); webURL is the pay links' origin; userBurst 0 keeps mid.UserBurst;
+// balances reads each chain's RPC pool (D-15); webURL is the pay links' origin; userBurst 0 keeps mid.UserBurst;
 // webhookKey seals webhook secrets, and nil leaves webhooks off (R-146).
 func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, balances ledger.BalanceOf,
 	webURL string, userBurst int, webhookKey []byte) http.Handler {

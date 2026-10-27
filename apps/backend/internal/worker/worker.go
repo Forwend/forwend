@@ -29,7 +29,7 @@ type Worker struct {
 	rpcs            map[uint64]chain.RPCs
 	watchers        map[uint64]*watcher.Chain
 	historyWatchers map[uint64]*watcher.Chain
-	balances        map[uint64]*ethclient.Client // the second RPC per chain, read by the ledger (D-15)
+	balances        map[uint64]*ethclient.Client // the RPC pool per chain, read by the ledger (D-15)
 	jobs            chain.Jobs
 	historical      chain.Jobs
 	budgets         []*chain.Budget
@@ -88,12 +88,11 @@ func (w *Worker) Tick(ctx context.Context) {
 				slog.Error("pick RPCs", "chain", id, "err", chain.Redact(err))
 				continue
 			}
-			watch = watcher.NewChain(w.pool, id, r.Primary)
-			w.rpcs[id], w.watchers[id], w.balances[id] = r, watch, ethclient.NewClient(r.Second)
-			w.historyWatchers[id] = watcher.NewChain(w.pool, id, r.Primary)
+			watch = watcher.NewChain(w.pool, id, r.Client)
+			w.rpcs[id], w.watchers[id], w.balances[id] = r, watch, ethclient.NewClient(r.Client)
+			w.historyWatchers[id] = watcher.NewChain(w.pool, id, r.Client)
 		}
 		client := w.balances[id]
-		second := w.rpcs[id].Second
 		historyWatch := w.historyWatchers[id]
 		w.jobs.Start(ctx, id, func(ctx context.Context) {
 			book := ledger.NewService(w.pool, ledger.BalanceSnapshot(client),
@@ -103,7 +102,7 @@ func (w *Worker) Tick(ctx context.Context) {
 			err := watch.ScanNew(chainCtx)
 			if err == nil {
 				receiverCtx, cancelReceivers := context.WithTimeout(chainCtx, 30*time.Second)
-				if receiverErr := watch.Receivers(receiverCtx, second); receiverErr != nil {
+				if receiverErr := watch.Receivers(receiverCtx); receiverErr != nil {
 					slog.Error("worker receiver evidence", "chain", id, "err", chain.Redact(receiverErr))
 				}
 				cancelReceivers()
@@ -127,7 +126,7 @@ func (w *Worker) Tick(ctx context.Context) {
 			cancelRecovery()
 			historyCtx, cancelHistory := context.WithTimeout(ctx, 10*time.Second)
 			defer cancelHistory()
-			if receiverErr := historyWatch.HistoricalReceivers(historyCtx, second); receiverErr != nil {
+			if receiverErr := historyWatch.HistoricalReceivers(historyCtx); receiverErr != nil {
 				slog.Error("worker historical evidence", "chain", id, "err", chain.Redact(receiverErr))
 			}
 		})

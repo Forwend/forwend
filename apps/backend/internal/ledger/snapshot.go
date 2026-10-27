@@ -9,7 +9,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 )
 
-// BalanceSnapshot shares the second provider's finalized header within one sequential ledger round.
+// BalanceSnapshot shares the selected provider's finalized header within one sequential ledger round.
 // A new round gets a new snapshot; failed header reads are never kept.
 func BalanceSnapshot(client *ethclient.Client) BalanceOf {
 	var block *chain.Block

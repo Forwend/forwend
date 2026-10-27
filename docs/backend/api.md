@@ -653,7 +653,7 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - Unpaid rows: invoices under the `open` status filter that are overdue or partly paid.
   - Overdue means the due date is before today's UTC date; `daysLate` counts whole UTC days.
   - `amount` is what is left: the amount less the `recipient_payable` credits. No settlement runs before it is all in.
-  - A row with nothing left is left out: all of it is booked and waits for the second RPC.
+  - A row with nothing left is left out: all of it is booked and waits for the finalized balance check.
   - Held rows: each option with a `payer_held` balance, with that amount. It is the payer's money (D-26).
   - Order: overdue (most days late first), partly paid, held. It has no pages: unpaid rows are at most `MaxOpen`.
 - `settlementWait` (owner reads and create only) says why a paid invoice's money has not reached the profile wallet
@@ -830,7 +830,7 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   One point per UTC day, today included, oldest first: `points[i]` is `{ at, estimatedUsd, receivedUsd, sentUsd }`,
   and `tokens[j]` is `{ chainId, token, symbol, decimals, balances, received, sent }`, where each array holds one
   base-unit string per point. `at` is the end of the day (00:00 UTC of the next day); the last point is now, and its
-  balance is the wallet balance `/balances` reads at the second RPC's finalized block. An earlier balance undoes the
+  balance is the wallet balance `/balances` reads at the selected RPC's finalized block. An earlier balance undoes the
   final transfers after it (not reorged, at or below that block); `received` and `sent` sum them per day, today's
   without an end. The database sums them per token and day, so dust doesn't make the read grow (R-118). A missing wallet balance makes that token's arrays and every USD total null. Money moved without a
   token `Transfer` log (Arc native-coin sends, fees paid in the token) is not undone; a balance below 0 shows 0.

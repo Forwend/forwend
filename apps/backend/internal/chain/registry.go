@@ -3,7 +3,6 @@ package chain
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"regexp"
 	"slices"
 	"strings"
@@ -103,8 +102,6 @@ func validate(spec Spec) error {
 		return fmt.Errorf("RPC chain ID must be positive")
 	}
 	ids, urls := map[string]bool{}, map[string]bool{}
-	providers, hosts := map[string]Role{}, map[string]Role{}
-	roles := map[Role]bool{}
 	for _, e := range spec.Endpoints {
 		if !identifier.MatchString(e.ID) || !identifier.MatchString(e.Provider) || !identifier.MatchString(e.BudgetGroup) {
 			return fmt.Errorf("chain %d: invalid RPC metadata identifier", spec.ChainID)
@@ -120,22 +117,9 @@ func validate(spec Spec) error {
 		if !outbound.ValidURL(e.URL, spec.AllowLoopback) {
 			return invalid("invalid or disallowed RPC URL")
 		}
-		u, _ := url.Parse(e.URL)
-		// Local tests intentionally run separate fault proxies on one machine.
-		host := strings.TrimSuffix(strings.ToLower(u.Hostname()), ".")
-		if spec.AllowLoopback {
-			host = strings.ToLower(u.Host)
-		}
-		if prior, ok := providers[e.Provider]; ok && prior != e.Role {
-			return invalid("provider spans confirmation roles")
-		}
-		if prior, ok := hosts[host]; ok && prior != e.Role {
-			return invalid("host spans confirmation roles")
-		}
-		providers[e.Provider], hosts[host], roles[e.Role] = e.Role, e.Role, true
 	}
-	if !roles[Primary] || !roles[Confirmation] {
-		return fmt.Errorf("chain %d: primary and independent confirmation endpoints required", spec.ChainID)
+	if len(spec.Endpoints) == 0 {
+		return fmt.Errorf("chain %d: at least one RPC endpoint required", spec.ChainID)
 	}
 	return nil
 }

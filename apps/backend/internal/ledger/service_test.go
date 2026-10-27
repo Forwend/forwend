@@ -87,7 +87,7 @@ func (e chainEnv) run(t *testing.T) {
 	if err := e.watch.Scan(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if err := e.watch.Receivers(ctx, e.anvil.RPC); err != nil {
+	if err := e.watch.Receivers(ctx); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.service.ProcessChain(ctx, chaintest.ChainID); err != nil {
@@ -339,7 +339,7 @@ func TestNewPrimaryObservationCannotBorrowAnOlderReceiverCheckpoint(t *testing.T
 	if err := e.pool.QueryRow(t.Context(), "SELECT count(*) FROM ledger_transactions WHERE invoice_id = $1", id).Scan(&bookings); err != nil || bookings != 0 {
 		t.Fatalf("unproved primary money booked=%d: %v", bookings, err)
 	}
-	if _, err := e.watch.Receiver(t.Context(), e.anvil.RPC, id); err != nil {
+	if _, err := e.watch.Receiver(t.Context(), id); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.service.ProcessChain(t.Context(), chaintest.ChainID); err != nil {

@@ -15,7 +15,7 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 - Reopen (R-130) gives money held for the payer back to the creator. Only for an option that closed partly paid.
   - Once per invoice, a day or more before its receiver's settle deadline, so a payment at the new close still settles.
   - A receiver deployed early, by a recovery, settles only until 30 days after its deploy (`MAX_HOLD`).
-  - Both RPC roles verify deployment time at the receiver scan checkpoint; known positive deployment evidence never moves back to zero.
+  - The selected RPC verifies deployment time at the receiver scan checkpoint; known positive deployment evidence never moves back to zero.
   - An early deployment shortens operational `closesAt` to one day before settlement ends. Signed terms remain unchanged.
   - The canary independently verifies a shortened close against both providers' finalized deployment state.
   - Not while a refund is under way: that money goes back to the payer.
@@ -45,7 +45,7 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 - Requested rescans save their start before reading logs and run outside the active payment job.
 - Unchanged finalized heads retain hash checks without repeating log and balance reads.
 - Nonzero opening balances require scanning from genesis. Empty historical token code is verified before treating balance as zero.
-- Both RPC roles must agree on finalized headers, incoming transfers, receiver events, outgoing transfers and checkpoint balance.
+- Finalized headers bind incoming transfers, receiver events and outgoing transfers; the checkpoint balance must match their net amount.
 - Every confirmed deposit needs its own immutable proof; a later primary observation cannot borrow an older scan checkpoint.
 - Receiver events retain block, transaction and log identity. Exact outgoing transfer identity supports wallet attribution.
 - Coverage commits with source observations. Booking runs separately and preserves unexplained balances, source conflicts and allocation errors.
@@ -60,10 +60,9 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 
 - Only `balanceOf` of the allowlisted token (chain ID + address) on an address we computed.
 - Ignore logs from every other address: anyone can deploy a look-alike token or clone that emits the same events.
-- A second, independent RPC confirms the balance before "paid" or a webhook, and the receiver's `settled()` before
-  "settled".
+- The selected RPC provides finalized balances before "paid" or a webhook, and finalized receiver state before "settled".
 - Arc: checkout builds an ERC-20 `transfer` on `0x3600…`, never a native send. Native USDC sends log `Transfer` from
-  a system emitter (18 decimals) that the watcher ignores, so such a payment has no transfer row. When the second RPC's
+  a system emitter (18 decimals) that the watcher ignores, so such a payment has no transfer row. When the selected RPC's
   `balanceOf` holds more than is booked, the worker logs `ALERT receive address holds money with no booked transfer`
   and the invoice never expires: an operator checks the chain and refunds the money with the refund authority.
   - The worker reads that balance again after 1 min, doubling to at most a day (`invoice_balance_alerts`, R-120).
@@ -152,6 +151,10 @@ Limits:
   browser, or drawing another QR over the checked one) is not caught.
 
 ## Accepted risks
+
+- One provider can establish payment and settlement evidence. A dishonest provider can defeat checks that depend on its chain data.
+- Extra endpoints provide failover; operational payments do not require agreement between independent providers.
+- The selected provider supplies gas-price suggestions; an independent provider no longer limits its suggested tip.
 
 - The executor can settle money the backend would hold (late, cancelled) before the deadline. It still goes only to
   the recipient.

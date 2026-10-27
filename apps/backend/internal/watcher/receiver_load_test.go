@@ -22,12 +22,12 @@ func TestReceiverIdleRequestVolume(t *testing.T) {
 	watch := NewChain(e.pool, chaintest.ChainID, client)
 	id := "0x" + strings.Repeat("01", 32)
 	e.anvil.Mine(2)
-	if _, err := watch.Receiver(t.Context(), client, id); err != nil {
+	if _, err := watch.Receiver(t.Context(), id); err != nil {
 		t.Fatal(err)
 	}
 	before := len(proxy.Calls())
 	for range 3 {
-		if _, err := watch.Receiver(t.Context(), client, id); err != nil {
+		if _, err := watch.Receiver(t.Context(), id); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -57,7 +57,7 @@ func TestReceiverLoad(t *testing.T) {
 			defer client.Close()
 			watch := NewChain(e.pool, chaintest.ChainID, client)
 			start := time.Now()
-			if err := watch.Receivers(t.Context(), client); err != nil {
+			if err := watch.Receivers(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 			var complete int
@@ -86,7 +86,7 @@ func TestReceiverHistoryResumesAfterFailureWithoutRescanningGenesis(t *testing.T
 	}
 	defer client.Close()
 	watch := NewChain(e.pool, chaintest.ChainID, client)
-	if complete, err := watch.Receiver(t.Context(), client, id); err != nil || complete {
+	if complete, err := watch.Receiver(t.Context(), id); err != nil || complete {
 		t.Fatalf("historical range was not bounded: complete=%v err=%v", complete, err)
 	}
 	var next uint64
@@ -102,11 +102,11 @@ func TestReceiverHistoryResumesAfterFailureWithoutRescanningGenesis(t *testing.T
 		}
 		return chaintest.Forward
 	})
-	if err := watch.HistoricalReceivers(t.Context(), client); err == nil {
+	if err := watch.HistoricalReceivers(t.Context()); err == nil {
 		t.Fatal("failed source accepted")
 	}
 	before := len(proxy.Calls())
-	if err := watch.HistoricalReceivers(t.Context(), client); err != nil {
+	if err := watch.HistoricalReceivers(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if len(proxy.Calls()) != before {
@@ -117,7 +117,7 @@ func TestReceiverHistoryResumesAfterFailureWithoutRescanningGenesis(t *testing.T
 		t.Fatal(err)
 	}
 	watch = NewChain(e.pool, chaintest.ChainID, client)
-	if err := watch.HistoricalReceivers(t.Context(), client); err != nil {
+	if err := watch.HistoricalReceivers(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.pool.QueryRow(t.Context(), "SELECT next_block FROM receiver_scans WHERE invoice_id=$1", id).Scan(&next); err != nil || next != 2*MaxRange {

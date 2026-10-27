@@ -44,14 +44,13 @@ func TestCheckEnabled(t *testing.T) {
 		want    string // the error that stops the process; "" when it starts
 		checked bool
 	}{
-		"working pair":     {public: pair, checked: true},
-		"not listed":       {want: "chain 31337 is enabled in the database but not in the RPC configuration snapshot"},
-		"one host":         {public: []string{a.URL}, want: "chain 31337: primary and independent confirmation endpoints required"},
-		"second host down": {public: []string{a.URL, down.URL}},
-		"second host on another chain": {public: []string{a.URL, other.URL},
-			want: "chain 31337: 1 of 2 RPC hosts answered"},
-		"primary down, second host on another chain": {public: []string{down.URL, other.URL},
-			want: "chain 31337: 0 of 2 RPC hosts answered"},
+		"working pair":                 {public: pair, checked: true},
+		"not listed":                   {want: "chain 31337 is enabled in the database but not in the RPC configuration snapshot"},
+		"one host":                     {public: []string{a.URL}, checked: true},
+		"only host on another chain":   {public: []string{other.URL}, want: "chain 31337: 0 of 1 RPC hosts answered"},
+		"second host down":             {public: []string{a.URL, down.URL}, checked: true},
+		"second host on another chain": {public: []string{a.URL, other.URL}, checked: true},
+		"one host down, another on the wrong chain": {public: []string{down.URL, other.URL}},
 		"further check fails": {public: pair, checked: true, further: errors.New("chain 31337: no factory at 0x1"),
 			want: "chain 31337: no factory at 0x1"},
 	} {

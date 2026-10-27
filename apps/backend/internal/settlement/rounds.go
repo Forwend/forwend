@@ -76,8 +76,7 @@ func (r *Rounds) Tick(ctx context.Context) {
 			slog.Error("pick RPCs", "chain", id, "err", chain.Redact(err))
 			continue
 		}
-		s := NewSigner(r.pool, r.key, map[uint64]*ethclient.Client{id: ethclient.NewClient(rpcs.Primary)},
-			map[uint64]*ethclient.Client{id: ethclient.NewClient(rpcs.Second)})
+		s := NewSigner(r.pool, r.key, map[uint64]*ethclient.Client{id: ethclient.NewClient(rpcs.Client)})
 		s.held, s.users = r.held, r.users
 		r.rpcs[id], r.signers[id] = rpcs, s
 		r.start(ctx, id, s)

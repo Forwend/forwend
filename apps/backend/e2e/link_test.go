@@ -14,7 +14,7 @@ import (
 
 func TestReusableLinkReservationsExpireAndPurchasesSettleIndependently(t *testing.T) {
 	ctx := t.Context()
-	st := newStack(t)
+	st := newStack(t, false)
 	profile, store, merchantWallet := st.merchant(t)
 	start(t, st.bin, "worker", st.loop)
 	start(t, st.bin, "signer", append(st.loop, "EXECUTOR_PRIVATE_KEY="+chaintest.Key))

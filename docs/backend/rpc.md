@@ -3,7 +3,7 @@
 ## Configuration
 
 - `chains` owns canonical numeric IDs, readable unique names, EVM family, activation and maximum latest-head age.
-- `rpc_endpoints` owns provider identity, safety role, private/public tier, priority, enablement, destination reference and budget group.
+- `rpc_endpoints` owns provider identity, legacy role label, private/public tier, priority, enablement, destination reference and budget group.
 - Migration 82 seeds existing public endpoints without activating chains; Base Sepolia is added disabled if missing.
 - Private endpoints require `secret_ref` and prohibit `public_url`; public endpoints require `public_url` and prohibit `secret_ref`.
 - `RPC_ENDPOINT_SECRETS` maps references to complete URLs in the backend environment.
@@ -18,8 +18,9 @@
 ## Adding a private endpoint
 
 - Identify the actual upstream provider, including aliases or resellers; use one stable provider identifier for shared infrastructure.
-- Choose `primary` for watcher reads and broadcasts, or `confirmation` for independent balances and payment evidence.
-- A provider or hostname must never serve both roles for one chain, regardless of credentials, URL paths or ports.
+- Use `primary` for new endpoints; existing `confirmation` labels remain valid metadata.
+- Both labels use the same ordered pool for reads, verification and broadcasts.
+- One configured endpoint is sufficient; provider and hostname independence are not required.
 - Insert metadata using an operator connection; this example contains no credential.
 
 ```sql
@@ -35,14 +36,14 @@ VALUES
 - Use the same budget group for endpoints sharing an account quota, including endpoints on different chains.
 - Lower priority numbers win within each tier; endpoint ID breaks ties deterministically.
 - Disable an endpoint with `enabled=false`; edit its priority to reorder it, then restart consumers.
-- Provider groups remain disjoint during outages; losing confirmation capacity pauses payment decisions even when primary providers remain available.
-- Defaults provide limited confirmation redundancy on some chains; provision additional independent endpoints before relying on an uptime target.
+- Every enabled endpoint participates in failover, including endpoints previously labeled `confirmation`.
+- Additional endpoints improve availability; payment processing does not wait for a second provider.
 
 ## Routing and health
 
 - Keep go-ethereum for RPC serialization, typed clients and transactions; the HTTP transport owns routing and destination checks.
 - [Go RPC documentation](https://pkg.go.dev/github.com/ethereum/go-ethereum/rpc) documents custom HTTP clients and typed errors.
-- Private endpoints precede public endpoints separately within each safety role.
+- Private endpoints precede public endpoints in one pool, then priority and endpoint ID decide the order.
 - An eligible endpoint gets at most one attempt per request; no eligible endpoint returns `chain.ErrUnavailable`.
 - The whole request has a 30-second maximum, including health checks and budget waits; shorter caller deadlines take precedence.
 - Each HTTP exchange has a five-second timeout and a 64 MiB response limit.
@@ -58,7 +59,7 @@ VALUES
 - `rpc_max_head_age_seconds` defaults to 120 and accepts 1–3,600 seconds; change it only after checking the chain's block behavior.
 - A halted chain can resemble a stale provider; requests stop rather than decide money from stale evidence.
 - Finality delay is independent of latest-head age; finality never falls back to latest or a fixed confirmation count.
-- Successful probes establish availability, not honesty; independent confirmation remains mandatory.
+- Successful probes establish availability, not honesty; finalized evidence is trusted from the selected provider.
 - Local circuit state is not shared across processes; weighted budgets are shared through Postgres.
 - Structured warnings name chain ID, endpoint ID, cooldown and a safe failure category.
 - Operators must monitor unavailable-chain warnings and existing worker/signer errors until dedicated metrics are implemented.
@@ -78,7 +79,7 @@ VALUES
 - Do not recompute block hashes with Ethereum headers: Tempo's header format differs.
 - Providers lacking canonical block-hash state reads fail closed; verify this capability before enabling them.
 - Batches retry as a whole; [Geth's batch documentation](https://geth.ethereum.org/docs/interacting-with-geth/rpc/batch) does not promise atomic state snapshots.
-- Watcher checkpoints, reorg detection, ledger transactions and independent receiver evidence remain governed by [money safety](money-safety.md).
+- Watcher checkpoints, reorg detection, ledger transactions and finalized receiver evidence remain governed by [money safety](money-safety.md).
 
 ## Network and secret controls
 
@@ -99,14 +100,14 @@ VALUES
 
 ## Migration and verification
 
-- Stop or drain old workers and signers before changing provider roles; mixed configurations can violate independence assumptions.
+- Restart API, worker and signer together when changing the provider policy.
 - Apply migration 82 through the API's normal migration process.
 - Translate existing private provider configuration into explicit endpoint records and generic secret references before restarting consumers.
 - `CHAINS_FILE` and `INFURA_API_KEYS` no longer configure the backend; private credentials are not copied automatically.
 - The contracts package retains its separate deployment picker and manifest; those values no longer configure payment services.
 - Restart all RPC consumers and inspect startup results for each enabled chain.
-- Verify provider identity, canonical hash reads, historical state availability and independent operation from the deployment region.
-- Local tests cannot establish public-provider uptime, quotas or true operator independence.
+- Verify chain identity, canonical hash reads and historical state availability from the deployment region.
+- Local tests cannot establish public-provider uptime, quotas or honesty.
 - Run `pnpm --filter @forwend/backend test` for configuration, security, failover, ledger and signer regressions.
 - Run `pnpm --filter @forwend/backend e2e` for real-binary invoice, payment, confirmation and settlement workflows.
 - Fault proxies around Anvil cover failed providers and ambiguous broadcasts without relying on external RPC availability.
@@ -115,13 +116,13 @@ VALUES
 ## Future architecture
 
 - Keep endpoint records and the `chain` client boundary stable; introduce versioned configuration snapshots when dynamic updates become necessary.
-- Validate snapshots before activation, apply them atomically and drain old pools without crossing provider roles.
-- Add a private administration interface with scoped permissions, audited changes and approval for provider-role changes.
+- Validate snapshots before activation, apply them atomically and drain old pools.
+- Add a private administration interface with scoped permissions and audited endpoint changes.
 - Use managed secret retrieval and workload identities when hosting is selected; keep versioned references for rotation and rollback.
 - [AWS Secrets Manager](https://docs.aws.amazon.com/secretsmanager/latest/userguide/best-practices.html) illustrates managed encryption, rotation and least-privilege access.
-- Add metrics for endpoint latency, errors, cooldown, head age, lag, quota waits and confirmation availability.
-- Alert on exhausted groups, stalled payment cursors, long settlement delays and lost independent verification.
+- Add metrics for endpoint latency, errors, cooldown, head age, lag and quota waits.
+- Alert on exhausted pools, stalled payment cursors and long settlement delays.
 - Add active health probes, archive capability routing and measured latency selection only when operational needs justify their cost.
 - Evaluate [eRPC](https://docs.erpc.cloud/config/failsafe) for larger deployments requiring shared health, routing and observability.
-- Its retry and circuit-breaker policies still require independent provider groups and conservative transaction handling.
+- Preserve bounded retries and identical signed transaction bytes when changing routing infrastructure.
 - Do not implement an administration service, shared health service, custom encryption or a routing proxy in this MVP.

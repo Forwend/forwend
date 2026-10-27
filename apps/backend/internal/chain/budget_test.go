@@ -76,7 +76,7 @@ func TestRPCBudgetIsSharedAcrossProcessesAndChainHosts(t *testing.T) {
 	if _, err := db.Exec(ctx, "DROP TABLE rpc_budgets"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tryNumber(ctx, r.Primary); err == nil {
+	if _, err := tryNumber(ctx, r.Client); err == nil {
 		t.Fatal("database failure bypassed the shared budget")
 	}
 	if len(proxy.Calls()) != 0 {

@@ -31,7 +31,6 @@ type endpoint struct {
 	url         string // secret: never log or return
 	host        string
 	name        string // configured non-secret endpoint ID
-	second      bool
 	budgetGroup string
 	checkedAt   time.Time
 	probing     bool
@@ -56,19 +55,18 @@ type pool struct {
 	endpoints []*endpoint // private before public, then priority and ID
 }
 
-// role replaces the HTTP transport of a role's go-ethereum client, so each request (a call or a batch) goes to the pool.
-type role struct {
-	p      *pool
-	second bool
+// transport sends each call or batch through the endpoint pool.
+type transport struct {
+	p *pool
 }
 
-func (r role) RoundTrip(req *http.Request) (*http.Response, error) {
+func (r transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	body, err := io.ReadAll(req.Body)
 	req.Body.Close()
 	if err != nil {
 		return nil, err
 	}
-	return r.p.do(req.Context(), r.second, req.Header, body)
+	return r.p.do(req.Context(), req.Header, body)
 }
 
 var ErrUnavailable = errors.New("RPC endpoints unavailable")
@@ -76,7 +74,7 @@ var ErrUnavailable = errors.New("RPC endpoints unavailable")
 const RequestTimeout = 30 * time.Second
 const HealthInterval = 30 * time.Second
 
-func (p *pool) do(ctx context.Context, second bool, header http.Header, body []byte) (*http.Response, error) {
+func (p *pool) do(ctx context.Context, header http.Header, body []byte) (*http.Response, error) {
 	calls, err := requestCalls(body)
 	if err != nil {
 		return nil, err
@@ -85,7 +83,7 @@ func (p *pool) do(ctx context.Context, second bool, header http.Header, body []b
 	defer cancel()
 	tried := map[*endpoint]bool{}
 	for len(tried) < len(p.endpoints) {
-		e, at, probe, err := p.pick(ctx, second, calls, tried)
+		e, at, probe, err := p.pick(ctx, calls, tried)
 		if err != nil {
 			var pending probePending
 			if errors.As(err, &pending) {
@@ -125,7 +123,7 @@ func (p *pool) do(ctx context.Context, second bool, header http.Header, body []b
 			return res, nil
 		}
 	}
-	return nil, fmt.Errorf("chain %d %s: %w", p.chainID, roleName(second), ErrUnavailable)
+	return nil, fmt.Errorf("chain %d: %w", p.chainID, ErrUnavailable)
 }
 
 type probePending struct{ done <-chan struct{} }
@@ -149,16 +147,16 @@ func (p *pool) release(e *endpoint, probe bool) {
 	p.mu.Unlock()
 }
 
-func (p *pool) pick(ctx context.Context, second bool, calls int, tried map[*endpoint]bool) (*endpoint, time.Time, bool, error) {
+func (p *pool) pick(ctx context.Context, calls int, tried map[*endpoint]bool) (*endpoint, time.Time, bool, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	now := time.Now()
 	pending := false
 	for _, e := range p.endpoints {
-		if !tried[e] && !e.wrong && e.second == second && e.probing {
+		if !tried[e] && !e.wrong && e.probing {
 			pending = true
 		}
-		if tried[e] || e.wrong || e.second != second || e.probing || e.restUntil.After(now) {
+		if tried[e] || e.wrong || e.probing || e.restUntil.After(now) {
 			continue
 		}
 		at := now
@@ -180,7 +178,7 @@ func (p *pool) pick(ctx context.Context, second bool, calls int, tried map[*endp
 		}
 		return nil, time.Time{}, false, probePending{p.changed}
 	}
-	return nil, time.Time{}, false, fmt.Errorf("chain %d %s: %w", p.chainID, roleName(second), ErrUnavailable)
+	return nil, time.Time{}, false, fmt.Errorf("chain %d: %w", p.chainID, ErrUnavailable)
 }
 
 func (p *pool) done(e *endpoint, failure error, probe bool) {
@@ -237,11 +235,11 @@ func (p *pool) answered() (ok, all int) {
 	return len(good), len(hosts)
 }
 
-func (p *pool) serves(second bool) bool {
+func (p *pool) serves() bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	for _, e := range p.endpoints {
-		if e.second == second && !e.wrong {
+		if !e.wrong {
 			return true
 		}
 	}
@@ -543,13 +541,6 @@ func BatchTooLarge(err error) bool {
 		}
 	}
 	return false
-}
-
-func roleName(second bool) string {
-	if second {
-		return "second"
-	}
-	return "primary"
 }
 
 func sleepUntil(ctx context.Context, at time.Time) error {

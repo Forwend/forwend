@@ -99,7 +99,7 @@ func (e env) signer(t *testing.T) *Signer {
 		t.Fatal(err)
 	}
 	clients := map[uint64]*ethclient.Client{e.chainID: e.client}
-	return NewSigner(e.pool, key, clients, clients)
+	return NewSigner(e.pool, key, clients)
 }
 
 // paidInvoice is a 5 USDC invoice paid 6, booked until it has a settlement intent.
@@ -117,7 +117,7 @@ func (e env) pay(t *testing.T, n int) (id, receive string) {
 	if err := e.watch.Scan(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.watch.Receiver(ctx, e.anvil.RPC, id); err != nil {
+	if _, err := e.watch.Receiver(ctx, id); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.ledger.ProcessChain(ctx, e.chainID); err != nil {
@@ -406,7 +406,7 @@ func TestPaidWhileTheWorkerWasDownSettlesAfterARestart(t *testing.T) {
 			if err := watcher.NewChain(e.pool, chaintest.ChainID, e.anvil.RPC).Scan(ctx); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := e.watch.Receiver(ctx, e.anvil.RPC, id); err != nil {
+			if _, err := e.watch.Receiver(ctx, id); err != nil {
 				t.Fatal(err)
 			}
 			ledgers := ledger.NewService(e.pool, ledger.BalanceFrom(client), ledger.DeployedFrom(client))
@@ -637,7 +637,7 @@ func TestSignerSkipsChainsItDoesNotServe(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := e.nonce(t)
-	if err := NewSigner(e.pool, key, map[uint64]*ethclient.Client{}, map[uint64]*ethclient.Client{}).Run(ctx); err != nil {
+	if err := NewSigner(e.pool, key, map[uint64]*ethclient.Client{}).Run(ctx); err != nil {
 		t.Fatalf("a chain it does not serve is not an error: %v", err)
 	}
 	if status, _, _ := e.intent(t, id); status != "pending" || e.nonce(t) != before {
@@ -804,7 +804,7 @@ func TestHangingRPCDoesNotStallTheSigner(t *testing.T) {
 		t.Fatal(err)
 	}
 	clients := map[uint64]*ethclient.Client{chaintest.ChainID: client}
-	s := NewSigner(e.pool, key, clients, clients)
+	s := NewSigner(e.pool, key, clients)
 	s.attemptTimeout = 300 * time.Millisecond
 	done := make(chan error, 1)
 	go func() { done <- s.Run(ctx) }()
@@ -1265,7 +1265,7 @@ func TestStuckSettleOverTheMaxFeeIsSentAgainAsItIs(t *testing.T) {
 	}
 }
 
-func TestSettlementIsBookedOnlyWhenTheSecondRPCAgrees(t *testing.T) {
+func TestSettlementIsBookedOnlyWhenTheFinalizedReceiverIsSettled(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
 	id, _ := e.paidInvoice(t)
@@ -1286,14 +1286,14 @@ func TestSettlementIsBookedOnlyWhenTheSecondRPCAgrees(t *testing.T) {
 	}
 	t.Cleanup(second.Close)
 	doubtful := e.signer(t)
-	doubtful.seconds = map[uint64]*ethclient.Client{chaintest.ChainID: second}
+	doubtful.clients = map[uint64]*ethclient.Client{chaintest.ChainID: second}
 	e.final(t, doubtful)
 	if status, settlement, _ := e.intent(t, id); status != "sent" || settlement != "pending" {
-		t.Fatalf("second RPC says not settled: intent %s, invoice settlement %s; want sent, pending", status, settlement)
+		t.Fatalf("RPC says not settled: intent %s, invoice settlement %s; want sent, pending", status, settlement)
 	}
 	e.final(t, e.signer(t))
 	if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" {
-		t.Fatalf("both RPCs agree: intent %s, invoice settlement %s; want confirmed, settled", status, settlement)
+		t.Fatalf("receiver is settled: intent %s, invoice settlement %s; want confirmed, settled", status, settlement)
 	}
 }
 
@@ -1508,7 +1508,7 @@ func TestSettlesTheOptionPaidFirst(t *testing.T) {
 		if err := e.watch.Scan(ctx); err != nil {
 			t.Fatal(err)
 		}
-		if err := e.watch.Receivers(ctx, e.anvil.RPC); err != nil {
+		if err := e.watch.Receivers(ctx); err != nil {
 			t.Fatal(err)
 		}
 		if err := e.ledger.ProcessChain(ctx, chaintest.ChainID); err != nil {

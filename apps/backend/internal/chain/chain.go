@@ -17,13 +17,12 @@ import (
 )
 
 type RPCs struct {
-	Primary, Second *rpc.Client
-	pool            *pool
+	Client *rpc.Client
+	pool   *pool
 }
 
 func (r RPCs) Close() {
-	r.Primary.Close()
-	r.Second.Close()
+	r.Client.Close()
 	r.pool.http.CloseIdleConnections()
 }
 
@@ -41,17 +40,12 @@ func NewRPCs(spec Spec, rate float64, budgets ...*Budget) (RPCs, error) {
 	}
 	for _, e := range ordered(spec.Endpoints) {
 		p.endpoints = append(p.endpoints, &endpoint{url: e.URL, host: hostOf(e.URL), name: e.ID,
-			second: e.Role == Confirmation, budgetGroup: e.BudgetGroup})
+			budgetGroup: e.BudgetGroup})
 	}
 	r := RPCs{pool: p}
 	var err error
-	if r.Primary, err = rpc.DialOptions(context.Background(), fmt.Sprintf("http://chain-%d-primary", spec.ChainID),
-		rpc.WithHTTPClient(&http.Client{Transport: role{p, false}})); err != nil {
-		return RPCs{}, err
-	}
-	if r.Second, err = rpc.DialOptions(context.Background(), fmt.Sprintf("http://chain-%d-second", spec.ChainID),
-		rpc.WithHTTPClient(&http.Client{Transport: role{p, true}})); err != nil {
-		r.Primary.Close()
+	if r.Client, err = rpc.DialOptions(context.Background(), fmt.Sprintf("http://chain-%d", spec.ChainID),
+		rpc.WithHTTPClient(&http.Client{Transport: transport{p}})); err != nil {
 		return RPCs{}, err
 	}
 	return r, nil

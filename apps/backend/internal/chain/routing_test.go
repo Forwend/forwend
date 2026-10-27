@@ -36,30 +36,26 @@ func TestPrivatePriorityFallbackAndRecovery(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer r.Close()
-	number(t, t.Context(), r.Primary)
+	number(t, t.Context(), r.Client)
 	if len(first.Calls()) == 0 || len(public.Calls()) != 0 || len(other.Calls()) != 0 {
 		t.Fatal("private priority ignored")
 	}
 	first.Fail(func(chaintest.Call) chaintest.Fault { return chaintest.HTTP503 })
-	number(t, t.Context(), r.Primary)
+	number(t, t.Context(), r.Client)
 	if len(other.Calls()) == 0 || len(public.Calls()) != 0 {
 		t.Fatal("second private endpoint not preferred")
 	}
 	other.Fail(func(chaintest.Call) chaintest.Fault { return chaintest.HTTP503 })
-	number(t, t.Context(), r.Primary)
+	number(t, t.Context(), r.Client)
 	if len(public.Calls()) == 0 {
 		t.Fatal("public fallback not used")
-	}
-	number(t, t.Context(), r.Second)
-	if len(confirm.Calls()) == 0 {
-		t.Fatal("confirmation did not use its independent group")
 	}
 	first.Fail(nil)
 	r.pool.mu.Lock()
 	r.pool.endpoints[0].restUntil = time.Now().Add(-time.Second)
 	r.pool.mu.Unlock()
 	before := len(first.Calls())
-	number(t, t.Context(), r.Primary)
+	number(t, t.Context(), r.Client)
 	if len(first.Calls()) != before+2 {
 		t.Fatal("recovered private endpoint was not revalidated and restored")
 	}
@@ -89,8 +85,8 @@ func TestRateLimitCooldownAndSafeExecutionErrors(t *testing.T) {
 				fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"error":{"code":3,"message":"execution reverted SECRET","data":"SECRET"}}`, req.ID)
 			}))
 			defer server.Close()
-			r := newRPCs(t, server.URL, a.URL)
-			_, err := tryNumber(t.Context(), r.Primary)
+			r := newRPCs(t, server.URL)
+			_, err := tryNumber(t.Context(), r.Client)
 			if err == nil || strings.Contains(err.Error(), "SECRET") {
 				t.Fatalf("unsafe error: %v", err)
 			}
@@ -151,7 +147,7 @@ func TestStaleAndUnsupportedFinalizedNodesFailOver(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer r.Close()
-			number(t, t.Context(), r.Primary)
+			number(t, t.Context(), r.Client)
 			if failures, _ := health(r, r.pool.endpoints[0]); failures != 1 {
 				t.Fatal("unhealthy node accepted")
 			}
@@ -166,10 +162,10 @@ func TestRPCRejectsNodeManagedTransactionsAndRedirects(t *testing.T) {
 	defer redirect.Close()
 	r := newRPCs(t, redirect.URL, a.URL, localhost(a.URL))
 	var result string
-	if err := r.Primary.CallContext(t.Context(), &result, "eth_sendTransaction", map[string]string{"from": chaintest.Sender}); err == nil {
+	if err := r.Client.CallContext(t.Context(), &result, "eth_sendTransaction", map[string]string{"from": chaintest.Sender}); err == nil {
 		t.Fatal("node-managed signing allowed")
 	}
-	number(t, t.Context(), r.Primary)
+	number(t, t.Context(), r.Client)
 	if len(target.Calls()) != 0 {
 		t.Fatal("RPC followed a redirect")
 	}
@@ -222,8 +218,8 @@ func TestLostBroadcastResponseRetriesIdenticalSignedBytes(t *testing.T) {
 	lost, next := proxy(true), proxy(false)
 	defer lost.Close()
 	defer next.Close()
-	r := newRPCs(t, lost.URL, a.URL, next.URL)
-	err = ethclient.NewClient(r.Primary).SendTransaction(t.Context(), tx)
+	r := newRPCs(t, lost.URL, next.URL)
+	err = ethclient.NewClient(r.Client).SendTransaction(t.Context(), tx)
 	if err != nil && !strings.Contains(err.Error(), "already") && !strings.Contains(err.Error(), "nonce too low") {
 		t.Fatal(err)
 	}
@@ -261,8 +257,8 @@ func TestOnlyOneRecoveryProbeRuns(t *testing.T) {
 		forward(t, w, a.URL, raw)
 	}))
 	defer server.Close()
-	r := newRPCs(t, server.URL, a.URL)
-	number(t, t.Context(), r.Primary)
+	r := newRPCs(t, server.URL)
+	number(t, t.Context(), r.Client)
 	r.pool.mu.Lock()
 	r.pool.endpoints[0].checked = false
 	r.pool.endpoints[0].failures = 1
@@ -270,7 +266,7 @@ func TestOnlyOneRecoveryProbeRuns(t *testing.T) {
 	recovering.Store(true)
 	var wg sync.WaitGroup
 	for range 8 {
-		wg.Go(func() { _, _ = tryNumber(t.Context(), r.Primary) })
+		wg.Go(func() { _, _ = tryNumber(t.Context(), r.Client) })
 	}
 	select {
 	case <-entered:
@@ -321,21 +317,21 @@ func TestOrdinaryCompletionCannotReleaseAnotherHealthProbe(t *testing.T) {
 		forward(t, w, a.URL, raw)
 	}))
 	defer server.Close()
-	r := newRPCs(t, server.URL, a.URL)
-	number(t, t.Context(), r.Primary)
+	r := newRPCs(t, server.URL)
+	number(t, t.Context(), r.Client)
 	hold.Store(true)
 	var wg sync.WaitGroup
 	normalDone := make(chan struct{})
-	wg.Go(func() { _, _ = tryNumber(t.Context(), r.Primary); close(normalDone) })
+	wg.Go(func() { _, _ = tryNumber(t.Context(), r.Client); close(normalDone) })
 	<-normalStarted
 	r.pool.mu.Lock()
 	r.pool.endpoints[0].checkedAt = time.Time{}
 	r.pool.mu.Unlock()
-	wg.Go(func() { _, _ = tryNumber(t.Context(), r.Primary) })
+	wg.Go(func() { _, _ = tryNumber(t.Context(), r.Client) })
 	<-probeStarted
 	close(normalRelease)
 	<-normalDone
-	wg.Go(func() { _, _ = tryNumber(t.Context(), r.Primary) })
+	wg.Go(func() { _, _ = tryNumber(t.Context(), r.Client) })
 	time.Sleep(30 * time.Millisecond)
 	close(probeRelease)
 	wg.Wait()
@@ -360,7 +356,7 @@ func TestMalformedResponsesFailOverWithoutLeakingProviderText(t *testing.T) {
 			}))
 			defer server.Close()
 			r := newRPCs(t, server.URL, a.URL, localhost(a.URL))
-			number(t, t.Context(), r.Primary)
+			number(t, t.Context(), r.Client)
 			if failures, _ := health(r, r.pool.endpoints[0]); failures != 1 {
 				t.Fatal("malformed provider response accepted")
 			}
@@ -417,16 +413,16 @@ func TestHTTP200WholeBatchLimitsRemainSplittable(t *testing.T) {
 				forward(t, w, a.URL, raw)
 			}))
 			defer server.Close()
-			r := newRPCs(t, server.URL, a.URL)
+			r := newRPCs(t, server.URL)
 			var first, second string
-			err := r.Primary.BatchCallContext(t.Context(), []rpc.BatchElem{{Method: "eth_blockNumber", Result: &first}, {Method: "eth_blockNumber", Result: &second}})
+			err := r.Client.BatchCallContext(t.Context(), []rpc.BatchElem{{Method: "eth_blockNumber", Result: &first}, {Method: "eth_blockNumber", Result: &second}})
 			if !BatchTooLarge(err) || strings.Contains(err.Error(), "SECRET") {
 				t.Fatalf("whole-batch limit lost or leaked: %v", err)
 			}
 			if failures, _ := health(r, r.pool.endpoints[0]); failures != 0 {
 				t.Fatal("query size limit rested a healthy provider")
 			}
-			number(t, t.Context(), r.Primary)
+			number(t, t.Context(), r.Client)
 		})
 	}
 }
@@ -453,12 +449,12 @@ func TestPeriodicHealthCheckRejectsAProviderThatChangesChains(t *testing.T) {
 	}))
 	defer server.Close()
 	r := newRPCs(t, server.URL, a.URL, localhost(a.URL))
-	number(t, t.Context(), r.Primary)
+	number(t, t.Context(), r.Client)
 	wrong.Store(true)
 	r.pool.mu.Lock()
 	r.pool.endpoints[0].checkedAt = time.Time{}
 	r.pool.mu.Unlock()
-	number(t, t.Context(), r.Primary)
+	number(t, t.Context(), r.Client)
 	if business.Load() != 0 {
 		t.Fatal("business request sent after chain identity changed")
 	}

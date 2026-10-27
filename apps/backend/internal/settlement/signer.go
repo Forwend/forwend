@@ -33,7 +33,6 @@ type Signer struct {
 	key     *ecdsa.PrivateKey
 	sender  common.Address
 	clients map[uint64]*ethclient.Client
-	seconds map[uint64]*ethclient.Client
 	// stopAfter simulates a crash in tests: "save" stops after the signed settle is saved, "send" after it is sent.
 	stopAfter      string
 	attemptTimeout time.Duration
@@ -45,8 +44,8 @@ type Signer struct {
 	users *userTurns
 }
 
-func NewSigner(pool *pgxpool.Pool, key *ecdsa.PrivateKey, clients, seconds map[uint64]*ethclient.Client) *Signer {
-	return &Signer{pool: pool, key: key, sender: crypto.PubkeyToAddress(key.PublicKey), clients: clients, seconds: seconds,
+func NewSigner(pool *pgxpool.Pool, key *ecdsa.PrivateKey, clients map[uint64]*ethclient.Client) *Signer {
+	return &Signer{pool: pool, key: key, sender: crypto.PubkeyToAddress(key.PublicKey), clients: clients,
 		attemptTimeout: AttemptTimeout, codeWait: CodeWait, replaceAfter: ReplaceAfter, users: &userTurns{}}
 }
 

@@ -29,7 +29,7 @@ func TestProviderErrorCannotReflectCredentials(t *testing.T) {
 	r := newRPCs(t, server.URL, localhost(server.URL))
 	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
-	_, err := tryNumber(ctx, r.Primary)
+	_, err := tryNumber(ctx, r.Client)
 	if err == nil || strings.Contains(err.Error(), "SECRET-DO-NOT-LOG") {
 		t.Fatalf("provider error exposed its body: %v", err)
 	}

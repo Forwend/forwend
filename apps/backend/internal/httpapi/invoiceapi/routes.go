@@ -29,7 +29,7 @@ const (
 // A pay page load (R-125) is public too: each link's own budget keeps its count from being run up.
 const ViewRate, ViewBurst = 0.2, 5
 
-// balances reads each chain's second RPC (D-15); webURL is the web app's origin, for the pay link in PDFs.
+// balances reads each chain's RPC pool (D-15); webURL is the web app's origin, for the pay link in PDFs.
 func Routes(mux *http.ServeMux, g mid.Guards, invoices *invoice.Service, profiles *profile.Service,
 	balances ledger.BalanceOf, webURL string, hooks *webhook.Service) {
 	rechecks := mid.NewBuckets(RecheckRate, RecheckBurst)
