@@ -202,6 +202,103 @@
         "branch": "fix/f338-process-payments-and-settlement-through",
         "base": "main"
       }
+    },
+    {
+      "id": "F339",
+      "type": "ci",
+      "behavior": "Allow fresh staging checks to finish within the job budget",
+      "acceptance": [
+        "The staging job allows thirty minutes while keeping every required check and individual timeout unchanged.",
+        "Workflow configuration and delivery documentation pass repository checks before promotion."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "harness",
+        "docs-check"
+      ],
+      "refs": [
+        "R-158",
+        "D-48"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-27 review pass by reviewer: Independent review passed against base c1319195. The sole workflow behavior change raises the overall staging job budget from 20 to 30 minutes. Required checks, individual limits, steps, permissions, and triggers remain unchanged. Staging documentation matches the new budget. Documentation and whitespace checks passed; full local verification passed all seven checks. No findings. This review covers the current base only; rebase requires renewed verification and review."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-27T16:49:22Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.5,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.9,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 236.8,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 12.6,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 46.2,
+            "log": ""
+          }
+        ],
+        "taskHash": "c32e9975b6a706de",
+        "filesHash": "31b74dab44cec7e9",
+        "proof": {
+          "1": "harness: Workflow comparison confirms the sole workflow change is timeout20 to30; registry, steps and individual limits are unchanged.",
+          "2": "docs-check: Staging job budget is documented and repository checks pass before promotion."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Independent review passed against base c1319195. The sole workflow behavior change raises the overall staging job budget from 20 to 30 minutes. Required checks, individual limits, steps, permissions, and triggers remain unchanged. Staging documentation matches the new budget. Documentation and whitespace checks passed; full local verification passed all seven checks. No findings. This review covers the current base only; rebase requires renewed verification and review.",
+          "at": "2026-10-27T16:55:14Z",
+          "filesHash": "31b74dab44cec7e9"
+        }
+      },
+      "branch": "ci/f339-allow-fresh-staging-checks-to-finish-wit",
+      "baseCommit": "c13191957df395c6b184f285402df80fd0185023",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
