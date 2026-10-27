@@ -128,7 +128,7 @@
         "Finalized payment flows and settlement restart recovery pass real Postgres and Anvil regressions; operations docs match the single-provider policy."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend-affected",
         "backend-e2e",
@@ -190,11 +190,18 @@
           "summary": "Independent review passed for one-provider payment and settlement processing. Operational clients share ordered endpoint failover; one endpoint is accepted at startup. Finalized blocks, canonical log hashes, net balances, immutable proofs and once-only booking remain enforced. Review found and resolved outgoing-log ordering lost with the former comparison helper; the reverse-log batch-refund regression preserves distinct transfer proofs and exact balances. Independent focused race checks passed for refunds, startup, cross-role failover and identical signed transaction retries. The separate canary remains non-gating. Selected-provider gas-price trust is documented. Final task verification passed docs-check, backend-affected and backend-e2e.",
           "at": "2026-10-27T16:49:23Z",
           "filesHash": "ca54c7a035668464"
-        }
+        },
+        "commit": "6a2bc056",
+        "doneAt": "2026-10-27T16:53:48Z"
       },
       "branch": "fix/f338-process-payments-and-settlement-through",
       "baseCommit": "c13191957df395c6b184f285402df80fd0185023",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f338-process-payments-and-settlement-through",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
