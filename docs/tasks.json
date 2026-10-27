@@ -284,7 +284,7 @@
         "Demonstrate create-pay-paid, partial, expired, refunded and failed payments, desktop and phone layouts, and controlled load with measured requests and confirmation delay."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend-e2e",
         "web-e2e"
@@ -400,11 +400,18 @@
           "summary": "Independent review passes for the implementation and local evidence. Incremental receiver checkpoints, bounded retries, provider-limit handling and historical-job separation retain dual-source proof and settlement checks. Observed receipts remain distinct from booked money; summary reads retain relevant options; canonical confirming states and notifications agree across owner reads. New queries use indexed payment identities and source ownership remains focused. All ten final verification checks passed. Final 200-payment load completed in 3.229s with 2150 logical RPC calls. Hundreds of paid orders per second remains unmet; public/archive-provider operation remains blocked or unverified, and the original pruned payment record cannot be reproduced. This review does not authorize commit or delivery.",
           "at": "2026-10-27T13:45:07Z",
           "filesHash": "b003e24eaaae7be0"
-        }
+        },
+        "commit": "48515bc0",
+        "doneAt": "2026-10-27T13:49:41Z"
       },
       "branch": "fix/f336-restore-payment-progress-and-simplify-me",
       "baseCommit": "ef494bab9c122ad1f4e0725171bf320da079f917",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f336-restore-payment-progress-and-simplify-me",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
