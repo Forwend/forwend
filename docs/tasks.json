@@ -150,7 +150,8 @@
         "2026-10-27 Research and design recorded in docs/research/rpc-infrastructure.md. Database metadata and startup secret resolution implemented first, then safe routing and finalized hash reads. Credential reflection reproduced before fixing. Focused chain/config/balance tests and real-binary TestMoneyLoop passed; full verification and independent review remain.",
         "2026-10-27 F337 implementation and independent review passed; first full verification passed seven checks. Final environment-override and documentation cleanup is being reverified. No commit, push, deployment, secret migration or persistent database change.",
         "2026-10-27 review pass by reviewer: Independent review passed. Reviewed configuration and secret boundaries, provider role separation, safe errors, recovery ownership, canonical RPC block hashes, migration behavior, and public API contracts. Confirmed fixes for canary HTTPS validation, hostname aliases, concurrent health probes, and whole-batch provider errors with targeted race tests. Reviewed final Playwright environment cleanup and wrong-chain quarantine documentation. No blocking findings.",
-        "2026-10-27 F337 locally verified: seven final checks passed (harness, docs-check, lint, typecheck, unit including backend race tests, build, e2e); independent review passed. Four real-binary money workflows passed with RPC fault injection. Research and operating guide retained. No temporary Anvil or test application processes remain; tests used disposable databases and task-specific temporary directories. Shared caches and existing secrets/services preserved. No commit, push, deployment or persistent RPC configuration migration. Private endpoint metadata and RPC_ENDPOINT_SECRETS must be configured before deployment; snapshot updates require restart."
+        "2026-10-27 F337 locally verified: seven final checks passed (harness, docs-check, lint, typecheck, unit including backend race tests, build, e2e); independent review passed. Four real-binary money workflows passed with RPC fault injection. Research and operating guide retained. No temporary Anvil or test application processes remain; tests used disposable databases and task-specific temporary directories. Shared caches and existing secrets/services preserved. No commit, push, deployment or persistent RPC configuration migration. Private endpoint metadata and RPC_ENDPOINT_SECRETS must be configured before deployment; snapshot updates require restart.",
+        "2026-10-27 F337 committed and pushed to its task branch; PR https://github.com/Forwend/forwend/pull/331 is open against main. Seven local checks and independent review passed; commit and push hooks passed. No merge or deployment. Research and archives remain local as required. Temporary PR body file cleaned. Next step: review and authorize merge."
       ],
       "blockedReason": null,
       "evidence": {
@@ -230,9 +231,9 @@
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-27T14:31:12Z",
+    "at": "2026-10-27T14:34:32Z",
     "clean": true,
     "problems": [],
-    "note": "F337 locally verified: seven final checks passed (harness, docs-check, lint, typecheck, unit including backend race tests, build, e2e); independent review passed. Four real-binary money workflows passed with RPC fault injection. Research and operating guide retained. No temporary Anvil or test application processes remain; tests used disposable databases and task-specific temporary directories. Shared caches and existing secrets/services preserved. No commit, push, deployment or persistent RPC configuration migration. Private endpoint metadata and RPC_ENDPOINT_SECRETS must be configured before deployment; snapshot updates require restart."
+    "note": "F337 committed and pushed to its task branch; PR https://github.com/Forwend/forwend/pull/331 is open against main. Seven local checks and independent review passed; commit and push hooks passed. No merge or deployment. Research and archives remain local as required. Temporary PR body file cleaned. Next step: review and authorize merge."
   }
 }
