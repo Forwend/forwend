@@ -163,6 +163,30 @@ const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 30))
 afterEach(cleanup);
 
 describe("owner's invoice page", () => {
+  it("keeps confirmation progress visible on the owner's invoice", async () => {
+    const pending = {
+      ...DEPOSIT,
+      status: "detected",
+      paid: null,
+      blocksLeft: 590,
+      blocksTotal: 599,
+      secondsLeft: 1180,
+    };
+    serve({
+      ...OPEN,
+      paymentStatus: "detected",
+      confirming: true,
+      deposits: [pending],
+      options: [{ ...OPEN.options[0], deposits: [pending] }],
+    });
+    show();
+    await settle();
+    const status = screen.getByRole("status", { name: "Payment confirmation" });
+    expect(status.textContent).toBe("Confirming (9/599)");
+    expect(within(status).getByRole("button", { name: "About 20 min left" })).toBeTruthy();
+    expect(screen.queryByText("Confirming", { exact: true })).toBeNull();
+  });
+
   it("does not offer the pay link, or say it waits for payment, once the checkout has closed", async () => {
     // As the API answers once nothing can complete it (R-77).
     const past = new Date(Date.now() - 10 * 60_000).toISOString();

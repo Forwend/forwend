@@ -107,6 +107,10 @@ export const paymentDetailSchema = paymentSchema.extend({
           nextAttemptAt: apiTime,
           signedAt: apiTime.nullable(),
           txHash: hash32.nullable(),
+          receiptTxHash: hash32.nullable().optional(),
+          blockNumber: count.nullable().optional(),
+          blocksLeft: count.nullable().optional(),
+          secondsLeft: count.nullable().optional(),
         })
         .nullable(),
       deposits: z.array(depositSchema),

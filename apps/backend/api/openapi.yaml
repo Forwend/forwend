@@ -3304,7 +3304,7 @@ components:
         unbookedOutflows: { type: "integer" }
     PaymentSettlement:
       type: "object"
-      required: ["status", "wait", "attempts", "createdAt", "nextAttemptAt", "signedAt", "txHash"]
+      required: ["status", "wait", "attempts", "createdAt", "nextAttemptAt", "signedAt", "txHash", "receiptTxHash", "blockNumber", "blocksLeft", "secondsLeft"]
       properties:
         status: { type: "string" }
         wait:
@@ -3322,6 +3322,17 @@ components:
           anyOf:
             - type: "string"
             - type: "null"
+        receiptTxHash:
+          description: "Observed successful settlement hash, including a mined replacement. Display only."
+          type: ["string", "null"]
+        blockNumber:
+          type: ["integer", "null"]
+        blocksLeft:
+          description: "Receipt block minus finalized block; null before a successful receipt or finalized head is available."
+          type: ["integer", "null"]
+        secondsLeft:
+          description: "Estimated chain time remaining; recomputed from receipt time and finalized block time."
+          type: ["integer", "null"]
     PaymentDelivery:
       type: "object"
       required: ["endpointId", "eventId", "eventType", "status", "enabled", "attempts", "lastStatusCode", "lastAttemptAt", "nextAttemptAt", "canManage"]

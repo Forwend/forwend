@@ -952,6 +952,18 @@ func TestStaleNotSettledReadKeepsOurSuccessfulSettle(t *testing.T) {
 			Scan(&status, &hash); err != nil {
 			t.Fatal(err)
 		}
+		var receiptHash *string
+		var receiptBlock, receiptTime *uint64
+		if err := e.pool.QueryRow(ctx, "SELECT receipt_tx_hash,receipt_block,receipt_time FROM settlement_intents WHERE invoice_id=$1", id).
+			Scan(&receiptHash, &receiptBlock, &receiptTime); err != nil {
+			t.Fatal(err)
+		}
+		if step.receipt && (receiptHash == nil || *receiptHash != saved || receiptBlock == nil || receiptTime == nil) {
+			t.Fatalf("%s: missing successful receipt progress", step.name)
+		}
+		if !step.receipt && receiptBlock != nil {
+			t.Fatalf("%s: missing receipt retained stale progress", step.name)
+		}
 		if status != step.want || hash == nil || *hash != saved {
 			t.Fatalf("%s: intent %s with hash %v; want %s with our settle %s", step.name, status, hash, step.want, saved)
 		}

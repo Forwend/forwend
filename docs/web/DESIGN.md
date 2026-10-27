@@ -232,6 +232,12 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Payment details lead with the order, customer, requested and received amounts, payment status, wallet transfer and next action.
   - Desktop rows stay on one line; phone rows show the same payment and wallet states in a compact stack.
   - The used token and network appear first; transaction links stay beside received amounts.
+  - Payment detail uses "Confirming (9/599)" for each pending deposit; an info icon opens the estimated time remaining.
+  - Wallet transfers use one compact state: Preparing transfer, Confirming or In your wallet.
+  - Settlement transaction links remain visible while pending and after completion.
+  - Finality estimates use observed receipt blocks and chain time; missing evidence never produces a countdown.
+  - Normal confirmation waits never repeat as payment problems. Actual failures keep their required action.
+  - A missing total shows "Confirming"; its info tooltip keeps remaining blocks and estimated time when available.
   - Technical details load only when expanded, with one option selected at a time and a manual refresh.
   - Normal detail polling requests only used options and options with money or actionable errors.
   - Test payments have a small Testnet label in lists, details and the public checkout header.
@@ -495,12 +501,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   may be out of date. The invoice PDF link stays in every state; the receipt link appears once paid.
 - PDFs open through the same-origin `/api` path. The invoice detail lists them under Documents: the invoice PDF
   always, the receipt PDF once paid.
-- While a payment confirms, the step label stays "Confirming"; one full-width row below the steps shows "4 / 12
-  blocks confirmed" and a small clock icon whose tooltip says "About 19 min left". Keep the count out of the narrow
+- While a payment confirms, the step label stays "Confirming"; one full-width row below the steps shows "Confirming (4/12)"
+  and a small info icon whose tooltip says "About 19 min left". Keep the count out of the narrow
   step columns on both payer and owner pages, including four-digit counts on phones. Its bar fills as blocks pass
   (a sweep until the first block passes); done, the step reads "Confirmed". The count is blocks passed of those the
-  payment had to wait when first seen, from the API, so a reload keeps it (R-73). A screen-reader-only live line
-  announces the count and time left.
+  payment had to wait when first seen, from the API, so a reload keeps it (R-73). The live status announces the count; the estimate opens on hover, keyboard focus or tap.
   The owner's steps are Waiting, Detected, Confirming, Paid and Settled. The step that waits always moves, so it never
   reads as stuck: a sweep on Waiting before any money and on Settled while the money is on its way to the wallet, a
   fill by the share received when partly paid (R-69).

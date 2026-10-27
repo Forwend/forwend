@@ -72,6 +72,10 @@ type settlementJSON struct {
 	NextAttemptAt string  `json:"nextAttemptAt"`
 	SignedAt      *string `json:"signedAt"`
 	TxHash        *string `json:"txHash"`
+	ReceiptTxHash *string `json:"receiptTxHash"`
+	BlockNumber   *uint64 `json:"blockNumber"`
+	BlocksLeft    *uint64 `json:"blocksLeft"`
+	SecondsLeft   *int64  `json:"secondsLeft"`
 }
 
 type deliveryJSON struct {
@@ -139,7 +143,13 @@ func toDetails(detail invoice.PaymentDetails, webURL string, access auth.Access)
 		if settlement := option.Settlement; settlement != nil {
 			row.Settlement = &settlementJSON{Status: settlement.Status, Wait: httpio.OrNull(settlement.Wait), Attempts: settlement.Attempts,
 				CreatedAt: settlement.CreatedAt.UTC().Format(time.RFC3339Nano), NextAttemptAt: settlement.NextAttemptAt.UTC().Format(time.RFC3339Nano),
-				SignedAt: optionalTime(settlement.SignedAt), TxHash: httpio.OrNull(settlement.TxHash)}
+				SignedAt: optionalTime(settlement.SignedAt), TxHash: httpio.OrNull(settlement.TxHash),
+				ReceiptTxHash: settlement.ReceiptTxHash, BlockNumber: settlement.ReceiptBlock}
+			if settlement.Progress != nil {
+				seconds := int64(settlement.Progress.TimeLeft / time.Second)
+				row.Settlement.BlocksLeft = &settlement.Progress.BlocksLeft
+				row.Settlement.SecondsLeft = &seconds
+			}
 		}
 		out.Options = append(out.Options, row)
 	}

@@ -29,6 +29,10 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 
 ## Receiver evidence and actual outflows
 
+- The signer stores successful settlement receipt observations for progress display, including mined replacement hashes.
+- Missing or reverted receipts clear those observations; they never determine finality, booking or spendable balances.
+- Payment reads calculate remaining blocks and estimated chain time against the saved finalized cursor.
+
 - Migration 78 seeds bounded historical scans for existing receivers; new receivers start at the saved chain cursor.
 - Active payment scans share source reads in groups of 32, then commit evidence separately for each receiver.
 - Catch-up checkpoints use the learned provider range limit, capped at 2,000 blocks; deeper receivers skip batch prefetch.

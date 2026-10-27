@@ -126,7 +126,8 @@
         "Database endpoint metadata, secure secret resolution and process wiring replace backend provider-specific configuration.",
         "Priority, failover, recovery, network consistency, safe errors and identical transaction retries pass regression tests.",
         "Public API contracts and real invoice payment, independent confirmation and settlement workflows remain correct; receiver catch-up saves progress within learned provider range limits.",
-        "Research, operations, migration and deferred architecture are documented; changed paths and imports receive independent review."
+        "Research, operations, migration and deferred architecture are documented; changed paths and imports receive independent review.",
+        "Payment and checkout confirmation uses one compact Confirming (done/total) label when counts exist; estimates appear in an accessible tooltip. Normal pending settlement does not repeat as payment problems; actual failures and transaction links remain visible."
       ],
       "dependsOn": [],
       "state": "verified",
@@ -142,7 +143,9 @@
         "R-51",
         "D-15",
         "D-45",
-        "D-71"
+        "D-71",
+        "R-165",
+        "R-166"
       ],
       "keep": [],
       "review": true,
@@ -154,21 +157,23 @@
         "2026-10-27 F337 committed and pushed to its task branch; PR https://github.com/Forwend/forwend/pull/331 is open against main. Seven local checks and independent review passed; commit and push hooks passed. No merge or deployment. Research and archives remain local as required. Temporary PR body file cleaned. Next step: review and authorize merge.",
         "2026-10-27 review pass by reviewer: Independent review passed for the receiver catch-up follow-up. Checkpoints and shared prefetch honor learned provider range limits while retaining contiguous finalized evidence, independent provider agreement, and atomic checkpoint writes. Strengthened regressions cover a 62-block learned limit, skipped prefetch below the former 2000-block ceiling, durable progress, production RPC transport, shared Postgres quota, and a bounded deadline. Targeted watcher race tests passed; final full verification passed all seven checks. Owning money-safety documentation matches the change. No blocking findings.",
         "2026-10-27 review pass by reviewer: Independent review passed for the final RPC rollout follow-up. Receiver checkpoints and shared prefetch honor learned provider limits without changing finalized evidence, provider agreement, or atomic writes. Singleton watcher reads use ordinary RPC calls, preserve execution errors per element, and propagate transport failures. Caller deadlines release owned probe state without changing provider health; independent HTTP attempt timeouts retain failover. Reviewed real-Anvil regressions for bounded progress with shared Postgres quota, singleton compatibility and error isolation, and caller-deadline health isolation. Targeted race tests and final seven-check verification passed. Owning documentation matches behavior. No blocking findings.",
-        "2026-10-27 Local RPC rollout applied migration82, backend-only private references and verified public archive endpoints. Both original deposits are independently proved, booked once and paid; Arc settled. Base settlement succeeded with one exact recipient transfer on two providers and awaits chain finality. Fixed checkpoint bounds, singleton read compatibility and caller-deadline health penalties. Final seven checks passed in289.6s and independent review passed. Recovery tools and temporary directories removed; requested dev services remain running and API/web checks pass. Private endpoints remain disabled after401/402 responses. Next: commit and push follow-up to existing PR331; no merge."
+        "2026-10-27 Local RPC rollout applied migration82, backend-only private references and verified public archive endpoints. Both original deposits are independently proved, booked once and paid; Arc settled. Base settlement succeeded with one exact recipient transfer on two providers and awaits chain finality. Fixed checkpoint bounds, singleton read compatibility and caller-deadline health penalties. Final seven checks passed in289.6s and independent review passed. Recovery tools and temporary directories removed; requested dev services remain running and API/web checks pass. Private endpoints remain disabled after401/402 responses. Next: commit and push follow-up to existing PR331; no merge.",
+        "2026-10-27 reopened: Restore merchant confirmation and settlement tracking lost during payment screen migration.",
+        "2026-10-27 Restored live confirmation counts and accessible estimate tooltips across checkout, owner invoice and payment detail. Settlement tracking uses display-only receipt observations and canonical completed transaction links. Both original local invoices are paid and settled. Final combined seven-check verification and authenticated production browser regression passed. Temporary confirmation fixtures are removed; ongoing development services remain running. Push follow-up to PR331; merge remains pending.",
+        "2026-10-27 review pass by reviewer: Independent review passed for the combined settlement tracking and compact confirmation changes. Migration 83 receipt observations remain display-only; missing receipts and retries clear observations, and finality, independent evidence, and ledger booking remain unchanged. Reviewed API progress calculations and null handling, replacement and reorg behavior, shared count and tooltip rendering, normal-wait suppression, and documented feature dependencies. Completed settlement links use the canonical booked hash; stale receipt metadata and duplicate deposit links no longer override it. Focused API, signer, reorg, replacement race tests and seven invoice tests passed. Final frozen-source verification passed all seven checks; authenticated browser coverage passed for changing progress, canonical completion links, hover, focus, touch, accessibility, and light/dark layouts. No blocking findings."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-27T15:31:45Z",
+        "at": "2026-10-27T16:05:09Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
+            "seconds": 4.0,
+            "log": ""
           },
           {
             "id": "docs-check",
@@ -181,52 +186,53 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.4,
+            "seconds": 0.3,
             "log": ""
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
+            "seconds": 1.5,
             "log": ""
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 240.5,
+            "seconds": 243.2,
             "log": ""
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.6,
+            "seconds": 0.2,
             "log": ""
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 45.9,
+            "seconds": 46.8,
             "log": ""
           }
         ],
-        "taskHash": "57d2a4a8a4aa6292",
-        "filesHash": "8e4b82599436fffd",
+        "taskHash": "edff7b6988bc5d7a",
+        "filesHash": "bb09d7e2bf53ec62",
         "proof": {
-          "1": "unit: Database metadata, secure secret resolution and startup wiring pass backend tests.",
-          "2": "unit: Priority, failover, recovery, safe errors, identical broadcasts and caller-deadline health isolation pass regression tests.",
-          "3": "unit: Learned checkpoint limits work under weighted pacing and head advancement; singleton execution errors preserve healthy reads.",
-          "4": "docs-check: Research decisions, rollout, bounded checkpoints, single-read behavior and deadline policy are documented."
+          "1": "unit: Database configuration, secure secret resolution and consumer wiring remain covered.",
+          "2": "unit: RPC priority, bounded failover, recovery and transaction safety regressions pass.",
+          "3": "e2e: Real binary payment, confirmation and settlement workflows preserve independent evidence and once-only booking.",
+          "4": "docs-check: Configuration, rollout, security and feature dependency documentation is valid.",
+          "5": "unit: Settlement receipt observations feed display-only estimates; API progress refresh and missing-receipt tests pass. Compact confirmation UI reuses existing count data, preserves genuine warnings and canonical transaction links. Targeted production browser checks cover desktop, phone, tooltip access and completion."
         },
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "Independent review passed for the final RPC rollout follow-up. Receiver checkpoints and shared prefetch honor learned provider limits without changing finalized evidence, provider agreement, or atomic writes. Singleton watcher reads use ordinary RPC calls, preserve execution errors per element, and propagate transport failures. Caller deadlines release owned probe state without changing provider health; independent HTTP attempt timeouts retain failover. Reviewed real-Anvil regressions for bounded progress with shared Postgres quota, singleton compatibility and error isolation, and caller-deadline health isolation. Targeted race tests and final seven-check verification passed. Owning documentation matches behavior. No blocking findings.",
-          "at": "2026-10-27T15:36:52Z",
-          "filesHash": "8e4b82599436fffd"
+          "summary": "Independent review passed for the combined settlement tracking and compact confirmation changes. Migration 83 receipt observations remain display-only; missing receipts and retries clear observations, and finality, independent evidence, and ledger booking remain unchanged. Reviewed API progress calculations and null handling, replacement and reorg behavior, shared count and tooltip rendering, normal-wait suppression, and documented feature dependencies. Completed settlement links use the canonical booked hash; stale receipt metadata and duplicate deposit links no longer override it. Focused API, signer, reorg, replacement race tests and seven invoice tests passed. Final frozen-source verification passed all seven checks; authenticated browser coverage passed for changing progress, canonical completion links, hover, focus, touch, accessibility, and light/dark layouts. No blocking findings.",
+          "at": "2026-10-27T16:11:11Z",
+          "filesHash": "bb09d7e2bf53ec62"
         }
       },
       "branch": "refactor/f337-centralize-backend-rpc-configuration-and",
@@ -235,9 +241,9 @@
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-27T15:37:27Z",
+    "at": "2026-10-27T16:11:09Z",
     "clean": true,
     "problems": [],
-    "note": "Local RPC rollout applied migration82, backend-only private references and verified public archive endpoints. Both original deposits are independently proved, booked once and paid; Arc settled. Base settlement succeeded with one exact recipient transfer on two providers and awaits chain finality. Fixed checkpoint bounds, singleton read compatibility and caller-deadline health penalties. Final seven checks passed in289.6s and independent review passed. Recovery tools and temporary directories removed; requested dev services remain running and API/web checks pass. Private endpoints remain disabled after401/402 responses. Next: commit and push follow-up to existing PR331; no merge."
+    "note": "Restored live confirmation counts and accessible estimate tooltips across checkout, owner invoice and payment detail. Settlement tracking uses display-only receipt observations and canonical completed transaction links. Both original local invoices are paid and settled. Final combined seven-check verification and authenticated production browser regression passed. Temporary confirmation fixtures are removed; ongoing development services remain running. Push follow-up to PR331; merge remains pending."
   }
 }

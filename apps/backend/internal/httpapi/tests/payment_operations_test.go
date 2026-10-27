@@ -169,6 +169,35 @@ func TestPaymentAttentionShowsNetFundsAndDeliveryWithoutChangingPaymentTruth(t *
 	if !ok || len(options) != 1 {
 		t.Fatalf("option accounting missing: %v", detail.body)
 	}
+	settlement := options[0].(map[string]any)["settlement"].(map[string]any)
+	if _, ok := settlement["blocksLeft"]; !ok {
+		t.Fatal("payment detail omits settlement finality progress")
+	}
+	if settlement["blocksLeft"] != nil || settlement["secondsLeft"] != nil {
+		t.Fatalf("unmined settlement invented progress: %v", settlement)
+	}
+	e.exec(t, `UPDATE settlement_intents SET receipt_tx_hash='0x'||repeat('ab',32), receipt_block=120,
+ receipt_time=(SELECT last_finalized_time + 40 FROM chain_cursors WHERE chain_id=84532) WHERE invoice_id=$1`, paid)
+	progress := func() map[string]any {
+		t.Helper()
+		got := e.call(t, "GET", base+"/payments/"+paid+"?view=summary", alice, "", "")
+		if got.status != http.StatusOK {
+			t.Fatal(got.body)
+		}
+		return got.body["options"].([]any)[0].(map[string]any)["settlement"].(map[string]any)
+	}
+	if got := progress(); got["blocksLeft"] != float64(20) || got["secondsLeft"] != float64(40) || got["blockNumber"] != float64(120) {
+		t.Fatalf("settlement progress missing from summary: %v", got)
+	}
+	e.exec(t, "UPDATE chain_cursors SET last_scanned_block=greatest(last_scanned_block,120),last_finalized_block=110,last_finalized_time=last_finalized_time+20 WHERE chain_id=84532")
+	if got := progress(); got["blocksLeft"] != float64(10) || got["secondsLeft"] != float64(20) {
+		t.Fatalf("settlement progress did not refresh: %v", got)
+	}
+	e.exec(t, "UPDATE chain_cursors SET last_finalized_block=120,last_finalized_time=last_finalized_time+20 WHERE chain_id=84532")
+	if got := progress(); got["blocksLeft"] != float64(0) || got["secondsLeft"] != float64(0) || got["status"] == "confirmed" {
+		t.Fatalf("display progress changed settlement truth: %v", got)
+	}
+	e.exec(t, "UPDATE chain_cursors SET last_finalized_block=100,last_finalized_time=last_finalized_time-40 WHERE chain_id=84532")
 	option := options[0].(map[string]any)
 	amounts := option["amounts"].(map[string]any)
 	if amounts["reconciliationStatus"] != "verified" {

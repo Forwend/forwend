@@ -317,18 +317,16 @@ export const INVOICE_COPY = {
   } satisfies Record<InvoiceStep, string>,
   confirmingCount: (done: number, total: number) =>
     total > 0
-      ? `${done.toLocaleString("en-US")} / ${total.toLocaleString("en-US")} blocks confirmed`
-      : "Waiting for confirmation",
-  confirmingHint: (seconds: number) => {
-    const left = timeLeft(seconds);
-    return `${left[0]?.toUpperCase()}${left.slice(1)} left`;
+      ? `Confirming (${done.toLocaleString("en-US")}/${total.toLocaleString("en-US")})`
+      : "Confirming",
+  confirmingHint: (seconds?: number | null, blocks?: number | null) => {
+    const left = seconds != null ? timeLeft(seconds) : null;
+    const estimate = left ? `${left[0]?.toUpperCase()}${left.slice(1)} left` : null;
+    return [blocks != null ? `${blocks.toLocaleString("en-US")} blocks remaining` : null, estimate]
+      .filter(Boolean)
+      .join(" · ");
   },
   confirmed: "Confirmed",
-  // Read out to screen readers as blocks pass.
-  confirming: (done: number, total: number, seconds: number) =>
-    total > 0
-      ? `Confirming (${done.toLocaleString("en-US")}/${total.toLocaleString("en-US")}) · ${timeLeft(seconds)} left`
-      : `Confirming · ${timeLeft(seconds)} left`,
   // Why a paid invoice's money still waits (R-54); `at` is a short local time.
   settling: {
     [SETTLEMENT_WAITS.signing]: () => "Sending to your wallet",

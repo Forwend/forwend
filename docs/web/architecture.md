@@ -88,7 +88,8 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   pattern, Send to client); onboarding → activity, invoices, profiles,
   transactions; transactions → invoices (the bell's invoice events, R-81, the invoice numbers on Transactions, R-109, and the ECB currencies, R-111); transactions → profiles (the statement's way back from billing details, R-113). No cycles ([structure.md](structure.md)); money helpers and words that several features show live in
   `shared/lib/money.ts` and `shared/constants/money-copy.ts`. Add no new edge without listing it here.
-- Payments imports invoice purpose, document and money schemas, plus activity status constants; shared financial representation stays with its existing owner.
+- Payments imports invoice purpose, document and money schemas, plus its compact confirmation component and activity status constants.
+- Shared financial representation stays with its existing owner.
 - Payment verification classification lives with invoice money readers; checkout reuses it without changing financial safety gates.
 - Payments owns operational queries, snapshots, problems, exports and reconciliation; link screens compose payments alongside offer details.
 - Payment routes preserve profile identity in cache arguments and filter stores, sources, links and statuses through the API.

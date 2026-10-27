@@ -951,3 +951,127 @@ test("transaction evidence distinguishes missing records, recovery and internal 
   expect(await sidewaysScroll(page)).toBeLessThanOrEqual(1);
   await context.close();
 });
+
+test("payment detail tracks settlement finality and keeps its transaction link", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 1000 },
+    hasTouch: true,
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await mockPayments(page);
+  const option = detail.options[0];
+  const deposit = option?.deposits[0];
+  if (!option || !deposit) throw new Error("Payment fixture requires an option and deposit");
+  let blocksLeft = 375;
+  let settled = false;
+  const txHash = hash("9");
+  await page.route(`**/payments/${payment.paymentId}?view=summary`, (route) =>
+    route.fulfill({
+      json: {
+        ...detail,
+        settlementStatus: settled ? "settled" : "pending",
+        problems: [
+          ...detail.problems,
+          ...["outflow_unreconciled", "settlement_delayed"].map((code) => ({
+            ...held,
+            code,
+            action: "wait",
+            amount: null,
+          })),
+        ],
+        options: [
+          {
+            ...option,
+            settlementStatus: settled ? "settled" : "pending",
+            deposits: [
+              {
+                ...deposit,
+                status: "detected",
+                blocksLeft: 590,
+                blocksTotal: 599,
+                secondsLeft: 40,
+              },
+            ],
+            settlement: {
+              ...option.settlement,
+              status: settled ? "confirmed" : "sent",
+              txHash: settled ? hash("8") : txHash,
+              receiptTxHash: txHash,
+              blockNumber: 1200,
+              blocksLeft,
+              secondsLeft: blocksLeft * 2,
+            },
+          },
+        ],
+      },
+    }),
+  );
+  await page.goto(`/app/payments/${payment.paymentId}`);
+  const transfer = page.getByRole("region", { name: "Transfer to your wallet" });
+  await expect(transfer.getByRole("status")).toHaveText("Confirming");
+  const estimate = transfer.getByRole("button", {
+    name: "375 blocks remaining · About 13 min left",
+  });
+  await expect(page.getByRole("tooltip")).toHaveCount(0);
+  await estimate.hover();
+  await expect(page.getByRole("tooltip")).toContainText("375 blocks remaining · About 13 min left");
+  await page.mouse.move(0, 0);
+  await estimate.focus();
+  await expect(page.getByRole("tooltip")).toContainText("375 blocks remaining · About 13 min left");
+  await page.keyboard.press("Escape");
+  await estimate.blur();
+  await expect(page.getByText("Outgoing transfer not yet confirmed")).toHaveCount(0);
+  await expect(page.getByText("Settlement delayed", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("This money is owed to the payer.", { exact: false })).toBeVisible();
+  await expect(transfer.getByRole("link")).toHaveAttribute(
+    "href",
+    `https://sepolia.basescan.org/tx/${txHash}`,
+  );
+  await expect(page.getByText("Confirming (9/599)", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("main").locator(`a[href="https://sepolia.basescan.org/tx/${deposit.txHash}"]`),
+  ).toHaveCount(1);
+  await page.screenshot({
+    path: "../../docs/runs/f337-settlement-progress-1440.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(transfer).toBeVisible();
+  expect(await sidewaysScroll(page)).toBeLessThanOrEqual(1);
+  expect(await blockingViolations(page)).toEqual([]);
+  await page.screenshot({
+    path: "../../docs/runs/f337-settlement-progress-390.png",
+    fullPage: true,
+  });
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.reload();
+  await transfer.getByRole("button", { name: "375 blocks remaining · About 13 min left" }).tap();
+  await expect(page.getByRole("tooltip")).toContainText("375 blocks remaining · About 13 min left");
+  expect(await blockingViolations(page)).toEqual([]);
+  await page.screenshot({
+    path: "../../docs/runs/f337-confirmation-tooltip-dark-390.png",
+    fullPage: true,
+  });
+  await page.keyboard.press("Escape");
+  blocksLeft = 125;
+  await page.reload();
+  await expect(transfer.getByRole("status")).toHaveText("Confirming");
+  await expect(
+    transfer.getByRole("button", { name: "125 blocks remaining · About 5 min left" }),
+  ).toBeVisible();
+  blocksLeft = 0;
+  await page.reload();
+  await expect(transfer.getByRole("status")).toHaveText("Confirming");
+  await expect(transfer).not.toContainText("In your wallet");
+  settled = true;
+  await page.reload();
+  await expect(transfer).toContainText("In your wallet");
+  await expect(transfer.getByRole("link")).toHaveAttribute(
+    "href",
+    `https://sepolia.basescan.org/tx/${hash("8")}`,
+  );
+  await context.close();
+});

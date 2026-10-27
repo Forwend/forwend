@@ -456,9 +456,9 @@ test.describe("pay page", () => {
     page,
   }) => {
     await openPay(page, CONFIRMING);
-    await expect(status(page)).toContainText("Confirming (6/12) · about 2 min left");
+    await expect(status(page)).toContainText("Confirming (6/12)");
     await page.reload();
-    await expect(status(page)).toContainText("Confirming (6/12) · about 2 min left");
+    await expect(status(page)).toContainText("Confirming (6/12)");
   });
 
   test("follows the payment from waiting to paid without a reload, and never shows Settled", async ({
@@ -479,7 +479,7 @@ test.describe("pay page", () => {
 
     // R-68: once the full amount is on its way, no address invites a second payment.
     await page.clock.runFor(POLL_MS);
-    await expect(status(page)).toContainText("Confirming (0/12) · about 3 min left");
+    await expect(status(page)).toContainText("Confirming (0/12)");
     await expect(page.getByText(RECEIVE)).toHaveCount(0);
     await expect(page.locator("[data-status]")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Paying with" })).toBeVisible();
@@ -487,7 +487,7 @@ test.describe("pay page", () => {
     await expect(steps.getByRole("listitem")).toHaveText([/^Detected/, /^Confirming/, /^Paid/]);
     await expect(steps.locator("[aria-current=step]")).toHaveText("Confirming");
     await expect(status(page).getByRole("button", { name: "About 3 min left" })).toBeVisible();
-    await expect(status(page).getByText("0 / 12 blocks confirmed", { exact: true })).toBeVisible();
+    await expect(status(page).getByText("Confirming (0/12)", { exact: true })).toBeVisible();
     const payment = page.getByRole("region", { name: "Payment progress" }).locator("ul > li");
     await expect(payment).toContainText("1,250.00 USDC");
     await expect(payment).toContainText("0x3333…3333");
@@ -497,7 +497,7 @@ test.describe("pay page", () => {
     );
 
     await page.clock.runFor(POLL_MS);
-    await expect(status(page)).toContainText("Confirming (6/12) · about 2 min left");
+    await expect(status(page)).toContainText("Confirming (6/12)");
 
     await page.clock.runFor(POLL_MS);
     await expect(page.getByRole("status").filter({ hasText: /^Paid$/ })).toBeVisible();
