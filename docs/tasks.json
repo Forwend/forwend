@@ -15,7 +15,7 @@
       "dependsOn": [
         "F328"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend-affected",
         "backend-e2e"
@@ -125,11 +125,18 @@
           "summary": "Reviewed dual-provider receiver source proofs, immutable migration78 evidence and rollback protection, chronological balanced outflow booking, net-liability invariants, historical paid truth, exceptional settlements, legacy reconciliation and exact chain/token/transaction/log wallet attribution. Owed null-number, unpaid-settlement rendering and stale-reopen findings are fixed with regressions. Watcher/ledger/settlement ownership stays acyclic; shared HTTP amounts stay in paymentio. All ten selected checks passed, including real Postgres race tests and real-binary Anvil reconciliation; frontend reviewer found no residual timing/status blocker. Historical conflicts remain explicit rather than rewritten; provider tests do not claim live-provider validation. No F329 blockers remain.",
           "at": "2026-10-27T02:00:39Z",
           "filesHash": "e6a0ee140c29065f"
-        }
+        },
+        "commit": "13c3d309",
+        "doneAt": "2026-10-27T02:01:04Z"
       },
       "branch": "fix/f329-reconcile-receiver-outflows-and-exact-se",
       "baseCommit": "8657a989414b1b188d15d3189f404d9736b74223",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f329-reconcile-receiver-outflows-and-exact-se",
+        "base": "main"
+      }
     },
     {
       "id": "F330",
