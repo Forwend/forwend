@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 339,
+  "nextId": 340,
   "tasks": [
     {
       "id": "F332",
@@ -146,7 +146,8 @@
       "keep": [],
       "review": true,
       "notes": [
-        "2026-10-27 review pass by reviewer: Independent review passed for one-provider payment and settlement processing. Operational clients share ordered endpoint failover; one endpoint is accepted at startup. Finalized blocks, canonical log hashes, net balances, immutable proofs and once-only booking remain enforced. Review found and resolved outgoing-log ordering lost with the former comparison helper; the reverse-log batch-refund regression preserves distinct transfer proofs and exact balances. Independent focused race checks passed for refunds, startup, cross-role failover and identical signed transaction retries. The separate canary remains non-gating. Selected-provider gas-price trust is documented. Final task verification passed docs-check, backend-affected and backend-e2e."
+        "2026-10-27 review pass by reviewer: Independent review passed for one-provider payment and settlement processing. Operational clients share ordered endpoint failover; one endpoint is accepted at startup. Finalized blocks, canonical log hashes, net balances, immutable proofs and once-only booking remain enforced. Review found and resolved outgoing-log ordering lost with the former comparison helper; the reverse-log batch-refund regression preserves distinct transfer proofs and exact balances. Independent focused race checks passed for refunds, startup, cross-role failover and identical signed transaction retries. The separate canary remains non-gating. Selected-provider gas-price trust is documented. Final task verification passed docs-check, backend-affected and backend-e2e.",
+        "2026-10-27 F338 is verified and independently reviewed; committed as 98ee34a3 and published in PR332. Staging promotion is held at the user request until F339 completes. Rebase afterward, preserve both task records and nextId340, then reverify and promote."
       ],
       "blockedReason": null,
       "evidence": {
@@ -197,9 +198,9 @@
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-27T16:11:09Z",
+    "at": "2026-10-27T16:52:43Z",
     "clean": true,
     "problems": [],
-    "note": "Restored live confirmation counts and accessible estimate tooltips across checkout, owner invoice and payment detail. Settlement tracking uses display-only receipt observations and canonical completed transaction links. Both original local invoices are paid and settled. Final combined seven-check verification and authenticated production browser regression passed. Temporary confirmation fixtures are removed; ongoing development services remain running. Push follow-up to PR331; merge remains pending."
+    "note": "F338 is verified and independently reviewed; committed as 98ee34a3 and published in PR332. Staging promotion is held at the user request until F339 completes. Rebase afterward, preserve both task records and nextId340, then reverify and promote."
   }
 }
