@@ -15,7 +15,7 @@
       "dependsOn": [
         "F330"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check",
         "web-unit",
@@ -144,11 +144,18 @@
           "summary": "Independent backend/API review found no blockers. Reviewed canonical token and option metadata, tenant/store/key-mode intersection for link filters, nullable document-free checkout notifications, owner payment navigation and legacy document compatibility. Pending-versus-review classification distinguishes automatic rescans, explained unbooked cash and unrelated recoveries while preserving financial safety guards and genuine conflict warnings. Domain/SQL ownership and shared API/Node contracts align. Focused race regressions independently passed3.035s; diff check is clean. Final verification passed all11 checks, including backend race, real-binary integration, live browser suite and public browser tests. Review covers F331 only; later tasks remain outside the requested scope.",
           "at": "2026-10-27T08:11:53Z",
           "filesHash": "55391c2006ad2bc5"
-        }
+        },
+        "commit": "63a2c517",
+        "doneAt": "2026-10-27T08:12:21Z"
       },
       "branch": "fix/f331-give-merchants-distinct-payments-links-a",
       "baseCommit": "02d98935c551dea323d44d0c94100b72251f54db",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f331-give-merchants-distinct-payments-links-a",
+        "base": "main"
+      }
     },
     {
       "id": "F332",
