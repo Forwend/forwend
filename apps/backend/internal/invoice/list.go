@@ -19,7 +19,7 @@ const (
 var StatusFilters = []string{"open", "confirming", "paid", "settled", "expired", "canceled"}
 
 // ClosedSQL: every reader shows the checkout expired before the ledger does (R-77); detected may be money after it.
-// Paid on time but awaiting the second RPC is not closed. Before an option is chosen, every option counts (R-119).
+// Paid on time but awaiting the finalized balance check is not closed. Before an option is chosen, every option counts (R-119).
 const ClosedSQL = `((invoices.settlement_status = 'settled' AND invoices.payment_status <> 'paid') OR (invoices.payment_status IN ('open', 'detected', 'partially_paid')
 	AND NOT EXISTS (SELECT 1 FROM invoices open_option
         WHERE (open_option.id = invoices.option_id OR invoices.chosen_id IS NULL AND open_option.main_id = invoices.id)

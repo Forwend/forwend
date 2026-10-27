@@ -20,7 +20,7 @@ const (
 	balanceTTL = time.Minute
 )
 
-// ChainReader reads with each chain's second RPC (D-15); a slow chain never holds up another.
+// ChainReader reads with each chain's RPC pool (D-15); a slow chain never holds up another.
 type ChainReader struct {
 	rpcs    map[uint64]chain.RPCs
 	errs    map[uint64]error // chains whose RPC list can't confirm balances
@@ -38,12 +38,12 @@ func NewChainReader(specs map[uint64]chain.Spec, rate float64, budgets ...*chain
 			c.errs[id] = err
 			continue
 		}
-		c.rpcs[id], c.clients[id] = r, ethclient.NewClient(r.Second)
+		c.rpcs[id], c.clients[id] = r, ethclient.NewClient(r.Client)
 	}
 	return c
 }
 
-// Read is a ledger.BalanceOf at the second RPC's finalized block. Requests share one finalized read per chain per
+// Read is a ledger.BalanceOf at the selected RPC's finalized block. Requests share one finalized read per chain per
 // finalizedTTL and one balanceOf per block, so a balance is always the one at the block it is returned with.
 func (c *ChainReader) Read(ctx context.Context, chainID uint64, token, holder string) (*big.Int, uint64, error) {
 	if err := c.errs[chainID]; err != nil {

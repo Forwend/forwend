@@ -98,16 +98,16 @@ func TestTimedOutRPCRests(t *testing.T) {
 }
 
 // D-15.
-func TestChainWithOneHostIsRefused(t *testing.T) {
+func TestSingleRPCReadsBalancesAndRejectsWrongChain(t *testing.T) {
 	anvil := chaintest.Start(t)
 	token := anvil.DeployToken()
 	c := NewChainReader(map[uint64]chain.Spec{
-		chaintest.ChainID: {ChainID: chaintest.ChainID, AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, Priority: 0, URL: anvil.URL, BudgetGroup: "budget-0"}, {ID: "rpc-1", Provider: "provider-1", Role: chain.Confirmation, Tier: chain.Public, Priority: 1, URL: strings.Replace(anvil.URL, "127.0.0.1", "localhost", 1), BudgetGroup: "budget-1"}}},
+		chaintest.ChainID: {ChainID: chaintest.ChainID, AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, Priority: 0, URL: anvil.URL, BudgetGroup: "budget-0"}}},
 		dead:              {ChainID: dead, AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, Priority: 0, URL: anvil.URL, BudgetGroup: "budget-0"}}},
 	}, 1000)
 	ctx := context.Background()
-	if _, _, err := c.Read(ctx, dead, usdc, holder); err == nil || !strings.Contains(err.Error(), "independent confirmation") {
-		t.Fatalf("one-host chain: %v, want the D-15 error", err)
+	if _, _, err := c.Read(ctx, dead, usdc, holder); err == nil || !strings.Contains(err.Error(), "RPC endpoints unavailable") {
+		t.Fatalf("wrong-chain endpoint: %v, want unavailable", err)
 	}
 	if _, _, err := c.Read(ctx, chaintest.ChainID, token, holder); err != nil {
 		t.Fatal(err)

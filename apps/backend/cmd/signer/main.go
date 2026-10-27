@@ -61,7 +61,7 @@ func run() error {
 
 	err = chain.CheckEnabled(ctx, pool, specs, cfg.Chains.RPCRate,
 		func(ctx context.Context, id uint64, r chain.RPCs) error {
-			return settlement.CheckGas(ctx, id, executor, ethclient.NewClient(r.Primary), ethclient.NewClient(r.Second))
+			return settlement.CheckGas(ctx, id, executor, ethclient.NewClient(r.Client))
 		}, budget)
 	if err != nil {
 		return err

@@ -16,9 +16,9 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
-func TestCheckoutPurchaseSettlesWithoutIssuingAnInvoice(t *testing.T) {
+func TestCheckoutPurchaseSettlesWithOneRPCWithoutIssuingAnInvoice(t *testing.T) {
 	ctx := t.Context()
-	st := newStack(t)
+	st := newStack(t, true)
 	profile, store, merchantWallet := st.merchant(t)
 	start(t, st.bin, "worker", st.loop)
 	start(t, st.bin, "signer", append(st.loop, "EXECUTOR_PRIVATE_KEY="+chaintest.Key))

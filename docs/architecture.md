@@ -17,7 +17,7 @@ Requirements and decisions: [PROJECT.md](PROJECT.md).
 | Invoice receiver contracts | One receiver per invoice at an address known in advance; can only pay the invoice amount to its recipient or return money through the refund authority | No | [contracts](contracts/architecture.md) |
 | Refund-authority Safe | Multisig. Refunds, recoveries and late settles wait 24–48 h; pause and executor change are immediate | Owner hardware keys | [contracts operations](contracts/operations.md) |
 | Privy | Login and one wallet per profile; the profile wallet is the invoice recipient | User wallets (Privy) | PROJECT D-21 |
-| RPC providers | Read chains through prioritized private/public endpoints; an independent provider group confirms balances | No | PROJECT D-15 |
+| RPC providers | Read chains through prioritized private/public endpoints; one working provider supplies finalized evidence and balances | No | PROJECT D-15 |
 
 ## Trust boundaries
 
@@ -30,7 +30,7 @@ Requirements and decisions: [PROJECT.md](PROJECT.md).
 - The receive address is computed locally from the factory address and init-code hash compiled into the backend,
   never read from the database or an RPC, and recomputed on the checkout page.
 - "Paid" comes only from `balanceOf` of the allowlisted token on an address the backend computed itself, confirmed by
-  a second RPC. Logs from any other contract are ignored.
+  the finalized token balance. Logs from any other contract are ignored.
 
 Diagram: [who can move money](diagrams/security-keys.json).
 

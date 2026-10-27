@@ -53,8 +53,8 @@ func TestDatabaseEndpointConfiguration(t *testing.T) {
 		t.Fatalf("disabled endpoint requires a secret: %v", err)
 	}
 	exec(`UPDATE rpc_endpoints SET enabled=true,provider='publicnode' WHERE id='private-a'`)
-	if _, err := Specs(ctx, db, secrets, false); err == nil {
-		t.Fatal("one provider can confirm itself")
+	if _, err := Specs(ctx, db, secrets, false); err != nil {
+		t.Fatalf("shared provider rejected: %v", err)
 	}
 	exec(`UPDATE rpc_endpoints SET provider='operator-a' WHERE id='private-a'`)
 	for _, bad := range []string{"http://private.example/SECRET", "https://user:SECRET@example.com", "https://169.254.169.254/SECRET", "https://[::1]/SECRET", "https://example.com/#SECRET", "https://"} {
@@ -75,8 +75,8 @@ func TestDatabaseEndpointConfiguration(t *testing.T) {
 	exec(`UPDATE rpc_endpoints SET provider='operator-b',role='confirmation',secret_ref='ALIAS' WHERE id='private-a'`)
 	for _, alias := range []string{"https://sepolia.base.org:443/private", "https://SEPOLIA.BASE.ORG./private"} {
 		_, err = Specs(ctx, db, map[string]string{"ALIAS": alias}, false)
-		if err == nil {
-			t.Fatal("same host alias accepted across roles")
+		if err != nil {
+			t.Fatalf("same host alias rejected: %v", err)
 		}
 	}
 }
@@ -87,9 +87,9 @@ func TestRegistryRejectsInvalidEndpointMetadata(t *testing.T) {
 		{ID: "b", Provider: "b", Role: Confirmation, Tier: Public, URL: "https://b.example", BudgetGroup: "b"},
 	}}
 	for _, mutate := range []func(*Spec){
-		func(s *Spec) { s.ChainID = 0 }, func(s *Spec) { s.Endpoints[1].Provider = "a" },
+		func(s *Spec) { s.ChainID = 0 }, func(s *Spec) { s.Endpoints = nil },
 		func(s *Spec) { s.Endpoints[1].ID = "a" }, func(s *Spec) { s.Endpoints[1].URL = s.Endpoints[0].URL },
-		func(s *Spec) { s.Endpoints[0].ID = "https://SECRET" }, func(s *Spec) { s.Endpoints[1].Role = Primary },
+		func(s *Spec) { s.Endpoints[0].ID = "https://SECRET" }, func(s *Spec) { s.Endpoints[1].Role = "invalid" },
 	} {
 		s := valid
 		s.Endpoints = append([]Endpoint{}, valid.Endpoints...)

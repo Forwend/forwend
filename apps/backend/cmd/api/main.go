@@ -62,7 +62,7 @@ func run() error {
 	defer budget.Close()
 
 	err = chain.CheckEnabled(ctx, pool, specs, cfg.RPCRate, func(ctx context.Context, id uint64, r chain.RPCs) error {
-		return address.FactoryDeployed(ctx, id, ethclient.NewClient(r.Primary), ethclient.NewClient(r.Second))
+		return address.FactoryDeployed(ctx, id, ethclient.NewClient(r.Client))
 	}, budget)
 	if err != nil {
 		return err

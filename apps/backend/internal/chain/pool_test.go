@@ -37,7 +37,7 @@ func TestFailingEndpointRestsThenComesBack(t *testing.T) {
 				}
 				return chaintest.Forward
 			})
-			if got := number(t, ctx, r.Primary); got != want {
+			if got := number(t, ctx, r.Client); got != want {
 				t.Fatalf("block %d, want %d", got, want)
 			}
 			e := r.pool.endpoints[0]
@@ -47,13 +47,13 @@ func TestFailingEndpointRestsThenComesBack(t *testing.T) {
 			}
 
 			calls := len(bad.Calls())
-			if got := number(t, ctx, r.Primary); got != want || len(bad.Calls()) != calls {
+			if got := number(t, ctx, r.Client); got != want || len(bad.Calls()) != calls {
 				t.Fatalf("block %d with %d calls to the resting endpoint", got, len(bad.Calls())-calls)
 			}
 
 			bad.Fail(nil)
 			time.Sleep(time.Until(until))
-			if got := number(t, ctx, r.Primary); got != want || len(bad.Calls()) != calls+2 {
+			if got := number(t, ctx, r.Client); got != want || len(bad.Calls()) != calls+2 {
 				t.Fatalf("after its rest: block %d, %d calls to it; want it used again", got, len(bad.Calls())-calls)
 			}
 			if failures, _ := health(r, e); failures != 0 {
@@ -79,7 +79,7 @@ func TestRefusingEndpointRestsLong(t *testing.T) {
 			bad := httptest.NewServer(answer)
 			defer bad.Close()
 			r := newRPCs(t, bad.URL, a.URL, localhost(a.URL))
-			if got := number(t, context.Background(), r.Primary); got != want {
+			if got := number(t, context.Background(), r.Client); got != want {
 				t.Fatalf("block %d, want %d", got, want)
 			}
 			if failures, until := health(r, r.pool.endpoints[0]); failures != 1 || time.Until(until) < RestMax/2-time.Second {
@@ -97,7 +97,7 @@ func TestHangingHostRestsWhole(t *testing.T) {
 	r := newRPCs(t, hang.URL+"/1", hang.URL+"/2", hang.URL+"/3", a.URL, localhost(a.URL))
 	r.pool.timeout = 300 * time.Millisecond
 	start := time.Now()
-	if got := number(t, context.Background(), r.Primary); got != want {
+	if got := number(t, context.Background(), r.Client); got != want {
 		t.Fatalf("block %d, want %d", got, want)
 	}
 	if took := time.Since(start); took > 2*r.pool.timeout {
@@ -120,12 +120,12 @@ func TestQueuedRequestsSkipAnEndpointThatStartsToRest(t *testing.T) {
 	}
 	defer r.Close()
 	ctx := context.Background()
-	want := number(t, ctx, r.Primary)
+	want := number(t, ctx, r.Client)
 	bad.Fail(func(chaintest.Call) chaintest.Fault { return chaintest.HTTP429 })
 	got := make(chan uint64, 5)
 	for range 5 {
 		go func() {
-			n, _ := tryNumber(ctx, r.Primary)
+			n, _ := tryNumber(ctx, r.Client)
 			got <- n
 		}()
 	}
@@ -140,57 +140,18 @@ func TestQueuedRequestsSkipAnEndpointThatStartsToRest(t *testing.T) {
 	}
 }
 
-// D-15: a failed host is replaced only by another of its own role.
-func TestRolesStayOnDifferentHosts(t *testing.T) {
+func TestFailoverUsesEveryConfiguredEndpoint(t *testing.T) {
 	a := chaintest.Start(t)
 	hosts := []*chaintest.Proxy{a.Proxy(), a.Proxy(), a.Proxy()}
 	r := newRPCs(t, hosts[0].URL, hosts[1].URL, hosts[2].URL)
-	ctx := context.Background()
-	served := func(ctx context.Context, c *rpc.Client) (int, error) {
-		before := make([]int, len(hosts))
-		for i, h := range hosts {
-			before[i] = answered(h)
+	for i, host := range hosts {
+		before := answered(host)
+		number(t, t.Context(), r.Client)
+		if answered(host) <= before {
+			t.Fatalf("endpoint %d did not serve after earlier endpoints failed", i)
 		}
-		_, err := tryNumber(ctx, c)
-		for i, h := range hosts {
-			if answered(h) > before[i] {
-				return i, err
-			}
-		}
-		return -1, err
+		host.Fail(func(chaintest.Call) chaintest.Fault { return chaintest.HTTP503 })
 	}
-	expect := func(primary, second int) {
-		t.Helper()
-		if got, err := served(ctx, r.Primary); err != nil || got != primary {
-			t.Fatalf("primary served by host %d (%v), want %d", got, err, primary)
-		}
-		if got, err := served(ctx, r.Second); err != nil || got != second {
-			t.Fatalf("second served by host %d (%v), want %d", got, err, second)
-		}
-	}
-	down := func(chaintest.Call) chaintest.Fault { return chaintest.HTTP503 }
-
-	expect(0, 1)
-	// The second's only host is down: balances wait rather than move to a host the primary may use.
-	hosts[1].Fail(down)
-	short, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
-	defer cancel()
-	if got, err := served(short, r.Second); err == nil || got != -1 {
-		t.Fatalf("second served by host %d (%v) while its own host is down; want an error", got, err)
-	}
-	hosts[1].Fail(nil)
-
-	// SEC-01: after the primary fails over and back, the second never reads from the host the primary used meanwhile.
-	hosts[0].Fail(down)
-	if got, err := served(ctx, r.Primary); err != nil || got != 2 {
-		t.Fatalf("primary served by host %d (%v), want 2", got, err)
-	}
-	hosts[0].Fail(nil)
-	for _, e := range r.pool.endpoints[:2] {
-		_, until := health(r, e)
-		time.Sleep(time.Until(until))
-	}
-	expect(0, 1)
 }
 
 func TestFailedKeyMovesToTheNextKeyOnItsHost(t *testing.T) {
@@ -204,17 +165,17 @@ func TestFailedKeyMovesToTheNextKeyOnItsHost(t *testing.T) {
 		return chaintest.Forward
 	})
 	ctx := context.Background()
-	number(t, ctx, r.Primary)
+	number(t, ctx, r.Client)
 	beforeOther := answered(other)
-	number(t, ctx, r.Second)
+	number(t, ctx, r.Client)
 	key2 := 0
 	for _, c := range infura.Calls() {
 		if c.Path == "/v3/key2" && c.Fault == chaintest.Forward {
 			key2++
 		}
 	}
-	if key2 == 0 || answered(other) == beforeOther {
-		t.Fatalf("key2 answered %d calls, the other host %d; want the primary on key2 and the second on the other host",
+	if key2 == 0 || answered(other) != beforeOther {
+		t.Fatalf("key2 answered %d calls, the other host %d; want key2 used before the next host",
 			key2, answered(other)-beforeOther)
 	}
 	if failures, _ := health(r, r.pool.endpoints[0]); failures != 1 {
@@ -235,7 +196,7 @@ func TestURLsStayOutOfErrorsAndLogs(t *testing.T) {
 	r.pool.timeout = 200 * time.Millisecond
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	for _, c := range []*rpc.Client{r.Primary, r.Second} {
+	for _, c := range []*rpc.Client{r.Client, r.Client} {
 		_, err := tryNumber(ctx, c)
 		if err == nil {
 			t.Fatal("no error when every endpoint fails")
@@ -249,7 +210,7 @@ func TestURLsStayOutOfErrorsAndLogs(t *testing.T) {
 	}
 }
 
-// A batch counts each of its calls; the other host's pace is its own.
+// A batch counts each of its calls against the selected endpoint's pace.
 func TestEachEndpointIsPaced(t *testing.T) {
 	a := chaintest.Start(t)
 	r, err := NewRPCs(testSpec(chaintest.ChainID, a.URL, localhost(a.URL)), 20) // 50 ms a call
@@ -260,7 +221,7 @@ func TestEachEndpointIsPaced(t *testing.T) {
 	ctx := context.Background()
 	start := time.Now()
 	for range 5 {
-		number(t, ctx, r.Primary)
+		number(t, ctx, r.Client)
 	}
 	if took := time.Since(start); took < 200*time.Millisecond {
 		t.Fatalf("5 calls took %v, want at least 200ms at 20 a second", took)
@@ -270,16 +231,13 @@ func TestEachEndpointIsPaced(t *testing.T) {
 	for i := range batch {
 		batch[i] = rpc.BatchElem{Method: "eth_blockNumber", Result: new(string)}
 	}
-	if err := r.Primary.BatchCallContext(ctx, batch); err != nil {
+	if err := r.Client.BatchCallContext(ctx, batch); err != nil {
 		t.Fatal(err)
 	}
 	end := time.Now()
-	number(t, ctx, r.Second)
-	second := time.Since(end)
-	number(t, ctx, r.Primary)
-	if primary := time.Since(end); second > 250*time.Millisecond || primary < 400*time.Millisecond {
-		t.Fatalf("after a batch of 10: second answered in %v, primary in %v; want the primary to wait about 500ms "+
-			"and the second not", second, primary)
+	number(t, ctx, r.Client)
+	if took := time.Since(end); took < 400*time.Millisecond {
+		t.Fatalf("after a batch of 10: next call answered in %v; want about 500ms", took)
 	}
 }
 
@@ -400,7 +358,7 @@ func TestCallsReuseConnections(t *testing.T) {
 		var wg sync.WaitGroup
 		for range 10 {
 			wg.Go(func() {
-				if _, err := tryNumber(ctx, r.Primary); err != nil {
+				if _, err := tryNumber(ctx, r.Client); err != nil {
 					t.Error(err)
 				}
 			})
@@ -425,7 +383,7 @@ func TestOversizedAnswerIsAnOutage(t *testing.T) {
 	}))
 	defer huge.Close()
 	r := newRPCs(t, huge.URL, a.URL, localhost(a.URL))
-	if got := number(t, context.Background(), r.Primary); got != want {
+	if got := number(t, context.Background(), r.Client); got != want {
 		t.Fatalf("block %d, want %d from the next endpoint", got, want)
 	}
 	if failures, _ := health(r, r.pool.endpoints[0]); failures != 1 {
@@ -437,20 +395,20 @@ func TestCallerDeadlineDoesNotRestProviderForOtherWork(t *testing.T) {
 	a := chaintest.Start(t)
 	proxy := a.Proxy()
 	r := newRPCs(t, proxy.URL, localhost(a.URL))
-	if _, err := tryNumber(t.Context(), r.Primary); err != nil {
+	if _, err := tryNumber(t.Context(), r.Client); err != nil {
 		t.Fatal(err)
 	}
 	proxy.Fail(func(call chaintest.Call) chaintest.Fault { return chaintest.Hang })
 	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
 	defer cancel()
-	if _, err := tryNumber(ctx, r.Primary); !errors.Is(err, context.DeadlineExceeded) {
+	if _, err := tryNumber(ctx, r.Client); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("caller deadline: %v", err)
 	}
 	if failures, _ := health(r, r.pool.endpoints[0]); failures != 0 {
 		t.Fatalf("caller deadline rested provider used by other work: %d failures", failures)
 	}
 	proxy.Fail(nil)
-	if _, err := tryNumber(t.Context(), r.Primary); err != nil {
+	if _, err := tryNumber(t.Context(), r.Client); err != nil {
 		t.Fatalf("healthy provider remained unavailable: %v", err)
 	}
 }
@@ -468,7 +426,7 @@ func TestRequestsThatCannotMeetTheirDeadlineDoNotDelayLaterReads(t *testing.T) {
 	r.pool.mu.Unlock()
 	for range 20 {
 		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Millisecond)
-		_, err := tryNumber(ctx, r.Primary)
+		_, err := tryNumber(ctx, r.Client)
 		cancel()
 		if err == nil {
 			t.Fatal("request was sent before its pacing slot")
@@ -479,7 +437,7 @@ func TestRequestsThatCannotMeetTheirDeadlineDoNotDelayLaterReads(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
-	if _, err := tryNumber(ctx, r.Primary); err != nil {
+	if _, err := tryNumber(ctx, r.Client); err != nil {
 		t.Fatalf("rejected requests consumed future capacity and blocked a later read: %v", err)
 	}
 }
@@ -507,7 +465,7 @@ func TestHTTPLogRangeErrorsDoNotRestProvider(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
 			defer cancel()
 			var result any
-			err := r.Primary.CallContext(ctx, &result, "eth_getLogs", map[string]string{"fromBlock": "0x1", "toBlock": "0x100"})
+			err := r.Client.CallContext(ctx, &result, "eth_getLogs", map[string]string{"fromBlock": "0x1", "toBlock": "0x100"})
 			if !TooLarge(err) {
 				t.Fatalf("range error cannot be narrowed: %v", err)
 			}
@@ -542,7 +500,7 @@ func TestHTTPBatchLimitDoesNotRestProvider(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
 	defer cancel()
 	var result any
-	err := r.Primary.BatchCallContext(ctx, []rpc.BatchElem{{Method: "eth_blockNumber", Result: &result}})
+	err := r.Client.BatchCallContext(ctx, []rpc.BatchElem{{Method: "eth_blockNumber", Result: &result}})
 	if !BatchTooLarge(err) {
 		t.Fatalf("batch limit cannot be split: %v", err)
 	}

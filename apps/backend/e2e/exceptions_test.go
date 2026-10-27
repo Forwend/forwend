@@ -52,7 +52,7 @@ func (m *mailbox) mails() []sentMail {
 // TestExceptionsCancelAndEmail is the phase 9 gate (R-83), run with the real binaries on Anvil.
 func TestExceptionsCancelAndEmail(t *testing.T) {
 	ctx := context.Background()
-	st := newStack(t)
+	st := newStack(t, false)
 	mail := newMailbox(t)
 	worker := append(append([]string{}, st.loop...), "RESEND_API_KEY=test", "RESEND_API_URL="+mail.URL,
 		"PUBLIC_WEB_URL=http://localhost:3000")

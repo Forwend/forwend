@@ -31,7 +31,7 @@ func TestReceiverEvidenceCommitsWithCoverageAndNeverChanges(t *testing.T) {
  CREATE TRIGGER reject_test_proof BEFORE INSERT ON receiver_deposit_proofs FOR EACH ROW EXECUTE FUNCTION reject_test_proof()`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.chain.Receiver(t.Context(), e.anvil.RPC, id); err == nil {
+	if _, err := e.chain.Receiver(t.Context(), id); err == nil {
 		t.Fatal("failed evidence write advanced coverage")
 	}
 	var deposits, proofs int
@@ -44,7 +44,7 @@ func TestReceiverEvidenceCommitsWithCoverageAndNeverChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 	for range 2 {
-		if complete, err := e.chain.Receiver(t.Context(), e.anvil.RPC, id); err != nil || !complete {
+		if complete, err := e.chain.Receiver(t.Context(), id); err != nil || !complete {
 			t.Fatalf("complete=%v: %v", complete, err)
 		}
 	}
@@ -82,14 +82,14 @@ func TestReceiverQueueDefersFailedSourcesAfterDeadline(t *testing.T) {
 	defer second.Close()
 	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
 	defer cancel()
-	if err := e.chain.HistoricalReceivers(ctx, second); err == nil {
+	if err := NewChain(e.pool, e.chain.chainID, second).HistoricalReceivers(ctx); err == nil {
 		t.Fatal("unavailable provider accepted")
 	}
 	var deferred int
 	if err := e.pool.QueryRow(t.Context(), "SELECT count(*) FROM receiver_scans WHERE retry_at > now()").Scan(&deferred); err != nil || deferred != 1 {
 		t.Fatalf("failed queue slots deferred=%d: %v", deferred, err)
 	}
-	if err := e.chain.HistoricalReceivers(t.Context(), e.anvil.RPC); err != nil {
+	if err := e.chain.HistoricalReceivers(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	var complete int
@@ -98,11 +98,11 @@ func TestReceiverQueueDefersFailedSourcesAfterDeadline(t *testing.T) {
 	}
 }
 
-func TestReceiverEvidenceRejectsASecondProviderOnAnotherChain(t *testing.T) {
+func TestReceiverEvidenceRejectsAProviderOnAnotherChain(t *testing.T) {
 	e := setup(t)
 	other := chaintest.StartChain(t, 84532)
 	id := "0x" + strings.Repeat("01", 32)
-	if _, err := e.chain.Receiver(t.Context(), other.RPC, id); err == nil {
+	if _, err := NewChain(e.pool, e.chain.chainID, other.RPC).Receiver(t.Context(), id); err == nil {
 		t.Fatal("wrong-chain source accepted")
 	}
 	var advanced bool
@@ -116,7 +116,7 @@ func TestReceiverRejectsFinalizedReorgWithoutAHeightChange(t *testing.T) {
 	id := "0x" + strings.Repeat("01", 32)
 	e.anvil.Transfer(e.token, receive, "5000000")
 	e.anvil.Mine(2)
-	if complete, err := e.chain.Receiver(t.Context(), e.anvil.RPC, id); err != nil || !complete {
+	if complete, err := e.chain.Receiver(t.Context(), id); err != nil || !complete {
 		t.Fatalf("initial coverage complete=%v: %v", complete, err)
 	}
 	before, _, err := e.chain.headers(t.Context(), nil)
@@ -131,7 +131,7 @@ func TestReceiverRejectsFinalizedReorgWithoutAHeightChange(t *testing.T) {
 	if before.Number != after.Number || before.Hash == after.Hash {
 		t.Fatalf("test needs a replaced finalized block at the same height: before=%+v after=%+v", before, after)
 	}
-	if complete, err := e.chain.Receiver(t.Context(), e.anvil.RPC, id); err == nil || complete {
+	if complete, err := e.chain.Receiver(t.Context(), id); err == nil || complete {
 		t.Fatalf("same-height finalized fork accepted: complete=%v err=%v", complete, err)
 	}
 	var reason, hash, balance string
@@ -242,7 +242,7 @@ func TestReceiverBatchKeepsHealthyPaymentMovingWhenAnotherOpeningReadFails(t *te
 		t.Fatal(err)
 	}
 	defer second.Close()
-	if err := e.chain.Receivers(t.Context(), second); err == nil {
+	if err := NewChain(e.pool, e.chain.chainID, second).Receivers(t.Context()); err == nil {
 		t.Fatal("failed opening read was accepted")
 	}
 	if failures.Load() != 1 {
@@ -326,7 +326,8 @@ func TestReceiverCommitsCatchupWithinProviderRangeLimit(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer second.Close()
-	if done, err := e.chain.Receiver(t.Context(), second, id); err != nil || done {
+	e.chain = NewChain(e.pool, e.chain.chainID, second)
+	if done, err := e.chain.Receiver(t.Context(), id); err != nil || done {
 		t.Fatalf("bounded checkpoint done=%v err=%v", done, err)
 	}
 	var next uint64
@@ -342,19 +343,18 @@ func TestReceiverCommitsCatchupWithinProviderRangeLimit(t *testing.T) {
 	}
 	defer budget.Close()
 	clients, err := chain.NewRPCs(chain.Spec{ChainID: chaintest.ChainID, AllowLoopback: true, Endpoints: []chain.Endpoint{
-		{ID: "primary", Provider: "primary", Role: chain.Primary, Tier: chain.Public, URL: e.anvil.URL, BudgetGroup: "shared-test-budget"},
-		{ID: "confirmation", Provider: "confirmation", Role: chain.Confirmation, Tier: chain.Public, URL: proxy.URL, BudgetGroup: "shared-test-budget"},
+		{ID: "primary", Provider: "primary", Role: chain.Primary, Tier: chain.Public, URL: proxy.URL, BudgetGroup: "shared-test-budget"},
 	}}, 10, budget)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer clients.Close()
-	paced := NewChain(e.pool, chaintest.ChainID, clients.Primary)
+	paced := NewChain(e.pool, chaintest.ChainID, clients.Client)
 	paced.span, paced.batchSize = e.chain.span, e.chain.batchSize
 	e.anvil.Mine(2)
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
-	if _, err := paced.Receiver(ctx, clients.Second, id); err != nil {
+	if _, err := paced.Receiver(ctx, id); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.pool.QueryRow(t.Context(), "SELECT next_block FROM receiver_scans WHERE invoice_id=$1", id).Scan(&next); err != nil || next <= previous || next-previous > e.chain.span {
@@ -397,7 +397,7 @@ func TestReceiverCatchupDoesNotBypassRetryOrHistoricalQueue(t *testing.T) {
 			watch := NewChain(e.pool, chaintest.ChainID, client)
 			ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 			defer cancel()
-			if err := watch.Receivers(ctx, client); err != nil {
+			if err := watch.Receivers(ctx); err != nil {
 				t.Fatal(err)
 			}
 			for _, call := range proxy.Calls() {
@@ -428,7 +428,7 @@ func TestReceiverBatchDoesNotPrefetchDeepCatchup(t *testing.T) {
 	if err := e.pool.QueryRow(t.Context(), "SELECT next_block FROM receiver_scans WHERE invoice_id=$1", id).Scan(&previous); err != nil {
 		t.Fatal(err)
 	}
-	round, err := watch.receiverRound(t.Context(), client, []string{id})
+	round, err := watch.receiverRound(t.Context(), []string{id})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -437,7 +437,7 @@ func TestReceiverBatchDoesNotPrefetchDeepCatchup(t *testing.T) {
 			t.Fatal("prefetch read beyond bounded checkpoint")
 		}
 	}
-	done, err := watch.receiver(t.Context(), client, id, round)
+	done, err := watch.receiver(t.Context(), id, round)
 	if err != nil || done {
 		t.Fatalf("deep checkpoint done=%v err=%v", done, err)
 	}

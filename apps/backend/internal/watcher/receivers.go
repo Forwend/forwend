@@ -1,7 +1,7 @@
 package watcher
 
 import (
-	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -16,7 +16,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/history"
 	"github.com/jackc/pgx/v5"
@@ -29,15 +28,15 @@ var (
 )
 
 // Receivers prioritizes current payments. Older records have a separate, bounded queue.
-func (c *Chain) Receivers(ctx context.Context, second *rpc.Client) error {
-	return c.receivers(ctx, second, false, 1000)
+func (c *Chain) Receivers(ctx context.Context) error {
+	return c.receivers(ctx, false, 1000)
 }
 
-func (c *Chain) HistoricalReceivers(ctx context.Context, second *rpc.Client) error {
-	return c.receivers(ctx, second, true, 2)
+func (c *Chain) HistoricalReceivers(ctx context.Context) error {
+	return c.receivers(ctx, true, 2)
 }
 
-func (c *Chain) receivers(ctx context.Context, second *rpc.Client, legacy bool, limit int) error {
+func (c *Chain) receivers(ctx context.Context, legacy bool, limit int) error {
 	c.receiverMu.Lock()
 	defer c.receiverMu.Unlock()
 	rows, err := c.pool.Query(ctx, `WITH due AS (
@@ -74,7 +73,7 @@ func (c *Chain) receivers(ctx context.Context, second *rpc.Client, legacy bool, 
 		offset += len(batch)
 		var round *receiverRound
 		if !legacy && len(batch) > 1 {
-			round, err = c.receiverRound(ctx, second, batch)
+			round, err = c.receiverRound(ctx, batch)
 			if err != nil {
 				if errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
 					break
@@ -87,7 +86,7 @@ func (c *Chain) receivers(ctx context.Context, second *rpc.Client, legacy bool, 
 			if ctx.Err() != nil {
 				break
 			}
-			done, err := c.receiver(ctx, second, id, round)
+			done, err := c.receiver(ctx, id, round)
 			if err != nil {
 				if !legacy && (errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil) {
 					return errors.Join(append(failed, err)...)
@@ -111,33 +110,22 @@ func (c *Chain) receivers(ctx context.Context, second *rpc.Client, legacy bool, 
 	return errors.Join(failed...)
 }
 
-// Receiver records one contiguous, finalized prefix agreed by both provider roles. Financial booking is separate.
-func (c *Chain) Receiver(ctx context.Context, second *rpc.Client, id string) (bool, error) {
+// Receiver records one contiguous, finalized prefix of receiver evidence. Financial booking is separate.
+func (c *Chain) Receiver(ctx context.Context, id string) (bool, error) {
 	c.receiverMu.Lock()
 	defer c.receiverMu.Unlock()
-	return c.receiver(ctx, second, id, nil)
+	return c.receiver(ctx, id, nil)
 }
 
-func (c *Chain) receiver(ctx context.Context, second *rpc.Client, id string, round *receiverRound) (bool, error) {
-	if second == nil {
-		return false, errors.New("receiver evidence needs a second RPC")
-	}
-	other := NewChain(c.pool, c.chainID, second)
-	other.span = c.span
-	other.batchSize = c.batchSize
-	defer func() { c.span = min(c.span, other.span); c.batchSize = min(c.batchSize, other.batchSize) }()
+func (c *Chain) receiver(ctx context.Context, id string, round *receiverRound) (bool, error) {
 	if round == nil {
-		for _, provider := range []*Chain{c, other} {
-			got, err := provider.eth.ChainID(ctx)
-			if err != nil {
-				return false, err
-			}
-			if !got.IsUint64() || got.Uint64() != c.chainID {
-				return false, fmt.Errorf("receiver provider answers chain %s, want %d", got, c.chainID)
-			}
+		got, err := c.eth.ChainID(ctx)
+		if err != nil {
+			return false, err
 		}
-	} else {
-		other = round.other
+		if !got.IsUint64() || got.Uint64() != c.chainID {
+			return false, fmt.Errorf("receiver provider answers chain %s, want %d", got, c.chainID)
+		}
 	}
 
 	tx, err := c.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
@@ -164,20 +152,16 @@ func (c *Chain) receiver(ctx context.Context, second *rpc.Client, id string, rou
 		return false, fmt.Errorf("lock receiver %s coverage: %w", id, err)
 	}
 	var final uint64
-	var firstFinal, secondFinal header
+	var firstFinal header
 	if round != nil {
 		final = round.final
-		firstFinal, secondFinal = round.primary.headers[final], round.secondary.headers[final]
+		firstFinal = round.source.headers[final]
 	} else {
 		firstFinal, _, err = c.headers(ctx, nil)
 		if err != nil {
 			return false, err
 		}
-		secondFinal, _, err = other.headers(ctx, nil)
-		if err != nil {
-			return false, err
-		}
-		final = min(uint64(firstFinal.Number), uint64(secondFinal.Number))
+		final = uint64(firstFinal.Number)
 	}
 
 	if (priorBlock != nil && final < *priorBlock) || start > final {
@@ -188,7 +172,7 @@ func (c *Chain) receiver(ctx context.Context, second *rpc.Client, id string, rou
 		return false, tx.Commit(ctx)
 	}
 	if !checked && start > 0 {
-		opening, err := c.receiverRoundBalances(ctx, other, round, token, receive, start-1)
+		opening, err := c.receiverRoundBalance(ctx, round, token, receive, start-1)
 		if err != nil {
 			return false, err
 		}
@@ -222,19 +206,15 @@ func (c *Chain) receiver(ctx context.Context, second *rpc.Client, id string, rou
 	from := next
 	if next > final {
 		if priorBlock != nil {
-			if uint64(firstFinal.Number) != *priorBlock || uint64(secondFinal.Number) != *priorBlock {
+			if uint64(firstFinal.Number) != *priorBlock {
 				_, heads, readErr := c.headers(ctx, []uint64{*priorBlock})
 				if readErr != nil {
 					return false, readErr
 				}
 				firstFinal = heads[*priorBlock]
-				_, heads, readErr = other.headers(ctx, []uint64{*priorBlock})
-				if readErr != nil {
-					return false, readErr
-				}
-				secondFinal = heads[*priorBlock]
+
 			}
-			if firstFinal.Hash != common.HexToHash(*priorHash) || secondFinal.Hash != firstFinal.Hash || secondFinal.Timestamp != firstFinal.Timestamp {
+			if firstFinal.Hash != common.HexToHash(*priorHash) {
 				if _, err := tx.Exec(ctx, "UPDATE receiver_scans SET reconciliation_error='finalized_coverage_changed' WHERE invoice_id=$1", id); err != nil {
 					return false, err
 				}
@@ -249,13 +229,12 @@ func (c *Chain) receiver(ctx context.Context, second *rpc.Client, id string, rou
 		}
 		return true, tx.Commit(ctx)
 	}
-	step := min(c.span, other.span)
+	step := c.span
 	hi := min(final, from+step-1)
 	invoices := map[common.Address]receiver{common.HexToAddress(receive): {id, token}}
-	var incoming, outgoing, transfers, otherIncoming, otherOutgoing, otherTransfers []types.Log
+	var incoming, outgoing, transfers []types.Log
 	if round != nil && from >= round.from && hi <= round.final {
-		incoming, outgoing, transfers = round.logs(&round.primary, from, hi, receive, token)
-		otherIncoming, otherOutgoing, otherTransfers = round.logs(&round.secondary, from, hi, receive, token)
+		incoming, outgoing, transfers = round.logs(&round.source, from, hi, receive, token)
 	} else {
 		incoming, err = c.logsIn(ctx, from, hi, invoices)
 		if err != nil {
@@ -269,23 +248,8 @@ func (c *Chain) receiver(ctx context.Context, second *rpc.Client, id string, rou
 		if err != nil {
 			return false, err
 		}
-		otherTransfers, err = other.receiverTokenTransfers(ctx, from, hi, common.HexToAddress(receive), common.HexToAddress(token))
-		if err != nil {
-			return false, err
-		}
-		otherIncoming, err = other.logsIn(ctx, from, hi, invoices)
-		if err != nil {
-			return false, err
-		}
-		otherOutgoing, err = other.receiverLogs(ctx, from, hi, common.HexToAddress(receive))
-		if err != nil {
-			return false, err
-		}
 	}
 
-	if !sameReceiverLogs(incoming, otherIncoming) || !sameReceiverLogs(outgoing, otherOutgoing) || !sameReceiverLogs(transfers, otherTransfers) {
-		return false, fmt.Errorf("receiver %s provider log sets disagree at %d-%d", id, from, hi)
-	}
 	knownRows, err := tx.Query(ctx, `SELECT id, block_number, block_hash, tx_hash, log_index, status, booked
   FROM chain_transfers WHERE invoice_id = $1 AND block_number BETWEEN $2 AND $3 AND status <> 'reorged'`, id, from, hi)
 	if err != nil {
@@ -316,18 +280,15 @@ func (c *Chain) receiver(ctx context.Context, second *rpc.Client, id string, rou
 	for _, l := range append(append(slices.Clone(incoming), outgoing...), transfers...) {
 		numbers = append(numbers, l.BlockNumber)
 	}
-	headers, otherHeaders := map[uint64]header{}, map[uint64]header{}
+	headers := map[uint64]header{}
 	var missing []uint64
 	for _, n := range numbers {
 		if round != nil {
-			if h, ok := round.primary.headers[n]; ok {
+			if h, ok := round.source.headers[n]; ok {
 				headers[n] = h
 			}
-			if h, ok := round.secondary.headers[n]; ok {
-				otherHeaders[n] = h
-			}
 		}
-		if headers[n].Hash == (common.Hash{}) || otherHeaders[n].Hash == (common.Hash{}) {
+		if headers[n].Hash == (common.Hash{}) {
 			missing = append(missing, n)
 		}
 	}
@@ -336,22 +297,13 @@ func (c *Chain) receiver(ctx context.Context, second *rpc.Client, id string, rou
 		if err != nil {
 			return false, err
 		}
-		_, second, err := other.headers(ctx, missing)
-		if err != nil {
-			return false, err
-		}
 		for n, h := range first {
 			headers[n] = h
 		}
-		for n, h := range second {
-			otherHeaders[n] = h
-		}
 	}
 	for _, n := range numbers {
-		h, ok := headers[n]
-		otherHeader, otherOK := otherHeaders[n]
-		if !ok || !otherOK || h.Hash != otherHeader.Hash || h.Timestamp != otherHeader.Timestamp {
-			return false, fmt.Errorf("receiver %s provider headers disagree at %d", id, n)
+		if h, ok := headers[n]; !ok || h.Hash == (common.Hash{}) {
+			return false, fmt.Errorf("receiver %s header missing at %d", id, n)
 		}
 	}
 	if priorBlock != nil && headers[*priorBlock].Hash != common.HexToHash(*priorHash) {
@@ -368,7 +320,7 @@ func (c *Chain) receiver(ctx context.Context, second *rpc.Client, id string, rou
 			return false, fmt.Errorf("receiver %s log is outside its canonical block", id)
 		}
 	}
-	balance, err := c.receiverRoundBalances(ctx, other, round, token, receive, hi)
+	balance, err := c.receiverRoundBalance(ctx, round, token, receive, hi)
 	if err != nil {
 		return false, err
 	}
@@ -396,7 +348,7 @@ func (c *Chain) receiver(ctx context.Context, second *rpc.Client, id string, rou
 		}
 	}
 	deposits, _ := depositsOf(incoming, headers, invoices, hi)
-	deposits, err = c.prepareReceiverDeposits(ctx, tx, other, deposits)
+	deposits, err = c.prepareReceiverDeposits(ctx, tx, deposits)
 	if err != nil {
 		return false, err
 	}
@@ -421,6 +373,12 @@ func (c *Chain) receiver(ctx context.Context, second *rpc.Client, id string, rou
 			return false, fmt.Errorf("receiver %s canonical deposit was not recorded", id)
 		}
 	}
+	slices.SortFunc(outgoing, func(a, b types.Log) int {
+		if order := cmp.Compare(a.BlockNumber, b.BlockNumber); order != 0 {
+			return order
+		}
+		return cmp.Compare(a.Index, b.Index)
+	})
 	previous := map[common.Hash]*uint{}
 	for _, l := range outgoing {
 		if err := c.recordOutflow(ctx, tx, id, receive, token, recipient, l, transfers, previous[l.TxHash], uint64(headers[l.BlockNumber].Timestamp), hi); err != nil {
@@ -457,33 +415,18 @@ func (c *Chain) receiver(ctx context.Context, second *rpc.Client, id string, rou
 		if err != nil {
 			return false, err
 		}
-		secondState, err := other.receiverSettledAt(ctx, receive, hi)
-		if err != nil {
-			return false, err
-		}
-		if !primaryState || !secondState {
+		if !primaryState {
 			reason = "receiver_state_disagreement"
 		}
 	}
-	var firstDeployment, secondDeployment uint64
+	var firstDeployment uint64
 	if round != nil {
-		firstDeployment, err = round.deployed(ctx, c, &round.primary, factory, receive, hi)
+		firstDeployment, err = round.deployed(ctx, c, &round.source, factory, receive, hi)
 	} else {
 		firstDeployment, err = c.receiverDeployedAt(ctx, factory, receive, hi)
 	}
 	if err != nil {
 		return false, err
-	}
-	if round != nil {
-		secondDeployment, err = round.deployed(ctx, other, &round.secondary, factory, receive, hi)
-	} else {
-		secondDeployment, err = other.receiverDeployedAt(ctx, factory, receive, hi)
-	}
-	if err != nil {
-		return false, err
-	}
-	if firstDeployment != secondDeployment {
-		return false, fmt.Errorf("receiver %s provider deploy times disagree", id)
 	}
 	if _, err := tx.Exec(ctx, "UPDATE invoices SET receiver_deployed_at = CASE WHEN $2::bigint > 0 THEN $2 ELSE coalesce(receiver_deployed_at,0) END WHERE id = $1", id, firstDeployment); err != nil {
 		return false, err
@@ -518,55 +461,6 @@ func (c *Chain) receiver(ctx context.Context, second *rpc.Client, id string, rou
 		return false, err
 	}
 	return hi == final, tx.Commit(ctx)
-}
-
-func (c *Chain) receiverBalances(ctx context.Context, other *Chain, token, receive string, block uint64) (*big.Int, error) {
-	first, err := c.receiverBalance(ctx, token, receive, block)
-	if err != nil {
-		return nil, err
-	}
-	second, err := other.receiverBalance(ctx, token, receive, block)
-	if err != nil {
-		return nil, err
-	}
-	if first.Cmp(second) != 0 {
-		return nil, fmt.Errorf("receiver %s provider balances disagree at %d", receive, block)
-	}
-	return second, nil
-}
-
-func sameReceiverLogs(first, second []types.Log) bool {
-	sort := func(logs []types.Log) {
-		slices.SortFunc(logs, func(a, b types.Log) int {
-			if a.BlockNumber < b.BlockNumber {
-				return -1
-			}
-			if a.BlockNumber > b.BlockNumber {
-				return 1
-			}
-			if a.Index < b.Index {
-				return -1
-			}
-			if a.Index > b.Index {
-				return 1
-			}
-			return 0
-		})
-	}
-	sort(first)
-	sort(second)
-	if len(first) != len(second) {
-		return false
-	}
-	for i, a := range first {
-		b := second[i]
-		if a.Address != b.Address || a.BlockHash != b.BlockHash || a.BlockNumber != b.BlockNumber ||
-			a.TxHash != b.TxHash || a.TxIndex != b.TxIndex || a.Index != b.Index || a.Removed != b.Removed ||
-			!bytes.Equal(a.Data, b.Data) || !slices.Equal(a.Topics, b.Topics) {
-			return false
-		}
-	}
-	return true
 }
 
 func (c *Chain) receiverLogs(ctx context.Context, from, hi uint64, receive common.Address) ([]types.Log, error) {
@@ -673,7 +567,7 @@ func (c *Chain) receiverBalance(ctx context.Context, token, receive string, bloc
 	return new(big.Int), nil
 }
 
-func (c *Chain) prepareReceiverDeposits(ctx context.Context, tx pgx.Tx, other *Chain, deposits []deposit) ([]deposit, error) {
+func (c *Chain) prepareReceiverDeposits(ctx context.Context, tx pgx.Tx, deposits []deposit) ([]deposit, error) {
 	var accepted []deposit
 	for _, d := range deposits {
 		var oldID int64
@@ -703,14 +597,9 @@ func (c *Chain) prepareReceiverDeposits(ctx context.Context, tx pgx.Tx, other *C
 			if err != nil {
 				return nil, err
 			}
-			_, secondHeaders, err := other.headers(ctx, []uint64{oldBlock})
-			if err != nil {
-				return nil, err
-			}
-			primary, pOK := primaryHeaders[oldBlock]
-			secondary, sOK := secondHeaders[oldBlock]
-			if !pOK || !sOK || primary.Hash != secondary.Hash {
-				return nil, errors.New("providers disagree on an old deposit block")
+			primary, ok := primaryHeaders[oldBlock]
+			if !ok {
+				return nil, errors.New("old deposit block is missing")
 			}
 			if primary.Hash != common.HexToHash(oldHash) {
 				if _, err := tx.Exec(ctx, "UPDATE chain_transfers SET status = 'reorged' WHERE id = $1 AND status = 'detected' AND NOT booked", oldID); err != nil {
@@ -793,22 +682,11 @@ func (c *Chain) receiverDeployedAt(ctx context.Context, factory, receive string,
 	return new(big.Int).SetBytes(out).Uint64(), nil
 }
 
-func (c *Chain) receiverRoundBalances(ctx context.Context, other *Chain, round *receiverRound, token, receive string, block uint64) (*big.Int, error) {
+func (c *Chain) receiverRoundBalance(ctx context.Context, round *receiverRound, token, receive string, block uint64) (*big.Int, error) {
 	if round == nil {
-		return c.receiverBalances(ctx, other, token, receive, block)
+		return c.receiverBalance(ctx, token, receive, block)
 	}
-	first, err := round.balance(ctx, c, &round.primary, token, receive, block)
-	if err != nil {
-		return nil, err
-	}
-	second, err := round.balance(ctx, other, &round.secondary, token, receive, block)
-	if err != nil {
-		return nil, err
-	}
-	if first.Cmp(second) != 0 {
-		return nil, fmt.Errorf("receiver %s provider balances disagree at %d", receive, block)
-	}
-	return first, nil
+	return round.balance(ctx, c, &round.source, token, receive, block)
 }
 
 func (c *Chain) deferReceivers(ctx context.Context, ids []string) error {

@@ -15,9 +15,8 @@ import (
 
 // A round shares source reads across receivers; each receiver still commits its own evidence atomically.
 type receiverRound struct {
-	other              *Chain
-	final, from        uint64
-	primary, secondary receiverSource
+	final, from uint64
+	source      receiverSource
 }
 
 type receiverSource struct {
@@ -27,29 +26,20 @@ type receiverSource struct {
 	errors                        map[string]error
 }
 
-func (c *Chain) receiverRound(ctx context.Context, second *rpc.Client, ids []string) (*receiverRound, error) {
-	r := &receiverRound{other: NewChain(c.pool, c.chainID, second)}
-	r.other.span = c.span
-	r.other.batchSize = c.batchSize
-	defer func() { c.span = min(c.span, r.other.span); c.batchSize = min(c.batchSize, r.other.batchSize) }()
-	for _, provider := range []*Chain{c, r.other} {
-		id, err := provider.eth.ChainID(ctx)
-		if err != nil {
-			return nil, err
-		}
-		if !id.IsUint64() || id.Uint64() != c.chainID {
-			return nil, fmt.Errorf("receiver provider answers another chain")
-		}
+func (c *Chain) receiverRound(ctx context.Context, ids []string) (*receiverRound, error) {
+	r := &receiverRound{}
+	id, err := c.eth.ChainID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !id.IsUint64() || id.Uint64() != c.chainID {
+		return nil, fmt.Errorf("receiver provider answers another chain")
 	}
 	first, _, err := c.headers(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
-	other, _, err := r.other.headers(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	r.final = min(uint64(first.Number), uint64(other.Number))
+	r.final = uint64(first.Number)
 	r.from = r.final
 	rows, err := c.pool.Query(ctx, `SELECT i.receive_address,i.token_contract,i.factory_address,s.start_block,s.next_block,s.opening_checked,s.scanned_block
  FROM receiver_scans s JOIN invoices i ON i.id=s.invoice_id WHERE i.id=ANY($1::text[])`, ids)
@@ -78,7 +68,7 @@ func (c *Chain) receiverRound(ctx context.Context, second *rpc.Client, ids []str
 			numbers = append(numbers, *v.prior)
 		}
 		// Deep catch-up stays on the bounded single-receiver path.
-		if v.next > r.final || r.final-v.next >= min(c.span, r.other.span) {
+		if v.next > r.final || r.final-v.next >= c.span {
 			continue
 		}
 		reads = append(reads, v)
@@ -98,10 +88,7 @@ func (c *Chain) receiverRound(ctx context.Context, second *rpc.Client, ids []str
 		return nil, err
 	}
 	if len(reads) == 0 {
-		if _, r.primary.headers, err = c.headers(ctx, numbers); err != nil {
-			return nil, err
-		}
-		if _, r.secondary.headers, err = r.other.headers(ctx, numbers); err != nil {
+		if _, r.source.headers, err = c.headers(ctx, numbers); err != nil {
 			return nil, err
 		}
 		return r, nil
@@ -110,86 +97,75 @@ func (c *Chain) receiverRound(ctx context.Context, second *rpc.Client, ids []str
 	for token := range tokens {
 		tokenList = append(tokenList, token)
 	}
-	for index, provider := range []*Chain{c, r.other} {
-		source := &r.primary
-		if index == 1 {
-			source = &r.secondary
+	source := &r.source
+	source.incoming, err = c.logsIn(ctx, r.from, r.final, invoices)
+	if err != nil {
+		return nil, err
+	}
+	for lo := r.from; lo <= r.final; {
+		hi := min(r.final, lo+c.span-1)
+		outgoing, e := c.filterLogs(ctx, ethereum.FilterQuery{FromBlock: new(big.Int).SetUint64(lo), ToBlock: new(big.Int).SetUint64(hi), Addresses: addresses, Topics: [][]common.Hash{{settledTopic, refundedTopic, recoveredTopic}}})
+		if next, ok := narrower(e, c.span); ok {
+			c.span = next
+			continue
 		}
-		source.incoming, err = provider.logsIn(ctx, r.from, r.final, invoices)
-		if err != nil {
-			return nil, err
+		if e != nil {
+			return nil, e
 		}
-		for lo := r.from; lo <= r.final; {
-			hi := min(r.final, lo+provider.span-1)
-			outgoing, e := provider.filterLogs(ctx, ethereum.FilterQuery{FromBlock: new(big.Int).SetUint64(lo), ToBlock: new(big.Int).SetUint64(hi), Addresses: addresses, Topics: [][]common.Hash{{settledTopic, refundedTopic, recoveredTopic}}})
-			if next, ok := narrower(e, provider.span); ok {
-				provider.span = next
-				continue
-			}
-			if e != nil {
-				return nil, e
-			}
-			transfers, e := provider.filterLogs(ctx, ethereum.FilterQuery{FromBlock: new(big.Int).SetUint64(lo), ToBlock: new(big.Int).SetUint64(hi), Addresses: tokenList, Topics: [][]common.Hash{{transferTopic}, topics}})
-			if next, ok := narrower(e, provider.span); ok {
-				provider.span = next
-				continue
-			}
-			if e != nil {
-				return nil, e
-			}
-			source.outgoing = append(source.outgoing, outgoing...)
-			source.transfers = append(source.transfers, transfers...)
-			lo = hi + 1
+		transfers, e := c.filterLogs(ctx, ethereum.FilterQuery{FromBlock: new(big.Int).SetUint64(lo), ToBlock: new(big.Int).SetUint64(hi), Addresses: tokenList, Topics: [][]common.Hash{{transferTopic}, topics}})
+		if next, ok := narrower(e, c.span); ok {
+			c.span = next
+			continue
 		}
-		for _, logs := range [][]types.Log{source.incoming, source.outgoing, source.transfers} {
-			for _, l := range logs {
-				numbers = append(numbers, l.BlockNumber)
-			}
+		if e != nil {
+			return nil, e
+		}
+		source.outgoing = append(source.outgoing, outgoing...)
+		source.transfers = append(source.transfers, transfers...)
+		lo = hi + 1
+	}
+	for _, logs := range [][]types.Log{source.incoming, source.outgoing, source.transfers} {
+		for _, l := range logs {
+			numbers = append(numbers, l.BlockNumber)
 		}
 	}
-	for index, provider := range []*Chain{c, r.other} {
-		source := &r.primary
-		if index == 1 {
-			source = &r.secondary
+	_, source.headers, err = c.headers(ctx, numbers)
+	if err != nil {
+		return nil, err
+	}
+	source.calls = map[string]hexutil.Bytes{}
+	source.errors = map[string]error{}
+	var batch []rpc.BatchElem
+	var results []*hexutil.Bytes
+	var keys []string
+	add := func(to string, data []byte, block uint64) {
+		key := receiverCallKey(to, data, block)
+		value := new(hexutil.Bytes)
+		batch = append(batch, rpc.BatchElem{Method: "eth_call", Args: []any{map[string]any{"to": to, "data": hexutil.Encode(data)}, hexutil.EncodeUint64(block)}, Result: value})
+		results = append(results, value)
+		keys = append(keys, key)
+	}
+	for _, v := range reads {
+		balance := append(crypto.Keccak256([]byte("balanceOf(address)"))[:4], common.LeftPadBytes(common.HexToAddress(v.receive).Bytes(), 32)...)
+		if !v.checked && v.start > 0 {
+			add(v.token, balance, v.start-1)
 		}
-		_, source.headers, err = provider.headers(ctx, numbers)
-		if err != nil {
-			return nil, err
-		}
-		source.calls = map[string]hexutil.Bytes{}
-		source.errors = map[string]error{}
-		var batch []rpc.BatchElem
-		var results []*hexutil.Bytes
-		var keys []string
-		add := func(to string, data []byte, block uint64) {
-			key := receiverCallKey(to, data, block)
-			value := new(hexutil.Bytes)
-			batch = append(batch, rpc.BatchElem{Method: "eth_call", Args: []any{map[string]any{"to": to, "data": hexutil.Encode(data)}, hexutil.EncodeUint64(block)}, Result: value})
-			results = append(results, value)
-			keys = append(keys, key)
-		}
-		for _, v := range reads {
-			balance := append(crypto.Keccak256([]byte("balanceOf(address)"))[:4], common.LeftPadBytes(common.HexToAddress(v.receive).Bytes(), 32)...)
-			if !v.checked && v.start > 0 {
-				add(v.token, balance, v.start-1)
-			}
-			add(v.token, balance, r.final)
-			deploy := append(crypto.Keccak256([]byte("deployedAt(address)"))[:4], common.LeftPadBytes(common.HexToAddress(v.receive).Bytes(), 32)...)
-			add(v.factory, deploy, r.final)
-		}
-		if err := provider.batchCall(ctx, batch); err != nil {
-			return nil, err
-		}
+		add(v.token, balance, r.final)
+		deploy := append(crypto.Keccak256([]byte("deployedAt(address)"))[:4], common.LeftPadBytes(common.HexToAddress(v.receive).Bytes(), 32)...)
+		add(v.factory, deploy, r.final)
+	}
+	if err := c.batchCall(ctx, batch); err != nil {
+		return nil, err
+	}
 
-		for i, call := range batch {
-			if call.Error != nil {
-				source.errors[keys[i]] = call.Error
-				continue
-			}
-			// Empty responses still need the single-receiver code-existence checks.
-			if len(*results[i]) == 32 {
-				source.calls[keys[i]] = *results[i]
-			}
+	for i, call := range batch {
+		if call.Error != nil {
+			source.errors[keys[i]] = call.Error
+			continue
+		}
+		// Empty responses still need the single-receiver code-existence checks.
+		if len(*results[i]) == 32 {
+			source.calls[keys[i]] = *results[i]
 		}
 	}
 	return r, nil

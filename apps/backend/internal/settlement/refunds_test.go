@@ -2,6 +2,7 @@ package settlement
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/ethereum/go-ethereum"
@@ -10,12 +11,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/forwend/forwend/apps/backend/internal/activity"
 	"github.com/forwend/forwend/apps/backend/internal/address"
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
@@ -47,7 +51,7 @@ func TestAuthorityRefundReducesHeldFundsWithoutInventingSettlement(t *testing.T)
 	if err := e.watch.Scan(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if complete, err := e.watch.Receiver(t.Context(), e.anvil.RPC, id); err != nil || !complete {
+	if complete, err := e.watch.Receiver(t.Context(), id); err != nil || !complete {
 		t.Fatalf("receiver evidence: complete=%v, %v", complete, err)
 	}
 	var observations int
@@ -88,7 +92,7 @@ func TestOfflinePurchaseAndExternalSettlementBookInChainOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	for range 2 {
-		if complete, err := e.watch.Receiver(t.Context(), e.anvil.RPC, id); err != nil || !complete {
+		if complete, err := e.watch.Receiver(t.Context(), id); err != nil || !complete {
 			t.Fatalf("complete=%v, %v", complete, err)
 		}
 		if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
@@ -127,7 +131,7 @@ func TestReturnedPartialFundingCannotAccumulateIntoPaid(t *testing.T) {
 	if err := e.watch.Scan(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if complete, err := e.watch.Receiver(t.Context(), e.anvil.RPC, id); err != nil || !complete {
+	if complete, err := e.watch.Receiver(t.Context(), id); err != nil || !complete {
 		t.Fatalf("complete=%v, %v", complete, err)
 	}
 	if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
@@ -167,7 +171,7 @@ func TestRepeatedAuthorityReturnsConsumeHeldThenPayableAndBlockReopen(t *testing
 		t.Fatal(err)
 	}
 	for range 2 {
-		if complete, err := e.watch.Receiver(t.Context(), e.anvil.RPC, id); err != nil || !complete {
+		if complete, err := e.watch.Receiver(t.Context(), id); err != nil || !complete {
 			t.Fatalf("coverage complete=%v: %v", complete, err)
 		}
 		if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
@@ -211,7 +215,7 @@ func TestRepeatedAuthorityReturnsConsumeHeldThenPayableAndBlockReopen(t *testing
 	if err := e.watch.Scan(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.watch.Receiver(t.Context(), e.anvil.RPC, id); err != nil {
+	if _, err := e.watch.Receiver(t.Context(), id); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
@@ -249,7 +253,7 @@ func TestReceiverCatchupDoesNotExpectFutureSettlementBeforeDeployment(t *testing
 	caughtUp := false
 	for range 6 {
 		var err error
-		caughtUp, err = e.watch.Receiver(t.Context(), e.anvil.RPC, id)
+		caughtUp, err = e.watch.Receiver(t.Context(), id)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -270,10 +274,10 @@ func TestReceiverCatchupDoesNotExpectFutureSettlementBeforeDeployment(t *testing
    recipient_address,receive_address,1,'confirmed' FROM invoices WHERE id = $1`, id); err != nil {
 		t.Fatal(err)
 	}
-	if complete, err := e.watch.Receiver(t.Context(), e.anvil.RPC, id); err != nil || complete {
+	if complete, err := e.watch.Receiver(t.Context(), id); err != nil || complete {
 		t.Fatalf("rewind complete=%v: %v", complete, err)
 	}
-	if complete, err := e.watch.Receiver(t.Context(), e.anvil.RPC, id); err != nil || complete {
+	if complete, err := e.watch.Receiver(t.Context(), id); err != nil || complete {
 		t.Fatalf("predeployment chunk complete=%v: %v", complete, err)
 	}
 	var progress uint64
@@ -283,7 +287,7 @@ func TestReceiverCatchupDoesNotExpectFutureSettlementBeforeDeployment(t *testing
 	complete := false
 	for range 6 {
 		var err error
-		complete, err = e.watch.Receiver(t.Context(), e.anvil.RPC, id)
+		complete, err = e.watch.Receiver(t.Context(), id)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -320,7 +324,7 @@ func TestUnloggedFundingReturnStaysObservedWithoutInventedBooking(t *testing.T) 
 	if err := e.watch.Scan(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if complete, err := e.watch.Receiver(t.Context(), e.anvil.RPC, id); err != nil || !complete {
+	if complete, err := e.watch.Receiver(t.Context(), id); err != nil || !complete {
 		t.Fatalf("complete=%v: %v", complete, err)
 	}
 	if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
@@ -351,7 +355,7 @@ func TestAuthoritySettlementOfHeldFundsIsAnExceptionWithoutPaid(t *testing.T) {
 	if err := e.watch.Scan(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.watch.Receiver(t.Context(), e.anvil.RPC, id); err != nil {
+	if _, err := e.watch.Receiver(t.Context(), id); err != nil {
 		t.Fatal(err)
 	}
 	for range 2 {
@@ -394,7 +398,7 @@ func TestNativeRecoveryDoesNotCreateAcceptedTokenRefund(t *testing.T) {
 	}
 	e.anvil.AsAuthority(receive, "recover(address,address,uint256)", common.Address{}.Hex(), wallet, "1048576")
 	e.anvil.Mine(2)
-	if complete, err := e.watch.Receiver(t.Context(), e.anvil.RPC, id); err != nil || !complete {
+	if complete, err := e.watch.Receiver(t.Context(), id); err != nil || !complete {
 		t.Fatalf("complete=%v: %v", complete, err)
 	}
 	if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
@@ -416,7 +420,7 @@ func TestReceiverFinalizedReorgKeepsEvidenceAndRequiresReview(t *testing.T) {
 	e.deployReceiver(t, id)
 	e.anvil.AsAuthority(receive, "refund(address,uint256)", wallet, "1000000")
 	e.anvil.Mine(2)
-	if _, err := e.watch.Receiver(t.Context(), e.anvil.RPC, id); err != nil {
+	if _, err := e.watch.Receiver(t.Context(), id); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
@@ -424,7 +428,7 @@ func TestReceiverFinalizedReorgKeepsEvidenceAndRequiresReview(t *testing.T) {
 	}
 	e.anvil.Reorg(3)
 	e.anvil.Mine(2)
-	if _, err := e.watch.Receiver(t.Context(), e.anvil.RPC, id); err == nil {
+	if _, err := e.watch.Receiver(t.Context(), id); err == nil {
 		t.Fatal("changed finalized history accepted")
 	}
 	a, err := ledger.ReadAmounts(t.Context(), e.pool, id)
@@ -468,8 +472,31 @@ func TestOneAuthorityTransactionRefundsTwiceWithDistinctTransferProofs(t *testin
 	if err := e.watch.Scan(t.Context()); err != nil {
 		t.Fatal(err)
 	}
+	proxy := e.anvil.Proxy()
+	proxy.Stale(func(c chaintest.Call) json.RawMessage {
+		if c.Method != "eth_getLogs" {
+			return nil
+		}
+		var logs []types.Log
+		if err := e.anvil.RPC.CallContext(t.Context(), &logs, c.Method, c.Params[0]); err != nil {
+			t.Error(err)
+			return nil
+		}
+		slices.Reverse(logs)
+		raw, err := json.Marshal(logs)
+		if err != nil {
+			t.Error(err)
+		}
+		return raw
+	})
+	client, err := rpc.Dial(proxy.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(client.Close)
+	e.watch = watcher.NewChain(e.pool, e.chainID, client)
 	for range 2 {
-		if complete, err := e.watch.Receiver(t.Context(), e.anvil.RPC, id); err != nil || !complete {
+		if complete, err := e.watch.Receiver(t.Context(), id); err != nil || !complete {
 			t.Fatalf("complete=%v: %v", complete, err)
 		}
 		if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
@@ -522,7 +549,7 @@ func TestLateReturnedOptionDoesNotChooseOrCloseAnotherOpenOption(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, option := range []string{main, id} {
-			if _, err := e.watch.Receiver(t.Context(), e.anvil.RPC, option); err != nil {
+			if _, err := e.watch.Receiver(t.Context(), option); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -578,7 +605,7 @@ func TestLegacyAllocationConflictPreservesBalancesAndUnbookedReturn(t *testing.T
 	if before.Payable.String() != "5000000" || before.Receiver.String() != "5000000" {
 		t.Fatalf("legacy setup: %+v", before)
 	}
-	if _, err := e.watch.Receiver(t.Context(), e.anvil.RPC, id); err != nil {
+	if _, err := e.watch.Receiver(t.Context(), id); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
@@ -606,7 +633,7 @@ func TestConcurrentReceiverScanAndLegacyConflictBookingFinishTogether(t *testing
 	defer cancel()
 	failures := make(chan error, 6)
 	for range 3 {
-		go func() { _, err := e.watch.Receiver(ctx, e.anvil.RPC, id); failures <- err }()
+		go func() { _, err := e.watch.Receiver(ctx, id); failures <- err }()
 		go func() { failures <- e.ledger.Process(ctx, id) }()
 	}
 	for range 6 {
@@ -636,7 +663,7 @@ func TestBroadcastSettlementReconcilesAfterAnAuthorityReturn(t *testing.T) {
 	if err := e.watch.Scan(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.watch.Receiver(t.Context(), e.anvil.RPC, id); err != nil {
+	if _, err := e.watch.Receiver(t.Context(), id); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.signer(t).Run(t.Context()); err != nil {
@@ -673,7 +700,7 @@ func TestReopenWaitsForCurrentCoverageBeforeDiscoveringAConfirmedReturn(t *testi
 	if err := e.watch.Scan(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.watch.Receiver(t.Context(), e.anvil.RPC, inv.ID); err != nil {
+	if _, err := e.watch.Receiver(t.Context(), inv.ID); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
@@ -691,7 +718,7 @@ func TestReopenWaitsForCurrentCoverageBeforeDiscoveringAConfirmedReturn(t *testi
 	if _, err := service.Reopen(t.Context(), profile, inv.ID); !errors.Is(err, ledger.ErrReconciliationPending) {
 		t.Fatalf("stale coverage reopened funds: %v", err)
 	}
-	if _, err := e.watch.Receiver(t.Context(), e.anvil.RPC, inv.ID); err != nil {
+	if _, err := e.watch.Receiver(t.Context(), inv.ID); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 338,
+  "nextId": 339,
   "tasks": [
     {
       "id": "F332",
@@ -119,62 +119,41 @@
       "evidence": null
     },
     {
-      "id": "F337",
-      "type": "refactor",
-      "behavior": "Centralize backend RPC configuration and safe provider failover",
+      "id": "F338",
+      "type": "fix",
+      "behavior": "Process payments and settlement through one working RPC provider",
       "acceptance": [
-        "Database endpoint metadata, secure secret resolution and process wiring replace backend provider-specific configuration.",
-        "Priority, failover, recovery, network consistency, safe errors and identical transaction retries pass regression tests.",
-        "Public API contracts and real invoice payment, independent confirmation and settlement workflows remain correct; receiver catch-up saves progress within learned provider range limits.",
-        "Research, operations, migration and deferred architecture are documented; changed paths and imports receive independent review.",
-        "Payment and checkout confirmation uses one compact Confirming (done/total) label when counts exist; estimates appear in an accessible tooltip. Normal pending settlement does not repeat as payment problems; actual failures and transaction links remain visible."
+        "One configured endpoint starts and completes finalized payment and settlement without a second provider.",
+        "All configured endpoints participate in bounded failover; wrong-chain endpoints, malformed evidence, duplicate booking and inconsistent balances remain rejected.",
+        "Finalized payment flows and settlement restart recovery pass real Postgres and Anvil regressions; operations docs match the single-provider policy."
       ],
       "dependsOn": [],
-      "state": "passing",
+      "state": "verified",
       "verification": [
-        "unit",
-        "e2e"
+        "backend-affected",
+        "backend-e2e",
+        "docs-check"
       ],
       "refs": [
+        "R-173",
         "R-172",
-        "R-133",
+        "R-20",
         "R-21",
         "R-22",
-        "R-51",
         "D-15",
-        "D-45",
-        "D-71",
-        "R-165",
-        "R-166"
+        "D-45"
       ],
       "keep": [],
       "review": true,
       "notes": [
-        "2026-10-27 Research and design recorded in docs/research/rpc-infrastructure.md. Database metadata and startup secret resolution implemented first, then safe routing and finalized hash reads. Credential reflection reproduced before fixing. Focused chain/config/balance tests and real-binary TestMoneyLoop passed; full verification and independent review remain.",
-        "2026-10-27 F337 implementation and independent review passed; first full verification passed seven checks. Final environment-override and documentation cleanup is being reverified. No commit, push, deployment, secret migration or persistent database change.",
-        "2026-10-27 review pass by reviewer: Independent review passed. Reviewed configuration and secret boundaries, provider role separation, safe errors, recovery ownership, canonical RPC block hashes, migration behavior, and public API contracts. Confirmed fixes for canary HTTPS validation, hostname aliases, concurrent health probes, and whole-batch provider errors with targeted race tests. Reviewed final Playwright environment cleanup and wrong-chain quarantine documentation. No blocking findings.",
-        "2026-10-27 F337 locally verified: seven final checks passed (harness, docs-check, lint, typecheck, unit including backend race tests, build, e2e); independent review passed. Four real-binary money workflows passed with RPC fault injection. Research and operating guide retained. No temporary Anvil or test application processes remain; tests used disposable databases and task-specific temporary directories. Shared caches and existing secrets/services preserved. No commit, push, deployment or persistent RPC configuration migration. Private endpoint metadata and RPC_ENDPOINT_SECRETS must be configured before deployment; snapshot updates require restart.",
-        "2026-10-27 F337 committed and pushed to its task branch; PR https://github.com/Forwend/forwend/pull/331 is open against main. Seven local checks and independent review passed; commit and push hooks passed. No merge or deployment. Research and archives remain local as required. Temporary PR body file cleaned. Next step: review and authorize merge.",
-        "2026-10-27 review pass by reviewer: Independent review passed for the receiver catch-up follow-up. Checkpoints and shared prefetch honor learned provider range limits while retaining contiguous finalized evidence, independent provider agreement, and atomic checkpoint writes. Strengthened regressions cover a 62-block learned limit, skipped prefetch below the former 2000-block ceiling, durable progress, production RPC transport, shared Postgres quota, and a bounded deadline. Targeted watcher race tests passed; final full verification passed all seven checks. Owning money-safety documentation matches the change. No blocking findings.",
-        "2026-10-27 review pass by reviewer: Independent review passed for the final RPC rollout follow-up. Receiver checkpoints and shared prefetch honor learned provider limits without changing finalized evidence, provider agreement, or atomic writes. Singleton watcher reads use ordinary RPC calls, preserve execution errors per element, and propagate transport failures. Caller deadlines release owned probe state without changing provider health; independent HTTP attempt timeouts retain failover. Reviewed real-Anvil regressions for bounded progress with shared Postgres quota, singleton compatibility and error isolation, and caller-deadline health isolation. Targeted race tests and final seven-check verification passed. Owning documentation matches behavior. No blocking findings.",
-        "2026-10-27 Local RPC rollout applied migration82, backend-only private references and verified public archive endpoints. Both original deposits are independently proved, booked once and paid; Arc settled. Base settlement succeeded with one exact recipient transfer on two providers and awaits chain finality. Fixed checkpoint bounds, singleton read compatibility and caller-deadline health penalties. Final seven checks passed in289.6s and independent review passed. Recovery tools and temporary directories removed; requested dev services remain running and API/web checks pass. Private endpoints remain disabled after401/402 responses. Next: commit and push follow-up to existing PR331; no merge.",
-        "2026-10-27 reopened: Restore merchant confirmation and settlement tracking lost during payment screen migration.",
-        "2026-10-27 Restored live confirmation counts and accessible estimate tooltips across checkout, owner invoice and payment detail. Settlement tracking uses display-only receipt observations and canonical completed transaction links. Both original local invoices are paid and settled. Final combined seven-check verification and authenticated production browser regression passed. Temporary confirmation fixtures are removed; ongoing development services remain running. Push follow-up to PR331; merge remains pending.",
-        "2026-10-27 review pass by reviewer: Independent review passed for the combined settlement tracking and compact confirmation changes. Migration 83 receipt observations remain display-only; missing receipts and retries clear observations, and finality, independent evidence, and ledger booking remain unchanged. Reviewed API progress calculations and null handling, replacement and reorg behavior, shared count and tooltip rendering, normal-wait suppression, and documented feature dependencies. Completed settlement links use the canonical booked hash; stale receipt metadata and duplicate deposit links no longer override it. Focused API, signer, reorg, replacement race tests and seven invoice tests passed. Final frozen-source verification passed all seven checks; authenticated browser coverage passed for changing progress, canonical completion links, hover, focus, touch, accessibility, and light/dark layouts. No blocking findings."
+        "2026-10-27 review pass by reviewer: Independent review passed for one-provider payment and settlement processing. Operational clients share ordered endpoint failover; one endpoint is accepted at startup. Finalized blocks, canonical log hashes, net balances, immutable proofs and once-only booking remain enforced. Review found and resolved outgoing-log ordering lost with the former comparison helper; the reverse-log batch-refund regression preserves distinct transfer proofs and exact balances. Independent focused race checks passed for refunds, startup, cross-role failover and identical signed transaction retries. The separate canary remains non-gating. Selected-provider gas-price trust is documented. Final task verification passed docs-check, backend-affected and backend-e2e."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-27T16:05:09Z",
+        "at": "2026-10-27T16:43:46Z",
         "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 4.0,
-            "log": ""
-          },
           {
             "id": "docs-check",
             "outcome": "passed",
@@ -183,68 +162,38 @@
             "log": ""
           },
           {
-            "id": "lint",
+            "id": "backend-affected",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
+            "seconds": 228.6,
             "log": ""
           },
           {
-            "id": "typecheck",
+            "id": "backend-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.5,
-            "log": ""
-          },
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 243.2,
-            "log": ""
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.2,
-            "log": ""
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 46.8,
+            "seconds": 41.2,
             "log": ""
           }
         ],
-        "taskHash": "edff7b6988bc5d7a",
-        "filesHash": "bb09d7e2bf53ec62",
+        "taskHash": "0ab90ffc96e01fea",
+        "filesHash": "ca54c7a035668464",
         "proof": {
-          "1": "unit: Database configuration, secure secret resolution and consumer wiring remain covered.",
-          "2": "unit: RPC priority, bounded failover, recovery and transaction safety regressions pass.",
-          "3": "e2e: Real binary payment, confirmation and settlement workflows preserve independent evidence and once-only booking.",
-          "4": "docs-check: Configuration, rollout, security and feature dependency documentation is valid.",
-          "5": "unit: Settlement receipt observations feed display-only estimates; API progress refresh and missing-receipt tests pass. Compact confirmation UI reuses existing count data, preserves genuine warnings and canonical transaction links. Targeted production browser checks cover desktop, phone, tooltip access and completion."
+          "1": "backend-e2e: API, worker and signer start and complete checkout with one configured RPC endpoint.",
+          "2": "backend-affected: One-endpoint startup, wrong-chain rejection, failover, finality, balance consistency, immutable proofs, reversed refund-log order and identical broadcast retries pass regressions.",
+          "3": "backend-e2e: Real payment, settlement and restart-recovery flows pass; docs-check validates updated operational policy references."
         },
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "Independent review passed for the combined settlement tracking and compact confirmation changes. Migration 83 receipt observations remain display-only; missing receipts and retries clear observations, and finality, independent evidence, and ledger booking remain unchanged. Reviewed API progress calculations and null handling, replacement and reorg behavior, shared count and tooltip rendering, normal-wait suppression, and documented feature dependencies. Completed settlement links use the canonical booked hash; stale receipt metadata and duplicate deposit links no longer override it. Focused API, signer, reorg, replacement race tests and seven invoice tests passed. Final frozen-source verification passed all seven checks; authenticated browser coverage passed for changing progress, canonical completion links, hover, focus, touch, accessibility, and light/dark layouts. No blocking findings.",
-          "at": "2026-10-27T16:11:11Z",
-          "filesHash": "bb09d7e2bf53ec62"
-        },
-        "commit": "f5cba67a",
-        "doneAt": "2026-10-27T16:22:00Z"
+          "summary": "Independent review passed for one-provider payment and settlement processing. Operational clients share ordered endpoint failover; one endpoint is accepted at startup. Finalized blocks, canonical log hashes, net balances, immutable proofs and once-only booking remain enforced. Review found and resolved outgoing-log ordering lost with the former comparison helper; the reverse-log batch-refund regression preserves distinct transfer proofs and exact balances. Independent focused race checks passed for refunds, startup, cross-role failover and identical signed transaction retries. The separate canary remains non-gating. Selected-provider gas-price trust is documented. Final task verification passed docs-check, backend-affected and backend-e2e.",
+          "at": "2026-10-27T16:49:23Z",
+          "filesHash": "ca54c7a035668464"
+        }
       },
-      "branch": "refactor/f337-centralize-backend-rpc-configuration-and",
-      "baseCommit": "74e0e2efc3d8321e6c39c171506e773afed0a98b",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "refactor/f337-centralize-backend-rpc-configuration-and",
-        "base": "main"
-      }
+      "branch": "fix/f338-process-payments-and-settlement-through",
+      "baseCommit": "c13191957df395c6b184f285402df80fd0185023",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

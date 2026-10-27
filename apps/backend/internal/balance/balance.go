@@ -1,4 +1,4 @@
-// Package balance shows a profile's money per chain and token (R-33): the wallet balance at the second RPC's
+// Package balance shows a profile's money per chain and token (R-33): the wallet balance at the selected RPC's
 // finalized block (D-15, D-45), pending and held money apart from it, and the daily wallet balance (R-38).
 package balance
 
@@ -22,7 +22,7 @@ var ReadTimeout = 10 * time.Second
 
 type Token struct {
 	chain.Asset
-	// Wallet is the wallet's balance at Block, the second RPC's finalized block; nil when it could not be read or the
+	// Wallet is the wallet's balance at Block, the selected RPC's finalized block; nil when it could not be read or the
 	// profile has no wallet yet.
 	Wallet *big.Int
 	Block  uint64
@@ -44,7 +44,7 @@ type Service struct {
 	read ledger.BalanceOf
 }
 
-// NewService reads wallet balances with read; give it each chain's second RPC (D-15).
+// NewService reads wallet balances with read; give it each chain's RPC pool (D-15).
 func NewService(pool *pgxpool.Pool, read ledger.BalanceOf) *Service {
 	return &Service{pool: pool, read: read}
 }

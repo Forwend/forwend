@@ -48,7 +48,7 @@ const (
 // equals the chain.
 func TestMoneyLoop(t *testing.T) {
 	ctx := context.Background()
-	st := newStack(t)
+	st := newStack(t, false)
 	anvil, token, privy, api, conn, profile, limited := st.anvil, st.token, st.privy, st.api, st.conn, st.profile, st.limited
 	start(t, st.bin, "worker", st.loop)
 	start(t, st.bin, "signer", append(st.loop, "EXECUTOR_PRIVATE_KEY="+chaintest.Key))
@@ -242,7 +242,7 @@ type stack struct {
 // webhookKey stands in for WEBHOOK_SECRET_KEY: 32 bytes in base64.
 const webhookKey = "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc="
 
-func newStack(t *testing.T, apiEnv ...string) *stack {
+func newStack(t *testing.T, singleRPC bool, apiEnv ...string) *stack {
 	t.Helper()
 	ctx := context.Background()
 	anvil := chaintest.Start(t)
@@ -253,7 +253,7 @@ func newStack(t *testing.T, apiEnv ...string) *stack {
 	dbURL := databasetest.New(t)
 	bin := build(t)
 
-	// Two host names for the one Anvil give the second, independent RPC for balances (D-15).
+	// Fault proxies exercise failover while real binaries process payments.
 	limited, requests := anvil.Proxy(), 0
 	limited.Fail(func(chaintest.Call) chaintest.Fault {
 		if requests++; requests%3 == 0 {
@@ -262,7 +262,11 @@ func newStack(t *testing.T, apiEnv ...string) *stack {
 		return chaintest.Forward
 	})
 	second := strings.Replace(anvil.URL, "127.0.0.1", "localhost", 1)
-	configureRPCs(t, dbURL, limited.URL, anvil.URL, second)
+	if singleRPC {
+		configureRPCs(t, dbURL, anvil.URL)
+	} else {
+		configureRPCs(t, dbURL, limited.URL, anvil.URL, second)
+	}
 	// The worker's ECB rates (R-110).
 	ecbFake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `<Envelope><Cube><Cube time="2026-10-16"><Cube currency="USD" rate="1.1253"/></Cube></Cube></Envelope>`)

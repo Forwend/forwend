@@ -23,7 +23,7 @@ Read only the sections your task touches:
 
 ## Processes
 - `api`: public HTTP API + dashboard API. Verifies Privy tokens, authorizes the active profile,
-  creates invoices, serves state. Reads profile wallet balances from each chain's second RPC at its finalized block
+  creates invoices, serves state. Reads profile wallet balances from each chain's RPC pool at its finalized block
   (D-15, D-45), configured through the same registry as the worker's, through a short cache ([scaling](#scaling)). Holds **no**
   private keys: each process gets only its own secrets (`scripts/with-env.sh` drops the executor key for the api and
   worker). In production it listens on a private address behind the edge, never a public port, and every database
@@ -59,23 +59,22 @@ D-71); a chain whose RPCs don't answer is logged and skipped:
 - With `ENABLE_TESTNET_USDC=1`, the API then enables the three USDC testnet pairs before chain checks.
   - Dokploy defaults to 1. Local development leaves it off; `0` leaves existing network settings unchanged.
   - Repeated startup enables those pairs again. Other pairs keep their settings; see [staging](../staging.md#dokploy-staging).
-- Every chain enabled in the `chains` table has validated endpoint metadata and answers through primary and confirmation RPCs on
-  different hosts (D-15), within 30 s per chain.
-  - A mistake stops the process: endpoint metadata is missing or lacks an independent provider group, or every host of a role
-    serves another chain. Fix the endpoint metadata, disable the chain in the database, or give it a second host.
+- Every enabled chain has validated endpoint metadata and at least one answering endpoint (D-15), within 30 s per chain.
+  - A mistake stops the process when endpoint metadata is missing or every configured endpoint serves another chain.
+    Fix the metadata or disable that chain.
   - A chain whose hosts don't answer, or refuse us (HTTP 401, 403 or 404), is an outage, not a mistake (D-71). The
     process logs `chain unavailable at startup` with the chain and how many of its hosts answered, and starts.
   - Its factory and gas checks (below) don't run then. Restart the process once the chain answers, so they do.
   - The pool then rides it out as it rides out any outage: requests rest the hosts that fail and use the next one.
-    Nothing on that chain is decided paid or settled without the second RPC.
-- The api reads the factory's code through the primary, and through the second RPC when the primary errors. No code
+    One working endpoint can provide finalized evidence for payment and settlement.
+- The API reads factory code through the same failover pool. No code
   on an enabled chain, or no answer from either, stops it: invoices there could never settle.
 - The signer: `EXECUTOR_PRIVATE_KEY` is a hex secp256k1 key (the error never shows it), and on every enabled chain the
   executor holds `settlement.MinGas` at the fee cap it would sign with now (twice the base fee plus the tip). `MinGas`
   is one receiver deploy (159,990 gas on Anvil) and one settle (at least `SettleGasFloor`), each plus a fifth: 342,000
   gas, 0.001026 ETH on Anvil (1 gwei base fee and tip). Below it the node would refuse the next deploy and settle. The
   message names the chain, the executor's address and its balance in whole coins. A read that fails on the primary is
-  asked of the second RPC; a shortfall stops it at once. It is a floor derived from each chain's own price, not a
+  retried through the endpoint pool; a shortfall stops it at once. It is a floor derived from each chain's own price, not a
   budget: Arbitrum's L1 data cost is not in it. Tempo has no native coin and its RPC reports a placeholder balance:
   where Tempo's fee manager precompile exists, the check reads the executor's fee token instead (its choice in the fee
   manager, else PathUSD) and needs ceil(fee cap × `TempoMinGas` / 10^12) of its 6-decimal units, since Tempo prices
@@ -114,7 +113,7 @@ Redis is the next step when more than a few replicas run: the cache sits behind 
   only frees memory. A failed read is not kept: the requests waiting for it get the error and the next request reads
   again. The read keeps the deadline of the request that started it but not its cancel, so one closed tab does not
   fail the others. `/balance-history` reads through the same cache, so a dashboard poll of both routes costs one
-  `balanceOf` per token. The worker reads its own second-provider balances, sharing one finalized header within each chain round.
+  `balanceOf` per token. The worker reads finalized balances through the selected provider, sharing one finalized header within each chain round.
 - The RPC pool keeps up to 100 idle connections per host. With net/http's default of 2, each call beyond 2 at once
   opened a new connection (and TLS session), and under load the api ran out of local ports ([load test](#load-test)).
 - Postgres: `pool_max_conns` in `DATABASE_URL` sets each process's pool (without it pgxpool takes the larger of 4 and
@@ -181,7 +180,7 @@ with a test.
   chains (D-45), so no per-chain rule columns. From `00015` on, migrations add each planned network and its token
   switched off (Arbitrum Sepolia USDC in `00015`, Arc testnet USDC in `00016`, Tempo Moderato OUSD in `00017`), so
   isolated tests need no public RPCs or testnet gas. Migration 82 adds Base Sepolia disabled, with public RPC metadata. Activation below adds its token.
-  An operator can enable another pair after the executor has gas and the endpoint registry has two independent working providers:
+  An operator can enable another pair after the executor has gas and the endpoint registry has at least one working provider:
   `UPDATE chains SET enabled = true WHERE chain_id = 421614; UPDATE tokens SET enabled = true WHERE chain_id = 421614;`
   Then restart the api, worker and signer so their startup checks cover it. A chain they log as unavailable at
   startup is not checked yet: restart them again once it answers.
@@ -305,16 +304,16 @@ never holds the app's load.
 - [RPC operations](rpc.md) defines configuration, secret references, routing, recovery, migration and the deferred architecture.
 - `internal/chain` owns configuration validation and go-ethereum client construction.
 - Payment services receive resolved chain specifications; they never read secrets or construct provider URLs.
-- Each chain has explicit primary and confirmation provider groups; providers and hosts cannot cross those groups.
-- Within each group, private endpoints precede public endpoints, ordered by priority and then endpoint ID.
-- Reordering endpoints changes selection priority without changing their payment safety role.
+- Each chain has one pool containing all enabled endpoints; legacy role labels do not restrict routing.
+- Private endpoints precede public endpoints, ordered by priority and then endpoint ID.
+- Reordering endpoints changes selection priority.
 - Each request tries each eligible endpoint once, bounded by its caller deadline and a 30-second transport deadline.
 - HTTP exchanges have a five-second timeout; exhausted groups return a controlled unavailable error.
 - Failed endpoints cool down with exponential jitter; one recovery probe validates them before reuse.
 - Health checks validate chain identity, latest-head freshness and finalized-header support.
 - Error responses retain codes and safe categories; provider text, URLs and error data cannot enter logs or public errors.
 - Node-managed signing and unknown RPC methods are refused; signed transaction retries retain identical bytes.
-- Every batch stays together on one endpoint per attempt; independent evidence still comes from the other provider group.
+- Every batch stays together on one endpoint per attempt; receiver verification reads each source once.
 - API, worker and signer also share a weighted budget in PostgreSQL (`rpc_budgets`, R-133).
 - Its rate is `RPC_RATE_PER_SECOND × 80` units per second.
 - Ordinary calls cost 80 units; `eth_chainId` costs 5, logs 255, gas estimates 300, and block receipts 1,000.
@@ -398,8 +397,7 @@ Scanning again changes nothing, so a restarted worker resumes from the cursor.
 ## Signer
 
 `internal/settlement` (R-22), one `Signer` per executor key (the signer's lock, [startup](#startup)). When the ledger marks an invoice `paid` it queues one
-settlement intent (unique per invoice) in the same transaction. Every transaction it signs uses the lower of the
-primary and second RPC's suggested tips (D-15), so one host can't make the executor overpay. For each due intent the
+settlement intent (unique per invoice) in the same transaction. Every transaction uses the selected provider's suggested tip and current base fee (D-15). For each due intent the
 signer:
 1. If a settle is already saved (`sent`), finishes it first, whatever changed since.
    - The saved bytes must decode to `settle()` on this receiver on this chain with the saved hash.
@@ -454,7 +452,7 @@ signer:
 5. Confirms once all of these hold:
    - `settled()` is true at the finalized block (D-45);
    - for our settle, its receipt's block is final too;
-   - the chain's second RPC also reads `settled()` true at its own finalized block (D-15, as for paid).
+   - the selected RPC reads `settled()` true at its finalized block (D-15, as for paid).
 
    Then, in one transaction: intent `confirmed`, a `settlement` ledger transaction (receiver and recipient_payable
    each −amount; one per invoice) and the invoice's `settlement_status` `settled`. A settle a reorg drops before that
@@ -508,9 +506,9 @@ Refused intents (`status = 'refused'`) also carry their reason; waiting ones are
   - Before a choice, no row of the invoice expires until every other enabled option chain was read past the close.
     A payment made before the close may still come on one of them, and it would be chosen.
 - Payment status: `open` → `detected` (a transfer seen) → `partially_paid` → `paid` when the full amount is owed and
-  a second RPC's `balanceOf` covers every booked deposit (D-15). An invoice owed in full never expires; it waits for
-  the second RPC. Otherwise it becomes `expired` or `expired_partially_paid` once the chain's finalized block time
-  passes `closes_at`, no transfer is still `detected`, and the second RPC's balance equals the booked amount. More on
+  the selected RPC's finalized `balanceOf` covers every booked deposit (D-15). An invoice owed in full never expires; it waits for
+  the finalized balance check. Otherwise it becomes `expired` or `expired_partially_paid` once the chain's finalized block time
+  passes `closes_at`, no transfer is still `detected`, and the finalized token balance equals the booked amount. More on
   chain than booked (a missed log, an Arc native-coin payment) blocks expiry and logs a warning; so does less. Such
   an invoice is read again after a growing wait (R-120), and a round books invoices with new deposits first. An expired partial
   payment is moved to `payer_held` by an `expiry` ledger transaction. `refund_status` becomes `held` while
@@ -518,7 +516,7 @@ Refused intents (`status = 'refused'`) also carry their reason; waiting ones are
 - Reopen (R-130): the owner may reopen an `expired_partially_paid` option once, a day or more before its receiver's
   settle deadline.
   - That deadline is the earlier of `settle_deadline` and `receiver_deployed_at` + 30 days, as in the contract.
-  - When an option closes partly paid, the ledger reads `factory.deployedAt` at the second RPC's finalized block.
+  - When an option closes partly paid, the ledger reads `factory.deployedAt` at the selected RPC's finalized block.
   - It stores 0 when the receiver isn't deployed.
   - An option without a stored value can't reopen.
   - Only a refund authority recovery deploys a receiver of an unpaid option early.
@@ -534,8 +532,7 @@ Refused intents (`status = 'refused'`) also carry their reason; waiting ones are
   - A short close books a second `expiry`. A trigger allows reopen rows only between the first expiry and a second.
   - The guard allows `expired_partially_paid` → `partially_paid` only in the update that sets `reopened_until`, once.
   - Migration 54 refuses to roll back once an invoice reopened: the old ledger has no row for that money.
-- The second RPC reads `balanceOf` at its own finalized block and reports that block, so a primary RPC that calls a
-  deposit final too early can't get an invoice paid (D-15, D-45). An answer from behind the watcher's finalized block
+- The selected RPC reads `balanceOf` at its finalized block and reports that block (D-15, D-45). An answer from behind the watcher's finalized block
   may miss final deposits, so it decides nothing (neither paid nor expired) until the node catches up. Finalized state reads identify the block by its RPC-supplied hash. Providers must support canonical block-hash `eth_call`.
 - `paid`, `expired`, `expired_partially_paid` and `canceled` are final (`ledger.Final`), but for the one reopen above.
   Only the owner cancels, from `open` before any transfer (`invoice.Cancel`, R-79); every later deposit is held. A

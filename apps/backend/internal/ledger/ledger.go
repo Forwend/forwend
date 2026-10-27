@@ -73,7 +73,7 @@ func split(amount, owedSoFar, deposit *big.Int, late, final bool) (toCreator, to
 	return toCreator, new(big.Int).Sub(deposit, toCreator)
 }
 
-// funded: the second RPC agrees the receive address holds every booked deposit; mayExpire: expiry has passed and
+// funded: the finalized balance confirms the receive address holds every booked deposit; mayExpire: expiry has passed and
 // the chain holds exactly what is booked.
 func status(current string, amount, owed *big.Int, anyTransfer, mayExpire, funded bool) string {
 	switch {
@@ -84,7 +84,7 @@ func status(current string, amount, owed *big.Int, anyTransfer, mayExpire, funde
 	case owed.Cmp(amount) >= 0 && current == PartiallyPaid:
 		return PartiallyPaid // the database allows no way back to detected
 	case owed.Cmp(amount) >= 0:
-		// Paid in full and on time, waiting for the second RPC to agree; it never expires.
+		// Paid in full and on time, waiting for the finalized balance check; it never expires.
 		return Detected
 	case mayExpire && owed.Sign() > 0:
 		return ExpiredPartiallyPaid
@@ -123,7 +123,7 @@ func BalanceFrom(clients map[uint64]*ethclient.Client) BalanceOf {
 // deploy, a refund authority recovery, ends the receiver's settle window at deployedAt + 30 days (R-130).
 type DeployedAt func(ctx context.Context, chainID uint64, factory, receiver string) (uint64, error)
 
-// DeployedFrom reads with BalanceFrom's clients, the second RPC per chain.
+// DeployedFrom reads with BalanceFrom's clients, the RPC pool per chain.
 func DeployedFrom(clients map[uint64]*ethclient.Client) DeployedAt {
 	return func(ctx context.Context, chainID uint64, factory, receiver string) (uint64, error) {
 		client, ok := clients[chainID]
