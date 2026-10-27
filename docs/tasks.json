@@ -130,7 +130,7 @@
         "Payment and checkout confirmation uses one compact Confirming (done/total) label when counts exist; estimates appear in an accessible tooltip. Normal pending settlement does not repeat as payment problems; actual failures and transaction links remain visible."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -233,11 +233,18 @@
           "summary": "Independent review passed for the combined settlement tracking and compact confirmation changes. Migration 83 receipt observations remain display-only; missing receipts and retries clear observations, and finality, independent evidence, and ledger booking remain unchanged. Reviewed API progress calculations and null handling, replacement and reorg behavior, shared count and tooltip rendering, normal-wait suppression, and documented feature dependencies. Completed settlement links use the canonical booked hash; stale receipt metadata and duplicate deposit links no longer override it. Focused API, signer, reorg, replacement race tests and seven invoice tests passed. Final frozen-source verification passed all seven checks; authenticated browser coverage passed for changing progress, canonical completion links, hover, focus, touch, accessibility, and light/dark layouts. No blocking findings.",
           "at": "2026-10-27T16:11:11Z",
           "filesHash": "bb09d7e2bf53ec62"
-        }
+        },
+        "commit": "f5cba67a",
+        "doneAt": "2026-10-27T16:22:00Z"
       },
       "branch": "refactor/f337-centralize-backend-rpc-configuration-and",
       "baseCommit": "74e0e2efc3d8321e6c39c171506e773afed0a98b",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "refactor/f337-centralize-backend-rpc-configuration-and",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
