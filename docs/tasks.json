@@ -202,12 +202,119 @@
         "branch": "fix/f338-process-payments-and-settlement-through",
         "base": "main"
       }
+    },
+    {
+      "id": "F339",
+      "type": "ci",
+      "behavior": "Allow fresh staging checks to finish within the job budget",
+      "acceptance": [
+        "The staging job allows thirty minutes while keeping every required check and individual timeout unchanged.",
+        "Workflow configuration and delivery documentation pass repository checks before promotion."
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "harness",
+        "docs-check"
+      ],
+      "refs": [
+        "R-158",
+        "D-48"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-27 review pass by reviewer: Independent review passed against base c1319195. The sole workflow behavior change raises the overall staging job budget from 20 to 30 minutes. Required checks, individual limits, steps, permissions, and triggers remain unchanged. Staging documentation matches the new budget. Documentation and whitespace checks passed; full local verification passed all seven checks. No findings. This review covers the current base only; rebase requires renewed verification and review.",
+        "2026-10-27 review pass by reviewer: Independent review passed for F339 rebased onto main bc80173e. Compared with that base, changes are limited to the staging job timeout from 20 to 30 minutes, its operating note, and task metadata. All check steps, individual limits, triggers, and permissions remain unchanged; no application code changed. F338 and F339 records remain present with nextId 340. Whitespace checks passed and final rebased verification passed all seven checks. No findings.",
+        "2026-10-27 Rebased CI-only job budget fix onto F338 hotfix bc80173e. All seven local checks passed; independent review confirms no application code delta. Preserve F338/F339 and nextId340. Merge CI-only PR, promote staging, then verify the exact combined commit in GitHub. Temporary checkout and its test caches will be removed after promotion.",
+        "2026-10-27 CI job budget fix rebased onto F338 hotfix; seven checks and independent review passed. F338/F339 and nextId340 preserved. Merge and promote, then validate exact staging commit. Temporary checkout will be removed after promotion."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-27T16:56:01Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.2,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 241.6,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.2,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 44.9,
+            "log": ""
+          }
+        ],
+        "taskHash": "c32e9975b6a706de",
+        "filesHash": "8a391837bec63587",
+        "proof": {
+          "1": "harness: Rebased workflow comparison confirms the sole workflow change is timeout20 to30; steps, registry and individual limits are unchanged.",
+          "2": "docs-check: Staging budget is documented; rebased source passes repository checks and retains F338/F339 with nextId340."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Independent review passed for F339 rebased onto main bc80173e. Compared with that base, changes are limited to the staging job timeout from 20 to 30 minutes, its operating note, and task metadata. All check steps, individual limits, triggers, and permissions remain unchanged; no application code changed. F338 and F339 records remain present with nextId 340. Whitespace checks passed and final rebased verification passed all seven checks. No findings.",
+          "at": "2026-10-27T17:01:32Z",
+          "filesHash": "8a391837bec63587"
+        },
+        "commit": "8a9c9891",
+        "doneAt": "2026-10-27T17:02:21Z"
+      },
+      "branch": "ci/f339-allow-fresh-staging-checks-to-finish-wit",
+      "baseCommit": "c13191957df395c6b184f285402df80fd0185023",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "ci/f339-allow-fresh-staging-checks-to-finish-wit",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-27T16:52:43Z",
+    "at": "2026-10-27T17:01:57Z",
     "clean": true,
     "problems": [],
-    "note": "F338 is verified and independently reviewed; committed as 98ee34a3 and published in PR332. Staging promotion is held at the user request until F339 completes. Rebase afterward, preserve both task records and nextId340, then reverify and promote."
+    "note": "CI job budget fix rebased onto F338 hotfix; seven checks and independent review passed. F338/F339 and nextId340 preserved. Merge and promote, then validate exact staging commit. Temporary checkout will be removed after promotion."
   }
 }

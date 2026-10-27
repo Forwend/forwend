@@ -14,7 +14,7 @@ concurrency:
 jobs:
   checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     services:
       postgres:
         # GitHub-hosted runners are exempt from Docker Hub's public-image pull rate limit.
