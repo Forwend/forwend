@@ -15,7 +15,7 @@
       "dependsOn": [
         "F329"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend-affected",
         "backend-e2e"
@@ -105,11 +105,18 @@
           "summary": "Reviewed payment list/detail/attention/movement/reconciliation APIs, tenant and assigned-store intersection, API-key mode/scopes, bounded readers, repeatable-read snapshots, currency-header consistency, exact signed base-unit exports, observed-versus-booked records and independent source attribution. Noncash checkpoints and unmatched legacy cash remain distinct without invented provenance; comparison rejects unpositioned cash. Reviewed OpenAPI/Node compatibility, domain SQL ownership, shared transport DTOs and permission-route coverage. All seven selected checks passed, including race suite and real-binary reconciliation. Live paged observations can change between requests; documentation states this limit. No blockers remain.",
           "at": "2026-10-27T03:30:45Z",
           "filesHash": "45c26d29ff8f23a2"
-        }
+        },
+        "commit": "4cfcc323",
+        "doneAt": "2026-10-27T03:31:06Z"
       },
       "branch": "feat/f330-add-merchant-payment-operations-and-stor",
       "baseCommit": "825ed13f377c90ad3bbc800ddd3db16672446e7c",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f330-add-merchant-payment-operations-and-stor",
+        "base": "main"
+      }
     },
     {
       "id": "F331",
