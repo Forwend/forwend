@@ -3,6 +3,7 @@ import {
   API_PAYMENT_STATUSES,
   API_SETTLEMENT_STATUSES,
 } from "@/features/activity/constants/activity";
+import { RECONCILIATION_STATES } from "@/features/invoices/constants/invoices";
 import { tokenKey } from "@/features/invoices/lib/invoices";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import { PAY_STATES, PAY_TOKENS } from "@/features/pay/constants/pay";
@@ -78,40 +79,56 @@ export function payState(inv: Invoice, now: number) {
   const closing = closed && inv.amounts !== undefined && BigInt(inv.amounts.payable) > 0n;
   const awaitingChoice =
     inv.optionCount > 1 && !inv.optionLocked && Boolean(firstPaymentOption(inv));
+  const review = Boolean(
+    inv.amounts?.hasPolicyException ||
+      (inv.amounts?.unreconciled &&
+        inv.amounts.reconciliationStatus !== RECONCILIATION_STATES.pending),
+  );
+  const checking =
+    inv.amounts?.reconciliationStatus === RECONCILIATION_STATES.pending && inv.deposits.length > 0;
   const state: PayState =
     inv.paymentStatus === API_PAYMENT_STATUSES.paid &&
     inv.settlementStatus === API_SETTLEMENT_STATUSES.settled
       ? PAY_STATES.settled
       : inv.paymentStatus === API_PAYMENT_STATUSES.paid
         ? PAY_STATES.paid
-        : inv.amounts?.unreconciled || inv.amounts?.hasPolicyException
+        : review
           ? PAY_STATES.review
-          : // Canceled takes no money, whatever arrives: it is all held for the payer (R-79, D-26).
-            canceled
+          : canceled
             ? PAY_STATES.canceled
-            : awaitingChoice
+            : checking
               ? PAY_STATES.checking
-              : confirming
-                ? PAY_STATES.confirming
-                : closing
-                  ? PAY_STATES.closing
-                  : received >= amount
-                    ? PAY_STATES.checking
-                    : received > 0n
-                      ? closed
-                        ? PAY_STATES.closedPartial
-                        : PAY_STATES.partial
-                      : closed
-                        ? PAY_STATES.closed
-                        : PAY_STATES.waiting;
+              : awaitingChoice
+                ? PAY_STATES.checking
+                : confirming
+                  ? PAY_STATES.confirming
+                  : closing
+                    ? PAY_STATES.closing
+                    : received >= amount
+                      ? PAY_STATES.checking
+                      : received > 0n
+                        ? closed
+                          ? PAY_STATES.closedPartial
+                          : PAY_STATES.partial
+                        : closed
+                          ? PAY_STATES.closed
+                          : PAY_STATES.waiting;
   return {
     state,
+    delayed:
+      state === PAY_STATES.checking &&
+      inv.deposits.some(
+        (deposit) =>
+          deposit.status === API_DEPOSIT_STATUSES.confirmed &&
+          deposit.paid === null &&
+          now - Date.parse(deposit.blockTime) > 5 * 60_000,
+      ),
     closed,
     canSend:
       !closed &&
       !awaitingChoice &&
-      !inv.amounts?.unreconciled &&
-      !inv.amounts?.hasPolicyException &&
+      !review &&
+      !checking &&
       received < amount &&
       state !== PAY_STATES.paid &&
       state !== PAY_STATES.settled,

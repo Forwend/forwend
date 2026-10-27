@@ -16,6 +16,7 @@ export type AttentionPage = z.infer<typeof attentionPageSchema>;
 export type PaymentReconciliation = z.infer<typeof reconciliationSchema>;
 export type PaymentMovementPage = z.infer<typeof movementsPageSchema>;
 export interface PaymentFilters {
+  q?: string;
   storeId?: string;
   source?: Payment["source"];
   linkId?: string;

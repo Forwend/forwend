@@ -18,6 +18,8 @@ import {
 /** GET /v1/profiles/{id}/activity, ActivityItem. */
 export const activityItemSchema = z.object({
   kind: z.enum(ACTIVITY_KINDS),
+  paymentStatus: openEnum<ApiPaymentStatus>().optional(),
+  confirming: z.boolean().optional(),
   at: apiTime,
   invoiceId: hash32,
   chainId: count,

@@ -24,7 +24,7 @@ func (s *Service) Get(ctx context.Context, payToken string) (Invoice, error) {
 	if !ok {
 		return Invoice{}, ErrNotFound
 	}
-	return s.get(ctx, "", id)
+	return s.get(ctx, "", id, false)
 }
 
 func idOf(payToken string) (string, bool) {
@@ -40,7 +40,11 @@ var payTokenShape = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 // GetOfProfile is Get for the profile's owner: another profile's invoice is ErrNotFound.
 func (s *Service) GetOfProfile(ctx context.Context, profileID, id string) (Invoice, error) {
-	return s.get(ctx, profileID, id)
+	return s.get(ctx, profileID, id, false)
+}
+
+func (s *Service) GetProfileSummary(ctx context.Context, profileID, id string) (Invoice, error) {
+	return s.get(ctx, profileID, id, true)
 }
 
 // Unnumbered is true for a link invoice before its first deposit, which only its payer sees (R-141).
@@ -54,7 +58,7 @@ func (s *Service) Unnumbered(ctx context.Context, id string) (bool, error) {
 }
 
 // get reads any profile's invoice when profileID is "".
-func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error) {
+func (s *Service) get(ctx context.Context, profileID, id string, summary bool) (Invoice, error) {
 	id = strings.ToLower(id)
 	if len(id) != 66 || !strings.HasPrefix(id, "0x") || strings.Trim(id[2:], "0123456789abcdef") != "" {
 		return Invoice{}, ErrNotFound
@@ -65,9 +69,11 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 	if err != nil {
 		return Invoice{}, err
 	}
-	if inv.Options, err = s.options(ctx, inv.ID); err != nil {
+	options, err := readPaymentOptionsFor(ctx, s.pool, []string{inv.ID}, summary)
+	if err != nil {
 		return Invoice{}, err
 	}
+	inv.Options = options[inv.ID]
 	if inv.Lines, err = s.lines(ctx, inv.ID); err != nil {
 		return Invoice{}, err
 	}
@@ -106,20 +112,40 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 	if next != nil {
 		inv.NextCheckAt = next.UTC()
 	}
-	// Each option's own deposits: on an option that was not chosen they are held for the payer (D-76).
-	for i, o := range inv.Options {
-		if inv.Options[i].Deposits, err = s.deposits(ctx, o.ID, o.ChainID); err != nil {
-			return Invoice{}, err
+	ids := make([]string, len(inv.Options))
+	for i, option := range inv.Options {
+		ids[i] = option.ID
+	}
+	amounts, err := ledger.ReadAmountsFor(ctx, s.pool, ids)
+	if err != nil {
+		return Invoice{}, err
+	}
+	rows, err := s.pool.Query(ctx, "SELECT DISTINCT invoice_id FROM chain_transfers WHERE invoice_id=ANY($1::text[])", ids)
+	if err != nil {
+		return Invoice{}, err
+	}
+	withDeposits, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return Invoice{}, err
+	}
+	for i, option := range inv.Options {
+		if slices.Contains(withDeposits, option.ID) {
+			if inv.Options[i].Deposits, err = s.deposits(ctx, option.ID, option.ChainID); err != nil {
+				return Invoice{}, err
+			}
 		}
-		if inv.Options[i].Amounts, err = ledger.ReadAmounts(ctx, s.pool, o.ID); err != nil {
-			return Invoice{}, err
-		}
-		if o.ID == inv.OptionID {
+		inv.Options[i].Amounts = amounts[option.ID]
+		if option.ID == inv.OptionID {
 			inv.Amounts = inv.Options[i].Amounts
 			inv.Deposits = inv.Options[i].Deposits
 		}
 	}
 	if profileID != "" { // the owner's read only; the public one leaves it out
+		receipts, err := readPaymentReceipts(ctx, s.pool, []string{inv.ID})
+		if err != nil {
+			return Invoice{}, err
+		}
+		inv.Receipts = receipts[inv.ID]
 		head, err := s.head(ctx, inv.ChainID)
 		if err != nil {
 			return Invoice{}, err
@@ -290,15 +316,22 @@ func (s *Service) options(ctx context.Context, id string) ([]Option, error) {
 }
 
 func readPaymentOptions(ctx context.Context, db paymentReader, id string) ([]Option, error) {
-	options, err := readPaymentOptionsFor(ctx, db, []string{id})
+	options, err := readPaymentOptionsFor(ctx, db, []string{id}, false)
 	return options[id], err
 }
 
-func readPaymentOptionsFor(ctx context.Context, db paymentReader, ids []string) (map[string][]Option, error) {
+func readPaymentOptionsFor(ctx context.Context, db paymentReader, ids []string, activeOnly bool) (map[string][]Option, error) {
 	rows, err := db.Query(ctx, `SELECT coalesce(i.main_id,i.id),i.id,i.chain_id,i.token_contract,t.symbol,t.decimals,c.name,
         i.amount::text,i.receive_address,i.closes_at FROM invoices i
         JOIN tokens t ON t.chain_id = i.chain_id AND t.contract = i.token_contract JOIN chains c ON c.chain_id = i.chain_id
-        WHERE coalesce(i.main_id,i.id) = ANY($1::text[]) ORDER BY coalesce(i.main_id,i.id),i.chain_id,t.symbol,i.token_contract`, ids)
+        WHERE (i.id = ANY($1::text[]) OR i.main_id = ANY($1::text[])) AND (NOT $2
+        OR i.main_id IS NULL
+        OR i.id = (SELECT coalesce(m.chosen_id,m.id) FROM invoices m WHERE m.id=coalesce(i.main_id,i.id))
+        OR EXISTS (SELECT 1 FROM chain_transfers d WHERE d.invoice_id=i.id AND d.status <> 'reorged')
+        OR EXISTS (SELECT 1 FROM receiver_outflows o WHERE o.invoice_id=i.id)
+        OR EXISTS (SELECT 1 FROM receiver_scans s WHERE s.invoice_id=i.id AND
+            (s.booking_error IS NOT NULL OR s.reconciliation_error NOT IN ('rescan_required','opening_balance'))))
+        ORDER BY coalesce(i.main_id,i.id),i.chain_id,t.symbol,i.token_contract`, ids, activeOnly)
 	if err != nil {
 		return nil, fmt.Errorf("read payment options: %w", err)
 	}

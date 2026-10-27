@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 336,
+  "nextId": 337,
   "tasks": [
     {
       "id": "F331",
@@ -272,12 +272,145 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
+    },
+    {
+      "id": "F336",
+      "type": "fix",
+      "behavior": "Restore payment progress and simplify merchant payment screens",
+      "acceptance": [
+        "Reproduce F329 and F331 regressions and measure baseline RPC requests against pre-F329 behavior.",
+        "Active payments use durable incremental verification independently of bounded historical recovery without weakening payment or settlement evidence.",
+        "Payments, invoices, links, Activity and notifications share payment meanings and navigation; used amounts are clear and supporting transactions and diagnostics load on demand.",
+        "Demonstrate create-pay-paid, partial, expired, refunded and failed payments, desktop and phone layouts, and controlled load with measured requests and confirmation delay."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "backend-e2e",
+        "web-e2e"
+      ],
+      "refs": [
+        "R-171",
+        "R-119",
+        "R-164",
+        "R-165",
+        "R-166"
+      ],
+      "keep": [
+        "packages/contracts/src/*"
+      ],
+      "review": false,
+      "notes": [
+        "2026-10-27 review pass by reviewer: Independent review found no remaining code-safety blocker. Incremental coverage retains dual-provider evidence, deposit proofs, competing-option checks and settlement attribution. Regression reproductions cover finalized reorgs, batch error isolation, pacing reservations and active payments during blocked history. New files stay with their owning watcher, worker, API and payment UI responsibilities. Full verification passed all nine checks; separate UI review covered desktop, phone and lazy diagnostics. Measured local load improves on F331, but hundreds of paid orders per second and production/archive provider access remain unverified and must not be claimed.",
+        "2026-10-27 F336: all 9 required checks and independent review passed. Real local payment and settlement flow, partial/failure cases, UI and 200/500-payment load demonstrated. Hundreds of paid orders per second and public/archive RPC access remain unproven. No commit or publishing authorized. Cleanup and restored dev server checked before final report.",
+        "2026-10-27 F336 verified and independently reviewed. Real local flow, partial/failure cases, desktop/phone UI, 300-option summaries and measured 200/500-payment load pass. Production throughput and public/archive provider access remain unproven. Temporary Anvil state, baseline binaries and task scratch files cleaned; development server restored and healthy. Persistent E2E invoice records and active dev files preserved. No commit or publishing authorized.",
+        "2026-10-27 review pass by reviewer: Final review refreshed after verification passed. Removed browser console output leaves all request-count and lazy-diagnostics assertions intact. Prior safety and structure findings remain resolved: incremental dual-provider evidence, deposit proofs, competing-option checks, settlement attribution and historical-job isolation are preserved. Required checks passed; production throughput of hundreds of paid orders per second and public/archive provider access remain unverified.",
+        "2026-10-27 review pass by reviewer: Independent review passes for the implementation and local evidence. Incremental receiver checkpoints, bounded retries, provider-limit handling and historical-job separation retain dual-source proof and settlement checks. Observed receipts remain distinct from booked money; summary reads retain relevant options; canonical confirming states and notifications agree across owner reads. New queries use indexed payment identities and source ownership remains focused. All ten final verification checks passed. Final 200-payment load completed in 3.229s with 2150 logical RPC calls. Hundreds of paid orders per second remains unmet; public/archive-provider operation remains blocked or unverified, and the original pruned payment record cannot be reproduced. This review does not authorize commit or delivery.",
+        "2026-10-27 F336 local verification passed: 10 checks, independent backend/UI review, real create-pay-paid-settled flow, 16 browser checks and final 200-payment load. Final load: 3.229s, 61.9 paid/s, 914 HTTP, 2150 RPC, 48 log queries. Hundreds paid/s remains unmet; original record was pruned and public/archive providers remain blocked or unverified. Development services restored and ready; task test processes and temporary measurement files cleaned, report and screenshots retained. No commit, push or deployment."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-27T13:39:07Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.8,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 241.1,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 41.7,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.5,
+            "log": ""
+          },
+          {
+            "id": "node-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 20.8,
+            "log": ""
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "03c5db4c6c23e3ac",
+        "filesHash": "b003e24eaaae7be0",
+        "proof": {
+          "1": "backend-affected: Provider-limit regressions reproduced before fixes; pre-F329 and F331 measurements retained in docs/runs/f336-validation.md.",
+          "2": "backend-affected: Incremental checkpoints, bounded historical retries, persistent provider limits and independent evidence regressions.",
+          "3": "web-e2e: Checkout and shared statuses; separate 16-test live browser run compares six states across Payments, invoices, links, Activity and notifications at desktop and phone widths.",
+          "4": "backend-e2e: Real create-pay-paid-settled flow compares API readers; partial and failure tests and measured local load. Production capacity and the pruned original payment remain unverified."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Independent review passes for the implementation and local evidence. Incremental receiver checkpoints, bounded retries, provider-limit handling and historical-job separation retain dual-source proof and settlement checks. Observed receipts remain distinct from booked money; summary reads retain relevant options; canonical confirming states and notifications agree across owner reads. New queries use indexed payment identities and source ownership remains focused. All ten final verification checks passed. Final 200-payment load completed in 3.229s with 2150 logical RPC calls. Hundreds of paid orders per second remains unmet; public/archive-provider operation remains blocked or unverified, and the original pruned payment record cannot be reproduced. This review does not authorize commit or delivery.",
+          "at": "2026-10-27T13:45:07Z",
+          "filesHash": "b003e24eaaae7be0"
+        }
+      },
+      "branch": "fix/f336-restore-payment-progress-and-simplify-me",
+      "baseCommit": "ef494bab9c122ad1f4e0725171bf320da079f917",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-26T21:30:23Z",
+    "at": "2026-10-27T13:46:01Z",
     "clean": true,
     "problems": [],
-    "note": "F324 committed as b5e30d56 and opened in PR322: https://github.com/Forwend/forwend/pull/322. All seven local checks and independent review passed. Package forwend0.1.0 is published under MIT. Temporary chain processes and files were cleaned. PR remains open for review; no staging promotion or deployment was requested."
+    "note": "F336 local verification passed: 10 checks, independent backend/UI review, real create-pay-paid-settled flow, 16 browser checks and final 200-payment load. Final load: 3.229s, 61.9 paid/s, 914 HTTP, 2150 RPC, 48 log queries. Hundreds paid/s remains unmet; original record was pruned and public/archive providers remain blocked or unverified. Development services restored and ready; task test processes and temporary measurement files cleaned, report and screenshots retained. No commit, push or deployment."
   }
 }

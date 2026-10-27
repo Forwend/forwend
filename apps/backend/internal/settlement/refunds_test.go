@@ -21,6 +21,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/forwend/forwend/apps/backend/internal/search"
+	"github.com/forwend/forwend/apps/backend/internal/watcher"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -245,11 +246,21 @@ func TestReceiverCatchupDoesNotExpectFutureSettlementBeforeDeployment(t *testing
 	if err := e.watch.Scan(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	for range 2 {
-		if _, err := e.watch.Receiver(t.Context(), e.anvil.RPC, id); err != nil {
+	caughtUp := false
+	for range 6 {
+		var err error
+		caughtUp, err = e.watch.Receiver(t.Context(), e.anvil.RPC, id)
+		if err != nil {
 			t.Fatal(err)
 		}
+		if caughtUp {
+			break
+		}
 	}
+	if !caughtUp {
+		t.Fatal("initial bounded catchup did not finish")
+	}
+
 	if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
 		t.Fatal(err)
 	}
@@ -266,11 +277,22 @@ func TestReceiverCatchupDoesNotExpectFutureSettlementBeforeDeployment(t *testing
 		t.Fatalf("predeployment chunk complete=%v: %v", complete, err)
 	}
 	var progress uint64
-	if err := e.pool.QueryRow(t.Context(), "SELECT scanned_block FROM receiver_scans WHERE invoice_id = $1", id).Scan(&progress); err != nil || progress != 9999 {
+	if err := e.pool.QueryRow(t.Context(), "SELECT scanned_block FROM receiver_scans WHERE invoice_id = $1", id).Scan(&progress); err != nil || progress != watcher.MaxRange {
 		t.Fatalf("coverage=%d: %v", progress, err)
 	}
-	if complete, err := e.watch.Receiver(t.Context(), e.anvil.RPC, id); err != nil || !complete {
-		t.Fatalf("catchup complete=%v: %v", complete, err)
+	complete := false
+	for range 6 {
+		var err error
+		complete, err = e.watch.Receiver(t.Context(), e.anvil.RPC, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if complete {
+			break
+		}
+	}
+	if !complete {
+		t.Fatal("bounded historical catchup did not finish")
 	}
 	var conflicts, outflows int
 	if err := e.pool.QueryRow(t.Context(), `SELECT (SELECT count(*) FROM receiver_conflicts WHERE invoice_id = $1),

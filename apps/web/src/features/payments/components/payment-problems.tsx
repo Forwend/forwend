@@ -34,18 +34,18 @@ export function PaymentProblems({ problems, hostedUrl }: PaymentProblemsProps) {
             ) : null}
             <p className="text-muted">
               {problem.action === "wait"
-                ? "Forwend is checking finalized records. Wait before sending again."
+                ? "Confirmation pending."
                 : problem.action === "ask_admin"
                   ? "Ask the account owner or an Admin to check delivery."
                   : problem.code === "held_funds"
                     ? "This money is owed to the payer. No refund has been started."
                     : problem.action === "review_settlement"
-                      ? "Payment and wallet settlement are separate. Check the settlement record below."
+                      ? "Check the transfer to your wallet."
                       : problem.code === "webhook_delivery"
                         ? "Delivery failed or is paused. Payment status is unchanged."
                         : problem.code === "partial_payment"
                           ? "The customer can use the same open checkout for the remaining amount."
-                          : "Compare deposits, outgoing movements and verification coverage before taking action."}
+                          : "Contact support with this payment reference."}
             </p>
           </div>
           {problem.action === "review_webhooks" ? (

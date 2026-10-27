@@ -25,7 +25,11 @@ type PaymentAttentionPage struct {
 func paymentAttentionSQL(delay string) string {
 	return `EXISTS (SELECT 1 FROM invoices attention WHERE coalesce(attention.main_id,attention.id) = invoices.id AND (
     attention.payment_status = 'partially_paid' OR attention.refund_status = 'held'
-    OR (` + ledger.UnreconciledSQL("attention.id") + `)
+    OR ((` + ledger.UnreconciledSQL("attention.id") + `) AND (
+      EXISTS (SELECT 1 FROM chain_transfers d WHERE d.invoice_id=attention.id AND d.status<>'reorged')
+      OR EXISTS (SELECT 1 FROM receiver_outflows o WHERE o.invoice_id=attention.id)
+      OR EXISTS (SELECT 1 FROM receiver_scans s WHERE s.invoice_id=attention.id AND
+        (s.booking_error IS NOT NULL OR s.reconciliation_error NOT IN ('rescan_required','opening_balance')))))
     OR EXISTS (SELECT 1 FROM receiver_outflows o WHERE o.invoice_id = attention.id AND o.policy_exception IS NOT NULL)
     OR EXISTS (SELECT 1 FROM settlement_intents intent WHERE intent.invoice_id = attention.id AND intent.status <> 'confirmed'
       AND (intent.status = 'refused' OR intent.wait IS NOT NULL OR intent.created_at <= transaction_timestamp()-make_interval(secs => ` + delay + `)))
@@ -49,7 +53,7 @@ func (s *Service) PaymentAttention(ctx context.Context, profileID string, q Paym
 	if err := tx.QueryRow(ctx, "SELECT transaction_timestamp()").Scan(&result.SnapshotAt); err != nil {
 		return PaymentAttentionPage{}, err
 	}
-	options, err := readOperationOptions(ctx, tx, page.Items)
+	options, err := readOperationOptions(ctx, tx, page.Items, true)
 	if err != nil {
 		return PaymentAttentionPage{}, err
 	}

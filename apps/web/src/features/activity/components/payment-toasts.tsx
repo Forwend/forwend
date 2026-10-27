@@ -2,11 +2,10 @@
 
 import { formatTokenAmount, TONES, useToast } from "@forwend/ui-web";
 import { useEffect, useRef, useState } from "react";
-import { useGetActivityQuery } from "@/features/activity/api/activity-api";
-import { ACTIVITY_PAGE_SIZE, API_DEPOSIT_STATUSES } from "@/features/activity/constants/activity";
 import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
 import { PAYMENT_EVENTS } from "@/features/activity/constants/payment-events";
 import { newPaymentEvents } from "@/features/activity/lib/payment-events";
+import { useGetInvoiceEventsQuery } from "@/features/invoices/api/invoices-api";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { exactDigits } from "@/shared/lib/money";
 
@@ -14,7 +13,7 @@ export interface PaymentToastsProps {
   profileId: string;
 }
 
-// ponytail: only the newest page is watched; a settle pushed off it gets no toast. Needs a settled-since API to fix.
+// The bell and toasts share the same cached business-event read.
 export function PaymentToasts({ profileId }: PaymentToastsProps) {
   return <ProfileToasts key={profileId} profileId={profileId} />;
 }
@@ -23,14 +22,14 @@ export function PaymentToasts({ profileId }: PaymentToastsProps) {
 function ProfileToasts({ profileId }: { profileId: string }) {
   const toast = useToast();
   const [openedAt] = useState(Date.now);
-  const list = useGetActivityQuery(
-    { profileId, limit: ACTIVITY_PAGE_SIZE },
-    { ...LIVE_QUERY, refetchOnMountOrArgChange: true },
-  );
+  const list = useGetInvoiceEventsQuery(profileId, {
+    ...LIVE_QUERY,
+    refetchOnMountOrArgChange: true,
+  });
   const seen = useRef<Set<string>>(undefined);
   // Never take the baseline from an earlier visit's cached answer.
   const fresh = (list.fulfilledTimeStamp ?? 0) >= openedAt;
-  const items = fresh ? list.currentData?.items : undefined;
+  const items = fresh ? list.currentData : undefined;
 
   useEffect(() => {
     if (!items) return;
@@ -43,11 +42,8 @@ function ProfileToasts({ profileId }: { profileId: string }) {
         kind === PAYMENT_EVENTS.settled
           ? { tone: TONES.success, ...ACTIVITY_COPY.toasts.settled(amount) }
           : {
-              tone: TONES.neutral,
-              ...ACTIVITY_COPY.toasts.detected(
-                amount,
-                item.status === API_DEPOSIT_STATUSES.confirmed,
-              ),
+              tone: TONES.success,
+              ...ACTIVITY_COPY.toasts.paid(amount),
             },
       );
     }

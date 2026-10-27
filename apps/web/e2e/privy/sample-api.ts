@@ -60,7 +60,7 @@ export const sampleInvoice = (
   note: null,
   dueDate: null,
   supplyDate: null,
-  reference: null,
+  reference: null as string | null,
   agreedValue: null,
   client: { name: client, email: null, address: null, country: null, taxId: null },
   issuer: null,
@@ -189,6 +189,10 @@ export const TRANSFERS = Array.from({ length: 30 }, (_, i) => sampleTransfer(i))
 
 type SampleInvoice = typeof CONFIRMING_INVOICE;
 interface SampleItem {
+  paymentStatus?: string;
+  confirming?: boolean;
+  amount?: string;
+  closed?: boolean;
   kind: string;
   status: string;
   settlementStatus?: string;

@@ -29,7 +29,7 @@ describe("activityStatus", () => {
     );
   });
 
-  it("shows an invoice's payment status, and settled only once the money reached the wallet", () => {
+  it("keeps the customer payment state independent of its wallet transfer", () => {
     expect(activityStatus(base)).toBe(PAYMENT_STATUS.open);
     expect(activityStatus({ ...base, status: "detected" })).toBe(PAYMENT_STATUS.confirming);
     expect(activityStatus({ ...base, status: "partially_paid" })).toBe(
@@ -39,7 +39,7 @@ describe("activityStatus", () => {
       PAYMENT_STATUS.paid,
     );
     expect(activityStatus({ ...base, status: "paid", settlementStatus: "settled" })).toBe(
-      PAYMENT_STATUS.settled,
+      PAYMENT_STATUS.paid,
     );
     expect(activityStatus({ ...base, status: "expired_partially_paid" })).toBe(
       PAYMENT_STATUS.expiredPartiallyPaid,
@@ -64,6 +64,27 @@ describe("activityStatus", () => {
     expect(activityStatus({ ...base, status: "canceled", closed: true })).toBe(
       PAYMENT_STATUS.canceled,
     );
+  });
+
+  it("does not treat a confirmed but uncredited deposit as paid", () => {
+    expect(
+      activityStatus({
+        ...base,
+        kind: "deposit",
+        status: "confirmed",
+        paymentStatus: "open",
+        confirming: true,
+      }),
+    ).toBe(PAYMENT_STATUS.confirming);
+    expect(
+      activityStatus({
+        ...base,
+        kind: "deposit",
+        status: "confirmed",
+        paymentStatus: "partially_paid",
+        confirming: true,
+      }),
+    ).toBe(PAYMENT_STATUS.confirming);
   });
 
   it("never claims money arrived for a status it does not know", () => {

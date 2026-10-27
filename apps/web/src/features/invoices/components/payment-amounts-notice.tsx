@@ -24,7 +24,7 @@ export function PaymentAmountsNotice({
   const returns = options.filter(
     (option) => option.amounts && BigInt(option.amounts.observedRefunded) > 0n,
   );
-  const verification = showVerification && state !== RECONCILIATION_STATES.verified;
+  const verification = showVerification && state === RECONCILIATION_STATES.review;
   if (!verification && returns.length === 0) return null;
   return (
     <div role="status" className="flex flex-col gap-2 text-sm">

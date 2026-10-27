@@ -145,7 +145,7 @@ describe("invoiceProgress", () => {
     });
     const settled = { ...confirmed, paymentStatus: "paid", settlementStatus: "settled" };
     expect(invoiceProgress(settled)).toMatchObject({ done: 5, current: null });
-    expect(invoiceStatus(settled)).toBe(PAYMENT_STATUS.settled);
+    expect(invoiceStatus(settled)).toBe(PAYMENT_STATUS.paid);
   });
 
   it("stops at expiry, and a late payment moves nothing", () => {

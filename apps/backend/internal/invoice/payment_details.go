@@ -70,7 +70,7 @@ func (s *Service) PaymentDetails(ctx context.Context, profileID, id string, q Pa
 	if err := tx.QueryRow(ctx, "SELECT transaction_timestamp()").Scan(&result.SnapshotAt); err != nil {
 		return PaymentDetails{}, err
 	}
-	optionGroups, err := readOperationOptions(ctx, tx, []Invoice{result.Invoice})
+	optionGroups, err := readOperationOptions(ctx, tx, []Invoice{result.Invoice}, q.Summary)
 	if err != nil {
 		return PaymentDetails{}, err
 	}
@@ -90,6 +90,12 @@ func (s *Service) PaymentDetails(ctx context.Context, profileID, id string, q Pa
 		}
 		result.Problems = append(result.Problems, optionProblems(result.Invoice, *option, result.SnapshotAt)...)
 	}
+	receipts, err := readPaymentReceipts(ctx, tx, []string{id})
+	if err != nil {
+		return PaymentDetails{}, err
+	}
+	result.Invoice.Receipts = receipts[id]
+
 	result.Deliveries, err = webhook.PaymentDeliveries(ctx, tx, id)
 	if err != nil {
 		return PaymentDetails{}, err
@@ -122,12 +128,12 @@ func readPaymentSettlements(ctx context.Context, db paymentReader, ids []string)
 	return result, rows.Err()
 }
 
-func readOperationOptions(ctx context.Context, db paymentReader, invoices []Invoice) (map[string][]PaymentOption, error) {
+func readOperationOptions(ctx context.Context, db paymentReader, invoices []Invoice, activeOnly bool) (map[string][]PaymentOption, error) {
 	mains := make([]string, len(invoices))
 	for i := range invoices {
 		mains[i] = invoices[i].ID
 	}
-	grouped, err := readPaymentOptionsFor(ctx, db, mains)
+	grouped, err := readPaymentOptionsFor(ctx, db, mains, activeOnly)
 	if err != nil {
 		return nil, err
 	}

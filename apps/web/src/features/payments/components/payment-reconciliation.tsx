@@ -21,7 +21,7 @@ export function PaymentReconciliation({ profileId, filters }: PaymentReconciliat
     <section aria-labelledby="reconciliation-title" className="flex flex-col gap-4">
       <div>
         <h2 id="reconciliation-title" className="text-lg font-semibold text-ink">
-          Reconciliation
+          Balance report
         </h2>
         <p className="text-sm text-muted">
           Opening balances plus recorded movements equal closing balances. Each token and store
@@ -47,14 +47,14 @@ export function PaymentReconciliation({ profileId, filters }: PaymentReconciliat
       </div>
       {invalid ? null : report.isError ? (
         <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">
-          We could not load reconciliation.
+          We could not load the balance report.
           <Button variant="secondary" size="sm" onClick={() => void report.refetch()}>
             Try again
           </Button>
         </div>
       ) : !report.currentData ? (
         <p role="status" className="text-sm text-muted">
-          Loading reconciliation…
+          Loading balance report…
         </p>
       ) : (
         <>

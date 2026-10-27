@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -429,5 +430,104 @@ func TestOversizedAnswerIsAnOutage(t *testing.T) {
 	}
 	if failures, _ := health(r, r.pool.endpoints[0]); failures != 1 {
 		t.Fatalf("oversized endpoint: %d failures, want 1", failures)
+	}
+}
+
+func TestRequestsThatCannotMeetTheirDeadlineDoNotDelayLaterReads(t *testing.T) {
+	a := chaintest.Start(t)
+	proxy := a.Proxy()
+	r, err := NewRPCs(Spec{ChainID: chaintest.ChainID, Public: []string{proxy.URL, localhost(a.URL)}}, nil, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	r.pool.mu.Lock()
+	r.pool.endpoints[0].next = time.Now().Add(200 * time.Millisecond)
+	r.pool.mu.Unlock()
+	for range 20 {
+		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Millisecond)
+		_, err := tryNumber(ctx, r.Primary)
+		cancel()
+		if err == nil {
+			t.Fatal("request was sent before its pacing slot")
+		}
+	}
+	if got := len(proxy.Calls()); got != 0 {
+		t.Fatalf("rejected requests reached the blockchain provider: %d calls", got)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	if _, err := tryNumber(ctx, r.Primary); err != nil {
+		t.Fatalf("rejected requests consumed future capacity and blocked a later read: %v", err)
+	}
+}
+
+func TestHTTPLogRangeErrorsDoNotRestProvider(t *testing.T) {
+	for _, status := range []int{http.StatusBadRequest, http.StatusRequestEntityTooLarge} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			var calls atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls.Add(1)
+				var request struct {
+					ID     json.RawMessage
+					Method string
+				}
+				_ = json.NewDecoder(r.Body).Decode(&request)
+				if request.Method == "eth_chainId" {
+					fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":"0x7a69"}`, request.ID)
+					return
+				}
+				w.WriteHeader(status)
+				fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"error":{"code":35,"message":"ranges over 10000 blocks are not supported on free plan"}}`, request.ID)
+			}))
+			defer server.Close()
+			r := newRPCs(t, server.URL, localhost(server.URL))
+			ctx, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
+			defer cancel()
+			var result any
+			err := r.Primary.CallContext(ctx, &result, "eth_getLogs", map[string]string{"fromBlock": "0x1", "toBlock": "0x100"})
+			if !TooLarge(err) {
+				t.Fatalf("range error cannot be narrowed: %v", err)
+			}
+			if calls.Load() != 2 {
+				t.Fatalf("chain ID plus one request expected; got %d", calls.Load())
+			}
+			if failures, _ := health(r, r.pool.endpoints[0]); failures != 0 {
+				t.Fatalf("range error rested healthy provider: failures=%d", failures)
+			}
+		})
+	}
+}
+
+func TestHTTPBatchLimitDoesNotRestProvider(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		var request struct {
+			ID     json.RawMessage
+			Method string
+		}
+		body, _ := io.ReadAll(r.Body)
+		if json.Unmarshal(body, &request) == nil && request.Method == "eth_chainId" {
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":"0x7a69"}`, request.ID)
+			return
+		}
+		w.WriteHeader(500)
+		fmt.Fprint(w, `[{"jsonrpc":"2.0","id":1,"error":{"code":31,"message":"Batch of more than 3 requests are not allowed on free plan"}}]`)
+	}))
+	defer server.Close()
+	r := newRPCs(t, server.URL, localhost(server.URL))
+	ctx, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
+	defer cancel()
+	var result any
+	err := r.Primary.BatchCallContext(ctx, []rpc.BatchElem{{Method: "eth_blockNumber", Result: &result}})
+	if !BatchTooLarge(err) {
+		t.Fatalf("batch limit cannot be split: %v", err)
+	}
+	if calls.Load() != 2 {
+		t.Fatalf("expected one failed batch, got %d calls", calls.Load())
+	}
+	if failures, _ := health(r, r.pool.endpoints[0]); failures != 0 {
+		t.Fatalf("batch limit rested provider: %d", failures)
 	}
 }

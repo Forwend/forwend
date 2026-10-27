@@ -60,11 +60,11 @@ export function tokenKey(t: { chainId: number; token: string }): string {
 
 /** A partly paid invoice whose next payment still confirms reads as confirming (R-69). */
 export function invoiceStatus(inv: InvoiceSummary): PaymentStatus {
-  const partlyConfirming =
-    inv.confirming && inv.paymentStatus === API_PAYMENT_STATUSES.partiallyPaid;
   return activityStatus({
     kind: ACTIVITY_KINDS.invoice,
-    status: partlyConfirming ? API_PAYMENT_STATUSES.detected : inv.paymentStatus,
+    status: inv.paymentStatus,
+    paymentStatus: inv.paymentStatus,
+    confirming: inv.confirming,
     settlementStatus: inv.settlementStatus,
     closed: inv.closed,
   });

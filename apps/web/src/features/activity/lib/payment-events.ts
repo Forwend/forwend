@@ -1,30 +1,20 @@
-import {
-  ACTIVITY_KINDS,
-  API_PAYMENT_STATUSES,
-  API_SETTLEMENT_STATUSES,
-} from "@/features/activity/constants/activity";
 import { PAYMENT_EVENTS } from "@/features/activity/constants/payment-events";
-import type { ActivityItem } from "@/features/activity/types/activity";
 import type { PaymentEvent, PaymentEventKind } from "@/features/activity/types/payment-events";
+import { INVOICE_EVENTS } from "@/features/invoices/constants/invoices";
+import type { InvoiceEvent } from "@/features/invoices/types/invoices";
 
-function eventOf(item: ActivityItem): { key: string; kind: PaymentEventKind } | null {
-  if (item.kind === ACTIVITY_KINDS.deposit) {
-    // Held money is not a payment to the owner (R-79, D-26): no toast.
-    return item.held
-      ? null
-      : { key: `deposit:${item.invoiceId}:${item.txHash}`, kind: PAYMENT_EVENTS.detected };
-  }
-  if (
-    item.settlementStatus === API_SETTLEMENT_STATUSES.settled &&
-    item.status === API_PAYMENT_STATUSES.paid
-  ) {
-    return { key: `settled:${item.invoiceId}`, kind: PAYMENT_EVENTS.settled };
-  }
-  return null;
+function eventOf(item: InvoiceEvent): { key: string; kind: PaymentEventKind } | null {
+  const kind =
+    item.kind === INVOICE_EVENTS.paid
+      ? PAYMENT_EVENTS.paid
+      : item.kind === INVOICE_EVENTS.settled
+        ? PAYMENT_EVENTS.settled
+        : null;
+  return kind ? { key: String(item.id), kind } : null;
 }
 
 // No seen set means the first load: payments already there are not news.
-export function newPaymentEvents(seen: Set<string> | undefined, items: ActivityItem[]) {
+export function newPaymentEvents(seen: Set<string> | undefined, items: InvoiceEvent[]) {
   const known = seen ?? new Set<string>();
   const events: PaymentEvent[] = [];
   for (const item of items) {

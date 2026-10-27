@@ -51,6 +51,9 @@ func optionProblems(inv Invoice, option PaymentOption, at time.Time) []PaymentPr
 	case state.BookingError != "":
 		add(ProblemReconciliation, ActionReviewFunds, state.BookingError)
 	case amounts.ReconciliationStatus == ledger.ReconciliationPending:
+		if state.TotalDeposits == 0 && state.UnbookedOutflows == 0 && amounts.Receiver.Sign() == 0 {
+			break
+		}
 		reason := "movement_booking"
 		if !state.HistoryComplete {
 			reason = "historical_coverage"
@@ -60,7 +63,7 @@ func optionProblems(inv Invoice, option PaymentOption, at time.Time) []PaymentPr
 		add(ProblemReconciliation, ActionReviewFunds, state.ReconciliationError)
 	case state.BalanceDifference != nil && state.BalanceDifference.Sign() != 0:
 		add(ProblemReconciliation, ActionReviewFunds, "balance_difference")
-	case !state.HistoryComplete:
+	case !state.HistoryComplete && state.TotalDeposits > 0:
 		add(ProblemVerification, ActionWait, "historical_coverage")
 	case state.UnprovedDeposits > 0 || state.UnbookedDeposits > 0:
 		add(ProblemVerification, ActionWait, "deposit_booking")

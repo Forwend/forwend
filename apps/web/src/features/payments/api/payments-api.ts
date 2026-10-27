@@ -55,8 +55,14 @@ export const paymentsApi = apiSlice.enhanceEndpoints({ addTagTypes: [TAG] }).inj
       responseSchema: attentionPageSchema,
       providesTags: [TAG],
     }),
-    getPayment: build.query<PaymentDetail, { profileId: string; paymentId: string }>({
-      query: ({ profileId, paymentId }) => `${path(profileId)}/${encodeURIComponent(paymentId)}`,
+    getPayment: build.query<
+      PaymentDetail,
+      { profileId: string; paymentId: string; full?: boolean }
+    >({
+      query: ({ profileId, paymentId, full }) => ({
+        url: `${path(profileId)}/${encodeURIComponent(paymentId)}`,
+        params: full ? undefined : { view: "summary" },
+      }),
       responseSchema: paymentDetailSchema,
       providesTags: [TAG],
     }),

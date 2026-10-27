@@ -69,6 +69,52 @@ const before = Date.parse("2026-10-12T10:00:00Z");
 const after = Date.parse("2026-10-17T10:00:00Z");
 
 describe("payState", () => {
+  it("shows a delay for an old uncredited transfer without calling it paid", () => {
+    const paid = deposit("1000", { paid: null, blockTime: "2026-10-12T09:50:00Z" });
+    expect(payState({ ...invoice, deposits: [paid] }, before)).toMatchObject({
+      state: PAY_STATES.checking,
+      delayed: true,
+      canSend: false,
+    });
+    expect(
+      payState({ ...invoice, deposits: [{ ...paid, blockTime: "2026-10-12T09:59:00Z" }] }, before),
+    ).toMatchObject({ state: PAY_STATES.checking, delayed: false, canSend: false });
+  });
+  it("keeps an unpaid checkout usable while historical evidence is pending, without accepting an unverified payment", () => {
+    const amounts = {
+      receiver: "0",
+      payable: "0",
+      held: "0",
+      settled: "0",
+      refunded: "0",
+      observedRefunded: "0",
+      lastReturnTxHash: null,
+      unreconciled: true,
+      hasPolicyException: false,
+      reconciliationStatus: "pending" as const,
+    };
+    expect(payState({ ...invoice, amounts }, before)).toMatchObject({
+      state: PAY_STATES.waiting,
+      canSend: true,
+    });
+    expect(
+      payState({ ...invoice, amounts, deposits: [deposit("1000", { paid: null })] }, before),
+    ).toMatchObject({ state: PAY_STATES.checking, canSend: false });
+    expect(
+      payState(
+        {
+          ...invoice,
+          paymentStatus: "canceled",
+          amounts,
+          deposits: [deposit("1000", { paid: null })],
+        },
+        before,
+      ),
+    ).toMatchObject({ state: PAY_STATES.canceled, canSend: false });
+    expect(
+      payState({ ...invoice, amounts: { ...amounts, reconciliationStatus: "review" } }, before),
+    ).toMatchObject({ state: PAY_STATES.review, canSend: false });
+  });
   it("lets the payer send only while the checkout is open and money is still owed", () => {
     expect(payState(invoice, before)).toMatchObject({ state: PAY_STATES.waiting, canSend: true });
     expect(payState(invoice, after)).toMatchObject({ state: PAY_STATES.closed, canSend: false });

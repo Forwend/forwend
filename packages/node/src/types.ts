@@ -26,7 +26,14 @@ export const PAYMENT_STATUSES = [
 export const SETTLEMENT_STATUSES = ["none", "pending", "settled"] as const;
 export const REFUND_STATUSES = ["none", "held", "refund_pending", "refunded"] as const;
 /** The invoice list's status filter. */
-export const LIST_STATUSES = ["open", "paid", "settled", "expired", "canceled"] as const;
+export const LIST_STATUSES = [
+  "open",
+  "confirming",
+  "paid",
+  "settled",
+  "expired",
+  "canceled",
+] as const;
 /** Why money is held for the payer. */
 export const HELD_REASONS = ["overpaid", "late", "expired", "canceled", "other_option"] as const;
 
@@ -60,7 +67,20 @@ export interface PaymentAmounts {
   hasPolicyException: boolean;
 }
 
+export interface PaymentReceipt {
+  optionId: string;
+  chainId: number;
+  token: string;
+  symbol: string;
+  decimals: number;
+  received: string;
+  pending: string;
+}
+
 export interface Payment {
+  receipts?: PaymentReceipt[];
+  customerName?: string | null;
+  customerEmail?: string | null;
   amounts?: PaymentAmounts;
   paymentId: string;
   source: PaymentSource;
@@ -110,6 +130,7 @@ export interface CreateCheckoutSession {
 }
 
 export interface ListPayments extends ListCheckoutSessions {
+  q?: string;
   source?: PaymentSource;
   linkId?: string;
   status?: ListStatus;

@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
@@ -45,12 +46,14 @@ type Chain struct {
 	chainID uint64
 	rpc     *rpc.Client
 	eth     *ethclient.Client
-	// span is the blocks per eth_getLogs call; it shrinks on a refused range and grows back after each answer.
-	span uint64
+	// span is the blocks per eth_getLogs call; it retains a smaller range after the provider refuses one.
+	span       uint64
+	batchSize  int
+	receiverMu sync.Mutex
 }
 
 func NewChain(pool *pgxpool.Pool, chainID uint64, client *rpc.Client) *Chain {
-	return &Chain{pool: pool, chainID: chainID, rpc: client, eth: ethclient.NewClient(client), span: MaxRange}
+	return &Chain{pool: pool, chainID: chainID, rpc: client, eth: ethclient.NewClient(client), span: MaxRange, batchSize: MaxBatch}
 }
 
 // The hash is never computed in Go: go-ethereum gets it wrong on Tempo (S-4).
@@ -230,7 +233,7 @@ func (c *Chain) scanLogs(ctx context.Context, from, latest uint64, invoices map[
 			return nil, nil, err
 		}
 		logs, walletLogs = append(logs, found...), append(walletLogs, foundWallet...)
-		lo, c.span = hi+1, min(c.span*2, MaxRange)
+		lo = hi + 1
 	}
 	return logs, walletLogs, nil
 }
@@ -473,11 +476,10 @@ func (c *Chain) headers(ctx context.Context, numbers []uint64) (header, map[uint
 		batch = append(batch, rpc.BatchElem{Method: "eth_getBlockByNumber", Args: []any{hexutil.EncodeUint64(n), false}, Result: &h})
 	}
 	// RPC providers cap batch sizes; finalized stays in the first chunk with the first blocks.
-	for i := 0; i < len(batch); i += MaxBatch {
-		if err := c.rpc.BatchCallContext(ctx, batch[i:min(i+MaxBatch, len(batch))]); err != nil {
-			return header{}, nil, fmt.Errorf("read chain %d blocks: %w", c.chainID, err)
-		}
+	if err := c.batchCall(ctx, batch); err != nil {
+		return header{}, nil, fmt.Errorf("read chain %d blocks: %w", c.chainID, err)
 	}
+
 	for _, b := range batch {
 		if b.Error != nil {
 			return header{}, nil, fmt.Errorf("read chain %d block %v: %w", c.chainID, b.Args[0], b.Error)
@@ -565,4 +567,25 @@ func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit,
 		return fmt.Errorf("move chain %d cursor: %w", c.chainID, err)
 	}
 	return tx.Commit(ctx)
+}
+
+func (c *Chain) batchCall(ctx context.Context, batch []rpc.BatchElem) error {
+	for offset := 0; offset < len(batch); {
+		size := min(c.batchSize, len(batch)-offset)
+		part := batch[offset : offset+size]
+		err := c.rpc.BatchCallContext(ctx, part)
+		limited := chain.BatchTooLarge(err)
+		for _, call := range part {
+			limited = limited || chain.BatchTooLarge(call.Error)
+		}
+		if limited && size > 1 {
+			c.batchSize = max(1, size/2)
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		offset += size
+	}
+	return nil
 }

@@ -212,7 +212,7 @@ describe("owner's invoice page", () => {
   });
 
   // R-124.
-  it("lists the history newest first, held money in its option's token, and filters to changes", async () => {
+  it("keeps document changes and emails separate from payment transactions", async () => {
     const dai = `0x${"ab".repeat(32)}`;
     const row = {
       optionId: null,
@@ -249,7 +249,7 @@ describe("owner's invoice page", () => {
     });
     show();
     await settle();
-    const history = within(screen.getByRole("region", { name: "History" }));
+    const history = within(screen.getByRole("region", { name: "Document history" }));
     // Event, By and Details of each body row; the time is the last cell.
     const rows = () =>
       within(history.getByRole("table"))
@@ -257,8 +257,6 @@ describe("owner's invoice page", () => {
         .slice(1)
         .map((tr) => [...tr.querySelectorAll("td")].slice(0, 3).map((td) => td.textContent));
     expect(rows()).toEqual([
-      ["Money held", "Forwend", "1.50 DAI for the payer · Base Sepolia"],
-      ["Paid", "Forwend", "1,250.00 USDC"],
       ["Receipt email added", "Payer", "—"],
       ["Created", "You", "—"],
     ]);
@@ -326,7 +324,7 @@ describe("owner's invoice page", () => {
     const closes = screen.getByText("Checkout closes").parentElement as HTMLElement;
     expect(closes.textContent).toContain(day);
     expect(document.activeElement).toBe(closes);
-    const history = within(screen.getByRole("region", { name: "History" }));
+    const history = within(screen.getByRole("region", { name: "Document history" }));
     const [, row] = within(history.getByRole("table")).getAllByRole("row");
     expect(
       [...(row?.querySelectorAll("td") ?? [])].slice(0, 3).map((td) => td.textContent),
@@ -355,7 +353,7 @@ describe("owner's invoice page", () => {
   });
 });
 
-it("shows one verification notice for an expired unpaid invoice with four unscanned payment options", async () => {
+it("does not turn unused historical options into a merchant warning", async () => {
   const amounts = {
     receiver: "0",
     payable: "0",
@@ -384,5 +382,6 @@ it("shows one verification notice for an expired unpaid invoice with four unscan
   show();
   await settle();
   expect(screen.queryByText("Payment records need review.")).toBeNull();
-  expect(screen.getAllByText(/Verifying payment history/)).toHaveLength(1);
+  expect(screen.queryByText(/Verifying payment history/)).toBeNull();
+  expect(screen.queryByRole("link", { name: "View verification details" })).toBeNull();
 });

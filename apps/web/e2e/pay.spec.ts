@@ -331,13 +331,28 @@ test.describe("pay page", () => {
     ).toHaveCount(2);
   });
 
-  test("a test-mode invoice says its tokens have no value, and a live one doesn't (R-143)", async ({
-    page,
-  }) => {
-    await openPay(page, OPEN);
-    const note = page.getByText(
-      "Test mode: this payment takes testnet tokens, which have no value. Don't send real money.",
-    );
+  test("testnet is marked in the checkout header and live payments are not", async ({ page }) => {
+    const amounts = {
+      receiver: "0",
+      payable: "0",
+      held: "0",
+      settled: "0",
+      refunded: "0",
+      observedRefunded: "0",
+      lastReturnTxHash: null,
+      unreconciled: true,
+      hasPolicyException: false,
+      reconciliationStatus: "pending",
+    };
+    await openPay(page, { ...OPEN, amounts, options: [{ ...MAIN_OPTION, amounts }] });
+    await showAddress(page).click();
+    await expect(page.getByText(RECEIVE)).toBeVisible();
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      expect(await sidewaysScroll(page)).toBeLessThanOrEqual(1);
+      await page.screenshot({ path: `../../docs/runs/f336-checkout-${width}.png`, fullPage: true });
+    }
+    const note = page.getByText("Testnet", { exact: true });
     await expect(note).toBeVisible();
     await mockInvoice(page, { ...OPEN, livemode: true });
     await page.reload();
@@ -525,7 +540,9 @@ test.describe("pay page", () => {
     await expect(page.getByRole("status").filter({ hasText: /^Paid$/ })).toBeVisible();
     await expect(page.getByText(/^Recorded returns:/)).toContainText("1,250.00 USDC");
     await expect(
-      page.getByText("Payment records need review before further action.", { exact: true }),
+      page.getByText("We could not verify this payment. Contact support before sending more.", {
+        exact: true,
+      }),
     ).toBeVisible();
     await expect(page.getByRole("link", { name: /Basescan/ }).last()).toHaveAttribute(
       "href",
@@ -544,7 +561,9 @@ test.describe("pay page", () => {
     });
     await page.reload();
     await expect(
-      page.getByText("Payment records need review. Do not send more money.", { exact: true }),
+      page.getByText("Payment could not be verified. Contact the merchant before sending more.", {
+        exact: true,
+      }),
     ).toBeVisible();
     await expect(showAddress(page)).toHaveCount(0);
     await expect(page.getByText(RECEIVE)).toHaveCount(0);

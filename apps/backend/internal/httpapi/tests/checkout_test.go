@@ -60,6 +60,16 @@ func TestCheckoutSessionsReplayExpireAndExposeCanonicalPayments(t *testing.T) {
 	second := e.call(t, "POST", base+"/checkout-sessions", alice, "another-purchase", body)
 	other := second.body["sessionId"].(string)
 	e.deposit(t, other, "2000000")
+	for _, r := range []reply{
+		e.call(t, "GET", base+"/checkout-sessions/"+other, alice, "", ""),
+		e.call(t, "POST", base+"/checkout-sessions", alice, "another-purchase", body),
+	} {
+		receipts := r.body["payment"].(map[string]any)["receipts"].([]any)
+		if len(receipts) != 1 || receipts[0].(map[string]any)["received"] != "2000000" || receipts[0].(map[string]any)["pending"] != "0" {
+			t.Fatalf("funded session lost its receipt: %v", receipts)
+		}
+	}
+
 	if r := e.call(t, "GET", base+"/checkout-sessions/"+other, alice, "", ""); r.body["status"] != "complete" ||
 		r.body["payment"].(map[string]any)["settlementStatus"] != "pending" {
 		t.Fatalf("paid, unsettled session: %d %v", r.status, r.body)

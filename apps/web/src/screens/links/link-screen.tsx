@@ -69,14 +69,14 @@ export function LinkScreen({ linkId }: LinkScreenProps) {
             <Badge tone={state === LINK_STATES.on ? TONES.success : TONES.neutral}>
               {COPY.states[state]}
             </Badge>
-            {link.livemode ? null : <Badge tone={TONES.warning}>{COPY.testMode}</Badge>}
+            {link.livemode ? null : <span className="text-xs text-warning">Testnet</span>}
           </span>
         </div>
         <CopyValue
           label="Share this offer"
           value={linkAddress(window.location.origin, link.slug)}
           copyLabel={COPY.copyLabel}
-          hint="Each purchase creates an independent checkout. Customers do not share payment addresses."
+          hint="Customers get a new checkout for each purchase."
         />
         <p className="text-sm text-muted">{COPY.activity(link.visits, link.paid, link.reserved)}</p>
         {link.storeId ? (
@@ -100,11 +100,9 @@ export function LinkScreen({ linkId }: LinkScreenProps) {
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 id="link-payments" className="text-lg font-semibold text-ink">
-              Resulting payments
+              Payments
             </h2>
-            <p className="text-sm text-muted">
-              Every attempt from this offer, including unpaid and expired checkouts.
-            </p>
+            <p className="text-sm text-muted">Payments from this link.</p>
           </div>
           <ExportPayments profileId={profile.profileId} filters={filters} />
         </header>

@@ -30,7 +30,8 @@ func (c *Chain) Rescans(ctx context.Context) error {
 	rows, err := c.pool.Query(ctx, `SELECT r.invoice_id, i.receive_address, i.token_contract, r.rescan_from_block,
 		    floor(extract(epoch FROM i.created_at))::bigint - 60
 		FROM invoice_rechecks r JOIN invoices i ON i.id = r.invoice_id
-		WHERE i.chain_id = $1 AND r.rescan_requested_at IS NOT NULL ORDER BY r.rescan_requested_at LIMIT $2`,
+		WHERE i.chain_id = $1 AND r.rescan_requested_at IS NOT NULL
+          AND (r.rescan_retry_at IS NULL OR r.rescan_retry_at <= now()) ORDER BY r.rescan_requested_at LIMIT $2`,
 		c.chainID, RescanLimit)
 	if err != nil {
 		return fmt.Errorf("read chain %d rescans: %w", c.chainID, err)
@@ -52,6 +53,10 @@ func (c *Chain) Rescans(ctx context.Context) error {
 	for _, a := range asks {
 		if err := c.rescanOne(ctx, a.id, a.receive, a.token, a.from, a.created); err != nil {
 			failed = append(failed, err)
+			retryCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
+			_, retryErr := c.pool.Exec(retryCtx, "UPDATE invoice_rechecks SET rescan_retry_at=now()+interval '1 minute' WHERE invoice_id=$1", a.id)
+			cancel()
+			failed = append(failed, retryErr)
 		}
 	}
 	return errors.Join(failed...)
@@ -66,6 +71,9 @@ func (c *Chain) rescanOne(ctx context.Context, id, receive, token string, saved 
 		if from, err = c.blockAt(ctx, uint64(max(created, 0))); err != nil {
 			return err
 		}
+		if _, err := c.pool.Exec(ctx, "UPDATE invoice_rechecks SET rescan_from_block=$2 WHERE invoice_id=$1", id, from); err != nil {
+			return fmt.Errorf("save invoice %s rescan start: %w", id, err)
+		}
 	}
 	next, done, err := c.rescan(ctx, common.HexToAddress(receive), receiver{id, token}, from)
 	if err != nil {
@@ -73,9 +81,9 @@ func (c *Chain) rescanOne(ctx context.Context, id, receive, token string, saved 
 	}
 	if done {
 		_, err = c.pool.Exec(ctx, `UPDATE invoice_rechecks SET rescan_requested_at = NULL, rescan_from_block = NULL,
-			rescanned_at = now() WHERE invoice_id = $1`, id)
+			rescanned_at = now(), rescan_retry_at=NULL WHERE invoice_id = $1`, id)
 	} else {
-		_, err = c.pool.Exec(ctx, "UPDATE invoice_rechecks SET rescan_from_block = $2 WHERE invoice_id = $1", id, next)
+		_, err = c.pool.Exec(ctx, "UPDATE invoice_rechecks SET rescan_from_block = $2, rescan_retry_at=NULL WHERE invoice_id = $1", id, next)
 	}
 	if err != nil {
 		return fmt.Errorf("save invoice %s rescan: %w", id, err)
@@ -124,14 +132,14 @@ func (c *Chain) logsIn(ctx context.Context, lo, hi uint64, invoices map[common.A
 		top := min(lo+span-1, hi)
 		found, err := c.logs(ctx, lo, top, invoices)
 		if next, ok := narrower(err, span); ok {
-			span = next
+			span, c.span = next, next
 			continue
 		}
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, found...)
-		lo, span = top+1, min(span*2, MaxRange)
+		lo = top + 1
 	}
 	return out, nil
 }

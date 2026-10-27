@@ -6,6 +6,21 @@ import { apiTime, baseUnits, count, evmAddress, hash32, pageOf } from "@/shared/
 
 const signedUnits = z.string().regex(/^-?\d+$/);
 export const paymentSchema = z.object({
+  receipts: z
+    .array(
+      z.object({
+        optionId: hash32,
+        chainId: count,
+        token: evmAddress,
+        symbol: z.string(),
+        decimals: count,
+        received: baseUnits,
+        pending: baseUnits,
+      }),
+    )
+    .optional(),
+  customerName: z.string().nullable().optional(),
+  customerEmail: z.string().nullable().optional(),
   paymentId: hash32,
   optionId: hash32,
   optionLocked: z.boolean(),
@@ -177,6 +192,7 @@ export const movementsPageSchema = pageOf(
   z.object({
     id: z.string(),
     state: z.string(),
+    status: z.string().optional(),
     recordedAt: apiTime,
     paymentId: hash32,
     optionId: hash32,

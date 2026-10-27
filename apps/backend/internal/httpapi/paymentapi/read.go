@@ -12,7 +12,7 @@ import (
 func get(invoices *invoice.Service, webURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		access := mid.ProfileAccess(r)
-		detail, err := invoices.PaymentDetails(r.Context(), r.PathValue("profileId"), r.PathValue("paymentId"), invoice.PaymentQuery{Stores: access.Stores, Livemode: access.Livemode})
+		detail, err := invoices.PaymentDetails(r.Context(), r.PathValue("profileId"), r.PathValue("paymentId"), invoice.PaymentQuery{Stores: access.Stores, Livemode: access.Livemode, Summary: r.URL.Query().Get("view") == "summary"})
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -49,8 +49,12 @@ func readQuery(r *http.Request) (invoice.PaymentQuery, error) {
 	if err != nil {
 		return invoice.PaymentQuery{}, err
 	}
+	search, err := httpio.SearchQuery(r)
+	if err != nil {
+		return invoice.PaymentQuery{}, err
+	}
 	access := mid.ProfileAccess(r)
-	return invoice.PaymentQuery{Limit: limit, Cursor: r.URL.Query().Get("cursor"), StoreID: r.URL.Query().Get("storeId"), LinkID: r.URL.Query().Get("linkId"),
+	return invoice.PaymentQuery{Search: search, Limit: limit, Cursor: r.URL.Query().Get("cursor"), StoreID: r.URL.Query().Get("storeId"), LinkID: r.URL.Query().Get("linkId"),
 		Source: invoice.PaymentSource(r.URL.Query().Get("source")), Status: r.URL.Query().Get("status"), PaymentStatus: r.URL.Query().Get("paymentStatus"),
 		SettlementStatus: r.URL.Query().Get("settlementStatus"), RefundStatus: r.URL.Query().Get("refundStatus"), Stores: access.Stores, Livemode: access.Livemode}, nil
 }

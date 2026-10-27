@@ -57,9 +57,14 @@ export const invoicesApi = apiSlice
         providesTags: [INVOICES_TAG],
       }),
       /** The owner's read: the public one plus the client; 404 for another profile's invoice. */
-      getProfileInvoice: build.query<Invoice, { profileId: string; invoiceId: string }>({
-        query: ({ profileId, invoiceId }) =>
-          `${profileInvoices(profileId)}/${encodeURIComponent(invoiceId)}`,
+      getProfileInvoice: build.query<
+        Invoice,
+        { profileId: string; invoiceId: string; summary?: boolean }
+      >({
+        query: ({ profileId, invoiceId, summary }) => ({
+          url: `${profileInvoices(profileId)}/${encodeURIComponent(invoiceId)}`,
+          params: summary ? { view: "summary" } : undefined,
+        }),
         responseSchema: invoiceSchema,
         providesTags: [INVOICES_TAG],
       }),

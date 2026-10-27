@@ -301,14 +301,11 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(page.getByText(title)).toBeVisible();
     const amount = page.getByRole("region", { name: "Amount" });
     await expect(amount).toContainText("12.50 USDC");
-    await expect(amount.getByRole("list", { name: "Payment progress" })).toContainText(
-      /Waiting.*Detected.*Confirming.*Paid.*Settled/,
+    await expect(amount.getByText("Waiting for payment", { exact: true })).toBeVisible();
+    await expect(amount.getByRole("link", { name: "View payment", exact: true })).toHaveAttribute(
+      "href",
+      `/app/payments/${invoice.invoiceId}`,
     );
-    await expect(amount.getByRole("listitem").filter({ hasText: "Waiting" })).toHaveAttribute(
-      "aria-current",
-      "step",
-    );
-    await expect(amount.locator("[data-status]")).toHaveCount(0);
     const details = page.getByRole("region", { name: "Details" });
     await expect(details).toContainText("Due date");
     await expect(details).toContainText(dueText);
@@ -327,7 +324,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(page.getByRole("main").locator("header [data-status]")).toHaveCount(0);
     await expect(page.getByRole("main").locator("header")).not.toContainText("Checkout closes");
     // R-143: Base Sepolia is a testnet.
-    await expect(page.getByRole("main").locator("header")).toContainText("Test mode");
+    await expect(page.getByRole("main").locator("header")).toContainText("Testnet");
     const client = page.getByRole("region", { name: "Billed to" });
     await expect(client).toContainText(clientName);
     await expect(client).toContainText("delivered@resend.dev");
@@ -343,7 +340,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
         .replace(/\/send$/, "");
       const response = await route.fetch({ url, method: "GET" });
       // From now on the owner's reads list the send, as the API's would.
-      await page.route(owned, async (read) => {
+      await page.route(`${owned}**`, async (read) => {
         const answer = await read.fetch();
         await read.fulfill({
           response: answer,
@@ -446,7 +443,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     expect(publicRead.brand.logoAt).not.toBeNull();
     await expect(pdf("Receipt PDF")).toHaveCount(0);
     expect(await blockingViolations(page)).toEqual([]);
-    await page.route(`**${read}`, async (route) => {
+    await page.route(`**${read}**`, async (route) => {
       const response = await route.fetch();
       await route.fulfill({
         response,
@@ -455,14 +452,16 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     });
     await page.reload();
     await expect(pdf("Receipt PDF")).toHaveAttribute("href", pdfPath("receipt.pdf"));
-    await page.unroute(`**${read}`);
+    await page.unroute(`**${read}**`);
 
     // A payment to an option the client did not end up paying with is listed apart, as held for the payer (F143).
     const heldTx = `0x${"4".repeat(64)}`;
-    await page.route(`**/api/v1/**/invoices/${invoice.invoiceId}`, async (route) => {
+    await page.route(`**/api/v1/**/payments/${invoice.invoiceId}**`, async (route) => {
       const response = await route.fetch();
       const body = await response.json();
+      const original = body.options[0];
       const held = {
+        ...original,
         optionId: `0x${"5".repeat(64)}`,
         chainId: 421614,
         network: "arbitrum-sepolia",
@@ -471,6 +470,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
         decimals: 6,
         amount: body.amount,
         receiveAddress: `0x${"6".repeat(40)}`,
+        amounts: { ...original.amounts, receiver: "2000000", payable: "0", held: "2000000" },
         deposits: [
           {
             txHash: heldTx,
@@ -490,19 +490,40 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
       };
       await route.fulfill({
         response,
-        json: { ...body, optionLocked: true, options: [...body.options, held] },
+        json: {
+          ...body,
+          optionLocked: true,
+          options: [...body.options, held],
+          problems: [
+            {
+              code: "held_funds",
+              action: "review_funds",
+              optionId: held.optionId,
+              amount: "2000000",
+              asset: {
+                chainId: held.chainId,
+                token: held.token,
+                symbol: held.symbol,
+                decimals: held.decimals,
+              },
+              endpointId: null,
+              eventId: null,
+              reason: "other_option",
+            },
+          ],
+        },
       });
     });
-    await page.reload();
-    const held = page.getByText("Held for the payer · USDC on Arbitrum Sepolia");
-    await expect(held).toBeVisible();
-    const heldList = held.locator("xpath=following-sibling::ul");
-    await expect(heldList).toContainText("2.00 USDC");
+    await page.getByRole("link", { name: "View payment", exact: true }).click();
     await expect(
-      heldList.getByRole("link", { name: "View transaction on Arbiscan" }),
-    ).toHaveAttribute("href", `https://sepolia.arbiscan.io/tx/${heldTx}`);
+      page.getByRole("main").getByText("Funds held for the payer", { exact: false }),
+    ).toContainText("2.00");
+    await expect(page.getByRole("link", { name: "View transaction on Arbiscan" })).toHaveAttribute(
+      "href",
+      `https://sepolia.arbiscan.io/tx/${heldTx}`,
+    );
     expect(await blockingViolations(page)).toEqual([]);
-    await page.unroute(`**/api/v1/**/invoices/${invoice.invoiceId}`);
+    await page.unroute(`**/api/v1/**/payments/${invoice.invoiceId}**`);
 
     // R-90
     await page.getByRole("link", { name: "Invoices" }).first().click();

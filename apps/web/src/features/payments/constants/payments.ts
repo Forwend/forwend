@@ -6,7 +6,7 @@ export const PAYMENT_VIEWS = {
 } as const;
 export const SOURCE_LABELS = {
   invoice: "Invoice",
-  checkout: "Integrated checkout",
+  checkout: "Checkout",
   request: "Personal request",
   payment_link: "Payment link",
 } as const;
@@ -15,10 +15,10 @@ export const PAYMENT_PROBLEMS = {
   reconciliation_required: "Payment records need review",
   partial_payment: "Partly paid",
   held_funds: "Funds held for the payer",
-  outflow_unreconciled: "Outgoing funds await reconciliation",
-  funds_movement_exception: "Funds moved outside ordinary policy",
+  outflow_unreconciled: "Outgoing transfer not yet confirmed",
+  funds_movement_exception: "Unexpected transfer",
   settlement_delayed: "Settlement delayed",
   settlement_refused: "Settlement refused",
-  webhook_delivery: "Webhook delivery needs attention",
+  webhook_delivery: "Webhook delivery failed",
 } as const;
 export const PAYMENT_PAGE_SIZE = 25;

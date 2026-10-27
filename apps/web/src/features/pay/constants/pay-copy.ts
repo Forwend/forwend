@@ -11,8 +11,6 @@ export const PAY_COPY = {
   request: (number: string) => (number ? `Request ${number}` : "Request"),
   noIssuer: "Payment",
   checkout: "Checkout",
-  testMode:
-    "Test mode: this payment takes testnet tokens, which have no value. Don't send real money.",
   pdfLabel: "Download invoice PDF",
   amountDue: "Amount due",
   amount: "Amount",
@@ -66,13 +64,10 @@ export const PAY_COPY = {
     [PAY_STATES.waiting]: () => "Waiting for payment…",
     // The steps say it arrived; the line counts the blocks (ConfirmingStatus).
     [PAY_STATES.confirming]: () => "Confirming",
-    [PAY_STATES.checking]: () => "Final check",
-    [PAY_STATES.review]: ({ verificationPending, checkoutClosed }) =>
-      verificationPending
-        ? checkoutClosed
-          ? "This checkout is closed. Forwend is verifying earlier payment records."
-          : "Verifying payment history. Please wait before sending money."
-        : "Payment records need review. Do not send more money.",
+    [PAY_STATES.checking]: ({ delayed }) =>
+      delayed ? "Confirmation is delayed. No need to pay again." : "Confirming payment",
+    [PAY_STATES.review]: () =>
+      "Payment could not be verified. Contact the merchant before sending more.",
     [PAY_STATES.partial]: ({ received, total, remaining }) =>
       `${received} of ${total} received. Send the remaining ${remaining}.`,
     [PAY_STATES.paid]: () => "Paid",
@@ -141,8 +136,6 @@ export const PAY_COPY = {
 /** R-142: a payment link's page, before Pay creates checkout. */
 export const LINK_PAY_COPY = {
   title: "Payment link",
-  testMode:
-    "Test mode: payments through this link use testnet tokens, which have no value. Don't send real money.",
   loading: "Loading the payment link",
   amount: "Amount",
   amountField: "Amount (USD)",
@@ -171,8 +164,7 @@ export const LINK_PAY_COPY = {
 } as const;
 
 interface StateValues {
-  verificationPending?: boolean;
-  checkoutClosed?: boolean;
+  delayed: boolean;
   received: string;
   remaining: string;
   total: string;

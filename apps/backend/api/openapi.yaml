@@ -172,6 +172,7 @@ paths:
       operationId: listPayments
       summary: List store-scoped payments, including unnumbered attempts
       parameters:
+        - $ref: "#/components/parameters/Search"
         - $ref: "#/components/parameters/ProfileId"
         - name: limit
           in: query
@@ -190,7 +191,7 @@ paths:
           schema: {"type": "string", "enum": ["invoice", "checkout", "request", "payment_link"]}
         - name: status
           in: query
-          schema: {"type": "string", "enum": ["open", "paid", "settled", "expired", "canceled"]}
+          schema: {"type": "string", "enum": ["open", "confirming", "paid", "settled", "expired", "canceled"]}
         - name: paymentStatus
           in: query
           schema: {"type": "string", "enum": ["open", "detected", "partially_paid", "paid", "expired", "expired_partially_paid", "canceled"]}
@@ -238,6 +239,10 @@ paths:
           in: path
           required: true
           schema: { $ref: "#/components/schemas/InvoiceId" }
+        - name: view
+          in: query
+          description: Summary includes the selected option, options with money, and recorded conflicts. Omit for all option diagnostics.
+          schema: { type: string, enum: [summary] }
       responses:
         "200":
           description: Canonical state
@@ -278,7 +283,7 @@ paths:
           schema: {"type": "string", "enum": ["invoice", "checkout", "request", "payment_link"]}
         - name: status
           in: query
-          schema: {"type": "string", "enum": ["open", "paid", "settled", "expired", "canceled"]}
+          schema: {"type": "string", "enum": ["open", "confirming", "paid", "settled", "expired", "canceled"]}
         - name: paymentStatus
           in: query
           schema: {"type": "string", "enum": ["open", "detected", "partially_paid", "paid", "expired", "expired_partially_paid", "canceled"]}
@@ -349,7 +354,7 @@ paths:
           schema: {"type": "string", "enum": ["invoice", "checkout", "request", "payment_link"]}
         - name: status
           in: query
-          schema: {"type": "string", "enum": ["open", "paid", "settled", "expired", "canceled"]}
+          schema: {"type": "string", "enum": ["open", "confirming", "paid", "settled", "expired", "canceled"]}
         - name: paymentStatus
           in: query
           schema: {"type": "string", "enum": ["open", "detected", "partially_paid", "paid", "expired", "expired_partially_paid", "canceled"]}
@@ -416,7 +421,7 @@ paths:
           schema: {"type": "string", "enum": ["invoice", "checkout", "request", "payment_link"]}
         - name: status
           in: query
-          schema: {"type": "string", "enum": ["open", "paid", "settled", "expired", "canceled"]}
+          schema: {"type": "string", "enum": ["open", "confirming", "paid", "settled", "expired", "canceled"]}
         - name: paymentStatus
           in: query
           schema: {"type": "string", "enum": ["open", "detected", "partially_paid", "paid", "expired", "expired_partially_paid", "canceled"]}
@@ -477,7 +482,7 @@ paths:
           schema: {"type": "string", "enum": ["invoice", "checkout", "request", "payment_link"]}
         - name: status
           in: query
-          schema: {"type": "string", "enum": ["open", "paid", "settled", "expired", "canceled"]}
+          schema: {"type": "string", "enum": ["open", "confirming", "paid", "settled", "expired", "canceled"]}
         - name: paymentStatus
           in: query
           schema: {"type": "string", "enum": ["open", "detected", "partially_paid", "paid", "expired", "expired_partially_paid", "canceled"]}
@@ -548,7 +553,7 @@ paths:
           schema: {"type": "string", "enum": ["invoice", "checkout", "request", "payment_link"]}
         - name: status
           in: query
-          schema: {"type": "string", "enum": ["open", "paid", "settled", "expired", "canceled"]}
+          schema: {"type": "string", "enum": ["open", "confirming", "paid", "settled", "expired", "canceled"]}
         - name: paymentStatus
           in: query
           schema: {"type": "string", "enum": ["open", "detected", "partially_paid", "paid", "expired", "expired_partially_paid", "canceled"]}
@@ -601,6 +606,7 @@ paths:
       operationId: exportPaymentMovements
       summary: Export at most 10000 financial movements and observations
       parameters:
+        - $ref: "#/components/parameters/Search"
         - $ref: "#/components/parameters/ProfileId"
         - name: storeId
           in: query
@@ -613,7 +619,7 @@ paths:
           schema: {"type": "string", "enum": ["invoice", "checkout", "request", "payment_link"]}
         - name: status
           in: query
-          schema: {"type": "string", "enum": ["open", "paid", "settled", "expired", "canceled"]}
+          schema: {"type": "string", "enum": ["open", "confirming", "paid", "settled", "expired", "canceled"]}
         - name: paymentStatus
           in: query
           schema: {"type": "string", "enum": ["open", "detected", "partially_paid", "paid", "expired", "expired_partially_paid", "canceled"]}
@@ -670,7 +676,7 @@ paths:
           schema: {"type": "string", "enum": ["invoice", "checkout", "request", "payment_link"]}
         - name: status
           in: query
-          schema: {"type": "string", "enum": ["open", "paid", "settled", "expired", "canceled"]}
+          schema: {"type": "string", "enum": ["open", "confirming", "paid", "settled", "expired", "canceled"]}
         - name: paymentStatus
           in: query
           schema: {"type": "string", "enum": ["open", "detected", "partially_paid", "paid", "expired", "expired_partially_paid", "canceled"]}
@@ -1332,6 +1338,10 @@ paths:
         The public GET /v1/invoices/{payToken} plus client. Another profile's invoice is not found here. Neither is a
         payment-link invoice before its first deposit, here or on any owner route with an invoiceId (R-141).
       parameters:
+        - name: view
+          in: query
+          description: Summary includes the billing option, current option and options with funds or problems; the default preserves every option.
+          schema: { type: string, enum: [summary] }
         - $ref: "#/components/parameters/ProfileId"
         - name: invoiceId
           in: path
@@ -1806,8 +1816,8 @@ paths:
       summary: The profile's invoices and deposits, newest first, in cursor pages
       description: |
         status and q narrow the list before paging, so a cursor continues the same filtered list. Under status, an
-        invoice falls as in the invoice list; a deposit is open while detected and paid once confirmed, and a held one
-        (held) under no status, only in the full list. q looks in the
+        invoice and its deposits use the related payment state. Transfer confirmation alone does not mean paid.
+        Held deposits appear only without a status filter. Funded checkouts appear before invoice numbering. q looks in the
         transaction hash (a deposit's, or a settled invoice's settle transaction), the token symbol and, when it is a
         number, the amount.
       parameters:
@@ -3044,11 +3054,11 @@ components:
       name: status
       in: query
       description: |
-        Only invoices under this filter; absent for all. settled once settlementStatus is settled; otherwise by
-        paymentStatus: paid; canceled; expired, expired_partially_paid or closed (see Invoice.closed) is expired; any
-        other open, detected or partially_paid is open.
+        Only payments under this filter; absent for all. Paid includes wallet-settled payments.
+        Settled is the subset already in the wallet. Other filters follow paymentStatus: canceled; expired, expired_partially_paid or closed (see Invoice.closed) is expired; any
+        detected or an on-time pending transfer is confirming; other open or partially_paid is open.
         Another value is 422.
-      schema: { type: string, enum: [open, paid, settled, expired, canceled] }
+      schema: { type: string, enum: [open, confirming, paid, settled, expired, canceled] }
     Search:
       name: q
       in: query
@@ -3135,12 +3145,27 @@ components:
         unreconciled:
           type: boolean
           description: Historical coverage, source attribution or financial booking remains unresolved. Never treat a negative legacy balance as available money.
+    PaymentReceipt:
+      type: object
+      description: Observed incoming transfers by used option. Pending amounts are not credited or proof of payment.
+      required: [optionId, chainId, token, symbol, decimals, received, pending]
+      properties:
+        optionId: { $ref: "#/components/schemas/InvoiceId" }
+        chainId: { type: integer }
+        token: { $ref: "#/components/schemas/Address" }
+        symbol: { type: string }
+        decimals: { type: integer, minimum: 0 }
+        received: { $ref: "#/components/schemas/Uint256" }
+        pending: { $ref: "#/components/schemas/Uint256" }
     Payment:
       type: object
       required: [paymentId, optionId, optionLocked, optionCount, source, symbol, decimals, purpose, documentKind, number, storeId, storeName, linkId, livemode, title,
         reference, chainId, token, amount, paymentStatus, settlementStatus, refundStatus, confirming,
         closed, createdAt, closesAt, hostedUrl]
       properties:
+        receipts: { type: array, items: { $ref: "#/components/schemas/PaymentReceipt" } }
+        customerName: { type: [string, "null"] }
+        customerEmail: { type: [string, "null"] }
         amounts: { $ref: "#/components/schemas/PaymentAmounts" }
         paymentId: { $ref: "#/components/schemas/InvoiceId" }
         optionId: { $ref: "#/components/schemas/InvoiceId" }
@@ -4232,6 +4257,8 @@ components:
       type: object
       required: [kind, at, invoiceId, chainId, token, symbol, decimals, amount, status, optionCount, closed, held]
       properties:
+        paymentStatus: { type: string, description: Customer payment state, independent of the individual transfer confirmation. }
+        confirming: { type: boolean, description: An on-time transfer is still being confirmed or credited. }
         kind:
           type: string
           enum: [invoice, deposit]
@@ -4267,7 +4294,7 @@ components:
             token and network given here (its first option). 1 for a deposit.
         closed:
           type: boolean
-          description: As Invoice.closed for an invoice; false for a deposit.
+          description: As Invoice.closed for the related payment.
         held:
           type: boolean
           description: >-
@@ -4624,7 +4651,7 @@ components:
         invoiceId: { oneOf: [{ $ref: "#/components/schemas/InvoiceId" }, { type: "null" }] }
         payToken: { oneOf: [{ $ref: "#/components/schemas/PayToken" }, { type: "null" }] }
         number: { type: [integer, "null"] }
-        status: { type: [string, "null"], enum: [open, paid, settled, expired, canceled, null] }
+        status: { type: [string, "null"], enum: [open, confirming, paid, settled, expired, canceled, null] }
         doneAt: { type: [string, "null"], format: date-time }
         deliveryLink: { type: [string, "null"] }
         invoicedAt: { type: [string, "null"], format: date-time, description: "When its invoice was made (R-104)" }

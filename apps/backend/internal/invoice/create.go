@@ -337,7 +337,7 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	if err := tx.Commit(ctx); err != nil {
 		return Invoice{}, false, fmt.Errorf("insert invoice: %w", err)
 	}
-	inv, err = s.get(ctx, profileID, *mainID)
+	inv, err = s.get(ctx, profileID, *mainID, false)
 	return inv, err == nil, err
 }
 
@@ -412,7 +412,7 @@ func (s *Service) replay(ctx context.Context, profileID, idempotencyKey string, 
 	if !bytes.Equal(stored, hash) {
 		return Invoice{}, ErrConflict
 	}
-	inv, err := s.get(ctx, profileID, id)
+	inv, err := s.get(ctx, profileID, id, false)
 	if err == nil && live != nil && inv.Livemode != *live {
 		return Invoice{}, ErrConflict
 	}

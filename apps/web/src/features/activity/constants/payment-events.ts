@@ -1,4 +1,4 @@
 export const PAYMENT_EVENTS = {
-  detected: "detected",
+  paid: "paid",
   settled: "settled",
 } as const;

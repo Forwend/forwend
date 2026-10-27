@@ -13,6 +13,7 @@ import (
 // Call is one request a Proxy received (a JSON-RPC call, or a batch with Method "batch") and how it was answered.
 type Call struct {
 	Path, Method string
+	Methods      []string
 	Params       []json.RawMessage
 	Fault        Fault
 }
@@ -54,6 +55,16 @@ func (a *Anvil) Proxy() *Proxy {
 		c := Call{Path: r.URL.Path, Method: "batch"}
 		if json.Unmarshal(body, &one) == nil {
 			c.Method, c.Params = one.Method, one.Params
+			c.Methods = []string{one.Method}
+		} else {
+			var batch []struct {
+				Method string `json:"method"`
+			}
+			if json.Unmarshal(body, &batch) == nil {
+				for _, call := range batch {
+					c.Methods = append(c.Methods, call.Method)
+				}
+			}
 		}
 		var result json.RawMessage
 		p.mu.Lock()
