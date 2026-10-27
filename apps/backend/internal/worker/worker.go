@@ -105,6 +105,9 @@ func (w *Worker) Tick(ctx context.Context) {
 				if rescanErr := watch.Rescans(rescanCtx); rescanErr != nil {
 					slog.Error("worker rescans", "chain", id, "err", chain.Redact(rescanErr))
 				}
+				if receiverErr := watch.Receivers(rescanCtx, w.rpcs[id].Second); receiverErr != nil {
+					slog.Error("worker receiver evidence", "chain", id, "err", chain.Redact(receiverErr))
+				}
 				cancelRescan()
 				err = book.ProcessChain(chainCtx, id)
 			}

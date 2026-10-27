@@ -15,6 +15,7 @@ import (
 
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
+	"github.com/forwend/forwend/apps/backend/internal/ledger/ledgertest"
 	"github.com/forwend/forwend/apps/backend/internal/link"
 )
 
@@ -126,6 +127,7 @@ func TestLinkCreationReadsCapacityAfterAConcurrentReopenCommits(t *testing.T) {
 	if err != nil || current.PaymentStatus != ledger.ExpiredPartiallyPaid {
 		t.Fatalf("closed partial setup: %s, %v", current.PaymentStatus, err)
 	}
+	ledgertest.Checkpoint(t, e.pool, inv.ID, 100, inv.ExpiresAt.Unix()+60, "2500000")
 	reopening, err := e.pool.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)

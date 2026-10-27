@@ -125,9 +125,9 @@ describe("invoiceProgress", () => {
     expect(invoiceStatus({ ...open, paymentStatus: "detected", confirming: true })).toBe(
       PAYMENT_STATUS.confirming,
     );
-    expect(invoiceStatus({ ...partly, confirming: true, settlementStatus: "settled" })).toBe(
-      PAYMENT_STATUS.settled,
-    );
+    expect(
+      invoiceStatus({ ...partly, closed: true, confirming: false, settlementStatus: "settled" }),
+    ).toBe(PAYMENT_STATUS.expiredPartiallyPaid);
     expect(invoiceStatus({ ...open, paymentStatus: "paid", confirming: true })).toBe(
       PAYMENT_STATUS.paid,
     );
@@ -236,7 +236,7 @@ describe("invoiceException", () => {
     expect(invoiceException(partly, PAYMENT_STATUS.expiredPartiallyPaid)).toEqual({
       kind: "closedPartial",
       received: 2_000_000n,
-      left: 3_000_000n,
+      left: 5_000_000n,
       late: 0n,
     });
     // Partly paid and still open says it in the amount (Received X of Y), not again here.
@@ -279,7 +279,7 @@ describe("restartFrom", () => {
     deposits: [],
   };
 
-  it("asks again for the whole amount, or only what is left, from the same client in the same token", () => {
+  it("keeps payer-held funds separate when copying an expired bill for the same client", () => {
     const partly = {
       ...open,
       title: "Website",
@@ -316,11 +316,11 @@ describe("restartFrom", () => {
         { id: "1", description: "Hosting", quantity: "1", price: "1.25" },
       ],
     });
-    // The items would not add up to the rest.
+    // Legacy rest links do not credit payer-held funds.
     expect(restartFrom(partly, client, true, undefined)).toEqual({
       ...start,
       agreed: null,
-      amount: "3.75",
+      amount: "5",
       items: [],
     });
   });
@@ -348,7 +348,7 @@ describe("restartFrom", () => {
     const onTime = { ...lateLocked, deposits: [{ ...late, late: false, amount: "1000000" }] };
     expect(restartFrom(onTime, undefined, true, undefined)).toMatchObject({
       payWith: "fixed",
-      amount: "4",
+      amount: "5",
     });
     // R-91: a duplicate asks the whole amount again, so the client chooses again.
     expect(restartFrom(onTime, undefined, false, undefined)).toMatchObject({

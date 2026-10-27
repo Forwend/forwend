@@ -27,6 +27,8 @@ export const TRANSACTIONS_MAX = 100;
 /** What a transaction was (R-108); money in that Forwend can't classify takes one of TRANSACTION_LABELS. */
 export const TRANSACTION_CLASSES = {
   invoice: "invoice",
+  payment: "payment",
+  paymentException: "payment_exception",
   ownTransfer: "own_transfer",
   sent: "sent",
   unclassified: "unclassified",

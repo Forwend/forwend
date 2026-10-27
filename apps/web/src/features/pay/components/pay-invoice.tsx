@@ -33,6 +33,7 @@ import { useCountViewMutation, useGetInvoiceQuery } from "@/features/invoices/ap
 import { CheckStatus } from "@/features/invoices/components/check-status";
 import { InvoiceLines } from "@/features/invoices/components/invoice-lines";
 import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
+import { PaymentAmountsNotice } from "@/features/invoices/components/payment-amounts-notice";
 import {
   DOCUMENT_KINDS,
   HISTORY_FIELDS,
@@ -55,6 +56,7 @@ import { PAY_STATES } from "@/features/pay/constants/pay";
 import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
 import {
   checkoutClosesAt,
+  firstPaymentOption,
   payState,
   payToken,
   receiptDeposits,
@@ -160,7 +162,7 @@ function Loaded({
   const router = useRouter();
   const path = usePathname();
   // Payer chooses (R-57): the link keeps the pick (?option=), so a reload shows the same.
-  const choosing = !answer.optionLocked && answer.options.length > 1;
+  const choosing = !answer.optionLocked && answer.options.length > 1 && !firstPaymentOption(answer);
   const [picked, setPicked] = useState(option?.toLowerCase());
   const invoice = useMemo(() => withOption(answer, picked), [answer, picked]);
   const address = useMemo(() => checkedReceiveAddress(invoice, linkToken), [invoice, linkToken]);
@@ -410,6 +412,12 @@ function PayBox({
   choice: Choice | null;
   picking: boolean;
 }) {
+  const canChoose =
+    choice !== null &&
+    !invoice.closed &&
+    choice.options.some(
+      (option) => now < checkoutClosesAt({ closesAt: option.closesAt ?? invoice.closesAt }),
+    );
   const network = chainName(invoice.chainId);
   const lookalike = lookalikeOf(invoice.chainId, token.symbol);
   const contract = addressLink(invoice.chainId, invoice.token);
@@ -465,7 +473,7 @@ function PayBox({
           <Paid invoice={invoice} linkToken={linkToken} token={token} />
         ) : (
           <>
-            {pay.canSend || seen ? (
+            {pay.canSend || seen || canChoose ? (
               <section aria-labelledby="pay-before" className="flex flex-col gap-4 p-4 sm:p-5">
                 <h2
                   id="pay-before"
@@ -473,7 +481,7 @@ function PayBox({
                   tabIndex={-1}
                   className="text-sm font-medium text-ink outline-none"
                 >
-                  {pay.canSend ? COPY.payWith : COPY.payingWith}
+                  {pay.canSend || canChoose ? COPY.payWith : COPY.payingWith}
                 </h2>
                 {choice && sending ? (
                   <PickedOption
@@ -573,6 +581,18 @@ function PayBox({
         {/* From the first money seen, so a payer can leave before the final check (R-82). */}
         {seen || done ? <ReceiptEmail linkToken={linkToken} paid={done} /> : null}
       </div>
+      {invoice.options.map((o) => {
+        const token = payToken({ ...invoice, chainId: o.chainId, token: o.token });
+        return token ? (
+          <PaymentAmountsNotice
+            key={o.optionId}
+            amounts={o.amounts}
+            chainId={o.chainId}
+            symbol={token.symbol}
+            decimals={token.decimals}
+          />
+        ) : null;
+      })}
       {/* Overpaid gets its own handling later (PLAN 11.10.1); late money is held for the payer now. */}
       {pay.late > 0n ? (
         <p className="text-sm text-warning">{COPY.late(money(pay.late), payeeOf(invoice))}</p>
@@ -597,10 +617,15 @@ function PayBox({
       {/* Held only once an option was chosen (R-119): until then money on another option may still be the one. */}
       {invoice.options
         .filter(
-          (o) => invoice.optionLocked && o.optionId !== invoice.optionId && o.deposits.length > 0,
+          (o) =>
+            invoice.optionLocked &&
+            o.optionId !== invoice.optionId &&
+            (o.amounts ? BigInt(o.amounts.held) > 0n : o.deposits.length > 0),
         )
         .map((o) => {
-          const units = o.deposits.reduce((sum, d) => sum + BigInt(d.amount), 0n);
+          const units = o.amounts
+            ? BigInt(o.amounts.held)
+            : o.deposits.reduce((sum, d) => sum + BigInt(d.amount), 0n);
           const amount = `${formatTokenAmount({ baseUnits: units, decimals: o.decimals, fractionDigits: exactDigits(units, o.decimals) })} ${o.symbol}`;
           return (
             <p key={o.optionId} className="text-sm text-warning">

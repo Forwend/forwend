@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/forwend/forwend/apps/backend/internal/ledger/ledgertest"
 	"time"
 )
 
@@ -210,6 +212,7 @@ func TestTransactionRecords(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	ledgertest.Settlement(t, e.pool, invoice, hash(1), false)
 	items := e.call(t, "GET", path, alice, "", "").body["items"].([]any)
 	paid, other := items[1].(map[string]any), items[0].(map[string]any)
 	if paid["classification"] != "invoice" || paid["usdValue"] != "5.000000" || paid["labelable"] != false ||
@@ -253,11 +256,11 @@ func TestTransactionRecords(t *testing.T) {
 	}
 
 	export := e.call(t, "GET", path+".csv", alice, "", "")
-	want := "Date (UTC),Direction,Amount,Token,Network,Counterparty,Transaction,Status,USD value,Classification,Invoice,Client\r\n" +
-		"2025-10-09T08:53:22Z,in,1.500000,USDC,Base Sepolia," + stranger + "," + hash(2) + ",confirmed,1.500000,income,,\r\n" +
+	want := "Date (UTC),Direction,Amount,Token,Network,Counterparty,Transaction,Status,USD value,Classification,Invoice,Client,Payment ID\r\n" +
+		"2025-10-09T08:53:22Z,in,1.500000,USDC,Base Sepolia," + stranger + "," + hash(2) + ",confirmed,1.500000,income,,,\r\n" +
 		"2025-10-09T08:53:21Z,in,5.000000,USDC,Base Sepolia," + made.body["receiveAddress"].(string) + "," + hash(1) +
 		// A spreadsheet that splits on ";" would run what follows it too, also after a quote (R-108).
-		",confirmed,5.000000,invoice,INV-0001,\"'=Bob Ltd;'=1+1;'\"\"=2+2\"\r\n"
+		",confirmed,5.000000,invoice,INV-0001,\"'=Bob Ltd;'=1+1;'\"\"=2+2\"," + invoice + "\r\n"
 	if export.status != http.StatusOK || export.raw != want {
 		t.Fatalf("export: %d\n%s\nwant\n%s", export.status, export.raw, want)
 	}
@@ -291,8 +294,8 @@ func TestTransactionRecords(t *testing.T) {
 		t.Fatalf("the invoice payment in EUR %v", got)
 	}
 	inEUR := e.call(t, "GET", path+".csv", alice, "", "").raw
-	if lines := strings.Split(inEUR, "\r\n"); !strings.HasSuffix(lines[0], ",Client,EUR value,ECB rate date") ||
-		!strings.HasSuffix(lines[1], ",income,,,1.20,2025-10-08") {
+	if lines := strings.Split(inEUR, "\r\n"); !strings.HasSuffix(lines[0], ",Client,EUR value,ECB rate date,Payment ID") ||
+		!strings.HasSuffix(lines[1], ",income,,,1.20,2025-10-08,") {
 		t.Fatalf("export in EUR:\n%s", inEUR)
 	}
 	if r := e.call(t, "PUT", currency, alice, "", `{"currency": null}`); r.status != http.StatusOK || r.body["currency"] != nil {
@@ -321,9 +324,10 @@ func TestStatement(t *testing.T) {
 	day := func(d, h int) time.Time { return time.Date(2025, 10, d, h, 0, 0, 0, time.UTC) }
 	paid := add(1, day(9, 10), "in", made.body["receiveAddress"].(string), "5000000", "confirmed")
 	income := add(2, day(9, 12), "in", stranger, "1234567", "confirmed")
-	add(3, day(10, 9), "in", stranger, "2000000", "confirmed")                  // unclassified
-	add(4, day(10, 10), "out", stranger, "1000000", "confirmed")                // money out
-	add(5, day(10, 11), "in", stranger, "3000000", "detected")                  // still confirming
+	add(3, day(10, 9), "in", stranger, "2000000", "confirmed")   // unclassified
+	add(4, day(10, 10), "out", stranger, "1000000", "confirmed") // money out
+	add(5, day(10, 11), "in", stranger, "3000000", "detected")   // still confirming
+	ledgertest.Settlement(t, e.pool, made.body["invoiceId"].(string), paid, false)
 	late := add(6, day(20, 9), "in", stranger, "1000000", "confirmed")          // labelled income, no ECB rate within 7 days
 	add(7, day(1, 0).Add(-time.Second), "in", stranger, "9000000", "confirmed") // before the period
 	// Two half cents: the total adds the rounded lines, 1.01 twice, never the rounded sum 2.01.

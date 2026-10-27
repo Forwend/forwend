@@ -7,6 +7,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/activity"
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
 
 type tokenJSON struct {
@@ -70,6 +71,7 @@ type transactionJSON struct {
 	UsdValue       string                  `json:"usdValue"`
 	Classification string                  `json:"classification"`
 	Labelable      bool                    `json:"labelable"`
+	Payment        *transactionPaymentJSON `json:"payment,omitempty"`
 	Invoice        *transactionInvoiceJSON `json:"invoice"`
 	RecordsValue   *recordsValueJSON       `json:"recordsValue"`
 }
@@ -79,6 +81,14 @@ type recordsValueJSON struct {
 	Currency string `json:"currency"`
 	Amount   string `json:"amount"`
 	RateDate string `json:"rateDate"`
+}
+
+type transactionPaymentJSON struct {
+	PaymentID       string               `json:"paymentId"`
+	Purpose         invoice.Purpose      `json:"purpose"`
+	DocumentKind    invoice.DocumentKind `json:"documentKind"`
+	PolicyException *string              `json:"policyException"`
+	Unreconciled    bool                 `json:"unreconciled"`
 }
 
 // R-108.
@@ -93,6 +103,10 @@ func toTransactionJSON(t activity.Transfer) transactionJSON {
 		Counterparty: t.Counterparty, TxHash: t.TxHash, LogIndex: t.LogIndex, BlockNumber: t.BlockNumber,
 		At: t.At.Format(time.RFC3339), Status: t.Status, UsdValue: t.USDValue().FloatString(t.Decimals),
 		Classification: t.Classification(), Labelable: t.Labelable()}
+	if p := t.Payment; p != nil {
+		out.Payment = &transactionPaymentJSON{PaymentID: p.ID, Purpose: p.Purpose, DocumentKind: p.DocumentKind,
+			PolicyException: httpio.OrNull(p.PolicyException), Unreconciled: p.Unreconciled}
+	}
 	if i := t.Invoice; i != nil {
 		out.Invoice = &transactionInvoiceJSON{InvoiceID: i.ID, Number: i.Number, ClientName: httpio.OrNull(i.ClientName)}
 	}

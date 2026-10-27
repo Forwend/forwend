@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/forwend/forwend/apps/backend/internal/ledger/ledgertest"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -51,6 +52,8 @@ func TestReopenCountsHeldAndNewMoneyUntilTheNewClose(t *testing.T) {
 		t.Fatalf("before the reopen: %s, held %d", p, balance(full, "payer_held"))
 	}
 
+	ledgertest.Checkpoint(t, s.pool, full, 100, 1200, "6000000")
+	ledgertest.Checkpoint(t, s.pool, short, 100, 1200, "1000000")
 	if err := reopen(full, 50000); err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +70,10 @@ func TestReopenCountsHeldAndNewMoneyUntilTheNewClose(t *testing.T) {
 	if _, r := s.payment(short); r != "none" {
 		t.Fatalf("nothing held after the reopen, refund %s", r)
 	}
+	s.n = 100
 	s.transfer(short, shortReceive, 1000000, 40000, "confirmed") // before the new close: paid to the creator
+	ledgertest.Checkpoint(t, s.pool, short, uint64(s.n), 40000, "2000000")
+	s.exec("UPDATE chain_cursors SET last_scanned_block = 101,last_finalized_block = 101 WHERE chain_id = 1")
 	s.process(short)
 	if p, _ := s.payment(short); p != PartiallyPaid || balance(short, "recipient_payable") != 2000000 {
 		t.Fatalf("reopened, short: %s, owed %d", p, balance(short, "recipient_payable"))

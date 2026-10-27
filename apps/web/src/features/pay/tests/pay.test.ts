@@ -88,6 +88,46 @@ describe("payState", () => {
   });
 
   // R-130: the terms' expiry has passed, but the reopened checkout takes money until its new close.
+  it("keeps net received money visible during the protective close before expiry is booked", () => {
+    const amounts = {
+      receiver: "400",
+      payable: "400",
+      held: "0",
+      settled: "0",
+      refunded: "0",
+      observedRefunded: "0",
+      lastReturnTxHash: null,
+      unreconciled: false,
+      hasPolicyException: false,
+    };
+    const partial = {
+      ...invoice,
+      paymentStatus: "partially_paid",
+      deposits: [deposit("400")],
+      amounts,
+    };
+    expect(payState(partial, Date.parse(invoice.closesAt) - 60_000)).toMatchObject({
+      received: 400n,
+      canSend: false,
+      state: PAY_STATES.closing,
+    });
+    expect(payState({ ...partial, closed: true }, after)).toMatchObject({
+      received: 400n,
+      canSend: false,
+      state: PAY_STATES.closing,
+    });
+    expect(
+      payState(
+        {
+          ...partial,
+          paymentStatus: "expired_partially_paid",
+          amounts: { ...amounts, payable: "0", held: "400" },
+        },
+        after,
+      ),
+    ).toMatchObject({ received: 400n, canSend: false, state: PAY_STATES.closedPartial });
+  });
+
   it("takes payments until a reopened invoice's new close", () => {
     const reopened = {
       ...invoice,
@@ -199,6 +239,48 @@ describe("withOption", () => {
       token: base.token,
       receiveAddress: `0x${"8".repeat(40)}`,
     });
+  });
+
+  it("uses each option's own effective close in both directions", () => {
+    for (const shortFirst of [true, false]) {
+      const closes: [string, string] = ["2026-10-11T10:00:00Z", "2026-10-17T10:00:00Z"];
+      if (!shortFirst) closes.reverse();
+      const current = {
+        ...choosing,
+        closesAt: "2026-10-17T10:00:00Z",
+        options: choosing.options.map((option, i) => ({
+          ...option,
+          closesAt: closes[i === 0 ? 0 : 1],
+        })),
+      };
+      current.options.forEach((option) => {
+        const shown = withOption(current, option.optionId);
+        expect(shown.closesAt).toBe(option.closesAt);
+        expect(payState(shown, before).canSend).toBe(Date.parse(option.closesAt) > before);
+      });
+    }
+  });
+
+  it("waits for the canonical option before inviting a provisional partial top-up", () => {
+    const provisional = {
+      ...choosing,
+      optionCount: 2,
+      options: choosing.options.map((option, i) => ({
+        ...option,
+        deposits: i === 1 ? [deposit("1", { status: "detected", paid: null })] : [],
+      })),
+    };
+    const shown = withOption(provisional, choosing.options[0]?.optionId);
+    expect(shown.optionId).toBe(provisional.options[1]?.optionId);
+    expect(payState(shown, before)).toMatchObject({ canSend: false, state: PAY_STATES.checking });
+    const canonical = {
+      ...provisional,
+      optionLocked: true,
+      paymentStatus: "paid",
+      deposits: [deposit("1000")],
+    };
+    expect(withOption(canonical, provisional.options[1]?.optionId).optionId).toBe(invoice.optionId);
+    expect(payState(canonical, before)).toMatchObject({ canSend: false, state: PAY_STATES.paid });
   });
 
   it("keeps the API's option once one has money, or for an id it does not list", () => {

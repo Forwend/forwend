@@ -40,6 +40,9 @@ func TestConcurrentOptionsChooseAndBookOnlyOnce(t *testing.T) {
 	if err := e.watch.ScanNew(ctx); err != nil {
 		t.Fatal(err)
 	}
+	if err := e.watch.Receivers(ctx, e.anvil.RPC); err != nil {
+		t.Fatal(err)
+	}
 	done := make(chan error, 2)
 	go func() { done <- e.service.Process(ctx, main) }()
 	go func() { done <- e.service.Process(ctx, other) }()

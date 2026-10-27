@@ -292,6 +292,11 @@ export const NEW_REQUEST_COPY = {
 } as const;
 
 export const INVOICE_COPY = {
+  reconciliationNeeded: "Payment records need review.",
+  checkingClosed: "Checkout closed. Checking the final payment records.",
+  recordedReturns: (amount: string, network: string) =>
+    `Recorded returns: ${amount} on ${network}.`,
+  latestReturn: "Latest return transaction",
   back: "Invoices",
   clientChooses: (n: number) => `The client picks one of ${n} tokens and networks`,
   heldOn: (symbol: string, network: string) => `Held for the payer · ${symbol} on ${network}`,
@@ -363,21 +368,20 @@ export const INVOICE_COPY = {
     [INVOICE_EXCEPTIONS.closedUnpaid]: ({ noun }) =>
       `The checkout closed with nothing paid. A closed ${noun} can't take money again.`,
     [INVOICE_EXCEPTIONS.closedPartial]: ({ held, left, noun }) =>
-      `${held} is held for the payer. To collect the remaining ${left}, send a new ${noun}.`,
+      `${held} is held for the payer and does not transfer to a new ${noun}. A new ${noun} requests ${left}.`,
   } satisfies Record<
     InvoiceExceptionKind,
     (v: { left: string; held: string; noun: string }) => string
   >,
   // R-130: while it can reopen, that is the first way to collect the rest.
   nextReopen: ({ held, left, noun }: { left: string; held: string; noun: string }) =>
-    `${held} is held for the payer. To collect the remaining ${left}, reopen the checkout or send a new ${noun}.`,
+    `${held} is held for the payer. Reopen to count it toward this ${noun}, or send a new ${noun} for ${left}.`,
   lateHeld: (late: string) =>
     `${late} arrived after the checkout closed and is held for the payer.`,
   noun: { invoice: "invoice", request: "request" },
   testMode: "Test mode",
   newInvoice: "New invoice",
   newRequest: "New request",
-  newForRest: (noun: string) => `New ${noun} for the rest`,
   from: "From",
   copy: "Copy link",
   copied: "Link copied",
@@ -547,6 +551,9 @@ export const INVOICE_COPY = {
       [HISTORY_KINDS.held]: "Money held",
       [HISTORY_KINDS.settlementQueued]: "Settlement queued",
       [HISTORY_KINDS.settled]: "Settled",
+      [HISTORY_KINDS.refunded]: "Funds returned",
+      [HISTORY_KINDS.receiverSettled]: "Funds moved to wallet",
+      [HISTORY_KINDS.checkoutCloseChanged]: "Checkout close updated",
       [HISTORY_KINDS.remindersOn]: "Reminders on",
       [HISTORY_KINDS.remindersOff]: "Reminders off",
       [HISTORY_KINDS.remindersStopped]: "Reminders stopped",
@@ -577,6 +584,7 @@ export const INVOICE_COPY = {
     replacedBy: (number: string) => `By ${number}`,
     replaces: (number: string) => `Replaces ${number}`,
     // R-130: when the reopened checkout closes.
+    closeChanged: (until: string) => `Closes ${until}`,
     reopenedUntil: (close: string) => `Until ${close}`,
     // Details a kind's label leaves out.
     dropped: "No longer on the chain",

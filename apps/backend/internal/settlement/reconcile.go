@@ -14,9 +14,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/forwend/forwend/apps/backend/internal/history"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
-	"github.com/forwend/forwend/apps/backend/internal/outbox"
+	"github.com/forwend/forwend/apps/backend/internal/watcher"
 )
 
 // reconcile: our receipt (any version) with the Settled log decides first, whatever a lagging node says. A reverted
@@ -178,55 +177,41 @@ func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, i
 }
 
 func (s *Signer) confirm(ctx context.Context, in intent) error {
-	// D-15: like paid, settled needs the second RPC to agree.
-	second := s.seconds[in.chainID]
-	if second == nil {
-		return fmt.Errorf("chain %d: no second RPC to confirm the settlement of invoice %s", in.chainID, in.invoiceID)
+	primary, second := s.clients[in.chainID], s.seconds[in.chainID]
+	if primary == nil || second == nil {
+		return fmt.Errorf("chain %d needs both RPC roles for receiver evidence", in.chainID)
 	}
-	head, err := second.HeaderByNumber(ctx, finalized)
-	if err != nil {
-		return fmt.Errorf("second RPC: read finalized block: %w", err)
-	}
-	agreed, err := receiverSettled(ctx, second, common.HexToAddress(in.receive), head.Number)
-	if err != nil {
+	watch := watcher.NewChain(s.pool, in.chainID, primary.Client())
+	complete, err := watch.Receiver(ctx, second.Client(), in.invoiceID)
+	if err != nil || !complete {
 		return err
 	}
-	if !agreed {
-		slog.Warn("settlement waits for the second RPC", "invoice", in.invoiceID, "chain", in.chainID)
+	var ready bool
+	if err := s.pool.QueryRow(ctx, "SELECT reconciliation_error IS NULL FROM receiver_scans WHERE invoice_id = $1", in.invoiceID).Scan(&ready); err != nil {
+		return err
+	}
+	if !ready {
 		return nil
 	}
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("confirm settlement: %w", err)
+	if ready {
+		clients := map[uint64]*ethclient.Client{in.chainID: second}
+		book := ledger.NewService(s.pool, ledger.BalanceFrom(clients), ledger.DeployedFrom(clients))
+		if err := book.Process(ctx, in.invoiceID); err != nil {
+			return err
+		}
 	}
-	defer tx.Rollback(ctx)
-	var status string
-	if err := tx.QueryRow(ctx, "SELECT status FROM settlement_intents WHERE id = $1 FOR UPDATE", in.id).Scan(&status); err != nil {
-		return fmt.Errorf("confirm settlement: %w", err)
+	var confirmed bool
+	if err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM receiver_outflows o WHERE o.invoice_id = $1
+  AND o.kind = 'settlement' AND o.ledger_transaction_id IS NOT NULL)`, in.invoiceID).Scan(&confirmed); err != nil {
+		return err
 	}
-	if status == "confirmed" {
+	if confirmed {
 		return nil
 	}
-	if err := ledger.BookSettlement(ctx, tx, in.invoiceID, in.amount); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(ctx, `
-		WITH i AS (UPDATE settlement_intents SET status = 'confirmed', tx_hash = $3, updated_at = now() WHERE id = $1)
-		UPDATE invoices SET settlement_status = 'settled' WHERE id = $2`, in.id, in.invoiceID, in.txHash); err != nil {
-		return fmt.Errorf("confirm settlement: %w", err)
-	}
-	if err := outbox.Queue(ctx, tx, outbox.Settled, in.invoiceID, nil); err != nil {
-		return err
-	}
-	var settled history.Data
-	if in.txHash != nil {
-		settled.TxHash = *in.txHash
-	}
-	if err := history.Add(ctx, tx, in.invoiceID, history.Settled, history.System, settled); err != nil {
-		return err
-	}
-	slog.Info("settled", "invoice", in.invoiceID, "amount", in.amount.String())
-	return tx.Commit(ctx)
+	_, err = s.pool.Exec(ctx, `UPDATE settlement_intents SET reason = 'receiver settlement evidence remains unreconciled',
+  wait = $2, attempts = attempts + 1, next_attempt_at = `+backoff+`, updated_at = now()
+  WHERE id = $1 AND status <> 'confirmed'`, in.id, waitUnresolved)
+	return err
 }
 
 const backoff = "now() + least(interval '1 minute' * power(2, least(attempts, 6)), interval '1 hour')"

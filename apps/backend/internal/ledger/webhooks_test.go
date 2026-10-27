@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/forwend/forwend/apps/backend/internal/history/historytest"
+	"github.com/forwend/forwend/apps/backend/internal/ledger/ledgertest"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -102,6 +103,7 @@ func TestReorgAndReopenBecomeWebhookEvents(t *testing.T) {
 	s.transfer(short, shortReceive, 1000000, 900, "confirmed")
 	s.finalizedAt(1100)
 	s.process(short)
+	ledgertest.Checkpoint(t, s.pool, short, 100, 1100, "1000000")
 	if err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		return Reopen(ctx, tx, short, 50000)
 	}); err != nil {

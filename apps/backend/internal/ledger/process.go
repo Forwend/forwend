@@ -18,23 +18,44 @@ const BalanceTimeout = 10 * time.Second
 // Invoices with a deposit to book go first, so new money is booked even when the round runs out of time (R-120).
 // ponytail: scans every open invoice each run; index by due work if it grows.
 func (s *Service) ProcessChain(ctx context.Context, chainID uint64) error {
+	return s.processChain(ctx, chainID, true)
+}
+
+func (s *Service) processChain(ctx context.Context, chainID uint64, requireCoverage bool) error {
 	rows, err := s.pool.Query(ctx, `
-		SELECT id FROM (SELECT i.id, i.payment_status, EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = i.id
-		        AND t.status = 'confirmed' AND NOT t.booked) AS money
-		    FROM invoices i WHERE i.chain_id = $1) i
-		WHERE money OR (payment_status IN ('open', 'detected', 'partially_paid')
-		    AND NOT EXISTS (SELECT 1 FROM invoice_balance_alerts a WHERE a.invoice_id = i.id AND a.next_check_at > now()))
-		ORDER BY money DESC`, chainID)
+  SELECT id, certified FROM (SELECT i.id, i.payment_status,
+   EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = i.id AND t.status = 'confirmed' AND NOT t.booked)
+   OR EXISTS (SELECT 1 FROM receiver_outflows o WHERE o.invoice_id = i.id AND o.kind <> 'recovery'
+              AND o.ledger_transaction_id IS NULL) AS money,
+   NOT $2 OR coalesce(scan.opening_checked AND scan.reconciliation_error IS NULL AND scan.booking_error IS NULL
+    AND scan.scanned_block >= cursor.last_finalized_block AND NOT EXISTS (
+     SELECT 1 FROM chain_transfers d WHERE d.invoice_id = i.id AND d.status = 'confirmed'
+     AND NOT EXISTS (SELECT 1 FROM receiver_deposit_proofs p WHERE p.chain_transfer_id = d.id)),false) AS certified
+   FROM invoices i JOIN receiver_scans scan ON scan.invoice_id = i.id
+   JOIN chain_cursors cursor ON cursor.chain_id = i.chain_id WHERE i.chain_id = $1) i
+  WHERE money OR (payment_status IN ('open','detected','partially_paid') AND NOT EXISTS
+   (SELECT 1 FROM invoice_balance_alerts a WHERE a.invoice_id = i.id AND a.next_check_at > now()))
+  ORDER BY money DESC`, chainID, requireCoverage)
 	if err != nil {
 		return fmt.Errorf("list chain %d invoices to process: %w", chainID, err)
 	}
-	ids, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	type work struct {
+		ID        string
+		Certified bool
+	}
+	ids, err := pgx.CollectRows(rows, pgx.RowToStructByPos[work])
 	if err != nil {
 		return fmt.Errorf("list chain %d invoices to process: %w", chainID, err)
 	}
 	var errs []error // one invoice's failure must not stop the others
-	for _, id := range ids {
-		if err := s.Process(ctx, id); err != nil {
+	for _, item := range ids {
+		var err error
+		if item.Certified {
+			err = s.Process(ctx, item.ID)
+		} else {
+			err = s.observe(ctx, item.ID)
+		}
+		if err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -56,23 +77,40 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	}
 
 	var (
-		amountText, current, refund, token, receive, factory, group string
-		chainID, finalizedBlock                                     uint64
-		closesAt, finalizedTime                                     int64
-		options                                                     bool
+		amountText, current, refund, settlementState, token, receive, factory, group string
+		chainID, finalizedBlock                                                      uint64
+		closesAt, finalizedTime                                                      int64
+		options                                                                      bool
 	)
 	err = tx.QueryRow(ctx, `
-		SELECT i.amount::text, i.payment_status, i.refund_status, i.token_contract, i.receive_address,
+		SELECT i.amount::text, i.payment_status, i.refund_status, i.settlement_status, i.token_contract, i.receive_address,
 		       i.factory_address, i.chain_id, i.closes_at, coalesce(c.last_finalized_time, 0),
 		       coalesce(c.last_finalized_block, 0),
 		       coalesce(i.main_id, i.id), i.main_id IS NOT NULL OR EXISTS (SELECT 1 FROM invoices o WHERE o.main_id = i.id)
 		FROM invoices i LEFT JOIN chain_cursors c ON c.chain_id = i.chain_id WHERE i.id = $1 FOR NO KEY UPDATE OF i`,
-		invoiceID).Scan(&amountText, &current, &refund, &token, &receive, &factory, &chainID, &closesAt, &finalizedTime,
+		invoiceID).Scan(&amountText, &current, &refund, &settlementState, &token, &receive, &factory, &chainID, &closesAt, &finalizedTime,
 		&finalizedBlock, &group, &options)
 	if err != nil {
 		return fmt.Errorf("read invoice %s: %w", invoiceID, err)
 	}
 
+	var identityConflict bool
+	if err := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM receiver_conflicts WHERE invoice_id = $1) OR EXISTS (SELECT 1 FROM receiver_scans WHERE invoice_id = $1 AND booking_error IS NOT NULL)", invoiceID).Scan(&identityConflict); err != nil {
+		return err
+	}
+	if identityConflict {
+		return tx.Commit(ctx)
+	}
+	var negative bool
+	if err := tx.QueryRow(ctx, "SELECT "+negativeBalancesSQL("$1"), invoiceID).Scan(&negative); err != nil {
+		return err
+	}
+	if negative {
+		if _, err := tx.Exec(ctx, "UPDATE receiver_scans SET booking_error = 'negative_legacy_balance' WHERE invoice_id = $1", invoiceID); err != nil {
+			return err
+		}
+		return tx.Commit(ctx)
+	}
 	var anyTransfer, anyPending bool
 	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM chain_transfers WHERE invoice_id = $1 AND status <> 'reorged'),
 		EXISTS (SELECT 1 FROM chain_transfers WHERE invoice_id = $1 AND status = 'detected')`,
@@ -90,24 +128,34 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 			return fmt.Errorf("read invoice %s chosen option: %w", group, err)
 		}
 		if chosen == nil {
-			// An earlier transfer may still come on a chain not read that far, so the first counts only once every
-			// other enabled option chain was read past its time (R-119). Until then no row changes, so none expires.
+			// Global chain progress does not prove historical coverage for each competing receiver (R-119).
 			var first string
 			var ready bool
 			err := tx.QueryRow(ctx, `SELECT t.invoice_id, NOT EXISTS (SELECT 1 FROM invoices o
 				    JOIN chains c ON c.chain_id = o.chain_id AND c.enabled
-				    LEFT JOIN chain_cursors cur ON cur.chain_id = o.chain_id
-				    WHERE (o.id = $1 OR o.main_id = $1) AND o.chain_id <> t.chain_id
-				      AND coalesce(cur.last_scanned_time, 0) <= t.block_time)
+				    LEFT JOIN receiver_scans scan ON scan.invoice_id = o.id
+       WHERE (o.id = $1 OR o.main_id = $1)
+       AND (NOT coalesce(scan.opening_checked, false) OR scan.reconciliation_error IS NOT NULL OR scan.booking_error IS NOT NULL
+            OR CASE WHEN o.chain_id = t.chain_id THEN (coalesce(scan.scanned_block,-1) < t.block_number OR coalesce(scan.block_time,0) < t.block_time)
+                    ELSE coalesce(scan.block_time,0) <= t.block_time END))
 				FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id
-				WHERE (i.id = $1 OR i.main_id = $1) AND t.status <> 'reorged'
-				ORDER BY t.block_time, t.chain_id, t.block_number, t.log_index LIMIT 1`, group).Scan(&first, &ready)
+				WHERE (i.id = $1 OR i.main_id = $1) AND t.status = 'confirmed' AND t.block_time <= i.closes_at
+      AND EXISTS (SELECT 1 FROM receiver_deposit_proofs p WHERE p.chain_transfer_id = t.id)
+    ORDER BY t.block_time, t.chain_id, t.block_number, t.log_index LIMIT 1`, group).Scan(&first, &ready)
 			switch {
-			case errors.Is(err, pgx.ErrNoRows): // no money on any option yet
+			case errors.Is(err, pgx.ErrNoRows):
+				var seen bool
+				if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id
+     WHERE coalesce(i.main_id,i.id) = $1 AND t.status <> 'reorged' AND t.block_time <= i.closes_at)`, group).Scan(&seen); err != nil {
+					return err
+				}
+				if seen {
+					return recordAwaitingChoice(ctx, tx, invoiceID, group, current)
+				}
 			case err != nil:
 				return fmt.Errorf("read invoice %s first paid option: %w", group, err)
 			case !ready:
-				return nil
+				return recordAwaitingChoice(ctx, tx, invoiceID, group, current)
 			default:
 				if _, err := tx.Exec(ctx, "UPDATE invoices SET chosen_id = $2 WHERE id = $1", group, first); err != nil {
 					return fmt.Errorf("choose invoice %s option %s: %w", group, first, err)
@@ -118,13 +166,33 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 				chosen = &first
 			}
 		}
+		if chosen != nil {
+			var conflict bool
+			if err := tx.QueryRow(ctx, `WITH evidence AS (
+              SELECT d.invoice_id,d.block_time,d.chain_id,d.block_number,d.log_index FROM chain_transfers d
+              JOIN invoices i ON i.id = d.invoice_id JOIN receiver_deposit_proofs p ON p.chain_transfer_id = d.id
+              WHERE coalesce(i.main_id,i.id) = $1 AND d.status = 'confirmed' AND d.block_time <= i.closes_at
+            ), first_chosen AS (SELECT * FROM evidence WHERE invoice_id = $2 ORDER BY block_time,chain_id,block_number,log_index LIMIT 1)
+            SELECT EXISTS (SELECT 1 FROM evidence e CROSS JOIN first_chosen c WHERE e.invoice_id <> c.invoice_id
+              AND (e.block_time,e.chain_id,e.block_number,e.log_index) < (c.block_time,c.chain_id,c.block_number,c.log_index))`, group, *chosen).Scan(&conflict); err != nil {
+				return err
+			}
+			if conflict {
+				if _, err := tx.Exec(ctx, `UPDATE receiver_scans s SET booking_error = 'legacy_option_choice' FROM invoices i
+                  WHERE i.id = s.invoice_id AND coalesce(i.main_id,i.id) = $1`, group); err != nil {
+					return err
+				}
+				return tx.Commit(ctx)
+			}
+		}
 		if chosen == nil && finalizedTime > closesAt {
 			// A payment made before the close may still come on an option chain not read past it.
 			if err := tx.QueryRow(ctx, `SELECT NOT EXISTS (SELECT 1 FROM invoices o
 				    JOIN chains c ON c.chain_id = o.chain_id AND c.enabled
-				    LEFT JOIN chain_cursors cur ON cur.chain_id = o.chain_id
-				    WHERE (o.id = $1 OR o.main_id = $1) AND o.chain_id <> $2
-				      AND coalesce(cur.last_scanned_time, 0) <= $3)`, group, chainID, closesAt).Scan(&closedEverywhere); err != nil {
+				    LEFT JOIN receiver_scans scan ON scan.invoice_id = o.id
+       WHERE (o.id = $1 OR o.main_id = $1)
+       AND (NOT coalesce(scan.opening_checked,false) OR scan.reconciliation_error IS NOT NULL OR scan.booking_error IS NOT NULL
+            OR coalesce(scan.block_time,0) <= o.closes_at))`, group).Scan(&closedEverywhere); err != nil {
 				return fmt.Errorf("read invoice %s option chains past its close: %w", group, err)
 			}
 		}
@@ -138,27 +206,18 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	}
 	owed.Neg(owed) // credit balances are negative
 
-	// In chain order: a deposit waits while an earlier one is still detected, so the earliest payers are paid to the
-	// creator first and later ones held for refund (D-27).
-	rows, err := tx.Query(ctx, `
-		SELECT id, amount::text, block_time FROM chain_transfers t
-		WHERE invoice_id = $1 AND status = 'confirmed' AND NOT booked
-		  AND NOT EXISTS (SELECT 1 FROM chain_transfers d WHERE d.invoice_id = t.invoice_id AND d.status = 'detected'
-		                  AND (d.block_number, d.log_index) < (t.block_number, t.log_index))
-		ORDER BY block_number, log_index`, invoiceID)
+	if err := attachLegacySettlement(ctx, tx, invoiceID); err != nil {
+		return err
+	}
+	movements, err := pendingMovements(ctx, tx, invoiceID)
 	if err != nil {
-		return fmt.Errorf("read invoice %s deposits: %w", invoiceID, err)
+		return err
 	}
-	type confirmed struct { // exported fields: pgx fills them by position
-		ID        int64
-		Amount    string
-		BlockTime int64
-	}
-	deposits, err := pgx.CollectRows(rows, pgx.RowToStructByPos[confirmed])
-	if err != nil {
-		return fmt.Errorf("read invoice %s deposits: %w", invoiceID, err)
-	}
-	final := Final(current)
+	depositsBooked := 0
+	paidRecorded := false
+	eventExpired := false
+	eventClosed := false
+	final := Final(current) || settlementState == "settled"
 	newlyHeld := new(big.Int)        // told to the owner once per run (R-80)
 	heldFor := map[string]*big.Int{} // the same by reason, for the history
 	hold := func(reason string, value *big.Int) {
@@ -171,17 +230,83 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		heldFor[reason].Add(heldFor[reason], value)
 		newlyHeld.Add(newlyHeld, value)
 	}
-	for _, d := range deposits {
+	for _, d := range movements {
+		if d.Kind != "deposit" {
+			ready, err := receiverEvidence(ctx, tx, invoiceID, d.BlockNumber)
+			if err != nil {
+				return err
+			}
+			if ready && !final && closedEverywhere && d.BlockTime > closesAt && owed.Sign() == 0 {
+				final, eventClosed = true, true
+			}
+			if ready && !final && d.BlockTime > closesAt && owed.Sign() > 0 && owed.Cmp(amount) < 0 {
+				if err := book(ctx, tx, invoiceID, "expiry", nil, new(big.Int), new(big.Int).Neg(owed), owed); err != nil {
+					return err
+				}
+				hold(HeldExpired, owed)
+				owed.SetInt64(0)
+				final, eventExpired = true, true
+			}
+			if proved, err := captureFunding(ctx, tx, invoiceID, d, amount); err != nil {
+				return err
+			} else if proved && current != Paid && !paidRecorded {
+				if err := recordHistoricalPaid(ctx, tx, invoiceID, shown); err != nil {
+					return err
+				}
+				paidRecorded = true
+				final = true
+			}
+			booked, err := bookOutflow(ctx, tx, invoiceID, d, amount, shown)
+			if err != nil {
+				return err
+			}
+			if !booked {
+				break
+			}
+			if d.Kind == "settlement" {
+				final = true
+			}
+			owed, err = currentPayable(ctx, tx, invoiceID)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+		var future bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM chain_transfers WHERE invoice_id = $1 AND booked
+   AND (block_number, log_index) > ($2,$3))`, invoiceID, d.BlockNumber, d.LogIndex).Scan(&future); err != nil {
+			return err
+		}
+		if future {
+			if _, err := tx.Exec(ctx, "UPDATE receiver_scans SET booking_error = 'historical_deposit_order' WHERE invoice_id = $1", invoiceID); err != nil {
+				return err
+			}
+			break
+		}
 		value, _ := new(big.Int).SetString(d.Amount, 10)
 		late := d.BlockTime > closesAt
 		toCreator, toHeld := split(amount, owed, value, late, final || superseded)
 		if err := book(ctx, tx, invoiceID, "deposit", &d.ID, value, toCreator, toHeld); err != nil {
 			return err
 		}
+		depositsBooked++
 		owed.Add(owed, toCreator)
 		hold(heldReason(current, late, superseded), toHeld)
+		after := d
+		after.LogIndex++
+		if proved, err := captureFunding(ctx, tx, invoiceID, after, amount); err != nil {
+			return err
+		} else if proved {
+			final = true
+			if current != Paid && !paidRecorded {
+				if err := recordHistoricalPaid(ctx, tx, invoiceID, shown); err != nil {
+					return err
+				}
+				paidRecorded = true
+			}
+		}
 	}
-	if len(deposits) > 0 { // new money: an unexplained balance may be explained now
+	if depositsBooked > 0 { // new money: an unexplained balance may be explained now
 		if _, err := tx.Exec(ctx, "DELETE FROM invoice_balance_alerts WHERE invoice_id = $1", invoiceID); err != nil {
 			return fmt.Errorf("clear invoice %s balance alert: %w", invoiceID, err)
 		}
@@ -201,13 +326,31 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 			return err
 		}
 	}
+	historicalFunding, err := hasFunding(ctx, tx, invoiceID)
+	if err != nil {
+		return err
+	}
 	next := status(current, amount, owed, anyTransfer, mayExpire, funded)
+	if historicalFunding && current != Canceled && current != Expired && current != ExpiredPartiallyPaid {
+		next = Paid
+	}
+	if eventExpired {
+		next = ExpiredPartiallyPaid
+	}
+	if eventClosed {
+		next = Expired
+	}
+	if current == PartiallyPaid && next == Detected {
+		next = PartiallyPaid
+	}
 	if next == ExpiredPartiallyPaid && current != ExpiredPartiallyPaid {
 		// Held for the payer (D-26): what was owed to the creator is theirs again only if the owner reopens (R-130).
-		if err := book(ctx, tx, invoiceID, "expiry", nil, new(big.Int), new(big.Int).Neg(owed), owed); err != nil {
-			return err
+		if !eventExpired {
+			if err := book(ctx, tx, invoiceID, "expiry", nil, new(big.Int), new(big.Int).Neg(owed), owed); err != nil {
+				return err
+			}
+			hold(HeldExpired, owed)
 		}
-		hold(HeldExpired, owed)
 		// A reopen must end before the receiver's settle window does (R-130).
 		readCtx, cancel := context.WithTimeout(ctx, BalanceTimeout)
 		deployedAt, err := s.deployed(readCtx, chainID, factory, receive)
@@ -215,7 +358,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		if err != nil {
 			return fmt.Errorf("check invoice %s receiver: %w", invoiceID, err)
 		}
-		if _, err := tx.Exec(ctx, "UPDATE invoices SET receiver_deployed_at = $2 WHERE id = $1",
+		if _, err := tx.Exec(ctx, "UPDATE invoices SET receiver_deployed_at = $2 WHERE id = $1 AND receiver_deployed_at IS NULL",
 			invoiceID, int64(deployedAt)); err != nil {
 			return fmt.Errorf("record invoice %s receiver deploy time: %w", invoiceID, err)
 		}
@@ -224,21 +367,32 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	if err != nil {
 		return err
 	}
-	if held.Sign() != 0 && refund == "none" {
+	if held.Sign() != 0 {
 		refund = "held"
+	} else {
+		var returned bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = $1
+   AND kind = 'refund' AND ledger_transaction_id IS NOT NULL)`, invoiceID).Scan(&returned); err != nil {
+			return err
+		}
+		if returned {
+			refund = "refunded"
+		} else {
+			refund = "none"
+		}
 	}
 	if _, err := tx.Exec(ctx, "UPDATE invoices SET payment_status = $2, refund_status = $3 WHERE id = $1",
 		invoiceID, next, refund); err != nil {
 		return fmt.Errorf("update invoice %s status: %w", invoiceID, err)
 	}
 	// Only the shown row's status is history: an option not chosen doesn't change the invoice's status.
-	if shown && next != current {
+	if shown && next != current && !(next == Paid && paidRecorded) {
 		if err := history.Add(ctx, tx, invoiceID, "invoice."+next, history.System, history.Data{}); err != nil {
 			return err
 		}
 	}
 	// Paid before held: the owner reads that it was paid, then that the extra is the payer's.
-	if next == Paid && current != Paid {
+	if next == Paid && current != Paid && !paidRecorded {
 		if err := outbox.Queue(ctx, tx, outbox.Paid, invoiceID, nil); err != nil {
 			return err
 		}
@@ -247,8 +401,12 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		}
 	}
 	if newlyHeld.Sign() > 0 {
-		if err := outbox.Queue(ctx, tx, outbox.Held, invoiceID, newlyHeld); err != nil {
-			return err
+		netHeld := new(big.Int).Neg(held)
+		notice := minInt(newlyHeld, netHeld)
+		if notice.Sign() > 0 {
+			if err := outbox.Queue(ctx, tx, outbox.Held, invoiceID, notice); err != nil {
+				return err
+			}
 		}
 		for _, reason := range heldReasons {
 			if heldFor[reason] == nil {
@@ -263,7 +421,11 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 			}
 		}
 	}
-	if next == Paid && current != Paid {
+	var settled bool
+	if err := tx.QueryRow(ctx, "SELECT settlement_status = 'settled' FROM invoices WHERE id = $1", invoiceID).Scan(&settled); err != nil {
+		return err
+	}
+	if next == Paid && current != Paid && !settled {
 		// The signer settles it; one intent per invoice (R-22).
 		if _, err := tx.Exec(ctx, `WITH i AS (INSERT INTO settlement_intents (invoice_id) VALUES ($1) ON CONFLICT DO NOTHING)
 			UPDATE invoices SET settlement_status = 'pending' WHERE id = $1`, invoiceID); err != nil {
@@ -273,7 +435,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 			return err
 		}
 	}
-	if len(deposits) > 0 {
+	if depositsBooked > 0 {
 		// A payment-link invoice takes the profile's next number with its first booked deposit (D-50, R-141). Last,
 		// so the profile row isn't locked while the second RPC is read.
 		tag, err := tx.Exec(ctx, `WITH n AS (UPDATE profiles p SET invoice_seq = invoice_seq + 1 FROM invoices m

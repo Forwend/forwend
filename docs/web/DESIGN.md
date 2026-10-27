@@ -452,6 +452,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - Pressing it opens the optional field there, with Send inside its row and a line that the address is used for this
       receipt only (R-82).
     - Before any money the row is not there: there is nothing to send a receipt for.
+  - Confirmed returns show their recorded amount, network and latest transaction beside the payment record.
+  - Unresolved evidence and exceptional authority movements show a plain review notice; unresolved payments offer no send action.
+  - A closed option keeps the selector when another option remains available. Each address uses its own effective close.
   - Closed: one line that says so.
   - Paid: a left-aligned receipt replaces the panel.
     - A check that scales in, beside "Paid" and "You can close this page."

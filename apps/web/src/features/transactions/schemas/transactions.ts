@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DOCUMENT_KINDS, PAYMENT_PURPOSES } from "@/features/invoices/constants/invoices";
 import {
   TRANSACTION_DIRECTIONS,
   type TRANSACTION_STATUSES,
@@ -34,6 +35,15 @@ export const transactionSchema = z.object({
   usdValue: usdAmount,
   classification: openEnum<TransactionClass>(),
   labelable: z.boolean(),
+  payment: z
+    .object({
+      paymentId: hash32,
+      purpose: z.enum(PAYMENT_PURPOSES),
+      documentKind: z.enum(DOCUMENT_KINDS),
+      policyException: z.string().nullable(),
+      unreconciled: z.boolean(),
+    })
+    .optional(),
   invoice: z
     .object({ invoiceId: hash32, number: count, clientName: z.string().nullable() })
     .nullable(),

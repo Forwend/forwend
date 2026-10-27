@@ -21,6 +21,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/finality"
 	"github.com/forwend/forwend/apps/backend/internal/history"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 	"github.com/jackc/pgx/v5"
 )
@@ -251,6 +252,7 @@ type Invoice struct {
 	Options          []Option  // every accepted option, the current one included; set by Get
 	Number           *int64    // per profile; nil for document-free checkout and legacy link attempts before their first deposit
 	chain.Asset                // Symbol and Decimals set by Get
+	Amounts          *ledger.Amounts
 	Amount           *big.Int
 	Recipient        string
 	Factory          string
@@ -325,6 +327,8 @@ type Option struct {
 	Amount         *big.Int
 	ReceiveAddress string
 	Deposits       []Deposit // set by Get
+	Amounts        *ledger.Amounts
+	ClosesAt       time.Time
 }
 
 // Deposit is a non-reorged transfer to the receive address; Progress counts blocks until final (R-28).

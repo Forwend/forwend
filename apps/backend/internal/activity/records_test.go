@@ -8,13 +8,15 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/forwend/forwend/apps/backend/internal/ledger/ledgertest"
 )
 
 // R-108.
 func TestTransferClassification(t *testing.T) {
 	pool := open(t)
 	ctx := context.Background()
-	const mine, second, stranger = "0x000000000000000000000000000000000000000a",
+	const mine, second, stranger = "0x1111111111111111111111111111111111111111",
 		"0x000000000000000000000000000000000000000b", "0x000000000000000000000000000000000000000c"
 	var profile, other string
 	if err := pool.QueryRow(ctx, `
@@ -48,7 +50,7 @@ func TestTransferClassification(t *testing.T) {
 		hash := fmt.Sprintf("0x%064x", n)
 		exec(t, pool, `INSERT INTO wallet_transfers (chain_id, chain_family, token_contract, wallet_address, direction,
 			    counterparty, tx_hash, log_index, block_hash, block_number, block_time, amount, status)
-			VALUES (84532, 'evm', $1, $2, $3, $4, $5, 0, $5, $6::bigint, $6::bigint * 100, 1500000, 'confirmed')`,
+			VALUES (84532, 'evm', $1, $2, $3, $4, $5, 0, $5, $6::bigint, $6::bigint * 100, 5000000, 'confirmed')`,
 			usdc, mine, direction, counterparty, hash, n)
 		return hash
 	}
@@ -60,6 +62,8 @@ func TestTransferClassification(t *testing.T) {
 	fromBob := add(6, "in", theirs)
 	theirInvoice := add(7, "in", fmt.Sprintf("0x33%038x", 2))
 	option := add(8, "in", fmt.Sprintf("0x33%038x", 3))
+	ledgertest.Settlement(t, pool, invoice, paid, false)
+	ledgertest.Settlement(t, pool, fmt.Sprintf("0x%064x", 3), option, true)
 
 	s := NewService(pool)
 	classes := func(from, to int64) map[string]string {
@@ -75,14 +79,14 @@ func TestTransferClassification(t *testing.T) {
 				it.Invoice.Number != 1) {
 				t.Fatalf("%s paid %+v, want the main invoice %s, number 1", it.TxHash, it.Invoice, invoice)
 			}
-			if it.Labelable() != (out[it.TxHash] == ClassUnclassified || out[it.TxHash] == LabelIncome) {
+			if it.Labelable() != (out[it.TxHash] == ClassUnclassified || out[it.TxHash] == LabelIncome || out[it.TxHash] == ClassPaymentException) {
 				t.Fatalf("%s (%s) labelable %v", it.TxHash, out[it.TxHash], it.Labelable())
 			}
 		}
 		return out
 	}
 	want := map[string]string{paid: ClassInvoice, ownIn: ClassOwnTransfer, ownOut: ClassOwnTransfer, sent: ClassSent,
-		unknown: ClassUnclassified, fromBob: ClassUnclassified, theirInvoice: ClassUnclassified, option: ClassInvoice}
+		unknown: ClassUnclassified, fromBob: ClassUnclassified, theirInvoice: ClassUnclassified, option: ClassPaymentException}
 	if got := classes(0, 1000); !reflect.DeepEqual(got, want) {
 		t.Fatalf("classes %v, want %v", got, want)
 	}

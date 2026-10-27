@@ -15,7 +15,9 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 - Reopen (R-130) gives money held for the payer back to the creator. Only for an option that closed partly paid.
   - Once per invoice, a day or more before its receiver's settle deadline, so a payment at the new close still settles.
   - A receiver deployed early, by a recovery, settles only until 30 days after its deploy (`MAX_HOLD`).
-  - So the ledger stores the deploy time when the option closes partly paid, and the reopen ends before that limit.
+  - Both RPC roles verify deployment time at the receiver scan checkpoint; known positive deployment evidence never moves back to zero.
+  - An early deployment shortens operational `closesAt` to one day before settlement ends. Signed terms remain unchanged.
+  - The canary independently verifies a shortened close against both providers' finalized deployment state.
   - Not while a refund is under way: that money goes back to the payer.
   - The database allows the status back only with `reopened_until`, once.
   - It allows reopen rows only between the first expiry and a second.
@@ -24,6 +26,21 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 - The recipient is the profile wallet read from Privy, never from the request. The contract can't tell a wrong one.
 - The recipient wallet must exist on the invoice's chain before the invoice is created.
 - Receivers are deployed only when settling, refunding or recovering.
+
+## Receiver evidence and actual outflows
+
+- Migration 78 seeds bounded historical scans for existing receivers; new receivers start at the saved chain cursor.
+- Nonzero opening balances require scanning from genesis. Empty historical token code is verified before treating balance as zero.
+- Both RPC roles must agree on finalized headers, incoming transfers, receiver events, outgoing transfers and checkpoint balance.
+- Every confirmed deposit needs its own immutable proof; a later primary observation cannot borrow an older scan checkpoint.
+- Receiver events retain block, transaction and log identity. Exact outgoing transfer identity supports wallet attribution.
+- Coverage commits with source observations. Booking runs separately and preserves unexplained balances, source conflicts and allocation errors.
+- Refunds consume net held before payable. Settlements consume payable before held, with policy exceptions recorded explicitly.
+- Historical fully funded prefixes retain payment truth after actual returns; returned partial deposits cannot accumulate into a false payment.
+- Native or unsupported-asset movements never invent accepted-token deposits or financial bookings.
+- Old financial allocations remain permanent. Incompatible historical evidence requires review instead of rewriting balances.
+- Scanner and ledger lock invoice groups before scan rows. Failed receivers retry later without blocking the whole queue.
+- Refund claims and execution controls remain in PLAN 11.10.
 
 ## Deciding "paid"
 

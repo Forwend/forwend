@@ -9,6 +9,7 @@ import (
 )
 
 type Payment struct {
+	Amounts          *Amounts             `json:"amounts,omitempty"`
 	PaymentID        string               `json:"paymentId"`
 	Purpose          invoice.Purpose      `json:"purpose"`
 	DocumentKind     invoice.DocumentKind `json:"documentKind"`
@@ -33,7 +34,7 @@ type Payment struct {
 }
 
 func FromInvoice(inv invoice.Invoice, webURL string) Payment {
-	p := Payment{PaymentID: inv.ID, Purpose: inv.Purpose, DocumentKind: inv.DocumentKind, Number: inv.Number,
+	p := Payment{Amounts: FromAmounts(inv.Amounts), PaymentID: inv.ID, Purpose: inv.Purpose, DocumentKind: inv.DocumentKind, Number: inv.Number,
 		StoreID: httpio.OrNull(inv.StoreID), StoreName: httpio.OrNull(inv.StoreName), LinkID: httpio.OrNull(inv.LinkID),
 		Livemode: inv.Livemode, Title: httpio.OrNull(inv.Title), Reference: httpio.OrNull(inv.Reference),
 		ChainID: inv.ChainID, Token: inv.Token, Amount: inv.Amount.String(), PaymentStatus: inv.PaymentStatus,

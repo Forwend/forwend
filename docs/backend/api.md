@@ -493,17 +493,20 @@ R-19 and R-42; the full schema is in openapi.yaml.
   (the invoice's first option), `quantity` with 2 decimals; Postgres refuses a changed, removed or later line and lines
   that do not add up to the invoice's amount at commit.
 - The number, these fields and `issuer` never change, like the terms: a database trigger rejects any update.
-- `settlementTxHash` is the signer's settle transaction once the invoice is settled; null before, and when the refund
-  authority settled the receiver outside the signer. The activity's invoice items carry it as `txHash`. They also carry `optionCount`: above 1 the client chooses, so
-  the item reads in USD, not in the first option's token it names (R-70). A deposit item carries `held`: the owner
-  gets none of it (late, on a final or canceled invoice, on one that expired partly paid, or on an option the client did
-  not pay with), so it is filed
-  under no status filter, only the full list (D-26).
+- `settlementTxHash` identifies the actual booked receiver settlement, including an authority settlement outside the signer.
+  - Legacy records without receiver evidence retain their previous transaction reference and require reconciliation.
+  - Deposit activity preserves gross observed movements; net liabilities come from `amounts`.
 - An invoice (read, list, create) carries `confirming`: a payment before the close is seen and not final. A
   `partially_paid` invoice keeps that status while the rest confirms, so readers show it as confirming (R-69).
-- An invoice read alone (either GET, and create) also has `paidAt` and `settledAt`, null until reached. `paidAt`
-  is the receipt's paid time (below); `settledAt` is when the settlement was recorded as final: the `created_at` of
-  the ledger's settlement transaction, written with `settlementStatus = settled`. List items have neither.
+- An invoice read alone also has `paidAt` and `settledAt`, null until reached.
+  - `paidAt` identifies the completed payment; `settledAt` uses the actual settlement block time.
+  - Legacy settlement records without source evidence retain their recorded ledger time.
+- Detail reads and payment reads expose `amounts` in the selected option's base units.
+  - `receiver`, `payable` and `held` are current net balances; `settled` and `refunded` are booked outflow totals.
+  - `observedRefunded` and `lastReturnTxHash` expose confirmed returns, including returns still awaiting financial attribution.
+  - `unreconciled` means coverage, source identity or booking needs review. Negative legacy balances remain visible.
+  - `hasPolicyException` identifies an authority movement outside ordinary allocation policy, even when its accounting fully reconciles.
+  - Each option carries its own `amounts` and effective `closesAt`.
 - Each of its `deposits` has the sender `from` (lowercase hex, as stored) and `blockTime` (the block's time, RFC 3339
   UTC), from the stored transfer.
 - `GET /v1/profiles/{profileId}/invoices?limit=&cursor=&status=&q=`: the list format above, highest number (newest)
@@ -547,12 +550,15 @@ R-19 and R-42; the full schema is in openapi.yaml.
 - `POST /v1/profiles/{profileId}/invoices/{invoiceId}/reopen` (R-130) reopens an invoice that closed partly paid.
   - Only once, and a day or more before its receiver's settle deadline.
   - That deadline is the settle deadline, or 30 days after an early receiver deploy if sooner.
-  - Not while a refund is under way.
+  - Confirmed refunds or settlements prevent reopening. A matching verified receiver checkpoint is required.
+  - Missing evidence returns 409 `payment_reconciliation_pending`; eligibility failures return `invoice_not_reopenable`.
   - Otherwise 409 `invoice_not_reopenable`.
   - Its checkout opens again until a day before that deadline, at the same address and terms.
   - It locks the rows the ledger locks, in its order.
   - `ledger.Reopen` books the reopen (see architecture.md).
-  - Every read returns `closesAt`: `expiresAt`, or the reopened close. Readers decide "closed" from it.
+  - `closesAt` includes an earlier operational close after verified early deployment, leaving one day before settlement ends.
+  - Signed terms and receive addresses remain unchanged.
+  - Before a choice, the group stays open while any option remains open; each option retains its own deadline.
   - The owner's reads return `reopenUntil`: the close a reopen would give now, or null.
   - History gets `invoice.reopened`, its `until` the new close.
 - `POST /v1/profiles/{profileId}/invoices/{invoiceId}/cancel` (R-79, D-79): cancels the invoice and every option of
@@ -721,7 +727,10 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   (`detected` | `confirmed`, as for deposits).
 - Records (R-108): each transaction adds `usdValue` and `classification`, and `invoice` for an invoice payment.
   - `usdValue` is the amount at 1 USD per USD stablecoin (D-75, D-82), with every decimal of the token.
-  - Money in from one of the profile's invoice receive addresses is `invoice`, with `{invoiceId, number, clientName}`.
+  - `invoice` and document-free `payment` require exact booked settlement evidence, including chain, token, transaction and transfer log.
+  - `payment` references the source payment ID, purpose and document kind; billing documents retain `invoice` details.
+  - Policy exceptions or unresolved attribution produce `payment_exception`, requiring review or a manual label.
+  - A refund sent to the merchant wallet does not become invoice income.
   - Money between the user's own profiles is `own_transfer`, either way.
   - Other money out is `sent`.
   - Other money in is `unclassified` until labelled `income`, `own_transfer`, `refund` or `other`.
@@ -735,7 +744,7 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   - More than 10000 transactions in the days is 422 `too_many_transactions` (R-118): dust can't make it grow.
   - Rows go into the file as the database sends them; the request never holds every transfer.
   - Columns: date (UTC), direction, amount, token, network, counterparty, transaction, status, USD value.
-  - Then the classification, invoice number and client.
+  - Then the classification, invoice number and client; `Payment ID` follows any optional currency columns.
   - A cell starting like a formula gets a leading apostrophe.
   - So does a formula start right after a `;`, also after quotes: a spreadsheet set for a `;` list separator (de-DE,
     fr-FR) starts a cell there.

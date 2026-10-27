@@ -55,6 +55,13 @@ func (s *Service) Reopen(ctx context.Context, profileID, id string) (Invoice, er
 			locked[len(locked)-1]).Scan(&option, &status, &refund, &reopened, &deadline, &deployedAt, &linkID); err != nil {
 			return fmt.Errorf("read invoice %s: %w", id, err)
 		}
+		var returned bool
+		if err := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = $1 AND kind IN ('refund','settlement'))", option).Scan(&returned); err != nil {
+			return err
+		}
+		if returned {
+			return ErrNotReopenable
+		}
 		until := reopenClose(time.Unix(deadline, 0), deployedAt)
 		// A refund under way pays the held money back to the payer: it can't go to the creator too.
 		if status != ledger.ExpiredPartiallyPaid || refund != "held" || reopened || !s.now().Before(until) {

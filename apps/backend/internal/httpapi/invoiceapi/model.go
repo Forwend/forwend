@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/paymentio"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/webhook"
 )
@@ -51,6 +52,7 @@ type createInvoiceBody struct {
 }
 
 type invoiceJSON struct {
+	Amounts      *paymentio.Amounts   `json:"amounts,omitempty"`
 	Purpose      invoice.Purpose      `json:"purpose"`
 	DocumentKind invoice.DocumentKind `json:"documentKind"`
 	LinkID       *string              `json:"linkId,omitempty"`
@@ -176,15 +178,17 @@ type lineJSON struct {
 }
 
 type optionJSON struct {
-	OptionID       string        `json:"optionId"`
-	ChainID        uint64        `json:"chainId"`
-	Network        string        `json:"network"`
-	Token          string        `json:"token"`
-	Symbol         string        `json:"symbol"`
-	Decimals       int           `json:"decimals"`
-	Amount         string        `json:"amount"`
-	ReceiveAddress string        `json:"receiveAddress"`
-	Deposits       []depositJSON `json:"deposits"`
+	ClosesAt       string             `json:"closesAt"`
+	Amounts        *paymentio.Amounts `json:"amounts,omitempty"`
+	OptionID       string             `json:"optionId"`
+	ChainID        uint64             `json:"chainId"`
+	Network        string             `json:"network"`
+	Token          string             `json:"token"`
+	Symbol         string             `json:"symbol"`
+	Decimals       int                `json:"decimals"`
+	Amount         string             `json:"amount"`
+	ReceiveAddress string             `json:"receiveAddress"`
+	Deposits       []depositJSON      `json:"deposits"`
 }
 
 // Owner reads only; settlementWait is null when the money is not waiting.
@@ -285,7 +289,7 @@ type depositJSON struct {
 
 // withClient is for the owner only.
 func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
-	out := invoiceJSON{
+	out := invoiceJSON{Amounts: paymentio.FromAmounts(inv.Amounts),
 		Purpose: inv.Purpose, DocumentKind: inv.DocumentKind,
 		InvoiceID: inv.ID, PayToken: httpio.OrNull(inv.PayToken), OptionID: inv.OptionID, OptionLocked: inv.OptionLocked, OptionCount: inv.OptionCount, Confirming: inv.Confirming, Closed: inv.Closed, Number: inv.Number, Title: httpio.OrNull(inv.Title), Note: httpio.OrNull(inv.Note),
 		DueDate: httpio.OrNull(inv.DueDate), SupplyDate: httpio.OrNull(inv.SupplyDate), Reference: httpio.OrNull(inv.Reference), SenderName: httpio.OrNull(inv.SenderName), ReturnURL: httpio.OrNull(inv.ReturnURL), ChainID: inv.ChainID, Livemode: inv.Livemode, Token: inv.Token, Amount: inv.Amount.String(),
@@ -337,7 +341,7 @@ func toInvoiceDetailJSON(inv invoice.Invoice, withClient bool) invoiceDetailJSON
 			From: httpio.OrNull(u.From), To: httpio.OrNull(u.To)})
 	}
 	for _, o := range inv.Options {
-		out.Options = append(out.Options, optionJSON{OptionID: o.ID, ChainID: o.ChainID, Network: o.Network,
+		out.Options = append(out.Options, optionJSON{ClosesAt: o.ClosesAt.Format(time.RFC3339), Amounts: paymentio.FromAmounts(o.Amounts), OptionID: o.ID, ChainID: o.ChainID, Network: o.Network,
 			Token: o.Token, Symbol: o.Symbol, Decimals: o.Decimals, Amount: o.Amount.String(),
 			ReceiveAddress: o.ReceiveAddress, Deposits: toDepositsJSON(o.Deposits)})
 	}

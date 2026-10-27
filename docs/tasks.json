@@ -3,41 +3,41 @@
   "nextId": 336,
   "tasks": [
     {
-      "id": "F328",
+      "id": "F329",
       "type": "fix",
-      "behavior": "Make reusable-link purchases independent and recoverable",
+      "behavior": "Reconcile receiver outflows and exact settlement attribution",
       "acceptance": [
-        "Each purchase has independent identity; refresh resumes it and another purchase creates another checkout, verified with independent customer browsers.",
-        "An original request replays after link changes or disable; store attribution is immutable and activation requires merchant readiness.",
-        "Concurrent requests cannot reserve the same final capacity slot; reserved and paid counts are distinct and expiry releases unused reservations."
+        "Receiver refund and settlement observations preserve unique block/log identity, durable historical coverage and finalized independent-provider evidence.",
+        "Complete preceding records support balanced idempotent refunds held-first/payable-second and settlements payable-first/held-second; policy exceptions and unreconciled observations stay explicit without invented or negative balances.",
+        "Confirmed returns prevent reopen, later deposits remain visible, and already broadcast settlement is reconciled rather than assumed revoked.",
+        "Real-contract tests cover repeated/partial returns, paid-unsettled refunds, catch-up, multiple logs, reorgs, external settlement, native mismatch and refund-to-wallet attribution; independent balances and ledger equations reconcile."
       ],
       "dependsOn": [
-        "F327"
+        "F328"
       ],
-      "state": "passing",
+      "state": "verified",
       "verification": [
         "backend-affected",
-        "backend-e2e",
-        "web-e2e"
+        "backend-e2e"
       ],
       "refs": [
-        "R-163",
+        "R-164",
+        "R-119",
         "R-130",
-        "R-117"
+        "R-77"
       ],
       "keep": [
         "packages/contracts/src/*"
       ],
       "review": true,
       "notes": [
-        "2026-10-26 Independent backend review found the same profile-lock/event-FK cycle in invoice sending; corrected Create, link.Save and Send only. Other profile lock callers inspected and excluded because no reversed invoice/link dependency was found. Phone390 and desktop1280 screenshots inspected in docs/runs/f328-purchase-*.png. Legacy omitted fixed/open input and prior offer revision cannot be reconstructed; new immutable metadata records both.",
-        "2026-10-26 review pass by reviewer: Reviewed immutable link/source and request metadata guards, offer revisions and quote checks, original replay before mutable checks, readiness, store/key/mode boundaries, scoped edits, canonical reservations and reopen capacity. Concurrency regressions cover last slots, fresh post-lock snapshots and foreign-key lock cycles; NO KEY UPDATE preserves profile coordination. Real Postgres/Anvil tests reconcile independent purchases, settlement and late held funds without invoice numbers. Final selected checks passed; frontend reviewer reported no blockers with browser flows and phone/desktop inspection. Legacy hashes and documents remain; omitted legacy fixed/open input and old offer versions cannot be proven. No blockers remain."
+        "2026-10-27 review pass by reviewer: Reviewed dual-provider receiver source proofs, immutable migration78 evidence and rollback protection, chronological balanced outflow booking, net-liability invariants, historical paid truth, exceptional settlements, legacy reconciliation and exact chain/token/transaction/log wallet attribution. Owed null-number, unpaid-settlement rendering and stale-reopen findings are fixed with regressions. Watcher/ledger/settlement ownership stays acyclic; shared HTTP amounts stay in paymentio. All ten selected checks passed, including real Postgres race tests and real-binary Anvil reconciliation; frontend reviewer found no residual timing/status blocker. Historical conflicts remain explicit rather than rewritten; provider tests do not claim live-provider validation. No F329 blockers remain."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-26T23:42:05Z",
+        "at": "2026-10-27T01:54:12Z",
         "checks": [
           {
             "id": "harness",
@@ -65,36 +65,42 @@
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.3,
+            "seconds": 0.1,
             "log": ""
           },
           {
             "id": "backend-affected",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
+            "seconds": 234.6,
+            "log": ""
           },
           {
             "id": "backend-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 37.7,
+            "seconds": 43.6,
             "log": ""
           },
           {
             "id": "web-unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.6,
+            "seconds": 3.5,
+            "log": ""
+          },
+          {
+            "id": "node-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
             "log": ""
           },
           {
             "id": "web-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 26.5,
+            "seconds": 26.3,
             "log": ""
           },
           {
@@ -105,60 +111,25 @@
             "log": ""
           }
         ],
-        "taskHash": "877d354fb7959392",
-        "filesHash": "7dafbe6b6fead514",
+        "taskHash": "337306069c45b428",
+        "filesHash": "e6a0ee140c29065f",
         "proof": {
-          "1": "web-e2e: Independent browsers create distinct attempts; refresh, Back and storage failure preserve original input and quote; another purchase creates a new identity. Inspected phone390 and desktop1280 screenshots.",
-          "2": "backend-affected: Router retries preserve original terms after edits and disable; stale quotes fail, legacy hashes survive, SQL guards pin ownership and metadata, activation requires readiness.",
-          "3": "backend-e2e: One-slot reservations reject competitors; canonical expiration frees capacity; two distinct real-chain purchases settle independently and late funds remain held."
+          "1": "backend-affected: Real PostgreSQL and Anvil tests certify immutable individual source proofs, atomic coverage, provider disagreement, historical catch-up and failed-source retry fairness.",
+          "2": "backend-affected: Independent chain balances and balanced journals cover held-first returns, payable-first settlement, actual funding prefixes, explicit legacy conflicts and policy exceptions.",
+          "3": "backend-affected: Real-contract tests reject stale-checkpoint and known-return reopen attempts, preserve later payer funds, and reconcile an already broadcast settlement after an authority return.",
+          "4": "backend-affected: Real-contract cases cover repeated and same-transaction returns, principal returns, catch-up, finalized reorg, authority settlement, native recovery, unlogged credit, concurrent processing and refund-to-wallet attribution."
         },
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "Reviewed immutable link/source and request metadata guards, offer revisions and quote checks, original replay before mutable checks, readiness, store/key/mode boundaries, scoped edits, canonical reservations and reopen capacity. Concurrency regressions cover last slots, fresh post-lock snapshots and foreign-key lock cycles; NO KEY UPDATE preserves profile coordination. Real Postgres/Anvil tests reconcile independent purchases, settlement and late held funds without invoice numbers. Final selected checks passed; frontend reviewer reported no blockers with browser flows and phone/desktop inspection. Legacy hashes and documents remain; omitted legacy fixed/open input and old offer versions cannot be proven. No blockers remain.",
-          "at": "2026-10-26T23:43:29Z",
-          "filesHash": "7dafbe6b6fead514"
-        },
-        "commit": "a7a9a917",
-        "doneAt": "2026-10-26T23:43:47Z"
+          "summary": "Reviewed dual-provider receiver source proofs, immutable migration78 evidence and rollback protection, chronological balanced outflow booking, net-liability invariants, historical paid truth, exceptional settlements, legacy reconciliation and exact chain/token/transaction/log wallet attribution. Owed null-number, unpaid-settlement rendering and stale-reopen findings are fixed with regressions. Watcher/ledger/settlement ownership stays acyclic; shared HTTP amounts stay in paymentio. All ten selected checks passed, including real Postgres race tests and real-binary Anvil reconciliation; frontend reviewer found no residual timing/status blocker. Historical conflicts remain explicit rather than rewritten; provider tests do not claim live-provider validation. No F329 blockers remain.",
+          "at": "2026-10-27T02:00:39Z",
+          "filesHash": "e6a0ee140c29065f"
+        }
       },
-      "branch": "fix/f328-make-reusable-link-purchases-independent",
-      "baseCommit": "19016aae1a2752242a097c542db9be9fa84f11f6",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f328-make-reusable-link-purchases-independent",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F329",
-      "type": "fix",
-      "behavior": "Reconcile receiver outflows and exact settlement attribution",
-      "acceptance": [
-        "Receiver refund and settlement observations preserve unique block/log identity, durable historical coverage and finalized independent-provider evidence.",
-        "Complete preceding records support balanced idempotent refunds held-first/payable-second and settlements payable-first/held-second; policy exceptions and unreconciled observations stay explicit without invented or negative balances.",
-        "Confirmed returns prevent reopen, later deposits remain visible, and already broadcast settlement is reconciled rather than assumed revoked.",
-        "Real-contract tests cover repeated/partial returns, paid-unsettled refunds, catch-up, multiple logs, reorgs, external settlement, native mismatch and refund-to-wallet attribution; independent balances and ledger equations reconcile."
-      ],
-      "dependsOn": [
-        "F328"
-      ],
-      "state": "not_started",
-      "verification": [
-        "backend-affected",
-        "backend-e2e"
-      ],
-      "refs": [
-        "R-164"
-      ],
-      "keep": [
-        "packages/contracts/src/*"
-      ],
-      "review": true,
-      "notes": [],
-      "blockedReason": null,
-      "evidence": null
+      "branch": "fix/f329-reconcile-receiver-outflows-and-exact-se",
+      "baseCommit": "8657a989414b1b188d15d3189f404d9736b74223",
+      "failedVerifies": 0
     },
     {
       "id": "F330",

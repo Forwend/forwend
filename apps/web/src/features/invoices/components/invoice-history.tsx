@@ -197,6 +197,8 @@ function detailsOf(row: InvoiceHistoryEvent, option: Option | undefined): ReactN
       return row.related ? COPY.replacedBy(invoiceNumber(row.related.number)) : null;
     case HISTORY_KINDS.created:
       return row.related ? COPY.replaces(invoiceNumber(row.related.number)) : null;
+    case HISTORY_KINDS.checkoutCloseChanged:
+      return row.until ? COPY.closeChanged(TIME_WITH_YEAR.format(new Date(row.until))) : null;
     case HISTORY_KINDS.reopened:
       return row.until ? COPY.reopenedUntil(TIME_WITH_YEAR.format(new Date(row.until))) : null;
     case HISTORY_KINDS.edited: {
@@ -212,10 +214,12 @@ function detailsOf(row: InvoiceHistoryEvent, option: Option | undefined): ReactN
   switch (row.kind) {
     case HISTORY_KINDS.paid:
       return money(BigInt(option.amount), option);
+    case HISTORY_KINDS.refunded:
+    case HISTORY_KINDS.receiverSettled:
     case HISTORY_KINDS.settled:
       return (
         <span className="inline-flex flex-wrap items-center gap-x-1.5">
-          {money(BigInt(option.amount), option)}
+          {money(BigInt(row.amount ?? option.amount), option)}
           {row.txHash ? (
             <span className="inline-flex items-center gap-x-1.5 whitespace-nowrap">
               <span className="text-muted">·</span>

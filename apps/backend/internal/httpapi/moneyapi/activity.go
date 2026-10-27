@@ -105,6 +105,7 @@ func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 		if currency != "" {
 			header = append(slices.Clip(header), currency+" value", "ECB rate date")
 		}
+		header = append(header, "Payment ID")
 		// Rows go to the buffer as the database sends them, so the request holds the file, not every transfer.
 		var body bytes.Buffer
 		out := csv.NewWriter(&body)
@@ -115,9 +116,10 @@ func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 			if t.Invoice != nil {
 				invoice, client = document.Number(t.Invoice.Number), t.Invoice.ClientName
 			}
-			row := []string{t.At.Format(time.RFC3339), t.Direction, tokenAmount(t), t.Symbol,
+			row := make([]string, 0, len(header))
+			row = append(row, t.At.Format(time.RFC3339), t.Direction, tokenAmount(t), t.Symbol,
 				document.NetworkName(t.ChainID), t.Counterparty, t.TxHash, t.Status, t.USDValue().FloatString(t.Decimals),
-				t.Classification(), invoice, client}
+				t.Classification(), invoice, client)
 			if currency != "" {
 				amount, day, ok := t.RecordsValue()
 				if ok {
@@ -126,6 +128,11 @@ func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 					row = append(row, "", "")
 				}
 			}
+			paymentID := ""
+			if t.Payment != nil {
+				paymentID = t.Payment.ID
+			}
+			row = append(row, paymentID)
 			for i, cell := range row {
 				// A spreadsheet runs a cell that starts like a formula; an apostrophe makes it text. One that splits on
 				// ";" (de-DE, fr-FR) starts a cell after each ";" too.
@@ -272,9 +279,9 @@ func getStatement(activities *activity.Service, profiles *profile.Service) http.
 				return nil
 			}
 			switch t.Classification() {
-			case activity.ClassInvoice, activity.LabelIncome:
+			case activity.ClassInvoice, activity.ClassPayment, activity.LabelIncome:
 				s.Lines = append(s.Lines, statementLine(t))
-			case activity.ClassUnclassified:
+			case activity.ClassUnclassified, activity.ClassPaymentException:
 				s.Unclassified++
 			}
 			return nil
@@ -297,6 +304,9 @@ func getStatement(activities *activity.Service, profiles *profile.Service) http.
 
 func statementLine(t activity.Transfer) document.StatementLine {
 	what := "Income"
+	if t.Payment != nil {
+		what = "Payment"
+	}
 	if i := t.Invoice; i != nil {
 		what = document.Number(i.Number)
 		if i.ClientName != "" {

@@ -309,7 +309,9 @@ describe("owner's invoice page", () => {
     show();
     await settle();
     expect(
-      screen.getByText(/To collect the remaining 850\.00 USDC, reopen the checkout/),
+      screen.getByText(
+        /Reopen to count it toward this invoice, or send a new invoice for 1,250\.00 USDC/,
+      ),
     ).toBeTruthy();
     act(() => screen.getByRole("button", { name: "Reopen checkout" }).click());
     const dialog = within(screen.getByRole("dialog", { name: "Reopen INV-0001?" }));

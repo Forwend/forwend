@@ -12,10 +12,13 @@ import type { PayState } from "@/features/pay/types/pay";
 export function withOption(inv: Invoice, optionId: string | undefined): Invoice {
   const o = inv.optionLocked
     ? undefined
-    : inv.options.find((x) => x.optionId === optionId?.toLowerCase());
+    : (firstPaymentOption(inv) ?? inv.options.find((x) => x.optionId === optionId?.toLowerCase()));
   return o
     ? {
         ...inv,
+        deposits: o.deposits,
+        amounts: o.amounts,
+        closesAt: o.closesAt ?? inv.closesAt,
         optionId: o.optionId,
         chainId: o.chainId,
         token: o.token,
@@ -41,41 +44,69 @@ export function payState(inv: Invoice, now: number) {
   const amount = BigInt(inv.amount);
   const sum = (late: boolean) =>
     inv.deposits.filter((d) => d.late === late).reduce((s, d) => s + BigInt(d.amount), 0n);
-  const received = sum(false);
-  const late = sum(true);
   const canceled = inv.paymentStatus === API_PAYMENT_STATUSES.canceled;
   const closed =
     canceled ||
+    inv.closed ||
     now >= checkoutClosesAt(inv) ||
     inv.paymentStatus === API_PAYMENT_STATUSES.expired ||
     inv.paymentStatus === API_PAYMENT_STATUSES.expiredPartiallyPaid;
+  const pending = inv.deposits
+    .filter((d) => !d.late && d.paid === null)
+    .reduce((n, d) => n + BigInt(d.amount), 0n);
+  const received = inv.amounts
+    ? closed
+      ? BigInt(inv.amounts.payable) + BigInt(inv.amounts.held)
+      : BigInt(inv.amounts.payable) + pending
+    : sum(false);
+  const rawLate = sum(true);
+  const netHeld = inv.amounts ? BigInt(inv.amounts.held) : rawLate;
+  let late = rawLate;
+  if (netHeld < late) late = netHeld;
+  if (inv.amounts?.unreconciled) late = 0n;
   const confirming = inv.deposits.some(
     (d) => !d.late && d.status !== API_DEPOSIT_STATUSES.confirmed,
   );
+  const closing = closed && inv.amounts !== undefined && BigInt(inv.amounts.payable) > 0n;
+  const awaitingChoice =
+    inv.optionCount > 1 && !inv.optionLocked && Boolean(firstPaymentOption(inv));
   const state: PayState =
+    inv.paymentStatus === API_PAYMENT_STATUSES.paid &&
     inv.settlementStatus === API_SETTLEMENT_STATUSES.settled
       ? PAY_STATES.settled
       : inv.paymentStatus === API_PAYMENT_STATUSES.paid
         ? PAY_STATES.paid
-        : // Canceled takes no money, whatever arrives: it is all held for the payer (R-79, D-26).
-          canceled
-          ? PAY_STATES.canceled
-          : confirming
-            ? PAY_STATES.confirming
-            : received >= amount
+        : inv.amounts?.unreconciled || inv.amounts?.hasPolicyException
+          ? PAY_STATES.review
+          : // Canceled takes no money, whatever arrives: it is all held for the payer (R-79, D-26).
+            canceled
+            ? PAY_STATES.canceled
+            : awaitingChoice
               ? PAY_STATES.checking
-              : received > 0n
-                ? closed
-                  ? PAY_STATES.closedPartial
-                  : PAY_STATES.partial
-                : closed
-                  ? PAY_STATES.closed
-                  : PAY_STATES.waiting;
+              : confirming
+                ? PAY_STATES.confirming
+                : closing
+                  ? PAY_STATES.closing
+                  : received >= amount
+                    ? PAY_STATES.checking
+                    : received > 0n
+                      ? closed
+                        ? PAY_STATES.closedPartial
+                        : PAY_STATES.partial
+                      : closed
+                        ? PAY_STATES.closed
+                        : PAY_STATES.waiting;
   return {
     state,
     closed,
     canSend:
-      !closed && received < amount && state !== PAY_STATES.paid && state !== PAY_STATES.settled,
+      !closed &&
+      !awaitingChoice &&
+      !inv.amounts?.unreconciled &&
+      !inv.amounts?.hasPolicyException &&
+      received < amount &&
+      state !== PAY_STATES.paid &&
+      state !== PAY_STATES.settled,
     received,
     remaining: received < amount ? amount - received : 0n,
     late,
@@ -106,4 +137,18 @@ export function shortDuration(ms: number): string {
       parts.push(`${n} ${unit}${n !== 1 && PLURAL.has(unit) ? "s" : ""}`);
   }
   return parts.join(" ") || "0 s";
+}
+
+export function firstPaymentOption(inv: Invoice): Invoice["options"][number] | undefined {
+  return inv.options
+    .flatMap((option) =>
+      option.deposits.filter((deposit) => !deposit.late).map((deposit) => ({ option, deposit })),
+    )
+    .sort(
+      (a, b) =>
+        Date.parse(a.deposit.blockTime) - Date.parse(b.deposit.blockTime) ||
+        a.option.chainId - b.option.chainId ||
+        a.deposit.blockNumber - b.deposit.blockNumber ||
+        a.deposit.logIndex - b.deposit.logIndex,
+    )[0]?.option;
 }

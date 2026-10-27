@@ -183,6 +183,16 @@ func Receipt(inv invoice.Invoice, payLink string, logo []byte) ([]byte, error) {
 			d.transaction(net, Amount(dep.Paid, inv.Decimals, inv.Symbol)+" · "+stamp(dep.BlockTime), dep.TxHash)
 		}
 	}
+	if inv.Amounts != nil && inv.Amounts.ObservedRefunded.Sign() > 0 {
+		d.heading("Recorded returns")
+		d.note(Amount(inv.Amounts.ObservedRefunded, inv.Decimals, inv.Symbol))
+		if inv.Amounts.LastReturnTxHash != "" {
+			d.transaction(net, "Latest return transaction", inv.Amounts.LastReturnTxHash)
+		}
+	}
+	if inv.Amounts != nil && (inv.Amounts.Unreconciled || inv.Amounts.HasPolicyException) {
+		d.note("Payment records need review.")
+	}
 	d.code(payLink, "Check this receipt", "A PDF can be edited. The pay page shows what the chain recorded.")
 	d.footer(inv)
 	return d.output()

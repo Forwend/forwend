@@ -37,7 +37,8 @@ export function TransactionType({ profileId, t }: TransactionTypeProps) {
   // The choice shows at once and the select keeps focus, until the list read after saving shows it.
   const [chosen, setChosen] = useState<string | null>(null);
   if (chosen !== null && chosen === t.classification) setChosen(null);
-  if (t.invoice)
+  const needsReview = !!t.payment?.policyException || !!t.payment?.unreconciled;
+  if (t.invoice && !t.labelable)
     return (
       <Link
         href={`${APP_ROUTES.invoices}/${t.invoice.invoiceId}`}
@@ -64,7 +65,13 @@ export function TransactionType({ profileId, t }: TransactionTypeProps) {
       )}
       hideLabel
       options={CHOICES}
-      value={chosen ?? t.classification}
+      value={
+        chosen ??
+        (t.classification === TRANSACTION_CLASSES.paymentException
+          ? TRANSACTION_CLASSES.unclassified
+          : t.classification)
+      }
+      hint={needsReview ? COPY.classes[TRANSACTION_CLASSES.paymentException] : undefined}
       className="w-40"
       onValueChange={async (value) => {
         setChosen(value);

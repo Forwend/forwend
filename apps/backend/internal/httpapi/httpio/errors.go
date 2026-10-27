@@ -14,6 +14,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/document"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/job"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/forwend/forwend/apps/backend/internal/link"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 	"github.com/forwend/forwend/apps/backend/internal/search"
@@ -132,6 +133,8 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, invoice.ErrNotEditable):
 		status, code, message = http.StatusConflict, "invoice_not_editable",
 			"the reference, note and due date change only before any payment while the checkout is open"
+	case errors.Is(err, ledger.ErrReconciliationPending):
+		status, code, message = http.StatusConflict, "payment_reconciliation_pending", "Payment records are still syncing. Try again shortly."
 	case errors.Is(err, invoice.ErrNotReopenable):
 		status, code, message = http.StatusConflict, "invoice_not_reopenable",
 			"only an invoice that closed partly paid, with no refund under way, can reopen, once, a day or more before its settle deadline"

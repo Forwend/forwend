@@ -507,6 +507,63 @@ test.describe("pay page", () => {
     expect(views).toEqual(["POST"]);
   });
 
+  test("recorded returns stay visible and unresolved records never invite another payment", async ({
+    page,
+  }) => {
+    const amounts = {
+      receiver: "0",
+      payable: "0",
+      held: "0",
+      settled: "0",
+      refunded: "1250000000",
+      observedRefunded: "1250000000",
+      lastReturnTxHash: `0x${"5".repeat(64)}`,
+      unreconciled: false,
+      hasPolicyException: true,
+    };
+    await openPay(page, { ...PAID, amounts, options: [{ ...MAIN_OPTION, amounts }] });
+    await expect(page.getByRole("status").filter({ hasText: /^Paid$/ })).toBeVisible();
+    await expect(page.getByText(/^Recorded returns:/)).toContainText("1,250.00 USDC");
+    await expect(page.getByText("Payment records need review.", { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Basescan/ }).last()).toHaveAttribute(
+      "href",
+      `https://sepolia.basescan.org/tx/${amounts.lastReturnTxHash}`,
+    );
+    await expect(showAddress(page)).toHaveCount(0);
+    for (const width of [390, 1280]) {
+      await page.setViewportSize({ width, height: 900 });
+      expect(await sidewaysScroll(page)).toBeLessThanOrEqual(1);
+      await page.screenshot({ path: `../../docs/runs/f329-return-${width}.png`, fullPage: true });
+    }
+    await mockInvoice(page, {
+      ...OPEN,
+      amounts: { ...amounts, unreconciled: true },
+      options: [{ ...MAIN_OPTION, amounts: { ...amounts, unreconciled: true } }],
+    });
+    await page.reload();
+    await expect(page.getByText("Payment records need review.", { exact: true })).toBeVisible();
+    await expect(showAddress(page)).toHaveCount(0);
+    await expect(page.getByText(RECEIVE)).toHaveCount(0);
+  });
+
+  test("a closed payment option leaves another option available", async ({ page }) => {
+    const mixed = {
+      ...CHOOSING,
+      options: CHOOSING.options.map((option, index) => ({
+        ...option,
+        closesAt: index === 0 ? "2026-10-09T12:00:00Z" : OPEN.closesAt,
+      })),
+    };
+    await page.clock.install({ time: NOW });
+    await mockInvoice(page, mixed);
+    await page.goto(`/pay/${PAY}?option=${ID}`);
+    await expect(showAddress(page)).toHaveCount(0);
+    await page.getByRole("combobox", { name: "Network" }).click();
+    await page.getByRole("option", { name: "Arbitrum Sepolia" }).click();
+    await showAddress(page).click();
+    await expect(page.getByText(OPTION_RECEIVE)).toBeVisible();
+  });
+
   // R-82
   test("takes an optional address for the receipt", async ({ page }) => {
     const sent: unknown[] = [];

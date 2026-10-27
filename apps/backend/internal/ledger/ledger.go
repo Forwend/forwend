@@ -3,7 +3,6 @@ package ledger
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/big"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 )
 
 // Payment statuses. paid, expired, expired_partially_paid and canceled are final but for one Reopen (R-130); the
@@ -151,22 +151,9 @@ func DeployedFrom(clients map[uint64]*ethclient.Client) DeployedAt {
 	}
 }
 
-// The ledger never reads an empty answer as 0: it must not let an invoice expire with money in it.
-var ErrNoToken = errors.New("no token contract at the block")
+var ErrNoToken = chain.ErrNoToken
 
 func BalanceAt(ctx context.Context, client *ethclient.Client, chainID uint64, token, holder string,
 	block uint64) (*big.Int, error) {
-	to := common.HexToAddress(token)
-	data := append(common.FromHex("0x70a08231"), common.LeftPadBytes(common.HexToAddress(holder).Bytes(), 32)...)
-	out, err := client.CallContract(ctx, ethereum.CallMsg{To: &to, Data: data}, new(big.Int).SetUint64(block))
-	if err != nil {
-		return nil, fmt.Errorf("balanceOf %s on chain %d: %w", holder, chainID, err)
-	}
-	switch len(out) {
-	case 0:
-		return nil, fmt.Errorf("balanceOf %s on chain %d: %w", holder, chainID, ErrNoToken)
-	case 32:
-		return new(big.Int).SetBytes(out), nil
-	}
-	return nil, fmt.Errorf("balanceOf %s on chain %d: %d-byte answer", holder, chainID, len(out))
+	return chain.TokenBalanceAt(ctx, client, chainID, token, holder, block)
 }

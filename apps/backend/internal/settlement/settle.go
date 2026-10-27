@@ -87,6 +87,18 @@ func (s *Signer) settle(ctx context.Context, id int64, release func()) error {
 	case !st.Settleable:
 		return s.retry(ctx, in, "factory.status says not settleable (paused?)")
 	}
+	var funded bool
+	if err := s.pool.QueryRow(ctx, `SELECT
+  coalesce((SELECT -sum(e.amount) FROM ledger_entries e JOIN ledger_transactions t ON t.id = e.transaction_id
+            WHERE t.invoice_id = $1 AND e.account = 'recipient_payable'), 0) >= $2
+  AND NOT EXISTS (SELECT 1 FROM receiver_outflows o WHERE o.invoice_id = $1 AND o.kind = 'refund'
+                  AND o.ledger_transaction_id IS NULL)
+  AND NOT (`+ledger.UnreconciledSQL("$1")+`)`, in.invoiceID, in.amount.String()).Scan(&funded); err != nil {
+		return err
+	}
+	if !funded {
+		return s.postpone(ctx, in, waitUnresolved, "merchant payable was returned or receiver evidence is unresolved")
+	}
 	var used int
 	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id
 		JOIN profiles p ON p.id = i.profile_id
