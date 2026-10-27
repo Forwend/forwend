@@ -33,7 +33,7 @@ func TestRPCBudgetIsSharedAcrossProcessesAndChainHosts(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer second.Close()
-	base, arb := "https://base-sepolia.infura.io/v3/test-secret", "https://arbitrum-sepolia.infura.io/v3/test-secret"
+	base, arb := "shared-account", "shared-account"
 	start := time.Now()
 	if err := first.wait(ctx, base, []byte(`{"method":"eth_getLogs"}`)); err != nil {
 		t.Fatal(err)
@@ -63,12 +63,12 @@ func TestRPCBudgetIsSharedAcrossProcessesAndChainHosts(t *testing.T) {
 	if err := second.wait(short, base, []byte(`{"method":"eth_call"}`)); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("full budget returned %v, want deadline", err)
 	}
-	if budgetKey(base) == budgetKey(strings.Replace(base, "test-secret", "another-key", 1)) {
-		t.Fatal("different credentials share a bucket")
+	if budgetKey(base) == budgetKey("other-account") {
+		t.Fatal("different budget groups share a bucket")
 	}
 	a := chaintest.Start(t)
 	proxy := a.Proxy()
-	r, err := NewRPCs(Spec{ChainID: chaintest.ChainID, Public: []string{proxy.URL, a.URL}}, nil, 1000, first)
+	r, err := NewRPCs(testSpec(chaintest.ChainID, proxy.URL, a.URL), 1000, first)
 	if err != nil {
 		t.Fatal(err)
 	}

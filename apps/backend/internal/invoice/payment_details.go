@@ -29,6 +29,10 @@ type PaymentSettlement struct {
 	CreatedAt     time.Time
 	SignedAt      *time.Time
 	TxHash        string
+	ReceiptTxHash *string
+	ReceiptBlock  *uint64
+	ReceiptTime   *uint64
+	Progress      *finality.Progress
 }
 
 type PaymentDelivery = webhook.PaymentDelivery
@@ -81,6 +85,10 @@ func (s *Service) PaymentDetails(ctx context.Context, profileID, id string, q Pa
 		if err := tx.QueryRow(ctx, "SELECT last_finalized_block,last_finalized_time FROM chain_cursors WHERE chain_id = $1", option.ChainID).Scan(&head.Number, &head.Time); err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return PaymentDetails{}, err
 		}
+		if settlement := option.Settlement; settlement != nil && settlement.ReceiptBlock != nil && head.Number != 0 {
+			progress := finality.ProgressOf(finality.Block{Number: *settlement.ReceiptBlock, Time: *settlement.ReceiptTime}, head)
+			settlement.Progress = &progress
+		}
 		if option.Deposits, err = readDeposits(ctx, tx, option.ID, head, PaymentDetailDeposits); err != nil {
 			return PaymentDetails{}, err
 		}
@@ -110,7 +118,7 @@ func (s *Service) PaymentDetails(ctx context.Context, profileID, id string, q Pa
 }
 
 func readPaymentSettlements(ctx context.Context, db paymentReader, ids []string) (map[string]*PaymentSettlement, error) {
-	rows, err := db.Query(ctx, `SELECT invoice_id,status,coalesce(wait,''),attempts,next_attempt_at,created_at,signed_at,coalesce(tx_hash,'')
+	rows, err := db.Query(ctx, `SELECT invoice_id,status,coalesce(wait,''),attempts,next_attempt_at,created_at,signed_at,coalesce(tx_hash,''),receipt_tx_hash,receipt_block,receipt_time
  FROM settlement_intents WHERE invoice_id = ANY($1::text[])`, ids)
 	if err != nil {
 		return nil, err
@@ -120,7 +128,7 @@ func readPaymentSettlements(ctx context.Context, db paymentReader, ids []string)
 	for rows.Next() {
 		var id string
 		settlement := &PaymentSettlement{}
-		if err := rows.Scan(&id, &settlement.Status, &settlement.Wait, &settlement.Attempts, &settlement.NextAttemptAt, &settlement.CreatedAt, &settlement.SignedAt, &settlement.TxHash); err != nil {
+		if err := rows.Scan(&id, &settlement.Status, &settlement.Wait, &settlement.Attempts, &settlement.NextAttemptAt, &settlement.CreatedAt, &settlement.SignedAt, &settlement.TxHash, &settlement.ReceiptTxHash, &settlement.ReceiptBlock, &settlement.ReceiptTime); err != nil {
 			return nil, err
 		}
 		result[id] = settlement

@@ -3,6 +3,7 @@ package watcher
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"slices"
 	"testing"
 	"time"
@@ -17,6 +18,24 @@ import (
 )
 
 const receive = "0x00000000000000000000000000000000000000aa"
+
+func TestSingleReadExecutionErrorDoesNotStopOtherReads(t *testing.T) {
+	e := setup(t)
+	e.chain.batchSize = 1
+	var output hexutil.Bytes
+	var id hexutil.Uint64
+	batch := []rpc.BatchElem{
+		{Method: "eth_call", Args: []any{map[string]string{"to": e.token, "data": "0xffffffff"}, "latest"}, Result: &output},
+		{Method: "eth_chainId", Result: &id},
+	}
+	if err := e.chain.batchCall(t.Context(), batch); err != nil {
+		t.Fatal(err)
+	}
+	var executionError rpc.Error
+	if !errors.As(batch[0].Error, &executionError) || batch[1].Error != nil || uint64(id) != chaintest.ChainID {
+		t.Fatalf("execution error=%v, healthy read=%d/%v", batch[0].Error, id, batch[1].Error)
+	}
+}
 
 type env struct {
 	anvil *chaintest.Anvil

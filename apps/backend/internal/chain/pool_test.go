@@ -53,7 +53,7 @@ func TestFailingEndpointRestsThenComesBack(t *testing.T) {
 
 			bad.Fail(nil)
 			time.Sleep(time.Until(until))
-			if got := number(t, ctx, r.Primary); got != want || len(bad.Calls()) != calls+1 {
+			if got := number(t, ctx, r.Primary); got != want || len(bad.Calls()) != calls+2 {
 				t.Fatalf("after its rest: block %d, %d calls to it; want it used again", got, len(bad.Calls())-calls)
 			}
 			if failures, _ := health(r, e); failures != 0 {
@@ -114,7 +114,7 @@ func TestHangingHostRestsWhole(t *testing.T) {
 func TestQueuedRequestsSkipAnEndpointThatStartsToRest(t *testing.T) {
 	a := chaintest.Start(t)
 	bad := a.Proxy()
-	r, err := NewRPCs(Spec{ChainID: chaintest.ChainID, Public: []string{bad.URL, a.URL, localhost(a.URL)}}, nil, 10)
+	r, err := NewRPCs(testSpec(chaintest.ChainID, bad.URL, a.URL, localhost(a.URL)), 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +244,7 @@ func TestURLsStayOutOfErrorsAndLogs(t *testing.T) {
 			t.Fatalf("key in error %q", err)
 		}
 	}
-	if !strings.Contains(logs.String(), "127.0.0.1:1#1") || strings.Contains(logs.String(), "SECRETKEY") {
+	if !strings.Contains(logs.String(), "rpc-0") || strings.Contains(logs.String(), "SECRETKEY") {
 		t.Fatalf("logs must name the endpoints without their keys:\n%s", logs.String())
 	}
 }
@@ -252,7 +252,7 @@ func TestURLsStayOutOfErrorsAndLogs(t *testing.T) {
 // A batch counts each of its calls; the other host's pace is its own.
 func TestEachEndpointIsPaced(t *testing.T) {
 	a := chaintest.Start(t)
-	r, err := NewRPCs(Spec{ChainID: chaintest.ChainID, Public: []string{a.URL, localhost(a.URL)}}, nil, 20) // 50 ms a call
+	r, err := NewRPCs(testSpec(chaintest.ChainID, a.URL, localhost(a.URL)), 20) // 50 ms a call
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -433,10 +433,32 @@ func TestOversizedAnswerIsAnOutage(t *testing.T) {
 	}
 }
 
+func TestCallerDeadlineDoesNotRestProviderForOtherWork(t *testing.T) {
+	a := chaintest.Start(t)
+	proxy := a.Proxy()
+	r := newRPCs(t, proxy.URL, localhost(a.URL))
+	if _, err := tryNumber(t.Context(), r.Primary); err != nil {
+		t.Fatal(err)
+	}
+	proxy.Fail(func(call chaintest.Call) chaintest.Fault { return chaintest.Hang })
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+	defer cancel()
+	if _, err := tryNumber(ctx, r.Primary); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("caller deadline: %v", err)
+	}
+	if failures, _ := health(r, r.pool.endpoints[0]); failures != 0 {
+		t.Fatalf("caller deadline rested provider used by other work: %d failures", failures)
+	}
+	proxy.Fail(nil)
+	if _, err := tryNumber(t.Context(), r.Primary); err != nil {
+		t.Fatalf("healthy provider remained unavailable: %v", err)
+	}
+}
+
 func TestRequestsThatCannotMeetTheirDeadlineDoNotDelayLaterReads(t *testing.T) {
 	a := chaintest.Start(t)
 	proxy := a.Proxy()
-	r, err := NewRPCs(Spec{ChainID: chaintest.ChainID, Public: []string{proxy.URL, localhost(a.URL)}}, nil, 10)
+	r, err := NewRPCs(testSpec(chaintest.ChainID, proxy.URL, localhost(a.URL)), 10)
 	if err != nil {
 		t.Fatal(err)
 	}

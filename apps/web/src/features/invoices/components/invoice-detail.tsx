@@ -17,6 +17,7 @@ import { InvoiceActions } from "@/features/invoices/components/invoice-actions";
 import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
 import { InvoiceHistory } from "@/features/invoices/components/invoice-history";
 import { InvoiceLines } from "@/features/invoices/components/invoice-lines";
+import { ConfirmingStatus } from "@/features/invoices/components/invoice-progress";
 import { PaymentAmountsNotice } from "@/features/invoices/components/payment-amounts-notice";
 import { PaymentReminders } from "@/features/invoices/components/payment-reminders";
 import { ReopenInvoice } from "@/features/invoices/components/reopen-invoice";
@@ -31,6 +32,7 @@ import {
   invoiceException,
   invoiceNumber,
   invoicePdfUrl,
+  invoiceProgress,
   invoiceStatus,
   tokenKey,
 } from "@/features/invoices/lib/invoices";
@@ -155,6 +157,7 @@ function Loaded({
   // By the local clock; the status follows the API's closed flag, at most one poll later.
   const closed = Date.parse(invoice.closesAt) <= Date.now();
   const status = invoiceStatus(invoice);
+  const { blocksLeft, blocksTotal, secondsLeft } = invoiceProgress(invoice);
   const exception = invoiceException(invoice, status);
   const received = exception.received;
   const money = (units: bigint) =>
@@ -307,7 +310,17 @@ function Loaded({
             </div>
             <div className="flex flex-col gap-3 px-4 py-5 sm:px-5">
               <div className="flex flex-wrap items-center gap-3">
-                <StatusPill status={status} />
+                {status === PAYMENT_STATUS.confirming ? (
+                  <span role="status" aria-label="Payment confirmation">
+                    <ConfirmingStatus
+                      blocks={blocksLeft}
+                      total={blocksTotal}
+                      seconds={secondsLeft}
+                    />
+                  </span>
+                ) : (
+                  <StatusPill status={status} />
+                )}
                 {invoice.settlementStatus !== "none" ? (
                   <span className="text-sm text-muted">
                     {settlementState(invoice.settlementStatus)}

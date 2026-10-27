@@ -68,7 +68,7 @@ func TestListNewestFirstInPages(t *testing.T) {
 	pool := open(t)
 	var profile, other, empty string
 	if err := pool.QueryRow(context.Background(), `
-		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true)),
+		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true) ON CONFLICT (chain_id) DO UPDATE SET enabled = true),
 		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
 		            VALUES (84532, 'evm', $1, 'USDC', 6, true)),
 		     u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:alice') RETURNING id),
@@ -160,7 +160,7 @@ func TestListMarksHeldDeposits(t *testing.T) {
 	pool := open(t)
 	var profile string
 	if err := pool.QueryRow(context.Background(), `
-		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true)),
+		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true) ON CONFLICT (chain_id) DO UPDATE SET enabled = true),
 		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
 		            VALUES (84532, 'evm', $1, 'USDC', 6, true)),
 		     u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:alice') RETURNING id)

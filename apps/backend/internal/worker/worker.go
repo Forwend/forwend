@@ -25,7 +25,6 @@ const LockKey int64 = 0x666f7277656e6401 // "forwend" 1
 type Worker struct {
 	pool            *pgxpool.Pool
 	specs           map[uint64]chain.Spec
-	keys            []string
 	rate            float64
 	rpcs            map[uint64]chain.RPCs
 	watchers        map[uint64]*watcher.Chain
@@ -37,8 +36,8 @@ type Worker struct {
 }
 
 // New sends each RPC at most rate calls per second.
-func New(pool *pgxpool.Pool, specs map[uint64]chain.Spec, keys []string, rate float64, budgets ...*chain.Budget) *Worker {
-	w := &Worker{budgets: budgets, pool: pool, specs: specs, keys: keys, rate: rate, rpcs: map[uint64]chain.RPCs{},
+func New(pool *pgxpool.Pool, specs map[uint64]chain.Spec, rate float64, budgets ...*chain.Budget) *Worker {
+	w := &Worker{budgets: budgets, pool: pool, specs: specs, rate: rate, rpcs: map[uint64]chain.RPCs{},
 		watchers: map[uint64]*watcher.Chain{}, historyWatchers: map[uint64]*watcher.Chain{}, balances: map[uint64]*ethclient.Client{}}
 	return w
 }
@@ -84,7 +83,7 @@ func (w *Worker) Tick(ctx context.Context) {
 				slog.Error("enabled chain is not in the chain list", "chain", id)
 				continue
 			}
-			r, err := chain.NewRPCs(spec, w.keys, w.rate, w.budgets...)
+			r, err := chain.NewRPCs(spec, w.rate, w.budgets...)
 			if err != nil {
 				slog.Error("pick RPCs", "chain", id, "err", chain.Redact(err))
 				continue

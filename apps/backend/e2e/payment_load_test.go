@@ -24,19 +24,13 @@ func TestPaymentLoad(t *testing.T) {
 	st := newStack(t, "API_USER_BURST=10000")
 	st.limited.Fail(nil)
 	second := st.anvil.Proxy()
-	chains := filepath.Join(t.TempDir(), "chains.json")
-	if err := os.WriteFile(chains, fmt.Appendf(nil, `{"anvil":{"chainId":%d,"infura":null,"public":[%q,%q]}}`, chaintest.ChainID, st.limited.URL, strings.Replace(second.URL, "127.0.0.1", "localhost", 1)), 0600); err != nil {
-		t.Fatal(err)
-	}
+	configureRPCs(t, st.db, st.limited.URL, strings.Replace(second.URL, "127.0.0.1", "localhost", 1))
 	rate := "100000"
 	if configured := os.Getenv("F336_RPC_RATE"); configured != "" {
 		rate = configured
 	}
 	loop := append([]string{}, st.loop...)
 	for i, v := range loop {
-		if strings.HasPrefix(v, "CHAINS_FILE=") {
-			loop[i] = "CHAINS_FILE=" + chains
-		}
 		if strings.HasPrefix(v, "RPC_RATE_PER_SECOND=") {
 			loop[i] = "RPC_RATE_PER_SECOND=" + rate
 		}

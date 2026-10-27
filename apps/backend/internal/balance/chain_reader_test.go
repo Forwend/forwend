@@ -41,9 +41,9 @@ func TestOneHungChainDoesNotBlockTheOthers(t *testing.T) {
 	token := anvil.DeployToken()
 	h := hung(t)
 	c := NewChainReader(map[uint64]chain.Spec{
-		chaintest.ChainID: {ChainID: chaintest.ChainID, Public: []string{anvil.URL, strings.Replace(anvil.URL, "127.0.0.1", "localhost", 1)}},
-		dead:              {ChainID: dead, Public: []string{h, strings.Replace(h, "127.0.0.1", "localhost", 1)}},
-	}, nil, 1000)
+		chaintest.ChainID: {ChainID: chaintest.ChainID, AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, Priority: 0, URL: anvil.URL, BudgetGroup: "budget-0"}, {ID: "rpc-1", Provider: "provider-1", Role: chain.Confirmation, Tier: chain.Public, Priority: 1, URL: strings.Replace(anvil.URL, "127.0.0.1", "localhost", 1), BudgetGroup: "budget-1"}}},
+		dead:              {ChainID: dead, AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, Priority: 0, URL: h, BudgetGroup: "budget-0"}, {ID: "rpc-1", Provider: "provider-1", Role: chain.Confirmation, Tier: chain.Public, Priority: 1, URL: strings.Replace(h, "127.0.0.1", "localhost", 1), BudgetGroup: "budget-1"}}},
+	}, 1000)
 	ctx := context.Background()
 	if _, _, err := c.Read(ctx, chaintest.ChainID, token, holder); err != nil {
 		t.Fatal(err)
@@ -81,8 +81,8 @@ func TestOneHungChainDoesNotBlockTheOthers(t *testing.T) {
 func TestTimedOutRPCRests(t *testing.T) {
 	h := hung(t)
 	c := NewChainReader(map[uint64]chain.Spec{
-		dead: {ChainID: dead, Public: []string{h, strings.Replace(h, "127.0.0.1", "localhost", 1)}},
-	}, nil, 1000)
+		dead: {ChainID: dead, AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, Priority: 0, URL: h, BudgetGroup: "budget-0"}, {ID: "rpc-1", Provider: "provider-1", Role: chain.Confirmation, Tier: chain.Public, Priority: 1, URL: strings.Replace(h, "127.0.0.1", "localhost", 1), BudgetGroup: "budget-1"}}},
+	}, 1000)
 	ctx := context.Background()
 	short, cancel := context.WithTimeout(ctx, 300*time.Millisecond)
 	defer cancel()
@@ -102,11 +102,11 @@ func TestChainWithOneHostIsRefused(t *testing.T) {
 	anvil := chaintest.Start(t)
 	token := anvil.DeployToken()
 	c := NewChainReader(map[uint64]chain.Spec{
-		chaintest.ChainID: {ChainID: chaintest.ChainID, Public: []string{anvil.URL, strings.Replace(anvil.URL, "127.0.0.1", "localhost", 1)}},
-		dead:              {ChainID: dead, Public: []string{anvil.URL}},
-	}, nil, 1000)
+		chaintest.ChainID: {ChainID: chaintest.ChainID, AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, Priority: 0, URL: anvil.URL, BudgetGroup: "budget-0"}, {ID: "rpc-1", Provider: "provider-1", Role: chain.Confirmation, Tier: chain.Public, Priority: 1, URL: strings.Replace(anvil.URL, "127.0.0.1", "localhost", 1), BudgetGroup: "budget-1"}}},
+		dead:              {ChainID: dead, AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, Priority: 0, URL: anvil.URL, BudgetGroup: "budget-0"}}},
+	}, 1000)
 	ctx := context.Background()
-	if _, _, err := c.Read(ctx, dead, usdc, holder); err == nil || !strings.Contains(err.Error(), "D-15") {
+	if _, _, err := c.Read(ctx, dead, usdc, holder); err == nil || !strings.Contains(err.Error(), "independent confirmation") {
 		t.Fatalf("one-host chain: %v, want the D-15 error", err)
 	}
 	if _, _, err := c.Read(ctx, chaintest.ChainID, token, holder); err != nil {

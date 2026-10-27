@@ -40,6 +40,12 @@ func (s *Signer) reconcile(ctx context.Context, client *ethclient.Client, in int
 		r = got
 		break
 	}
+	if r == nil || !settledBy(r, receive) {
+		if _, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET receipt_tx_hash = NULL,
+ receipt_block = NULL, receipt_time = NULL WHERE id = $1`, in.id); err != nil {
+			return err
+		}
+	}
 	var err error
 	if r == nil {
 		if r, err = s.unmined(ctx, client, in, tx); err != nil || r == nil {
@@ -163,6 +169,20 @@ func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, i
 	if err != nil {
 		return fmt.Errorf("read finalized block: %w", err)
 	}
+	if r != nil {
+		block, err := client.HeaderByHash(ctx, r.BlockHash)
+		if err != nil {
+			return fmt.Errorf("read settlement receipt block: %w", err)
+		}
+		if block.Number.Cmp(r.BlockNumber) != 0 {
+			return fmt.Errorf("settlement receipt block number disagrees with header")
+		}
+		// This observation is display-only; finality and independent booking still decide settlement.
+		if _, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET receipt_tx_hash = $2,
+ receipt_block = $3, receipt_time = $4 WHERE id = $1`, in.id, r.TxHash.Hex(), r.BlockNumber.Uint64(), block.Time); err != nil {
+			return err
+		}
+	}
 	if r != nil && r.BlockNumber.Cmp(head.Number) > 0 {
 		return nil
 	}
@@ -232,7 +252,7 @@ func (s *Signer) postpone(ctx context.Context, in intent, wait, reason string) e
 	slog.Warn("settlement waits", "invoice", in.invoiceID, "reason", reason)
 	// Only from the status this attempt loaded: a stale attempt never moves an intent that went on.
 	_, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET status = 'pending', sender = NULL, nonce = NULL,
-		tx_hash = NULL, raw_tx = NULL, replaced_hashes = '{}', signed_at = NULL, reason = $2, wait = $4,
+		tx_hash = NULL, raw_tx = NULL, replaced_hashes = '{}', signed_at = NULL, receipt_tx_hash = NULL, receipt_block = NULL, receipt_time = NULL, reason = $2, wait = $4,
 		attempts = attempts + 1, updated_at = now(), next_attempt_at = `+backoff+` WHERE id = $1 AND status = $3`,
 		in.id, reason, in.status, wait)
 	return err

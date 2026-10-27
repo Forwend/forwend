@@ -27,7 +27,7 @@ func TestTransfersNewestFirstInPages(t *testing.T) {
 	const mine, theirs = "0x000000000000000000000000000000000000000a", "0x000000000000000000000000000000000000000b"
 	var profile, other, empty string
 	if err := pool.QueryRow(context.Background(), `
-		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true)),
+		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true) ON CONFLICT (chain_id) DO UPDATE SET enabled = true),
 		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
 		            VALUES (84532, 'evm', $1, 'USDC', 6, true)),
 		     u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:alice') RETURNING id),

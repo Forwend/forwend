@@ -23,8 +23,8 @@ func TestReadsAreSharedUntilTheFinalizedBlockMoves(t *testing.T) {
 	anvil.Mine(2) // final
 	proxy := anvil.Proxy()
 	c := NewChainReader(map[uint64]chain.Spec{
-		chaintest.ChainID: {ChainID: chaintest.ChainID, Public: []string{proxy.URL, strings.Replace(proxy.URL, "127.0.0.1", "localhost", 1)}},
-	}, nil, 1000)
+		chaintest.ChainID: {ChainID: chaintest.ChainID, AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, Priority: 0, URL: proxy.URL, BudgetGroup: "budget-0"}, {ID: "rpc-1", Provider: "provider-1", Role: chain.Confirmation, Tier: chain.Public, Priority: 1, URL: strings.Replace(proxy.URL, "127.0.0.1", "localhost", 1), BudgetGroup: "budget-1"}}},
+	}, 1000)
 	defer c.Close()
 	reads := func() (headers, balances int) {
 		for _, call := range proxy.Calls() {

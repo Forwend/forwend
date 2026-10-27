@@ -32,7 +32,7 @@ func open(t *testing.T) (*pgxpool.Pool, string) {
 	t.Cleanup(pool.Close)
 	var profile string
 	err = pool.QueryRow(ctx, `
-		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true) RETURNING chain_id),
+		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true) ON CONFLICT (chain_id) DO UPDATE SET enabled = true RETURNING chain_id),
 		     cur AS (INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block) SELECT chain_id, 0, 0 FROM c),
 		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
 		            VALUES (84532, 'evm', '0x036cbd53842c5426634e7929541ec2318f3dcf7e', 'USDC', 6, true)),

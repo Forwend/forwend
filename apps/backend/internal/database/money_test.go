@@ -37,7 +37,7 @@ func moneyDB(t *testing.T) (*pgx.Conn, string) {
 	t.Cleanup(func() { conn.Close(ctx) })
 	var profile string
 	err = conn.QueryRow(ctx, `
-		WITH c AS (INSERT INTO chains (chain_id, chain_family, name) VALUES (84532, 'evm', 'base-sepolia')),
+		WITH c AS (INSERT INTO chains (chain_id, chain_family, name) VALUES (84532, 'evm', 'base-sepolia') ON CONFLICT (chain_id) DO NOTHING),
 		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals)
 		            VALUES (84532, 'evm', $1, 'USDC', 6)),
 		     u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:1') RETURNING id)

@@ -32,10 +32,6 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	specs, err := chain.Specs(cfg.Chains.File)
-	if err != nil {
-		return err
-	}
 	pool, err := database.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return err
@@ -53,13 +49,17 @@ func run() error {
 		return err
 	}
 	executor := crypto.PubkeyToAddress(cfg.ExecutorKey.PublicKey)
+	specs, err := chain.Specs(ctx, pool, cfg.Chains.RPCSecrets, cfg.Chains.AllowLoopback)
+	if err != nil {
+		return err
+	}
 	budget, err := chain.NewBudget(ctx, pool, cfg.Chains.RPCRate)
 	if err != nil {
 		return err
 	}
 	defer budget.Close()
 
-	err = chain.CheckEnabled(ctx, pool, specs, cfg.Chains.InfuraKeys, cfg.Chains.RPCRate,
+	err = chain.CheckEnabled(ctx, pool, specs, cfg.Chains.RPCRate,
 		func(ctx context.Context, id uint64, r chain.RPCs) error {
 			return settlement.CheckGas(ctx, id, executor, ethclient.NewClient(r.Primary), ethclient.NewClient(r.Second))
 		}, budget)
@@ -67,7 +67,7 @@ func run() error {
 		return err
 	}
 
-	rounds := settlement.NewRounds(pool, cfg.ExecutorKey, specs, cfg.Chains.InfuraKeys, cfg.Chains.RPCRate, lock.Held, budget)
+	rounds := settlement.NewRounds(pool, cfg.ExecutorKey, specs, cfg.Chains.RPCRate, lock.Held, budget)
 	defer rounds.Close()
 	slog.Info("signer ready", "executor", executor.Hex(), "every", cfg.Chains.PollInterval)
 	for {

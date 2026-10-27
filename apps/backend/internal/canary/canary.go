@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
-	"net/url"
 	"os/exec"
 	"regexp"
 	"slices"
@@ -23,6 +22,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/forwend/forwend/apps/backend/internal/config"
+	"github.com/forwend/forwend/apps/backend/internal/outbound"
 )
 
 const timeout = 30 * time.Second
@@ -76,7 +76,9 @@ func Check(ctx context.Context, c config.Canary, lines []string) []string {
 	for chainID, urls := range c.RPCURLs {
 		var pair [2]*rpc.Client
 		for i, u := range urls {
-			cl, err := rpc.DialContext(ctx, u)
+			httpClient := outbound.Client(c.AllowLoopback)
+			defer httpClient.CloseIdleConnections()
+			cl, err := rpc.DialOptions(ctx, u, rpc.WithHTTPClient(httpClient))
 			if err != nil {
 				alerts = append(alerts, fmt.Sprintf("chain %d rpc %d: %v", chainID, i+1, redact(err)))
 				continue
@@ -336,9 +338,15 @@ func readPayPages(ctx context.Context, c config.Canary, ids []string) (map[strin
 
 // redact drops the URL that net/http puts in its errors: an RPC URL may hold a key.
 func redact(err error) error {
-	var u *url.Error
-	if errors.As(err, &u) {
-		return u.Err
+	if errors.Is(err, context.DeadlineExceeded) {
+		return context.DeadlineExceeded
 	}
-	return err
+	if errors.Is(err, context.Canceled) {
+		return context.Canceled
+	}
+	var rpcErr rpc.Error
+	if errors.As(err, &rpcErr) {
+		return fmt.Errorf("RPC error (%d)", rpcErr.ErrorCode())
+	}
+	return errors.New("RPC request failed")
 }

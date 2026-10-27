@@ -6,11 +6,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 )
 
@@ -108,12 +106,12 @@ func BalanceFrom(clients map[uint64]*ethclient.Client) BalanceOf {
 		if !ok {
 			return nil, 0, fmt.Errorf("no balance RPC for chain %d", chainID)
 		}
-		final, err := client.HeaderByNumber(ctx, big.NewInt(int64(rpc.FinalizedBlockNumber)))
+		final, err := chain.Finalized(ctx, client)
 		if err != nil {
 			return nil, 0, fmt.Errorf("balanceOf %s on chain %d: read finalized block: %w", holder, chainID, err)
 		}
-		head := final.Number.Uint64()
-		balance, err := BalanceAt(ctx, client, chainID, token, holder, head)
+		head := final.Number
+		balance, err := chain.TokenBalanceAtHash(ctx, client, chainID, token, holder, final.Hash)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -132,14 +130,14 @@ func DeployedFrom(clients map[uint64]*ethclient.Client) DeployedAt {
 		if !ok {
 			return 0, fmt.Errorf("no deployedAt RPC for chain %d", chainID)
 		}
-		final, err := client.HeaderByNumber(ctx, big.NewInt(int64(rpc.FinalizedBlockNumber)))
+		final, err := chain.Finalized(ctx, client)
 		if err != nil {
 			return 0, fmt.Errorf("deployedAt %s on chain %d: read finalized block: %w", receiver, chainID, err)
 		}
 		to := common.HexToAddress(factory)
 		data := append(crypto.Keccak256([]byte("deployedAt(address)"))[:4],
 			common.LeftPadBytes(common.HexToAddress(receiver).Bytes(), 32)...)
-		out, err := client.CallContract(ctx, ethereum.CallMsg{To: &to, Data: data}, final.Number)
+		out, err := chain.CallAtHash(ctx, client, to, data, final.Hash)
 		if err != nil {
 			return 0, fmt.Errorf("deployedAt %s on chain %d: %w", receiver, chainID, err)
 		}

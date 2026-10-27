@@ -29,9 +29,13 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 
 ## Receiver evidence and actual outflows
 
+- The signer stores successful settlement receipt observations for progress display, including mined replacement hashes.
+- Missing or reverted receipts clear those observations; they never determine finality, booking or spendable balances.
+- Payment reads calculate remaining blocks and estimated chain time against the saved finalized cursor.
+
 - Migration 78 seeds bounded historical scans for existing receivers; new receivers start at the saved chain cursor.
 - Active payment scans share source reads in groups of 32, then commit evidence separately for each receiver.
-- Catch-up checkpoints cover at most 2,000 blocks; deeper receivers skip batch prefetch.
+- Catch-up checkpoints use the learned provider range limit, capped at 2,000 blocks; deeper receivers skip batch prefetch.
 - Advancing active checkpoints can continue within the round budget; retries and legacy work remain deferred.
 - Untouched options wait until payment or expiry needs their evidence. Missing evidence remains unverified.
 - Historical receivers run separately, at most two per round and 2,000 blocks per receiver.
@@ -89,7 +93,7 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 
 `cmd/canary` (R-51) checks open invoices' receive addresses apart from the code that makes them. It imports no
 address code or constants from the api or `apps/web`: of this repository it builds only `internal/canary` and
-`internal/config` (a test fails otherwise), and its browser script `apps/web/scripts/canary-pay-page.ts` reads the
+`internal/config` and the destination-only `internal/outbound` package (a test fails otherwise), and its browser script `apps/web/scripts/canary-pay-page.ts` reads the
 DOM and imports nothing from `src/`. It reads only its own `CANARY_*` variables (names in
 `apps/backend/.env.example`): the api and web origins, the factory address, the factory's code hash, two RPCs on
 different hosts per chain ID and the script path.

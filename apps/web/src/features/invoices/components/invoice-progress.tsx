@@ -1,7 +1,7 @@
 "use client";
 
 import { IconButton, PaymentTimeline, STEP_STATES, TONES, Tooltip } from "@forwend/ui-web";
-import { Clock } from "lucide-react";
+import { Info } from "lucide-react";
 import { useEffect, useState } from "react";
 import { API_PAYMENT_STATUSES } from "@/features/activity/constants/activity";
 import { INVOICE_STEPS, INVOICE_TIMELINE } from "@/features/invoices/constants/invoices";
@@ -84,26 +84,25 @@ function useStepped(reached: number): number {
 }
 
 export interface ConfirmingStatusProps {
-  blocks: number;
-  total: number;
-  seconds: number;
+  blocks?: number | null;
+  total?: number | null;
+  seconds?: number | null;
 }
 
 export function ConfirmingStatus({ blocks, total, seconds }: ConfirmingStatusProps) {
-  const done = Math.max(0, total - blocks);
-  const target = Math.max(total, blocks);
-  const hint = COPY.confirmingHint(seconds);
+  const target = total != null && blocks != null ? Math.max(total, blocks) : 0;
+  const done = Math.max(0, target - (blocks ?? 0));
+  const hint = COPY.confirmingHint(seconds, target === 0 ? blocks : null);
   return (
-    <span className="flex items-center gap-1 text-sm text-muted">
-      <span aria-hidden="true" className="tabular-nums">
-        {COPY.confirmingCount(done, target)}
-      </span>
-      <Tooltip content={hint}>
-        <IconButton label={hint} size="xs">
-          <Clock aria-hidden className="size-3.5" />
-        </IconButton>
-      </Tooltip>
-      <span className="sr-only">{COPY.confirming(done, target, seconds)}</span>
+    <span className="inline-flex items-center gap-1 text-sm text-muted">
+      <span className="tabular-nums">{COPY.confirmingCount(done, target)}</span>
+      {hint ? (
+        <Tooltip content={hint}>
+          <IconButton label={hint} size="xs">
+            <Info aria-hidden className="size-3.5" />
+          </IconButton>
+        </Tooltip>
+      ) : null}
     </span>
   );
 }

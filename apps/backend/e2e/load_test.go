@@ -10,7 +10,6 @@ import (
 	"io"
 	"math/rand/v2"
 	"net/http"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -43,11 +42,8 @@ func TestLoad(t *testing.T) {
 	privy := authtest.NewPrivy(t)
 	dbURL := databasetest.New(t)
 	proxy := anvil.Proxy()
-	chains := filepath.Join(t.TempDir(), "chains.json")
-	if err := os.WriteFile(chains, fmt.Appendf(nil, `{"anvil": {"chainId": %d, "infura": null, "public": [%q, %q]}}`,
-		chaintest.ChainID, proxy.URL, strings.Replace(proxy.URL, "127.0.0.1", "localhost", 1)), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	anvil.DeployFactory()
+	configureRPCs(t, dbURL, proxy.URL, strings.Replace(proxy.URL, "127.0.0.1", "localhost", 1))
 	bin := *loadAPI
 	if bin == "" {
 		bin = filepath.Join(build(t), "api")
@@ -55,7 +51,7 @@ func TestLoad(t *testing.T) {
 	apiAddr := freeAddr(t)
 	start(t, filepath.Dir(bin), filepath.Base(bin), []string{"DATABASE_URL=" + dbURL, "API_ADDR=" + apiAddr,
 		"PRIVY_APP_ID=" + appID, "PRIVY_JWKS_URL=" + privy.JWKSURL, "PRIVY_APP_SECRET=unused",
-		"CHAINS_FILE=" + chains, "INFURA_API_KEYS=", "RPC_RATE_PER_SECOND=100000", "PUBLIC_WEB_URL=http://localhost:3000"})
+		"RPC_ENDPOINT_SECRETS=", "RPC_ALLOW_LOOPBACK=1", "RPC_RATE_PER_SECOND=100000", "PUBLIC_WEB_URL=http://localhost:3000"})
 	api := "http://" + apiAddr
 	waitFor(t, "api healthy", func() bool {
 		res, err := http.Get(api + "/healthz")
@@ -195,7 +191,7 @@ func seed(t *testing.T, dbURL string, tokens []string, n int) []string {
 	defer conn.Close(ctx)
 	err = pgx.BeginFunc(ctx, conn, func(tx pgx.Tx) error {
 		for _, q := range []string{
-			`INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (@chain, 'evm', 'anvil', true)`,
+			`UPDATE chains SET enabled = true WHERE chain_id = @chain`,
 			`INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
 			 VALUES (@chain, 'evm', @a, 'USDC', 6, true), (@chain, 'evm', @b, 'USDT', 6, true)`,
 			`INSERT INTO users (privy_user_id) SELECT 'did:privy:load-' || g FROM generate_series(0, @n - 1) g`,

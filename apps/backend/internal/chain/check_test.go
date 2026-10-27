@@ -45,8 +45,8 @@ func TestCheckEnabled(t *testing.T) {
 		checked bool
 	}{
 		"working pair":     {public: pair, checked: true},
-		"not listed":       {want: "chain 31337 is enabled in the database but not in the chain list"},
-		"one host":         {public: []string{a.URL}, want: "chain 31337 lists 1 RPC host(s)"},
+		"not listed":       {want: "chain 31337 is enabled in the database but not in the RPC configuration snapshot"},
+		"one host":         {public: []string{a.URL}, want: "chain 31337: primary and independent confirmation endpoints required"},
 		"second host down": {public: []string{a.URL, down.URL}},
 		"second host on another chain": {public: []string{a.URL, other.URL},
 			want: "chain 31337: 1 of 2 RPC hosts answered"},
@@ -58,10 +58,10 @@ func TestCheckEnabled(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			specs := map[uint64]Spec{}
 			if tc.public != nil {
-				specs[chaintest.ChainID] = Spec{ChainID: chaintest.ChainID, Public: tc.public}
+				specs[chaintest.ChainID] = testSpec(chaintest.ChainID, tc.public...)
 			}
 			var checked []uint64
-			err := CheckEnabled(ctx, db, specs, nil, 1000, func(_ context.Context, id uint64, _ RPCs) error {
+			err := CheckEnabled(ctx, db, specs, 1000, func(_ context.Context, id uint64, _ RPCs) error {
 				checked = append(checked, id)
 				return tc.further
 			})
@@ -75,8 +75,8 @@ func TestCheckEnabled(t *testing.T) {
 	}
 
 	t.Run("a further check's error has no key", func(t *testing.T) {
-		specs := map[uint64]Spec{chaintest.ChainID: {ChainID: chaintest.ChainID, Public: []string{a.URL, localhost(a.URL)}}}
-		err := CheckEnabled(ctx, db, specs, nil, 1000, func(context.Context, uint64, RPCs) error {
+		specs := map[uint64]Spec{chaintest.ChainID: testSpec(chaintest.ChainID, a.URL, localhost(a.URL))}
+		err := CheckEnabled(ctx, db, specs, 1000, func(context.Context, uint64, RPCs) error {
 			return errors.New(`Post "https://base-sepolia.infura.io/v3/SECRETKEY": context deadline exceeded`)
 		})
 		if err == nil || strings.Contains(err.Error(), "SECRETKEY") {
@@ -89,10 +89,10 @@ func TestCheckEnabled(t *testing.T) {
 		if _, err := db.Exec(ctx, "INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (2, 'evm', 'two', true)"); err != nil {
 			t.Fatal(err)
 		}
-		specs := map[uint64]Spec{2: {ChainID: 2, Public: []string{down.URL, localhost(down.URL)}},
-			chaintest.ChainID: {ChainID: chaintest.ChainID, Public: pair}}
+		specs := map[uint64]Spec{2: testSpec(2, down.URL, localhost(down.URL)),
+			chaintest.ChainID: testSpec(chaintest.ChainID, pair...)}
 		var checked []uint64
-		err := CheckEnabled(ctx, db, specs, nil, 1000, func(_ context.Context, id uint64, _ RPCs) error {
+		err := CheckEnabled(ctx, db, specs, 1000, func(_ context.Context, id uint64, _ RPCs) error {
 			checked = append(checked, id)
 			return nil
 		})

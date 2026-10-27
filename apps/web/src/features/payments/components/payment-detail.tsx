@@ -7,6 +7,7 @@ import { PaymentAmount } from "@/features/payments/components/payment-amount";
 import { PaymentDiagnostics } from "@/features/payments/components/payment-diagnostics";
 import { PaymentMovements } from "@/features/payments/components/payment-movements";
 import { PaymentProblems } from "@/features/payments/components/payment-problems";
+import { PaymentProgress } from "@/features/payments/components/payment-progress";
 import { PaymentReceived } from "@/features/payments/components/payment-received";
 import { SOURCE_LABELS } from "@/features/payments/constants/payments";
 import {
@@ -48,7 +49,13 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
     ? funded
     : payment.options.filter((option) => option.optionId === payment.optionId);
   const problems = payment.problems.filter(
-    (problem) => problem.code !== "verification_pending" && problem.code !== "partial_payment",
+    (problem) =>
+      problem.code !== "verification_pending" &&
+      problem.code !== "partial_payment" &&
+      !(
+        problem.action === "wait" &&
+        (problem.code === "outflow_unreconciled" || problem.code === "settlement_delayed")
+      ),
   );
   const confirming =
     payment.confirming ||
@@ -178,7 +185,8 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
                 />
               </p>
             ) : null}
-            {option.deposits[0] ? (
+            <PaymentProgress option={option} />
+            {option.deposits[0] && option.deposits[0].status !== "detected" ? (
               <ExplorerLink chainId={option.chainId} txHash={option.deposits[0].txHash} named />
             ) : null}
           </div>

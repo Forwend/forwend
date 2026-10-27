@@ -21,7 +21,7 @@ var errUnavailable = errors.New("its RPCs did not answer")
 
 // CheckEnabled checks every enabled chain at startup (D-15); also, when not nil, adds a check per chain.
 // A mistake stops the process; a chain whose hosts don't answer is logged and skipped (D-71).
-func CheckEnabled(ctx context.Context, db *pgxpool.Pool, specs map[uint64]Spec, keys []string, rate float64,
+func CheckEnabled(ctx context.Context, db *pgxpool.Pool, specs map[uint64]Spec, rate float64,
 	also func(ctx context.Context, chainID uint64, r RPCs) error, budgets ...*Budget) error {
 	ids, err := Enabled(ctx, db)
 	if err != nil {
@@ -30,9 +30,9 @@ func CheckEnabled(ctx context.Context, db *pgxpool.Pool, specs map[uint64]Spec, 
 	for _, id := range ids {
 		spec, ok := specs[id]
 		if !ok {
-			return fmt.Errorf("chain %d is enabled in the database but not in the chain list (CHAINS_FILE)", id)
+			return fmt.Errorf("chain %d is enabled in the database but not in the RPC configuration snapshot", id)
 		}
-		r, err := NewRPCs(spec, keys, rate, budgets...)
+		r, err := NewRPCs(spec, rate, budgets...)
 		if err != nil {
 			return err
 		}

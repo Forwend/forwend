@@ -38,10 +38,6 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	specs, err := chain.Specs(cfg.ChainsFile)
-	if err != nil {
-		return err
-	}
 	pool, err := database.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return err
@@ -55,19 +51,23 @@ func run() error {
 			return err
 		}
 	}
+	specs, err := chain.Specs(ctx, pool, cfg.RPCSecrets, cfg.RPCAllowLoopback)
+	if err != nil {
+		return err
+	}
 	budget, err := chain.NewBudget(ctx, pool, cfg.RPCRate)
 	if err != nil {
 		return err
 	}
 	defer budget.Close()
 
-	err = chain.CheckEnabled(ctx, pool, specs, cfg.InfuraKeys, cfg.RPCRate, func(ctx context.Context, id uint64, r chain.RPCs) error {
+	err = chain.CheckEnabled(ctx, pool, specs, cfg.RPCRate, func(ctx context.Context, id uint64, r chain.RPCs) error {
 		return address.FactoryDeployed(ctx, id, ethclient.NewClient(r.Primary), ethclient.NewClient(r.Second))
 	}, budget)
 	if err != nil {
 		return err
 	}
-	balances := balance.NewChainReader(specs, cfg.InfuraKeys, cfg.RPCRate, budget)
+	balances := balance.NewChainReader(specs, cfg.RPCRate, budget)
 	defer balances.Close()
 
 	verifier, err := auth.NewVerifier(ctx, cfg.PrivyAppID, cfg.PrivyJWKSURL, &http.Client{Timeout: 10 * time.Second})

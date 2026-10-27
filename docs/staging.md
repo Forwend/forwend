@@ -73,7 +73,7 @@
 | `NEXT_PUBLIC_PRIVY_APP_ID` | The test Privy app ID; must match the secret below. |
 | `PRIVY_APP_SECRET` | That test Privy app's secret from `apps/backend/.env`. |
 | `EXECUTOR_PRIVATE_KEY` | The existing authorized testnet executor key from `apps/backend/.env`. |
-| `INFURA_API_KEYS` | Existing comma-separated Infura keys; empty uses the configured public RPCs. |
+| `RPC_ENDPOINT_SECRETS` | Backend-only JSON map of secret references to complete private URLs; see [RPC operations](backend/rpc.md). |
 | `RPC_RATE_PER_SECOND` | `10` by default. Also sets the shared weighted budget to 800 units/second; see [RPC pacing](backend/architecture.md#running-the-loop). |
 | `POLL_INTERVAL` | `5s` by default, for the worker and signer. |
 | `RESEND_API_KEY` | Existing send-only Resend key; empty leaves emails queued without sending them. |
@@ -81,7 +81,7 @@
 | `EMAIL_POSTAL_ADDRESS` | Optional sender address for email footers; empty omits it. |
 | `WEBHOOK_SECRET_KEY` | 32 random bytes in base64, from `openssl rand -base64 32`. Compose refuses to deploy without it. It opens the saved signing secrets; under another key, deliveries stop. |
 
-- Compose sets `DATABASE_URL`, `API_ADDR`, `CHAINS_FILE`, `PRIVY_APP_ID` and `PRIVY_JWKS_URL` internally.
+- Compose sets `DATABASE_URL`, `API_ADDR`, `RPC_ALLOW_LOOPBACK=0`, `PRIVY_APP_ID` and `PRIVY_JWKS_URL` internally.
 - The web build fixes `API_URL=http://api:8080`. Its runtime sets `NODE_ENV`, `HOSTNAME` and `PORT`.
 - `POSTGRES_PORT` is local only. The staging database has no host port.
 - `PRIVY_TEST_EMAIL` and `PRIVY_TEST_OTP` are browser test credentials, excluded from deployment.

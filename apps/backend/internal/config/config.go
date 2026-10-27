@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/forwend/forwend/apps/backend/internal/outbound"
 )
 
 type API struct {
@@ -26,10 +27,10 @@ type API struct {
 	PrivyAppID   string
 	PrivyJWKSURL string
 	// PrivyAppSecret lets the api make profile wallets: never log it.
-	PrivyAppSecret string
-	ChainsFile     string
-	InfuraKeys     []string
-	RPCRate        float64
+	PrivyAppSecret   string
+	RPCSecrets       Secrets `json:"-"`
+	RPCAllowLoopback bool
+	RPCRate          float64
 	// PublicWebURL is the web app's origin, such as https://forwend.app: PDFs link to its /pay/<payToken> page.
 	PublicWebURL string
 	// UserBurst is each signed-in user's burst of requests; 0 keeps the default (mid.UserBurst). Only the live e2e,
@@ -72,10 +73,10 @@ const DefaultRatesURL = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-his
 const DefaultEmailFrom = "Forwend <notifications@mail.forwend.com>"
 
 type Chains struct {
-	File         string   // the chain list, packages/contracts/chains.json in a checkout
-	InfuraKeys   []string // used before public RPCs; none: public RPCs only
-	RPCRate      float64  // most calls per second to each RPC endpoint (an Infura key or a public URL)
-	PollInterval time.Duration
+	RPCSecrets    Secrets `json:"-"`
+	AllowLoopback bool
+	RPCRate       float64
+	PollInterval  time.Duration
 }
 
 // Signer's ExecutorKey is read from a hex private key: never log it.
@@ -87,6 +88,7 @@ type Signer struct {
 
 // Canary is what cmd/canary needs: its own factory, code hash and RPCs, never the api's (R-51).
 type Canary struct {
+	AllowLoopback   bool
 	APIURL, WebURL  string
 	Factory         string
 	FactoryCodeHash string               // keccak256 of the factory's runtime code, lowercase 0x hex
@@ -98,7 +100,7 @@ func LoadAPI() (API, error) {
 	var r reader
 	c := API{DatabaseURL: r.get("DATABASE_URL"), Addr: r.get("API_ADDR"),
 		PrivyAppID: r.get("PRIVY_APP_ID"), PrivyJWKSURL: r.keysURL("PRIVY_JWKS_URL"), PrivyAppSecret: r.get("PRIVY_APP_SECRET"),
-		ChainsFile: r.get("CHAINS_FILE"), InfuraKeys: r.infuraKeys(), RPCRate: r.rate(),
+		RPCSecrets: r.rpcSecrets(), RPCAllowLoopback: r.flag("RPC_ALLOW_LOOPBACK"), RPCRate: r.rate(),
 		PublicWebURL: r.origin("PUBLIC_WEB_URL"), UserBurst: r.count("API_USER_BURST"),
 		EnableTestnetUSDC: r.flag("ENABLE_TESTNET_USDC"), WebhookKey: r.base64Key("WEBHOOK_SECRET_KEY")}
 	return c, r.err()
@@ -142,9 +144,10 @@ func LoadSigner() (Signer, error) {
 
 func LoadCanary() (Canary, error) {
 	var r reader
-	c := Canary{APIURL: r.origin("CANARY_API_URL"), WebURL: r.origin("CANARY_WEB_URL"),
+	allowLoopback := r.flag("RPC_ALLOW_LOOPBACK")
+	c := Canary{AllowLoopback: allowLoopback, APIURL: r.origin("CANARY_API_URL"), WebURL: r.origin("CANARY_WEB_URL"),
 		Factory: r.hex("CANARY_FACTORY", 20), FactoryCodeHash: r.hex("CANARY_FACTORY_CODE_HASH", 32),
-		RPCURLs: r.rpcPairs("CANARY_RPC_URLS"), PageScript: r.get("CANARY_PAGE_SCRIPT")}
+		RPCURLs: r.rpcPairs("CANARY_RPC_URLS", allowLoopback), PageScript: r.get("CANARY_PAGE_SCRIPT")}
 	return c, r.err()
 }
 
@@ -160,7 +163,7 @@ func (r *reader) hex(name string, bytes int) string {
 }
 
 // rpcPairs never puts the URLs into an error: they may hold keys.
-func (r *reader) rpcPairs(name string) map[uint64][2]string {
+func (r *reader) rpcPairs(name string, allowLoopback bool) map[uint64][2]string {
 	raw := r.get(name)
 	if raw == "" {
 		return nil
@@ -174,7 +177,8 @@ func (r *reader) rpcPairs(name string) map[uint64][2]string {
 			break
 		}
 		a, b := webURL(urls[0]), webURL(urls[1])
-		if a == nil || b == nil || a.Host == b.Host {
+		if a == nil || b == nil || !outbound.ValidURL(urls[0], allowLoopback) || !outbound.ValidURL(urls[1], allowLoopback) ||
+			strings.EqualFold(strings.TrimSuffix(a.Hostname(), "."), strings.TrimSuffix(b.Hostname(), ".")) {
 			ok = false
 			break
 		}
@@ -196,7 +200,7 @@ func webURL(raw string) *url.URL {
 }
 
 func (r *reader) chains() Chains {
-	c := Chains{File: r.get("CHAINS_FILE"), InfuraKeys: r.infuraKeys(), RPCRate: r.rate()}
+	c := Chains{RPCSecrets: r.rpcSecrets(), AllowLoopback: r.flag("RPC_ALLOW_LOOPBACK"), RPCRate: r.rate()}
 	if raw := r.get("POLL_INTERVAL"); raw != "" {
 		d, err := time.ParseDuration(raw)
 		if err != nil || d <= 0 {
@@ -294,14 +298,28 @@ func (r *reader) count(name string) int {
 	return v
 }
 
-func (r *reader) infuraKeys() []string {
-	var keys []string
-	for _, k := range strings.Split(os.Getenv("INFURA_API_KEYS"), ",") {
-		if k = strings.TrimSpace(k); k != "" {
-			keys = append(keys, k)
+type Secrets map[string]string
+
+func (Secrets) String() string   { return "<redacted>" }
+func (Secrets) GoString() string { return "<redacted>" }
+
+func (r *reader) rpcSecrets() Secrets {
+	raw := os.Getenv("RPC_ENDPOINT_SECRETS")
+	if raw == "" {
+		return nil
+	}
+	var secrets Secrets
+	if json.Unmarshal([]byte(raw), &secrets) != nil || secrets == nil {
+		r.invalid = append(r.invalid, "RPC_ENDPOINT_SECRETS (JSON object of secret references to URLs)")
+		return nil
+	}
+	for name, value := range secrets {
+		if !regexp.MustCompile(`^[A-Z][A-Z0-9_]{0,63}$`).MatchString(name) || value == "" {
+			r.invalid = append(r.invalid, "RPC_ENDPOINT_SECRETS (invalid reference or empty URL)")
+			return nil
 		}
 	}
-	return keys
+	return secrets
 }
 
 // reader collects every missing or invalid variable, so one run names them all.

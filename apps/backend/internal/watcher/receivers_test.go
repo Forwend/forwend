@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
@@ -293,6 +294,9 @@ func TestReceiverCommitsCatchupWithinProviderRangeLimit(t *testing.T) {
 				fmt.Fprint(w, `[{"jsonrpc":"2.0","id":1,"error":{"code":31,"message":"Batch of more than 3 requests are not allowed on free plan"}}]`)
 				return
 			}
+			if len(batch) == 1 {
+				body = batch[0]
+			}
 		}
 		if call.Method == "eth_getLogs" {
 			var filter struct {
@@ -331,8 +335,30 @@ func TestReceiverCommitsCatchupWithinProviderRangeLimit(t *testing.T) {
 	}
 	before := rejected.Load()
 	batchesBefore := rejectedBatches.Load()
-	if _, err := e.chain.Receiver(t.Context(), second, id); err != nil {
+	previous := next
+	budget, err := chain.NewBudget(t.Context(), e.pool, 10)
+	if err != nil {
 		t.Fatal(err)
+	}
+	defer budget.Close()
+	clients, err := chain.NewRPCs(chain.Spec{ChainID: chaintest.ChainID, AllowLoopback: true, Endpoints: []chain.Endpoint{
+		{ID: "primary", Provider: "primary", Role: chain.Primary, Tier: chain.Public, URL: e.anvil.URL, BudgetGroup: "shared-test-budget"},
+		{ID: "confirmation", Provider: "confirmation", Role: chain.Confirmation, Tier: chain.Public, URL: proxy.URL, BudgetGroup: "shared-test-budget"},
+	}}, 10, budget)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clients.Close()
+	paced := NewChain(e.pool, chaintest.ChainID, clients.Primary)
+	paced.span, paced.batchSize = e.chain.span, e.chain.batchSize
+	e.anvil.Mine(2)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	if _, err := paced.Receiver(ctx, clients.Second, id); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.pool.QueryRow(t.Context(), "SELECT next_block FROM receiver_scans WHERE invoice_id=$1", id).Scan(&next); err != nil || next <= previous || next-previous > e.chain.span {
+		t.Fatalf("checkpoint advanced %d blocks with provider range %d: %v", next-previous, e.chain.span, err)
 	}
 	if rejectedBatches.Load() != batchesBefore {
 		t.Fatal("repeated oversized header batch")
@@ -389,7 +415,7 @@ func TestReceiverCatchupDoesNotBypassRetryOrHistoricalQueue(t *testing.T) {
 func TestReceiverBatchDoesNotPrefetchDeepCatchup(t *testing.T) {
 	e := setupChain(t, chaintest.StartArchive(t))
 	id := "0x" + strings.Repeat("01", 32)
-	e.anvil.Mine(9000)
+	e.anvil.Mine(1000)
 	proxy := e.anvil.Proxy()
 	client, err := rpc.Dial(proxy.URL)
 	if err != nil {
@@ -397,6 +423,11 @@ func TestReceiverBatchDoesNotPrefetchDeepCatchup(t *testing.T) {
 	}
 	defer client.Close()
 	watch := NewChain(e.pool, chaintest.ChainID, client)
+	watch.span = 62
+	var previous uint64
+	if err := e.pool.QueryRow(t.Context(), "SELECT next_block FROM receiver_scans WHERE invoice_id=$1", id).Scan(&previous); err != nil {
+		t.Fatal(err)
+	}
 	round, err := watch.receiverRound(t.Context(), client, []string{id})
 	if err != nil {
 		t.Fatal(err)
@@ -411,7 +442,7 @@ func TestReceiverBatchDoesNotPrefetchDeepCatchup(t *testing.T) {
 		t.Fatalf("deep checkpoint done=%v err=%v", done, err)
 	}
 	var next uint64
-	if err := e.pool.QueryRow(t.Context(), "SELECT next_block FROM receiver_scans WHERE invoice_id=$1", id).Scan(&next); err != nil || next > 2100 {
+	if err := e.pool.QueryRow(t.Context(), "SELECT next_block FROM receiver_scans WHERE invoice_id=$1", id).Scan(&next); err != nil || next != previous+watch.span {
 		t.Fatalf("checkpoint=%d err=%v", next, err)
 	}
 }

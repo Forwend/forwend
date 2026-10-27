@@ -27,9 +27,14 @@ func TestEnableTestnetTokens(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer db.Close()
+			if !existingBase {
+				if _, err := db.Exec(ctx, `DELETE FROM rpc_endpoints WHERE chain_id=84532; DELETE FROM chains WHERE chain_id=84532`); err != nil {
+					t.Fatal(err)
+				}
+			}
 			if existingBase {
 				if _, err := db.Exec(ctx, `
-					INSERT INTO chains (chain_id, chain_family, name) VALUES (84532, 'evm', 'base-sepolia');
+					INSERT INTO chains (chain_id, chain_family, name) VALUES (84532, 'evm', 'base-sepolia') ON CONFLICT (chain_id) DO NOTHING;
 					INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals)
 					VALUES (84532, 'evm', '0x036cbd53842c5426634e7929541ec2318f3dcf7e', 'USDC', 6);
 					UPDATE chains SET enabled = true WHERE chain_id = 42431;

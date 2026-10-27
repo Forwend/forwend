@@ -8,8 +8,8 @@ x-database-url: &database-url postgres://${POSTGRES_USER:?set POSTGRES_USER}:${P
 
 x-chain-environment: &chain-environment
   DATABASE_URL: *database-url
-  CHAINS_FILE: /app/chains.json
-  INFURA_API_KEYS: ${INFURA_API_KEYS:-}
+  RPC_ENDPOINT_SECRETS: ${RPC_ENDPOINT_SECRETS:-}
+  RPC_ALLOW_LOOPBACK: "0"
   RPC_RATE_PER_SECOND: ${RPC_RATE_PER_SECOND:-10}
 
 services:

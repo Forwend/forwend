@@ -1,64 +1,21 @@
-// Package chain reaches each chain through the RPCs of the shared chain list (packages/contracts/chains.json), in the
-// order script/rpc.mjs uses: every Infura key, then the public RPCs, using only URLs whose eth_chainId matches (D-15).
+// Package chain owns backend EVM endpoint configuration, clients and failover.
 package chain
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net"
+	"math"
 	"net/http"
 	"net/url"
-	"os"
 	"regexp"
 	"time"
 
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/forwend/forwend/apps/backend/internal/outbound"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type Spec struct {
-	ChainID uint64   `json:"chainId"`
-	Infura  string   `json:"infura"` // Infura network name; empty when Infura doesn't serve the chain
-	Public  []string `json:"public"`
-}
-
-func Specs(path string) (map[uint64]Spec, error) {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read chain list: %w", err)
-	}
-	var byName map[string]Spec
-	if err := json.Unmarshal(raw, &byName); err != nil {
-		return nil, fmt.Errorf("read chain list %s: %w", path, err)
-	}
-	out := map[uint64]Spec{}
-	for name, s := range byName {
-		if _, dup := out[s.ChainID]; dup {
-			return nil, fmt.Errorf("read chain list %s: chain id %d listed twice (%s)", path, s.ChainID, name)
-		}
-		for _, raw := range s.Public {
-			if !secureRPC(raw) {
-				return nil, fmt.Errorf("read chain list %s: %s lists an RPC that is not https", path, name)
-			}
-		}
-		out[s.ChainID] = s
-	}
-	return out, nil
-}
-
-// secureRPC: a network attacker on a plain-http RPC could forge both the deposit and its balance check.
-func secureRPC(raw string) bool {
-	u, err := url.Parse(raw)
-	if err != nil {
-		return false
-	}
-	host := u.Hostname()
-	return u.Scheme == "https" || u.Scheme == "http" && (host == "localhost" || net.ParseIP(host).IsLoopback())
-}
-
-// Primary reads the chain and signs, Second checks balances (D-15); both share one failover pool (pool.go).
 type RPCs struct {
 	Primary, Second *rpc.Client
 	pool            *pool
@@ -67,43 +24,27 @@ type RPCs struct {
 func (r RPCs) Close() {
 	r.Primary.Close()
 	r.Second.Close()
+	r.pool.http.CloseIdleConnections()
 }
 
-// NewRPCs sends each endpoint at most rate calls per second and refuses a chain with fewer than two hosts (D-15).
-func NewRPCs(spec Spec, infuraKeys []string, rate float64, budgets ...*Budget) (RPCs, error) {
-	var urls []string
-	if spec.Infura != "" {
-		for _, k := range infuraKeys {
-			urls = append(urls, "https://"+spec.Infura+".infura.io/v3/"+k)
-		}
+func NewRPCs(spec Spec, rate float64, budgets ...*Budget) (RPCs, error) {
+	if err := validate(spec); err != nil {
+		return RPCs{}, err
 	}
-	// net/http keeps 2 idle connections per host by default; under load the api ran out of local ports
-	// (architecture.md#load-test).
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.MaxIdleConnsPerHost = 100
+	if !(rate > 0) || math.IsInf(rate, 0) {
+		return RPCs{}, fmt.Errorf("invalid RPC rate")
+	}
 	p := &pool{chainID: spec.ChainID, perCall: time.Duration(float64(time.Second) / rate), timeout: AttemptTimeout,
-		http: &http.Client{Transport: transport}}
+		http: outbound.Client(spec.AllowLoopback), maxHeadAge: spec.MaxHeadAge}
 	if len(budgets) > 0 {
 		p.budget = budgets[0]
 	}
-	// Hosts alternate between the roles in list order and never fail over to the other role's: one provider must never
-	// answer both a deposit and the balance that confirms it, even after an outage moved the primary.
-	hosts := map[string]bool{}
-	for i, u := range append(urls, spec.Public...) {
-		host := hostOf(u)
-		if _, seen := hosts[host]; !seen {
-			hosts[host] = len(hosts)%2 == 1
-		}
-		p.endpoints = append(p.endpoints, &endpoint{url: u, host: host, name: fmt.Sprintf("%s#%d", host, i+1),
-			second: hosts[host]})
-	}
-	if len(hosts) < 2 {
-		return RPCs{}, fmt.Errorf("chain %d lists %d RPC host(s); D-15 needs a second, independent one",
-			spec.ChainID, len(hosts))
+	for _, e := range ordered(spec.Endpoints) {
+		p.endpoints = append(p.endpoints, &endpoint{url: e.URL, host: hostOf(e.URL), name: e.ID,
+			second: e.Role == Confirmation, budgetGroup: e.BudgetGroup})
 	}
 	r := RPCs{pool: p}
 	var err error
-	// The URLs only name the role in errors: the transport sends each request to an endpoint.
 	if r.Primary, err = rpc.DialOptions(context.Background(), fmt.Sprintf("http://chain-%d-primary", spec.ChainID),
 		rpc.WithHTTPClient(&http.Client{Transport: role{p, false}})); err != nil {
 		return RPCs{}, err
@@ -116,18 +57,14 @@ func NewRPCs(spec Spec, infuraKeys []string, rate float64, budgets ...*Budget) (
 	return r, nil
 }
 
-var urlKey = regexp.MustCompile(`(/v3/)[A-Za-z0-9_-]+`)
+var urlKey = regexp.MustCompile(`https?://[^\s"'<>]+`)
 
-// Redact returns err's text with API keys in RPC URLs replaced: go-ethereum puts the full URL, Infura key included,
-// into network errors. Use it for every RPC error that is logged.
-func Redact(err error) string {
-	return urlKey.ReplaceAllString(err.Error(), "${1}<key>")
-}
+func Redact(err error) string { return urlKey.ReplaceAllString(err.Error(), "<rpc-url>") }
 
 func hostOf(raw string) string {
 	u, err := url.Parse(raw)
 	if err != nil {
-		return raw
+		return ""
 	}
 	return u.Host
 }

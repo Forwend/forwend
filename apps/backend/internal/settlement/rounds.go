@@ -13,7 +13,6 @@ import (
 type Rounds struct {
 	pool    *pgxpool.Pool
 	specs   map[uint64]chain.Spec
-	keys    []string
 	rate    float64
 	rpcs    map[uint64]chain.RPCs
 	signers map[uint64]*Signer
@@ -25,9 +24,9 @@ type Rounds struct {
 }
 
 // rate is the most calls per second sent to each RPC.
-func NewRounds(pool *pgxpool.Pool, key *ecdsa.PrivateKey, specs map[uint64]chain.Spec, keys []string, rate float64,
+func NewRounds(pool *pgxpool.Pool, key *ecdsa.PrivateKey, specs map[uint64]chain.Spec, rate float64,
 	held func(context.Context) error, budgets ...*chain.Budget) *Rounds {
-	return &Rounds{budgets: budgets, pool: pool, specs: specs, keys: keys, rate: rate, rpcs: map[uint64]chain.RPCs{},
+	return &Rounds{budgets: budgets, pool: pool, specs: specs, rate: rate, rpcs: map[uint64]chain.RPCs{},
 		signers: map[uint64]*Signer{}, key: key, held: held, users: &userTurns{}}
 }
 
@@ -72,7 +71,7 @@ func (r *Rounds) Tick(ctx context.Context) {
 			slog.Error("enabled chain is not in the chain list", "chain", id)
 			continue
 		}
-		rpcs, err := chain.NewRPCs(spec, r.keys, r.rate, r.budgets...)
+		rpcs, err := chain.NewRPCs(spec, r.rate, r.budgets...)
 		if err != nil {
 			slog.Error("pick RPCs", "chain", id, "err", chain.Redact(err))
 			continue
