@@ -196,9 +196,17 @@ export function invalidField(message: string): InvoiceField | null {
 
 export function invoiceProgress(inv: Invoice) {
   // A late deposit is held for the payer and moves the invoice no further.
-  const deposits = inv.deposits.filter((d) => !d.late);
+  const deposits = (
+    inv.optionLocked
+      ? inv.deposits
+      : inv.options.flatMap((o) => o.deposits).length > 0
+        ? inv.options.flatMap((o) => o.deposits)
+        : inv.deposits
+  ).filter((d) => !d.late);
   const confirming = deposits.filter((d) => d.status !== API_DEPOSIT_STATUSES.confirmed);
-  const settled = inv.settlementStatus === API_SETTLEMENT_STATUSES.settled;
+  const settled =
+    inv.paymentStatus === API_PAYMENT_STATUSES.paid &&
+    inv.settlementStatus === API_SETTLEMENT_STATUSES.settled;
   // Waiting is done once money is seen, and Detected with it: a seen payment is already confirming.
   const done = settled
     ? 5
@@ -266,13 +274,24 @@ const EXCEPTIONS: Partial<Record<PaymentStatus, InvoiceException["kind"]>> = {
 export function invoiceException(inv: Invoice, status: PaymentStatus): InvoiceException {
   const sum = (late: boolean) =>
     inv.deposits.filter((d) => d.late === late).reduce((s, d) => s + BigInt(d.amount), 0n);
-  const received = sum(false);
-  const left = BigInt(inv.amount) - received;
+  const closed =
+    status === PAYMENT_STATUS.canceled ||
+    status === PAYMENT_STATUS.expired ||
+    status === PAYMENT_STATUS.expiredPartiallyPaid;
+  const received = inv.amounts
+    ? BigInt(inv.amounts.payable) + (closed ? BigInt(inv.amounts.held) : 0n)
+    : sum(false);
+  const left =
+    BigInt(inv.amount) - (closed ? 0n : inv.amounts ? BigInt(inv.amounts.payable) : received);
   return {
     kind: EXCEPTIONS[status] ?? null,
     received,
     left: left > 0n ? left : 0n,
-    late: sum(true),
+    late: inv.amounts
+      ? sum(true) < BigInt(inv.amounts.held)
+        ? sum(true)
+        : BigInt(inv.amounts.held)
+      : sum(true),
   };
 }
 

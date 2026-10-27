@@ -9,6 +9,7 @@ import (
 
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 	"github.com/forwend/forwend/apps/backend/internal/history/historytest"
+	"github.com/forwend/forwend/apps/backend/internal/ledger/ledgertest"
 )
 
 // option adds an accepted option of invoice main (R-56): its own id and receive address, the main row's other terms.
@@ -52,8 +53,13 @@ func TestFirstOptionPaidWinsAndOthersAreHeld(t *testing.T) {
 	}
 	e.anvil.Transfer(e.token, otherReceive, "5000000")
 	e.run(t)
+	if got := chosen(); got != "" {
+		t.Fatalf("unfinalized money chose %q", got)
+	}
+	e.anvil.Mine(2)
+	e.run(t)
 	if got := chosen(); got != other {
-		t.Fatalf("money seen on %s, chosen %q", other, got)
+		t.Fatalf("certified money on %s, chosen %q", other, got)
 	}
 
 	e.anvil.Transfer(e.token, mainReceive, "5000000") // the payer pays again, to the option not chosen
@@ -182,11 +188,38 @@ func (o optionSim) pay(id string, chainID int, receive string, amount, blockTime
 		VALUES ($1, 'evm', $2, $3, $4, 0, $4, $5, $6, '0x00000000000000000000000000000000000000ff', $7, $8, 'confirmed')`,
 		chainID, simToken, id, fmt.Sprintf("0x%064x", o.n), o.n, blockTime, receive, amount)
 	o.answer[receive].Add(o.answer[receive], big.NewInt(amount))
+	var at int64
+	if err := o.pool.QueryRow(o.t.Context(), "SELECT coalesce(block_time,0) FROM receiver_scans WHERE invoice_id = $1", id).Scan(&at); err != nil {
+		o.t.Fatal(err)
+	}
+	if at >= blockTime {
+		o.scanned(int64(chainID), at)
+	}
 }
 
 // scanned says the chain was read, and is final, up to time.
 func (o optionSim) scanned(chainID, time int64) {
 	o.exec("UPDATE chain_cursors SET last_scanned_time = $2, last_finalized_time = $2 WHERE chain_id = $1", chainID, time)
+	rows, err := o.pool.Query(o.t.Context(), "SELECT id,receive_address FROM invoices WHERE chain_id = $1", chainID)
+	if err != nil {
+		o.t.Fatal(err)
+	}
+	type receiver struct{ ID, Address string }
+	var receivers []receiver
+	for rows.Next() {
+		var r receiver
+		if err := rows.Scan(&r.ID, &r.Address); err != nil {
+			o.t.Fatal(err)
+		}
+		receivers = append(receivers, r)
+	}
+	if err := rows.Err(); err != nil {
+		o.t.Fatal(err)
+	}
+	rows.Close()
+	for _, r := range receivers {
+		ledgertest.Checkpoint(o.t, o.pool, r.ID, 100, time, o.answer[r.Address].String())
+	}
 }
 
 func TestMainRowWaitsForTheChoiceBeforeExpiring(t *testing.T) {
@@ -254,5 +287,39 @@ func TestOptionWaitsForEveryChainBeforeChoosing(t *testing.T) {
 	}
 	if got, refund := s.payment(main); refund != "held" {
 		t.Fatalf("the dust: %s, refund %s; want held for the payer", got, refund)
+	}
+}
+
+func TestEarlyOptionClosePreservesOtherCheckoutOptions(t *testing.T) {
+	for _, shortMain := range []bool{true, false} {
+		t.Run(fmt.Sprint(shortMain), func(t *testing.T) {
+			e := newChainEnv(t)
+			initial := e.anvil.Now()
+			main, mainReceive := e.invoice(t, 1, 5000000, initial+60*86400)
+			other, otherReceive := e.option(t, main, 2)
+			short, long, longReceive := main, other, otherReceive
+			if !shortMain {
+				short, long, longReceive = other, main, mainReceive
+			}
+			if _, err := e.pool.Exec(t.Context(), "UPDATE invoices SET receiver_deployed_at = $2 WHERE id = $1", short, initial); err != nil {
+				t.Fatal(err)
+			}
+			e.anvil.Wait(30 * 86400)
+			e.anvil.Mine(3)
+			e.run(t)
+			if s := e.state(t, main); s.payment != Open {
+				t.Fatalf("one option closed whole checkout: %+v", s)
+			}
+			e.anvil.Transfer(e.token, longReceive, "5000000")
+			e.anvil.Mine(2)
+			e.run(t)
+			if s := e.state(t, long); s.payment != Paid || s.owed != 5000000 {
+				t.Fatalf("available option: %+v", s)
+			}
+			var chosen *string
+			if err := e.pool.QueryRow(t.Context(), "SELECT chosen_id FROM invoices WHERE id = $1", main).Scan(&chosen); err != nil || chosen == nil || *chosen != long {
+				t.Fatalf("chosen=%v err=%v", chosen, err)
+			}
+		})
 	}
 }

@@ -74,6 +74,9 @@ export const HISTORY_KINDS = {
   replaced: "invoice.replaced",
   reopened: "invoice.reopened",
   numbered: "invoice.numbered",
+  refunded: "invoice.refunded",
+  receiverSettled: "receiver.settled",
+  checkoutCloseChanged: "checkout.close_changed",
 } as const;
 
 /** The fields an invoice.edited row names (R-127, R-128), as the API calls them. */
@@ -119,6 +122,9 @@ export const HISTORY_CATEGORY_OF = {
   [HISTORY_KINDS.replaced]: HISTORY_CATEGORIES.change,
   [HISTORY_KINDS.reopened]: HISTORY_CATEGORIES.change,
   [HISTORY_KINDS.numbered]: HISTORY_CATEGORIES.change,
+  [HISTORY_KINDS.refunded]: HISTORY_CATEGORIES.payment,
+  [HISTORY_KINDS.receiverSettled]: HISTORY_CATEGORIES.payment,
+  [HISTORY_KINDS.checkoutCloseChanged]: HISTORY_CATEGORIES.change,
 } as const satisfies Record<HistoryKind, HistoryCategory>;
 
 /** The History panel's filter: every row, or one category. */

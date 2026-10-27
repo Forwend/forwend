@@ -16,13 +16,15 @@ import (
 // What a wallet transfer was (R-108). Money in with no invoice and from none of the user's profiles is unclassified
 // until the user gives it one of Labels.
 const (
-	ClassInvoice      = "invoice"
-	ClassOwnTransfer  = "own_transfer"
-	ClassSent         = "sent"
-	ClassUnclassified = "unclassified"
-	LabelIncome       = "income"
-	LabelRefund       = "refund"
-	LabelOther        = "other"
+	ClassInvoice          = "invoice"
+	ClassPayment          = "payment"
+	ClassPaymentException = "payment_exception"
+	ClassOwnTransfer      = "own_transfer"
+	ClassSent             = "sent"
+	ClassUnclassified     = "unclassified"
+	LabelIncome           = "income"
+	LabelRefund           = "refund"
+	LabelOther            = "other"
 )
 
 var Labels = []string{LabelIncome, ClassOwnTransfer, LabelRefund, LabelOther}
@@ -39,9 +41,18 @@ type TransferInvoice struct {
 	ClientName string
 }
 
+type TransferPayment struct {
+	ID              string
+	Purpose         invoice.Purpose
+	DocumentKind    invoice.DocumentKind
+	PolicyException string
+	Unreconciled    bool
+}
+
 // R-108.
 func (t Transfer) Labelable() bool {
-	return t.Direction == "in" && t.Invoice == nil && !t.own
+	return t.Direction == "in" && !t.own && (t.Payment == nil && t.Invoice == nil ||
+		t.Payment != nil && (t.Payment.PolicyException != "" || t.Payment.Unreconciled))
 }
 
 // USDValue is the amount at receipt in USD: 1 USD per USD stablecoin (D-75, D-82).
@@ -63,8 +74,15 @@ func (t Transfer) RecordsValue() (amount string, day time.Time, ok bool) {
 // R-108.
 func (t Transfer) Classification() string {
 	switch {
+	case t.Payment != nil && (t.Payment.PolicyException != "" || t.Payment.Unreconciled):
+		if t.Label != "" {
+			return t.Label
+		}
+		return ClassPaymentException
 	case t.Invoice != nil:
 		return ClassInvoice
+	case t.Payment != nil:
+		return ClassPayment
 	case t.own:
 		return ClassOwnTransfer
 	case t.Direction == "out":
@@ -85,8 +103,23 @@ var ErrTooMany = errors.New("too many transactions in the period")
 // EachTransfer calls fn with each transfer in [from, to), newest first, for the export and statement (R-108,
 // R-112); past MaxExportRows it returns ErrTooMany. The caller has checked the user's access to the profile.
 func (s *Service) EachTransfer(ctx context.Context, profileID string, from, to time.Time, fn func(Transfer) error) error {
-	rows, err := s.pool.Query(ctx, transferSQL+` AND t.block_time >= $2 AND t.block_time < $3
-		ORDER BY t.block_time DESC, t.id DESC LIMIT $4`, profileID, from.Unix(), to.Unix(), MaxExportRows+1)
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
+	if err != nil {
+		return fmt.Errorf("open wallet export snapshot: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	var count int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM (SELECT 1 FROM wallet_transfers t
+      JOIN profile_wallets w ON w.chain_family = t.chain_family AND w.address = t.wallet_address
+      WHERE w.profile_id = $1 AND t.status <> 'reorged' AND t.block_time >= $2 AND t.block_time < $3
+      LIMIT $4) bounded`, profileID, from.Unix(), to.Unix(), MaxExportRows+1).Scan(&count); err != nil {
+		return fmt.Errorf("count wallet export rows: %w", err)
+	}
+	if count > MaxExportRows {
+		return ErrTooMany
+	}
+	rows, err := tx.Query(ctx, transferSQL+` AND t.block_time >= $2 AND t.block_time < $3
+        ORDER BY t.block_time DESC, t.id DESC LIMIT $4`, profileID, from.Unix(), to.Unix(), MaxExportRows+1)
 	if err != nil {
 		return fmt.Errorf("read wallet transfers: %w", err)
 	}
@@ -106,7 +139,7 @@ func (s *Service) EachTransfer(ctx context.Context, profileID string, from, to t
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("read wallet transfers: %w", err)
 	}
-	return nil
+	return tx.Commit(ctx)
 }
 
 // SetLabel clears the label with "" (R-108).

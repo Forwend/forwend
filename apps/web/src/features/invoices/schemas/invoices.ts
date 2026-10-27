@@ -142,7 +142,21 @@ export const settlementWaitSchema = z.object({
 });
 
 /** One token and network the invoice accepts, with its own on-chain id, amount and address (R-56). */
+export const paymentAmountsSchema = z.object({
+  receiver: z.string().regex(/^-?\d+$/),
+  payable: z.string().regex(/^-?\d+$/),
+  held: z.string().regex(/^-?\d+$/),
+  settled: baseUnits,
+  refunded: baseUnits,
+  observedRefunded: baseUnits,
+  lastReturnTxHash: hash32.nullable(),
+  unreconciled: z.boolean(),
+  hasPolicyException: z.boolean().optional(),
+});
+
 export const invoiceOptionSchema = z.object({
+  amounts: paymentAmountsSchema.optional(),
+  closesAt: apiTime.optional(),
   optionId: hash32,
   chainId: count,
   network: z.string(),
@@ -231,6 +245,7 @@ export const stoppedRemindersSchema = z.object({
 });
 
 export const invoiceSchema = invoiceSummarySchema.extend({
+  amounts: paymentAmountsSchema.optional(),
   // Every accepted option, the shown one included: one for a fixed invoice.
   options: z.array(invoiceOptionSchema),
   // Once paid: the block time of the deposit that completed the amount.

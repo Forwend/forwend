@@ -21,6 +21,7 @@ import { InvoiceDeposits } from "@/features/invoices/components/invoice-deposits
 import { InvoiceHistory } from "@/features/invoices/components/invoice-history";
 import { InvoiceLines } from "@/features/invoices/components/invoice-lines";
 import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
+import { PaymentAmountsNotice } from "@/features/invoices/components/payment-amounts-notice";
 import { PaymentReminders } from "@/features/invoices/components/payment-reminders";
 import { ReopenInvoice } from "@/features/invoices/components/reopen-invoice";
 import { RepeatsMonthly } from "@/features/invoices/components/repeats-monthly";
@@ -187,7 +188,7 @@ function Loaded({
   // Reopen (R-130) works the same way: focus goes to Details' new close once it shows.
   const closesRow = useRef<HTMLDivElement>(null);
   const [reopening, setReopening] = useState(false);
-  const reopened = invoice.closesAt !== invoice.expiresAt;
+  const reopened = Date.parse(invoice.closesAt) > Date.parse(invoice.expiresAt);
   useEffect(() => {
     if (reopening && reopened) closesRow.current?.focus();
   }, [reopening, reopened]);
@@ -238,6 +239,12 @@ function Loaded({
             money={money}
             request={request}
             reopenUntil={invoice.reopenUntil ?? null}
+            closing={Boolean(
+              invoice.closed && invoice.amounts && BigInt(invoice.amounts.payable) > 0n,
+            )}
+            needsReview={Boolean(
+              invoice.amounts?.unreconciled || invoice.amounts?.hasPolicyException,
+            )}
             onReopened={() => setReopening(true)}
           />
         </div>
@@ -269,6 +276,15 @@ function Loaded({
           }
         />
       </header>
+      {invoice.options.map((o) => (
+        <PaymentAmountsNotice
+          key={o.optionId}
+          amounts={o.amounts}
+          chainId={o.chainId}
+          symbol={o.symbol}
+          decimals={o.decimals}
+        />
+      ))}
 
       {/* minmax(0, 1fr): a long value never widens the column past the screen. */}
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
@@ -325,13 +341,13 @@ function Loaded({
               <InvoiceDeposits
                 invoice={invoice}
                 token={token ?? null}
-                // The invoice's amount goes to the wallet; anything above it stays held for the payer (D-26).
+                // Settlement rows show the booked outflow; gross deposits remain separate.
                 settlement={
                   invoice.settlementTxHash
                     ? {
                         txHash: invoice.settlementTxHash,
                         to: invoice.recipient,
-                        amount,
+                        amount: invoice.amounts ? BigInt(invoice.amounts.settled) : amount,
                         at: invoice.settledAt,
                       }
                     : null
@@ -541,6 +557,8 @@ function NextStep({
   money,
   request,
   reopenUntil,
+  needsReview,
+  closing,
   onReopened,
 }: {
   profileId: string;
@@ -550,6 +568,8 @@ function NextStep({
   money: (units: bigint) => string;
   request: boolean;
   reopenUntil: string | null;
+  needsReview: boolean;
+  closing: boolean;
   onReopened: () => void;
 }) {
   const noun = request ? COPY.noun.request : COPY.noun.invoice;
@@ -557,7 +577,8 @@ function NextStep({
   // Canceled with nothing sent needs no line: Details says when it was canceled.
   const kind =
     exception.kind === INVOICE_EXCEPTIONS.canceled && received === 0n ? null : exception.kind;
-  if (!kind && late === 0n) return null;
+  if (needsReview || (!kind && late === 0n)) return null;
+  if (closing) return <p className="text-sm text-ink">{COPY.checkingClosed}</p>;
   const reopen = kind === INVOICE_EXCEPTIONS.closedPartial ? reopenUntil : null;
   const values = { left: money(left), held: money(received), noun };
   return (
@@ -577,14 +598,10 @@ function NextStep({
             />
           ) : null}
           <Link
-            href={invoiceCopyHref(invoiceId, kind === INVOICE_EXCEPTIONS.closedPartial)}
+            href={invoiceCopyHref(invoiceId, false)}
             className={buttonClasses({ variant: "secondary", size: "sm" })}
           >
-            {kind === INVOICE_EXCEPTIONS.closedPartial
-              ? COPY.newForRest(noun)
-              : request
-                ? COPY.newRequest
-                : COPY.newInvoice}
+            {request ? COPY.newRequest : COPY.newInvoice}
           </Link>
         </div>
       ) : null}

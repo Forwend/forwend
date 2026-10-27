@@ -55,3 +55,21 @@ func TestCheckoutPaymentsNeverIssueInvoiceDocuments(t *testing.T) {
 		t.Fatalf("first actual invoice: %+v, %v", bill, err)
 	}
 }
+
+func TestHeldCheckoutDoesNotBreakBillingOwedList(t *testing.T) {
+	e := invoiceAPI(t)
+	shop := e.merchant(t)
+	inv, _, err := invoice.NewService(e.pool).Create(t.Context(), shop, "held-checkout", invoice.Request{
+		Purpose: invoice.PurposeCheckout, ChainID: 84532, Token: usdc, Amount: "2000000"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.deposit(t, inv.ID, "2500000")
+	got := e.call(t, "GET", "/v1/profiles/"+shop+"/owed", "did:privy:alice", "", "")
+	if got.status != http.StatusOK {
+		t.Fatalf("held checkout broke billing reads: %d %v", got.status, got.body)
+	}
+	if items, ok := got.body["items"].([]any); !ok || len(items) != 0 {
+		t.Fatalf("checkout appeared as a billing document: %v", got.body)
+	}
+}

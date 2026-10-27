@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/chain"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/forwend/forwend/apps/backend/internal/search"
 	"github.com/jackc/pgx/v5"
 )
@@ -27,6 +29,7 @@ type Transfer struct {
 	At           time.Time
 	Status       string
 	Invoice      *TransferInvoice
+	Payment      *TransferPayment
 	Label        string
 	// RecordsCurrency is the profile's other records currency, "" for none (R-110); fx its ECB rates for this transfer.
 	RecordsCurrency string
@@ -44,9 +47,10 @@ type rates struct {
 // transferSQL selects a profile's transfers ($1) with what classifies them (R-108): the invoice paid from one of
 // its receive addresses (a link invoice once it has a number, R-141), an own-profile counterparty, the user's label,
 // and the ECB rates that value it (R-110).
-const transferSQL = `
+var transferSQL = `
 	SELECT t.id, t.chain_id, t.token_contract, tk.symbol, tk.decimals, t.direction, t.amount::text, t.counterparty,
 	       t.tx_hash, t.log_index, t.block_number, t.block_time, t.status, inv.id, inv.number, inv.client_name,
+        inv.purpose, inv.document_kind, inv.policy_exception, inv.unreconciled,
 	       EXISTS (SELECT 1 FROM profile_wallets ow JOIN profiles op ON op.id = ow.profile_id
 	               WHERE op.user_id = p.user_id AND op.id <> p.id AND ow.chain_family = t.chain_family
 	                 AND ow.address = t.counterparty),
@@ -55,9 +59,16 @@ const transferSQL = `
 	JOIN profile_wallets w ON w.chain_family = t.chain_family AND w.address = t.wallet_address
 	JOIN profiles p ON p.id = w.profile_id
 	JOIN tokens tk ON tk.chain_id = t.chain_id AND tk.contract = t.token_contract
-	LEFT JOIN LATERAL (SELECT m.id, m.number, m.client_name FROM invoices o JOIN invoices m ON m.id = coalesce(o.main_id, o.id)
-	                   WHERE t.direction = 'in' AND o.chain_id = t.chain_id AND o.receive_address = t.counterparty
-	                     AND m.profile_id = p.id AND m.number IS NOT NULL) inv ON true
+	LEFT JOIN LATERAL (SELECT m.id, m.number, m.client_name, m.purpose, m.document_kind,
+                       coalesce(evidence.policy_exception,'') AS policy_exception, ` + ledger.UnreconciledSQL("o.id") + ` AS unreconciled
+                    FROM invoices o JOIN invoices m ON m.id = coalesce(o.main_id, o.id)
+	                   JOIN receiver_outflows evidence ON evidence.invoice_id = o.id AND evidence.kind = 'settlement'
+                    WHERE t.direction = 'in' AND o.chain_id = t.chain_id AND o.token_contract = t.token_contract
+                      AND o.receive_address = t.counterparty AND evidence.destination = t.wallet_address AND evidence.destination = o.recipient_address
+                      AND evidence.tx_hash = t.tx_hash AND evidence.block_hash = t.block_hash
+                      AND evidence.transfer_log_index = t.log_index AND evidence.amount = t.amount
+                      AND evidence.ledger_transaction_id IS NOT NULL
+                      AND m.profile_id = p.id) inv ON true
 	LEFT JOIN transfer_labels l ON l.profile_id = p.id AND l.chain_id = t.chain_id AND l.tx_hash = t.tx_hash
 	     AND l.log_index = t.log_index
 	LEFT JOIN LATERAL (SELECT u.day, u.per_eur AS usd, CASE WHEN p.records_currency = 'EUR' THEN 1 ELSE c.per_eur END AS cur
@@ -71,17 +82,22 @@ const transferSQL = `
 
 func scanTransfer(row pgx.CollectableRow) (Transfer, error) {
 	var (
-		t               Transfer
-		amount          string
-		at              int64
-		invoice, client *string
-		number          *int64
-		day             *time.Time
-		usd, cur        *string
+		t                                      Transfer
+		amount                                 string
+		at                                     int64
+		invoiceID, client                      *string
+		purpose, documentKind, policyException *string
+		unreconciled                           *bool
+		number                                 *int64
+		day                                    *time.Time
+		usd, cur                               *string
 	)
 	err := row.Scan(&t.id, &t.ChainID, &t.Token, &t.Symbol, &t.Decimals, &t.Direction, &amount, &t.Counterparty,
-		&t.TxHash, &t.LogIndex, &t.BlockNumber, &at, &t.Status, &invoice, &number, &client, &t.own, &t.Label,
+		&t.TxHash, &t.LogIndex, &t.BlockNumber, &at, &t.Status, &invoiceID, &number, &client, &purpose, &documentKind, &policyException, &unreconciled, &t.own, &t.Label,
 		&t.RecordsCurrency, &day, &usd, &cur)
+	if err != nil {
+		return t, err
+	}
 	if day != nil && usd != nil && cur != nil {
 		t.fx = &rates{day: *day}
 		t.fx.usd, _ = new(big.Rat).SetString(*usd)
@@ -89,12 +105,17 @@ func scanTransfer(row pgx.CollectableRow) (Transfer, error) {
 	}
 	t.Amount, _ = new(big.Int).SetString(amount, 10)
 	t.At = time.Unix(at, 0).UTC()
-	if invoice != nil {
-		t.Invoice = &TransferInvoice{ID: *invoice, Number: *number}
-		if client != nil {
-			t.Invoice.ClientName = *client
+	if invoiceID != nil {
+		t.Payment = &TransferPayment{ID: *invoiceID, Purpose: invoice.Purpose(*purpose), DocumentKind: invoice.DocumentKind(*documentKind),
+			PolicyException: *policyException, Unreconciled: *unreconciled}
+		if number != nil && t.Payment.DocumentKind == invoice.DocumentInvoice {
+			t.Invoice = &TransferInvoice{ID: *invoiceID, Number: *number}
+			if client != nil {
+				t.Invoice.ClientName = *client
+			}
 		}
 	}
+
 	return t, err
 }
 

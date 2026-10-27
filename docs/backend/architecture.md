@@ -198,7 +198,9 @@ with a test.
   at any time (R-127); `note`, `reference` and `due_date` only before any money (R-128). A saved
   client is copied into these by the create request, not linked, so editing or deleting it changes no invoice (R-86).
   `reopened_until` holds a reopen's close (R-130); the generated `closes_at` is the close every reader uses.
-  `receiver_deployed_at` is `factory.deployedAt` of the receiver, read when the option closed partly paid (R-130).
+  `receiver_deployed_at` caches verified deployment state; positive deployment evidence survives historical scans.
+  An early deployment can shorten `closes_at` without changing signed terms.
+  A changed operational close records `checkout.close_changed` with the option and new close.
   `invoice_lines(position, description, quantity, unit_price, amount)` (R-88, migration 00030) break a main row's amount
   down in its token's base units: inserted only in the transaction that makes the invoice, never updated or deleted, and
   a deferred constraint trigger checks at commit that they add up to the invoice's amount. The insert trigger also
@@ -223,6 +225,12 @@ with a test.
 - `ledger_transactions` + `ledger_entries`: double-entry, append-only (below).
 - `settlement_intents` (unique per invoice): nonce and tx hash tracked, with the hashes a fee replacement replaced;
   reconcile before any retry.
+- `receiver_scans` stores each option's historical coverage, verified checkpoint balance, retry schedule and reconciliation errors.
+- `receiver_deposit_proofs` prevents an unproved primary transfer from borrowing a previous coverage checkpoint.
+- `receiver_outflows` preserves actual receiver events, exact outgoing transfer identity and once-only journal attribution.
+- `receiver_conflicts` retains conflicting source observations without altering established evidence.
+- `receiver_funding` identifies an actual fully funded historical prefix; `ledger_checkpoints` locates non-cash reopen allocations.
+- These records remain separate from signer intents, webhook delivery and merchant financial classification.
 - `outbox_events`: `invoice.paid`, `invoice.held`, `invoice.settled` and `invoice.receipt`, queued by the ledger and
   the signer in the transaction that makes the change (`internal/outbox`), and `account.welcome` (with `user_id`, no
   invoice) when sign-up stores a new account's login email; sent once by the worker with retries
@@ -418,7 +426,8 @@ signer:
    - When the executor's next mined nonce has nothing pending and no saved settle holds it (a settle saved but never
      sent, then settled by the refund authority), a zero-value transfer to the executor fills it, so the settles after
      it can mine.
-2. Otherwise re-reads the terms and refuses for good (`refused` with a reason, nothing sent) unless the invoice is
+2. Otherwise requires sufficient net merchant payable and reconciled receiver evidence before signing new settlement bytes.
+   It re-reads the terms and refuses for good (`refused` with a reason, nothing sent) unless the invoice is
    `paid`, the recipient is the profile's wallet, the factory is the compiled one and the terms recompute the stored
    receive address; also when `factory.status` predicts another address.
 3. Waits and retries (back to `pending` with a reason; 1 min doubling to 1 h) on temporary conditions:

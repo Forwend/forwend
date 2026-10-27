@@ -47,8 +47,12 @@ type env struct {
 // setup: the real factory at its compiled address, Anvil's key as executor, a mock USDC and a profile wallet.
 func setup(t *testing.T) env {
 	t.Helper()
+	return setupChain(t, chaintest.Start(t))
+}
+
+func setupChain(t *testing.T, a *chaintest.Anvil) env {
+	t.Helper()
 	ctx := context.Background()
-	a := chaintest.Start(t)
 	a.DeployFactory()
 	token := a.DeployToken()
 	a.Mint(token, "1000000000")
@@ -113,6 +117,9 @@ func (e env) pay(t *testing.T, n int) (id, receive string) {
 	if err := e.watch.Scan(ctx); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := e.watch.Receiver(ctx, e.anvil.RPC, id); err != nil {
+		t.Fatal(err)
+	}
 	if err := e.ledger.ProcessChain(ctx, e.chainID); err != nil {
 		t.Fatal(err)
 	}
@@ -121,11 +128,16 @@ func (e env) pay(t *testing.T, n int) (id, receive string) {
 
 func (e env) create(t *testing.T, n int) (id, receive string) {
 	t.Helper()
+	return e.createFor(t, n, 3600)
+}
+
+func (e env) createFor(t *testing.T, n int, expiresIn int64) (id, receive string) {
+	t.Helper()
 	ctx := context.Background()
 	now := e.anvil.Now()
 	terms := address.Terms{InvoiceID: [32]byte(common.FromHex(fmt.Sprintf("0x%064x", n))), Recipient: common.HexToAddress(wallet),
-		Token: common.HexToAddress(e.token), Amount: big.NewInt(5000000), ExpiresAt: uint64(now + 3600),
-		SettleDeadline: uint64(now + 3600 + 86400), IntendedChainID: e.chainID}
+		Token: common.HexToAddress(e.token), Amount: big.NewInt(5000000), ExpiresAt: uint64(now + expiresIn),
+		SettleDeadline: uint64(now + expiresIn + 86400), IntendedChainID: e.chainID}
 	addr, err := address.Receive(terms)
 	if err != nil {
 		t.Fatal(err)
@@ -392,6 +404,9 @@ func TestPaidWhileTheWorkerWasDownSettlesAfterARestart(t *testing.T) {
 			before := e.nonce(t)
 			client := map[uint64]*ethclient.Client{chaintest.ChainID: e.client}
 			if err := watcher.NewChain(e.pool, chaintest.ChainID, e.anvil.RPC).Scan(ctx); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := e.watch.Receiver(ctx, e.anvil.RPC, id); err != nil {
 				t.Fatal(err)
 			}
 			ledgers := ledger.NewService(e.pool, ledger.BalanceFrom(client), ledger.DeployedFrom(client))
@@ -718,7 +733,7 @@ func (e env) invoice(t *testing.T, id string) invoice.Invoice {
 }
 
 // Booked once, with no tx hash, since our transaction did not settle.
-func TestSettledByTheRefundAuthorityAfterOurSettleFailedHasNoTxHash(t *testing.T) {
+func TestSettledByTheRefundAuthorityAfterOurSettleFailedRecordsActualTxHash(t *testing.T) {
 	for name, send := range map[string]bool{"reverted": true, "never mined": false} {
 		t.Run(name, func(t *testing.T) {
 			e := setup(t)
@@ -751,8 +766,12 @@ func TestSettledByTheRefundAuthorityAfterOurSettleFailedHasNoTxHash(t *testing.T
 			if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" || e.balance(t, wallet) != 5000000 {
 				t.Fatalf("intent %s, invoice %s, recipient %d", status, settlement, e.balance(t, wallet))
 			}
-			if hash := e.settlementTxHash(t, id); hash != "" {
-				t.Fatalf("settlementTxHash %s, want null: our settle did not settle the receiver", hash)
+			logs, err := e.client.FilterLogs(ctx, ethereum.FilterQuery{Addresses: []common.Address{common.HexToAddress(receive)}, Topics: [][]common.Hash{{settledEvent}}})
+			if err != nil || len(logs) != 1 {
+				t.Fatalf("actual settlement logs: %v, %v", logs, err)
+			}
+			if hash := e.settlementTxHash(t, id); !strings.EqualFold(hash, logs[0].TxHash.Hex()) {
+				t.Fatalf("settlementTxHash %s, want actual authority transaction %s", hash, logs[0].TxHash.Hex())
 			}
 			var booked int
 			if err := e.pool.QueryRow(ctx, "SELECT count(*) FROM ledger_transactions WHERE invoice_id = $1 AND kind = 'settlement'",
@@ -1475,6 +1494,9 @@ func TestSettlesTheOptionPaidFirst(t *testing.T) {
 	round := func() {
 		t.Helper()
 		if err := e.watch.Scan(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if err := e.watch.Receivers(ctx, e.anvil.RPC); err != nil {
 			t.Fatal(err)
 		}
 		if err := e.ledger.ProcessChain(ctx, chaintest.ChainID); err != nil {

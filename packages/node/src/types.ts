@@ -43,7 +43,20 @@ export type PaymentPurpose = (typeof PAYMENT_PURPOSES)[number];
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 export type CheckoutState = (typeof CHECKOUT_STATES)[number];
 
+export interface PaymentAmounts {
+  receiver: string;
+  payable: string;
+  held: string;
+  settled: string;
+  refunded: string;
+  observedRefunded: string;
+  lastReturnTxHash: string | null;
+  unreconciled: boolean;
+  hasPolicyException: boolean;
+}
+
 export interface Payment {
+  amounts?: PaymentAmounts;
   paymentId: string;
   purpose: PaymentPurpose;
   documentKind: DocumentKind;
@@ -93,6 +106,7 @@ export interface ListPayments {
 
 /** An invoice as its owner reads it. The fields a server most often needs are typed; the rest stay as sent. */
 export interface Invoice {
+  amounts?: PaymentAmounts;
   purpose?: PaymentPurpose;
   documentKind?: DocumentKind;
   linkId?: string;

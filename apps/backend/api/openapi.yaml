@@ -2647,12 +2647,29 @@ components:
               description: { type: string, maxLength: 200 }
               quantity: { type: string, description: Exact positive decimal with up to two places. }
               unitPrice: { type: string, description: Exact USD decimal. Items must sum to amountUsd. }
+    PaymentAmounts:
+      type: object
+      description: Exact net balances and actual outflows in the option token's base units. Review unresolved evidence before acting.
+      required: [receiver, payable, held, settled, refunded, observedRefunded, lastReturnTxHash, unreconciled, hasPolicyException]
+      properties:
+        hasPolicyException: { type: boolean, description: An authority outflow consumed merchant payable or payer-held funds outside ordinary policy. }
+        receiver: { type: string, pattern: "^-?[0-9]+$" }
+        payable: { type: string, pattern: "^-?[0-9]+$" }
+        held: { type: string, pattern: "^-?[0-9]+$" }
+        settled: { type: string, pattern: "^-?[0-9]+$" }
+        refunded: { type: string, pattern: "^-?[0-9]+$" }
+        observedRefunded: { type: string, pattern: "^[0-9]+$" }
+        lastReturnTxHash: { type: [string, "null"], pattern: "^0x[0-9a-f]{64}$" }
+        unreconciled:
+          type: boolean
+          description: Historical coverage, source attribution or financial booking remains unresolved. Never treat a negative legacy balance as available money.
     Payment:
       type: object
       required: [paymentId, purpose, documentKind, number, storeId, storeName, linkId, livemode, title,
         reference, chainId, token, amount, paymentStatus, settlementStatus, refundStatus, confirming,
         closed, createdAt, closesAt, hostedUrl]
       properties:
+        amounts: { $ref: "#/components/schemas/PaymentAmounts" }
         paymentId: { $ref: "#/components/schemas/InvoiceId" }
         purpose: { type: string, enum: [invoice, checkout, request] }
         documentKind: { type: string, enum: [invoice, request, none] }
@@ -3431,10 +3448,11 @@ components:
           description: The value at receipt, 1 USD per USD stablecoin (D-75, D-82), with every decimal of the token.
         classification:
           type: string
-          enum: [invoice, own_transfer, sent, unclassified, income, refund, other]
+          enum: [invoice, payment, payment_exception, own_transfer, sent, unclassified, income, refund, other]
           description: |
-            invoice for money in from one of the profile's invoice receive addresses; own_transfer between the user's
-            profiles; sent for other money out; other money in is unclassified or the user's label (R-108).
+            invoice or payment requires the exact booked settlement event and token transfer.
+            payment_exception preserves a policy exception or unresolved attribution; it requires review or a manual label.
+            own_transfer is between the user's profiles; sent is other money out. Other receipts require a label.
         labelable:
           type: boolean
           description: True for money in that Forwend can't classify, labelled or not; only those take a label.
@@ -3446,6 +3464,15 @@ components:
             invoiceId: { type: string }
             number: { type: integer }
             clientName: { type: [string, "null"] }
+        payment:
+          type: object
+          required: [paymentId, purpose, documentKind, policyException, unreconciled]
+          properties:
+            paymentId: { $ref: "#/components/schemas/InvoiceId" }
+            purpose: { type: string, enum: [invoice, checkout, request] }
+            documentKind: { type: string, enum: [invoice, request, none] }
+            policyException: { type: [string, "null"] }
+            unreconciled: { type: boolean }
         recordsValue:
           type: [object, "null"]
           description: |
@@ -3866,8 +3893,10 @@ components:
                 expiresAt and settleDeadline are the invoice's.
               items:
                 type: object
-                required: [optionId, chainId, network, token, symbol, decimals, amount, receiveAddress, deposits]
+                required: [optionId, chainId, network, token, symbol, decimals, amount, receiveAddress, closesAt, deposits]
                 properties:
+                  amounts: { $ref: "#/components/schemas/PaymentAmounts" }
+                  closesAt: { type: string, format: date-time, description: This receiver option's effective close. }
                   optionId: { $ref: "#/components/schemas/InvoiceId" }
                   chainId: { type: integer }
                   network: { type: string, description: The chain's name, such as base-sepolia. }
@@ -4033,6 +4062,7 @@ components:
         With several options (payer chooses), the terms and statuses are the current option's: the one that received
         money first, else the first listed.
       properties:
+        amounts: { $ref: "#/components/schemas/PaymentAmounts" }
         purpose:
           type: string
           enum: [invoice, checkout, request]

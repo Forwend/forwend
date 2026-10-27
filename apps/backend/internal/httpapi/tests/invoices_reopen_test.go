@@ -11,6 +11,7 @@ import (
 
 	"github.com/forwend/forwend/apps/backend/internal/history/historytest"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
+	"github.com/forwend/forwend/apps/backend/internal/ledger/ledgertest"
 )
 
 // R-130.
@@ -45,6 +46,7 @@ func TestReopenAnInvoiceThatClosedPartlyPaid(t *testing.T) {
 	if err := ledgers.Process(ctx, id); err != nil {
 		t.Fatal(err)
 	}
+	ledgertest.Checkpoint(t, e.pool, id, 10, expires.Unix()+120, "4000000")
 	owned := "/v1/profiles/" + e.aliceProfile + "/invoices/" + id
 	closes := expires.Format(time.RFC3339)
 	until := deadline.Add(-24 * time.Hour).Format(time.RFC3339)
@@ -63,6 +65,7 @@ func TestReopenAnInvoiceThatClosedPartlyPaid(t *testing.T) {
 		"Checkout closes\n"+deadline.Add(-24*time.Hour).Format("2006-01-02 15:04")+" UTC")
 	// The late 2 USDC pays now, and 1 more in the new window completes it.
 	deposit(3, expires.Unix()+90, 1000000)
+	ledgertest.Checkpoint(t, e.pool, id, 10, expires.Unix()+120, "5000000")
 	if err := ledgers.Process(ctx, id); err != nil {
 		t.Fatal(err)
 	}
@@ -137,6 +140,8 @@ func TestReopenThePaidOptionOfAPayerChoosesInvoice(t *testing.T) {
 		WHERE id = $1`, id, "0x"+strings.Repeat("cd", 32), expires+60, aliceWallet)
 	e.exec(t, `UPDATE chain_cursors SET last_scanned_block = 10, last_finalized_block = 10, last_finalized_time = $1
 		WHERE chain_id = 84532`, expires+120)
+	ledgertest.Checkpoint(t, e.pool, id, 10, expires+120, "100")
+	ledgertest.Checkpoint(t, e.pool, usdcOption, 10, expires+120, "2000000")
 	if err := ledger.NewService(e.pool, func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
 		return big.NewInt(2000000), 10, nil
 	}, func(context.Context, uint64, string, string) (uint64, error) {

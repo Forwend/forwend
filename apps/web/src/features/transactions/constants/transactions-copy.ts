@@ -55,6 +55,8 @@ export const TRANSACTIONS_COPY = {
   rateOf: (day: string) => `At the ECB rate of ${day}`,
   classes: {
     [TRANSACTION_CLASSES.invoice]: "Invoice payment",
+    [TRANSACTION_CLASSES.payment]: "Payment",
+    [TRANSACTION_CLASSES.paymentException]: "Payment needs review",
     [TRANSACTION_CLASSES.ownTransfer]: "Own transfer",
     [TRANSACTION_CLASSES.sent]: "Sent",
     [TRANSACTION_CLASSES.unclassified]: "Unclassified",

@@ -140,7 +140,7 @@ func TestCheck(t *testing.T) {
 func TestCheckRejectsMalformedInput(t *testing.T) {
 	// The line ends with its close (R-130).
 	closing := func(at int) string { return strings.TrimSuffix(line, fmt.Sprint(expiresAt)) + fmt.Sprint(at) }
-	for _, bad := range []string{id, closing(expiresAt - 1), closing(deadline), strings.Replace(line, recipient, "0x11", 1), strings.Replace(line, amount, "-1", 1),
+	for _, bad := range []string{id, closing(0), closing(deadline), strings.Replace(line, recipient, "0x11", 1), strings.Replace(line, amount, "-1", 1),
 		strings.Replace(line, amount, "0", 1), strings.Replace(line, fmt.Sprint(deadline), fmt.Sprint(deadline+1), 1),
 		strings.Replace(line, fmt.Sprint(deadline), fmt.Sprint(expiresAt+2*86400), 1),
 		strings.Replace(line, recipient, "0x0000000000000000000000000000000000000000", 1),
@@ -152,7 +152,7 @@ func TestCheckRejectsMalformedInput(t *testing.T) {
 	}
 	// D-18: invoices made before the 7-day window settle 1 day after expiry; both are create's rules.
 	week := strings.Replace(line, fmt.Sprint(deadline), fmt.Sprint(expiresAt+7*86400), 1)
-	for _, good := range []string{week, closing(deadline - 1)} {
+	for _, good := range []string{week, closing(deadline - 1), closing(expiresAt - 1)} {
 		for _, alert := range canary.Check(context.Background(), config.Canary{}, []string{good}) {
 			if strings.Contains(alert, "input line") {
 				t.Errorf("%q: %q", good, alert)
@@ -310,5 +310,38 @@ func TestCheckSkipsInvoicesThePayPageClosed(t *testing.T) {
 	alerts := canary.Check(context.Background(), cfg, []string{reopened})
 	if len(alerts) == 0 || slices.ContainsFunc(alerts, func(a string) bool { return strings.Contains(a, "input line") }) {
 		t.Fatalf("a reopened invoice past its expiry was skipped or refused: %q", alerts)
+	}
+}
+
+func TestEarlyCloseRequiresBothProvidersDeploymentEvidence(t *testing.T) {
+	a := chaintest.Start(t)
+	factory := a.DeployFactory()
+	args := fmt.Sprintf("(%s,%s,%s,%s,%d,%d,%d)", id, recipient, token, amount, expiresAt, deadline, chaintest.ChainID)
+	predicted := cast(t, "call", factory, "predict((bytes32,address,address,uint256,uint64,uint64,uint256))(address)", args, "--rpc-url", a.URL)
+	a.AsAuthority(factory, "deploy((bytes32,address,address,uint256,uint64,uint64,uint256))", args)
+	a.Mine(2)
+	deployed := cast(t, "call", factory, "deployedAt(address)(uint256)", predicted, "--rpc-url", a.URL)
+	var timestamp uint64
+	if _, err := fmt.Sscan(strings.Fields(deployed)[0], &timestamp); err != nil {
+		t.Fatal(err)
+	}
+	closeAt := timestamp + 29*86400
+	script, err := filepath.Abs("../../../web/scripts/canary-pay-page.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	api := map[string]any{"invoiceId": id, "chainId": chaintest.ChainID, "token": token, "amount": amount,
+		"recipient": recipient, "factory": factory, "receiveAddress": predicted, "expiresAt": "2030-01-01T00:00:00Z",
+		"settleDeadline": "2030-01-02T00:00:00Z", "options": []map[string]any{{"optionId": id, "chainId": chaintest.ChainID, "token": token, "amount": amount, "receiveAddress": predicted}}}
+	origin := serve(t, payToken, api, predicted, qrPath(t, predicted), "Anvil (local)")
+	cfg := config.Canary{APIURL: origin, WebURL: origin, Factory: factory, FactoryCodeHash: cast(t, "codehash", factory, "--rpc-url", a.URL),
+		RPCURLs: map[uint64][2]string{chaintest.ChainID: {a.URL, a.URL}}, PageScript: script}
+	input := strings.TrimSuffix(line, fmt.Sprint(expiresAt)) + fmt.Sprint(closeAt)
+	if alerts := canary.Check(t.Context(), cfg, []string{input}); len(alerts) != 0 {
+		t.Fatalf("verified early close: %v", alerts)
+	}
+	wrongClose := strings.TrimSuffix(line, fmt.Sprint(expiresAt)) + fmt.Sprint(closeAt+1)
+	if alerts := canary.Check(t.Context(), cfg, []string{wrongClose}); !slices.ContainsFunc(alerts, func(s string) bool { return strings.Contains(s, "early close disagrees") }) {
+		t.Fatalf("unproved early close accepted: %v", alerts)
 	}
 }

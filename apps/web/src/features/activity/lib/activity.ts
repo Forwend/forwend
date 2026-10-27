@@ -26,7 +26,11 @@ export function activityStatus(
       ? PAYMENT_STATUS.confirmed
       : PAYMENT_STATUS.confirming;
   }
-  if (item.settlementStatus === API_SETTLEMENT_STATUSES.settled) return PAYMENT_STATUS.settled;
+  if (
+    item.settlementStatus === API_SETTLEMENT_STATUSES.settled &&
+    item.status === API_PAYMENT_STATUSES.paid
+  )
+    return PAYMENT_STATUS.settled;
   const status = INVOICE_STATUSES[item.status] ?? PAYMENT_STATUS.detected;
   if (item.closed) {
     // Detected and closed: only money after the close, held for the payer; nothing on time can still complete it.

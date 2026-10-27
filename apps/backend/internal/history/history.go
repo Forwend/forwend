@@ -13,21 +13,24 @@ import (
 
 // A payment status change is "invoice." and the new status, as the ledger names it.
 const (
-	Created          = "invoice.created"
-	Canceled         = "invoice.canceled"
-	PayerEmail       = "payer.email_given"   // the payer gave an address for their receipt (R-82)
-	OptionChosen     = "payer.option_chosen" // the option the money came to first (D-76); data names it
-	Held             = "invoice.held"        // money held for the payer; data has its amount in base units and reason
-	SettlementQueued = "invoice.settlement_queued"
-	Settled          = "invoice.settled" // data has the settle transaction's hash
-	RemindersOn      = "reminders.on"
-	RemindersOff     = "reminders.off"
-	RemindersStopped = "reminders.stopped" // by the client's stop link (R-96)
-	RepeatStopped    = "repeat.stopped"
-	Edited           = "invoice.edited"   // data names the field, never its value (R-127)
-	Replaced         = "invoice.replaced" // canceled by a Revise; data names the new invoice (R-129)
-	Reopened         = "invoice.reopened" // data has the new close in until (R-130)
-	Numbered         = "invoice.numbered" // a link invoice took its number with its first deposit (R-141)
+	Created              = "invoice.created"
+	Canceled             = "invoice.canceled"
+	PayerEmail           = "payer.email_given"   // the payer gave an address for their receipt (R-82)
+	OptionChosen         = "payer.option_chosen" // the option the money came to first (D-76); data names it
+	Held                 = "invoice.held"        // money held for the payer; data has its amount in base units and reason
+	SettlementQueued     = "invoice.settlement_queued"
+	ReceiverSettled      = "receiver.settled"
+	CheckoutCloseChanged = "checkout.close_changed"
+	Refunded             = "invoice.refunded"
+	Settled              = "invoice.settled" // data has the settle transaction's hash
+	RemindersOn          = "reminders.on"
+	RemindersOff         = "reminders.off"
+	RemindersStopped     = "reminders.stopped" // by the client's stop link (R-96)
+	RepeatStopped        = "repeat.stopped"
+	Edited               = "invoice.edited"   // data names the field, never its value (R-127)
+	Replaced             = "invoice.replaced" // canceled by a Revise; data names the new invoice (R-129)
+	Reopened             = "invoice.reopened" // data has the new close in until (R-130)
+	Numbered             = "invoice.numbered" // a link invoice took its number with its first deposit (R-141)
 )
 
 // Emails the worker sent to the client or payer, or gave up on (R-126); a reminder's data has its step.

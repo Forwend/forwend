@@ -53,7 +53,7 @@ func (s *Service) Owed(ctx context.Context, profileID string, stores []string, l
 		    FROM ledger_entries e JOIN ledger_transactions x ON x.id = e.transaction_id
 		    JOIN invoices o ON o.id = x.invoice_id JOIN invoices m ON m.id = coalesce(o.main_id, o.id)
 		    JOIN tokens t ON t.chain_id = o.chain_id AND t.contract = o.token_contract
-		    WHERE m.profile_id = $1 AND e.account = 'payer_held' AND ($2::uuid[] IS NULL OR m.store_id = ANY($2))
+		    WHERE m.profile_id = $1 AND m.number IS NOT NULL AND m.document_kind <> 'none' AND e.account = 'payer_held' AND ($2::uuid[] IS NULL OR m.store_id = ANY($2))
 		      AND ($3::boolean IS NULL OR (SELECT livemode FROM chains c WHERE c.chain_id = m.chain_id) = $3)
 		    GROUP BY m.id, o.id, t.symbol, t.decimals
 		    HAVING sum(e.amount) <> 0

@@ -14,6 +14,7 @@ import (
 	"unicode/utf16"
 
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
+	"github.com/forwend/forwend/apps/backend/internal/ledger/ledgertest"
 )
 
 type pdfReply struct {
@@ -264,6 +265,7 @@ func TestReceiptPDF(t *testing.T) {
 	deposit(first, 90, paidAt.Add(-time.Minute), "1500000")
 	notPaid("partially paid")
 	deposit(second, 95, paidAt, "500000")
+	ledgertest.Checkpoint(t, e.pool, id, 100, paidAt.Unix(), "2000000")
 
 	r := e.pdf(t, id, "receipt.pdf", "")
 	if r.status != http.StatusOK || r.header.Get("Content-Type") != "application/pdf" ||
@@ -295,7 +297,9 @@ func TestReceiptPDF(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer tx.Rollback(ctx)
-	if err := ledger.BookSettlement(ctx, tx, id, big.NewInt(2000000)); err != nil {
+	if _, err := tx.Exec(ctx, `WITH movement AS (INSERT INTO ledger_transactions (invoice_id,kind) VALUES ($1,'settlement') RETURNING id)
+        INSERT INTO ledger_entries (transaction_id,account,amount) SELECT id,'receiver',-2000000 FROM movement
+        UNION ALL SELECT id,'recipient_payable',2000000 FROM movement`, id); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := tx.Exec(ctx, `
@@ -311,7 +315,13 @@ func TestReceiptPDF(t *testing.T) {
 	if err := tx.Commit(ctx); err != nil {
 		t.Fatal(err)
 	}
-	times("settled", paid, settledAt.UTC().Format(time.RFC3339))
+	e.exec(t, `INSERT INTO receiver_outflows (invoice_id,chain_id,receiver_address,token_contract,kind,destination,amount,
+        tx_hash,log_index,block_hash,block_number,block_time,verified_block,transfer_log_index,ledger_transaction_id,reconciliation_error)
+        SELECT i.id,i.chain_id,i.receive_address,i.token_contract,'settlement',i.recipient_address,i.amount,
+        $2,1,$2,100,$3,100,0,t.id,'' FROM invoices i JOIN ledger_transactions t ON t.invoice_id = i.id AND t.kind = 'settlement'
+        WHERE i.id = $1`, id, settled, settledAt.Unix())
+	ledgertest.Checkpoint(t, e.pool, id, 100, settledAt.Unix(), "0")
+	times("settled", paid, time.Unix(settledAt.Unix(), 0).UTC().Format(time.RFC3339))
 	if after := e.pdf(t, id, "receipt.pdf", r.header.Get("ETag")); after.status != http.StatusNotModified {
 		t.Fatalf("settled, with the paid receipt's ETag: %d", after.status)
 	}

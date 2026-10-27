@@ -87,6 +87,9 @@ func (e chainEnv) run(t *testing.T) {
 	if err := e.watch.Scan(ctx); err != nil {
 		t.Fatal(err)
 	}
+	if err := e.watch.Receivers(ctx, e.anvil.RPC); err != nil {
+		t.Fatal(err)
+	}
 	if err := e.service.ProcessChain(ctx, chaintest.ChainID); err != nil {
 		t.Fatal(err)
 	}
@@ -158,9 +161,8 @@ func TestPaidNeedsTheSecondRPCToAgree(t *testing.T) {
 		t.Fatal(err)
 	}
 	e.run(t)
-	// Owed in full but not yet confirmed by the second RPC: money seen, not a partial payment (F145).
-	want(t, "booked on the primary's word, not final on the second RPC", e.state(t, id),
-		state{payment: Detected, refund: "none", receiver: 5000000, owed: 5000000})
+	// A primary-only confirmation cannot enter the certified ledger prefix.
+	want(t, "not booked on the primary's word", e.state(t, id), state{payment: Detected, refund: "none"})
 
 	e.anvil.Mine(2)
 	e.run(t)
@@ -246,7 +248,7 @@ func TestDepositsBookInChainOrder(t *testing.T) {
 	if _, err := e.pool.Exec(ctx, "UPDATE chain_transfers SET status = 'confirmed' WHERE tx_hash = $1", later); err != nil {
 		t.Fatal(err)
 	}
-	if err := e.service.ProcessChain(ctx, chaintest.ChainID); err != nil {
+	if err := e.service.processChain(ctx, chaintest.ChainID, false); err != nil {
 		t.Fatal(err)
 	}
 	want(t, "later one confirmed first", e.state(t, id), state{payment: Detected, refund: "none"})
@@ -316,5 +318,42 @@ func TestDeployedFromReadsTheFactory(t *testing.T) {
 	}
 	if _, err := read(ctx, chaintest.ChainID, chaintest.Sender, deployed); err == nil {
 		t.Fatal("no factory there: no error")
+	}
+}
+
+func TestNewPrimaryObservationCannotBorrowAnOlderReceiverCheckpoint(t *testing.T) {
+	e := newChainEnv(t)
+	id, receive := e.invoice(t, 70, 5000000, e.anvil.Now()+3600)
+	e.anvil.Mine(3)
+	e.run(t)
+	if _, err := e.pool.Exec(t.Context(), `INSERT INTO chain_transfers (invoice_id,chain_id,chain_family,token_contract,
+   tx_hash,log_index,block_hash,block_number,block_time,from_address,to_address,amount,status)
+   SELECT id,chain_id,chain_family,token_contract,'0x' || repeat('70',32),0,'0x' || repeat('70',32),1,1,
+   recipient_address,receive_address,5000000,'confirmed' FROM invoices WHERE id = $1`, id); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.service.ProcessChain(t.Context(), chaintest.ChainID); err != nil {
+		t.Fatal(err)
+	}
+	var bookings int
+	if err := e.pool.QueryRow(t.Context(), "SELECT count(*) FROM ledger_transactions WHERE invoice_id = $1", id).Scan(&bookings); err != nil || bookings != 0 {
+		t.Fatalf("unproved primary money booked=%d: %v", bookings, err)
+	}
+	if _, err := e.watch.Receiver(t.Context(), e.anvil.RPC, id); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.service.ProcessChain(t.Context(), chaintest.ChainID); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.pool.QueryRow(t.Context(), "SELECT count(*) FROM ledger_transactions WHERE invoice_id = $1", id).Scan(&bookings); err != nil || bookings != 0 {
+		t.Fatalf("source conflict booked=%d: %v", bookings, err)
+	}
+	got := e.state(t, id)
+	if got.payment == Paid || got.receiver != 0 || got.owed != 0 || got.held != 0 {
+		t.Fatalf("primary claim became cash: %+v at %s", got, receive)
+	}
+	a, err := ReadAmounts(t.Context(), e.pool, id)
+	if err != nil || !a.Unreconciled {
+		t.Fatalf("source conflict hidden: %+v %v", a, err)
 	}
 }

@@ -1,4 +1,8 @@
-import { ACTIVITY_KINDS, API_SETTLEMENT_STATUSES } from "@/features/activity/constants/activity";
+import {
+  ACTIVITY_KINDS,
+  API_PAYMENT_STATUSES,
+  API_SETTLEMENT_STATUSES,
+} from "@/features/activity/constants/activity";
 import { PAYMENT_EVENTS } from "@/features/activity/constants/payment-events";
 import type { ActivityItem } from "@/features/activity/types/activity";
 import type { PaymentEvent, PaymentEventKind } from "@/features/activity/types/payment-events";
@@ -10,7 +14,10 @@ function eventOf(item: ActivityItem): { key: string; kind: PaymentEventKind } | 
       ? null
       : { key: `deposit:${item.invoiceId}:${item.txHash}`, kind: PAYMENT_EVENTS.detected };
   }
-  if (item.settlementStatus === API_SETTLEMENT_STATUSES.settled) {
+  if (
+    item.settlementStatus === API_SETTLEMENT_STATUSES.settled &&
+    item.status === API_PAYMENT_STATUSES.paid
+  ) {
     return { key: `settled:${item.invoiceId}`, kind: PAYMENT_EVENTS.settled };
   }
   return null;

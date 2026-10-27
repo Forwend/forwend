@@ -67,10 +67,13 @@ export const PAY_COPY = {
     // The steps say it arrived; the line counts the blocks (ConfirmingStatus).
     [PAY_STATES.confirming]: () => "Confirming",
     [PAY_STATES.checking]: () => "Final check",
+    [PAY_STATES.review]: () => "Payment records need review. Do not send more money.",
     [PAY_STATES.partial]: ({ received, total, remaining }) =>
       `${received} of ${total} received. Send the remaining ${remaining}.`,
     [PAY_STATES.paid]: () => "Paid",
     [PAY_STATES.settled]: () => "Paid",
+    [PAY_STATES.closing]: ({ received }) =>
+      `Checkout closed. ${received} is recorded. We are checking the final payment records.`,
     [PAY_STATES.closed]: ({ payee }) =>
       `This payment is closed. If you already sent money, it is not lost: contact ${payee}.`,
     [PAY_STATES.canceled]: ({ payee }) => `${payee} closed this payment. Do not send money.`,

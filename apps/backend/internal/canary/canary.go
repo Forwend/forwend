@@ -185,6 +185,18 @@ func checkInvoice(ctx context.Context, c config.Canary, rpcs map[uint64][2]*rpc.
 			return fmt.Errorf("rpc %d predict: %d bytes, want 32", i+1, len(out))
 		}
 		got[i] = strings.ToLower(common.BytesToAddress(out).Hex())
+		if t.ClosesAt < t.ExpiresAt {
+			data := append(crypto.Keccak256([]byte("deployedAt(address)"))[:4], common.LeftPadBytes(common.HexToAddress(got[i]).Bytes(), 32)...)
+			if err := cl.CallContext(ctx, &out, "eth_call", map[string]any{"to": c.Factory, "data": hexutil.Bytes(data)}, "finalized"); err != nil {
+				return fmt.Errorf("rpc %d deploy time: %w", i+1, redact(err))
+			}
+			deployed := new(big.Int).SetBytes(out)
+			if len(out) != 32 || !deployed.IsUint64() || deployed.Sign() == 0 ||
+				min(t.SettleDeadline, deployed.Uint64()+30*86400) < 86400 ||
+				t.ClosesAt != min(t.SettleDeadline, deployed.Uint64()+30*86400)-86400 {
+				return fmt.Errorf("rpc %d early close disagrees with receiver deployment", i+1)
+			}
+		}
 	}
 	switch {
 	case got[0] != got[1]:
@@ -249,7 +261,7 @@ func parseTerms(line string) (terms, error) {
 	// The rules create applies: terms that break them leave a payer's money refundable only.
 	switch zero := "0x0000000000000000000000000000000000000000"; {
 	case amount.Sign() == 0, !slices.Contains(settleWindows, t.SettleDeadline-t.ExpiresAt), t.Recipient == zero,
-		t.Recipient == t.Token, t.ClosesAt < t.ExpiresAt, t.ClosesAt >= t.SettleDeadline:
+		t.Recipient == t.Token, t.ClosesAt == 0, t.ClosesAt >= t.SettleDeadline:
 		return terms{}, errors.New("the terms break create's rules")
 	}
 	return t, nil

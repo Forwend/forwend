@@ -81,7 +81,9 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 	var paidAt *int64
 	var settledAt *time.Time
 	err = s.pool.QueryRow(ctx, `SELECT t.symbol, t.decimals, c.name, `+PaidAtSQL("$3")+`,
-		(SELECT created_at FROM ledger_transactions WHERE invoice_id = $3 AND kind = 'settlement')
+		coalesce((SELECT to_timestamp(block_time) FROM receiver_outflows WHERE invoice_id = $3 AND kind = 'settlement'
+            AND ledger_transaction_id IS NOT NULL),
+  (SELECT created_at FROM ledger_transactions WHERE invoice_id = $3 AND kind = 'settlement'))
 		FROM tokens t JOIN chains c ON c.chain_id = t.chain_id WHERE t.chain_id = $1 AND t.contract = $2`,
 		inv.ChainID, inv.Token, inv.OptionID).Scan(&inv.Symbol, &inv.Decimals, &inv.Network, &paidAt, &settledAt)
 	if err != nil {
@@ -108,7 +110,11 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 		if inv.Options[i].Deposits, err = s.deposits(ctx, o.ID, o.ChainID); err != nil {
 			return Invoice{}, err
 		}
+		if inv.Options[i].Amounts, err = ledger.ReadAmounts(ctx, s.pool, o.ID); err != nil {
+			return Invoice{}, err
+		}
 		if o.ID == inv.OptionID {
+			inv.Amounts = inv.Options[i].Amounts
 			inv.Deposits = inv.Options[i].Deposits
 		}
 	}
@@ -142,8 +148,16 @@ func (s *Service) get(ctx context.Context, profileID, id string) (Invoice, error
 		until := reopenClose(inv.SettleDeadline, inv.receiverDeployedAt)
 		if inv.PaymentStatus == ledger.ExpiredPartiallyPaid && inv.RefundStatus == "held" &&
 			inv.ClosesAt.Equal(inv.ExpiresAt) && s.now().Before(until) {
-			capacity := true
-			if inv.LinkID != "" {
+			var returned bool
+			if err := s.pool.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = $1 AND kind IN ('refund','settlement'))", inv.OptionID).Scan(&returned); err != nil {
+				return Invoice{}, err
+			}
+			position, err := ledger.ReadReopenPosition(ctx, s.pool, inv.OptionID)
+			if err != nil {
+				return Invoice{}, err
+			}
+			capacity := !returned && position != nil && position.Time < until.Unix()
+			if inv.LinkID != "" && capacity {
 				if err := s.pool.QueryRow(ctx, linkCapacitySQL, inv.LinkID).Scan(&capacity); err != nil {
 					return Invoice{}, fmt.Errorf("read payment link capacity: %w", err)
 				}
@@ -259,7 +273,7 @@ func (s *Service) head(ctx context.Context, chainID uint64) (finality.Block, err
 
 func (s *Service) options(ctx context.Context, id string) ([]Option, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT i.id, i.chain_id, i.token_contract, t.symbol, t.decimals, c.name, i.amount::text, i.receive_address
+		SELECT i.id, i.chain_id, i.token_contract, t.symbol, t.decimals, c.name, i.amount::text, i.receive_address, i.closes_at
 		FROM invoices i JOIN tokens t ON t.chain_id = i.chain_id AND t.contract = i.token_contract
 		JOIN chains c ON c.chain_id = i.chain_id
 		WHERE i.id = $1 OR i.main_id = $1 ORDER BY i.chain_id, t.symbol, i.token_contract`, id)
@@ -269,7 +283,9 @@ func (s *Service) options(ctx context.Context, id string) ([]Option, error) {
 	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Option, error) {
 		var o Option
 		var amount string
-		err := row.Scan(&o.ID, &o.ChainID, &o.Token, &o.Symbol, &o.Decimals, &o.Network, &amount, &o.ReceiveAddress)
+		var closes int64
+		err := row.Scan(&o.ID, &o.ChainID, &o.Token, &o.Symbol, &o.Decimals, &o.Network, &amount, &o.ReceiveAddress, &closes)
+		o.ClosesAt = time.Unix(closes, 0).UTC()
 		o.Amount, _ = new(big.Int).SetString(amount, 10)
 		return o, err
 	})

@@ -198,7 +198,7 @@ func TestUnexplainedBalanceWaitsLongerEachTime(t *testing.T) {
 	round := func() int {
 		s.t.Helper()
 		before := len(s.calls)
-		if err := s.service.ProcessChain(context.Background(), 1); err != nil {
+		if err := s.service.processChain(context.Background(), 1, false); err != nil {
 			t.Fatal(err)
 		}
 		return len(s.calls) - before
@@ -270,7 +270,7 @@ func TestProcessChainContinuesAfterAnError(t *testing.T) {
 	s.transfer(broken, brokenReceive, 5000000, simExpires-10, "confirmed")
 	s.transfer(ok, okReceive, 5000000, simExpires-10, "confirmed")
 	s.down[brokenReceive] = true
-	if err := s.service.ProcessChain(context.Background(), 1); err == nil {
+	if err := s.service.processChain(context.Background(), 1, false); err == nil {
 		t.Fatal("ProcessChain hid the failing balance call")
 	}
 	if payment, _ := s.payment(ok); payment != Paid {

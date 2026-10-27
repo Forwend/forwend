@@ -44,7 +44,17 @@ func Start(t *testing.T) *Anvil {
 	return StartChain(t, ChainID)
 }
 
+func StartArchive(t *testing.T) *Anvil {
+	t.Helper()
+	return startChain(t, ChainID, t.TempDir())
+}
+
 func StartChain(t *testing.T, chainID uint64) *Anvil {
+	t.Helper()
+	return startChain(t, chainID, "")
+}
+
+func startChain(t *testing.T, chainID uint64, archive string) *Anvil {
 	t.Helper()
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -54,13 +64,20 @@ func StartChain(t *testing.T, chainID uint64) *Anvil {
 	l.Close()
 	// One slot per epoch: safe = latest - 1, finalized = latest - 2. No states on disk: Anvil otherwise writes them to
 	// ~/.foundry/anvil/tmp and never removes them, even on a clean exit (Anvil 1.5); tests read only recent blocks.
+	persisted := "0"
+	if archive != "" {
+		persisted = "20000"
+	}
 	cmd := exec.Command("anvil", "--port", fmt.Sprint(port), "--slots-in-an-epoch", "1", "--silent",
-		"--max-persisted-states", "0", "--chain-id", fmt.Sprint(chainID))
+		"--max-persisted-states", persisted, "--chain-id", fmt.Sprint(chainID))
+	if archive != "" {
+		cmd.Args = append(cmd.Args, "--cache-path", archive)
+	}
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start anvil (install Foundry): %v", err)
 	}
 	exited := make(chan error, 1)
-	go func() { exited <- cmd.Wait() }()
+	go func() { exited <- cmd.Wait(); close(exited) }()
 	t.Cleanup(func() { _ = cmd.Process.Kill(); <-exited })
 
 	a := &Anvil{t: t, URL: fmt.Sprintf("http://127.0.0.1:%d", port)}
