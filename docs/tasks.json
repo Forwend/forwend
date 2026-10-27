@@ -212,7 +212,7 @@
         "Workflow configuration and delivery documentation pass repository checks before promotion."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "harness",
         "docs-check"
@@ -297,11 +297,18 @@
           "summary": "Independent review passed for F339 rebased onto main bc80173e. Compared with that base, changes are limited to the staging job timeout from 20 to 30 minutes, its operating note, and task metadata. All check steps, individual limits, triggers, and permissions remain unchanged; no application code changed. F338 and F339 records remain present with nextId 340. Whitespace checks passed and final rebased verification passed all seven checks. No findings.",
           "at": "2026-10-27T17:01:32Z",
           "filesHash": "8a391837bec63587"
-        }
+        },
+        "commit": "8a9c9891",
+        "doneAt": "2026-10-27T17:02:21Z"
       },
       "branch": "ci/f339-allow-fresh-staging-checks-to-finish-wit",
       "baseCommit": "c13191957df395c6b184f285402df80fd0185023",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "ci/f339-allow-fresh-staging-checks-to-finish-wit",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
