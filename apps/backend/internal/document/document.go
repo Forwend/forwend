@@ -191,7 +191,11 @@ func Receipt(inv invoice.Invoice, payLink string, logo []byte) ([]byte, error) {
 		}
 	}
 	if inv.Amounts != nil && (inv.Amounts.Unreconciled || inv.Amounts.HasPolicyException) {
-		d.note("Payment records need review.")
+		if inv.Amounts.ReconciliationStatus == ledger.ReconciliationPending {
+			d.note("Payment history verification is pending.")
+		} else {
+			d.note("Payment records need review.")
+		}
 	}
 	d.code(payLink, "Check this receipt", "A PDF can be edited. The pay page shows what the chain recorded.")
 	d.footer(inv)

@@ -40,9 +40,9 @@ const BUSINESS_COPY = {
   summary: "Summary",
   received: "Received",
   sent: "Sent",
-  payments: (count: string) => `${count} payments in`,
+  payments: (count: string) => `${count} incoming transfers`,
   pending: "On its way",
-  pendingHint: "Paid to invoices, not in the wallet yet",
+  pendingHint: "Paid payments awaiting wallet settlement",
   atLeast: (n: number) => `${n}+`,
 } as const;
 const RECENT = 8;

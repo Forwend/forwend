@@ -421,16 +421,19 @@ type eventsJSON struct {
 }
 
 type eventJSON struct {
-	ID        int64  `json:"id"`
-	Kind      string `json:"kind"`
-	InvoiceID string `json:"invoiceId"`
-	Number    int64  `json:"number"`
-	ChainID   uint64 `json:"chainId"`
-	Token     string `json:"token"`
-	Symbol    string `json:"symbol"`
-	Decimals  int    `json:"decimals"`
-	Amount    string `json:"amount"`
-	At        string `json:"at"`
+	Purpose      invoice.Purpose      `json:"purpose"`
+	DocumentKind invoice.DocumentKind `json:"documentKind"`
+	Title        *string              `json:"title"`
+	ID           int64                `json:"id"`
+	Kind         string               `json:"kind"`
+	InvoiceID    string               `json:"invoiceId"`
+	Number       *int64               `json:"number"`
+	ChainID      uint64               `json:"chainId"`
+	Token        string               `json:"token"`
+	Symbol       string               `json:"symbol"`
+	Decimals     int                  `json:"decimals"`
+	Amount       string               `json:"amount"`
+	At           string               `json:"at"`
 }
 
 // R-147: held is null except on invoice.held.

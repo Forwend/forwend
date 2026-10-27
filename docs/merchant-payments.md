@@ -69,6 +69,9 @@ flowchart LR
 - Preserve original request hashes for in-flight legacy retries.
 - Existing issued numbers, document URLs, IDs, invoice API defaults and public webhook names remain compatible under D-104.
 - New payment/session read models expose origin independently of document numbering.
+- Billing composition identifies the recipient by name or email; existing API invoice defaults remain compatible.
+- Notifications retain event names and expose nullable document numbers for checkout.
+- Pending history verification differs from manual review; the owner sees one grouped notice across accepted options.
 - Existing link retries replay original requests after template changes; new purchases use fresh attempt identities.
 - The purchase URL preserves original input and quoted offer version across refresh, Back and storage failures.
 - An uncertain uncommitted request must match its original quote before creating checkout.

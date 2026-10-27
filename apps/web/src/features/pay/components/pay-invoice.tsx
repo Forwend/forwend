@@ -39,6 +39,7 @@ import {
   HISTORY_FIELDS,
   INVOICE_PDFS,
   INVOICE_STEPS,
+  RECONCILIATION_STATES,
 } from "@/features/invoices/constants/invoices";
 import {
   formatAgreed,
@@ -48,6 +49,7 @@ import {
   invoiceProgress,
   isReturnLink,
 } from "@/features/invoices/lib/invoices";
+import { paymentVerification } from "@/features/invoices/lib/payment-verification";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import { type Choice, OptionPicker } from "@/features/pay/components/option-picker";
 import { Payee } from "@/features/pay/components/payee";
@@ -57,6 +59,7 @@ import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
 import {
   checkoutClosesAt,
   firstPaymentOption,
+  payerNoticeOptions,
   payState,
   payToken,
   receiptDeposits,
@@ -581,18 +584,10 @@ function PayBox({
         {/* From the first money seen, so a payer can leave before the final check (R-82). */}
         {seen || done ? <ReceiptEmail linkToken={linkToken} paid={done} /> : null}
       </div>
-      {invoice.options.map((o) => {
-        const token = payToken({ ...invoice, chainId: o.chainId, token: o.token });
-        return token ? (
-          <PaymentAmountsNotice
-            key={o.optionId}
-            amounts={o.amounts}
-            chainId={o.chainId}
-            symbol={token.symbol}
-            decimals={token.decimals}
-          />
-        ) : null;
-      })}
+      <PaymentAmountsNotice
+        options={payerNoticeOptions(invoice.options)}
+        showVerification={pay.state !== PAY_STATES.review}
+      />
       {/* Overpaid gets its own handling later (PLAN 11.10.1); late money is held for the payer now. */}
       {pay.late > 0n ? (
         <p className="text-sm text-warning">{COPY.late(money(pay.late), payeeOf(invoice))}</p>
@@ -685,6 +680,8 @@ function StatusLine({
 const payeeOf = (invoice: Invoice) => invoice.issuer?.name ?? invoice.senderName ?? COPY.creator;
 
 const values = (invoice: Invoice, pay: Pay, money: (units: bigint) => string) => ({
+  verificationPending: paymentVerification(invoice.options) === RECONCILIATION_STATES.pending,
+  checkoutClosed: invoice.closed,
   received: money(pay.received),
   remaining: money(pay.remaining),
   total: money(BigInt(invoice.amount)),

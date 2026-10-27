@@ -50,7 +50,7 @@ func readQuery(r *http.Request) (invoice.PaymentQuery, error) {
 		return invoice.PaymentQuery{}, err
 	}
 	access := mid.ProfileAccess(r)
-	return invoice.PaymentQuery{Limit: limit, Cursor: r.URL.Query().Get("cursor"), StoreID: r.URL.Query().Get("storeId"),
+	return invoice.PaymentQuery{Limit: limit, Cursor: r.URL.Query().Get("cursor"), StoreID: r.URL.Query().Get("storeId"), LinkID: r.URL.Query().Get("linkId"),
 		Source: invoice.PaymentSource(r.URL.Query().Get("source")), Status: r.URL.Query().Get("status"), PaymentStatus: r.URL.Query().Get("paymentStatus"),
 		SettlementStatus: r.URL.Query().Get("settlementStatus"), RefundStatus: r.URL.Query().Get("refundStatus"), Stores: access.Stores, Livemode: access.Livemode}, nil
 }

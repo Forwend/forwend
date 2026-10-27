@@ -278,3 +278,9 @@ export const SETTLEMENT_WAITS = {
   dailyLimit: "dailyLimit",
   refused: "refused",
 } as const;
+
+export const RECONCILIATION_STATES = {
+  verified: "verified",
+  pending: "pending",
+  review: "review",
+} as const;

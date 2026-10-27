@@ -43,6 +43,10 @@ async function createInvoice(page: Page, fill: () => Promise<void>) {
     return null;
   }
   await fill();
+  const recipient = page.getByRole("textbox", { name: "Name", exact: true });
+  const recipientEmail = page.getByRole("textbox", { name: "Email", exact: true });
+  if (!(await recipient.inputValue()) && !(await recipientEmail.inputValue()))
+    await recipient.fill("E2E individual customer");
   const created = page.waitForResponse(
     (r) => /\/api\/v1\/profiles\/[^/]+\/invoices$/.test(r.url()) && r.request().method() === "POST",
   );

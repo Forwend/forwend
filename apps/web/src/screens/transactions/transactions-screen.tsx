@@ -7,10 +7,16 @@ import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transaction
 export function TransactionsScreen() {
   const { profile } = useAppSession();
   return (
-    <TransactionsTable
-      profileId={profile.profileId}
-      title={TRANSACTIONS_COPY.transactions}
-      pageHeading
-    />
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-muted">
+        Transactions in the shared profile wallet, across all stores. Use Payments for store records
+        and settlement details.
+      </p>
+      <TransactionsTable
+        profileId={profile.profileId}
+        title={TRANSACTIONS_COPY.transactions}
+        pageHeading
+      />
+    </div>
   );
 }

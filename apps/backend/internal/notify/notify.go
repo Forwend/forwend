@@ -223,7 +223,7 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 	}
 	units, _ := new(big.Int).SetString(amount, 10)
 	reference := "Payment " + invoice[2:14]
-	ownerURL := webURL + "/pay/" + pay
+	ownerURL := webURL + "/app/payments/" + invoice
 	if number != nil {
 		reference = document.Number(*number)
 		ownerURL = webURL + "/app/invoices/" + invoice

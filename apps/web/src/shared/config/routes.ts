@@ -6,6 +6,7 @@ export const APP_ROUTES = {
   balances: "/app/balances",
   transactions: "/app/transactions",
   activity: "/app/activity",
+  payments: "/app/payments",
   invoices: "/app/invoices",
   newInvoice: "/app/invoices/new",
   links: "/app/links",

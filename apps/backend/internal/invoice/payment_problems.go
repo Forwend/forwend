@@ -50,6 +50,12 @@ func optionProblems(inv Invoice, option PaymentOption, at time.Time) []PaymentPr
 		add(ProblemReconciliation, ActionReviewFunds, "negative_legacy_balance")
 	case state.BookingError != "":
 		add(ProblemReconciliation, ActionReviewFunds, state.BookingError)
+	case amounts.ReconciliationStatus == ledger.ReconciliationPending:
+		reason := "movement_booking"
+		if !state.HistoryComplete {
+			reason = "historical_coverage"
+		}
+		add(ProblemVerification, ActionWait, reason)
 	case state.ReconciliationError != "":
 		add(ProblemReconciliation, ActionReviewFunds, state.ReconciliationError)
 	case state.BalanceDifference != nil && state.BalanceDifference.Sign() != 0:
@@ -62,7 +68,11 @@ func optionProblems(inv Invoice, option PaymentOption, at time.Time) []PaymentPr
 		add(ProblemReconciliation, ActionReviewFunds, "unmatched_financial_evidence")
 	}
 	if state.UnbookedOutflows > 0 {
-		add(ProblemOutflowUnbooked, ActionReviewFunds, "outflow_booking")
+		action := ActionReviewFunds
+		if amounts.ReconciliationStatus == ledger.ReconciliationPending {
+			action = ActionWait
+		}
+		add(ProblemOutflowUnbooked, action, "outflow_booking")
 	}
 	if amounts.HasPolicyException {
 		add(ProblemPolicyException, ActionReviewFunds, "authority_allocation")

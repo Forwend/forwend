@@ -168,8 +168,29 @@ export function NewInvoiceForm({
     note: start?.note ?? "",
     client: request?.senderName ?? start?.client.name ?? "",
   });
-  const token = tokens.find((t) => tokenKey(t) === picked) ?? tokens[0];
-  if (!token) return null;
+  const pickedToken = tokens.find((t) => tokenKey(t) === picked);
+  const token = pickedToken ?? tokens[0];
+  const unavailableToken = picked !== "" && !pickedToken && payWith === PAY_WITH.fixed;
+  if (!token)
+    return (
+      <div role="alert" className="flex flex-col gap-3 text-sm text-danger">
+        <p>
+          This store has no accepted tokens available. Check its payment settings before creating an
+          invoice.
+        </p>
+        {stores && stores.length > 1 ? (
+          <SelectField
+            label={NEW_INVOICE_COPY.storeLabel}
+            value={storeId}
+            options={stores.map((item) => ({ value: item.storeId, label: item.name }))}
+            onValueChange={setStoreId}
+          />
+        ) : null}
+        <Link href={APP_ROUTES.networks} className="text-info underline underline-offset-4">
+          Check accepted networks and tokens
+        </Link>
+      </div>
+    );
   const any = payWith === PAY_WITH.any && tokens.length > 1;
   // In USD every token takes the amount, so it can have no more decimals than the token with the fewest.
   const decimals = any ? Math.min(...tokens.map((t) => t.decimals)) : token.decimals;
@@ -204,6 +225,10 @@ export function NewInvoiceForm({
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (unavailableToken) {
+      setFormError("Choose an accepted network and token before creating this invoice.");
+      return;
+    }
     const formElement = event.currentTarget;
     const showErrors = (shown: Partial<Record<InvoiceField, string>>) => {
       flushSync(() => setErrors(shown));
@@ -225,6 +250,7 @@ export function NewInvoiceForm({
           : AMOUNT_ERRORS.zero
         : parseTokenAmount(amount, decimals);
     const missingName = request && !text("senderName");
+    const missingClient = !request && !text("clientName") && !text("clientEmail");
     const expiresIn =
       expiry === CUSTOM_EXPIRY
         ? customExpiresIn(closesOn ?? "", text("closesAt"), Date.now())
@@ -255,6 +281,7 @@ export function NewInvoiceForm({
       badRepeat ||
       badRepeatEnd ||
       missingName ||
+      missingClient ||
       expiresIn === null ||
       badLink ||
       badOrigin
@@ -274,6 +301,9 @@ export function NewInvoiceForm({
           typeof units === "string" && items.length > 0 && !badLines
             ? COPY.items.errors.zero
             : undefined,
+        [INVOICE_FIELDS.clientName]: missingClient
+          ? "Enter a customer name or email. Use a payment link for an offer anyone can buy."
+          : undefined,
         [INVOICE_FIELDS.senderName]: missingName ? NEW_REQUEST_COPY.senderMissing : undefined,
         [INVOICE_FIELDS.expiresIn]: expiresIn === null ? COPY.customError : undefined,
         [INVOICE_FIELDS.returnUrl]: badLink
@@ -480,6 +510,11 @@ export function NewInvoiceForm({
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
       <Form onSubmit={submit} onInput={readTyped}>
+        {unavailableToken ? (
+          <p role="alert" className="text-sm text-danger">
+            The previously selected token is no longer accepted. Choose a token below.
+          </p>
+        ) : null}
         <FieldGroup title={COPY.amountGroup}>
           {tokens.length > 1 ? (
             <div className="flex flex-col gap-1.5">
@@ -507,9 +542,10 @@ export function NewInvoiceForm({
             {any ? null : (
               <SelectField
                 label={COPY.tokenLabel}
-                value={tokenKey(token)}
+                value={unavailableToken ? "" : tokenKey(token)}
                 onValueChange={(value) => {
                   setPicked(value);
+                  setFormError("");
                   setLineErrors({});
                 }}
                 options={tokens.map((t) => ({
@@ -874,7 +910,7 @@ export function NewInvoiceForm({
         )}
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-          <Button type="submit" loading={busy}>
+          <Button type="submit" loading={busy} disabled={unavailableToken}>
             {COPY.create}
           </Button>
           {request ? null : (

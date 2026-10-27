@@ -231,6 +231,12 @@ function Loaded({
               <Badge tone={TONES.warning}>{COPY.testMode}</Badge>
             </div>
           )}
+          <Link
+            href={`${APP_ROUTES.payments}/${invoice.invoiceId}`}
+            className="text-sm text-info underline underline-offset-4"
+          >
+            View payment and settlement records
+          </Link>
           <NextStep
             profileId={profileId}
             invoiceId={invoice.invoiceId}
@@ -276,15 +282,10 @@ function Loaded({
           }
         />
       </header>
-      {invoice.options.map((o) => (
-        <PaymentAmountsNotice
-          key={o.optionId}
-          amounts={o.amounts}
-          chainId={o.chainId}
-          symbol={o.symbol}
-          decimals={o.decimals}
-        />
-      ))}
+      <PaymentAmountsNotice
+        options={invoice.options}
+        detailsHref={`${APP_ROUTES.payments}/${invoice.invoiceId}`}
+      />
 
       {/* minmax(0, 1fr): a long value never widens the column past the screen. */}
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">

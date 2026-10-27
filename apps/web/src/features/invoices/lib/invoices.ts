@@ -166,7 +166,7 @@ export function isReturnLink(text: string): boolean {
   }
 }
 
-/** R-136: the tokens not in off; all of them when off would leave none, and the API then says why. */
+/** The accepted tokens after profile and store exclusions. An empty result stays empty. */
 export function tokensOn<T extends TokenRef>(
   tokens: readonly T[],
   off: readonly TokenRef[],
@@ -174,7 +174,7 @@ export function tokensOn<T extends TokenRef>(
   const on = tokens.filter(
     (t) => !off.some((o) => o.chainId === t.chainId && o.token === t.token.toLowerCase()),
   );
-  return on.length > 0 ? on : tokens;
+  return on;
 }
 
 /** The choice whose seconds a store's default close has (R-134); New invoice's default otherwise. */

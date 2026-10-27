@@ -49,7 +49,7 @@ describe("navigation by role", () => {
     const finance: Profile = { ...developer, role: "finance", permissions: ["stores.read"] };
     expect(pageAllowed(finance, `${APP_ROUTES.stores}/${developer.profileId}`)).toBe(true);
     expect(pageAllowed(finance, APP_ROUTES.newStore)).toBe(false);
-    expect(firstPage(developer)).toBe(APP_ROUTES.invoices);
+    expect(firstPage(developer)).toBe(APP_ROUTES.payments);
   });
 
   it("links the team for a merchant profile and the email setting for its owner only", () => {

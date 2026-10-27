@@ -157,7 +157,7 @@ func TestDeliverSendsCheckoutNotificationsWithoutInvoiceNumbers(t *testing.T) {
 			t.Fatalf("checkout email invented or omitted its reference: %+v", m)
 		}
 	}
-	if !strings.Contains(f.sent[0].Text, web+"/pay/"+strings.Repeat("cd", 32)) || f.sent[1].To != "payer@example.com" {
+	if !strings.Contains(f.sent[0].Text, web+"/app/payments/"+id) || f.sent[1].To != "payer@example.com" {
 		t.Fatalf("owner or payer delivery: %+v", f.sent)
 	}
 }

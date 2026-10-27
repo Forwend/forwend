@@ -15,13 +15,16 @@ const MaxEvents = 50
 // Event is a paid, settled or held-money event of one of the profile's invoices (R-81), the same as the owner's email
 // (R-80). Amount is the option's amount, or for held money the amount newly held.
 type Event struct {
-	ID          int64
-	Kind        string
-	InvoiceID   string
-	Number      int64
-	chain.Asset // symbol and decimals of the option it happened on
-	Amount      *big.Int
-	At          time.Time
+	Purpose      Purpose
+	DocumentKind DocumentKind
+	Title        string
+	ID           int64
+	Kind         string
+	InvoiceID    string
+	Number       *int64
+	chain.Asset  // symbol and decimals of the option it happened on
+	Amount       *big.Int
+	At           time.Time
 }
 
 // The caller must check the user's access to the profile.
@@ -31,7 +34,7 @@ func (s *Service) Events(ctx context.Context, profileID string, limit int, store
 	if limit < 1 || limit > MaxEvents {
 		return nil, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxEvents)
 	}
-	rows, err := s.pool.Query(ctx, `SELECT e.id, e.kind, m.id, m.number, o.chain_id, o.token_contract, t.symbol, t.decimals,
+	rows, err := s.pool.Query(ctx, `SELECT e.id, e.kind, m.id, m.number, o.chain_id, o.token_contract, t.symbol, t.decimals,m.purpose,m.document_kind,coalesce(m.title,''),
 		    coalesce(e.payload->>'amount', o.amount::text), e.created_at
 		FROM outbox_events e JOIN invoices m ON m.id = e.invoice_id
 		JOIN invoices o ON o.id = e.payload->>'option' JOIN tokens t ON t.chain_id = o.chain_id AND t.contract = o.token_contract
@@ -45,7 +48,7 @@ func (s *Service) Events(ctx context.Context, profileID string, limit int, store
 	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Event, error) {
 		var e Event
 		var amount string
-		err := row.Scan(&e.ID, &e.Kind, &e.InvoiceID, &e.Number, &e.ChainID, &e.Token, &e.Symbol, &e.Decimals, &amount, &e.At)
+		err := row.Scan(&e.ID, &e.Kind, &e.InvoiceID, &e.Number, &e.ChainID, &e.Token, &e.Symbol, &e.Decimals, &e.Purpose, &e.DocumentKind, &e.Title, &amount, &e.At)
 		e.Amount, _ = new(big.Int).SetString(amount, 10)
 		return e, err
 	})

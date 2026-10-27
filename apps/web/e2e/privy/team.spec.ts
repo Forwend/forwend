@@ -105,7 +105,7 @@ async function mockTeam(page: Page, me: ReturnType<typeof shop>) {
   return { sent, forbidden };
 }
 
-test("a Developer sees only its pages, and lands on Invoices", async ({ browser }) => {
+test("a Developer sees only its pages, and lands on Payments", async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
     storageState: session,
@@ -124,7 +124,7 @@ test("a Developer sees only its pages, and lands on Invoices", async ({ browser 
   );
   // The overview reads the balances, which a Developer can't.
   await page.goto("/app");
-  await expect(page).toHaveURL(/\/app\/invoices$/);
+  await expect(page).toHaveURL(/\/app\/payments$/);
   const sidebar = page.locator("aside");
   const nav = sidebar.getByRole("navigation");
   await expect(nav.getByRole("link", { name: "Invoices" })).toBeVisible();
@@ -132,6 +132,7 @@ test("a Developer sees only its pages, and lands on Invoices", async ({ browser 
   for (const hidden of ["Overview", "Balances", "Transactions", "Clients", "Activity"])
     await expect(nav.getByRole("link", { name: hidden })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Receive", exact: true })).toHaveCount(0);
+  await sidebar.getByRole("link", { name: "Invoices", exact: true }).click();
   // Amounts take each token's decimals from the enabled tokens, which every role reads.
   const main = page.getByRole("main");
   await expect(main.getByRole("row", { name: /Logo refresh/ })).toContainText("2.00 USDC");
@@ -140,7 +141,7 @@ test("a Developer sees only its pages, and lands on Invoices", async ({ browser 
   await expect(main.getByRole("textbox", { name: "Amount" })).toBeVisible();
   // A hidden page's address leads to the first page the role can use.
   await page.goto("/app/clients");
-  await expect(page).toHaveURL(/\/app\/invoices$/);
+  await expect(page).toHaveURL(/\/app\/payments$/);
 
   await sidebar.getByRole("button", { name: /Account/ }).click();
   await expect(page.getByRole("menuitem", { name: "Email notifications" })).toHaveCount(0);
@@ -255,7 +256,7 @@ test("the invite link accepts for the invited address, fits a phone and says whe
   invited = email.toLowerCase();
   await page.reload();
   await page.getByRole("button", { name: "Accept invite" }).click();
-  await expect(page).toHaveURL(/\/app\/invoices$/);
+  await expect(page).toHaveURL(/\/app\/payments$/);
   expect(accepts).toBe(1);
 
   await page.unroute(`/api/v1/invites/${TOKEN}`);

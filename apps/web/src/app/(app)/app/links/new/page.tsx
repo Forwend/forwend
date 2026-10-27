@@ -1,5 +1,5 @@
-import { LinkScreen } from "@/screens/links/link-screen";
+import { LinkFormScreen } from "@/screens/links/link-form-screen";
 
 export default function NewLinkPage() {
-  return <LinkScreen />;
+  return <LinkFormScreen />;
 }

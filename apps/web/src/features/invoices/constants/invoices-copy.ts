@@ -191,7 +191,7 @@ export const NEW_INVOICE_COPY = {
   closesOn: "Closes on",
   closesAt: "At",
   customError: "Pick a time from 15 minutes to 365 days from now.",
-  client: "Client (optional)",
+  client: "Customer",
   clientName: "Name",
   clientEmail: "Email",
   clientAddress: "Address",
@@ -292,7 +292,9 @@ export const NEW_REQUEST_COPY = {
 } as const;
 
 export const INVOICE_COPY = {
-  reconciliationNeeded: "Payment records need review.",
+  reconciliationNeeded: "Payment records need review before further action.",
+  verificationPending:
+    "Verifying payment history. Confirmation may take longer while these checks run.",
   checkingClosed: "Checkout closed. Checking the final payment records.",
   recordedReturns: (amount: string, network: string) =>
     `Recorded returns: ${amount} on ${network}.`,
