@@ -31,7 +31,7 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 
 - Migration 78 seeds bounded historical scans for existing receivers; new receivers start at the saved chain cursor.
 - Active payment scans share source reads in groups of 32, then commit evidence separately for each receiver.
-- Catch-up checkpoints cover at most 2,000 blocks; deeper receivers skip batch prefetch.
+- Catch-up checkpoints use the learned provider range limit, capped at 2,000 blocks; deeper receivers skip batch prefetch.
 - Advancing active checkpoints can continue within the round budget; retries and legacy work remain deferred.
 - Untouched options wait until payment or expiry needs their evidence. Missing evidence remains unverified.
 - Historical receivers run separately, at most two per round and 2,000 blocks per receiver.

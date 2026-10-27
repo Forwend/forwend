@@ -125,7 +125,7 @@
       "acceptance": [
         "Database endpoint metadata, secure secret resolution and process wiring replace backend provider-specific configuration.",
         "Priority, failover, recovery, network consistency, safe errors and identical transaction retries pass regression tests.",
-        "Public API contracts and real invoice payment, independent confirmation and settlement workflows remain correct.",
+        "Public API contracts and real invoice payment, independent confirmation and settlement workflows remain correct; receiver catch-up saves progress within learned provider range limits.",
         "Research, operations, migration and deferred architecture are documented; changed paths and imports receive independent review."
       ],
       "dependsOn": [],
@@ -151,20 +151,24 @@
         "2026-10-27 F337 implementation and independent review passed; first full verification passed seven checks. Final environment-override and documentation cleanup is being reverified. No commit, push, deployment, secret migration or persistent database change.",
         "2026-10-27 review pass by reviewer: Independent review passed. Reviewed configuration and secret boundaries, provider role separation, safe errors, recovery ownership, canonical RPC block hashes, migration behavior, and public API contracts. Confirmed fixes for canary HTTPS validation, hostname aliases, concurrent health probes, and whole-batch provider errors with targeted race tests. Reviewed final Playwright environment cleanup and wrong-chain quarantine documentation. No blocking findings.",
         "2026-10-27 F337 locally verified: seven final checks passed (harness, docs-check, lint, typecheck, unit including backend race tests, build, e2e); independent review passed. Four real-binary money workflows passed with RPC fault injection. Research and operating guide retained. No temporary Anvil or test application processes remain; tests used disposable databases and task-specific temporary directories. Shared caches and existing secrets/services preserved. No commit, push, deployment or persistent RPC configuration migration. Private endpoint metadata and RPC_ENDPOINT_SECRETS must be configured before deployment; snapshot updates require restart.",
-        "2026-10-27 F337 committed and pushed to its task branch; PR https://github.com/Forwend/forwend/pull/331 is open against main. Seven local checks and independent review passed; commit and push hooks passed. No merge or deployment. Research and archives remain local as required. Temporary PR body file cleaned. Next step: review and authorize merge."
+        "2026-10-27 F337 committed and pushed to its task branch; PR https://github.com/Forwend/forwend/pull/331 is open against main. Seven local checks and independent review passed; commit and push hooks passed. No merge or deployment. Research and archives remain local as required. Temporary PR body file cleaned. Next step: review and authorize merge.",
+        "2026-10-27 review pass by reviewer: Independent review passed for the receiver catch-up follow-up. Checkpoints and shared prefetch honor learned provider range limits while retaining contiguous finalized evidence, independent provider agreement, and atomic checkpoint writes. Strengthened regressions cover a 62-block learned limit, skipped prefetch below the former 2000-block ceiling, durable progress, production RPC transport, shared Postgres quota, and a bounded deadline. Targeted watcher race tests passed; final full verification passed all seven checks. Owning money-safety documentation matches the change. No blocking findings.",
+        "2026-10-27 review pass by reviewer: Independent review passed for the final RPC rollout follow-up. Receiver checkpoints and shared prefetch honor learned provider limits without changing finalized evidence, provider agreement, or atomic writes. Singleton watcher reads use ordinary RPC calls, preserve execution errors per element, and propagate transport failures. Caller deadlines release owned probe state without changing provider health; independent HTTP attempt timeouts retain failover. Reviewed real-Anvil regressions for bounded progress with shared Postgres quota, singleton compatibility and error isolation, and caller-deadline health isolation. Targeted race tests and final seven-check verification passed. Owning documentation matches behavior. No blocking findings.",
+        "2026-10-27 Local RPC rollout applied migration82, backend-only private references and verified public archive endpoints. Both original deposits are independently proved, booked once and paid; Arc settled. Base settlement succeeded with one exact recipient transfer on two providers and awaits chain finality. Fixed checkpoint bounds, singleton read compatibility and caller-deadline health penalties. Final seven checks passed in289.6s and independent review passed. Recovery tools and temporary directories removed; requested dev services remain running and API/web checks pass. Private endpoints remain disabled after401/402 responses. Next: commit and push follow-up to existing PR331; no merge."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-27T14:25:05Z",
+        "at": "2026-10-27T15:31:45Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.9,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "docs-check",
@@ -184,45 +188,45 @@
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.4,
+            "seconds": 0.2,
             "log": ""
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 243.4,
+            "seconds": 240.5,
             "log": ""
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 5.3,
+            "seconds": 2.6,
             "log": ""
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 45.7,
+            "seconds": 45.9,
             "log": ""
           }
         ],
-        "taskHash": "8752f9922ba85a44",
-        "filesHash": "504e8dcc949f7295",
+        "taskHash": "57d2a4a8a4aa6292",
+        "filesHash": "8e4b82599436fffd",
         "proof": {
-          "1": "unit: Database metadata, private secret references, validation and binary wiring pass backend tests.",
-          "2": "unit: Real Anvil fault proxies cover priority, failover, recovery, errors, chain identity, stale nodes, transaction retries, hash consistency and secret protection.",
-          "3": "e2e: Real API, worker and signer preserve invoice, checkout, payment-link, confirmation and settlement flows.",
-          "4": "docs-check: Research and tracked operating design document migration, limits and future work; independent review covers ownership and imports."
+          "1": "unit: Database metadata, secure secret resolution and startup wiring pass backend tests.",
+          "2": "unit: Priority, failover, recovery, safe errors, identical broadcasts and caller-deadline health isolation pass regression tests.",
+          "3": "unit: Learned checkpoint limits work under weighted pacing and head advancement; singleton execution errors preserve healthy reads.",
+          "4": "docs-check: Research decisions, rollout, bounded checkpoints, single-read behavior and deadline policy are documented."
         },
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "Independent review passed. Reviewed configuration and secret boundaries, provider role separation, safe errors, recovery ownership, canonical RPC block hashes, migration behavior, and public API contracts. Confirmed fixes for canary HTTPS validation, hostname aliases, concurrent health probes, and whole-batch provider errors with targeted race tests. Reviewed final Playwright environment cleanup and wrong-chain quarantine documentation. No blocking findings.",
-          "at": "2026-10-27T14:30:43Z",
-          "filesHash": "504e8dcc949f7295"
+          "summary": "Independent review passed for the final RPC rollout follow-up. Receiver checkpoints and shared prefetch honor learned provider limits without changing finalized evidence, provider agreement, or atomic writes. Singleton watcher reads use ordinary RPC calls, preserve execution errors per element, and propagate transport failures. Caller deadlines release owned probe state without changing provider health; independent HTTP attempt timeouts retain failover. Reviewed real-Anvil regressions for bounded progress with shared Postgres quota, singleton compatibility and error isolation, and caller-deadline health isolation. Targeted race tests and final seven-check verification passed. Owning documentation matches behavior. No blocking findings.",
+          "at": "2026-10-27T15:36:52Z",
+          "filesHash": "8e4b82599436fffd"
         }
       },
       "branch": "refactor/f337-centralize-backend-rpc-configuration-and",
@@ -231,9 +235,9 @@
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-27T14:34:32Z",
+    "at": "2026-10-27T15:37:27Z",
     "clean": true,
     "problems": [],
-    "note": "F337 committed and pushed to its task branch; PR https://github.com/Forwend/forwend/pull/331 is open against main. Seven local checks and independent review passed; commit and push hooks passed. No merge or deployment. Research and archives remain local as required. Temporary PR body file cleaned. Next step: review and authorize merge."
+    "note": "Local RPC rollout applied migration82, backend-only private references and verified public archive endpoints. Both original deposits are independently proved, booked once and paid; Arc settled. Base settlement succeeded with one exact recipient transfer on two providers and awaits chain finality. Fixed checkpoint bounds, singleton read compatibility and caller-deadline health penalties. Final seven checks passed in289.6s and independent review passed. Recovery tools and temporary directories removed; requested dev services remain running and API/web checks pass. Private endpoints remain disabled after401/402 responses. Next: commit and push follow-up to existing PR331; no merge."
   }
 }

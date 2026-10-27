@@ -50,6 +50,7 @@ VALUES
 - HTTP 401, 403, 404 and malformed responses use the maximum cooldown immediately.
 - HTTP 429 honors `Retry-After`, bounded at five minutes; JSON-RPC rate limits also trigger failover.
 - Connection failures rest endpoints sharing the same host; rejected credentials rest only the affected endpoint.
+- Caller cancellation and request deadlines release the endpoint without changing its health; the separate HTTP attempt timeout still triggers failover.
 - One probe per endpoint validates recovery; healthy recovered private endpoints regain priority automatically.
 - Identity and health are rechecked on demand at least every 30 seconds of use, plus after failures.
 - A wrong chain ID quarantines that endpoint until restart after operator correction.

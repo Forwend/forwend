@@ -325,6 +325,7 @@ never holds the app's load.
 - Budget exhaustion or a database failure stops the request without marking the provider unhealthy.
 - The budget uses a separate two-connection pool because ledger reads can hold invoice transactions.
 - Related header batches retry together to preserve their provider view.
+- The watcher sends single reads as ordinary RPC requests; only multiple reads use batch requests.
 - Every `POLL_INTERVAL`, worker and signer start a job for each enabled, idle chain.
 - Busy chains keep their own jobs; healthy chains can complete more rounds meanwhile.
 - Each worker chain job has a two-minute deadline.

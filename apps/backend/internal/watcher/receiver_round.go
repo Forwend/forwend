@@ -78,7 +78,7 @@ func (c *Chain) receiverRound(ctx context.Context, second *rpc.Client, ids []str
 			numbers = append(numbers, *v.prior)
 		}
 		// Deep catch-up stays on the bounded single-receiver path.
-		if v.next > r.final || r.final-v.next >= MaxRange {
+		if v.next > r.final || r.final-v.next >= min(c.span, r.other.span) {
 			continue
 		}
 		reads = append(reads, v)

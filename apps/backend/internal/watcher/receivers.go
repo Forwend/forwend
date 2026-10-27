@@ -249,7 +249,7 @@ func (c *Chain) receiver(ctx context.Context, second *rpc.Client, id string, rou
 		}
 		return true, tx.Commit(ctx)
 	}
-	step := uint64(MaxRange)
+	step := min(c.span, other.span)
 	hi := min(final, from+step-1)
 	invoices := map[common.Address]receiver{common.HexToAddress(receive): {id, token}}
 	var incoming, outgoing, transfers, otherIncoming, otherOutgoing, otherTransfers []types.Log

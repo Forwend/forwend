@@ -433,6 +433,28 @@ func TestOversizedAnswerIsAnOutage(t *testing.T) {
 	}
 }
 
+func TestCallerDeadlineDoesNotRestProviderForOtherWork(t *testing.T) {
+	a := chaintest.Start(t)
+	proxy := a.Proxy()
+	r := newRPCs(t, proxy.URL, localhost(a.URL))
+	if _, err := tryNumber(t.Context(), r.Primary); err != nil {
+		t.Fatal(err)
+	}
+	proxy.Fail(func(call chaintest.Call) chaintest.Fault { return chaintest.Hang })
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+	defer cancel()
+	if _, err := tryNumber(ctx, r.Primary); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("caller deadline: %v", err)
+	}
+	if failures, _ := health(r, r.pool.endpoints[0]); failures != 0 {
+		t.Fatalf("caller deadline rested provider used by other work: %d failures", failures)
+	}
+	proxy.Fail(nil)
+	if _, err := tryNumber(t.Context(), r.Primary); err != nil {
+		t.Fatalf("healthy provider remained unavailable: %v", err)
+	}
+}
+
 func TestRequestsThatCannotMeetTheirDeadlineDoNotDelayLaterReads(t *testing.T) {
 	a := chaintest.Start(t)
 	proxy := a.Proxy()

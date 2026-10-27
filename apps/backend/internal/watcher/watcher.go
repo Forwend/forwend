@@ -573,7 +573,17 @@ func (c *Chain) batchCall(ctx context.Context, batch []rpc.BatchElem) error {
 	for offset := 0; offset < len(batch); {
 		size := min(c.batchSize, len(batch)-offset)
 		part := batch[offset : offset+size]
-		err := c.rpc.BatchCallContext(ctx, part)
+		var err error
+		if size == 1 {
+			part[0].Error = nil
+			err = c.rpc.CallContext(ctx, part[0].Result, part[0].Method, part[0].Args...)
+			var responseError rpc.Error
+			if errors.As(err, &responseError) {
+				part[0].Error, err = err, nil
+			}
+		} else {
+			err = c.rpc.BatchCallContext(ctx, part)
+		}
 		limited := chain.BatchTooLarge(err)
 		for _, call := range part {
 			limited = limited || chain.BatchTooLarge(call.Error)

@@ -113,7 +113,7 @@ func (p *pool) do(ctx context.Context, second bool, header http.Header, body []b
 			p.release(e, probe)
 			return nil, err
 		}
-		if errors.Is(ctx.Err(), context.Canceled) {
+		if ctx.Err() != nil {
 			p.release(e, probe)
 			return nil, ctx.Err()
 		}
