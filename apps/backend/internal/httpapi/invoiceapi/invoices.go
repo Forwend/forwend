@@ -282,7 +282,7 @@ func listEvents(invoices *invoice.Service) http.HandlerFunc {
 		}
 		out := eventsJSON{Items: []eventJSON{}}
 		for _, e := range events {
-			out.Items = append(out.Items, eventJSON{ID: e.ID, Kind: e.Kind, InvoiceID: e.InvoiceID, Number: e.Number,
+			out.Items = append(out.Items, eventJSON{Purpose: e.Purpose, DocumentKind: e.DocumentKind, Title: httpio.OrNull(e.Title), ID: e.ID, Kind: e.Kind, InvoiceID: e.InvoiceID, Number: e.Number,
 				ChainID: e.ChainID, Token: e.Token, Symbol: e.Symbol, Decimals: e.Decimals, Amount: e.Amount.String(),
 				At: e.At.UTC().Format(time.RFC3339Nano)})
 		}

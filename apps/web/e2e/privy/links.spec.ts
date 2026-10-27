@@ -131,6 +131,7 @@ test("the owner lists payment links with their activity, makes an open one and t
   await expect(main.getByRole("button", { name: "Copy the link's address" })).toBeVisible();
 
   await page.goto(`/app/links/${FIXED}`);
+  await main.getByRole("link", { name: "Edit payment link" }).click();
   await main.getByRole("checkbox", { name: "The link is on" }).uncheck();
   await main.getByRole("button", { name: "Save link" }).click();
   await expect(page).toHaveURL(/\/app\/links$/);

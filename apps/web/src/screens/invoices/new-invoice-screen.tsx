@@ -69,7 +69,7 @@ export function NewInvoiceScreen() {
   const clients = useListClientsQuery(profile.profileId, {
     skip: request || !can(profile, PERMISSIONS.clientsRead),
   });
-  // R-134: the form starts from the store's close, so it waits for them; without them the API picks the first store.
+  // Store defaults and acceptance must be known before composing a merchant invoice.
   const merchant = profile.kind === PROFILE_KINDS.merchant;
   const stores = useListStoresQuery(profile.profileId, { skip: !merchant });
   const loadingStores = merchant && stores.currentData === undefined && !stores.isError;
@@ -94,6 +94,24 @@ export function NewInvoiceScreen() {
           {INVOICES_COPY.revise.failed}
           <Button size="sm" variant="secondary" onClick={() => void owned.refetch()}>
             {INVOICES_COPY.revise.retry}
+          </Button>
+        </div>
+      ) : merchant && stores.isError ? (
+        <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">
+          We could not load stores. Choose a store after trying again.
+          <Button size="sm" variant="secondary" onClick={() => void stores.refetch()}>
+            Try again
+          </Button>
+        </div>
+      ) : merchant && stores.currentData?.length === 0 ? (
+        <p role="alert" className="text-sm text-danger">
+          No store is available. Ask the account owner to check your store access.
+        </p>
+      ) : readsBilling && billing.isError ? (
+        <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">
+          We could not load billing details.
+          <Button size="sm" variant="secondary" onClick={() => void billing.refetch()}>
+            Try again
           </Button>
         </div>
       ) : !tokens || loadingStart || loadingBilling || loadingStores ? (

@@ -140,7 +140,12 @@ export function breadcrumb(
       trail: [
         crumb,
         {
-          label: pathname === APP_ROUTES.newLink ? LINKS_COPY.newTitle : LINKS_COPY.editTitle,
+          label:
+            pathname === APP_ROUTES.newLink
+              ? LINKS_COPY.newTitle
+              : pathname.endsWith("/edit")
+                ? LINKS_COPY.editTitle
+                : "Payment link",
           href: pathname,
         },
       ],
@@ -158,6 +163,9 @@ export function breadcrumb(
       ],
       invoiceId: null,
     };
+  }
+  if (page.href === APP_ROUTES.payments && pathname !== APP_ROUTES.payments) {
+    return { trail: [crumb, { label: "Payment details", href: pathname }], invoiceId: null };
   }
   const under =
     page.href === APP_ROUTES.invoices ? pathname.slice(`${APP_ROUTES.invoices}/`.length) : "";

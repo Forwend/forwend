@@ -20,7 +20,7 @@ export function StoreScreen({ storeId }: StoreScreenProps) {
   const { profile } = useAppSession();
   const list = useListStoresQuery(profile.profileId, { skip: !storeId });
   const store = list.currentData?.find((s) => s.storeId === storeId);
-  // Without them the form keeps the store's tokens off as saved and shows no Tokens panel.
+  // Token configuration must load before editing acceptance.
   const tokens = useGetProfileTokensQuery(profile.profileId);
   const form = {
     profileId: profile.profileId,
@@ -37,7 +37,16 @@ export function StoreScreen({ storeId }: StoreScreenProps) {
         </h1>
         <p className="text-muted">{COPY.intro}</p>
       </header>
-      {!storeId ? (
+      {tokens.isError ? (
+        <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">
+          We could not load accepted tokens.
+          <Button variant="secondary" size="sm" onClick={() => void tokens.refetch()}>
+            Try again
+          </Button>
+        </div>
+      ) : !tokens.currentData ? (
+        <Skeleton className="h-64" />
+      ) : !storeId ? (
         <StoreForm key={profile.profileId} {...form} />
       ) : list.isError && !list.currentData ? (
         <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-muted">

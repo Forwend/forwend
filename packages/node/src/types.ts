@@ -45,7 +45,10 @@ export type PaymentPurpose = (typeof PAYMENT_PURPOSES)[number];
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 export type CheckoutState = (typeof CHECKOUT_STATES)[number];
 
+export const RECONCILIATION_STATUSES = ["verified", "pending", "review"] as const;
+export type ReconciliationStatus = (typeof RECONCILIATION_STATUSES)[number];
 export interface PaymentAmounts {
+  reconciliationStatus?: ReconciliationStatus;
   receiver: string;
   payable: string;
   held: string;
@@ -61,6 +64,11 @@ export interface Payment {
   amounts?: PaymentAmounts;
   paymentId: string;
   source: PaymentSource;
+  optionId: string;
+  optionLocked: boolean;
+  optionCount: number;
+  symbol: string;
+  decimals: number;
   purpose: PaymentPurpose;
   documentKind: DocumentKind;
   number: number | null;
@@ -103,6 +111,7 @@ export interface CreateCheckoutSession {
 
 export interface ListPayments extends ListCheckoutSessions {
   source?: PaymentSource;
+  linkId?: string;
   status?: ListStatus;
   paymentStatus?: PaymentStatus;
   settlementStatus?: SettlementStatus;

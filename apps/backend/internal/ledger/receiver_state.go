@@ -78,8 +78,13 @@ func ComparableReceiverSQL(invoiceID, block string) string {
 
 func unpositionedCashSQL(invoiceID string) string {
 	return `EXISTS (SELECT 1 FROM ledger_transactions comparable_journal JOIN ledger_entries comparable_entry ON comparable_entry.transaction_id = comparable_journal.id
- WHERE comparable_journal.invoice_id = ` + invoiceID + ` AND comparable_entry.account = 'receiver' AND (
-  comparable_journal.kind = 'deposit' AND NOT EXISTS (SELECT 1 FROM receiver_deposit_proofs comparable_proof WHERE comparable_proof.chain_transfer_id = comparable_journal.chain_transfer_id)
-  OR comparable_journal.kind IN ('refund','settlement') AND NOT EXISTS (SELECT 1 FROM receiver_outflows comparable_source WHERE comparable_source.ledger_transaction_id = comparable_journal.id)
-  OR comparable_journal.kind NOT IN ('deposit','refund','settlement')))`
+ WHERE comparable_journal.invoice_id = ` + invoiceID + ` AND comparable_entry.account = 'receiver' AND comparable_journal.kind = 'deposit'
+ AND NOT EXISTS (SELECT 1 FROM receiver_deposit_proofs comparable_proof WHERE comparable_proof.chain_transfer_id = comparable_journal.chain_transfer_id)) OR (` + unpositionedOutflowSQL(invoiceID) + `)`
+}
+
+func unpositionedOutflowSQL(invoiceID string) string {
+	return `EXISTS (SELECT 1 FROM ledger_transactions unpositioned_journal JOIN ledger_entries unpositioned_entry ON unpositioned_entry.transaction_id = unpositioned_journal.id
+ WHERE unpositioned_journal.invoice_id = ` + invoiceID + ` AND unpositioned_entry.account = 'receiver' AND (
+  unpositioned_journal.kind IN ('refund','settlement') AND NOT EXISTS (SELECT 1 FROM receiver_outflows unpositioned_source WHERE unpositioned_source.ledger_transaction_id = unpositioned_journal.id)
+  OR unpositioned_journal.kind NOT IN ('deposit','refund','settlement')))`
 }

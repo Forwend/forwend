@@ -434,7 +434,7 @@ describe("tokensOn", () => {
     expect(tokensOn([base, arb], [{ chainId: 1, token: arb.token }])).toEqual([base, arb]);
   });
 
-  it("keeps every token when the list would leave none, so the API says why", () => {
-    expect(tokensOn([base], [{ chainId: 84532, token: base.token.toLowerCase() }])).toEqual([base]);
+  it("never restores disabled tokens when acceptance is empty", () => {
+    expect(tokensOn([base], [{ chainId: 84532, token: base.token.toLowerCase() }])).toEqual([]);
   });
 });

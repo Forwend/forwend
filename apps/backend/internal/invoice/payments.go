@@ -43,7 +43,7 @@ func (i Invoice) PaymentSource() PaymentSource {
 type PaymentQuery struct {
 	IncludeWebhookOperations                              bool
 	Attention                                             bool
-	Cursor, StoreID                                       string
+	Cursor, StoreID, LinkID                               string
 	Source                                                PaymentSource
 	Status, PaymentStatus, SettlementStatus, RefundStatus string
 	Limit                                                 int
@@ -135,6 +135,14 @@ func paymentWhere(profileID string, q PaymentQuery) ([]any, string, error) {
 		}
 		args = append(args, id)
 		where += fmt.Sprintf(" AND store_id = $%d", len(args))
+	}
+	if q.LinkID != "" {
+		var id pgtype.UUID
+		if id.Scan(q.LinkID) != nil {
+			return nil, "", fmt.Errorf("%w: linkId must be a UUID", ErrInvalid)
+		}
+		args = append(args, id)
+		where += fmt.Sprintf(" AND link_id = $%d", len(args))
 	}
 	if q.Stores != nil {
 		args = append(args, q.Stores)

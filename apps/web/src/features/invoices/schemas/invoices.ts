@@ -9,6 +9,7 @@ import {
   DOCUMENT_KINDS,
   PAY_TOKEN_PATTERN,
   PAYMENT_PURPOSES,
+  RECONCILIATION_STATES,
   SETTLEMENT_WAITS,
 } from "@/features/invoices/constants/invoices";
 import type {
@@ -143,6 +144,7 @@ export const settlementWaitSchema = z.object({
 
 /** One token and network the invoice accepts, with its own on-chain id, amount and address (R-56). */
 export const paymentAmountsSchema = z.object({
+  reconciliationStatus: z.enum(RECONCILIATION_STATES).optional(),
   receiver: z.string().regex(/^-?\d+$/),
   payable: z.string().regex(/^-?\d+$/),
   held: z.string().regex(/^-?\d+$/),
@@ -331,7 +333,10 @@ export const invoiceEventSchema = z.object({
   id: z.number().int(),
   kind: openEnum<InvoiceEventKind>(),
   invoiceId: hash32,
-  number: z.number().int().positive(),
+  number: z.number().int().positive().nullable(),
+  purpose: z.enum(PAYMENT_PURPOSES).optional(),
+  documentKind: z.enum(DOCUMENT_KINDS).optional(),
+  title: z.string().nullable().optional(),
   chainId: count,
   token: evmAddress,
   symbol: z.string(),

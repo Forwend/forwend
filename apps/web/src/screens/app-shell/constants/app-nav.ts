@@ -53,6 +53,12 @@ export const NAV = {
     icon: History,
     permission: PERMISSIONS.moneyRead,
   },
+  payments: {
+    href: APP_ROUTES.payments,
+    label: "Payments",
+    icon: ArrowLeftRight,
+    permission: PERMISSIONS.invoicesRead,
+  },
   invoices: {
     href: APP_ROUTES.invoices,
     label: INVOICES_COPY.invoices,
@@ -112,7 +118,10 @@ export const APP_NAV: Readonly<Record<ProfileKind, readonly NavGroup[]>> = {
   ],
   [PROFILE_KINDS.freelancer]: [
     MONEY,
-    { label: "Get paid", items: [NAV.invoices, NAV.links, NAV.jobs, NAV.clients, NAV.activity] },
+    {
+      label: "Get paid",
+      items: [NAV.payments, NAV.invoices, NAV.links, NAV.jobs, NAV.clients, NAV.activity],
+    },
     { label: "Build", items: [NAV.developers] },
     INSIGHTS,
   ],
@@ -120,7 +129,15 @@ export const APP_NAV: Readonly<Record<ProfileKind, readonly NavGroup[]>> = {
     MONEY,
     {
       label: "Payments",
-      items: [NAV.invoices, NAV.links, NAV.clients, NAV.stores, NAV.checkout, NAV.activity],
+      items: [
+        NAV.payments,
+        NAV.invoices,
+        NAV.links,
+        NAV.clients,
+        NAV.stores,
+        NAV.checkout,
+        NAV.activity,
+      ],
     },
     { label: "Build", items: [NAV.developers] },
     INSIGHTS,

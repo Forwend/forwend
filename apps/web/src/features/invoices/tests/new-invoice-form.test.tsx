@@ -51,6 +51,9 @@ describe("new invoice form", () => {
         <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} />
       </Provider>,
     );
+    fireEvent.change(screen.getByRole("textbox", { name: /^Name$/ }), {
+      target: { value: "Mara Ilić" },
+    });
     fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "100" } });
     fireEvent.click(screen.getByLabelText("Custom"));
     fireEvent.click(screen.getByRole("button", { name: /Closes on/ }));
@@ -146,6 +149,9 @@ describe("new invoice form", () => {
           <NewInvoiceForm profileId={PROFILE} tokens={tokens} />
         </Provider>,
       );
+      fireEvent.change(screen.getByRole("textbox", { name: /^Name$/ }), {
+        target: { value: "Mara Ilić" },
+      });
       fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "100" } });
       // The amount typed so far becomes the first item's price.
       fireEvent.click(screen.getByRole("button", { name: "Add item" }));
@@ -230,6 +236,9 @@ describe("new invoice form", () => {
         <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} />
       </Provider>,
     );
+    fireEvent.change(screen.getByRole("textbox", { name: /^Name$/ }), {
+      target: { value: "Mara Ilić" },
+    });
     fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "5" } });
     fireEvent.click(screen.getByRole("button", { name: "Add item" }));
     fireEvent.change(screen.getByLabelText("Item 1"), { target: { value: "Design" } });
@@ -263,6 +272,9 @@ describe("new invoice form", () => {
         />
       </Provider>,
     );
+    fireEvent.change(screen.getByRole("textbox", { name: /^Name$/ }), {
+      target: { value: "Mara Ilić" },
+    });
     fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "5" } });
     fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
     await settle();
@@ -395,6 +407,9 @@ describe("new invoice form", () => {
         <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} />
       </Provider>,
     );
+    fireEvent.change(screen.getByRole("textbox", { name: /^Name$/ }), {
+      target: { value: "Mara Ilić" },
+    });
     fireEvent.change(screen.getByLabelText(/^Amount/), { target: { value: "100" } });
     fireEvent.click(screen.getByRole("button", { name: "Add agreed value" }));
     expect(document.activeElement).toBe(screen.getByRole("button", { name: /^Agreed in/ }));
@@ -468,4 +483,27 @@ describe("new invoice form", () => {
     expect(bodies[0]?.dueDate).toBe(due);
     expect(bodies[0]?.repeat).toEqual({ endDate: end });
   });
+});
+
+it("requires an invoice recipient while accepting an individual without business details", async () => {
+  const create = vi.fn(async () => {
+    throw new TypeError("Failed to fetch");
+  });
+  vi.stubGlobal("fetch", create);
+  render(
+    <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+      <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} />
+    </Provider>,
+  );
+  fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "10" } });
+  fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+  await settle();
+  expect(create).not.toHaveBeenCalled();
+  expect(screen.getByRole("textbox", { name: /^Name$/ }).getAttribute("aria-invalid")).toBe("true");
+  fireEvent.change(screen.getByRole("textbox", { name: /^Name$/ }), {
+    target: { value: "Mara Ilić" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+  await settle();
+  expect(create).toHaveBeenCalledOnce();
 });

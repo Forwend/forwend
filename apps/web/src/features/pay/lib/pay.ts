@@ -32,6 +32,14 @@ export function payToken(inv: Invoice) {
   return PAY_TOKENS[tokenKey(inv)] ?? null;
 }
 
+/** Public amounts use the token registry bundled with the page, never API-supplied decimal metadata. */
+export function payerNoticeOptions(options: Invoice["options"]): Invoice["options"] {
+  return options.flatMap((option) => {
+    const token = PAY_TOKENS[tokenKey(option)];
+    return token ? [{ ...option, symbol: token.symbol, decimals: token.decimals }] : [];
+  });
+}
+
 // A last-moment transfer lands after the close and is held, not paid out; the browser clock may run behind.
 const CLOSE_EARLY_MS = 5 * 60_000;
 

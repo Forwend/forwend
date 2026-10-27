@@ -67,7 +67,12 @@ export const PAY_COPY = {
     // The steps say it arrived; the line counts the blocks (ConfirmingStatus).
     [PAY_STATES.confirming]: () => "Confirming",
     [PAY_STATES.checking]: () => "Final check",
-    [PAY_STATES.review]: () => "Payment records need review. Do not send more money.",
+    [PAY_STATES.review]: ({ verificationPending, checkoutClosed }) =>
+      verificationPending
+        ? checkoutClosed
+          ? "This checkout is closed. Forwend is verifying earlier payment records."
+          : "Verifying payment history. Please wait before sending money."
+        : "Payment records need review. Do not send more money.",
     [PAY_STATES.partial]: ({ received, total, remaining }) =>
       `${received} of ${total} received. Send the remaining ${remaining}.`,
     [PAY_STATES.paid]: () => "Paid",
@@ -166,6 +171,8 @@ export const LINK_PAY_COPY = {
 } as const;
 
 interface StateValues {
+  verificationPending?: boolean;
+  checkoutClosed?: boolean;
   received: string;
   remaining: string;
   total: string;

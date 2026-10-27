@@ -131,7 +131,10 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   it was sent, the email settings link on owner emails, `support@forwend.com` and `EMAIL_POSTAL_ADDRESS` when set.
   Tables, inline styles and a dark-mode block; no scripts, tracking pixels or other remote assets.
 - `GET /v1/profiles/{profileId}/events?limit=` (R-81, at most 50): the same events for the bell, newest first, with the
-  invoice number, the option's token and the amount (newly held for `invoice.held`).
+  document number when present, the option's token and the amount (newly held for `invoice.held`).
+- Events include purpose, document kind and title; document-free checkout events have `number: null` and open payment details.
+- Existing invoice and request event numbers remain unchanged; no document number is invented for checkout.
+- Owner checkout emails open Payments; customer receipt links remain public.
 
 ## Billing details
 
@@ -260,7 +263,15 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
 
 ### Payment operations
 
-- Payment lists accept `source`, `storeId`, `status`, `paymentStatus`, `settlementStatus` and `refundStatus`; filters intersect permitted stores and key mode.
+- Payment lists accept `linkId`, `source`, `storeId`, `status`, `paymentStatus`, `settlementStatus` and `refundStatus`; filters intersect permitted stores and key mode.
+- Payment reads include canonical symbol, decimals, option ID, option count and whether an option has been locked.
+- Token metadata follows the stored chain and contract, including tokens disabled after the payment was created.
+- Net amounts include `reconciliationStatus`: `verified`, `pending` history checks, or `review` for conflicting evidence.
+- The existing `unreconciled` flag continues blocking unsafe financial actions during either pending verification or manual review.
+- Automatic rescans and certified movements awaiting booking remain pending; unexplained residuals, source conflicts and policy exceptions require review.
+- Other-asset recovery records remain distinct from accepted-token reconciliation.
+- The owner page groups option verification into one notice; token-specific returns remain separate.
+- Customer checkout and receipt PDFs distinguish pending verification from manual review without changing payment truth.
 - Sources are `invoice`, `request`, `payment_link` and direct `checkout`; source differs from the attached document kind.
 - List cursors use immutable creation time and payment ID, including unpaid attempts.
 - Payment detail preserves its existing root fields and adds customer, metadata, options, source coverage, settlement intent, deposits, deliveries and problems.

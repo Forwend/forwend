@@ -226,12 +226,25 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - New invoice shows a Store select in Details when the profile has two or more stores.
   - Picking a store sets the close to its default, unless a due date or the owner set one.
   - The return link's hint names the store's origins. The invoice list adds the store after the title.
+- Payments (R-166) uses the invoice list's panels, tables and phone rows; its source, store and status filters remain in the URL.
+  - All payments, Needs attention and Reconciliation use the existing segmented control.
+  - Unpaid attempts stay visible; requested amounts never imply received or settled money.
+  - Payment details use ruled invoice panels, with separate customer, settlement, source coverage, liabilities and delivery information.
+  - Each token and network keeps its own receive balance, merchant payable, payer-held funds and observed returns.
+  - Movement rows show network, contract and signed receiver/payable/held changes; allocation rows never imply another token transfer.
+  - Automatic verification uses one neutral notice; conflicting evidence uses one review notice, with a direct link to details.
+  - Shared wallet transactions and invoice activity explicitly name their profile-wide scope.
+  - Reconciliation follows recorded UTC periods; opening, changes and closing remain separate per store and token.
+  - Export follows validated filters and uses the existing date dialog pattern; invalid or unresolved filters disable export.
+  - Invoices identify a customer by name or email; business tax fields remain optional, and personal requests retain their simpler flow.
+  - Failed store, billing or token loads show explicit retry actions; empty acceptance never restores disabled tokens.
 - Payment links (R-140) sits after Invoices in a merchant's Payments group and a freelancer's Get paid group.
   - It is laid out like Stores: a one-line intro with New link at its end, then a table.
   - The table shows the link with its `/l/<slug>`, the amount, a status badge and visits, paid purchases and reserved slots.
   - The status is On, Off, Ended, Cap reached or Setup needed; only On is green.
   - Test links have a Test mode badge in lists and details, and the invoice warning on their public page.
-  - New and Edit are form pages like Edit store, with Link, Amount and Limits panels.
+  - The link overview shows sharing details and its resulting payment attempts; editing is an explicit action.
+  - New and Edit use existing store-form panels; `/app/links/<id>/edit` edits the offer, while the existing detail URL remains valid.
   - Amount has two choice cards: A fixed amount, or The payer enters it with an optional min and max.
   - A new link opens on its page after saving, where the address shows with a Copy button.
   - Editing keeps the store selector disabled; failed store loading blocks the form with a retry action.

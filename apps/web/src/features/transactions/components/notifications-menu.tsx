@@ -134,12 +134,17 @@ export function NotificationsMenu({ profileId, transfers, className }: Notificat
           rows.map(({ transfer: t, event: e }) =>
             e ? (
               <MenuItem key={`event-${e.id}`} asChild>
-                <Link href={`${APP_ROUTES.invoices}/${e.invoiceId}`} className="py-2">
+                <Link
+                  href={`${e.documentKind === "none" ? APP_ROUTES.payments : APP_ROUTES.invoices}/${e.invoiceId}`}
+                  className="py-2"
+                >
                   <EventIcon kind={e.kind} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-ink">
                       {INVOICE_COPY.events[e.kind as keyof typeof EVENT_LOOK](
-                        invoiceNumber(e.number),
+                        e.number === null
+                          ? (e.title ?? "Checkout payment")
+                          : invoiceNumber(e.number),
                       )}{" "}
                       <Money baseUnits={BigInt(e.amount)} decimals={e.decimals} token={e.symbol} />
                     </span>

@@ -354,3 +354,35 @@ describe("owner's invoice page", () => {
     expect(screen.queryByRole("button", { name: "Reopen checkout" })).toBeNull();
   });
 });
+
+it("shows one verification notice for an expired unpaid invoice with four unscanned payment options", async () => {
+  const amounts = {
+    receiver: "0",
+    payable: "0",
+    held: "0",
+    settled: "0",
+    refunded: "0",
+    observedRefunded: "0",
+    lastReturnTxHash: null,
+    unreconciled: true,
+    hasPolicyException: false,
+    reconciliationStatus: "pending",
+  };
+  const main = OPEN.options[0];
+  if (!main) throw new Error("Missing option fixture");
+  serve({
+    ...OPEN,
+    paymentStatus: "expired",
+    closed: true,
+    amounts,
+    optionCount: 4,
+    options: [
+      main,
+      ...["1", "2", "3"].map((value) => ({ ...main, optionId: `0x${value.repeat(64)}` })),
+    ].map((option) => ({ ...option, amounts })),
+  });
+  show();
+  await settle();
+  expect(screen.queryByText("Payment records need review.")).toBeNull();
+  expect(screen.getAllByText(/Verifying payment history/)).toHaveLength(1);
+});

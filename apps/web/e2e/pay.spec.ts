@@ -524,7 +524,9 @@ test.describe("pay page", () => {
     await openPay(page, { ...PAID, amounts, options: [{ ...MAIN_OPTION, amounts }] });
     await expect(page.getByRole("status").filter({ hasText: /^Paid$/ })).toBeVisible();
     await expect(page.getByText(/^Recorded returns:/)).toContainText("1,250.00 USDC");
-    await expect(page.getByText("Payment records need review.", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("Payment records need review before further action.", { exact: true }),
+    ).toBeVisible();
     await expect(page.getByRole("link", { name: /Basescan/ }).last()).toHaveAttribute(
       "href",
       `https://sepolia.basescan.org/tx/${amounts.lastReturnTxHash}`,
@@ -541,7 +543,9 @@ test.describe("pay page", () => {
       options: [{ ...MAIN_OPTION, amounts: { ...amounts, unreconciled: true } }],
     });
     await page.reload();
-    await expect(page.getByText("Payment records need review.", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("Payment records need review. Do not send more money.", { exact: true }),
+    ).toBeVisible();
     await expect(showAddress(page)).toHaveCount(0);
     await expect(page.getByText(RECEIVE)).toHaveCount(0);
   });

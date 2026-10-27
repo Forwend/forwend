@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { Deposit, Invoice } from "@/features/invoices/types/invoices";
 import { PAY_STATES } from "@/features/pay/constants/pay";
-import { payState, payToken, receiptDeposits, withOption } from "@/features/pay/lib/pay";
+import {
+  payerNoticeOptions,
+  payState,
+  payToken,
+  receiptDeposits,
+  withOption,
+} from "@/features/pay/lib/pay";
 
 const invoice: Invoice = {
   invoiceId: `0x${"1".repeat(64)}`,
@@ -302,4 +308,21 @@ describe("payToken", () => {
     expect(payToken(tempo)).toEqual({ symbol: "OUSD", decimals: 6 });
     expect(payToken({ ...tempo, chainId: 84532 })).toBeNull();
   });
+});
+
+it("formats public return notices with build-owned token metadata and rejects unknown chain-contract pairs", () => {
+  const option: Invoice["options"][number] = {
+    optionId: invoice.invoiceId,
+    chainId: invoice.chainId,
+    token: invoice.token,
+    symbol: "FAKE",
+    decimals: 18,
+    amount: invoice.amount,
+    receiveAddress: invoice.receiveAddress,
+    network: "base-sepolia",
+    deposits: [],
+  };
+  const trusted = payerNoticeOptions([option]);
+  expect(trusted[0]).toMatchObject({ symbol: "USDC", decimals: 6, amount: invoice.amount });
+  expect(payerNoticeOptions([{ ...option, chainId: 999999 }])).toEqual([]);
 });

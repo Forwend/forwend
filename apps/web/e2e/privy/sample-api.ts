@@ -347,6 +347,24 @@ export async function mockApi(
       return route.fulfill({ contentType: "application/pdf", body: "%PDF-1.4" });
     if (what?.startsWith("events")) return route.fulfill({ json: { items: lists.events ?? [] } });
     if (what === "webhooks") return route.fulfill({ json: { endpoints: [] } });
+    if (what === "stores")
+      return route.fulfill({
+        json: {
+          stores: [
+            {
+              storeId: "66666666-6666-4666-8666-666666666666",
+              name: "Sample shop",
+              defaultExpiresIn: 3600,
+              allowedOrigins: [],
+              brandColor: null,
+              logoAt: null,
+              tokensOff: [],
+              updatedAt: "2026-09-02T00:00:00Z",
+            },
+          ],
+        },
+      });
+    if (what === "payments") return route.fulfill({ json: { items: [], nextCursor: null } });
     if (what === "billing-details") {
       if (route.request().method() === "PUT")
         details = { ...route.request().postDataJSON(), updatedAt: "2026-10-17T12:00:00Z" };

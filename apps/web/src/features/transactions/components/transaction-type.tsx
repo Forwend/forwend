@@ -47,6 +47,15 @@ export function TransactionType({ profileId, t }: TransactionTypeProps) {
         {COPY.invoicePaid(invoiceNumber(t.invoice.number), t.invoice.clientName)}
       </Link>
     );
+  if (!t.labelable && t.payment)
+    return (
+      <Link
+        href={`${APP_ROUTES.payments}/${t.payment.paymentId}`}
+        className="font-medium text-ink underline underline-offset-2"
+      >
+        View payment
+      </Link>
+    );
   if (!t.labelable)
     return (
       <span className="text-muted">

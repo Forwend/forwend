@@ -3,122 +3,6 @@
   "nextId": 336,
   "tasks": [
     {
-      "id": "F330",
-      "type": "feat",
-      "behavior": "Add merchant payment operations and store reconciliation APIs",
-      "acceptance": [
-        "Payments include all permitted attempts with stable paging and source/store/status filters; detail separates deposits, settlement, refunds, reconciliation and delivery state.",
-        "Attention identifies partial/held/uncertain payments, delayed/refused settlements and failed/disabled delivery with evidence-backed reasons and valid next actions.",
-        "Exact movement CSV rows preserve store, source, invoice/order reference, chain/token/decimals and transaction/log evidence, without repeating independently summable aggregate totals.",
-        "Tenant, assigned-store and key-mode tests pass; exports and canonical snapshot totals reconcile to ledger and independent finalized chain records, with verification coverage and unmatched observations explicit."
-      ],
-      "dependsOn": [
-        "F329"
-      ],
-      "state": "passing",
-      "verification": [
-        "backend-affected",
-        "backend-e2e"
-      ],
-      "refs": [
-        "R-165",
-        "R-138",
-        "R-156",
-        "R-149",
-        "R-118",
-        "R-110"
-      ],
-      "keep": [
-        "packages/contracts/src/*"
-      ],
-      "review": true,
-      "notes": [
-        "2026-10-27 review pass by reviewer: Reviewed payment list/detail/attention/movement/reconciliation APIs, tenant and assigned-store intersection, API-key mode/scopes, bounded readers, repeatable-read snapshots, currency-header consistency, exact signed base-unit exports, observed-versus-booked records and independent source attribution. Noncash checkpoints and unmatched legacy cash remain distinct without invented provenance; comparison rejects unpositioned cash. Reviewed OpenAPI/Node compatibility, domain SQL ownership, shared transport DTOs and permission-route coverage. All seven selected checks passed, including race suite and real-binary reconciliation. Live paged observations can change between requests; documentation states this limit. No blockers remain."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-27T03:25:51Z",
-        "checks": [
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.2,
-            "log": ""
-          },
-          {
-            "id": "backend-affected",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 233.0,
-            "log": ""
-          },
-          {
-            "id": "backend-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 41.2,
-            "log": ""
-          },
-          {
-            "id": "node-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.4,
-            "log": ""
-          },
-          {
-            "id": "keep",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          }
-        ],
-        "taskHash": "99f005b7a75951b5",
-        "filesHash": "45c26d29ff8f23a2",
-        "proof": {
-          "1": "backend-affected: Source/store/status and stable payment cursor tests include unpaid attempts and assigned-store/key-mode boundaries.",
-          "2": "backend-affected: Attention/detail tests separate payment, net held funds, settlement intent, verification and delivery; all profile routes carry authorization cases.",
-          "3": "backend-affected: Export regressions cover exact signed amounts beyond 2^53, source/log identity, noncash reopen checkpoints, unknown legacy cash evidence, observations and 10000-row limits.",
-          "4": "backend-e2e: Binary checkout exports reconcile with actual Anvil receipts and receiver/merchant balances; database tests reconcile returns, historical periods and concurrent currency settings."
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Reviewed payment list/detail/attention/movement/reconciliation APIs, tenant and assigned-store intersection, API-key mode/scopes, bounded readers, repeatable-read snapshots, currency-header consistency, exact signed base-unit exports, observed-versus-booked records and independent source attribution. Noncash checkpoints and unmatched legacy cash remain distinct without invented provenance; comparison rejects unpositioned cash. Reviewed OpenAPI/Node compatibility, domain SQL ownership, shared transport DTOs and permission-route coverage. All seven selected checks passed, including race suite and real-binary reconciliation. Live paged observations can change between requests; documentation states this limit. No blockers remain.",
-          "at": "2026-10-27T03:30:45Z",
-          "filesHash": "45c26d29ff8f23a2"
-        },
-        "commit": "4cfcc323",
-        "doneAt": "2026-10-27T03:31:06Z"
-      },
-      "branch": "feat/f330-add-merchant-payment-operations-and-stor",
-      "baseCommit": "825ed13f377c90ad3bbc800ddd3db16672446e7c",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f330-add-merchant-payment-operations-and-stor",
-        "base": "main"
-      }
-    },
-    {
       "id": "F331",
       "type": "fix",
       "behavior": "Give merchants distinct payments, links and invoice workflows",
@@ -131,21 +15,147 @@
       "dependsOn": [
         "F330"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
+        "docs-check",
         "web-unit",
-        "web-e2e"
+        "web-e2e",
+        "live-e2e"
       ],
       "refs": [
-        "R-166"
+        "R-166",
+        "R-165",
+        "R-138",
+        "R-156",
+        "R-118",
+        "R-161",
+        "R-150",
+        "R-81"
       ],
       "keep": [
         "packages/contracts/src/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-27 review pass by reviewer: Independent backend/API review found no blockers. Reviewed canonical token and option metadata, tenant/store/key-mode intersection for link filters, nullable document-free checkout notifications, owner payment navigation and legacy document compatibility. Pending-versus-review classification distinguishes automatic rescans, explained unbooked cash and unrelated recoveries while preserving financial safety guards and genuine conflict warnings. Domain/SQL ownership and shared API/Node contracts align. Focused race regressions independently passed3.035s; diff check is clean. Final verification passed all11 checks, including backend race, real-binary integration, live browser suite and public browser tests. Review covers F331 only; later tasks remain outside the requested scope."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-27T08:07:11Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "node-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "live-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 237.3,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 21.6,
+            "log": ""
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "a6f34a25003a6ed9",
+        "filesHash": "55391c2006ad2bc5",
+        "proof": {
+          "1": "live-e2e: Authenticated merchant walkthroughs cover store-filtered payments, attention, detail, reconciliation, CSV, explicit link editing and existing invoice flows.",
+          "2": "web-e2e: Public payment and receipt regressions preserve trusted token amounts, actual returns, grouped verification warnings and blocked unsafe payment actions.",
+          "3": "web-unit: Disabled-token intersections remain empty, invoice recipient validation supports individual customers, and four unscanned options produce one pending-verification notice.",
+          "4": "live-e2e: Desktop and phone flows check accessibility, width, store-load retry, export scope validation and role navigation; backend checks retain tenant/store/key-mode tests."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Independent backend/API review found no blockers. Reviewed canonical token and option metadata, tenant/store/key-mode intersection for link filters, nullable document-free checkout notifications, owner payment navigation and legacy document compatibility. Pending-versus-review classification distinguishes automatic rescans, explained unbooked cash and unrelated recoveries while preserving financial safety guards and genuine conflict warnings. Domain/SQL ownership and shared API/Node contracts align. Focused race regressions independently passed3.035s; diff check is clean. Final verification passed all11 checks, including backend race, real-binary integration, live browser suite and public browser tests. Review covers F331 only; later tasks remain outside the requested scope.",
+          "at": "2026-10-27T08:11:53Z",
+          "filesHash": "55391c2006ad2bc5"
+        },
+        "commit": "63a2c517",
+        "doneAt": "2026-10-27T08:12:21Z"
+      },
+      "branch": "fix/f331-give-merchants-distinct-payments-links-a",
+      "baseCommit": "02d98935c551dea323d44d0c94100b72251f54db",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f331-give-merchants-distinct-payments-links-a",
+        "base": "main"
+      }
     },
     {
       "id": "F332",
