@@ -1,36 +1,28 @@
 "use client";
 
 import {
-  Badge,
   Button,
   buttonClasses,
   formatTokenAmount,
   PAYMENT_STATUS,
   Skeleton,
-  TONES,
+  StatusPill,
 } from "@forwend/ui-web";
 import { ChevronLeft, FileDown } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, type Ref, useEffect, useRef, useState } from "react";
 import { API_PAYMENT_STATUSES } from "@/features/activity/constants/activity";
 import { useGetProfileInvoiceQuery } from "@/features/invoices/api/invoices-api";
-import { CheckStatus } from "@/features/invoices/components/check-status";
 import { InvoiceActions } from "@/features/invoices/components/invoice-actions";
 import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
-import { InvoiceDeposits } from "@/features/invoices/components/invoice-deposits";
 import { InvoiceHistory } from "@/features/invoices/components/invoice-history";
 import { InvoiceLines } from "@/features/invoices/components/invoice-lines";
-import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
 import { PaymentAmountsNotice } from "@/features/invoices/components/payment-amounts-notice";
 import { PaymentReminders } from "@/features/invoices/components/payment-reminders";
 import { ReopenInvoice } from "@/features/invoices/components/reopen-invoice";
 import { RepeatsMonthly } from "@/features/invoices/components/repeats-monthly";
 import { SendToClient } from "@/features/invoices/components/send-to-client";
-import {
-  INVOICE_EXCEPTIONS,
-  INVOICE_PDFS,
-  INVOICE_STEPS,
-} from "@/features/invoices/constants/invoices";
+import { INVOICE_EXCEPTIONS, INVOICE_PDFS } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY as COPY, REQUESTS_COPY } from "@/features/invoices/constants/invoices-copy";
 import {
   formatAgreed,
@@ -39,7 +31,6 @@ import {
   invoiceException,
   invoiceNumber,
   invoicePdfUrl,
-  invoiceProgress,
   invoiceStatus,
   tokenKey,
 } from "@/features/invoices/lib/invoices";
@@ -55,19 +46,17 @@ import type {
   InvoiceToken,
   InvoiceViews,
   Revision,
-  SettlementWait,
 } from "@/features/invoices/types/invoices";
+import { settlementState } from "@/features/payments/lib/payments";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { Party } from "@/shared/components/party";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
-import { chainName } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 
 const NOT_FOUND = 404;
 const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
-const CLOCK = new Intl.DateTimeFormat(undefined, { timeStyle: "short" });
 const COUNTRY = new Intl.DisplayNames(undefined, { type: "region" });
 const PANEL = "fw-panel";
 const PANEL_TITLE = "fw-panel-head text-base font-semibold text-ink";
@@ -87,7 +76,7 @@ export function InvoiceDetail({
   tokens,
   request = false,
 }: InvoiceDetailProps) {
-  const invoice = useGetProfileInvoiceQuery({ profileId, invoiceId }, LIVE_QUERY);
+  const invoice = useGetProfileInvoiceQuery({ profileId, invoiceId, summary: true }, LIVE_QUERY);
   const mine = invoice.currentData ?? null;
   const failure = invoice.error as { status?: unknown } | undefined;
 
@@ -105,7 +94,6 @@ export function InvoiceDetail({
           profileId={profileId}
           invoice={invoice.data}
           mine={mine}
-          wait={mine?.settlementWait ?? null}
           sends={mine?.sends ?? []}
           reminders={mine?.reminders ?? null}
           retainer={mine?.retainer ?? null}
@@ -135,7 +123,6 @@ function Loaded({
   profileId,
   invoice,
   mine,
-  wait,
   sends,
   reminders,
   retainer,
@@ -148,7 +135,6 @@ function Loaded({
   profileId: string;
   invoice: Invoice;
   mine: InvoiceSummary | null;
-  wait: SettlementWait | null;
   sends: readonly InvoiceSend[];
   reminders: InvoiceReminders | null;
   retainer: InvoiceRetainer | null;
@@ -158,7 +144,6 @@ function Loaded({
   tokens: readonly InvoiceToken[] | null;
   request: boolean;
 }) {
-  const { current, blocksLeft, blocksTotal, secondsLeft } = invoiceProgress(invoice);
   const token =
     tokens?.find((t) => tokenKey(t) === tokenKey(invoice)) ??
     invoice.options.find((o) => o.optionId === invoice.optionId);
@@ -177,7 +162,7 @@ function Loaded({
       ? `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`
       : units.toString();
   // Payer chooses with no money yet: the amount is USD in any accepted option (R-56, D-75).
-  const choosing = invoice.options.length > 1 && !invoice.optionLocked;
+  const choosing = invoice.optionCount > 1 && !invoice.optionLocked;
   const canceledRow = useRef<HTMLDivElement>(null);
   // Focus waits for Details' Canceled on row to render: until the dialog is gone everything else is inert.
   const [canceling, setCanceling] = useState(false);
@@ -228,15 +213,9 @@ function Loaded({
           {/* R-143: testnet money must never pass for real money. */}
           {invoice.livemode ? null : (
             <div className="flex">
-              <Badge tone={TONES.warning}>{COPY.testMode}</Badge>
+              <span className="text-xs text-warning">Testnet</span>
             </div>
           )}
-          <Link
-            href={`${APP_ROUTES.payments}/${invoice.invoiceId}`}
-            className="text-sm text-info underline underline-offset-4"
-          >
-            View payment and settlement records
-          </Link>
           <NextStep
             profileId={profileId}
             invoiceId={invoice.invoiceId}
@@ -320,66 +299,34 @@ function Loaded({
                   </p>
                 ) : null}
                 {choosing ? (
-                  <p className="text-sm text-muted">{COPY.clientChooses(invoice.options.length)}</p>
+                  <p className="text-sm text-muted">{COPY.clientChooses(invoice.optionCount)}</p>
                 ) : token ? (
                   <TokenMark chainId={invoice.chainId} symbol={token.symbol} />
                 ) : null}
               </div>
             </div>
             <div className="flex flex-col gap-3 px-4 py-5 sm:px-5">
-              <InvoiceTimeline invoice={invoice} label={COPY.progress} />
-              <p role="status" className="text-sm text-ink empty:sr-only">
-                {current === INVOICE_STEPS.confirming ? (
-                  <ConfirmingStatus blocks={blocksLeft} total={blocksTotal} seconds={secondsLeft} />
-                ) : wait ? (
-                  COPY.settling[wait.kind](
-                    chainName(invoice.chainId),
-                    wait.secondsLeft ?? 0,
-                    wait.until ? CLOCK.format(new Date(wait.until)) : "",
-                  )
+              <div className="flex flex-wrap items-center gap-3">
+                <StatusPill status={status} />
+                {invoice.settlementStatus !== "none" ? (
+                  <span className="text-sm text-muted">
+                    {settlementState(invoice.settlementStatus)}
+                  </span>
                 ) : null}
-              </p>
-              <InvoiceDeposits
-                invoice={invoice}
-                token={token ?? null}
-                // Settlement rows show the booked outflow; gross deposits remain separate.
-                settlement={
-                  invoice.settlementTxHash
-                    ? {
-                        txHash: invoice.settlementTxHash,
-                        to: invoice.recipient,
-                        amount: invoice.amounts ? BigInt(invoice.amounts.settled) : amount,
-                        at: invoice.settledAt,
-                      }
-                    : null
-                }
-              />
-              {/* Money on an option the client didn't pay with is the payer's (D-76, R-119). */}
-              {invoice.options
-                .filter((o) => invoice.optionLocked && o.optionId !== invoice.optionId)
-                .map((o) => (
-                  <InvoiceDeposits
-                    key={o.optionId}
-                    invoice={o}
-                    token={o}
-                    title={COPY.heldOn(o.symbol, chainName(o.chainId))}
-                  />
-                ))}
-              {payable && invoice.payToken ? (
-                <CheckStatus
-                  payToken={invoice.payToken}
-                  network={chainName(invoice.chainId)}
-                  money={money}
-                  nextCheckAt={invoice.nextCheckAt}
-                />
-              ) : null}
+                <Link
+                  href={`${APP_ROUTES.payments}/${invoice.invoiceId}`}
+                  className="text-sm text-info underline underline-offset-4"
+                >
+                  View payment
+                </Link>
+              </div>
             </div>
           </section>
           {main && invoice.lines.length > 0 ? (
             <InvoiceLines
               lines={invoice.lines}
               decimals={main.decimals}
-              unit={invoice.options.length > 1 ? MONEY_COPY.usd : main.symbol}
+              unit={invoice.optionCount > 1 ? MONEY_COPY.usd : main.symbol}
               total={BigInt(main.amount)}
             />
           ) : null}

@@ -15,8 +15,8 @@ const (
 	MaxLimit     = 100
 )
 
-// An invoice falls under exactly one filter (StatusFilterSQL).
-var StatusFilters = []string{"open", "paid", "settled", "expired", "canceled"}
+// Paid includes wallet-settled payments; the wallet filter is a narrower view.
+var StatusFilters = []string{"open", "confirming", "paid", "settled", "expired", "canceled"}
 
 // ClosedSQL: every reader shows the checkout expired before the ledger does (R-77); detected may be money after it.
 // Paid on time but awaiting the second RPC is not closed. Before an option is chosen, every option counts (R-119).
@@ -31,10 +31,17 @@ const ClosedSQL = `((invoices.settlement_status = 'settled' AND invoices.payment
 	           OR coalesce((SELECT sum(t.amount) FROM chain_transfers t WHERE t.invoice_id = o.id
 	                        AND t.status <> 'reorged' AND t.block_time <= o.closes_at), 0) >= o.amount))))`
 
-const StatusFilterSQL = `CASE WHEN settlement_status = 'settled' AND payment_status = 'paid' THEN 'settled' WHEN payment_status = 'paid' THEN 'paid'
-	WHEN payment_status = 'canceled' THEN 'canceled'
-	WHEN payment_status IN ('expired', 'expired_partially_paid') OR ` + ClosedSQL + ` THEN 'expired'
+const StatusFilterSQL = `CASE WHEN invoices.settlement_status = 'settled' AND invoices.payment_status = 'paid' THEN 'settled' WHEN invoices.payment_status = 'paid' THEN 'paid'
+	WHEN invoices.payment_status = 'canceled' THEN 'canceled'
+	WHEN invoices.payment_status IN ('expired', 'expired_partially_paid') OR ` + ClosedSQL + ` THEN 'expired'
 	ELSE 'open' END`
+
+const ConfirmingSQL = `EXISTS (SELECT 1 FROM chain_transfers t JOIN invoices candidate ON candidate.id=t.invoice_id
+ WHERE (candidate.id=invoices.option_id OR invoices.chosen_id IS NULL AND candidate.main_id=invoices.id)
+ AND (t.status='detected' OR t.status='confirmed' AND NOT t.booked) AND t.block_time<=candidate.closes_at)`
+
+const ListStatusFilterSQL = `CASE WHEN invoices.payment_status IN ('open','detected','partially_paid') AND NOT ` + ClosedSQL + `
+ AND (invoices.payment_status = 'detected' OR ` + ConfirmingSQL + `) THEN 'confirming' ELSE ` + StatusFilterSQL + ` END`
 
 // Must stay the expression of the invoices_search trigram index (migration 00032) on the main row's columns.
 const searchText = `('INV-' || lpad(number::text, greatest(length(number::text), 4), '0') || ' ' || coalesce(title, '')
@@ -72,7 +79,7 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 	where := "profile_id = $1 AND number IS NOT NULL AND ($2::bigint IS NULL OR number < $2)"
 	if status != "" {
 		args = append(args, status)
-		where += fmt.Sprintf(" AND %s = $%d", StatusFilterSQL, len(args))
+		where += fmt.Sprintf(" AND ($%d = 'paid' AND invoices.payment_status = 'paid' OR %s = $%d)", len(args), ListStatusFilterSQL, len(args))
 	}
 	if stores != nil {
 		args = append(args, stores)

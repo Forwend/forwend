@@ -19,7 +19,10 @@ import { INVOICE_EVENTS } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { useGetTransactionsQuery } from "@/features/transactions/api/transactions-api";
-import { TRANSACTION_DIRECTIONS } from "@/features/transactions/constants/transactions";
+import {
+  TRANSACTION_DIRECTIONS,
+  TRANSACTION_STATUSES,
+} from "@/features/transactions/constants/transactions";
 import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transactions-copy";
 import { transactionKey } from "@/features/transactions/lib/transactions";
 import { LIVE_QUERY } from "@/shared/config/refresh";
@@ -66,9 +69,22 @@ export function NotificationsMenu({ profileId, transfers, className }: Notificat
   );
   const events = useGetInvoiceEventsQuery(profileId, LIVE_QUERY);
   // currentData: after a profile switch, never the last profile's transfers or events.
+  const settled = new Set(
+    (events.currentData ?? [])
+      .filter((event) => event.kind === INVOICE_EVENTS.settled)
+      .map((event) => event.invoiceId),
+  );
+  const failed =
+    (!events.currentData && events.isError) || (transfers && !list.currentData && list.isError);
+  const loading =
+    (!events.currentData && !events.isError) || (transfers && !list.currentData && !list.isError);
   const rows = [
     ...(list.currentData?.items ?? [])
-      .filter((t) => t.direction === TRANSACTION_DIRECTIONS.in)
+      .filter(
+        (t) =>
+          t.direction === TRANSACTION_DIRECTIONS.in &&
+          !settled.has(t.payment?.paymentId ?? t.invoice?.invoiceId ?? ""),
+      )
       .map((t) => ({ at: t.at, transfer: t, event: null })),
     ...(events.currentData ?? [])
       .filter((e) => Object.hasOwn(EVENT_LOOK, e.kind))
@@ -111,19 +127,20 @@ export function NotificationsMenu({ profileId, transfers, className }: Notificat
       </MenuTrigger>
       <MenuContent align="end" className="w-80">
         <MenuLabel>{TRANSACTIONS_COPY.notifications}</MenuLabel>
-        {!list.currentData && list.isError ? (
+        {failed ? (
           <>
             <p className="px-3 pb-1 text-sm text-muted">{TRANSACTIONS_COPY.failed}</p>
             <MenuItem
               onSelect={(e) => {
                 e.preventDefault();
-                list.refetch();
+                if (transfers) void list.refetch();
+                void events.refetch();
               }}
             >
               {TRANSACTIONS_COPY.retry}
             </MenuItem>
           </>
-        ) : !list.currentData ? (
+        ) : loading ? (
           <div className="flex flex-col gap-2 px-3 pb-3">
             <Skeleton className="h-10" />
             <Skeleton className="h-10" />
@@ -134,10 +151,7 @@ export function NotificationsMenu({ profileId, transfers, className }: Notificat
           rows.map(({ transfer: t, event: e }) =>
             e ? (
               <MenuItem key={`event-${e.id}`} asChild>
-                <Link
-                  href={`${e.documentKind === "none" ? APP_ROUTES.payments : APP_ROUTES.invoices}/${e.invoiceId}`}
-                  className="py-2"
-                >
+                <Link href={`${APP_ROUTES.payments}/${e.invoiceId}`} className="py-2">
                   <EventIcon kind={e.kind} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-ink">
@@ -157,15 +171,25 @@ export function NotificationsMenu({ profileId, transfers, className }: Notificat
             ) : t ? (
               <MenuItem key={transactionKey(t)} asChild>
                 <Link
-                  href={`${APP_ROUTES.transactions}?${SEARCH_PARAM}=${t.txHash}`}
+                  href={
+                    t.payment || t.invoice
+                      ? `${APP_ROUTES.payments}/${t.payment?.paymentId ?? t.invoice?.invoiceId}`
+                      : `${APP_ROUTES.transactions}?${SEARCH_PARAM}=${t.txHash}`
+                  }
                   className="py-2"
                 >
-                  <span className="grid size-8 shrink-0 place-items-center rounded-pill bg-success-soft text-success">
+                  <span
+                    className={`grid size-8 shrink-0 place-items-center rounded-pill ${t.status === TRANSACTION_STATUSES.confirmed ? "bg-success-soft text-success" : "bg-surface-2 text-muted"}`}
+                  >
                     <ArrowDownLeft aria-hidden className="size-[var(--fw-icon-sm)]" />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-ink">
-                      {TRANSACTIONS_COPY.receivedNote}{" "}
+                      {t.status !== TRANSACTION_STATUSES.confirmed
+                        ? "Transfer confirming"
+                        : t.payment || t.invoice
+                          ? "Transferred to wallet"
+                          : TRANSACTIONS_COPY.receivedNote}{" "}
                       <Money baseUnits={BigInt(t.amount)} decimals={t.decimals} token={t.symbol} />
                     </span>
                     <span className="block truncate text-xs text-muted">

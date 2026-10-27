@@ -41,10 +41,10 @@ export function TransactionType({ profileId, t }: TransactionTypeProps) {
   if (t.invoice && !t.labelable)
     return (
       <Link
-        href={`${APP_ROUTES.invoices}/${t.invoice.invoiceId}`}
+        href={`${APP_ROUTES.payments}/${t.invoice.invoiceId}`}
         className="font-medium text-ink underline underline-offset-2"
       >
-        {COPY.invoicePaid(invoiceNumber(t.invoice.number), t.invoice.clientName)}
+        Transfer to wallet · {invoiceNumber(t.invoice.number)}
       </Link>
     );
   if (!t.labelable && t.payment)
@@ -53,7 +53,7 @@ export function TransactionType({ profileId, t }: TransactionTypeProps) {
         href={`${APP_ROUTES.payments}/${t.payment.paymentId}`}
         className="font-medium text-ink underline underline-offset-2"
       >
-        View payment
+        Transfer to wallet
       </Link>
     );
   if (!t.labelable)

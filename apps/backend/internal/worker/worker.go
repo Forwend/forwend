@@ -23,21 +23,23 @@ const RoundTimeout = 2 * time.Minute
 const LockKey int64 = 0x666f7277656e6401 // "forwend" 1
 
 type Worker struct {
-	pool     *pgxpool.Pool
-	specs    map[uint64]chain.Spec
-	keys     []string
-	rate     float64
-	rpcs     map[uint64]chain.RPCs
-	watchers map[uint64]*watcher.Chain
-	balances map[uint64]*ethclient.Client // the second RPC per chain, read by the ledger (D-15)
-	jobs     chain.Jobs
-	budgets  []*chain.Budget
+	pool            *pgxpool.Pool
+	specs           map[uint64]chain.Spec
+	keys            []string
+	rate            float64
+	rpcs            map[uint64]chain.RPCs
+	watchers        map[uint64]*watcher.Chain
+	historyWatchers map[uint64]*watcher.Chain
+	balances        map[uint64]*ethclient.Client // the second RPC per chain, read by the ledger (D-15)
+	jobs            chain.Jobs
+	historical      chain.Jobs
+	budgets         []*chain.Budget
 }
 
 // New sends each RPC at most rate calls per second.
 func New(pool *pgxpool.Pool, specs map[uint64]chain.Spec, keys []string, rate float64, budgets ...*chain.Budget) *Worker {
 	w := &Worker{budgets: budgets, pool: pool, specs: specs, keys: keys, rate: rate, rpcs: map[uint64]chain.RPCs{},
-		watchers: map[uint64]*watcher.Chain{}, balances: map[uint64]*ethclient.Client{}}
+		watchers: map[uint64]*watcher.Chain{}, historyWatchers: map[uint64]*watcher.Chain{}, balances: map[uint64]*ethclient.Client{}}
 	return w
 }
 
@@ -61,10 +63,12 @@ func (w *Worker) Tick(ctx context.Context) {
 	for id, r := range w.rpcs {
 		if !enabled[id] {
 			w.jobs.Cancel(id)
-			if w.jobs.Idle(id) {
+			w.historical.Cancel(id)
+			if w.jobs.Idle(id) && w.historical.Idle(id) {
 				r.Close()
 				delete(w.rpcs, id)
 				delete(w.watchers, id)
+				delete(w.historyWatchers, id)
 				delete(w.balances, id)
 			}
 		}
@@ -87,8 +91,11 @@ func (w *Worker) Tick(ctx context.Context) {
 			}
 			watch = watcher.NewChain(w.pool, id, r.Primary)
 			w.rpcs[id], w.watchers[id], w.balances[id] = r, watch, ethclient.NewClient(r.Second)
+			w.historyWatchers[id] = watcher.NewChain(w.pool, id, r.Primary)
 		}
 		client := w.balances[id]
+		second := w.rpcs[id].Second
+		historyWatch := w.historyWatchers[id]
 		w.jobs.Start(ctx, id, func(ctx context.Context) {
 			book := ledger.NewService(w.pool, ledger.BalanceSnapshot(client),
 				ledger.DeployedFrom(map[uint64]*ethclient.Client{id: client}))
@@ -96,19 +103,11 @@ func (w *Worker) Tick(ctx context.Context) {
 			chainCtx, cancel := context.WithTimeout(ctx, RoundTimeout)
 			err := watch.ScanNew(chainCtx)
 			if err == nil {
-				// Check status asked to look again (R-55): what a rescan finds is booked below in the same round. Its own
-				// shorter deadline leaves the ledger its time even when rescans hit a slow RPC.
-				rescanCtx, cancelRescan := context.WithTimeout(chainCtx, RescanTimeout)
-				if recoveryErr := watch.Recover(rescanCtx); recoveryErr != nil {
-					slog.Error("worker recovery", "chain", id, "err", chain.Redact(recoveryErr))
-				}
-				if rescanErr := watch.Rescans(rescanCtx); rescanErr != nil {
-					slog.Error("worker rescans", "chain", id, "err", chain.Redact(rescanErr))
-				}
-				if receiverErr := watch.Receivers(rescanCtx, w.rpcs[id].Second); receiverErr != nil {
+				receiverCtx, cancelReceivers := context.WithTimeout(chainCtx, 30*time.Second)
+				if receiverErr := watch.Receivers(receiverCtx, second); receiverErr != nil {
 					slog.Error("worker receiver evidence", "chain", id, "err", chain.Redact(receiverErr))
 				}
-				cancelRescan()
+				cancelReceivers()
 				err = book.ProcessChain(chainCtx, id)
 			}
 			cancel()
@@ -116,11 +115,29 @@ func (w *Worker) Tick(ctx context.Context) {
 				slog.Error("worker round", "chain", id, "err", chain.Redact(err))
 			}
 		})
+		w.historical.Start(ctx, id, func(ctx context.Context) {
+			rescanCtx, cancelRescan := context.WithTimeout(ctx, RescanTimeout)
+			if rescanErr := historyWatch.Rescans(rescanCtx); rescanErr != nil {
+				slog.Error("worker rescans", "chain", id, "err", chain.Redact(rescanErr))
+			}
+			cancelRescan()
+			recoveryCtx, cancelRecovery := context.WithTimeout(ctx, 10*time.Second)
+			if recoveryErr := historyWatch.Recover(recoveryCtx); recoveryErr != nil {
+				slog.Error("worker recovery", "chain", id, "err", chain.Redact(recoveryErr))
+			}
+			cancelRecovery()
+			historyCtx, cancelHistory := context.WithTimeout(ctx, 10*time.Second)
+			defer cancelHistory()
+			if receiverErr := historyWatch.HistoricalReceivers(historyCtx, second); receiverErr != nil {
+				slog.Error("worker historical evidence", "chain", id, "err", chain.Redact(receiverErr))
+			}
+		})
 	}
 }
 
 func (w *Worker) Close() {
 	w.jobs.Close()
+	w.historical.Close()
 	for _, r := range w.rpcs {
 		r.Close()
 	}

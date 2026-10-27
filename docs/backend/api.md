@@ -29,12 +29,17 @@ Routes: `apps/backend/api/openapi.yaml`; each module mounts its own in `internal
 - Money: decimal string in base units (`"5000000"`) next to `chainId` and `token` (contract address), as in R-19.
 - Times: RFC 3339 in UTC. IDs and addresses: strings.
 - Lists: `?limit=` (max 100) and `?cursor=`; response `{ "items": [...], "nextCursor": "…" }`.
-- The owner's invoice, activity and transaction lists also take a filter (`?status=` open | paid | settled | expired |
+- The owner's invoice, activity and transaction lists also take a filter (`?status=` open | confirming | paid | settled | expired |
   canceled on invoices and activity, where a closed checkout (`closed`, R-77) counts as expired, `?direction=` in | out on transactions) and `?q=`, a search of 1–100 characters (blank or
   longer: 422). Both narrow the list before paging, so `nextCursor` continues the filtered list. A field matches when
   it contains `q` in any letter case. When `q` is a decimal number (digits and one point; thousands commas are
   dropped) it also matches an amount equal to it in whole tokens: `amount = q × 10^decimals` in Postgres `numeric`,
   exact, never a float. `internal/search` parses it; the fields per list are in openapi.yaml.
+
+- Payment lists use the same status meanings and accept order reference, customer and requested-amount search.
+- Paid filters include wallet-settled payments; settled narrows the set to money already in the wallet.
+- Activity deposits use their payment's status, including unnumbered checkout attempts.
+- Payment receipts show observed amounts and uncredited amounts separately by used token and network.
 
 ## First run
 
@@ -552,7 +557,7 @@ R-19 and R-42; the full schema is in openapi.yaml.
 - `settlementTxHash` identifies the actual booked receiver settlement, including an authority settlement outside the signer.
   - Legacy records without receiver evidence retain their previous transaction reference and require reconciliation.
   - Deposit activity preserves gross observed movements; net liabilities come from `amounts`.
-- An invoice (read, list, create) carries `confirming`: a payment before the close is seen and not final. A
+- An invoice carries `confirming` when an on-time transfer awaits finality or credit after confirmation. A
   `partially_paid` invoice keeps that status while the rest confirms, so readers show it as confirming (R-69).
 - An invoice read alone also has `paidAt` and `settledAt`, null until reached.
   - `paidAt` identifies the completed payment; `settledAt` uses the actual settlement block time.

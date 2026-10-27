@@ -32,9 +32,7 @@ const invoiceColumns = `id, option_id, chosen_id IS NOT NULL,
            AND o.ledger_transaction_id IS NOT NULL),
   (SELECT tx_hash FROM settlement_intents s WHERE s.invoice_id = invoices.option_id AND s.status = 'confirmed'), ''),
 	created_at, coalesce(client_country, ''), coalesce(client_tax_id, ''),
-	EXISTS (SELECT 1 FROM chain_transfers t JOIN invoices candidate ON candidate.id = t.invoice_id
-  WHERE (candidate.id = invoices.option_id OR invoices.chosen_id IS NULL AND candidate.main_id = invoices.id)
-  AND t.status = 'detected' AND t.block_time <= candidate.closes_at), ` + ClosedSQL + `, canceled_at,
+` + ConfirmingSQL + `, ` + ClosedSQL + `, canceled_at,
 	coalesce(to_char(supply_date, 'YYYY-MM-DD'), ''), coalesce(reference, ''), agreed_currency, agreed_amount,
 	agreed_decimals, to_char(agreed_date, 'YYYY-MM-DD'), coalesce(pay_token, ''), CASE WHEN chosen_id IS NULL THEN
         (SELECT max(o.closes_at) FROM invoices o WHERE o.id = invoices.id OR o.main_id = invoices.id)

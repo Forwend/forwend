@@ -99,9 +99,9 @@ describe("records", () => {
       labelable: false,
       invoice: { invoiceId: `0x${"b".repeat(64)}`, number: 7, clientName: "Bob Ltd" },
     });
-    expect(screen.getByRole("link", { name: "INV-0007 · Bob Ltd" }).getAttribute("href")).toBe(
-      `/app/invoices/0x${"b".repeat(64)}`,
-    );
+    expect(
+      screen.getByRole("link", { name: "Transfer to wallet · INV-0007" }).getAttribute("href"),
+    ).toBe(`/app/payments/0x${"b".repeat(64)}`);
     cleanup();
     renderType({ ...base, classification: "own_transfer", labelable: false });
     expect(screen.getByText("Own transfer")).toBeTruthy();

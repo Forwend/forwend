@@ -40,9 +40,11 @@ type activityJSON struct {
 }
 
 type activityItemJSON struct {
-	Kind      string `json:"kind"`
-	At        string `json:"at"`
-	InvoiceID string `json:"invoiceId"`
+	PaymentStatus string `json:"paymentStatus"`
+	Confirming    bool   `json:"confirming"`
+	Kind          string `json:"kind"`
+	At            string `json:"at"`
+	InvoiceID     string `json:"invoiceId"`
 	tokenJSON
 	Amount           string `json:"amount"`
 	Status           string `json:"status"`

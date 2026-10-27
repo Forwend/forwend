@@ -292,9 +292,8 @@ export const NEW_REQUEST_COPY = {
 } as const;
 
 export const INVOICE_COPY = {
-  reconciliationNeeded: "Payment records need review before further action.",
-  verificationPending:
-    "Verifying payment history. Confirmation may take longer while these checks run.",
+  reconciliationNeeded: "We could not verify this payment. Contact support before sending more.",
+  verificationPending: "Confirming payment.",
   checkingClosed: "Checkout closed. Checking the final payment records.",
   recordedReturns: (amount: string, network: string) =>
     `Recorded returns: ${amount} on ${network}.`,

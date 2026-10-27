@@ -41,7 +41,7 @@ func getActivity(activities *activity.Service) http.HandlerFunc {
 			out.NextCursor = &page.NextCursor
 		}
 		for _, it := range page.Items {
-			out.Items = append(out.Items, activityItemJSON{Kind: it.Kind, At: it.At.UTC().Format(time.RFC3339Nano),
+			out.Items = append(out.Items, activityItemJSON{PaymentStatus: it.PaymentStatus, Confirming: it.Confirming, Kind: it.Kind, At: it.At.UTC().Format(time.RFC3339Nano),
 				InvoiceID: it.InvoiceID, tokenJSON: toTokenJSON(it.Asset), Amount: it.Amount.String(),
 				Status: it.Status, SettlementStatus: it.SettlementStatus, TxHash: it.TxHash, OptionCount: it.OptionCount,
 				Closed: it.Closed, Held: it.Held})

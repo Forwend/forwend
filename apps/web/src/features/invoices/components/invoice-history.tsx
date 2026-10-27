@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  formatTokenAmount,
-  SegmentedControl,
-  shortAddress,
-  TABLE_HEAD_CLASSES,
-  TABLE_ROW_CLASSES,
-} from "@forwend/ui-web";
+import { SegmentedControl, TABLE_HEAD_CLASSES, TABLE_ROW_CLASSES } from "@forwend/ui-web";
 import { type ReactNode, useState } from "react";
 import {
   HISTORY_CATEGORIES,
@@ -24,9 +18,6 @@ import type {
   InvoiceHistoryEvent,
   InvoiceViews,
 } from "@/features/invoices/types/invoices";
-import { ExplorerLink } from "@/shared/components/chains/explorer-link";
-import { chainName } from "@/shared/lib/chains";
-import { exactDigits } from "@/shared/lib/money";
 
 const COPY = INVOICE_COPY.history;
 const TIME = new Intl.DateTimeFormat(undefined, {
@@ -39,17 +30,17 @@ const TIME_WITH_YEAR = new Intl.DateTimeFormat(undefined, {
   dateStyle: "medium",
   timeStyle: "short",
 });
-const FILTERS = Object.values(HISTORY_FILTERS).map((value) => ({
-  value,
-  label: COPY.filters[value],
-}));
+const FILTERS = Object.values(HISTORY_FILTERS)
+  .filter((value) => value !== HISTORY_FILTERS.payment)
+  .map((value) => ({
+    value,
+    label: COPY.filters[value],
+  }));
 const DOT: Record<HistoryCategory, string> = {
   [HISTORY_CATEGORIES.payment]: "bg-success",
   [HISTORY_CATEGORIES.change]: "bg-subtle",
   [HISTORY_CATEGORIES.email]: "bg-info",
 };
-
-type Option = Invoice["options"][number];
 
 interface Line {
   row: InvoiceHistoryEvent;
@@ -60,7 +51,7 @@ interface Line {
 }
 
 export interface InvoiceHistoryProps {
-  invoice: Pick<Invoice, "optionId" | "options" | "payToken">;
+  invoice: Pick<Invoice, "payToken">;
   history: readonly InvoiceHistoryEvent[];
   views: InvoiceViews | null;
 }
@@ -69,13 +60,17 @@ export interface InvoiceHistoryProps {
 export function InvoiceHistory({ invoice, history, views }: InvoiceHistoryProps) {
   const [filter, setFilter] = useState<HistoryFilter>(HISTORY_FILTERS.all);
   const lines = history
-    .map((row) => lineOf(row, invoice))
-    .filter((line) => filter === HISTORY_FILTERS.all || line.category === filter);
+    .map(lineOf)
+    .filter(
+      (line) =>
+        line.category !== HISTORY_CATEGORIES.payment &&
+        (filter === HISTORY_FILTERS.all || line.category === filter),
+    );
   return (
     <section aria-labelledby="invoice-history" className="fw-panel">
       <div className="fw-panel-head flex-wrap justify-between gap-y-2">
         <h2 id="invoice-history" className="text-base font-semibold text-ink">
-          {COPY.title}
+          Document history
         </h2>
         <SegmentedControl
           label={COPY.filter}
@@ -167,20 +162,18 @@ export function InvoiceHistory({ invoice, history, views }: InvoiceHistoryProps)
 const STEPS: Record<string, string> = COPY.steps;
 const FIELDS: Record<string, string> = COPY.fields;
 
-function lineOf(row: InvoiceHistoryEvent, invoice: InvoiceHistoryProps["invoice"]): Line {
+function lineOf(row: InvoiceHistoryEvent): Line {
   const known = row.kind in COPY.kinds ? (row.kind as keyof typeof COPY.kinds) : null;
-  // A row without an option is about the invoice's current one.
-  const option = invoice.options.find((o) => o.optionId === (row.optionId ?? invoice.optionId));
   return {
     row,
     label: known ? COPY.kinds[known] : row.kind,
     category: known ? HISTORY_CATEGORY_OF[known] : HISTORY_CATEGORIES.change,
     by: COPY.actors[row.actor as keyof typeof COPY.actors] ?? row.actor,
-    details: detailsOf(row, option),
+    details: detailsOf(row),
   };
 }
 
-function detailsOf(row: InvoiceHistoryEvent, option: Option | undefined): ReactNode {
+function detailsOf(row: InvoiceHistoryEvent): ReactNode {
   switch (row.kind) {
     case HISTORY_KINDS.invoiceEmailed:
     case HISTORY_KINDS.invoiceEmailFailed:
@@ -209,41 +202,8 @@ function detailsOf(row: InvoiceHistoryEvent, option: Option | undefined): ReactN
         : field;
     }
   }
-  if (!option) return null;
-  const network = chainName(option.chainId);
-  switch (row.kind) {
-    case HISTORY_KINDS.paid:
-      return money(BigInt(option.amount), option);
-    case HISTORY_KINDS.refunded:
-    case HISTORY_KINDS.receiverSettled:
-    case HISTORY_KINDS.settled:
-      return (
-        <span className="inline-flex flex-wrap items-center gap-x-1.5">
-          {money(BigInt(row.amount ?? option.amount), option)}
-          {row.txHash ? (
-            <span className="inline-flex items-center gap-x-1.5 whitespace-nowrap">
-              <span className="text-muted">·</span>
-              <span className="font-mono text-xs text-muted" title={row.txHash}>
-                {shortAddress(row.txHash)}
-              </span>
-              <ExplorerLink chainId={option.chainId} txHash={row.txHash} />
-            </span>
-          ) : null}
-        </span>
-      );
-    case HISTORY_KINDS.held:
-      return COPY.heldFor(money(BigInt(row.amount ?? 0), option), network);
-    case HISTORY_KINDS.optionChosen:
-      return `${option.symbol} · ${network}`;
-    case HISTORY_KINDS.open:
-      return COPY.dropped;
-    default:
-      return null;
-  }
+  return null;
 }
-
-const money = (units: bigint, option: Option) =>
-  `${formatTokenAmount({ baseUnits: units, decimals: option.decimals, fractionDigits: exactDigits(units, option.decimals) })} ${option.symbol}`;
 
 function Event({ line }: { line: Line }) {
   return (

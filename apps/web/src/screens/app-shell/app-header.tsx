@@ -131,7 +131,7 @@ function Breadcrumb({ active, pathname }: { active: Profile; pathname: string })
   const { trail, invoiceId } = breadcrumb(pathname, active.kind);
   // The invoice page reads the same invoice, so this comes from the cache.
   const invoice = useGetProfileInvoiceQuery(
-    invoiceId ? { profileId: active.profileId, invoiceId } : skipToken,
+    invoiceId ? { profileId: active.profileId, invoiceId, summary: true } : skipToken,
   );
   // null: the invoice is still loading. One that fails to load leaves the trail at Invoices.
   const number: Crumb | null = invoice.data

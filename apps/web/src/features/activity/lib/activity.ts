@@ -3,7 +3,6 @@ import {
   ACTIVITY_KINDS,
   API_DEPOSIT_STATUSES,
   API_PAYMENT_STATUSES,
-  API_SETTLEMENT_STATUSES,
 } from "@/features/activity/constants/activity";
 import type { ActivityItem } from "@/features/activity/types/activity";
 
@@ -19,18 +18,29 @@ const INVOICE_STATUSES: Readonly<Record<string, PaymentStatus>> = {
 
 /** Unknown values read "Detected", never as arrived money; a closed invoice reads expired (R-77). */
 export function activityStatus(
-  item: Pick<ActivityItem, "kind" | "status" | "settlementStatus" | "closed">,
+  item: Pick<
+    ActivityItem,
+    "kind" | "status" | "settlementStatus" | "closed" | "paymentStatus" | "confirming"
+  >,
 ): PaymentStatus {
+  if (item.paymentStatus) {
+    return activityStatus({
+      kind: ACTIVITY_KINDS.invoice,
+      status:
+        item.confirming &&
+        (item.paymentStatus === API_PAYMENT_STATUSES.partiallyPaid ||
+          item.paymentStatus === API_PAYMENT_STATUSES.open)
+          ? API_PAYMENT_STATUSES.detected
+          : item.paymentStatus,
+      settlementStatus: item.settlementStatus,
+      closed: item.closed,
+    });
+  }
   if (item.kind === ACTIVITY_KINDS.deposit) {
     return item.status === API_DEPOSIT_STATUSES.confirmed
       ? PAYMENT_STATUS.confirmed
       : PAYMENT_STATUS.confirming;
   }
-  if (
-    item.settlementStatus === API_SETTLEMENT_STATUSES.settled &&
-    item.status === API_PAYMENT_STATUSES.paid
-  )
-    return PAYMENT_STATUS.settled;
   const status = INVOICE_STATUSES[item.status] ?? PAYMENT_STATUS.detected;
   if (item.closed) {
     // Detected and closed: only money after the close, held for the payer; nothing on time can still complete it.

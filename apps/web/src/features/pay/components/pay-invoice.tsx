@@ -39,7 +39,6 @@ import {
   HISTORY_FIELDS,
   INVOICE_PDFS,
   INVOICE_STEPS,
-  RECONCILIATION_STATES,
 } from "@/features/invoices/constants/invoices";
 import {
   formatAgreed,
@@ -49,7 +48,6 @@ import {
   invoiceProgress,
   isReturnLink,
 } from "@/features/invoices/lib/invoices";
-import { paymentVerification } from "@/features/invoices/lib/payment-verification";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import { type Choice, OptionPicker } from "@/features/pay/components/option-picker";
 import { Payee } from "@/features/pay/components/payee";
@@ -244,10 +242,6 @@ function Summary({
     >
       {/* Top of the first column: the first thing on the page at any width (the grid pins every block's row). */}
       {stale}
-      {/* R-143: testnet money must never pass for real money. */}
-      {invoice.livemode ? null : (
-        <p className="rounded-md bg-warning-soft px-4 py-3 text-sm text-warning">{COPY.testMode}</p>
-      )}
       <Payee
         name={payee ?? COPY.noIssuer}
         subtitle={
@@ -680,8 +674,7 @@ function StatusLine({
 const payeeOf = (invoice: Invoice) => invoice.issuer?.name ?? invoice.senderName ?? COPY.creator;
 
 const values = (invoice: Invoice, pay: Pay, money: (units: bigint) => string) => ({
-  verificationPending: paymentVerification(invoice.options) === RECONCILIATION_STATES.pending,
-  checkoutClosed: invoice.closed,
+  delayed: pay.delayed,
   received: money(pay.received),
   remaining: money(pay.remaining),
   total: money(BigInt(invoice.amount)),
@@ -930,4 +923,13 @@ function useNow(): number {
     return () => clearInterval(timer);
   }, []);
   return now;
+}
+
+export function CheckoutMode({ linkToken }: { linkToken: string }) {
+  const { data } = useGetInvoiceQuery(linkToken);
+  return data && !data.livemode ? (
+    <span className="text-xs font-medium text-warning" title="Test tokens have no monetary value">
+      Testnet
+    </span>
+  ) : null;
 }

@@ -2,6 +2,7 @@ package tests
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"math/big"
 	"net/http"
 	"strings"
@@ -73,6 +74,49 @@ func TestMerchantPaymentFiltersSeparateSourcesAndKeepUnpaidAttempts(t *testing.T
 	item := e.call(t, "GET", base+"/payments?source=checkout", alice, "", "").body["items"].([]any)[0].(map[string]any)
 	if item["symbol"] != "USDC" || item["decimals"] != float64(6) {
 		t.Errorf("canonical token metadata missing: %v", item)
+	}
+
+}
+
+func TestConfirmingPaymentFilterIncludesUncreditedDeposits(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	shop := e.merchant(t)
+	store := storeIDs(t, e, shop)[0]
+	base := "/v1/profiles/" + shop
+	made := e.call(t, "POST", base+"/checkout-sessions", alice, "confirming-filter", `{"storeId":"`+store+`","amountUsd":"2"}`)
+	if made.status != http.StatusCreated {
+		t.Fatal(made.body)
+	}
+	id := made.body["sessionId"].(string)
+	if _, err := e.pool.Exec(t.Context(), "UPDATE invoices SET payment_status='detected' WHERE id=$1", id); err != nil {
+		t.Fatal(err)
+	}
+	got := e.call(t, "GET", base+"/payments?status=confirming", alice, "", "")
+	if got.status != http.StatusOK {
+		t.Fatalf("confirming filter: %d %v", got.status, got.body)
+	}
+	items := got.body["items"].([]any)
+	if len(items) != 1 || items[0].(map[string]any)["paymentId"] != id {
+		t.Fatalf("missing payment: %v", items)
+	}
+	open := e.call(t, "GET", base+"/payments?status=open", alice, "", "")
+	if len(open.body["items"].([]any)) != 0 {
+		t.Fatalf("confirming payment also awaiting payment: %v", open.body)
+	}
+	e.exec(t, `UPDATE invoices SET payment_status='partially_paid' WHERE id=$1`, id)
+	e.exec(t, `INSERT INTO chain_transfers(chain_id,chain_family,token_contract,invoice_id,tx_hash,log_index,block_hash,
+ block_number,block_time,from_address,to_address,amount,status)
+ SELECT chain_id,chain_family,token_contract,id,'0x'||repeat('ab',32),0,'0x'||repeat('cd',32),100,closes_at-1,
+ receive_address,receive_address,1,'detected' FROM invoices WHERE id=$1`, id)
+	pending := e.call(t, "GET", base+"/payments?status=confirming", alice, "", "")
+	if pending.status != http.StatusOK || len(pending.body["items"].([]any)) != 1 {
+		t.Fatalf("pending partial payment missing: %v", pending.body)
+	}
+	session := e.call(t, "GET", base+"/checkout-sessions/"+id, alice, "", "")
+	receipt := session.body["payment"].(map[string]any)["receipts"].([]any)
+	if len(receipt) != 1 || receipt[0].(map[string]any)["received"] != "1" || receipt[0].(map[string]any)["pending"] != "1" {
+		t.Fatalf("checkout pending receipt disagrees: %v", receipt)
 	}
 
 }
@@ -472,4 +516,133 @@ func TestPaymentVerificationWaitsForExplainedSourcesAndAutomaticRescans(t *testi
 	e.exec(t, "UPDATE receiver_scans SET reconciliation_error=NULL WHERE invoice_id=$1", id)
 	e.exec(t, "UPDATE receiver_outflows SET reconciliation_error='insufficient_liability' WHERE invoice_id=$1", id)
 	check("review")
+}
+
+func TestPaymentSummaryOmitsUnusedOptionsWithoutCertifyingTheirHistory(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	shop := e.merchant(t)
+	made := e.post(t, alice, shop, "many-options", `{"chainId":84532,"token":"`+usdc+`","amount":"2000000"}`)
+	if made.status != http.StatusCreated {
+		t.Fatalf("create: %d %v", made.status, made.body)
+	}
+	id := made.body["invoiceId"].(string)
+	e.exec(t, `INSERT INTO invoices (id,main_id,profile_id,chain_id,chain_family,token_contract,amount,
+ expires_at,settle_deadline,recipient_address,receive_method,factory_address,receive_address,idempotency_key,request_hash)
+ SELECT '0x'||repeat(md5(n::text),2),i.id,profile_id,chain_id,chain_family,token_contract,amount,
+ expires_at,settle_deadline,recipient_address,receive_method,factory_address,'0x'||lpad(to_hex(n),40,'0'),idempotency_key,request_hash
+ FROM invoices i CROSS JOIN generate_series(1,299) n WHERE i.id=$1`, id)
+	path := "/v1/profiles/" + shop + "/payments/" + id
+	start := time.Now()
+	full := e.call(t, "GET", path, alice, "", "")
+	fullElapsed := time.Since(start)
+	start = time.Now()
+	summary := e.call(t, "GET", path+"?view=summary", alice, "", "")
+	if full.status != http.StatusOK || summary.status != http.StatusOK {
+		t.Fatalf("full=%d summary=%d: %v", full.status, summary.status, summary.body)
+	}
+	bill := e.call(t, "GET", "/v1/profiles/"+shop+"/invoices/"+id+"?view=summary", alice, "", "")
+	if bill.status != http.StatusOK || len(bill.body["options"].([]any)) != 1 || bill.body["optionCount"] != float64(300) {
+		t.Fatalf("billing summary: %v", bill.body)
+	}
+	if len(full.body["options"].([]any)) != 300 || len(summary.body["options"].([]any)) != 1 {
+		t.Fatal("summary still includes unused option diagnostics")
+	}
+	fullJSON, _ := json.Marshal(full.body)
+	summaryJSON, _ := json.Marshal(summary.body)
+	t.Logf("300 options: full bytes=%d elapsed=%s; summary bytes=%d elapsed=%s", len(fullJSON), fullElapsed, len(summaryJSON), time.Since(start))
+	amounts := summary.body["amounts"].(map[string]any)
+	if amounts["reconciliationStatus"] != "pending" || amounts["unreconciled"] != true {
+		t.Fatalf("missing history was certified: %v", amounts)
+	}
+	attention := e.call(t, "GET", "/v1/profiles/"+shop+"/payments/attention", alice, "", "")
+	if attention.status != http.StatusOK || len(attention.body["items"].([]any)) != 0 {
+		t.Fatalf("unused history created merchant warnings: %v", attention.body)
+	}
+	var other string
+	if err := e.pool.QueryRow(t.Context(), "SELECT id FROM invoices WHERE main_id=$1 ORDER BY id LIMIT 1", id).Scan(&other); err != nil {
+		t.Fatal(err)
+	}
+	e.exec(t, `INSERT INTO chain_transfers (chain_id,chain_family,token_contract,invoice_id,tx_hash,log_index,block_hash,block_number,block_time,from_address,to_address,amount,status)
+ SELECT chain_id,chain_family,token_contract,id,id,0,id,90,extract(epoch FROM now())::bigint,$2,receive_address,1000000,'confirmed' FROM invoices WHERE id=$1`, other, aliceWallet)
+	summary = e.call(t, "GET", path+"?view=summary", alice, "", "")
+	if summary.status != http.StatusOK || len(summary.body["options"].([]any)) != 2 {
+		t.Fatalf("summary hid money on another option: %v", summary.body)
+	}
+	for _, response := range []map[string]any{
+		summary.body,
+		e.call(t, "GET", "/v1/profiles/"+shop+"/payments?status=confirming", alice, "", "").body["items"].([]any)[0].(map[string]any),
+	} {
+		receipts := response["receipts"].([]any)
+		if len(receipts) != 1 {
+			t.Fatalf("receipts: %v", receipts)
+		}
+		receipt := receipts[0].(map[string]any)
+		if receipt["optionId"] != other || receipt["received"] != "1000000" || receipt["pending"] != "1000000" {
+			t.Fatalf("observed money lost or attributed to unused option: %v", receipt)
+		}
+		if response["paymentStatus"] == "paid" || response["amounts"].(map[string]any)["payable"] != "0" || response["confirming"] != true {
+			t.Fatalf("uncredited money treated as paid: %v", response)
+		}
+	}
+	e.exec(t, "UPDATE chain_transfers SET status='reorged' WHERE invoice_id=$1", other)
+	after := e.call(t, "GET", path+"?view=summary", alice, "", "")
+	if len(after.body["receipts"].([]any)) != 0 {
+		t.Fatalf("reorged receipt remains: %v", after.body["receipts"])
+	}
+
+}
+
+func TestPaymentSearchKeepsPaginationAndProfileScope(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	shop := e.merchant(t)
+	store := storeIDs(t, e, shop)[0]
+	base := "/v1/profiles/" + shop
+	for n := range 3 {
+		reference := "order-" + string(rune('a'+n))
+		r := e.call(t, "POST", base+"/checkout-sessions", alice, reference,
+			`{"storeId":"`+store+`","amountUsd":"2","reference":"`+reference+`","customer":{"name":"Mara","email":"mara@example.com"}}`)
+		if r.status != http.StatusCreated {
+			t.Fatal(r.body)
+		}
+	}
+	for _, q := range []string{"order-", "MARA", "mara%40example", "2.00"} {
+		var cursor string
+		seen := map[string]bool{}
+		for range 3 {
+			path := base + "/payments?q=" + q + "&limit=1"
+			if cursor != "" {
+				path += "&cursor=" + cursor
+			}
+			r := e.call(t, "GET", path, alice, "", "")
+			if r.status != http.StatusOK {
+				t.Fatal(r.body)
+			}
+			items := r.body["items"].([]any)
+			if len(items) != 1 {
+				t.Fatalf("%s: %v", q, r.body)
+			}
+			id := items[0].(map[string]any)["paymentId"].(string)
+			if seen[id] {
+				t.Fatalf("repeated page: %s", id)
+			}
+			seen[id] = true
+			cursor, _ = r.body["nextCursor"].(string)
+		}
+		if cursor != "" {
+			t.Fatal("extra page")
+		}
+	}
+	for _, path := range []string{base + "/payments?q=no-match", "/v1/profiles/" + e.aliceProfile + "/payments?q=Mara"} {
+		r := e.call(t, "GET", path, alice, "", "")
+		if r.status != http.StatusOK || len(r.body["items"].([]any)) != 0 {
+			t.Fatal(r.body)
+		}
+	}
+	for _, q := range []string{"", "%00", strings.Repeat("a", 101)} {
+		if r := e.call(t, "GET", base+"/payments?q="+q, alice, "", ""); r.status != http.StatusUnprocessableEntity {
+			t.Fatalf("invalid search: %d", r.status)
+		}
+	}
 }

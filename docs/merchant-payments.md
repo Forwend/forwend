@@ -60,6 +60,38 @@ flowchart LR
 - Wallet attribution requires actual settlement evidence, not only receiver counterparty and token equality.
 - Export one row per booked movement; never repeat aggregate totals as independently summable financial rows.
 
+## Merchant screens
+
+- Payments finds one payment by order reference, customer, amount or status.
+- Payment detail owns received amounts, pending amounts, wallet transfers, refunds and transaction history.
+- Payment links manage reusable offers and reuse the payment table for resulting purchases.
+- Invoices own billing details, document changes and emails, with a link to the payment.
+- Activity shows invoice creation as a request and each deposit as money received.
+- Invoice requests never count as additional income.
+- Wallet transactions describe transfers into the wallet and link back to the payment.
+- The notification bell and toasts share canonical payment events.
+- Delivery failures never change the customer payment state.
+
+| Display | Meaning |
+|---|---|
+| Waiting for payment | No payment is currently being confirmed. |
+| Confirming | An on-time transfer is detected or still awaits credit after confirmation. |
+| Partially paid | Credited payments cover part of the requested amount. |
+| Paid | The customer paid the requested amount with the required evidence. |
+| Expired | The checkout closed without completing payment. |
+| Canceled | The issuer canceled collection. |
+| Wallet transfer pending | Payment succeeded; the merchant's money has not reached the wallet. |
+| In wallet | The wallet transfer completed. |
+| Returned | Recorded money was returned; this does not erase the original receipt. |
+
+- Paid filters include payments already in the wallet; In wallet narrows that set.
+- Received amounts include observed, non-reorged deposits, separated by token and network.
+- Each uncredited amount is explicitly labeled confirming; it never increases available merchant funds.
+- Normal payment details load used options and relevant problems.
+- Transactions and technical details load on demand; transactions use cursor pages.
+- Transaction rows keep block, log, evidence and ledger data inside expandable details.
+- Missing evidence remains unresolved, even when routine diagnostics are hidden.
+
 ## Compatibility and scope
 
 - Add explicit immutable purposes to the existing payment engine instead of renaming its tables or changing receive addresses.
@@ -71,7 +103,7 @@ flowchart LR
 - New payment/session read models expose origin independently of document numbering.
 - Billing composition identifies the recipient by name or email; existing API invoice defaults remain compatible.
 - Notifications retain event names and expose nullable document numbers for checkout.
-- Pending history verification differs from manual review; the owner sees one grouped notice across accepted options.
+- Unused pending history creates no warning; conflicting evidence and affected funds retain a clear action.
 - Existing link retries replay original requests after template changes; new purchases use fresh attempt identities.
 - The purchase URL preserves original input and quoted offer version across refresh, Back and storage failures.
 - An uncertain uncommitted request must match its original quote before creating checkout.

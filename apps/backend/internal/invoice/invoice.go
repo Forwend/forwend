@@ -231,6 +231,7 @@ var metadataKey = regexp.MustCompile(`^[A-Za-z0-9_-]{1,40}$`)
 
 // With several options, the terms and statuses are the current option's: the chosen one, else the first.
 type Invoice struct {
+	Receipts []PaymentReceipt
 	Details
 	Purpose      Purpose
 	DocumentKind DocumentKind

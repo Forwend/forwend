@@ -233,7 +233,11 @@ func numbered(invoices *invoice.Service, next http.Handler) http.Handler {
 
 func getProfileInvoice(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		inv, err := invoices.GetOfProfile(r.Context(), r.PathValue("profileId"), r.PathValue("invoiceId"))
+		read := invoices.GetOfProfile
+		if r.URL.Query().Get("view") == "summary" {
+			read = invoices.GetProfileSummary
+		}
+		inv, err := read(r.Context(), r.PathValue("profileId"), r.PathValue("invoiceId"))
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

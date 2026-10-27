@@ -107,6 +107,36 @@ func TestMoneyLoop(t *testing.T) {
 
 	anvil.Transfer(token, receive, amount)
 	waitFor(t, "detected", func() bool { return observe() == ledger.Detected })
+	checkPaymentReads := func(want, filter, received, pending string) {
+		t.Helper()
+		base := api + "/v1/profiles/" + profile
+		list := authed(t, base+"/payments?status="+filter, privy)["items"].([]any)
+		if len(list) != 1 {
+			t.Fatalf("payment filter %s: %v", filter, list)
+		}
+		detail := authed(t, base+"/payments/"+id+"?view=summary", privy)
+		for _, row := range []map[string]any{list[0].(map[string]any), detail, authed(t, base+"/invoices/"+id, privy)} {
+			if row["paymentStatus"] != want {
+				t.Fatalf("payment reads disagree: %v", row)
+			}
+		}
+		for _, row := range []map[string]any{list[0].(map[string]any), detail} {
+			receipts := row["receipts"].([]any)
+			if len(receipts) != 1 || receipts[0].(map[string]any)["received"] != received || receipts[0].(map[string]any)["pending"] != pending {
+				t.Fatalf("receipt reads disagree: %v", receipts)
+			}
+		}
+		activity := authed(t, base+"/activity?status="+filter, privy)["items"].([]any)
+		if len(activity) != 2 {
+			t.Fatalf("activity filter: %v", activity)
+		}
+		for _, item := range activity {
+			if item.(map[string]any)["paymentStatus"] != want {
+				t.Fatalf("activity disagrees: %v", item)
+			}
+		}
+	}
+	checkPaymentReads(ledger.Detected, "confirming", amount, amount)
 	anvil.Mine(2) // the deposit's block becomes final (Anvil: finalized = latest - 2)
 	// Real chains keep making blocks; Anvil only mines on demand, so the settle can become final (D-45).
 	waitFor(t, "settled", func() bool { anvil.Mine(1); return observe() == "settled" })
@@ -114,6 +144,7 @@ func TestMoneyLoop(t *testing.T) {
 		t.Fatalf("invoice %v, deposit %v; want invoice detected -> paid -> settled and the deposit detected with "+
 			"blocks left -> confirmed", seen, deposit)
 	}
+	checkPaymentReads(ledger.Paid, "paid", amount, "0")
 	t.Logf("invoice: %v; deposit (status/blocks left): %v", seen, deposit)
 	// The webhooks process built, signed and tried the paid event; its filter refused this machine's address.
 	waitFor(t, "the paid event's attempt", func() bool {
@@ -211,7 +242,7 @@ type stack struct {
 // webhookKey stands in for WEBHOOK_SECRET_KEY: 32 bytes in base64.
 const webhookKey = "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc="
 
-func newStack(t *testing.T) *stack {
+func newStack(t *testing.T, apiEnv ...string) *stack {
 	t.Helper()
 	ctx := context.Background()
 	anvil := chaintest.Start(t)
@@ -244,9 +275,9 @@ func newStack(t *testing.T) *stack {
 	apiAddr := freeAddr(t)
 	common := []string{"DATABASE_URL=" + dbURL}
 	rpcs := []string{"CHAINS_FILE=" + chains, "INFURA_API_KEYS=", "RPC_RATE_PER_SECOND=100"}
-	start(t, bin, "api", append(append(common, rpcs...), "API_ADDR="+apiAddr, "PRIVY_APP_ID="+appID,
+	start(t, bin, "api", append(append(append(common, rpcs...), "API_ADDR="+apiAddr, "PRIVY_APP_ID="+appID,
 		"PRIVY_JWKS_URL="+privy.JWKSURL, "PRIVY_APP_SECRET=unused", // this test makes its profile in the database
-		"PUBLIC_WEB_URL=http://localhost:3000", "WEBHOOK_SECRET_KEY="+webhookKey))
+		"PUBLIC_WEB_URL=http://localhost:3000", "WEBHOOK_SECRET_KEY="+webhookKey), apiEnv...))
 	api := "http://" + apiAddr
 	waitFor(t, "api healthy", func() bool {
 		res, err := http.Get(api + "/healthz")

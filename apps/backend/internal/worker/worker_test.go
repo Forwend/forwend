@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -162,12 +163,16 @@ func recheck(t *testing.T, ctx context.Context, pool *pgxpool.Pool, a *chaintest
 
 // R-55: the rescan starts at the invoice's creation block.
 func TestRecheckBooksADepositTheScanMissed(t *testing.T) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
 	pool, w, a, status := missedDeposit(t, ctx, 1800086400)
 	if found := recheck(t, ctx, pool, a); found.OnChain.Int64() != 5000000 || found.Recorded.Sign() != 0 || !found.Rescanning {
 		t.Fatalf("recheck: %+v, want 5000000 on chain, none recorded, rescanning", found)
 	}
-	w.Round(ctx)
+	for status() != "paid" && ctx.Err() == nil {
+		w.Round(ctx)
+		time.Sleep(10 * time.Millisecond)
+	}
 	if got := status(); got != "paid" {
 		t.Fatalf("after the recheck's rescan: invoice %s, want paid", got)
 	}
@@ -179,12 +184,23 @@ func TestRecheckBooksADepositTheScanMissed(t *testing.T) {
 
 // Past the watch window (30 days after the settle deadline) the money is the refund authority's: nothing is booked.
 func TestRecheckLeavesInvoicesPastTheWatchWindow(t *testing.T) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
 	pool, w, a, status := missedDeposit(t, ctx, 86401)
 	if found := recheck(t, ctx, pool, a); !found.Rescanning {
 		t.Fatalf("recheck: %+v, want a rescan asked (the api does not know the watch window)", found)
 	}
-	w.Round(ctx)
+	for ctx.Err() == nil {
+		w.Round(ctx)
+		var pending bool
+		if err := pool.QueryRow(ctx, "SELECT rescan_requested_at IS NOT NULL FROM invoice_rechecks").Scan(&pending); err != nil {
+			t.Fatal(err)
+		}
+		if !pending {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 	var transfers int
 	var pending bool
 	if err := pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM chain_transfers),
@@ -194,5 +210,92 @@ func TestRecheckLeavesInvoicesPastTheWatchWindow(t *testing.T) {
 	if transfers != 0 || pending || status() != "open" {
 		t.Fatalf("past the window: %d transfers recorded, rescan pending %v, invoice %s; want none, false, open",
 			transfers, pending, status())
+	}
+}
+
+func TestActivePaymentCompletesWhileLegacyReceiverScanHangs(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	a := chaintest.Start(t)
+	token := a.DeployToken()
+	a.Mint(token, "100000000")
+	a.Mine(watcher.RescanDepth + 20)
+	url := databasetest.New(t)
+	if err := database.Migrate(ctx, url); err != nil {
+		t.Fatal(err)
+	}
+	pool, err := database.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	if _, err := pool.Exec(ctx, `
+  WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES ($1, 'evm', 'anvil', true)),
+   tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
+          VALUES ($1, 'evm', $2, 'USDC', 6, true)),
+   u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:alice') RETURNING id),
+   p AS (INSERT INTO profiles (user_id, kind) SELECT id, 'freelancer' FROM u RETURNING id)
+  INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
+   recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
+  SELECT '0x' || repeat('01', 32), id, $1, 'evm', $2, 5000000, 1800000000, 1800086400,
+   '0x1111111111111111111111111111111111111111', 'evm_create2', '0x2222222222222222222222222222222222222222',
+   $3, 'active', decode(repeat('00', 32), 'hex') FROM p`, chaintest.ChainID, token, receive); err != nil {
+		t.Fatal(err)
+	}
+	proxy := a.Proxy()
+	w := New(pool, map[uint64]chain.Spec{chaintest.ChainID: {ChainID: chaintest.ChainID,
+		Public: []string{proxy.URL, strings.Replace(a.URL, "127.0.0.1", "localhost", 1)}}}, nil, 1000)
+	defer w.Close()
+	w.Round(ctx)
+	w.historical.Wait()
+	const legacyAddress = "0x00000000000000000000000000000000000000bb"
+	if _, err := pool.Exec(ctx, `INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount,
+  expires_at, settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
+  SELECT '0x' || repeat('02',32), profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
+   recipient_address, receive_method, factory_address, $1, 'legacy', request_hash FROM invoices`, legacyAddress); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, "UPDATE receiver_scans SET legacy=true, start_block=0, next_block=0 WHERE invoice_id='0x' || repeat('02',32)"); err != nil {
+		t.Fatal(err)
+	}
+	started := make(chan struct{})
+	var once sync.Once
+	proxy.Fail(func(call chaintest.Call) chaintest.Fault {
+		if call.Method == "eth_getLogs" && len(call.Params) > 0 &&
+			strings.Contains(string(call.Params[0]), `"fromBlock":"0x0"`) &&
+			strings.Contains(string(call.Params[0]), legacyAddress[2:]) {
+			once.Do(func() { close(started) })
+			return chaintest.Hang
+		}
+		return chaintest.Forward
+	})
+	a.Transfer(token, receive, "5000000")
+	a.Mine(2)
+	w.Tick(ctx)
+	select {
+	case <-started:
+	case <-ctx.Done():
+		t.Fatal("legacy scan did not start")
+	}
+	w.jobs.Wait()
+	var status string
+	var complete bool
+	var proofs int
+	if err := pool.QueryRow(ctx, `SELECT i.payment_status, s.history_complete,
+  (SELECT count(*) FROM receiver_deposit_proofs p JOIN chain_transfers d ON d.id=p.chain_transfer_id WHERE d.invoice_id=i.id)
+  FROM invoices i JOIN receiver_scans s ON s.invoice_id=i.id WHERE i.receive_address=$1`, receive).Scan(&status, &complete, &proofs); err != nil {
+		t.Fatal(err)
+	}
+	if status != "paid" || !complete || proofs != 1 {
+		t.Fatalf("active payment: status=%s complete=%v proofs=%d", status, complete, proofs)
+	}
+	if w.historical.Idle(chaintest.ChainID) {
+		t.Fatal("historical scan finished before active payment; blocking was not exercised")
+	}
+	if err := pool.QueryRow(ctx, "SELECT history_complete FROM receiver_scans WHERE invoice_id='0x' || repeat('02',32)").Scan(&complete); err != nil {
+		t.Fatal(err)
+	}
+	if complete {
+		t.Fatal("hanging legacy scan was marked verified")
 	}
 }

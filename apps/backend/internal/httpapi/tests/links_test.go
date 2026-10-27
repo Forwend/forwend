@@ -213,7 +213,7 @@ func TestLinkInvoiceNumbers(t *testing.T) {
 		    counterparty, tx_hash, log_index, block_hash, block_number, block_time, amount, status)
 		VALUES (84532, 'evm', $1, $2, 'in', $3, $4, 0, $4, 90, 90, 1000000, 'confirmed')`,
 		usdc, aliceWallet, paying.body["receiveAddress"], "0x"+strings.Repeat("e", 64))
-	// The owner's reads, lists, search, Owed, Activity and Transactions leave it out.
+	// Billing reads and wallet attribution do not invent a document before its first booked payment.
 	owner := "/v1/profiles/" + e.aliceProfile
 	unseen := func(when string) {
 		t.Helper()
@@ -223,7 +223,7 @@ func TestLinkInvoiceNumbers(t *testing.T) {
 				t.Errorf("%s: %s %s: %d %v", when, method, path, r.status, r.body)
 			}
 		}
-		for _, path := range []string{"/invoices", "/invoices?q=" + paying.body["receiveAddress"].(string), "/owed", "/activity",
+		for _, path := range []string{"/invoices", "/invoices?q=" + paying.body["receiveAddress"].(string), "/owed",
 			"/transactions"} {
 			if r := e.call(t, "GET", owner+path, alice, "", ""); r.status != http.StatusOK ||
 				strings.Contains(fmt.Sprint(r.body), linked) {
@@ -242,6 +242,12 @@ func TestLinkInvoiceNumbers(t *testing.T) {
 		SELECT 84532, 'evm', $1, $2, $3, 0, $3, 95, extract(epoch FROM now())::bigint, $4, receive_address, 500000,
 		    'detected' FROM invoices WHERE id = $2`, usdc, linked, "0x"+strings.Repeat("d", 64), aliceWallet)
 	unseen("while detected")
+	activity := e.call(t, "GET", owner+"/activity?status=confirming", alice, "", "")
+	items := activity.body["items"].([]any)
+	if activity.status != http.StatusOK || len(items) != 1 || items[0].(map[string]any)["invoiceId"] != linked ||
+		items[0].(map[string]any)["kind"] != "deposit" || items[0].(map[string]any)["confirming"] != true {
+		t.Fatalf("funded link attempt missing from Activity: %v", activity.body)
+	}
 
 	// Its first booked deposit gives it the next number; later invoices follow it with no gap.
 	e.deposit(t, linked, "1000000")

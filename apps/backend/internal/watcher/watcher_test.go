@@ -28,8 +28,12 @@ type env struct {
 // setup runs Anvil with a mock USDC and one invoice paid at receive, and scans once so the cursor exists.
 func setup(t *testing.T) env {
 	t.Helper()
+	return setupChain(t, chaintest.Start(t))
+}
+
+func setupChain(t *testing.T, a *chaintest.Anvil) env {
+	t.Helper()
 	ctx := context.Background()
-	a := chaintest.Start(t)
 	token := a.DeployToken()
 	a.Mint(token, "100000000")
 
@@ -189,7 +193,7 @@ func TestReorgMarksTheDepositReorged(t *testing.T) {
 	}
 }
 
-func TestLogRangeHalvesAndGrowsBack(t *testing.T) {
+func TestLogRangeRetainsAcceptedSize(t *testing.T) {
 	for name, c := range map[string]struct {
 		refuse    func(blocks uint64, earlier int) chaintest.Fault
 		wantSizes []uint64 // the first ranges asked for
@@ -200,13 +204,13 @@ func TestLogRangeHalvesAndGrowsBack(t *testing.T) {
 				return chaintest.TooManyResults
 			}
 			return chaintest.Forward
-		}, wantSizes: []uint64{2000, 1000, 500, 1000, 500}},
+		}, wantSizes: []uint64{2000, 1000, 500, 500, 500}},
 		"HTTP 429 on the first query": {refuse: func(_ uint64, earlier int) chaintest.Fault {
 			if earlier == 0 {
 				return chaintest.HTTP429
 			}
 			return chaintest.Forward
-		}, wantSizes: []uint64{2000, 1000, 2000}},
+		}, wantSizes: []uint64{2000, 1000, 1000}},
 		"rate limited down to the floor": {refuse: func(uint64, int) chaintest.Fault { return chaintest.HTTP429 },
 			wantSizes: []uint64{2000, 1000, 500, 250, 125, 62, MinRange}, wantErr: true},
 	} {

@@ -16,14 +16,15 @@ import (
 const BalanceTimeout = 10 * time.Second
 
 // Invoices with a deposit to book go first, so new money is booked even when the round runs out of time (R-120).
-// ponytail: scans every open invoice each run; index by due work if it grows.
 func (s *Service) ProcessChain(ctx context.Context, chainID uint64) error {
 	return s.processChain(ctx, chainID, true)
 }
 
 func (s *Service) processChain(ctx context.Context, chainID uint64, requireCoverage bool) error {
 	rows, err := s.pool.Query(ctx, `
-  SELECT id, certified FROM (SELECT i.id, i.payment_status,
+  SELECT id, certified FROM (SELECT i.id, i.payment_status, i.closes_at, cursor.last_finalized_time,
+   EXISTS (SELECT 1 FROM chain_transfers t JOIN invoices option ON option.id=t.invoice_id
+    WHERE coalesce(option.main_id,option.id)=coalesce(i.main_id,i.id) AND t.status='detected') AS observed,
    EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = i.id AND t.status = 'confirmed' AND NOT t.booked)
    OR EXISTS (SELECT 1 FROM receiver_outflows o WHERE o.invoice_id = i.id AND o.kind <> 'recovery'
               AND o.ledger_transaction_id IS NULL) AS money,
@@ -33,7 +34,8 @@ func (s *Service) processChain(ctx context.Context, chainID uint64, requireCover
      AND NOT EXISTS (SELECT 1 FROM receiver_deposit_proofs p WHERE p.chain_transfer_id = d.id)),false) AS certified
    FROM invoices i JOIN receiver_scans scan ON scan.invoice_id = i.id
    JOIN chain_cursors cursor ON cursor.chain_id = i.chain_id WHERE i.chain_id = $1) i
-  WHERE money OR (payment_status IN ('open','detected','partially_paid') AND NOT EXISTS
+  WHERE money OR (payment_status IN ('open','detected','partially_paid')
+   AND (observed OR payment_status = 'detected' OR closes_at < last_finalized_time) AND NOT EXISTS
    (SELECT 1 FROM invoice_balance_alerts a WHERE a.invoice_id = i.id AND a.next_check_at > now()))
   ORDER BY money DESC`, chainID, requireCoverage)
 	if err != nil {

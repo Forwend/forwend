@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
+	"github.com/forwend/forwend/apps/backend/internal/search"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -41,6 +42,8 @@ func (i Invoice) PaymentSource() PaymentSource {
 }
 
 type PaymentQuery struct {
+	Search                                                search.Query
+	Summary                                               bool
 	IncludeWebhookOperations                              bool
 	Attention                                             bool
 	Cursor, StoreID, LinkID                               string
@@ -105,8 +108,22 @@ func readPaymentPage(ctx context.Context, db paymentReader, profileID string, q 
 	for i := range page.Items {
 		page.Items[i].Amounts = amounts[page.Items[i].OptionID]
 	}
+	mains := make([]string, len(page.Items))
+	for i := range page.Items {
+		mains[i] = page.Items[i].ID
+	}
+	receipts, err := readPaymentReceipts(ctx, db, mains)
+	if err != nil {
+		return Page{}, err
+	}
+	for i := range page.Items {
+		page.Items[i].Receipts = receipts[page.Items[i].ID]
+	}
+
 	return page, nil
 }
+
+const paymentSearchText = `(coalesce(reference,'') || ' ' || coalesce(title,'') || ' ' || coalesce(client_name,'') || ' ' || coalesce(client_email,'') || ' ' || id)`
 
 func paymentWhere(profileID string, q PaymentQuery) ([]any, string, error) {
 	if q.Limit < 1 || q.Limit > MaxLimit {
@@ -114,6 +131,11 @@ func paymentWhere(profileID string, q PaymentQuery) ([]any, string, error) {
 	}
 	args := []any{profileID, q.Limit + 1}
 	where := "profile_id = $1"
+	if q.Search.Like != nil {
+		args = append(args, q.Search.Like, q.Search.Amount)
+		where += fmt.Sprintf(" AND (%s ILIKE $%d OR amount=$%d::numeric * 10::numeric ^ (SELECT decimals FROM tokens WHERE chain_id=invoices.chain_id AND contract=invoices.token_contract))", paymentSearchText, len(args)-1, len(args))
+	}
+
 	if q.Cursor != "" {
 		if len(q.Cursor) > 256 {
 			return nil, "", fmt.Errorf("%w: cursor is not one this API returned", ErrInvalid)
@@ -126,7 +148,7 @@ func paymentWhere(profileID string, q PaymentQuery) ([]any, string, error) {
 			return nil, "", fmt.Errorf("%w: cursor is not one this API returned", ErrInvalid)
 		}
 		args = append(args, before, id)
-		where += " AND (created_at, id) < ($3, $4)"
+		where += fmt.Sprintf(" AND (created_at,id) < ($%d,$%d)", len(args)-1, len(args))
 	}
 	if q.StoreID != "" {
 		var id pgtype.UUID
@@ -172,7 +194,7 @@ func paymentWhere(profileID string, q PaymentQuery) ([]any, string, error) {
 			return nil, "", fmt.Errorf("%w: invalid status", ErrInvalid)
 		}
 		args = append(args, q.Status)
-		where += fmt.Sprintf(" AND %s = $%d", StatusFilterSQL, len(args))
+		where += fmt.Sprintf(" AND ($%d = 'paid' AND invoices.payment_status = 'paid' OR %s = $%d)", len(args), ListStatusFilterSQL, len(args))
 	}
 	for _, filter := range []struct {
 		column, value string

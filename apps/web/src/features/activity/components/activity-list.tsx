@@ -126,7 +126,7 @@ function ProfileActivity({ profileId }: ActivityListProps) {
                     <ActivityRow
                       title={
                         <Link
-                          href={`${APP_ROUTES.invoices}/${item.invoiceId}`}
+                          href={`${deposit ? APP_ROUTES.payments : APP_ROUTES.invoices}/${item.invoiceId}`}
                           className="outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus"
                         >
                           {deposit

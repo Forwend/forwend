@@ -79,7 +79,7 @@ func (p *pool) do(ctx context.Context, second bool, header http.Header, body []b
 	var res *http.Response
 	var err error
 	for tries := 0; tries <= len(p.endpoints); {
-		e, at, ready, perr := p.pick(second, calls)
+		e, at, ready, perr := p.pick(ctx, second, calls)
 		if perr != nil {
 			return nil, perr
 		}
@@ -121,7 +121,7 @@ func (p *pool) do(ctx context.Context, second bool, header http.Header, body []b
 
 // pick takes the role's first non-resting host in list order and its endpoint free soonest, adding calls to its
 // pace. When every endpoint rests, ready is false and at is when the first one is back.
-func (p *pool) pick(second bool, calls int) (e *endpoint, at time.Time, ready bool, err error) {
+func (p *pool) pick(ctx context.Context, second bool, calls int) (e *endpoint, at time.Time, ready bool, err error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	now := time.Now()
@@ -136,6 +136,9 @@ func (p *pool) pick(second bool, calls int) (e *endpoint, at time.Time, ready bo
 	at = now
 	if e.next.After(now) {
 		at = e.next
+	}
+	if deadline, ok := ctx.Deadline(); ok && at.After(deadline) {
+		return nil, time.Time{}, false, context.DeadlineExceeded
 	}
 	e.next = at.Add(time.Duration(calls) * p.perCall)
 	return e, at, true, nil
@@ -294,6 +297,13 @@ func (p *pool) post(ctx context.Context, e *endpoint, header http.Header, body [
 		return nil, fmt.Errorf("%s: answer over %d bytes", e.name, maxAnswer)
 	}
 	res.Body = io.NopCloser(bytes.NewReader(raw))
+	if BatchTooLarge(rpc.HTTPError{StatusCode: res.StatusCode, Body: raw}) {
+		return res, nil
+	}
+	if (res.StatusCode == http.StatusBadRequest || res.StatusCode == http.StatusRequestEntityTooLarge) &&
+		TooLarge(rpc.HTTPError{StatusCode: res.StatusCode, Body: raw}) {
+		return res, nil // The caller can narrow this query; the provider is still available.
+	}
 	if res.StatusCode/100 != 2 {
 		err := fmt.Errorf("%s: HTTP %s", e.name, res.Status)
 		switch res.StatusCode {
@@ -387,6 +397,9 @@ func tooLarge(m string) bool {
 // Overloaded reports an error that a smaller eth_getLogs block range may avoid: a rate limit that every endpoint
 // answered (HTTP 429 or a JSON-RPC rate-limit error), or an RPC refusing the range or the size of the result.
 func Overloaded(err error) bool {
+	if TooLarge(err) {
+		return true
+	}
 	var status rpc.HTTPError
 	if errors.As(err, &status) {
 		return status.StatusCode == http.StatusTooManyRequests
@@ -399,8 +412,43 @@ func Overloaded(err error) bool {
 }
 
 func TooLarge(err error) bool {
+	var status rpc.HTTPError
+	if errors.As(err, &status) && (status.StatusCode == http.StatusBadRequest || status.StatusCode == http.StatusRequestEntityTooLarge) {
+		var answer struct{ Error *struct{ Message string } }
+		return json.Unmarshal(status.Body, &answer) == nil && answer.Error != nil && tooLarge(strings.ToLower(answer.Error.Message))
+	}
 	var e rpc.Error
 	return errors.As(err, &e) && tooLarge(strings.ToLower(e.Error()))
+}
+
+func BatchTooLarge(err error) bool {
+	limited := func(message string) bool {
+		m := strings.ToLower(message)
+		return strings.Contains(m, "batch") && (strings.Contains(m, "not allowed") || strings.Contains(m, "too large") || strings.Contains(m, "maximum batch"))
+	}
+	var rpcErr rpc.Error
+	if errors.As(err, &rpcErr) {
+		return limited(rpcErr.Error())
+	}
+	var status rpc.HTTPError
+	if !errors.As(err, &status) || (status.StatusCode != 400 && status.StatusCode != 413 && status.StatusCode != 500) {
+		return false
+	}
+	type answer struct{ Error *struct{ Message string } }
+	var answers []answer
+	if json.Unmarshal(status.Body, &answers) != nil {
+		var one answer
+		if json.Unmarshal(status.Body, &one) != nil {
+			return false
+		}
+		answers = []answer{one}
+	}
+	for _, a := range answers {
+		if a.Error != nil && limited(a.Error.Message) {
+			return true
+		}
+	}
+	return false
 }
 
 func roleName(second bool) string {

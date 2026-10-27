@@ -3,11 +3,11 @@ import { ToastProvider } from "@forwend/ui-web";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { activityApi } from "@/features/activity/api/activity-api";
 import { ActivityList } from "@/features/activity/components/activity-list";
 import { PaymentToasts } from "@/features/activity/components/payment-toasts";
-import { ACTIVITY_PAGE_SIZE } from "@/features/activity/constants/activity";
 import type { ActivityItem } from "@/features/activity/types/activity";
+import { invoicesApi } from "@/features/invoices/api/invoices-api";
+import type { InvoiceEvent } from "@/features/invoices/types/invoices";
 import { makeStore } from "@/store/store";
 
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams() }));
@@ -48,7 +48,7 @@ const deposit = (txHash: string, amount: string): ActivityItem => ({
   txHash,
 });
 
-let items: ActivityItem[] = [];
+let items: (ActivityItem | InvoiceEvent)[] = [];
 vi.stubGlobal(
   "fetch",
   vi.fn(async () => Response.json({ items, nextCursor: null })),
@@ -85,18 +85,18 @@ describe("Activity shows invoice amounts exactly, as the invoice list, detail, p
       </Provider>,
     );
     await settle();
-    items = [deposit(`0x${"2".repeat(64)}`, "1500")];
+    items = [{ ...invoice, id: 1, kind: "invoice.paid", number: null, amount: "1500" }];
     await act(() =>
       store.dispatch(
-        activityApi.endpoints.getActivity.initiate(
-          { profileId: "p", limit: ACTIVITY_PAGE_SIZE },
-          { forceRefetch: true, subscribe: false },
-        ),
+        invoicesApi.endpoints.getInvoiceEvents.initiate("p", {
+          forceRefetch: true,
+          subscribe: false,
+        }),
       ),
     );
     await settle();
     const toasts = screen.queryAllByRole("listitem").map((li) => li.textContent);
-    expect(toasts).toEqual(["Payment detected0.0015 USDC is confirming."]);
+    expect(toasts).toEqual(["Payment received0.0015 USDC paid by the customer."]);
   });
 });
 

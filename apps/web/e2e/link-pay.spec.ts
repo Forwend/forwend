@@ -68,7 +68,7 @@ test.describe("payment link page", () => {
     await page.goto(`/l/${SLUG}`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Alice Shop Ltd");
     await expect(page.getByText("Logo design", { exact: true })).toBeVisible();
-    await expect(page.getByText(/^Test mode:.*testnet tokens/)).toBeVisible();
+    await expect(page.getByText("Testnet", { exact: true })).toBeVisible();
     await expect(page.locator("[data-money]")).toHaveText("50.00 USD");
     await expect.poll(() => calls.visits).toBe(1);
     await payButton(page).click();

@@ -227,12 +227,20 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Picking a store sets the close to its default, unless a due date or the owner set one.
   - The return link's hint names the store's origins. The invoice list adds the store after the title.
 - Payments (R-166) uses the invoice list's panels, tables and phone rows; its source, store and status filters remain in the URL.
-  - All payments, Needs attention and Reconciliation use the existing segmented control.
+  - All payments, Payment issues and Balance report use the existing segmented control.
   - Unpaid attempts stay visible; requested amounts never imply received or settled money.
-  - Payment details use ruled invoice panels, with separate customer, settlement, source coverage, liabilities and delivery information.
+  - Payment details lead with the order, customer, requested and received amounts, payment status, wallet transfer and next action.
+  - Desktop rows stay on one line; phone rows show the same payment and wallet states in a compact stack.
+  - The used token and network appear first; transaction links stay beside received amounts.
+  - Technical details load only when expanded, with one option selected at a time and a manual refresh.
+  - Normal detail polling requests only used options and options with money or actionable errors.
+  - Test payments have a small Testnet label in lists, details and the public checkout header.
+  - Layout references: [Stripe payment records](https://support.stripe.com/questions/view-payment-records-in-the-dashboard?locale=en-GB), [Adyen payment management](https://docs.adyen.com/account/manage-payments/), and [BitPay payments](https://support.bitpay.com/hc/en-us/articles/205769245-View-Payments-in-the-merchant-dashboard).
+  - These examples separate payment identity, amounts and status from investigation details.
+
   - Each token and network keeps its own receive balance, merchant payable, payer-held funds and observed returns.
   - Movement rows show network, contract and signed receiver/payable/held changes; allocation rows never imply another token transfer.
-  - Automatic verification uses one neutral notice; conflicting evidence uses one review notice, with a direct link to details.
+  - Unused pending history creates no merchant warning. Conflicting evidence shows a short explanation and the required action.
   - Shared wallet transactions and invoice activity explicitly name their profile-wide scope.
   - Reconciliation follows recorded UTC periods; opening, changes and closing remain separate per store and token.
   - Export follows validated filters and uses the existing date dialog pattern; invalid or unresolved filters disable export.
@@ -242,7 +250,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - It is laid out like Stores: a one-line intro with New link at its end, then a table.
   - The table shows the link with its `/l/<slug>`, the amount, a status badge and visits, paid purchases and reserved slots.
   - The status is On, Off, Ended, Cap reached or Setup needed; only On is green.
-  - Test links have a Test mode badge in lists and details, and the invoice warning on their public page.
+  - Test links keep their mode label in lists and details; public checkout shows Testnet in its header.
   - The link overview shows sharing details and its resulting payment attempts; editing is an explicit action.
   - New and Edit use existing store-form panels; `/app/links/<id>/edit` edits the offer, while the existing detail URL remains valid.
   - Amount has two choice cards: A fixed amount, or The payer enters it with an optional min and max.
@@ -457,7 +465,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Once money is seen:
     - The panel keeps its place ("Paying with" while nothing more is due).
     - The steps Detected, Confirming and Paid fade in; the waiting one moves. Partially paid is tinted on Paid.
-    - One line for what the steps can't say: "Final check", or what is left to pay.
+    - One line for what the steps can't say: "Confirming payment", or what is left to pay.
     - Each payment with its amount, time, short hash and explorer link.
     - The address stays only while money is still due.
   - Receipt email, once money is seen and once paid:
@@ -466,7 +474,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
       receipt only (R-82).
     - Before any money the row is not there: there is nothing to send a receipt for.
   - Confirmed returns show their recorded amount, network and latest transaction beside the payment record.
-  - Unresolved evidence and exceptional authority movements show a plain review notice; unresolved payments offer no send action.
+  - Conflicting evidence and exceptional authority movements show a short review notice and block sending.
+  - Empty pending history does not hide the payment address. Observed money stays Confirming until its evidence passes.
+  - Testnet appears beside the Forwend header instead of a warning paragraph.
+
   - A closed option keeps the selector when another option remains available. Each address uses its own effective close.
   - Closed: one line that says so.
   - Paid: a left-aligned receipt replaces the panel.
@@ -474,7 +485,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - Ruled label and value rows: Amount, Paid to, Date, and Transaction with a View transaction link to the explorer.
     - Download receipt, a full-width button. Primary; or secondary under a full-width primary Back to <host> when the
       invoice has a return link.
-  - The payer never sees Settled, status pills, testnet notes or an overpaid line (PLAN 11.10.1).
+  - The payer never sees Settled, status pills or an overpaid line (PLAN 11.10.1).
   - Copy names the payee, or "the invoice's creator". Never "the sender".
   - Footer: one quiet line.
     - "Payments by" with the mark and Forwend, opening the site in a new tab.

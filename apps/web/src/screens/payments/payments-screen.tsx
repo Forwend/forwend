@@ -1,8 +1,9 @@
 "use client";
-import { Button, SegmentedControl, SelectField } from "@forwend/ui-web";
+import { Button, SearchField, SegmentedControl, SelectField } from "@forwend/ui-web";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { STATUS_FILTERS } from "@/features/activity/constants/activity";
+import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
 import { ExportPayments } from "@/features/payments/components/export-payments";
 import { PaymentList } from "@/features/payments/components/payment-list";
 import { PaymentReconciliation } from "@/features/payments/components/payment-reconciliation";
@@ -16,6 +17,7 @@ import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { useListStoresQuery } from "@/features/stores/api/stores-api";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { useListFilters } from "@/shared/hooks/use-list-filters";
 export function PaymentsScreen() {
   const { profile } = useAppSession();
   const params = useSearchParams();
@@ -29,7 +31,9 @@ export function PaymentsScreen() {
   const status = Object.values(STATUS_FILTERS).find(
     (value) => value === params.get("status") && value !== STATUS_FILTERS.all,
   );
+  const search = useListFilters("status", Object.values(STATUS_FILTERS), STATUS_FILTERS.all);
   const filters: PaymentFilters = {
+    q: search.apiQuery,
     storeId: params.get("storeId") || undefined,
     linkId: params.get("linkId") || undefined,
     source,
@@ -58,9 +62,6 @@ export function PaymentsScreen() {
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">Payments</h1>
-        <p className="text-muted">
-          Track money requested, received, held and settled across your selling channels.
-        </p>
       </header>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SegmentedControl
@@ -69,8 +70,8 @@ export function PaymentsScreen() {
           onValueChange={(value) => set("view", value)}
           options={[
             { value: PAYMENT_VIEWS.all, label: "All payments" },
-            { value: PAYMENT_VIEWS.attention, label: "Needs attention" },
-            { value: PAYMENT_VIEWS.reconciliation, label: "Reconciliation" },
+            { value: PAYMENT_VIEWS.attention, label: "Payment issues" },
+            { value: PAYMENT_VIEWS.reconciliation, label: "Balance report" },
           ]}
         />
         <ExportPayments
@@ -81,14 +82,20 @@ export function PaymentsScreen() {
           }
         />
       </div>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <SearchField
+        label="Search payments"
+        placeholder="Order, customer or amount"
+        value={search.search}
+        onValueChange={search.setSearch}
+      />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {merchant ? (
           <SelectField
             label="Store"
             value={filters.storeId ?? "all"}
             disabled={!stores.currentData}
             options={[
-              { value: "all", label: "All permitted stores" },
+              { value: "all", label: "All stores" },
               ...(stores.currentData ?? []).map((store) => ({
                 value: store.storeId,
                 label: store.name,
@@ -111,10 +118,7 @@ export function PaymentsScreen() {
           value={status ?? "all"}
           options={Object.values(STATUS_FILTERS).map((value) => ({
             value,
-            label:
-              value === STATUS_FILTERS.all
-                ? "All statuses"
-                : value.slice(0, 1).toUpperCase() + value.slice(1),
+            label: value === STATUS_FILTERS.all ? "All statuses" : ACTIVITY_COPY.filters[value],
           }))}
           onValueChange={(value) => set("status", value)}
         />

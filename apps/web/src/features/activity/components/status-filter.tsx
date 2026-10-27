@@ -10,6 +10,7 @@ import type { StatusFilter as Status } from "@/features/activity/types/activity"
 const ICONS = {
   all: ListFilter,
   open: Circle,
+  confirming: Clock,
   paid: CircleCheck,
   settled: Wallet,
   expired: Clock,

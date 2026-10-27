@@ -107,8 +107,9 @@ func TestListInvoicesFilterAndSearch(t *testing.T) {
 	path := "/v1/profiles/" + e.aliceProfile + "/invoices"
 	checkList(t, e, path, func(it map[string]any) any { return it["number"] }, []listCase{
 		{"", []any{5.0, 4.0, 3.0, 2.0, 1.0}},
-		{"status=open", []any{4.0}}, // detected: that payment came before expiry
-		{"status=paid", []any{2.0}},
+		{"status=open", []any{}},
+		{"status=confirming", []any{4.0}},
+		{"status=paid", []any{3.0, 2.0}},
 		{"status=settled", []any{3.0}},
 		{"status=expired", []any{5.0, 1.0}}, // expired, and open with its checkout closed
 		{"q=INV-0003", []any{3.0}},
@@ -126,7 +127,7 @@ func TestListInvoicesFilterAndSearch(t *testing.T) {
 		{"q=7.000001", []any{}},
 		{"q=nothing", []any{}},
 		{"status=settled&q=kettle", []any{3.0}},
-		{"status=paid&q=kettle", []any{}},
+		{"status=paid&q=kettle", []any{3.0}},
 	})
 	checkListErrors(t, e, path, "status=all", "status=refunded")
 }
@@ -167,18 +168,19 @@ func TestClosedCheckoutReadsExpired(t *testing.T) {
 	index := func(it map[string]any) any { return float64(slices.Index(ids, it["invoiceId"].(string))) }
 	checkList(t, e, "/v1/profiles/"+e.aliceProfile+"/invoices", index, []listCase{
 		{"status=expired", []any{4.0, 1.0, 0.0}},
-		{"status=open", []any{3.0, 2.0}},
+		{"status=open", []any{}},
+		{"status=confirming", []any{3.0, 2.0}},
 	})
 	checkList(t, e, "/v1/profiles/"+e.aliceProfile+"/activity", func(it map[string]any) any {
 		if it["kind"] != "invoice" {
-			return nil
+			return "payment"
 		}
 		i := slices.Index(ids, it["invoiceId"].(string))
 		if it["closed"] != closed[i] {
 			t.Fatalf("activity invoice %d: closed %v, want %v", i, it["closed"], closed[i])
 		}
 		return float64(i)
-	}, []listCase{{"status=expired", []any{4.0, 1.0, 0.0}}})
+	}, []listCase{{"status=expired", []any{"payment", 4.0, 1.0, 0.0}}})
 }
 
 func TestGetActivityFilterAndSearch(t *testing.T) {
@@ -213,16 +215,17 @@ func TestGetActivityFilterAndSearch(t *testing.T) {
 		}
 		return inv(slices.Index(ids, it["invoiceId"].(string)))
 	}, []listCase{
-		{"status=open", []any{dep(detected), inv(0)}},
-		{"status=paid", []any{dep(confirmed)}},
-		{"status=settled", []any{inv(1)}},
+		{"status=open", []any{}},
+		{"status=confirming", []any{dep(detected), inv(0)}},
+		{"status=paid", []any{dep(confirmed), inv(1)}},
+		{"status=settled", []any{dep(confirmed), inv(1)}},
 		{"status=expired", []any{inv(2)}},
 		{"q=" + strings.ToUpper(confirmed[:12]), []any{dep(confirmed)}},
 		{"q=" + settle[20:40], []any{inv(1)}}, // the settle transaction
 		{"q=1.0", []any{dep(detected), dep(confirmed)}},
 		{"q=5", []any{inv(2), inv(1), inv(0)}},
 		{"q=usd", []any{dep(detected), dep(confirmed), inv(2), inv(1), inv(0)}},
-		{"status=open&q=1", []any{dep(detected)}},
+		{"status=confirming&q=1", []any{dep(detected)}},
 		{"q=nothing", []any{}},
 	})
 	checkListErrors(t, e, "/v1/profiles/"+e.aliceProfile+"/activity", "status=all", "status=confirmed")

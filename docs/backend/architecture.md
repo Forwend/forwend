@@ -343,8 +343,10 @@ the API, pays it and waits for detected → paid → settled with the deposit go
 
 ## Watcher
 
-`internal/watcher` (R-20), one `Chain` per chain; never two at once for one chain (they would race on the cursor; the
-worker's lock, [startup](#startup)).
+- `internal/watcher` (R-20) runs one active job and one historical job per chain under the [worker lock](#startup).
+- Separate watcher objects keep range adaptation local; only active jobs advance the fast cursor.
+- Historical work shares provider capacity but does not delay ledger scheduling until it completes.
+- Receiver proof and retry rules live in [money safety](money-safety.md#receiver-evidence-and-actual-outflows).
 - `ScanNew` follows new wallet blocks and keeps the existing invoice overlap, at most 40,000 blocks per round.
 - Invoice overlap stays frequent so an earlier missed payment is found before a later payment decides ownership.
 - It also re-reads detected transfers' block heights, so confirmation still requires fresh logs and matching headers.
@@ -361,7 +363,9 @@ worker's lock, [startup](#startup)).
 - Log queries cover at most 2,000 blocks each.
 - Rate-limited ranges shrink to 50 blocks; oversized ranges shrink to one block.
 - An oversized single block uses `eth_getBlockReceipts`, filtered by the same token and topic rules.
-- Successful queries grow the range back toward 2,000 blocks.
+- Successful queries retain the accepted range; later scans reuse it.
+- HTTP scan limits shrink queries without marking the provider unavailable.
+- Explicit batch-size limits split header and balance reads; successful smaller batches remain in use.
 
 Receive addresses and wallets go into topic lists of at most 1,000: go-ethereum nodes, Arbitrum's public RPC
 among them, refuse more with "exceed max topics". Invoices leave the scan 30 days after their settle deadline (the
@@ -388,14 +392,14 @@ token counts, and the row stores the emitting contract, so the foreign key also 
 times come from the RPC, never computed in Go. Arc's native-coin `Transfer` logs are ignored (see money-safety).
 Scanning again changes nothing, so a restarted worker resumes from the cursor.
 
-Check status (R-55) asks for a rescan of one invoice in `invoice_rechecks`. After each scan the worker takes up to
-`watcher.RescanLimit` (5) asked invoices of the chain and reads their address's logs from the invoice's creation block
-(found by a binary search over block times, a minute early for clock differences), at most `5 × MaxRange` blocks per
-invoice per round, saving where it stopped. Scheduled recovery and requested rescans share a 30-second deadline (`worker.RescanTimeout`).
-What it finds is recorded like a scan, then booked by the ledger in the same round. A rescan never moves the chain's
-cursor: that would let the regular scan skip blocks for the other invoices. An invoice outside the regular scan's watch
-window (30 days after its settle deadline) is not rescanned: the request is dropped, since that money is the refund
-authority's. One invoice's failing rescan does not hold up the others.
+- Check status (R-55) queues an invoice rescan in `invoice_rechecks`.
+- Historical jobs take at most five requested rescans, with a separate 30-second deadline.
+- Each scan starts one minute before invoice creation, found by binary search and saved before reading logs.
+- Each invocation reads at most 10,000 blocks per invoice and saves its next block.
+- Failed requested rescans wait one minute, allowing later requests through.
+- Wallet recovery and legacy receiver scans each have their own ten-second budget.
+- Rescans record observations without moving the fast cursor; a later active job verifies and books them.
+- Requests outside the watch window are dropped because those funds belong to the refund authority.
 
 ## Signer
 

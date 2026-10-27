@@ -8,8 +8,7 @@ export function ActivityScreen() {
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted">
-        Invoice and request history across this profile. Checkout attempts and payment problems are
-        in Payments.
+        Customer payments and billing activity. Invoice amounts are requests, not additional income.
       </p>
       <ActivityList profileId={profile.profileId} />
     </div>

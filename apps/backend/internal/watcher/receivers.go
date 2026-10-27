@@ -28,24 +28,34 @@ var (
 	recoveredTopic = crypto.Keccak256Hash([]byte("Recovered(bytes32,address,address,uint256)"))
 )
 
-// Receivers advances bounded historical coverage, including receivers outside the ordinary payment watch window.
+// Receivers prioritizes current payments. Older records have a separate, bounded queue.
 func (c *Chain) Receivers(ctx context.Context, second *rpc.Client) error {
+	return c.receivers(ctx, second, false, 1000)
+}
+
+func (c *Chain) HistoricalReceivers(ctx context.Context, second *rpc.Client) error {
+	return c.receivers(ctx, second, true, 2)
+}
+
+func (c *Chain) receivers(ctx context.Context, second *rpc.Client, legacy bool, limit int) error {
+	c.receiverMu.Lock()
+	defer c.receiverMu.Unlock()
 	rows, err := c.pool.Query(ctx, `WITH due AS (
-  SELECT s.*, EXISTS (SELECT 1 FROM chain_transfers d JOIN invoices paid ON paid.id = d.invoice_id
+  SELECT s.*, EXISTS (SELECT 1 FROM chain_transfers own WHERE own.invoice_id=i.id AND own.status <> 'reorged') AS has_money, EXISTS (SELECT 1 FROM chain_transfers d JOIN invoices paid ON paid.id = d.invoice_id
    WHERE coalesce(paid.main_id,paid.id) = coalesce(i.main_id,i.id) AND d.status = 'confirmed' AND NOT d.booked
-   AND (NOT EXISTS (SELECT 1 FROM receiver_deposit_proofs p WHERE p.chain_transfer_id = d.id) OR CASE WHEN paid.chain_id = i.chain_id THEN d.block_number > coalesce(s.scanned_block,-1)
-            ELSE d.block_time >= coalesce(s.block_time,0) END))
+   AND (CASE WHEN paid.chain_id = i.chain_id THEN d.block_number > coalesce(s.scanned_block,-1)
+            ELSE d.block_time >= coalesce(s.block_time,0) END
+        OR (paid.id = i.id AND NOT EXISTS (SELECT 1 FROM receiver_deposit_proofs p WHERE p.chain_transfer_id = d.id))))
    OR (i.payment_status IN ('open','detected','partially_paid') AND cur.last_finalized_time > i.closes_at
        AND coalesce(s.block_time, 0) <= i.closes_at) AS urgent
   FROM receiver_scans s JOIN invoices i ON i.id = s.invoice_id
-  LEFT JOIN chain_cursors cur ON cur.chain_id = i.chain_id WHERE i.chain_id = $1
-  AND (s.retry_at IS NULL OR s.retry_at <= now())
- )
- (SELECT invoice_id FROM due WHERE NOT legacy AND (next_at <= now() OR urgent)
-  ORDER BY urgent DESC, next_at, invoice_id LIMIT 3)
- UNION ALL
- (SELECT invoice_id FROM due WHERE legacy AND (next_at <= now() OR urgent)
-  ORDER BY urgent DESC, next_at, invoice_id LIMIT 2)`, c.chainID)
+  LEFT JOIN chain_cursors cur ON cur.chain_id = i.chain_id WHERE i.chain_id = $1 AND s.legacy = $2
+  AND (s.retry_at IS NULL OR s.retry_at <= now() OR (NOT s.legacy AND EXISTS (
+   SELECT 1 FROM chain_transfers fresh JOIN invoices paid ON paid.id=fresh.invoice_id
+   WHERE coalesce(paid.main_id,paid.id)=coalesce(i.main_id,i.id) AND fresh.status='confirmed'
+   AND NOT fresh.booked AND fresh.created_at>s.updated_at)))
+ ) SELECT invoice_id FROM due WHERE (next_at <= now() AND (legacy OR has_money OR opening_checked)) OR urgent
+ ORDER BY urgent DESC, has_money DESC, next_at, invoice_id LIMIT $3`, c.chainID, legacy, limit)
 	if err != nil {
 		return fmt.Errorf("list chain %d receiver scans: %w", c.chainID, err)
 	}
@@ -54,36 +64,82 @@ func (c *Chain) Receivers(ctx context.Context, second *rpc.Client) error {
 		return err
 	}
 	var failed []error
-	for _, id := range ids {
-		if _, err := c.Receiver(ctx, second, id); err != nil {
-			failed = append(failed, err)
-			scheduleCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
-			_, scheduleErr := c.pool.Exec(scheduleCtx, `UPDATE receiver_scans SET retry_at = now() + interval '30 seconds', next_at = now() + interval '30 seconds',
-    updated_at = now() WHERE invoice_id = $1`, id)
-			cancel()
-			if scheduleErr != nil {
-				failed = append(failed, scheduleErr)
+	var previousBatch time.Duration
+	for offset := 0; offset < len(ids) && ctx.Err() == nil; {
+		if deadline, ok := ctx.Deadline(); ok && previousBatch > 0 && time.Until(deadline) < 2*previousBatch {
+			break
+		}
+		began := time.Now()
+		batch := ids[offset:min(offset+32, len(ids))]
+		offset += len(batch)
+		var round *receiverRound
+		if !legacy && len(batch) > 1 {
+			round, err = c.receiverRound(ctx, second, batch)
+			if err != nil {
+				if errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
+					break
+				}
+				failed = append(failed, err, c.deferReceivers(ctx, batch))
+				continue
 			}
 		}
+		for _, id := range batch {
+			if ctx.Err() != nil {
+				break
+			}
+			done, err := c.receiver(ctx, second, id, round)
+			if err != nil {
+				if !legacy && (errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil) {
+					return errors.Join(append(failed, err)...)
+				}
+				failed = append(failed, err, c.deferReceivers(ctx, []string{id}))
+			} else if !done && !legacy && len(ids) < limit {
+				if _, bounded := ctx.Deadline(); bounded {
+					var ready bool
+					if err := c.pool.QueryRow(ctx, `SELECT NOT legacy AND retry_at IS NULL AND next_at<=now()
+    AND reconciliation_error IS NULL FROM receiver_scans WHERE invoice_id=$1`, id).Scan(&ready); err != nil {
+						return err
+					}
+					if ready {
+						ids = append(ids, id)
+					}
+				}
+			}
+		}
+		previousBatch = time.Since(began)
 	}
 	return errors.Join(failed...)
 }
 
 // Receiver records one contiguous, finalized prefix agreed by both provider roles. Financial booking is separate.
 func (c *Chain) Receiver(ctx context.Context, second *rpc.Client, id string) (bool, error) {
+	c.receiverMu.Lock()
+	defer c.receiverMu.Unlock()
+	return c.receiver(ctx, second, id, nil)
+}
+
+func (c *Chain) receiver(ctx context.Context, second *rpc.Client, id string, round *receiverRound) (bool, error) {
 	if second == nil {
 		return false, errors.New("receiver evidence needs a second RPC")
 	}
 	other := NewChain(c.pool, c.chainID, second)
-	for _, provider := range []*Chain{c, other} {
-		got, err := provider.eth.ChainID(ctx)
-		if err != nil {
-			return false, err
+	other.span = c.span
+	other.batchSize = c.batchSize
+	defer func() { c.span = min(c.span, other.span); c.batchSize = min(c.batchSize, other.batchSize) }()
+	if round == nil {
+		for _, provider := range []*Chain{c, other} {
+			got, err := provider.eth.ChainID(ctx)
+			if err != nil {
+				return false, err
+			}
+			if !got.IsUint64() || got.Uint64() != c.chainID {
+				return false, fmt.Errorf("receiver provider answers chain %s, want %d", got, c.chainID)
+			}
 		}
-		if !got.IsUint64() || got.Uint64() != c.chainID {
-			return false, fmt.Errorf("receiver provider answers chain %s, want %d", got, c.chainID)
-		}
+	} else {
+		other = round.other
 	}
+
 	tx, err := c.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
 		return false, err
@@ -95,27 +151,35 @@ func (c *Chain) Receiver(ctx context.Context, second *rpc.Client, id string) (bo
 		return false, err
 	}
 	var start, next uint64
-	var checked bool
+	var checked, legacy bool
 	var priorBlock *uint64
 	var priorHash *string
 	var receive, token, recipient, factory string
 	var previousClose int64
-	err = tx.QueryRow(ctx, `SELECT s.start_block, s.next_block, s.opening_checked, s.scanned_block, s.scanned_hash,
+	err = tx.QueryRow(ctx, `SELECT s.start_block, s.next_block, s.opening_checked, s.scanned_block, s.scanned_hash, s.legacy,
   i.receive_address, i.token_contract, i.recipient_address, i.factory_address, i.closes_at FROM receiver_scans s JOIN invoices i ON i.id = s.invoice_id
   WHERE i.id = $1 AND i.chain_id = $2 FOR UPDATE OF s`, id, c.chainID).
-		Scan(&start, &next, &checked, &priorBlock, &priorHash, &receive, &token, &recipient, &factory, &previousClose)
+		Scan(&start, &next, &checked, &priorBlock, &priorHash, &legacy, &receive, &token, &recipient, &factory, &previousClose)
 	if err != nil {
 		return false, fmt.Errorf("lock receiver %s coverage: %w", id, err)
 	}
-	firstFinal, _, err := c.headers(ctx, nil)
-	if err != nil {
-		return false, err
+	var final uint64
+	var firstFinal, secondFinal header
+	if round != nil {
+		final = round.final
+		firstFinal, secondFinal = round.primary.headers[final], round.secondary.headers[final]
+	} else {
+		firstFinal, _, err = c.headers(ctx, nil)
+		if err != nil {
+			return false, err
+		}
+		secondFinal, _, err = other.headers(ctx, nil)
+		if err != nil {
+			return false, err
+		}
+		final = min(uint64(firstFinal.Number), uint64(secondFinal.Number))
 	}
-	secondFinal, _, err := other.headers(ctx, nil)
-	if err != nil {
-		return false, err
-	}
-	final := min(uint64(firstFinal.Number), uint64(secondFinal.Number))
+
 	if (priorBlock != nil && final < *priorBlock) || start > final {
 		if _, err := tx.Exec(ctx, `UPDATE receiver_scans SET retry_at = now() + interval '30 seconds',
             next_at = now() + interval '30 seconds', updated_at = now() WHERE invoice_id = $1`, id); err != nil {
@@ -124,12 +188,12 @@ func (c *Chain) Receiver(ctx context.Context, second *rpc.Client, id string) (bo
 		return false, tx.Commit(ctx)
 	}
 	if !checked && start > 0 {
-		opening, err := c.receiverBalances(ctx, other, token, receive, start-1)
+		opening, err := c.receiverRoundBalances(ctx, other, round, token, receive, start-1)
 		if err != nil {
 			return false, err
 		}
 		if opening.Sign() != 0 {
-			if _, err := tx.Exec(ctx, `UPDATE receiver_scans SET start_block = 0, next_block = 0,
+			if _, err := tx.Exec(ctx, `UPDATE receiver_scans SET start_block = 0, next_block = 0, legacy = true,
     reconciliation_error = 'opening_balance', updated_at = now() WHERE invoice_id = $1`, id); err != nil {
 				return false, err
 			}
@@ -137,18 +201,19 @@ func (c *Chain) Receiver(ctx context.Context, second *rpc.Client, id string) (bo
 		}
 	}
 	if priorBlock != nil {
-		var older bool
-		lower := max(start, next-min(next, RescanDepth))
-		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM chain_transfers d WHERE d.invoice_id = $1
+		var older *uint64
+		lower := next
+		if err := tx.QueryRow(ctx, `SELECT min(d.block_number) FROM chain_transfers d WHERE d.invoice_id = $1
    AND d.status <> 'reorged' AND d.block_number < $2
    AND NOT EXISTS (SELECT 1 FROM receiver_conflicts conflict WHERE conflict.existing_transfer_id = d.id) AND NOT EXISTS
-   (SELECT 1 FROM receiver_deposit_proofs p WHERE p.chain_transfer_id = d.id))`, id, lower).Scan(&older); err != nil {
+   (SELECT 1 FROM receiver_deposit_proofs p WHERE p.chain_transfer_id = d.id)`, id, lower).Scan(&older); err != nil {
 			return false, err
 		}
-		if older {
-			if _, err := tx.Exec(ctx, `UPDATE receiver_scans SET start_block = 0,next_block = 0,opening_checked = false,history_complete = false,
-    scanned_block = NULL,scanned_hash = NULL,block_time = NULL,balance = NULL,
-    reconciliation_error = 'rescan_required',next_at = now(),updated_at = now() WHERE invoice_id = $1`, id); err != nil {
+		if older != nil {
+			if _, err := tx.Exec(ctx, `UPDATE receiver_scans SET legacy=legacy OR $2<start_block,start_block = least(start_block,$2),next_block = $2,
+    opening_checked = CASE WHEN $2 < start_block THEN false ELSE opening_checked END,
+    history_complete = false,reconciliation_error = 'rescan_required',next_at = now(),updated_at = now()
+    WHERE invoice_id = $1`, id, *older); err != nil {
 				return false, err
 			}
 			return false, tx.Commit(ctx)
@@ -156,34 +221,68 @@ func (c *Chain) Receiver(ctx context.Context, second *rpc.Client, id string) (bo
 	}
 	from := next
 	if next > final {
-		from = max(start, next-min(next, RescanDepth))
+		if priorBlock != nil {
+			if uint64(firstFinal.Number) != *priorBlock || uint64(secondFinal.Number) != *priorBlock {
+				_, heads, readErr := c.headers(ctx, []uint64{*priorBlock})
+				if readErr != nil {
+					return false, readErr
+				}
+				firstFinal = heads[*priorBlock]
+				_, heads, readErr = other.headers(ctx, []uint64{*priorBlock})
+				if readErr != nil {
+					return false, readErr
+				}
+				secondFinal = heads[*priorBlock]
+			}
+			if firstFinal.Hash != common.HexToHash(*priorHash) || secondFinal.Hash != firstFinal.Hash || secondFinal.Timestamp != firstFinal.Timestamp {
+				if _, err := tx.Exec(ctx, "UPDATE receiver_scans SET reconciliation_error='finalized_coverage_changed' WHERE invoice_id=$1", id); err != nil {
+					return false, err
+				}
+				if err := tx.Commit(ctx); err != nil {
+					return false, err
+				}
+				return false, fmt.Errorf("receiver %s finalized coverage changed", id)
+			}
+		}
+		if _, err := tx.Exec(ctx, "UPDATE receiver_scans SET next_at=now()+interval '1 minute' WHERE invoice_id=$1", id); err != nil {
+			return false, err
+		}
+		return true, tx.Commit(ctx)
 	}
-	hi := min(final, from+rescanStep-1)
+	step := uint64(MaxRange)
+	hi := min(final, from+step-1)
 	invoices := map[common.Address]receiver{common.HexToAddress(receive): {id, token}}
-	incoming, err := c.logsIn(ctx, from, hi, invoices)
-	if err != nil {
-		return false, err
+	var incoming, outgoing, transfers, otherIncoming, otherOutgoing, otherTransfers []types.Log
+	if round != nil && from >= round.from && hi <= round.final {
+		incoming, outgoing, transfers = round.logs(&round.primary, from, hi, receive, token)
+		otherIncoming, otherOutgoing, otherTransfers = round.logs(&round.secondary, from, hi, receive, token)
+	} else {
+		incoming, err = c.logsIn(ctx, from, hi, invoices)
+		if err != nil {
+			return false, err
+		}
+		outgoing, err = c.receiverLogs(ctx, from, hi, common.HexToAddress(receive))
+		if err != nil {
+			return false, err
+		}
+		transfers, err = c.receiverTokenTransfers(ctx, from, hi, common.HexToAddress(receive), common.HexToAddress(token))
+		if err != nil {
+			return false, err
+		}
+		otherTransfers, err = other.receiverTokenTransfers(ctx, from, hi, common.HexToAddress(receive), common.HexToAddress(token))
+		if err != nil {
+			return false, err
+		}
+		otherIncoming, err = other.logsIn(ctx, from, hi, invoices)
+		if err != nil {
+			return false, err
+		}
+		otherOutgoing, err = other.receiverLogs(ctx, from, hi, common.HexToAddress(receive))
+		if err != nil {
+			return false, err
+		}
 	}
-	outgoing, err := c.receiverLogs(ctx, from, hi, common.HexToAddress(receive))
-	if err != nil {
-		return false, err
-	}
-	transfers, err := c.receiverTokenTransfers(ctx, from, hi, common.HexToAddress(receive), common.HexToAddress(token))
-	if err != nil {
-		return false, err
-	}
-	otherTransfers, err := other.receiverTokenTransfers(ctx, from, hi, common.HexToAddress(receive), common.HexToAddress(token))
-	if err != nil {
-		return false, err
-	}
-	otherIncoming, err := other.logsIn(ctx, from, hi, invoices)
-	if err != nil {
-		return false, err
-	}
-	otherOutgoing, err := other.receiverLogs(ctx, from, hi, common.HexToAddress(receive))
-	if err != nil {
-		return false, err
-	}
+
 	if !sameReceiverLogs(incoming, otherIncoming) || !sameReceiverLogs(outgoing, otherOutgoing) || !sameReceiverLogs(transfers, otherTransfers) {
 		return false, fmt.Errorf("receiver %s provider log sets disagree at %d-%d", id, from, hi)
 	}
@@ -217,13 +316,36 @@ func (c *Chain) Receiver(ctx context.Context, second *rpc.Client, id string) (bo
 	for _, l := range append(append(slices.Clone(incoming), outgoing...), transfers...) {
 		numbers = append(numbers, l.BlockNumber)
 	}
-	_, headers, err := c.headers(ctx, numbers)
-	if err != nil {
-		return false, err
+	headers, otherHeaders := map[uint64]header{}, map[uint64]header{}
+	var missing []uint64
+	for _, n := range numbers {
+		if round != nil {
+			if h, ok := round.primary.headers[n]; ok {
+				headers[n] = h
+			}
+			if h, ok := round.secondary.headers[n]; ok {
+				otherHeaders[n] = h
+			}
+		}
+		if headers[n].Hash == (common.Hash{}) || otherHeaders[n].Hash == (common.Hash{}) {
+			missing = append(missing, n)
+		}
 	}
-	_, otherHeaders, err := other.headers(ctx, numbers)
-	if err != nil {
-		return false, err
+	if len(missing) > 0 {
+		_, first, err := c.headers(ctx, missing)
+		if err != nil {
+			return false, err
+		}
+		_, second, err := other.headers(ctx, missing)
+		if err != nil {
+			return false, err
+		}
+		for n, h := range first {
+			headers[n] = h
+		}
+		for n, h := range second {
+			otherHeaders[n] = h
+		}
 	}
 	for _, n := range numbers {
 		h, ok := headers[n]
@@ -246,7 +368,7 @@ func (c *Chain) Receiver(ctx context.Context, second *rpc.Client, id string) (bo
 			return false, fmt.Errorf("receiver %s log is outside its canonical block", id)
 		}
 	}
-	balance, err := c.receiverBalances(ctx, other, token, receive, hi)
+	balance, err := c.receiverRoundBalances(ctx, other, round, token, receive, hi)
 	if err != nil {
 		return false, err
 	}
@@ -343,11 +465,20 @@ func (c *Chain) Receiver(ctx context.Context, second *rpc.Client, id string) (bo
 			reason = "receiver_state_disagreement"
 		}
 	}
-	firstDeployment, err := c.receiverDeployedAt(ctx, factory, receive, hi)
+	var firstDeployment, secondDeployment uint64
+	if round != nil {
+		firstDeployment, err = round.deployed(ctx, c, &round.primary, factory, receive, hi)
+	} else {
+		firstDeployment, err = c.receiverDeployedAt(ctx, factory, receive, hi)
+	}
 	if err != nil {
 		return false, err
 	}
-	secondDeployment, err := other.receiverDeployedAt(ctx, factory, receive, hi)
+	if round != nil {
+		secondDeployment, err = round.deployed(ctx, other, &round.secondary, factory, receive, hi)
+	} else {
+		secondDeployment, err = other.receiverDeployedAt(ctx, factory, receive, hi)
+	}
 	if err != nil {
 		return false, err
 	}
@@ -377,8 +508,11 @@ func (c *Chain) Receiver(ctx context.Context, second *rpc.Client, id string) (bo
 	}
 	head := headers[hi]
 	_, err = tx.Exec(ctx, `UPDATE receiver_scans SET next_block = greatest(next_block, $2 + 1), opening_checked = true,
-  history_complete = history_complete OR $7, retry_at = NULL, scanned_block = $2, scanned_hash = $3, block_time = $4, balance = $5, reconciliation_error = nullif($6, ''),
-  next_at = CASE WHEN $7 THEN now() + interval '1 minute' ELSE now() END, updated_at = now() WHERE invoice_id = $1`,
+  history_complete = history_complete OR $7, retry_at = NULL, failures = 0, scanned_block = $2, scanned_hash = $3, block_time = $4, balance = $5, reconciliation_error = nullif($6, ''),
+  next_at = CASE WHEN NOT $7 AND legacy THEN now()+interval '1 minute' WHEN NOT $7 THEN now()
+    WHEN EXISTS (SELECT 1 FROM chain_transfers WHERE invoice_id = $1 AND status <> 'reorged')
+      OR EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = $1) THEN now() + interval '1 minute'
+    ELSE now() + interval '1 day' END, updated_at = now() WHERE invoice_id = $1`,
 		id, hi, strings.ToLower(head.Hash.Hex()), uint64(head.Timestamp), balance.String(), reason, hi == final)
 	if err != nil {
 		return false, err
@@ -444,14 +578,14 @@ func (c *Chain) receiverLogs(ctx context.Context, from, hi uint64, receive commo
 			ToBlock: new(big.Int).SetUint64(top), Addresses: []common.Address{receive},
 			Topics: [][]common.Hash{{settledTopic, refundedTopic, recoveredTopic}}})
 		if next, ok := narrower(err, span); ok {
-			span = next
+			span, c.span = next, next
 			continue
 		}
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, found...)
-		from, span = top+1, min(span*2, MaxRange)
+		from = top + 1
 	}
 	return out, nil
 }
@@ -608,14 +742,14 @@ func (c *Chain) receiverTokenTransfers(ctx context.Context, from, hi uint64, rec
 		found, err := c.filterLogs(ctx, ethereum.FilterQuery{FromBlock: new(big.Int).SetUint64(from), ToBlock: new(big.Int).SetUint64(top),
 			Addresses: []common.Address{token}, Topics: [][]common.Hash{{transferTopic}, {common.BytesToHash(receive.Bytes())}}})
 		if next, ok := narrower(err, span); ok {
-			span = next
+			span, c.span = next, next
 			continue
 		}
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, found...)
-		from, span = top+1, min(span*2, MaxRange)
+		from = top + 1
 	}
 	return out, nil
 }
@@ -657,4 +791,32 @@ func (c *Chain) receiverDeployedAt(ctx context.Context, factory, receive string,
 		return 0, fmt.Errorf("receiver %s returned invalid deploy time", receive)
 	}
 	return new(big.Int).SetBytes(out).Uint64(), nil
+}
+
+func (c *Chain) receiverRoundBalances(ctx context.Context, other *Chain, round *receiverRound, token, receive string, block uint64) (*big.Int, error) {
+	if round == nil {
+		return c.receiverBalances(ctx, other, token, receive, block)
+	}
+	first, err := round.balance(ctx, c, &round.primary, token, receive, block)
+	if err != nil {
+		return nil, err
+	}
+	second, err := round.balance(ctx, other, &round.secondary, token, receive, block)
+	if err != nil {
+		return nil, err
+	}
+	if first.Cmp(second) != 0 {
+		return nil, fmt.Errorf("receiver %s provider balances disagree at %d", receive, block)
+	}
+	return first, nil
+}
+
+func (c *Chain) deferReceivers(ctx context.Context, ids []string) error {
+	scheduleCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
+	defer cancel()
+	_, err := c.pool.Exec(scheduleCtx, `UPDATE receiver_scans SET failures=least(failures+1,10),
+ retry_at=now()+least(CASE WHEN legacy THEN interval '6 hours' ELSE interval '5 minutes' END,interval '1 minute'*power(2,failures)),
+ next_at=now()+least(CASE WHEN legacy THEN interval '6 hours' ELSE interval '5 minutes' END,interval '1 minute'*power(2,failures)),updated_at=now()
+ WHERE invoice_id=ANY($1::text[])`, ids)
+	return err
 }

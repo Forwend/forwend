@@ -30,6 +30,16 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 ## Receiver evidence and actual outflows
 
 - Migration 78 seeds bounded historical scans for existing receivers; new receivers start at the saved chain cursor.
+- Active payment scans share source reads in groups of 32, then commit evidence separately for each receiver.
+- Catch-up checkpoints cover at most 2,000 blocks; deeper receivers skip batch prefetch.
+- Advancing active checkpoints can continue within the round budget; retries and legacy work remain deferred.
+- Untouched options wait until payment or expiry needs their evidence. Missing evidence remains unverified.
+- Historical receivers run separately, at most two per round and 2,000 blocks per receiver.
+- Successful scans resume from their saved next block. Missing older deposits rewind to that deposit's block.
+- Failed historical reads back off from one minute to six hours; active failures stop at five minutes.
+- Fresh confirmed deposits bypass active retry waits. Failed reads never advance coverage.
+- Requested rescans save their start before reading logs and run outside the active payment job.
+- Unchanged finalized heads retain hash checks without repeating log and balance reads.
 - Nonzero opening balances require scanning from genesis. Empty historical token code is verified before treating balance as zero.
 - Both RPC roles must agree on finalized headers, incoming transfers, receiver events, outgoing transfers and checkpoint balance.
 - Every confirmed deposit needs its own immutable proof; a later primary observation cannot borrow an older scan checkpoint.
