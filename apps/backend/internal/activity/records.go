@@ -103,11 +103,23 @@ var ErrTooMany = errors.New("too many transactions in the period")
 // EachTransfer calls fn with each transfer in [from, to), newest first, for the export and statement (R-108,
 // R-112); past MaxExportRows it returns ErrTooMany. The caller has checked the user's access to the profile.
 func (s *Service) EachTransfer(ctx context.Context, profileID string, from, to time.Time, fn func(Transfer) error) error {
+	return s.ExportTransfers(ctx, profileID, from, to, func(string) error { return nil }, fn)
+}
+
+// ExportTransfers reads the currency header and every transfer from one financial snapshot.
+func (s *Service) ExportTransfers(ctx context.Context, profileID string, from, to time.Time, header func(string) error, fn func(Transfer) error) error {
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
 	if err != nil {
 		return fmt.Errorf("open wallet export snapshot: %w", err)
 	}
 	defer tx.Rollback(ctx)
+	var currency string
+	if err := tx.QueryRow(ctx, "SELECT coalesce(records_currency, '') FROM profiles WHERE id = $1", profileID).Scan(&currency); err != nil {
+		return fmt.Errorf("read export currency: %w", err)
+	}
+	if err := header(currency); err != nil {
+		return err
+	}
 	var count int
 	if err := tx.QueryRow(ctx, `SELECT count(*) FROM (SELECT 1 FROM wallet_transfers t
       JOIN profile_wallets w ON w.chain_family = t.chain_family AND w.address = t.wallet_address

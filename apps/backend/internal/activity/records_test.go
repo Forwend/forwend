@@ -206,6 +206,25 @@ func TestRecordsValue(t *testing.T) {
 			t.Fatalf("%s values %v, want %v (none for %s or %s)", currency, got, want, early, stale)
 		}
 	}
+	if err := s.SetRecordsCurrency(ctx, profile, "EUR"); err != nil {
+		t.Fatal(err)
+	}
+	rows := 0
+	err := s.ExportTransfers(ctx, profile, time.Unix(0, 0), time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC), func(currency string) error {
+		if currency != "EUR" {
+			t.Fatalf("header currency: %s", currency)
+		}
+		return s.SetRecordsCurrency(ctx, profile, "GBP")
+	}, func(row Transfer) error {
+		rows++
+		if row.RecordsCurrency != "EUR" {
+			t.Fatalf("header and row currency differ: %s", row.RecordsCurrency)
+		}
+		return nil
+	})
+	if err != nil || rows == 0 {
+		t.Fatalf("snapshot export: %d rows, %v", rows, err)
+	}
 	for _, bad := range []string{"USD", "XXX", "eur"} {
 		if err := s.SetRecordsCurrency(ctx, profile, bad); !errors.Is(err, ErrInvalid) {
 			t.Fatalf("records currency %s: %v, want ErrInvalid", bad, err)

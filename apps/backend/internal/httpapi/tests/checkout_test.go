@@ -104,6 +104,24 @@ func TestCheckoutBoundariesIncludeStoreRoleTenantKeyAndMode(t *testing.T) {
 		SELECT $1, id, $3 FROM users WHERE privy_user_id = $2`, shop, bob, first)
 	for _, role := range []string{"developer", "finance"} {
 		e.exec(t, "UPDATE profile_members SET role = $2 WHERE profile_id = $1", shop, role)
+		for _, suffix := range []string{"/movements", "/movements.csv", "/reconciliation"} {
+			if r := e.call(t, "GET", base+"/payments/"+b+suffix, bob, "", ""); r.status != http.StatusNotFound {
+				t.Fatalf("%s reads another store %s: %d %v", role, suffix, r.status, r.body)
+			}
+			if r := e.call(t, "GET", base+"/payments/"+a+suffix, bob, "", ""); r.status != http.StatusOK {
+				t.Fatalf("%s reads permitted store %s: %d %v", role, suffix, r.status, r.body)
+			}
+		}
+		for _, suffix := range []string{"/payments/movements", "/payments/reconciliation", "/payments/attention"} {
+			r := e.call(t, "GET", base+suffix+"?storeId="+storeB, bob, "", "")
+			field := "items"
+			if strings.Contains(suffix, "reconciliation") {
+				field = "assets"
+			}
+			if r.status != http.StatusOK || len(r.body[field].([]any)) != 0 {
+				t.Fatalf("store-filter escape: %d %v", r.status, r.body)
+			}
+		}
 		for _, resource := range []string{"payments", "checkout-sessions"} {
 			if r := e.call(t, "GET", base+"/"+resource+"/"+b, bob, "", ""); r.status != http.StatusNotFound {
 				t.Fatalf("%s reads other store %s: %d %v", role, resource, r.status, r.body)
@@ -130,6 +148,21 @@ func TestCheckoutBoundariesIncludeStoreRoleTenantKeyAndMode(t *testing.T) {
 		t.Fatalf("key creates checkout: %d %v", r.status, r.body)
 	}
 	e.exec(t, "UPDATE chains SET livemode = true WHERE chain_id = 84532")
+	for _, suffix := range []string{"/movements", "/movements.csv", "/reconciliation"} {
+		if r := e.withKey(t, "GET", base+"/payments/"+a+suffix, key, ""); r.status != http.StatusNotFound {
+			t.Fatalf("key crosses mode %s: %d %v", suffix, r.status, r.body)
+		}
+	}
+	for _, suffix := range []string{"/payments/movements", "/payments/reconciliation", "/payments/attention"} {
+		r := e.withKey(t, "GET", base+suffix, key, "")
+		field := "items"
+		if strings.Contains(suffix, "reconciliation") {
+			field = "assets"
+		}
+		if r.status != http.StatusOK || len(r.body[field].([]any)) != 0 {
+			t.Fatalf("key list crosses mode %s: %d %v", suffix, r.status, r.body)
+		}
+	}
 	if r := e.withKey(t, "GET", base+"/payments/"+a, key, ""); r.status != http.StatusNotFound {
 		t.Fatalf("test key reads live payment: %d %v", r.status, r.body)
 	}

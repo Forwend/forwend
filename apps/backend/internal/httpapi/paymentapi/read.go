@@ -11,27 +11,24 @@ import (
 
 func get(invoices *invoice.Service, webURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		inv, err := invoices.Payment(r.Context(), r.PathValue("profileId"), r.PathValue("paymentId"))
+		access := mid.ProfileAccess(r)
+		detail, err := invoices.PaymentDetails(r.Context(), r.PathValue("profileId"), r.PathValue("paymentId"), invoice.PaymentQuery{Stores: access.Stores, Livemode: access.Livemode})
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		httpio.WriteJSON(w, http.StatusOK, paymentio.FromInvoice(inv, webURL))
+		httpio.WriteJSON(w, http.StatusOK, toDetails(detail, webURL, access))
 	}
 }
 
 func list(invoices *invoice.Service, webURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		limit, err := httpio.IntQuery(r, "limit", invoice.DefaultLimit)
+		query, err := readQuery(r)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		access := mid.ProfileAccess(r)
-		page, err := invoices.Payments(r.Context(), r.PathValue("profileId"), invoice.PaymentQuery{
-			Limit: limit, Cursor: r.URL.Query().Get("cursor"), StoreID: r.URL.Query().Get("storeId"),
-			Stores: access.Stores, Livemode: access.Livemode,
-		})
+		page, err := invoices.Payments(r.Context(), r.PathValue("profileId"), query)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -45,4 +42,15 @@ func list(invoices *invoice.Service, webURL string) http.HandlerFunc {
 		}
 		httpio.WriteJSON(w, http.StatusOK, out)
 	}
+}
+
+func readQuery(r *http.Request) (invoice.PaymentQuery, error) {
+	limit, err := httpio.IntQuery(r, "limit", invoice.DefaultLimit)
+	if err != nil {
+		return invoice.PaymentQuery{}, err
+	}
+	access := mid.ProfileAccess(r)
+	return invoice.PaymentQuery{Limit: limit, Cursor: r.URL.Query().Get("cursor"), StoreID: r.URL.Query().Get("storeId"),
+		Source: invoice.PaymentSource(r.URL.Query().Get("source")), Status: r.URL.Query().Get("status"), PaymentStatus: r.URL.Query().Get("paymentStatus"),
+		SettlementStatus: r.URL.Query().Get("settlementStatus"), RefundStatus: r.URL.Query().Get("refundStatus"), Stores: access.Stores, Livemode: access.Livemode}, nil
 }

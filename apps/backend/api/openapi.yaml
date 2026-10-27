@@ -182,6 +182,21 @@ paths:
         - name: storeId
           in: query
           schema: { type: string, format: uuid }
+        - name: source
+          in: query
+          schema: {"type": "string", "enum": ["invoice", "checkout", "request", "payment_link"]}
+        - name: status
+          in: query
+          schema: {"type": "string", "enum": ["open", "paid", "settled", "expired", "canceled"]}
+        - name: paymentStatus
+          in: query
+          schema: {"type": "string", "enum": ["open", "detected", "partially_paid", "paid", "expired", "expired_partially_paid", "canceled"]}
+        - name: settlementStatus
+          in: query
+          schema: {"type": "string", "enum": ["none", "pending", "settled"]}
+        - name: refundStatus
+          in: query
+          schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
       responses:
         "200":
           description: Newest first by creation time and ID
@@ -225,7 +240,7 @@ paths:
           description: Canonical state
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Payment" }
+              schema: { $ref: "#/components/schemas/PaymentDetails" }
         "400": { $ref: "#/components/responses/MalformedRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
@@ -243,6 +258,438 @@ paths:
         "429": { $ref: "#/components/responses/RateLimited" }
         "503": { $ref: "#/components/responses/NetworkNotReady" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/payments/attention:
+    get:
+      operationId: getPaymentAttention
+      summary: Read payment problems and permitted endpoint problems
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: storeId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: source
+          in: query
+          schema: {"type": "string", "enum": ["invoice", "checkout", "request", "payment_link"]}
+        - name: status
+          in: query
+          schema: {"type": "string", "enum": ["open", "paid", "settled", "expired", "canceled"]}
+        - name: paymentStatus
+          in: query
+          schema: {"type": "string", "enum": ["open", "detected", "partially_paid", "paid", "expired", "expired_partially_paid", "canceled"]}
+        - name: settlementStatus
+          in: query
+          schema: {"type": "string", "enum": ["none", "pending", "settled"]}
+        - name: refundStatus
+          in: query
+          schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Authorized repeatable-read snapshot; observations never count as booked deltas.
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required: ["snapshotAt", "items", "nextCursor", "webhooks", "webhooksTruncated"]
+                properties:
+                  snapshotAt: { type: "string", format: "date-time" }
+                  items:
+                    type: "array"
+                    items:
+                      allOf:
+                        - $ref: "#/components/schemas/Payment"
+                        - type: "object"
+                          required: ["problems"]
+                          properties:
+                            problems:
+                              type: "array"
+                              items: { $ref: "#/components/schemas/PaymentProblem" }
+                  nextCursor:
+                    type: ["string", "null"]
+                  webhooks:
+                    type: "array"
+                    items: { $ref: "#/components/schemas/PaymentWebhookProblem" }
+                  webhooksTruncated: { type: "boolean" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+        "404":
+          description: Payment is outside the caller's profile, stores or mode.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /v1/profiles/{profileId}/payments/movements:
+    get:
+      operationId: listPaymentMovements
+      summary: Read exact booked movements and separate observations
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: storeId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: source
+          in: query
+          schema: {"type": "string", "enum": ["invoice", "checkout", "request", "payment_link"]}
+        - name: status
+          in: query
+          schema: {"type": "string", "enum": ["open", "paid", "settled", "expired", "canceled"]}
+        - name: paymentStatus
+          in: query
+          schema: {"type": "string", "enum": ["open", "detected", "partially_paid", "paid", "expired", "expired_partially_paid", "canceled"]}
+        - name: settlementStatus
+          in: query
+          schema: {"type": "string", "enum": ["none", "pending", "settled"]}
+        - name: refundStatus
+          in: query
+          schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: from
+          in: query
+          description: Inclusive UTC recorded day.
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          description: Inclusive UTC recorded day.
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Authorized repeatable-read snapshot; observations never count as booked deltas.
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required: ["snapshotAt", "items", "nextCursor"]
+                properties:
+                  snapshotAt: { type: "string", format: "date-time" }
+                  items:
+                    type: "array"
+                    items: { $ref: "#/components/schemas/PaymentMovement" }
+                  nextCursor:
+                    type: ["string", "null"]
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+        "404":
+          description: Payment is outside the caller's profile, stores or mode.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /v1/profiles/{profileId}/payments/reconciliation:
+    get:
+      operationId: getPaymentReconciliation
+      summary: Reconcile payment balances by store, chain and token
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: storeId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: source
+          in: query
+          schema: {"type": "string", "enum": ["invoice", "checkout", "request", "payment_link"]}
+        - name: status
+          in: query
+          schema: {"type": "string", "enum": ["open", "paid", "settled", "expired", "canceled"]}
+        - name: paymentStatus
+          in: query
+          schema: {"type": "string", "enum": ["open", "detected", "partially_paid", "paid", "expired", "expired_partially_paid", "canceled"]}
+        - name: settlementStatus
+          in: query
+          schema: {"type": "string", "enum": ["none", "pending", "settled"]}
+        - name: refundStatus
+          in: query
+          schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
+        - name: from
+          in: query
+          description: Inclusive UTC recorded day.
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          description: Inclusive UTC recorded day.
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Authorized repeatable-read snapshot; observations never count as booked deltas.
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required: ["snapshotAt", "from", "to", "assets"]
+                properties:
+                  snapshotAt: { type: "string", format: "date-time" }
+                  from: { type: "string", format: "date-time" }
+                  to: { type: "string", format: "date-time" }
+                  assets:
+                    type: "array"
+                    items: { $ref: "#/components/schemas/PaymentReconciliationAsset" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+        "404":
+          description: Payment is outside the caller's profile, stores or mode.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /v1/profiles/{profileId}/payments/{paymentId}/movements:
+    get:
+      operationId: listPaymentMovementsOfPayment
+      summary: Read movement evidence for one permitted payment
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: storeId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: source
+          in: query
+          schema: {"type": "string", "enum": ["invoice", "checkout", "request", "payment_link"]}
+        - name: status
+          in: query
+          schema: {"type": "string", "enum": ["open", "paid", "settled", "expired", "canceled"]}
+        - name: paymentStatus
+          in: query
+          schema: {"type": "string", "enum": ["open", "detected", "partially_paid", "paid", "expired", "expired_partially_paid", "canceled"]}
+        - name: settlementStatus
+          in: query
+          schema: {"type": "string", "enum": ["none", "pending", "settled"]}
+        - name: refundStatus
+          in: query
+          schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
+        - name: paymentId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/InvoiceId" }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: from
+          in: query
+          description: Inclusive UTC recorded day.
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          description: Inclusive UTC recorded day.
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Authorized repeatable-read snapshot; observations never count as booked deltas.
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required: ["snapshotAt", "items", "nextCursor"]
+                properties:
+                  snapshotAt: { type: "string", format: "date-time" }
+                  items:
+                    type: "array"
+                    items: { $ref: "#/components/schemas/PaymentMovement" }
+                  nextCursor:
+                    type: ["string", "null"]
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+        "404":
+          description: Payment is outside the caller's profile, stores or mode.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /v1/profiles/{profileId}/payments/{paymentId}/reconciliation:
+    get:
+      operationId: getReconciliationOfPayment
+      summary: Reconcile one permitted payment
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: storeId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: source
+          in: query
+          schema: {"type": "string", "enum": ["invoice", "checkout", "request", "payment_link"]}
+        - name: status
+          in: query
+          schema: {"type": "string", "enum": ["open", "paid", "settled", "expired", "canceled"]}
+        - name: paymentStatus
+          in: query
+          schema: {"type": "string", "enum": ["open", "detected", "partially_paid", "paid", "expired", "expired_partially_paid", "canceled"]}
+        - name: settlementStatus
+          in: query
+          schema: {"type": "string", "enum": ["none", "pending", "settled"]}
+        - name: refundStatus
+          in: query
+          schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
+        - name: paymentId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/InvoiceId" }
+        - name: from
+          in: query
+          description: Inclusive UTC recorded day.
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          description: Inclusive UTC recorded day.
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Authorized repeatable-read snapshot; observations never count as booked deltas.
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required: ["snapshotAt", "from", "to", "assets"]
+                properties:
+                  snapshotAt: { type: "string", format: "date-time" }
+                  from: { type: "string", format: "date-time" }
+                  to: { type: "string", format: "date-time" }
+                  assets:
+                    type: "array"
+                    items: { $ref: "#/components/schemas/PaymentReconciliationAsset" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+        "404":
+          description: Payment is outside the caller's profile, stores or mode.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /v1/profiles/{profileId}/payments.csv:
+    get:
+      operationId: exportPaymentMovements
+      summary: Export at most 10000 financial movements and observations
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: storeId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: source
+          in: query
+          schema: {"type": "string", "enum": ["invoice", "checkout", "request", "payment_link"]}
+        - name: status
+          in: query
+          schema: {"type": "string", "enum": ["open", "paid", "settled", "expired", "canceled"]}
+        - name: paymentStatus
+          in: query
+          schema: {"type": "string", "enum": ["open", "detected", "partially_paid", "paid", "expired", "expired_partially_paid", "canceled"]}
+        - name: settlementStatus
+          in: query
+          schema: {"type": "string", "enum": ["none", "pending", "settled"]}
+        - name: refundStatus
+          in: query
+          schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
+        - name: from
+          in: query
+          description: Inclusive UTC recorded day.
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          description: Inclusive UTC recorded day.
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Authorized repeatable-read snapshot; observations never count as booked deltas.
+          headers:
+            X-Forwend-Snapshot-At:
+              schema: { type: string, format: date-time }
+            X-Forwend-Movement-Count:
+              schema: { type: integer, maximum: 10000 }
+          content:
+            text/csv:
+              schema: { type: string }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+        "404":
+          description: Payment is outside the caller's profile, stores or mode.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /v1/profiles/{profileId}/payments/{paymentId}/movements.csv:
+    get:
+      operationId: exportMovementsOfPayment
+      summary: Export movements of one permitted payment
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: storeId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: source
+          in: query
+          schema: {"type": "string", "enum": ["invoice", "checkout", "request", "payment_link"]}
+        - name: status
+          in: query
+          schema: {"type": "string", "enum": ["open", "paid", "settled", "expired", "canceled"]}
+        - name: paymentStatus
+          in: query
+          schema: {"type": "string", "enum": ["open", "detected", "partially_paid", "paid", "expired", "expired_partially_paid", "canceled"]}
+        - name: settlementStatus
+          in: query
+          schema: {"type": "string", "enum": ["none", "pending", "settled"]}
+        - name: refundStatus
+          in: query
+          schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
+        - name: paymentId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/InvoiceId" }
+        - name: from
+          in: query
+          description: Inclusive UTC recorded day.
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          description: Inclusive UTC recorded day.
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Authorized repeatable-read snapshot; observations never count as booked deltas.
+          headers:
+            X-Forwend-Snapshot-At:
+              schema: { type: string, format: date-time }
+            X-Forwend-Movement-Count:
+              schema: { type: integer, maximum: 10000 }
+          content:
+            text/csv:
+              schema: { type: string }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+        "404":
+          description: Payment is outside the caller's profile, stores or mode.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /v1/me:
     post:
       operationId: signUp
@@ -2665,12 +3112,13 @@ components:
           description: Historical coverage, source attribution or financial booking remains unresolved. Never treat a negative legacy balance as available money.
     Payment:
       type: object
-      required: [paymentId, purpose, documentKind, number, storeId, storeName, linkId, livemode, title,
+      required: [paymentId, source, purpose, documentKind, number, storeId, storeName, linkId, livemode, title,
         reference, chainId, token, amount, paymentStatus, settlementStatus, refundStatus, confirming,
         closed, createdAt, closesAt, hostedUrl]
       properties:
         amounts: { $ref: "#/components/schemas/PaymentAmounts" }
         paymentId: { $ref: "#/components/schemas/InvoiceId" }
+        source: { type: string, enum: [invoice, checkout, request, payment_link] }
         purpose: { type: string, enum: [invoice, checkout, request] }
         documentKind: { type: string, enum: [invoice, request, none] }
         number: { type: [integer, "null"] }
@@ -2691,6 +3139,395 @@ components:
         createdAt: { type: string, format: date-time }
         closesAt: { type: string, format: date-time }
         hostedUrl: { type: [string, "null"], format: uri }
+    PaymentDetails:
+      allOf:
+        - $ref: "#/components/schemas/Payment"
+        - type: "object"
+          required: ["deliveryCount", "deliveriesTruncated", "snapshotAt", "customer", "metadata", "options", "deliveries", "problems"]
+          properties:
+            deliveryCount: { type: "integer" }
+            deliveriesTruncated: { type: "boolean" }
+            snapshotAt: { type: "string" }
+            customer: { $ref: "#/components/schemas/PaymentCustomer" }
+            metadata:
+              type: "object"
+              additionalProperties: { type: "string" }
+            options:
+              type: "array"
+              items: { $ref: "#/components/schemas/PaymentOption" }
+            deliveries:
+              type: "array"
+              items: { $ref: "#/components/schemas/PaymentDelivery" }
+            problems:
+              type: "array"
+              items: { $ref: "#/components/schemas/PaymentProblem" }
+    PaymentCustomer:
+      type: "object"
+      required: ["name", "email"]
+      properties:
+        name:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        email:
+          anyOf:
+            - type: "string"
+            - type: "null"
+    PaymentOption:
+      type: "object"
+      required: ["optionId", "chainId", "token", "symbol", "decimals", "amount", "receiveAddress", "closesAt", "paymentStatus", "settlementStatus", "refundStatus", "amounts", "coverage", "settlement", "deposits", "depositsTruncated"]
+      properties:
+        optionId: { type: "string" }
+        chainId: { type: "integer" }
+        token: { type: "string" }
+        symbol: { type: "string" }
+        decimals: { type: "integer" }
+        amount: { type: "string" }
+        receiveAddress: { type: "string" }
+        closesAt: { type: "string" }
+        paymentStatus: { type: "string" }
+        settlementStatus: { type: "string" }
+        refundStatus: { type: "string" }
+        amounts:
+          anyOf:
+            - $ref: "#/components/schemas/PaymentAmounts"
+            - type: "null"
+        coverage: { $ref: "#/components/schemas/PaymentCoverage" }
+        settlement:
+          anyOf:
+            - $ref: "#/components/schemas/PaymentSettlement"
+            - type: "null"
+        deposits:
+          type: "array"
+          items: { $ref: "#/components/schemas/Deposit" }
+        depositsTruncated: { type: "boolean" }
+    PaymentCoverage:
+      type: "object"
+      required: ["historyComplete", "verifiedBlock", "verifiedHash", "verifiedTime", "observedBalance", "balanceDifference", "reconciliationError", "bookingError", "retryAt", "updatedAt", "chainFinalizedBlock", "pendingDeposits", "unbookedDeposits", "unprovedDeposits", "unbookedOutflows"]
+      properties:
+        historyComplete: { type: "boolean" }
+        verifiedBlock:
+          anyOf:
+            - type: "integer"
+            - type: "null"
+        verifiedHash:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        verifiedTime:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        observedBalance:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        balanceDifference:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        reconciliationError:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        bookingError:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        retryAt:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        updatedAt: { type: "string" }
+        chainFinalizedBlock:
+          anyOf:
+            - type: "integer"
+            - type: "null"
+        pendingDeposits: { type: "integer" }
+        unbookedDeposits: { type: "integer" }
+        unprovedDeposits: { type: "integer" }
+        unbookedOutflows: { type: "integer" }
+    PaymentSettlement:
+      type: "object"
+      required: ["status", "wait", "attempts", "createdAt", "nextAttemptAt", "signedAt", "txHash"]
+      properties:
+        status: { type: "string" }
+        wait:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        attempts: { type: "integer" }
+        createdAt: { type: "string" }
+        nextAttemptAt: { type: "string" }
+        signedAt:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        txHash:
+          anyOf:
+            - type: "string"
+            - type: "null"
+    PaymentDelivery:
+      type: "object"
+      required: ["endpointId", "eventId", "eventType", "status", "enabled", "attempts", "lastStatusCode", "lastAttemptAt", "nextAttemptAt", "canManage"]
+      properties:
+        endpointId: { type: "string" }
+        eventId: { type: "string" }
+        eventType: { type: "string" }
+        status: { type: "string" }
+        enabled: { type: "boolean" }
+        attempts: { type: "integer" }
+        lastStatusCode:
+          anyOf:
+            - type: "integer"
+            - type: "null"
+        lastAttemptAt:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        nextAttemptAt: { type: "string" }
+        canManage: { type: "boolean" }
+    PaymentProblemAsset:
+      type: "object"
+      required: ["chainId", "token", "symbol", "decimals"]
+      properties:
+        chainId: { type: "integer" }
+        token: { type: "string" }
+        symbol: { type: "string" }
+        decimals: { type: "integer" }
+    PaymentProblem:
+      type: "object"
+      required: ["amount", "asset", "code", "action", "optionId", "endpointId", "eventId", "reason"]
+      properties:
+        amount:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        asset:
+          anyOf:
+            - $ref: "#/components/schemas/PaymentProblemAsset"
+            - type: "null"
+        code:
+          type: "string"
+          enum: ["verification_pending", "reconciliation_required", "partial_payment", "held_funds", "outflow_unreconciled", "funds_movement_exception", "settlement_delayed", "settlement_refused", "webhook_delivery"]
+        action:
+          type: "string"
+          enum: ["wait", "share_checkout", "review_funds", "review_settlement", "review_webhooks", "ask_admin"]
+        optionId:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        endpointId:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        eventId:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        reason:
+          anyOf:
+            - type: "string"
+            - type: "null"
+    PaymentMovement:
+      type: "object"
+      required: ["livemode", "network", "id", "state", "recordedAt", "paymentId", "optionId", "storeId", "storeName", "source", "documentKind", "number", "reference", "title", "chainId", "token", "symbol", "decimals", "kind", "sourceAmount", "bookedAmount", "receiverDelta", "payableDelta", "heldDelta", "receiverUsdDelta", "txHash", "logIndex", "transferLogIndex", "blockHash", "blockNumber", "blockTime", "from", "to", "status", "verified", "verifiedBlock", "verifiedHash", "policyException", "reconciliationError"]
+      properties:
+        livemode: { type: "boolean" }
+        network: { type: "string" }
+        id: { type: "string" }
+        state: { type: "string" }
+        recordedAt: { type: "string" }
+        paymentId: { type: "string" }
+        optionId: { type: "string" }
+        storeId:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        storeName:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        source:
+          type: "string"
+          enum: ["invoice", "checkout", "request", "payment_link"]
+        documentKind:
+          type: "string"
+          enum: ["invoice", "request", "none"]
+        number:
+          anyOf:
+            - type: "integer"
+            - type: "null"
+        reference:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        title:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        chainId: { type: "integer" }
+        token: { type: "string" }
+        symbol:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        decimals:
+          anyOf:
+            - type: "integer"
+            - type: "null"
+        kind: { type: "string" }
+        sourceAmount:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        bookedAmount:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        receiverDelta:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        payableDelta:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        heldDelta:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        receiverUsdDelta:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        txHash:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        logIndex:
+          anyOf:
+            - type: "integer"
+            - type: "null"
+        transferLogIndex:
+          anyOf:
+            - type: "integer"
+            - type: "null"
+        blockHash:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        blockNumber:
+          anyOf:
+            - type: "integer"
+            - type: "null"
+        blockTime:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        from:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        to:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        status: { type: "string" }
+        verified: { type: "boolean" }
+        verifiedBlock:
+          anyOf:
+            - type: "integer"
+            - type: "null"
+        verifiedHash:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        policyException:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        reconciliationError:
+          anyOf:
+            - type: "string"
+            - type: "null"
+    PaymentBalances:
+      type: "object"
+      required: ["receiver", "payable", "held"]
+      properties:
+        receiver: { type: "string" }
+        payable: { type: "string" }
+        held: { type: "string" }
+    PaymentReconciliationAsset:
+      type: "object"
+      required: ["storeId", "storeName", "chainId", "token", "symbol", "decimals", "livemode", "opening", "changes", "closing", "settled", "refunded", "checkpointBalance", "checkpointDifference", "receiverCount", "verifiedReceivers", "unreconciledReceivers", "pendingDeposits", "unbookedDeposits", "unprovedDeposits", "unbookedOutflows", "otherAssetMovements", "policyExceptions", "bookedMovements", "minVerifiedBlock", "maxVerifiedBlock", "chainFinalizedBlock"]
+      properties:
+        storeId:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        storeName:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        chainId: { type: "integer" }
+        token: { type: "string" }
+        symbol: { type: "string" }
+        decimals: { type: "integer" }
+        livemode: { type: "boolean" }
+        opening: { $ref: "#/components/schemas/PaymentBalances" }
+        changes: { $ref: "#/components/schemas/PaymentBalances" }
+        closing: { $ref: "#/components/schemas/PaymentBalances" }
+        settled: { type: "string" }
+        refunded: { type: "string" }
+        checkpointBalance:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        checkpointDifference:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        receiverCount: { type: "integer" }
+        verifiedReceivers: { type: "integer" }
+        unreconciledReceivers: { type: "integer" }
+        pendingDeposits: { type: "integer" }
+        unbookedDeposits: { type: "integer" }
+        unprovedDeposits: { type: "integer" }
+        unbookedOutflows: { type: "integer" }
+        otherAssetMovements: { type: "integer" }
+        policyExceptions: { type: "integer" }
+        bookedMovements: { type: "integer" }
+        minVerifiedBlock:
+          anyOf:
+            - type: "integer"
+            - type: "null"
+        maxVerifiedBlock:
+          anyOf:
+            - type: "integer"
+            - type: "null"
+        chainFinalizedBlock:
+          anyOf:
+            - type: "integer"
+            - type: "null"
+    PaymentWebhookProblem:
+      type: "object"
+      required: ["endpointId", "storeId", "description", "enabled", "livemode", "failed", "disabledPending", "lastProblemAt", "action"]
+      properties:
+        endpointId: { type: "string" }
+        storeId:
+          anyOf:
+            - type: "string"
+            - type: "null"
+        description: { type: "string" }
+        enabled: { type: "boolean" }
+        livemode: { type: "boolean" }
+        failed: { type: "integer" }
+        disabledPending: { type: "integer" }
+        lastProblemAt: { type: "string" }
+        action:
+          type: "string"
+          enum: ["wait", "share_checkout", "review_funds", "review_settlement", "review_webhooks", "ask_admin"]
     CheckoutSession:
       type: object
       required: [sessionId, status, payment]

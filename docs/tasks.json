@@ -3,17 +3,17 @@
   "nextId": 336,
   "tasks": [
     {
-      "id": "F329",
-      "type": "fix",
-      "behavior": "Reconcile receiver outflows and exact settlement attribution",
+      "id": "F330",
+      "type": "feat",
+      "behavior": "Add merchant payment operations and store reconciliation APIs",
       "acceptance": [
-        "Receiver refund and settlement observations preserve unique block/log identity, durable historical coverage and finalized independent-provider evidence.",
-        "Complete preceding records support balanced idempotent refunds held-first/payable-second and settlements payable-first/held-second; policy exceptions and unreconciled observations stay explicit without invented or negative balances.",
-        "Confirmed returns prevent reopen, later deposits remain visible, and already broadcast settlement is reconciled rather than assumed revoked.",
-        "Real-contract tests cover repeated/partial returns, paid-unsettled refunds, catch-up, multiple logs, reorgs, external settlement, native mismatch and refund-to-wallet attribution; independent balances and ledger equations reconcile."
+        "Payments include all permitted attempts with stable paging and source/store/status filters; detail separates deposits, settlement, refunds, reconciliation and delivery state.",
+        "Attention identifies partial/held/uncertain payments, delayed/refused settlements and failed/disabled delivery with evidence-backed reasons and valid next actions.",
+        "Exact movement CSV rows preserve store, source, invoice/order reference, chain/token/decimals and transaction/log evidence, without repeating independently summable aggregate totals.",
+        "Tenant, assigned-store and key-mode tests pass; exports and canonical snapshot totals reconcile to ledger and independent finalized chain records, with verification coverage and unmatched observations explicit."
       ],
       "dependsOn": [
-        "F328"
+        "F329"
       ],
       "state": "passing",
       "verification": [
@@ -21,32 +21,26 @@
         "backend-e2e"
       ],
       "refs": [
-        "R-164",
-        "R-119",
-        "R-130",
-        "R-77"
+        "R-165",
+        "R-138",
+        "R-156",
+        "R-149",
+        "R-118",
+        "R-110"
       ],
       "keep": [
         "packages/contracts/src/*"
       ],
       "review": true,
       "notes": [
-        "2026-10-27 review pass by reviewer: Reviewed dual-provider receiver source proofs, immutable migration78 evidence and rollback protection, chronological balanced outflow booking, net-liability invariants, historical paid truth, exceptional settlements, legacy reconciliation and exact chain/token/transaction/log wallet attribution. Owed null-number, unpaid-settlement rendering and stale-reopen findings are fixed with regressions. Watcher/ledger/settlement ownership stays acyclic; shared HTTP amounts stay in paymentio. All ten selected checks passed, including real Postgres race tests and real-binary Anvil reconciliation; frontend reviewer found no residual timing/status blocker. Historical conflicts remain explicit rather than rewritten; provider tests do not claim live-provider validation. No F329 blockers remain."
+        "2026-10-27 review pass by reviewer: Reviewed payment list/detail/attention/movement/reconciliation APIs, tenant and assigned-store intersection, API-key mode/scopes, bounded readers, repeatable-read snapshots, currency-header consistency, exact signed base-unit exports, observed-versus-booked records and independent source attribution. Noncash checkpoints and unmatched legacy cash remain distinct without invented provenance; comparison rejects unpositioned cash. Reviewed OpenAPI/Node compatibility, domain SQL ownership, shared transport DTOs and permission-route coverage. All seven selected checks passed, including race suite and real-binary reconciliation. Live paged observations can change between requests; documentation states this limit. No blockers remain."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-27T01:54:12Z",
+        "at": "2026-10-27T03:25:51Z",
         "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
           {
             "id": "docs-check",
             "outcome": "passed",
@@ -65,28 +59,21 @@
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.1,
+            "seconds": 0.2,
             "log": ""
           },
           {
             "id": "backend-affected",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 234.6,
+            "seconds": 233.0,
             "log": ""
           },
           {
             "id": "backend-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 43.6,
-            "log": ""
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 3.5,
+            "seconds": 41.2,
             "log": ""
           },
           {
@@ -97,13 +84,6 @@
             "log": ""
           },
           {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 26.3,
-            "log": ""
-          },
-          {
             "id": "keep",
             "outcome": "passed",
             "exit": 0,
@@ -111,61 +91,32 @@
             "log": ""
           }
         ],
-        "taskHash": "337306069c45b428",
-        "filesHash": "e6a0ee140c29065f",
+        "taskHash": "99f005b7a75951b5",
+        "filesHash": "45c26d29ff8f23a2",
         "proof": {
-          "1": "backend-affected: Real PostgreSQL and Anvil tests certify immutable individual source proofs, atomic coverage, provider disagreement, historical catch-up and failed-source retry fairness.",
-          "2": "backend-affected: Independent chain balances and balanced journals cover held-first returns, payable-first settlement, actual funding prefixes, explicit legacy conflicts and policy exceptions.",
-          "3": "backend-affected: Real-contract tests reject stale-checkpoint and known-return reopen attempts, preserve later payer funds, and reconcile an already broadcast settlement after an authority return.",
-          "4": "backend-affected: Real-contract cases cover repeated and same-transaction returns, principal returns, catch-up, finalized reorg, authority settlement, native recovery, unlogged credit, concurrent processing and refund-to-wallet attribution."
+          "1": "backend-affected: Source/store/status and stable payment cursor tests include unpaid attempts and assigned-store/key-mode boundaries.",
+          "2": "backend-affected: Attention/detail tests separate payment, net held funds, settlement intent, verification and delivery; all profile routes carry authorization cases.",
+          "3": "backend-affected: Export regressions cover exact signed amounts beyond 2^53, source/log identity, noncash reopen checkpoints, unknown legacy cash evidence, observations and 10000-row limits.",
+          "4": "backend-e2e: Binary checkout exports reconcile with actual Anvil receipts and receiver/merchant balances; database tests reconcile returns, historical periods and concurrent currency settings."
         },
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "Reviewed dual-provider receiver source proofs, immutable migration78 evidence and rollback protection, chronological balanced outflow booking, net-liability invariants, historical paid truth, exceptional settlements, legacy reconciliation and exact chain/token/transaction/log wallet attribution. Owed null-number, unpaid-settlement rendering and stale-reopen findings are fixed with regressions. Watcher/ledger/settlement ownership stays acyclic; shared HTTP amounts stay in paymentio. All ten selected checks passed, including real Postgres race tests and real-binary Anvil reconciliation; frontend reviewer found no residual timing/status blocker. Historical conflicts remain explicit rather than rewritten; provider tests do not claim live-provider validation. No F329 blockers remain.",
-          "at": "2026-10-27T02:00:39Z",
-          "filesHash": "e6a0ee140c29065f"
+          "summary": "Reviewed payment list/detail/attention/movement/reconciliation APIs, tenant and assigned-store intersection, API-key mode/scopes, bounded readers, repeatable-read snapshots, currency-header consistency, exact signed base-unit exports, observed-versus-booked records and independent source attribution. Noncash checkpoints and unmatched legacy cash remain distinct without invented provenance; comparison rejects unpositioned cash. Reviewed OpenAPI/Node compatibility, domain SQL ownership, shared transport DTOs and permission-route coverage. All seven selected checks passed, including race suite and real-binary reconciliation. Live paged observations can change between requests; documentation states this limit. No blockers remain.",
+          "at": "2026-10-27T03:30:45Z",
+          "filesHash": "45c26d29ff8f23a2"
         },
-        "commit": "13c3d309",
-        "doneAt": "2026-10-27T02:01:04Z"
+        "commit": "4cfcc323",
+        "doneAt": "2026-10-27T03:31:06Z"
       },
-      "branch": "fix/f329-reconcile-receiver-outflows-and-exact-se",
-      "baseCommit": "8657a989414b1b188d15d3189f404d9736b74223",
+      "branch": "feat/f330-add-merchant-payment-operations-and-stor",
+      "baseCommit": "825ed13f377c90ad3bbc800ddd3db16672446e7c",
       "failedVerifies": 0,
       "delivery": {
         "mode": "pr",
-        "branch": "fix/f329-reconcile-receiver-outflows-and-exact-se",
+        "branch": "feat/f330-add-merchant-payment-operations-and-stor",
         "base": "main"
       }
-    },
-    {
-      "id": "F330",
-      "type": "feat",
-      "behavior": "Add merchant payment operations and store reconciliation APIs",
-      "acceptance": [
-        "Payments include all permitted attempts with stable paging and source/store/status filters; detail separates deposits, settlement, refunds, reconciliation and delivery state.",
-        "Attention identifies partial/held/uncertain payments, delayed/refused settlements and failed/disabled delivery with evidence-backed reasons and valid next actions.",
-        "Exact movement CSV rows preserve store, source, invoice/order reference, chain/token/decimals and transaction/log evidence, without repeating independently summable aggregate totals.",
-        "Tenant, assigned-store and key-mode tests pass; exports and canonical snapshot totals reconcile to ledger and independent finalized chain records, with verification coverage and unmatched observations explicit."
-      ],
-      "dependsOn": [
-        "F329"
-      ],
-      "state": "not_started",
-      "verification": [
-        "backend-affected",
-        "backend-e2e"
-      ],
-      "refs": [
-        "R-165"
-      ],
-      "keep": [
-        "packages/contracts/src/*"
-      ],
-      "review": true,
-      "notes": [],
-      "blockedReason": null,
-      "evidence": null
     },
     {
       "id": "F331",
