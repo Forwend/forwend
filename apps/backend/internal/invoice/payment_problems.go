@@ -80,7 +80,7 @@ func optionProblems(inv Invoice, option PaymentOption, at time.Time) []PaymentPr
 	if amounts.HasPolicyException {
 		add(ProblemPolicyException, ActionReviewFunds, "authority_allocation")
 	}
-	if state.PaymentStatus == ledger.PartiallyPaid && amounts.Payable.Sign() > 0 {
+	if state.PaymentStatus == ledger.PartiallyPaid && amounts.Payable.Sign() > 0 && amounts.Payable.Cmp(option.Amount) < 0 {
 		action := ActionShareCheckout
 		if inv.Closed || inv.PayToken == "" || amounts.Unreconciled {
 			action = ActionWait

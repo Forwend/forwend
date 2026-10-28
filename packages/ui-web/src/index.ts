@@ -17,6 +17,8 @@ export type { BadgeProps } from "./components/display/badge";
 export { Badge } from "./components/display/badge";
 export type { CodeBlockProps } from "./components/display/code-block";
 export { CodeBlock } from "./components/display/code-block";
+export type { DetailListProps, DetailRowProps } from "./components/display/detail-list";
+export { DetailList, DetailRow } from "./components/display/detail-list";
 export type { PanelProps, PanelTone } from "./components/display/panel";
 export { PANEL_TONES, Panel } from "./components/display/panel";
 export { ProgressBar } from "./components/display/progress-bar";
@@ -120,10 +122,17 @@ export type { QrCodeProps } from "./components/payments/qr-code";
 export { QrCode } from "./components/payments/qr-code";
 export type { ReceiveAddressProps } from "./components/payments/receive-address";
 export { ReceiveAddress } from "./components/payments/receive-address";
-export type { PaymentStatus } from "./components/payments/status-pill/payment-status";
-export { PAYMENT_STATUS, PAYMENT_STATUSES } from "./components/payments/status-pill/payment-status";
+export type { PaymentStatus, WalletState } from "./components/payments/status-pill/payment-status";
+export {
+  PAYMENT_STATUS,
+  PAYMENT_STATUSES,
+  WALLET_STATE,
+  WALLET_STATES,
+} from "./components/payments/status-pill/payment-status";
 export type { StatusPillProps } from "./components/payments/status-pill/status-pill";
 export { StatusPill } from "./components/payments/status-pill/status-pill";
+export type { WalletStateLabelProps } from "./components/payments/status-pill/wallet-state-label";
+export { WalletStateLabel } from "./components/payments/status-pill/wallet-state-label";
 export type { TokenChipProps } from "./components/payments/token-chip";
 export { TokenChip } from "./components/payments/token-chip";
 export type { CopyStatus } from "./hooks/use-copy";
@@ -135,6 +144,7 @@ export type { CustomIconProps } from "./icons/custom-icons";
 export { FreelancerIcon, MerchantIcon, PaymentPathIcon } from "./icons/custom-icons";
 export type { LogoMarkProps, LogoProps } from "./icons/logo";
 export { Logo, LogoMark } from "./icons/logo";
+export { cx } from "./lib/cx";
 export { ROW_INTERACTIVE_CLASSES, TABLE_HEAD_CLASSES, TABLE_ROW_CLASSES } from "./lib/row-classes";
 export type { Tone } from "./lib/tone";
 export { TONES } from "./lib/tone";

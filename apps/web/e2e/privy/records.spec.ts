@@ -27,7 +27,7 @@ test("transactions show their type, take a label, and export the days chosen; it
   const table = main.getByRole("table");
   await expect(table.getByRole("columnheader", { name: "Type" })).toBeVisible();
   // Transfer 0 paid an invoice, 1 is money in that Forwend can't classify, 3 went out.
-  await expect(table.getByRole("link", { name: /^INV-\d{4}/ }).first()).toBeVisible();
+  await expect(table.getByRole("link", { name: /INV-\d{4}/ }).first()).toBeVisible();
   await expect(table.getByText("Sent", { exact: true }).first()).toBeVisible();
   await table.getByRole("combobox", { name: /^Type of [\d.,]+ USDC in from 0x01/ }).click();
   await page.getByRole("option", { name: "Income" }).click();
@@ -114,8 +114,12 @@ test("transactions show their type, take a label, and export the days chosen; it
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/app");
-  const recent = page.getByRole("region", { name: "Payments", exact: true });
-  await expect(recent.getByRole("columnheader", { name: "Transaction" })).toBeVisible();
+  // The overview's latest rows are customer payments; wallet transfers stay on Transactions.
+  const recent = page.getByRole("region", { name: "Latest payments", exact: true });
+  await expect(recent.getByRole("link", { name: /^View all/ })).toHaveAttribute(
+    "href",
+    "/app/payments",
+  );
   await expect(recent.getByRole("columnheader", { name: "Type" })).toHaveCount(0);
   await expect(recent.getByRole("combobox")).toHaveCount(0);
   await context.close();

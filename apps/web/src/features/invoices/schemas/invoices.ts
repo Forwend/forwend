@@ -361,7 +361,9 @@ export const invoiceEventsSchema = z.object({ items: z.array(invoiceEventSchema)
 export const owedSchema = z.object({
   kind: openEnum<OwedKind>(),
   invoiceId: hash32,
-  number: z.number().int().positive(),
+  // null for a checkout session, which has no invoice document; its reference names it instead.
+  number: z.number().int().positive().nullable(),
+  reference: z.string().nullable().optional(),
   title: z.string().nullable(),
   clientName: z.string().nullable(),
   dueDate: apiDate.nullable(),
@@ -376,4 +378,19 @@ export const owedSchema = z.object({
   amount: baseUnits,
 });
 
-export const owedListSchema = z.object({ items: z.array(owedSchema) });
+/** The first rows by urgency, how many there are in all, and what is left per token over every row. */
+export const owedListSchema = z.object({
+  items: z.array(owedSchema),
+  count: count.optional(),
+  totals: z
+    .array(
+      z.object({
+        chainId: count,
+        token: evmAddress,
+        symbol: z.string(),
+        decimals: count,
+        amount: baseUnits,
+      }),
+    )
+    .optional(),
+});

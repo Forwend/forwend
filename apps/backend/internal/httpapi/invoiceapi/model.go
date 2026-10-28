@@ -414,24 +414,37 @@ type stoppedJSON struct {
 }
 
 type owedListJSON struct {
-	Items []owedJSON `json:"items"`
+	Items  []owedJSON      `json:"items"`
+	Count  int             `json:"count"`
+	Totals []owedTotalJSON `json:"totals"`
 }
 
-// R-95: Amount is what is left to pay, or the held amount for kind held.
+// R-95: Amount is what is left to pay.
 type owedJSON struct {
-	Kind        string  `json:"kind"`
-	InvoiceID   string  `json:"invoiceId"`
-	Number      int64   `json:"number"`
-	Title       *string `json:"title"`
-	ClientName  *string `json:"clientName"`
-	DueDate     *string `json:"dueDate"`
-	DaysLate    int     `json:"daysLate"`
-	OptionCount int     `json:"optionCount"`
-	ChainID     uint64  `json:"chainId"`
-	Token       string  `json:"token"`
-	Symbol      string  `json:"symbol"`
-	Decimals    int     `json:"decimals"`
-	Amount      string  `json:"amount"`
+	Kind         string               `json:"kind"`
+	InvoiceID    string               `json:"invoiceId"`
+	Number       *int64               `json:"number"`
+	Purpose      invoice.Purpose      `json:"purpose"`
+	DocumentKind invoice.DocumentKind `json:"documentKind"`
+	Reference    *string              `json:"reference"`
+	Title        *string              `json:"title"`
+	ClientName   *string              `json:"clientName"`
+	DueDate      *string              `json:"dueDate"`
+	DaysLate     int                  `json:"daysLate"`
+	OptionCount  int                  `json:"optionCount"`
+	ChainID      uint64               `json:"chainId"`
+	Token        string               `json:"token"`
+	Symbol       string               `json:"symbol"`
+	Decimals     int                  `json:"decimals"`
+	Amount       string               `json:"amount"`
+}
+
+type owedTotalJSON struct {
+	ChainID  uint64 `json:"chainId"`
+	Token    string `json:"token"`
+	Symbol   string `json:"symbol"`
+	Decimals int    `json:"decimals"`
+	Amount   string `json:"amount"`
 }
 
 type eventsJSON struct {

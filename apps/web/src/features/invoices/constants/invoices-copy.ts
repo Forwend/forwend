@@ -70,9 +70,11 @@ export const INVOICES_COPY = {
   columns: {
     invoice: "Invoice",
     client: "Client",
+    title: "Title",
     due: "Due",
     status: "Status",
     amount: "Amount",
+    network: "Network",
   },
   noClient: "No client",
   noDueDate: "No due date",
@@ -263,6 +265,9 @@ export const NEW_INVOICE_COPY = {
     due: "Due",
     noDue: "No due date",
     closes: "Checkout closes after",
+    noItem: "Item",
+    quantity: (qty: string) => `Qty ${qty}`,
+    open: "Preview",
   },
 } as const;
 
@@ -302,6 +307,9 @@ export const INVOICE_COPY = {
   clientChooses: (n: number) => `The client picks one of ${n} tokens and networks`,
   heldOn: (symbol: string, network: string) => `Held for the payer · ${symbol} on ${network}`,
   partlyPaid: "Partially paid",
+  viewPayment: "View payment",
+  paymentLink: "Payment link",
+  openLink: "Open link",
   receivedOf: (received: string, total: string) => `Received ${received} of ${total}`,
   notFound: "No invoice has this link.",
   failed: "We could not load this invoice.",
@@ -313,7 +321,7 @@ export const INVOICE_COPY = {
     [INVOICE_STEPS.detected]: "Detected",
     [INVOICE_STEPS.confirming]: "Confirming",
     [INVOICE_STEPS.paid]: "Paid",
-    [INVOICE_STEPS.settled]: "Settled",
+    [INVOICE_STEPS.settled]: "In wallet",
   } satisfies Record<InvoiceStep, string>,
   confirmingCount: (done: number, total: number) =>
     total > 0
@@ -547,10 +555,10 @@ export const INVOICE_COPY = {
       [HISTORY_KINDS.partiallyPaid]: "Partially paid",
       [HISTORY_KINDS.paid]: "Paid",
       [HISTORY_KINDS.expired]: "Closed unpaid",
-      [HISTORY_KINDS.expiredPartiallyPaid]: "Closed partly paid",
+      [HISTORY_KINDS.expiredPartiallyPaid]: "Closed, partially paid",
       [HISTORY_KINDS.held]: "Money held",
-      [HISTORY_KINDS.settlementQueued]: "Settlement queued",
-      [HISTORY_KINDS.settled]: "Settled",
+      [HISTORY_KINDS.settlementQueued]: "Wallet transfer queued",
+      [HISTORY_KINDS.settled]: "In wallet",
       [HISTORY_KINDS.refunded]: "Funds returned",
       [HISTORY_KINDS.receiverSettled]: "Funds moved to wallet",
       [HISTORY_KINDS.checkoutCloseChanged]: "Checkout close updated",
@@ -622,18 +630,21 @@ export const STOP_REMINDERS_COPY = {
   failed: "We could not stop them. Try again.",
 } as const;
 
-// R-95.
+// R-95, D-114: what customers still owe. Money held for a payer is theirs, so it never shows here.
 export const OWED_COPY = {
   title: "Owed to you",
   totalLabel: "Left to pay",
   kinds: {
     [OWED_KINDS.overdue]: (days: number) => (days === 1 ? "1 day late" : `${days} days late`),
-    [OWED_KINDS.partlyPaid]: () => "Partly paid",
+    [OWED_KINDS.partlyPaid]: () => "Partially paid",
     [OWED_KINDS.held]: () => "Held for the payer",
   } satisfies Record<OwedKind, (days: number) => string>,
   left: "left to pay",
-  none: "Nothing is overdue, partly paid or held for a payer.",
+  none: "No customer owes you anything right now.",
   failed: "We could not load what you are owed.",
   retry: "Try again",
   showAll: (n: number) => `Show all ${n}`,
+  checkout: "Checkout",
+  more: (n: number) => (n === 1 ? "1 more is owed." : `${n} more are owed.`),
+  inPayments: "Open Payments",
 } as const;

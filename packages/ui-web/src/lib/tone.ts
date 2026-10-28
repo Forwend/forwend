@@ -18,6 +18,10 @@ export const TONE_DOT_CLASSES: Record<Tone, string> = {
   info: "bg-info",
 };
 
+// One compact shape for every status and tag, so a badge and a payment status line up in a row.
+export const BADGE_CLASSES =
+  "inline-flex h-6 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-sm border px-2 text-xs font-medium";
+
 // Text on its soft ground; the contrast test covers each pair, accent on info-soft as info, which has the same values.
 export const TONE_CLASSES: Record<Tone, string> = {
   neutral: "bg-surface-2 text-muted border-line",

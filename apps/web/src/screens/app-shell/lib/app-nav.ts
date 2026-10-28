@@ -15,6 +15,7 @@ import { STORES_COPY } from "@/features/stores/constants/stores-copy";
 import { TEAM_COPY } from "@/features/team/constants/team-copy";
 import { APP_NAV, MENU_PAGES, NAV } from "@/screens/app-shell/constants/app-nav";
 import type { Crumb, NavGroup, NavItem } from "@/screens/app-shell/types/app-nav";
+import { SETTINGS_COPY } from "@/screens/settings/constants/settings-copy";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 export function isCurrentPage(pathname: string, href: string): boolean {
@@ -74,6 +75,9 @@ export function breadcrumb(
       trail: [{ label: NOTIFICATIONS_COPY.title, href: APP_ROUTES.notifications }],
       invoiceId: null,
     };
+  }
+  if (pathname === APP_ROUTES.settings) {
+    return { trail: [{ label: SETTINGS_COPY.title, href: APP_ROUTES.settings }], invoiceId: null };
   }
   if (pathname === APP_ROUTES.networks) {
     return { trail: [{ label: TOKENS_COPY.title, href: APP_ROUTES.networks }], invoiceId: null };

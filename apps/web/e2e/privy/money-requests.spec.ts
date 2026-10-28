@@ -104,7 +104,7 @@ test("a personal profile requests money, sends the pay link and the payer sees w
       .click();
     await expect(
       page.getByRole("menuitem", { name: "Open pay page in a new tab" }),
-    ).toHaveAttribute("href", link);
+    ).toHaveAttribute("href", `${link}?preview=1`);
     await page.getByRole("menuitem", { name: "Copy link" }).click();
     await expect(page.getByRole("menuitem", { name: "Link copied" })).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);
@@ -171,7 +171,7 @@ test("on a phone a personal profile requests money from the round actions withou
       .click();
     await expect(
       page.getByRole("menuitem", { name: "Open pay page in a new tab" }),
-    ).toHaveAttribute("href", new RegExp(`/pay/${request.payToken}$`));
+    ).toHaveAttribute("href", new RegExp(`/pay/${request.payToken}\\?preview=1$`));
     await page.keyboard.press("Escape");
     await fits();
     expect(await blockingViolations(page)).toEqual([]);

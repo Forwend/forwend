@@ -36,7 +36,7 @@ export const DURATIONS = [
   { token: "--fw-duration-fast", ms: 140, use: "Hover, press, small color changes" },
   { token: "--fw-duration-base", ms: 200, use: "Toggles, tabs, theme change" },
   { token: "--fw-duration-slow", ms: 400, use: "Panels, payment step changes" },
-  { token: "--fw-duration-slower", ms: 900, use: "The hero river drawing forward" },
+  { token: "--fw-duration-slower", ms: 900, use: "Spinners, a bar filling once" },
 ] as const;
 
 export const EASINGS = [
@@ -53,9 +53,21 @@ export const EASINGS = [
 ] as const;
 
 export const TYPE_ROLES = [
-  { token: "text-hero", className: "font-display text-hero", sample: "Get paid in stablecoins." },
-  { token: "text-section", className: "font-display text-section", sample: "See every step." },
-  { token: "text-error-code", className: "font-display text-error-code", sample: "404" },
+  {
+    token: "text-hero",
+    className: "font-display font-medium text-hero",
+    sample: "Get paid in stablecoins.",
+  },
+  {
+    token: "text-section",
+    className: "font-display font-medium text-section",
+    sample: "See every step.",
+  },
+  {
+    token: "text-error-code",
+    className: "font-display font-medium text-error-code",
+    sample: "404",
+  },
   {
     token: "text-amount-lg",
     className: "font-sans tabular-nums text-amount-lg",

@@ -1,15 +1,10 @@
-import { Geist, Geist_Mono, Libre_Caslon_Display } from "next/font/google";
+import { Geist_Mono, Hanken_Grotesk } from "next/font/google";
 
-// Feeds the --fw-font-*-loaded variables that packages/design-tokens reads (D-13).
-const display = Libre_Caslon_Display({
-  weight: "400",
-  subsets: ["latin"],
-  variable: "--fw-font-display-loaded",
-});
-
-const sans = Geist({ subsets: ["latin"], variable: "--fw-font-sans-loaded" });
+// Feeds the --fw-font-*-loaded variables that packages/design-tokens reads (D-113). One grotesk sets headings, UI
+// and money; the display role reuses it, so the landing loads no second face.
+const sans = Hanken_Grotesk({ subsets: ["latin"], variable: "--fw-font-sans-loaded" });
 
 // Addresses and hashes sit below the headline; not preloading keeps the first paint lighter.
 const mono = Geist_Mono({ subsets: ["latin"], variable: "--fw-font-mono-loaded", preload: false });
 
-export const fontVars = [display, sans, mono].map((f) => f.variable).join(" ");
+export const fontVars = [sans, mono].map((f) => f.variable).join(" ");

@@ -8,10 +8,10 @@ export const ACTIVITY_COPY = {
   activityFailed: "We could not load the activity.",
   loadMore: "Show more",
   updateFailed: "We could not update the activity.",
-  latestOnly: "Showing the latest 100.",
   invoice: "Invoice created",
   deposit: "Payment",
   held: "Held for the payer",
+  partHeld: "Payment, extra held for the payer",
   retry: "Try again",
   filterLabel: "Status",
   filters: {

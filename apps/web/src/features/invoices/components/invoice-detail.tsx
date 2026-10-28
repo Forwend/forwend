@@ -7,11 +7,11 @@ import {
   PAYMENT_STATUS,
   Skeleton,
   StatusPill,
+  WalletStateLabel,
 } from "@forwend/ui-web";
 import { ChevronLeft, FileDown } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, type Ref, useEffect, useRef, useState } from "react";
-import { API_PAYMENT_STATUSES } from "@/features/activity/constants/activity";
 import { useGetProfileInvoiceQuery } from "@/features/invoices/api/invoices-api";
 import { InvoiceActions } from "@/features/invoices/components/invoice-actions";
 import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
@@ -49,13 +49,15 @@ import type {
   InvoiceViews,
   Revision,
 } from "@/features/invoices/types/invoices";
-import { settlementState } from "@/features/payments/lib/payments";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { Party } from "@/shared/components/party";
+import { RecordLink } from "@/shared/components/record-link";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
 import { exactDigits } from "@/shared/lib/money";
+import { walletStateOf } from "@/shared/lib/payment-state";
 
 const NOT_FOUND = 404;
 const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
@@ -322,16 +324,14 @@ function Loaded({
                   <StatusPill status={status} />
                 )}
                 {invoice.settlementStatus !== "none" ? (
-                  <span className="text-sm text-muted">
-                    {settlementState(invoice.settlementStatus)}
-                  </span>
+                  <WalletStateLabel state={walletStateOf(invoice)} />
                 ) : null}
-                <Link
+                <RecordLink
                   href={`${APP_ROUTES.payments}/${invoice.invoiceId}`}
-                  className="text-sm text-info underline underline-offset-4"
+                  className="text-sm"
                 >
-                  View payment
-                </Link>
+                  {COPY.viewPayment}
+                </RecordLink>
               </div>
             </div>
           </section>
@@ -419,7 +419,10 @@ function Loaded({
               ) : (
                 <p className="px-4 py-3 text-sm text-muted sm:px-5">
                   {COPY.noIssuer}{" "}
-                  <Link href={APP_ROUTES.billingDetails} className="text-accent hover:underline">
+                  <Link
+                    href={APP_ROUTES.billingDetails}
+                    className="text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink"
+                  >
                     {COPY.addBillingDetails}
                   </Link>
                 </p>
@@ -437,12 +440,16 @@ function Loaded({
             <dl className="divide-y divide-line">
               {invoice.store ? (
                 <Row term={COPY.store}>
-                  <Link
-                    href={`${APP_ROUTES.stores}/${invoice.store.storeId}`}
-                    className="text-accent hover:underline"
-                  >
+                  <RecordLink href={`${APP_ROUTES.stores}/${invoice.store.storeId}`}>
                     {invoice.store.name}
-                  </Link>
+                  </RecordLink>
+                </Row>
+              ) : null}
+              {invoice.linkId ? (
+                <Row term={COPY.paymentLink}>
+                  <RecordLink href={`${APP_ROUTES.links}/${invoice.linkId}`}>
+                    {COPY.openLink}
+                  </RecordLink>
                 </Row>
               ) : null}
               {invoice.reference ? <Row term={COPY.reference}>{invoice.reference}</Row> : null}
@@ -617,7 +624,7 @@ function RevisionLink({ revision }: { revision: Revision }) {
   return (
     <Link
       href={`${APP_ROUTES.invoices}/${revision.invoiceId}`}
-      className="text-accent underline-offset-4 hover:underline"
+      className="text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink"
     >
       {invoiceNumber(revision.number)}
     </Link>

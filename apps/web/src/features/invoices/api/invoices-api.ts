@@ -15,7 +15,7 @@ import type {
   Invoice,
   InvoiceEvent,
   InvoicesPage,
-  Owed,
+  OwedList,
   Recheck,
   StoppedReminders,
 } from "@/features/invoices/types/invoices";
@@ -78,10 +78,9 @@ export const invoicesApi = apiSlice
         transformResponse: (data: { items: InvoiceEvent[] }) => data.items,
       }),
       /** Owed to you (R-95). */
-      getOwed: build.query<Owed[], string>({
+      getOwed: build.query<OwedList, string>({
         query: (profileId) => `/v1/profiles/${encodeURIComponent(profileId)}/owed`,
-        rawResponseSchema: owedListSchema,
-        transformResponse: (data: { items: Owed[] }) => data.items,
+        responseSchema: owedListSchema,
         providesTags: [INVOICES_TAG],
       }),
       /** Cancel before any money (R-79): 409 once money was seen or the checkout closed. */

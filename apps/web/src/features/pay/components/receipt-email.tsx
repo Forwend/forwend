@@ -65,7 +65,7 @@ export function ReceiptEmail({ linkToken, paid }: ReceiptEmailProps) {
                   reset();
                   setStep("form");
                 }}
-                className="-mx-1 mt-1 self-start rounded-sm px-1 text-sm text-accent underline-offset-4 outline-none hover:underline focus-visible:outline-2 focus-visible:outline-focus"
+                className="-mx-1 mt-1 self-start rounded-sm px-1 text-sm text-ink underline decoration-line-strong underline-offset-4 outline-none hover:underline focus-visible:outline-2 focus-visible:outline-focus"
               >
                 {COPY.another}
               </button>

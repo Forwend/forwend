@@ -17,6 +17,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/email"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/notify"
+	"github.com/forwend/forwend/apps/backend/internal/price"
 	"github.com/forwend/forwend/apps/backend/internal/worker"
 )
 
@@ -78,6 +79,10 @@ func run() error {
 	}
 	invoices := invoice.NewService(pool)
 	rates := &ecb.Keeper{Pool: pool, Client: &http.Client{Timeout: 30 * time.Second}, URL: cfg.RatesURL}
+	prices := &price.Keeper{Pool: pool, URL: cfg.Prices.URL, Key: cfg.Prices.Key, Every: cfg.Prices.Every,
+		// The key's header would follow a redirect to any host.
+		Client: &http.Client{Timeout: 10 * time.Second,
+			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
 	slog.Info("worker ready", "every", cfg.Chains.PollInterval, "email", sender != nil)
 	for {
 		if err := lock.Held(ctx); err != nil {
@@ -94,6 +99,10 @@ func run() error {
 		// Records in another currency (R-110) wait for the rates when the ECB can't be read.
 		if err := rates.Tick(ctx, time.Now()); err != nil {
 			slog.Warn("keep ECB rates", "err", err)
+		}
+		// Prices are for display only (R-178): when CoinGecko can't be read, the app shows the last ones as stale.
+		if err := prices.Tick(ctx, time.Now()); err != nil {
+			slog.Warn("keep CoinGecko prices", "err", err)
 		}
 		if sender != nil {
 			if err := notify.Deliver(ctx, pool, sender, notify.Site{WebURL: cfg.Email.PublicWebURL, PostalAddress: cfg.Email.PostalAddress}); err != nil {

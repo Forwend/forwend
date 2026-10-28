@@ -90,18 +90,20 @@ export interface PayInvoiceProps {
   /** The pay link's token (D-86). */
   linkToken: string;
   option?: string;
+  /** The owner's preview from their payment page: it counts no view. */
+  preview?: boolean;
 }
 
-export function PayInvoice({ linkToken, option }: PayInvoiceProps) {
+export function PayInvoice({ linkToken, option, preview = false }: PayInvoiceProps) {
   const invoice = useGetInvoiceQuery(linkToken, LIVE_QUERY);
   const [countView] = useCountViewMutation();
   // R-125: one view per load. The ref holds across React's dev double mount, and status refreshes don't count.
   const counted = useRef(false);
   useEffect(() => {
-    if (counted.current) return;
+    if (counted.current || preview) return;
     counted.current = true;
     countView(linkToken);
-  }, [countView, linkToken]);
+  }, [countView, linkToken, preview]);
   const failure = invoice.error as { status?: unknown } | undefined;
   if (invoice.data) {
     // A failed poll keeps the last read: say so first, or a payer may think nothing arrived and send again.
@@ -539,7 +541,7 @@ function PayBox({
                       href={contract.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-mono text-accent underline decoration-1 underline-offset-4 hover:decoration-2"
+                      className="font-mono text-ink underline decoration-line-strong decoration-1 underline-offset-4 hover:decoration-2"
                     >
                       {shortAddress(invoice.token)}
                       {/* Never the full contract address here: next to the one to pay, it could be copied instead. */}

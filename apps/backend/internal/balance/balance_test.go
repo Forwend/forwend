@@ -3,7 +3,10 @@ package balance
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -131,6 +134,81 @@ func TestBalancesOnAnvil(t *testing.T) {
 	if got, err := failing.Of(ctx, profile); err != nil || got.Tokens[0].Wallet != nil || got.EstimatedUSD != "" ||
 		got.Tokens[0].Pending.Int64() != 3000000 {
 		t.Fatalf("RPC down: %+v, %v; want pending and held but no wallet balance or total", got, err)
+	}
+}
+
+// D-114: pending splits into exact parts by what each part waits for; held stays apart from all of them.
+func TestPendingParts(t *testing.T) {
+	const token = "0x036cbd53842c5426634e7929541ec2318f3dcf7e"
+	pool, profile, _ := setup(t, token) // open, its whole amount booked (2.0, confirming), 1.0 detected, 1.0 held
+	ctx := context.Background()
+	// Each option's status, amount and one booked deposit: its part for the creator and its part held for the payer.
+	for i, o := range []struct {
+		status              string
+		amount, owner, held int64
+	}{
+		{"paid", 3000000, 3000000, 500000},      // settling
+		{"paid", 1000000, 1000000, 0},           // settling
+		{"partially_paid", 5000000, 700000, 0},  // partial: it can still close and be held
+		{"partially_paid", 2000000, 2000000, 0}, // paid in full after a part, waiting for the balance check: confirming
+		{"expired_partially_paid", 5000000, 0, 1500000},
+	} {
+		id := fmt.Sprintf("0xab%062x", i+2)
+		if err := pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
+			if _, err := tx.Exec(ctx, `INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount,
+			        expires_at, settle_deadline, recipient_address, receive_method, factory_address, receive_address,
+			        idempotency_key, request_hash)
+			    VALUES ($1, $2, $3, 'evm', $4, $5, 1800000000, 1800086400, $6, 'evm_create2',
+			        '0x4444444444444444444444444444444444444444', $7, $1, decode(repeat('00', 32), 'hex'))`,
+				id, profile, chaintest.ChainID, token, o.amount, wallet, fmt.Sprintf("0x33%038x", i+2)); err != nil {
+				return err
+			}
+			_, err := tx.Exec(ctx, `
+			    WITH d AS (INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
+			            block_hash, block_number, block_time, from_address, to_address, amount, status)
+			        SELECT $1, 'evm', $2, $3, $3, 0, $3, 7, 1, $4, receive_address, $5::numeric + $6, 'confirmed'
+			        FROM invoices WHERE id = $3 RETURNING id),
+			    x AS (INSERT INTO ledger_transactions (invoice_id, kind, chain_transfer_id) SELECT $3, 'deposit', id FROM d
+			        RETURNING id)
+			    INSERT INTO ledger_entries (transaction_id, account, amount)
+			    SELECT id, 'receiver', $5::numeric + $6 FROM x
+			    UNION ALL SELECT id, 'recipient_payable', -$5::numeric FROM x WHERE $5 > 0
+			    UNION ALL SELECT id, 'payer_held', -$6::numeric FROM x WHERE $6 > 0`,
+				chaintest.ChainID, token, id, chaintest.Sender, o.owner, o.held)
+			if err != nil {
+				return err
+			}
+			_, err = tx.Exec(ctx, "UPDATE invoices SET payment_status = $2 WHERE id = $1", id, o.status)
+			return err
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := pool.Exec(ctx, `
+		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled, livemode) VALUES (8453, 'evm', 'base', true, true))
+		INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
+		VALUES (8453, 'evm', $1, 'USDC', 6, true)`, token); err != nil {
+		t.Fatal(err)
+	}
+	s := NewService(pool, func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
+		return big.NewInt(0), 1, nil
+	})
+	got, err := s.Of(ctx, profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var lines []string
+	for _, tk := range got.Tokens {
+		lines = append(lines, fmt.Sprintf("%d live=%t pending=%s settling=%s confirming=%s partial=%s held=%s", tk.ChainID,
+			tk.Livemode, tk.Pending, tk.Settling, tk.Confirming, tk.Partial, tk.Held))
+	}
+	want := []string{
+		"8453 live=true pending=0 settling=0 confirming=0 partial=0 held=0",
+		fmt.Sprintf("%d live=false pending=9700000 settling=4000000 confirming=5000000 partial=700000 held=3000000",
+			chaintest.ChainID),
+	}
+	if !reflect.DeepEqual(lines, want) {
+		t.Fatalf("got\n%s\nwant\n%s", strings.Join(lines, "\n"), strings.Join(want, "\n"))
 	}
 }
 

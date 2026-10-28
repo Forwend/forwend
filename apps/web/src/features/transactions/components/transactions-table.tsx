@@ -14,10 +14,14 @@ import {
   TABLE_HEAD_CLASSES,
   TABLE_ROW_CLASSES,
 } from "@forwend/ui-web";
+import { skipToken } from "@reduxjs/toolkit/query";
 import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useId, useState } from "react";
-import { useGetTransactionsQuery } from "@/features/transactions/api/transactions-api";
+import {
+  useGetTransactionPagesInfiniteQuery,
+  useGetTransactionsQuery,
+} from "@/features/transactions/api/transactions-api";
 import { ExportTransactions } from "@/features/transactions/components/export-transactions";
 import { RecordsValue } from "@/features/transactions/components/records-value";
 import { TransactionType } from "@/features/transactions/components/transaction-type";
@@ -25,8 +29,6 @@ import {
   RELATIVE_DAYS,
   TRANSACTION_DIRECTIONS,
   TRANSACTION_FILTERS,
-  TRANSACTIONS_MAX,
-  TRANSACTIONS_PAGE_SIZE,
 } from "@/features/transactions/constants/transactions";
 import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transactions-copy";
 import {
@@ -91,27 +93,32 @@ export function TransactionsTable(props: TransactionsTableProps) {
   return <ProfileTransactions key={props.profileId} {...props} />;
 }
 
-// "Show more" grows one request (up to the API's 100), so a refresh never skips or repeats a row.
+// A preview reads one short page; the full list pages by cursor and stays live while it shows its first page.
 function ProfileTransactions({ profileId, title, pageHeading, preview }: TransactionsTableProps) {
-  const [shownLimit, setShownLimit] = useState<number>(TRANSACTIONS_PAGE_SIZE);
   const filters = useListFilters(
     "direction",
     Object.values(TRANSACTION_FILTERS),
     TRANSACTION_FILTERS.all,
   );
-  const limit = preview ?? shownLimit;
-  const list = useGetTransactionsQuery(
-    preview
-      ? { profileId, limit }
-      : { profileId, limit, direction: filters.apiFilter, q: filters.apiQuery },
+  const [pages, setPages] = useState(1);
+  const recent = useGetTransactionsQuery(
+    preview ? { profileId, limit: preview } : skipToken,
     LIVE_QUERY,
   );
-  const data = useShownData(preview ? "" : filters.key, list.currentData, list.data);
+  const paged = useGetTransactionPagesInfiniteQuery(
+    preview ? skipToken : { profileId, direction: filters.apiFilter, q: filters.apiQuery },
+    { ...LIVE_QUERY, pollingInterval: pages > 1 ? 0 : LIVE_QUERY.pollingInterval },
+  );
+  const list = preview ? recent : paged;
+  const pagedData = useShownData(filters.key, paged.currentData, paged.data);
+  if ((pagedData?.pages.length ?? 1) !== pages) setPages(pagedData?.pages.length ?? 1);
+  const data = preview
+    ? recent.data
+    : pagedData && { items: pagedData.pages.flatMap((page) => page.items) };
   const rows = data?.items ?? [];
   const days = groupByDay(rows, new Date());
   const dayId = useId();
   const filtered = !preview && filters.filtered;
-  const more = Boolean(data?.nextCursor);
   const Heading = pageHeading ? "h1" : "h2";
   const DayHeading = pageHeading ? "h2" : "h3";
   // A new filter or search loads in place of as many rows as were shown.
@@ -184,7 +191,7 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
           className="flex flex-wrap items-center gap-4 px-5 py-6 text-sm text-muted"
         >
           {TRANSACTIONS_COPY.failed}
-          <Button size="sm" variant="secondary" onClick={list.refetch}>
+          <Button size="sm" variant="secondary" onClick={() => void list.refetch()}>
             {TRANSACTIONS_COPY.retry}
           </Button>
         </div>
@@ -315,20 +322,16 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
           </div>
         </div>
       )}
-      {preview || !data ? null : more && limit < TRANSACTIONS_MAX ? (
+      {preview || !data ? null : paged.hasNextPage ? (
         <Button
           variant="secondary"
           size="sm"
           className={pageHeading ? "self-start" : "m-4 self-start"}
-          loading={list.isFetching && rows.length < limit}
-          onClick={() => setShownLimit(Math.min(limit + TRANSACTIONS_PAGE_SIZE, TRANSACTIONS_MAX))}
+          loading={paged.isFetchingNextPage}
+          onClick={() => void paged.fetchNextPage()}
         >
           {TRANSACTIONS_COPY.loadMore}
         </Button>
-      ) : more ? (
-        <p className={`text-sm text-muted ${pageHeading ? "" : "px-5 pb-4"}`}>
-          {TRANSACTIONS_COPY.latestOnly}
-        </p>
       ) : null}
       {list.isError && data ? (
         <div

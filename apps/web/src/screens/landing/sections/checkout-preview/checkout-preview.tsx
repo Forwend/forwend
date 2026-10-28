@@ -9,13 +9,11 @@ import {
   TokenChip,
 } from "@forwend/ui-web";
 import { Check } from "lucide-react";
-import Image from "next/image";
 import { LANDING_SECTIONS } from "@/screens/landing/constants/landing-content";
 import {
   CHECKOUT,
   SAMPLE_DEPOSIT_ADDRESS,
 } from "@/screens/landing/sections/checkout-preview/constants/checkout-preview-content";
-import { CHECKOUT_IMAGE } from "@/shared/assets/images";
 import { SAMPLE_INVOICE, SAMPLE_STEPS } from "@/shared/examples/sample-invoice";
 
 export function CheckoutPreview() {
@@ -26,19 +24,9 @@ export function CheckoutPreview() {
       aria-labelledby="checkout-title"
       className="relative isolate overflow-hidden border-y border-line bg-bg text-ink"
     >
-      <div className="absolute inset-x-0 top-0 -z-10 h-112">
-        <Image
-          src={CHECKOUT_IMAGE.src}
-          alt=""
-          fill
-          sizes="100vw"
-          className="object-cover object-[70%_center] opacity-80"
-        />
-      </div>
-      <div className="absolute inset-x-0 top-0 -z-10 h-112 bg-[linear-gradient(to_bottom,transparent,var(--fw-bg))]" />
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-14 fw-safe-x py-20 sm:[--fw-page-gutter:2rem] sm:py-28 lg:grid-cols-[1fr_1fr] lg:items-center">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-14 fw-safe-x py-20 sm:[--fw-page-gutter:2rem] lg:[--fw-page-gutter:2.5rem] sm:py-28 lg:grid-cols-[1fr_1fr] lg:items-center">
         <div>
-          <h2 id="checkout-title" className="font-display text-section">
+          <h2 id="checkout-title" className="text-section font-medium text-ink">
             {CHECKOUT.title}
           </h2>
           <p className="mt-5 max-w-lg text-lg text-muted">{CHECKOUT.body}</p>

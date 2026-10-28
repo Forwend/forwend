@@ -1,113 +1,134 @@
 "use client";
-import { Badge, Button, buttonClasses, Skeleton, TONES } from "@forwend/ui-web";
+import { Badge, buttonClasses, DetailList, DetailRow, Skeleton, TONES } from "@forwend/ui-web";
 import Link from "next/link";
-import { useListLinksQuery } from "@/features/links/api/links-api";
+import { useGetLinkQuery } from "@/features/links/api/links-api";
 import { LINK_STATES } from "@/features/links/constants/links";
 import { LINKS_COPY as COPY } from "@/features/links/constants/links-copy";
 import { amountLabel, linkAddress, linkState } from "@/features/links/lib/links";
 import { ExportPayments } from "@/features/payments/components/export-payments";
 import { PaymentList } from "@/features/payments/components/payment-list";
+import { PERMISSIONS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
+import { can } from "@/features/profiles/lib/profile";
 import { CopyValue } from "@/shared/components/copy-value";
+import { LoadError } from "@/shared/components/load-error";
+import { RecordLink } from "@/shared/components/record-link";
 import { APP_ROUTES } from "@/shared/config/routes";
+
 export interface LinkScreenProps {
   linkId: string;
 }
+
 export function LinkScreen({ linkId }: LinkScreenProps) {
   const { profile } = useAppSession();
-  const list = useListLinksQuery(profile.profileId);
-  const link = list.currentData?.find((item) => item.linkId === linkId);
-  if (!list.currentData)
-    return list.isError ? (
-      <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">
-        {COPY.failed}
-        <Button variant="secondary" onClick={() => void list.refetch()}>
-          {COPY.retry}
-        </Button>
-      </div>
+  const read = useGetLinkQuery({ profileId: profile.profileId, linkId });
+  const link = read.currentData;
+  if (!link) {
+    const gone = (read.error as { status?: unknown } | undefined)?.status === 404;
+    return gone ? (
+      <p className="text-muted">
+        {COPY.gone} <RecordLink href={APP_ROUTES.links}>{COPY.backToList}</RecordLink>
+      </p>
+    ) : read.isError ? (
+      <LoadError
+        message={COPY.failed}
+        onRetry={() => void read.refetch()}
+        retrying={read.isFetching}
+      />
     ) : (
       <Skeleton className="h-64" />
     );
-  if (!link)
-    return (
-      <p className="text-muted">
-        {COPY.gone}{" "}
-        <Link href={APP_ROUTES.links} className="text-info underline underline-offset-4">
-          {COPY.backToList}
-        </Link>
-      </p>
-    );
+  }
   const state = linkState(link, Date.now());
   const filters = { linkId };
+  const purchases = `${APP_ROUTES.payments}?linkId=${linkId}`;
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="break-words text-2xl font-semibold tracking-tight text-ink">
-            {link.title}
-          </h1>
-          <p className="mt-1 text-muted">{COPY.intro}</p>
-        </div>
-        <Link
-          href={`${APP_ROUTES.links}/${linkId}/edit`}
-          className={buttonClasses({ variant: "secondary" })}
-        >
-          Edit payment link
-        </Link>
-      </header>
-      {list.isError ? (
-        <p role="alert" className="text-sm text-danger">
-          The offer could not refresh. The last loaded values are shown.
-        </p>
-      ) : null}
-      <section aria-labelledby="offer-summary" className="fw-panel flex flex-col gap-4 p-4 sm:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="offer-summary" className="font-semibold text-ink">
-            {amountLabel(link)}
-          </h2>
-          <span className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="break-words text-xl font-semibold tracking-tight text-ink">
+              {link.title}
+            </h1>
             <Badge tone={state === LINK_STATES.on ? TONES.success : TONES.neutral}>
               {COPY.states[state]}
             </Badge>
-            {link.livemode ? null : <span className="text-xs text-warning">Testnet</span>}
-          </span>
-        </div>
-        <CopyValue
-          label="Share this offer"
-          value={linkAddress(window.location.origin, link.slug)}
-          copyLabel={COPY.copyLabel}
-          hint="Customers get a new checkout for each purchase."
-        />
-        <p className="text-sm text-muted">{COPY.activity(link.visits, link.paid, link.reserved)}</p>
-        {link.storeId ? (
-          <p className="text-sm text-muted">
-            Store:{" "}
-            <Link
-              href={`${APP_ROUTES.stores}/${link.storeId}`}
-              className="text-info underline underline-offset-4"
-            >
-              View store settings
-            </Link>
-          </p>
-        ) : null}
-        {state === LINK_STATES.notReady ? (
-          <p className="text-sm text-warning">
-            Check billing details, the profile wallet and accepted tokens before sharing.
-          </p>
-        ) : null}
-      </section>
-      <section aria-labelledby="link-payments" className="flex flex-col gap-4">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 id="link-payments" className="text-lg font-semibold text-ink">
-              Payments
-            </h2>
-            <p className="text-sm text-muted">Payments from this link.</p>
+            {link.livemode ? null : <Badge tone={TONES.warning}>{COPY.testMode}</Badge>}
           </div>
-          <ExportPayments profileId={profile.profileId} filters={filters} />
-        </header>
-        <PaymentList profileId={profile.profileId} filters={filters} />
-      </section>
+          <p className="mt-1 text-sm text-muted">{amountLabel(link)}</p>
+        </div>
+        {can(profile, PERMISSIONS.invoicesWrite) ? (
+          <Link
+            href={`${APP_ROUTES.links}/${linkId}/edit`}
+            className={buttonClasses({ variant: "secondary", size: "sm" })}
+          >
+            {COPY.edit}
+          </Link>
+        ) : null}
+      </header>
+      {read.isError ? (
+        <LoadError
+          message={COPY.stale}
+          onRetry={() => void read.refetch()}
+          retrying={read.isFetching}
+        />
+      ) : null}
+      {state === LINK_STATES.notReady ? (
+        <p role="status" className="rounded-md bg-warning-soft px-4 py-3 text-sm text-warning">
+          {COPY.notReadyHint}
+        </p>
+      ) : null}
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] xl:items-start">
+        <section
+          aria-labelledby="link-share"
+          className="fw-panel min-w-0 xl:col-start-2 xl:row-start-1"
+        >
+          <h2 id="link-share" className="fw-panel-head text-sm font-medium text-ink">
+            {COPY.offer}
+          </h2>
+          <div className="px-4 py-3 sm:px-5">
+            <CopyValue
+              label={COPY.share}
+              value={linkAddress(window.location.origin, link.slug)}
+              copyLabel={COPY.copyLabel}
+              hint={COPY.shareHint}
+            />
+          </div>
+          <DetailList className="border-t border-line">
+            <DetailRow term={COPY.activityRow}>
+              {COPY.activity(link.visits, link.paid, link.reserved)}
+            </DetailRow>
+            {link.storeId ? (
+              <DetailRow term={COPY.storeRow}>
+                <RecordLink href={`${APP_ROUTES.stores}/${link.storeId}`}>
+                  {COPY.viewStore}
+                </RecordLink>
+              </DetailRow>
+            ) : null}
+          </DetailList>
+        </section>
+        <section
+          aria-labelledby="link-purchases"
+          className="flex min-w-0 flex-col gap-3 xl:col-start-1 xl:row-start-1"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="link-purchases" className="text-sm font-medium text-ink">
+              {COPY.purchases}
+            </h2>
+            <div className="flex items-center gap-2">
+              <Link href={purchases} className={buttonClasses({ variant: "ghost", size: "sm" })}>
+                {COPY.allPurchases}
+              </Link>
+              <ExportPayments profileId={profile.profileId} filters={filters} />
+            </div>
+          </div>
+          <PaymentList
+            profileId={profile.profileId}
+            filters={filters}
+            empty={{ title: COPY.noPurchases, text: COPY.noPurchasesText }}
+          />
+        </section>
+      </div>
     </div>
   );
 }

@@ -249,18 +249,28 @@ func getProfileInvoice(invoices *invoice.Service) http.HandlerFunc {
 // R-95.
 func listOwed(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		access := mid.ProfileAccess(r)
-		owed, err := invoices.Owed(r.Context(), r.PathValue("profileId"), access.Stores, access.Livemode)
+		limit, err := httpio.IntQuery(r, "limit", invoice.DefaultOwedLimit)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		out := owedListJSON{Items: []owedJSON{}}
-		for _, o := range owed {
+		access := mid.ProfileAccess(r)
+		page, err := invoices.Owed(r.Context(), r.PathValue("profileId"), access.Stores, access.Livemode, limit)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		out := owedListJSON{Items: []owedJSON{}, Count: page.Count, Totals: []owedTotalJSON{}}
+		for _, o := range page.Items {
 			out.Items = append(out.Items, owedJSON{Kind: o.Kind, InvoiceID: o.InvoiceID, Number: o.Number,
+				Purpose: o.Purpose, DocumentKind: o.DocumentKind, Reference: httpio.OrNull(o.Reference),
 				Title: httpio.OrNull(o.Title), ClientName: httpio.OrNull(o.ClientName), DueDate: httpio.OrNull(o.DueDate),
 				DaysLate: o.DaysLate, OptionCount: o.OptionCount, ChainID: o.ChainID, Token: o.Token, Symbol: o.Symbol,
 				Decimals: o.Decimals, Amount: o.Amount.String()})
+		}
+		for _, t := range page.Totals {
+			out.Totals = append(out.Totals, owedTotalJSON{ChainID: t.ChainID, Token: t.Token, Symbol: t.Symbol,
+				Decimals: t.Decimals, Amount: t.Amount.String()})
 		}
 		httpio.WriteJSON(w, http.StatusOK, out)
 	}

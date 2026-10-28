@@ -21,6 +21,8 @@ export interface PaymentFilters {
   source?: Payment["source"];
   linkId?: string;
   status?: string;
+  /** The derived payment state (D-114). */
+  state?: string;
 }
 export interface PaymentPeriod {
   from?: string;

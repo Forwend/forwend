@@ -17,6 +17,7 @@ type detailsJSON struct {
 	SnapshotAt string            `json:"snapshotAt"`
 	Customer   customerJSON      `json:"customer"`
 	Metadata   map[string]string `json:"metadata"`
+	Items      []itemJSON        `json:"items"`
 	Options    []optionJSON      `json:"options"`
 	Deliveries []deliveryJSON    `json:"deliveries"`
 	Problems   []problemJSON     `json:"problems"`
@@ -25,6 +26,13 @@ type detailsJSON struct {
 type customerJSON struct {
 	Name  *string `json:"name"`
 	Email *string `json:"email"`
+}
+
+type itemJSON struct {
+	Description string `json:"description"`
+	Quantity    string `json:"quantity"`
+	UnitPrice   string `json:"unitPrice"`
+	Amount      string `json:"amount"`
 }
 
 type optionJSON struct {
@@ -128,7 +136,10 @@ func toProblems(problems []invoice.PaymentProblem, access auth.Access) []problem
 func toDetails(detail invoice.PaymentDetails, webURL string, access auth.Access) detailsJSON {
 	out := detailsJSON{DeliveryCount: detail.DeliveryCount, DeliveriesTruncated: detail.DeliveryCount > int64(len(detail.Deliveries)), Payment: paymentio.FromInvoice(detail.Invoice, webURL), SnapshotAt: detail.SnapshotAt.UTC().Format(time.RFC3339Nano),
 		Customer: customerJSON{Name: httpio.OrNull(detail.Invoice.ClientName), Email: httpio.OrNull(detail.Invoice.ClientEmail)}, Metadata: detail.Invoice.Metadata,
-		Options: []optionJSON{}, Deliveries: []deliveryJSON{}, Problems: toProblems(detail.Problems, access)}
+		Items: []itemJSON{}, Options: []optionJSON{}, Deliveries: []deliveryJSON{}, Problems: toProblems(detail.Problems, access)}
+	for _, line := range detail.Invoice.Lines {
+		out.Items = append(out.Items, itemJSON{Description: line.Description, Quantity: line.Quantity, UnitPrice: line.UnitPrice.String(), Amount: line.Amount.String()})
+	}
 	for _, option := range detail.Options {
 		state := option.State
 		row := optionJSON{OptionID: option.ID, ChainID: option.ChainID, Token: option.Token, Symbol: option.Symbol, Decimals: option.Decimals,

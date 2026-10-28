@@ -43,6 +43,8 @@ const PAIRS: readonly (readonly [string, string, number])[] = [
   ["accent", "surface", BODY],
   ["on-primary", "primary", BODY],
   ["on-accent", "accent", BODY],
+  ["on-brand", "brand", BODY],
+  ["on-brand", "brand-hover", BODY],
   ["success", "success-soft", BODY],
   ["warning", "warning-soft", BODY],
   ["danger", "danger-soft", BODY],

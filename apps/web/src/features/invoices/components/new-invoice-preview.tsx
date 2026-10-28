@@ -5,6 +5,13 @@ import type {
 } from "@/features/invoices/constants/invoices-copy";
 import { exactDigits } from "@/shared/lib/money";
 
+export interface PreviewLine {
+  id: string;
+  description: string;
+  quantity: string;
+  units: bigint | null;
+}
+
 export interface NewInvoicePreviewProps {
   copy: typeof NEW_INVOICE_COPY.preview | typeof NEW_REQUEST_COPY.preview;
   units: bigint;
@@ -16,9 +23,10 @@ export interface NewInvoicePreviewProps {
   client: string;
   due: string | null;
   closes: string;
+  lines: readonly PreviewLine[];
 }
 
-// Hidden from screen readers: the form's fields already say all of it.
+/** The invoice as the payer will read it, from what the form holds now: no second input anywhere. */
 export function NewInvoicePreview({
   copy,
   units,
@@ -30,46 +38,66 @@ export function NewInvoicePreview({
   client,
   due,
   closes,
+  lines,
 }: NewInvoicePreviewProps) {
   const rows = [
     [copy.client, client || copy.noClient],
     [copy.due, due ?? copy.noDue],
     [copy.closes, closes],
   ] as const;
+  const amount = (value: bigint) => (
+    <Money
+      baseUnits={value}
+      decimals={decimals}
+      fractionDigits={exactDigits(value, decimals)}
+      token={unit}
+    />
+  );
   return (
-    <aside
-      aria-hidden
-      className="sticky top-24 hidden flex-col rounded-lg border border-line bg-surface xl:flex"
-    >
-      <p className="border-b border-line px-5 py-4 text-base font-semibold text-ink">
-        {copy.title}
-      </p>
-      <div className="flex flex-col gap-5 p-5">
-        <div className="flex min-w-0 flex-col gap-1">
-          <p className="truncate text-sm text-muted">{title || copy.untitled}</p>
-          <Money
-            baseUnits={units}
-            decimals={decimals}
-            fractionDigits={exactDigits(units, decimals)}
-            token={unit}
-            className="min-w-0 text-amount text-ink"
-          />
-          <p className="text-sm text-muted">{payLine}</p>
-        </div>
-        <dl className="flex flex-col divide-y divide-line border-y border-line text-sm">
-          {rows.map(([label, value]) => (
-            <div key={label} className="flex items-baseline justify-between gap-4 py-2.5">
-              <dt className="text-muted">{label}</dt>
-              <dd className="min-w-0 truncate text-right text-ink">{value}</dd>
-            </div>
-          ))}
-        </dl>
-        {note ? (
-          <p className="line-clamp-4 border-l-2 border-line-strong pl-3 text-sm break-words whitespace-pre-line text-ink">
-            {note}
-          </p>
-        ) : null}
+    <div className="flex flex-col gap-5">
+      <div className="flex min-w-0 flex-col gap-1">
+        <p className="truncate text-sm text-muted">{title || copy.untitled}</p>
+        <Money
+          baseUnits={units}
+          decimals={decimals}
+          fractionDigits={exactDigits(units, decimals)}
+          token={unit}
+          className="min-w-0 text-amount font-medium tracking-tight text-ink"
+        />
+        <p className="text-sm text-muted">{payLine}</p>
       </div>
-    </aside>
+      {lines.length ? (
+        <ul className="flex flex-col divide-y divide-line border-y border-line text-sm">
+          {lines.map((line) => (
+            <li key={line.id} className="flex items-baseline justify-between gap-4 py-2.5">
+              <span className="min-w-0">
+                <span className="block break-words text-ink">
+                  {line.description || copy.noItem}
+                </span>
+                <span className="block text-xs text-muted">
+                  {copy.quantity(line.quantity || "—")}
+                </span>
+              </span>
+              <span className="shrink-0 text-ink tabular-nums">
+                {line.units === null ? <span className="text-subtle">—</span> : amount(line.units)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <dl className="flex flex-col divide-y divide-line border-y border-line text-sm">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex items-baseline justify-between gap-4 py-2.5">
+            <dt className="text-muted">{label}</dt>
+            <dd className="min-w-0 truncate text-right text-ink">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      {note ? (
+        <p className="line-clamp-6 rounded-md bg-surface-2 px-3 py-2 text-sm break-words whitespace-pre-line text-ink">
+          {note}
+        </p>
+      ) : null}
+    </div>
   );
 }

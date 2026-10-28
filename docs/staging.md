@@ -80,6 +80,7 @@
 | `RESEND_API_KEY` | Existing send-only Resend key; empty leaves emails queued without sending them. |
 | `EMAIL_FROM` | `Forwend <notifications@mail.forwend.com>` by default; use a sender verified by Resend. |
 | `EMAIL_POSTAL_ADDRESS` | Optional sender address for email footers; empty omits it. |
+| `COINGECKO_API_KEY` | Optional CoinGecko Demo plan key for display prices (R-178); empty calls without a key. |
 | `WEBHOOK_SECRET_KEY` | 32 random bytes in base64, from `openssl rand -base64 32`. Compose refuses to deploy without it. It opens the saved signing secrets; under another key, deliveries stop. |
 
 - Compose sets `DATABASE_URL`, `API_ADDR`, `RPC_ALLOW_LOOPBACK=0`, `PRIVY_APP_ID` and `PRIVY_JWKS_URL` internally.
@@ -87,7 +88,7 @@
 - `POSTGRES_PORT` is local only. The staging database has no host port.
 - `PRIVY_TEST_EMAIL` and `PRIVY_TEST_OTP` are browser test credentials, excluded from deployment.
 - `DEPLOYER_PRIVATE_KEY` and `REFUND_AUTHORITY_PRIVATE_KEY` are contract tooling credentials, excluded from deployment.
-- `CANARY_*` belongs to the separate canary host. Test overrides `RESEND_API_URL` and `ECB_RATES_URL` are excluded.
+- `CANARY_*` belongs to the separate canary host. Test overrides `RESEND_API_URL`, `ECB_RATES_URL` and `COINGECKO_API_URL` are excluded.
 
 ## Verification
 

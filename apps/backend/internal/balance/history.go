@@ -28,6 +28,7 @@ type Point struct {
 // One value per point: the balance at At and the final transfers in its bucket; all nil when the balance is missing.
 type TokenHistory struct {
 	chain.Asset
+	Livemode                 bool
 	Balances, Received, Sent []*big.Int
 }
 
@@ -42,7 +43,7 @@ func (s *Service) History(ctx context.Context, profileID string, days int, now t
 	if days < 1 || days > MaxDays {
 		return History{}, fmt.Errorf("%w: days must be 1 to %d", ErrInvalid, MaxDays)
 	}
-	current, err := s.Of(ctx, profileID)
+	current, err := s.of(ctx, profileID, false) // only the wallet balances
 	if err != nil {
 		return History{}, err
 	}
@@ -91,7 +92,7 @@ func (s *Service) History(ctx context.Context, profileID string, days int, now t
 	}
 
 	for _, t := range current.Tokens {
-		th := TokenHistory{ChainID: t.ChainID, Token: t.Token, Symbol: t.Symbol, Decimals: t.Decimals}
+		th := TokenHistory{Asset: t.Asset, Livemode: t.Livemode}
 		if t.Wallet != nil {
 			th.Balances, th.Received, th.Sent = make([]*big.Int, days), make([]*big.Int, days), make([]*big.Int, days)
 			balance := new(big.Int).Set(t.Wallet)

@@ -397,7 +397,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
       .click();
     await expect(
       page.getByRole("menuitem", { name: "Open pay page in a new tab" }),
-    ).toHaveAttribute("href", link);
+    ).toHaveAttribute("href", `${link}?preview=1`);
     await page.getByRole("menuitem", { name: "Copy link" }).click();
     await expect(page.getByRole("menuitem", { name: "Link copied" })).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);
@@ -516,7 +516,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     });
     await page.getByRole("link", { name: "View payment", exact: true }).click();
     await expect(
-      page.getByRole("main").getByText("Funds held for the payer", { exact: false }),
+      page.getByRole("main").getByText("Money held for the payer", { exact: false }),
     ).toContainText("2.00");
     await expect(page.getByRole("link", { name: "View transaction on Arbiscan" })).toHaveAttribute(
       "href",
@@ -696,7 +696,10 @@ test("the overview lists what clients owe, with the total left to pay, and fits 
     row(4, "partlyPaid", "1000000"),
     row(5, "partlyPaid", "1000000"),
     row(6, "partlyPaid", "1000000"),
-    row(7, "held", "9000000"),
+    // A checkout has no invoice number: its reference names it, and its row opens the payment.
+    row(7, "partlyPaid", "2000000", { number: null, clientName: null, reference: "order-7" }),
+    // Held money is the payer's (D-114): an older API's held row never shows here.
+    row(8, "held", "9000000"),
   ];
   // R-95. Mocked before the first load: the suite nears the one test user's API rate limit, so this loads once.
   await page.route("**/api/v1/profiles/*/owed", (route) => route.fulfill({ json: { items } }));
@@ -708,7 +711,7 @@ test("the overview lists what clients owe, with the total left to pay, and fits 
       .click(),
   );
   const owed = page.getByRole("region", { name: "Owed to you" });
-  await expect(owed.getByText("Left to pay: 578.50 USD")).toBeAttached();
+  await expect(owed.getByText("Left to pay: 580.50 USD")).toBeAttached();
   const links = owed.getByRole("link");
   await expect(links).toHaveCount(5);
   await expect(links.first()).toContainText("Client 1");
@@ -721,8 +724,10 @@ test("the overview lists what clients owe, with the total left to pay, and fits 
   await owed.getByRole("button", { name: "Show all 7" }).click();
   await expect(links).toHaveCount(7);
   await expect(links.nth(5)).toBeFocused();
-  await expect(links.last()).toContainText("Held for the payer");
-  await expect(links.last()).not.toContainText("left to pay");
+  await expect(links.last()).toContainText("order-7");
+  await expect(links.last()).toContainText("Partially paid");
+  await expect(links.last()).toHaveAttribute("href", `/app/payments/0x${"7".repeat(64)}`);
+  await expect(owed.getByText("Held for the payer")).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
   // The shell swaps the sidebar for the tab bar after the resize; until then the old layout is wider than a phone.
   await expect(page.locator("aside")).toBeHidden();

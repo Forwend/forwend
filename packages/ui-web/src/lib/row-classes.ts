@@ -4,7 +4,7 @@ export const ROW_INTERACTIVE_CLASSES =
 
 /** The same side padding as TABLE_ROW_CLASSES' cells. */
 export const TABLE_HEAD_CLASSES =
-  "border-b border-line text-left text-xs text-muted [&>th]:h-10 [&>th]:px-3 [&>th]:font-medium [&>th]:whitespace-nowrap [&>th:first-child]:pl-5 [&>th:last-child]:pr-5";
+  "border-b border-line text-left text-xs text-muted [&>th]:h-9 [&>th]:px-3 [&>th]:font-medium [&>th]:whitespace-nowrap [&>th:first-child]:pl-5 [&>th:last-child]:pr-5";
 
 export const TABLE_ROW_CLASSES =
-  "[&>td]:h-15 [&>td]:px-3 [&>td]:py-2.5 [&>td]:align-middle [&>td:first-child]:pl-5 [&>td:last-child]:pr-5";
+  "[&>td]:h-11 [&>td]:px-3 [&>td]:py-1.5 [&>td]:align-middle [&>td:first-child]:pl-5 [&>td:last-child]:pr-5";

@@ -38,6 +38,7 @@ import type {
   invoicesPageSchema,
   invoiceUpdateSchema,
   invoiceViewsSchema,
+  owedListSchema,
   owedSchema,
   recheckSchema,
   revisionSchema,
@@ -53,6 +54,8 @@ export type InvoiceReminders = z.infer<typeof invoiceRemindersSchema>;
 export type InvoiceRetainer = z.infer<typeof invoiceRetainerSchema>;
 export type StoppedReminders = z.infer<typeof stoppedRemindersSchema>;
 export type Owed = z.infer<typeof owedSchema>;
+
+export type OwedList = z.infer<typeof owedListSchema>;
 export type InvoiceEvent = z.infer<typeof invoiceEventSchema>;
 export type HistoryKind = (typeof HISTORY_KINDS)[keyof typeof HISTORY_KINDS];
 export type HistoryActor = (typeof HISTORY_ACTORS)[keyof typeof HISTORY_ACTORS];

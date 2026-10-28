@@ -296,6 +296,8 @@ type Invoice struct {
 	LogoAt     *time.Time
 	// Livemode is false on a testnet: test mode, whose tokens have no value (D-87).
 	Livemode bool
+	// State and Wallet are the merchant's reading of the statuses (D-114): PaymentStates and WalletStates.
+	State, Wallet string
 }
 
 // Revision is the other invoice of a Revise (R-129); PayToken is set only for the replacement.

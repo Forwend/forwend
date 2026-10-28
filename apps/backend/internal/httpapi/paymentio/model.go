@@ -16,6 +16,7 @@ type Receipt struct {
 	Decimals int    `json:"decimals"`
 	Received string `json:"received"`
 	Pending  string `json:"pending"`
+	Held     string `json:"held"`
 }
 
 type Payment struct {
@@ -33,6 +34,7 @@ type Payment struct {
 	Purpose          invoice.Purpose       `json:"purpose"`
 	DocumentKind     invoice.DocumentKind  `json:"documentKind"`
 	Number           *int64                `json:"number"`
+	DueDate          *string               `json:"dueDate"`
 	StoreID          *string               `json:"storeId"`
 	StoreName        *string               `json:"storeName"`
 	LinkID           *string               `json:"linkId"`
@@ -45,6 +47,8 @@ type Payment struct {
 	PaymentStatus    string                `json:"paymentStatus"`
 	SettlementStatus string                `json:"settlementStatus"`
 	RefundStatus     string                `json:"refundStatus"`
+	State            string                `json:"state"`
+	Wallet           string                `json:"wallet"`
 	Confirming       bool                  `json:"confirming"`
 	Closed           bool                  `json:"closed"`
 	CreatedAt        string                `json:"createdAt"`
@@ -53,15 +57,15 @@ type Payment struct {
 }
 
 func FromInvoice(inv invoice.Invoice, webURL string) Payment {
-	p := Payment{CustomerEmail: httpio.OrNull(inv.ClientEmail), CustomerName: httpio.OrNull(inv.ClientName), OptionID: inv.OptionID, OptionLocked: inv.OptionLocked, OptionCount: inv.OptionCount, Symbol: inv.Symbol, Decimals: inv.Decimals, Source: inv.PaymentSource(), Amounts: FromAmounts(inv.Amounts), PaymentID: inv.ID, Purpose: inv.Purpose, DocumentKind: inv.DocumentKind, Number: inv.Number,
+	p := Payment{CustomerEmail: httpio.OrNull(inv.ClientEmail), CustomerName: httpio.OrNull(inv.ClientName), OptionID: inv.OptionID, OptionLocked: inv.OptionLocked, OptionCount: inv.OptionCount, Symbol: inv.Symbol, Decimals: inv.Decimals, Source: inv.PaymentSource(), Amounts: FromAmounts(inv.Amounts), PaymentID: inv.ID, Purpose: inv.Purpose, DocumentKind: inv.DocumentKind, Number: inv.Number, DueDate: httpio.OrNull(inv.DueDate),
 		StoreID: httpio.OrNull(inv.StoreID), StoreName: httpio.OrNull(inv.StoreName), LinkID: httpio.OrNull(inv.LinkID),
 		Livemode: inv.Livemode, Title: httpio.OrNull(inv.Title), Reference: httpio.OrNull(inv.Reference),
 		ChainID: inv.ChainID, Token: inv.Token, Amount: inv.Amount.String(), PaymentStatus: inv.PaymentStatus,
-		SettlementStatus: inv.SettlementStatus, RefundStatus: inv.RefundStatus, Confirming: inv.Confirming,
+		SettlementStatus: inv.SettlementStatus, RefundStatus: inv.RefundStatus, State: inv.State, Wallet: inv.Wallet, Confirming: inv.Confirming,
 		Closed: inv.Closed, CreatedAt: inv.CreatedAt.UTC().Format(time.RFC3339Nano), ClosesAt: inv.ClosesAt.UTC().Format(time.RFC3339)}
 	p.Receipts = []Receipt{}
 	for _, r := range inv.Receipts {
-		p.Receipts = append(p.Receipts, Receipt{OptionID: r.OptionID, ChainID: r.ChainID, Token: r.Token, Symbol: r.Symbol, Decimals: r.Decimals, Received: r.Received.String(), Pending: r.Pending.String()})
+		p.Receipts = append(p.Receipts, Receipt{OptionID: r.OptionID, ChainID: r.ChainID, Token: r.Token, Symbol: r.Symbol, Decimals: r.Decimals, Received: r.Received.String(), Pending: r.Pending.String(), Held: r.Held.String()})
 	}
 	if inv.PayToken != "" {
 		url := webURL + "/pay/" + inv.PayToken

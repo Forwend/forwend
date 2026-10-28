@@ -108,11 +108,11 @@ export function AccountMenu({ email, onSignOut, links, trigger, side = "top" }: 
                 </Link>
               </MenuItem>
             ) : null}
-            {/* Not built yet: shown as coming (the owner's choice), it does nothing. */}
-            <MenuItem disabled>
-              <Settings aria-hidden className="size-[var(--fw-icon-md)]" />
-              {AUTH_COPY.settings}
-              <span className="ml-auto text-xs">{AUTH_COPY.soon}</span>
+            <MenuItem asChild>
+              <Link href={APP_ROUTES.settings}>
+                <Settings aria-hidden className="size-[var(--fw-icon-md)]" />
+                {AUTH_COPY.settings}
+              </Link>
             </MenuItem>
             <MenuSeparator />
             <MenuItem onSelect={onSignOut}>

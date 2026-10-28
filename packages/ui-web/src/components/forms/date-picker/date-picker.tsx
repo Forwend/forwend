@@ -105,7 +105,7 @@ export function DatePicker({
           <div
             role="dialog"
             aria-labelledby={`${id}-label`}
-            className="absolute top-full left-0 z-[var(--fw-z-overlay)] max-w-[calc(100vw-2rem)] mt-1.5 rounded-lg border border-line bg-surface p-3 text-ink shadow-lg"
+            className="absolute top-full left-0 z-[var(--fw-z-overlay)] max-w-[calc(100vw-2rem)] mt-1.5 rounded-md border border-line bg-surface p-3 text-ink shadow-lg"
           >
             <Calendar
               label={label}

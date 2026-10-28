@@ -45,12 +45,13 @@ func readDepositSummaries(ctx context.Context, db paymentReader, ids []string) (
 	return summaries, rows.Err()
 }
 
-const depositPaidSQL = `(SELECT coalesce(-sum(e.amount) FILTER (WHERE e.account = 'recipient_payable'), 0)::text
+// DepositPaidSQL is the part of chain transfer t the ledger booked to the creator, as text; NULL until booked.
+const DepositPaidSQL = `(SELECT coalesce(-sum(e.amount) FILTER (WHERE e.account = 'recipient_payable'), 0)::text
  FROM ledger_transactions x JOIN ledger_entries e ON e.transaction_id = x.id
  WHERE x.chain_transfer_id = t.id AND x.kind IN ('deposit', 'reopen') HAVING count(*) > 0)`
 
 const depositColumns = `tx_hash,log_index,from_address,amount::text,block_number,block_time,status,
- coalesce(detected_finalized_block,0),` + depositPaidSQL + `,
+ coalesce(detected_finalized_block,0),` + DepositPaidSQL + `,
  t.block_time > (SELECT closes_at FROM invoices WHERE id=t.invoice_id)`
 
 func readDepositPreview(ctx context.Context, db paymentReader, id string, head finality.Block, count int64) ([]Deposit, error) {
@@ -66,7 +67,7 @@ func readDepositPreview(ctx context.Context, db paymentReader, id string, head f
   WHERE t.invoice_id=$1 AND t.status<>'reorged' AND t.block_time<=i.closes_at
   ORDER BY t.block_time,t.block_number,t.log_index LIMIT 1)
  UNION
- (SELECT t.id FROM chain_transfers t WHERE t.invoice_id=$1 AND t.status<>'reorged' AND (`+depositPaidSQL+`)::numeric>0
+ (SELECT t.id FROM chain_transfers t WHERE t.invoice_id=$1 AND t.status<>'reorged' AND (`+DepositPaidSQL+`)::numeric>0
   ORDER BY t.block_number DESC,t.log_index DESC LIMIT 1)
  UNION
  (SELECT t.id FROM chain_transfers t JOIN invoices i ON i.id=t.invoice_id

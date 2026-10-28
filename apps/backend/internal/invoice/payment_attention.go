@@ -24,7 +24,9 @@ type PaymentAttentionPage struct {
 
 func paymentAttentionSQL(delay string) string {
 	return `EXISTS (SELECT 1 FROM invoices attention WHERE coalesce(attention.main_id,attention.id) = invoices.id AND (
-    attention.payment_status = 'partially_paid' OR attention.refund_status = 'held'
+    attention.payment_status = 'partially_paid' AND (SELECT -coalesce(sum(e.amount),0) FROM ledger_transactions l
+      JOIN ledger_entries e ON e.transaction_id = l.id WHERE l.invoice_id = attention.id AND e.account = 'recipient_payable') < attention.amount
+    OR attention.refund_status = 'held'
     OR ((` + ledger.UnreconciledSQL("attention.id") + `) AND (
       EXISTS (SELECT 1 FROM chain_transfers d WHERE d.invoice_id=attention.id AND d.status<>'reorged')
       OR EXISTS (SELECT 1 FROM receiver_outflows o WHERE o.invoice_id=attention.id)

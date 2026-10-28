@@ -1,21 +1,33 @@
 import { formatTokenAmount } from "@forwend/ui-web";
 import { USD_DECIMALS } from "@/features/balances/constants/balances";
 import type { Balances } from "@/features/balances/types/balances";
+import { totalUsdCents } from "@/features/prices/lib/prices";
+import type { TokenPrice } from "@/features/prices/types/prices";
 
 export function formatUsd(cents: bigint): string {
   return formatTokenAmount({ baseUnits: cents, decimals: USD_DECIMALS });
 }
 
-// Each stablecoin counts as 1 USD; cut to cents once, never rounded up.
-export function usdTotal(balances: Balances, field: "wallet" | "pending" | "held"): bigint | null {
-  if (balances.tokens.length === 0) return null;
-  // Added at the finest decimals of any token, so no cent is lost per token.
-  const finest = Math.max(...balances.tokens.map((t) => t.decimals));
-  let sum = 0n;
+/** Holdings at market prices (D-115), cut to cents once. null while a balance is unread or a held token has no
+ * fresh price: never valued at 1 USD instead. */
+export function marketUsd(
+  balances: Balances,
+  field: "wallet" | "pending" | "held" | "settling",
+  prices: readonly TokenPrice[] | undefined,
+  now: number,
+): bigint | null {
+  if (!prices || balances.tokens.length === 0) return null;
+  const amounts = [];
   for (const t of balances.tokens) {
-    const amount = t[field];
+    // An older read has no settling part: its pending is the nearest it has.
+    const amount = field === "settling" ? (t.settling ?? t.pending) : t[field];
     if (amount === null) return null;
-    sum += BigInt(amount) * 10n ** BigInt(finest - t.decimals);
+    amounts.push({
+      chainId: t.chainId,
+      token: t.token,
+      baseUnits: BigInt(amount),
+      decimals: t.decimals,
+    });
   }
-  return (sum * 10n ** BigInt(USD_DECIMALS)) / 10n ** BigInt(finest);
+  return totalUsdCents(prices, amounts, now);
 }

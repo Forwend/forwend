@@ -1,16 +1,6 @@
 "use client";
 
-import {
-  Badge,
-  Button,
-  type ButtonSize,
-  buttonClasses,
-  EmptyState,
-  ROW_INTERACTIVE_CLASSES,
-  TABLE_HEAD_CLASSES,
-  TABLE_ROW_CLASSES,
-  TONES,
-} from "@forwend/ui-web";
+import { Badge, type ButtonSize, buttonClasses, EmptyState, TONES } from "@forwend/ui-web";
 import { Link2, Plus } from "lucide-react";
 import Link from "next/link";
 import { useListLinksQuery } from "@/features/links/api/links-api";
@@ -18,7 +8,9 @@ import { LINK_STATES } from "@/features/links/constants/links";
 import { LINKS_COPY as COPY } from "@/features/links/constants/links-copy";
 import { amountLabel, linkState } from "@/features/links/lib/links";
 import type { Link as PaymentLink } from "@/features/links/types/links";
+import { DataTable } from "@/shared/components/data-table";
 import { ListToolbar } from "@/shared/components/list-toolbar";
+import { LoadError } from "@/shared/components/load-error";
 import { RowsSkeleton } from "@/shared/components/rows-skeleton";
 import { APP_ROUTES } from "@/shared/config/routes";
 
@@ -47,10 +39,12 @@ function StateBadge({ link }: { link: PaymentLink }) {
 
 export interface LinksTableProps {
   profileId: string;
+  /** Roles that can't make links see no New link. */
+  canWrite: boolean;
 }
 
 // R-140: the owner sees each link's visits and paid count, not every unpaid invoice it made.
-export function LinksTable({ profileId }: LinksTableProps) {
+export function LinksTable({ profileId, canWrite }: LinksTableProps) {
   const list = useListLinksQuery(profileId);
   const links = list.currentData ?? [];
   return (
@@ -64,87 +58,71 @@ export function LinksTable({ profileId }: LinksTableProps) {
         <h1 id="links-title" className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
           {COPY.title}
         </h1>
-        <NewLinkLink size="sm" className="lg:hidden" />
+        {canWrite ? <NewLinkLink size="sm" className="lg:hidden" /> : null}
       </div>
       <ListToolbar
         search={<p className="flex-1 text-sm text-muted">{COPY.intro}</p>}
-        actions={<NewLinkLink className="max-lg:hidden" />}
+        actions={canWrite ? <NewLinkLink className="max-lg:hidden" /> : undefined}
       />
 
       {list.isError && !list.currentData ? (
-        <div role="alert" className="flex flex-wrap items-center gap-4 text-sm text-muted">
-          {COPY.failed}
-          <Button size="sm" variant="secondary" onClick={() => void list.refetch()}>
-            {COPY.retry}
-          </Button>
-        </div>
+        <LoadError
+          message={COPY.failed}
+          onRetry={() => void list.refetch()}
+          retrying={list.isFetching}
+        />
       ) : !list.currentData ? (
         <RowsSkeleton count={2} className="fw-panel" />
       ) : links.length === 0 ? (
-        <EmptyState icon={Link2} title={COPY.empty} description={COPY.emptyBody} />
+        <EmptyState
+          icon={Link2}
+          title={COPY.empty}
+          description={COPY.emptyBody}
+          action={canWrite ? <NewLinkLink /> : undefined}
+        />
       ) : (
-        <div className="fw-panel overflow-hidden">
-          <div className="hidden overflow-x-auto xl:block">
-            <table className="w-full min-w-[44rem] text-sm">
-              <thead>
-                <tr className={TABLE_HEAD_CLASSES}>
-                  <th scope="col" className="w-[36%]">
-                    {COPY.columns.link}
-                  </th>
-                  <th scope="col">{COPY.columns.amount}</th>
-                  <th scope="col">{COPY.columns.status}</th>
-                  <th scope="col">{COPY.columns.activity}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {links.map((link) => (
-                  <tr
-                    key={link.linkId}
-                    className={`relative transition-colors duration-[var(--fw-duration-fast)] ${TABLE_ROW_CLASSES} ${ROW_INTERACTIVE_CLASSES}`}
-                  >
-                    <td className="max-w-80">
-                      <Link
-                        href={linkHref(link)}
-                        title={link.title}
-                        className="block truncate font-medium text-ink outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus"
-                      >
-                        {link.title}
-                      </Link>
-                      <span className="block truncate font-mono text-xs text-muted">
-                        /l/{link.slug}
-                      </span>
-                    </td>
-                    <td className="text-ink">{amountLabel(link)}</td>
-                    <td>
-                      <StateBadge link={link} />
-                    </td>
-                    <td className="text-muted">
-                      {COPY.activity(link.visits, link.paid, link.reserved)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <ul className="divide-y divide-line xl:hidden">
-            {links.map((link) => (
-              <li key={link.linkId}>
-                <Link
-                  href={linkHref(link)}
-                  className={`flex min-h-16 items-center gap-3 px-4 py-3 outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus sm:px-5 ${ROW_INTERACTIVE_CLASSES}`}
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium text-ink">{link.title}</span>
-                    <span className="block truncate text-xs text-muted">
-                      {amountLabel(link)} · {COPY.activity(link.visits, link.paid, link.reserved)}
-                    </span>
-                  </span>
-                  <StateBadge link={link} />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <DataTable
+          label={COPY.title}
+          rows={links}
+          rowKey={(link) => link.linkId}
+          rowHref={linkHref}
+          rowLabel={(link) => link.title}
+          columns={[
+            {
+              key: "link",
+              header: COPY.columns.link,
+              className: "w-[30%]",
+              cell: (link) => <span className="font-medium text-ink">{link.title}</span>,
+            },
+            {
+              key: "address",
+              header: COPY.columns.address,
+              from: "md",
+              cell: (link) => <span className="font-mono text-xs text-muted">/l/{link.slug}</span>,
+            },
+            { key: "amount", header: COPY.columns.amount, cell: (link) => amountLabel(link) },
+            {
+              key: "status",
+              header: COPY.columns.status,
+              cell: (link) => <StateBadge link={link} />,
+            },
+            {
+              key: "activity",
+              header: COPY.columns.activity,
+              from: "lg",
+              cell: (link) => (
+                <span className="text-muted">
+                  {COPY.activity(link.visits, link.paid, link.reserved)}
+                </span>
+              ),
+            },
+          ]}
+          phone={(link) => ({
+            title: link.title,
+            detail: `${amountLabel(link)} · ${COPY.activity(link.visits, link.paid, link.reserved)}`,
+            meta: <StateBadge link={link} />,
+          })}
+        />
       )}
     </section>
   );

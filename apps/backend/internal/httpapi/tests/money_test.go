@@ -18,7 +18,8 @@ func TestGetBalances(t *testing.T) {
 	want := map[string]any{
 		"estimatedUsdTotal": "2.50",
 		"tokens": []any{map[string]any{"chainId": float64(84532), "token": usdc, "symbol": "USDC", "decimals": float64(6),
-			"wallet": "2500000", "finalizedBlock": float64(100), "pending": "0", "held": "0"}},
+			"livemode": false, "wallet": "2500000", "finalizedBlock": float64(100), "pending": "0", "settling": "0",
+			"confirming": "0", "partial": "0", "held": "0"}},
 	}
 	if r.status != http.StatusOK || !reflect.DeepEqual(r.body, want) {
 		t.Fatalf("got %d %v\nwant %v", r.status, r.body, want)
@@ -146,7 +147,7 @@ func TestGetBalanceHistory(t *testing.T) {
 	r := e.call(t, "GET", path+"?days=2", "did:privy:alice", "", "")
 	points, _ := r.body["points"].([]any)
 	wantTokens := []any{map[string]any{"chainId": float64(84532), "token": usdc, "symbol": "USDC", "decimals": float64(6),
-		"balances": []any{"2500000", "2500000"}, "received": []any{"0", "0"}, "sent": []any{"0", "0"}}}
+		"livemode": false, "balances": []any{"2500000", "2500000"}, "received": []any{"0", "0"}, "sent": []any{"0", "0"}}}
 	if r.status != http.StatusOK || len(points) != 2 || !reflect.DeepEqual(r.body["tokens"], wantTokens) {
 		t.Fatalf("got %d %v\nwant tokens %v", r.status, r.body, wantTokens)
 	}

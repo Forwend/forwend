@@ -129,7 +129,7 @@ test("a Developer sees only its pages, and lands on Payments", async ({ browser 
   const nav = sidebar.getByRole("navigation");
   await expect(nav.getByRole("link", { name: "Invoices" })).toBeVisible();
   await expect(nav.getByRole("link", { name: "Stores" })).toBeVisible();
-  for (const hidden of ["Overview", "Balances", "Transactions", "Clients", "Activity"])
+  for (const hidden of ["Overview", "My assets", "Transactions", "Clients", "Activity"])
     await expect(nav.getByRole("link", { name: hidden })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Receive", exact: true })).toHaveCount(0);
   await sidebar.getByRole("link", { name: "Invoices", exact: true }).click();

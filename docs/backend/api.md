@@ -37,9 +37,20 @@ Routes: `apps/backend/api/openapi.yaml`; each module mounts its own in `internal
   exact, never a float. `internal/search` parses it; the fields per list are in openapi.yaml.
 
 - Payment lists use the same status meanings and accept order reference, customer and requested-amount search.
+- Payment search also matches the invoice number (`INV-0004`) and the main option's receive address.
+- A whole transaction hash or receive address also finds a payment by its deposits, returns or any option.
 - Paid filters include wallet-settled payments; settled narrows the set to money already in the wallet.
 - Activity deposits use their payment's status, including unnumbered checkout attempts.
+- Activity lists an invoice or request once numbered; a checkout session shows only its deposits.
+- Activity orders invoices by creation time and deposits by block time.
+  - A block time has whole seconds, so a deposit's time is never before its payment was made.
+  - At the same time a deposit comes first.
+  - Each part reads at most one page past the cursor, so a page never reads the whole history.
+- A booked deposit has `merchantAmount` and `heldAmount`: the owner's and the payer's parts (D-114).
+  - They add up to `amount`; both are null for an invoice and an unbooked deposit.
+- Activity items name their payment: `purpose`, `documentKind`, `number`, `reference`, `clientName` and `title`.
 - Payment receipts show observed amounts and uncredited amounts separately by used token and network.
+- Each receipt's `held` is the booked money on that option still owed to the payer.
 
 ## First run
 
@@ -191,6 +202,21 @@ R-136; the full schema is in openapi.yaml. Members reach it with `tokens.read` a
   - A later month keeps the first month's mode (R-156).
   - Invoices made earlier keep their options.
 
+## Prices
+
+R-178, D-115; the full schema is in openapi.yaml.
+
+- `GET /v1/prices` lists each enabled token with its CoinGecko USD price, by chain id.
+  - Prices are the same for everyone, so any signed-in user reads them; the route has no profile.
+  - A secret API key answers 401.
+- `coinId` comes from the token's symbol (`internal/price`); a symbol without a coin has null.
+  - A test token has its mainnet coin's price.
+- `usd` is CoinGecko's decimal text, kept as `numeric`; null without a price, never 1 in its place.
+- `stale` is true without a price, a `fetchedAt` over 1 hour old or a `sourceUpdatedAt` over 24 hours old.
+  - 1 hour is four missed worker reads; stablecoin prices on CoinGecko update within minutes.
+- The api only reads `coin_prices`; the worker keeps it ([architecture](architecture.md#processes)).
+- The prices are for display only: invoice amounts, the ledger, records and exports never read them.
+
 ## Stores
 
 R-134; the full schema is in openapi.yaml. Members reach it with `stores.read` and `stores.write` (D-93).
@@ -261,6 +287,7 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
 - Session status is `open`, `complete` or `expired`; payment and settlement states remain separate.
 - `GET /v1/profiles/{profileId}/checkout-sessions` and `/{sessionId}` read checkout attempts without document-number restrictions.
 - `POST /v1/profiles/{profileId}/checkout-sessions/{sessionId}/expire` closes an open attempt without observed money.
+- Expiring cancels collection: `paymentStatus` and webhook names stay `canceled`, while the payment `state` reads `expired`.
 - Repeated expiration returns the closed session; seen payments refuse expiration with 409 `checkout_not_expirable`.
 - `GET /v1/profiles/{profileId}/payments` and `/{paymentId}` read every workflow, including unnumbered attempts.
 - Lists accept `limit`, opaque `cursor` and `storeId`; creation time and ID provide stable pagination.
@@ -271,6 +298,17 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
 ### Payment operations
 
 - Payment lists accept `linkId`, `source`, `storeId`, `status`, `paymentStatus`, `settlementStatus` and `refundStatus`; filters intersect permitted stores and key mode.
+  - They also accept `state`, `wallet` and an exact `reference`; movements, reconciliation, attention and CSV take the same filters.
+- Payment reads add `state` and `wallet` (D-114); raw statuses keep their values for compatibility.
+  - `state`: `waiting`, `confirming`, `partially_paid`, `paid`, `overpaid`, `expired` or `canceled`.
+  - Confirming includes a payment credited in full that waits for the finalized balance check.
+  - Its raw `paymentStatus` can stay `partially_paid` there, since the database allows no way back to `detected`.
+  - The same case sets `confirming` and matches `status=confirming` on payment, invoice and activity lists.
+  - Overpaid is paid with money held for the payer on any option: extra, late or on another option.
+  - `refundStatus` and `amounts` describe only the current option; receipts show held money on every used option.
+  - `wallet`: `none` before paid, `pending`, `in_wallet` once settled, `delayed` or `refused`.
+  - Delayed means the settle waits for a retry, the daily limit or an unresolved transaction.
+- Payment reads add a nullable `dueDate`; payment detail adds `items` in the main option's base units.
 - Payment reads include canonical symbol, decimals, option ID, option count and whether an option has been locked.
 - Token metadata follows the stored chain and contract, including tokens disabled after the payment was created.
 - Net amounts include `reconciliationStatus`: `verified`, `pending` history checks, or `review` for conflicting evidence.
@@ -287,6 +325,7 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
 - `GET /v1/profiles/{profileId}/payments/attention` returns payment problems separately from financial truth.
 - Ordinary confirmation and historical verification suggest waiting; conflicting evidence requires review.
 - Partial payments suggest sharing checkout only while open and reconciled; held funds never imply an initiated refund.
+- A partial-payment problem appears only while part of the amount is still owed.
 - Settlement intent appears delayed after 15 minutes; explicit waits and refusals remain visible immediately.
 - Delivery problems preserve payment status and expose safe attempt metadata without endpoint secrets, URLs, payloads or raw errors.
 - Owners and Admins also receive endpoint problem summaries, including test events without payments.
@@ -330,6 +369,7 @@ R-140, R-163, D-54, D-94; openapi.yaml owns the schema. Members use `invoices.re
 - Keys create and read links only in their mode; owner creates choose live mode when enabled live tokens exist.
 - Owner edits preserve mode; missing `storeId` preserves the original store.
 - `GET /v1/profiles/{profileId}/links` lists newest first; scoped members see only their stores.
+  - Without `limit` it lists every link. `limit` (1–100) and `cursor` read a page, and `nextCursor` continues it.
   - `paid` counts canonically paid purchases, including settled purchases.
   - `reserved` counts canonical open, detected and partly paid purchases.
   - `ready` requires billing details, a wallet and an accepted watched token in the link's mode.
@@ -499,7 +539,7 @@ R-149, D-99. These need the `webhooks` permission and no fresh sign-in: they sen
 R-19 and R-42; the full schema is in openapi.yaml.
 
 - `livemode` is the invoice's chain's mode (D-87, R-143): false on a testnet, whose tokens have no value.
-  - Both PDFs of a test-mode invoice say "Test mode: testnet tokens have no value" under the number.
+  - Both PDFs of a test-mode invoice say "Test mode: testnet tokens have no value" under the header; every footer says Test mode.
 - `number` is an integer per profile: 1, 2, … in creation order (D-50). The API never formats it; the web shows
   `INV-` and at least 4 digits (`INV-0001`). The insert takes it from the profile's counter row (`profiles.invoice_seq`)
   in the invoice's own transaction, so a failed create uses no number and a repeated Idempotency-Key returns the
@@ -663,13 +703,17 @@ R-19 and R-42; the full schema is in openapi.yaml.
 - `POST /v1/reminders/{token}/stop` is public: the client's stop link and one-click List-Unsubscribe-Post.
   - It reads no body, sets `stopped_at` once and answers `{number, from}`, the same when already stopped.
   - An unknown token is 404 `invoice_not_found`.
-- `GET /v1/profiles/{profileId}/owed` (R-95) lists what clients still owe, for the Owed to you panel.
-  - Unpaid rows: invoices under the `open` status filter that are overdue or partly paid.
+- `GET /v1/profiles/{profileId}/owed` (R-95) lists what customers still owe, for the Owed to you panel.
+  - Rows: payments under the `open` status filter that are overdue or partly paid.
+  - Numbered invoices and requests count, and so do checkout sessions: `number` null, with their `reference`.
   - Overdue means the due date is before today's UTC date; `daysLate` counts whole UTC days.
   - `amount` is what is left: the amount less the `recipient_payable` credits. No settlement runs before it is all in.
   - A row with nothing left is left out: all of it is booked and waits for the finalized balance check.
-  - Held rows: each option with a `payer_held` balance, with that amount. It is the payer's money (D-26).
-  - Order: overdue (most days late first), partly paid, held. It has no pages: unpaid rows are at most `MaxOpen`.
+  - Held money is the payer's and never owed (D-114), so no row has kind `held`.
+    - Balances show it as `held`, and each payment shows its own.
+  - Order: overdue (most days late first), then partly paid.
+  - `items` holds the first `limit` rows (1–100, default 50). `count` and per-token `totals` cover every row.
+  - The read adds up every row; the open filter keeps them within the `MaxOpen` receive addresses.
 - `settlementWait` (owner reads and create only) says why a paid invoice's money has not reached the profile wallet
   yet, null when it is not paid or already settled (R-54): `{kind, until, secondsLeft}` with `kind` one of `signing`,
   `finalizing` (`secondsLeft` estimates the chain time until the settle is final), `retrying` and `dailyLimit` (the
@@ -706,34 +750,63 @@ R-47 and D-51. This section has the full layout. `getInvoicePdf` and `getReceipt
 PDF prints, so a change updates both. Both are public like `GET /v1/invoices/{payToken}` and answer 404
 `invoice_not_found` the same way.
 
-- `internal/document` draws them with `codeberg.org/go-pdf/fpdf` in a fixed layout, from `invoice.Get` only: no
-  templates, network or file reads. The font is Noto Sans, embedded (`internal/document/fonts`, SIL OFL 1.1). Long
-  texts wrap and are cut with "…"; characters above U+FFFF (emoji) print as "?".
-- Both look like the product (R-61): the Forwend mark (`internal/document/logo.path`, a copy of
-  `packages/ui-web/src/icons/logo-data.ts`) and the light theme's colors, the kind and number (`INV-0001`) with the
-  reference under it (R-90), the issuer block from the invoice's copy (left out without one) and "Bill to" with the
-  client's name and address but never the email (the token is a bearer link), a row of dates (with the supply date when
-  set, R-89), then a line table: the title (or "Payment"), the network (name and chain id) and the exact amount with the
-  token's symbol and decimals, never cut, and the agreed value (R-93) quietly under the total; with line items (R-88)
-  the title heads the table and each item is a row with its quantity and unit price. Network names and explorers are a
-  copy of `apps/web/src/shared/constants/chains.ts`; a test fails when either copy changes alone.
-- `invoice.pdf`: created time, supply date, due date and checkout expiry, the note, and a box with the pay link
-  `PUBLIC_WEB_URL/pay/<payToken>` and its QR code (drawn as vector modules), then the invoice id. A payer-chooses
-  invoice names the network "Any" with the amount and total due in USD, then lists under Pay with each token and its
-  networks ("USDC on Base Sepolia, Arbitrum Sepolia") and says to send only on those (R-70). Amounts group thousands
-  (1,250.00); every page's footer names the document and number and says Page X of Y.
+- `internal/document` draws them with `codeberg.org/go-pdf/fpdf` in a fixed layout, from `invoice.Get` only.
+  - No templates, network or file reads.
+  - The font is Noto Sans, embedded (`internal/document/fonts`, SIL OFL 1.1). Its digits share one width, so amounts align.
+  - Long texts wrap and are cut with "…"; amounts and item descriptions are never cut.
+  - Characters above U+FFFF (emoji) print as "?".
+- Both look like the product (R-61): near-black ink, neutral greys and hairline rules, so they print in black and white.
+  - The header has the Forwend mark (`internal/document/logo.path`, a copy of `packages/ui-web/src/icons/logo-data.ts`).
+  - Beside it are the kind, the number (`INV-0001`) and the reference under it (R-90).
+  - A test-mode invoice has a TESTNET band under the header saying "Test mode: testnet tokens have no value" (R-143).
+  - A status panel follows, with a lime mark that is grey once the invoice is canceled or expired.
+  - Then From (the issuer's copy, left out without one) and Billed to: the client's name, address, country and tax ID.
+  - A detail that is empty is left out, never printed as a bare label.
+  - Billed to never shows the client's email: the token is a bearer link.
+  - Then a row of dates: Issued (UTC day), Supply date (R-89), Due date and Payment window closes (`closesAt`).
+  - Then the line table: Description, Qty, Unit price and Amount per item (R-88), with the title above it.
+  - Without items it has one row: the title (or "Payment") and the amount.
+  - The table header repeats on every page it continues on.
+  - The last row moves with the totals, so totals never start a page alone.
+  - The totals: Total, then the status's rows (Amount due; Received and Left to pay; Amount paid).
+  - The agreed value (R-93) sits quietly under them, marked as for reference only.
+  - Every page's footer names the document, says Test mode when it is, gives Page X of Y and the invoice id.
+- Network names and explorers are a copy of `apps/web/src/shared/constants/chains.ts`.
+  - A test fails when either copy changes alone.
+  - The `chains` table holds only slugs, so it can't be the source of display names.
+  - A chain neither copy names prints "Chain <id>", as in the app.
+- `invoice.pdf` states the status in the app's status words.
+  - Waiting for payment, with the due date or the checkout close.
+  - Overdue: open with nothing received, and the due date before today's UTC day.
+  - Confirming: money before the close is not final yet.
+  - Partially paid, with Received and Left to pay.
+  - Paid, with the paid time; Canceled, with the cancel time; Expired, or Expired, partially paid.
+  - Received counts as the pay page does: booked to the creator, plus money still confirming, or plus held money once closed.
+- `invoice.pdf` asks for money only while the pay page would show the address.
+  - That is: not paid, canceled or closed, records not in review, and something left to pay.
+  - Then it has a box with the pay link `PUBLIC_WEB_URL/pay/<payToken>` and its QR code (drawn as vector modules).
+  - The box says the exact amount left, the token, the network with its chain ID and the token contract.
+  - A payer-chooses invoice is in USD and lists each accepted token with its networks instead (R-70).
+  - Paid, canceled and expired invoices have no pay link and no QR code.
 - `receipt.pdf`: 409 `invoice_not_paid` until `paymentStatus` is `paid` (it stays paid once settled).
-  - It adds the paid time beside the created time and supply date.
-  - Under Payments it lists each deposit's part paid to the creator (R-121): amount, block time, full tx hash and a
-    "View on <explorer>" link. Late money and money over the amount are held for the payer (D-26).
+  - It has the paid time beside the issue day and supply date.
+  - Payments received lists every transfer on any option, oldest first.
+  - Each row has the block time, network, amount received and the part applied to the invoice (R-121).
+  - A transfer the ledger hasn't booked reads Pending; held money is applied as 0 (D-26).
+  - Under each row are the full tx hash and a "View on <explorer>" link.
+  - The totals per option: Received, Applied to this invoice, Held for payer and Returned to payer.
+  - Received is payable + held + settled + refunded, as Payments counts it; Returned to payer is the ledger's `refunded`.
+  - The latest return's transaction follows them.
   - It ends with the pay link and its QR code, since a PDF can be edited.
   - It says nothing about the settlement, the creator's business (R-61).
   - The paid time is the block time of the last deposit the ledger booked to `recipient_payable`: the one that
     completed the amount.
 - The same data gives the same bytes (creation date = created or paid time, sorted catalog), so the `ETag` is a hash of
-  the file. `Cache-Control: private, no-cache`: a client revalidates and gets 304 while the file is unchanged. A paid
-  receipt doesn't change: later money is held for the payer (R-121), and the settlement is not on it.
-  `Content-Disposition: attachment; filename="forwend-INV-0001-invoice.pdf"` (or `-receipt.pdf`).
+  the file.
+  - `invoice.pdf` also changes when its due date passes, since it then says Overdue.
+  - `Cache-Control: private, no-cache`: a client revalidates and gets 304 while the file is unchanged.
+  - Settling leaves the receipt unchanged; a later transfer or return adds to it.
+  - `Content-Disposition: attachment; filename="forwend-INV-0001-invoice.pdf"` (or `-receipt.pdf`).
 
 ## Jobs
 
@@ -848,6 +921,13 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   final transfers after it (not reorged, at or below that block); `received` and `sent` sum them per day, today's
   without an end. The database sums them per token and day, so dust doesn't make the read grow (R-118). A missing wallet balance makes that token's arrays and every USD total null. Money moved without a
   token `Transfer` log (Arc native-coin sends, fees paid in the token) is not undone; a balance below 0 shows 0.
+
+- `GET /v1/profiles/{profileId}/balances` splits each token's `pending` into exact parts (D-114).
+  - `settling`: owed to the creator on paid payments, waiting for the wallet transfer.
+  - `confirming`: deposits not booked yet, and full payments waiting for the finalized balance check.
+  - `partial`: owed to the creator on partly paid payments; held for the payer if the checkout closes first.
+  - `held` stays apart: it is the payer's money.
+  - Each token has its chain's `livemode`; so does each balance-history token.
 
 ## Idempotency
 

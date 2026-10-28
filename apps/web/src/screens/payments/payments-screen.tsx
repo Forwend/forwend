@@ -1,168 +1,165 @@
 "use client";
-import { Button, SearchField, SegmentedControl, SelectField } from "@forwend/ui-web";
+import { Button, SearchField, SegmentedControl, SelectMenu } from "@forwend/ui-web";
+import { ArrowLeftRight, ListFilter, Store } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { STATUS_FILTERS } from "@/features/activity/constants/activity";
-import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
+import { usePathname, useSearchParams } from "next/navigation";
 import { ExportPayments } from "@/features/payments/components/export-payments";
 import { PaymentList } from "@/features/payments/components/payment-list";
 import { PaymentReconciliation } from "@/features/payments/components/payment-reconciliation";
 import {
   PAYMENT_SOURCES,
+  PAYMENT_STATE_FILTERS,
   PAYMENT_VIEWS,
   SOURCE_LABELS,
 } from "@/features/payments/constants/payments";
-import type { Payment, PaymentFilters } from "@/features/payments/types/payments";
+import { PAYMENTS_COPY as COPY } from "@/features/payments/constants/payments-copy";
+import type { PaymentFilters } from "@/features/payments/types/payments";
 import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { useListStoresQuery } from "@/features/stores/api/stores-api";
+import { ListToolbar } from "@/shared/components/list-toolbar";
+import { LoadError } from "@/shared/components/load-error";
 import { APP_ROUTES } from "@/shared/config/routes";
-import { useListFilters } from "@/shared/hooks/use-list-filters";
+import { useListFilters, withParam } from "@/shared/hooks/use-list-filters";
+
+const ALL = "all";
+const STATES = Object.values(PAYMENT_STATE_FILTERS);
+
 export function PaymentsScreen() {
   const { profile } = useAppSession();
   const params = useSearchParams();
-  const router = useRouter();
   const pathname = usePathname();
   const merchant = profile.kind === PROFILE_KINDS.merchant;
   const stores = useListStoresQuery(profile.profileId, { skip: !merchant });
+  const list = useListFilters("state", STATES, PAYMENT_STATE_FILTERS.all);
   const view =
     Object.values(PAYMENT_VIEWS).find((value) => value === params.get("view")) ?? PAYMENT_VIEWS.all;
   const source = PAYMENT_SOURCES.find((value) => value === params.get("source"));
-  const status = Object.values(STATUS_FILTERS).find(
-    (value) => value === params.get("status") && value !== STATUS_FILTERS.all,
-  );
-  const search = useListFilters("status", Object.values(STATUS_FILTERS), STATUS_FILTERS.all);
+  const storeId = params.get("storeId") || undefined;
+  const linkId = params.get("linkId") || undefined;
   const filters: PaymentFilters = {
-    q: search.apiQuery,
-    storeId: params.get("storeId") || undefined,
-    linkId: params.get("linkId") || undefined,
+    q: list.apiQuery,
+    state: list.apiFilter,
     source,
-    status,
+    storeId,
+    linkId,
   };
   const set = (name: string, value: string) => {
-    const next = new URLSearchParams(window.location.search);
-    if (value && value !== "all") next.set(name, value);
-    else next.delete(name);
+    const { search, hash } = window.location;
     window.history.replaceState(
       null,
       "",
-      `${pathname}${next.size ? `?${next}` : ""}${window.location.hash}`,
+      `${pathname}${withParam(search, name, value === ALL ? "" : value)}${hash}`,
     );
   };
-  const invalidFilter = Boolean(
-    (params.get("source") && params.get("source") !== "all" && !source) ||
-      (params.get("status") && params.get("status") !== "all" && !status),
+  const clear = () => {
+    list.clear();
+    for (const name of ["source", "storeId", "linkId"]) set(name, "");
+  };
+  const unknownSource = Boolean(params.get("source") && !source);
+  const storeList = stores.currentData ?? [];
+  const unknownStore = Boolean(
+    storeId && stores.currentData && !storeList.some((s) => s.storeId === storeId),
   );
-  const invalidStore = Boolean(
-    filters.storeId &&
-      stores.currentData &&
-      !stores.currentData.some((store) => store.storeId === filters.storeId),
-  );
+  const showStores = merchant && storeList.length > 1;
+
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">Payments</h1>
-      </header>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">{COPY.title}</h1>
+        {/* Payments, Activity and Transactions overlap; one line says which this is. */}
+        <p className="text-sm text-muted">{COPY.intro}</p>
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SegmentedControl
-          label="Payment views"
+          label={COPY.views.label}
           value={view}
-          onValueChange={(value) => set("view", value)}
+          onValueChange={(value) => set("view", value === PAYMENT_VIEWS.all ? "" : value)}
           options={[
-            { value: PAYMENT_VIEWS.all, label: "All payments" },
-            { value: PAYMENT_VIEWS.attention, label: "Payment issues" },
-            { value: PAYMENT_VIEWS.reconciliation, label: "Balance report" },
+            { value: PAYMENT_VIEWS.all, label: COPY.views.all },
+            { value: PAYMENT_VIEWS.attention, label: COPY.views.attention },
+            { value: PAYMENT_VIEWS.reconciliation, label: COPY.views.reconciliation },
           ]}
         />
         <ExportPayments
           profileId={profile.profileId}
           filters={filters}
-          disabled={
-            invalidFilter || invalidStore || (merchant && (stores.isError || !stores.currentData))
+          disabled={unknownSource || unknownStore || (merchant && stores.isError)}
+        />
+      </div>
+      {view === PAYMENT_VIEWS.reconciliation ? null : (
+        <ListToolbar
+          search={
+            <SearchField
+              label={COPY.search}
+              placeholder={COPY.searchPlaceholder}
+              value={list.search}
+              onValueChange={list.setSearch}
+              className="flex-1"
+            />
+          }
+          filter={
+            <>
+              <SelectMenu
+                label={COPY.status}
+                value={list.filter}
+                onValueChange={list.setFilter}
+                options={STATES.map((value) => ({
+                  value,
+                  label: COPY.stateFilters[value],
+                  icon: value === PAYMENT_STATE_FILTERS.all ? ListFilter : undefined,
+                }))}
+              />
+              <SelectMenu
+                label={COPY.source}
+                value={source ?? ALL}
+                onValueChange={(value) => set("source", value)}
+                options={[
+                  { value: ALL, label: COPY.allSources, icon: ArrowLeftRight },
+                  ...PAYMENT_SOURCES.filter((value) => merchant || value !== "checkout").map(
+                    (value) => ({ value, label: SOURCE_LABELS[value] }),
+                  ),
+                ]}
+              />
+              {showStores ? (
+                <SelectMenu
+                  label={COPY.store}
+                  value={storeId ?? ALL}
+                  onValueChange={(value) => set("storeId", value)}
+                  options={[
+                    { value: ALL, label: COPY.allStores, icon: Store },
+                    ...storeList.map((store) => ({ value: store.storeId, label: store.name })),
+                  ]}
+                />
+              ) : null}
+            </>
           }
         />
-      </div>
-      <SearchField
-        label="Search payments"
-        placeholder="Order, customer or amount"
-        value={search.search}
-        onValueChange={search.setSearch}
-      />
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {merchant ? (
-          <SelectField
-            label="Store"
-            value={filters.storeId ?? "all"}
-            disabled={!stores.currentData}
-            options={[
-              { value: "all", label: "All stores" },
-              ...(stores.currentData ?? []).map((store) => ({
-                value: store.storeId,
-                label: store.name,
-              })),
-            ]}
-            onValueChange={(value) => set("storeId", value)}
-          />
-        ) : null}
-        <SelectField
-          label="Source"
-          value={source ?? "all"}
-          options={[
-            { value: "all", label: "All sources" },
-            ...PAYMENT_SOURCES.map((value) => ({ value, label: SOURCE_LABELS[value] })),
-          ]}
-          onValueChange={(value) => set("source", value as Payment["source"])}
-        />
-        <SelectField
-          label="Payment status"
-          value={status ?? "all"}
-          options={Object.values(STATUS_FILTERS).map((value) => ({
-            value,
-            label: value === STATUS_FILTERS.all ? "All statuses" : ACTIVITY_COPY.filters[value],
-          }))}
-          onValueChange={(value) => set("status", value)}
-        />
-      </div>
-      {filters.linkId ? (
-        <p className="text-sm text-muted">
-          Showing purchases from one payment link.{" "}
+      )}
+      {linkId ? (
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+          {COPY.linkFilter}
           <Link
-            href={`${APP_ROUTES.links}/${filters.linkId}`}
-            className="text-info underline underline-offset-4"
+            href={`${APP_ROUTES.links}/${linkId}`}
+            className="text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink"
           >
-            View offer
-          </Link>{" "}
-          ·{" "}
+            {COPY.viewLink}
+          </Link>
           <Button variant="link" size="sm" onClick={() => set("linkId", "")}>
-            Clear link filter
+            {COPY.clearLink}
           </Button>
         </p>
       ) : null}
-      {invalidFilter ? (
-        <p role="alert" className="text-sm text-danger">
-          Unknown payment filter.{" "}
-          <Button variant="link" onClick={() => router.replace(APP_ROUTES.payments)}>
-            Clear filters
+      {merchant && stores.isError ? (
+        <LoadError message={COPY.storesFailed} onRetry={() => void stores.refetch()} />
+      ) : null}
+      {unknownSource || unknownStore ? (
+        <p role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">
+          {unknownStore ? COPY.storeGone : COPY.unknownFilter}
+          <Button variant="link" size="sm" onClick={clear}>
+            {COPY.clearFilters}
           </Button>
         </p>
-      ) : merchant && stores.isError ? (
-        <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">
-          We could not load stores. Check the store filter before continuing.
-          <Button variant="secondary" size="sm" onClick={() => void stores.refetch()}>
-            Try again
-          </Button>
-        </div>
-      ) : merchant && !stores.currentData ? (
-        <p role="status" className="text-sm text-muted">
-          Loading stores…
-        </p>
-      ) : invalidStore ? (
-        <div role="alert" className="text-sm text-danger">
-          This store is unavailable.{" "}
-          <Button variant="link" onClick={() => set("storeId", "")}>
-            Clear store filter
-          </Button>
-        </div>
       ) : view === PAYMENT_VIEWS.reconciliation ? (
         <PaymentReconciliation
           key={profile.profileId}
@@ -174,6 +171,9 @@ export function PaymentsScreen() {
           profileId={profile.profileId}
           filters={filters}
           attention={view === PAYMENT_VIEWS.attention}
+          showStore={showStores}
+          filtered={list.filtered || Boolean(source || storeId || linkId)}
+          onClear={clear}
         />
       )}
     </div>

@@ -36,16 +36,17 @@ export interface ButtonProps extends ComponentPropsWithoutRef<"button">, ButtonS
 const BASE =
   "relative inline-flex items-center justify-center gap-2 font-medium whitespace-nowrap transition-[background-color,border-color,color,box-shadow,scale] duration-[var(--fw-duration-fast)] ease-[var(--fw-ease-out)] before:absolute before:inset-x-0 active:scale-[0.98] aria-disabled:active:scale-100 motion-reduce:active:scale-100 disabled:border-line disabled:bg-surface-2 disabled:text-subtle disabled:shadow-none disabled:active:scale-100";
 
-// Secondary keeps a hairline and a soft lift on light grounds; dark grounds swallow shadows, so its edge is stronger.
+// Primary is the lime fill, kept for a view's main action; its inset edge holds the shape on white. The rest stay
+// neutral and flat, so one lime action per view leads.
 const VARIANTS: Record<ButtonVariant, string> = {
   primary:
-    "bg-primary text-on-primary shadow-sm hover:bg-[color-mix(in_oklab,var(--fw-primary)_88%,var(--fw-bg))] active:shadow-none",
+    "bg-brand font-semibold text-on-brand shadow-[inset_0_0_0_1px_var(--fw-brand-edge)] hover:bg-brand-hover",
   secondary:
-    "border border-line bg-surface text-ink shadow-sm hover:border-line-strong hover:bg-surface-2 active:shadow-none dark:border-line-strong",
+    "border border-line bg-surface text-ink hover:border-line-strong hover:bg-surface-2 dark:border-line-strong",
   ghost: "text-ink hover:bg-surface-2 active:bg-surface-2",
-  link: "text-accent underline decoration-1 underline-offset-4 hover:decoration-2 pointer-coarse:before:-inset-y-3",
+  link: "text-ink underline decoration-line-strong decoration-1 underline-offset-4 hover:decoration-ink pointer-coarse:before:-inset-y-3",
   soon: "cursor-not-allowed border border-dashed border-line-strong text-subtle",
-  danger: "border border-danger bg-surface text-danger shadow-sm hover:bg-danger-soft",
+  danger: "border border-danger bg-surface text-danger hover:bg-danger-soft",
 };
 
 // The touch area is a 44px band centered on the button, not an inset: an inset counts from inside the border, so a
@@ -57,7 +58,7 @@ const TOUCH =
 const SIZES: Record<ButtonSize, string> = {
   sm: `h-8 px-3 text-sm ${TOUCH}`,
   md: `h-10 px-4 text-sm ${TOUCH}`,
-  lg: "h-12 px-6 text-base",
+  lg: "h-12 px-5 text-base",
 };
 
 export function buttonClasses({
@@ -67,7 +68,7 @@ export function buttonClasses({
   return cx(
     BASE,
     VARIANTS[variant],
-    variant === BUTTON_VARIANTS.link ? "rounded-sm px-0" : cx("rounded-pill", SIZES[size]),
+    variant === BUTTON_VARIANTS.link ? "rounded-sm px-0" : cx("rounded-md", SIZES[size]),
   );
 }
 

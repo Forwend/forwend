@@ -36,7 +36,10 @@ export function PaymentAmountsNotice({
           {detailsHref ? (
             <>
               {" "}
-              <Link href={detailsHref} className="text-info underline underline-offset-4">
+              <Link
+                href={detailsHref}
+                className="text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink"
+              >
                 View verification details
               </Link>
             </>

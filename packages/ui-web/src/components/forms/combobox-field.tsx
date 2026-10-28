@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { cx } from "../../lib/cx";
-import { FIELD_CONTROL_CLASSES } from "./field-classes";
+import { FIELD_CONTROL_CLASSES, OPTION_ROW_CLASSES } from "./field-classes";
 
 export interface ComboboxOption {
   value: string;
@@ -199,7 +199,7 @@ export function ComboboxField({
                   setActive(0);
                 }}
                 onKeyDown={onSearchKeyDown}
-                className="h-11 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-subtle"
+                className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-subtle pointer-coarse:h-11 pointer-coarse:text-base"
               />
             </div>
             {/* Always mounted: a live region added together with its text is often not read. */}
@@ -227,7 +227,10 @@ export function ComboboxField({
                   data-chosen={option.value === value ? "" : undefined}
                   onClick={() => pick(option)}
                   onPointerMove={() => setActive(i)}
-                  className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-sm px-3 py-2 text-base select-none aria-selected:bg-surface-2 data-[chosen]:font-medium"
+                  className={cx(
+                    OPTION_ROW_CLASSES,
+                    "aria-selected:bg-surface-2 data-[chosen]:font-medium",
+                  )}
                 >
                   <span className="min-w-0">
                     <span className="block truncate">{option.label}</span>

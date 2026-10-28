@@ -19,7 +19,9 @@ import { historySeries, seriesChange } from "@/features/balances/lib/balance-his
 import { formatUsd } from "@/features/balances/lib/balances";
 import type { HistoryRange, HistorySeries } from "@/features/balances/types/balance-history";
 import type { Balances } from "@/features/balances/types/balances";
-import { BALANCE_LIGHT_IMAGE, BALANCE_NIGHT_IMAGE } from "@/shared/assets/images";
+import { useGetPricesQuery } from "@/features/prices/api/prices-api";
+import { PRICES_QUERY } from "@/features/prices/constants/prices";
+import { HERO_IMAGE } from "@/shared/assets/images";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 
@@ -41,6 +43,7 @@ export function BalanceHero({
   onRequest,
 }: BalanceHeroProps) {
   const [range, setRange] = useState<HistoryRange>(DEFAULT_RANGE);
+  const priced = useGetPricesQuery(undefined, PRICES_QUERY);
   const history = useGetBalanceHistoryQuery({ profileId, days: HISTORY_RANGES[range] }, LIVE_QUERY);
   // The chart keeps the last range's line, dimmed, while the next loads; figures for the range wait for their own data.
   const series = history.data ? historySeries(history.data, HISTORY_FIELDS.balances) : null;
@@ -86,23 +89,17 @@ export function BalanceHero({
         aria-labelledby="balance-title"
         className="relative isolate -mx-4 -mt-4 flex min-h-80 flex-col lg:min-h-96 overflow-hidden bg-surface sm:mx-0 sm:mt-0 sm:rounded-md sm:border sm:border-line [&_svg_text]:stroke-none dark:[&_svg_text]:stroke-surface"
       >
+        {/* One artwork in both themes; dark mode mutes it toward the near-black ground (D-113). */}
         <Image
-          src={BALANCE_LIGHT_IMAGE.src}
+          src={HERO_IMAGE.src}
           alt=""
           fill
           priority
           sizes="(min-width: 64rem) 80vw, 100vw"
-          className="-z-10 object-cover object-bottom dark:hidden"
+          className="-z-10 object-cover object-[50%_75%] saturate-[.65] dark:brightness-[.45] dark:grayscale-[.7]"
         />
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,transparent_45%,color-mix(in_oklab,var(--fw-surface)_70%,transparent)_100%)] dark:hidden" />
-        <Image
-          src={BALANCE_NIGHT_IMAGE.src}
-          alt=""
-          fill
-          loading="eager"
-          sizes="(min-width: 64rem) 80vw, 100vw"
-          className="-z-10 hidden object-cover object-bottom dark:block"
-        />
+        {/* The figures sit on the surface: the art shows only to the right and fades out under the chart. */}
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,var(--fw-surface)_0%,color-mix(in_oklab,var(--fw-surface)_88%,transparent)_38%,color-mix(in_oklab,var(--fw-surface)_30%,transparent)_78%,transparent_100%),linear-gradient(180deg,transparent_40%,color-mix(in_oklab,var(--fw-surface)_85%,transparent)_100%)] dark:hidden" />
         <div className="absolute inset-0 -z-10 hidden bg-[linear-gradient(180deg,color-mix(in_oklab,var(--fw-surface)_45%,transparent)_0%,transparent_40%,color-mix(in_oklab,var(--fw-bg)_80%,transparent)_72%,var(--fw-bg)_100%)] lg:bg-[linear-gradient(90deg,color-mix(in_oklab,var(--fw-surface)_78%,transparent)_0%,color-mix(in_oklab,var(--fw-surface)_40%,transparent)_38%,transparent_70%)] dark:block" />
 
         <div className="grid flex-1 gap-8 px-4 py-8 sm:px-6 lg:gap-10 lg:p-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
@@ -115,7 +112,13 @@ export function BalanceHero({
                 aria-busy={!balances && !failed}
                 className="@container flex w-full flex-col items-center gap-2 lg:items-start"
               >
-                <BalanceFigure balances={balances} failed={failed} onRetry={onRetry} />
+                <BalanceFigure
+                  balances={balances}
+                  prices={priced.currentData?.prices}
+                  pricesRead={Boolean(priced.currentData || priced.isError)}
+                  failed={failed}
+                  onRetry={onRetry}
+                />
                 {current ? (
                   <Change series={current} rangeName={rangeName} />
                 ) : history.currentData || history.isError ? null : (

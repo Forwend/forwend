@@ -53,6 +53,10 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
     later; the address never shows without its exact network and token warning.
   - Balances and activity are read again every 15 s while the tab is visible and when it comes back. Money sent
     straight to the wallet shows in the balance once final, not in activity.
+  - Display prices (`features/prices`, R-178, D-115) are one cache entry for the whole app.
+    - Pass `PRICES_QUERY`: they are read every 5 minutes while visible and on focus, and kept an hour unused.
+    - A value is bigint math on base units, cut to cents. Without a fresh price there is no value, never 1 USD.
+    - A page that shows prices also shows `PricesUpdated`, CoinGecko's attribution and the read time.
   - `/app/profiles/new` sends one idempotency key per visit (R-35) and the invoice form one per filled-in form (R-44).
     While `onboardedAt` is empty, every `/app` page sends to `/app/onboarding?next=<page>`, the first-run choice screen
     (R-50, D-73); once done that address returns to `next` (an `/app` path only, `afterOnboarding`), else `/app`.

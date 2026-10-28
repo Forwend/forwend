@@ -10,6 +10,7 @@ import (
 
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/search"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -55,13 +56,54 @@ func addInvoice(t *testing.T, pool *pgxpool.Pool, profile string, n, minute int)
 	return id
 }
 
+// addDeposit's block time is minute minutes after created. The watcher records it later, and the later the earlier its
+// block, so a list in record order would read backwards.
 func addDeposit(t *testing.T, pool *pgxpool.Pool, invoice string, n, minute int, status string) {
 	t.Helper()
 	exec(t, pool, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
 		    block_hash, block_number, block_time, from_address, to_address, amount, status, created_at)
-		SELECT 84532, 'evm', $1, $2, $3, 0, $3, 1, 1, $4, receive_address, 1000000, $5,
-		    $6::timestamptz + make_interval(mins => $7) FROM invoices WHERE id = $2`,
+		SELECT 84532, 'evm', $1, $2, $3, 0, $3, 1,
+		    extract(epoch FROM $6::timestamptz + make_interval(mins => $7))::bigint, $4, receive_address, 1000000, $5,
+		    $6::timestamptz + make_interval(mins => 1000 - $7) FROM invoices WHERE id = $2`,
 		usdc, invoice, fmt.Sprintf("0x%064x", n), payer, status, created, minute)
+}
+
+// pages reads the whole list with each page size and checks every reading gives the same items: no page skips or
+// repeats one, also between items at the same time.
+func pages(t *testing.T, s *Service, profile, status string) []string {
+	t.Helper()
+	ctx := context.Background()
+	whole, err := s.List(ctx, profile, "", MaxLimit, status, search.Query{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var want []string
+	for _, it := range whole.Items {
+		want = append(want, it.Kind+" "+it.InvoiceID+" "+it.TxHash)
+	}
+	for limit := 1; limit <= len(want); limit++ {
+		var got []string
+		cursor := ""
+		for read := 1; ; read++ {
+			page, err := s.List(ctx, profile, cursor, limit, status, search.Query{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, it := range page.Items {
+				got = append(got, it.Kind+" "+it.InvoiceID+" "+it.TxHash)
+			}
+			if cursor = page.NextCursor; cursor == "" {
+				if wantPages := (len(want) + limit - 1) / limit; read != wantPages {
+					t.Fatalf("status %q, limit %d: %d pages, want %d", status, limit, read, wantPages)
+				}
+				break
+			}
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("status %q, limit %d: got %v\nwant %v", status, limit, got, want)
+		}
+	}
+	return want
 }
 
 func TestListNewestFirstInPages(t *testing.T) {
@@ -93,41 +135,55 @@ func TestListNewestFirstInPages(t *testing.T) {
 	addDeposit(t, pool, a, 10, 7, "confirmed")
 	addDeposit(t, pool, b, 11, 9, "detected")
 	addDeposit(t, pool, b, 12, 9, "reorged") // left out
-	addInvoice(t, pool, other, 4, 8)         // another profile's: left out
-	want := []string{"deposit " + b, "deposit " + a, "invoice " + c, "invoice " + b, "invoice " + a}
-
-	// Every page size, so a page boundary falls between every two items, including b and c with the same time.
-	for limit := 1; limit <= len(want); limit++ {
-		var got []string
-		cursor := ""
-		for pages := 1; ; pages++ {
-			page, err := s.List(ctx, profile, cursor, limit, "", search.Query{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			for _, it := range page.Items {
-				got = append(got, it.Kind+" "+it.InvoiceID)
-			}
-			if cursor = page.NextCursor; cursor == "" {
-				if wantPages := (len(want) + limit - 1) / limit; pages != wantPages {
-					t.Fatalf("limit %d: %d pages, want %d", limit, pages, wantPages)
-				}
-				break
-			}
-		}
-		if !reflect.DeepEqual(got, want) {
-			t.Fatalf("limit %d: got %v\nwant %v", limit, got, want)
-		}
+	addDeposit(t, pool, c, 13, 9, "detected")
+	addDeposit(t, pool, c, 14, 5, "detected") // the same time as invoices b and c: before them
+	// Paid within the second it was made: the block's whole-second time is before it, the deposit still after it.
+	d := addInvoice(t, pool, profile, 6, 2)
+	exec(t, pool, "ALTER TABLE invoices DISABLE TRIGGER invoices_guard")
+	exec(t, pool, "UPDATE invoices SET created_at = created_at + interval '0.5 second' WHERE id = $1", d)
+	exec(t, pool, "ALTER TABLE invoices ENABLE TRIGGER invoices_guard")
+	addDeposit(t, pool, d, 16, 2, "detected")
+	addInvoice(t, pool, other, 4, 8) // another profile's: left out
+	// A checkout session has no document: only its deposit is listed.
+	session := fmt.Sprintf("0x%064x", 5)
+	exec(t, pool, `INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at,
+		    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
+		    request_hash, created_at, purpose, document_kind, reference, client_name)
+		VALUES ($1, $2, 84532, 'evm', $3, 5000000, 1800000000, 1800086400, '0x1111111111111111111111111111111111111111',
+		    'evm_create2', '0x4444444444444444444444444444444444444444', $4, $1, decode(repeat('00', 32), 'hex'),
+		    $5::timestamptz + interval '1 minute', 'checkout', 'none', 'order-7', 'Bea Buyer')`,
+		session, profile, usdc, fmt.Sprintf("0x33%038x", 5), created)
+	addDeposit(t, pool, session, 15, 6, "detected")
+	tx := func(n int) string { return fmt.Sprintf("0x%064x", n) }
+	want := []string{"deposit " + c + " " + tx(13), "deposit " + b + " " + tx(11), "deposit " + a + " " + tx(10),
+		"deposit " + session + " " + tx(15), "deposit " + c + " " + tx(14), "invoice " + c + " ", "invoice " + b + " ",
+		"deposit " + d + " " + tx(16), "invoice " + d + " ", "invoice " + a + " "}
+	if got := pages(t, s, profile, ""); !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v\nwant %v", got, want)
+	}
+	for _, status := range invoice.StatusFilters {
+		pages(t, s, profile, status)
+	}
+	all, err := s.List(ctx, profile, "", DefaultLimit, "", search.Query{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d := all.Items[3]; d.Purpose != invoice.PurposeCheckout || d.DocumentKind != invoice.DocumentNone || d.Number != nil ||
+		d.Reference != "order-7" || d.ClientName != "Bea Buyer" || !d.At.Equal(time.Date(2026, 10, 1, 10, 6, 0, 0, time.UTC)) {
+		t.Fatalf("checkout deposit %+v", d)
+	}
+	if d := all.Items[7]; !d.At.Equal(all.Items[8].At) {
+		t.Fatalf("deposit within its invoice's second at %v, invoice at %v", d.At, all.Items[8].At)
+	}
+	if i := all.Items[5]; i.Purpose != invoice.PurposeRequest || i.Number == nil || *i.Number != 3 {
+		t.Fatalf("request item %+v", i)
 	}
 
-	top, _ := s.List(ctx, profile, "", 1, "", search.Query{})
-	d := top.Items[0]
-	if d.Status != "detected" || d.TxHash != fmt.Sprintf("0x%064x", 11) || d.Amount.Int64() != 1000000 || d.ChainID != 84532 ||
-		d.Symbol != "USDC" || d.Decimals != 6 {
+	if d := all.Items[1]; d.Status != "detected" || d.TxHash != tx(11) || d.Amount.Int64() != 1000000 || d.ChainID != 84532 ||
+		d.Symbol != "USDC" || d.Decimals != 6 || d.MerchantAmount != nil || d.HeldAmount != nil {
 		t.Fatalf("deposit item %+v", d)
 	}
-	inv, _ := s.List(ctx, profile, "", 3, "", search.Query{})
-	if i := inv.Items[2]; i.Status != "open" || i.SettlementStatus != "none" || i.Amount.Int64() != 5000000 || i.Token != usdc ||
+	if i := all.Items[6]; i.Status != "open" || i.SettlementStatus != "none" || i.Amount.Int64() != 5000000 || i.Token != usdc ||
 		i.TxHash != "" {
 		t.Fatalf("invoice item %+v", i)
 	}
@@ -135,8 +191,8 @@ func TestListNewestFirstInPages(t *testing.T) {
 	settle := fmt.Sprintf("0x%064x", 99)
 	exec(t, pool, `WITH i AS (INSERT INTO settlement_intents (invoice_id, status, tx_hash) VALUES ($1, 'confirmed', $2))
 		UPDATE invoices SET settlement_status = 'settled' WHERE id = $1`, a, settle)
-	all, _ := s.List(ctx, profile, "", DefaultLimit, "", search.Query{})
-	if i := all.Items[4]; i.InvoiceID != a || i.SettlementStatus != "settled" || i.TxHash != settle {
+	all, _ = s.List(ctx, profile, "", DefaultLimit, "", search.Query{})
+	if i := all.Items[9]; i.InvoiceID != a || i.SettlementStatus != "settled" || i.TxHash != settle {
 		t.Fatalf("settled invoice item %+v, want tx hash %s", i, settle)
 	}
 }
@@ -199,16 +255,20 @@ func TestListMarksHeldDeposits(t *testing.T) {
 	addDeposit(t, pool, paid, 16, 6, "confirmed")
 	partial := addInvoice(t, pool, profile, 10, 0)
 	addDeposit(t, pool, partial, 19, 9, "confirmed")
-	for inv, account := range map[string]string{paidHeld: "payer_held", paid: "recipient_payable", partial: "recipient_payable"} {
+	split := addInvoice(t, pool, profile, 11, 0) // the deposit that paid it in full, with more than was left
+	addDeposit(t, pool, split, 20, 10, "confirmed")
+	for inv, owner := range map[string]int{paidHeld: 0, paid: 1000000, partial: 1000000, split: 600000} {
 		exec(t, pool, `WITH x AS (INSERT INTO ledger_transactions (invoice_id, kind, chain_transfer_id)
 			           SELECT $1, 'deposit', id FROM chain_transfers WHERE invoice_id = $1 RETURNING id)
 			INSERT INTO ledger_entries (transaction_id, account, amount) SELECT id, 'receiver', 1000000 FROM x
-			UNION ALL SELECT id, $2, -1000000 FROM x`, inv, account)
+			UNION ALL SELECT id, 'recipient_payable', -$2::numeric FROM x WHERE $2 > 0
+			UNION ALL SELECT id, 'payer_held', $2::numeric - 1000000 FROM x WHERE $2 < 1000000`, inv, owner)
 	}
 
 	exec(t, pool, "UPDATE invoices SET payment_status = 'expired_partially_paid' WHERE id = $1", partial)
 
 	held := map[string]bool{}
+	parts := map[string]string{}
 	s := NewService(pool)
 	all, err := s.List(context.Background(), profile, "", DefaultLimit, "", search.Query{})
 	if err != nil {
@@ -217,12 +277,20 @@ func TestListMarksHeldDeposits(t *testing.T) {
 	for _, it := range all.Items {
 		if it.Kind == Deposit {
 			held[it.InvoiceID] = it.Held
+			if it.MerchantAmount != nil {
+				parts[it.InvoiceID] = it.MerchantAmount.String() + "+" + it.HeldAmount.String()
+			}
 		}
 	}
 	want := map[string]bool{canceled: true, late: true, main: true, open: false, paidOver: true, expired: true,
-		paidHeld: true, paid: false, partial: true}
+		paidHeld: true, paid: false, partial: true, split: false}
 	if !reflect.DeepEqual(held, want) {
 		t.Fatalf("held %v, want %v", held, want)
+	}
+	// D-114: of a split deposit only the owner's part is received; held money stays the payer's.
+	wantParts := map[string]string{paidHeld: "0+1000000", paid: "1000000+0", partial: "0+1000000", split: "600000+400000"}
+	if !reflect.DeepEqual(parts, wantParts) {
+		t.Fatalf("parts %v, want %v", parts, wantParts)
 	}
 	for _, filter := range []string{"open", "paid"} {
 		page, err := s.List(context.Background(), profile, "", DefaultLimit, filter, search.Query{})

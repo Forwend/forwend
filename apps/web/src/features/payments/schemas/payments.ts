@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { DOCUMENT_KINDS, PAYMENT_PURPOSES } from "@/features/invoices/constants/invoices";
-import { depositSchema, paymentAmountsSchema } from "@/features/invoices/schemas/invoices";
+import {
+  depositSchema,
+  invoiceLineSchema,
+  paymentAmountsSchema,
+} from "@/features/invoices/schemas/invoices";
 import { PAYMENT_SOURCES } from "@/features/payments/constants/payments";
 import { apiTime, baseUnits, count, evmAddress, hash32, pageOf } from "@/shared/schemas/api";
 
@@ -16,6 +20,8 @@ export const paymentSchema = z.object({
         decimals: count,
         received: baseUnits,
         pending: baseUnits,
+        /** Booked money still owed to the payer on this option. */
+        held: baseUnits.optional(),
       }),
     )
     .optional(),
@@ -49,6 +55,10 @@ export const paymentSchema = z.object({
   closesAt: apiTime,
   hostedUrl: z.url().nullable(),
   amounts: paymentAmountsSchema,
+  /** Derived by the API (D-114); older reads leave them out and the raw facts decide. */
+  state: z.string().optional(),
+  wallet: z.string().optional(),
+  dueDate: z.string().nullable().optional(),
 });
 export const paymentProblemSchema = z.object({
   amount: signedUnits.nullable(),
@@ -81,6 +91,8 @@ const coverageSchema = z.object({
 });
 export const paymentDetailSchema = paymentSchema.extend({
   snapshotAt: apiTime,
+  /** Line items in base units of the option whose id is the payment's. */
+  items: z.array(invoiceLineSchema).optional(),
   customer: z.object({ name: z.string().nullable(), email: z.string().nullable() }),
   metadata: z.record(z.string(), z.string()),
   options: z.array(

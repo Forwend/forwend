@@ -40,7 +40,7 @@ export function MenuContent({
         sideOffset={8}
         collisionPadding={12}
         className={cx(
-          "z-[var(--fw-z-overlay)] min-w-[var(--radix-dropdown-menu-trigger-width)] max-w-[calc(100vw-2rem)] rounded-lg border border-line bg-surface p-1.5 text-ink shadow-lg",
+          "z-[var(--fw-z-overlay)] min-w-[var(--radix-dropdown-menu-trigger-width)] max-w-[calc(100vw-2rem)] rounded-md border border-line bg-surface p-1 text-ink shadow-lg",
           "origin-[var(--radix-dropdown-menu-content-transform-origin)] data-[side=bottom]:[--fw-pop-y:-4px] motion-safe:data-[state=open]:animate-[fw-pop-in_var(--fw-duration-base)_var(--fw-ease-out)]",
           className,
         )}
@@ -51,7 +51,7 @@ export function MenuContent({
 }
 
 const ITEM =
-  "flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-3 text-sm outline-none select-none data-[disabled]:cursor-not-allowed data-[disabled]:text-subtle data-[highlighted]:bg-surface-2";
+  "flex min-h-9 cursor-pointer items-center gap-2.5 rounded-sm px-2.5 text-sm pointer-coarse:min-h-11 outline-none select-none data-[disabled]:cursor-not-allowed data-[disabled]:text-subtle data-[highlighted]:bg-surface-2";
 
 export function MenuItem({ className, ...props }: MenuItemProps) {
   return <RadixMenu.Item className={cx(ITEM, className)} {...props} />;

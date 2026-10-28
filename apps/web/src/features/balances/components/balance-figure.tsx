@@ -6,21 +6,33 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { EstimateHint } from "@/features/balances/components/estimate-hint";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
-import { formatUsd, usdTotal } from "@/features/balances/lib/balances";
+import { formatUsd, marketUsd } from "@/features/balances/lib/balances";
 import type { Balances } from "@/features/balances/types/balances";
+import { PricesUpdated } from "@/features/prices/components/prices-updated";
+import type { TokenPrice } from "@/features/prices/types/prices";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 
 export interface BalanceFigureProps {
   balances: Balances | null;
+  /** Market prices (D-115); undefined until read or after a failed read, which shows no USD value. */
+  prices: readonly TokenPrice[] | undefined;
+  /** Whether the prices read has answered, so attribution never shows before there is anything to attribute. */
+  pricesRead: boolean;
   failed: boolean;
   onRetry: () => void;
 }
 
 // Never a made-up 0 while loading or after a failed read. The parent is the size container.
-export function BalanceFigure({ balances, failed, onRetry }: BalanceFigureProps) {
+export function BalanceFigure({
+  balances,
+  prices,
+  pricesRead,
+  failed,
+  onRetry,
+}: BalanceFigureProps) {
   const tokens = balances?.tokens ?? [];
-  const total = balances ? usdTotal(balances, "wallet") : null;
+  const total = balances ? marketUsd(balances, "wallet", prices, Date.now()) : null;
   const text = total === null ? "—" : formatUsd(total);
   const figure =
     "text-[length:clamp(2rem,min(14cqi,160cqi_/_var(--chars)),5.25rem)] leading-none font-semibold tracking-[-0.03em] text-ink";
@@ -57,13 +69,26 @@ export function BalanceFigure({ balances, failed, onRetry }: BalanceFigureProps)
           </span>
         </span>
       </p>
-      {total === null ? <p className="text-sm text-muted">{BALANCES_COPY.unavailable}</p> : null}
-      <PendingHeld balances={balances} />
+      {total === null ? (
+        <p className="text-sm text-muted">
+          {tokens.some((t) => t.wallet === null)
+            ? BALANCES_COPY.unavailable
+            : BALANCES_COPY.noPrices}
+        </p>
+      ) : null}
+      <PendingHeld balances={balances} prices={prices} />
+      {pricesRead ? <PricesUpdated prices={prices} /> : null}
     </div>
   );
 }
 
-function PendingHeld({ balances }: { balances: Balances }) {
+function PendingHeld({
+  balances,
+  prices,
+}: {
+  balances: Balances;
+  prices: readonly TokenPrice[] | undefined;
+}) {
   const summaries = [
     { field: "pending", label: BALANCES_COPY.pending },
     { field: "held", label: BALANCES_COPY.held },
@@ -72,7 +97,7 @@ function PendingHeld({ balances }: { balances: Balances }) {
     <div className="flex max-w-full flex-wrap justify-center gap-x-3 gap-y-1 empty:hidden lg:justify-start">
       {summaries.map(({ field, label }) => {
         if (!balances.tokens.some((t) => BigInt(t[field]) > 0n)) return null;
-        const total = usdTotal(balances, field);
+        const total = marketUsd(balances, field, prices, Date.now());
         if (total === null) return null;
         return (
           <Link

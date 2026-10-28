@@ -9,6 +9,8 @@ import { OWED_KINDS } from "@/features/invoices/constants/invoices";
 import { OWED_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
 import { invoiceNumber, owedCents } from "@/features/invoices/lib/invoices";
 import type { OwedKind } from "@/features/invoices/types/invoices";
+import { LoadError } from "@/shared/components/load-error";
+import { RecordLink } from "@/shared/components/record-link";
 import { RowsSkeleton } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
@@ -17,7 +19,7 @@ import { exactDigits } from "@/shared/lib/money";
 
 const SHOWN = 5;
 
-// R-95. Held money is the payer's, so it is not in the total.
+// R-95, D-114: receivables only. Held money is the payer's: it shows as Overpaid on its payment, never as owed.
 export function OwedToYou({ profileId }: { profileId: string }) {
   const owed = useGetOwedQuery(profileId, LIVE_QUERY);
   const [all, setAll] = useState(false);
@@ -27,8 +29,12 @@ export function OwedToYou({ profileId }: { profileId: string }) {
     if (all) list.current?.querySelectorAll("a")[SHOWN]?.focus();
   }, [all]);
   // A row kind a newer API adds is left out until this page knows its words.
-  const items = owed.currentData?.filter((o) => Object.hasOwn(COPY.kinds, o.kind));
-  const total = items ? owedCents(items) : 0n;
+  const items = owed.currentData?.items.filter(
+    (o) => o.kind !== OWED_KINDS.held && Object.hasOwn(COPY.kinds, o.kind),
+  );
+  // The API totals every row per token, not only the first page it returns.
+  const total = owed.currentData ? owedCents(owed.currentData.totals ?? items ?? []) : 0n;
+  const more = Math.max(0, (owed.currentData?.count ?? 0) - (items?.length ?? 0));
   const rows = items && !all ? items.slice(0, SHOWN) : items;
 
   return (
@@ -49,14 +55,8 @@ export function OwedToYou({ profileId }: { profileId: string }) {
         ) : null}
       </div>
       {owed.isError && !items ? (
-        <div
-          role="alert"
-          className="flex flex-wrap items-center gap-3 px-4 py-4 text-sm text-muted sm:px-5"
-        >
-          {COPY.failed}
-          <Button size="sm" variant="secondary" onClick={owed.refetch}>
-            {COPY.retry}
-          </Button>
+        <div className="p-3">
+          <LoadError message={COPY.failed} onRetry={() => void owed.refetch()} />
         </div>
       ) : !rows ? (
         <RowsSkeleton count={3} />
@@ -65,21 +65,24 @@ export function OwedToYou({ profileId }: { profileId: string }) {
       ) : (
         <ul ref={list} className="divide-y divide-line">
           {rows.map((o) => {
-            const held = o.kind === OWED_KINDS.held;
-            const name = o.clientName ?? o.title;
+            const name = o.clientName ?? o.title ?? o.reference;
+            // A checkout has no invoice page: its payment is where the customer's share is.
+            const href = o.number
+              ? `${APP_ROUTES.invoices}/${o.invoiceId}`
+              : `${APP_ROUTES.payments}/${o.invoiceId}`;
             const units = BigInt(o.amount);
             return (
               <li key={`${o.kind}-${o.invoiceId}-${o.chainId}-${o.token}`}>
                 <Link
-                  href={`${APP_ROUTES.invoices}/${o.invoiceId}`}
+                  href={href}
                   className={`flex min-h-16 items-center gap-3 px-4 py-3 outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus sm:px-5 ${ROW_INTERACTIVE_CLASSES}`}
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium text-ink">
-                      {name ?? invoiceNumber(o.number)}
+                      {name ?? (o.number ? invoiceNumber(o.number) : COPY.checkout)}
                     </span>
                     <span className="block truncate text-xs text-muted">
-                      {name ? `${invoiceNumber(o.number)} · ` : null}
+                      {name && o.number ? `${invoiceNumber(o.number)} · ` : null}
                       <span className={o.kind === OWED_KINDS.overdue ? "text-warning" : undefined}>
                         {COPY.kinds[o.kind as OwedKind](o.daysLate)}
                       </span>
@@ -93,10 +96,10 @@ export function OwedToYou({ profileId }: { profileId: string }) {
                         fractionDigits: exactDigits(units, o.decimals),
                       })}{" "}
                       <span className="text-sm text-muted">
-                        {!held && o.optionCount > 1 ? MONEY_COPY.usd : o.symbol}
+                        {o.optionCount > 1 ? MONEY_COPY.usd : o.symbol}
                       </span>
                     </span>
-                    {held ? null : <span className="text-xs text-muted">{COPY.left}</span>}
+                    <span className="text-xs text-muted">{COPY.left}</span>
                   </span>
                 </Link>
               </li>
@@ -110,6 +113,10 @@ export function OwedToYou({ profileId }: { profileId: string }) {
             {COPY.showAll(items.length)}
           </Button>
         </div>
+      ) : all && more > 0 ? (
+        <p className="border-t border-line px-4 py-3 text-sm text-muted sm:px-5">
+          {COPY.more(more)} <RecordLink href={APP_ROUTES.payments}>{COPY.inPayments}</RecordLink>
+        </p>
       ) : null}
     </section>
   );

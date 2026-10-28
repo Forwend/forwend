@@ -1,11 +1,4 @@
 import { PAYMENT_STATUS, type PaymentStatus } from "@forwend/ui-web";
-import {
-  ACTIVITY_KINDS,
-  API_DEPOSIT_STATUSES,
-  API_PAYMENT_STATUSES,
-  API_SETTLEMENT_STATUSES,
-} from "@/features/activity/constants/activity";
-import { activityStatus } from "@/features/activity/lib/activity";
 import { USD_DECIMALS } from "@/features/balances/constants/balances";
 import {
   AGREED_CURRENCIES,
@@ -44,6 +37,12 @@ import type {
 import type { TokenRef } from "@/features/profiles/types/tokens";
 import { API_BASE } from "@/shared/config/api";
 import { APP_ROUTES } from "@/shared/config/routes";
+import {
+  API_DEPOSIT_STATUSES,
+  API_PAYMENT_STATUSES,
+  API_SETTLEMENT_STATUSES,
+} from "@/shared/constants/payment-state";
+import { paymentStatusOf } from "@/shared/lib/payment-state";
 
 /** "" for a payment-link invoice before its first deposit (R-141). */
 export function invoiceNumber(n: number | null): string {
@@ -58,15 +57,14 @@ export function tokenKey(t: { chainId: number; token: string }): string {
   return `${t.chainId}:${t.token.toLowerCase()}`;
 }
 
-/** A partly paid invoice whose next payment still confirms reads as confirming (R-69). */
+/** A partly paid invoice whose next payment still confirms reads as confirming (R-69); waiting past its due date
+ * reads Overdue (D-114). */
 export function invoiceStatus(inv: InvoiceSummary): PaymentStatus {
-  return activityStatus({
-    kind: ACTIVITY_KINDS.invoice,
-    status: inv.paymentStatus,
+  return paymentStatusOf({
     paymentStatus: inv.paymentStatus,
     confirming: inv.confirming,
-    settlementStatus: inv.settlementStatus,
     closed: inv.closed,
+    dueDate: inv.dueDate,
   });
 }
 
@@ -371,7 +369,9 @@ export function restartFrom(
 }
 
 /** At 1 USD per stablecoin (D-75), in cents cut once, never rounded up. */
-export function owedCents(items: readonly Owed[]): bigint {
+export function owedCents(
+  items: readonly (Pick<Owed, "amount" | "decimals"> & { kind?: string })[],
+): bigint {
   const unpaid = items.filter((o) => o.kind !== OWED_KINDS.held);
   if (unpaid.length === 0) return 0n;
   // Added at the finest decimals of any token, so no cent is lost per row.

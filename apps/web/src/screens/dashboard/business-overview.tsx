@@ -17,19 +17,21 @@ import {
 } from "@/features/balances/constants/balance-history";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { historySeries, seriesTotal } from "@/features/balances/lib/balance-history";
-import { formatUsd, usdTotal } from "@/features/balances/lib/balances";
+import { formatUsd, marketUsd } from "@/features/balances/lib/balances";
 import type { HistoryRange } from "@/features/balances/types/balance-history";
 import { OwedToYou } from "@/features/invoices/components/owed-to-you";
+import { LatestPayments } from "@/features/payments/components/latest-payments";
+import { useGetPricesQuery } from "@/features/prices/api/prices-api";
+import { PricesUpdated } from "@/features/prices/components/prices-updated";
+import { PRICES_QUERY } from "@/features/prices/constants/prices";
 import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { profileLabel } from "@/features/profiles/lib/profile";
 import { useGetTransactionsQuery } from "@/features/transactions/api/transactions-api";
-import { TransactionsTable } from "@/features/transactions/components/transactions-table";
 import {
   TRANSACTION_DIRECTIONS,
   TRANSACTIONS_MAX,
 } from "@/features/transactions/constants/transactions";
-import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transactions-copy";
 import { OverviewChecklist } from "@/screens/dashboard/overview-checklist";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
@@ -40,12 +42,11 @@ const BUSINESS_COPY = {
   summary: "Summary",
   received: "Received",
   sent: "Sent",
-  payments: (count: string) => `${count} incoming transfers`,
+  payments: (count: string) => `${count} transfers in`,
   pending: "On its way",
-  pendingHint: "Paid payments awaiting wallet settlement",
+  pendingHint: "Paid, moving to your wallet",
   atLeast: (n: number) => `${n}+`,
 } as const;
-const RECENT = 8;
 
 export function BusinessOverview() {
   const { profile } = useAppSession();
@@ -84,8 +85,14 @@ export function BusinessOverview() {
       : BUSINESS_COPY.atLeast(inRange.length)
     : null;
 
-  const wallet = balances.currentData ? usdTotal(balances.currentData, "wallet") : null;
-  const pending = balances.currentData ? usdTotal(balances.currentData, "pending") : null;
+  const priced = useGetPricesQuery(undefined, PRICES_QUERY);
+  const prices = priced.currentData?.prices;
+  const wallet = balances.currentData
+    ? marketUsd(balances.currentData, "wallet", prices, Date.now())
+    : null;
+  const pending = balances.currentData
+    ? marketUsd(balances.currentData, "settling", prices, Date.now())
+    : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -142,6 +149,11 @@ export function BusinessOverview() {
             {balances.currentData ? <Total cents={pending} /> : null}
           </Figure>
         </dl>
+        {priced.currentData || priced.isError ? (
+          <div className="border-t border-line px-4 py-2 sm:px-5">
+            <PricesUpdated prices={prices} />
+          </div>
+        ) : null}
       </section>
 
       <OwedToYou profileId={profile.profileId} />
@@ -188,11 +200,7 @@ export function BusinessOverview() {
         <NetworksCard balances={balances.currentData ?? null} failed={balances.isError} />
       </div>
 
-      <TransactionsTable
-        profileId={profile.profileId}
-        title={TRANSACTIONS_COPY.payments}
-        preview={RECENT}
-      />
+      <LatestPayments profileId={profile.profileId} />
     </div>
   );
 }

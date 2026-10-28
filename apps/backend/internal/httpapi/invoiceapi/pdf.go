@@ -15,7 +15,9 @@ import (
 )
 
 func invoicePDF(invoices *invoice.Service, profiles *profile.Service, webURL string) http.HandlerFunc {
-	return servePDF(invoices, profiles, webURL, "invoice", document.Invoice)
+	return servePDF(invoices, profiles, webURL, "invoice", func(inv invoice.Invoice, link string, logo []byte) ([]byte, error) {
+		return document.Invoice(inv, link, logo, time.Now())
+	})
 }
 
 func receiptPDF(invoices *invoice.Service, profiles *profile.Service, webURL string) http.HandlerFunc {

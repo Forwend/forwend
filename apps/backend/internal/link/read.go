@@ -2,8 +2,12 @@ package link
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 
@@ -26,18 +30,50 @@ func scanLink(row pgx.CollectableRow) (Link, error) {
 	return l, err
 }
 
-// List is the profile's links, newest first. stores, when not nil, keeps only those stores' links (R-138).
-func (s *Service) List(ctx context.Context, profileID string, stores []string, live *bool) ([]Link, error) {
-	rows, err := s.pool.Query(ctx, `SELECT `+linkColumns+` FROM payment_links l
-		WHERE l.profile_id = $1 AND ($2::uuid[] IS NULL OR l.store_id = ANY($2))
-		AND ($3::boolean IS NULL OR l.livemode = $3)
-		ORDER BY l.created_at DESC, l.id`, profileID, stores, live)
+// MaxLimit is the largest page; List without a limit reads every link, as before pages.
+const MaxLimit = 100
+
+// Page is one page of links; NextCursor is "" on the last one.
+type Page struct {
+	Links      []Link
+	NextCursor string
+}
+
+// List is the profile's links, newest first. stores, when not nil, keeps only those stores' links (R-138). limit 0
+// reads every link after cursor.
+func (s *Service) List(ctx context.Context, profileID string, stores []string, live *bool, cursor string, limit int) (Page, error) {
+	if limit < 0 || limit > MaxLimit {
+		return Page{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxLimit)
+	}
+	args := []any{profileID, stores, live}
+	where := "l.profile_id = $1 AND ($2::uuid[] IS NULL OR l.store_id = ANY($2)) AND ($3::boolean IS NULL OR l.livemode = $3)"
+	if cursor != "" {
+		at, id, err := decodeCursor(cursor)
+		if err != nil {
+			return Page{}, err
+		}
+		args = append(args, at, id)
+		where += " AND (l.created_at < $4 OR l.created_at = $4 AND l.id > $5)"
+	}
+	page := ""
+	if limit > 0 {
+		args = append(args, limit+1)
+		page = fmt.Sprintf(" LIMIT $%d", len(args))
+	}
+	rows, err := s.pool.Query(ctx, `SELECT `+linkColumns+` FROM payment_links l WHERE `+where+`
+		ORDER BY l.created_at DESC, l.id`+page, args...)
 	if err != nil {
-		return nil, fmt.Errorf("list payment links: %w", err)
+		return Page{}, fmt.Errorf("list payment links: %w", err)
 	}
 	links, err := pgx.CollectRows(rows, scanLink)
 	if err != nil {
-		return nil, fmt.Errorf("list payment links: %w", err)
+		return Page{}, fmt.Errorf("list payment links: %w", err)
+	}
+	var next string
+	if limit > 0 && len(links) > limit {
+		links = links[:limit]
+		last := links[limit-1]
+		next = base64.RawURLEncoding.EncodeToString([]byte(fmt.Sprintf("%d|%s", last.CreatedAt.UnixMicro(), last.ID)))
 	}
 	type scope struct {
 		store string
@@ -50,14 +86,25 @@ func (s *Service) List(ctx context.Context, profileID string, stores []string, l
 		if !ok {
 			r, err := profile.ReadPaymentReadiness(ctx, s.pool, profileID, key.store, key.live)
 			if err != nil {
-				return nil, err
+				return Page{}, err
 			}
 			ready = r.Ready()
 			readiness[key] = ready
 		}
 		links[i].Ready = ready
 	}
-	return links, nil
+	return Page{Links: links, NextCursor: next}, nil
+}
+
+// A cursor is the last link's creation time (Unix microseconds, Postgres' precision) and id.
+func decodeCursor(cursor string) (time.Time, string, error) {
+	raw, err := base64.RawURLEncoding.DecodeString(cursor)
+	at, id, ok := strings.Cut(string(raw), "|")
+	micros, parseErr := strconv.ParseInt(at, 10, 64)
+	if err != nil || !ok || parseErr != nil || !lowercaseUUID.MatchString(id) {
+		return time.Time{}, "", fmt.Errorf("%w: cursor is not one this API returned", ErrInvalid)
+	}
+	return time.UnixMicro(micros), id, nil
 }
 
 func (s *Service) Get(ctx context.Context, profileID, id string) (Link, error) {

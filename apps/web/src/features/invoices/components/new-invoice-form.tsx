@@ -9,10 +9,11 @@ import {
   Form,
   SegmentedControl,
   SelectField,
+  Sheet,
   TextAreaField,
   TextField,
 } from "@forwend/ui-web";
-import { Plus, TriangleAlert } from "lucide-react";
+import { Eye, Plus, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
@@ -22,7 +23,10 @@ import type { Client, ClientBody } from "@/features/clients/types/clients";
 import { useCreateInvoiceMutation } from "@/features/invoices/api/invoices-api";
 import { AgreedValueFields } from "@/features/invoices/components/agreed-value";
 import { type LineFieldErrors, LineItems } from "@/features/invoices/components/line-items";
-import { NewInvoicePreview } from "@/features/invoices/components/new-invoice-preview";
+import {
+  NewInvoicePreview,
+  type NewInvoicePreviewProps,
+} from "@/features/invoices/components/new-invoice-preview";
 import {
   AMOUNT_ERRORS,
   CUSTOM_EXPIRY,
@@ -142,6 +146,7 @@ export function NewInvoiceForm({
   const [errors, setErrors] = useState<Partial<Record<InvoiceField, string>>>({});
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
   // R-88: with items the amount is their total; the amount field stands in only while there are none.
   const [items, setItems] = useState<LineDraft[]>(start?.items ?? []);
   const [lineErrors, setLineErrors] = useState<Record<string, LineFieldErrors>>({});
@@ -186,7 +191,10 @@ export function NewInvoiceForm({
             onValueChange={setStoreId}
           />
         ) : null}
-        <Link href={APP_ROUTES.networks} className="text-info underline underline-offset-4">
+        <Link
+          href={APP_ROUTES.networks}
+          className="text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink"
+        >
           Check accepted networks and tokens
         </Link>
       </div>
@@ -506,6 +514,38 @@ export function NewInvoiceForm({
       onChange={() => clear(INVOICE_FIELDS.returnUrl)}
     />
   );
+
+  const preview: NewInvoicePreviewProps = {
+    copy: COPY.preview,
+    units: typeof typedUnits === "string" ? 0n : typedUnits,
+    decimals,
+    unit,
+    payLine: any
+      ? COPY.preview.any(
+          [...new Set(tokens.map((t) => t.symbol))].join(" or "),
+          new Set(tokens.map((t) => t.chainId)).size,
+        )
+      : COPY.preview.on(network),
+    title: typed.title,
+    note: typed.note,
+    client: typed.client,
+    due: dueDate ? formatDueDate(dueDate) : null,
+    closes:
+      expiry === CUSTOM_EXPIRY
+        ? closesOn
+          ? formatDueDate(closesOn)
+          : COPY.expiry[CUSTOM_EXPIRY]
+        : COPY.expiry[expiry],
+    lines: items.map((item) => {
+      const line = lineUnits(item, decimals);
+      return {
+        id: item.id,
+        description: item.description.trim(),
+        quantity: item.quantity.trim(),
+        units: typeof line === "string" ? null : line.units,
+      };
+    }),
+  };
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
@@ -913,6 +953,10 @@ export function NewInvoiceForm({
           <Button type="submit" loading={busy} disabled={unavailableToken}>
             {COPY.create}
           </Button>
+          <Button variant="secondary" className="xl:hidden" onClick={() => setPreviewing(true)}>
+            <Eye aria-hidden className="size-[var(--fw-icon-sm)]" />
+            {COPY.preview.open}
+          </Button>
           {request ? null : (
             <Link href={APP_ROUTES.invoices} className={buttonClasses({ variant: "ghost" })}>
               {COPY.cancel}
@@ -923,31 +967,20 @@ export function NewInvoiceForm({
           {formError}
         </p>
       </Form>
-      <NewInvoicePreview
-        copy={COPY.preview}
-        units={typeof typedUnits === "string" ? 0n : typedUnits}
-        decimals={decimals}
-        unit={unit}
-        payLine={
-          any
-            ? COPY.preview.any(
-                [...new Set(tokens.map((t) => t.symbol))].join(" or "),
-                new Set(tokens.map((t) => t.chainId)).size,
-              )
-            : COPY.preview.on(network)
-        }
-        title={typed.title}
-        note={typed.note}
-        client={typed.client}
-        due={dueDate ? formatDueDate(dueDate) : null}
-        closes={
-          expiry === CUSTOM_EXPIRY
-            ? closesOn
-              ? formatDueDate(closesOn)
-              : COPY.expiry[CUSTOM_EXPIRY]
-            : COPY.expiry[expiry]
-        }
-      />
+      <aside
+        aria-hidden
+        className="sticky top-24 hidden flex-col rounded-lg border border-line bg-surface xl:flex"
+      >
+        <p className="border-b border-line px-5 py-3.5 text-sm font-medium text-ink">
+          {COPY.preview.title}
+        </p>
+        <div className="p-5">
+          <NewInvoicePreview {...preview} />
+        </div>
+      </aside>
+      <Sheet open={previewing} onOpenChange={setPreviewing} title={COPY.preview.title}>
+        <NewInvoicePreview {...preview} />
+      </Sheet>
     </div>
   );
 }

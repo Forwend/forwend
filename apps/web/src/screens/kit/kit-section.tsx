@@ -16,7 +16,7 @@ export function KitSection({ title, note, children }: KitSectionProps) {
   const id = title.toLowerCase().replace(/\s+/g, "-");
   return (
     <section aria-labelledby={id} className="border-t border-line py-14 first-of-type:border-t-0">
-      <h2 id={id} className="font-display text-3xl">
+      <h2 id={id} className="font-display font-medium tracking-tight text-3xl">
         {title}
       </h2>
       {note ? <p className="mt-2 max-w-2xl text-muted">{note}</p> : null}

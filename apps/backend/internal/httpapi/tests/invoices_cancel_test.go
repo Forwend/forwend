@@ -101,10 +101,12 @@ func TestCanceledInvoicePDF(t *testing.T) {
 		t.Fatalf("a canceled invoice's PDF must not answer 304 for the payable one: %d", r.status)
 	}
 	text := pdfText(t, r.body)
-	mustContain(t, text, "Forwend\nInvoice\nINV-0001\nTest mode: testnet tokens have no value\nReference PO-7\n", "Supply date\n2026-10-01\nCanceled",
-		"Total, canceled\n5.00 USDC\nAgreed value 4.00 GBP on 2026-10-01",
-		"CANCELED\nThis invoice was canceled. Do not pay it.")
-	for _, gone := range []string{"Pay this invoice", "/pay/", "Total due", "Checkout closes"} {
+	mustContain(t, text, "Forwend\nInvoice\nINV-0001\nReference PO-7\nTESTNET\nTest mode: testnet tokens have no value\nCanceled\n",
+		"Do not send money.", "Supply date\n2026-10-01\nCanceled", "Total\n5.00 USDC\nAgreed value 4.00 GBP on 2026-10-01")
+	if qrDrawn(t, r.body) {
+		t.Fatalf("the canceled PDF still has a QR code")
+	}
+	for _, gone := range []string{"Pay this invoice", "/pay/", "Amount due", "Payment window"} {
 		if strings.Contains(text, gone) {
 			t.Fatalf("canceled PDF still says %q:\n%s", gone, text)
 		}

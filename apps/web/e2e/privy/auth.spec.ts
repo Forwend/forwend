@@ -104,7 +104,7 @@ test("the Privy test account signs in and lands in the app shell with its person
     "aria-current",
     "page",
   );
-  await expect(sidebar.getByRole("link", { name: "Balances" })).toBeVisible();
+  await expect(sidebar.getByRole("link", { name: "My assets" })).toBeVisible();
   await expect(sidebar.getByText("Analytics")).toBeVisible();
   await expect(sidebar.getByRole("link", { name: "Analytics" })).toHaveCount(0);
   await expect(page.getByRole("heading", { level: 1, name: "Personal overview" })).toBeAttached();
@@ -126,18 +126,18 @@ test("the Privy test account signs in and lands in the app shell with its person
   await page.keyboard.press("ControlOrMeta+k");
   const search = page.getByRole("dialog", { name: "Search" });
   await expect(search).toBeVisible();
-  await search.getByRole("combobox").fill("balances");
+  await search.getByRole("combobox").fill("assets");
   expect(await blockingViolations(page)).toEqual([]);
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("heading", { level: 1, name: "Balances" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "My assets" })).toBeVisible();
   await sidebar.getByRole("link", { name: "Overview", exact: true }).click();
 
   await expect(sidebar.getByRole("switch")).toHaveCount(0);
   const theme = await page.locator("html").getAttribute("data-theme");
   await sidebar.getByRole("button", { name: /^Account: / }).click();
-  await expect(page.getByRole("menuitem", { name: /^Settings/ })).toHaveAttribute(
-    "aria-disabled",
-    "true",
+  await expect(page.getByRole("menuitem", { name: "Settings" })).toHaveAttribute(
+    "href",
+    "/app/settings",
   );
   await page.getByRole("menuitemcheckbox", { name: "Dark mode" }).click();
   await expect(page.locator("html")).not.toHaveAttribute("data-theme", theme ?? "");

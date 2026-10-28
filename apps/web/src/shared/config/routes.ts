@@ -21,6 +21,7 @@ export const APP_ROUTES = {
   billingDetails: "/app/billing-details",
   notifications: "/app/notifications",
   networks: "/app/networks",
+  settings: "/app/settings",
   team: "/app/team",
   developers: "/app/developers",
   docs: "/docs",

@@ -49,10 +49,10 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
   await hiddenHeading("Invoices");
   const rows = main.getByRole("row").filter({ hasText: "INV-" });
   await expect(rows).toHaveCount(4);
-  await pickStatus(page, "Settled");
+  await pickStatus(page, "In wallet");
   await expect(rows).toHaveCount(1);
   await expect(rows).toContainText("INV-0003");
-  await pickStatus(page, "Open");
+  await pickStatus(page, "Waiting for payment");
   await expect(rows).toHaveCount(2);
   const search = main.getByRole("searchbox", { name: "Search invoices" });
   await search.fill("brightline");
@@ -530,7 +530,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   };
   await page.reload();
   await shown();
-  await expect(current).toHaveText("Settled");
+  await expect(current).toHaveText("In wallet");
   await expect(progress.getByRole("listitem").nth(2)).toHaveText(/^Confirmed/);
   await expect(current.locator("[class*='fw-progress']")).toHaveCount(1);
   await expect(main.getByRole("button", { name: "Check status" })).toHaveCount(0);

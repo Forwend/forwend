@@ -272,6 +272,11 @@ func newStack(t *testing.T, singleRPC bool, apiEnv ...string) *stack {
 		_, _ = io.WriteString(w, `<Envelope><Cube><Cube time="2026-10-16"><Cube currency="USD" rate="1.1253"/></Cube></Cube></Envelope>`)
 	}))
 	t.Cleanup(ecbFake.Close)
+	// The worker's display prices (R-178).
+	coinGeckoFake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"usd-coin":{"usd":0.9996,"last_updated_at":1793212112}}`)
+	}))
+	t.Cleanup(coinGeckoFake.Close)
 	apiAddr := freeAddr(t)
 	common := []string{"DATABASE_URL=" + dbURL}
 	rpcs := []string{"RPC_ENDPOINT_SECRETS=", "RPC_ALLOW_LOOPBACK=1", "RPC_RATE_PER_SECOND=100"}
@@ -310,7 +315,8 @@ func newStack(t *testing.T, singleRPC bool, apiEnv ...string) *stack {
 	return &stack{anvil: anvil, limited: limited, privy: privy, conn: conn, bin: bin, api: api, db: dbURL, token: token,
 		// Clipped: an append for one binary must never write into another's environment.
 		profile: profile, loop: slices.Clip(append(append(common, rpcs...), "POLL_INTERVAL=200ms",
-			"ECB_RATES_URL="+ecbFake.URL)), hooks: slices.Clip(append(common, "WEBHOOK_SECRET_KEY="+webhookKey))}
+			"ECB_RATES_URL="+ecbFake.URL, "COINGECKO_API_URL="+coinGeckoFake.URL)),
+		hooks: slices.Clip(append(common, "WEBHOOK_SECRET_KEY="+webhookKey))}
 }
 
 func (st *stack) merchant(t *testing.T) (profile, store, address string) {

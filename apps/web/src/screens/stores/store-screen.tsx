@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, buttonClasses, Skeleton } from "@forwend/ui-web";
+import { buttonClasses, Skeleton } from "@forwend/ui-web";
 import Link from "next/link";
 import { useGetProfileTokensQuery } from "@/features/profiles/api/profiles-api";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
@@ -8,6 +8,7 @@ import { useListStoresQuery } from "@/features/stores/api/stores-api";
 import { StoreForm } from "@/features/stores/components/store-form";
 import { STORES_COPY as COPY } from "@/features/stores/constants/stores-copy";
 import { CLOSE_CHOICES, DEFAULT_CLOSE } from "@/screens/stores/lib/close-choices";
+import { LoadError } from "@/shared/components/load-error";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 export interface StoreScreenProps {
@@ -30,31 +31,31 @@ export function StoreScreen({ storeId }: StoreScreenProps) {
   };
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex min-w-0 flex-col gap-2">
-        {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
-        <h1 className="text-2xl font-semibold tracking-tight break-words text-ink lg:sr-only">
-          {storeId ? (store?.name ?? COPY.editTitle) : COPY.newTitle}
-        </h1>
-        <p className="text-muted">{COPY.intro}</p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-2">
+          {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
+          <h1 className="text-2xl font-semibold tracking-tight break-words text-ink lg:sr-only">
+            {storeId ? (store?.name ?? COPY.editTitle) : COPY.newTitle}
+          </h1>
+          <p className="text-sm text-muted">{COPY.intro}</p>
+        </div>
+        {store ? (
+          <Link
+            href={`${APP_ROUTES.payments}?storeId=${store.storeId}`}
+            className={buttonClasses({ size: "sm", variant: "secondary" })}
+          >
+            {COPY.payments}
+          </Link>
+        ) : null}
       </header>
       {tokens.isError ? (
-        <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">
-          We could not load accepted tokens.
-          <Button variant="secondary" size="sm" onClick={() => void tokens.refetch()}>
-            Try again
-          </Button>
-        </div>
+        <LoadError message={COPY.tokensFailed} onRetry={() => void tokens.refetch()} />
       ) : !tokens.currentData ? (
         <Skeleton className="h-64" />
       ) : !storeId ? (
         <StoreForm key={profile.profileId} {...form} />
       ) : list.isError && !list.currentData ? (
-        <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-muted">
-          {COPY.failed}
-          <Button size="sm" variant="secondary" onClick={() => void list.refetch()}>
-            {COPY.retry}
-          </Button>
-        </div>
+        <LoadError message={COPY.failed} onRetry={() => void list.refetch()} />
       ) : !list.currentData ? (
         <Skeleton className="h-96" />
       ) : store ? (

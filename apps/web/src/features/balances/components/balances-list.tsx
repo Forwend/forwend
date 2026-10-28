@@ -3,15 +3,20 @@
 import { Button, Money, Skeleton } from "@forwend/ui-web";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import type { Balances, TokenBalance } from "@/features/balances/types/balances";
+import { findPrice, formatUsdCents, freshUsd, usdCents } from "@/features/prices/lib/prices";
+import type { TokenPrice } from "@/features/prices/types/prices";
 import { TokenMark } from "@/shared/components/chains/token-mark";
+import { MONEY_COPY } from "@/shared/constants/money-copy";
 
 export interface BalancesListProps {
   balances: Balances | null;
+  /** Market prices (D-115): each in-wallet amount adds its USD value under it when one is fresh. */
+  prices?: readonly TokenPrice[];
   failed: boolean;
   onRetry: () => void;
 }
 
-export function BalancesList({ balances, failed, onRetry }: BalancesListProps) {
+export function BalancesList({ balances, prices, failed, onRetry }: BalancesListProps) {
   if (!balances && failed) {
     return (
       <div role="alert" className="flex flex-wrap items-center gap-4 text-muted">
@@ -44,7 +49,13 @@ export function BalancesList({ balances, failed, onRetry }: BalancesListProps) {
             className={`grid gap-3 px-4 py-4 sm:px-5 md:min-h-16 md:items-center md:gap-4 md:py-3 ${columns}`}
           >
             <TokenMark chainId={t.chainId} symbol={t.symbol} />
-            <Amount label={BALANCES_COPY.inWallet} t={t} value={t.wallet} strong />
+            <Amount
+              label={BALANCES_COPY.inWallet}
+              t={t}
+              value={t.wallet}
+              usd={freshUsd(findPrice(prices ?? [], t.chainId, t.token), Date.now())}
+              strong
+            />
             <Amount label={BALANCES_COPY.pendingLabel} t={t} value={t.pending} />
             <Amount label={BALANCES_COPY.heldLabel} t={t} value={t.held} />
           </li>
@@ -58,11 +69,13 @@ function Amount({
   label,
   t,
   value,
+  usd,
   strong,
 }: {
   label: string;
   t: TokenBalance;
   value: string | null;
+  usd?: string | null;
   strong?: boolean;
 }) {
   return (
@@ -71,11 +84,18 @@ function Amount({
       {value === null ? (
         <span className="text-sm text-subtle">{BALANCES_COPY.unavailable}</span>
       ) : (
-        <Money
-          baseUnits={BigInt(value)}
-          decimals={t.decimals}
-          className={strong ? "text-lg text-ink" : "text-muted"}
-        />
+        <span className="flex flex-col items-end">
+          <Money
+            baseUnits={BigInt(value)}
+            decimals={t.decimals}
+            className={strong ? "text-lg text-ink" : "text-muted"}
+          />
+          {usd ? (
+            <span className="text-xs text-muted tabular-nums">
+              {formatUsdCents(usdCents(BigInt(value), t.decimals, usd))} {MONEY_COPY.usd}
+            </span>
+          ) : null}
+        </span>
       )}
     </div>
   );

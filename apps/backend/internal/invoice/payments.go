@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -41,14 +42,40 @@ func (i Invoice) PaymentSource() PaymentSource {
 	return PaymentSource(i.Purpose)
 }
 
+// D-114: the merchant's payment and wallet states, derived from separate facts; the raw statuses keep their values.
+var (
+	PaymentStates = []string{"waiting", "confirming", "partially_paid", "paid", "overpaid", "expired", "canceled"}
+	WalletStates  = []string{"none", "pending", "in_wallet", "delayed", "refused"}
+)
+
+// PaymentStateSQL: a checkout has no cancel of its own, so its expire action's cancel reads expired, as the session
+// status does. Overpaid is paid with money held for the payer on any option.
+const PaymentStateSQL = `CASE WHEN invoices.payment_status = 'canceled' AND invoices.purpose <> 'checkout' THEN 'canceled'
+ WHEN invoices.payment_status = 'paid' AND EXISTS (SELECT 1 FROM invoices held_option
+   JOIN ledger_transactions held_journal ON held_journal.invoice_id = held_option.id
+   JOIN ledger_entries held_entry ON held_entry.transaction_id = held_journal.id AND held_entry.account = 'payer_held'
+   WHERE held_option.id = invoices.id OR held_option.main_id = invoices.id
+   GROUP BY held_option.id HAVING sum(held_entry.amount) < 0) THEN 'overpaid'
+ WHEN invoices.payment_status = 'paid' THEN 'paid'
+ WHEN invoices.payment_status IN ('expired', 'expired_partially_paid', 'canceled') OR ` + ClosedSQL + ` THEN 'expired'
+ WHEN invoices.payment_status = 'detected' OR ` + ConfirmingSQL + ` THEN 'confirming'
+ WHEN invoices.payment_status = 'partially_paid' THEN 'partially_paid'
+ ELSE 'waiting' END`
+
+// WalletSQL: a settle that waits for a retry, the daily cap or an unresolved transaction is delayed (D-114).
+const WalletSQL = `CASE WHEN invoices.settlement_status = 'settled' THEN 'in_wallet' WHEN invoices.payment_status <> 'paid' THEN 'none'
+ ELSE coalesce((SELECT CASE WHEN wallet.status = 'refused' THEN 'refused' WHEN wallet.wait IS NOT NULL THEN 'delayed' END
+   FROM settlement_intents wallet WHERE wallet.invoice_id = invoices.option_id), 'pending') END`
+
 type PaymentQuery struct {
 	Search                                                search.Query
 	Summary                                               bool
 	IncludeWebhookOperations                              bool
 	Attention                                             bool
-	Cursor, StoreID, LinkID                               string
+	Cursor, StoreID, LinkID, Reference                    string
 	Source                                                PaymentSource
 	Status, PaymentStatus, SettlementStatus, RefundStatus string
+	State, Wallet                                         string
 	Limit                                                 int
 	Purpose                                               Purpose
 	Stores                                                []string
@@ -123,7 +150,19 @@ func readPaymentPage(ctx context.Context, db paymentReader, profileID string, q 
 	return page, nil
 }
 
-const paymentSearchText = `(coalesce(reference,'') || ' ' || coalesce(title,'') || ' ' || coalesce(client_name,'') || ' ' || coalesce(client_email,'') || ' ' || id)`
+// Must stay the expression of the invoices_payment_search trigram index (migration 00088) on the main row's columns.
+const paymentSearchText = `(coalesce(reference,'') || ' ' || coalesce(title,'') || ' ' || coalesce(client_name,'') || ' ' || coalesce(client_email,'') || ' ' || id
+	|| ' ' || coalesce('INV-' || lpad(number::text, greatest(length(number::text), 4), '0'), '') || ' ' || main_receive_address)`
+
+// A whole transaction hash or receive address also finds deposits, returns and other options; chains lead the unique
+// (chain_id, ...) indexes these lookups use.
+var fullHex = regexp.MustCompile(`^0x([0-9a-f]{40}|[0-9a-f]{64})$`)
+
+const hexMatchSQL = `SELECT coalesce(o.main_id,o.id) FROM chains c JOIN invoices o ON o.chain_id=c.chain_id WHERE o.receive_address=$%[1]d
+ UNION ALL SELECT coalesce(o.main_id,o.id) FROM chains c JOIN chain_transfers t ON t.chain_id=c.chain_id JOIN invoices o ON o.id=t.invoice_id
+   WHERE t.tx_hash=$%[1]d AND t.status<>'reorged'
+ UNION ALL SELECT coalesce(o.main_id,o.id) FROM chains c JOIN receiver_outflows f ON f.chain_id=c.chain_id JOIN invoices o ON o.id=f.invoice_id
+   WHERE f.tx_hash=$%[1]d`
 
 func paymentWhere(profileID string, q PaymentQuery) ([]any, string, error) {
 	if q.Limit < 1 || q.Limit > MaxLimit {
@@ -133,7 +172,16 @@ func paymentWhere(profileID string, q PaymentQuery) ([]any, string, error) {
 	where := "profile_id = $1"
 	if q.Search.Like != nil {
 		args = append(args, q.Search.Like, q.Search.Amount)
-		where += fmt.Sprintf(" AND (%s ILIKE $%d OR amount=$%d::numeric * 10::numeric ^ (SELECT decimals FROM tokens WHERE chain_id=invoices.chain_id AND contract=invoices.token_contract))", paymentSearchText, len(args)-1, len(args))
+		match := fmt.Sprintf("%s ILIKE $%d OR amount=$%d::numeric * 10::numeric ^ (SELECT decimals FROM tokens WHERE chain_id=invoices.chain_id AND contract=invoices.token_contract)", paymentSearchText, len(args)-1, len(args))
+		if hex := strings.ToLower(strings.Trim(*q.Search.Like, "%")); fullHex.MatchString(hex) {
+			args = append(args, hex)
+			match += " OR invoices.id = ANY(ARRAY(" + fmt.Sprintf(hexMatchSQL, len(args)) + "))"
+		}
+		where += " AND (" + match + ")"
+	}
+	if q.Reference != "" {
+		args = append(args, q.Reference)
+		where += fmt.Sprintf(" AND reference = $%d", len(args))
 	}
 
 	if q.Cursor != "" {
@@ -197,21 +245,23 @@ func paymentWhere(profileID string, q PaymentQuery) ([]any, string, error) {
 		where += fmt.Sprintf(" AND ($%d = 'paid' AND invoices.payment_status = 'paid' OR %s = $%d)", len(args), ListStatusFilterSQL, len(args))
 	}
 	for _, filter := range []struct {
-		column, value string
-		allowed       []string
+		name, sql, value string
+		allowed          []string
 	}{
-		{"payment_status", q.PaymentStatus, []string{ledger.Open, ledger.Detected, ledger.PartiallyPaid, ledger.Paid, ledger.Expired, ledger.ExpiredPartiallyPaid, ledger.Canceled}},
-		{"settlement_status", q.SettlementStatus, []string{"none", "pending", "settled"}},
-		{"refund_status", q.RefundStatus, []string{"none", "held", "refund_pending", "refunded"}},
+		{"payment_status", "payment_status", q.PaymentStatus, []string{ledger.Open, ledger.Detected, ledger.PartiallyPaid, ledger.Paid, ledger.Expired, ledger.ExpiredPartiallyPaid, ledger.Canceled}},
+		{"settlement_status", "settlement_status", q.SettlementStatus, []string{"none", "pending", "settled"}},
+		{"refund_status", "refund_status", q.RefundStatus, []string{"none", "held", "refund_pending", "refunded"}},
+		{"state", PaymentStateSQL, q.State, PaymentStates},
+		{"wallet", WalletSQL, q.Wallet, WalletStates},
 	} {
 		if filter.value == "" {
 			continue
 		}
 		if !slices.Contains(filter.allowed, filter.value) {
-			return nil, "", fmt.Errorf("%w: invalid %s", ErrInvalid, filter.column)
+			return nil, "", fmt.Errorf("%w: invalid %s", ErrInvalid, filter.name)
 		}
 		args = append(args, filter.value)
-		where += fmt.Sprintf(" AND %s = $%d", filter.column, len(args))
+		where += fmt.Sprintf(" AND %s = $%d", filter.sql, len(args))
 	}
 	if q.Attention {
 		args = append(args, int64(SettlementAttentionAfter/time.Second))

@@ -91,7 +91,7 @@
   }
 
   ::selection {
-    background: color-mix(in oklab, var(--fw-accent) 28%, transparent);
+    background: color-mix(in oklab, var(--fw-brand) 70%, transparent);
     color: var(--fw-ink);
   }
 
@@ -203,6 +203,13 @@
   }
   to {
     transform: translateX(100%);
+  }
+}
+
+/* A bar filling to its width once, from its start. */
+@keyframes fw-grow {
+  from {
+    transform: scaleX(0);
   }
 }
 

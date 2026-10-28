@@ -17,16 +17,26 @@ import (
 
 func listLinks(links *link.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		limit, err := httpio.IntQuery(r, "limit", 0)
+		if err == nil && r.URL.Query().Has("limit") && limit == 0 {
+			err = fmt.Errorf("%w: limit must be 1 to %d", link.ErrInvalid, link.MaxLimit)
+		}
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
 		access := mid.ProfileAccess(r)
-		list, err := links.List(r.Context(), r.PathValue("profileId"), access.Stores, access.Livemode)
+		page, err := links.List(r.Context(), r.PathValue("profileId"), access.Stores, access.Livemode,
+			r.URL.Query().Get("cursor"), limit)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
 		}
 		out := struct {
-			Links []linkJSON `json:"links"`
-		}{Links: []linkJSON{}}
-		for _, l := range list {
+			Links      []linkJSON `json:"links"`
+			NextCursor *string    `json:"nextCursor"`
+		}{Links: []linkJSON{}, NextCursor: httpio.OrNull(page.NextCursor)}
+		for _, l := range page.Links {
 			out.Links = append(out.Links, toLinkJSON(l))
 		}
 		httpio.WriteJSON(w, http.StatusOK, out)

@@ -150,6 +150,7 @@ export const MENU_PAGES: readonly { href: string; permission: Permission }[] = [
   { href: APP_ROUTES.billingDetails, permission: PERMISSIONS.billingRead },
   { href: APP_ROUTES.notifications, permission: PERMISSIONS.notifications },
   { href: APP_ROUTES.networks, permission: PERMISSIONS.tokensRead },
+  { href: APP_ROUTES.settings, permission: PERMISSIONS.tokensRead },
   // Every member may leave; an Admin also manages the team there.
   { href: APP_ROUTES.team, permission: PERMISSIONS.leave },
 ];

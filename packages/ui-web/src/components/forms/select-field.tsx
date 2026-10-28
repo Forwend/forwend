@@ -4,7 +4,7 @@ import * as RadixSelect from "@radix-ui/react-select";
 import { Check, ChevronDown } from "lucide-react";
 import { useCallback, useId, useState } from "react";
 import { cx } from "../../lib/cx";
-import { FIELD_CONTROL_CLASSES } from "./field-classes";
+import { FIELD_CONTROL_CLASSES, OPTION_ROW_CLASSES } from "./field-classes";
 
 export interface SelectOption {
   value: string;
@@ -101,7 +101,10 @@ export function SelectField({
                   key={option.value}
                   value={option.value}
                   disabled={option.disabled}
-                  className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-sm px-3 py-2 text-base outline-none select-none data-[disabled]:cursor-not-allowed data-[disabled]:text-subtle data-[highlighted]:bg-surface-2 data-[state=checked]:font-medium"
+                  className={cx(
+                    OPTION_ROW_CLASSES,
+                    "data-[disabled]:cursor-not-allowed data-[disabled]:text-subtle data-[highlighted]:bg-surface-2 data-[state=checked]:font-medium",
+                  )}
                 >
                   <RadixSelect.ItemText>{option.label}</RadixSelect.ItemText>
                   <RadixSelect.ItemIndicator>

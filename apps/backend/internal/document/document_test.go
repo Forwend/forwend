@@ -7,9 +7,11 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
 func TestAmount(t *testing.T) {
@@ -54,6 +56,59 @@ func TestCopiesMatchTheWeb(t *testing.T) {
 			id, regexp.QuoteMeta(n.name), regexp.QuoteMeta(n.explorer), regexp.QuoteMeta(n.url)))
 		if !entry.Match(chains) {
 			t.Errorf("chain %d %+v differs from apps/web/src/shared/constants/chains.ts", id, n)
+		}
+	}
+}
+
+// R-179, D-114: the invoice PDF names its status as the app does and asks for money only while the pay page would.
+func TestStatusAsksForMoneyOnlyWhilePayable(t *testing.T) {
+	now := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)
+	usdc := chain.Asset{ChainID: 84532, Symbol: "USDC", Decimals: 6}
+	with := func(status string, change func(*invoice.Invoice)) invoice.Invoice {
+		inv := invoice.Invoice{Asset: usdc, Amount: big.NewInt(10_000000), PaymentStatus: status,
+			ClosesAt: now.Add(time.Hour), Amounts: &ledger.Amounts{ReconciliationStatus: ledger.ReconciliationVerified,
+				Payable: new(big.Int), Held: new(big.Int)}}
+		if change != nil {
+			change(&inv)
+		}
+		return inv
+	}
+	for _, c := range []struct {
+		name                  string
+		inv                   invoice.Invoice
+		label, figure, amount string
+		payable               bool
+	}{
+		{"open", with(ledger.Open, nil), "Waiting for payment", "Amount due", "10.00 USDC", true},
+		// A new invoice reads pending until its first scan; with no money that is no reason to stop.
+		{"before the first scan", with(ledger.Open, func(i *invoice.Invoice) {
+			i.Amounts.Unreconciled, i.Amounts.ReconciliationStatus = true, ledger.ReconciliationPending
+		}), "Waiting for payment", "Amount due", "10.00 USDC", true},
+		{"past its due date", with(ledger.Open, func(i *invoice.Invoice) { i.DueDate = "2026-10-27" }),
+			"Overdue", "Amount due", "10.00 USDC", true},
+		{"due today", with(ledger.Open, func(i *invoice.Invoice) { i.DueDate = "2026-10-28" }),
+			"Waiting for payment", "Amount due", "10.00 USDC", true},
+		{"partially paid", with(ledger.PartiallyPaid, func(i *invoice.Invoice) { i.Amounts.Payable = big.NewInt(4_000000) }),
+			"Partially paid", "Left to pay", "6.00 USDC", true},
+		{"the rest confirming", with(ledger.PartiallyPaid, func(i *invoice.Invoice) {
+			i.Confirming, i.Amounts.Payable = true, big.NewInt(4_000000)
+			i.DepositSummary = &invoice.DepositSummary{PendingAmount: big.NewInt(6_000000)}
+		}), "Confirming", "Left to pay", "0.00 USDC", false},
+		{"paid", with(ledger.Paid, nil), "Paid", "Amount paid", "10.00 USDC", false},
+		{"canceled", with(ledger.Canceled, nil), "Canceled", "Total", "10.00 USDC", false},
+		{"checkout closed unpaid", with(ledger.Open, func(i *invoice.Invoice) { i.Closed = true }),
+			"Expired", "Total", "10.00 USDC", false},
+		{"expired partially paid", with(ledger.ExpiredPartiallyPaid, func(i *invoice.Invoice) {
+			i.Amounts.Held = big.NewInt(4_000000)
+		}), "Expired, partially paid", "Received", "4.00 USDC", false},
+		{"records in review", with(ledger.Open, func(i *invoice.Invoice) {
+			i.Amounts.HasPolicyException, i.Amounts.ReconciliationStatus = true, ledger.ReconciliationReview
+		}), "Waiting for payment", "Amount due", "10.00 USDC", false},
+	} {
+		s := statusOf(c.inv, now)
+		if s.label != c.label || s.figure != c.figure || s.amount != c.amount || s.payable != c.payable {
+			t.Errorf("%s: %q %q %q payable %v; want %q %q %q payable %v", c.name, s.label, s.figure, s.amount, s.payable,
+				c.label, c.figure, c.amount, c.payable)
 		}
 	}
 }

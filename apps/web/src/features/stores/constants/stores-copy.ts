@@ -2,6 +2,8 @@ import { STORE_LIMITS } from "@/features/stores/constants/stores";
 
 /** R-134. */
 export const STORES_COPY = {
+  payments: "View payments",
+  tokensFailed: "We could not load accepted tokens.",
   title: "Stores",
   add: "Add store",
   newTitle: "New store",

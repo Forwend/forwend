@@ -3,7 +3,6 @@
 import { IconButton, PaymentTimeline, STEP_STATES, TONES, Tooltip } from "@forwend/ui-web";
 import { Info } from "lucide-react";
 import { useEffect, useState } from "react";
-import { API_PAYMENT_STATUSES } from "@/features/activity/constants/activity";
 import { INVOICE_STEPS, INVOICE_TIMELINE } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
 import {
@@ -12,6 +11,7 @@ import {
   invoiceProgress,
 } from "@/features/invoices/lib/invoices";
 import type { Invoice, InvoiceStep } from "@/features/invoices/types/invoices";
+import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
 
 export interface InvoiceTimelineProps {
   invoice: Invoice;

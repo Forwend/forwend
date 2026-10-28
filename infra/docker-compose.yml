@@ -60,6 +60,7 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-Forwend <notifications@mail.forwend.com>}
       EMAIL_POSTAL_ADDRESS: ${EMAIL_POSTAL_ADDRESS:-}
+      COINGECKO_API_KEY: ${COINGECKO_API_KEY:-}
     depends_on:
       api:
         condition: service_healthy

@@ -84,7 +84,6 @@ export const TRANSACTIONS_COPY = {
     `${address} on ${explorer} (opens in a new tab)`,
   loadMore: "Show more",
   updateFailed: "We could not update the transactions.",
-  latestOnly: "Showing the latest 100.",
   retry: "Try again",
   notifications: "Notifications",
   newCount: (n: number) => (n === 1 ? "1 new" : `${n} new`),

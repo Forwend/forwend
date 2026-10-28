@@ -171,6 +171,10 @@ paths:
     get:
       operationId: listPayments
       summary: List store-scoped payments, including unnumbered attempts
+      description: |
+        q matches the order reference, title, customer name and email, payment ID, invoice number (INV-0004) and the
+        main option's receive address. A whole transaction hash or receive address also finds the payment by its
+        deposits, returns or any option.
       parameters:
         - $ref: "#/components/parameters/Search"
         - $ref: "#/components/parameters/ProfileId"
@@ -201,6 +205,9 @@ paths:
         - name: refundStatus
           in: query
           schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
+        - $ref: "#/components/parameters/PaymentState"
+        - $ref: "#/components/parameters/PaymentWallet"
+        - $ref: "#/components/parameters/PaymentReference"
       responses:
         "200":
           description: Newest first by creation time and ID
@@ -293,6 +300,9 @@ paths:
         - name: refundStatus
           in: query
           schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
+        - $ref: "#/components/parameters/PaymentState"
+        - $ref: "#/components/parameters/PaymentWallet"
+        - $ref: "#/components/parameters/PaymentReference"
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
@@ -364,6 +374,9 @@ paths:
         - name: refundStatus
           in: query
           schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
+        - $ref: "#/components/parameters/PaymentState"
+        - $ref: "#/components/parameters/PaymentWallet"
+        - $ref: "#/components/parameters/PaymentReference"
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
@@ -431,6 +444,9 @@ paths:
         - name: refundStatus
           in: query
           schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
+        - $ref: "#/components/parameters/PaymentState"
+        - $ref: "#/components/parameters/PaymentWallet"
+        - $ref: "#/components/parameters/PaymentReference"
         - name: from
           in: query
           description: Inclusive UTC recorded day.
@@ -492,6 +508,9 @@ paths:
         - name: refundStatus
           in: query
           schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
+        - $ref: "#/components/parameters/PaymentState"
+        - $ref: "#/components/parameters/PaymentWallet"
+        - $ref: "#/components/parameters/PaymentReference"
         - name: paymentId
           in: path
           required: true
@@ -563,6 +582,9 @@ paths:
         - name: refundStatus
           in: query
           schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
+        - $ref: "#/components/parameters/PaymentState"
+        - $ref: "#/components/parameters/PaymentWallet"
+        - $ref: "#/components/parameters/PaymentReference"
         - name: paymentId
           in: path
           required: true
@@ -629,6 +651,9 @@ paths:
         - name: refundStatus
           in: query
           schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
+        - $ref: "#/components/parameters/PaymentState"
+        - $ref: "#/components/parameters/PaymentWallet"
+        - $ref: "#/components/parameters/PaymentReference"
         - name: from
           in: query
           description: Inclusive UTC recorded day.
@@ -686,6 +711,9 @@ paths:
         - name: refundStatus
           in: query
           schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
+        - $ref: "#/components/parameters/PaymentState"
+        - $ref: "#/components/parameters/PaymentWallet"
+        - $ref: "#/components/parameters/PaymentReference"
         - name: paymentId
           in: path
           required: true
@@ -801,6 +829,29 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/prices:
+    get:
+      operationId: listPrices
+      summary: Each enabled token's USD price from CoinGecko, for display only (R-178)
+      description: |
+        D-115. The same for every signed-in user; a secret API key answers 401. The worker reads CoinGecko every 15
+        minutes, and every api reads the kept prices. A test token has its mainnet coin's price. Invoice amounts, the
+        ledger, records and exports never use these prices. Show "Prices by CoinGecko" wherever they appear.
+      responses:
+        "200":
+          description: The enabled tokens, by chain id
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [prices]
+                properties:
+                  prices:
+                    type: array
+                    items: { $ref: "#/components/schemas/TokenPrice" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles:
     post:
       operationId: createProfile
@@ -904,27 +955,41 @@ paths:
   /v1/profiles/{profileId}/owed:
     get:
       operationId: listOwed
-      summary: What clients still owe the profile, and money held for payers
+      summary: What customers still owe the profile
       description: |
-        R-95. The invoices the payer can still pay (the open status filter) that are overdue or partly paid, then each
-        option with money held for the payer (D-26). Overdue rows come first, most days late first; then partly paid;
-        then held.
+        R-95, D-114. The payments the customer can still pay (the open status filter) that are overdue or partly paid:
+        numbered invoices and requests, and checkout sessions, which have no number. Overdue rows come first, most days
+        late first; then partly paid. Money held for payers is the payer's, so it is never a row: it shows on balances
+        (held) and on each payment. items holds the first limit rows; count and totals cover every row.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
+        - name: limit
+          in: query
+          description: Rows in items; default 50.
+          schema: { type: integer, minimum: 1, maximum: 100 }
       responses:
         "200":
-          description: The rows
+          description: The first rows, with the count and totals of all of them
           content:
             application/json:
               schema:
                 type: object
-                required: [items]
+                required: [items, count, totals]
                 properties:
                   items:
                     type: array
                     items: { $ref: "#/components/schemas/Owed" }
+                  count: { type: integer, minimum: 0, description: Every row, also those past limit. }
+                  totals:
+                    type: array
+                    description: |
+                      What is left to pay in each token over every row, in base units, ordered by chainId and token. A
+                      payment whose client still chooses the token counts in its shown option's token.
+                    items: { $ref: "#/components/schemas/OwedTotal" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/notifications:
@@ -1817,9 +1882,10 @@ paths:
       description: |
         status and q narrow the list before paging, so a cursor continues the same filtered list. Under status, an
         invoice and its deposits use the related payment state. Transfer confirmation alone does not mean paid.
-        Held deposits appear only without a status filter. Funded checkouts appear before invoice numbering. q looks in the
-        transaction hash (a deposit's, or a settled invoice's settle transaction), the token symbol and, when it is a
-        number, the amount.
+        Held deposits appear only without a status filter. An invoice or request appears once it has a number; a checkout
+        session has no document, so only its deposits appear. Funded checkouts appear before invoice numbering. Invoices
+        are ordered by creation, deposits by block time. q looks in the transaction hash (a deposit's, or a settled
+        invoice's settle transaction), the token symbol and, when it is a number, the amount.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - name: limit
@@ -2286,11 +2352,15 @@ paths:
       summary: Download the invoice as a PDF
       description: |
         Public like GET /v1/invoices/{payToken} (R-47, R-61, D-51). Built on the server from the stored invoice only:
-        the Forwend mark (or the store's logo, with its color on the header rule, R-135), number, reference, issuer
-        (left out when the profile had no billing details), bill-to with the client's name and address (never the
-        email), created time, supply date, due date, checkout expiry, a line with the title, network and amount with
-        the token's symbol (or one per line item, with the title above them), the agreed value under the total, note,
-        the pay link with its QR code and the invoice id. The same invoice always gives the same bytes.
+        the Forwend mark (or the store's logo, with its color on the header rule, R-135), number, reference, the
+        status (Waiting for payment, Overdue, Confirming, Partially paid, Paid, Expired or Canceled) with the amount
+        that goes with it, issuer (left out when the profile had no billing details), billed-to with the client's name,
+        address, country and tax ID (never the email), issue day, supply date, due date and payment window close, the
+        line table (description, quantity, unit price and amount per item, or one row with the title), the totals with
+        what is received and left to pay, the agreed value under them, and the note. Only while the invoice can still
+        be paid does it add the pay link with its QR code, the exact amount left, the token contract and the network.
+        Every page's footer has the page number and the invoice id. The same invoice gives the same bytes until its
+        status changes or its due date passes.
       security: []
       parameters:
         - name: payToken
@@ -2309,10 +2379,11 @@ paths:
       description: |
         Public like the invoice PDF. 409 until paymentStatus is paid; a paid invoice stays paid, also once settled.
         Shows the invoice's parties, reference, supply date, line or line items and agreed value, the paid time (block
-        time of the deposit that completed the amount), each deposit's part paid to the creator (R-121) with its full tx
-        hash and a link to the network's explorer, and the pay link with its QR code to check the receipt, since
-        a PDF can be edited. It says nothing about the settlement: the payer only needs to know they paid; moving the
-        money to the creator is the creator's business (R-61, R-68).
+        time of the deposit that completed the amount), every deposit on any option with its network, amount received
+        and the part applied to the invoice (R-121), its full tx hash and a link to the network's explorer, the totals
+        received, applied, held for the payer and returned to the payer, and the pay link with its QR code to check the
+        receipt, since a PDF can be edited. It says nothing about the settlement: the payer only needs to know they paid;
+        moving the money to the creator is the creator's business (R-61, R-68).
       security: []
       parameters:
         - name: payToken
@@ -2507,9 +2578,19 @@ paths:
     get:
       operationId: listPaymentLinks
       summary: The profile's payment links, newest first (R-140)
-      description: A Developer or Finance member sees only the links of their stores (D-93).
+      description: |
+        A Developer or Finance member sees only the links of their stores (D-93). Without limit it lists every link,
+        as before pages; with limit it lists a page, and nextCursor continues it. Read one link with getPaymentLink.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
+        - name: limit
+          in: query
+          description: Links per page; without it, every link.
+          schema: { type: integer, minimum: 1, maximum: 100 }
+        - name: cursor
+          in: query
+          description: nextCursor from the previous page.
+          schema: { type: string }
       responses:
         "200":
           description: The links
@@ -2517,19 +2598,22 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [links]
+                required: [links, nextCursor]
                 properties:
                   links:
                     type: array
                     items: { $ref: "#/components/schemas/PaymentLink" }
+                  nextCursor: { type: [string, "null"], description: Null on the last page and without limit. }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/links/{linkId}:
     get:
       operationId: getPaymentLink
-      summary: One payment link (R-140)
+      summary: One payment link (R-140), as listPaymentLinks lists it
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - $ref: "#/components/parameters/LinkId"
@@ -3061,6 +3145,29 @@ components:
         detected or an on-time pending transfer is confirming; other open or partially_paid is open.
         Another value is 422.
       schema: { type: string, enum: [open, confirming, paid, settled, expired, canceled] }
+    PaymentState:
+      name: state
+      in: query
+      description: |
+        Only payments in this state (D-114). waiting: nothing is confirming. confirming: an on-time transfer is not
+        final yet, or the whole amount is credited and waits for the finalized balance check. partially_paid: credited
+        money covers part of the amount. paid. overpaid: paid, and money is held for the payer on any option (extra,
+        late or another option's). expired: closed without payment, including a checkout session closed by its expire
+        action (its paymentStatus stays canceled). canceled: the issuer canceled an invoice or request.
+      schema: { type: string, enum: [waiting, confirming, partially_paid, paid, overpaid, expired, canceled] }
+    PaymentWallet:
+      name: wallet
+      in: query
+      description: |
+        Only payments with this wallet transfer state (D-114). none: nothing to move (not paid). pending: the settle
+        is waiting to be signed or to become final. in_wallet: settled into the profile wallet. delayed: it waits for a
+        retry, the daily limit or an unresolved transaction. refused: the signer refused it; an operator looks at it.
+      schema: { type: string, enum: [none, pending, in_wallet, delayed, refused] }
+    PaymentReference:
+      name: reference
+      in: query
+      description: Only the payment whose order reference is exactly this text (letter case counts).
+      schema: { type: string, minLength: 1 }
     Search:
       name: q
       in: query
@@ -3150,7 +3257,7 @@ components:
     PaymentReceipt:
       type: object
       description: Observed incoming transfers by used option. Pending amounts are not credited or proof of payment.
-      required: [optionId, chainId, token, symbol, decimals, received, pending]
+      required: [optionId, chainId, token, symbol, decimals, received, pending, held]
       properties:
         optionId: { $ref: "#/components/schemas/InvoiceId" }
         chainId: { type: integer }
@@ -3159,10 +3266,13 @@ components:
         decimals: { type: integer, minimum: 0 }
         received: { $ref: "#/components/schemas/Uint256" }
         pending: { $ref: "#/components/schemas/Uint256" }
+        held:
+          allOf: [{ $ref: "#/components/schemas/Uint256" }]
+          description: Booked money on this option still owed to the payer (extra, late, another option's or after expiry).
     Payment:
       type: object
       required: [paymentId, optionId, optionLocked, optionCount, source, symbol, decimals, purpose, documentKind, number, storeId, storeName, linkId, livemode, title,
-        reference, chainId, token, amount, paymentStatus, settlementStatus, refundStatus, confirming,
+        reference, chainId, token, amount, paymentStatus, settlementStatus, refundStatus, state, wallet, dueDate, confirming,
         closed, createdAt, closesAt, hostedUrl]
       properties:
         receipts: { type: array, items: { $ref: "#/components/schemas/PaymentReceipt" } }
@@ -3190,8 +3300,19 @@ components:
         amount: { $ref: "#/components/schemas/Uint256" }
         paymentStatus: { type: string, enum: [open, detected, partially_paid, paid, expired, expired_partially_paid, canceled] }
         settlementStatus: { type: string, enum: [none, pending, settled] }
-        refundStatus: { type: string, enum: [none, held, refund_pending, refunded] }
-        confirming: { type: boolean }
+        refundStatus: { type: string, enum: [none, held, refund_pending, refunded], description: The current option's only. }
+        state:
+          type: string
+          enum: [waiting, confirming, partially_paid, paid, overpaid, expired, canceled]
+          description: The merchant's payment state (D-114); see the state filter. paymentStatus keeps its raw value.
+        wallet:
+          type: string
+          enum: [none, pending, in_wallet, delayed, refused]
+          description: The wallet transfer state (D-114); see the wallet filter. settlementStatus keeps its raw value.
+        dueDate: { type: [string, "null"], format: date }
+        confirming:
+          type: boolean
+          description: An on-time transfer is not final, or the whole amount is credited and the finalized balance check is pending.
         closed: { type: boolean }
         createdAt: { type: string, format: date-time }
         closesAt: { type: string, format: date-time }
@@ -3200,7 +3321,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/Payment"
         - type: "object"
-          required: ["deliveryCount", "deliveriesTruncated", "snapshotAt", "customer", "metadata", "options", "deliveries", "problems"]
+          required: ["deliveryCount", "deliveriesTruncated", "snapshotAt", "customer", "metadata", "items", "options", "deliveries", "problems"]
           properties:
             deliveryCount: { type: "integer" }
             deliveriesTruncated: { type: "boolean" }
@@ -3209,6 +3330,19 @@ components:
             metadata:
               type: "object"
               additionalProperties: { type: "string" }
+            items:
+              type: "array"
+              description: |
+                The line items in order, empty without a breakdown. Money is in the base units of the option whose
+                optionId is the paymentId; quantity has 2 decimals ("7.50").
+              items:
+                type: object
+                required: [description, quantity, unitPrice, amount]
+                properties:
+                  description: { type: string }
+                  quantity: { type: string }
+                  unitPrice: { $ref: "#/components/schemas/Uint256" }
+                  amount: { $ref: "#/components/schemas/Uint256" }
             options:
               type: "array"
               items: { $ref: "#/components/schemas/PaymentOption" }
@@ -4169,17 +4303,20 @@ components:
           format: date-time
     Owed:
       type: object
-      required: [kind, invoiceId, number, title, clientName, dueDate, daysLate, optionCount, chainId, token, symbol,
-        decimals, amount]
+      required: [kind, invoiceId, number, purpose, documentKind, reference, title, clientName, dueDate, daysLate,
+        optionCount, chainId, token, symbol, decimals, amount]
       properties:
         kind:
           type: string
-          enum: [overdue, partlyPaid, held]
+          enum: [overdue, partlyPaid]
           description: |
-            overdue: the due date is before today's UTC date. partlyPaid: part is in and it is not overdue. held: money
-            on this option is held for the payer, not the owner's.
+            overdue: the due date is before today's UTC date. partlyPaid: part is in and it is not overdue. The held
+            kind is no longer sent (D-114): held money is the payer's, not owed to the profile.
         invoiceId: { $ref: "#/components/schemas/InvoiceId" }
-        number: { type: integer, minimum: 1 }
+        number: { type: [integer, "null"], minimum: 1, description: null for a checkout session (documentKind none). }
+        purpose: { type: string, enum: [invoice, checkout, request] }
+        documentKind: { type: string, enum: [invoice, request, none] }
+        reference: { type: [string, "null"], description: The order reference; names a checkout session. }
         title: { type: [string, "null"] }
         clientName: { type: [string, "null"] }
         dueDate: { type: [string, "null"], format: date }
@@ -4194,9 +4331,16 @@ components:
         decimals: { type: integer, minimum: 0 }
         amount:
           allOf: [{ $ref: "#/components/schemas/Uint256" }]
-          description: |
-            overdue and partlyPaid: what is left to pay, the amount less what the ledger booked to the owner. held: the
-            held amount on this option.
+          description: What is left to pay, the amount less what the ledger booked to the owner.
+    OwedTotal:
+      type: object
+      required: [chainId, token, symbol, decimals, amount]
+      properties:
+        chainId: { type: integer }
+        token: { $ref: "#/components/schemas/Address" }
+        symbol: { type: string }
+        decimals: { type: integer, minimum: 0 }
+        amount: { $ref: "#/components/schemas/Uint256" }
     Notifications:
       type: object
       required: [email, address]
@@ -4227,14 +4371,42 @@ components:
             An estimate, not a quote: the sum of the wallet balances counting each stablecoin as 1 USD, cut (never
             rounded up) to 2 decimals (for example "12.50"). Pending and held are not included. null when any wallet
             balance is missing.
+    TokenPrice:
+      type: object
+      required: [chainId, token, symbol, coinId, usd, sourceUpdatedAt, fetchedAt, stale]
+      properties:
+        chainId: { type: integer }
+        token: { $ref: "#/components/schemas/Address" }
+        symbol: { type: string }
+        coinId:
+          type: [string, "null"]
+          description: The CoinGecko coin (usd-coin, tether, open-usd); null for a symbol without one.
+        usd:
+          type: [string, "null"]
+          pattern: "^[0-9]+(\\.[0-9]+)?$"
+          description: The price of 1 token in USD, exactly as CoinGecko gave it (for example "0.999542"). null without
+            a price; never 1 in its place.
+        sourceUpdatedAt:
+          type: [string, "null"]
+          format: date-time
+          description: When CoinGecko last updated the price; null without one.
+        fetchedAt:
+          type: [string, "null"]
+          format: date-time
+          description: When the worker read it; null without a price.
+        stale:
+          type: boolean
+          description: true without a price, when fetchedAt is over 1 hour old or sourceUpdatedAt over 24 hours old.
     TokenBalance:
       type: object
-      required: [chainId, token, symbol, decimals, wallet, finalizedBlock, pending, held]
+      required: [chainId, token, symbol, decimals, livemode, wallet, finalizedBlock, pending, settling, confirming,
+        partial, held]
       properties:
         chainId: { type: integer }
         token: { $ref: "#/components/schemas/Address" }
         symbol: { type: string }
         decimals: { type: integer, minimum: 0 }
+        livemode: { type: boolean, description: The chain's mode (D-87). }
         wallet:
           description: The profile wallet's balance at finalizedBlock; null when the profile has no wallet yet or the
             chain could not be read.
@@ -4251,11 +4423,30 @@ components:
             Not in the wallet yet: deposits to the profile's invoices the ledger has not booked (detected, or final but
             not booked; a late or extra one is later moved to held), plus booked money owed to the creator and not
             settled yet. The wallet balance and our records are read at different moments, so for a short time after a
-            settlement the amount can show in both wallet and pending, or briefly in neither.
+            settlement the amount can show in both wallet and pending, or briefly in neither. Exactly settling +
+            confirming + partial.
+        settling:
+          type: string
+          pattern: "^[0-9]+$"
+          description: Booked to the creator on paid payments, waiting for the transfer to the wallet.
+        confirming:
+          type: string
+          pattern: "^[0-9]+$"
+          description: |
+            Deposits the ledger has not booked yet, plus money booked to the creator on a payment paid in full that
+            waits for the finalized balance check. An unbooked deposit can still turn out late or extra, and then held.
+        partial:
+          type: string
+          pattern: "^[0-9]+$"
+          description: |
+            Booked to the creator on partly paid payments. If the checkout closes before the rest comes, it is held for
+            the payer (D-26) unless the owner reopens it (R-130).
         held:
           type: string
           pattern: "^[0-9]+$"
-          description: Booked money held for payers (late or extra payments); the creator's only if the owner reopens the invoice (R-130).
+          description: |
+            Booked money held for payers (late or extra payments). It is a liability to the payer, never owed to the
+            creator (D-114); the creator's only if the owner reopens the invoice (R-130).
     Activity:
       type: object
       required: [items, nextCursor]
@@ -4268,17 +4459,20 @@ components:
           description: Pass as cursor for the next page; null on the last page.
     ActivityItem:
       type: object
-      required: [kind, at, invoiceId, chainId, token, symbol, decimals, amount, status, optionCount, closed, held]
+      required: [kind, at, invoiceId, chainId, token, symbol, decimals, amount, status, optionCount, closed, held,
+        merchantAmount, heldAmount, purpose, documentKind, number, reference, clientName, title]
       properties:
         paymentStatus: { type: string, description: Customer payment state, independent of the individual transfer confirmation. }
-        confirming: { type: boolean, description: An on-time transfer is still being confirmed or credited. }
+        confirming: { type: boolean, description: "An on-time transfer is still being confirmed or credited, or the finalized balance check is pending." }
         kind:
           type: string
           enum: [invoice, deposit]
         at:
           type: string
           format: date-time
-          description: When the invoice was made or the deposit was seen.
+          description: |
+            When the invoice was made, or the deposit's block time. A block time has whole seconds, so a deposit's at
+            is never before its payment was made; at the same at, deposits come first.
         invoiceId: { $ref: "#/components/schemas/InvoiceId" }
         chainId: { type: integer }
         token: { $ref: "#/components/schemas/Address" }
@@ -4312,7 +4506,28 @@ components:
           type: boolean
           description: >-
             A deposit the owner gets none of, held for the payer (D-26): late, on a canceled or final invoice, on an
-            invoice that expired partly paid, or on an option the client did not pay with. False for an invoice.
+            invoice that expired partly paid, or on an option the client did not pay with. False for an invoice. A
+            deposit split between the owner and the payer is not held: merchantAmount and heldAmount give its parts.
+        merchantAmount:
+          oneOf:
+            - $ref: "#/components/schemas/Uint256"
+            - type: "null"
+          description: |
+            A booked deposit's part the ledger booked to the owner; 0 once a partly paid expiry moved it to the payer.
+            null for an invoice and for a deposit not booked yet.
+        heldAmount:
+          oneOf:
+            - $ref: "#/components/schemas/Uint256"
+            - type: "null"
+          description: |
+            A booked deposit's part held for the payer (D-114); amount = merchantAmount + heldAmount. null when
+            merchantAmount is.
+        purpose: { type: string, enum: [invoice, checkout, request], description: The related payment's. }
+        documentKind: { type: string, enum: [invoice, request, none] }
+        number: { type: [integer, "null"], minimum: 1, description: null for a checkout session. }
+        reference: { type: [string, "null"], description: The payment's order reference. }
+        clientName: { type: [string, "null"], description: The client or customer name. }
+        title: { type: [string, "null"] }
     Transactions:
       type: object
       required: [items, nextCursor]
@@ -4432,12 +4647,13 @@ components:
           description: The point's sent amounts, counted like estimatedUsd.
     TokenHistory:
       type: object
-      required: [chainId, token, symbol, decimals, balances, received, sent]
+      required: [chainId, token, symbol, decimals, livemode, balances, received, sent]
       properties:
         chainId: { type: integer }
         token: { $ref: "#/components/schemas/Address" }
         symbol: { type: string }
         decimals: { type: integer, minimum: 0 }
+        livemode: { type: boolean, description: The chain's mode (D-87). }
         balances:
           type: [array, "null"]
           description: One per point, in base units; the wallet balance at the point's at. null when the current wallet
@@ -5021,7 +5237,8 @@ components:
           type: boolean
           description: >-
             A payment made before the close (closesAt) is seen and not final yet. A partially_paid invoice keeps that
-            status while the rest confirms, so show it as confirming.
+            status while the rest confirms, so show it as confirming. Also true once the whole amount is credited and
+            the finalized balance check is pending.
         closed:
           type: boolean
           description: >-

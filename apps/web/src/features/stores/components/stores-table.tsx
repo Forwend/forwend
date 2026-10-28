@@ -1,19 +1,14 @@
 "use client";
 
-import {
-  Button,
-  type ButtonSize,
-  buttonClasses,
-  ROW_INTERACTIVE_CLASSES,
-  TABLE_HEAD_CLASSES,
-  TABLE_ROW_CLASSES,
-} from "@forwend/ui-web";
+import { type ButtonSize, buttonClasses } from "@forwend/ui-web";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useListStoresQuery } from "@/features/stores/api/stores-api";
 import { STORES_COPY as COPY } from "@/features/stores/constants/stores-copy";
 import type { Store } from "@/features/stores/types/stores";
+import { DataTable } from "@/shared/components/data-table";
 import { ListToolbar } from "@/shared/components/list-toolbar";
+import { LoadError } from "@/shared/components/load-error";
 import { RowsSkeleton } from "@/shared/components/rows-skeleton";
 import { APP_ROUTES } from "@/shared/config/routes";
 
@@ -66,77 +61,61 @@ export function StoresTable({ profileId, closeLabel, canAdd }: StoresTableProps)
       />
 
       {list.isError && !list.currentData ? (
-        <div role="alert" className="flex flex-wrap items-center gap-4 text-sm text-muted">
-          {COPY.failed}
-          <Button size="sm" variant="secondary" onClick={() => void list.refetch()}>
-            {COPY.retry}
-          </Button>
-        </div>
+        <LoadError
+          message={COPY.failed}
+          onRetry={() => void list.refetch()}
+          retrying={list.isFetching}
+        />
       ) : !list.currentData ? (
         <RowsSkeleton count={2} className="fw-panel" />
       ) : (
-        <div className="fw-panel overflow-hidden">
-          <div className="hidden overflow-x-auto xl:block">
-            <table className="w-full min-w-[44rem] text-sm">
-              <thead>
-                <tr className={TABLE_HEAD_CLASSES}>
-                  <th scope="col" className="w-[30%]">
-                    {COPY.columns.store}
-                  </th>
-                  <th scope="col">{COPY.columns.projectId}</th>
-                  <th scope="col">{COPY.columns.closes}</th>
-                  <th scope="col">{COPY.columns.origins}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {stores.map((store) => (
-                  <tr
-                    key={store.storeId}
-                    className={`relative transition-colors duration-[var(--fw-duration-fast)] ${TABLE_ROW_CLASSES} ${ROW_INTERACTIVE_CLASSES}`}
-                  >
-                    <td className="max-w-72">
-                      <Link
-                        href={storeHref(store)}
-                        title={store.name}
-                        className="block truncate font-medium text-ink outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus"
-                      >
-                        {store.name}
-                      </Link>
-                    </td>
-                    <td className="max-w-56 truncate font-mono text-muted" title={store.storeId}>
-                      {store.storeId}
-                    </td>
-                    <td className="text-muted">{closeLabel(store.defaultExpiresIn)}</td>
-                    <td
-                      className="max-w-56 truncate text-muted"
-                      title={store.allowedOrigins.join(", ")}
-                    >
-                      {origins(store)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <ul className="divide-y divide-line xl:hidden">
-            {stores.map((store) => (
-              <li key={store.storeId}>
-                <Link
-                  href={storeHref(store)}
-                  className={`flex min-h-16 items-center gap-3 px-4 py-3 outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus sm:px-5 ${ROW_INTERACTIVE_CLASSES}`}
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium text-ink">{store.name}</span>
-                    <span className="block truncate text-xs text-muted">{origins(store)}</span>
-                  </span>
-                  <span className="max-w-[40%] truncate text-right text-sm text-muted">
-                    {closeLabel(store.defaultExpiresIn)}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <DataTable
+          label={COPY.title}
+          rows={stores}
+          rowKey={(store) => store.storeId}
+          rowHref={storeHref}
+          rowLabel={(store) => store.name}
+          columns={[
+            {
+              key: "store",
+              header: COPY.columns.store,
+              className: "w-[30%]",
+              cell: (store) => <span className="font-medium text-ink">{store.name}</span>,
+            },
+            {
+              key: "closes",
+              header: COPY.columns.closes,
+              cell: (store) => (
+                <span className="text-muted">{closeLabel(store.defaultExpiresIn)}</span>
+              ),
+            },
+            {
+              key: "origins",
+              header: COPY.columns.origins,
+              from: "md",
+              cell: (store) => (
+                <span title={store.allowedOrigins.join(", ")} className="text-muted">
+                  {origins(store)}
+                </span>
+              ),
+            },
+            {
+              key: "project",
+              header: COPY.columns.projectId,
+              from: "xl",
+              cell: (store) => (
+                <span title={store.storeId} className="font-mono text-xs text-muted">
+                  {store.storeId}
+                </span>
+              ),
+            },
+          ]}
+          phone={(store) => ({
+            title: store.name,
+            detail: origins(store),
+            value: <span className="text-muted">{closeLabel(store.defaultExpiresIn)}</span>,
+          })}
+        />
       )}
     </section>
   );

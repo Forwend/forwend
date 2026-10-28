@@ -33,7 +33,7 @@ export function Toast({
   closeLabel = "Close",
 }: ToastProps) {
   return (
-    <div className="flex w-full max-w-sm items-start gap-3 rounded-lg border border-line bg-surface p-4 shadow-lg">
+    <div className="flex w-full max-w-sm items-start gap-3 rounded-md border border-line bg-surface p-4 shadow-lg">
       <span
         aria-hidden
         className={cx("mt-1.5 size-2 shrink-0 rounded-pill", TONE_DOT_CLASSES[tone])}

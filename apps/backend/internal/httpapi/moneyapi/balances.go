@@ -20,7 +20,9 @@ func getBalances(balances *balance.Service) http.HandlerFunc {
 			out.EstimatedUSDTotal = &b.EstimatedUSD
 		}
 		for _, t := range b.Tokens {
-			j := tokenBalanceJSON{tokenJSON: toTokenJSON(t.Asset), Pending: t.Pending.String(), Held: t.Held.String()}
+			j := tokenBalanceJSON{tokenJSON: toTokenJSON(t.Asset), Livemode: t.Livemode, Pending: t.Pending.String(),
+				Settling: t.Settling.String(), Confirming: t.Confirming.String(), Partial: t.Partial.String(),
+				Held: t.Held.String()}
 			if t.Wallet != nil {
 				wallet, block := t.Wallet.String(), t.Block
 				j.Wallet, j.FinalizedBlock = &wallet, &block
@@ -49,7 +51,7 @@ func getBalanceHistory(balances *balance.Service) http.HandlerFunc {
 				EstimatedUSD: httpio.OrNull(p.EstimatedUSD), ReceivedUSD: httpio.OrNull(p.ReceivedUSD), SentUSD: httpio.OrNull(p.SentUSD)})
 		}
 		for _, t := range h.Tokens {
-			out.Tokens = append(out.Tokens, tokenHistoryJSON{tokenJSON: toTokenJSON(t.Asset),
+			out.Tokens = append(out.Tokens, tokenHistoryJSON{tokenJSON: toTokenJSON(t.Asset), Livemode: t.Livemode,
 				Balances: baseUnits(t.Balances), Received: baseUnits(t.Received), Sent: baseUnits(t.Sent)})
 		}
 		httpio.WriteJSON(w, http.StatusOK, out)

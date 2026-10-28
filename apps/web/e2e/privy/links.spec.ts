@@ -73,6 +73,16 @@ async function mockLinks(page: Page) {
       else links.unshift(made);
       return route.fulfill({ status: at >= 0 ? 200 : 201, json: made });
     }
+    // The link page reads its one link (GET /links/{id}), not the whole list.
+    if (id && request.method() === "GET") {
+      const found = links.find((l) => l.linkId === id);
+      return found
+        ? route.fulfill({ json: found })
+        : route.fulfill({
+            status: 404,
+            json: { error: { code: "not_found", message: "Not found" } },
+          });
+    }
     return route.fallback();
   });
   return saved;

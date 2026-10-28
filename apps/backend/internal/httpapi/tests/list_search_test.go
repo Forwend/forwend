@@ -180,7 +180,7 @@ func TestClosedCheckoutReadsExpired(t *testing.T) {
 			t.Fatalf("activity invoice %d: closed %v, want %v", i, it["closed"], closed[i])
 		}
 		return float64(i)
-	}, []listCase{{"status=expired", []any{"payment", 4.0, 1.0, 0.0}}})
+	}, []listCase{{"status=expired", []any{4.0, "payment", 1.0, 0.0}}}) // 1's deposit: no earlier than 1 was made
 }
 
 func TestGetActivityFilterAndSearch(t *testing.T) {
@@ -194,8 +194,8 @@ func TestGetActivityFilterAndSearch(t *testing.T) {
 		status := map[string]string{confirmed: "confirmed", detected: "detected"}[d[1]]
 		e.exec(t, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
 			    block_hash, block_number, block_time, from_address, to_address, amount, status)
-			SELECT 84532, 'evm', $1, $2, $3, 0, $3, 1, 1, $4, receive_address, 1000000, $5 FROM invoices WHERE id = $2`,
-			usdc, d[0], d[1], aliceWallet, status)
+			SELECT 84532, 'evm', $1, $2, $3, 0, $3, 1, extract(epoch FROM now())::bigint + 60, $4, receive_address, 1000000, $5
+			FROM invoices WHERE id = $2`, usdc, d[0], d[1], aliceWallet, status)
 	}
 	// Booked as the ledger does before it marks an invoice paid: to the owner, so it is a payment, not held.
 	e.exec(t, `WITH x AS (INSERT INTO ledger_transactions (invoice_id, kind, chain_transfer_id)
@@ -206,7 +206,8 @@ func TestGetActivityFilterAndSearch(t *testing.T) {
 	e.exec(t, `INSERT INTO settlement_intents (invoice_id, status, tx_hash) VALUES ($1, 'confirmed', $2)`, ids[1], settle)
 	e.exec(t, `UPDATE invoices SET payment_status = 'expired' WHERE id = $1`, ids[2])
 
-	// Newest first: the deposits (recorded last), then the invoices. An invoice pays 5 USDC, a deposit 1 USDC.
+	// Newest first: the deposits (in a block after the invoices were made), then the invoices. An invoice pays 5 USDC, a
+	// deposit 1 USDC.
 	dep := func(hash string) any { return "deposit " + hash }
 	inv := func(i int) any { return "invoice " + ids[i] }
 	checkList(t, e, "/v1/profiles/"+e.aliceProfile+"/activity", func(it map[string]any) any {

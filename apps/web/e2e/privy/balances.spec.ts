@@ -14,7 +14,7 @@ test("a profile shows its balance, networks, receive address and activity; a new
   // With no network enabled in this database, the card says so instead.
   const balance = page.getByRole("region", { name: "Total balance" });
   const inWallet = balance.getByRole("button", {
-    name: /^Estimated: each stablecoin counts as 1 USD/,
+    name: /^Market value at CoinGecko prices/,
   });
   await expect(inWallet.or(balance.getByText("No networks are enabled yet."))).toBeVisible();
   for (const action of ["Send", "Transfer", "Withdraw"]) {
@@ -30,7 +30,7 @@ test("a profile shows its balance, networks, receive address and activity; a new
   ).toBeVisible();
   await balance.getByText("1W", { exact: true }).click();
   await expect(balance.getByRole("radio", { name: "1W" })).toBeChecked();
-  await expect(page.getByRole("region", { name: "Balances by network" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "My assets" })).toBeVisible();
   const recent = page.getByRole("region", { name: "Recent transactions" });
   await expect(recent.getByText("No transactions yet").or(recent.getByRole("table"))).toBeVisible();
 
@@ -100,8 +100,8 @@ test("a profile shows its balance, networks, receive address and activity; a new
     expect(await readAddress()).not.toBe(personalWallet);
   }
 
-  await sidebar.getByRole("link", { name: "Balances" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Balances" })).toBeVisible();
+  await sidebar.getByRole("link", { name: "My assets" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "My assets" })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
   // R-76. Wait for the URL, not a heading: the old page may still show it for a moment.
   await sidebar.getByRole("button", { name: /^Switch profile/ }).click();
@@ -109,8 +109,8 @@ test("a profile shows its balance, networks, receive address and activity; a new
   await expect(page).toHaveURL("/app");
   await expect(page.getByRole("heading", { level: 1, name: "Personal overview" })).toBeVisible();
   await expect(sidebar.getByRole("button", { name: /^Switch profile: Personal/ })).toBeVisible();
-  await sidebar.getByRole("link", { name: "Balances" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Balances" })).toBeVisible();
+  await sidebar.getByRole("link", { name: "My assets" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "My assets" })).toBeVisible();
   await sidebar.getByRole("link", { name: "Activity" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Activity" })).toBeVisible();
   await sidebar.getByRole("link", { name: "Transactions" }).click();
@@ -191,8 +191,8 @@ test("on a phone the app is a banking-style home with a tab bar", async ({ brows
   await expect(page.getByRole("dialog", { name: "Profiles" })).toBeVisible();
   await page.setViewportSize({ width: 1200, height: 800 });
   await expect(page.getByRole("dialog", { name: "Profiles" })).toBeHidden();
-  await page.locator("aside").getByRole("link", { name: "Balances" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Balances" })).toBeVisible();
+  await page.locator("aside").getByRole("link", { name: "My assets" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "My assets" })).toBeVisible();
   await context.close();
 });
 
@@ -225,6 +225,27 @@ test("pending and held summaries open the exact token balances", async ({ browse
           },
         ],
         estimatedUsdTotal: "26.25",
+      },
+    }),
+  );
+  // Both tokens at exactly 1 USD, so the totals are the token amounts (D-115).
+  const fresh = new Date().toISOString();
+  await page.route("**/api/v1/prices", (route) =>
+    route.fulfill({
+      json: {
+        prices: [
+          ["84532", "0x036cbd53842c5426634e7929541ec2318f3dcf7e", "USDC", "usd-coin"],
+          ["42431", "0x20c0000000000000000000006a37da5c996874be", "OUSD", "open-usd"],
+        ].map(([chainId, token, symbol, coinId]) => ({
+          chainId: Number(chainId),
+          token,
+          symbol,
+          coinId,
+          usd: "1",
+          sourceUpdatedAt: fresh,
+          fetchedAt: fresh,
+          stale: false,
+        })),
       },
     }),
   );

@@ -16,6 +16,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/mid"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/moneyapi"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/paymentapi"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/priceapi"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/profileapi"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/teamapi"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/webhookapi"
@@ -50,5 +51,6 @@ func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, 
 	linkapi.Routes(mux, guards, link.NewService(pool, invoices))
 	keyapi.Routes(mux, guards, keys)
 	webhookapi.Routes(mux, guards, hooks)
+	priceapi.Routes(mux, guards, pool)
 	return mid.SecureHeaders(mux)
 }

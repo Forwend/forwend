@@ -15,10 +15,14 @@ export default async function PayPage({ params, searchParams }: PageProps<"/pay/
   const { token } = await params;
   if (!PAY_TOKEN_PATTERN.test(token)) notFound();
   // One option of a payer-chooses invoice (R-56); the canary opens each this way.
-  const { option } = await searchParams;
+  const { option, preview } = await searchParams;
   return (
     <PublicStoreProvider>
-      <PayScreen linkToken={token} option={typeof option === "string" ? option : undefined} />
+      <PayScreen
+        linkToken={token}
+        option={typeof option === "string" ? option : undefined}
+        preview={preview === "1"}
+      />
     </PublicStoreProvider>
   );
 }

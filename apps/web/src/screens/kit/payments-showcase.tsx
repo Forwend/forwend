@@ -2,6 +2,8 @@ import {
   ACTIVITY_DIRECTIONS,
   ActivityRow,
   Address,
+  DetailList,
+  DetailRow,
   Money,
   NetworkWarning,
   PAYMENT_STATUSES,
@@ -13,12 +15,16 @@ import {
   StatTile,
   StatusPill,
   TokenChip,
+  WALLET_STATES,
+  type WalletState,
+  WalletStateLabel,
 } from "@forwend/ui-web";
 import { ExternalLink } from "lucide-react";
 import { KitGroup } from "@/screens/kit/kit-section";
 import { SAMPLE_INVOICE } from "@/shared/examples/sample-invoice";
 
 const STATUSES = Object.keys(PAYMENT_STATUSES) as PaymentStatus[];
+const WALLET = Object.keys(WALLET_STATES) as WalletState[];
 
 const SAMPLE_ADDRESS = "0x1234567890abcdef1234567890abcdef12345678";
 
@@ -77,6 +83,26 @@ export function PaymentsShowcase() {
         {STATUSES.map((status) => (
           <StatusPill key={status} status={status} />
         ))}
+      </KitGroup>
+      <KitGroup title="Wallet transfer: no transfer yet, pending, in wallet, delayed, needs review">
+        {WALLET.map((state) => (
+          <WalletStateLabel key={state} state={state} />
+        ))}
+      </KitGroup>
+      <KitGroup title="Detail list: statement rows, a stacked note">
+        <div className="fw-panel w-full max-w-md">
+          <DetailList>
+            <DetailRow term="Order reference">order-1042</DetailRow>
+            <DetailRow term="Customer">
+              Mara Ilić
+              <span className="block text-muted">mara@example.com</span>
+            </DetailRow>
+            <DetailRow term="Checkout closes">Oct 30, 2026, 5:00 PM</DetailRow>
+            <DetailRow term="Note" stacked>
+              Thanks for the order. The second box ships on Monday.
+            </DetailRow>
+          </DetailList>
+        </div>
       </KitGroup>
       <KitGroup title="Payment timeline">
         <div className="grid w-full gap-8 md:grid-cols-2">

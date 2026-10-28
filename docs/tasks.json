@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 342,
+  "nextId": 346,
   "tasks": [
     {
       "id": "F332",
@@ -219,6 +219,115 @@
         "branch": "fix/f341-recover-payment-processing-and-enforce-r",
         "base": "main"
       }
+    },
+    {
+      "id": "F342",
+      "type": "feat",
+      "behavior": "The app and its kit follow the Signal direction",
+      "acceptance": [
+        "Tokens, fonts and every ui-web component follow Signal in light and dark, with contrast tests passing and the sidebar's structure unchanged",
+        "/kit shows the new states (badges, wallet transfer, detail list) and the landing hero, sign-in and 404 use the one logged Signal artwork",
+        "Deterministic browser tests (kit, landing, a11y axe, width checks) pass"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "tokens-unit",
+        "ui-unit",
+        "web-unit",
+        "build",
+        "e2e",
+        "images-check",
+        "docs-check"
+      ],
+      "refs": [
+        "R-176",
+        "D-113"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F343",
+      "type": "feat",
+      "behavior": "A merchant can follow one payment from request to wallet",
+      "acceptance": [
+        "Payments, invoices, links, stores, clients and jobs use one compact DataTable with shared loading, empty, error and filter states",
+        "Payment status and wallet transfer come from one shared mapper and the backend's derived state; Owed to you lists receivables only",
+        "Payment detail links its invoice, link, store, documents and next step; lists page by cursor with bounded reads"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "web-unit",
+        "build",
+        "e2e",
+        "web-e2e",
+        "docs-check"
+      ],
+      "refs": [
+        "R-177",
+        "D-114"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F344",
+      "type": "feat",
+      "behavior": "Asset values use shared market prices for USDC, USDT and Open USD",
+      "acceptance": [
+        "The worker stores CoinGecko prices every 15 minutes and GET /v1/prices returns them with staleness",
+        "Holdings show market USD values with attribution and never fall back to 1 USD"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "web-unit",
+        "backend-e2e",
+        "docs-check"
+      ],
+      "refs": [
+        "R-178",
+        "D-115"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F345",
+      "type": "feat",
+      "behavior": "Invoice forms preview the document, and invoice and receipt PDFs read like the app",
+      "acceptance": [
+        "New invoice shows a live preview with items at every width",
+        "Invoice and receipt PDFs state status, list every payment and paginate long item lists"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "web-unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-179"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

@@ -138,16 +138,16 @@ func TestMembersReachOnlyWhatTheirRoleAllows(t *testing.T) {
 			for _, item := range items {
 				ids = append(ids, item.(map[string]any)["invoiceId"].(string))
 			}
-			want := []string{held[1], inPro.body["invoiceId"].(string)} // newest first; Owed puts held money last
+			want := []string{held[1], inPro.body["invoiceId"].(string)} // newest first
 			if list == "/owed" {
-				want[0], want[1] = want[1], want[0]
+				want = want[1:] // held money is the payer's, never owed (D-114)
 			}
 			if r.status != http.StatusOK || !reflect.DeepEqual(ids, want) {
 				t.Errorf("%s's %s: %d %v, want %v", user, list, r.status, ids, want)
 			}
 		}
 	}
-	for list, want := range map[string]int{"/owed": 4, "/events": 4} {
+	for list, want := range map[string]int{"/owed": 2, "/events": 4} {
 		if items, _ := e.call(t, "GET", path(list), admin, "", "").body["items"].([]any); len(items) != want {
 			t.Errorf("an Admin's %s: %v", list, items)
 		}
