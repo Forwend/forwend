@@ -64,7 +64,7 @@ func (s *Service) Reopen(ctx context.Context, profileID, id string) (Invoice, er
 		}
 		until := reopenClose(time.Unix(deadline, 0), deployedAt)
 		// A refund under way pays the held money back to the payer: it can't go to the creator too.
-		if status != ledger.ExpiredPartiallyPaid || refund != "held" || reopened || !s.now().Before(until) {
+		if status != ledger.ExpiredPartiallyPaid || refund != "held" || reopened || !s.currentTime().Before(until) {
 			return ErrNotReopenable
 		}
 		if linkID != nil {

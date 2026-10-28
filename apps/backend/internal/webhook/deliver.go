@@ -44,6 +44,7 @@ type Body func(ctx context.Context, e Event) ([]byte, error)
 type delivery struct {
 	endpointID, eventID, profileID, url, body string
 	attempts                                  int
+	leasedUntil                               time.Time
 	updatedAt                                 time.Time // as claimed: a resend since changes it
 }
 
@@ -53,29 +54,18 @@ func (s *Service) Deliver(ctx context.Context, client *http.Client, body Body) e
 	if s.key == nil {
 		return nil
 	}
-	rows, err := s.pool.Query(ctx, `UPDATE webhook_deliveries d SET next_attempt_at = now() + $2 * interval '1 second'
-		FROM (SELECT d.endpoint_id, d.event_id FROM webhook_deliveries d JOIN webhook_endpoints w ON w.id = d.endpoint_id
-		      WHERE d.status = 'pending' AND d.next_attempt_at <= now() AND w.enabled
-		      ORDER BY d.next_attempt_at LIMIT $1 FOR UPDATE OF d SKIP LOCKED) c, webhook_endpoints w
-		WHERE d.endpoint_id = c.endpoint_id AND d.event_id = c.event_id AND w.id = d.endpoint_id
-		RETURNING d.endpoint_id::text, d.event_id, w.profile_id::text, w.url, coalesce(d.body, ''), d.attempts,
-		    d.updated_at`,
-		Batch, int64(lease.Seconds()))
-	if err != nil {
-		return fmt.Errorf("claim webhook deliveries: %w", err)
-	}
-	claimed, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (delivery, error) {
-		var d delivery
-		err := row.Scan(&d.endpointID, &d.eventID, &d.profileID, &d.url, &d.body, &d.attempts, &d.updatedAt)
-		return d, err
-	})
-	if err != nil {
-		return fmt.Errorf("claim webhook deliveries: %w", err)
-	}
-	errs := make([]error, len(claimed))
+	errs := make([]error, Batch)
 	var wg sync.WaitGroup
-	for i, d := range claimed {
-		wg.Go(func() { errs[i] = s.attempt(ctx, client, body, d) })
+	for i := range Batch {
+		d, err := s.claim(ctx)
+		if err != nil {
+			errs[i] = err
+			break
+		}
+		if d == nil {
+			break
+		}
+		wg.Go(func() { errs[i] = s.attempt(ctx, client, body, *d) })
 	}
 	wg.Wait()
 	return errors.Join(errs...)
@@ -83,6 +73,9 @@ func (s *Service) Deliver(ctx context.Context, client *http.Client, body Body) e
 
 // attempt sends one delivery and records the answer. An error before the request leaves the delivery to its lease.
 func (s *Service) attempt(ctx context.Context, client *http.Client, body Body, d delivery) error {
+	// Body construction and network I/O must end before another sender can reclaim the lease.
+	ctx, cancel := context.WithDeadline(ctx, d.leasedUntil.Add(-AttemptTimeout))
+	defer cancel()
 	// Secrets first: the body is built when it can be sent (D-97).
 	secrets, err := s.secrets(ctx, s.pool, d.profileID, d.endpointID)
 	if err != nil {
@@ -190,11 +183,15 @@ func (s *Service) record(ctx context.Context, d delivery, code int, failure stri
 				"status", code, "err", failure)
 		}
 		tag, err := tx.Exec(ctx, `UPDATE webhook_deliveries SET status = $3, attempts = $4,
-			    next_attempt_at = now() + $5 * interval '1 millisecond', updated_at = now()
-			WHERE endpoint_id = $1 AND event_id = $2 AND updated_at = $6`, d.endpointID, d.eventID, status, n,
-			next.Milliseconds(), d.updatedAt)
+			    next_attempt_at = now() + $5 * interval '1 millisecond', updated_at = now(), leased_until = NULL
+			WHERE endpoint_id = $1 AND event_id = $2 AND updated_at = $6 AND leased_until = $7`, d.endpointID, d.eventID, status, n,
+			next.Milliseconds(), d.updatedAt, d.leasedUntil)
 		if err != nil {
 			return fmt.Errorf("record webhook delivery: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `UPDATE webhook_deliveries SET leased_until=NULL
+ WHERE endpoint_id=$1 AND event_id=$2 AND leased_until=$3`, d.endpointID, d.eventID, d.leasedUntil); err != nil {
+			return err
 		}
 		if off == "" || tag.RowsAffected() == 0 {
 			return nil

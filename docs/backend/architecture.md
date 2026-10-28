@@ -42,10 +42,13 @@ Read only the sections your task touches:
   itself before signing, and settles at most `SponsoredPerDay` (50) invoices per user a day on the executor's gas.
   Writes settlement intents, the settlement ledger transaction and `settlement_status`. Every process uses one
   `DATABASE_URL` today; a separate signer database role is planned for deployment (Q-8).
-- `webhooks`: sends the webhook deliveries every second, 16 at a time (R-148). Of the secrets it holds only
-  `DATABASE_URL` and `WEBHOOK_SECRET_KEY`. It calls any URL an owner gives, so it gets no signer, Privy, email or RPC key.
+- `webhooks`: runs 16 independent delivery workers, polling idle queues every second (R-148, R-175).
+  - It holds only `DATABASE_URL` and `WEBHOOK_SECRET_KEY`.
+  - Owners choose endpoint URLs, so the sender gets no signer, Privy, email or RPC key.
   - Its client checks the address after DNS (`webhook.Client`); without the key it sends nothing.
-  - A delivery it claims is leased for a minute, so copies can run side by side and a crash resends it later.
+  - Delivery leases last one minute.
+  - Profile scheduling locks enforce two active attempts per profile and one per endpoint across replicas.
+  - Profiles rotate by their last claim time. A crash releases capacity when its leases expire.
 - `canary`: run on its own host by a scheduler, not beside the others. Checks open invoices' receive addresses
   against `factory.predict` on two RPCs, the api and the pay page drawn in Chromium (address text and QR code), with
   its own config and no shared address code ([money safety](money-safety.md#canary), R-51).
@@ -168,7 +171,8 @@ with a test.
 - `webhook_events(history_id, profile_id, invoice_id, type, livemode, sequence)` and `webhook_deliveries(endpoint_id,
   event_id)` (R-147). `history.Add` writes both with the history row, so an event can't miss a change.
   - Events are append-only. The key `(invoice_id, sequence)` stops two writers that skip the invoice's lock.
-- A delivery also keeps `status`, `attempts`, `next_attempt_at` and the `body` first sent (R-148).
+- A delivery also keeps `status`, `attempts`, `next_attempt_at`, `leased_until` and the `body` first sent (R-148, R-175).
+  - `webhook_delivery_profiles` stores the last claim time and serializes profile claims and manual queue changes.
   - `webhook_attempts(endpoint_id, event_id, status_code, error, duration_ms)` logs each attempt.
   - A `webhook.test` event (R-149) has no history row, invoice or sequence; a check ties those to its type.
   - `outbox_events.endpoint_id` names the endpoint of a `webhook.disabled` email.

@@ -12,7 +12,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/forwend/forwend/apps/backend/internal/auth"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/outbox"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
@@ -48,19 +47,8 @@ func (s *Service) Invite(ctx context.Context, profileID, privyUserID, email stri
 		if err := lockMerchant(ctx, tx, profileID); err != nil {
 			return err
 		}
-		// Checked again under the lock: a member removed or changed since the request's access check sends nothing.
-		var role string
-		err := tx.QueryRow(ctx, `SELECT CASE WHEN p.user_id = u.id THEN 'owner' ELSE m.role END
-			FROM profiles p JOIN users u ON u.privy_user_id = $2
-			LEFT JOIN profile_members m ON m.profile_id = p.id AND m.user_id = u.id
-			WHERE p.id = $1 AND (p.user_id = u.id OR m.user_id IS NOT NULL)`, profileID, privyUserID).Scan(&role)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return auth.ErrForbidden
-		} else if err != nil {
-			return fmt.Errorf("read inviter: %w", err)
-		}
-		if !(auth.Access{Role: auth.Role(role)}).Can(auth.Team) {
-			return auth.ErrForbidden
+		if err := requireTeam(ctx, tx, profileID, privyUserID); err != nil {
+			return err
 		}
 		if err := g.check(ctx, tx, profileID); err != nil {
 			return err

@@ -183,7 +183,7 @@ func (s *Service) get(ctx context.Context, profileID, id string, summary bool) (
 		}
 		until := reopenClose(inv.SettleDeadline, inv.receiverDeployedAt)
 		if inv.PaymentStatus == ledger.ExpiredPartiallyPaid && inv.RefundStatus == "held" &&
-			inv.ClosesAt.Equal(inv.ExpiresAt) && s.now().Before(until) {
+			inv.ClosesAt.Equal(inv.ExpiresAt) && s.currentTime().Before(until) {
 			var returned bool
 			if err := s.pool.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = $1 AND kind IN ('refund','settlement'))", inv.OptionID).Scan(&returned); err != nil {
 				return Invoice{}, err

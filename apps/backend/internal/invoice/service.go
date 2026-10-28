@@ -17,7 +17,14 @@ type Service struct {
 }
 
 func NewService(pool *pgxpool.Pool) *Service {
-	return &Service{pool: pool, now: time.Now}
+	return &Service{pool: pool}
+}
+
+func (s *Service) currentTime() time.Time {
+	if s.now != nil {
+		return s.now()
+	}
+	return time.Now()
 }
 
 // invoiceColumns reads FROM invoicesCurrent: the main row's number and details with the current option's terms.

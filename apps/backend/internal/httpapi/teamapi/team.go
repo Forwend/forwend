@@ -31,7 +31,7 @@ func setMember(members *team.Service) http.HandlerFunc {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		m, err := members.SetMember(r.Context(), r.PathValue("profileId"), r.PathValue("memberId"),
+		m, err := members.SetMember(r.Context(), r.PathValue("profileId"), r.PathValue("memberId"), mid.SignedInUser(r),
 			team.Grant{Role: body.Role, Stores: body.Stores})
 		if err != nil {
 			httpio.WriteError(w, r, err)

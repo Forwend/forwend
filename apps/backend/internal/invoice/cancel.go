@@ -46,7 +46,7 @@ func (s *Service) cancel(ctx context.Context, tx pgx.Tx, profileID, id, replaced
 		return ErrNotFound
 	}
 	for _, r := range locked {
-		if r.Status != "open" || r.ExpiresAt <= s.now().Unix() {
+		if r.Status != "open" || r.ExpiresAt <= s.currentTime().Unix() {
 			return ErrNotCancelable
 		}
 	}

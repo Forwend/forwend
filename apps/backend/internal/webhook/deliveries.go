@@ -92,17 +92,27 @@ func (s *Service) Resend(ctx context.Context, profileID, endpointID, event strin
 	if !lowercaseUUID.MatchString(endpointID) || !eventID.MatchString(event) {
 		return ErrNoDelivery
 	}
-	tag, err := s.pool.Exec(ctx, `UPDATE webhook_deliveries d SET status = 'pending', attempts = 0,
-		    next_attempt_at = now(), updated_at = now()
-		FROM webhook_endpoints w WHERE w.id = d.endpoint_id AND w.profile_id = $1 AND d.endpoint_id = $2
-		  AND d.event_id = $3`, profileID, endpointID, event)
-	if err != nil {
-		return fmt.Errorf("resend webhook delivery: %w", err)
-	}
-	if tag.RowsAffected() == 0 {
-		return ErrNoDelivery
-	}
-	return nil
+	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		room, err := manualQueueRoom(ctx, tx, profileID)
+		if err != nil {
+			return err
+		}
+		var pending bool
+		err = tx.QueryRow(ctx, `SELECT d.status='pending' FROM webhook_deliveries d JOIN webhook_endpoints e ON e.id=d.endpoint_id
+ WHERE e.profile_id=$1 AND d.endpoint_id=$2 AND d.event_id=$3 FOR UPDATE OF d`, profileID, endpointID, event).Scan(&pending)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNoDelivery
+		}
+		if err != nil {
+			return err
+		}
+		if !pending && room == 0 {
+			return ErrQueueFull
+		}
+		_, err = tx.Exec(ctx, `UPDATE webhook_deliveries SET status='pending',attempts=0,next_attempt_at=now(),updated_at=clock_timestamp()
+ WHERE endpoint_id=$1 AND event_id=$2`, endpointID, event)
+		return err
+	})
 }
 
 // ResendFailed sends again every delivery to the endpoint that failed since that time, and says how many.
@@ -113,13 +123,25 @@ func (s *Service) ResendFailed(ctx context.Context, profileID, endpointID string
 	if err := s.owned(ctx, profileID, endpointID); err != nil {
 		return 0, err
 	}
-	tag, err := s.pool.Exec(ctx, `UPDATE webhook_deliveries SET status = 'pending', attempts = 0, next_attempt_at = now(),
-		    updated_at = now()
-		WHERE endpoint_id = $1 AND status = 'failed' AND updated_at >= $2`, endpointID, since)
-	if err != nil {
-		return 0, fmt.Errorf("resend failed webhook deliveries: %w", err)
-	}
-	return tag.RowsAffected(), nil
+	var queued int64
+	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		room, err := manualQueueRoom(ctx, tx, profileID)
+		if err != nil {
+			return err
+		}
+		if room == 0 {
+			return ErrQueueFull
+		}
+		tag, err := tx.Exec(ctx, `UPDATE webhook_deliveries d SET status='pending',attempts=0,next_attempt_at=now(),updated_at=clock_timestamp()
+ FROM (SELECT endpoint_id,event_id FROM webhook_deliveries WHERE endpoint_id=$1 AND status='failed' AND updated_at>=$2
+ ORDER BY updated_at,event_id LIMIT $3 FOR UPDATE SKIP LOCKED) q WHERE d.endpoint_id=q.endpoint_id AND d.event_id=q.event_id`, endpointID, since, room)
+		if err != nil {
+			return err
+		}
+		queued = tag.RowsAffected()
+		return nil
+	})
+	return queued, err
 }
 
 // SendTest queues a test event for the endpoint alone, of its mode, and returns its id.
@@ -131,16 +153,23 @@ func (s *Service) SendTest(ctx context.Context, profileID, endpointID string) (s
 		return "", ErrNotFound
 	}
 	var id string
-	err := s.pool.QueryRow(ctx, `WITH e AS (INSERT INTO webhook_events (profile_id, type, livemode)
-		    SELECT profile_id, $3, livemode FROM webhook_endpoints WHERE id = $1 AND profile_id = $2 RETURNING id)
-		INSERT INTO webhook_deliveries (endpoint_id, event_id) SELECT $1, id FROM e RETURNING event_id`,
-		endpointID, profileID, Test).Scan(&id)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", ErrNotFound
-	} else if err != nil {
-		return "", fmt.Errorf("send webhook test event: %w", err)
-	}
-	return id, nil
+	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		room, err := manualQueueRoom(ctx, tx, profileID)
+		if err != nil {
+			return err
+		}
+		if room == 0 {
+			return ErrQueueFull
+		}
+		err = tx.QueryRow(ctx, `WITH e AS (INSERT INTO webhook_events(profile_id,type,livemode)
+ SELECT profile_id,$3,livemode FROM webhook_endpoints WHERE id=$1 AND profile_id=$2 RETURNING id)
+ INSERT INTO webhook_deliveries(endpoint_id,event_id) SELECT $1,id FROM e RETURNING event_id`, endpointID, profileID, Test).Scan(&id)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	})
+	return id, err
 }
 
 // owned is ErrNotFound unless the endpoint is the profile's.

@@ -64,7 +64,7 @@ func (s *Service) processChain(ctx context.Context, chainID uint64, requireCover
 	return errors.Join(errs...)
 }
 
-// Process runs in one transaction with the invoice row locked; running it again changes nothing.
+// Process atomically books one bounded movement prefix; booked movements are never repeated.
 func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -97,7 +97,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	}
 
 	var identityConflict bool
-	if err := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM receiver_conflicts WHERE invoice_id = $1) OR EXISTS (SELECT 1 FROM receiver_scans WHERE invoice_id = $1 AND booking_error IS NOT NULL)", invoiceID).Scan(&identityConflict); err != nil {
+	if err := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM receiver_unresolved_conflicts WHERE invoice_id = $1) OR EXISTS (SELECT 1 FROM receiver_scans WHERE invoice_id = $1 AND booking_error IS NOT NULL)", invoiceID).Scan(&identityConflict); err != nil {
 		return err
 	}
 	if identityConflict {
@@ -211,7 +211,15 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	if err := attachLegacySettlement(ctx, tx, invoiceID); err != nil {
 		return err
 	}
-	movements, err := pendingMovements(ctx, tx, invoiceID)
+	movements, more, err := pendingMovements(ctx, tx, invoiceID)
+	if err != nil {
+		return err
+	}
+	historicalFunding, err := hasFunding(ctx, tx, invoiceID)
+	if err != nil {
+		return err
+	}
+	prefix, err := depositOnlyBalances(ctx, tx, invoiceID)
 	if err != nil {
 		return err
 	}
@@ -234,6 +242,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	}
 	for _, d := range movements {
 		if d.Kind != "deposit" {
+			prefix = nil
 			ready, err := receiverEvidence(ctx, tx, invoiceID, d.BlockNumber)
 			if err != nil {
 				return err
@@ -249,9 +258,14 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 				owed.SetInt64(0)
 				final, eventExpired = true, true
 			}
-			if proved, err := captureFunding(ctx, tx, invoiceID, d, amount); err != nil {
-				return err
-			} else if proved && current != Paid && !paidRecorded {
+			if !historicalFunding {
+				proved, err := captureFunding(ctx, tx, invoiceID, d, amount, nil)
+				if err != nil {
+					return err
+				}
+				historicalFunding = proved
+			}
+			if historicalFunding && current != Paid && !paidRecorded {
 				if err := recordHistoricalPaid(ctx, tx, invoiceID, shown); err != nil {
 					return err
 				}
@@ -294,11 +308,21 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		depositsBooked++
 		owed.Add(owed, toCreator)
 		hold(heldReason(current, late, superseded), toHeld)
+		if prefix != nil {
+			prefix.receiver.Add(prefix.receiver, value)
+			prefix.payable.Add(prefix.payable, toCreator)
+			prefix.held.Add(prefix.held, toHeld)
+		}
 		after := d
 		after.LogIndex++
-		if proved, err := captureFunding(ctx, tx, invoiceID, after, amount); err != nil {
-			return err
-		} else if proved {
+		if !historicalFunding {
+			proved, err := captureFunding(ctx, tx, invoiceID, after, amount, prefix)
+			if err != nil {
+				return err
+			}
+			historicalFunding = proved
+		}
+		if historicalFunding {
 			final = true
 			if current != Paid && !paidRecorded {
 				if err := recordHistoricalPaid(ctx, tx, invoiceID, shown); err != nil {
@@ -321,16 +345,12 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		if funded, err = s.funded(ctx, tx, invoiceID, chainID, finalizedBlock, token, receive); err != nil {
 			return err
 		}
-	case finalizedTime > closesAt && !anyPending && closedEverywhere:
+	case finalizedTime > closesAt && !anyPending && !more && closedEverywhere:
 		// Expiry is final, so the ledger must explain the whole balance first: more on chain than booked is a
 		// deposit the watcher hasn't booked yet (a missed log, an Arc native-coin payment).
 		if mayExpire, err = s.balanced(ctx, tx, invoiceID, chainID, finalizedBlock, token, receive); err != nil {
 			return err
 		}
-	}
-	historicalFunding, err := hasFunding(ctx, tx, invoiceID)
-	if err != nil {
-		return err
 	}
 	next := status(current, amount, owed, anyTransfer, mayExpire, funded)
 	if historicalFunding && current != Canceled && current != Expired && current != ExpiredPartiallyPaid {

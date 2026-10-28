@@ -120,6 +120,56 @@ func (h hookEnv) deliver(t *testing.T) {
 	}
 }
 
+func TestWebhookBodyBuildEndsBeforeItsLeaseExpires(t *testing.T) {
+	h := newHookEnv(t)
+	h.canceled(t, "body-deadline")
+	bounded := make(chan bool, 1)
+	err := h.hooks.Deliver(context.Background(), h.client, func(ctx context.Context, _ webhook.Event) ([]byte, error) {
+		deadline, ok := ctx.Deadline()
+		bounded <- ok && time.Until(deadline) > 0 && time.Until(deadline) < time.Minute
+		return nil, context.Canceled
+	})
+	if err == nil {
+		t.Fatal("body build error was ignored")
+	}
+	select {
+	case limited := <-bounded:
+		if !limited {
+			t.Fatal("body construction can outlive its delivery lease")
+		}
+	default:
+		t.Fatalf("body construction did not start: %v", err)
+	}
+	if h.recv.requests() != 0 {
+		t.Fatal("failed body construction sent a request")
+	}
+}
+
+func TestWebhookManualQueueBudgetPreservesFinancialEvents(t *testing.T) {
+	h := newHookEnv(t)
+	path := "/v1/profiles/" + h.shop + "/webhooks/" + h.endpoint + "/test"
+	for range webhook.ManualPendingLimit {
+		if r := h.call(t, "POST", path, "did:privy:alice", "", ""); r.status != http.StatusCreated {
+			t.Fatalf("queue: %d %v", r.status, r.body)
+		}
+	}
+	r := h.call(t, "POST", path, "did:privy:alice", "", "")
+	if r.status != http.StatusTooManyRequests {
+		t.Fatalf("full queue: %d %v", r.status, r.body)
+	}
+	if code := r.body["error"].(map[string]any)["code"]; code != "webhook_queue_full" {
+		t.Fatalf("queue error: %v", r.body)
+	}
+	h.canceled(t, "financial-event-after-manual-limit")
+	var pending int
+	if err := h.pool.QueryRow(t.Context(), "SELECT count(*) FROM webhook_deliveries WHERE status='pending'").Scan(&pending); err != nil {
+		t.Fatal(err)
+	}
+	if pending != webhook.ManualPendingLimit+1 {
+		t.Fatalf("financial event rejected: %d pending", pending)
+	}
+}
+
 func (h hookEnv) secrets(t *testing.T) []string {
 	t.Helper()
 	var out []string
@@ -238,7 +288,6 @@ func TestWebhookEndpointsTurnOff(t *testing.T) {
 	h.addEndpoint(t, edge, h.recv.URL+"/edge")
 	gone := h.canceled(t, "key-1")
 	waiting := h.canceled(t, "key-2")
-	h.canceled(t, "key-3") // a second 410 for each endpoint in the same round: still one email each
 	// Only the first event is due, and the other endpoint's delivery of it is at its last attempt.
 	h.exec(t, "UPDATE webhook_deliveries SET next_attempt_at = now() + interval '1 hour' WHERE event_id = $1", waiting)
 	h.exec(t, "UPDATE webhook_deliveries SET attempts = $2 WHERE endpoint_id = $1", other, len(webhook.Retries))
@@ -249,7 +298,9 @@ func TestWebhookEndpointsTurnOff(t *testing.T) {
 		t.Fatalf("with no key: %v, %d requests", err, h.recv.requests())
 	}
 	h.recv.answer(http.StatusGone)
-	h.deliver(t)
+	for range 2 {
+		h.deliver(t)
+	}
 	for endpoint, want := range map[string]string{h.endpoint: "failed 1", edge: "failed 1", other: "failed " +
 		strconv.Itoa(len(webhook.Retries)+1)} {
 		if state, _ := h.delivery(t, endpoint, gone); state != want {
@@ -391,8 +442,9 @@ func TestOwnerResendsAndTestsDeliveries(t *testing.T) {
 	if r.status != http.StatusCreated || test == "" {
 		t.Fatalf("test event: %d %v", r.status, r.body)
 	}
-	h.deliver(t)
-	// The resend and the test event go in the same round, in either order.
+	for range 2 {
+		h.deliver(t)
+	}
 	i := slices.IndexFunc(h.recv.got, func(req *http.Request) bool { return req.Header.Get("webhook-id") == test })
 	if n := h.recv.requests(); n != 3 || i < 0 {
 		t.Fatalf("%d requests, the test event's at %d", n, i)

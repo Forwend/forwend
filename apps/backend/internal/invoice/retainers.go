@@ -62,7 +62,7 @@ func checkRepeat(r Request) error {
 func (s *Service) startRetainer(ctx context.Context, tx pgx.Tx, profileID, invoiceID string, r Request) error {
 	var running int
 	if err := tx.QueryRow(ctx, `SELECT count(*) FROM retainers WHERE profile_id = $1 AND stopped_at IS NULL
-		AND (end_date IS NULL OR end_date >= $2::date)`, profileID, s.now().UTC().Format(time.DateOnly)).Scan(&running); err != nil {
+		AND (end_date IS NULL OR end_date >= $2::date)`, profileID, s.currentTime().UTC().Format(time.DateOnly)).Scan(&running); err != nil {
 		return fmt.Errorf("count running retainers: %w", err)
 	}
 	if running >= MaxRetainers {
@@ -132,7 +132,7 @@ func (s *Service) MakeRetainerInvoices(ctx context.Context) error {
 		            WHERE x.retainer_id = r.id AND ir.stopped_at IS NOT NULL)
 		FROM retainers r `+nextMonthSQL("$1::date")+`
 		WHERE r.stopped_at IS NULL AND c.due - $2::int <= $1::date AND (r.end_date IS NULL OR c.due <= r.end_date)`,
-		s.now().UTC().Format(time.DateOnly), RetainerLead)
+		s.currentTime().UTC().Format(time.DateOnly), RetainerLead)
 	if err != nil {
 		return fmt.Errorf("read due retainers: %w", err)
 	}
@@ -153,7 +153,7 @@ func (s *Service) MakeRetainerInvoices(ctx context.Context) error {
 		// A Revise belongs only to the first month, including templates saved with that action.
 		r.Replaces = ""
 		// D-80: the checkout stays open to the end of the 60th day after the due date, in whole seconds rounded up.
-		seconds := int64((m.due.AddDate(0, 0, DueGraceDays+1).Sub(s.now()) + time.Second - 1) / time.Second)
+		seconds := int64((m.due.AddDate(0, 0, DueGraceDays+1).Sub(s.currentTime()) + time.Second - 1) / time.Second)
 		r.DueDate, r.ExpiresInSeconds = m.due.Format(time.DateOnly), &seconds
 		r.Reminders = r.Reminders && !m.remindersStopped
 		r.cycle, r.By = &cycle{retainer: m.retainer, n: m.n}, history.System
@@ -195,7 +195,7 @@ func (s *Service) retainer(ctx context.Context, id string) (*Retainer, error) {
 		    to_char(c.due, 'YYYY-MM-DD'), to_char(greatest(c.due - $3::int, $2::date), 'YYYY-MM-DD'),
 		    r.stopped_at IS NULL AND (r.end_date IS NULL OR c.due <= r.end_date)
 		FROM retainer_invoices ri JOIN retainers r ON r.id = ri.retainer_id `+nextMonthSQL("$2::date")+`
-		WHERE ri.invoice_id = $1`, id, s.now().UTC().Format(time.DateOnly), RetainerLead).
+		WHERE ri.invoice_id = $1`, id, s.currentTime().UTC().Format(time.DateOnly), RetainerLead).
 		Scan(&r.EndDate, &stopped, &due, &on, &running)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil

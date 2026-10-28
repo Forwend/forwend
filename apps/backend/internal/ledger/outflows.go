@@ -18,26 +18,67 @@ type movement struct {
 	BlockNumber, LogIndex uint64
 }
 
-func pendingMovements(ctx context.Context, tx pgx.Tx, invoiceID string) ([]movement, error) {
-	rows, err := tx.Query(ctx, `SELECT id, kind, amount, block_time, block_number, log_index FROM (
-  SELECT id, 'deposit' AS kind, amount::text, block_time, block_number, log_index FROM chain_transfers t
-  WHERE invoice_id = $1 AND status = 'confirmed' AND NOT booked
-   AND NOT EXISTS (SELECT 1 FROM chain_transfers d WHERE d.invoice_id = t.invoice_id AND d.status = 'detected'
-                   AND (d.block_number, d.log_index) < (t.block_number, t.log_index))
+const MovementBatch = 100
+
+func pendingMovements(ctx context.Context, tx pgx.Tx, invoiceID string) ([]movement, bool, error) {
+	rows, err := tx.Query(ctx, `WITH candidates AS MATERIALIZED (
+ SELECT * FROM (
+  (SELECT id,'deposit' AS kind,amount::text,block_time,block_number,log_index FROM chain_transfers
+   WHERE invoice_id=$1 AND status='confirmed' AND NOT booked ORDER BY block_number,log_index LIMIT $2)
   UNION ALL
-  SELECT id, kind, amount::text, block_time, block_number, log_index FROM receiver_outflows
-  WHERE invoice_id = $1 AND ledger_transaction_id IS NULL AND kind <> 'recovery'
- ) m WHERE NOT EXISTS (SELECT 1 FROM receiver_scans s WHERE s.invoice_id = $1 AND s.opening_checked
-                       AND (m.block_number > s.scanned_block OR (m.kind = 'deposit' AND NOT EXISTS
-    (SELECT 1 FROM receiver_deposit_proofs p WHERE p.chain_transfer_id = m.id))))
- ORDER BY block_number, log_index`, invoiceID)
+  (SELECT id,kind,amount::text,block_time,block_number,log_index FROM receiver_outflows
+   WHERE invoice_id=$1 AND ledger_transaction_id IS NULL AND kind<>'recovery'
+   ORDER BY block_number,log_index LIMIT $2)
+ ) pending ORDER BY block_number,log_index LIMIT $2
+ ) SELECT m.*,
+ (m.kind<>'deposit' OR NOT EXISTS (SELECT 1 FROM chain_transfers d WHERE d.invoice_id=$1 AND d.status='detected'
+                                 AND (d.block_number,d.log_index)<(m.block_number,m.log_index)))
+ AND NOT EXISTS (SELECT 1 FROM receiver_scans s WHERE s.invoice_id=$1 AND s.opening_checked
+   AND (m.block_number>s.scanned_block OR (m.kind='deposit' AND NOT EXISTS (
+     SELECT 1 FROM receiver_deposit_proofs p WHERE p.chain_transfer_id=m.id))))
+ FROM candidates m ORDER BY m.block_number,m.log_index`, invoiceID, MovementBatch+1)
 	if err != nil {
-		return nil, fmt.Errorf("read invoice %s movements: %w", invoiceID, err)
+		return nil, false, fmt.Errorf("read invoice %s movements: %w", invoiceID, err)
 	}
-	return pgx.CollectRows(rows, pgx.RowToStructByPos[movement])
+	defer rows.Close()
+	movements := make([]movement, 0, MovementBatch)
+	more := false
+	for rows.Next() {
+		var m movement
+		var eligible bool
+		if err := rows.Scan(&m.ID, &m.Kind, &m.Amount, &m.BlockTime, &m.BlockNumber, &m.LogIndex, &eligible); err != nil {
+			return nil, false, err
+		}
+		if !eligible || len(movements) == MovementBatch {
+			more = true
+			break
+		}
+		movements = append(movements, m)
+	}
+	return movements, more, rows.Err()
 }
 
 type prefixBalances struct{ receiver, payable, held *big.Int }
+
+func depositOnlyBalances(ctx context.Context, tx pgx.Tx, invoiceID string) (*prefixBalances, error) {
+	var other bool
+	var receiver, payable, held string
+	err := tx.QueryRow(ctx, `SELECT
+ EXISTS (SELECT 1 FROM ledger_transactions WHERE invoice_id=$1 AND kind<>'deposit'),
+ coalesce(sum(e.amount) FILTER (WHERE e.account='receiver'),0)::text,
+ (-coalesce(sum(e.amount) FILTER (WHERE e.account='recipient_payable'),0))::text,
+ (-coalesce(sum(e.amount) FILTER (WHERE e.account='payer_held'),0))::text
+ FROM ledger_transactions t JOIN ledger_entries e ON e.transaction_id=t.id WHERE t.invoice_id=$1`, invoiceID).
+		Scan(&other, &receiver, &payable, &held)
+	if err != nil || other {
+		return nil, err
+	}
+	b := &prefixBalances{}
+	b.receiver, _ = new(big.Int).SetString(receiver, 10)
+	b.payable, _ = new(big.Int).SetString(payable, 10)
+	b.held, _ = new(big.Int).SetString(held, 10)
+	return b, nil
+}
 
 // Non-cash expiry follows the checkout close; reopening follows its recorded verified checkpoint.
 func balancesBefore(ctx context.Context, tx pgx.Tx, invoiceID string, m movement) (prefixBalances, string, error) {
@@ -96,14 +137,18 @@ func outflowRefusal(ctx context.Context, tx pgx.Tx, id int64, reason string) (bo
 	return false, err
 }
 
-func captureFunding(ctx context.Context, tx pgx.Tx, invoiceID string, before movement, target *big.Int) (bool, error) {
+func captureFunding(ctx context.Context, tx pgx.Tx, invoiceID string, before movement, target *big.Int, known *prefixBalances) (bool, error) {
 	ready, err := receiverEvidence(ctx, tx, invoiceID, before.BlockNumber)
 	if err != nil || !ready {
 		return false, err
 	}
-	b, reason, err := balancesBefore(ctx, tx, invoiceID, before)
-	if err != nil || reason != "" {
-		return false, err
+	b := known
+	if b == nil {
+		balances, reason, err := balancesBefore(ctx, tx, invoiceID, before)
+		if err != nil || reason != "" {
+			return false, err
+		}
+		b = &balances
 	}
 	if b.payable.Cmp(target) < 0 || b.receiver.Cmp(target) < 0 {
 		return false, nil

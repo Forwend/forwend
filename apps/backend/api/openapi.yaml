@@ -2900,7 +2900,7 @@ paths:
     post:
       operationId: resendWebhookDelivery
       summary: Send a delivery again from a first attempt, with its first body (R-149)
-      description: It waits while the endpoint is off.
+      description: It waits while the endpoint is off. New pending work is limited to 32 deliveries per profile; a full queue returns 429 webhook_queue_full.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - $ref: "#/components/parameters/EndpointId"
@@ -2919,7 +2919,8 @@ paths:
   /v1/profiles/{profileId}/webhooks/{endpointId}/deliveries/resend-failed:
     post:
       operationId: resendFailedWebhookDeliveries
-      summary: Send again every delivery to the endpoint that failed since a time (R-149)
+      summary: Resend failed deliveries within the available profile queue budget (R-149)
+      description: Queues at most the remaining capacity within 32 pending deliveries per profile. A full queue returns 429 webhook_queue_full.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - $ref: "#/components/parameters/EndpointId"
@@ -2955,6 +2956,7 @@ paths:
     post:
       operationId: sendWebhookTestEvent
       summary: Queue a webhook.test event for this endpoint alone (R-149)
+      description: Limited to 32 pending deliveries per profile; a full queue returns 429 webhook_queue_full.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - $ref: "#/components/parameters/EndpointId"

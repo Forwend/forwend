@@ -47,13 +47,16 @@ func (s *Service) List(ctx context.Context, profileID string) (Team, error) {
 }
 
 // SetMember gives a member another role and stores (D-63: the caller asked for a fresh sign-in).
-func (s *Service) SetMember(ctx context.Context, profileID, userID string, g Grant) (Member, error) {
+func (s *Service) SetMember(ctx context.Context, profileID, userID, privyUserID string, g Grant) (Member, error) {
 	if !lowercaseUUID.MatchString(userID) {
 		return Member{}, ErrMemberNotFound
 	}
 	var m Member
 	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		if err := lockMerchant(ctx, tx, profileID); err != nil {
+			return err
+		}
+		if err := requireTeam(ctx, tx, profileID, privyUserID); err != nil {
 			return err
 		}
 		if owner, err := isOwner(ctx, tx, profileID, userID); err != nil {

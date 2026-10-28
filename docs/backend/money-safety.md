@@ -52,6 +52,13 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 - Refunds consume net held before payable. Settlements consume payable before held, with policy exceptions recorded explicitly.
 - Historical fully funded prefixes retain payment truth after actual returns; returned partial deposits cannot accumulate into a false payment.
 - Native or unsupported-asset movements never invent accepted-token deposits or financial bookings.
+- Missing logs on unchanged canonical blocks retry without advancing coverage or creating permanent conflicts (R-175).
+- Legacy missing-transfer conflicts resolve only after exact canonical transfer fields and deposit proofs verify.
+  - Original conflicts and their verified resolutions remain append-only. Genuine contradictions remain blocked.
+  - Migration 85 refuses rollback after resolutions exist; repair forward instead of deleting evidence.
+- Ledger rounds commit at most 100 movements per invoice, preserving chain order and exact balances (R-175).
+  - Pending batches prevent premature expiry. Certified funded prefixes retain historical payment truth.
+  - Unbooked financial movements prevent automatic settlement.
 - Old financial allocations remain permanent. Incompatible historical evidence requires review instead of rewriting balances.
 - Scanner and ledger lock invoice groups before scan rows. Failed receivers retry later without blocking the whole queue.
 - Refund claims and execution controls remain in PLAN 11.10.
