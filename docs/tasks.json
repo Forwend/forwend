@@ -131,7 +131,7 @@
         "Webhook test and resend work has bounded tenant budgets; slow tenants cannot occupy every sender slot or starve other profiles."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "build",
@@ -207,11 +207,18 @@
           "summary": "No remaining findings. Reviewed canonical deposit recovery, append-only conflict resolutions, genuine contradiction gates, bounded ledger prefixes, historical paid proofs, refund tails, expiry and settlement reconciliation. Reviewed role checks under the profile lock, tenant scheduling, queue caps, lease deadlines and stale completion protection. Checked invoice transaction-clock consistency, structure and unchanged packages. Focused receiver and webhook race tests passed; final docs-check, unit, build, e2e and keep checks passed.",
           "at": "2026-10-28T16:50:41Z",
           "filesHash": "d53e25c2a5c6ba15"
-        }
+        },
+        "commit": "b8f3d068",
+        "doneAt": "2026-10-28T16:51:10Z"
       },
       "branch": "fix/f341-recover-payment-processing-and-enforce-r",
       "baseCommit": "b4f9de44bed5040103636c978fde3b630c757e5e",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f341-recover-payment-processing-and-enforce-r",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
