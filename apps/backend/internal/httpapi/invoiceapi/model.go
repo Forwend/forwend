@@ -122,7 +122,23 @@ type issuerJSON struct {
 	Email   string  `json:"email"`
 }
 
+type depositSummaryJSON struct {
+	Count         int64  `json:"count"`
+	OnTimeAmount  string `json:"onTimeAmount"`
+	LateAmount    string `json:"lateAmount"`
+	PendingAmount string `json:"pendingAmount"`
+}
+
+func toDepositSummaryJSON(summary *invoice.DepositSummary) *depositSummaryJSON {
+	if summary == nil {
+		return nil
+	}
+	return &depositSummaryJSON{Count: summary.Count, OnTimeAmount: summary.OnTimeAmount.String(),
+		LateAmount: summary.LateAmount.String(), PendingAmount: summary.PendingAmount.String()}
+}
+
 type invoiceDetailJSON struct {
+	DepositSummary *depositSummaryJSON `json:"depositSummary,omitempty"`
 	invoiceJSON
 	PaidAt    *string `json:"paidAt"`
 	SettledAt *string `json:"settledAt"`
@@ -178,17 +194,18 @@ type lineJSON struct {
 }
 
 type optionJSON struct {
-	ClosesAt       string             `json:"closesAt"`
-	Amounts        *paymentio.Amounts `json:"amounts,omitempty"`
-	OptionID       string             `json:"optionId"`
-	ChainID        uint64             `json:"chainId"`
-	Network        string             `json:"network"`
-	Token          string             `json:"token"`
-	Symbol         string             `json:"symbol"`
-	Decimals       int                `json:"decimals"`
-	Amount         string             `json:"amount"`
-	ReceiveAddress string             `json:"receiveAddress"`
-	Deposits       []depositJSON      `json:"deposits"`
+	DepositSummary *depositSummaryJSON `json:"depositSummary,omitempty"`
+	ClosesAt       string              `json:"closesAt"`
+	Amounts        *paymentio.Amounts  `json:"amounts,omitempty"`
+	OptionID       string              `json:"optionId"`
+	ChainID        uint64              `json:"chainId"`
+	Network        string              `json:"network"`
+	Token          string              `json:"token"`
+	Symbol         string              `json:"symbol"`
+	Decimals       int                 `json:"decimals"`
+	Amount         string              `json:"amount"`
+	ReceiveAddress string              `json:"receiveAddress"`
+	Deposits       []depositJSON       `json:"deposits"`
 }
 
 // Owner reads only; settlementWait is null when the money is not waiting.
@@ -330,13 +347,14 @@ func toInvoiceDetailJSON(inv invoice.Invoice, withClient bool) invoiceDetailJSON
 	for _, o := range inv.Options {
 		out.Options = append(out.Options, optionJSON{ClosesAt: o.ClosesAt.Format(time.RFC3339), Amounts: paymentio.FromAmounts(o.Amounts), OptionID: o.ID, ChainID: o.ChainID, Network: o.Network,
 			Token: o.Token, Symbol: o.Symbol, Decimals: o.Decimals, Amount: o.Amount.String(),
-			ReceiveAddress: o.ReceiveAddress, Deposits: toDepositsJSON(o.Deposits)})
+			ReceiveAddress: o.ReceiveAddress, Deposits: toDepositsJSON(o.Deposits), DepositSummary: toDepositSummaryJSON(o.DepositSummary)})
 	}
 	for _, l := range inv.Lines {
 		out.Lines = append(out.Lines, lineJSON{Description: l.Description, Quantity: l.Quantity,
 			UnitPrice: l.UnitPrice.String(), Amount: l.Amount.String()})
 	}
 	out.Deposits = toDepositsJSON(inv.Deposits)
+	out.DepositSummary = toDepositSummaryJSON(inv.DepositSummary)
 	return out
 }
 

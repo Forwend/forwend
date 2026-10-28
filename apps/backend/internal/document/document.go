@@ -177,6 +177,9 @@ func Receipt(inv invoice.Invoice, payLink string, logo []byte) ([]byte, error) {
 
 	net := networkOf(inv)
 	d.heading("Payments")
+	if inv.DepositSummary != nil && inv.DepositSummary.Count > int64(len(inv.Deposits)) {
+		d.note("Selected payment transactions are shown. The amount paid includes all credited transfers.")
+	}
 	for _, dep := range inv.Deposits {
 		// Only what was paid to the creator: late money and money over the amount are held for the payer (D-26, R-121).
 		if dep.Paid != nil && dep.Paid.Sign() > 0 {

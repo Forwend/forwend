@@ -250,3 +250,44 @@ func TestMemberSignUpMakesNoWalletForTheirTeamsProfile(t *testing.T) {
 		}
 	}
 }
+
+func TestDeveloperStoreEditPreservesUnavailableTokenRestrictions(t *testing.T) {
+	for _, table := range []string{"chains", "tokens"} {
+		t.Run(table, func(t *testing.T) {
+			e := invoiceAPI(t)
+			e.enableArbUSDC(t)
+			const owner, developer = "did:privy:alice", "did:privy:developer"
+			shop := e.merchant(t)
+			store := storeIDs(t, e, shop)[0]
+			path := "/v1/profiles/" + shop + "/stores/" + store
+			if r := e.call(t, "PUT", path, owner, "", `{"name":"Shop","defaultExpiresIn":3600,
+				"tokensOff":[{"chainId":421614,"token":"`+arbUSDC+`"}]}`); r.status != http.StatusOK {
+				t.Fatalf("disable store token: %d %v", r.status, r.body)
+			}
+			e.exec(t, `WITH u AS (INSERT INTO users (privy_user_id) VALUES ($1) RETURNING id),
+				m AS (INSERT INTO profile_members (profile_id,user_id,role) SELECT $2,id,'developer' FROM u)
+				INSERT INTO member_stores (profile_id,user_id,store_id) SELECT $2,id,$3 FROM u`, developer, shop, store)
+			body := `{"name":"Renamed shop","defaultExpiresIn":3600,"tokensOff":[]}`
+			if r := e.call(t, "PUT", path, developer, "", body); r.status != http.StatusForbidden {
+				t.Fatalf("developer changes token restrictions: %d %v", r.status, r.body)
+			}
+			e.exec(t, "UPDATE "+table+" SET enabled=false WHERE chain_id=421614")
+			for _, user := range []string{developer, owner} {
+				if r := e.call(t, "PUT", path, user, "", body); r.status != http.StatusOK {
+					t.Fatalf("%s renames store: %d %v", user, r.status, r.body)
+				}
+			}
+			e.exec(t, "UPDATE "+table+" SET enabled=true WHERE chain_id=421614")
+			invoiceBody := `{"chainId":421614,"token":"` + arbUSDC + `","amount":"1000000","storeId":"` + store + `"}`
+			if r := e.post(t, developer, shop, "still-off", invoiceBody); r.status != http.StatusUnprocessableEntity {
+				t.Fatalf("developer edit lost token restriction: %d %v", r.status, r.body)
+			}
+			if r := e.call(t, "PUT", path, owner, "", body); r.status != http.StatusOK {
+				t.Fatalf("owner enables token: %d %v", r.status, r.body)
+			}
+			if r := e.post(t, developer, shop, "now-on", invoiceBody); r.status != http.StatusCreated {
+				t.Fatalf("invoice after owner enables token: %d %v", r.status, r.body)
+			}
+		})
+	}
+}

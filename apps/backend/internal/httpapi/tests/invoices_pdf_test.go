@@ -8,14 +8,75 @@ import (
 	"io"
 	"math/big"
 	"net/http"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 	"unicode/utf16"
 
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/forwend/forwend/apps/backend/internal/ledger/ledgertest"
 )
+
+func TestInvoiceDepositPreviewKeepsExactTotalsAndReceipt(t *testing.T) {
+	e := invoiceAPI(t)
+	const owner = "did:privy:alice"
+	made := e.post(t, owner, e.aliceProfile, "deposit-preview", `{"chainId":84532,"token":"`+usdc+`","amount":"105000000"}`)
+	if made.status != http.StatusCreated {
+		t.Fatalf("create: %d %v", made.status, made.body)
+	}
+	id := made.body["invoiceId"].(string)
+	expires, _ := time.Parse(time.RFC3339, made.body["expiresAt"].(string))
+	at := expires.Unix() - 100
+	e.exec(t, `UPDATE chain_cursors SET last_scanned_block=200,last_finalized_block=200,
+		last_finalized_time=$1 WHERE chain_id=84532`, at)
+	e.exec(t, `INSERT INTO chain_transfers (chain_id,chain_family,token_contract,invoice_id,tx_hash,log_index,
+		block_hash,block_number,block_time,from_address,to_address,amount,status)
+		SELECT i.chain_id,i.chain_family,i.token_contract,i.id,'0x'||lpad(to_hex(n),64,'0'),0,
+		'0x'||lpad(to_hex(n),64,'0'),n,$2,$3,i.receive_address,1000000,'confirmed'
+		FROM invoices i CROSS JOIN generate_series(1,105) n WHERE i.id=$1`, id, at, aliceWallet)
+	balances := func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
+		return big.NewInt(105000000), 200, nil
+	}
+	notDeployed := func(context.Context, uint64, string, string) (uint64, error) { return 0, nil }
+	if err := ledger.NewService(e.pool, balances, notDeployed).Process(t.Context(), id); err != nil {
+		t.Fatal(err)
+	}
+	e.exec(t, `INSERT INTO chain_transfers (chain_id,chain_family,token_contract,invoice_id,tx_hash,log_index,
+		block_hash,block_number,block_time,from_address,to_address,amount,status)
+		SELECT i.chain_id,i.chain_family,i.token_contract,i.id,'0x'||lpad(to_hex(n),64,'0'),0,
+		'0x'||lpad(to_hex(n),64,'0'),n,CASE n WHEN 107 THEN i.closes_at+1 ELSE $2 END,$3,
+		i.receive_address,(n-104)*1000000,CASE n WHEN 106 THEN 'detected' WHEN 107 THEN 'confirmed' ELSE 'reorged' END
+		FROM invoices i CROSS JOIN generate_series(106,108) n WHERE i.id=$1`, id, at, aliceWallet)
+	want := map[string]any{"count": float64(107), "onTimeAmount": "107000000", "lateAmount": "3000000", "pendingAmount": "2000000"}
+	ownerPath := "/v1/profiles/" + e.aliceProfile + "/invoices/" + id
+	for _, path := range []string{"/v1/invoices/" + e.link(t, id), ownerPath, ownerPath + "?view=summary"} {
+		r := e.call(t, "GET", path, owner, "", "")
+		if r.status != http.StatusOK || r.body["paymentStatus"] != "paid" || r.body["amount"] != "105000000" {
+			t.Fatalf("invoice read %s: %d %v", path, r.status, r.body)
+		}
+		option := r.body["options"].([]any)[0].(map[string]any)
+		for _, view := range []map[string]any{r.body, option} {
+			if !reflect.DeepEqual(view["depositSummary"], want) {
+				t.Fatalf("deposit summary: %v, want %v", view["depositSummary"], want)
+			}
+			if count := len(view["deposits"].([]any)); count == 0 || count > invoice.DepositPreviewLimit {
+				t.Fatalf("deposit preview has %d rows", count)
+			}
+		}
+	}
+	receipt := e.pdf(t, id, "receipt.pdf", "")
+	if receipt.status != http.StatusOK {
+		t.Fatalf("receipt: %d %s", receipt.status, receipt.body)
+	}
+	text := pdfText(t, receipt.body)
+	mustContain(t, text, "Amount paid\n105.00 USDC")
+	mustContain(t, strings.Join(strings.Fields(text), " "), "Selected payment transactions are shown", "includes all credited transfers")
+	if count := strings.Count(text, "View on Basescan"); count == 0 || count > invoice.DepositPreviewLimit {
+		t.Fatalf("receipt preview has %d transactions", count)
+	}
+}
 
 type pdfReply struct {
 	status int

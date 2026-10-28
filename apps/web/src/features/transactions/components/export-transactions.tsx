@@ -7,8 +7,11 @@ import { useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { BILLING_THEN } from "@/features/profiles/constants/profile";
 import {
+  recordsCurrencySaveKey,
   useDownloadStatementMutation,
+  useGetRecordsCurrencyQuery,
   useLazyExportTransactionsQuery,
+  useSetRecordsCurrencyMutation,
 } from "@/features/transactions/api/transactions-api";
 import { RecordsCurrency } from "@/features/transactions/components/records-currency";
 import { TOO_MANY_TRANSACTIONS } from "@/features/transactions/constants/transactions";
@@ -30,6 +33,16 @@ export interface ExportTransactionsProps {
 export function ExportTransactions({ profileId, disabled }: ExportTransactionsProps) {
   const [exportCsv, { isFetching }] = useLazyExportTransactionsQuery();
   const [statement, statementState] = useDownloadStatementMutation();
+  const currency = useGetRecordsCurrencyQuery(profileId);
+  const [, savingCurrency] = useSetRecordsCurrencyMutation({
+    fixedCacheKey: recordsCurrencySaveKey(profileId),
+  });
+  const currencyReady =
+    currency.currentData !== undefined &&
+    !currency.isFetching &&
+    !currency.isError &&
+    !savingCurrency.isLoading &&
+    !savingCurrency.isError;
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [dayErrors, setDayErrors] = useState<{ from?: string; to?: string }>({});
@@ -65,7 +78,7 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
   };
 
   const downloadStatement = async () => {
-    if (!checkDays(true)) return;
+    if (!currencyReady || !checkDays(true)) return;
     try {
       save(await statement({ profileId, from, to }).unwrap(), COPY.statementFile(from, to));
     } catch (failure) {
@@ -81,7 +94,7 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
   };
 
   const download = async () => {
-    if (!checkDays(false)) return;
+    if (!currencyReady || !checkDays(false)) return;
     try {
       const csv = await exportCsv({
         profileId,
@@ -106,6 +119,7 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
           onClick={() => {
             setError("");
             setDayErrors({});
+            if (savingCurrency.isError) savingCurrency.reset();
             setOpened((n) => n + 1);
             open();
           }}
@@ -169,11 +183,12 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
           type="button"
           variant={BUTTON_VARIANTS.secondary}
           loading={statementState.isLoading}
+          disabled={!currencyReady}
           onClick={downloadStatement}
         >
           {COPY.downloadStatement}
         </Button>
-        <Button type="button" loading={isFetching} onClick={download}>
+        <Button type="button" loading={isFetching} disabled={!currencyReady} onClick={download}>
           {COPY.exportDownload}
         </Button>
       </form>

@@ -4,7 +4,7 @@ import {
   API_SETTLEMENT_STATUSES,
 } from "@/features/activity/constants/activity";
 import { RECONCILIATION_STATES } from "@/features/invoices/constants/invoices";
-import { tokenKey } from "@/features/invoices/lib/invoices";
+import { depositAmount, tokenKey } from "@/features/invoices/lib/invoices";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import { PAY_STATES, PAY_TOKENS } from "@/features/pay/constants/pay";
 import type { PayState } from "@/features/pay/types/pay";
@@ -18,6 +18,7 @@ export function withOption(inv: Invoice, optionId: string | undefined): Invoice 
     ? {
         ...inv,
         deposits: o.deposits,
+        depositSummary: o.depositSummary,
         amounts: o.amounts,
         closesAt: o.closesAt ?? inv.closesAt,
         optionId: o.optionId,
@@ -51,8 +52,7 @@ export function checkoutClosesAt(inv: Pick<Invoice, "closesAt">): number {
 /** Paid and settled come only from the API (D-29); deposits after the close are held for the payer. */
 export function payState(inv: Invoice, now: number) {
   const amount = BigInt(inv.amount);
-  const sum = (late: boolean) =>
-    inv.deposits.filter((d) => d.late === late).reduce((s, d) => s + BigInt(d.amount), 0n);
+  const sum = (late: boolean) => depositAmount(inv, late);
   const canceled = inv.paymentStatus === API_PAYMENT_STATUSES.canceled;
   const closed =
     canceled ||
@@ -60,9 +60,11 @@ export function payState(inv: Invoice, now: number) {
     now >= checkoutClosesAt(inv) ||
     inv.paymentStatus === API_PAYMENT_STATUSES.expired ||
     inv.paymentStatus === API_PAYMENT_STATUSES.expiredPartiallyPaid;
-  const pending = inv.deposits
-    .filter((d) => !d.late && d.paid === null)
-    .reduce((n, d) => n + BigInt(d.amount), 0n);
+  const pending = inv.depositSummary
+    ? BigInt(inv.depositSummary.pendingAmount)
+    : inv.deposits
+        .filter((d) => !d.late && d.paid === null)
+        .reduce((n, d) => n + BigInt(d.amount), 0n);
   const received = inv.amounts
     ? closed
       ? BigInt(inv.amounts.payable) + BigInt(inv.amounts.held)

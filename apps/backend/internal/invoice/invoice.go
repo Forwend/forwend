@@ -267,7 +267,8 @@ type Invoice struct {
 	SettlementTxHash string
 	CreatedAt        time.Time
 	Deposits         []Deposit // set by Get
-	Network          string    // the chain's name; set by Get
+	DepositSummary   *DepositSummary
+	Network          string // the chain's name; set by Get
 	// PaidAt is the block time of the deposit that completed the amount owed to the creator; set by Get once paid.
 	PaidAt time.Time
 	// SettledAt is when the settlement was booked as final, from the ledger; set by Get once settled.
@@ -328,6 +329,7 @@ type Option struct {
 	Amount         *big.Int
 	ReceiveAddress string
 	Deposits       []Deposit // set by Get
+	DepositSummary *DepositSummary
 	Amounts        *ledger.Amounts
 	ClosesAt       time.Time
 }

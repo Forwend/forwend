@@ -54,7 +54,7 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
     link && !link.amountUsd ? AMOUNT_KINDS.open : AMOUNT_KINDS.fixed,
   );
   const [store, setStore] = useState(link?.storeId ?? stores[0]?.storeId ?? "");
-  const [endsOn, setEndsOn] = useState<string | null>(link?.endsAt?.slice(0, 10) ?? null);
+  const [endsAt, setEndsAt] = useState<string | null>(link?.endsAt ?? null);
   const [active, setActive] = useState(link?.active ?? true);
   const [errors, setErrors] = useState<Partial<Record<LinkField, string>>>({});
   const [formError, setFormError] = useState("");
@@ -73,7 +73,7 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
       amountUsd: kind === AMOUNT_KINDS.fixed ? usd("amountUsd") : null,
       minUsd: kind === AMOUNT_KINDS.open ? usd("minUsd") : null,
       maxUsd: kind === AMOUNT_KINDS.open ? usd("maxUsd") : null,
-      endsAt: endsOn ? endsAtOf(endsOn) : null,
+      endsAt,
       maxPayments: cap ? Number(cap) : null,
       active,
     };
@@ -222,8 +222,8 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
         <div className="grid gap-5 sm:grid-cols-2">
           <DatePicker
             label={COPY.endsOn}
-            value={endsOn}
-            onChange={setEndsOn}
+            value={endsAt?.slice(0, 10) ?? null}
+            onChange={(day) => setEndsAt(day ? endsAtOf(day) : null)}
             hint={COPY.endsOnHint}
             clearLabel={COPY.clearDate}
           />

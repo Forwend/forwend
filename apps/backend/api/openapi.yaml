@@ -4747,6 +4747,18 @@ components:
         nextCursor:
           type: [string, "null"]
           description: Pass as cursor for the next page; null on the last page.
+    DepositSummary:
+      type: object
+      description: Exact totals for all non-reorged transfers, including those outside the deposit preview.
+      required: [count, onTimeAmount, lateAmount, pendingAmount]
+      properties:
+        count: { type: integer, minimum: 0 }
+        onTimeAmount: { type: string, pattern: "^[0-9]+$" }
+        lateAmount: { type: string, pattern: "^[0-9]+$" }
+        pendingAmount:
+          type: string
+          pattern: "^[0-9]+$"
+          description: On-time base units without a deposit or reopen booking.
     Invoice:
       description: An invoice read alone or just created, with its deposits.
       allOf:
@@ -4770,11 +4782,14 @@ components:
               type: [string, "null"]
               format: date-time
               description: When the owner canceled it (paymentStatus canceled); null otherwise.
+            depositSummary: { $ref: "#/components/schemas/DepositSummary" }
             deposits:
               type: array
+              maxItems: 100
               description: |
-                Transfers to the receive address (the shown option's) that are not reorged, in chain order. Empty on
-                create.
+                Bounded preview of non-reorged transfers in chain order; empty on create.
+                Includes 95 recent transfers plus first on-time payment, last credited payment,
+                slowest confirmations and oldest unbooked confirmed transfer. Use depositSummary for totals.
               items: { $ref: "#/components/schemas/Deposit" }
             nextCheckAt:
               type: [string, "null"]
@@ -4813,11 +4828,13 @@ components:
                   decimals: { type: integer, minimum: 0 }
                   amount: { $ref: "#/components/schemas/Uint256" }
                   receiveAddress: { $ref: "#/components/schemas/Address" }
+                  depositSummary: { $ref: "#/components/schemas/DepositSummary" }
                   deposits:
                     type: array
+                    maxItems: 100
                     description: |
-                      Transfers to this option's address that are not reorged, in chain order. On an option other than
-                      the shown one they are held for the payer (D-76).
+                      Bounded transfer preview with the same selection as the invoice deposits.
+                      On an option other than the shown one they are held for the payer (D-76).
                     items: { $ref: "#/components/schemas/Deposit" }
             replacedBy:
               description: |

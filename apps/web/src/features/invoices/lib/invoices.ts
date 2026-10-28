@@ -270,10 +270,19 @@ const EXCEPTIONS: Partial<Record<PaymentStatus, InvoiceException["kind"]>> = {
   [PAYMENT_STATUS.expiredPartiallyPaid]: INVOICE_EXCEPTIONS.closedPartial,
 };
 
+/** Totals cover every transfer even when the API returns a bounded preview. */
+export function depositAmount(
+  inv: Pick<Invoice, "deposits" | "depositSummary">,
+  late: boolean,
+): bigint {
+  return inv.depositSummary
+    ? BigInt(late ? inv.depositSummary.lateAmount : inv.depositSummary.onTimeAmount)
+    : inv.deposits.filter((d) => d.late === late).reduce((sum, d) => sum + BigInt(d.amount), 0n);
+}
+
 /** Money after the checkout closed is late and held for the payer (D-26), whatever the status. */
 export function invoiceException(inv: Invoice, status: PaymentStatus): InvoiceException {
-  const sum = (late: boolean) =>
-    inv.deposits.filter((d) => d.late === late).reduce((s, d) => s + BigInt(d.amount), 0n);
+  const sum = (late: boolean) => depositAmount(inv, late);
   const closed =
     status === PAYMENT_STATUS.canceled ||
     status === PAYMENT_STATUS.expired ||

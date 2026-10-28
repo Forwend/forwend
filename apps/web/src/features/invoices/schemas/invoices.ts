@@ -156,6 +156,13 @@ export const paymentAmountsSchema = z.object({
   hasPolicyException: z.boolean().optional(),
 });
 
+const depositSummarySchema = z.object({
+  count,
+  onTimeAmount: baseUnits,
+  lateAmount: baseUnits,
+  pendingAmount: baseUnits,
+});
+
 export const invoiceOptionSchema = z.object({
   amounts: paymentAmountsSchema.optional(),
   closesAt: apiTime.optional(),
@@ -169,6 +176,7 @@ export const invoiceOptionSchema = z.object({
   receiveAddress: evmAddress,
   // On an option other than the shown one, these are held for the payer (D-76).
   deposits: z.array(depositSchema),
+  depositSummary: depositSummarySchema.optional(),
 });
 
 /** One line item (R-88), in the base units of the option whose id is the invoice's; quantity has 2 decimals. */
@@ -257,6 +265,7 @@ export const invoiceSchema = invoiceSummarySchema.extend({
   // When the owner canceled it (R-79).
   canceledAt: apiTime.nullable(),
   deposits: z.array(depositSchema),
+  depositSummary: depositSummarySchema.optional(),
   // When Check status may run again; null when it may now (R-55).
   nextCheckAt: apiTime.nullable(),
   // Its line items, empty without a breakdown (R-88).

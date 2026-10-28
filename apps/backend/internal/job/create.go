@@ -97,11 +97,13 @@ func (s *Service) Create(ctx context.Context, profileID, key string, r Request) 
 
 	var id string
 	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
-		// The profile row lock makes concurrent creates count one after another.
-		var jobs int
-		if err := tx.QueryRow(ctx, `SELECT (SELECT count(*) FROM jobs WHERE profile_id = $1) FROM profiles
-			WHERE id = $1 FOR UPDATE`, profileID).Scan(&jobs); err != nil {
+		if _, err := tx.Exec(ctx, "SELECT 1 FROM profiles WHERE id = $1 FOR UPDATE", profileID); err != nil {
 			return fmt.Errorf("lock profile: %w", err)
+		}
+		// A separate statement sees jobs committed while this request waited for the profile lock.
+		var jobs int
+		if err := tx.QueryRow(ctx, "SELECT count(*) FROM jobs WHERE profile_id = $1", profileID).Scan(&jobs); err != nil {
+			return fmt.Errorf("count jobs: %w", err)
 		}
 		if jobs >= MaxJobs {
 			return fmt.Errorf("%w: a profile has at most %d jobs", ErrInvalid, MaxJobs)
@@ -129,10 +131,11 @@ func (s *Service) Create(ctx context.Context, profileID, key string, r Request) 
 		return nil
 	})
 	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.ConstraintName == "jobs_profile_id_idempotency_key_key" {
-		// A concurrent request with the same key won the insert.
-		j, err := s.replay(ctx, profileID, key, hash[:])
-		return j, false, err
+	if errors.Is(err, ErrInvalid) || errors.As(err, &pgErr) && pgErr.ConstraintName == "jobs_profile_id_idempotency_key_key" {
+		// A concurrent request with the same key may have filled the last slot while this one waited.
+		if replay, replayErr := s.replay(ctx, profileID, key, hash[:]); !errors.Is(replayErr, ErrNotFound) {
+			return replay, false, replayErr
+		}
 	}
 	if err != nil {
 		if errors.Is(err, ErrInvalid) || errors.Is(err, invoice.ErrBillingDetailsRequired) {

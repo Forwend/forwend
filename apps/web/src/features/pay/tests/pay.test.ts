@@ -69,6 +69,35 @@ const before = Date.parse("2026-10-12T10:00:00Z");
 const after = Date.parse("2026-10-17T10:00:00Z");
 
 describe("payState", () => {
+  it("uses exact deposit totals when only a preview is loaded", () => {
+    const preview = {
+      ...invoice,
+      deposits: [deposit("1", { paid: null })],
+      depositSummary: { count: 200, onTimeAmount: "900", lateAmount: "40", pendingAmount: "900" },
+    };
+    expect(payState(preview, before)).toMatchObject({ received: 900n, remaining: 100n, late: 40n });
+    const amounts = {
+      receiver: "940",
+      payable: "200",
+      held: "40",
+      settled: "0",
+      refunded: "0",
+      observedRefunded: "0",
+      lastReturnTxHash: null,
+      unreconciled: false,
+    };
+    expect(
+      payState(
+        {
+          ...preview,
+          amounts,
+          depositSummary: { ...preview.depositSummary, pendingAmount: "700" },
+        },
+        before,
+      ),
+    ).toMatchObject({ received: 900n, remaining: 100n, late: 40n });
+  });
+
   it("shows a delay for an old uncredited transfer without calling it paid", () => {
     const paid = deposit("1000", { paid: null, blockTime: "2026-10-12T09:50:00Z" });
     expect(payState({ ...invoice, deposits: [paid] }, before)).toMatchObject({
@@ -282,6 +311,35 @@ describe("withOption", () => {
       },
     ],
   };
+
+  it("uses the selected option's totals instead of the main option's preview", () => {
+    const main = choosing.options[0];
+    const option = choosing.options[1];
+    if (!option || !main) throw new Error("Missing fixture option");
+    const summary = { count: 200, onTimeAmount: "700", lateAmount: "20", pendingAmount: "700" };
+    const selected = withOption(
+      {
+        ...choosing,
+        depositSummary: {
+          count: 300,
+          onTimeAmount: "1000",
+          lateAmount: "0",
+          pendingAmount: "1000",
+        },
+        options: [
+          main,
+          { ...option, depositSummary: summary, deposits: [deposit("1", { paid: null })] },
+        ],
+      },
+      option.optionId,
+    );
+    expect(selected.depositSummary).toEqual(summary);
+    expect(payState(selected, before)).toMatchObject({
+      received: 700n,
+      remaining: 300n,
+      late: 20n,
+    });
+  });
 
   it("shows the option the link asks for while none has money", () => {
     expect(withOption(choosing, `0x${"9".repeat(64)}`)).toMatchObject({

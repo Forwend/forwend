@@ -147,6 +147,7 @@ describe("records", () => {
       </Provider>,
     );
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await settle();
     fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-10-01" } });
     // A To before From is named on To, and the CSV isn't asked for.
     fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-09-30" } });
@@ -173,6 +174,7 @@ describe("records", () => {
       JSON.stringify({ error: { code: "too_many_transactions", message: "too many" } }),
     );
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await settle();
     fireEvent.click(screen.getByRole("button", { name: "Download CSV" }));
     await settle();
     expect(screen.getByRole("alert").textContent).toBe(
@@ -181,6 +183,7 @@ describe("records", () => {
     document.querySelector("dialog")?.close();
     answer([], 500, JSON.stringify({ error: { code: "internal", message: "no" } }));
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await settle();
     fireEvent.click(screen.getByRole("button", { name: "Download CSV" }));
     await settle();
     expect(screen.getByRole("alert").textContent).toBe(
@@ -235,6 +238,156 @@ describe("records", () => {
     await choose("USD only");
     expect(screen.getByText("We could not save the currency. Try again.")).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "Records currency" }).textContent).toContain("EUR");
+  });
+
+  it.each(["Download CSV", "Download statement (PDF)"])(
+    "%s waits for the records currency to load and save, including after reopening",
+    async (downloadLabel) => {
+      let finishRead: (() => void) | undefined;
+      let finishSave: ((success: boolean) => void) | undefined;
+      let loaded = false;
+      let currency: string | null = null;
+      let writes = 0;
+      const exported: (string | null)[] = [];
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (request: Request) => {
+          if (request.method === "PUT") {
+            writes += 1;
+            const body = JSON.parse(await request.text());
+            const success = await new Promise<boolean>((resolve) => {
+              finishSave = resolve;
+            });
+            if (!success) return Response.json({}, { status: 500 });
+            currency = body.currency;
+            return Response.json({ currency });
+          }
+          if (request.url.endsWith("/records-currency")) {
+            if (!loaded)
+              await new Promise<void>((resolve) => {
+                finishRead = () => {
+                  loaded = true;
+                  resolve();
+                };
+              });
+            return Response.json({ currency });
+          }
+          exported.push(currency);
+          return Response.json({}, { status: 500 });
+        }),
+      );
+      render(
+        <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+          <ExportTransactions profileId={PROFILE} disabled={false} />
+        </Provider>,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Export" }));
+      await settle();
+      const download = () =>
+        screen.getByRole("button", { name: downloadLabel }) as HTMLButtonElement;
+      expect(download().disabled).toBe(true);
+      finishRead?.();
+      await settle();
+      expect(download().disabled).toBe(false);
+      fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-10-01" } });
+      fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-10-31" } });
+      await choose("EUR · Euro");
+      expect(download().disabled).toBe(true);
+      expect((screen.getByRole("combobox") as HTMLButtonElement).disabled).toBe(true);
+      fireEvent.click(download());
+      expect(exported).toEqual([]);
+      document.querySelector("dialog")?.close();
+      fireEvent.click(screen.getByRole("button", { name: "Export" }));
+      await settle();
+      expect(download().disabled).toBe(true);
+      expect((screen.getByRole("combobox") as HTMLButtonElement).disabled).toBe(true);
+      expect(writes).toBe(1);
+      finishSave?.(false);
+      await settle();
+      expect(screen.getByText("We could not save the currency. Try again.")).toBeTruthy();
+      expect(download().disabled).toBe(true);
+      await choose("EUR · Euro");
+      expect(writes).toBe(2);
+      finishSave?.(true);
+      await settle();
+      expect(download().disabled).toBe(false);
+      fireEvent.click(download());
+      await settle();
+      expect(exported).toEqual(["EUR"]);
+    },
+  );
+
+  it("recovers on reopening after the currency was saved but its response was lost", async () => {
+    let currency: string | null = null;
+    let holdRead = false;
+    let finishRead: (() => void) | undefined;
+    let writes = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (request: Request) => {
+        if (request.method === "PUT") {
+          writes += 1;
+          currency = JSON.parse(await request.text()).currency;
+          return Response.json({}, { status: 500 });
+        }
+        if (holdRead)
+          await new Promise<void>((resolve) => {
+            finishRead = resolve;
+          });
+        return Response.json({ currency });
+      }),
+    );
+    render(
+      <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+        <ExportTransactions profileId={PROFILE} disabled={false} />
+      </Provider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await settle();
+    await choose("EUR · Euro");
+    expect(screen.getByText("We could not save the currency. Try again.")).toBeTruthy();
+    holdRead = true;
+    document.querySelector("dialog")?.close();
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await settle();
+    for (const name of ["Download CSV", "Download statement (PDF)"])
+      expect((screen.getByRole("button", { name }) as HTMLButtonElement).disabled).toBe(true);
+    expect(finishRead).toBeTypeOf("function");
+    finishRead?.();
+    await settle();
+    expect(screen.getByRole("combobox").textContent).toContain("EUR");
+    expect(writes).toBe(1);
+    for (const name of ["Download CSV", "Download statement (PDF)"])
+      expect((screen.getByRole("button", { name }) as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.queryByText("We could not save the currency. Try again.")).toBeNull();
+  });
+
+  it("blocks both exports when the records currency fails to load", async () => {
+    let failing = true;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        failing ? Response.json({}, { status: 500 }) : Response.json({ currency: null }),
+      ),
+    );
+    render(
+      <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+        <ExportTransactions profileId={PROFILE} disabled={false} />
+      </Provider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await settle();
+    expect(
+      screen.getByText("We could not load the saved currency. Close and open this again."),
+    ).toBeTruthy();
+    for (const name of ["Download CSV", "Download statement (PDF)"])
+      expect((screen.getByRole("button", { name }) as HTMLButtonElement).disabled).toBe(true);
+    failing = false;
+    document.querySelector("dialog")?.close();
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await settle();
+    for (const name of ["Download CSV", "Download statement (PDF)"])
+      expect((screen.getByRole("button", { name }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   // R-111.
@@ -313,6 +466,7 @@ describe("records", () => {
       await settle();
     };
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await settle();
     fireEvent.change(from(), { target: { value: "2026-10-01" } });
     await ask();
     expect(to().getAttribute("aria-invalid")).toBe("true");
@@ -340,6 +494,7 @@ describe("records", () => {
 
     answer = "missing";
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await settle();
     await ask();
     expect(screen.getByRole("alert").textContent).toContain(
       "A statement names you by your billing details. Add them first.",
