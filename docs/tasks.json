@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 340,
+  "nextId": 341,
   "tasks": [
     {
       "id": "F332",
@@ -121,129 +121,42 @@
       "evidence": null
     },
     {
-      "id": "F338",
+      "id": "F340",
       "type": "fix",
-      "behavior": "Process payments and settlement through one working RPC provider",
+      "behavior": "Fix audit findings in payment reads, permissions and forms",
       "acceptance": [
-        "One configured endpoint starts and completes finalized payment and settlement without a second provider.",
-        "All configured endpoints participate in bounded failover; wrong-chain endpoints, malformed evidence, duplicate booking and inconsistent balances remain rejected.",
-        "Finalized payment flows and settlement restart recovery pass real Postgres and Anvil regressions; operations docs match the single-provider policy."
+        "Public and owner invoice reads bound deposit history while keeping exact totals and payment behavior across checkout, details and documents.",
+        "Store edits preserve unavailable token restrictions and cannot change them without permission; concurrent job creation respects the profile limit.",
+        "Title-only link edits preserve exact expiry; CSV and PDF exports wait for the chosen records currency to save.",
+        "Deposit lookup and payment ordering use measured indexes; SDK agreed fiat amounts document decimal major units."
       ],
       "dependsOn": [],
       "state": "passing",
       "verification": [
-        "backend-affected",
-        "backend-e2e",
-        "docs-check"
+        "unit",
+        "build",
+        "e2e"
       ],
       "refs": [
-        "R-173",
-        "R-172",
-        "R-20",
-        "R-21",
-        "R-22",
-        "D-15",
-        "D-45"
+        "R-174",
+        "R-138",
+        "R-118",
+        "R-165",
+        "R-154"
       ],
-      "keep": [],
+      "keep": [
+        "packages/contracts/src/*"
+      ],
       "review": true,
       "notes": [
-        "2026-10-27 review pass by reviewer: Independent review passed for one-provider payment and settlement processing. Operational clients share ordered endpoint failover; one endpoint is accepted at startup. Finalized blocks, canonical log hashes, net balances, immutable proofs and once-only booking remain enforced. Review found and resolved outgoing-log ordering lost with the former comparison helper; the reverse-log batch-refund regression preserves distinct transfer proofs and exact balances. Independent focused race checks passed for refunds, startup, cross-role failover and identical signed transaction retries. The separate canary remains non-gating. Selected-provider gas-price trust is documented. Final task verification passed docs-check, backend-affected and backend-e2e.",
-        "2026-10-27 F338 is verified and independently reviewed; committed as 98ee34a3 and published in PR332. Staging promotion is held at the user request until F339 completes. Rebase afterward, preserve both task records and nextId340, then reverify and promote."
+        "2026-10-28 review pass by independent-reviewer: Reviewed the full diff and owning structure rules. Regression tests cover token permissions, concurrent job limits and retries, exact link expiry, currency-save recovery, bounded invoice previews with exact totals, and API/PDF output. Deposit evidence and ledger totals share a consistent snapshot; all readers remain bounded. Migration indexes have measured query improvements. Final verify passed docs-check, lint, typecheck, unit, build, e2e and protected paths. No remaining findings."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-27T16:43:46Z",
+        "at": "2026-10-28T13:37:11Z",
         "checks": [
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "backend-affected",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 228.6,
-            "log": ""
-          },
-          {
-            "id": "backend-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 41.2,
-            "log": ""
-          }
-        ],
-        "taskHash": "0ab90ffc96e01fea",
-        "filesHash": "ca54c7a035668464",
-        "proof": {
-          "1": "backend-e2e: API, worker and signer start and complete checkout with one configured RPC endpoint.",
-          "2": "backend-affected: One-endpoint startup, wrong-chain rejection, failover, finality, balance consistency, immutable proofs, reversed refund-log order and identical broadcast retries pass regressions.",
-          "3": "backend-e2e: Real payment, settlement and restart-recovery flows pass; docs-check validates updated operational policy references."
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Independent review passed for one-provider payment and settlement processing. Operational clients share ordered endpoint failover; one endpoint is accepted at startup. Finalized blocks, canonical log hashes, net balances, immutable proofs and once-only booking remain enforced. Review found and resolved outgoing-log ordering lost with the former comparison helper; the reverse-log batch-refund regression preserves distinct transfer proofs and exact balances. Independent focused race checks passed for refunds, startup, cross-role failover and identical signed transaction retries. The separate canary remains non-gating. Selected-provider gas-price trust is documented. Final task verification passed docs-check, backend-affected and backend-e2e.",
-          "at": "2026-10-27T16:49:23Z",
-          "filesHash": "ca54c7a035668464"
-        },
-        "commit": "6a2bc056",
-        "doneAt": "2026-10-27T16:53:48Z"
-      },
-      "branch": "fix/f338-process-payments-and-settlement-through",
-      "baseCommit": "c13191957df395c6b184f285402df80fd0185023",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f338-process-payments-and-settlement-through",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F339",
-      "type": "ci",
-      "behavior": "Allow fresh staging checks to finish within the job budget",
-      "acceptance": [
-        "The staging job allows thirty minutes while keeping every required check and individual timeout unchanged.",
-        "Workflow configuration and delivery documentation pass repository checks before promotion."
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "harness",
-        "docs-check"
-      ],
-      "refs": [
-        "R-158",
-        "D-48"
-      ],
-      "keep": [],
-      "review": true,
-      "notes": [
-        "2026-10-27 review pass by reviewer: Independent review passed against base c1319195. The sole workflow behavior change raises the overall staging job budget from 20 to 30 minutes. Required checks, individual limits, steps, permissions, and triggers remain unchanged. Staging documentation matches the new budget. Documentation and whitespace checks passed; full local verification passed all seven checks. No findings. This review covers the current base only; rebase requires renewed verification and review.",
-        "2026-10-27 review pass by reviewer: Independent review passed for F339 rebased onto main bc80173e. Compared with that base, changes are limited to the staging job timeout from 20 to 30 minutes, its operating note, and task metadata. All check steps, individual limits, triggers, and permissions remain unchanged; no application code changed. F338 and F339 records remain present with nextId 340. Whitespace checks passed and final rebased verification passed all seven checks. No findings.",
-        "2026-10-27 Rebased CI-only job budget fix onto F338 hotfix bc80173e. All seven local checks passed; independent review confirms no application code delta. Preserve F338/F339 and nextId340. Merge CI-only PR, promote staging, then verify the exact combined commit in GitHub. Temporary checkout and its test caches will be removed after promotion.",
-        "2026-10-27 CI job budget fix rebased onto F338 hotfix; seven checks and independent review passed. F338/F339 and nextId340 preserved. Merge and promote, then validate exact staging commit. Temporary checkout will be removed after promotion."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-27T16:56:01Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 3.2,
-            "log": ""
-          },
           {
             "id": "docs-check",
             "outcome": "passed",
@@ -255,60 +168,69 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
+            "seconds": 0.3,
             "log": ""
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
+            "seconds": 1.3,
             "log": ""
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 241.6,
+            "seconds": 256.7,
             "log": ""
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.2,
+            "seconds": 5.9,
             "log": ""
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 44.9,
+            "seconds": 46.9,
+            "log": ""
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
             "log": ""
           }
         ],
-        "taskHash": "c32e9975b6a706de",
-        "filesHash": "8a391837bec63587",
+        "taskHash": "2e21519cc3711947",
+        "filesHash": "65bed7cc8111df7f",
         "proof": {
-          "1": "harness: Rebased workflow comparison confirms the sole workflow change is timeout20 to30; steps, registry and individual limits are unchanged.",
-          "2": "docs-check: Staging budget is documented; rebased source passes repository checks and retains F338/F339 with nextId340."
+          "1": "unit: Public, owner and summary API regressions cap deposit previews, preserve exact totals and representative evidence, and verify receipt totals and disclosure; frontend regressions preserve full-history amounts.",
+          "2": "unit: Disabled-chain and disabled-token API regressions preserve restrictions; deterministic concurrent job creation enforces the cap and same-key replay.",
+          "3": "unit: Link form tests preserve exact expiry; CSV and PDF tests block export during currency saves and recover after failed or lost responses.",
+          "4": "unit: Migration rollback and reapply pass; disposable EXPLAIN proofs measured deposit lookups at 812-853ms before and 8.4-9.2ms after, and payment list at 8.1-9.0ms before and 0.80-1.08ms after. SDK input comment now specifies decimal major units."
         },
         "review": {
           "result": "pass",
-          "by": "reviewer",
-          "summary": "Independent review passed for F339 rebased onto main bc80173e. Compared with that base, changes are limited to the staging job timeout from 20 to 30 minutes, its operating note, and task metadata. All check steps, individual limits, triggers, and permissions remain unchanged; no application code changed. F338 and F339 records remain present with nextId 340. Whitespace checks passed and final rebased verification passed all seven checks. No findings.",
-          "at": "2026-10-27T17:01:32Z",
-          "filesHash": "8a391837bec63587"
+          "by": "independent-reviewer",
+          "summary": "Reviewed the full diff and owning structure rules. Regression tests cover token permissions, concurrent job limits and retries, exact link expiry, currency-save recovery, bounded invoice previews with exact totals, and API/PDF output. Deposit evidence and ledger totals share a consistent snapshot; all readers remain bounded. Migration indexes have measured query improvements. Final verify passed docs-check, lint, typecheck, unit, build, e2e and protected paths. No remaining findings.",
+          "at": "2026-10-28T13:42:46Z",
+          "filesHash": "65bed7cc8111df7f"
         },
-        "commit": "8a9c9891",
-        "doneAt": "2026-10-27T17:02:21Z"
+        "commit": "1083db9a",
+        "doneAt": "2026-10-28T13:44:09Z"
       },
-      "branch": "ci/f339-allow-fresh-staging-checks-to-finish-wit",
-      "baseCommit": "c13191957df395c6b184f285402df80fd0185023",
+      "branch": "fix/f340-fix-audit-findings-in-payment-reads-perm",
+      "baseCommit": "1e378e78521f0a5082201cf7aa5f3ea520bb2f69",
       "failedVerifies": 0,
       "delivery": {
         "mode": "pr",
-        "branch": "ci/f339-allow-fresh-staging-checks-to-finish-wit",
+        "branch": "fix/f340-fix-audit-findings-in-payment-reads-perm",
         "base": "main"
       }
     }

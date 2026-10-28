@@ -183,7 +183,8 @@ R-136; the full schema is in openapi.yaml. Members reach it with `tokens.read` a
   - An unknown or disabled token is 422. Each available mode keeps at least one token on; otherwise nothing changes.
 - A store's `tokensOff` combines with its profile preferences, keeping one token on per available mode.
   - Profile changes that would leave any store without a token in a mode are refused.
-  - Reads list only enabled tokens: one switched off for everyone leaves the lists, and the next save drops it.
+  - Reads list only enabled tokens. Saving preserves preferences for unavailable tokens.
+  - Store edits without `tokens.write` leave all token restrictions unchanged.
 - Create leaves out the tokens off for the profile or its store; a fixed token that is off is 422.
   - Nothing left is 422 too.
   - A fixed retainer's later month keeps its token; a payer-chooses month offers what is on then.
@@ -568,6 +569,12 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - `unreconciled` means coverage, source identity or booking needs review. Negative legacy balances remain visible.
   - `hasPolicyException` identifies an authority movement outside ordinary allocation policy, even when its accounting fully reconciles.
   - Each option carries its own `amounts` and effective `closesAt`.
+- Detail `deposits` previews contain at most 100 transfers per option, in chain order, excluding reorged transfers (R-174).
+  - Previews include 95 recent transfers and transfers needed for first-payment choice, confirmation progress, booking delays and receipt links.
+  - `depositSummary` counts all transfers and sums `onTimeAmount`, `lateAmount` and `pendingAmount` in base units.
+  - `pendingAmount` includes on-time transfers without a deposit or reopen booking.
+  - The summary is omitted when no transfers exist. Use summary totals, never preview sums, when it is present.
+  - Checkout, owner pages and receipt PDFs identify incomplete transaction lists; their totals remain complete.
 - Each of its `deposits` has the sender `from` (lowercase hex, as stored) and `blockTime` (the block's time, RFC 3339
   UTC), from the stored transfer.
 - `GET /v1/profiles/{profileId}/invoices?limit=&cursor=&status=&q=`: the list format above, highest number (newest)

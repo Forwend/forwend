@@ -14,6 +14,9 @@ import { apiSlice } from "@/shared/api/api-slice";
 const TRANSACTIONS_TAG = "Transactions";
 const RECORDS_CURRENCY_TAG = "RecordsCurrency";
 
+export const recordsCurrencySaveKey = (profileId: string): string =>
+  `records-currency:${profileId}`;
+
 export const transactionsApi = apiSlice
   .enhanceEndpoints({ addTagTypes: [TRANSACTIONS_TAG, RECORDS_CURRENCY_TAG] })
   .injectEndpoints({

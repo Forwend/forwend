@@ -356,6 +356,7 @@ export const INVOICE_COPY = {
   nextCheck: (left: string) => `Next check in ${left}`,
   // R-69.
   deposits: "Transactions",
+  depositPreview: "Showing selected transactions. Totals include all transfers.",
   payment: "Payment",
   to: "To",
   late: "After the checkout closed",

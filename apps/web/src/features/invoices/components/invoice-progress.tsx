@@ -6,7 +6,11 @@ import { useEffect, useState } from "react";
 import { API_PAYMENT_STATUSES } from "@/features/activity/constants/activity";
 import { INVOICE_STEPS, INVOICE_TIMELINE } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
-import { confirmingProgress, invoiceProgress } from "@/features/invoices/lib/invoices";
+import {
+  confirmingProgress,
+  depositAmount,
+  invoiceProgress,
+} from "@/features/invoices/lib/invoices";
 import type { Invoice, InvoiceStep } from "@/features/invoices/types/invoices";
 
 export interface InvoiceTimelineProps {
@@ -33,9 +37,7 @@ export function InvoiceTimeline({
     current !== INVOICE_STEPS.confirming &&
     (invoice.paymentStatus === API_PAYMENT_STATUSES.partiallyPaid ||
       invoice.paymentStatus === API_PAYMENT_STATUSES.expiredPartiallyPaid);
-  const received = invoice.deposits
-    .filter((d) => !d.late)
-    .reduce((sum, d) => sum + BigInt(d.amount), 0n);
+  const received = depositAmount(invoice, false);
   const share = Number((received * 1000n) / BigInt(invoice.amount)) / 1000;
   const steps = shownSteps.map((step) => {
     const i = INVOICE_TIMELINE.indexOf(step);

@@ -11,6 +11,35 @@ import (
 
 const arbUSDC = "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d"
 
+func TestTokenSavePreservesUnavailablePreferences(t *testing.T) {
+	for _, table := range []string{"chains", "tokens"} {
+		t.Run(table, func(t *testing.T) {
+			e := invoiceAPI(t)
+			e.enableArbUSDC(t)
+			const owner = "did:privy:alice"
+			path := "/v1/profiles/" + e.aliceProfile + "/tokens"
+			if r := e.call(t, "PUT", path, owner, "", `{"off":[{"chainId":421614,"token":"`+arbUSDC+`"}]}`); r.status != http.StatusOK {
+				t.Fatalf("disable token: %d %v", r.status, r.body)
+			}
+			e.exec(t, "UPDATE "+table+" SET enabled=false WHERE chain_id=421614")
+			if r := e.call(t, "PUT", path, owner, "", `{"off":[]}`); r.status != http.StatusOK {
+				t.Fatalf("save visible preferences: %d %v", r.status, r.body)
+			}
+			e.exec(t, "UPDATE "+table+" SET enabled=true WHERE chain_id=421614")
+			body := `{"chainId":421614,"token":"` + arbUSDC + `","amount":"1000000"}`
+			if r := e.post(t, owner, e.aliceProfile, "still-off", body); r.status != http.StatusUnprocessableEntity {
+				t.Fatalf("hidden preference was lost: %d %v", r.status, r.body)
+			}
+			if r := e.call(t, "PUT", path, owner, "", `{"off":[]}`); r.status != http.StatusOK {
+				t.Fatalf("enable available token: %d %v", r.status, r.body)
+			}
+			if r := e.post(t, owner, e.aliceProfile, "now-on", body); r.status != http.StatusCreated {
+				t.Fatalf("invoice after enabling token: %d %v", r.status, r.body)
+			}
+		})
+	}
+}
+
 // enableArbUSDC turns on a second token: Arbitrum Sepolia USDC comes switched off (migration 00015), and the worker
 // would add the cursor.
 func (e invoiceEnv) enableArbUSDC(t *testing.T) {

@@ -226,6 +226,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 | R-172 | Backend RPC configuration is provider-independent and protects payment evidence. | Database metadata and backend secret references define ordered private/public endpoints. One ordered endpoint pool supports bounded failover, recovery and safe errors. Network checks prevent unintended destinations. Signed transactions retain identity across retries. Existing API contracts and finalized payment workflows pass real Postgres and Anvil checks. | backend, backend-e2e | D-15, D-45, D-71 |
 | R-173 | One working RPC provider can process payments and settlement. | Configured endpoints share ordered failover. Startup, finalized evidence, balances and settlement do not require a second independent provider. Chain identity, finalized blocks, complete transfer evidence, balance consistency and once-only booking remain enforced. Real Postgres and Anvil tests cover one endpoint and failed-provider fallback. | backend, backend-e2e | R-20, R-21, R-22, D-15, D-45 |
 
+| R-174 | Payment reads and merchant edits remain bounded and preserve saved choices. | Invoice deposit previews are bounded while totals stay exact. Hidden token restrictions survive edits without permission changes. Job limits hold under concurrent creation. Unchanged link expiries retain their time. Exports wait for currency saves. Payment reads use indexed lookups. SDK fiat inputs use decimal major units. | unit, backend-e2e, build, e2e | R-118, R-138, R-165, R-154 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.

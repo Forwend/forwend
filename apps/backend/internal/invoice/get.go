@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 	"regexp"
-	"slices"
 	"strings"
 	"time"
 
@@ -116,21 +115,27 @@ func (s *Service) get(ctx context.Context, profileID, id string, summary bool) (
 	for i, option := range inv.Options {
 		ids[i] = option.ID
 	}
-	amounts, err := ledger.ReadAmountsFor(ctx, s.pool, ids)
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
 	if err != nil {
 		return Invoice{}, err
 	}
-	rows, err := s.pool.Query(ctx, "SELECT DISTINCT invoice_id FROM chain_transfers WHERE invoice_id=ANY($1::text[])", ids)
+	defer tx.Rollback(ctx)
+	amounts, err := ledger.ReadAmountsFor(ctx, tx, ids)
 	if err != nil {
 		return Invoice{}, err
 	}
-	withDeposits, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	summaries, err := readDepositSummaries(ctx, tx, ids)
 	if err != nil {
 		return Invoice{}, err
 	}
 	for i, option := range inv.Options {
-		if slices.Contains(withDeposits, option.ID) {
-			if inv.Options[i].Deposits, err = s.deposits(ctx, option.ID, option.ChainID); err != nil {
+		inv.Options[i].DepositSummary = summaries[option.ID]
+		if summary := summaries[option.ID]; summary != nil {
+			head, err := readHead(ctx, tx, option.ChainID)
+			if err != nil {
+				return Invoice{}, err
+			}
+			if inv.Options[i].Deposits, err = readDepositPreview(ctx, tx, option.ID, head, summary.Count); err != nil {
 				return Invoice{}, err
 			}
 		}
@@ -138,7 +143,11 @@ func (s *Service) get(ctx context.Context, profileID, id string, summary bool) (
 		if option.ID == inv.OptionID {
 			inv.Amounts = inv.Options[i].Amounts
 			inv.Deposits = inv.Options[i].Deposits
+			inv.DepositSummary = inv.Options[i].DepositSummary
 		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Invoice{}, err
 	}
 	if profileID != "" { // the owner's read only; the public one leaves it out
 		receipts, err := readPaymentReceipts(ctx, s.pool, []string{inv.ID})
@@ -245,65 +254,13 @@ func (s *Service) settlementWait(ctx context.Context, inv Invoice, head finality
 	}
 }
 
-func (s *Service) deposits(ctx context.Context, id string, chainID uint64) ([]Deposit, error) {
-	head, err := s.head(ctx, chainID)
-	if err != nil {
-		return nil, err
-	}
-	return readDeposits(ctx, s.pool, id, head, 0)
-}
-
-func readDeposits(ctx context.Context, db paymentReader, id string, head finality.Block, limit int) ([]Deposit, error) {
-	order := " ORDER BY block_number,log_index"
-	args := []any{id}
-	if limit > 0 {
-		order = " ORDER BY block_number DESC,log_index DESC LIMIT $2"
-		args = append(args, limit)
-	}
-	rows, err := db.Query(ctx, `SELECT tx_hash, log_index, from_address, amount::text, block_number, block_time, status,
-		       coalesce(detected_finalized_block, 0),
-		       (SELECT coalesce(-sum(e.amount) FILTER (WHERE e.account = 'recipient_payable'), 0)::text
-		        FROM ledger_transactions x JOIN ledger_entries e ON e.transaction_id = x.id
-		        WHERE x.chain_transfer_id = t.id AND x.kind IN ('deposit', 'reopen') HAVING count(*) > 0),
-		       t.block_time > (SELECT closes_at FROM invoices WHERE id = t.invoice_id)
-		FROM chain_transfers t WHERE invoice_id = $1 AND status <> 'reorged'`+order, args...)
-	if err != nil {
-		return nil, fmt.Errorf("read invoice %s deposits: %w", id, err)
-	}
-	defer rows.Close()
-	out := []Deposit{}
-	for rows.Next() {
-		var d Deposit
-		var amount string
-		var paid *string
-		var blockTime, seenFinalized uint64
-		if err := rows.Scan(&d.TxHash, &d.LogIndex, &d.From, &amount, &d.BlockNumber, &blockTime, &d.Status,
-			&seenFinalized, &paid, &d.Late); err != nil {
-			return nil, fmt.Errorf("read invoice %s deposits: %w", id, err)
-		}
-		d.Amount, _ = new(big.Int).SetString(amount, 10)
-		if paid != nil {
-			d.Paid, _ = new(big.Int).SetString(*paid, 10)
-		}
-		d.BlockTime = time.Unix(int64(blockTime), 0).UTC()
-		if d.Status != "confirmed" {
-			d.Progress = finality.ProgressOf(finality.Block{Number: d.BlockNumber, Time: blockTime}, head)
-			d.BlocksTotal = d.BlocksLeft
-			if seenFinalized > 0 && seenFinalized < d.BlockNumber {
-				d.BlocksTotal = max(d.BlocksLeft, d.BlockNumber-seenFinalized)
-			}
-		}
-		out = append(out, d)
-	}
-	if limit > 0 {
-		slices.Reverse(out)
-	}
-	return out, rows.Err()
-}
-
 func (s *Service) head(ctx context.Context, chainID uint64) (finality.Block, error) {
+	return readHead(ctx, s.pool, chainID)
+}
+
+func readHead(ctx context.Context, db paymentReader, chainID uint64) (finality.Block, error) {
 	var head finality.Block
-	err := s.pool.QueryRow(ctx, "SELECT last_finalized_block, last_finalized_time FROM chain_cursors WHERE chain_id = $1",
+	err := db.QueryRow(ctx, "SELECT last_finalized_block, last_finalized_time FROM chain_cursors WHERE chain_id = $1",
 		chainID).Scan(&head.Number, &head.Time)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return finality.Block{}, fmt.Errorf("read chain %d cursor: %w", chainID, err)

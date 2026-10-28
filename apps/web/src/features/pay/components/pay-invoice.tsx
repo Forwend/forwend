@@ -40,7 +40,9 @@ import {
   INVOICE_PDFS,
   INVOICE_STEPS,
 } from "@/features/invoices/constants/invoices";
+import { INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
 import {
+  depositAmount,
   formatAgreed,
   formatDueDate,
   invoiceNumber,
@@ -614,7 +616,7 @@ function PayBox({
         .map((o) => {
           const units = o.amounts
             ? BigInt(o.amounts.held)
-            : o.deposits.reduce((sum, d) => sum + BigInt(d.amount), 0n);
+            : depositAmount(o, false) + depositAmount(o, true);
           const amount = `${formatTokenAmount({ baseUnits: units, decimals: o.decimals, fractionDigits: exactDigits(units, o.decimals) })} ${o.symbol}`;
           return (
             <p key={o.optionId} className="text-sm text-warning">
@@ -743,6 +745,9 @@ function Received({
       </p>
       {pay.state === PAY_STATES.partial ? (
         <p className="text-sm text-muted">{COPY.copyFromHere}</p>
+      ) : null}
+      {invoice.depositSummary && invoice.depositSummary.count > invoice.deposits.length ? (
+        <p className="text-xs text-muted">{INVOICE_COPY.depositPreview}</p>
       ) : null}
       <ul className="divide-y divide-line rounded-md border border-line">
         {invoice.deposits

@@ -15,13 +15,13 @@ export interface SettlementRow {
 }
 
 export interface InvoiceDepositsProps {
-  invoice: Pick<Invoice, "chainId" | "token" | "deposits">;
+  invoice: Pick<Invoice, "chainId" | "token" | "deposits" | "depositSummary">;
   token: Pick<InvoiceToken, "symbol" | "decimals"> | null;
   title?: string;
   settlement?: SettlementRow | null;
 }
 
-/** Every transaction of the invoice (R-69); refunds join later (PLAN 9.4). */
+/** The invoice transaction preview (R-69, R-174). */
 export function InvoiceDeposits({
   invoice,
   token,
@@ -47,6 +47,9 @@ export function InvoiceDeposits({
   return (
     <div className="@container flex flex-col gap-2">
       <h3 className="text-xs text-muted">{title}</h3>
+      {invoice.depositSummary && invoice.depositSummary.count > invoice.deposits.length ? (
+        <p className="text-xs text-muted">{INVOICE_COPY.depositPreview}</p>
+      ) : null}
       <ul className="divide-y divide-line rounded-md border border-line">
         {invoice.deposits.map((d) => (
           <Transaction

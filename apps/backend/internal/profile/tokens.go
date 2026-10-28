@@ -46,7 +46,7 @@ func (s *Service) Tokens(ctx context.Context, profileID string) ([]TokenSwitch, 
 	return list, nil
 }
 
-// SetTokensOff replaces the tokens the profile has off.
+// SetTokensOff replaces the available tokens the profile has off, preserving unavailable tokens' preferences.
 func (s *Service) SetTokensOff(ctx context.Context, profileID string, off []TokenPair) ([]TokenSwitch, error) {
 	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		// The profile row lock makes concurrent saves replace the list one after another.
@@ -57,7 +57,9 @@ func (s *Service) SetTokensOff(ctx context.Context, profileID string, off []Toke
 		if err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, "DELETE FROM profile_tokens_off WHERE profile_id = $1", profileID); err != nil {
+		if _, err := tx.Exec(ctx, `DELETE FROM profile_tokens_off o USING tokens t, chains c
+			WHERE o.profile_id = $1 AND o.chain_id = t.chain_id AND o.token_contract = t.contract
+			AND c.chain_id = t.chain_id AND t.enabled AND c.enabled`, profileID); err != nil {
 			return fmt.Errorf("save tokens off: %w", err)
 		}
 		for _, t := range off {

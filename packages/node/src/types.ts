@@ -192,7 +192,7 @@ export interface CreateInvoice {
   client?: { name?: string; email?: string; address?: string; country?: string; taxId?: string };
   /** Line items that add up exactly to amount or amountUsd. */
   lines?: { description: string; quantity: string; unitPrice: string }[];
-  /** A price agreed in fiat: amount in the currency's minor units. */
+  /** A price agreed in fiat: decimal major units, e.g. "10.50" for EUR 10.50. */
   agreedValue?: { currency: string; amount: string; date: string };
   reminders?: boolean;
   /** The profile's invoice this one replaces. */

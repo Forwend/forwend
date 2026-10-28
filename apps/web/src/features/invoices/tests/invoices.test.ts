@@ -224,6 +224,24 @@ describe("dueCheckoutDate", () => {
 });
 
 describe("invoiceException", () => {
+  it("keeps full totals when deposit history is a preview", () => {
+    const preview = {
+      ...open,
+      deposits: [],
+      depositSummary: {
+        count: 200,
+        onTimeAmount: "2000000",
+        lateAmount: "500000",
+        pendingAmount: "0",
+      },
+    };
+    expect(invoiceException(preview, PAYMENT_STATUS.expiredPartiallyPaid)).toMatchObject({
+      received: 2_000_000n,
+      left: 5_000_000n,
+      late: 500_000n,
+    });
+  });
+
   const paid = (amount: string, late = false) => ({
     ...deposit,
     status: "confirmed",

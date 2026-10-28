@@ -211,14 +211,18 @@ func (s *Service) SaveStore(ctx context.Context, profileID, id string, d StoreDe
 		if !slices.Equal(was, now) {
 			return Store{}, false, fmt.Errorf("%w: only an Admin turns a store's tokens on or off", auth.ErrForbidden)
 		}
-	}
-	if _, err := tx.Exec(ctx, "DELETE FROM store_tokens_off WHERE store_id = $1", id); err != nil {
-		return Store{}, false, fmt.Errorf("save store tokens off: %w", err)
-	}
-	for _, t := range off {
-		if _, err := tx.Exec(ctx, `INSERT INTO store_tokens_off (store_id, chain_id, token_contract) VALUES ($1, $2, $3)`,
-			id, t.ChainID, t.Token); err != nil {
+	} else {
+		// Unavailable tokens are hidden from the form, so their saved restrictions stay intact.
+		if _, err := tx.Exec(ctx, `DELETE FROM store_tokens_off o USING tokens t, chains c
+			WHERE o.store_id = $1 AND o.chain_id = t.chain_id AND o.token_contract = t.contract
+			AND c.chain_id = t.chain_id AND t.enabled AND c.enabled`, id); err != nil {
 			return Store{}, false, fmt.Errorf("save store tokens off: %w", err)
+		}
+		for _, t := range off {
+			if _, err := tx.Exec(ctx, `INSERT INTO store_tokens_off (store_id, chain_id, token_contract) VALUES ($1, $2, $3)`,
+				id, t.ChainID, t.Token); err != nil {
+				return Store{}, false, fmt.Errorf("save store tokens off: %w", err)
+			}
 		}
 	}
 	if err := checkTokensOn(ctx, tx, profileID, id); err != nil {
