@@ -14,7 +14,7 @@
       "dependsOn": [
         "F331"
       ],
-      "state": "not_started",
+      "state": "blocked",
       "verification": [
         "web-unit",
         "web-e2e"
@@ -26,8 +26,10 @@
         "packages/contracts/src/*"
       ],
       "review": true,
-      "notes": [],
-      "blockedReason": null,
+      "notes": [
+        "2026-10-28 blocked: Deferred by owner until the rest of Phase 11 is complete. Merchant onboarding should follow the completed MVP workflows."
+      ],
+      "blockedReason": "Deferred by owner until the rest of Phase 11 is complete. Merchant onboarding should follow the completed MVP workflows.",
       "evidence": null
     },
     {
