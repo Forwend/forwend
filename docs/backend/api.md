@@ -220,6 +220,7 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
 
 - On a personal or freelancer profile, inviting, changing a role, removing and leaving are 409 `not_merchant`.
 - Invites, accepts, role changes and removals lock the profile row, so on one team they happen one after another.
+  - Invites and role grants recheck the acting user under that lock; a demoted member cannot complete a pending grant (R-175).
 
 - `GET /v1/profiles/{profileId}/members` (`team`): the owner first, then the members, and the open invites newest first.
   - A member has `memberId`, `email` (the account's login email, null without one), `role` and `stores`.
@@ -453,6 +454,8 @@ R-148, D-98. `cmd/webhooks` sends each delivery as a `POST` of the event's body,
 - Standard Webhooks headers: `webhook-id` (the event's id), `webhook-timestamp` (Unix seconds) and `webhook-signature`.
   - The signature is `v1,` and the base64 HMAC-SHA256 of `id.timestamp.body`, keyed by the secret's bytes after `whsec_`.
   - It holds one such entry per working secret, space-separated: during a rotation's 24 hours, the new and the old.
+- Sender workers share capacity fairly across profiles, with at most two active attempts per profile and one per endpoint (R-175).
+  - A slow endpoint leaves capacity available for other profiles.
 - Only a 2xx answer within 15 seconds counts. A 3xx fails: no redirect is followed.
 - The client refuses an address that is not public, checked on the address it connects to after DNS.
   - That covers this machine, private networks, link-local and cloud metadata addresses, and a name that rebinds to one.
@@ -478,6 +481,10 @@ R-149, D-99. These need the `webhooks` permission and no fresh sign-in: they sen
   - Its body is `{id, type, livemode, timestamp, data: {}}`: no invoice and no sequence.
 - A resend or test waits while the endpoint is off, and goes once it is on.
 - An attempt in flight when a resend lands is logged, but its answer does not undo the resend.
+- Tests and resends share a limit of 32 pending deliveries per profile (R-175).
+  - A full queue returns 429 `webhook_queue_full`. Automatic financial events remain unrestricted.
+  - Bulk resend queues only the available capacity and returns the actual count.
+  - Resending an already pending delivery preserves its active lease.
 - Without `WEBHOOK_SECRET_KEY` nothing can be signed, so the test and both resends answer 503.
 
 ## Invoices

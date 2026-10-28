@@ -96,6 +96,9 @@ func (s *Service) Save(ctx context.Context, profileID, id string, d Details) (e 
 		} else if err != nil {
 			return fmt.Errorf("save webhook endpoint: %w", err)
 		}
+		if _, err := tx.Exec(ctx, `INSERT INTO webhook_delivery_profiles(profile_id) VALUES($1) ON CONFLICT DO NOTHING`, profileID); err != nil {
+			return err
+		}
 		if created {
 			return s.addSecret(ctx, tx, id)
 		}

@@ -168,6 +168,8 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, invoice.ErrChainUnavailable):
 		slog.Warn("recheck could not read the chain", "err", err)
 		status, code, message = http.StatusServiceUnavailable, "network_unavailable", "could not read the network: try again shortly"
+	case errors.Is(err, webhook.ErrQueueFull):
+		status, code, message = http.StatusTooManyRequests, "webhook_queue_full", "webhook queue is full: wait for pending deliveries"
 	case errors.Is(err, ErrRateLimited):
 		status, code, message = http.StatusTooManyRequests, "rate_limited", "too many requests: wait Retry-After seconds"
 	default:

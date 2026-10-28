@@ -228,6 +228,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-174 | Payment reads and merchant edits remain bounded and preserve saved choices. | Invoice deposit previews are bounded while totals stay exact. Hidden token restrictions survive edits without permission changes. Job limits hold under concurrent creation. Unchanged link expiries retain their time. Exports wait for currency saves. Payment reads use indexed lookups. SDK fiat inputs use decimal major units. | unit, backend-e2e, build, e2e | R-118, R-138, R-165, R-154 |
 
+| R-175 | Payment processing recovers from incomplete evidence and large backlogs, while revocation and webhook fairness hold under concurrency. | Missing RPC logs retry safely and existing missing-transfer conflicts recover after canonical verification. Ledger batches commit bounded, exact progress without duplicate bookings. Invoice creation and expiry use one timestamp. Role changes recheck the actor under the profile lock. Webhook attempts and manual queues have tenant budgets. | unit, backend-e2e, build, e2e | R-171, R-173, R-139, R-149 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.

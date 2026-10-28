@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/config"
 	"github.com/forwend/forwend/apps/backend/internal/database"
@@ -16,9 +15,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/webhook"
 )
-
-// poll is how often due deliveries are looked for: the first retry comes 5 seconds after a failure.
-const poll = time.Second
 
 func main() {
 	if err := run(); err != nil {
@@ -54,14 +50,6 @@ func run() error {
 	hooks, client := webhook.NewService(pool, cfg.WebhookKey), webhook.Client()
 	// Without the key no endpoint can be made, so nothing waits.
 	slog.Info("webhooks ready", "on", cfg.WebhookKey != nil)
-	for {
-		if err := hooks.Deliver(ctx, client, body); err != nil && ctx.Err() == nil {
-			slog.Error("deliver webhooks", "err", err)
-		}
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-time.After(poll):
-		}
-	}
+	hooks.Run(ctx, client, body)
+	return nil
 }

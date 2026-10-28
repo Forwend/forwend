@@ -14,10 +14,31 @@ import (
 
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const usdc = "0x036cbd53842c5426634e7929541ec2318f3dcf7e"
+
+func TestCreationAndExpiryUseOneClock(t *testing.T) {
+	pool, profile := open(t)
+	s := NewService(pool)
+	expires := int64(7200)
+	inv, _, err := s.Create(t.Context(), profile, "creation-clock", Request{
+		AmountUSD: "1", ExpiresInSeconds: &expires,
+		Lines: []LineRequest{{Description: "Work", Quantity: "1", UnitPrice: "1"}},
+		Before: func(ctx context.Context, tx pgx.Tx) error {
+			_, err := tx.Exec(ctx, "SELECT pg_sleep(1.1)")
+			return err
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lifetime := inv.ExpiresAt.Sub(inv.CreatedAt.Truncate(time.Second)); lifetime != 2*time.Hour {
+		t.Fatalf("created=%s expiry=%s lifetime=%s", inv.CreatedAt, inv.ExpiresAt, lifetime)
+	}
+}
 
 // open: Base Sepolia USDC and a freelancer profile with a wallet and billing details (R-92).
 func open(t *testing.T) (*pgxpool.Pool, string) {

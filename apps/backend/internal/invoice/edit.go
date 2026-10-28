@@ -50,7 +50,7 @@ func (s *Service) Edit(ctx context.Context, profileID, id string, e Editable) (I
 			    coalesce(reference, ''), coalesce(note, ''), coalesce(to_char(due_date, 'YYYY-MM-DD'), '')
 			FROM invoices WHERE coalesce(main_id, id) = (SELECT coalesce(main_id, id) FROM invoices WHERE id = $1)
 			  AND profile_id = $2
-			ORDER BY main_id IS NULL, id FOR UPDATE`, strings.ToLower(id), profileID, s.now().Unix())
+			ORDER BY main_id IS NULL, id FOR UPDATE`, strings.ToLower(id), profileID, s.currentTime().Unix())
 		if err != nil {
 			return fmt.Errorf("lock invoice %s: %w", id, err)
 		}
@@ -103,7 +103,7 @@ func (s *Service) Edit(ctx context.Context, profileID, id string, e Editable) (I
 			}
 			closes := time.Unix(main.ExpiresAt, 0).UTC().Format(time.DateOnly)
 			if e.DueDate != was.DueDate && e.DueDate != "" &&
-				(e.DueDate < s.now().UTC().Format(time.DateOnly) || e.DueDate > closes) {
+				(e.DueDate < s.currentTime().UTC().Format(time.DateOnly) || e.DueDate > closes) {
 				return fmt.Errorf("%w: dueDate must be between today and %s, the day the checkout closes", ErrInvalid,
 					closes)
 			}

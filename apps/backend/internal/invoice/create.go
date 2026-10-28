@@ -191,7 +191,7 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	var open, today int
 	if err := tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE closes_at > $2),
 		count(*) FILTER (WHERE created_at > now() - interval '1 day') FROM invoices WHERE profile_id = $1`,
-		profileID, s.now().Unix()).Scan(&open, &today); err != nil {
+		profileID, s.currentTime().Unix()).Scan(&open, &today); err != nil {
 		return Invoice{}, false, fmt.Errorf("count open invoices: %w", err)
 	}
 	// Each option is a watched receive address, so it counts.
@@ -211,7 +211,14 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 			return Invoice{}, false, &TooSoonError{Wait: wait}
 		}
 	}
-	now := s.now().UTC().Truncate(time.Second)
+	now := s.currentTime()
+	if s.now == nil {
+		// Creation and expiry share the transaction clock, including time spent waiting for the profile lock.
+		if err := tx.QueryRow(ctx, "SELECT transaction_timestamp()").Scan(&now); err != nil {
+			return Invoice{}, false, fmt.Errorf("read invoice creation time: %w", err)
+		}
+	}
+	now = now.UTC().Truncate(time.Second)
 	expiresAt := now.Add(expiresIn)
 	// R-152: a due date with no expiresIn keeps the checkout open to the end of its 60th UTC day after (D-80), within
 	// D-18's limits from now. The hash took the request as sent, so a retry a minute later still replays.

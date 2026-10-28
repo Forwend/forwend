@@ -189,8 +189,9 @@ func (c *Chain) receiver(ctx context.Context, id string, round *receiverRound) (
 		lower := next
 		if err := tx.QueryRow(ctx, `SELECT min(d.block_number) FROM chain_transfers d WHERE d.invoice_id = $1
    AND d.status <> 'reorged' AND d.block_number < $2
-   AND NOT EXISTS (SELECT 1 FROM receiver_conflicts conflict WHERE conflict.existing_transfer_id = d.id) AND NOT EXISTS
-   (SELECT 1 FROM receiver_deposit_proofs p WHERE p.chain_transfer_id = d.id)`, id, lower).Scan(&older); err != nil {
+   AND NOT EXISTS (SELECT 1 FROM receiver_conflicts conflict WHERE conflict.existing_transfer_id = d.id AND NOT conflict.missing_transfer)
+   AND (NOT EXISTS (SELECT 1 FROM receiver_deposit_proofs p WHERE p.chain_transfer_id = d.id)
+        OR EXISTS (SELECT 1 FROM receiver_unresolved_conflicts conflict WHERE conflict.existing_transfer_id = d.id AND conflict.missing_transfer))`, id, lower).Scan(&older); err != nil {
 			return false, err
 		}
 		if older != nil {
@@ -337,13 +338,17 @@ func (c *Chain) receiver(ctx context.Context, id string, round *receiverRound) (
 			}
 			continue
 		}
-		proof, err := json.Marshal(map[string]any{"missingTransfer": true, "txHash": old.Tx, "logIndex": old.Index,
-			"canonicalBlock": headers[old.Block].Hash.Hex(), "verifiedBlock": hi, "verifiedHash": headers[hi].Hash.Hex()})
+		if headers[old.Block].Hash == common.HexToHash(old.Hash) {
+			return false, fmt.Errorf("receiver %s source omitted a recorded transfer", id)
+		}
+		proof, err := json.Marshal(map[string]any{"canonicalBlock": headers[old.Block].Hash.Hex(),
+			"recordedBlock": old.Hash, "txHash": old.Tx, "logIndex": old.Index})
 		if err != nil {
 			return false, err
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO receiver_conflicts (invoice_id,chain_id,block_hash,log_index,existing_transfer_id,observed)
-   VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING`, id, c.chainID, old.Hash, old.Index, old.ID, proof); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO receiver_conflicts
+ (invoice_id,chain_id,block_hash,log_index,existing_transfer_id,observed)
+ VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING`, id, c.chainID, old.Hash, old.Index, old.ID, proof); err != nil {
 			return false, err
 		}
 	}
@@ -371,6 +376,15 @@ func (c *Chain) receiver(ctx context.Context, id string, round *receiverRound) (
 		}
 		if !proved {
 			return false, fmt.Errorf("receiver %s canonical deposit was not recorded", id)
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO receiver_conflict_resolutions
+ (chain_id,block_hash,log_index,chain_transfer_id,verified_block,verified_hash)
+ SELECT conflict.chain_id,conflict.block_hash,conflict.log_index,conflict.existing_transfer_id,$6,$7
+ FROM receiver_unresolved_conflicts conflict JOIN chain_transfers t ON t.id=conflict.existing_transfer_id
+ WHERE conflict.missing_transfer AND t.invoice_id=$1 AND t.chain_id=$2 AND t.tx_hash=$3
+   AND t.block_hash=$4 AND t.log_index=$5 ON CONFLICT DO NOTHING`, id, c.chainID, d.txHash, d.blockHash, d.logIndex,
+			hi, strings.ToLower(headers[hi].Hash.Hex())); err != nil {
+			return false, err
 		}
 	}
 	slices.SortFunc(outgoing, func(a, b types.Log) int {
@@ -400,7 +414,7 @@ func (c *Chain) receiver(ctx context.Context, id string, round *receiverRound) (
 		reason = "unexplained_balance"
 	}
 	var conflict bool
-	if err := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM receiver_conflicts WHERE invoice_id = $1)", id).Scan(&conflict); err != nil {
+	if err := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM receiver_unresolved_conflicts WHERE invoice_id = $1)", id).Scan(&conflict); err != nil {
 		return false, err
 	}
 	if conflict {

@@ -2,10 +2,13 @@ package tests
 
 import (
 	"context"
+	"io"
 	"net/http"
+	"net/http/httptrace"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 // R-138, D-93.
@@ -289,5 +292,78 @@ func TestDeveloperStoreEditPreservesUnavailableTokenRestrictions(t *testing.T) {
 				t.Fatalf("invoice after owner enables token: %d %v", r.status, r.body)
 			}
 		})
+	}
+}
+
+func TestPendingRoleChangeCannotUndoDemotion(t *testing.T) {
+	e := invoiceAPI(t)
+	shop := e.merchant(t)
+	store := storeIDs(t, e, shop)[0]
+	const actor = "did:privy:pending-admin"
+	var uid string
+	if err := e.pool.QueryRow(t.Context(), `WITH u AS (INSERT INTO users(privy_user_id) VALUES($1) RETURNING id),
+ m AS (INSERT INTO profile_members(profile_id,user_id,role) SELECT $2,id,'admin' FROM u)
+ SELECT id::text FROM u`, actor, shop).Scan(&uid); err != nil {
+		t.Fatal(err)
+	}
+	path := "/v1/profiles/" + shop + "/members/" + uid
+	body, send := io.Pipe()
+	defer body.Close()
+	defer send.Close()
+	reading := make(chan struct{}, 1)
+	trace := &httptrace.ClientTrace{Got100Continue: func() { reading <- struct{}{} }}
+	ctx, cancel := context.WithTimeout(httptrace.WithClientTrace(t.Context(), trace), 5*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "PUT", e.srv.URL+path, body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer "+signES256(t, e.privyKey, claims(actor)))
+	req.Header.Set("Expect", "100-continue")
+	type answer struct {
+		response *http.Response
+		err      error
+	}
+	done := make(chan answer, 1)
+	go func() { response, err := http.DefaultClient.Do(req); done <- answer{response, err} }()
+	select {
+	case <-reading:
+	case result := <-done:
+		if result.response != nil {
+			result.response.Body.Close()
+		}
+		t.Fatalf("request did not reach body read: %v", result.err)
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
+	demote := e.call(t, "PUT", path, "did:privy:alice", "", `{"role":"developer","stores":["`+store+`"]}`)
+	if demote.status != http.StatusOK {
+		t.Fatalf("demote: %d %v", demote.status, demote.body)
+	}
+	if got := e.call(t, "GET", "/v1/profiles/"+shop+"/members", actor, "", ""); got.status != http.StatusForbidden {
+		t.Fatalf("demoted member can read team: %d", got.status)
+	}
+	if _, err := io.WriteString(send, `{"role":"admin","stores":[]}`); err != nil {
+		t.Fatal(err)
+	}
+	send.Close()
+	select {
+	case result := <-done:
+		if result.err != nil {
+			t.Fatal(result.err)
+		}
+		defer result.response.Body.Close()
+		if result.response.StatusCode != http.StatusForbidden {
+			t.Fatalf("pending role change: %d, want 403", result.response.StatusCode)
+		}
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
+	var role string
+	if err := e.pool.QueryRow(t.Context(), "SELECT role FROM profile_members WHERE profile_id=$1 AND user_id=$2", shop, uid).Scan(&role); err != nil {
+		t.Fatal(err)
+	}
+	if role != "developer" {
+		t.Fatalf("role changed after demotion: %s", role)
 	}
 }

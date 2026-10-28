@@ -40,8 +40,10 @@ func TestInvoiceDepositPreviewKeepsExactTotalsAndReceipt(t *testing.T) {
 		return big.NewInt(105000000), 200, nil
 	}
 	notDeployed := func(context.Context, uint64, string, string) (uint64, error) { return 0, nil }
-	if err := ledger.NewService(e.pool, balances, notDeployed).Process(t.Context(), id); err != nil {
-		t.Fatal(err)
+	for range 2 {
+		if err := ledger.NewService(e.pool, balances, notDeployed).Process(t.Context(), id); err != nil {
+			t.Fatal(err)
+		}
 	}
 	e.exec(t, `INSERT INTO chain_transfers (chain_id,chain_family,token_contract,invoice_id,tx_hash,log_index,
 		block_hash,block_number,block_time,from_address,to_address,amount,status)
