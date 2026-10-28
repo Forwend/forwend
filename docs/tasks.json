@@ -131,7 +131,7 @@
         "Deposit lookup and payment ordering use measured indexes; SDK agreed fiat amounts document decimal major units."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "build",
@@ -221,11 +221,18 @@
           "summary": "Reviewed the full diff and owning structure rules. Regression tests cover token permissions, concurrent job limits and retries, exact link expiry, currency-save recovery, bounded invoice previews with exact totals, and API/PDF output. Deposit evidence and ledger totals share a consistent snapshot; all readers remain bounded. Migration indexes have measured query improvements. Final verify passed docs-check, lint, typecheck, unit, build, e2e and protected paths. No remaining findings.",
           "at": "2026-10-28T13:42:46Z",
           "filesHash": "65bed7cc8111df7f"
-        }
+        },
+        "commit": "1083db9a",
+        "doneAt": "2026-10-28T13:44:09Z"
       },
       "branch": "fix/f340-fix-audit-findings-in-payment-reads-perm",
       "baseCommit": "1e378e78521f0a5082201cf7aa5f3ea520bb2f69",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f340-fix-audit-findings-in-payment-reads-perm",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
