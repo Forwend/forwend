@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -19,21 +20,30 @@ const (
 
 func hung(t *testing.T) string {
 	t.Helper()
+	url, _ := hungCounting(t)
+	return url
+}
+
+// hungCounting is hung, and counts the connections it accepted.
+func hungCounting(t *testing.T) (string, *atomic.Int32) {
+	t.Helper()
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { l.Close() })
+	var accepted atomic.Int32
 	go func() {
 		for {
 			c, err := l.Accept()
 			if err != nil {
 				return
 			}
+			accepted.Add(1)
 			t.Cleanup(func() { c.Close() })
 		}
 	}()
-	return "http://" + l.Addr().String()
+	return "http://" + l.Addr().String(), &accepted
 }
 
 func TestOneHungChainDoesNotBlockTheOthers(t *testing.T) {
@@ -77,23 +87,37 @@ func TestOneHungChainDoesNotBlockTheOthers(t *testing.T) {
 	}
 }
 
-// The rest outlasts the second read's deadline, so it fails at once instead of hanging again.
-func TestTimedOutRPCRests(t *testing.T) {
-	h := hung(t)
+// A read that starts while a hung read of the same chain runs gets its failure, instead of starting another hung
+// request. A hung RPC rests after the pool's attempt timeout (chain tests), longer than these deadlines.
+func TestReadDuringAHungReadSharesItsFailure(t *testing.T) {
+	h, accepted := hungCounting(t)
 	c := NewChainReader(map[uint64]chain.Spec{
-		dead: {ChainID: dead, AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, Priority: 0, URL: h, BudgetGroup: "budget-0"}, {ID: "rpc-1", Provider: "provider-1", Role: chain.Confirmation, Tier: chain.Public, Priority: 1, URL: strings.Replace(h, "127.0.0.1", "localhost", 1), BudgetGroup: "budget-1"}}},
+		dead: {ChainID: dead, AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, Priority: 0, URL: h, BudgetGroup: "budget-0"}}},
 	}, 1000)
 	ctx := context.Background()
-	short, cancel := context.WithTimeout(ctx, 300*time.Millisecond)
+	first, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 	defer cancel()
-	if _, _, err := c.Read(short, dead, usdc, holder); err == nil {
-		t.Fatal("no error from a hung chain")
+	failed := make(chan error, 1)
+	go func() {
+		_, _, err := c.Read(first, dead, usdc, holder)
+		failed <- err
+	}()
+	for began := time.Now(); accepted.Load() == 0; time.Sleep(time.Millisecond) { // then the first read waits on the hung RPC
+		if time.Since(began) > 5*time.Second {
+			t.Fatal("the first read never reached the RPC")
+		}
 	}
-	again, cancel := context.WithTimeout(ctx, 300*time.Millisecond)
+	second, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	start := time.Now()
-	if _, _, err := c.Read(again, dead, usdc, holder); err == nil || time.Since(start) > 50*time.Millisecond {
-		t.Fatalf("second read: %v after %v; want a fast error", err, time.Since(start))
+	if _, _, err := c.Read(second, dead, usdc, holder); err == nil || time.Since(start) > 5*time.Second {
+		t.Fatalf("second read: %v after %v; want the first read's failure", err, time.Since(start))
+	}
+	if err := <-failed; err == nil {
+		t.Fatal("no error from a hung chain")
+	}
+	if n := accepted.Load(); n != 1 {
+		t.Fatalf("%d connections to the hung RPC; want the second read to wait for the first", n)
 	}
 }
 
