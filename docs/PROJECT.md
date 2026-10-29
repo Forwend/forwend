@@ -242,6 +242,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-181 | Payments book from the chain-wide scan, with no per-receiver evidence. | Given a receive address, the chain's scan reads its deposits and its settle, refund and recover events together. Each counts at or below the finalized block. The ledger books them in chain order; paid still needs the finalized balanceOf to cover every booked deposit. An event the balances can't cover stays unbooked with its reason. The signer records its own settle from the receipt, and signs nothing while the finalized balance is below what the ledger booked. RPC calls per worker round do not grow with paid invoices. | backend, backend-e2e | R-20, R-21, R-22, R-164, D-15, D-45, D-116 |
 
+| R-182 | Agents improve written behavior when a better one exists, and keep the frontend working. | Given a doc, requirement, decision or test that describes weak behavior, then an agent who knows a better one improves it. Rule, code and tests change together. A backend change checks every frontend and package reader, and keeps each one working. | docs-check | Owner instruction |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.
