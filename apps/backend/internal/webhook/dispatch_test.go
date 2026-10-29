@@ -156,11 +156,14 @@ func TestConcurrentWebhookManualQueueLimit(t *testing.T) {
 func TestWebhookClaimsRespectSharedConcurrency(t *testing.T) {
 	s, profiles, endpoints := dispatchFixture(t, 1)
 	ctx := t.Context()
-	second := "00000000-0000-0000-0000-000000000002"
-	if _, _, err := s.Save(ctx, profiles[0], second, Details{URL: "https://second.example.com/hook", Events: []string{InvoicePaid}, Enabled: true}); err != nil {
-		t.Fatal(err)
+	second, third := "00000000-0000-0000-0000-000000000002", "00000000-0000-0000-0000-000000000003"
+	for _, id := range []string{second, third} {
+		if _, _, err := s.Save(ctx, profiles[0], id, Details{URL: "https://" + id[len(id)-1:] + ".example.com/hook", Events: []string{InvoicePaid}, Enabled: true}); err != nil {
+			t.Fatal(err)
+		}
 	}
-	for _, endpoint := range []string{endpoints[0], second} {
+	// Three endpoints, so the profile's limit of two is what stops a third lease.
+	for _, endpoint := range []string{endpoints[0], second, third} {
 		for range 4 {
 			if _, err := s.SendTest(ctx, profiles[0], endpoint); err != nil {
 				t.Fatal(err)
@@ -190,6 +193,23 @@ func TestWebhookClaimsRespectSharedConcurrency(t *testing.T) {
 	}
 	seen := map[string]bool{}
 	for d := range results {
+		if seen[d.endpointID] {
+			t.Fatal("endpoint leased more than once")
+		}
+		seen[d.endpointID] = true
+	}
+	if len(seen) == 0 || len(seen) > ProfileConcurrency {
+		t.Fatalf("concurrent claims leased %d endpoints, want 1 to %d", len(seen), ProfileConcurrency)
+	}
+	// Claimers that found the profile locked skip it; later claims fill the free slots, and never more.
+	for {
+		d, err := NewService(s.pool, s.key).claim(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if d == nil {
+			break
+		}
 		if seen[d.endpointID] {
 			t.Fatal("endpoint leased more than once")
 		}

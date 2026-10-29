@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 354,
+  "nextId": 355,
   "tasks": [
     {
       "id": "F332",
@@ -1086,6 +1086,78 @@
       "delivery": {
         "mode": "pr",
         "branch": "docs/f353-agents-improve-written-behavior-when-a-b",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F354",
+      "type": "test",
+      "behavior": "The webhook concurrency test proves the profile limit without depending on timing",
+      "acceptance": [
+        "TestWebhookClaimsRespectSharedConcurrency passes under load: concurrent claims never exceed the profile limit or lease an endpoint twice, and later claims fill exactly the limit with three endpoints"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend-affected"
+      ],
+      "refs": [
+        "R-175"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-29 review pass by independent-reviewer: Root-cause fix, not a weakened test. The old assertion needed a second claim to land inside a 12-way burst, but SKIP LOCKED on the profile row makes that depend on scheduling. The new test requires the burst to lease 1..2 distinct endpoints, then claims sequentially until nil and requires exactly 2 in total. 5/5 passes with -race -count=1. Mutation runs by overlay (3 each): removing the ProfileConcurrency checks (first query and re-read) fails at the burst bound ('leased 3 endpoints, want 1 to 2'), which the old two-endpoint test could not detect at all (it passed); removing the one-lease-per-endpoint NOT EXISTS fails with 'endpoint leased more than once'. Limit: removing only one of the two redundant limit checks is not caught, and neither was it before; the re-read-under-lock race is not isolated by this test. Three endpoints with 4 deliveries each correctly make the profile limit the only thing stopping a third lease. No repo files edited by review."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-29T18:49:32Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 221.8,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 38.7,
+            "log": ""
+          }
+        ],
+        "taskHash": "23fd34976e00b2e2",
+        "filesHash": "0eef8abb93ffc2ff",
+        "proof": {
+          "1": "backend-affected: webhook TestWebhookClaimsRespectSharedConcurrency, three endpoints and a profile limit of two"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent-reviewer",
+          "summary": "Root-cause fix, not a weakened test. The old assertion needed a second claim to land inside a 12-way burst, but SKIP LOCKED on the profile row makes that depend on scheduling. The new test requires the burst to lease 1..2 distinct endpoints, then claims sequentially until nil and requires exactly 2 in total. 5/5 passes with -race -count=1. Mutation runs by overlay (3 each): removing the ProfileConcurrency checks (first query and re-read) fails at the burst bound ('leased 3 endpoints, want 1 to 2'), which the old two-endpoint test could not detect at all (it passed); removing the one-lease-per-endpoint NOT EXISTS fails with 'endpoint leased more than once'. Limit: removing only one of the two redundant limit checks is not caught, and neither was it before; the re-read-under-lock race is not isolated by this test. Three endpoints with 4 deliveries each correctly make the profile limit the only thing stopping a third lease. No repo files edited by review.",
+          "at": "2026-10-29T18:55:41Z",
+          "filesHash": "0eef8abb93ffc2ff"
+        },
+        "commit": "7fcb9987",
+        "doneAt": "2026-10-29T18:55:51Z"
+      },
+      "branch": "test/f354-the-webhook-concurrency-test-proves-the",
+      "baseCommit": "61bec913c843c5db4d02d5d739199105c55f7ffd",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "test/f354-the-webhook-concurrency-test-proves-the",
         "base": "main"
       }
     }
