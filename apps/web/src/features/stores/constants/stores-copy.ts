@@ -65,6 +65,18 @@ export const STORES_COPY = {
     "One per line, like https://shop.example.com. A return link on this store's invoices must start with one of them.",
   save: "Save store",
   cancel: "Cancel",
+  back: "Back",
+  continue: "Continue",
+  stepsLabel: "Store form steps",
+  preview: {
+    title: "Pay page",
+    note: "What a payer sees on this store's invoices.",
+    noName: "Store name",
+    invoice: "Invoice",
+    payWith: "Pay with",
+    more: (n: number) => `and ${n} more`,
+    closes: (after: string) => `Checkout closes after ${after}.`,
+  },
   saved: (name: string) => `${name} saved`,
   errors: {
     required: "Fill in this field.",

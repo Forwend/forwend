@@ -15,16 +15,19 @@ export interface StepperProps {
   label: string;
   /** Going back to a finished step; steps ahead open only through the form's own Continue. */
   onStepClick?: (index: number) => void;
+  /** Editing a saved record: every step already holds valid data, so each one opens from here. */
+  free?: boolean;
 }
 
 /** The steps of a form: a check on finished ones (a button back to them), the current one ringed, the rest muted. */
-export function Stepper({ steps, current, label, onStepClick }: StepperProps) {
+export function Stepper({ steps, current, label, onStepClick, free = false }: StepperProps) {
   return (
     <nav aria-label={label}>
       <ol className="flex items-center gap-2">
         {steps.map((step, i) => {
-          const done = i < current;
+          const done = !free && i < current;
           const now = i === current;
+          const open = !now && (done || free);
           const marker = (
             <>
               <span
@@ -32,7 +35,8 @@ export function Stepper({ steps, current, label, onStepClick }: StepperProps) {
                   "grid size-7 shrink-0 place-items-center rounded-pill text-xs font-medium tabular-nums",
                   done && "bg-ink text-bg",
                   now && "border-2 border-accent bg-surface text-ink",
-                  !done && !now && "border border-line-strong text-subtle",
+                  !done && !now && "border border-line-strong",
+                  !done && !now && (free ? "text-ink" : "text-subtle"),
                 )}
               >
                 {done ? <Check aria-hidden strokeWidth={3} className="size-3.5" /> : i + 1}
@@ -40,7 +44,7 @@ export function Stepper({ steps, current, label, onStepClick }: StepperProps) {
               <span
                 className={cx(
                   "text-sm whitespace-nowrap max-sm:sr-only",
-                  now ? "font-medium text-ink" : done ? "text-ink" : "text-subtle",
+                  now ? "font-medium text-ink" : done || free ? "text-ink" : "text-subtle",
                 )}
               >
                 {step.label}
@@ -54,7 +58,7 @@ export function Stepper({ steps, current, label, onStepClick }: StepperProps) {
               aria-current={now ? "step" : undefined}
               className="flex min-w-0 items-center gap-2 not-last:flex-1"
             >
-              {done && onStepClick ? (
+              {open && onStepClick ? (
                 <button
                   type="button"
                   onClick={() => onStepClick(i)}

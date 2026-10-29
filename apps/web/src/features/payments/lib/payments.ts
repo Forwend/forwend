@@ -54,7 +54,8 @@ export function receivedAmount(amounts: Payment["amounts"]): string {
 const DELAYED_MS = 5 * 60 * 1000;
 
 /** The one sentence a payment page leads with: what happened and what the merchant can do now. */
-export function nextStep(payment: PaymentDetail, extra = 0n): string {
+/** What to know or do next; null once paid and in the wallet, where there is nothing to say. */
+export function nextStep(payment: PaymentDetail, extra = 0n): string | null {
   const next = PAYMENT_DETAIL_COPY.next;
   if (payment.problems.some((p) => p.action === "review_funds" && p.code !== "held_funds")) {
     return next.review;
@@ -64,7 +65,7 @@ export function nextStep(payment: PaymentDetail, extra = 0n): string {
   if (status === "canceled") return next.canceled;
   if (status === "overpaid") return next.overpaid;
   if (status === "paid") {
-    return payment.settlementStatus === "settled" ? next.paid : next.paidPending;
+    return payment.settlementStatus === "settled" ? null : next.paidPending;
   }
   const delayed = payment.options.some((option) =>
     option.deposits.some(

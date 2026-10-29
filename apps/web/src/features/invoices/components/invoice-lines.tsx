@@ -13,13 +13,15 @@ export interface InvoiceLinesProps {
   decimals: number;
   unit: string;
   total: bigint;
+  /** What the payer sent so far, in the same units: adds Received and Still due under the total. */
+  received?: bigint;
 }
 
 // An invoice can list up to 100 lines: past these, the rest wait behind Show all so the total stays in reach.
 const SHOWN = 10;
 
 // R-88: the same rows on every width, as the PDF lists them.
-export function InvoiceLines({ lines, decimals, unit, total }: InvoiceLinesProps) {
+export function InvoiceLines({ lines, decimals, unit, total, received }: InvoiceLinesProps) {
   const [all, setAll] = useState(lines.length <= SHOWN);
   const money = (units: string | bigint) => {
     const baseUnits = BigInt(units);
@@ -28,9 +30,9 @@ export function InvoiceLines({ lines, decimals, unit, total }: InvoiceLinesProps
   return (
     <section aria-labelledby="invoice-items" className="fw-panel">
       <h2 id="invoice-items" className="fw-panel-head text-base font-semibold text-ink">
-        {COPY.items}
+        {lines.length ? COPY.items : COPY.summary}
       </h2>
-      <ul className="divide-y divide-line">
+      <ul className="divide-y divide-line empty:hidden">
         {(all ? lines : lines.slice(0, SHOWN)).map((line, i) => (
           // Lines never change and keep their order, so the position is their key.
           // biome-ignore lint/suspicious/noArrayIndexKey: see above
@@ -52,10 +54,30 @@ export function InvoiceLines({ lines, decimals, unit, total }: InvoiceLinesProps
           </Button>
         </div>
       )}
-      <p className="flex items-baseline justify-between gap-4 border-t border-line px-4 py-3 sm:px-5">
-        <span className="text-sm text-muted">{COPY.itemsTotal}</span>
-        <span className="font-semibold text-ink tabular-nums">{money(total)}</span>
-      </p>
+      <dl className="flex flex-col gap-2 border-t border-line px-4 py-3 text-sm first-of-type:border-t-0 sm:px-5 [h2+&]:border-t-0">
+        <div className="flex items-baseline justify-between gap-4">
+          <dt className="text-muted">{COPY.itemsTotal}</dt>
+          <dd
+            className={`tabular-nums ${received === undefined ? "font-semibold text-ink" : "text-ink"}`}
+          >
+            {money(total)}
+          </dd>
+        </div>
+        {received === undefined ? null : (
+          <>
+            <div className="flex items-baseline justify-between gap-4">
+              <dt className="text-muted">{COPY.received}</dt>
+              <dd className="text-ink tabular-nums">{money(received)}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-4 border-t border-line pt-2">
+              <dt className="font-medium text-ink">{COPY.stillDue}</dt>
+              <dd className="font-semibold text-ink tabular-nums">
+                {money(received < total ? total - received : 0n)}
+              </dd>
+            </div>
+          </>
+        )}
+      </dl>
     </section>
   );
 }

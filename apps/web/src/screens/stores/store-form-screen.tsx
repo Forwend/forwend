@@ -33,7 +33,7 @@ export function StoreFormScreen({ storeId }: StoreFormScreenProps) {
     tokens: tokens.currentData ?? [],
   };
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
+    <div className="flex max-w-6xl flex-col gap-6">
       <div className="flex min-w-0 flex-col gap-2">
         {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
         <h1 className="text-2xl font-semibold tracking-tight break-words text-ink lg:sr-only">

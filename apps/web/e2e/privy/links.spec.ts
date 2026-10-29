@@ -116,14 +116,17 @@ test("the owner lists payment links with their activity, makes an open one and t
   await main.getByRole("link", { name: "New link" }).click();
   await expect(page).toHaveURL(/\/app\/links\/new$/);
   await main.getByRole("textbox", { name: "Title" }).fill("Donations");
+  await main.getByRole("button", { name: "Continue" }).click();
   await main.getByText("The payer enters it", { exact: true }).click();
   await main.getByRole("textbox", { name: "Minimum (USD, optional)" }).fill("10");
   await main.getByRole("textbox", { name: "Maximum (USD, optional)" }).fill("5");
-  await main.getByRole("button", { name: "Save link" }).click();
+  // Continue checks the step on screen and never saves.
+  await main.getByRole("button", { name: "Continue" }).click();
   await expect(main.getByText("The minimum must be at most the maximum.")).toBeVisible();
   expect(saved).toEqual([]);
   expect(await blockingViolations(page)).toEqual([]);
   await main.getByRole("textbox", { name: "Maximum (USD, optional)" }).fill("500");
+  await main.getByRole("button", { name: "Continue" }).click();
   await main.getByRole("button", { name: "Save link" }).click();
   // A new link opens on its page, with its address ready to copy.
   await expect(page).toHaveURL(/\/app\/links\/[0-9a-f-]{36}$/);
@@ -142,6 +145,10 @@ test("the owner lists payment links with their activity, makes an open one and t
 
   await page.goto(`/app/links/${FIXED}`);
   await main.getByRole("link", { name: "Edit payment link" }).click();
+  await main
+    .getByRole("navigation", { name: "Payment link form steps" })
+    .getByRole("button", { name: /Limits/ })
+    .click();
   await main.getByRole("checkbox", { name: "The link is on" }).uncheck();
   await main.getByRole("button", { name: "Save link" }).click();
   await expect(page).toHaveURL(/\/app\/links$/);

@@ -150,6 +150,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   await page
     .getByRole("textbox", { name: "Billing email (optional)" })
     .fill("delivered@resend.dev");
+  await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("textbox", { name: "Address (optional)" }).fill("1 Test Street\nBerlin");
   await page.getByRole("button", { name: /^Country \(optional\)/ }).click();
   await page.getByRole("combobox", { name: /Country \(optional\)/ }).fill("germ");
@@ -160,6 +161,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     "Germany",
   );
   await page.getByRole("textbox", { name: "Tax or VAT ID (optional)" }).fill("DE123456789");
+  await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("textbox", { name: "Default PO or reference (optional)" }).fill(po);
   // R-97
   await page
@@ -187,6 +189,8 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await page.getByRole("link", { name: "Add store" }).first().click();
     await expect(page).toHaveURL("/app/stores/new");
     await page.getByRole("textbox", { name: "Store name" }).fill("E2E pop-up");
+    // Store, Brand, Accepted assets, then Checkout.
+    for (const _ of [1, 2, 3]) await page.getByRole("button", { name: "Continue" }).click();
     await page.getByRole("combobox", { name: "Checkout closes after" }).click();
     await page.getByRole("option", { name: "1 hour" }).click();
     await page
@@ -209,12 +213,20 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   await page.getByRole("main").getByRole("link", { name: "Edit", exact: true }).click();
   await expect(page).toHaveURL(/\/app\/stores\/[0-9a-f-]{36}\/edit$/);
   await expect(page.getByRole("textbox", { name: "Store name" })).toHaveValue("E2E shop");
+  // Editing opens any step from the stepper, and Save is on each one.
+  const step = (name: RegExp) =>
+    page
+      .getByRole("navigation", { name: "Store form steps" })
+      .getByRole("button", { name })
+      .click();
+  await step(/Checkout/);
   const origins = page.getByRole("textbox", { name: "Allowed origins (optional)" });
   await origins.fill("https://shop.example/thanks");
   await page.getByRole("button", { name: "Save store" }).click();
   await expect(page.getByRole("alert").filter({ hasText: "without a path" })).toBeVisible();
   await expect(origins).toBeFocused();
   await origins.fill("https://shop.example");
+  await step(/Brand/);
   // R-135: the logo uploads at once; the color saves with the store. Any PNG will do: a screenshot of a corner.
   await page.locator('input[type="file"]').setInputFiles({
     name: "logo.png",
@@ -226,7 +238,9 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   await expect(page.getByRole("button", { name: "Replace logo" })).toBeVisible();
   await page.getByRole("textbox", { name: "Accent color (optional)" }).fill("#1F6A8C");
   // R-136: the store narrows the profile's tokens; Base Sepolia, used below, stays on.
-  await expect(page.getByRole("checkbox", { name: "USDC on Base Sepolia" })).toBeChecked();
+  await step(/Accepted assets/);
+  await page.getByRole("button", { name: "USDC networks" }).click();
+  await expect(page.getByRole("checkbox", { name: /^USDC on Base Sepolia/ })).toBeChecked();
   expect(await blockingViolations(page)).toEqual([]);
   await page.getByRole("button", { name: "Save store" }).click();
   await expect(page).toHaveURL(/\/app\/stores\/[0-9a-f-]{36}$/);

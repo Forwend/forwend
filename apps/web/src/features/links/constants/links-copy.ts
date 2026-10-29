@@ -79,6 +79,20 @@ export const LINKS_COPY = {
   activeHint: "Turning this off stops new purchases. Existing checkouts remain available.",
   save: "Save link",
   cancel: "Cancel",
+  back: "Back",
+  continue: "Continue",
+  stepsLabel: "Payment link form steps",
+  preview: {
+    title: "Pay page",
+    note: "What a payer sees when they open the link.",
+    subtitle: "Payment link",
+    noTitle: "Link title",
+    noAmount: "Amount",
+    until: (day: string) => `Open through ${day}`,
+    cap: (n: number) =>
+      n === 1 ? "1 payment at most" : `${n.toLocaleString("en-US")} payments at most`,
+    off: "The link is off: payers can't start a purchase.",
+  },
   saved: (title: string) => `${title} saved`,
   errors: {
     required: "Enter a title.",

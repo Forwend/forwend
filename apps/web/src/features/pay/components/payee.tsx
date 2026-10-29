@@ -9,10 +9,12 @@ export interface PayeeProps {
   subtitle: string;
   /** A merchant store's branding (R-135). */
   brand?: StoreBrand | null;
+  /** The name's element: a preview inside another page names no page. */
+  as?: "h1" | "p";
 }
 
 /** Who asks, at the top of a checkout: the store's logo or the name's initial, then the name. */
-export function Payee({ name, subtitle, brand }: PayeeProps) {
+export function Payee({ name, subtitle, brand, as: Name = "h1" }: PayeeProps) {
   return (
     <div className="flex min-w-0 items-center gap-3">
       {/* R-135: a merchant store's logo, edged in its color. The color is never behind text, so contrast holds.
@@ -43,7 +45,7 @@ export function Payee({ name, subtitle, brand }: PayeeProps) {
         </span>
       )}
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <h1 className="text-lg font-semibold break-words text-ink sm:text-xl">{name}</h1>
+        <Name className="text-lg font-semibold break-words text-ink sm:text-xl">{name}</Name>
         <p className="text-sm text-muted">{subtitle}</p>
       </div>
     </div>

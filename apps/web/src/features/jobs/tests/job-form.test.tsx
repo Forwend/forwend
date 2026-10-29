@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { JobForm } from "@/features/jobs/components/job-form";
@@ -41,23 +41,31 @@ describe("new job form", () => {
         <JobForm profileId={PROFILE} />
       </Provider>,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Create job" }));
-    await settle();
+    const next = async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+      await settle();
+    };
+    // Continue checks only the step on screen, and never sends.
+    await next();
     expect(sent).toHaveLength(0);
     expect(document.activeElement).toBe(screen.getByLabelText("Title"));
 
     fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Logo design" } });
+    await next();
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Bob Ltd" } });
     fireEvent.change(screen.getByLabelText("Billing email"), {
       target: { value: "ap@bob.example" },
     });
+    await next();
+    expect(sent).toHaveLength(0);
     fireEvent.change(screen.getByLabelText("Amount in USD of payment 1"), {
       target: { value: "300" },
     });
     fireEvent.change(screen.getByLabelText("Amount in USD of payment 2"), {
       target: { value: "700.5" },
     });
-    expect(screen.getByText("1,000.50 USD")).toBeTruthy();
+    const payments = within(screen.getByRole("group", { name: "Payments" }));
+    expect(payments.getByText("1,000.50 USD")).toBeTruthy();
     for (const _ of [1, 2]) {
       fireEvent.click(screen.getByRole("button", { name: "Create job" }));
       await settle();

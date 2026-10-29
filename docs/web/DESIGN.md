@@ -342,10 +342,14 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Payment details use `DetailHeader` with the source's icon tile, the status and wallet badges by the title, and
     the requested amount as the header's figure beside Open checkout or Open receipt and Export (both 40px).
   - Then one sentence of what happened and what to do next, such as "The customer sent more than requested."
+    A payment paid in full and in the wallet has nothing to say, so it shows none.
   - The body is two columns from extra-large screens: the main column and a 22rem side column.
     - Main: Needs attention (only with a real problem), Amount (Received with "Confirming, not final" or "Final",
-      Extra held for the customer in the warning color or Still due, and Paid with), Transfers (a table of When,
-      Network, State, Amount and the explorer link, then the transfer to the wallet), and the items.
+      Extra held for the customer in the warning color or Still due, and Paid with), Transfers, and the items.
+    - Transfers is one table: Transfer (From customer or To your wallet, its time under it), State, Amount and the
+      explorer link. Network shows from 2xl screens; on phones the state sits under the time.
+    - State is a badge: Confirmed, Confirming with its blocks or "being verified", In wallet, or a warning such as
+      Held for the customer. Amounts stay on one line.
     - Side: Details (reference, invoice, link, store, customer, checkout close, metadata, PDFs) and a Timeline:
       Created, Payment detected, Paid, In your wallet (or Checkout closed), done or current or next by the API's facts.
   - No ledger table or contract panel: a webhook that fails shows as a problem whose action opens Developers.
@@ -436,7 +440,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The table shows the job, client, total, state and created day.
   - Below xl the rows stack, as on Clients: the title, then the client and state, with the total on the right.
   - The state is "Waiting for acceptance" or "Accepted · 1 of 3 paid".
-- New job is a form page under Jobs, laid out like New invoice, with Work, Client and Payments panels.
+- New job is a step form under Jobs: Work, Client and Payments, with the client's quote as its preview.
   - Client works as on New invoice: a saved client fills the fields, and Name and Billing email are required.
   - Payments are rows like an invoice's items: title, Amount in USD and Days to pay, with a remove button each.
   - Add payment and the total follow the rows; a checkbox makes the first payment the deposit.
@@ -494,10 +498,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Onboarding checklist: the setup guide at the sidebar's foot (see App shell), never a card on the overview.
   Steps come from data: passkey linked, billing details (freelancer), first invoice or request, first paid in full,
   first final money in. Skipped steps and the closed guide are remembered per profile in the browser.
-- Form pages stop at 56rem (`max-w-4xl`), so a field never runs across a wide screen; New invoice uses the room
-  beside the form for its preview, and settings pages sit in the settings frame.
-  - They are New invoice, Request money, New job, New and Edit client, Billing details, New profile and Email
-    notifications.
+- Form pages stop at 56rem (`max-w-4xl`), so a field never runs across a wide screen; step forms use 72rem for the
+  preview beside them, and settings pages sit in the settings frame.
+  - The 56rem pages are Billing details, New profile and Email notifications.
   - Each field group is a full-width panel with its title ruled off. Billing details has Contact, then Address and tax.
   - Inside a panel, short fields pair up in two columns from small screens up.
   - The pairs: network and amount, title and reference, the dates, name and email, country and tax ID.
@@ -511,7 +514,15 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     everything and returns to the step that holds the first error.
   - Review lists the customer, amount, network, due date and payment window, each with Edit.
   - The footer holds Back (or Cancel), then Continue or Create invoice at its end.
-- New client is three steps the same way: Contact, Address and tax, On invoices. Editing a client is one page.
+- Clients, stores, payment links and jobs use one step form (`StepForm`), the same way:
+  - The form takes 40rem; from extra-large screens a sticky preview takes the rest, on light paper in both themes.
+  - Clients: Contact, Address and tax, On invoices; the preview is the Billed to block as invoices print it.
+  - Stores: Store, Brand, Accepted assets (when the profile has any), Checkout; the preview is the pay page header,
+    the assets a payer can use and the checkout close.
+  - Payment links: Link, Amount, Limits; the preview is the pay page with the amount or range and the limits.
+  - Jobs: Work, Client, Payments; the preview is the quote with its schedule and total.
+  - Editing opens every step from the stepper (numbers, no checks) and puts Save on each step beside Continue.
+  - Continue checks the step on screen; Save checks everything and opens the step of the first error.
 - New invoice and Request money: each field group is a panel with its title ruled off.
   - New invoice opens with Customer, because who is billed comes first; then Amount, Details and Dates.
   - Customer asks "Who are you billing?": a business (Legal name, tax ID) or a person (Full name, no tax ID).
@@ -538,8 +549,12 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   screen readers only; on phones each item stacks (description, then Qty and Price with the remove button, then its
   amount). A ruled footer holds Add item and the Total, which is the invoice's amount; a line the token can't hold
   shows its error under the field it belongs to. Removing the last item leaves its total as the amount.
-  The invoice page lists the items in an Items panel under Amount: each row the description with "qty × unit price"
-  quietly under it and the line's amount on the right, then a ruled Total row, the same on every width.
+  The invoice page lists the items in an Items panel: each row the description with "qty × unit price" quietly under
+  it and the line's amount on the right, then Total, Received and Still due, the same on every width.
+  - Without items the panel is Summary, with those three rows only. Received counts money sent before the close.
+  - Received and Still due show only on a one-token invoice: other tokens' money is in other units.
+  - The side column holds Details, then a Timeline: Created, Emailed to the client (once sent), Pay page opened (with
+    how many times), Paid, In your wallet (or Checkout closed, or Canceled).
   From extra-large screens the form takes 38rem and a sticky preview takes the rest, scrolling on its own.
   - Its tabs are Invoice, Payer page and Email; switching keeps every typed value.
   - Invoice draws the PDF (`InvoiceDocument`): A4 pages in mm with the PDF's blocks, sizes, Noto Sans face and page

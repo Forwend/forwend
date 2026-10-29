@@ -4,16 +4,19 @@ import {
   buttonClasses,
   DetailList,
   DetailRow,
+  PAYMENT_STATUS,
   Skeleton,
   StatusPill,
   shortAddress,
   TABLE_HEAD_CLASSES,
+  TABLE_ROW_CLASSES,
   TIMELINE_STATES,
   Timeline,
   type TimelineEntry,
+  TONES,
   WalletStateLabel,
 } from "@forwend/ui-web";
-import { ExternalLink, FileDown } from "lucide-react";
+import { ArrowDownLeft, ExternalLink, FileDown } from "lucide-react";
 import { type ReactNode, useId } from "react";
 import { InvoiceLines } from "@/features/invoices/components/invoice-lines";
 import { invoiceNumber, invoicePdfUrl } from "@/features/invoices/lib/invoices";
@@ -21,7 +24,10 @@ import { useGetPaymentQuery } from "@/features/payments/api/payments-api";
 import { ExportPayments } from "@/features/payments/components/export-payments";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
 import { PaymentProblems } from "@/features/payments/components/payment-problems";
-import { PaymentProgress } from "@/features/payments/components/payment-progress";
+import {
+  TransferCell,
+  WalletTransferRow,
+} from "@/features/payments/components/wallet-transfer-row";
 import { SOURCE_ICONS, SOURCE_LABELS } from "@/features/payments/constants/payments";
 import { PAYMENT_DETAIL_COPY as COPY } from "@/features/payments/constants/payments-copy";
 import {
@@ -221,13 +227,19 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
           <Panel title={COPY.transfers}>
             {deposits.length ? (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                {/* Money wraps its unit in narrow places; here the row has room, so each amount stays on one line. */}
+                <table className="w-full text-sm [&_[data-money]]:flex-nowrap">
                   <caption className="sr-only">{COPY.transfers}</caption>
                   <thead>
                     <tr className={TABLE_HEAD_CLASSES}>
-                      <th scope="col">{COPY.columns.when}</th>
-                      <th scope="col">{COPY.columns.network}</th>
-                      <th scope="col">{COPY.columns.state}</th>
+                      <th scope="col">{COPY.columns.transfer}</th>
+                      {/* Paid with and the timeline name the network; very wide screens repeat it per row. */}
+                      <th scope="col" className="max-2xl:hidden">
+                        {COPY.columns.network}
+                      </th>
+                      <th scope="col" className="max-sm:hidden">
+                        {COPY.columns.state}
+                      </th>
                       <th scope="col" className="text-right">
                         {COPY.columns.amount}
                       </th>
@@ -240,15 +252,22 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
                     {deposits.map(({ deposit, option }) => (
                       <tr
                         key={`${deposit.txHash}:${deposit.logIndex}`}
-                        className="h-12 [&>td]:px-4 sm:[&>td]:px-5"
+                        className={`${TABLE_ROW_CLASSES} [&>td]:py-2.5`}
                       >
-                        <td className="whitespace-nowrap text-muted">
-                          {dateTime(deposit.blockTime)}
+                        <td>
+                          <TransferCell
+                            icon={ArrowDownLeft}
+                            label={COPY.fromCustomer}
+                            time={dateTime(deposit.blockTime)}
+                            state={<DepositState deposit={deposit} />}
+                          />
                         </td>
-                        <td className="whitespace-nowrap">
+                        <td className="whitespace-nowrap max-2xl:hidden">
                           <NetworkName chainId={option.chainId} />
                         </td>
-                        <td className="text-muted">{depositState(deposit)}</td>
+                        <td className="max-sm:hidden">
+                          <DepositState deposit={deposit} />
+                        </td>
                         <td className="text-right font-medium whitespace-nowrap text-ink tabular-nums">
                           <PaymentAmount
                             amount={deposit.amount}
@@ -261,19 +280,15 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
                         </td>
                       </tr>
                     ))}
+                    {used.map((option) => (
+                      <WalletTransferRow key={option.optionId} option={option} />
+                    ))}
                   </tbody>
                 </table>
               </div>
             ) : (
               <p className="px-4 py-6 text-sm text-muted sm:px-5">{COPY.nothingYet}</p>
             )}
-            {used.some((option) => option.settlement || option.settlementStatus === "settled") ? (
-              <div className="flex flex-col gap-3 border-t border-line px-4 py-3 sm:px-5">
-                {used.map((option) => (
-                  <PaymentProgress key={option.optionId} option={option} />
-                ))}
-              </div>
-            ) : null}
           </Panel>
           {payment.items?.length && main ? (
             <InvoiceLines
@@ -357,11 +372,19 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
 
 type Deposit = Option["deposits"][number];
 
-function depositState(deposit: Deposit): string {
-  if (deposit.late) return COPY.late;
-  if (deposit.status === "detected")
-    return COPY.depositConfirming(deposit.blocksTotal - deposit.blocksLeft, deposit.blocksTotal);
-  return deposit.paid === null ? COPY.depositVerifying : COPY.depositFinal;
+// Confirmed only once booked: a deposit final on chain but not yet booked still reads as confirming (D-24).
+function DepositState({ deposit }: { deposit: Deposit }) {
+  if (deposit.late) return <Badge tone={TONES.warning}>{COPY.late}</Badge>;
+  if (deposit.status === "detected" || deposit.paid === null)
+    return (
+      <span className="flex flex-col items-start gap-1 text-xs text-muted">
+        <StatusPill status={PAYMENT_STATUS.confirming} />
+        {deposit.status === "detected"
+          ? COPY.depositConfirming(deposit.blocksTotal - deposit.blocksLeft, deposit.blocksTotal)
+          : COPY.depositVerifying}
+      </span>
+    );
+  return <StatusPill status={PAYMENT_STATUS.confirmed} />;
 }
 
 /** The payment's life so far and what comes next, from the facts the API gave: never a step ahead of them. */

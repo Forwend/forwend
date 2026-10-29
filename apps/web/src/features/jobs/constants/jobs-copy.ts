@@ -65,6 +65,18 @@ export const JOBS_COPY = {
     defaults: { deposit: "Deposit", final: "Final payment" },
     create: "Create job",
     cancel: "Cancel",
+    back: "Back",
+    continue: "Continue",
+    stepsLabel: "New job steps",
+    preview: {
+      title: "Quote",
+      note: "What the client reads before accepting.",
+      for: (client: string) => `Quote for ${client}`,
+      noClient: "your client",
+      noTitle: "Job title",
+      onAccept: "Invoiced when the client accepts",
+      due: (days: string) => `Due ${days} days after its invoice`,
+    },
     errors: {
       required: "Fill in this field.",
       email: "Enter an email like name@example.com.",

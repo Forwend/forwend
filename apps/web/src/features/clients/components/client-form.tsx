@@ -1,20 +1,14 @@
 "use client";
 
 import {
-  Button,
-  buttonClasses,
   Checkbox,
   ComboboxField,
-  Form,
   SegmentedControl,
-  Stepper,
   TextAreaField,
   TextField,
   TONES,
   useToast,
 } from "@forwend/ui-web";
-import { ArrowLeft, ArrowRight } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -33,6 +27,7 @@ import type {
   SavedClientBody,
 } from "@/features/clients/types/clients";
 import { FieldGroup } from "@/shared/components/field-group";
+import { FormPreview, StepForm, useFormSteps } from "@/shared/components/step-form";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 type Field = ClientTextField;
@@ -59,19 +54,11 @@ export function ClientForm({ profileId, client }: ClientFormProps) {
   const [kind, setKind] = useState<ClientKind>(() => clientKind(client));
   const person = kind === CLIENT_KINDS.person;
   const back = client ? `${APP_ROUTES.clients}/${client.clientId}` : APP_ROUTES.clients;
-  // A new client is entered a group at a time; editing shows every field at once, since one change is the usual
-  // case. Every step stays mounted, so going back keeps what was typed.
-  const steps = client
-    ? []
-    : [
-        { id: "contact", label: COPY.contactGroup },
-        { id: "address", label: person ? COPY.addressGroup : COPY.taxGroup },
-        { id: "invoices", label: COPY.invoicesGroup },
-      ];
-  const [step, setStep] = useState(0);
-  const shows = (id: string) =>
-    steps.length === 0 || steps[step]?.id === id ? "contents" : "hidden";
-  const last = steps.length === 0 || step === steps.length - 1;
+  const flow = useFormSteps([
+    { id: "contact", label: COPY.contactGroup },
+    { id: "address", label: person ? COPY.addressGroup : COPY.taxGroup },
+    { id: "invoices", label: COPY.invoicesGroup },
+  ]);
   const contactProblems = (form: HTMLFormElement) => {
     const value = (name: Field) => String(new FormData(form).get(name) ?? "").trim();
     const shown: Partial<Record<Field, string>> = {};
@@ -80,21 +67,26 @@ export function ClientForm({ profileId, client }: ClientFormProps) {
       shown.email = COPY.errors.email;
     return shown;
   };
-  const focusError = (form: HTMLFormElement) => {
-    const invalid = form.querySelector<HTMLElement>('[aria-invalid="true"]');
-    const at = invalid?.closest<HTMLElement>("[data-step]")?.dataset.step;
-    const index = steps.findIndex((s) => s.id === at);
-    if (index >= 0) flushSync(() => setStep(index));
-    invalid?.focus();
-  };
-  const next = (form: HTMLFormElement | null) => {
-    if (!form) return;
-    if (steps[step]?.id === "contact") {
-      const shown = contactProblems(form);
-      flushSync(() => setErrors(shown));
-      if (Object.keys(shown).length > 0) return focusError(form);
-    }
-    setStep(step + 1);
+  // The preview reads the free-text fields as they are typed; they stay uncontrolled.
+  const [typed, setTyped] = useState(() => ({
+    name: client?.name ?? "",
+    email: client?.email ?? "",
+    address: client?.address ?? "",
+    taxId: client?.taxId ?? "",
+    reference: client?.reference ?? "",
+    reminders: client?.reminders ?? false,
+  }));
+  const readTyped = (event: FormEvent<HTMLFormElement>) => {
+    const data = new FormData(event.currentTarget);
+    const text = (name: Field) => String(data.get(name) ?? "").trim();
+    setTyped({
+      name: text("name"),
+      email: text("email"),
+      address: text("address"),
+      taxId: text("taxId"),
+      reference: text("reference"),
+      reminders: data.get("reminders") === "on",
+    });
   };
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
   const [formError, setFormError] = useState("");
@@ -118,7 +110,7 @@ export function ClientForm({ profileId, client }: ClientFormProps) {
       setErrors(shown);
       setFormError("");
     });
-    if (Object.keys(shown).length > 0) return focusError(form);
+    if (Object.keys(shown).length > 0) return flow.focusError(form);
     setBusy(true);
     try {
       await save({ profileId, clientId: clientId.current, body }).unwrap();
@@ -130,18 +122,42 @@ export function ClientForm({ profileId, client }: ClientFormProps) {
       const field = invalidClientField(message);
       if (field) {
         flushSync(() => setErrors({ [field]: COPY.errors.invalid[field] }));
-        focusError(form);
+        flow.focusError(form);
       } else setFormError(COPY.errors.failed);
       setBusy(false);
     }
   };
 
   return (
-    <Form onSubmit={submit}>
-      {steps.length ? (
-        <Stepper label={COPY.stepsLabel} steps={steps} current={step} onStepClick={setStep} />
-      ) : null}
-      <div data-step="contact" className={shows("contact")}>
+    <StepForm
+      label={COPY.stepsLabel}
+      flow={flow}
+      editing={Boolean(client)}
+      cancelHref={back}
+      copy={COPY}
+      busy={busy}
+      onContinue={(form) => {
+        if (flow.at !== "contact") return true;
+        const shown = contactProblems(form);
+        flushSync(() => setErrors(shown));
+        if (Object.keys(shown).length === 0) return true;
+        flow.focusError(form);
+        return false;
+      }}
+      onSubmit={submit}
+      onInput={readTyped}
+      error={formError}
+      preview={
+        <FormPreview title={COPY.preview.title} note={COPY.preview.note}>
+          <ClientPreview
+            {...typed}
+            kind={kind}
+            country={country ? (countries.find((c) => c.value === country)?.label ?? "") : ""}
+          />
+        </FormPreview>
+      }
+    >
+      <div data-step="contact" className={flow.shows("contact")}>
         <FieldGroup title={COPY.contactGroup}>
           <div className="flex flex-col gap-1.5">
             {/* The control's legend names it for screen readers. */}
@@ -179,7 +195,7 @@ export function ClientForm({ profileId, client }: ClientFormProps) {
           </div>
         </FieldGroup>
       </div>
-      <div data-step="address" className={shows("address")}>
+      <div data-step="address" className={flow.shows("address")}>
         <FieldGroup title={person ? COPY.addressGroup : COPY.taxGroup}>
           <TextAreaField
             label={COPY.address}
@@ -214,7 +230,7 @@ export function ClientForm({ profileId, client }: ClientFormProps) {
           </div>
         </FieldGroup>
       </div>
-      <div data-step="invoices" className={shows("invoices")}>
+      <div data-step="invoices" className={flow.shows("invoices")}>
         <FieldGroup title={COPY.invoicesGroup}>
           <TextField
             label={COPY.reference}
@@ -238,39 +254,56 @@ export function ClientForm({ profileId, client }: ClientFormProps) {
           </div>
         </FieldGroup>
       </div>
-      <div className="flex flex-col-reverse gap-2 border-t border-line pt-4 sm:flex-row sm:items-center sm:gap-3">
-        {step > 0 ? (
-          <Button variant="secondary" onClick={() => setStep(step - 1)}>
-            <ArrowLeft aria-hidden className="size-[var(--fw-icon-sm)]" />
-            {COPY.back}
-          </Button>
-        ) : (
-          <Link href={back} className={buttonClasses({ variant: "ghost" })}>
-            {COPY.cancel}
-          </Link>
-        )}
-        <span className="hidden flex-1 sm:block" />
-        {/* Keys keep these two separate elements: reusing one would turn Continue into a submit mid-click. */}
-        {last ? (
-          <Button key="save" type="submit" loading={busy}>
-            {COPY.save}
-          </Button>
-        ) : (
-          <Button
-            key="continue"
-            onClick={(event) => {
-              event.preventDefault();
-              next(event.currentTarget.form);
-            }}
-          >
-            {COPY.continue}
-            <ArrowRight aria-hidden className="size-[var(--fw-icon-sm)]" />
-          </Button>
-        )}
+    </StepForm>
+  );
+}
+
+function ClientPreview({
+  name,
+  email,
+  address,
+  country,
+  taxId,
+  reference,
+  reminders,
+  kind,
+}: {
+  name: string;
+  email: string;
+  address: string;
+  country: string;
+  taxId: string;
+  reference: string;
+  reminders: boolean;
+  kind: ClientKind;
+}) {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="rounded-md bg-surface p-5 text-sm shadow-sm ring-1 ring-line">
+        <p className="text-xs font-medium text-muted">{COPY.preview.billedTo}</p>
+        <p className={`mt-1 font-medium break-words ${name ? "text-ink" : "text-subtle"}`}>
+          {name || COPY.preview.noName}
+        </p>
+        {[email, address, country].filter(Boolean).map((line) => (
+          <p key={line} className="break-words whitespace-pre-line text-muted">
+            {line}
+          </p>
+        ))}
+        {taxId && kind === CLIENT_KINDS.business ? (
+          <p className="text-muted">
+            {COPY.preview.taxId} {taxId}
+          </p>
+        ) : null}
+        {reference ? (
+          <div className="mt-4 border-t border-line pt-3">
+            <p className="text-xs font-medium text-muted">{COPY.preview.reference}</p>
+            <p className="break-words text-ink">{reference}</p>
+          </div>
+        ) : null}
       </div>
-      <p role="alert" className="min-h-5 text-sm text-danger">
-        {formError}
+      <p className="text-sm text-muted">
+        {reminders ? COPY.preview.remindersOn : COPY.preview.remindersOff}
       </p>
-    </Form>
+    </div>
   );
 }

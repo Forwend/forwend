@@ -1,9 +1,6 @@
 "use client";
 
 import {
-  Button,
-  buttonClasses,
-  Form,
   SelectField,
   type SelectOption,
   TextAreaField,
@@ -11,10 +8,10 @@ import {
   TONES,
   useToast,
 } from "@forwend/ui-web";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import { Payee } from "@/features/pay/components/payee";
 import type { TokenRef, TokenSwitch } from "@/features/profiles/types/tokens";
 import { useSaveStoreMutation } from "@/features/stores/api/stores-api";
 import { StoreLogo } from "@/features/stores/components/store-logo";
@@ -27,8 +24,10 @@ import { STORES_COPY as COPY } from "@/features/stores/constants/stores-copy";
 import { invalidStoreField, originLines } from "@/features/stores/lib/stores";
 import type { Store, StoreBody, StoreField } from "@/features/stores/types/stores";
 import { AssetSelection } from "@/shared/components/chains/asset-selection";
+import { TokenMark } from "@/shared/components/chains/token-mark";
 import { CopyValue } from "@/shared/components/copy-value";
 import { FieldGroup } from "@/shared/components/field-group";
+import { FormPreview, StepForm, useFormSteps } from "@/shared/components/step-form";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 export interface StoreFormProps {
@@ -43,6 +42,17 @@ export interface StoreFormProps {
 }
 
 const tokenKey = (t: TokenRef) => `${t.chainId}:${t.token}`;
+
+const STEPS = { store: "store", brand: "brand", assets: "assets", checkout: "checkout" } as const;
+const FIELD_STEPS: Record<StoreField, string> = {
+  name: STEPS.store,
+  brandColor: STEPS.brand,
+  tokensOff: STEPS.assets,
+  defaultExpiresIn: STEPS.checkout,
+  allowedOrigins: STEPS.checkout,
+};
+// The preview lists the first few; the payer's own picker searches all of them.
+const PREVIEW_ASSETS = 5;
 
 // R-134: a new store's id is made once, so a retried save after an error makes one store.
 export function StoreForm({
@@ -63,6 +73,29 @@ export function StoreForm({
   const [errors, setErrors] = useState<Partial<Record<StoreField, string>>>({});
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [name, setName] = useState(store?.name ?? "");
+  const flow = useFormSteps([
+    { id: STEPS.store, label: COPY.storeGroup },
+    { id: STEPS.brand, label: COPY.brandGroup },
+    ...(shownTokens.length ? [{ id: STEPS.assets, label: COPY.tokensGroup }] : []),
+    { id: STEPS.checkout, label: COPY.checkoutGroup },
+  ]);
+  const accepted = shownTokens.filter((t) => !tokensOff.has(tokenKey(t)));
+
+  // Every problem the form has now, whichever step holds it.
+  const problems = (form: HTMLFormElement) => {
+    const shown: Partial<Record<StoreField, string>> = {};
+    const typedName = String(new FormData(form).get("name") ?? "").trim();
+    if (!typedName) shown.name = COPY.errors.required;
+    if (!BRAND_COLOR_PATTERN.test(color.trim())) shown.brandColor = COPY.errors.invalid.brandColor;
+    if (
+      originLines(String(new FormData(form).get("allowedOrigins") ?? "")).length >
+      STORE_LIMITS.origins
+    )
+      shown.allowedOrigins = COPY.errors.tooMany;
+    if (shownTokens.length > 0 && accepted.length === 0) shown.tokensOff = COPY.errors.noToken;
+    return shown;
+  };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -83,22 +116,12 @@ export function StoreForm({
           .map(({ chainId, token }) => ({ chainId, token })),
       ],
     };
-    const shown: Partial<Record<StoreField, string>> = {};
-    if (!body.name) shown.name = COPY.errors.required;
-    if (!BRAND_COLOR_PATTERN.test(body.brandColor))
-      shown.brandColor = COPY.errors.invalid.brandColor;
-    if (body.allowedOrigins.length > STORE_LIMITS.origins)
-      shown.allowedOrigins = COPY.errors.tooMany;
-    if (shownTokens.length > 0 && shownTokens.every((t) => tokensOff.has(tokenKey(t))))
-      shown.tokensOff = COPY.errors.noToken;
+    const shown = problems(form);
     flushSync(() => {
       setErrors(shown);
       setFormError("");
     });
-    if (Object.keys(shown).length > 0) {
-      form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
-      return;
-    }
+    if (Object.keys(shown).length > 0) return flow.focusError(form);
     setBusy(true);
     try {
       await save({ profileId, storeId: storeId.current, body }).unwrap();
@@ -110,21 +133,75 @@ export function StoreForm({
       const field = invalidStoreField(message);
       if (field) {
         flushSync(() => setErrors({ [field]: COPY.errors.invalid[field] }));
-        form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+        flow.focusError(form);
       } else setFormError(COPY.errors.failed);
       setBusy(false);
     }
   };
 
   return (
-    <Form onSubmit={submit}>
-      <FieldGroup title={COPY.storeGroup}>
-        <div className="grid gap-5 sm:grid-cols-2">
+    <StepForm
+      label={COPY.stepsLabel}
+      flow={flow}
+      editing={Boolean(store)}
+      cancelHref={store ? `${APP_ROUTES.stores}/${store.storeId}` : APP_ROUTES.stores}
+      copy={COPY}
+      busy={busy}
+      onContinue={(form) => {
+        const all = problems(form);
+        const here = Object.fromEntries(
+          Object.entries(all).filter(([field]) => FIELD_STEPS[field as StoreField] === flow.at),
+        );
+        flushSync(() => setErrors(here));
+        if (Object.keys(here).length === 0) return true;
+        flow.focusError(form);
+        return false;
+      }}
+      onSubmit={submit}
+      error={formError}
+      preview={
+        <FormPreview title={COPY.preview.title} note={COPY.preview.note}>
+          <div className="flex flex-col gap-4 rounded-md bg-surface p-5 shadow-sm ring-1 ring-line">
+            <Payee
+              as="p"
+              name={name.trim() || COPY.preview.noName}
+              subtitle={COPY.preview.invoice}
+              brand={{
+                storeId: storeId.current,
+                logoAt: store?.logoAt ?? null,
+                color: BRAND_COLOR_PATTERN.test(color) && color ? color : null,
+              }}
+            />
+            <div className="flex flex-col gap-2 border-t border-line pt-4">
+              <p className="text-xs font-medium text-muted">{COPY.preview.payWith}</p>
+              <ul className="flex flex-col gap-2">
+                {accepted.slice(0, PREVIEW_ASSETS).map((t) => (
+                  <li key={tokenKey(t)}>
+                    <TokenMark chainId={t.chainId} symbol={t.symbol} />
+                  </li>
+                ))}
+              </ul>
+              {accepted.length > PREVIEW_ASSETS ? (
+                <p className="text-xs text-muted">
+                  {COPY.preview.more(accepted.length - PREVIEW_ASSETS)}
+                </p>
+              ) : null}
+            </div>
+            <p className="border-t border-line pt-4 text-sm text-muted">
+              {COPY.preview.closes(closeChoices.find((c) => c.value === closes)?.label ?? closes)}
+            </p>
+          </div>
+        </FormPreview>
+      }
+    >
+      <div data-step={STEPS.store} className={flow.shows(STEPS.store)}>
+        <FieldGroup title={COPY.storeGroup}>
           <TextField
             label={COPY.name}
             name="name"
             autoComplete="off"
             defaultValue={store?.name}
+            onChange={(event) => setName(event.target.value)}
             maxLength={STORE_LIMITS.name}
             error={errors.name}
           />
@@ -136,15 +213,15 @@ export function StoreForm({
               copyLabel={COPY.copyLabel}
             />
           ) : null}
-        </div>
-      </FieldGroup>
-      <FieldGroup title={COPY.brandGroup}>
-        {store ? (
-          <StoreLogo profileId={profileId} store={store} />
-        ) : (
-          <p className="text-sm text-muted">{COPY.logoAfterSave}</p>
-        )}
-        <div className="grid gap-5 sm:grid-cols-2">
+        </FieldGroup>
+      </div>
+      <div data-step={STEPS.brand} className={flow.shows(STEPS.brand)}>
+        <FieldGroup title={COPY.brandGroup}>
+          {store ? (
+            <StoreLogo profileId={profileId} store={store} />
+          ) : (
+            <p className="text-sm text-muted">{COPY.logoAfterSave}</p>
+          )}
           <TextField
             label={COPY.color}
             name="brandColor"
@@ -169,34 +246,41 @@ export function StoreForm({
               />
             }
           />
-        </div>
-      </FieldGroup>
-      {shownTokens.length > 0 ? (
-        <FieldGroup title={COPY.tokensGroup}>
-          <AssetSelection
-            label={COPY.tokensGroup}
-            options={shownTokens}
-            selected={new Set(shownTokens.map(tokenKey).filter((key) => !tokensOff.has(key)))}
-            onChange={(keys, on) => {
-              const next = new Set(tokensOff);
-              for (const key of keys) {
-                if (on) next.delete(key);
-                else next.add(key);
-              }
-              setTokensOff(next);
-              setErrors((current) => ({ ...current, tokensOff: undefined }));
-            }}
-          />
-          <p role="alert" className="text-sm text-danger empty:hidden">
-            {errors.tokensOff}
-          </p>
-          <p id="store-tokens-hint" className="text-sm text-muted">
-            {COPY.tokensHint}
-          </p>
         </FieldGroup>
+      </div>
+      {shownTokens.length > 0 ? (
+        <div data-step={STEPS.assets} className={flow.shows(STEPS.assets)}>
+          <FieldGroup title={COPY.tokensGroup}>
+            <AssetSelection
+              label={COPY.tokensGroup}
+              options={shownTokens}
+              selected={new Set(accepted.map(tokenKey))}
+              onChange={(keys, on) => {
+                const next = new Set(tokensOff);
+                for (const key of keys) {
+                  if (on) next.delete(key);
+                  else next.add(key);
+                }
+                setTokensOff(next);
+                setErrors((current) => ({ ...current, tokensOff: undefined }));
+              }}
+            />
+            <p
+              role="alert"
+              tabIndex={-1}
+              data-invalid={errors.tokensOff ? "" : undefined}
+              className="text-sm text-danger outline-none empty:hidden"
+            >
+              {errors.tokensOff}
+            </p>
+            <p id="store-tokens-hint" className="text-sm text-muted">
+              {COPY.tokensHint}
+            </p>
+          </FieldGroup>
+        </div>
       ) : null}
-      <FieldGroup title={COPY.checkoutGroup}>
-        <div className="grid gap-5 sm:grid-cols-2">
+      <div data-step={STEPS.checkout} className={flow.shows(STEPS.checkout)}>
+        <FieldGroup title={COPY.checkoutGroup}>
           <SelectField
             label={COPY.closesAfter}
             value={closes}
@@ -205,32 +289,18 @@ export function StoreForm({
             hint={COPY.closesAfterHint}
             error={errors.defaultExpiresIn}
           />
-        </div>
-        <TextAreaField
-          label={COPY.origins}
-          name="allowedOrigins"
-          defaultValue={store?.allowedOrigins.join("\n")}
-          placeholder="https://"
-          autoComplete="off"
-          spellCheck={false}
-          hint={COPY.originsHint}
-          error={errors.allowedOrigins}
-        />
-      </FieldGroup>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-        <Button type="submit" loading={busy}>
-          {COPY.save}
-        </Button>
-        <Link
-          href={store ? `${APP_ROUTES.stores}/${store.storeId}` : APP_ROUTES.stores}
-          className={buttonClasses({ variant: "ghost" })}
-        >
-          {COPY.cancel}
-        </Link>
+          <TextAreaField
+            label={COPY.origins}
+            name="allowedOrigins"
+            defaultValue={store?.allowedOrigins.join("\n")}
+            placeholder="https://"
+            autoComplete="off"
+            spellCheck={false}
+            hint={COPY.originsHint}
+            error={errors.allowedOrigins}
+          />
+        </FieldGroup>
       </div>
-      <p role="alert" className="min-h-5 text-sm text-danger">
-        {formError}
-      </p>
-    </Form>
+    </StepForm>
   );
 }

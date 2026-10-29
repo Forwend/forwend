@@ -193,10 +193,41 @@ describe("owner's invoice page", () => {
     serve({ ...OPEN, expiresAt: past, closesAt: past, closed: true });
     show();
     await settle();
-    expect(screen.getByText(/Checkout closed/)).toBeTruthy();
+    const region = (name: string) => within(screen.getByRole("region", { name }));
+    expect(region("Details").getByText(/Checkout closed/)).toBeTruthy();
+    expect(region("Timeline").getByText("Checkout closed")).toBeTruthy();
 
     expect(screen.queryByRole("button", { name: "Copy link" })).toBeNull();
     expect(screen.queryByText("Waiting for payment")).toBeNull();
+  });
+
+  it("counts a paid invoice's money as received once it has moved to the wallet", async () => {
+    const full = { ...DEPOSIT, amount: "1250000000", paid: "1250000000" };
+    serve({
+      ...OPEN,
+      paymentStatus: "paid",
+      settlementStatus: "settled",
+      paidAt: full.blockTime,
+      settledAt: "2026-10-10T12:05:00Z",
+      // Settled: nothing is left in the payment address or on its way, so `payable` is 0.
+      amounts: {
+        receiver: "0",
+        payable: "0",
+        held: "0",
+        settled: "1250000000",
+        refunded: "0",
+        observedRefunded: "0",
+        lastReturnTxHash: null,
+        unreconciled: false,
+      },
+      deposits: [full],
+      options: [{ ...OPEN.options[0], deposits: [full] }],
+    });
+    show();
+    await settle();
+    const summary = within(screen.getByRole("region", { name: "Summary" }));
+    expect(summary.getByText("Received").nextElementSibling?.textContent).toBe("1,250.00 USDC");
+    expect(summary.getByText("Still due").nextElementSibling?.textContent).toBe("0.00 USDC");
   });
 
   // R-88: even once the payer locked another option.

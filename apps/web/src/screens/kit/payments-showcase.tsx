@@ -131,11 +131,17 @@ export function PaymentsShowcase() {
       </KitGroup>
       <KitGroup title="Stepper">
         <div className="flex w-full flex-col gap-6">
-          {[0, 2, 3].map((current) => (
+          {[
+            { current: 0, free: false },
+            { current: 2, free: false },
+            { current: 3, free: false },
+            { current: 1, free: true },
+          ].map(({ current, free }) => (
             <Stepper
-              key={current}
-              label={`Steps, at ${current + 1} of 4`}
+              key={`${current}:${free}`}
+              label={free ? "Editing, every step open" : `Steps, at ${current + 1} of 4`}
               current={current}
+              free={free}
               steps={[
                 { id: "customer", label: "Customer" },
                 { id: "items", label: "Items" },

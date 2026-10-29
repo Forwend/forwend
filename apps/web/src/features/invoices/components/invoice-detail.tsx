@@ -20,6 +20,7 @@ import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
 import { InvoiceHistory } from "@/features/invoices/components/invoice-history";
 import { InvoiceLines } from "@/features/invoices/components/invoice-lines";
 import { ConfirmingStatus } from "@/features/invoices/components/invoice-progress";
+import { InvoiceTimeline } from "@/features/invoices/components/invoice-timeline";
 import { PaymentAmountsNotice } from "@/features/invoices/components/payment-amounts-notice";
 import { PaymentReminders } from "@/features/invoices/components/payment-reminders";
 import { ReopenInvoice } from "@/features/invoices/components/reopen-invoice";
@@ -28,6 +29,7 @@ import { SendToClient } from "@/features/invoices/components/send-to-client";
 import { INVOICE_EXCEPTIONS, INVOICE_PDFS } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY as COPY, REQUESTS_COPY } from "@/features/invoices/constants/invoices-copy";
 import {
+  depositAmount,
   formatAgreed,
   formatDueDate,
   invoiceCopyHref,
@@ -304,12 +306,15 @@ function Loaded({
       {/* minmax(0, 1fr): a long value never widens the column past the screen. */}
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
         <div className="@container flex min-w-0 flex-col gap-4">
-          {main && invoice.lines.length > 0 ? (
+          {main ? (
             <InvoiceLines
               lines={invoice.lines}
               decimals={main.decimals}
               unit={invoice.optionCount > 1 ? MONEY_COPY.usd : main.symbol}
               total={BigInt(main.amount)}
+              // One token only: with several, each option's money is in its own units. Money sent after the close
+              // is the payer's, so it is not counted.
+              received={invoice.optionCount === 1 ? depositAmount(invoice, false) : undefined}
             />
           ) : null}
           <div className="grid gap-4 @xl:grid-cols-2 *:only:col-span-full">
@@ -401,7 +406,7 @@ function Loaded({
           <InvoiceHistory invoice={invoice} history={history} views={views} />
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 xl:sticky xl:top-20">
           <section aria-labelledby="invoice-details" className={PANEL}>
             <h2 id="invoice-details" className={PANEL_TITLE}>
               {COPY.details}
@@ -479,6 +484,7 @@ function Loaded({
               </Row>
             </dl>
           </section>
+          <InvoiceTimeline invoice={invoice} sends={sends} views={views} />
         </div>
       </div>
     </>
