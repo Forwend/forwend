@@ -102,12 +102,15 @@ const merchantSQL = `CASE WHEN t.booked THEN CASE WHEN i.payment_status = 'expir
 
 // List filters both billing events and deposits by their payment's state. Held deposits appear only without a filter.
 // An invoice or request appears once numbered; a checkout session has no document, so only its deposits appear.
-func (s *Service) List(ctx context.Context, profileID, cursor string, limit int, status string, q search.Query) (Page, error) {
+func (s *Service) List(ctx context.Context, profileID, cursor string, limit int, status, state string, q search.Query) (Page, error) {
 	if limit < 1 || limit > MaxLimit {
 		return Page{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxLimit)
 	}
 	if status != "" && !slices.Contains(invoice.StatusFilters, status) {
 		return Page{}, fmt.Errorf("%w: status must be one of %v", ErrInvalid, invoice.StatusFilters)
+	}
+	if state != "" && !slices.Contains(invoice.PaymentStates, state) {
+		return Page{}, fmt.Errorf("%w: state must be one of %v", ErrInvalid, invoice.PaymentStates)
 	}
 	// Each condition is added only when used: a cached generic plan of "$n IS NULL OR ..." never uses the index.
 	args := []any{profileID, limit + 1}
@@ -140,6 +143,14 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 			" = " + filter + ")"
 		invoices += " AND " + match
 		deposits += " AND NOT " + heldSQL + " AND " + match
+	}
+	// D-114: the Payments list's states; a deposit takes its payment's.
+	if state != "" {
+		match := invoice.PaymentStateSQL + " = " + arg(state)
+		invoices += " AND " + match
+		deposits += " AND NOT " + heldSQL + " AND " + match
+	}
+	if status != "" || state != "" {
 		depositsFrom += " JOIN invoices_current invoices ON invoices.id = coalesce(i.main_id, i.id)"
 	}
 	if q.Like != nil {

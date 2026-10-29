@@ -8,12 +8,12 @@ import {
   StatusPill,
   WalletStateLabel,
 } from "@forwend/ui-web";
-import { ChevronDown, ExternalLink, FileDown } from "lucide-react";
-import Link from "next/link";
-import { type ReactNode, useId, useState } from "react";
+import { ExternalLink, FileDown } from "lucide-react";
+import { type ReactNode, useId } from "react";
 import { InvoiceLines } from "@/features/invoices/components/invoice-lines";
 import { invoiceNumber, invoicePdfUrl } from "@/features/invoices/lib/invoices";
 import { useGetPaymentQuery } from "@/features/payments/api/payments-api";
+import { Disclosure } from "@/features/payments/components/disclosure";
 import { ExportPayments } from "@/features/payments/components/export-payments";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
 import { PaymentDiagnostics } from "@/features/payments/components/payment-diagnostics";
@@ -32,6 +32,7 @@ import {
 import type { PaymentDetail as PaymentDetailType } from "@/features/payments/types/payments";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { NetworkName } from "@/shared/components/chains/network-name";
+import { DetailHeader } from "@/shared/components/detail-header";
 import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
 import { LIVE_QUERY } from "@/shared/config/refresh";
@@ -82,27 +83,18 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
   const main = payment.options.find((option) => option.optionId === payment.paymentId);
   return (
     <div className="flex flex-col gap-5">
-      <Link
-        href={APP_ROUTES.payments}
-        className="self-start text-sm text-muted underline decoration-line-strong underline-offset-4 lg:hidden"
-      >
-        {COPY.back}
-      </Link>
-      <header className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="break-words text-xl font-semibold tracking-tight text-ink">
-                {paymentLabel(payment)}
-              </h1>
-              {payment.livemode ? null : <Badge tone="warning">{COPY.testnet}</Badge>}
-            </div>
-            <p className="mt-1 text-sm text-muted">
-              {SOURCE_LABELS[payment.source]}
-              {payment.storeName ? ` · ${payment.storeName}` : ""} · {dateTime(payment.createdAt)}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
+      <DetailHeader
+        back={{ href: APP_ROUTES.payments, label: COPY.back }}
+        title={paymentLabel(payment)}
+        badges={payment.livemode ? null : <Badge tone="warning">{COPY.testnet}</Badge>}
+        meta={
+          <>
+            {SOURCE_LABELS[payment.source]}
+            {payment.storeName ? ` · ${payment.storeName}` : ""} · {dateTime(payment.createdAt)}
+          </>
+        }
+        actions={
+          <>
             {payment.hostedUrl ? (
               <a
                 href={`${payment.hostedUrl}?preview=1`}
@@ -115,27 +107,28 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
               </a>
             ) : null}
             <ExportPayments profileId={profileId} paymentId={paymentId} />
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <span className="text-3xl font-medium tracking-tight text-ink tabular-nums">
-            <PaymentAmount
-              amount={payment.amount}
-              decimals={payment.decimals}
-              symbol={payment.optionCount > 1 ? "USD" : payment.symbol}
-            />
-          </span>
-          <StatusPill status={status} />
-          {paymentWallet(payment) === "none" ? null : (
-            <WalletStateLabel state={paymentWallet(payment)} />
-          )}
-        </div>
-        <p role="status" className="rounded-md bg-surface-2 px-4 py-3 text-sm text-ink">
-          {nextStep(payment)}
-        </p>
-      </header>
+          </>
+        }
+        summary={
+          <>
+            <span className="text-3xl font-medium tracking-tight text-ink tabular-nums">
+              <PaymentAmount
+                amount={payment.amount}
+                decimals={payment.decimals}
+                symbol={payment.optionCount > 1 ? "USD" : payment.symbol}
+              />
+            </span>
+            <StatusPill status={status} />
+            {paymentWallet(payment) === "none" ? null : (
+              <WalletStateLabel state={paymentWallet(payment)} />
+            )}
+          </>
+        }
+        next={nextStep(payment)}
+      />
       {read.isError ? (
         <LoadError
+          inline
           message={COPY.stale}
           onRetry={() => void read.refetch()}
           retrying={read.isFetching}
@@ -343,34 +336,6 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
 }
 
 /** A panel whose content loads only once opened, so routine visits never read the ledger. */
-function Disclosure({ title, children }: { title: string; children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-  const id = useId();
-  return (
-    <section className="fw-panel">
-      <h2 className="text-sm font-medium text-ink">
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-controls={id}
-          onClick={() => setOpen((value) => !value)}
-          className="flex min-h-12 w-full items-center justify-between gap-3 px-4 text-left outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus sm:px-5"
-        >
-          {title}
-          <ChevronDown
-            aria-hidden
-            className={`size-[var(--fw-icon-sm)] text-muted transition-transform duration-[var(--fw-duration-fast)] ${open ? "rotate-180" : ""}`}
-          />
-        </button>
-      </h2>
-      {open ? (
-        <div id={id} className="border-t border-line px-4 py-3 sm:px-5">
-          {children}
-        </div>
-      ) : null}
-    </section>
-  );
-}
 
 function PdfLink({ href, children }: { href: string; children: ReactNode }) {
   return (

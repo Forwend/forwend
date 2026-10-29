@@ -329,3 +329,38 @@ it("a merchant's failed stores load shows Try again, which then loads the endpoi
   await settle();
   expect(container.textContent).toContain("shop.example.com/hooks");
 });
+
+it("a merchant's New endpoint starts on All stores, shown as such, and saves without a store", async () => {
+  const { writes } = mount(
+    (call) => {
+      if (call.path.endsWith("/stores"))
+        return Response.json({
+          stores: [
+            {
+              storeId: "66666666-6666-4666-8666-666666666666",
+              name: "Sample shop",
+              defaultExpiresIn: 3600,
+              allowedOrigins: [],
+              brandColor: null,
+              logoAt: null,
+              tokensOff: [],
+              updatedAt: "2026-09-02T00:00:00Z",
+            },
+          ],
+        });
+      if (call.method === "PUT") return Response.json(endpoint(), { status: 201 });
+      return Response.json({ endpoints: [] });
+    },
+    <Webhooks profileId={PROFILE} merchant />,
+  );
+  await settle();
+  fireEvent.click(screen.getByRole("button", { name: "New endpoint" }));
+  expect(screen.getByRole("combobox", { name: "Store", hidden: true }).textContent).toBe(
+    "All stores",
+  );
+  const url = screen.getByRole("textbox", { name: /Endpoint URL/, hidden: true });
+  fireEvent.change(url, { target: { value: "https://shop.example.com/hooks" } });
+  fireEvent.submit(url.closest("form") as HTMLFormElement);
+  await settle();
+  expect(writes().at(-1)?.body).not.toHaveProperty("storeId");
+});

@@ -10,8 +10,6 @@ import {
 } from "@forwend/ui-web";
 import { FileText, Plus } from "lucide-react";
 import Link from "next/link";
-import { StatusFilter } from "@/features/activity/components/status-filter";
-import { STATUS_FILTERS } from "@/features/activity/constants/activity";
 import { useGetInvoicesInfiniteQuery } from "@/features/invoices/api/invoices-api";
 import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
 import { INVOICES_COPY, REQUESTS_COPY } from "@/features/invoices/constants/invoices-copy";
@@ -24,15 +22,17 @@ import {
 import type { InvoiceSummary, InvoiceToken } from "@/features/invoices/types/invoices";
 import { ChainBadge } from "@/shared/components/chains/chain-badge";
 import { NetworkName } from "@/shared/components/chains/network-name";
-import { DataTable } from "@/shared/components/data-table";
+import { type DataColumn, DataTable } from "@/shared/components/data-table";
 import { InitialsAvatar } from "@/shared/components/initials-avatar";
 import { ListToolbar } from "@/shared/components/list-toolbar";
 import { LoadError } from "@/shared/components/load-error";
 import { NoMatch } from "@/shared/components/no-match";
+import { PaymentStateFilter } from "@/shared/components/payment-state-filter";
 import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { PAYMENT_STATE_FILTERS } from "@/shared/constants/payment-state";
 import { useListFilters } from "@/shared/hooks/use-list-filters";
 import { chainName } from "@/shared/lib/chains";
 
@@ -64,7 +64,6 @@ const invoiceHref = (inv: InvoiceSummary) => `${APP_ROUTES.invoices}/${inv.invoi
 const clientName = (inv: InvoiceSummary) => inv.client?.name ?? inv.client?.email ?? null;
 
 // A merchant invoice's store (R-134) follows its title.
-const subtitle = (inv: InvoiceSummary) => [inv.title, inv.store?.name].filter(Boolean).join(" · ");
 
 export interface InvoicesTableProps {
   profileId: string;
@@ -73,12 +72,15 @@ export interface InvoicesTableProps {
 }
 
 /** With onRequest the list is a personal profile's requests: no client or due date, so rows show the note. */
+const STATES = Object.values(PAYMENT_STATE_FILTERS);
+const REQUEST_HIDDEN = new Set(["client", "due", "store"]);
+
 export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTableProps) {
   const COPY = onRequest ? REQUESTS_COPY : INVOICES_COPY;
   const label = (inv: InvoiceSummary) => (onRequest ? inv.note : clientName(inv));
-  const filters = useListFilters("status", Object.values(STATUS_FILTERS), STATUS_FILTERS.all);
+  const filters = useListFilters("state", STATES, PAYMENT_STATE_FILTERS.all);
   const list = useGetInvoicesInfiniteQuery(
-    { profileId, status: filters.apiFilter, q: filters.apiQuery },
+    { profileId, state: filters.apiFilter, q: filters.apiQuery },
     LIVE_QUERY,
   );
   // A new filter keeps the last rows in place, dimmed and busy, until its own answer arrives.
@@ -117,7 +119,7 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
               className="flex-1"
             />
           }
-          filter={<StatusFilter value={filters.filter} onValueChange={filters.setFilter} />}
+          filter={<PaymentStateFilter value={filters.filter} onValueChange={filters.setFilter} />}
           actions={<NewInvoiceLink className="max-lg:hidden" onRequest={onRequest} />}
         />
       ) : null}
@@ -151,82 +153,102 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
             rowKey={(inv) => inv.invoiceId}
             rowHref={invoiceHref}
             rowLabel={(inv) => [invoiceNumber(inv.number), label(inv)].filter(Boolean).join(", ")}
-            stacked={Boolean(onRequest)}
-            columns={[
-              {
-                key: "invoice",
-                header: COPY.columns.invoice,
-                className: "w-32",
-                cell: (inv) => (
-                  <span className="font-medium text-ink">{invoiceNumber(inv.number)}</span>
-                ),
-              },
-              {
-                key: "client",
-                header: COPY.columns.client,
-                cell: (inv) =>
-                  clientName(inv) ? (
-                    <span className="flex min-w-0 items-center gap-2.5">
-                      <Avatar name={clientName(inv)} small />
-                      <span className="truncate text-ink">{clientName(inv)}</span>
-                    </span>
-                  ) : (
-                    <span className="text-subtle">{COPY.noClient}</span>
+            // A request has no client, due date or store: those columns leave, the rest match Invoices.
+            columns={(
+              [
+                {
+                  key: "invoice",
+                  header: COPY.columns.invoice,
+                  className: "w-32",
+                  cell: (inv) => (
+                    <span className="font-medium text-ink">{invoiceNumber(inv.number)}</span>
                   ),
-              },
-              {
-                key: "title",
-                header: COPY.columns.title,
-                from: "lg",
-                cell: (inv) => <span className="text-muted">{subtitle(inv) || "—"}</span>,
-              },
-              {
-                key: "due",
-                header: COPY.columns.due,
-                className: "w-32",
-                cell: (inv) =>
-                  inv.dueDate ? (
-                    <time dateTime={inv.dueDate} className="text-muted tabular-nums">
-                      {formatDueDate(inv.dueDate)}
-                    </time>
-                  ) : (
-                    <span className="text-subtle">{COPY.noDueDate}</span>
-                  ),
-              },
-              {
-                key: "status",
-                header: COPY.columns.status,
-                className: "w-44",
-                cell: (inv) => <StatusPill status={invoiceStatus(inv)} />,
-              },
-              {
-                key: "amount",
-                header: COPY.columns.amount,
-                align: "end",
-                className: "w-36",
-                cell: (inv) => (
-                  <InvoiceAmount
-                    invoice={inv}
-                    tokens={tokens}
-                    className="flex-nowrap justify-end text-ink"
-                  />
-                ),
-              },
-              {
-                key: "network",
-                header: COPY.columns.network,
-                from: "md",
-                className: "w-36",
-                cell: (inv) =>
-                  inv.optionCount > 1 ? (
-                    <span className="text-muted">{MONEY_COPY.anyNetwork}</span>
-                  ) : (
+                },
+                {
+                  key: "client",
+                  header: COPY.columns.client,
+                  cell: (inv) =>
+                    clientName(inv) ? (
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <Avatar name={clientName(inv)} small />
+                        <span className="truncate text-ink">{clientName(inv)}</span>
+                      </span>
+                    ) : (
+                      <span className="text-subtle">{COPY.noClient}</span>
+                    ),
+                },
+                {
+                  key: "title",
+                  header: COPY.columns.title,
+                  // A request is named by its note, so the column stays at every width; an invoice's client comes first.
+                  from: onRequest ? undefined : "lg",
+                  cell: (inv) => (
                     <span className="text-muted">
-                      <NetworkName chainId={inv.chainId} />
+                      {inv.title || (onRequest ? inv.note : null) || "—"}
                     </span>
                   ),
-              },
-            ]}
+                },
+                // A freelancer's invoices belong to no store, so the column shows only when one does.
+                ...(rows.some((inv) => inv.store)
+                  ? [
+                      {
+                        key: "store",
+                        header: COPY.columns.store,
+                        from: "xl",
+                        cell: (inv: InvoiceSummary) => (
+                          <span className="text-muted">{inv.store?.name ?? "—"}</span>
+                        ),
+                      } satisfies DataColumn<InvoiceSummary>,
+                    ]
+                  : []),
+                {
+                  key: "due",
+                  header: COPY.columns.due,
+                  className: "w-32",
+                  cell: (inv) =>
+                    inv.dueDate ? (
+                      <time dateTime={inv.dueDate} className="text-muted tabular-nums">
+                        {formatDueDate(inv.dueDate)}
+                      </time>
+                    ) : (
+                      <span className="text-subtle">{COPY.noDueDate}</span>
+                    ),
+                },
+                {
+                  key: "status",
+                  header: COPY.columns.status,
+                  className: "w-44",
+                  cell: (inv) => <StatusPill status={invoiceStatus(inv)} />,
+                },
+                {
+                  key: "amount",
+                  header: COPY.columns.amount,
+                  align: "end",
+                  className: "w-36",
+                  cell: (inv) => (
+                    <InvoiceAmount
+                      invoice={inv}
+                      tokens={tokens}
+                      className="flex-nowrap justify-end text-ink"
+                    />
+                  ),
+                },
+                {
+                  key: "network",
+                  header: COPY.columns.network,
+                  from: "md",
+                  className: "w-36",
+                  cell: (inv) =>
+                    inv.optionCount > 1 ? (
+                      <span className="text-muted">{MONEY_COPY.anyNetwork}</span>
+                    ) : (
+                      <span className="text-muted">
+                        <NetworkName chainId={inv.chainId} />
+                      </span>
+                    ),
+                },
+              ] satisfies DataColumn<InvoiceSummary>[]
+            ).filter((column) => !onRequest || !REQUEST_HIDDEN.has(column.key))}
             phone={(inv) => ({
               // A request's note is no name, so its avatar keeps the document icon.
               leading: (
@@ -266,6 +288,7 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
       )}
       {list.isError && data ? (
         <LoadError
+          inline
           message={COPY.updateFailed}
           onRetry={() => void list.refetch()}
           retrying={list.isFetching}

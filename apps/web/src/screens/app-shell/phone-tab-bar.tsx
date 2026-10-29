@@ -1,7 +1,7 @@
 "use client";
 
 import { Sheet } from "@forwend/ui-web";
-import { ChevronRight, ChevronsUpDown, Home, Menu, ReceiptText } from "lucide-react";
+import { ChevronRight, ChevronsUpDown, Home, Menu, ReceiptText, Settings } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ProfileAvatar } from "@/features/profiles/components/profile-avatar";
@@ -11,6 +11,7 @@ import { profileLabel } from "@/features/profiles/lib/profile";
 import type { Profile } from "@/features/profiles/types/profile";
 import { NAV } from "@/screens/app-shell/constants/app-nav";
 import { isCurrentPage, navFor, pageAllowed } from "@/screens/app-shell/lib/app-nav";
+import { SETTINGS_COPY } from "@/screens/settings/constants/settings-copy";
 import { DESKTOP_QUERY } from "@/shared/config/breakpoints";
 import { APP_ROUTES } from "@/shared/config/routes";
 
@@ -128,6 +129,15 @@ export function PhoneTabBar({ pathname, active, onProfiles }: PhoneTabBarProps) 
                   <ReceiptText aria-hidden className="size-5" />
                 </span>
                 {BILLING_DETAILS_COPY.title}
+                <ChevronRight aria-hidden className="ml-auto size-4 text-muted" />
+              </Link>
+            ) : null}
+            {pageAllowed(active, APP_ROUTES.settings) ? (
+              <Link {...pageLink(APP_ROUTES.settings)}>
+                <span className={ROW_ICON}>
+                  <Settings aria-hidden className="size-5" />
+                </span>
+                {SETTINGS_COPY.title}
                 <ChevronRight aria-hidden className="ml-auto size-4 text-muted" />
               </Link>
             ) : null}

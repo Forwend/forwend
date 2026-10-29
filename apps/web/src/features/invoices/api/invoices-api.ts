@@ -1,5 +1,4 @@
 import { z } from "zod";
-import type { StatusFilter } from "@/features/activity/types/activity";
 import { INVOICES_PAGE_SIZE } from "@/features/invoices/constants/invoices";
 import {
   createInvoiceBodySchema,
@@ -20,6 +19,7 @@ import type {
   StoppedReminders,
 } from "@/features/invoices/types/invoices";
 import { apiSlice } from "@/shared/api/api-slice";
+import type { ApiPaymentState } from "@/shared/types/payment-state";
 
 const INVOICES_TAG = "Invoices";
 
@@ -32,7 +32,8 @@ export const invoicesApi = apiSlice
     endpoints: (build) => ({
       getInvoices: build.infiniteQuery<
         InvoicesPage,
-        { profileId: string; status?: StatusFilter; q?: string },
+        // The Payments list's states (D-114), so both lists filter alike.
+        { profileId: string; state?: ApiPaymentState; q?: string },
         string | null
       >({
         infiniteQueryOptions: {

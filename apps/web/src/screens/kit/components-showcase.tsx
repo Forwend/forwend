@@ -15,6 +15,8 @@ import {
   CodeInput,
   ComboboxField,
   DatePicker,
+  type DateRange,
+  DateRangePicker,
   Dialog,
   EmailCapture,
   EmptyState,
@@ -169,6 +171,7 @@ export function ComponentsShowcase() {
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [dueDate, setDueDate] = useState<string | null>("2026-11-02");
+  const [period, setPeriod] = useState<DateRange>({ from: null, to: null });
   const [code, setCode] = useState("826");
   return (
     <div className="flex flex-col gap-10">
@@ -357,6 +360,26 @@ export function ComponentsShowcase() {
             value={null}
             onChange={() => {}}
             error="Pick a day within the next year."
+          />
+        </div>
+        <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-3">
+          <DateRangePicker
+            label="Period"
+            value={period}
+            onChange={setPeriod}
+            note="Days are in UTC."
+            clearLabel="Clear period"
+          />
+          <DateRangePicker
+            label="Period, chosen"
+            value={{ from: "2026-10-01", to: "2026-10-31" }}
+            onChange={() => {}}
+          />
+          <DateRangePicker
+            label="Statement period"
+            value={{ from: "2026-10-01", to: null }}
+            onChange={() => {}}
+            error="Choose both days: a statement covers a period."
           />
         </div>
         <div className="rounded-lg border border-line bg-surface p-3">

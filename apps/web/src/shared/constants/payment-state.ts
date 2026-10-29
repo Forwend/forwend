@@ -33,6 +33,9 @@ export const API_PAYMENT_STATES = {
   canceled: "canceled",
 } as const;
 
+/** The status filter on every payment list (Payments, Invoices): All, then the API's states. */
+export const PAYMENT_STATE_FILTERS = { all: "all", ...API_PAYMENT_STATES } as const;
+
 /** Payment.wallet values: where the merchant's share of a paid payment is (D-114). */
 export const API_WALLET_STATES = {
   none: "none",

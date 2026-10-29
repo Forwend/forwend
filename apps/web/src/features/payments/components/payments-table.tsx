@@ -1,9 +1,8 @@
 import { Badge, StatusPill, WalletStateLabel } from "@forwend/ui-web";
-import { FileText, HandCoins, Link2, ShoppingCart } from "lucide-react";
 import type { ReactNode } from "react";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
 import { PaymentReceived } from "@/features/payments/components/payment-received";
-import { SOURCE_LABELS } from "@/features/payments/constants/payments";
+import { SOURCE_ICONS, SOURCE_LABELS } from "@/features/payments/constants/payments";
 import { PAYMENTS_COPY as COPY } from "@/features/payments/constants/payments-copy";
 import {
   paymentDisplayStatus,
@@ -17,13 +16,6 @@ import { APP_ROUTES } from "@/shared/config/routes";
 import { shortDate } from "@/shared/lib/dates";
 
 type Row = Payment & { problems?: PaymentProblem[] };
-
-const SOURCE_ICONS: Record<Payment["source"], typeof FileText> = {
-  invoice: FileText,
-  checkout: ShoppingCart,
-  request: HandCoins,
-  payment_link: Link2,
-};
 
 export interface PaymentsTableProps {
   rows: readonly Row[];
@@ -43,7 +35,8 @@ export function PaymentsTable({ rows, attention, showStore, footer }: PaymentsTa
       cell: (p) => (
         <span className="flex min-w-0 items-center gap-2">
           <span className="truncate font-medium text-ink">{paymentLabel(p)}</span>
-          {p.livemode ? null : <Badge tone="warning">{COPY.testnet}</Badge>}
+          {/* Quiet on every row, so it doesn't outshout the statuses that need action. */}
+          {p.livemode ? null : <Badge tone="neutral">{COPY.testnet}</Badge>}
         </span>
       ),
     },
@@ -53,7 +46,14 @@ export function PaymentsTable({ rows, attention, showStore, footer }: PaymentsTa
       from: "lg",
       cell: (p) => customer(p) ?? <span className="text-subtle">{COPY.noCustomer}</span>,
     },
-    { key: "source", header: COPY.columns.source, from: "md", cell: (p) => <Source payment={p} /> },
+    {
+      key: "source",
+      header: COPY.columns.source,
+      // The phone row and the payment page name the source; at mid widths the customer matters more.
+      from: "xl",
+      className: "w-36",
+      cell: (p) => <Source payment={p} />,
+    },
     ...(showStore
       ? [
           {
@@ -68,6 +68,7 @@ export function PaymentsTable({ rows, attention, showStore, footer }: PaymentsTa
       key: "amount",
       header: COPY.columns.amount,
       align: "end",
+      className: "whitespace-nowrap",
       cell: (p) => <Requested payment={p} />,
     },
     {
@@ -80,7 +81,7 @@ export function PaymentsTable({ rows, attention, showStore, footer }: PaymentsTa
     {
       key: "status",
       header: COPY.columns.status,
-      className: "w-36",
+      className: "w-44",
       cell: (p) => <StatusPill status={paymentDisplayStatus(p)} />,
     },
     attention

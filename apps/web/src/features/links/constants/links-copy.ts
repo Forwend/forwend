@@ -7,7 +7,7 @@ export const LINKS_COPY = {
   add: "New link",
   newTitle: "New payment link",
   editTitle: "Edit payment link",
-  intro: "Share a reusable offer. Each purchase creates its own checkout and payment record.",
+  intro: "A reusable offer. Each purchase is its own payment.",
   columns: {
     link: "Link",
     address: "Address",

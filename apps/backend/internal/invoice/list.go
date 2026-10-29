@@ -61,13 +61,16 @@ type Page struct {
 // Newest first by number, which only grows. The caller must check the user's access to the profile.
 // stores, when not nil, keeps only those stores' invoices: a Developer's or Finance member's (R-138). live, when not
 // nil, keeps only that mode's: a key's (D-87).
-func (s *Service) List(ctx context.Context, profileID, cursor string, limit int, status string, q search.Query,
+func (s *Service) List(ctx context.Context, profileID, cursor string, limit int, status, state string, q search.Query,
 	stores []string, live *bool) (Page, error) {
 	if limit < 1 || limit > MaxLimit {
 		return Page{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxLimit)
 	}
 	if status != "" && !slices.Contains(StatusFilters, status) {
 		return Page{}, fmt.Errorf("%w: status must be one of %v", ErrInvalid, StatusFilters)
+	}
+	if state != "" && !slices.Contains(PaymentStates, state) {
+		return Page{}, fmt.Errorf("%w: state must be one of %v", ErrInvalid, PaymentStates)
 	}
 	var before *int64
 	if cursor != "" {
@@ -84,6 +87,11 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 	if status != "" {
 		args = append(args, status)
 		where += fmt.Sprintf(" AND ($%d = 'paid' AND invoices.payment_status = 'paid' OR %s = $%d)", len(args), ListStatusFilterSQL, len(args))
+	}
+	// D-114: the same states the Payments list filters by, so both lists name a payment alike.
+	if state != "" {
+		args = append(args, state)
+		where += fmt.Sprintf(" AND %s = $%d", PaymentStateSQL, len(args))
 	}
 	if stores != nil {
 		args = append(args, stores)

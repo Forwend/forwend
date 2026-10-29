@@ -1,10 +1,9 @@
-import { STATUS_FILTERS } from "@/features/activity/constants/activity";
-import type { StatusFilter } from "@/features/activity/types/activity";
-
 export const ACTIVITY_COPY = {
+  columns: { event: "Event", network: "Network", when: "When", status: "Status", amount: "Amount" },
   activity: "Activity",
+  intro: "Payments and invoices as they happen. An invoice shows what was asked.",
   emptyTitle: "No activity yet",
-  emptyText: "Customer payments and billing activity appear here.",
+  emptyText: "Payments and invoices show here as they happen.",
   activityFailed: "We could not load the activity.",
   loadMore: "Show more",
   updateFailed: "We could not update the activity.",
@@ -13,26 +12,17 @@ export const ACTIVITY_COPY = {
   held: "Held for the payer",
   partHeld: "Payment, extra held for the payer",
   retry: "Try again",
-  filterLabel: "Status",
-  filters: {
-    [STATUS_FILTERS.all]: "All",
-    [STATUS_FILTERS.open]: "Waiting for payment",
-    [STATUS_FILTERS.confirming]: "Confirming",
-    [STATUS_FILTERS.paid]: "Paid",
-    [STATUS_FILTERS.settled]: "In wallet",
-    [STATUS_FILTERS.expired]: "Expired",
-    [STATUS_FILTERS.canceled]: "Canceled",
-  } satisfies Record<StatusFilter, string>,
   search: "Search activity",
-  searchPlaceholder: "Search amount, token or hash",
+  searchPlaceholder: "Amount, token or hash",
+  // The bell's words (R-81), with the payment each names.
   toasts: {
-    paid: (amount: string) => ({
+    paid: (amount: string, payment: string) => ({
       title: "Payment received",
-      description: `${amount} paid by the customer.`,
+      description: `${payment} is paid: ${amount}.`,
     }),
-    settled: (amount: string) => ({
-      title: "Transfer to wallet complete",
-      description: `${amount} is in your wallet.`,
+    settled: (amount: string, payment: string) => ({
+      title: "In your wallet",
+      description: `${amount} for ${payment} is in your wallet.`,
     }),
   },
 } as const;

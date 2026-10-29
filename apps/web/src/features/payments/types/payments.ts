@@ -23,6 +23,10 @@ export interface PaymentFilters {
   status?: string;
   /** The derived payment state (D-114). */
   state?: string;
+  /** The derived wallet transfer state (D-114). */
+  wallet?: string;
+  /** An exact order reference. */
+  reference?: string;
 }
 export interface PaymentPeriod {
   from?: string;

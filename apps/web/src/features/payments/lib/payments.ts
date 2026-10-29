@@ -1,8 +1,9 @@
 import { PAYMENT_STATUSES, type PaymentStatus, type WalletState } from "@forwend/ui-web";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { PAYMENT_PROBLEMS } from "@/features/payments/constants/payments";
-import { PAYMENT_DETAIL_COPY, PAYMENTS_COPY } from "@/features/payments/constants/payments-copy";
+import { PAYMENT_DETAIL_COPY } from "@/features/payments/constants/payments-copy";
 import type { Payment, PaymentDetail } from "@/features/payments/types/payments";
+import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { paymentStatusOf, walletStateOf } from "@/shared/lib/payment-state";
 /** What the merchant knows the payment by: their order reference, else the invoice number, else its title. */
 export function paymentLabel(
@@ -12,7 +13,7 @@ export function paymentLabel(
     payment.reference ??
     (payment.number ? invoiceNumber(payment.number) : null) ??
     payment.title ??
-    PAYMENTS_COPY.checkout(payment.paymentId)
+    MONEY_COPY.checkout(payment.paymentId)
   );
 }
 

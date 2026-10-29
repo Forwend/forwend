@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, buttonClasses, PAYMENT_STATUS, Skeleton, StatusPill } from "@forwend/ui-web";
+import { BigAmount, buttonClasses, PAYMENT_STATUS, Skeleton, StatusPill } from "@forwend/ui-web";
 import { useEffect, useRef, useState } from "react";
 import { formatUsd } from "@/features/balances/lib/balances";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
@@ -8,9 +8,11 @@ import { useAcceptJobMutation, useGetPublicJobQuery } from "@/features/jobs/api/
 import { AcceptChange } from "@/features/jobs/components/accept-change";
 import { ConsentForm } from "@/features/jobs/components/consent-form";
 import { JobRecord } from "@/features/jobs/components/job-record";
+import { PaymentStep } from "@/features/jobs/components/payment-step";
 import { QUOTE_COPY as COPY } from "@/features/jobs/constants/jobs-copy";
 import { apiCents, isPendingChange } from "@/features/jobs/lib/jobs";
 import type { JobPayment, JobPaymentStatus } from "@/features/jobs/types/jobs";
+import { LoadError } from "@/shared/components/load-error";
 import { Party } from "@/shared/components/party";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 
@@ -64,12 +66,11 @@ export function JobQuote({ token }: { token: string }) {
             {COPY.notFound}
           </p>
         ) : query.isError ? (
-          <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-muted">
-            {COPY.failed}
-            <Button size="sm" variant="secondary" onClick={() => void query.refetch()}>
-              {COPY.retry}
-            </Button>
-          </div>
+          <LoadError
+            message={COPY.failed}
+            onRetry={() => void query.refetch()}
+            retrying={query.isFetching}
+          />
         ) : (
           <Skeleton className="h-96 w-full" />
         )}
@@ -78,6 +79,7 @@ export function JobQuote({ token }: { token: string }) {
   }
 
   const deposit = job.payments.find((p) => p.onAccept && payable(p));
+  const agreed = job.payments.filter((p) => !isPendingChange(p)).length;
   const i = job.issuer;
   return (
     <div className="flex w-full max-w-2xl flex-col gap-4">
@@ -86,6 +88,14 @@ export function JobQuote({ token }: { token: string }) {
         <h1 className="text-2xl font-semibold tracking-tight break-words text-ink sm:text-3xl">
           {job.title}
         </h1>
+        <p className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <BigAmount
+            value={formatUsd(apiCents(job.totalUsd))}
+            unit={MONEY_COPY.usd}
+            className="text-3xl sm:text-4xl"
+          />
+          <span className="text-sm text-muted">{COPY.paymentCount(agreed)}</span>
+        </p>
       </header>
 
       {job.acceptedAt && job.acceptedName ? (
@@ -127,70 +137,70 @@ export function JobQuote({ token }: { token: string }) {
             {COPY.change.gone}
           </p>
         ) : null}
-        <ol className="divide-y divide-line">
-          {job.payments.map((p) => (
-            <li
+        <ol className="pt-1">
+          {job.payments.map((p, n) => (
+            <PaymentStep
               key={p.position}
-              className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-5"
+              payment={p}
+              first={n === 0}
+              last={n === job.payments.length - 1}
+              amount={usd(p.amountUsd)}
             >
-              <div className="flex min-w-0 flex-col gap-1">
-                <p className="font-medium break-words text-ink">{p.title}</p>
-                <p className="text-sm text-muted">
-                  {p.onAccept ? COPY.onAccept : COPY.afterDone}, {COPY.dueDays(p.dueDays)}
+              <p className="font-medium break-words text-ink">{p.title}</p>
+              <p className="text-sm text-muted">
+                {p.onAccept ? COPY.onAccept : COPY.afterDone}, {COPY.dueDays(p.dueDays)}
+              </p>
+              {p.proposedAt ? (
+                <p
+                  id={`quote-change-${p.position}`}
+                  tabIndex={-1}
+                  className="text-sm text-muted outline-none"
+                >
+                  <span className="font-medium text-ink">{COPY.change.label}</span>
+                  {" · "}
+                  {p.acceptedAt && p.acceptedName
+                    ? COPY.change.accepted(p.acceptedName, TIME.format(new Date(p.acceptedAt)))
+                    : COPY.change.waiting}
                 </p>
-                {p.proposedAt ? (
-                  <p
-                    id={`quote-change-${p.position}`}
-                    tabIndex={-1}
-                    className="text-sm text-muted outline-none"
-                  >
-                    <span className="font-medium text-ink">{COPY.change.label}</span>
-                    {" · "}
-                    {p.acceptedAt && p.acceptedName
-                      ? COPY.change.accepted(p.acceptedName, TIME.format(new Date(p.acceptedAt)))
-                      : COPY.change.waiting}
-                  </p>
-                ) : null}
-                {isPendingChange(p) ? (
-                  <AcceptChange
-                    token={token}
-                    change={p}
-                    onAccepted={(position) => {
-                      setGone(0);
-                      setFocusChange(position);
-                    }}
-                    onGone={() => setGone((n) => n + 1)}
-                  />
-                ) : null}
-                {p.deliveryLink ? (
+              ) : null}
+              {isPendingChange(p) ? (
+                <AcceptChange
+                  token={token}
+                  change={p}
+                  onAccepted={(position) => {
+                    setGone(0);
+                    setFocusChange(position);
+                  }}
+                  onGone={() => setGone((n) => n + 1)}
+                />
+              ) : null}
+              {p.deliveryLink ? (
+                <a
+                  href={p.deliveryLink}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  className="text-sm text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink"
+                >
+                  {COPY.delivered}
+                  <span className="sr-only"> {COPY.inNewTab}</span>
+                </a>
+              ) : null}
+              {p.invoiceId && p.number ? (
+                payable(p) && p !== deposit ? (
                   <a
-                    href={p.deliveryLink}
-                    target="_blank"
-                    rel="noopener noreferrer nofollow"
-                    className="self-start text-sm text-ink underline underline-offset-2"
+                    href={payHref(p)}
+                    className={`${buttonClasses({ size: "sm", variant: "secondary" })} mt-1`}
                   >
-                    {COPY.delivered}
-                    <span className="sr-only"> {COPY.inNewTab}</span>
+                    {COPY.pay(invoiceNumber(p.number))}
                   </a>
-                ) : null}
-                {p.invoiceId && p.number ? (
-                  payable(p) && p !== deposit ? (
-                    <a
-                      href={payHref(p)}
-                      className={`${buttonClasses({ size: "sm", variant: "secondary" })} self-start`}
-                    >
-                      {COPY.pay(invoiceNumber(p.number))}
-                    </a>
-                  ) : p.status && p.status !== PAYMENT_STATUS.open ? (
-                    <span className="flex flex-wrap items-center gap-2 text-sm text-muted">
-                      {invoiceNumber(p.number)}
-                      <StatusPill status={p.status as JobPaymentStatus} />
-                    </span>
-                  ) : null
-                ) : null}
-              </div>
-              <p className="shrink-0 font-medium tabular-nums text-ink">{usd(p.amountUsd)}</p>
-            </li>
+                ) : p.status && p.status !== PAYMENT_STATUS.open ? (
+                  <span className="flex flex-wrap items-center gap-2 text-sm text-muted">
+                    {invoiceNumber(p.number)}
+                    <StatusPill status={p.status as JobPaymentStatus} />
+                  </span>
+                ) : null
+              ) : null}
+            </PaymentStep>
           ))}
         </ol>
         <p className="flex items-baseline justify-between gap-3 border-t border-line px-4 py-3 sm:px-5">

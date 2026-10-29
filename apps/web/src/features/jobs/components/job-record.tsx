@@ -5,8 +5,8 @@ import { RECORD_COPY as COPY } from "@/features/jobs/constants/jobs-copy";
 import { apiCents, jobRecord } from "@/features/jobs/lib/jobs";
 import type { PublicJob, RecordEvent } from "@/features/jobs/types/jobs";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { dateTime } from "@/shared/lib/dates";
 
-const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 const number = (event: RecordEvent) => invoiceNumber(event.payment?.number ?? 0);
 const amount = (event: RecordEvent) =>
   `${formatUsd(apiCents(event.payment?.amountUsd ?? "0.00"))} ${MONEY_COPY.usd}`;
@@ -49,16 +49,16 @@ export function JobRecord({ job, acceptedEmail = null }: JobRecordProps) {
       <h2 id="job-record" className="fw-panel-head text-base font-semibold text-ink">
         {COPY.title}
       </h2>
-      <ol className="flex flex-col gap-2 px-4 py-3 text-sm sm:px-5">
+      <ol className="flex flex-col gap-3 px-4 py-4 sm:px-5">
         {jobRecord(job).map((event) => (
           <li
             key={`${event.kind}-${event.payment?.position ?? 0}`}
-            className="flex flex-wrap gap-x-3 gap-y-0.5"
+            className="flex flex-col gap-0.5"
           >
-            <time dateTime={event.at} className="shrink-0 text-muted tabular-nums sm:w-44">
-              {TIME.format(new Date(event.at))}
+            <time dateTime={event.at} className="text-xs text-muted tabular-nums">
+              {dateTime(event.at)}
             </time>
-            <span className="min-w-0 break-words text-ink">
+            <span className="min-w-0 text-sm break-words text-ink">
               {describeEvent(event, job, acceptedEmail)}
               {event.kind === RECORD_EVENTS.done && event.payment?.deliveryLink ? (
                 <>

@@ -42,6 +42,7 @@ import { ChainBadge, hasChainBadge } from "@/shared/components/chains/chain-badg
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { NetworkName } from "@/shared/components/chains/network-name";
 import { ListToolbar } from "@/shared/components/list-toolbar";
+import { LoadError } from "@/shared/components/load-error";
 import { NoMatch } from "@/shared/components/no-match";
 import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
@@ -85,6 +86,8 @@ interface TransactionsTableProps {
   profileId: string;
   title: string;
   pageHeading?: boolean;
+  /** One quiet line under the page's heading: what the list holds. */
+  intro?: string;
   preview?: number;
 }
 
@@ -94,7 +97,13 @@ export function TransactionsTable(props: TransactionsTableProps) {
 }
 
 // A preview reads one short page; the full list pages by cursor and stays live while it shows its first page.
-function ProfileTransactions({ profileId, title, pageHeading, preview }: TransactionsTableProps) {
+function ProfileTransactions({
+  profileId,
+  title,
+  pageHeading,
+  intro,
+  preview,
+}: TransactionsTableProps) {
   const filters = useListFilters(
     "direction",
     Object.values(TRANSACTION_FILTERS),
@@ -119,6 +128,7 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
   const days = groupByDay(rows, new Date());
   const dayId = useId();
   const filtered = !preview && filters.filtered;
+  const stale = !preview && !paged.currentData && Boolean(pagedData);
   const Heading = pageHeading ? "h1" : "h2";
   const DayHeading = pageHeading ? "h2" : "h3";
   // A new filter or search loads in place of as many rows as were shown.
@@ -128,7 +138,7 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
   return (
     <section
       aria-labelledby={`${profileId}-transactions`}
-      aria-busy={!data && !list.isError}
+      aria-busy={(!data && !list.isError) || stale || undefined}
       className={pageHeading ? "flex flex-col gap-4" : "fw-panel flex flex-col"}
     >
       <div
@@ -155,6 +165,7 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
           </Link>
         ) : null}
       </div>
+      {intro ? <p className="-mt-2 text-sm text-muted lg:mt-0">{intro}</p> : null}
       {preview ? null : (
         <ListToolbar
           search={
@@ -186,14 +197,12 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
       )}
 
       {list.isError && !data ? (
-        <div
-          role="alert"
-          className="flex flex-wrap items-center gap-4 px-5 py-6 text-sm text-muted"
-        >
-          {TRANSACTIONS_COPY.failed}
-          <Button size="sm" variant="secondary" onClick={() => void list.refetch()}>
-            {TRANSACTIONS_COPY.retry}
-          </Button>
+        <div className={pageHeading ? undefined : "px-4 pb-4 sm:px-5"}>
+          <LoadError
+            message={TRANSACTIONS_COPY.failed}
+            onRetry={() => void list.refetch()}
+            retrying={list.isFetching}
+          />
         </div>
       ) : !data ? (
         <RowsSkeleton count={skeletonRows} className={pageHeading ? "fw-panel" : ""} />
@@ -208,94 +217,88 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
       ) : rows.length === 0 ? (
         <NoMatch onClear={filters.clear} compact={!pageHeading} />
       ) : (
-        <div className={pageHeading ? "fw-panel overflow-hidden" : ""}>
-          <div className="hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[36rem] text-sm">
-              <thead>
-                <tr className={TABLE_HEAD_CLASSES}>
-                  <th scope="col" className="w-[38%]">
-                    {TRANSACTIONS_COPY.columns.transaction}
-                  </th>
-                  {preview ? null : <th scope="col">{TRANSACTIONS_COPY.columns.type}</th>}
-                  <th scope="col" className="hidden 2xl:table-cell">
-                    {TRANSACTIONS_COPY.columns.network}
-                  </th>
-                  <th scope="col">{TRANSACTIONS_COPY.columns.date}</th>
-                  <th scope="col">{TRANSACTIONS_COPY.columns.status}</th>
-                  <th scope="col" className="text-right">
-                    {TRANSACTIONS_COPY.columns.amount}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {days.map((group) =>
-                  group.items.map((t) => (
-                    <tr
-                      key={transactionKey(t)}
-                      className={`transition-colors duration-[var(--fw-duration-fast)] ${TABLE_ROW_CLASSES} hover:bg-[color-mix(in_oklab,var(--fw-surface-2)_50%,transparent)]`}
-                    >
-                      <td>
-                        <Party
-                          t={t}
-                          detail={<NetworkName chainId={t.chainId} />}
-                          detailClassName="2xl:hidden"
-                        />
+        // Columns show by the list's own width, as on every record table, so a collapsed sidebar shows more.
+        <div
+          className={`@container ${pageHeading ? "fw-panel overflow-hidden" : ""} ${stale ? "opacity-60 transition-opacity duration-[var(--fw-duration-fast)]" : ""}`}
+        >
+          <table className="hidden w-full text-sm @3xl:table">
+            <caption className="sr-only">{title}</caption>
+            <thead>
+              <tr className={TABLE_HEAD_CLASSES}>
+                <th scope="col" className="w-1/3">
+                  {TRANSACTIONS_COPY.columns.transaction}
+                </th>
+                {preview ? null : <th scope="col">{TRANSACTIONS_COPY.columns.type}</th>}
+                <th scope="col" className="hidden @5xl:table-cell">
+                  {TRANSACTIONS_COPY.columns.network}
+                </th>
+                <th scope="col">{TRANSACTIONS_COPY.columns.date}</th>
+                <th scope="col">{TRANSACTIONS_COPY.columns.status}</th>
+                <th scope="col" className="text-right">
+                  {TRANSACTIONS_COPY.columns.amount}
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {days.map((group) =>
+                group.items.map((t) => (
+                  <tr
+                    key={transactionKey(t)}
+                    className={`transition-colors duration-[var(--fw-duration-fast)] ${TABLE_ROW_CLASSES} hover:bg-[color-mix(in_oklab,var(--fw-surface-2)_50%,transparent)]`}
+                  >
+                    <td className="max-w-0">
+                      <Party t={t} badgeClassName="@5xl:hidden" />
+                    </td>
+                    {preview ? null : (
+                      // A compact select keeps the row on one line; touch keeps the full-size target.
+                      <td className="whitespace-nowrap pointer-fine:[&_[role=combobox]]:h-8">
+                        <TransactionType profileId={profileId} t={t} />
                       </td>
-                      {preview ? null : (
-                        <td>
-                          <TransactionType profileId={profileId} t={t} />
-                        </td>
-                      )}
-                      <td className="hidden whitespace-nowrap text-muted 2xl:table-cell">
-                        <NetworkName chainId={t.chainId} />
-                      </td>
-                      <td className="whitespace-nowrap text-muted tabular-nums">
-                        <span className="inline-flex items-center gap-1">
-                          <time dateTime={t.at}>
-                            {shortDay(group.when)}, {TIME.format(new Date(t.at))}
-                          </time>
-                          <ExplorerLink chainId={t.chainId} txHash={t.txHash} />
-                        </span>
-                      </td>
-                      <td>
-                        <Status t={t} />
-                      </td>
-                      <td className="text-right">
-                        <Amount t={t} />
-                      </td>
-                    </tr>
-                  )),
-                )}
-              </tbody>
-            </table>
-          </div>
-          <div className="md:hidden">
+                    )}
+                    <td className="hidden whitespace-nowrap text-muted @5xl:table-cell">
+                      <NetworkName chainId={t.chainId} />
+                    </td>
+                    <td className="whitespace-nowrap text-muted tabular-nums">
+                      <span className="inline-flex items-center gap-1">
+                        <time dateTime={t.at}>
+                          {shortDay(group.when)}, {TIME.format(new Date(t.at))}
+                        </time>
+                        <ExplorerLink chainId={t.chainId} txHash={t.txHash} />
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap">
+                      <Status t={t} />
+                    </td>
+                    <td className="text-right">
+                      <Amount t={t} />
+                    </td>
+                  </tr>
+                )),
+              )}
+            </tbody>
+          </table>
+          <div className="@3xl:hidden">
             {days.map((group) => (
               <section key={group.day} aria-labelledby={`${dayId}-${group.day}`}>
                 <DayHeading
                   id={`${dayId}-${group.day}`}
-                  className="px-4 pt-4 pb-1.5 text-xs font-medium text-muted first-of-type:pt-3"
+                  className="border-b border-line px-4 pt-4 pb-1.5 text-xs font-medium text-muted sm:px-5"
                 >
                   {dayName(group.when)}
                 </DayHeading>
                 <ul className="divide-y divide-line">
                   {group.items.map((t) => (
-                    <li key={transactionKey(t)} className="min-h-16 px-4 py-3">
+                    <li key={transactionKey(t)} className="min-h-15 px-4 py-2.5 sm:px-5">
                       <div className="flex items-center gap-3">
                         <Party
                           t={t}
                           short
-                          chainBadge
                           detail={
                             <>
                               <time dateTime={t.at} className="whitespace-nowrap">
                                 {TIME.format(new Date(t.at))}
                               </time>
-                              {hasChainBadge(t.chainId) ? (
-                                <span className="sr-only">, {chainName(t.chainId)}</span>
-                              ) : (
-                                ` · ${chainName(t.chainId)}`
-                              )}
+                              {hasChainBadge(t.chainId) ? null : ` · ${chainName(t.chainId)}`}
                               <ExplorerLink chainId={t.chainId} txHash={t.txHash} />
                             </>
                           }
@@ -310,7 +313,7 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
                         </span>
                       </div>
                       {preview ? null : (
-                        <div className="mt-2 pl-12 text-sm">
+                        <div className="mt-1.5 pl-12 text-sm">
                           <TransactionType profileId={profileId} t={t} />
                         </div>
                       )}
@@ -320,46 +323,45 @@ function ProfileTransactions({ profileId, title, pageHeading, preview }: Transac
               </section>
             ))}
           </div>
+          {!preview && paged.hasNextPage ? (
+            <div className="border-t border-line px-4 py-3 sm:px-5">
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={paged.isFetchingNextPage}
+                onClick={() => void paged.fetchNextPage()}
+              >
+                {TRANSACTIONS_COPY.loadMore}
+              </Button>
+            </div>
+          ) : null}
         </div>
       )}
-      {preview || !data ? null : paged.hasNextPage ? (
-        <Button
-          variant="secondary"
-          size="sm"
-          className={pageHeading ? "self-start" : "m-4 self-start"}
-          loading={paged.isFetchingNextPage}
-          onClick={() => void paged.fetchNextPage()}
-        >
-          {TRANSACTIONS_COPY.loadMore}
-        </Button>
-      ) : null}
       {list.isError && data ? (
-        <div
-          role="alert"
-          className={`flex flex-wrap items-center gap-4 text-sm text-muted ${pageHeading ? "" : "px-5 pb-4"}`}
-        >
-          {TRANSACTIONS_COPY.updateFailed}
-          <Button size="sm" variant="secondary" onClick={() => void list.refetch()}>
-            {TRANSACTIONS_COPY.retry}
-          </Button>
+        <div className={pageHeading ? undefined : "px-4 pb-4 sm:px-5"}>
+          <LoadError
+            inline
+            message={TRANSACTIONS_COPY.updateFailed}
+            onRetry={() => void list.refetch()}
+            retrying={list.isFetching}
+          />
         </div>
       ) : null}
     </section>
   );
 }
 
+// One line in the table, where the network is a column or, without room, the logo on the icon; phones add a detail line.
 function Party({
   t,
   detail,
-  detailClassName = "",
   short = false,
-  chainBadge = false,
+  badgeClassName = "",
 }: {
   t: Transaction;
   detail?: ReactNode;
-  detailClassName?: string;
   short?: boolean;
-  chainBadge?: boolean;
+  badgeClassName?: string;
 }) {
   const incoming = t.direction === TRANSACTION_DIRECTIONS.in;
   const Icon = incoming ? ArrowDownLeft : ArrowUpRight;
@@ -367,10 +369,10 @@ function Party({
   return (
     <span className="flex min-w-0 items-center gap-3">
       <span
-        className={`relative grid size-9 shrink-0 place-items-center rounded-pill ${incoming ? "bg-success-soft text-success" : "bg-surface-2 text-muted"}`}
+        className={`relative grid shrink-0 place-items-center rounded-pill ${detail ? "size-9" : "size-7"} ${incoming ? "bg-success-soft text-success" : "bg-surface-2 text-muted"}`}
       >
         <Icon aria-hidden className="size-[var(--fw-icon-sm)]" />
-        {chainBadge ? <ChainBadge chainId={t.chainId} /> : null}
+        <ChainBadge chainId={t.chainId} className={badgeClassName} />
       </span>
       <span className="min-w-0">
         <span className="block truncate font-medium text-ink">
@@ -391,11 +393,12 @@ function Party({
               <Counterparty t={t} />
             </>
           )}
+          {hasChainBadge(t.chainId) ? (
+            <span className={`sr-only ${badgeClassName}`}>, {chainName(t.chainId)}</span>
+          ) : null}
         </span>
         {detail ? (
-          <span className={`flex min-w-0 items-center gap-1 text-xs text-muted ${detailClassName}`}>
-            {detail}
-          </span>
+          <span className="flex min-w-0 items-center gap-1 text-xs text-muted">{detail}</span>
         ) : null}
       </span>
     </span>

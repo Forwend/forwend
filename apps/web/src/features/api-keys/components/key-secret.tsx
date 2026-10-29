@@ -11,7 +11,7 @@ export interface KeySecretProps {
 export function KeySecret({ secret, onDone }: KeySecretProps) {
   return (
     <div className="flex flex-col gap-4">
-      <p role="status" className="text-sm text-ink">
+      <p role="status" className="rounded-md bg-warning-soft px-3 py-2 text-sm text-warning">
         {COPY.secretBody}
       </p>
       <CopyValue
@@ -20,7 +20,7 @@ export function KeySecret({ secret, onDone }: KeySecretProps) {
         hint={COPY.secretHint}
         copyLabel={COPY.copyLabel}
       />
-      <div className="flex justify-end">
+      <div className="flex flex-col sm:flex-row sm:justify-end">
         <Button onClick={onDone}>{COPY.done}</Button>
       </div>
     </div>

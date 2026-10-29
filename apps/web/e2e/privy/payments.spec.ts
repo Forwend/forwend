@@ -384,7 +384,8 @@ test("payment lists, reconciliation and detail remain usable on a phone", async 
   const reconciliation = page.getByRole("radio", { name: "Reconciliation", exact: true });
   await reconciliation.click();
   await expect(reconciliation).toBeChecked();
-  await expect(page.getByText("In receive contracts", { exact: true })).toBeVisible();
+  // The report's account rows show on a phone too.
+  await expect(page.getByRole("rowheader", { name: "In payment addresses" }).first()).toBeVisible();
   expect(await sidewaysScroll(page)).toBeLessThanOrEqual(1);
   await page.goto(`/app/payments/${payment.paymentId}`);
   await expect(page.getByRole("heading", { name: payment.reference, exact: true })).toBeVisible();
@@ -849,11 +850,12 @@ for (const width of [1440, 390]) {
           .filter({ visible: true })
           .first(),
       ).toBeVisible();
+      await expect(page.getByRole("main").getByRole("link", { name: /^Payment/ })).toHaveAttribute(
+        "href",
+        `/app/payments/${payment.paymentId}`,
+      );
       await expect(
-        page.getByRole("main").getByRole("link", { name: "Payment", exact: true }),
-      ).toHaveAttribute("href", `/app/payments/${payment.paymentId}`);
-      await expect(
-        page.getByRole("main").getByRole("link", { name: "Invoice created", exact: true }),
+        page.getByRole("main").getByRole("link", { name: /^Invoice created/ }),
       ).toHaveAttribute("href", `/app/invoices/${payment.paymentId}`);
       expect(await sidewaysScroll(page)).toBeLessThanOrEqual(1);
     }
@@ -894,10 +896,10 @@ test("the bell shows wallet settlement once and keeps an unconfirmed transfer pe
   await page.goto("/app/payments");
   await page.getByRole("button", { name: /^Notifications/ }).click();
   const menu = page.getByRole("menu");
-  await expect(menu.getByRole("menuitem").filter({ hasText: /in your wallet/ })).toHaveCount(1);
-  await expect(menu.getByRole("menuitem").filter({ hasText: "Transfer confirming" })).toBeVisible();
-  await expect(menu.getByText("Transferred to wallet", { exact: true })).toHaveCount(0);
-  await expect(menu.getByRole("menuitem").filter({ hasText: /in your wallet/ })).toHaveAttribute(
+  // The settled payment's own event says its money is in the wallet; its transfer is not listed again.
+  await expect(menu.getByRole("menuitem").filter({ hasText: /in your wallet/i })).toHaveCount(1);
+  await expect(menu.getByRole("menuitem").filter({ hasText: "Confirming" })).toBeVisible();
+  await expect(menu.getByRole("menuitem").filter({ hasText: /in your wallet/i })).toHaveAttribute(
     "href",
     `/app/payments/${payment.paymentId}`,
   );

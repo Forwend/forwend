@@ -1,5 +1,5 @@
-import { ClientScreen } from "@/screens/clients/client-screen";
+import { ClientFormScreen } from "@/screens/clients/client-form-screen";
 
 export default function NewClientPage() {
-  return <ClientScreen />;
+  return <ClientFormScreen />;
 }

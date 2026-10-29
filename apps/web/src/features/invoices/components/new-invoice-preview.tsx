@@ -5,6 +5,9 @@ import type {
 } from "@/features/invoices/constants/invoices-copy";
 import { exactDigits } from "@/shared/lib/money";
 
+// A summary: the first few lines, then how many more; the form above lists them all.
+const PREVIEW_LINES = 5;
+
 export interface PreviewLine {
   id: string;
   description: string;
@@ -68,7 +71,7 @@ export function NewInvoicePreview({
       </div>
       {lines.length ? (
         <ul className="flex flex-col divide-y divide-line border-y border-line text-sm">
-          {lines.map((line) => (
+          {lines.slice(0, PREVIEW_LINES).map((line) => (
             <li key={line.id} className="flex items-baseline justify-between gap-4 py-2.5">
               <span className="min-w-0">
                 <span className="block break-words text-ink">
@@ -83,6 +86,11 @@ export function NewInvoicePreview({
               </span>
             </li>
           ))}
+          {lines.length > PREVIEW_LINES ? (
+            <li className="py-2.5 text-xs text-muted">
+              {copy.moreItems(lines.length - PREVIEW_LINES)}
+            </li>
+          ) : null}
         </ul>
       ) : null}
       <dl className="flex flex-col divide-y divide-line border-y border-line text-sm">

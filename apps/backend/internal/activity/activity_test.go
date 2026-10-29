@@ -70,10 +70,10 @@ func addDeposit(t *testing.T, pool *pgxpool.Pool, invoice string, n, minute int,
 
 // pages reads the whole list with each page size and checks every reading gives the same items: no page skips or
 // repeats one, also between items at the same time.
-func pages(t *testing.T, s *Service, profile, status string) []string {
+func pages(t *testing.T, s *Service, profile, status, state string) []string {
 	t.Helper()
 	ctx := context.Background()
-	whole, err := s.List(ctx, profile, "", MaxLimit, status, search.Query{})
+	whole, err := s.List(ctx, profile, "", MaxLimit, status, state, search.Query{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func pages(t *testing.T, s *Service, profile, status string) []string {
 		var got []string
 		cursor := ""
 		for read := 1; ; read++ {
-			page, err := s.List(ctx, profile, cursor, limit, status, search.Query{})
+			page, err := s.List(ctx, profile, cursor, limit, status, state, search.Query{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -124,7 +124,7 @@ func TestListNewestFirstInPages(t *testing.T) {
 	s := NewService(pool)
 	ctx := context.Background()
 
-	first, err := s.List(ctx, empty, "", DefaultLimit, "", search.Query{})
+	first, err := s.List(ctx, empty, "", DefaultLimit, "", "", search.Query{})
 	if err != nil || len(first.Items) != 0 || first.NextCursor != "" {
 		t.Fatalf("new profile: %+v, %v; want an empty list", first, err)
 	}
@@ -158,13 +158,23 @@ func TestListNewestFirstInPages(t *testing.T) {
 	want := []string{"deposit " + c + " " + tx(13), "deposit " + b + " " + tx(11), "deposit " + a + " " + tx(10),
 		"deposit " + session + " " + tx(15), "deposit " + c + " " + tx(14), "invoice " + c + " ", "invoice " + b + " ",
 		"deposit " + d + " " + tx(16), "invoice " + d + " ", "invoice " + a + " "}
-	if got := pages(t, s, profile, ""); !reflect.DeepEqual(got, want) {
+	if got := pages(t, s, profile, "", ""); !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %v\nwant %v", got, want)
 	}
 	for _, status := range invoice.StatusFilters {
-		pages(t, s, profile, status)
+		pages(t, s, profile, status, "")
 	}
-	all, err := s.List(ctx, profile, "", DefaultLimit, "", search.Query{})
+	// D-114: each state pages like the rest, and the states split the list without overlap.
+	seen := map[string]string{}
+	for _, state := range invoice.PaymentStates {
+		for _, key := range pages(t, s, profile, "", state) {
+			if before, ok := seen[key]; ok {
+				t.Fatalf("%s is both %s and %s", key, before, state)
+			}
+			seen[key] = state
+		}
+	}
+	all, err := s.List(ctx, profile, "", DefaultLimit, "", "", search.Query{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,7 +201,7 @@ func TestListNewestFirstInPages(t *testing.T) {
 	settle := fmt.Sprintf("0x%064x", 99)
 	exec(t, pool, `WITH i AS (INSERT INTO settlement_intents (invoice_id, status, tx_hash) VALUES ($1, 'confirmed', $2))
 		UPDATE invoices SET settlement_status = 'settled' WHERE id = $1`, a, settle)
-	all, _ = s.List(ctx, profile, "", DefaultLimit, "", search.Query{})
+	all, _ = s.List(ctx, profile, "", DefaultLimit, "", "", search.Query{})
 	if i := all.Items[9]; i.InvoiceID != a || i.SettlementStatus != "settled" || i.TxHash != settle {
 		t.Fatalf("settled invoice item %+v, want tx hash %s", i, settle)
 	}
@@ -205,7 +215,7 @@ func TestListRefusesBadInput(t *testing.T) {
 		cursor string
 		limit  int
 	}{{"", 0}, {"", MaxLimit + 1}, {"not base64!", 10}, {encode(time.Time{}, "payment", "x"), 10}, {"MTIz", 10}} {
-		if _, err := s.List(ctx, profile, c.cursor, c.limit, "", search.Query{}); !errors.Is(err, ErrInvalid) {
+		if _, err := s.List(ctx, profile, c.cursor, c.limit, "", "", search.Query{}); !errors.Is(err, ErrInvalid) {
 			t.Fatalf("cursor %q limit %d: %v, want ErrInvalid", c.cursor, c.limit, err)
 		}
 	}
@@ -270,7 +280,7 @@ func TestListMarksHeldDeposits(t *testing.T) {
 	held := map[string]bool{}
 	parts := map[string]string{}
 	s := NewService(pool)
-	all, err := s.List(context.Background(), profile, "", DefaultLimit, "", search.Query{})
+	all, err := s.List(context.Background(), profile, "", DefaultLimit, "", "", search.Query{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -293,7 +303,7 @@ func TestListMarksHeldDeposits(t *testing.T) {
 		t.Fatalf("parts %v, want %v", parts, wantParts)
 	}
 	for _, filter := range []string{"open", "paid"} {
-		page, err := s.List(context.Background(), profile, "", DefaultLimit, filter, search.Query{})
+		page, err := s.List(context.Background(), profile, "", DefaultLimit, filter, "", search.Query{})
 		if err != nil {
 			t.Fatal(err)
 		}

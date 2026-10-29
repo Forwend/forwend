@@ -1,7 +1,19 @@
 import { CHAINS } from "@/shared/constants/chains";
+import { foldText } from "@/shared/lib/search";
 
 export function chainName(chainId: number): string {
   return CHAINS[chainId]?.name ?? `Chain ${chainId}`;
+}
+
+/** Token lists get a search past a handful: a profile can have hundreds of tokens on. */
+export const TOKEN_SEARCH_FROM = 10;
+
+/** A token search matches its symbol or its network's name, so "usdc base" finds USDC on Base. */
+export function tokenMatches(t: { symbol: string; chainId: number }, query: string): boolean {
+  const text = foldText(`${t.symbol} ${chainName(t.chainId)}`);
+  return foldText(query)
+    .split(/\s+/)
+    .every((word) => text.includes(word));
 }
 
 export function lookalikeOf(chainId: number, symbol: string): string | undefined {

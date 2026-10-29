@@ -29,6 +29,8 @@ Routes: `apps/backend/api/openapi.yaml`; each module mounts its own in `internal
 - Money: decimal string in base units (`"5000000"`) next to `chainId` and `token` (contract address), as in R-19.
 - Times: RFC 3339 in UTC. IDs and addresses: strings.
 - Lists: `?limit=` (max 100) and `?cursor=`; response `{ "items": [...], "nextCursor": "…" }`.
+- Invoices and activity also take `?state=`, the Payments list's D-114 states (waiting | confirming | partially_paid |
+  paid | overpaid | expired | canceled); a deposit takes its payment's state. Another value is 422.
 - The owner's invoice, activity and transaction lists also take a filter (`?status=` open | confirming | paid | settled | expired |
   canceled on invoices and activity, where a closed checkout (`closed`, R-77) counts as expired, `?direction=` in | out on transactions) and `?q=`, a search of 1–100 characters (blank or
   longer: 422). Both narrow the list before paging, so `nextCursor` continues the filtered list. A field matches when
@@ -624,7 +626,7 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - Checkout, owner pages and receipt PDFs identify incomplete transaction lists; their totals remain complete.
 - Each of its `deposits` has the sender `from` (lowercase hex, as stored) and `blockTime` (the block's time, RFC 3339
   UTC), from the stored transfer.
-- `GET /v1/profiles/{profileId}/invoices?limit=&cursor=&status=&q=`: the list format above, highest number (newest)
+- `GET /v1/profiles/{profileId}/invoices?limit=&cursor=&status=&state=&q=`: the list format above, highest number (newest)
   first; items have no `deposits`. Members reach it with `invoices.read`, Developer and Finance for their stores (D-93).
 - `GET /v1/profiles/{profileId}/invoices/{invoiceId}`: the public GET plus `client`, `settlementWait`, `history` and `views`.
   Another profile's invoice is 404 (`invoice_not_found`), also when the same user owns both.

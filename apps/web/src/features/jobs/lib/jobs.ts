@@ -1,8 +1,15 @@
-import { JOB_FIELDS, JOB_LIMITS, RECORD_EVENTS } from "@/features/jobs/constants/jobs";
+import { PAYMENT_STATUS } from "@forwend/ui-web";
+import {
+  JOB_FIELDS,
+  JOB_LIMITS,
+  PAYMENT_STEPS,
+  RECORD_EVENTS,
+} from "@/features/jobs/constants/jobs";
 import type {
   JobField,
   JobPayment,
   JobSummary,
+  PaymentStep,
   PublicJob,
   RecordEvent,
 } from "@/features/jobs/types/jobs";
@@ -71,4 +78,12 @@ export function jobRecord(job: PublicJob): RecordEvent[] {
 /** A scope change the client has not accepted yet (R-105): it can't be marked done and stays out of the total. */
 export function isPendingChange(payment: JobPayment): boolean {
   return payment.proposedAt !== null && payment.acceptedAt === null;
+}
+
+/** A paid invoice is done; a made one is the step under way. */
+export function paymentStep(payment: JobPayment): PaymentStep {
+  if (isPendingChange(payment)) return PAYMENT_STEPS.change;
+  if (payment.status === PAYMENT_STATUS.paid || payment.status === PAYMENT_STATUS.settled)
+    return PAYMENT_STEPS.paid;
+  return payment.invoiceId ? PAYMENT_STEPS.invoiced : PAYMENT_STEPS.upcoming;
 }

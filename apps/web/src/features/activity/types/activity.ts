@@ -1,13 +1,11 @@
 import type { z } from "zod";
-import type { ACTIVITY_KINDS, STATUS_FILTERS } from "@/features/activity/constants/activity";
+import type { ACTIVITY_KINDS } from "@/features/activity/constants/activity";
 import type { activityItemSchema, activityPageSchema } from "@/features/activity/schemas/activity";
 import type {
   API_DEPOSIT_STATUSES,
   API_PAYMENT_STATUSES,
   API_SETTLEMENT_STATUSES,
 } from "@/shared/constants/payment-state";
-
-export type StatusFilter = (typeof STATUS_FILTERS)[keyof typeof STATUS_FILTERS];
 
 export type ActivityKind = (typeof ACTIVITY_KINDS)[keyof typeof ACTIVITY_KINDS];
 

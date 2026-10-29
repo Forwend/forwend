@@ -126,3 +126,31 @@ func TestLineUnit(t *testing.T) {
 		t.Errorf("fixed: %d %s, want 6 USDC", d, s)
 	}
 }
+
+// R-88: the most lines an invoice may have continue across pages, the last one included.
+func TestInvoiceWithTheMostLinesSpansPages(t *testing.T) {
+	now := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)
+	lines := make([]invoice.Line, invoice.MaxLines)
+	for i := range lines {
+		lines[i] = invoice.Line{Description: fmt.Sprintf("Item %d with a longer description that wraps onto a second line in the table", i+1),
+			Quantity: "1.00", UnitPrice: big.NewInt(1_000000), Amount: big.NewInt(1_000000)}
+	}
+	inv := invoice.Invoice{Asset: chain.Asset{ChainID: 84532, Symbol: "USDC", Decimals: 6},
+		Amount: big.NewInt(int64(invoice.MaxLines) * 1_000000), PaymentStatus: ledger.Open,
+		ClosesAt: now.Add(time.Hour), Lines: lines,
+		Amounts: &ledger.Amounts{ReconciliationStatus: ledger.ReconciliationVerified, Payable: new(big.Int), Held: new(big.Int)}}
+	pdf, err := Invoice(inv, "https://example.com/pay/x", nil, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drawn := pages(t, pdf)
+	if len(drawn) < 2 {
+		t.Fatalf("%d lines on %d page(s); want them to continue on a second page", invoice.MaxLines, len(drawn))
+	}
+	all := strings.Join(drawn, "\n")
+	for _, want := range []string{"Item 1 with", fmt.Sprintf("Item %d with", invoice.MaxLines)} {
+		if !strings.Contains(all, want) {
+			t.Errorf("%q is missing from the PDF", want)
+		}
+	}
+}

@@ -301,6 +301,13 @@
   }
 }
 
+/* Tailwind 4's outline-none also sets --tw-outline-style to none, and focus-visible:outline-2 reads that variable,
+   so the ring a control declares never drew. Unlayered, this beats the utility while focused; a field that sets
+   outline-style: none itself (it shows a ring instead) is unaffected. */
+:focus-visible {
+  --tw-outline-style: solid;
+}
+
 /* Scroll reveal for marketing sections, driven by the scroll itself. Browsers without scroll timelines, and reduced
    motion, show everything in place from the start. */
 @keyframes fw-rise {

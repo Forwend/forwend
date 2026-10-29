@@ -112,6 +112,12 @@ func TestListInvoicesFilterAndSearch(t *testing.T) {
 		{"status=paid", []any{3.0, 2.0}},
 		{"status=settled", []any{3.0}},
 		{"status=expired", []any{5.0, 1.0}}, // expired, and open with its checkout closed
+		// D-114: the Payments list's states, on invoices too.
+		{"state=waiting", []any{}},
+		{"state=confirming", []any{4.0}},
+		{"state=paid", []any{3.0, 2.0}},
+		{"state=expired", []any{5.0, 1.0}},
+		{"state=paid&q=kettle", []any{3.0}},
 		{"q=INV-0003", []any{3.0}},
 		{"q=inv-000", []any{5.0, 4.0, 3.0, 2.0, 1.0}},
 		{"q=LOGO", []any{1.0}},          // title
@@ -129,7 +135,7 @@ func TestListInvoicesFilterAndSearch(t *testing.T) {
 		{"status=settled&q=kettle", []any{3.0}},
 		{"status=paid&q=kettle", []any{3.0}},
 	})
-	checkListErrors(t, e, path, "status=all", "status=refunded")
+	checkListErrors(t, e, path, "status=all", "status=refunded", "state=open")
 }
 
 // R-77.

@@ -88,9 +88,10 @@ export function SignInForm() {
           <h1 className="text-3xl font-semibold tracking-tight text-balance text-ink">
             {SIGN_IN_COPY.codeTitle}
           </h1>
+          {/* The address on its own line, so a long one never breaks in the middle of the sentence. */}
           <p className="text-muted">
-            {SIGN_IN_COPY.codeSentTo}{" "}
-            <span className="font-medium break-all text-ink">{email.trim()}</span>.
+            {SIGN_IN_COPY.codeSentTo}
+            <span className="block font-medium break-words text-ink">{email.trim()}</span>
           </p>
         </div>
         {/* Stays enabled while the code is checked: disabling it would drop keyboard focus. */}
@@ -106,14 +107,14 @@ export function SignInForm() {
           autoFocus
           className="min-h-25"
         />
-        <div className="flex flex-col gap-3">
-          <Button size="lg" type="submit" loading={busy === "code"} disabled={busy === "resend"}>
-            {SIGN_IN_COPY.signIn}
-          </Button>
+        <Button size="lg" type="submit" loading={busy === "code"} disabled={busy === "resend"}>
+          {SIGN_IN_COPY.signIn}
+        </Button>
+        {/* Sign in is the one action; the ways around a missing code stay quiet under it. */}
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
           <Button
-            size="lg"
             type="button"
-            variant="secondary"
+            variant="link"
             loading={busy === "resend"}
             disabled={busy === "code"}
             onClick={() => void send(true)}
@@ -124,7 +125,6 @@ export function SignInForm() {
             type="button"
             variant="link"
             disabled={busy !== ""}
-            className="self-center"
             onClick={() => {
               setStep(SIGN_IN_STEPS.email);
               setFieldError("");

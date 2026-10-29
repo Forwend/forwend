@@ -42,6 +42,7 @@ export function MemberActions({ profileId, member, who, stores }: MemberActionsP
   const form = useRef<HTMLFormElement>(null);
   // Which dialog opens once the menu has closed and handed focus back (as on Delete client).
   const chosen = useRef<"change" | "remove" | null>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   const [role, setRole] = useState<MemberRole>(memberRole(member));
   const [storeIds, setStoreIds] = useState<string[]>(member.stores);
   const [errors, setErrors] = useState<ReturnType<typeof grantError>>({});
@@ -89,8 +90,8 @@ export function MemberActions({ profileId, member, who, stores }: MemberActionsP
           trigger={(openChange) => (
             <Menu>
               <MenuTrigger asChild>
-                <IconButton label={COPY.actions(who)} title={COPY.actions(who)} size="md">
-                  <Ellipsis aria-hidden className="size-[var(--fw-icon-md)]" />
+                <IconButton ref={trigger} label={COPY.actions(who)} title={COPY.actions(who)}>
+                  <Ellipsis aria-hidden className="size-[var(--fw-icon-sm)]" />
                 </IconButton>
               </MenuTrigger>
               <MenuContent
@@ -101,6 +102,8 @@ export function MemberActions({ profileId, member, who, stores }: MemberActionsP
                   if (!open) return;
                   chosen.current = null;
                   event.preventDefault();
+                  // The trigger holds focus as the dialog opens, so the dialog hands it back there when it closes.
+                  trigger.current?.focus();
                   if (open === "remove") return openRemove();
                   // From the member as the list has it now, which a saved change has updated.
                   resetChange();
@@ -142,7 +145,7 @@ export function MemberActions({ profileId, member, who, stores }: MemberActionsP
                 {errors.form}
               </p>
             ) : null}
-            <div className="flex flex-wrap justify-end gap-2">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <Button
                 type="button"
                 variant={BUTTON_VARIANTS.secondary}
@@ -164,7 +167,7 @@ export function MemberActions({ profileId, member, who, stores }: MemberActionsP
           {COPY.removeFailed}
         </p>
       ) : null}
-      <form method="dialog" className="mt-5 flex flex-wrap justify-end gap-2">
+      <form method="dialog" className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button type="submit" variant={BUTTON_VARIANTS.secondary}>
           {COPY.keep}
         </Button>

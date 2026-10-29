@@ -31,7 +31,7 @@ export function LeaveTeam({ profileId, team }: LeaveTeamProps) {
       triggerLabel={COPY.leave}
       title={COPY.leaveTitle(team)}
       triggerVariant={BUTTON_VARIANTS.secondary}
-      triggerClassName="self-start"
+      triggerClassName="shrink-0 max-sm:w-full"
       onClose={reset}
     >
       <p>{COPY.leaveBody}</p>
@@ -40,7 +40,7 @@ export function LeaveTeam({ profileId, team }: LeaveTeamProps) {
           {COPY.leaveFailed}
         </p>
       ) : null}
-      <form method="dialog" className="mt-5 flex flex-wrap justify-end gap-2">
+      <form method="dialog" className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button type="submit" variant={BUTTON_VARIANTS.secondary}>
           {COPY.stay}
         </Button>

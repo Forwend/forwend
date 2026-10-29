@@ -1326,8 +1326,8 @@ paths:
       operationId: listInvoices
       summary: The profile's invoices, newest first (highest number first), in cursor pages
       description: |
-        Each item is the invoice without its deposits; GET /v1/invoices/{payToken} adds them. status and q narrow the
-        list before paging, so a cursor continues the same filtered list. q looks in the number as shown (INV-0042),
+        Each item is the invoice without its deposits; GET /v1/invoices/{payToken} adds them. status, state and q narrow
+        the list before paging, so a cursor continues the same filtered list. q looks in the number as shown (INV-0042),
         title, note, client name and email, receive address, reference and, when it is a number, the amount.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
@@ -1340,6 +1340,7 @@ paths:
           description: nextCursor from the previous page.
           schema: { type: string }
         - $ref: "#/components/parameters/StatusFilter"
+        - $ref: "#/components/parameters/PaymentState"
         - $ref: "#/components/parameters/Search"
       responses:
         "200":
@@ -1897,6 +1898,7 @@ paths:
           description: nextCursor from the previous page.
           schema: { type: string }
         - $ref: "#/components/parameters/StatusFilter"
+        - $ref: "#/components/parameters/PaymentState"
         - $ref: "#/components/parameters/Search"
       responses:
         "200":
@@ -3228,7 +3230,7 @@ components:
             email: { type: string, format: email }
         items:
           type: array
-          maxItems: 50
+          maxItems: 100
           items:
             type: object
             additionalProperties: false
@@ -4674,7 +4676,7 @@ components:
       properties:
         lines:
           type: array
-          maxItems: 50
+          maxItems: 100
           description: |
             Optional line items (R-88) that add up exactly to amount or amountUsd, else 422. unitPrice is in the
             amount's own unit: base units with amount, a USD decimal with amountUsd; each unitPrice and each

@@ -1,10 +1,8 @@
-import { PAYMENT_STATE_FILTERS } from "@/features/payments/constants/payments";
-
 export const PAYMENTS_COPY = {
   title: "Payments",
   latest: "Latest payments",
   viewAll: "View all",
-  intro: "Every customer payment: invoices, checkouts and payment link purchases.",
+  intro: "One row per payment, from request to wallet.",
   views: {
     label: "Payment views",
     all: "All payments",
@@ -18,16 +16,6 @@ export const PAYMENTS_COPY = {
   store: "Store",
   allSources: "All",
   allStores: "All",
-  stateFilters: {
-    [PAYMENT_STATE_FILTERS.all]: "All",
-    [PAYMENT_STATE_FILTERS.waiting]: "Waiting for payment",
-    [PAYMENT_STATE_FILTERS.confirming]: "Confirming",
-    [PAYMENT_STATE_FILTERS.partiallyPaid]: "Partially paid",
-    [PAYMENT_STATE_FILTERS.paid]: "Paid",
-    [PAYMENT_STATE_FILTERS.overpaid]: "Overpaid",
-    [PAYMENT_STATE_FILTERS.expired]: "Expired",
-    [PAYMENT_STATE_FILTERS.canceled]: "Canceled",
-  },
   columns: {
     payment: "Payment",
     customer: "Customer",
@@ -43,7 +31,6 @@ export const PAYMENTS_COPY = {
   table: "Payments",
   noCustomer: "No customer",
   testnet: "Testnet",
-  checkout: (id: string) => `Checkout ${id.slice(2, 8)}`,
   failed: "We could not load payments.",
   stale: "We could not refresh payments. The last loaded payments are shown.",
   more: "Show more",
@@ -119,4 +106,50 @@ export const PAYMENT_DETAIL_COPY = {
     partly: "Partly paid. The customer can pay the rest through the same checkout.",
     waiting: "Waiting for the customer. Share the checkout link to collect payment.",
   },
+} as const;
+
+export const RECONCILIATION_COPY = {
+  title: "Balance report",
+  intro: "Opening plus changes equals closing, per token and store.",
+  period: "Period",
+  periodNote: "Days are in UTC.",
+  clearPeriod: "Clear period",
+  asOf: (time: string) => `As of ${time}`,
+  failed: "We could not load the balance report.",
+  none: "No payments in this range",
+  allQuiet: "No money moved in this range",
+  search: "Search the report",
+  searchPlaceholder: "Token, network or store",
+  clearSearch: "Clear search",
+  more: (n: number) => `Show ${n} more`,
+  showQuiet: (n: number) =>
+    n === 1 ? "Show 1 token with nothing in it" : `Show ${n} tokens with nothing in them`,
+  columns: { account: "Account", opening: "Opening", changes: "Changes", closing: "Closing" },
+  accounts: {
+    receiver: "In payment addresses",
+    payable: "On its way to your wallet",
+    held: "Held for payers",
+  },
+  profilePayments: "Profile payments",
+  testMode: "Test mode",
+  verified: "Verified",
+  checking: "Still checking",
+  review: "Needs review",
+  moved: "Moved to wallet",
+  returned: "Returned",
+  details: "Technical details",
+  addresses: (verified: number, all: number) =>
+    `${verified} of ${all} payment addresses have full history`,
+  blocks: (from: string, to: string, final: string) =>
+    `Checked blocks ${from}–${to}, final block ${final}`,
+  counts: "Not yet booked",
+  pending: "Pending deposits",
+  unbookedIn: "Unbooked deposits",
+  unbookedOut: "Unbooked outflows",
+  otherAssets: "Other-token movements",
+  exceptions: "Policy exceptions",
+  unverified: "Addresses still checking",
+  difference: "Difference from the chain",
+  noDifference: "Not available for this range",
+  unknown: "unknown",
 } as const;

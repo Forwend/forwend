@@ -1,23 +1,20 @@
 "use client";
 
-import { Button, SegmentedControl, Skeleton } from "@forwend/ui-web";
+import { Skeleton } from "@forwend/ui-web";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
 import { useGetBalanceHistoryQuery } from "@/features/balances/api/balances-api";
 import { BalanceFigure } from "@/features/balances/components/balance-figure";
-import { BalanceChart } from "@/features/balances/components/charts/balance-chart";
 import { MoneyActions } from "@/features/balances/components/money-actions";
 import {
   DEFAULT_RANGE,
   HISTORY_FIELDS,
   HISTORY_RANGES,
-  RANGE_OPTIONS,
 } from "@/features/balances/constants/balance-history";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { historySeries, seriesChange } from "@/features/balances/lib/balance-history";
 import { formatUsd } from "@/features/balances/lib/balances";
-import type { HistoryRange, HistorySeries } from "@/features/balances/types/balance-history";
+import type { HistorySeries } from "@/features/balances/types/balance-history";
 import type { Balances } from "@/features/balances/types/balances";
 import { useGetPricesQuery } from "@/features/prices/api/prices-api";
 import { PRICES_QUERY } from "@/features/prices/constants/prices";
@@ -34,6 +31,7 @@ export interface BalanceHeroProps {
   onRequest: () => void;
 }
 
+/** The personal balance card: the total and its change over the past month, then the round money actions. */
 export function BalanceHero({
   profileId,
   balances,
@@ -42,114 +40,71 @@ export function BalanceHero({
   onReceive,
   onRequest,
 }: BalanceHeroProps) {
-  const [range, setRange] = useState<HistoryRange>(DEFAULT_RANGE);
   const priced = useGetPricesQuery(undefined, PRICES_QUERY);
-  const history = useGetBalanceHistoryQuery({ profileId, days: HISTORY_RANGES[range] }, LIVE_QUERY);
-  // The chart keeps the last range's line, dimmed, while the next loads; figures for the range wait for their own data.
-  const series = history.data ? historySeries(history.data, HISTORY_FIELDS.balances) : null;
-  const current = history.currentData
+  // The same read as the chart card's default range, so it comes from the cache.
+  const history = useGetBalanceHistoryQuery(
+    { profileId, days: HISTORY_RANGES[DEFAULT_RANGE] },
+    LIVE_QUERY,
+  );
+  const series = history.currentData
     ? historySeries(history.currentData, HISTORY_FIELDS.balances)
     : null;
-  const rangeName = BALANCES_COPY.rangeNames[range];
-  const chartLabel = BALANCES_COPY.balanceOver(rangeName);
-
-  const chart = (compact: boolean) =>
-    history.isError && !history.currentData ? (
-      <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-muted">
-        {BALANCES_COPY.historyFailed}
-        <Button size="sm" variant="secondary" onClick={history.refetch}>
-          {BALANCES_COPY.retry}
-        </Button>
-      </div>
-    ) : !history.data ? (
-      <Skeleton className="h-full w-full" />
-    ) : !series ? (
-      <p className="text-sm text-muted">{BALANCES_COPY.historyUnavailable}</p>
-    ) : (
-      <BalanceChart
-        series={series}
-        label={chartLabel}
-        compact={compact}
-        className={`h-full transition-opacity duration-[var(--fw-duration-base)] ${history.isFetching && !history.currentData ? "opacity-60" : ""}`}
-      />
-    );
-  const rangeControl = (
-    <SegmentedControl
-      label={BALANCES_COPY.chartRange}
-      options={RANGE_OPTIONS}
-      value={range}
-      onValueChange={setRange}
-      size="sm"
-    />
-  );
 
   return (
-    <>
-      <section
-        aria-labelledby="balance-title"
-        className="relative isolate -mx-4 -mt-4 flex min-h-80 flex-col lg:min-h-96 overflow-hidden bg-surface sm:mx-0 sm:mt-0 sm:rounded-md sm:border sm:border-line [&_svg_text]:stroke-none dark:[&_svg_text]:stroke-surface"
-      >
-        {/* One artwork in both themes; dark mode mutes it toward the near-black ground (D-113). */}
-        <Image
-          src={HERO_IMAGE.src}
-          alt=""
-          fill
-          priority
-          sizes="(min-width: 64rem) 80vw, 100vw"
-          className="-z-10 object-cover object-[50%_75%] saturate-[.65] dark:brightness-[.45] dark:grayscale-[.7]"
-        />
-        {/* The figures sit on the surface: the art shows only to the right and fades out under the chart. */}
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,var(--fw-surface)_0%,color-mix(in_oklab,var(--fw-surface)_88%,transparent)_38%,color-mix(in_oklab,var(--fw-surface)_30%,transparent)_78%,transparent_100%),linear-gradient(180deg,transparent_40%,color-mix(in_oklab,var(--fw-surface)_85%,transparent)_100%)] dark:hidden" />
-        <div className="absolute inset-0 -z-10 hidden bg-[linear-gradient(180deg,color-mix(in_oklab,var(--fw-surface)_45%,transparent)_0%,transparent_40%,color-mix(in_oklab,var(--fw-bg)_80%,transparent)_72%,var(--fw-bg)_100%)] lg:bg-[linear-gradient(90deg,color-mix(in_oklab,var(--fw-surface)_78%,transparent)_0%,color-mix(in_oklab,var(--fw-surface)_40%,transparent)_38%,transparent_70%)] dark:block" />
+    <section
+      aria-labelledby="balance-title"
+      className="relative isolate -mx-4 -mt-4 flex min-h-80 flex-col overflow-hidden border-b border-line bg-surface sm:mx-0 sm:mt-0 sm:min-h-64 sm:rounded-lg sm:border"
+    >
+      {/* One artwork in both themes; dark mode mutes it toward the near-black ground (D-113). */}
+      <Image
+        src={HERO_IMAGE.src}
+        alt=""
+        fill
+        priority
+        sizes="(min-width: 64rem) 60vw, 100vw"
+        className="-z-10 object-cover object-right saturate-[.8] dark:brightness-[.45] dark:contrast-[1.1] dark:grayscale-[.7] dark:saturate-100"
+      />
+      {/* The veil keeps the figures on the surface: on phones over the whole card, from small screens the art shows
+          only on the right. */}
+      <div className="absolute inset-0 -z-10 bg-[color-mix(in_oklab,var(--fw-surface)_78%,transparent)] sm:bg-transparent sm:bg-[linear-gradient(90deg,var(--fw-surface)_30%,color-mix(in_oklab,var(--fw-surface)_55%,transparent)_62%,transparent)] dark:sm:bg-[linear-gradient(90deg,var(--fw-surface)_30%,color-mix(in_oklab,var(--fw-surface)_60%,transparent)_62%,color-mix(in_oklab,var(--fw-surface)_15%,transparent))]" />
 
-        <div className="grid flex-1 gap-8 px-4 py-8 sm:px-6 lg:gap-10 lg:p-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-          <div className="flex flex-col items-center justify-between gap-8 lg:items-start lg:gap-6">
-            <div className="flex w-full flex-col items-center gap-3 lg:items-start">
-              <h2 id="balance-title" className="text-sm font-medium text-muted">
-                {BALANCES_COPY.totalBalance}
-              </h2>
-              <div
-                aria-busy={!balances && !failed}
-                className="@container flex w-full flex-col items-center gap-2 lg:items-start"
-              >
-                <BalanceFigure
-                  balances={balances}
-                  prices={priced.currentData?.prices}
-                  pricesRead={Boolean(priced.currentData || priced.isError)}
-                  failed={failed}
-                  onRetry={onRetry}
-                />
-                {current ? (
-                  <Change series={current} rangeName={rangeName} />
+      <div className="flex flex-1 flex-col items-center gap-6 px-4 py-8 sm:items-start sm:p-6">
+        <div className="@container flex w-full flex-col items-center gap-2 sm:max-w-md sm:items-start">
+          <h2 id="balance-title" className="text-sm text-muted">
+            {BALANCES_COPY.totalBalance}
+          </h2>
+          <div
+            aria-busy={!balances && !failed}
+            className="flex w-full flex-col items-center gap-1.5 sm:items-start"
+          >
+            <BalanceFigure
+              balances={balances}
+              prices={priced.currentData?.prices}
+              pricesRead={Boolean(priced.currentData || priced.isError)}
+              failed={failed}
+              onRetry={onRetry}
+              change={
+                series ? (
+                  <Change series={series} />
                 ) : history.currentData || history.isError ? null : (
                   <Skeleton className="h-5 w-40" />
-                )}
-              </div>
-            </div>
-            <MoneyActions onReceive={onReceive} onRequest={onRequest} />
-          </div>
-          <div className="hidden min-h-0 min-w-0 flex-col gap-3 lg:flex">
-            <div className="flex justify-end">{rangeControl}</div>
-            <div className="min-h-0 flex-1">{chart(false)}</div>
+                )
+              }
+            />
           </div>
         </div>
-      </section>
-
-      <section aria-label={chartLabel} className="fw-panel flex flex-col gap-3 p-4 lg:hidden">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-ink">{BALANCES_COPY.balanceTitle}</h2>
-          {rangeControl}
+        <div className="mt-auto w-full">
+          <MoneyActions onReceive={onReceive} onRequest={onRequest} />
         </div>
-        <div className="aspect-[5/2]">{chart(true)}</div>
-      </section>
-    </>
+      </div>
+    </section>
   );
 }
 
 // Direction in words and an icon, not color alone.
-function Change({ series, rangeName }: { series: HistorySeries; rangeName: string }) {
+function Change({ series }: { series: HistorySeries }) {
   const change = seriesChange(series);
-  const amount = formatUsd(change < 0n ? -change : change);
+  const rangeName = BALANCES_COPY.rangeNames[DEFAULT_RANGE];
   if (change === 0n) {
     return (
       <p className="text-sm text-muted">
@@ -161,13 +116,11 @@ function Change({ series, rangeName }: { series: HistorySeries; rangeName: strin
   const Icon = up ? TrendingUp : TrendingDown;
   return (
     <p className="flex items-center gap-1.5 text-sm">
-      <span
-        className={`inline-flex items-center gap-1 font-medium ${up ? "text-success" : "text-danger"}`}
-      >
+      <span className={`inline-flex items-center gap-1 ${up ? "text-success" : "text-danger"}`}>
         <Icon aria-hidden className="size-[var(--fw-icon-sm)]" />
         <span className="tabular-nums">
           {up ? "+" : "−"}
-          {amount} {MONEY_COPY.usd}
+          {formatUsd(change < 0n ? -change : change)} {MONEY_COPY.usd}
         </span>
       </span>
       <span className="text-muted">{rangeName}</span>

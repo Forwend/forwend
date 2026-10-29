@@ -1,6 +1,6 @@
 "use client";
 import { Button, SearchField, SegmentedControl, SelectMenu } from "@forwend/ui-web";
-import { ArrowLeftRight, ListFilter, Store } from "lucide-react";
+import { ArrowLeftRight, Store } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ExportPayments } from "@/features/payments/components/export-payments";
@@ -8,8 +8,8 @@ import { PaymentList } from "@/features/payments/components/payment-list";
 import { PaymentReconciliation } from "@/features/payments/components/payment-reconciliation";
 import {
   PAYMENT_SOURCES,
-  PAYMENT_STATE_FILTERS,
   PAYMENT_VIEWS,
+  SOURCE_ICONS,
   SOURCE_LABELS,
 } from "@/features/payments/constants/payments";
 import { PAYMENTS_COPY as COPY } from "@/features/payments/constants/payments-copy";
@@ -19,7 +19,9 @@ import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { useListStoresQuery } from "@/features/stores/api/stores-api";
 import { ListToolbar } from "@/shared/components/list-toolbar";
 import { LoadError } from "@/shared/components/load-error";
+import { PaymentStateFilter } from "@/shared/components/payment-state-filter";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { PAYMENT_STATE_FILTERS } from "@/shared/constants/payment-state";
 import { useListFilters, withParam } from "@/shared/hooks/use-list-filters";
 
 const ALL = "all";
@@ -100,16 +102,7 @@ export function PaymentsScreen() {
           }
           filter={
             <>
-              <SelectMenu
-                label={COPY.status}
-                value={list.filter}
-                onValueChange={list.setFilter}
-                options={STATES.map((value) => ({
-                  value,
-                  label: COPY.stateFilters[value],
-                  icon: value === PAYMENT_STATE_FILTERS.all ? ListFilter : undefined,
-                }))}
-              />
+              <PaymentStateFilter value={list.filter} onValueChange={list.setFilter} />
               <SelectMenu
                 label={COPY.source}
                 value={source ?? ALL}
@@ -117,7 +110,7 @@ export function PaymentsScreen() {
                 options={[
                   { value: ALL, label: COPY.allSources, icon: ArrowLeftRight },
                   ...PAYMENT_SOURCES.filter((value) => merchant || value !== "checkout").map(
-                    (value) => ({ value, label: SOURCE_LABELS[value] }),
+                    (value) => ({ value, label: SOURCE_LABELS[value], icon: SOURCE_ICONS[value] }),
                   ),
                 ]}
               />
@@ -151,7 +144,7 @@ export function PaymentsScreen() {
         </p>
       ) : null}
       {merchant && stores.isError ? (
-        <LoadError message={COPY.storesFailed} onRetry={() => void stores.refetch()} />
+        <LoadError inline message={COPY.storesFailed} onRetry={() => void stores.refetch()} />
       ) : null}
       {unknownSource || unknownStore ? (
         <p role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">

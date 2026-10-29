@@ -1,15 +1,17 @@
 "use client";
 
 import {
-  Button,
+  Badge,
   buttonClasses,
+  EmptyState,
   formatTokenAmount,
   PAYMENT_STATUS,
   Skeleton,
   StatusPill,
+  TONES,
   WalletStateLabel,
 } from "@forwend/ui-web";
-import { ChevronLeft, FileDown } from "lucide-react";
+import { FileDown, UserRound } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, type Ref, useEffect, useRef, useState } from "react";
 import { useGetProfileInvoiceQuery } from "@/features/invoices/api/invoices-api";
@@ -50,6 +52,8 @@ import type {
   Revision,
 } from "@/features/invoices/types/invoices";
 import { TokenMark } from "@/shared/components/chains/token-mark";
+import { BackLink, DetailHeader } from "@/shared/components/detail-header";
+import { LoadError } from "@/shared/components/load-error";
 import { Party } from "@/shared/components/party";
 import { RecordLink } from "@/shared/components/record-link";
 import { LIVE_QUERY } from "@/shared/config/refresh";
@@ -86,13 +90,7 @@ export function InvoiceDetail({
 
   return (
     <div className="flex flex-col gap-4 lg:gap-6">
-      <Link
-        href={APP_ROUTES.invoices}
-        className="-ml-1 inline-flex h-11 items-center gap-1 self-start rounded-sm px-1 text-sm text-muted hover:text-ink lg:hidden"
-      >
-        <ChevronLeft aria-hidden className="size-[var(--fw-icon-sm)]" />
-        {request ? REQUESTS_COPY.invoices : COPY.back}
-      </Link>
+      <BackLink href={APP_ROUTES.invoices} label={request ? REQUESTS_COPY.invoices : COPY.back} />
       {invoice.data ? (
         <Loaded
           profileId={profileId}
@@ -106,16 +104,12 @@ export function InvoiceDetail({
           clientFailed={invoice.isError}
           tokens={tokens}
           request={request}
+          onRetry={() => void invoice.refetch()}
         />
       ) : failure?.status === NOT_FOUND ? (
         <p className="text-muted">{COPY.notFound}</p>
       ) : invoice.isError ? (
-        <div role="alert" className="flex flex-wrap items-center gap-4 text-sm text-muted">
-          {COPY.failed}
-          <Button size="sm" variant="secondary" onClick={invoice.refetch}>
-            {COPY.retry}
-          </Button>
-        </div>
+        <LoadError message={COPY.failed} onRetry={() => void invoice.refetch()} />
       ) : (
         <Skeleton className="h-64" />
       )}
@@ -135,6 +129,7 @@ function Loaded({
   clientFailed,
   tokens,
   request,
+  onRetry,
 }: {
   profileId: string;
   invoice: Invoice;
@@ -147,6 +142,7 @@ function Loaded({
   clientFailed: boolean;
   tokens: readonly InvoiceToken[] | null;
   request: boolean;
+  onRetry: () => void;
 }) {
   const token =
     tokens?.find((t) => tokenKey(t) === tokenKey(invoice)) ??
@@ -201,71 +197,67 @@ function Loaded({
     invoice.options.every((o) => o.deposits.length === 0);
   return (
     <>
-      {/* R-60: each thing is said once, so the header only names the invoice. */}
-      <header className="flex items-start justify-between gap-3 lg:items-center">
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          {/* With a title, the number is a quiet label; on desktop the breadcrumb shows it. */}
-          <h1
-            className={`flex min-h-7 items-center ${invoice.title ? "text-sm font-medium text-muted lg:sr-only" : "text-2xl font-semibold tracking-tight text-ink"}`}
-          >
-            {invoiceNumber(invoice.number)}
-          </h1>
-          {invoice.title ? (
-            <p className="text-2xl font-semibold tracking-tight break-words text-ink">
+      {/* R-60: each thing is said once, so the header only names the invoice; with a title, the breadcrumb
+          carries the number on desktop. */}
+      <DetailHeader
+        // The number names the invoice for screen readers either way.
+        title={
+          invoice.title ? (
+            <>
+              <span className="sr-only">{invoiceNumber(invoice.number)} </span>
               {invoice.title}
-            </p>
-          ) : null}
-          {/* R-143: testnet money must never pass for real money. */}
-          {invoice.livemode ? null : (
-            <div className="flex">
-              <span className="text-xs text-warning">Testnet</span>
-            </div>
-          )}
-          <NextStep
+            </>
+          ) : (
+            invoiceNumber(invoice.number)
+          )
+        }
+        // R-143: testnet money must never pass for real money.
+        badges={invoice.livemode ? null : <Badge tone={TONES.warning}>{COPY.testnet}</Badge>}
+        meta={
+          invoice.title ? <span className="lg:sr-only">{invoiceNumber(invoice.number)}</span> : null
+        }
+        actions={
+          <InvoiceActions
             profileId={profileId}
             invoiceId={invoice.invoiceId}
+            payToken={invoice.payToken}
             number={invoiceNumber(invoice.number)}
-            exception={exception}
-            money={money}
-            request={request}
-            reopenUntil={invoice.reopenUntil ?? null}
-            closing={Boolean(
-              invoice.closed && invoice.amounts && BigInt(invoice.amounts.payable) > 0n,
-            )}
-            needsReview={Boolean(
-              invoice.amounts?.unreconciled || invoice.amounts?.hasPolicyException,
-            )}
-            onReopened={() => setReopening(true)}
+            noun={request ? COPY.noun.request : COPY.noun.invoice}
+            payable={payable}
+            // Only before any money, on any option (R-79): after that the money decides, not a cancel.
+            cancelable={beforePayment}
+            onCanceled={() => setCanceling(true)}
+            editable={
+              mine
+                ? {
+                    memo: invoice.memo ?? null,
+                    clientEmail: client?.email ?? null,
+                    returnUrl: invoice.returnUrl,
+                    reference: invoice.reference,
+                    note: invoice.note,
+                    dueDate: invoice.dueDate,
+                    beforePayment,
+                    closesOn: invoice.expiresAt.slice(0, 10),
+                    today: new Date().toISOString().slice(0, 10),
+                    request,
+                  }
+                : null
+            }
           />
-        </div>
-        <InvoiceActions
-          profileId={profileId}
-          invoiceId={invoice.invoiceId}
-          payToken={invoice.payToken}
-          number={invoiceNumber(invoice.number)}
-          noun={request ? COPY.noun.request : COPY.noun.invoice}
-          payable={payable}
-          // Only before any money, on any option (R-79): after that the money decides, not a cancel.
-          cancelable={beforePayment}
-          onCanceled={() => setCanceling(true)}
-          editable={
-            mine
-              ? {
-                  memo: invoice.memo ?? null,
-                  clientEmail: client?.email ?? null,
-                  returnUrl: invoice.returnUrl,
-                  reference: invoice.reference,
-                  note: invoice.note,
-                  dueDate: invoice.dueDate,
-                  beforePayment,
-                  closesOn: invoice.expiresAt.slice(0, 10),
-                  today: new Date().toISOString().slice(0, 10),
-                  request,
-                }
-              : null
-          }
-        />
-      </header>
+        }
+      />
+      <NextStep
+        profileId={profileId}
+        invoiceId={invoice.invoiceId}
+        number={invoiceNumber(invoice.number)}
+        exception={exception}
+        money={money}
+        request={request}
+        reopenUntil={invoice.reopenUntil ?? null}
+        closing={Boolean(invoice.closed && invoice.amounts && BigInt(invoice.amounts.payable) > 0n)}
+        needsReview={Boolean(invoice.amounts?.unreconciled || invoice.amounts?.hasPolicyException)}
+        onReopened={() => setReopening(true)}
+      />
       <PaymentAmountsNotice
         options={invoice.options}
         detailsHref={`${APP_ROUTES.payments}/${invoice.invoiceId}`}
@@ -350,7 +342,7 @@ function Loaded({
                   {COPY.client}
                 </h2>
                 {clientFailed ? (
-                  <p className="px-4 py-3 text-sm text-muted sm:px-5">{COPY.clientFailed}</p>
+                  <LoadError message={COPY.clientFailed} onRetry={onRetry} />
                 ) : !mine ? (
                   <Skeleton className="m-5 h-16" />
                 ) : client?.name ||
@@ -368,7 +360,7 @@ function Loaded({
                     ]}
                   />
                 ) : (
-                  <p className="px-4 py-3 text-sm text-muted sm:px-5">{COPY.noClient}</p>
+                  <EmptyState compact icon={UserRound} title={COPY.noClient} />
                 )}
                 {mine ? (
                   <SendToClient
@@ -517,6 +509,9 @@ function Loaded({
 }
 
 /** Under the status (R-77): a new invoice after the close, or once, a partly paid one reopened (R-130, D-25). */
+// The same box as the payment page's next step, so both records say what to do in one place.
+const NEXT_BOX = "rounded-md bg-surface-2 px-4 py-3 text-sm text-ink";
+
 function NextStep({
   profileId,
   invoiceId,
@@ -546,11 +541,11 @@ function NextStep({
   const kind =
     exception.kind === INVOICE_EXCEPTIONS.canceled && received === 0n ? null : exception.kind;
   if (needsReview || (!kind && late === 0n)) return null;
-  if (closing) return <p className="text-sm text-ink">{COPY.checkingClosed}</p>;
+  if (closing) return <p className={NEXT_BOX}>{COPY.checkingClosed}</p>;
   const reopen = kind === INVOICE_EXCEPTIONS.closedPartial ? reopenUntil : null;
   const values = { left: money(left), held: money(received), noun };
   return (
-    <div className="flex flex-col items-start gap-2 text-sm text-ink">
+    <div className={`flex flex-col items-start gap-2 ${NEXT_BOX}`}>
       {kind ? <p>{reopen ? COPY.nextReopen(values) : COPY.next[kind](values)}</p> : null}
       {late > 0n ? <p>{COPY.lateHeld(money(late))}</p> : null}
       {kind === INVOICE_EXCEPTIONS.closedUnpaid || kind === INVOICE_EXCEPTIONS.closedPartial ? (

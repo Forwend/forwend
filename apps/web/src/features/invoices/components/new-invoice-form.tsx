@@ -18,8 +18,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { clientBody, clientCountryOptions } from "@/features/clients/lib/clients";
-import type { Client, ClientBody } from "@/features/clients/types/clients";
+import { CLIENT_KINDS } from "@/features/clients/constants/clients";
+import { clientBody, clientCountryOptions, clientKind } from "@/features/clients/lib/clients";
+import type { Client, ClientBody, ClientKind } from "@/features/clients/types/clients";
 import { useCreateInvoiceMutation } from "@/features/invoices/api/invoices-api";
 import { AgreedValueFields } from "@/features/invoices/components/agreed-value";
 import { type LineFieldErrors, LineItems } from "@/features/invoices/components/line-items";
@@ -74,7 +75,7 @@ import type { Store } from "@/features/stores/types/stores";
 import { FieldGroup } from "@/shared/components/field-group";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
-import { chainName } from "@/shared/lib/chains";
+import { chainName, TOKEN_SEARCH_FROM } from "@/shared/lib/chains";
 
 const INVALID_VALUE = 422;
 // R-129: the invoice it replaces can no longer be canceled.
@@ -95,6 +96,8 @@ export interface NewInvoiceFormProps {
   replaces?: { invoiceId: string; number: string };
   /** A merchant profile's stores (R-134), the first one first; the invoice records one. */
   stores?: readonly Store[];
+  /** Started from a client's page: filled as if that saved client was picked. */
+  startClient?: Client;
 }
 
 const NO_CLIENT: ClientBody = { name: "", email: "", address: "", country: "", taxId: "" };
@@ -106,6 +109,7 @@ export function NewInvoiceForm({
   tokens: profileTokens,
   request,
   start,
+  startClient,
   clients,
   replaces,
   stores,
@@ -130,17 +134,17 @@ export function NewInvoiceForm({
   const [dueDate, setDueDate] = useState<string | null>(null);
   const [supplyDate, setSupplyDate] = useState<string | null>(null);
   // R-90: a picked client's default replaces the last one filled in, but a reference the owner typed stays.
-  const [reference, setReference] = useState(start?.reference ?? "");
+  const [reference, setReference] = useState(start?.reference ?? startClient?.reference ?? "");
   const [agreed, setAgreed] = useState<AgreedDraft | null>(start?.agreed ?? null);
   // R-97: from the picked saved client or the copied invoice.
-  const [reminders, setReminders] = useState(start?.reminders ?? false);
+  const [reminders, setReminders] = useState(start?.reminders ?? startClient?.reminders ?? false);
   // Repeat every month (R-99), with an optional last due date; a duplicate starts without it.
   const [repeat, setRepeat] = useState(false);
   const [repeatEnd, setRepeatEnd] = useState<string | null>(null);
   const agreedId = useId();
   const remindersId = useId();
   const repeatId = useId();
-  const filledReference = useRef("");
+  const filledReference = useRef(startClient?.reference ?? "");
   // D-80: who set the checkout's close. The due date sets it until the owner picks one of their own, which then stays.
   const [closeBy, setCloseBy] = useState<"default" | "due" | "owner">("default");
   const [errors, setErrors] = useState<Partial<Record<InvoiceField, string>>>({});
@@ -162,10 +166,13 @@ export function NewInvoiceForm({
   }, [items.length, amountId, itemsId]);
   // The client fields stay uncontrolled like the others; picking a saved client draws them again with its values.
   const [fill, setFill] = useState<{ key: string; client: ClientBody }>({
-    key: "",
-    client: start?.client ?? NO_CLIENT,
+    key: startClient?.clientId ?? "",
+    client: start?.client ?? (startClient ? clientBody(startClient) : NO_CLIENT),
   });
   const [country, setCountry] = useState(fill.client.country);
+  const [kind, setKind] = useState<ClientKind>(
+    startClient ? clientKind(startClient) : CLIENT_KINDS.business,
+  );
   const countries = useMemo(() => clientCountryOptions(COPY.noCountry), [COPY.noCountry]);
   // The free-text fields stay uncontrolled; the preview reads them as they are typed.
   const [typed, setTyped] = useState({
@@ -555,6 +562,124 @@ export function NewInvoiceForm({
             The previously selected token is no longer accepted. Choose a token below.
           </p>
         ) : null}
+        {request ? null : (
+          <FieldGroup title={COPY.client}>
+            {clients?.length ? (
+              <ComboboxField
+                label={COPY.savedClient}
+                placeholder={COPY.savedClientPlaceholder}
+                searchLabel={COPY.searchClients}
+                options={clients.map((c) => ({
+                  value: c.clientId,
+                  label: c.name,
+                  detail: c.email ?? undefined,
+                }))}
+                value={fill.key}
+                onValueChange={(clientId) => {
+                  const picked = clients.find((c) => c.clientId === clientId);
+                  if (!picked) return;
+                  const values = clientBody(picked);
+                  setFill({ key: clientId, client: values });
+                  if (reference === "" || reference === filledReference.current) {
+                    filledReference.current = picked.reference ?? "";
+                    setReference(filledReference.current);
+                    clear(INVOICE_FIELDS.reference);
+                  }
+                  setCountry(values.country);
+                  setKind(clientKind(picked));
+                  setReminders(picked.reminders);
+                  clear(INVOICE_FIELDS.reminders);
+                  setTyped((shown) => ({ ...shown, client: values.name }));
+                  setErrors((shown) => ({
+                    ...shown,
+                    [INVOICE_FIELDS.clientName]: undefined,
+                    [INVOICE_FIELDS.clientEmail]: undefined,
+                    [INVOICE_FIELDS.clientAddress]: undefined,
+                    [INVOICE_FIELDS.clientCountry]: undefined,
+                    [INVOICE_FIELDS.clientTaxId]: undefined,
+                  }));
+                }}
+              />
+            ) : null}
+            <div className="flex flex-col gap-1.5">
+              <p aria-hidden className="text-sm font-medium text-ink">
+                {COPY.clientKind}
+              </p>
+              <SegmentedControl
+                label={COPY.clientKind}
+                value={kind}
+                onValueChange={(next) => {
+                  setKind(next);
+                  clear(INVOICE_FIELDS.clientCountry);
+                  clear(INVOICE_FIELDS.clientTaxId);
+                }}
+                className="self-start"
+                options={Object.values(CLIENT_KINDS).map((value) => ({
+                  value,
+                  label: COPY.clientKinds[value],
+                }))}
+              />
+            </div>
+            <div key={fill.key} className="flex flex-col gap-5">
+              <div className="grid gap-5 sm:grid-cols-2">
+                <TextField
+                  label={
+                    kind === CLIENT_KINDS.business ? COPY.clientLegalName : COPY.clientPersonName
+                  }
+                  hint={kind === CLIENT_KINDS.business ? COPY.clientLegalNameHint : undefined}
+                  name="clientName"
+                  defaultValue={fill.client.name}
+                  autoComplete="off"
+                  maxLength={INVOICE_LIMITS.clientName}
+                  error={errors[INVOICE_FIELDS.clientName]}
+                />
+                <TextField
+                  type="email"
+                  label={COPY.clientEmail}
+                  name="clientEmail"
+                  defaultValue={fill.client.email}
+                  autoComplete="off"
+                  maxLength={INVOICE_LIMITS.clientEmail}
+                  error={errors[INVOICE_FIELDS.clientEmail]}
+                />
+              </div>
+              {/* A person is billed by name and email; address, country and tax ID are a business's. */}
+              {/* As on the client form: a person has an address and country, but no tax ID. */}
+              <TextAreaField
+                label={COPY.clientAddress}
+                name="clientAddress"
+                defaultValue={fill.client.address}
+                maxLength={INVOICE_LIMITS.clientAddress}
+                error={errors[INVOICE_FIELDS.clientAddress]}
+              />
+              <div className="grid gap-5 sm:grid-cols-2">
+                <ComboboxField
+                  label={COPY.clientCountry}
+                  options={countries}
+                  placeholder={COPY.noCountry}
+                  searchLabel={COPY.searchCountries}
+                  value={country}
+                  onValueChange={(next) => {
+                    setCountry(next);
+                    clear(INVOICE_FIELDS.clientCountry);
+                  }}
+                  error={errors[INVOICE_FIELDS.clientCountry]}
+                />
+                {kind === CLIENT_KINDS.person ? null : (
+                  <TextField
+                    label={COPY.clientTaxId}
+                    name="clientTaxId"
+                    defaultValue={fill.client.taxId}
+                    autoComplete="off"
+                    maxLength={INVOICE_LIMITS.clientTaxId}
+                    error={errors[INVOICE_FIELDS.clientTaxId]}
+                  />
+                )}
+              </div>
+            </div>
+          </FieldGroup>
+        )}
+
         <FieldGroup title={COPY.amountGroup}>
           {tokens.length > 1 ? (
             <div className="flex flex-col gap-1.5">
@@ -580,8 +705,11 @@ export function NewInvoiceForm({
           {/* Empty when items stand in for the amount on any token: then the row takes no room. */}
           <div className="grid gap-5 empty:hidden sm:grid-cols-2">
             {any ? null : (
-              <SelectField
+              // Past a handful of tokens the picker searches, so "usdc base" finds one among hundreds.
+              <TokenPick
                 label={COPY.tokenLabel}
+                searchLabel={COPY.searchTokens}
+                noResults={COPY.noTokenMatch}
                 value={unavailableToken ? "" : tokenKey(token)}
                 onValueChange={(value) => {
                   setPicked(value);
@@ -858,97 +986,6 @@ export function NewInvoiceForm({
           ) : null}
         </FieldGroup>
 
-        {request ? null : (
-          <FieldGroup title={COPY.client}>
-            {clients?.length ? (
-              <ComboboxField
-                label={COPY.savedClient}
-                placeholder={COPY.savedClientPlaceholder}
-                searchLabel={COPY.searchClients}
-                options={clients.map((c) => ({
-                  value: c.clientId,
-                  label: c.name,
-                  detail: c.email ?? undefined,
-                }))}
-                value={fill.key}
-                onValueChange={(clientId) => {
-                  const picked = clients.find((c) => c.clientId === clientId);
-                  if (!picked) return;
-                  const values = clientBody(picked);
-                  setFill({ key: clientId, client: values });
-                  if (reference === "" || reference === filledReference.current) {
-                    filledReference.current = picked.reference ?? "";
-                    setReference(filledReference.current);
-                    clear(INVOICE_FIELDS.reference);
-                  }
-                  setCountry(values.country);
-                  setReminders(picked.reminders);
-                  clear(INVOICE_FIELDS.reminders);
-                  setTyped((shown) => ({ ...shown, client: values.name }));
-                  setErrors((shown) => ({
-                    ...shown,
-                    [INVOICE_FIELDS.clientName]: undefined,
-                    [INVOICE_FIELDS.clientEmail]: undefined,
-                    [INVOICE_FIELDS.clientAddress]: undefined,
-                    [INVOICE_FIELDS.clientCountry]: undefined,
-                    [INVOICE_FIELDS.clientTaxId]: undefined,
-                  }));
-                }}
-              />
-            ) : null}
-            <div key={fill.key} className="flex flex-col gap-5">
-              <div className="grid gap-5 sm:grid-cols-2">
-                <TextField
-                  label={COPY.clientName}
-                  name="clientName"
-                  defaultValue={fill.client.name}
-                  autoComplete="off"
-                  maxLength={INVOICE_LIMITS.clientName}
-                  error={errors[INVOICE_FIELDS.clientName]}
-                />
-                <TextField
-                  type="email"
-                  label={COPY.clientEmail}
-                  name="clientEmail"
-                  defaultValue={fill.client.email}
-                  autoComplete="off"
-                  maxLength={INVOICE_LIMITS.clientEmail}
-                  error={errors[INVOICE_FIELDS.clientEmail]}
-                />
-              </div>
-              <TextAreaField
-                label={COPY.clientAddress}
-                name="clientAddress"
-                defaultValue={fill.client.address}
-                maxLength={INVOICE_LIMITS.clientAddress}
-                error={errors[INVOICE_FIELDS.clientAddress]}
-              />
-              <div className="grid gap-5 sm:grid-cols-2">
-                <ComboboxField
-                  label={COPY.clientCountry}
-                  options={countries}
-                  placeholder={COPY.noCountry}
-                  searchLabel={COPY.searchCountries}
-                  value={country}
-                  onValueChange={(next) => {
-                    setCountry(next);
-                    clear(INVOICE_FIELDS.clientCountry);
-                  }}
-                  error={errors[INVOICE_FIELDS.clientCountry]}
-                />
-                <TextField
-                  label={COPY.clientTaxId}
-                  name="clientTaxId"
-                  defaultValue={fill.client.taxId}
-                  autoComplete="off"
-                  maxLength={INVOICE_LIMITS.clientTaxId}
-                  error={errors[INVOICE_FIELDS.clientTaxId]}
-                />
-              </div>
-            </div>
-          </FieldGroup>
-        )}
-
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
           <Button type="submit" loading={busy} disabled={unavailableToken}>
             {COPY.create}
@@ -982,5 +1019,24 @@ export function NewInvoiceForm({
         <NewInvoicePreview {...preview} />
       </Sheet>
     </div>
+  );
+}
+
+function TokenPick({
+  searchLabel,
+  noResults,
+  ...props
+}: {
+  label: string;
+  searchLabel: string;
+  noResults: string;
+  value: string;
+  onValueChange: (value: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return props.options.length > TOKEN_SEARCH_FROM ? (
+    <ComboboxField {...props} searchLabel={searchLabel} noResults={noResults} />
+  ) : (
+    <SelectField {...props} />
   );
 }

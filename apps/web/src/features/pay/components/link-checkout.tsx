@@ -20,6 +20,7 @@ import {
 import { amountLabel } from "@/features/links/lib/links";
 import type { PublicLink } from "@/features/links/types/links";
 import { Payee } from "@/features/pay/components/payee";
+import { TestnetBadge } from "@/features/pay/components/testnet-badge";
 import { LINK_PAY_COPY as COPY, PAY_COPY } from "@/features/pay/constants/pay-copy";
 import { purchaseSearch, readPurchase, usdCents, usdFromCents } from "@/features/pay/lib/link-pay";
 import type { LinkPurchase } from "@/features/pay/types/link-pay";
@@ -172,7 +173,7 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
     <section ref={section} aria-labelledby="link-amount" className="flex flex-col gap-6">
       <Payee name={link.payee ?? link.title} subtitle={COPY.title} brand={link.brand} />
       {link.payee && !purchase ? (
-        <p className="text-base break-words text-ink">{link.title}</p>
+        <p className="text-base font-medium break-words text-ink">{link.title}</p>
       ) : null}
       {purchase ? (
         <div className="flex flex-col gap-4">
@@ -186,11 +187,16 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
             className="text-amount-lg text-ink"
           />
           <p className="text-sm text-muted">{COPY.purchaseHelp}</p>
-          <div className="flex flex-wrap gap-3">
-            <Button loading={busy} onClick={() => void startPurchase(purchase)}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+            <Button size="lg" loading={busy} onClick={() => void startPurchase(purchase)}>
               {COPY.continue}
             </Button>
-            <Button variant="secondary" disabled={busy} onClick={() => keepPurchase(null)}>
+            <Button
+              size="lg"
+              variant="secondary"
+              disabled={busy}
+              onClick={() => keepPurchase(null)}
+            >
               {COPY.another}
             </Button>
           </div>
@@ -229,7 +235,7 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
             </>
           )}
           <div className="flex flex-col gap-2">
-            <Button type="submit" loading={busy} className="w-full sm:w-auto">
+            <Button type="submit" size="lg" loading={busy} className="w-full">
               {COPY.pay}
             </Button>
             <p className="text-sm text-muted">{COPY.next}</p>
@@ -259,9 +265,5 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
 
 export function LinkCheckoutMode({ slug }: { slug: string }) {
   const { data } = useGetPublicLinkQuery(slug);
-  return data && !data.livemode ? (
-    <span className="text-xs text-warning" title="Test tokens have no monetary value.">
-      Testnet
-    </span>
-  ) : null;
+  return data && !data.livemode ? <TestnetBadge /> : null;
 }

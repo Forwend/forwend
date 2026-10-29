@@ -31,7 +31,7 @@ func getActivity(activities *activity.Service) http.HandlerFunc {
 			return
 		}
 		query := r.URL.Query()
-		page, err := activities.List(r.Context(), r.PathValue("profileId"), query.Get("cursor"), limit, query.Get("status"), q)
+		page, err := activities.List(r.Context(), r.PathValue("profileId"), query.Get("cursor"), limit, query.Get("status"), query.Get("state"), q)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

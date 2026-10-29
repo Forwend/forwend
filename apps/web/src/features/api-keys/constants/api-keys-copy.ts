@@ -8,8 +8,7 @@ const keyText = (last4: string) => `fw_test_…${last4}`;
 /** R-145: the Developers page's API keys. */
 export const API_KEYS_COPY = {
   title: "Developers",
-  intro:
-    "Secret API keys let your server create and read invoices. Keep each one on your server, never in a web page or an app.",
+  intro: "Keys for your server. Never put one in a web page or an app.",
   notPersonal: "A personal profile has no API keys. A freelancer or merchant profile makes them.",
   keys: "API keys",
   profileId: "Profile ID",
@@ -20,11 +19,19 @@ export const API_KEYS_COPY = {
   keyText,
   lastUsed: (when: string) => `Last used ${when}`,
   neverUsed: "Never used",
+  never: "Never",
+  columns: {
+    name: "Name",
+    key: "Key",
+    store: "Store",
+    access: "Access",
+    lastUsed: "Last used",
+    actions: "Actions",
+  },
   stops: (when: string) => `Stops ${when}`,
   empty: "No API keys yet",
   emptyBody: "Make one to create invoices from your own code.",
   loadFailed: "We could not load your API keys.",
-  retry: "Try again",
   add: "New key",
   newTitle: "New API key",
   name: "Name",

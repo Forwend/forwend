@@ -15,37 +15,41 @@ import { APP_ROUTES } from "@/shared/config/routes";
 // Webhooks need their own permission, which only owners and Admins have (R-149).
 export function DevelopersScreen() {
   const { profile } = useAppSession();
+  const personal = profile.kind === PROFILE_KINDS.personal;
   return (
     // One key for the page: a profile switch starts both sections afresh.
     <div key={profile.profileId} className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
         <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">{COPY.title}</h1>
-        <p className="text-muted">
-          {profile.kind === PROFILE_KINDS.personal ? COPY.notPersonal : COPY.intro}{" "}
+        <p className="text-sm text-muted">
+          {personal ? COPY.notPersonal : COPY.intro}{" "}
           <Link href={APP_ROUTES.docs} className={buttonClasses({ variant: BUTTON_VARIANTS.link })}>
             {COPY.docs}
           </Link>
         </p>
       </div>
-      {profile.kind === PROFILE_KINDS.personal ? null : (
-        <div className="max-w-xl">
-          <CopyValue
-            label={COPY.profileId}
-            value={profile.profileId}
-            hint={COPY.profileIdHint}
-            copyLabel={COPY.copyProfileId}
+      {personal ? null : (
+        <>
+          <div className="fw-panel px-4 py-4 sm:px-5">
+            <CopyValue
+              label={COPY.profileId}
+              value={profile.profileId}
+              hint={COPY.profileIdHint}
+              copyLabel={COPY.copyProfileId}
+            />
+          </div>
+          <ApiKeys
+            profileId={profile.profileId}
+            merchant={profile.kind === PROFILE_KINDS.merchant}
           />
-        </div>
-      )}
-      {profile.kind === PROFILE_KINDS.personal ? null : (
-        <ApiKeys profileId={profile.profileId} merchant={profile.kind === PROFILE_KINDS.merchant} />
-      )}
-      {profile.kind === PROFILE_KINDS.personal || !can(profile, PERMISSIONS.webhooks) ? null : (
-        <Webhooks
-          profileId={profile.profileId}
-          merchant={profile.kind === PROFILE_KINDS.merchant}
-        />
+          {can(profile, PERMISSIONS.webhooks) ? (
+            <Webhooks
+              profileId={profile.profileId}
+              merchant={profile.kind === PROFILE_KINDS.merchant}
+            />
+          ) : null}
+        </>
       )}
     </div>
   );

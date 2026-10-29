@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { Profile } from "@/features/profiles/types/profile";
-import { accountLinks, firstPage, navFor, pageAllowed } from "@/screens/app-shell/lib/app-nav";
+import {
+  accountLinks,
+  breadcrumb,
+  firstPage,
+  navFor,
+  pageAllowed,
+} from "@/screens/app-shell/lib/app-nav";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 // As GET /v1/me lists them for a merchant profile's Developer (D-93).
@@ -61,5 +67,31 @@ describe("navigation by role", () => {
     };
     expect(accountLinks(owner)).toEqual({ notifications: true, team: true });
     expect(accountLinks({ ...developer, kind: "freelancer" }).team).toBe(false);
+  });
+});
+
+describe("breadcrumb", () => {
+  it("puts a payment under Payments for every kind of profile", () => {
+    const payment = `${APP_ROUTES.payments}/0x${"a".repeat(64)}`;
+    const details = { label: "Payment details", href: payment };
+    expect(breadcrumb(payment, "merchant")).toEqual({
+      trail: [{ label: "Payments", href: APP_ROUTES.payments }, details],
+      invoiceId: null,
+    });
+    expect(breadcrumb(payment, "personal")).toEqual({
+      trail: [{ label: "Payments", href: APP_ROUTES.payments }, details],
+      invoiceId: null,
+    });
+  });
+
+  it("names a client's and a store's own page apart from its edit form", () => {
+    const last = (path: string) => breadcrumb(path, "merchant").trail.at(-1)?.label;
+    const id = "33333333-3333-4333-8333-333333333333";
+    expect(last(`${APP_ROUTES.clients}/${id}`)).toBe("Client");
+    expect(last(`${APP_ROUTES.clients}/${id}/edit`)).toBe("Edit client");
+    expect(last(APP_ROUTES.newClient)).toBe("New client");
+    expect(last(`${APP_ROUTES.stores}/${id}`)).toBe("Store");
+    expect(last(`${APP_ROUTES.stores}/${id}/edit`)).toBe("Edit store");
+    expect(last(APP_ROUTES.newStore)).toBe("New store");
   });
 });

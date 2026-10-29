@@ -1,3 +1,4 @@
+import type { ClientKind } from "@/features/clients/types/clients";
 import {
   AMOUNT_ERRORS,
   type CUSTOM_EXPIRY,
@@ -8,7 +9,6 @@ import {
   HISTORY_FIELDS,
   HISTORY_FILTERS,
   HISTORY_KINDS,
-  INVOICE_EVENTS,
   INVOICE_EXCEPTIONS,
   INVOICE_FIELDS,
   INVOICE_LIMITS,
@@ -25,7 +25,6 @@ import type {
   HistoryField,
   HistoryFilter,
   HistoryKind,
-  InvoiceEventKind,
   InvoiceExceptionKind,
   InvoicePdf,
   InvoiceStep,
@@ -71,6 +70,7 @@ export const INVOICES_COPY = {
     invoice: "Invoice",
     client: "Client",
     title: "Title",
+    store: "Store",
     due: "Due",
     status: "Status",
     amount: "Amount",
@@ -93,11 +93,12 @@ export const REQUESTS_COPY = {
   updateFailed: "We could not update the requests.",
   search: "Search requests",
   searchPlaceholder: "Number or note",
+  columns: { ...INVOICES_COPY.columns, invoice: "Request", title: "Note" },
 } as const;
 
 export const NEW_INVOICE_COPY = {
   title: "New invoice",
-  intro: "The client pays the exact amount. You get a link to send them.",
+  intro: "The client pays this exact amount by link.",
   noTokens:
     "No networks are enabled yet, so there is nothing to bill in. You can't create an invoice yet.",
   tokensFailed: "We could not load the networks and tokens you can bill in.",
@@ -107,6 +108,8 @@ export const NEW_INVOICE_COPY = {
   payWithAnyHint: (symbols: string, networks: number) =>
     `The client pays it in ${symbols}, on any of ${networks} networks, 1 USD each.`,
   tokenLabel: "Network and token",
+  searchTokens: "Search tokens",
+  noTokenMatch: "No token matches",
   amountLabel: "Amount",
   amountUsdLabel: "Amount in USD",
   amountHint: (symbol: string, network: string, decimals: number) =>
@@ -194,7 +197,11 @@ export const NEW_INVOICE_COPY = {
   closesAt: "At",
   customError: "Pick a time from 15 minutes to 365 days from now.",
   client: "Customer",
-  clientName: "Name",
+  clientKind: "Who are you billing?",
+  clientKinds: { business: "A business", person: "A person" } satisfies Record<ClientKind, string>,
+  clientLegalName: "Legal name",
+  clientPersonName: "Full name",
+  clientLegalNameHint: "As it should read on the invoice.",
   clientEmail: "Email",
   clientAddress: "Address",
   clientCountry: "Country",
@@ -266,6 +273,7 @@ export const NEW_INVOICE_COPY = {
     noDue: "No due date",
     closes: "Checkout closes after",
     noItem: "Item",
+    moreItems: (n: number) => (n === 1 ? "And 1 more item" : `And ${n} more items`),
     quantity: (qty: string) => `Qty ${qty}`,
     open: "Preview",
   },
@@ -274,7 +282,7 @@ export const NEW_INVOICE_COPY = {
 export const NEW_REQUEST_COPY = {
   ...NEW_INVOICE_COPY,
   title: "Request money",
-  intro: "The payer pays the exact amount. You get a link to send them.",
+  intro: "The payer pays this exact amount by link.",
   noTokens: "No networks are enabled yet, so there is nothing to request in.",
   tokensFailed: "We could not load the networks and tokens you can request in.",
   noteLabel: "Note to the payer (optional)",
@@ -297,6 +305,7 @@ export const NEW_REQUEST_COPY = {
 } as const;
 
 export const INVOICE_COPY = {
+  allItems: (n: number) => `Show all ${n} items`,
   reconciliationNeeded: "We could not verify this payment. Contact support before sending more.",
   verificationPending: "Confirming payment.",
   checkingClosed: "Checkout closed. Checking the final payment records.",
@@ -304,6 +313,7 @@ export const INVOICE_COPY = {
     `Recorded returns: ${amount} on ${network}.`,
   latestReturn: "Latest return transaction",
   back: "Invoices",
+  testnet: "Testnet",
   clientChooses: (n: number) => `The client picks one of ${n} tokens and networks`,
   heldOn: (symbol: string, network: string) => `Held for the payer · ${symbol} on ${network}`,
   partlyPaid: "Partially paid",
@@ -313,7 +323,6 @@ export const INVOICE_COPY = {
   receivedOf: (received: string, total: string) => `Received ${received} of ${total}`,
   notFound: "No invoice has this link.",
   failed: "We could not load this invoice.",
-  retry: "Try again",
   amount: "Amount",
   progress: "Payment progress",
   steps: {
@@ -450,12 +459,6 @@ export const INVOICE_COPY = {
     saved: (number: string) => `${number} saved`,
     failed: "We could not save it. Try again.",
   },
-  // The bell's lines (R-81); the amount follows each.
-  events: {
-    [INVOICE_EVENTS.paid]: (number: string) => `${number} paid`,
-    [INVOICE_EVENTS.settled]: (number: string) => `${number} in your wallet`,
-    [INVOICE_EVENTS.held]: (number: string) => `${number} held for the payer`,
-  } satisfies Record<InvoiceEventKind, (number: string) => string>,
   // Cancel before any money (R-79, D-79).
   moreActions: "More actions",
   cancel: {
@@ -633,6 +636,7 @@ export const STOP_REMINDERS_COPY = {
 // R-95, D-114: what customers still owe. Money held for a payer is theirs, so it never shows here.
 export const OWED_COPY = {
   title: "Owed to you",
+  description: "Most urgent first.",
   totalLabel: "Left to pay",
   kinds: {
     [OWED_KINDS.overdue]: (days: number) => (days === 1 ? "1 day late" : `${days} days late`),

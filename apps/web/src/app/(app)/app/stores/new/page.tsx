@@ -1,5 +1,5 @@
-import { StoreScreen } from "@/screens/stores/store-screen";
+import { StoreFormScreen } from "@/screens/stores/store-form-screen";
 
 export default function NewStorePage() {
-  return <StoreScreen />;
+  return <StoreFormScreen />;
 }

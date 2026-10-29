@@ -51,7 +51,7 @@ describe("new invoice form", () => {
         <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} />
       </Provider>,
     );
-    fireEvent.change(screen.getByRole("textbox", { name: /^Name$/ }), {
+    fireEvent.change(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }), {
       target: { value: "Mara Ilić" },
     });
     fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "100" } });
@@ -149,7 +149,7 @@ describe("new invoice form", () => {
           <NewInvoiceForm profileId={PROFILE} tokens={tokens} />
         </Provider>,
       );
-      fireEvent.change(screen.getByRole("textbox", { name: /^Name$/ }), {
+      fireEvent.change(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }), {
         target: { value: "Mara Ilić" },
       });
       fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "100" } });
@@ -236,7 +236,7 @@ describe("new invoice form", () => {
         <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} />
       </Provider>,
     );
-    fireEvent.change(screen.getByRole("textbox", { name: /^Name$/ }), {
+    fireEvent.change(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }), {
       target: { value: "Mara Ilić" },
     });
     fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "5" } });
@@ -272,7 +272,7 @@ describe("new invoice form", () => {
         />
       </Provider>,
     );
-    fireEvent.change(screen.getByRole("textbox", { name: /^Name$/ }), {
+    fireEvent.change(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }), {
       target: { value: "Mara Ilić" },
     });
     fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "5" } });
@@ -407,7 +407,7 @@ describe("new invoice form", () => {
         <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} />
       </Provider>,
     );
-    fireEvent.change(screen.getByRole("textbox", { name: /^Name$/ }), {
+    fireEvent.change(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }), {
       target: { value: "Mara Ilić" },
     });
     fireEvent.change(screen.getByLabelText(/^Amount/), { target: { value: "100" } });
@@ -463,7 +463,11 @@ describe("new invoice form", () => {
     await settle();
     expect(bodies).toHaveLength(0);
     expect(screen.getByText("Repeating needs a due date and a client email.")).toBeTruthy();
-    expect(document.activeElement).toBe(repeat);
+    // The customer comes first on the form, so its missing name is the first error.
+    expect(repeat.getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(
+      screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }),
+    );
 
     const pick = (field: RegExp, day: (enabled: HTMLElement[]) => HTMLElement) => {
       fireEvent.click(screen.getByRole("button", { name: field }));
@@ -499,11 +503,41 @@ it("requires an invoice recipient while accepting an individual without business
   fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
   await settle();
   expect(create).not.toHaveBeenCalled();
-  expect(screen.getByRole("textbox", { name: /^Name$/ }).getAttribute("aria-invalid")).toBe("true");
-  fireEvent.change(screen.getByRole("textbox", { name: /^Name$/ }), {
+  expect(
+    screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }).getAttribute("aria-invalid"),
+  ).toBe("true");
+  fireEvent.change(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }), {
     target: { value: "Mara Ilić" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
   await settle();
   expect(create).toHaveBeenCalledOnce();
+});
+
+it("starts billed to the saved client a client page opened it for", () => {
+  render(
+    <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+      <NewInvoiceForm
+        profileId={PROFILE}
+        tokens={[TOKEN]}
+        startClient={{
+          clientId: "6f9619ff-8b86-4011-b42d-00c04fc964aa",
+          name: "Mara Ilić",
+          email: "mara@example.com",
+          address: null,
+          country: null,
+          taxId: null,
+          reference: "PO-7",
+          reminders: false,
+          updatedAt: "2026-10-01T00:00:00Z",
+        }}
+      />
+    </Provider>,
+  );
+  // Only a name and email: a person, so no business fields show.
+  expect((screen.getByRole("textbox", { name: "Full name" }) as HTMLInputElement).value).toBe(
+    "Mara Ilić",
+  );
+  expect(screen.queryByRole("textbox", { name: /Tax or VAT ID/ })).toBeNull();
+  expect((screen.getByLabelText(/PO or reference/) as HTMLInputElement).value).toBe("PO-7");
 });

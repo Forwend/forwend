@@ -4,8 +4,7 @@ import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 export const FIRST_RUN_COPY = {
   pageTitle: "Get started",
   title: "What do you want to do?",
-  intro:
-    "Pick all that fit. Each business use gets its own profile and wallet; you can add profiles later.",
+  intro: "Pick all that fit. You can add profiles later.",
   legend: "Uses",
   choices: {
     [ONBOARDING_CHOICES.receiveAndSend]: {

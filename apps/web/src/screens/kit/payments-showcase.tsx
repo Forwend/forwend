@@ -2,6 +2,8 @@ import {
   ACTIVITY_DIRECTIONS,
   ActivityRow,
   Address,
+  BigAmount,
+  Card,
   DetailList,
   DetailRow,
   Money,
@@ -47,6 +49,26 @@ export function PaymentsShowcase() {
           <Money baseUnits={123456789012123456n} decimals={6} token="USDC" />
         </div>
         <Money baseUnits={1234567890123456789n} decimals={18} token="OUSD" />
+      </KitGroup>
+      <KitGroup title="Big amount: whole part ink, cents subtle; no cents; a long figure">
+        <BigAmount value="18,412.09" className="text-5xl" />
+        <BigAmount value="240" className="text-3xl" />
+        <BigAmount value="1,234,567,890.50" className="text-3xl" />
+      </KitGroup>
+      <KitGroup title="Card: title, description and action; body only">
+        <div className="grid w-full gap-4 md:grid-cols-2">
+          <Card
+            id="kit-card"
+            title="On its way"
+            description="3 payments"
+            action={<span className="text-xs text-muted">View all</span>}
+          >
+            <p className="text-sm text-muted">The card body: rows, a figure or a chart.</p>
+          </Card>
+          <Card>
+            <p className="text-sm text-muted">A card with no header.</p>
+          </Card>
+        </div>
       </KitGroup>
       <KitGroup title="Token and network">
         <TokenChip token="USDC" network="Base" />

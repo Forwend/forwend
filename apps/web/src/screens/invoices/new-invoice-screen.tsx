@@ -47,7 +47,7 @@ export function NewInvoiceScreen() {
           owned.currentData.reminders,
         )
       : undefined;
-  const loadingStart = Boolean(from) && owned.isLoading;
+  const clientId = params.get(RESTART_PARAMS.client);
   // R-129: ?revise=1 replaces that invoice once this one is created.
   const replaced = params.has(RESTART_PARAMS.revise) ? owned.currentData : undefined;
   // R-136: only the tokens the profile has on, from the enabled tokens every role reads (D-93).
@@ -69,6 +69,12 @@ export function NewInvoiceScreen() {
   const clients = useListClientsQuery(profile.profileId, {
     skip: request || !can(profile, PERMISSIONS.clientsRead),
   });
+  // An unknown client id, or a list that failed, starts an empty client.
+  const startClient = clientId
+    ? clients.currentData?.find((c) => c.clientId === clientId)
+    : undefined;
+  const loadingStart =
+    (Boolean(from) && owned.isLoading) || (Boolean(clientId) && clients.isLoading);
   // Store defaults and acceptance must be known before composing a merchant invoice.
   const merchant = profile.kind === PROFILE_KINDS.merchant;
   const stores = useListStoresQuery(profile.profileId, { skip: !merchant });
@@ -136,10 +142,11 @@ export function NewInvoiceScreen() {
         <>
           {replaced ? <ReviseNotice invoice={replaced} /> : null}
           <NewInvoiceForm
-            key={`${profile.profileId}:${from ?? ""}`}
+            key={`${profile.profileId}:${from ?? ""}:${clientId ?? ""}`}
             profileId={profile.profileId}
             tokens={tokens}
             start={start}
+            startClient={startClient}
             clients={clients.currentData}
             stores={stores.currentData}
             replaces={

@@ -15,6 +15,8 @@ export type { AccordionItem, AccordionProps } from "./components/display/accordi
 export { Accordion } from "./components/display/accordion";
 export type { BadgeProps } from "./components/display/badge";
 export { Badge } from "./components/display/badge";
+export type { CardProps } from "./components/display/card";
+export { Card } from "./components/display/card";
 export type { CodeBlockProps } from "./components/display/code-block";
 export { CodeBlock } from "./components/display/code-block";
 export type { DetailListProps, DetailRowProps } from "./components/display/detail-list";
@@ -51,6 +53,15 @@ export type { CalendarProps } from "./components/forms/date-picker/calendar";
 export { Calendar } from "./components/forms/date-picker/calendar";
 export type { DatePickerProps } from "./components/forms/date-picker/date-picker";
 export { DatePicker } from "./components/forms/date-picker/date-picker";
+export type {
+  DateRange,
+  DateRangePickerProps,
+  DateRangePreset,
+} from "./components/forms/date-picker/date-range-picker";
+export {
+  DATE_RANGE_PRESETS,
+  DateRangePicker,
+} from "./components/forms/date-picker/date-range-picker";
 export type { CaptureStatus, EmailCaptureProps } from "./components/forms/email-capture";
 export { CAPTURE_STATUS, EmailCapture } from "./components/forms/email-capture";
 export type { FormProps } from "./components/forms/form";
@@ -106,6 +117,8 @@ export { Address } from "./components/payments/address/address";
 export { shortAddress } from "./components/payments/address/short-address";
 export type { TruncatedAddressProps } from "./components/payments/address/truncated-address";
 export { TruncatedAddress } from "./components/payments/address/truncated-address";
+export type { BigAmountProps } from "./components/payments/money/big-amount";
+export { BigAmount } from "./components/payments/money/big-amount";
 export type { MoneyProps } from "./components/payments/money/money";
 export { Money } from "./components/payments/money/money";
 export type { TokenAmountInput } from "./components/payments/money/token-amount";
@@ -130,7 +143,7 @@ export {
   WALLET_STATES,
 } from "./components/payments/status-pill/payment-status";
 export type { StatusPillProps } from "./components/payments/status-pill/status-pill";
-export { StatusPill } from "./components/payments/status-pill/status-pill";
+export { PAYMENT_STATUS_ICONS, StatusPill } from "./components/payments/status-pill/status-pill";
 export type { WalletStateLabelProps } from "./components/payments/status-pill/wallet-state-label";
 export { WalletStateLabel } from "./components/payments/status-pill/wallet-state-label";
 export type { TokenChipProps } from "./components/payments/token-chip";

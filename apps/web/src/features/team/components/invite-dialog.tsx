@@ -54,14 +54,14 @@ export function InviteDialog({ profileId, stores }: InviteDialogProps) {
       title={COPY.inviteTitle}
       onClose={reset}
       trigger={(open) => (
-        <Button onClick={open}>
+        <Button size="sm" onClick={open}>
           <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />
           {COPY.invite}
         </Button>
       )}
     >
       <form ref={form} onSubmit={submit} noValidate className="flex flex-col gap-4">
-        <p className="text-muted">{COPY.inviteIntro}</p>
+        <p className="text-sm text-muted">{COPY.inviteIntro}</p>
         <TextField
           label={COPY.email}
           type="email"
@@ -84,7 +84,7 @@ export function InviteDialog({ profileId, stores }: InviteDialogProps) {
             {errors.form}
           </p>
         ) : null}
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button
             type="button"
             variant={BUTTON_VARIANTS.secondary}

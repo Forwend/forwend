@@ -1,14 +1,15 @@
 import { ACTIVITY_PAGE_SIZE } from "@/features/activity/constants/activity";
 import { activityPageSchema } from "@/features/activity/schemas/activity";
-import type { ActivityPage, StatusFilter } from "@/features/activity/types/activity";
+import type { ActivityPage } from "@/features/activity/types/activity";
 import { apiSlice } from "@/shared/api/api-slice";
+import type { ApiPaymentState } from "@/shared/types/payment-state";
 
 export const activityApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
     /** Cursor pages, so history reaches its start however long it is. */
     getActivity: build.infiniteQuery<
       ActivityPage,
-      { profileId: string; status?: StatusFilter; q?: string },
+      { profileId: string; state?: ApiPaymentState; q?: string },
       string | null
     >({
       infiniteQueryOptions: { initialPageParam: null, getNextPageParam: (last) => last.nextCursor },

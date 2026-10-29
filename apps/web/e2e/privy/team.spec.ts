@@ -170,9 +170,12 @@ test("an Admin invites, changes a role and revokes an invite on the Team page", 
   await page.goto("/app/team");
   const main = page.getByRole("main");
   await expect(main.getByText("dev@example.com", { exact: true })).toBeVisible();
-  await expect(main.getByRole("listitem").filter({ hasText: "dev@example.com" })).toContainText(
-    "Pro shop",
-  );
+  await expect(
+    main
+      .getByRole("row")
+      .filter({ hasText: "dev@example.com" })
+      .getByRole("cell", { name: "Pro shop", exact: true }),
+  ).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
 
   await main.getByRole("button", { name: "Invite" }).click();

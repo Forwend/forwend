@@ -10,6 +10,7 @@ import {
   API_SETTLEMENT_STATUSES,
   API_WALLET_STATES,
 } from "@/shared/constants/payment-state";
+import type { ApiPaymentState } from "@/shared/types/payment-state";
 
 /** The facts a payment record carries, whichever list or detail read it came from. */
 export interface PaymentFacts {
@@ -24,7 +25,8 @@ export interface PaymentFacts {
   dueDate?: string | null;
 }
 
-const STATES: Readonly<Record<string, PaymentStatus>> = {
+/** Each API state's status: the label and icon a pill or a filter shows for it. */
+export const STATE_STATUS: Readonly<Record<ApiPaymentState, PaymentStatus>> = {
   [API_PAYMENT_STATES.waiting]: PAYMENT_STATUS.open,
   [API_PAYMENT_STATES.confirming]: PAYMENT_STATUS.confirming,
   [API_PAYMENT_STATES.partiallyPaid]: PAYMENT_STATUS.partiallyPaid,
@@ -47,7 +49,9 @@ const RAW: Readonly<Record<string, PaymentStatus>> = {
 /** One payment status for every list, detail, activity row and toast (D-114). Unknown values read Detected, never
  * as arrived money; a closed payment that can no longer complete reads expired (R-77). */
 export function paymentStatusOf(facts: PaymentFacts, today = new Date()): PaymentStatus {
-  const status = facts.state ? (STATES[facts.state] ?? rawStatus(facts)) : rawStatus(facts);
+  const status = facts.state
+    ? (STATE_STATUS[facts.state as ApiPaymentState] ?? rawStatus(facts))
+    : rawStatus(facts);
   if (status === PAYMENT_STATUS.paid && facts.held && BigInt(facts.held) > 0n) {
     return PAYMENT_STATUS.overpaid;
   }

@@ -22,83 +22,94 @@ interface Query {
   profileId: string;
   filters?: PaymentFilters;
 }
-const TAG = "Payments";
-export const paymentsApi = apiSlice.enhanceEndpoints({ addTagTypes: [TAG] }).injectEndpoints({
-  endpoints: (build) => ({
-    getPayments: build.infiniteQuery<
-      { items: Payment[]; nextCursor: string | null },
-      Query,
-      string | null
-    >({
-      infiniteQueryOptions: { initialPageParam: null, getNextPageParam: (last) => last.nextCursor },
-      query: ({ queryArg: { profileId, filters }, pageParam }) => ({
-        url: path(profileId),
-        params: {
-          ...filters,
-          limit: PAYMENT_PAGE_SIZE,
-          ...(pageParam ? { cursor: pageParam } : {}),
+export const PAYMENTS_TAG = "Payments";
+export const paymentsApi = apiSlice
+  .enhanceEndpoints({ addTagTypes: [PAYMENTS_TAG] })
+  .injectEndpoints({
+    endpoints: (build) => ({
+      getPayments: build.infiniteQuery<
+        { items: Payment[]; nextCursor: string | null },
+        Query,
+        string | null
+      >({
+        infiniteQueryOptions: {
+          initialPageParam: null,
+          getNextPageParam: (last) => last.nextCursor,
         },
+        query: ({ queryArg: { profileId, filters }, pageParam }) => ({
+          url: path(profileId),
+          params: {
+            ...filters,
+            limit: PAYMENT_PAGE_SIZE,
+            ...(pageParam ? { cursor: pageParam } : {}),
+          },
+        }),
+        responseSchema: paymentsPageSchema,
+        providesTags: [PAYMENTS_TAG],
       }),
-      responseSchema: paymentsPageSchema,
-      providesTags: [TAG],
-    }),
-    getPaymentAttention: build.infiniteQuery<AttentionPage, Query, string | null>({
-      infiniteQueryOptions: { initialPageParam: null, getNextPageParam: (last) => last.nextCursor },
-      query: ({ queryArg: { profileId, filters }, pageParam }) => ({
-        url: `${path(profileId)}/attention`,
-        params: {
-          ...filters,
-          limit: PAYMENT_PAGE_SIZE,
-          ...(pageParam ? { cursor: pageParam } : {}),
+      getPaymentAttention: build.infiniteQuery<AttentionPage, Query, string | null>({
+        infiniteQueryOptions: {
+          initialPageParam: null,
+          getNextPageParam: (last) => last.nextCursor,
         },
+        query: ({ queryArg: { profileId, filters }, pageParam }) => ({
+          url: `${path(profileId)}/attention`,
+          params: {
+            ...filters,
+            limit: PAYMENT_PAGE_SIZE,
+            ...(pageParam ? { cursor: pageParam } : {}),
+          },
+        }),
+        responseSchema: attentionPageSchema,
+        providesTags: [PAYMENTS_TAG],
       }),
-      responseSchema: attentionPageSchema,
-      providesTags: [TAG],
-    }),
-    getPayment: build.query<
-      PaymentDetail,
-      { profileId: string; paymentId: string; full?: boolean }
-    >({
-      query: ({ profileId, paymentId, full }) => ({
-        url: `${path(profileId)}/${encodeURIComponent(paymentId)}`,
-        params: full ? undefined : { view: "summary" },
+      getPayment: build.query<
+        PaymentDetail,
+        { profileId: string; paymentId: string; full?: boolean }
+      >({
+        query: ({ profileId, paymentId, full }) => ({
+          url: `${path(profileId)}/${encodeURIComponent(paymentId)}`,
+          params: full ? undefined : { view: "summary" },
+        }),
+        responseSchema: paymentDetailSchema,
+        providesTags: [PAYMENTS_TAG],
       }),
-      responseSchema: paymentDetailSchema,
-      providesTags: [TAG],
-    }),
-    getPaymentMovements: build.infiniteQuery<
-      PaymentMovementPage,
-      { profileId: string; paymentId: string },
-      string | null
-    >({
-      infiniteQueryOptions: { initialPageParam: null, getNextPageParam: (last) => last.nextCursor },
-      query: ({ queryArg: { profileId, paymentId }, pageParam }) => ({
-        url: `${path(profileId)}/${encodeURIComponent(paymentId)}/movements`,
-        params: { limit: PAYMENT_PAGE_SIZE, ...(pageParam ? { cursor: pageParam } : {}) },
+      getPaymentMovements: build.infiniteQuery<
+        PaymentMovementPage,
+        { profileId: string; paymentId: string },
+        string | null
+      >({
+        infiniteQueryOptions: {
+          initialPageParam: null,
+          getNextPageParam: (last) => last.nextCursor,
+        },
+        query: ({ queryArg: { profileId, paymentId }, pageParam }) => ({
+          url: `${path(profileId)}/${encodeURIComponent(paymentId)}/movements`,
+          params: { limit: PAYMENT_PAGE_SIZE, ...(pageParam ? { cursor: pageParam } : {}) },
+        }),
+        responseSchema: movementsPageSchema,
+        providesTags: [PAYMENTS_TAG],
       }),
-      responseSchema: movementsPageSchema,
-      providesTags: [TAG],
-    }),
-    getPaymentReconciliation: build.query<PaymentReconciliation, Query & PaymentPeriod>({
-      query: ({ profileId, filters, ...period }) => ({
-        url: `${path(profileId)}/reconciliation`,
-        params: { ...filters, ...period },
+      getPaymentReconciliation: build.query<PaymentReconciliation, Query & PaymentPeriod>({
+        query: ({ profileId, filters, ...period }) => ({
+          url: `${path(profileId)}/reconciliation`,
+          params: { ...filters, ...period },
+        }),
+        responseSchema: reconciliationSchema,
+        providesTags: [PAYMENTS_TAG],
       }),
-      responseSchema: reconciliationSchema,
-      providesTags: [TAG],
-    }),
-    exportPayments: build.query<string, Query & PaymentPeriod & { paymentId?: string }>({
-      query: ({ profileId, filters, paymentId, ...period }) => ({
-        url: paymentId
-          ? `${path(profileId)}/${encodeURIComponent(paymentId)}/movements.csv`
-          : `${path(profileId)}.csv`,
-        params: { ...filters, ...period },
-        responseHandler: (r) => (r.ok ? r.text() : r.json()),
+      exportPayments: build.query<string, Query & PaymentPeriod & { paymentId?: string }>({
+        query: ({ profileId, filters, paymentId, ...period }) => ({
+          url: paymentId
+            ? `${path(profileId)}/${encodeURIComponent(paymentId)}/movements.csv`
+            : `${path(profileId)}.csv`,
+          params: { ...filters, ...period },
+          responseHandler: (r) => (r.ok ? r.text() : r.json()),
+        }),
+        keepUnusedDataFor: 0,
       }),
-      keepUnusedDataFor: 0,
     }),
-  }),
-});
+  });
 export const {
   useGetPaymentsInfiniteQuery,
   useGetPaymentAttentionInfiniteQuery,

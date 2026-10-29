@@ -100,7 +100,7 @@ func listInvoices(invoices *invoice.Service) http.HandlerFunc {
 		}
 		query := r.URL.Query()
 		access := mid.ProfileAccess(r)
-		page, err := invoices.List(r.Context(), r.PathValue("profileId"), query.Get("cursor"), limit, query.Get("status"), q,
+		page, err := invoices.List(r.Context(), r.PathValue("profileId"), query.Get("cursor"), limit, query.Get("status"), query.Get("state"), q,
 			access.Stores, access.Livemode)
 		if err != nil {
 			httpio.WriteError(w, r, err)

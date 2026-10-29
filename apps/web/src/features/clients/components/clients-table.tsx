@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useListClientsQuery } from "@/features/clients/api/clients-api";
 import { CLIENTS_COPY as COPY } from "@/features/clients/constants/clients-copy";
-import { matchesClient } from "@/features/clients/lib/clients";
+import { countryName, matchesClient } from "@/features/clients/lib/clients";
 import type { Client } from "@/features/clients/types/clients";
 import { DataTable } from "@/shared/components/data-table";
 import { InitialsAvatar } from "@/shared/components/initials-avatar";
@@ -16,8 +16,6 @@ import { NoMatch } from "@/shared/components/no-match";
 import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { APP_ROUTES } from "@/shared/config/routes";
 
-const COUNTRY = new Intl.DisplayNames(undefined, { type: "region" });
-const countryName = (code: string | null) => (code ? (COUNTRY.of(code) ?? code) : null);
 const clientHref = (client: Client) => `${APP_ROUTES.clients}/${client.clientId}`;
 
 function AddClientLink({ className = "", size = "md" }: { className?: string; size?: ButtonSize }) {

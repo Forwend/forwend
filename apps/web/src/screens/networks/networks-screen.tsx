@@ -1,30 +1,37 @@
 "use client";
 
-import { Button, Skeleton } from "@forwend/ui-web";
+import { Skeleton } from "@forwend/ui-web";
 import { useGetProfileTokensQuery } from "@/features/profiles/api/profiles-api";
 import { TokenSwitches } from "@/features/profiles/components/token-switches";
 import { TOKENS_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
+import { LoadError } from "@/shared/components/load-error";
 
 export function NetworksScreen() {
   const { profile } = useAppSession();
   const tokens = useGetProfileTokensQuery(profile.profileId);
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-2">
         {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
         <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">{COPY.title}</h1>
-        <p className="text-muted">{COPY.intro}</p>
+        <p className="text-sm text-muted">{COPY.intro}</p>
       </div>
       {tokens.isError ? (
-        <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-muted">
-          {COPY.loadFailed}
-          <Button size="sm" variant="secondary" onClick={tokens.refetch}>
-            {COPY.retry}
-          </Button>
-        </div>
+        <LoadError
+          message={COPY.loadFailed}
+          retrying={tokens.isFetching}
+          onRetry={() => void tokens.refetch()}
+        />
       ) : tokens.currentData === undefined ? (
-        <Skeleton className="h-24" />
+        <ul aria-hidden className="fw-panel divide-y divide-line">
+          {[0, 1, 2].map((i) => (
+            <li key={i} className="flex min-h-14 items-center justify-between gap-4 px-4 sm:px-5">
+              <Skeleton className="h-4 w-56" />
+              <Skeleton className="h-6 w-11 rounded-pill" />
+            </li>
+          ))}
+        </ul>
       ) : (
         <TokenSwitches
           key={profile.profileId}

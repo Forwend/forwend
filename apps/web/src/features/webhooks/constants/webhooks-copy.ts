@@ -6,8 +6,7 @@ const plural = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` :
 /** R-149: the Developers page's webhooks. */
 export const WEBHOOKS_COPY = {
   title: "Webhooks",
-  intro:
-    "Webhooks tell your server when an invoice changes. Each one is signed, so your server can check that Forwend sent it.",
+  intro: "Signed messages to your server when an invoice changes.",
   add: "New endpoint",
   newTitle: "New webhook endpoint",
   editTitle: (where: string) => `Edit ${where}`,
@@ -33,13 +32,22 @@ export const WEBHOOKS_COPY = {
   enabled: "Send events",
   save: "Save endpoint",
   cancel: "Cancel",
+  on: "On",
   off: "Off",
+  columns: {
+    endpoint: "Endpoint",
+    store: "Store",
+    events: "Events",
+    status: "Status",
+    lastDelivery: "Last delivery",
+    actions: "Actions",
+  },
+  lastDeliveryFailed: "Couldn't check",
   testMode: "Test mode",
   eventCount: (n: number) => plural(n, "event", "events"),
   empty: "No webhook endpoints yet",
   emptyBody: "Add one to hear on your server when an invoice is paid, settled or held.",
   loadFailed: "We could not load your webhook endpoints.",
-  retry: "Try again",
   actions: (where: string) => `Actions for ${where}`,
   deliveries: "Deliveries",
   edit: "Edit",
@@ -76,7 +84,7 @@ export const WEBHOOKS_COPY = {
   resend: "Resend",
   resendOne: (what: string, when: string) => `Resend ${what} from ${when}`,
   resent: "Sent again",
-  since: "Failed in the",
+  since: "Failed in",
   sinceLabels: {
     1: "Last hour",
     24: "Last 24 hours",

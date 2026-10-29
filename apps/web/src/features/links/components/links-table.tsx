@@ -32,7 +32,7 @@ function StateBadge({ link }: { link: PaymentLink }) {
       <Badge tone={state === LINK_STATES.on ? TONES.success : TONES.neutral}>
         {COPY.states[state]}
       </Badge>
-      {link.livemode ? null : <Badge tone={TONES.warning}>{COPY.testMode}</Badge>}
+      {link.livemode ? null : <Badge tone={TONES.neutral}>{COPY.testMode}</Badge>}
     </span>
   );
 }

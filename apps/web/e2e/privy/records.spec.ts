@@ -1,8 +1,30 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Locator, test } from "@playwright/test";
 import { sidewaysScroll } from "../sideways";
 import { blockingViolations } from "./axe";
 import { mockApi } from "./sample-api";
 import { session } from "./session";
+
+// The export's period is a kit date range picker. These two need no paging: the first of this month and today (UTC).
+const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+const NOW = new Date();
+const FIRST = isoDay(new Date(Date.UTC(NOW.getUTCFullYear(), NOW.getUTCMonth(), 1)));
+const TODAY = isoDay(NOW);
+const DAY_NAME = new Intl.DateTimeFormat("en-US", { dateStyle: "full", timeZone: "UTC" });
+
+// One press with Escape leaves the end open; two presses make the period.
+async function pickRange(dialog: Locator, from: string, to?: string) {
+  const day = (iso: string) =>
+    dialog
+      .page()
+      .getByRole("button", { name: DAY_NAME.format(new Date(`${iso}T00:00:00Z`)), exact: true });
+  // A period left from the last export would make the first press its end.
+  const clear = dialog.getByRole("button", { name: "Clear period" });
+  if (await clear.isVisible()) await clear.click();
+  await dialog.getByRole("button", { name: /^Period / }).click();
+  await day(from).click();
+  if (to) await day(to).click();
+  else await dialog.page().keyboard.press("Escape");
+}
 
 // R-109. On mocked answers: nothing is saved on the shared account (D-85).
 test("transactions show their type, take a label, and export the days chosen; it fits a phone", async ({
@@ -44,7 +66,7 @@ test("transactions show their type, take a label, and export the days chosen; it
 
   await main.getByRole("button", { name: "Export", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Export transactions" });
-  await dialog.getByLabel("From").fill("2026-10-01");
+  await pickRange(dialog, FIRST);
   expect(await blockingViolations(page)).toEqual([]);
   const download = page.waitForEvent("download");
   await dialog.getByRole("button", { name: "Download CSV" }).click();
@@ -53,13 +75,10 @@ test("transactions show their type, take a label, and export the days chosen; it
 
   // R-113
   await main.getByRole("button", { name: "Export", exact: true }).click();
-  await dialog.getByLabel("From").fill("2026-10-01");
-  await dialog.getByLabel("To").fill("2026-10-31");
+  await pickRange(dialog, FIRST, TODAY);
   const statement = page.waitForEvent("download");
   await dialog.getByRole("button", { name: "Download statement (PDF)" }).click();
-  expect((await statement).suggestedFilename()).toBe(
-    "forwend-statement-2026-10-01-to-2026-10-31.pdf",
-  );
+  expect((await statement).suggestedFilename()).toBe(`forwend-statement-${FIRST}-to-${TODAY}.pdf`);
   await expect(dialog).toBeHidden();
 
   // R-111
@@ -99,8 +118,7 @@ test("transactions show their type, take a label, and export the days chosen; it
     }),
   );
   await main.getByRole("button", { name: "Export", exact: true }).click();
-  await dialog.getByLabel("From").fill("2026-10-01");
-  await dialog.getByLabel("To").fill("2026-10-31");
+  await pickRange(dialog, FIRST, TODAY);
   await dialog.getByRole("button", { name: "Download statement (PDF)" }).click();
   await expect(dialog.getByRole("link", { name: "Add billing details" })).toHaveAttribute(
     "href",

@@ -120,7 +120,12 @@ export function breadcrumb(
       trail: [
         crumb,
         {
-          label: pathname === APP_ROUTES.newClient ? CLIENTS_COPY.newTitle : CLIENTS_COPY.editTitle,
+          label:
+            pathname === APP_ROUTES.newClient
+              ? CLIENTS_COPY.newTitle
+              : pathname.endsWith("/edit")
+                ? CLIENTS_COPY.editTitle
+                : CLIENTS_COPY.detailTitle,
           href: pathname,
         },
       ],
@@ -132,7 +137,12 @@ export function breadcrumb(
       trail: [
         crumb,
         {
-          label: pathname === APP_ROUTES.newStore ? STORES_COPY.newTitle : STORES_COPY.editTitle,
+          label:
+            pathname === APP_ROUTES.newStore
+              ? STORES_COPY.newTitle
+              : pathname.endsWith("/edit")
+                ? STORES_COPY.editTitle
+                : STORES_COPY.detailTitle,
           href: pathname,
         },
       ],
@@ -168,7 +178,7 @@ export function breadcrumb(
       invoiceId: null,
     };
   }
-  if (page.href === APP_ROUTES.payments && pathname !== APP_ROUTES.payments) {
+  if (pathname.startsWith(`${APP_ROUTES.payments}/`)) {
     return { trail: [crumb, { label: "Payment details", href: pathname }], invoiceId: null };
   }
   const under =

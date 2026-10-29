@@ -72,6 +72,7 @@ export function PaymentList({
     >
       {list.isError ? (
         <LoadError
+          inline
           message={COPY.stale}
           onRetry={() => void list.refetch()}
           retrying={list.isFetching}

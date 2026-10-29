@@ -13,8 +13,7 @@ export const JOBS_COPY = {
   add: "New job",
   newTitle: "New job",
   detailTitle: "Job",
-  intro:
-    "A quote with its payment schedule. Send the client its link: they accept it there, and each payment becomes an invoice.",
+  intro: "A quote with a payment schedule. Each payment becomes an invoice.",
   search: "Search jobs",
   searchPlaceholder: "Job or client",
   clearSearch: "Clear search",
@@ -24,7 +23,6 @@ export const JOBS_COPY = {
   empty: "No jobs yet",
   emptyText: "Write a quote with a deposit and milestones, then send the client its link.",
   failed: "We could not load your jobs.",
-  retry: "Try again",
   gone: "This job is not in your list anymore.",
   backToList: "Back to jobs",
   billingNeeded: {
@@ -87,6 +85,14 @@ export const JOBS_COPY = {
     },
   },
   detail: {
+    meta: (client: string, day: string) => `For ${client} · Made ${day}`,
+    acceptedBadge: "Accepted",
+    paidCount: (paid: number, payments: number) => `${paid} of ${payments} paid`,
+    nextSend: (client: string) =>
+      `Send ${client} the client's link. They read the quote there and accept it.`,
+    nextChange: (title: string) =>
+      `${title} waits for the client. It is billed once they accept it.`,
+    nextMarkDone: (title: string) => `When ${title} is done, mark it done to send its invoice.`,
     linkGroup: "Client's link",
     linkHint: "Send it to the client. They read the quote there and accept it.",
     linkHintAccepted: "The client finds each payment's invoice there.",
@@ -172,6 +178,7 @@ export const QUOTE_COPY = {
   afterDone: "Invoiced as each step is done",
   dueDays: dueAfter,
   total: "Total",
+  paymentCount: (count: number) => (count === 1 ? "in 1 payment" : `in ${count} payments`),
   pay: (number: string) => `Pay ${number}`,
   payDeposit: "Pay the deposit",
   delivered: "See the delivered work",
@@ -200,7 +207,6 @@ export const QUOTE_COPY = {
   },
   notFound: "This quote isn't here. The link may be wrong, or the sender withdrew it.",
   failed: "We could not load this quote.",
-  retry: "Try again",
   errors: {
     required: "Fill in this field.",
     email: "Enter an email like name@example.com.",

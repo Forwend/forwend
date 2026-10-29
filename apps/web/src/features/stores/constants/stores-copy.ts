@@ -3,13 +3,24 @@ import { STORE_LIMITS } from "@/features/stores/constants/stores";
 /** R-134. */
 export const STORES_COPY = {
   payments: "View payments",
+  detailTitle: "Store",
+  edit: "Edit",
+  details: "Details",
+  latestPayments: "Payments",
+  noPayments: "No payments yet",
+  noPaymentsText: "Invoices, checkouts and link purchases for this store show here.",
+  logoRow: "Logo",
+  colorRow: "Accent color",
+  none: "None",
+  updated: "Updated",
+  backToStore: "Back to the store",
+  readOnly: "Your role can see stores but not change them.",
   tokensFailed: "We could not load accepted tokens.",
   title: "Stores",
   add: "Add store",
   newTitle: "New store",
   editTitle: "Edit store",
-  intro:
-    "Each invoice records the store it is for. A store sets how long its checkout stays open and which sites a return link may go to.",
+  intro: "A store sets its checkout time and the sites a payer may return to.",
   columns: {
     store: "Store",
     projectId: "Project ID",

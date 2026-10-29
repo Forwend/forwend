@@ -13,7 +13,7 @@ function Text({ text }: { text: string }) {
     parts.push(
       <code
         key={match.index}
-        className="rounded bg-sunken px-1 py-0.5 font-mono text-[0.9em] break-words text-ink"
+        className="rounded-sm bg-surface-2 px-1 py-0.5 font-mono text-[0.9em] break-words text-ink"
       >
         {match[1]}
       </code>,
@@ -24,10 +24,14 @@ function Text({ text }: { text: string }) {
   return parts;
 }
 
+// Headings sit further from the text above than from their own; scroll-mt keeps one clear of the top on a jump.
+const HEADING = "scroll-mt-8 text-xl font-semibold tracking-tight text-ink sm:text-2xl";
+const BULLETS = "flex list-disc flex-col gap-2 pl-5 text-ink marker:text-subtle";
+
 function Section({ section }: { section: DocsSection }) {
   return (
     <section aria-labelledby={section.id} className="flex flex-col gap-4">
-      <h2 id={section.id} className="scroll-mt-6 text-2xl font-semibold tracking-tight text-ink">
+      <h2 id={section.id} className={HEADING}>
         {section.title}
       </h2>
       {section.paragraphs?.map((p) => (
@@ -36,7 +40,7 @@ function Section({ section }: { section: DocsSection }) {
         </p>
       ))}
       {section.points ? (
-        <ul className="flex list-disc flex-col gap-2 pl-5 text-ink marker:text-muted">
+        <ul className={BULLETS}>
           {section.points.map((p) => (
             <li key={p}>
               <Text text={p} />
@@ -52,68 +56,82 @@ function Section({ section }: { section: DocsSection }) {
 }
 
 // R-155: public, with no sign-in, so a developer can read it before making an account.
+// From large screens the On this page links stay in view beside the text; narrower, they follow the intro.
 export function DocsScreen() {
   const { changelog } = DOCS;
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-10 fw-safe-x py-8 sm:[--fw-page-gutter:2rem] sm:py-12">
-      <header className="flex items-center justify-between gap-4">
-        <Link href="/" aria-label={DOCS.home} className="inline-flex min-h-11 items-center">
-          <Logo />
-        </Link>
-        <ThemeSwitch />
+    <div className="min-h-svh bg-bg">
+      <header className="border-b border-line">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 fw-safe-x">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link href="/" aria-label={DOCS.home} className="inline-flex min-h-11 items-center">
+              <Logo />
+            </Link>
+            <span aria-hidden className="text-line-strong">
+              /
+            </span>
+            <span className="truncate text-sm text-muted">{DOCS.title}</span>
+          </div>
+          <ThemeSwitch />
+        </div>
       </header>
-      <main className="flex flex-col gap-12">
-        <div className="flex flex-col gap-4">
+      <main className="mx-auto flex max-w-6xl flex-col gap-10 fw-safe-x pt-8 pb-16 sm:pt-12 lg:grid lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-16 lg:gap-y-12">
+        <div className="flex max-w-[68ch] flex-col gap-4 lg:col-start-2">
           <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
             {DOCS.heading}
           </h1>
           <p className="text-lg text-muted">{DOCS.intro}</p>
-          <nav aria-labelledby="contents" className="fw-panel px-4 py-3 sm:px-5">
-            <h2 id="contents" className="text-sm font-medium text-muted">
-              {DOCS.contents}
-            </h2>
-            <ul className="mt-2 grid grid-cols-1 gap-x-6 sm:grid-cols-2">
-              {[...DOCS.sections, changelog].map((s) => (
-                <li key={s.id}>
-                  <a
-                    href={`#${s.id}`}
-                    className={`${buttonClasses({ variant: BUTTON_VARIANTS.link })} min-h-11`}
-                  >
-                    {s.title}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
         </div>
-        {DOCS.sections.map((section) => (
-          <Section key={section.id} section={section} />
-        ))}
-        <section aria-labelledby={changelog.id} className="flex flex-col gap-4">
-          <h2
-            id={changelog.id}
-            className="scroll-mt-6 text-2xl font-semibold tracking-tight text-ink"
-          >
-            {changelog.title}
+        <nav
+          aria-labelledby="contents"
+          className="fw-panel px-4 py-3 sm:px-5 lg:sticky lg:top-8 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:self-start lg:border-0 lg:bg-transparent lg:p-0"
+        >
+          <h2 id="contents" className="text-sm font-medium text-muted">
+            {DOCS.contents}
           </h2>
-          <p className="text-muted">{changelog.note}</p>
-          <ol className="flex flex-col gap-6">
-            {changelog.entries.map((entry) => (
-              <li key={entry.date} className="flex flex-col gap-2">
-                <time dateTime={entry.date} className="font-medium text-ink">
-                  {entry.date}
-                </time>
-                <ul className="flex list-disc flex-col gap-2 pl-5 text-ink marker:text-muted">
-                  {entry.changes.map((c) => (
-                    <li key={c}>
-                      <Text text={c} />
-                    </li>
-                  ))}
-                </ul>
+          <ul className="mt-2 grid grid-cols-1 gap-x-6 sm:grid-cols-2 lg:mt-3 lg:grid-cols-1 lg:gap-y-1">
+            {[...DOCS.sections, changelog].map((s) => (
+              <li key={s.id}>
+                <a
+                  href={`#${s.id}`}
+                  className={`${buttonClasses({ variant: BUTTON_VARIANTS.link })} min-h-11 text-sm lg:min-h-8`}
+                >
+                  {s.title}
+                </a>
               </li>
             ))}
-          </ol>
-        </section>
+          </ul>
+        </nav>
+        <div className="flex max-w-[68ch] flex-col gap-14 lg:col-start-2">
+          {DOCS.sections.map((section) => (
+            <Section key={section.id} section={section} />
+          ))}
+          <section aria-labelledby={changelog.id} className="flex flex-col gap-4">
+            <h2 id={changelog.id} className={HEADING}>
+              {changelog.title}
+            </h2>
+            <p className="text-muted">{changelog.note}</p>
+            <ol className="flex flex-col divide-y divide-line border-y border-line">
+              {changelog.entries.map((entry) => (
+                <li key={entry.date} className="flex flex-col gap-2 py-4 sm:flex-row sm:gap-6">
+                  <time
+                    dateTime={entry.date}
+                    className="shrink-0 text-sm font-medium text-ink tabular-nums sm:w-28 sm:pt-0.5"
+                  >
+                    {entry.date}
+                  </time>
+                  <ul className={BULLETS}>
+                    {entry.changes.map((c) => (
+                      <li key={c}>
+                        <Text text={c} />
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ol>
+          </section>
+        </div>
       </main>
     </div>
   );

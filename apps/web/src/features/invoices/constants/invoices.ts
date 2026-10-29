@@ -158,7 +158,13 @@ export const INVOICE_EXCEPTIONS = {
 } as const;
 
 /** `from` copies an invoice (R-91); `rest` asks only for what is left of a closed one (R-77, D-25). */
-export const RESTART_PARAMS = { from: "from", rest: "rest", revise: "revise" } as const;
+export const RESTART_PARAMS = {
+  from: "from",
+  rest: "rest",
+  revise: "revise",
+  /** A saved client's id: the invoice starts billed to them, as if picked. */
+  client: "client",
+} as const;
 
 /** R-93, D-82; ISO 4217 decimals. Copies the API's invoice.AgreedCurrencies: a Go test checks both. */
 export const AGREED_CURRENCIES = {
@@ -244,7 +250,7 @@ export const AMOUNT_ERRORS = {
 } as const;
 
 /** R-88: the API's line item limits. */
-export const LINE_LIMITS = { count: 50, description: 200, quantityMax: 1_000_000 } as const;
+export const LINE_LIMITS = { count: 100, description: 200, quantityMax: 1_000_000 } as const;
 export const LINE_ERRORS = {
   description: "description",
   quantity: "quantity",

@@ -23,13 +23,15 @@ test("a profile shows its balance, networks, receive address and activity; a new
       "true",
     );
   }
+  // The balance's history is its own card, with its range.
+  const history = page.getByRole("region", { name: "Balance", exact: true });
   await expect(
-    balance
+    history
       .getByRole("img", { name: /^Balance over the past month/ })
-      .or(balance.getByText("The history shows once every balance can be read.")),
+      .or(history.getByText("The history shows once every balance can be read.")),
   ).toBeVisible();
-  await balance.getByText("1W", { exact: true }).click();
-  await expect(balance.getByRole("radio", { name: "1W" })).toBeChecked();
+  await history.getByText("1W", { exact: true }).click();
+  await expect(history.getByRole("radio", { name: "1W" })).toBeChecked();
   await expect(page.getByRole("region", { name: "My assets" })).toBeVisible();
   const recent = page.getByRole("region", { name: "Recent transactions" });
   await expect(recent.getByText("No transactions yet").or(recent.getByRole("table"))).toBeVisible();

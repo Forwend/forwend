@@ -1,12 +1,13 @@
 "use client";
 
-import { Button, Skeleton } from "@forwend/ui-web";
+import { Skeleton } from "@forwend/ui-web";
 import { useSearchParams } from "next/navigation";
 import { useGetBillingDetailsQuery } from "@/features/profiles/api/profiles-api";
 import { BillingDetailsForm } from "@/features/profiles/components/billing-details-form";
-import { BILLING_THEN } from "@/features/profiles/constants/profile";
+import { BILLING_THEN, PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { BILLING_DETAILS_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
+import { LoadError } from "@/shared/components/load-error";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 export function BillingDetailsScreen() {
@@ -23,21 +24,20 @@ export function BillingDetailsScreen() {
           ? APP_ROUTES.transactions
           : APP_ROUTES.home;
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-2">
         {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
         <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">{COPY.title}</h1>
-        <p className="text-muted">{COPY.intro}</p>
+        <p className="text-sm text-muted">{COPY.intro}</p>
       </div>
       {details.isError ? (
-        <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-muted">
-          {COPY.loadFailed}
-          <Button size="sm" variant="secondary" onClick={details.refetch}>
-            {COPY.retry}
-          </Button>
-        </div>
+        <LoadError
+          message={COPY.loadFailed}
+          retrying={details.isFetching}
+          onRetry={() => void details.refetch()}
+        />
       ) : details.currentData === undefined ? (
-        <Skeleton className="h-96" />
+        <FormSkeleton />
       ) : (
         // A new form per profile, so a profile switch never keeps the last one's values.
         <BillingDetailsForm
@@ -45,8 +45,39 @@ export function BillingDetailsScreen() {
           profileId={profile.profileId}
           saved={details.currentData}
           next={next}
+          business={profile.kind === PROFILE_KINDS.merchant}
         />
       )}
+    </div>
+  );
+}
+
+/** The two field groups as they will stand, so the page does not jump when the details arrive. */
+function FormSkeleton() {
+  return (
+    <div aria-hidden className="flex flex-col gap-6">
+      {[
+        ["name", "email"],
+        ["address", "country", "taxId"],
+      ].map((fields) => (
+        <div key={fields[0]} className="fw-panel">
+          <div className="fw-panel-head">
+            <Skeleton className="h-5 w-32" />
+          </div>
+          <div className="grid gap-5 p-4 sm:grid-cols-2 sm:p-5">
+            {fields.map((field) => (
+              // The address takes the whole row, as in the form.
+              <span
+                key={field}
+                className={`flex flex-col gap-2 ${field === "address" ? "sm:col-span-2" : ""}`}
+              >
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className={field === "address" ? "h-20" : "h-10"} />
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

@@ -100,13 +100,14 @@ test("the owner makes an API key, sees its secret once, rolls a key and revokes 
     "page",
   );
   const main = page.getByRole("main");
+  const keys = main.getByRole("region", { name: "API keys" });
   // After a roll two keys share the name, so the old one is found by the end of its text.
-  const row = main.getByRole("listitem").filter({ hasText: "q7Rt" });
-  await expect(row).toContainText(
-    "fw_test_…q7Rt · Sample shop · Read invoices, Create and change invoices",
-  );
-  await expect(row).toContainText("Last used");
-  await expect(row).toContainText("Test mode");
+  const row = keys.getByRole("row").filter({ hasText: "q7Rt" });
+  for (const cell of ["fw_test_…q7Rt", "Sample shop", "Read invoices, Create and change invoices"])
+    await expect(row.getByRole("cell", { name: cell, exact: true })).toBeVisible();
+  await expect(row.getByRole("cell").filter({ hasText: /^Oct 25/ })).toBeVisible();
+  // Every key is a test key, so the panel says it once.
+  await expect(keys.getByText("Test mode", { exact: true })).toBeVisible();
   // The routes name the profile, so the page shows its ID, and links the public docs (R-155).
   await expect(main.getByText(SHOP, { exact: true })).toBeVisible();
   await expect(main.getByRole("link", { name: "Read the API docs" })).toHaveAttribute(
@@ -140,9 +141,12 @@ test("the owner makes an API key, sees its secret once, rolls a key and revokes 
   await expect(secret).toBeHidden();
   // Once closed, the secret is gone for good.
   await expect(page.getByText(SECRET)).toHaveCount(0);
-  await expect(main.getByRole("listitem").filter({ hasText: "Staging" })).toContainText(
-    "Never used",
-  );
+  await expect(
+    keys
+      .getByRole("row")
+      .filter({ hasText: "Staging" })
+      .getByRole("cell", { name: "Never", exact: true }),
+  ).toBeVisible();
 
   // Roll: the old key keeps working for the chosen overlap, and the new one's secret shows once.
   await row.getByRole("button", { name: "Actions for Production server" }).click();
@@ -161,7 +165,7 @@ test("the owner makes an API key, sees its secret once, rolls a key and revokes 
   });
   await secret.getByRole("button", { name: "Done" }).click();
   await expect(page.getByText(SECRET)).toHaveCount(0);
-  await expect(row).toContainText("Stops Nov 1, 2026");
+  await expect(row.getByText(/^Stops Nov 1, 2026/)).toBeVisible();
   // A rolled key's new one rolls next; this one can only be revoked.
   await row.getByRole("button", { name: "Actions for Production server" }).click();
   await expect(page.getByRole("menuitem", { name: "Roll" })).toHaveCount(0);
@@ -185,7 +189,7 @@ test("a roll whose old key stops now still shows the new key's text", async ({ b
   const page = await context.newPage();
   await mockKeys(page);
   await page.goto("/app/developers");
-  const row = page.getByRole("main").getByRole("listitem").filter({ hasText: "q7Rt" });
+  const row = page.getByRole("main").getByRole("row").filter({ hasText: "q7Rt" });
   await row.getByRole("button", { name: /^Actions for Production server/ }).click();
   await page.getByRole("menuitem", { name: "Roll" }).click();
   await page.getByRole("combobox", { name: "The old key keeps working" }).click();
@@ -207,7 +211,10 @@ test("the API keys list fits a phone", async ({ browser }) => {
   const page = await context.newPage();
   await mockKeys(page);
   await page.goto("/app/developers");
-  await expect(page.getByRole("main").getByText("fw_test_…q7Rt", { exact: true })).toBeVisible();
+  // A phone row lists the key's text under its name, in place of the wide columns.
+  await expect(
+    page.getByRole("main").getByText("fw_test_…q7Rt", { exact: true }).filter({ visible: true }),
+  ).toHaveCount(1);
   expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
   expect(await blockingViolations(page)).toEqual([]);
   await context.close();

@@ -68,6 +68,7 @@ export function LinkScreen({ linkId }: LinkScreenProps) {
       </header>
       {read.isError ? (
         <LoadError
+          inline
           message={COPY.stale}
           onRetry={() => void read.refetch()}
           retrying={read.isFetching}

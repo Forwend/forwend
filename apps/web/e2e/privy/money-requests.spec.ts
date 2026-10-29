@@ -121,8 +121,9 @@ test("a personal profile requests money, sends the pay link and the payer sees w
     expect(await blockingViolations(page)).toEqual([]);
     await sidebar.getByRole("link", { name: "Requests" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Requests" })).toBeAttached();
+    // The request's row shows its note.
     await expect(
-      page.getByRole("link", { name: new RegExp(`\\b${request.number}\\b`) }),
+      page.getByRole("main").locator("tbody tr").filter({ hasText: request.number }),
     ).toContainText(note);
     expect(await blockingViolations(page)).toEqual([]);
 

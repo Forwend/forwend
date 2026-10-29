@@ -49,11 +49,12 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
   await hiddenHeading("Invoices");
   const rows = main.getByRole("row").filter({ hasText: "INV-" });
   await expect(rows).toHaveCount(4);
-  await pickStatus(page, "In wallet");
+  // The Payments list's states (D-114): paid includes money already in the wallet.
+  await pickStatus(page, "Paid");
   await expect(rows).toHaveCount(1);
   await expect(rows).toContainText("INV-0003");
-  await pickStatus(page, "Waiting for payment");
-  await expect(rows).toHaveCount(2);
+  await pickStatus(page, "Confirming");
+  await expect(rows).toHaveCount(1);
   const search = main.getByRole("searchbox", { name: "Search invoices" });
   await search.fill("brightline");
   await expect(rows).toHaveCount(1);
@@ -71,7 +72,8 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
     "aria-current",
     "page",
   );
-  await hiddenHeading("INV-0004");
+  // With a title, the title is the visible heading; the number names it for screen readers (the breadcrumb shows it).
+  await expect(main.getByRole("heading", { level: 1, name: "INV-0004 Brand site" })).toBeVisible();
   await expect(main.getByRole("link", { name: "Invoices" })).toHaveCount(0);
   await expect(main.getByRole("region", { name: "Billed to" })).toContainText("Brightline Studio");
   await expect(main.getByRole("status").filter({ hasText: /./ })).toContainText(
@@ -103,7 +105,8 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
 
   await sidebar.getByRole("link", { name: "Activity" }).click();
   await hiddenHeading("Activity");
-  const items = main.getByRole("listitem");
+  // Activity is a table like Payments: its body rows.
+  const items = main.locator("tbody tr");
   await expect(items).toHaveCount(6);
   await expect(
     items.first().getByRole("link", { name: "View transaction on Basescan" }),
@@ -115,13 +118,13 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
   await main.getByRole("searchbox", { name: "Search activity" }).fill(hash("e").slice(0, 10));
   await expect(items).toHaveCount(1);
   expect(await blockingViolations(page)).toEqual([]);
-  await items.getByRole("link", { name: "Payment" }).click();
-  await expect(page).toHaveURL(`/app/invoices/${SETTLED_INVOICE.invoiceId}`);
+  await items.getByRole("link", { name: /^Payment/ }).click();
+  await expect(page).toHaveURL(`/app/payments/${SETTLED_INVOICE.invoiceId}`);
   await page.goBack();
   await main.getByRole("searchbox", { name: "Search activity" }).fill("");
   await items
     .filter({ hasText: "Waiting for payment" })
-    .getByRole("link", { name: "Invoice" })
+    .getByRole("link", { name: /^Invoice created/ })
     .click();
   await expect(page).toHaveURL(`/app/invoices/${OPEN_INVOICE.invoiceId}`);
 
@@ -228,7 +231,7 @@ test("Invoices, Activity and Transactions filter and search on the API: a match 
   await expect(invoiceSearch).toHaveValue("zephyr");
   await expect(rows).toHaveCount(1);
   await pickStatus(page, "Paid");
-  await expect(page).toHaveURL("/app/invoices?q=zephyr&status=paid");
+  await expect(page).toHaveURL("/app/invoices?q=zephyr&state=paid");
   await expect(main.getByText("Nothing matches", { exact: true })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
   await main.getByRole("button", { name: "Clear filter and search" }).click();
@@ -247,7 +250,8 @@ test("Invoices, Activity and Transactions filter and search on the API: a match 
 
   // The payment is the 41st item.
   await page.goto("/app/activity");
-  const items = main.getByRole("listitem");
+  // Activity is a table like Payments: its body rows.
+  const items = main.locator("tbody tr");
   await expect(items).toHaveCount(20);
   await main
     .getByRole("searchbox", { name: "Search activity" })
@@ -255,7 +259,7 @@ test("Invoices, Activity and Transactions filter and search on the API: a match 
   await expect(items).toHaveCount(1);
   await expect(items).toContainText("Payment");
   await pickStatus(page, "Paid");
-  await expect(page).toHaveURL(`/app/activity?q=${PAST_PAGE_DEPOSIT.slice(0, 12)}&status=paid`);
+  await expect(page).toHaveURL(`/app/activity?q=${PAST_PAGE_DEPOSIT.slice(0, 12)}&state=paid`);
   await page.reload();
   await expect(items).toHaveCount(1);
   await expect(main.getByRole("searchbox", { name: "Search activity" })).toHaveValue(
@@ -372,7 +376,7 @@ test("money tables share row hover, show network logos, keep Export at the right
   await page.goto("/app/invoices");
   const invoiceHover = await hoverOf(main.locator("tbody tr").first());
   await page.goto("/app/activity");
-  const activityHover = await hoverOf(main.getByRole("listitem").first());
+  const activityHover = await hoverOf(main.locator("tbody tr").first());
   expect(invoiceHover).toBe(activityHover);
 
   await page.goto("/app/transactions");
@@ -637,7 +641,7 @@ test("the owner's invoice page names the next step of every exception", async ({
   await header.getByRole("link", { name: "New invoice" }).click();
   await expect(page).toHaveURL(`/app/invoices/new?from=${OPEN_INVOICE.invoiceId}`);
   await expect(main.getByLabel("Amount")).toHaveValue("2");
-  await expect(main.getByLabel("Name", { exact: true })).toHaveValue("Mara Ilić");
+  await expect(main.getByRole("textbox", { name: /^(Legal|Full) name$/ })).toHaveValue("Mara Ilić");
 
   body = {
     ...OPEN_INVOICE,
@@ -705,7 +709,7 @@ test("New invoice asks for billing details first, then comes back to the form", 
   expect(await blockingViolations(page)).toEqual([]);
   await main.getByRole("link", { name: "Add billing details" }).click();
   await expect(page).toHaveURL("/app/billing-details?then=new-invoice");
-  await page.getByRole("textbox", { name: "Name or business name" }).fill("Sample shop GmbH");
+  await page.getByRole("textbox", { name: "Business name" }).fill("Sample shop GmbH");
   await page.getByRole("textbox", { name: "Address" }).fill("Hauptstr. 1, Berlin");
   await page.getByRole("button", { name: /^Country/ }).click();
   await page.getByRole("combobox", { name: /Country/ }).fill("germ");
@@ -963,12 +967,15 @@ test("Sign out everywhere asks first, then ends the sessions and signs out", asy
 });
 
 // R-81
-test("the bell lists paid, settled and held-money events beside payments", async ({ browser }) => {
+test("the bell names each payment's event and opens the payment; plain money in opens its transaction", async ({
+  browser,
+}) => {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
     storageState: session,
   });
   const page = await context.newPage();
+  const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
   const event = (id: number, kind: string, amount: string, minutesAgo: number) => ({
     id,
     kind,
@@ -979,13 +986,14 @@ test("the bell lists paid, settled and held-money events beside payments", async
     symbol: "USDC",
     decimals: 6,
     amount,
-    at: new Date(Date.now() - minutesAgo * 60_000).toISOString(),
+    at: ago(minutesAgo),
   });
+  // Transfer 1 is money in that pays nothing; transfer 0 is INV-0004's money reaching the wallet.
+  const plain = { ...sampleTransfer(1), at: ago(2.5) };
   await mockApi(page, {
     invoices: [OPEN_INVOICE],
     activity: [],
-    // An incoming payment between two events: the bell sorts both kinds by time.
-    transfers: [{ ...sampleTransfer(0), at: new Date(Date.now() - 150_000).toISOString() }],
+    transfers: [plain, { ...sampleTransfer(0), at: ago(4) }],
     events: [
       event(3, "invoice.settled", "2000000", 1),
       event(2, "invoice.held", "500000", 2),
@@ -994,16 +1002,28 @@ test("the bell lists paid, settled and held-money events beside payments", async
   });
   await page.goto("/app");
   const bell = page.getByRole("banner").getByRole("button", { name: /^Notifications/ });
-  await expect(bell).toHaveAccessibleName("Notifications, 4 new", { timeout: 15_000 });
+  await expect(bell).toHaveAccessibleName("Notifications, 5 new", { timeout: 15_000 });
   await bell.click();
   const items = page.getByRole("menu").getByRole("menuitem");
-  await expect(items.nth(0)).toContainText("INV-0002 in your wallet 2.00 USDC");
-  await expect(items.nth(1)).toContainText("INV-0002 held for the payer 0.50 USDC");
-  await expect(items.nth(2)).toContainText("Received 1.00 USDC");
-  await expect(items.nth(3)).toContainText("INV-0002 paid 2.00 USDC");
+  // Newest first, whatever the kind; each row names what happened, then the payment or the sender.
+  const rows = [
+    [/In your wallet · INV-0002/i, "2.00 USDC", `/app/payments/${OPEN_INVOICE.invoiceId}`],
+    [/Held for the payer · INV-0002/i, "0.50 USDC", `/app/payments/${OPEN_INVOICE.invoiceId}`],
+    [/Received · 0x01bb/i, "2.00 USDC", `/app/transactions?q=${plain.txHash}`],
+    [/Paid · INV-0002/i, "2.00 USDC", `/app/payments/${OPEN_INVOICE.invoiceId}`],
+    [/In your wallet · INV-0004/i, "1.00 USDC", `/app/payments/${CONFIRMING_INVOICE.invoiceId}`],
+  ] as const;
+  for (const [i, [name, amount, href]] of rows.entries()) {
+    await expect(items.nth(i)).toContainText(name);
+    await expect(items.nth(i)).toContainText(amount);
+    await expect(items.nth(i)).toHaveAttribute("href", href);
+  }
+  // A business follows its payments.
+  await expect(items.last()).toHaveText("View all");
+  await expect(items.last()).toHaveAttribute("href", "/app/payments");
   expect(await blockingViolations(page)).toEqual([]);
   await items.nth(3).click();
-  await expect(page).toHaveURL(`/app/invoices/${OPEN_INVOICE.invoiceId}`);
+  await expect(page).toHaveURL(`/app/payments/${OPEN_INVOICE.invoiceId}`);
   await expect(bell).toHaveAccessibleName("Notifications");
   await context.close();
 });
@@ -1064,7 +1084,7 @@ test("the invoice list and activity show a client-chooses invoice in USD with An
   await expect(fixed).toContainText("Base Sepolia");
 
   await page.goto("/app/activity");
-  const rows = page.getByRole("main").getByRole("listitem");
+  const rows = page.getByRole("main").locator("tbody tr");
   await expect(rows.first()).toContainText("Any network");
   await expect(rows.first()).toContainText("9.00 USD");
   await expect(rows.first()).not.toContainText("USDC");

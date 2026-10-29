@@ -1,6 +1,12 @@
 "use client";
 
-import { SegmentedControl, TABLE_HEAD_CLASSES, TABLE_ROW_CLASSES } from "@forwend/ui-web";
+import {
+  EmptyState,
+  SegmentedControl,
+  TABLE_HEAD_CLASSES,
+  TABLE_ROW_CLASSES,
+} from "@forwend/ui-web";
+import { History } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import {
   HISTORY_CATEGORIES,
@@ -81,7 +87,7 @@ export function InvoiceHistory({ invoice, history, views }: InvoiceHistoryProps)
         />
       </div>
       {lines.length === 0 ? (
-        <p className="px-4 py-3 text-sm text-muted sm:px-5">{COPY.none}</p>
+        <EmptyState compact icon={History} title={COPY.none} />
       ) : (
         <>
           {/* The panel's width decides, not the screen's: it is two thirds of a wide page. */}

@@ -192,7 +192,7 @@ type Line struct {
 
 // R-88.
 const (
-	MaxLines           = 50
+	MaxLines           = 100
 	MaxLineDescription = 200
 )
 

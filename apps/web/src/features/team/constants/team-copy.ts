@@ -3,21 +3,26 @@ import { ROLES } from "@/features/profiles/constants/profile";
 /** R-139: the Team page. */
 export const TEAM_COPY = {
   title: "Team",
-  intro:
-    "People who work on this merchant profile. Each role reaches only what it needs, and only the owner sends or withdraws money.",
+  intro: "People on this profile. Only the owner moves money.",
   members: "Members",
   invites: "Open invites",
   noInvites: "No open invites.",
+  columns: {
+    member: "Member",
+    email: "Email",
+    stores: "Stores",
+    role: "Role",
+    expires: "Expires",
+    actions: "Actions",
+  },
   noEmail: "No email",
   everyStore: "Every store",
   storeCount: (n: number) => (n === 1 ? "1 store" : `${n} stores`),
   loadFailed: "We could not load the team.",
-  retry: "Try again",
   notMerchant: "Only a merchant profile has a team.",
   invite: "Invite",
   inviteTitle: "Invite to the team",
-  inviteIntro:
-    "We email them a link that works for 7 days. They accept it signed in with this address.",
+  inviteIntro: "The link works for 7 days, for this email only.",
   email: "Email",
   role: "Role",
   stores: "Stores",
@@ -47,6 +52,7 @@ export const TEAM_COPY = {
   removed: (who: string) => `${who} removed`,
   removeFailed: "Could not remove them. Try again.",
   yourRole: (role: string) => `You are ${role} on this profile.`,
+  yourRoleHint: "An Admin changes roles and which stores each person works with.",
   leave: "Leave team",
   leaveTitle: (team: string) => `Leave ${team}?`,
   leaveBody: "You lose access to this profile at once. An Admin can invite you again.",
@@ -65,12 +71,14 @@ export const TEAM_COPY = {
 /** R-139: the page an invite link opens. */
 export const INVITE_COPY = {
   pageTitle: "Team invite",
-  signInBody: "Use the email address the invite was sent to.",
+  signInBody: "You have a team invite. Sign in with the email address it was sent to.",
   loading: "Loading your invite",
   title: (team: string) => `Join ${team}`,
   body: (team: string, role: string) => `You are invited to join ${team} on Forwend as ${role}.`,
-  expires: (date: string) => `The invite expires ${date}.`,
-  signedInAs: (email: string) => `Signed in as ${email}.`,
+  role: "Role",
+  sentTo: "Sent to",
+  signedInAs: "Signed in as",
+  expires: "Expires",
   otherEmail: (email: string) =>
     `This invite is for ${email}. Sign out, then sign in with that address.`,
   accept: "Accept invite",
@@ -79,6 +87,5 @@ export const INVITE_COPY = {
   goneTitle: "This invite link no longer works",
   goneBody: "It was used, revoked or has expired. Ask an Admin of the team for a new invite.",
   loadFailed: "We could not load the invite. Try again.",
-  retry: "Try again",
   openApp: "Open Forwend",
 } as const;

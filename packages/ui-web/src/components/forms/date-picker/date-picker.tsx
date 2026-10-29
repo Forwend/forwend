@@ -7,6 +7,7 @@ import { IconButton } from "../../buttons/icon-button";
 import { FIELD_CONTROL_CLASSES } from "../field-classes";
 import { Calendar, type CalendarProps } from "./calendar";
 import { toTime } from "./iso-date";
+import { usePopoverPosition } from "./use-popover-position";
 
 export interface DatePickerProps extends Pick<CalendarProps, "min" | "max" | "isDisabled"> {
   label: string;
@@ -43,6 +44,8 @@ export function DatePicker({
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
+  const popover = useRef<HTMLDivElement>(null);
+  const position = usePopoverPosition(trigger, popover, open);
   const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
 
   useEffect(() => {
@@ -70,6 +73,8 @@ export function DatePicker({
         className="relative"
         onKeyDown={(event) => {
           if (event.key === "Escape" && open) {
+            // Only the calendar closes: a native dialog around it would close on Escape's default action too.
+            event.preventDefault();
             event.stopPropagation(); // inside a sheet, Escape closes the calendar first
             close();
           }
@@ -103,9 +108,11 @@ export function DatePicker({
         </div>
         {open ? (
           <div
+            ref={popover}
             role="dialog"
             aria-labelledby={`${id}-label`}
-            className="absolute top-full left-0 z-[var(--fw-z-overlay)] max-w-[calc(100vw-2rem)] mt-1.5 rounded-md border border-line bg-surface p-3 text-ink shadow-lg"
+            style={position}
+            className="z-[var(--fw-z-overlay)] max-w-[calc(100vw-1rem)] rounded-md border border-line bg-surface p-3 text-ink shadow-lg"
           >
             <Calendar
               label={label}

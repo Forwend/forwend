@@ -96,7 +96,7 @@ describe("Activity shows invoice amounts exactly, as the invoice list, detail, p
     );
     await settle();
     const toasts = screen.queryAllByRole("listitem").map((li) => li.textContent);
-    expect(toasts).toEqual(["Payment received0.0015 USDC paid by the customer."]);
+    expect(toasts).toEqual(["Payment receivedCheckout aaaaaa is paid: 0.0015 USDC."]);
   });
 });
 

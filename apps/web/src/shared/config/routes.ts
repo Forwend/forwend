@@ -15,6 +15,8 @@ export const APP_ROUTES = {
   clients: "/app/clients",
   newClient: "/app/clients/new",
   stores: "/app/stores",
+  /** Point of sale: a one-off checkout for an order, shown to the customer as a QR. */
+  checkout: "/app/checkout",
   newStore: "/app/stores/new",
   jobs: "/app/jobs",
   newJob: "/app/jobs/new",

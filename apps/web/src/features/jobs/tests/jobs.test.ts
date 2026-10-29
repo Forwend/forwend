@@ -6,6 +6,7 @@ import {
   dueDays,
   invalidJobField,
   jobRecord,
+  paymentStep,
   usdCents,
 } from "@/features/jobs/lib/jobs";
 
@@ -143,6 +144,42 @@ describe("job record", () => {
       "done2",
       "invoiced2",
     ]);
+  });
+});
+
+describe("payment steps", () => {
+  it("marks a paid invoice done, a made one under way and a waiting change apart", () => {
+    const payment = (more: object) => ({
+      position: 1,
+      title: "Step",
+      amountUsd: "100.00",
+      dueDays: 7,
+      onAccept: false,
+      invoiceId: null,
+      payToken: null,
+      number: null,
+      status: null,
+      doneAt: null,
+      deliveryLink: null,
+      invoicedAt: null,
+      paidAt: null,
+      proposedAt: null,
+      acceptedName: null,
+      acceptedAt: null,
+      ...more,
+    });
+    const invoiced = { invoiceId: `0x${"9".repeat(64)}`, number: 7 };
+    expect(
+      [
+        payment({}),
+        payment({ ...invoiced, status: "open" }),
+        payment({ ...invoiced, status: "expired" }),
+        payment({ ...invoiced, status: "paid" }),
+        payment({ ...invoiced, status: "settled" }),
+        payment({ proposedAt: "2026-10-03T10:00:00Z" }),
+        payment({ proposedAt: "2026-10-03T10:00:00Z", acceptedAt: "2026-10-04T10:00:00Z" }),
+      ].map(paymentStep),
+    ).toEqual(["upcoming", "invoiced", "invoiced", "paid", "paid", "change", "upcoming"]);
   });
 });
 

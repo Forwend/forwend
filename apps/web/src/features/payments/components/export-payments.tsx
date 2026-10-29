@@ -1,7 +1,8 @@
 "use client";
-import { Button, Dialog, TextField } from "@forwend/ui-web";
+import { Button, DateRangePicker, Dialog } from "@forwend/ui-web";
 import { useRef, useState } from "react";
 import { useLazyExportPaymentsQuery } from "@/features/payments/api/payments-api";
+import { RECONCILIATION_COPY } from "@/features/payments/constants/payments-copy";
 import type { PaymentFilters } from "@/features/payments/types/payments";
 export interface ExportPaymentsProps {
   disabled?: boolean;
@@ -84,22 +85,16 @@ export function ExportPayments({
         }}
         className="mt-4 flex flex-col gap-4"
       >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <TextField
-            label="From"
-            type="date"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            max={to || undefined}
-          />
-          <TextField
-            label="To"
-            type="date"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            min={from || undefined}
-          />
-        </div>
+        <DateRangePicker
+          label={RECONCILIATION_COPY.period}
+          value={{ from: from || null, to: to || null }}
+          note={RECONCILIATION_COPY.periodNote}
+          clearLabel={RECONCILIATION_COPY.clearPeriod}
+          onChange={(range) => {
+            setFrom(range.from ?? "");
+            setTo(range.to ?? "");
+          }}
+        />
         {error ? (
           <p role="alert" className="text-sm text-danger">
             {error}

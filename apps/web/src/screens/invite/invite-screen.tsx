@@ -1,11 +1,11 @@
 "use client";
 
-import { Logo, Spinner } from "@forwend/ui-web";
+import { Logo } from "@forwend/ui-web";
 import { usePrivy } from "@privy-io/react-auth";
 import Link from "next/link";
 import { SignInForm } from "@/features/auth/components/sign-in-form";
 import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
-import { AcceptInvite } from "@/features/team/components/accept-invite";
+import { AcceptInvite, InviteSkeleton } from "@/features/team/components/accept-invite";
 import { INVITE_COPY } from "@/features/team/constants/team-copy";
 import { APP_ROUTES } from "@/shared/config/routes";
 
@@ -22,12 +22,14 @@ export function InviteScreen({ token }: { token: string }) {
       </Link>
       <main className="grid flex-1 place-items-center">
         {!ready ? (
-          <Spinner label={AUTH_COPY.checkingSignIn} />
+          <InviteSkeleton label={AUTH_COPY.checkingSignIn} />
         ) : authenticated ? (
           <AcceptInvite token={token} />
         ) : (
-          <div className="flex w-full max-w-sm flex-col gap-4">
-            <p className="text-muted">{INVITE_COPY.signInBody}</p>
+          <div className="flex w-full max-w-sm flex-col gap-6">
+            <p className="rounded-md bg-surface-2 px-4 py-3 text-center text-sm text-ink">
+              {INVITE_COPY.signInBody}
+            </p>
             <SignInForm />
           </div>
         )}

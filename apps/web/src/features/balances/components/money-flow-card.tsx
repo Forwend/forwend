@@ -1,12 +1,13 @@
 "use client";
 
-import { Button, Skeleton } from "@forwend/ui-web";
+import { Card, Skeleton } from "@forwend/ui-web";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { useGetBalanceHistoryQuery } from "@/features/balances/api/balances-api";
 import { HISTORY_FIELDS } from "@/features/balances/constants/balance-history";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { historySeries, seriesTotal } from "@/features/balances/lib/balance-history";
 import { formatUsd } from "@/features/balances/lib/balances";
+import { LoadError } from "@/shared/components/load-error";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 
@@ -29,42 +30,37 @@ export function MoneyFlowCard({ profileId }: MoneyFlowCardProps) {
       ] as const)
     : null;
   return (
-    <section aria-labelledby="flow-title" className="fw-panel flex flex-col">
-      <div className="fw-panel-head justify-between">
-        <h2 id="flow-title" className="text-base font-semibold text-ink">
-          {BALANCES_COPY.moneyFlow}
-        </h2>
-        <span className="text-xs text-muted">{BALANCES_COPY.pastMonth}</span>
-      </div>
+    <Card
+      id="flow-title"
+      title={BALANCES_COPY.moneyFlow}
+      description={BALANCES_COPY.pastMonth}
+      className="flex flex-col"
+    >
       {!flows ? (
         history.isError ? (
-          <div
-            role="alert"
-            className="flex flex-wrap items-center gap-3 px-5 py-6 text-sm text-muted"
-          >
-            {BALANCES_COPY.historyFailed}
-            <Button size="sm" variant="secondary" onClick={history.refetch}>
-              {BALANCES_COPY.retry}
-            </Button>
-          </div>
+          <LoadError message={BALANCES_COPY.historyFailed} onRetry={() => void history.refetch()} />
         ) : (
-          <Skeleton className="m-5 h-16" />
+          <Skeleton className="h-14" />
         )
       ) : (
-        <dl className="grid grid-cols-2 divide-x divide-line">
+        // Beside the balance chart the two figures stack and share its height.
+        <dl className="grid flex-1 grid-cols-2 divide-x divide-line xl:grid-cols-1 xl:grid-rows-2 xl:divide-x-0 xl:divide-y">
           {flows.map(([label, series, Icon]) => (
-            <div key={label} className="flex flex-col gap-1 px-4 py-4 sm:px-5">
+            <div
+              key={label}
+              className="flex flex-col gap-1 pr-4 last:pl-4 xl:justify-center xl:py-4 xl:pr-0 xl:last:pl-0"
+            >
               <dt className="flex items-center gap-1.5 text-sm text-muted">
                 <Icon aria-hidden className="size-[var(--fw-icon-sm)]" />
                 {label}
               </dt>
-              <dd className="text-base font-medium text-ink tabular-nums">
+              <dd className="text-lg font-medium tracking-tight text-ink tabular-nums">
                 {series ? `${formatUsd(seriesTotal(series))} ${MONEY_COPY.usd}` : "—"}
               </dd>
             </div>
           ))}
         </dl>
       )}
-    </section>
+    </Card>
   );
 }

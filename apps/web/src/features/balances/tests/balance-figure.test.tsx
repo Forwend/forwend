@@ -49,6 +49,9 @@ function show(
   );
 }
 
+// The headline figure, whole part and cents, which sit in separate spans.
+const total = () => document.querySelector("[data-money] > span")?.textContent;
+
 describe("BalanceFigure", () => {
   afterEach(cleanup);
 
@@ -66,14 +69,13 @@ describe("BalanceFigure", () => {
     };
     const { unmount } = show({ tokens: [usdc, usdt], estimatedUsdTotal: "5.00" });
     // 2.50 at 1 plus 2.50 at 0.9990 is 4.9975, cut to cents.
-    expect(screen.getByText("4.99")).toBeTruthy();
+    expect(total()).toBe("4.99");
     unmount();
     show(
       { tokens: [usdc, usdt], estimatedUsdTotal: "5.00" },
       { prices: [PRICES[0] as TokenPrice] },
     );
-    expect(screen.getByText(/—/)).toBeTruthy();
-    expect(screen.queryByText("5.00")).toBeNull();
+    expect(total()).toBe("—");
   });
 
   it("adds several stablecoins in USD, and never shows a made-up 0", () => {
@@ -85,7 +87,7 @@ describe("BalanceFigure", () => {
     };
     const prices = [PRICES[0] as TokenPrice, price(421614, usdt.token, "1")];
     const { rerender } = show({ tokens: [usdc, usdt], estimatedUsdTotal: "5.00" }, { prices });
-    expect(screen.getByText("5.00")).toBeTruthy();
+    expect(total()).toBe("5.00");
     expect(screen.getByRole("button", { name: /^Market value/ })).toBeTruthy();
     rerender(
       <BalanceFigure
@@ -96,7 +98,6 @@ describe("BalanceFigure", () => {
         onRetry={() => {}}
       />,
     );
-    expect(screen.getByText(/—/)).toBeTruthy();
-    expect(screen.queryByText("0.00")).toBeNull();
+    expect(total()).toBe("—");
   });
 });

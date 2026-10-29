@@ -1,6 +1,17 @@
 "use client";
 
-import { Badge, Button, TONES, useToast } from "@forwend/ui-web";
+import {
+  Badge,
+  Button,
+  cx,
+  EmptyState,
+  Skeleton,
+  TABLE_HEAD_CLASSES,
+  TABLE_ROW_CLASSES,
+  TONES,
+  useToast,
+} from "@forwend/ui-web";
+import { Mail } from "lucide-react";
 import { ROLE_LABELS, ROLES } from "@/features/profiles/constants/profile";
 import { useListStoresQuery } from "@/features/stores/api/stores-api";
 import { useGetTeamQuery, useRevokeInviteMutation } from "@/features/team/api/team-api";
@@ -9,19 +20,22 @@ import { MemberActions } from "@/features/team/components/member-actions";
 import { TEAM_COPY as COPY } from "@/features/team/constants/team-copy";
 import { formatExpiry } from "@/features/team/lib/team";
 import type { Invite } from "@/features/team/types/team";
-import { RowsSkeleton } from "@/shared/components/rows-skeleton";
+import { LoadError } from "@/shared/components/load-error";
 
 export interface TeamMembersProps {
   profileId: string;
 }
 
-const ROW = "flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 sm:px-5";
+// The panel's width decides, not the screen's: below it a row keeps the person, the role and the actions.
+const WIDE = "hidden @2xl:table-cell";
+const NARROW = "block truncate text-xs text-muted @2xl:hidden";
+const ROW = cx(TABLE_ROW_CLASSES, "max-sm:[&>td:first-child]:pl-4 max-sm:[&>td:last-child]:pr-3");
 
 // R-139: an Admin's view of the team. The owner's row has no actions: the owner is an Admin for good (D-93).
 export function TeamMembers({ profileId }: TeamMembersProps) {
   const team = useGetTeamQuery(profileId);
   const stores = useListStoresQuery(profileId);
-  const [revoke] = useRevokeInviteMutation();
+  const [revoke, revoking] = useRevokeInviteMutation();
   const toast = useToast();
   const names = new Map((stores.currentData ?? []).map((s) => [s.storeId, s.name]));
   const reach = (ids: readonly string[]) =>
@@ -43,90 +57,164 @@ export function TeamMembers({ profileId }: TeamMembersProps) {
   const storesFailed = stores.isError && !stores.currentData;
   if ((team.isError && !team.currentData) || storesFailed) {
     return (
-      <div role="alert" className="flex flex-wrap items-center gap-4 text-sm text-muted">
-        {COPY.loadFailed}
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => {
-            void team.refetch();
-            if (storesFailed) void stores.refetch();
-          }}
-        >
-          {COPY.retry}
-        </Button>
-      </div>
+      <LoadError
+        message={COPY.loadFailed}
+        retrying={team.isFetching || stores.isFetching}
+        onRetry={() => {
+          void team.refetch();
+          if (storesFailed) void stores.refetch();
+        }}
+      />
     );
   }
-  if (!team.currentData || !stores.currentData) {
-    return <RowsSkeleton count={2} className="fw-panel" />;
-  }
-  const { members, invites } = team.currentData;
-  const storeList = stores.currentData;
+  const loaded = team.currentData && stores.currentData ? team.currentData : null;
+  const storeList = stores.currentData ?? [];
   return (
     <>
-      <section aria-labelledby="team-members" className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-3">
-          <h2 id="team-members" className="text-lg font-semibold text-ink">
+      <section aria-labelledby="team-members" className="fw-panel @container">
+        <div className="fw-panel-head justify-between">
+          <h2 id="team-members" className="text-base font-semibold text-ink">
             {COPY.members}
           </h2>
-          <InviteDialog profileId={profileId} stores={storeList} />
+          {loaded ? <InviteDialog profileId={profileId} stores={storeList} /> : null}
         </div>
-        <ul className="fw-panel divide-y divide-line">
-          {members.map((member) => {
-            const who = member.email ?? COPY.noEmail;
-            return (
-              <li key={member.memberId} className={ROW}>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium text-ink">{who}</span>
-                  <span className="block truncate text-sm text-muted">{reach(member.stores)}</span>
-                </span>
-                <Badge tone={member.role === ROLES.owner ? TONES.info : TONES.neutral}>
-                  {ROLE_LABELS[member.role]}
-                </Badge>
-                {member.role === ROLES.owner ? null : (
-                  <MemberActions
-                    profileId={profileId}
-                    member={member}
-                    who={who}
-                    stores={storeList}
-                  />
-                )}
-              </li>
-            );
-          })}
-        </ul>
+        {!loaded ? (
+          <RowsSkeleton />
+        ) : (
+          <table className="w-full table-fixed text-sm">
+            <thead className="hidden @2xl:table-header-group">
+              <tr className={TABLE_HEAD_CLASSES}>
+                <th scope="col">{COPY.columns.member}</th>
+                <th scope="col" className="w-[30%]">
+                  {COPY.columns.stores}
+                </th>
+                <th scope="col" className="w-28">
+                  {COPY.columns.role}
+                </th>
+                <th scope="col" className="w-14">
+                  <span className="sr-only">{COPY.columns.actions}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {loaded.members.map((member) => {
+                const who = member.email ?? COPY.noEmail;
+                return (
+                  <tr key={member.memberId} className={ROW}>
+                    <td>
+                      <span
+                        className={cx(
+                          "block truncate font-medium",
+                          member.email ? "text-ink" : "text-muted",
+                        )}
+                      >
+                        {who}
+                      </span>
+                      <span className={NARROW}>{reach(member.stores)}</span>
+                    </td>
+                    <td className={cx(WIDE, "truncate text-muted")}>{reach(member.stores)}</td>
+                    <td className="w-28">
+                      <Badge tone={member.role === ROLES.owner ? TONES.info : TONES.neutral}>
+                        {ROLE_LABELS[member.role]}
+                      </Badge>
+                    </td>
+                    <td className="w-14">
+                      {/* Not text-right: the row's dialogs live in this cell and would inherit it. */}
+                      <div className="flex justify-end">
+                        {member.role === ROLES.owner ? null : (
+                          <MemberActions
+                            profileId={profileId}
+                            member={member}
+                            who={who}
+                            stores={storeList}
+                          />
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </section>
-      <section aria-labelledby="team-invites" className="flex flex-col gap-3">
-        <h2 id="team-invites" className="text-lg font-semibold text-ink">
+      <section aria-labelledby="team-invites" className="fw-panel @container">
+        <h2 id="team-invites" className="fw-panel-head text-base font-semibold text-ink">
           {COPY.invites}
         </h2>
-        {invites.length === 0 ? (
-          <p className="text-sm text-muted">{COPY.noInvites}</p>
+        {!loaded ? (
+          <RowsSkeleton />
+        ) : loaded.invites.length === 0 ? (
+          <EmptyState compact icon={Mail} title={COPY.noInvites} />
         ) : (
-          <ul className="fw-panel divide-y divide-line">
-            {invites.map((invite) => (
-              <li key={invite.inviteId} className={ROW}>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium text-ink">{invite.email}</span>
-                  <span className="block truncate text-sm text-muted">
-                    {reach(invite.stores)} · {COPY.expires(formatExpiry(invite.expiresAt))}
-                  </span>
-                </span>
-                <Badge>{ROLE_LABELS[invite.role]}</Badge>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  aria-label={COPY.revokeLabel(invite.email)}
-                  onClick={() => void revokeInvite(invite)}
-                >
-                  {COPY.revoke}
-                </Button>
-              </li>
-            ))}
-          </ul>
+          <table className="w-full table-fixed text-sm">
+            <thead className="hidden @2xl:table-header-group">
+              <tr className={TABLE_HEAD_CLASSES}>
+                <th scope="col">{COPY.columns.email}</th>
+                <th scope="col" className="w-[24%]">
+                  {COPY.columns.stores}
+                </th>
+                <th scope="col" className="w-[24%]">
+                  {COPY.columns.expires}
+                </th>
+                <th scope="col" className="w-28">
+                  {COPY.columns.role}
+                </th>
+                <th scope="col" className="w-24">
+                  <span className="sr-only">{COPY.columns.actions}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {loaded.invites.map((invite) => (
+                <tr key={invite.inviteId} className={ROW}>
+                  <td>
+                    <span className="block truncate font-medium text-ink">{invite.email}</span>
+                    <span className={NARROW}>
+                      {ROLE_LABELS[invite.role]} · {reach(invite.stores)}
+                    </span>
+                    <span className={NARROW}>{COPY.expires(formatExpiry(invite.expiresAt))}</span>
+                  </td>
+                  <td className={cx(WIDE, "truncate text-muted")}>{reach(invite.stores)}</td>
+                  <td className={cx(WIDE, "truncate text-muted tabular-nums")}>
+                    {formatExpiry(invite.expiresAt)}
+                  </td>
+                  <td className={WIDE}>
+                    <Badge>{ROLE_LABELS[invite.role]}</Badge>
+                  </td>
+                  <td className="w-24 text-right">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      aria-label={COPY.revokeLabel(invite.email)}
+                      loading={
+                        revoking.isLoading && revoking.originalArgs?.inviteId === invite.inviteId
+                      }
+                      onClick={() => void revokeInvite(invite)}
+                    >
+                      {COPY.revoke}
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </section>
     </>
+  );
+}
+
+function RowsSkeleton() {
+  return (
+    <ul aria-hidden className="divide-y divide-line">
+      {[0, 1].map((i) => (
+        <li key={i} className="flex h-14 items-center gap-6 px-4 sm:px-5">
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="hidden h-4 w-28 @2xl:block" />
+          <Skeleton className="ml-auto h-6 w-20" />
+        </li>
+      ))}
+    </ul>
   );
 }

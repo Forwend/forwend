@@ -1,6 +1,6 @@
 "use client";
 
-import { Skeleton } from "@forwend/ui-web";
+import { BigAmount, Skeleton } from "@forwend/ui-web";
 import { useGetBalancesQuery } from "@/features/balances/api/balances-api";
 import { BalancesList } from "@/features/balances/components/balances-list";
 import { EstimateHint } from "@/features/balances/components/estimate-hint";
@@ -29,13 +29,13 @@ export function BalancesScreen() {
       <div className="flex flex-col gap-1">
         <span className="text-sm text-muted">{BALANCES_COPY.totalBalance}</span>
         {!balances.currentData && !balances.isError ? (
-          <Skeleton className="h-[1.15em] w-48 text-3xl" />
+          <Skeleton className="h-[1.15em] w-56 text-4xl" />
         ) : total === null ? (
           <span className="text-3xl font-semibold text-muted">—</span>
         ) : (
-          <span className="flex items-baseline gap-1.5 text-3xl font-semibold tracking-tight text-ink">
-            {formatUsd(total)}
-            <span className="text-sm font-medium text-muted">{MONEY_COPY.usd}</span>
+          <span className="flex items-baseline gap-1.5 text-ink">
+            <BigAmount value={formatUsd(total)} className="text-4xl" />
+            <span className="text-sm text-subtle">{MONEY_COPY.usd}</span>
             <EstimateHint />
           </span>
         )}

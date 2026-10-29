@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
 
 // R-88.
@@ -48,10 +50,16 @@ func TestInvoiceLines(t *testing.T) {
 		t.Fatalf("payer chooses: %d %v", usd.status, usd.body)
 	}
 
-	many := strings.Repeat(`{"description": "x", "quantity": "1", "unitPrice": "0"},`, 50)
+	many := strings.Repeat(`{"description": "x", "quantity": "1", "unitPrice": "0"},`, invoice.MaxLines)
+	// The most lines an invoice takes: the last one carries the amount.
+	most := e.post(t, alice, e.aliceProfile, "most-lines", fixed(strings.Repeat(`{"description": "x", "quantity": "1", "unitPrice": "0"},`, invoice.MaxLines-1)+
+		`{"description": "Design", "quantity": "1", "unitPrice": "5000000"}`))
+	if lines, _ := most.body["lines"].([]any); most.status != http.StatusCreated || len(lines) != invoice.MaxLines {
+		t.Fatalf("%d lines: %d %v", invoice.MaxLines, most.status, most.body["error"])
+	}
 	for i, c := range []struct{ name, body string }{
 		{"short of the amount", fixed(`{"description": "Design", "quantity": "4", "unitPrice": "1000000"}`)},
-		{"51 lines", fixed(many + `{"description": "Design", "quantity": "1", "unitPrice": "5000000"}`)},
+		{"one line too many", fixed(many + `{"description": "Design", "quantity": "1", "unitPrice": "5000000"}`)},
 		{"no description", fixed(`{"description": "", "quantity": "1", "unitPrice": "5000000"}`)},
 		{"description over 200", fixed(`{"description": "` + strings.Repeat("é", 201) + `", "quantity": "1", "unitPrice": "5000000"}`)},
 		{"quantity 0", fixed(`{"description": "Design", "quantity": "0", "unitPrice": "5000000"}`)},

@@ -88,7 +88,27 @@ const choose = async (name: string) => {
   await settle();
 };
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
+
+// The export's period is a kit date range picker: open it, press the first day, then the last; Escape after one
+// press leaves the end open. October 2026 is in view.
+const DAY = new Intl.DateTimeFormat(undefined, { dateStyle: "full", timeZone: "UTC" });
+const dayButton = (iso: string) =>
+  screen.getByRole("button", { name: DAY.format(new Date(`${iso}T00:00:00Z`)) });
+const period = () => screen.getByRole("button", { name: /^Period / });
+function pickRange(from: string, to?: string) {
+  fireEvent.click(period());
+  fireEvent.click(dayButton(from));
+  if (to) fireEvent.click(dayButton(to));
+  else fireEvent.keyDown(dayButton(from), { key: "Escape" });
+}
+const inOctober = () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-14T12:00:00Z"));
+};
 
 describe("records", () => {
   // R-109.
@@ -99,9 +119,9 @@ describe("records", () => {
       labelable: false,
       invoice: { invoiceId: `0x${"b".repeat(64)}`, number: 7, clientName: "Bob Ltd" },
     });
-    expect(
-      screen.getByRole("link", { name: "Transfer to wallet · INV-0007" }).getAttribute("href"),
-    ).toBe(`/app/payments/0x${"b".repeat(64)}`);
+    expect(screen.getByRole("link", { name: "INV-0007 · Bob Ltd" }).getAttribute("href")).toBe(
+      `/app/payments/0x${"b".repeat(64)}`,
+    );
     cleanup();
     renderType({ ...base, classification: "own_transfer", labelable: false });
     expect(screen.getByText("Own transfer")).toBeTruthy();
@@ -131,6 +151,7 @@ describe("records", () => {
 
   // R-109.
   it("exports the days chosen as the API's CSV, and says when it fails", async () => {
+    inOctober();
     const calls: Call[] = [];
     answer(calls, 200, "Date (UTC),Direction\r\n");
     const saved: Blob[] = [];
@@ -148,19 +169,16 @@ describe("records", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
     await settle();
-    fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-10-01" } });
-    // A To before From is named on To, and the CSV isn't asked for.
-    fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-09-30" } });
-    fireEvent.click(screen.getByRole("button", { name: "Download CSV" }));
-    await settle();
-    expect(screen.getByLabelText("To").getAttribute("aria-invalid")).toBe("true");
-    expect(calls.filter((c) => c.url.includes(".csv"))).toEqual([]);
-    fireEvent.change(screen.getByLabelText("To"), { target: { value: "" } });
+    // A day before the start starts the period again, so the CSV asks from the 10th on.
+    fireEvent.click(period());
+    fireEvent.click(dayButton("2026-10-20"));
+    fireEvent.click(dayButton("2026-10-10"));
+    fireEvent.keyDown(dayButton("2026-10-10"), { key: "Escape" });
     fireEvent.click(screen.getByRole("button", { name: "Download CSV" }));
     await settle();
     // The dialog also reads the records currency.
     expect(calls.filter((c) => c.url.includes(".csv")).map((c) => c.url)).toEqual([
-      `/api/v1/profiles/${PROFILE}/transactions.csv?from=2026-10-01`,
+      `/api/v1/profiles/${PROFILE}/transactions.csv?from=2026-10-10`,
     ]);
     expect(await saved[0]?.text()).toBe("Date (UTC),Direction\r\n");
     expect((click.mock.contexts[0] as HTMLAnchorElement).download).toBe("forwend-transactions.csv");
@@ -243,6 +261,7 @@ describe("records", () => {
   it.each(["Download CSV", "Download statement (PDF)"])(
     "%s waits for the records currency to load and save, including after reopening",
     async (downloadLabel) => {
+      inOctober();
       let finishRead: (() => void) | undefined;
       let finishSave: ((success: boolean) => void) | undefined;
       let loaded = false;
@@ -289,8 +308,7 @@ describe("records", () => {
       finishRead?.();
       await settle();
       expect(download().disabled).toBe(false);
-      fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-10-01" } });
-      fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-10-31" } });
+      pickRange("2026-10-01", "2026-10-31");
       await choose("EUR · Euro");
       expect(download().disabled).toBe(true);
       expect((screen.getByRole("combobox") as HTMLButtonElement).disabled).toBe(true);
@@ -424,6 +442,7 @@ describe("records", () => {
 
   // R-113.
   it("downloads the statement of both days, and names what is missing", async () => {
+    inOctober();
     const calls: Call[] = [];
     let answer = "pdf";
     vi.stubGlobal(
@@ -459,25 +478,22 @@ describe("records", () => {
       </Provider>,
     );
     const statements = () => calls.filter((c) => c.url.includes("statement")).map((c) => c.url);
-    const from = () => screen.getByLabelText("From");
-    const to = () => screen.getByLabelText("To");
     const ask = async () => {
       fireEvent.click(screen.getByRole("button", { name: "Download statement (PDF)" }));
       await settle();
     };
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
     await settle();
-    fireEvent.change(from(), { target: { value: "2026-10-01" } });
+    pickRange("2026-10-01");
     await ask();
-    expect(to().getAttribute("aria-invalid")).toBe("true");
-    expect(document.activeElement).toBe(to());
-    expect(screen.getByText("Choose a day: a statement covers a period.")).toBeTruthy();
-    fireEvent.change(to(), { target: { value: "2026-09-30" } });
-    await ask();
-    expect(screen.getByText("Choose a day on or after From.")).toBeTruthy();
+    expect(period().getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(period());
+    expect(screen.getByText("Choose both days: a statement covers a period.")).toBeTruthy();
     expect(statements()).toEqual([]);
 
-    fireEvent.change(to(), { target: { value: "2026-10-31" } });
+    // The start is kept: one more press ends the period.
+    fireEvent.click(period());
+    fireEvent.click(dayButton("2026-10-31"));
     await ask();
     expect(statements()).toEqual([
       `/api/v1/profiles/${PROFILE}/statement.pdf?from=2026-10-01&to=2026-10-31`,

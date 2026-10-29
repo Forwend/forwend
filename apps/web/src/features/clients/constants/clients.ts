@@ -6,3 +6,6 @@ export const CLIENT_LIMITS = {
   taxId: 50,
   reference: 100,
 } as const;
+
+/** Who the client is: only how the form reads; the API stores the same fields for both. */
+export const CLIENT_KINDS = { business: "business", person: "person" } as const;

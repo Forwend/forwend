@@ -24,15 +24,20 @@ export function EmptyState({
       className={cx(
         "flex w-full flex-col items-center justify-center px-6 text-center",
         compact
-          ? "py-10"
+          ? "flex-1 py-10"
           : "min-h-[min(16rem,40dvh)] rounded-lg border border-line bg-surface py-10",
       )}
     >
       <span className="grid size-10 place-items-center rounded-md bg-surface-2">
         <Icon aria-hidden className="size-[var(--fw-icon-lg)] text-muted" />
       </span>
-      <p className="mt-4 text-lg font-medium text-ink">{title}</p>
-      {description ? <p className="mt-1 max-w-sm text-muted">{description}</p> : null}
+      {/* In a card it reads like the card's error state: one quiet line, not a page heading. */}
+      <p className={cx("font-medium text-ink", compact ? "mt-3 text-sm" : "mt-4 text-lg")}>
+        {title}
+      </p>
+      {description ? (
+        <p className={cx("mt-1 max-w-sm text-muted", compact && "text-sm")}>{description}</p>
+      ) : null}
       {action ? <div className="mt-6">{action}</div> : null}
     </div>
   );

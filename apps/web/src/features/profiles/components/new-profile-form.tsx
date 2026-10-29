@@ -22,6 +22,7 @@ import {
 import { NEW_PROFILE_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import type { ProfileKind } from "@/features/profiles/types/profile";
+import { FieldGroup } from "@/shared/components/field-group";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 const KIND_ICONS = {
@@ -67,36 +68,38 @@ export function NewProfileForm() {
 
   return (
     <Form onSubmit={submit}>
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1.5 text-sm font-medium text-ink">{COPY.kindLegend}</legend>
-        <div className="grid grid-cols-2 gap-3">
-          {NEW_PROFILE_KINDS.map((value) => {
-            return (
-              <ChoiceCard
-                key={value}
-                type="radio"
-                name="kind"
-                value={value}
-                checked={kind === value}
-                onChange={() => setKind(value)}
-                icon={KIND_ICONS[value]}
-                title={PROFILE_KIND_LABELS[value]}
-                hint={COPY.kindHints[value]}
-              />
-            );
-          })}
-        </div>
-      </fieldset>
-      <TextField
-        label={COPY.nameLabel}
-        value={name}
-        onChange={(event) => {
-          setName(event.target.value);
-          setNameError("");
-        }}
-        error={nameError || undefined}
-        className="min-h-26"
-      />
+      <FieldGroup title={COPY.group}>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1.5 text-sm font-medium text-ink">{COPY.kindLegend}</legend>
+          <div className="grid grid-cols-2 gap-3">
+            {NEW_PROFILE_KINDS.map((value) => {
+              return (
+                <ChoiceCard
+                  key={value}
+                  type="radio"
+                  name="kind"
+                  value={value}
+                  checked={kind === value}
+                  onChange={() => setKind(value)}
+                  icon={KIND_ICONS[value]}
+                  title={PROFILE_KIND_LABELS[value]}
+                  hint={COPY.kindHints[value]}
+                />
+              );
+            })}
+          </div>
+        </fieldset>
+        <TextField
+          label={COPY.nameLabel}
+          hint={nameError ? undefined : COPY.nameHint}
+          value={name}
+          onChange={(event) => {
+            setName(event.target.value);
+            setNameError("");
+          }}
+          error={nameError || undefined}
+        />
+      </FieldGroup>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
         <Button type="submit" loading={busy}>
           {COPY.create}

@@ -28,7 +28,7 @@ async function createInvoice(page: Page, fill: () => Promise<void>) {
   await expect(form.or(billing)).toBeVisible();
   if (await billing.isVisible()) {
     await billing.click();
-    await page.getByRole("textbox", { name: "Name or business name" }).fill("E2E shop GmbH");
+    await page.getByRole("textbox", { name: "Business name" }).fill("E2E shop GmbH");
     await page.getByRole("textbox", { name: "Address" }).fill("1 Test Street, Berlin");
     await page.getByRole("button", { name: /^Country/ }).click();
     await page.getByRole("combobox", { name: /Country/ }).fill("germ");
@@ -43,7 +43,7 @@ async function createInvoice(page: Page, fill: () => Promise<void>) {
     return null;
   }
   await fill();
-  const recipient = page.getByRole("textbox", { name: "Name", exact: true });
+  const recipient = page.getByRole("textbox", { name: /^(Legal|Full) name$/ });
   const recipientEmail = page.getByRole("textbox", { name: "Email", exact: true });
   if (!(await recipient.inputValue()) && !(await recipientEmail.inputValue()))
     await recipient.fill("E2E individual customer");
@@ -116,7 +116,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   expect(await blockingViolations(page)).toEqual([]);
   await page.getByRole("link", { name: "Add client" }).first().click();
   await expect(page).toHaveURL("/app/clients/new");
-  await page.getByRole("textbox", { name: "Name or business name" }).fill(clientName);
+  await page.getByRole("textbox", { name: "Legal name" }).fill(clientName);
   // Resend's test inbox, so an email from a test never reaches a real person.
   await page
     .getByRole("textbox", { name: "Billing email (optional)" })
@@ -138,7 +138,10 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     .check();
   expect(await blockingViolations(page)).toEqual([]);
   await page.getByRole("button", { name: "Save client" }).click();
-  await expect(page).toHaveURL("/app/clients");
+  await expect(page).toHaveURL(/\/app\/clients\/[0-9a-f-]{36}$/);
+  await expect(page.getByRole("heading", { level: 1, name: clientName })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Details" })).toContainText(po);
+  await sidebar.getByRole("link", { name: "Clients" }).click();
   const clientRow = page.getByRole("row").filter({ hasText: clientName });
   await expect(clientRow).toContainText("delivered@resend.dev");
   await expect(clientRow).toContainText("Germany");
@@ -162,16 +165,21 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
       .fill("https://popup.example");
     expect(await blockingViolations(page)).toEqual([]);
     await page.getByRole("button", { name: "Save store" }).click();
-    await expect(page).toHaveURL("/app/stores");
+    await expect(page).toHaveURL(/\/app\/stores\/[0-9a-f-]{36}$/);
+    await sidebar.getByRole("link", { name: "Stores" }).click();
   }
   await expect(popUp).toContainText("1 hour");
   await page.getByRole("row").nth(1).getByRole("link").click();
   await expect(page).toHaveURL(/\/app\/stores\/[0-9a-f-]{36}$/);
-  await expect(page.getByRole("textbox", { name: "Store name" })).toHaveValue("E2E shop");
+  await expect(page.getByRole("heading", { level: 1, name: "E2E shop" })).toBeVisible();
   await page.getByRole("button", { name: "Copy project ID" }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
     page.url().split("/").at(-1),
   );
+  expect(await blockingViolations(page)).toEqual([]);
+  await page.getByRole("main").getByRole("link", { name: "Edit", exact: true }).click();
+  await expect(page).toHaveURL(/\/app\/stores\/[0-9a-f-]{36}\/edit$/);
+  await expect(page.getByRole("textbox", { name: "Store name" })).toHaveValue("E2E shop");
   const origins = page.getByRole("textbox", { name: "Allowed origins (optional)" });
   await origins.fill("https://shop.example/thanks");
   await page.getByRole("button", { name: "Save store" }).click();
@@ -192,8 +200,8 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   await expect(page.getByRole("checkbox", { name: "USDC on Base Sepolia" })).toBeChecked();
   expect(await blockingViolations(page)).toEqual([]);
   await page.getByRole("button", { name: "Save store" }).click();
-  await expect(page).toHaveURL("/app/stores");
-  await expect(page.getByRole("row").nth(1)).toContainText("https://shop.example");
+  await expect(page).toHaveURL(/\/app\/stores\/[0-9a-f-]{36}$/);
+  await expect(page.getByRole("region", { name: "Details" })).toContainText("https://shop.example");
 
   await sidebar.getByRole("link", { name: "Invoices" }).click();
   await page.getByRole("link", { name: "New invoice" }).first().click();
@@ -224,7 +232,8 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(page.getByRole("alert").filter({ hasText: "Enter an https link" })).toBeVisible();
     await expect(amount).toHaveAttribute("aria-invalid", "true");
     await expect(link).toHaveAttribute("aria-invalid", "true");
-    await expect(amount).toBeFocused();
+    // Customer comes first on the form, and no client is filled in yet: its name is the first error.
+    await expect(page.getByRole("textbox", { name: /^(Legal|Full) name$/ })).toBeFocused();
     expect(await blockingViolations(page)).toEqual([]);
     await link.fill("https://elsewhere.example/thanks");
     await page.getByRole("button", { name: "Create invoice" }).click();
@@ -269,7 +278,9 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await page.getByRole("button", { name: /^Saved client/ }).click();
     await page.getByRole("combobox", { name: /Saved client/ }).fill(clientName);
     await page.getByRole("option", { name: new RegExp(`^${clientName}`) }).click();
-    await expect(page.getByRole("textbox", { name: "Name", exact: true })).toHaveValue(clientName);
+    await expect(page.getByRole("textbox", { name: /^(Legal|Full) name$/ })).toHaveValue(
+      clientName,
+    );
     await expect(page.getByRole("textbox", { name: "Tax or VAT ID" })).toHaveValue("DE123456789");
     // R-90
     await expect(page.getByRole("textbox", { name: "PO or reference (optional)" })).toHaveValue(po);
@@ -418,7 +429,9 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(page.getByRole("textbox", { name: "Return link (optional)" })).toHaveValue(
       "https://shop.example/thanks",
     );
-    await expect(page.getByRole("textbox", { name: "Name", exact: true })).toHaveValue(clientName);
+    await expect(page.getByRole("textbox", { name: /^(Legal|Full) name$/ })).toHaveValue(
+      clientName,
+    );
     await expect(page.getByRole("textbox", { name: "Amount", exact: true })).toHaveValue("12.5");
     await expect(page.locator('input[name="dueDate"]')).toHaveValue("");
     await expect(page.locator('input[name="supplyDate"]')).toHaveValue("");
@@ -530,7 +543,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await page.getByRole("main").getByRole("searchbox", { name: "Search invoices" }).fill(po);
     await expect(page.getByRole("row")).toHaveCount(2);
     const row = page.getByRole("row").filter({ hasText: invoice.number });
-    await expect(row).toContainText(`${title} · E2E shop`);
+    await expect(row).toContainText(title);
     await expect(row).toContainText(clientName);
     await expect(row).toContainText(dueText);
     await expect(row).toContainText("12.50 USDC");
@@ -542,9 +555,7 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   await sidebar.getByRole("link", { name: "Clients" }).click();
   await clientRow.getByRole("link", { name: clientName }).click();
   await expect(page).toHaveURL(/\/app\/clients\/[0-9a-f-]{36}$/);
-  await expect(page.getByRole("textbox", { name: "Tax or VAT ID (optional)" })).toHaveValue(
-    "DE123456789",
-  );
+  await expect(page.getByRole("region", { name: "Details" })).toContainText("DE123456789");
   await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("menuitem", { name: "Delete client" }).click();
   await page
@@ -618,7 +629,7 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
     await expect(page.getByText("Total", { exact: true }).locator("..")).toHaveText(
       choosing ? "Total1.00 USD" : "Total1.00 USDC",
     );
-    await page.getByRole("textbox", { name: "Name", exact: true }).fill("E2E phone client");
+    await page.getByRole("textbox", { name: /^(Legal|Full) name$/ }).fill("E2E phone client");
     await page.getByRole("button", { name: "Add agreed value" }).click();
     await page.getByRole("button", { name: /^Agreed in/ }).click();
     await page.getByRole("combobox", { name: /Agreed in/ }).fill("pound");
