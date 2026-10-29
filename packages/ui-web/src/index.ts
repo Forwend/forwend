@@ -26,6 +26,13 @@ export { PANEL_TONES, Panel } from "./components/display/panel";
 export { ProgressBar } from "./components/display/progress-bar";
 export type { StatTileProps } from "./components/display/stat-tile";
 export { StatTile } from "./components/display/stat-tile";
+export type {
+  TimelineChip,
+  TimelineEntry,
+  TimelineProps,
+  TimelineState,
+} from "./components/display/timeline";
+export { TIMELINE_STATES, Timeline } from "./components/display/timeline";
 export { DotLoader } from "./components/feedback/dot-loader";
 export type { EmptyStateProps } from "./components/feedback/empty-state";
 export { EmptyState } from "./components/feedback/empty-state";
@@ -82,6 +89,8 @@ export type { SegmentedControlProps } from "./components/navigation/segmented-co
 export { SegmentedControl } from "./components/navigation/segmented-control";
 export type { SelectMenuOption, SelectMenuProps } from "./components/navigation/select-menu";
 export { SelectMenu } from "./components/navigation/select-menu";
+export type { StepperProps, StepperStep } from "./components/navigation/stepper";
+export { Stepper } from "./components/navigation/stepper";
 export type { TabItem, TabsProps } from "./components/navigation/tabs";
 export { Tabs } from "./components/navigation/tabs";
 export type { ThemeSwitchProps } from "./components/navigation/theme-switch";

@@ -12,11 +12,9 @@ import {
   RowButton,
   useTheme,
 } from "@forwend/ui-web";
-import { ChevronsUpDown, LogOut, Moon, Settings } from "lucide-react";
-import Link from "next/link";
+import { ChevronsUpDown, LogOut, Moon } from "lucide-react";
 import type { ReactNode } from "react";
 import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
-import { APP_ROUTES } from "@/shared/config/routes";
 
 export interface AccountMenuProps {
   email: string;
@@ -25,7 +23,7 @@ export interface AccountMenuProps {
   side?: "top" | "bottom" | "right";
 }
 
-/** The person's own menu: theme, settings and sign out. Signing out of every device lives in Settings (R-137). */
+/** The person's own menu: theme and sign out; Settings has its own row in the sidebar. Signing out of every device lives in Settings (R-137). */
 export function AccountMenu({ email, onSignOut, trigger, side = "top" }: AccountMenuProps) {
   const [theme, setTheme] = useTheme();
   return (
@@ -52,12 +50,6 @@ export function AccountMenu({ email, onSignOut, trigger, side = "top" }: Account
           <Moon aria-hidden className="size-[var(--fw-icon-md)]" />
           {AUTH_COPY.darkMode}
         </MenuCheckboxItem>
-        <MenuItem asChild>
-          <Link href={APP_ROUTES.settings}>
-            <Settings aria-hidden className="size-[var(--fw-icon-md)]" />
-            {AUTH_COPY.settings}
-          </Link>
-        </MenuItem>
         <MenuSeparator />
         <MenuItem onSelect={onSignOut}>
           <LogOut aria-hidden className="size-[var(--fw-icon-md)]" />

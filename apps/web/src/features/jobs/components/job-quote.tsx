@@ -1,6 +1,7 @@
 "use client";
 
 import { BigAmount, buttonClasses, PAYMENT_STATUS, Skeleton, StatusPill } from "@forwend/ui-web";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { formatUsd } from "@/features/balances/lib/balances";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
@@ -115,9 +116,9 @@ export function JobQuote({ token }: { token: string }) {
             {deposit ? (
               <>
                 <p className="text-sm text-muted">{COPY.accepted.deposit}</p>
-                <a href={payHref(deposit)} className={buttonClasses({})}>
+                <Link href={payHref(deposit)} className={buttonClasses({})}>
                   {COPY.payDeposit}
-                </a>
+                </Link>
               </>
             ) : null}
           </div>
@@ -187,12 +188,12 @@ export function JobQuote({ token }: { token: string }) {
               ) : null}
               {p.invoiceId && p.number ? (
                 payable(p) && p !== deposit ? (
-                  <a
+                  <Link
                     href={payHref(p)}
                     className={`${buttonClasses({ size: "sm", variant: "secondary" })} mt-1`}
                   >
                     {COPY.pay(invoiceNumber(p.number))}
-                  </a>
+                  </Link>
                 ) : p.status && p.status !== PAYMENT_STATUS.open ? (
                   <span className="flex flex-wrap items-center gap-2 text-sm text-muted">
                     {invoiceNumber(p.number)}

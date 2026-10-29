@@ -90,7 +90,8 @@ export function PaymentsTable({ rows, attention, showStore, footer }: PaymentsTa
       ? {
           key: "issue",
           header: COPY.columns.issue,
-          from: "md",
+          className: "w-[24%]",
+          title: (p) => issueText(p.problems),
           cell: (p) => <Issue problems={p.problems} />,
         }
       : {
@@ -100,17 +101,22 @@ export function PaymentsTable({ rows, attention, showStore, footer }: PaymentsTa
           className: "w-32",
           cell: (p) => <WalletStateLabel state={paymentWallet(p)} />,
         },
-    {
-      key: "date",
-      header: COPY.columns.date,
-      align: "end",
-      className: "w-24",
-      cell: (p) => (
-        <time dateTime={p.createdAt} className="text-muted">
-          {shortDate(p.createdAt)}
-        </time>
-      ),
-    },
+    // The issue needs the room in Needs attention; the payment's page has its date.
+    ...(attention
+      ? []
+      : [
+          {
+            key: "date",
+            header: COPY.columns.date,
+            align: "end",
+            className: "w-24",
+            cell: (p) => (
+              <time dateTime={p.createdAt} className="text-muted">
+                {shortDate(p.createdAt)}
+              </time>
+            ),
+          } satisfies DataColumn<Row>,
+        ]),
   ];
   return (
     <DataTable
@@ -158,13 +164,22 @@ function Requested({ payment }: { payment: Payment }) {
   );
 }
 
+function issueText(problems?: PaymentProblem[]): string | null {
+  const [first, ...rest] = problems ?? [];
+  if (!first) return null;
+  return rest.length
+    ? `${problemLabel(first.code)} and ${rest.length} more`
+    : problemLabel(first.code);
+}
+
 function Issue({ problems }: { problems?: PaymentProblem[] }) {
   const [first, ...rest] = problems ?? [];
   if (!first) return <span className="text-subtle">—</span>;
   return (
-    <span className="text-warning">
-      {problemLabel(first.code)}
-      {rest.length ? <span className="text-muted"> +{rest.length}</span> : null}
+    <span className="flex min-w-0 items-center gap-2 text-ink">
+      <span aria-hidden className="size-2 shrink-0 rounded-pill bg-warning" />
+      <span className="truncate">{problemLabel(first.code)}</span>
+      {rest.length ? <span className="shrink-0 text-muted">+{rest.length}</span> : null}
     </span>
   );
 }

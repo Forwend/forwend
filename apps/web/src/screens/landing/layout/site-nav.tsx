@@ -1,4 +1,5 @@
 import { BUTTON_SIZES, buttonClasses, Logo, NavPill, ThemeSwitch } from "@forwend/ui-web";
+import Link from "next/link";
 import { CTA } from "@/features/waitlist/constants/waitlist";
 import { LANDING_SECTIONS, NAV_LINKS, SIGN_IN } from "@/screens/landing/constants/landing-content";
 import { SiteMenu } from "@/screens/landing/layout/site-menu";
@@ -17,12 +18,12 @@ export function SiteNav() {
           <span className="flex items-center gap-1.5 max-[22rem]:gap-1">
             <SiteMenu />
             <ThemeSwitch className="relative size-9 border-transparent bg-transparent after:absolute after:-inset-1 pointer-coarse:size-9" />
-            <a
+            <Link
               href={APP_ROUTES.signIn}
               className={`${buttonClasses({ size: BUTTON_SIZES.md, variant: "ghost" })} max-sm:hidden`}
             >
               {SIGN_IN}
-            </a>
+            </Link>
             <a
               href="#join"
               className={`${buttonClasses({ size: BUTTON_SIZES.md })} max-[22rem]:px-2.5`}

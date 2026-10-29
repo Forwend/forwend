@@ -346,12 +346,9 @@ test("merchant separates payment, held funds, delivery and store records", async
   expect(requests.filter((url) => url.pathname.endsWith("/movements"))).toHaveLength(0);
   await expect(main.getByRole("combobox", { name: "Payment option" })).toHaveCount(0);
   await page.screenshot({ path: "../../docs/runs/f336-payment-detail-1440.png", fullPage: true });
-  await main.getByRole("button", { name: "Technical details", exact: true }).click();
-  await expect(main.getByRole("combobox", { name: "Payment option" })).toBeVisible();
-  expect(requests.filter((url) => url.pathname.endsWith("/movements"))).toHaveLength(0);
-  await expect(main.getByText("History checked", { exact: false })).toHaveCount(0);
-  await expect(main.getByText("HTTP 503", { exact: false })).toBeVisible();
-  await main.getByRole("button", { name: "Technical details", exact: true }).click();
+  // No raw ledger or contract panel: a failed webhook shows as a problem with its way to Developers.
+  await expect(main.getByRole("button", { name: "Technical details", exact: true })).toHaveCount(0);
+  await expect(main.getByRole("region", { name: "Timeline" })).toBeVisible();
   await expect(main.getByRole("link", { name: /^INV-/ })).toHaveCount(0);
   expect(await blockingViolations(page)).toEqual([]);
   expect(await sidewaysScroll(page)).toBeLessThanOrEqual(1);
@@ -599,19 +596,17 @@ test("uncredited payment shows the funded option and pending records", async ({ 
   const main = page.getByRole("main");
   await expect(main.getByText("Confirming", { exact: true })).toBeVisible();
   await expect(
-    main.getByText("Confirmation is delayed. Do not ask the customer to pay again."),
+    main.getByText(
+      "Confirmation is taking longer than usual. Don't ask the customer to pay again.",
+    ),
   ).toBeVisible();
   await expect(main.getByText("OUSD ·", { exact: false }).first()).toBeVisible();
   await expect(main.getByText("1.00", { exact: true })).toHaveCount(2);
   await expect(main.getByText("Paid", { exact: true })).toHaveCount(0);
   await expect(main.getByText("Awaiting customer payment", { exact: true })).toHaveCount(0);
-  await main.getByRole("button", { name: "Technical details", exact: true }).click();
-  await expect(main.getByRole("combobox", { name: "Payment option" })).toContainText("OUSD");
-  await main.getByRole("button", { name: "Transactions", exact: true }).click();
-  await expect(main.getByRole("table")).toBeVisible();
+  await expect(main.getByRole("table", { name: "Transfers" })).toBeVisible();
   await expect(main.getByText("Transfer records incomplete. Contact support.")).toHaveCount(0);
   await expect(main.getByText("Complete", { exact: true })).toHaveCount(0);
-  await main.getByRole("button", { name: "Details", exact: true }).first().click();
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.screenshot({ path: "../../docs/runs/f336-confirming-390.png", fullPage: true });

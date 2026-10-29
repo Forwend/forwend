@@ -5,7 +5,7 @@ import { ChevronRight, Wallet } from "lucide-react";
 import Link from "next/link";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import type { Balances } from "@/features/balances/types/balances";
-import { findPrice, formatUsdCents, freshUsd, usdCents } from "@/features/prices/lib/prices";
+import { findPrice, formatUsdCents, latestUsd, usdCents } from "@/features/prices/lib/prices";
 import type { TokenPrice } from "@/features/prices/types/prices";
 import { BUSINESS_COPY as COPY } from "@/screens/dashboard/constants/business-copy";
 import { TokenMark } from "@/shared/components/chains/token-mark";
@@ -25,11 +25,16 @@ const SHARES = ["bg-ink", "bg-muted", "bg-subtle", "bg-line-strong"] as const;
 // A profile can hold hundreds of tokens: the card shows the largest, My assets lists them all.
 const SHOWN = 5;
 
+/** A part of the whole in whole percent, "<1%" for a sliver, so small holdings never read as none. */
+function share(part: bigint, whole: bigint): string {
+  const percent = Number((part * 100n) / whole);
+  return part > 0n && percent === 0 ? "<1%" : `${percent}%`;
+}
+
 /** What the wallet holds, token by token: the share bar shows the mix, each row its amount and market value. */
 export function AssetsCard({ balances, failed, onRetry, prices }: AssetsCardProps) {
-  const now = Date.now();
   const rows = (balances?.tokens ?? []).map((t) => {
-    const usd = freshUsd(findPrice(prices ?? [], t.chainId, t.token), now);
+    const usd = latestUsd(findPrice(prices ?? [], t.chainId, t.token));
     const cents = t.wallet !== null && usd ? usdCents(BigInt(t.wallet), t.decimals, usd) : null;
     return { t, cents };
   });
@@ -83,12 +88,19 @@ export function AssetsCard({ balances, failed, onRetry, prices }: AssetsCardProp
             </div>
           ) : null}
           <ul className="divide-y divide-line border-t border-line">
-            {held.slice(0, SHOWN).map(({ t, cents }) => (
+            {held.slice(0, SHOWN).map(({ t, cents }, i) => (
               <li
                 key={`${t.chainId}:${t.token}`}
                 className="flex items-center justify-between gap-4 py-2.5"
               >
-                <TokenMark chainId={t.chainId} symbol={t.symbol} />
+                <span className="flex min-w-0 items-center gap-3">
+                  {/* Its step in the bar above: the same shade, largest first. */}
+                  <span
+                    aria-hidden
+                    className={`size-2 shrink-0 rounded-pill ${SHARES[Math.min(i, SHARES.length - 1)]}`}
+                  />
+                  <TokenMark chainId={t.chainId} symbol={t.symbol} />
+                </span>
                 <span className="flex flex-col items-end text-sm">
                   {t.wallet === null ? (
                     <span className="text-subtle">—</span>
@@ -102,6 +114,7 @@ export function AssetsCard({ balances, failed, onRetry, prices }: AssetsCardProp
                   {cents !== null ? (
                     <span className="text-xs text-muted tabular-nums">
                       {formatUsdCents(cents)} {MONEY_COPY.usd}
+                      {total > 0n ? ` · ${share(cents, total)}` : null}
                     </span>
                   ) : null}
                 </span>

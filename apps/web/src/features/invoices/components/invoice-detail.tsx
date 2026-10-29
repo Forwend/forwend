@@ -11,7 +11,7 @@ import {
   TONES,
   WalletStateLabel,
 } from "@forwend/ui-web";
-import { FileDown, UserRound } from "lucide-react";
+import { FileDown, FileText, UserRound } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, type Ref, useEffect, useRef, useState } from "react";
 import { useGetProfileInvoiceQuery } from "@/features/invoices/api/invoices-api";
@@ -51,7 +51,6 @@ import type {
   InvoiceViews,
   Revision,
 } from "@/features/invoices/types/invoices";
-import { TokenMark } from "@/shared/components/chains/token-mark";
 import { BackLink, DetailHeader } from "@/shared/components/detail-header";
 import { LoadError } from "@/shared/components/load-error";
 import { Party } from "@/shared/components/party";
@@ -200,50 +199,89 @@ function Loaded({
       {/* R-60: each thing is said once, so the header only names the invoice; with a title, the breadcrumb
           carries the number on desktop. */}
       <DetailHeader
-        // The number names the invoice for screen readers either way.
-        title={
-          invoice.title ? (
+        icon={<FileText aria-hidden />}
+        title={invoiceNumber(invoice.number)}
+        // R-143: testnet money must never pass for real money.
+        badges={
+          <>
+            {invoice.livemode ? null : <Badge tone={TONES.warning}>{COPY.testnet}</Badge>}
+            {status === PAYMENT_STATUS.confirming ? (
+              <span role="status" aria-label="Payment confirmation">
+                <ConfirmingStatus blocks={blocksLeft} total={blocksTotal} seconds={secondsLeft} />
+              </span>
+            ) : (
+              <StatusPill status={status} />
+            )}
+            {invoice.settlementStatus !== "none" ? (
+              <WalletStateLabel state={walletStateOf(invoice)} />
+            ) : null}
+          </>
+        }
+        meta={
+          [
+            invoice.title,
+            request ? null : client?.name ? COPY.billedTo(client.name) : null,
+            invoice.dueDate ? COPY.dueOn(formatDueDate(invoice.dueDate)) : null,
+            received > 0n && received < amount && token
+              ? COPY.receivedOf(money(received), money(amount))
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · ") || null
+        }
+        figure={{
+          label: received > 0n && received < amount ? COPY.total : COPY.amount,
+          value: token ? (
             <>
-              <span className="sr-only">{invoiceNumber(invoice.number)} </span>
-              {invoice.title}
+              {formatTokenAmount({
+                baseUnits: amount,
+                decimals: token.decimals,
+                fractionDigits: exactDigits(amount, token.decimals),
+              })}{" "}
+              <span className="text-base font-normal text-muted">
+                {choosing ? MONEY_COPY.usd : token.symbol}
+              </span>
             </>
           ) : (
-            invoiceNumber(invoice.number)
-          )
-        }
-        // R-143: testnet money must never pass for real money.
-        badges={invoice.livemode ? null : <Badge tone={TONES.warning}>{COPY.testnet}</Badge>}
-        meta={
-          invoice.title ? <span className="lg:sr-only">{invoiceNumber(invoice.number)}</span> : null
-        }
+            <InvoiceAmount invoice={invoice} tokens={tokens} />
+          ),
+        }}
         actions={
-          <InvoiceActions
-            profileId={profileId}
-            invoiceId={invoice.invoiceId}
-            payToken={invoice.payToken}
-            number={invoiceNumber(invoice.number)}
-            noun={request ? COPY.noun.request : COPY.noun.invoice}
-            payable={payable}
-            // Only before any money, on any option (R-79): after that the money decides, not a cancel.
-            cancelable={beforePayment}
-            onCanceled={() => setCanceling(true)}
-            editable={
-              mine
-                ? {
-                    memo: invoice.memo ?? null,
-                    clientEmail: client?.email ?? null,
-                    returnUrl: invoice.returnUrl,
-                    reference: invoice.reference,
-                    note: invoice.note,
-                    dueDate: invoice.dueDate,
-                    beforePayment,
-                    closesOn: invoice.expiresAt.slice(0, 10),
-                    today: new Date().toISOString().slice(0, 10),
-                    request,
-                  }
-                : null
-            }
-          />
+          <>
+            <Link
+              href={`${APP_ROUTES.payments}/${invoice.invoiceId}`}
+              className={buttonClasses({ variant: "secondary" })}
+            >
+              {COPY.viewPayment}
+            </Link>
+            <InvoiceActions
+              profileId={profileId}
+              invoiceId={invoice.invoiceId}
+              payToken={invoice.payToken}
+              number={invoiceNumber(invoice.number)}
+              noun={request ? COPY.noun.request : COPY.noun.invoice}
+              payable={payable}
+              // Only before any money, on any option (R-79): after that the money decides, not a cancel.
+              cancelable={beforePayment}
+              onCanceled={() => setCanceling(true)}
+              editable={
+                mine
+                  ? {
+                      memo: invoice.memo ?? null,
+                      clientEmail: client?.email ?? null,
+                      returnUrl: invoice.returnUrl,
+                      reference: invoice.reference,
+                      note: invoice.note,
+                      dueDate: invoice.dueDate,
+                      beforePayment,
+                      closesOn: invoice.expiresAt.slice(0, 10),
+                      today: new Date().toISOString().slice(0, 10),
+                      request,
+                    }
+                  : null
+              }
+            />
+          </>
         }
       />
       <NextStep
@@ -266,67 +304,6 @@ function Loaded({
       {/* minmax(0, 1fr): a long value never widens the column past the screen. */}
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
         <div className="@container flex min-w-0 flex-col gap-4">
-          <section aria-labelledby="invoice-amount" className={PANEL}>
-            <div className="flex flex-col gap-3 border-b border-line px-4 py-4 sm:px-5">
-              <h2 id="invoice-amount" className="text-sm text-muted">
-                {COPY.amount}
-              </h2>
-              <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
-                {token ? (
-                  <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-ink">
-                    <span className="text-3xl font-semibold tracking-tight break-all sm:text-4xl">
-                      {formatTokenAmount({
-                        baseUnits: amount,
-                        decimals: token.decimals,
-                        fractionDigits: exactDigits(amount, token.decimals),
-                      })}
-                    </span>{" "}
-                    <span className="text-lg font-medium text-muted">
-                      {choosing ? MONEY_COPY.usd : token.symbol}
-                    </span>
-                  </p>
-                ) : (
-                  <p className="min-w-0 text-ink">
-                    <InvoiceAmount invoice={invoice} tokens={tokens} />
-                  </p>
-                )}
-                {received > 0n && received < amount && token ? (
-                  <p className="w-full text-sm text-muted sm:order-last">
-                    {COPY.receivedOf(money(received), money(amount))}
-                  </p>
-                ) : null}
-                {choosing ? (
-                  <p className="text-sm text-muted">{COPY.clientChooses(invoice.optionCount)}</p>
-                ) : token ? (
-                  <TokenMark chainId={invoice.chainId} symbol={token.symbol} />
-                ) : null}
-              </div>
-            </div>
-            <div className="flex flex-col gap-3 px-4 py-5 sm:px-5">
-              <div className="flex flex-wrap items-center gap-3">
-                {status === PAYMENT_STATUS.confirming ? (
-                  <span role="status" aria-label="Payment confirmation">
-                    <ConfirmingStatus
-                      blocks={blocksLeft}
-                      total={blocksTotal}
-                      seconds={secondsLeft}
-                    />
-                  </span>
-                ) : (
-                  <StatusPill status={status} />
-                )}
-                {invoice.settlementStatus !== "none" ? (
-                  <WalletStateLabel state={walletStateOf(invoice)} />
-                ) : null}
-                <RecordLink
-                  href={`${APP_ROUTES.payments}/${invoice.invoiceId}`}
-                  className="text-sm"
-                >
-                  {COPY.viewPayment}
-                </RecordLink>
-              </div>
-            </div>
-          </section>
           {main && invoice.lines.length > 0 ? (
             <InvoiceLines
               lines={invoice.lines}

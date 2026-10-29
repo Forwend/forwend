@@ -6,7 +6,7 @@ import { useState } from "react";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { notFinal } from "@/features/balances/lib/balances";
 import type { Balances, TokenBalance } from "@/features/balances/types/balances";
-import { findPrice, formatUsdCents, freshUsd, usdCents } from "@/features/prices/lib/prices";
+import { findPrice, formatUsdCents, latestUsd, usdCents } from "@/features/prices/lib/prices";
 import type { TokenPrice } from "@/features/prices/types/prices";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { LoadError } from "@/shared/components/load-error";
@@ -72,7 +72,7 @@ export function BalancesList({ balances, prices, failed, onRetry }: BalancesList
                 label={BALANCES_COPY.inWallet}
                 t={t}
                 value={t.wallet}
-                usd={freshUsd(findPrice(prices ?? [], t.chainId, t.token), Date.now())}
+                usd={latestUsd(findPrice(prices ?? [], t.chainId, t.token))}
                 strong
               />
               <Amount label={BALANCES_COPY.movingLabel} t={t} value={t.settling ?? t.pending} />

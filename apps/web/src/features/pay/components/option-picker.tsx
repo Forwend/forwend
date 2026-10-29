@@ -1,9 +1,10 @@
 "use client";
 
-import { ComboboxField, SelectField, type SelectOption } from "@forwend/ui-web";
+import { ComboboxField, type ComboboxOption, SelectField, shortAddress } from "@forwend/ui-web";
 import { useState } from "react";
 import type { InvoiceOption } from "@/features/invoices/types/invoices";
 import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
+import { AssetIcon } from "@/shared/components/chains/asset-icon";
 import { chainName, TOKEN_SEARCH_FROM } from "@/shared/lib/chains";
 
 export interface Choice {
@@ -38,7 +39,11 @@ export function OptionPicker({ options, picked, onPick }: Choice) {
           setChainId(id);
           onPick(onlyOptionOn(options, id));
         }}
-        options={chains.map((id) => ({ value: String(id), label: chainName(id) }))}
+        options={chains.map((id) => ({
+          value: String(id),
+          label: chainName(id),
+          icon: <AssetIcon chainId={id} />,
+        }))}
       />
       <Pick
         label={COPY.token}
@@ -47,7 +52,13 @@ export function OptionPicker({ options, picked, onPick }: Choice) {
         disabled={tokens.length === 0}
         value={current?.optionId}
         onValueChange={onPick}
-        options={tokens.map((o) => ({ value: o.optionId, label: o.symbol }))}
+        options={tokens.map((o) => ({
+          value: o.optionId,
+          label: o.symbol,
+          // The exact contract, so a look-alike token with the same symbol can't pass for this one.
+          detail: shortAddress(o.token),
+          icon: <AssetIcon chainId={o.chainId} symbol={o.symbol} />,
+        }))}
       />
     </div>
   );
@@ -68,7 +79,7 @@ function Pick({
   placeholder: string;
   value: string | undefined;
   onValueChange: (value: string) => void;
-  options: readonly SelectOption[];
+  options: readonly ComboboxOption[];
   disabled?: boolean;
 }) {
   return options.length > TOKEN_SEARCH_FROM ? (

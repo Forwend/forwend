@@ -51,9 +51,9 @@ export const STORES_COPY = {
     "Like #1f6a8c. It edges your logo on the pay page and colors the line under the PDF header.",
   pickColor: "Pick the accent color",
   checkoutGroup: "Checkout",
-  tokensGroup: "Networks and tokens",
+  tokensGroup: "Accepted assets",
   tokensHint:
-    "This store's invoices offer only the ones checked. The rest of your profile's are off on its Networks and tokens page.",
+    "This store's invoices offer only the ones checked. The rest of your profile's are off in Settings, Accepted assets.",
   name: "Store name",
   projectId: "Project ID",
   projectIdHint: "Public. It names this store in the developer tools and gives no access.",

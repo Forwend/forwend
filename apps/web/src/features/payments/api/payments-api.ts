@@ -1,7 +1,6 @@
 import { PAYMENT_PAGE_SIZE } from "@/features/payments/constants/payments";
 import {
   attentionPageSchema,
-  movementsPageSchema,
   paymentDetailSchema,
   paymentsPageSchema,
   reconciliationSchema,
@@ -11,7 +10,6 @@ import type {
   Payment,
   PaymentDetail,
   PaymentFilters,
-  PaymentMovementPage,
   PaymentPeriod,
   PaymentReconciliation,
 } from "@/features/payments/types/payments";
@@ -63,31 +61,12 @@ export const paymentsApi = apiSlice
         responseSchema: attentionPageSchema,
         providesTags: [PAYMENTS_TAG],
       }),
-      getPayment: build.query<
-        PaymentDetail,
-        { profileId: string; paymentId: string; full?: boolean }
-      >({
-        query: ({ profileId, paymentId, full }) => ({
+      getPayment: build.query<PaymentDetail, { profileId: string; paymentId: string }>({
+        query: ({ profileId, paymentId }) => ({
           url: `${path(profileId)}/${encodeURIComponent(paymentId)}`,
-          params: full ? undefined : { view: "summary" },
+          params: { view: "summary" },
         }),
         responseSchema: paymentDetailSchema,
-        providesTags: [PAYMENTS_TAG],
-      }),
-      getPaymentMovements: build.infiniteQuery<
-        PaymentMovementPage,
-        { profileId: string; paymentId: string },
-        string | null
-      >({
-        infiniteQueryOptions: {
-          initialPageParam: null,
-          getNextPageParam: (last) => last.nextCursor,
-        },
-        query: ({ queryArg: { profileId, paymentId }, pageParam }) => ({
-          url: `${path(profileId)}/${encodeURIComponent(paymentId)}/movements`,
-          params: { limit: PAYMENT_PAGE_SIZE, ...(pageParam ? { cursor: pageParam } : {}) },
-        }),
-        responseSchema: movementsPageSchema,
         providesTags: [PAYMENTS_TAG],
       }),
       getPaymentReconciliation: build.query<PaymentReconciliation, Query & PaymentPeriod>({
@@ -114,7 +93,6 @@ export const {
   useGetPaymentsInfiniteQuery,
   useGetPaymentAttentionInfiniteQuery,
   useGetPaymentQuery,
-  useGetPaymentMovementsInfiniteQuery,
   useGetPaymentReconciliationQuery,
   useLazyExportPaymentsQuery,
 } = paymentsApi;

@@ -290,3 +290,20 @@ export const RECONCILIATION_STATES = {
   pending: "pending",
   review: "review",
 } as const;
+
+/** New invoice's steps, in order; a personal profile's request has no customer step. */
+export const STEP_IDS = {
+  customer: "customer",
+  items: "items",
+  details: "details",
+  review: "review",
+} as const;
+
+export const INVOICE_STEP_IDS = [
+  STEP_IDS.customer,
+  STEP_IDS.items,
+  STEP_IDS.details,
+  STEP_IDS.review,
+] as const;
+
+export const REQUEST_STEPS = [STEP_IDS.items, STEP_IDS.details, STEP_IDS.review] as const;

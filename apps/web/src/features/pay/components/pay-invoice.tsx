@@ -30,6 +30,7 @@ import {
   TriangleAlert,
   WifiOff,
 } from "lucide-react";
+import Link from "next/link";
 import { notFound, usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useCountViewMutation, useGetInvoiceQuery } from "@/features/invoices/api/invoices-api";
@@ -657,12 +658,12 @@ function PayBox({
       {invoice.replacedBy?.payToken ? (
         <p className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-ink">
           {COPY.replaced(invoiceNumber(invoice.replacedBy.number))}
-          <a
+          <Link
             href={`/pay/${invoice.replacedBy.payToken}`}
             className={buttonClasses({ size: "sm", variant: "secondary" })}
           >
             {COPY.openReplacement(invoiceNumber(invoice.replacedBy.number))}
-          </a>
+          </Link>
         </p>
       ) : null}
       {pay.state === PAY_STATES.canceled && pay.received > 0n ? (
@@ -896,7 +897,7 @@ function Received({
 function Overpaid({ invoice, money }: { invoice: Invoice; money: (units: bigint) => string }) {
   const extra = depositAmount(invoice, false) - BigInt(invoice.amount);
   if (extra <= 0n) return null;
-  return <p className="text-sm text-warning">{COPY.overpaid(money(extra), payeeOf(invoice))}</p>;
+  return <p className="text-sm text-warning">{COPY.overpaid(money(extra))}</p>;
 }
 
 // Paid is the end for the payer: settling is the sender's business (R-68).

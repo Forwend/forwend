@@ -8,6 +8,21 @@ import { makeStore } from "@/store/store";
 // The preview beside the form repeats its values, so value checks look inside the form itself.
 const form = () => within(document.querySelector("form") as HTMLElement);
 
+/** Steps to Review and presses Create invoice; a step whose check fails stops there, as a person would. */
+function create() {
+  for (let i = 0; i < 4; i++) {
+    const button = screen.queryByRole("button", { name: "Create invoice" });
+    if (button) {
+      fireEvent.click(button);
+      return;
+    }
+    const at = () => document.querySelector('[aria-current="step"]')?.textContent;
+    const before = at();
+    fireEvent.click(screen.getByRole("button", { name: /^Continue/ }));
+    if (at() === before) return;
+  }
+}
+
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 const NodeRequest = globalThis.Request;
@@ -66,12 +81,12 @@ describe("new invoice form", () => {
       .filter((b) => b.getAttribute("aria-disabled") !== "true");
     fireEvent.click(days[3] as HTMLElement);
 
-    fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+    create();
     await settle();
     expect(screen.getByText("We could not create the invoice. Try again.")).toBeTruthy();
 
     vi.setSystemTime(new Date("2026-10-14T10:00:02Z"));
-    fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+    create();
     await settle();
 
     expect(keys).toHaveLength(2);
@@ -119,7 +134,7 @@ describe("new invoice form", () => {
       "PO-4500012345",
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+    create();
     await settle();
     expect(bodies[0]?.client).toEqual({
       name: "Bob Ltd",
@@ -169,7 +184,7 @@ describe("new invoice form", () => {
 
     fill([TOKEN]);
     expect(form().getByText("750.50 USDC")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+    create();
     await settle();
     expect(bodies[0]).toMatchObject({
       amount: "750500000",
@@ -186,7 +201,7 @@ describe("new invoice form", () => {
     fireEvent.change(screen.getAllByLabelText(/^Price/)[1] as HTMLElement, {
       target: { value: "0.000001" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+    create();
     await settle();
     expect(screen.getByText("Qty × price needs more decimals than USDC has.")).toBeTruthy();
     expect(bodies).toHaveLength(1);
@@ -194,7 +209,7 @@ describe("new invoice form", () => {
 
     // Client chooses: the amount and unit prices are USD.
     fill([TOKEN, other]);
-    fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+    create();
     await settle();
     expect(bodies[1]).toMatchObject({
       amountUsd: "750.5",
@@ -245,7 +260,7 @@ describe("new invoice form", () => {
     fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "5" } });
     fireEvent.click(screen.getByRole("button", { name: "Add item" }));
     fireEvent.change(screen.getByLabelText("Item 1"), { target: { value: "Design" } });
-    fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+    create();
     await settle();
     expect(screen.getAllByRole("alert").map((a) => a.textContent)).toContain(
       "Enter an amount above 0 that every accepted token can hold.",
@@ -279,7 +294,7 @@ describe("new invoice form", () => {
       target: { value: "Mara Ilić" },
     });
     fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "5" } });
-    fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+    create();
     await settle();
     expect(bodies.map((b) => b.replaces)).toEqual([old]);
     expect(screen.getAllByRole("alert").some((a) => a.textContent?.includes("INV-0007"))).toBe(
@@ -376,7 +391,7 @@ describe("new invoice form", () => {
     await settle();
     expect(document.activeElement).toBe(document.body);
     expect((screen.getByLabelText("Item 2") as HTMLInputElement).value).toBe("Hosting");
-    fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+    create();
     await settle();
     expect(bodies[0]).toMatchObject({
       amount: "5000000",
@@ -416,7 +431,6 @@ describe("new invoice form", () => {
     fireEvent.change(screen.getByLabelText(/^Amount/), { target: { value: "100" } });
     fireEvent.click(screen.getByRole("button", { name: "Add agreed value" }));
     expect(document.activeElement).toBe(screen.getByRole("button", { name: /^Agreed in/ }));
-    const create = () => fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
     create();
     await settle();
     expect(screen.getByText("Choose a currency.")).toBeTruthy();
@@ -462,15 +476,22 @@ describe("new invoice form", () => {
     fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "100" } });
     const repeat = screen.getByRole("checkbox", { name: "Repeat every month" });
     fireEvent.click(repeat);
-    fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+    create();
     await settle();
+    // The customer is the first step, so its missing name stops the form there.
     expect(bodies).toHaveLength(0);
-    expect(screen.getByText("Repeating needs a due date and a client email.")).toBeTruthy();
-    // The customer comes first on the form, so its missing name is the first error.
-    expect(repeat.getAttribute("aria-invalid")).toBe("true");
     expect(document.activeElement).toBe(
       screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }),
     );
+    fireEvent.change(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }), {
+      target: { value: "Bob Ltd" },
+    });
+    create();
+    await settle();
+    expect(bodies).toHaveLength(0);
+    expect(screen.getByText("Repeating needs a due date and a client email.")).toBeTruthy();
+    expect(repeat.getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(repeat);
 
     const pick = (field: RegExp, day: (enabled: HTMLElement[]) => HTMLElement) => {
       fireEvent.click(screen.getByRole("button", { name: field }));
@@ -485,7 +506,7 @@ describe("new invoice form", () => {
     const due = (document.querySelector('input[name="dueDate"]') as HTMLInputElement).value;
     const end = (document.querySelector('input[name="repeatEndDate"]') as HTMLInputElement).value;
     expect(end > due).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+    create();
     await settle();
     expect(bodies[0]?.dueDate).toBe(due);
     expect(bodies[0]?.repeat).toEqual({ endDate: end });
@@ -493,28 +514,28 @@ describe("new invoice form", () => {
 });
 
 it("requires an invoice recipient while accepting an individual without business details", async () => {
-  const create = vi.fn(async () => {
+  const send = vi.fn(async () => {
     throw new TypeError("Failed to fetch");
   });
-  vi.stubGlobal("fetch", create);
+  vi.stubGlobal("fetch", send);
   render(
     <Provider store={makeStore({ getAccessToken: async () => "token" })}>
       <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} />
     </Provider>,
   );
   fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "10" } });
-  fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+  create();
   await settle();
-  expect(create).not.toHaveBeenCalled();
+  expect(send).not.toHaveBeenCalled();
   expect(
     screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }).getAttribute("aria-invalid"),
   ).toBe("true");
   fireEvent.change(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }), {
     target: { value: "Mara Ilić" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+  create();
   await settle();
-  expect(create).toHaveBeenCalledOnce();
+  expect(send).toHaveBeenCalledOnce();
 });
 
 it("starts billed to the saved client a client page opened it for", () => {

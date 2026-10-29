@@ -84,7 +84,7 @@ export function LinkScreen({ linkId }: LinkScreenProps) {
           aria-labelledby="link-share"
           className="fw-panel min-w-0 xl:col-start-2 xl:row-start-1"
         >
-          <h2 id="link-share" className="fw-panel-head text-sm font-medium text-ink">
+          <h2 id="link-share" className="fw-panel-head text-base font-semibold text-ink">
             {COPY.offer}
           </h2>
           <div className="px-4 py-3 sm:px-5">

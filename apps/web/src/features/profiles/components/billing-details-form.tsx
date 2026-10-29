@@ -89,7 +89,7 @@ export function BillingDetailsForm({ profileId, saved, next, business }: Billing
 
   return (
     <Form onSubmit={submit}>
-      <FieldGroup title={COPY.contactGroup}>
+      <FieldGroup title={COPY.contactGroup} description={COPY.contactNote}>
         <div className="grid gap-5 sm:grid-cols-2">
           <TextField
             label={business ? COPY.businessName : COPY.name}
@@ -111,7 +111,7 @@ export function BillingDetailsForm({ profileId, saved, next, business }: Billing
           />
         </div>
       </FieldGroup>
-      <FieldGroup title={COPY.addressGroup}>
+      <FieldGroup title={COPY.addressGroup} description={COPY.addressNote}>
         <TextAreaField
           label={COPY.address}
           name="address"

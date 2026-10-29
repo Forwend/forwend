@@ -6,6 +6,8 @@ export const BUSINESS_COPY = {
   checkout: "Checkout",
   receive: "Receive",
   onItsWay: "Pending payments",
+  legendMoving: "Moving to wallet",
+  legendNotFinal: "Not final",
   payments: (n: string) => (n === "1" ? "1 payment" : `${n} payments`),
   confirming: (n: string) => (n === "1" ? "Confirming 1 payment" : `Confirming ${n} payments`),
   confirmingNote: "Not final yet. Don't ask customers to pay again.",

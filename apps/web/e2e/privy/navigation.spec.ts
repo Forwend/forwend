@@ -798,10 +798,13 @@ test("the owner turns email notifications off from the account menu", async ({ b
   });
   await page.goto("/app");
   await page
-    .getByRole("button", { name: /^Account:/ })
-    .first()
+    .getByRole("complementary")
+    .getByRole("link", { name: "Settings" })
     .click({ timeout: 15_000 });
-  await page.getByRole("menuitem", { name: "Email notifications" }).click();
+  await page
+    .getByRole("navigation", { name: "Settings" })
+    .getByRole("link", { name: "Notifications" })
+    .click();
   await expect(page).toHaveURL("/app/notifications");
   const main = page.getByRole("main");
   const toggle = main.getByRole("switch", { name: "Email me about this profile's invoices" });
@@ -816,9 +819,7 @@ test("the owner turns email notifications off from the account menu", async ({ b
 });
 
 // R-136
-test("the account menu opens Networks and tokens, where a switch turns a token off", async ({
-  browser,
-}) => {
+test("Settings opens Accepted assets, where a box turns a token off", async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
     storageState: session,
@@ -855,26 +856,26 @@ test("the account menu opens Networks and tokens, where a switch turns a token o
     }
     await route.fulfill({ json: { tokens } });
   });
-  await page.goto("/app");
+  await page.goto("/app/settings");
   await page
-    .getByRole("button", { name: /^Account:/ })
-    .first()
-    .click({ timeout: 15_000 });
-  await page.getByRole("menuitem", { name: "Networks and tokens" }).click();
+    .getByRole("navigation", { name: "Settings" })
+    .getByRole("link", { name: "Accepted assets" })
+    .click();
   await expect(page).toHaveURL("/app/networks");
   const main = page.getByRole("main");
-  const base = main.getByRole("switch", { name: "USDC on Base Sepolia" });
-  const arb = main.getByRole("switch", { name: "USDC on Arbitrum Sepolia" });
+  await main.getByRole("button", { name: "USDC networks" }).click();
+  const base = main.getByRole("checkbox", { name: /^USDC on Base Sepolia/ });
+  const arb = main.getByRole("checkbox", { name: /^USDC on Arbitrum Sepolia/ });
   await expect(base).toBeChecked();
   await expect(arb).toBeChecked();
   expect(await blockingViolations(page)).toEqual([]);
   await arb.click();
   await expect(arb).not.toBeChecked();
-  await expect(page.getByText("USDC on Arbitrum Sepolia turned off")).toBeVisible();
+  await expect(main.getByText("Changes saved.")).toBeVisible();
   expect(puts).toEqual([[{ chainId: 421614, token: arbitrum }]]);
   // The last one on stays on, as the API refuses turning every token off.
   await expect(base).toBeDisabled();
-  await expect(main).toContainText("One token stays on");
+  await expect(main).toContainText("One stays on");
   expect(await blockingViolations(page)).toEqual([]);
   await context.close();
 });

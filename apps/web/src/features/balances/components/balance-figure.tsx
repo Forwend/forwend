@@ -8,7 +8,6 @@ import { EstimateHint } from "@/features/balances/components/estimate-hint";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { formatUsd, marketUsd, notFinal } from "@/features/balances/lib/balances";
 import type { Balances, TokenBalance } from "@/features/balances/types/balances";
-import { PricesUpdated } from "@/features/prices/components/prices-updated";
 import type { TokenPrice } from "@/features/prices/types/prices";
 import { LoadError } from "@/shared/components/load-error";
 import { APP_ROUTES } from "@/shared/config/routes";
@@ -18,8 +17,6 @@ export interface BalanceFigureProps {
   balances: Balances | null;
   /** Market prices (D-115); undefined until read or after a failed read, which shows no USD value. */
   prices: readonly TokenPrice[] | undefined;
-  /** Whether the prices read has answered, so attribution never shows before there is anything to attribute. */
-  pricesRead: boolean;
   failed: boolean;
   onRetry: () => void;
   /** The change over a range, right under the total. */
@@ -27,16 +24,9 @@ export interface BalanceFigureProps {
 }
 
 // Never a made-up 0 while loading or after a failed read. The parent is the size container.
-export function BalanceFigure({
-  balances,
-  prices,
-  pricesRead,
-  failed,
-  onRetry,
-  change,
-}: BalanceFigureProps) {
+export function BalanceFigure({ balances, prices, failed, onRetry, change }: BalanceFigureProps) {
   const tokens = balances?.tokens ?? [];
-  const total = balances ? marketUsd(balances, "wallet", prices, Date.now()) : null;
+  const total = balances ? marketUsd(balances, "wallet", prices) : null;
   const text = total === null ? "—" : formatUsd(total);
   const align = "items-center text-center sm:items-start sm:text-left";
 
@@ -75,7 +65,6 @@ export function BalanceFigure({
         </p>
       ) : null}
       <PendingHeld balances={balances} prices={prices} />
-      {pricesRead ? <PricesUpdated prices={prices} staleOnly /> : null}
     </div>
   );
 }
@@ -102,7 +91,7 @@ function PendingHeld({
               ? (t.settling ?? t.pending)
               : t[field];
         if (!balances.tokens.some((t) => BigInt(part(t)) > 0n)) return null;
-        const total = marketUsd(balances, field, prices, Date.now());
+        const total = marketUsd(balances, field, prices);
         if (total === null) return null;
         return (
           <Link

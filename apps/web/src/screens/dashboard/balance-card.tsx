@@ -7,8 +7,6 @@ import { useRouter } from "next/navigation";
 import { EstimateHint } from "@/features/balances/components/estimate-hint";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { formatUsd } from "@/features/balances/lib/balances";
-import { PricesUpdated } from "@/features/prices/components/prices-updated";
-import type { TokenPrice } from "@/features/prices/types/prices";
 import { BUSINESS_COPY as COPY } from "@/screens/dashboard/constants/business-copy";
 import { HERO_IMAGE } from "@/shared/assets/images";
 import { LoadError } from "@/shared/components/load-error";
@@ -16,13 +14,11 @@ import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 
 export interface BalanceCardProps {
-  /** The wallet at market prices, in cents; null without balances or a fresh price. */
+  /** The wallet at market prices, in cents; null without balances or a price. */
   wallet: bigint | null;
   loading: boolean;
   failed: boolean;
   onRetry: () => void;
-  prices: readonly TokenPrice[] | undefined;
-  pricesRead: boolean;
   /** Checkout belongs to merchants; a freelancer bills with invoices and links. */
   merchant: boolean;
   canBill: boolean;
@@ -35,8 +31,6 @@ export function BalanceCard({
   loading,
   failed,
   onRetry,
-  prices,
-  pricesRead,
   merchant,
   canBill,
   onReceive,
@@ -85,11 +79,6 @@ export function BalanceCard({
               <BigAmount value={formatUsd(wallet)} className="text-5xl" />
             )}
           </div>
-          {pricesRead ? (
-            <div className="mt-1">
-              <PricesUpdated prices={prices} staleOnly />
-            </div>
-          ) : null}
         </>
       )}
       <fieldset className="m-0 mt-auto border-0 p-0 pt-6">

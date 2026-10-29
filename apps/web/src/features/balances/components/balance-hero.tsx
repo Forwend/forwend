@@ -80,7 +80,6 @@ export function BalanceHero({
             <BalanceFigure
               balances={balances}
               prices={priced.currentData?.prices}
-              pricesRead={Boolean(priced.currentData || priced.isError)}
               failed={failed}
               onRetry={onRetry}
               change={

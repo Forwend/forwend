@@ -14,7 +14,6 @@ const usdc: TokenBalance = {
   held: "0",
 };
 
-const NOW = Date.parse("2026-10-28T12:00:00Z");
 const at = (chainId: number, token: string, usd: string): TokenPrice => ({
   chainId,
   token,
@@ -27,7 +26,7 @@ const at = (chainId: number, token: string, usd: string): TokenPrice => ({
 });
 const ONE = [at(84532, usdc.token, "1")];
 const usdTotal = (balances: Parameters<typeof marketUsd>[0], field: "wallet" | "pending") =>
-  marketUsd(balances, field, ONE, NOW);
+  marketUsd(balances, field, ONE);
 
 describe("marketUsd", () => {
   it("counts one token in USD cents, cut, not rounded up", () => {
@@ -46,8 +45,8 @@ describe("marketUsd", () => {
     };
     const prices = [...ONE, at(1, dai.token, "1")];
     const balances = { tokens: [usdc, dai], estimatedUsdTotal: null };
-    expect(marketUsd(balances, "wallet", prices, NOW)).toBe(450n);
-    expect(marketUsd(balances, "pending", prices, NOW)).toBe(100n);
+    expect(marketUsd(balances, "wallet", prices)).toBe(450n);
+    expect(marketUsd(balances, "pending", prices)).toBe(100n);
   });
 
   it("gives no total when a wallet balance is missing or there is no token", () => {
@@ -57,12 +56,12 @@ describe("marketUsd", () => {
     expect(usdTotal({ tokens: [], estimatedUsdTotal: null }, "wallet")).toBeNull();
   });
 
-  it("values at the market price, and gives no total without a fresh one instead of 1 USD", () => {
+  it("values at the latest market price, even an old one, and gives no total without one instead of 1 USD", () => {
     const tokens = { tokens: [usdc], estimatedUsdTotal: null };
-    expect(marketUsd(tokens, "wallet", [at(84532, usdc.token, "0.9996")], NOW)).toBe(250n);
-    expect(marketUsd(tokens, "wallet", [], NOW)).toBeNull();
-    expect(marketUsd(tokens, "wallet", undefined, NOW)).toBeNull();
+    expect(marketUsd(tokens, "wallet", [at(84532, usdc.token, "0.9996")])).toBe(250n);
+    expect(marketUsd(tokens, "wallet", [])).toBeNull();
+    expect(marketUsd(tokens, "wallet", undefined)).toBeNull();
     const old = { ...at(84532, usdc.token, "1"), fetchedAt: "2026-10-28T09:00:00Z" };
-    expect(marketUsd(tokens, "wallet", [old], NOW)).toBeNull();
+    expect(marketUsd(tokens, "wallet", [old])).toBe(250n);
   });
 });

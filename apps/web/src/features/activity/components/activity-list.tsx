@@ -5,7 +5,6 @@ import {
   EmptyState,
   Money,
   PAYMENT_STATUS,
-  PAYMENT_STATUSES,
   SearchField,
   StatusPill,
 } from "@forwend/ui-web";
@@ -263,15 +262,7 @@ function Status({ item }: { item: ActivityItem }) {
   const status = activityStatus(item);
   return (
     <span className="flex items-center gap-1">
-      {/* Confirmed is the usual end state: a quiet dot, so a status still to wait for stands out. */}
-      {status === PAYMENT_STATUS.confirmed ? (
-        <span className="inline-flex items-center gap-1.5 px-2.5 text-xs whitespace-nowrap text-muted">
-          <span aria-hidden className="size-1.5 shrink-0 rounded-pill bg-success" />
-          {PAYMENT_STATUSES.confirmed.label}
-        </span>
-      ) : (
-        <StatusPill status={status} />
-      )}
+      <StatusPill quiet status={status} />
       {item.txHash ? <ExplorerLink chainId={item.chainId} txHash={item.txHash} /> : null}
     </span>
   );

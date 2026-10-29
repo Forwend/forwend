@@ -19,6 +19,7 @@ import {
   REMINDER_STEPS,
   RETAINER_LEAD_DAYS,
   SETTLEMENT_WAITS,
+  STEP_IDS,
 } from "@/features/invoices/constants/invoices";
 import type {
   HistoryActor,
@@ -97,11 +98,24 @@ export const REQUESTS_COPY = {
 } as const;
 
 export const NEW_INVOICE_COPY = {
+  stepsLabel: "Invoice steps",
+  stepLabels: {
+    [STEP_IDS.customer]: "Customer",
+    [STEP_IDS.items]: "Items",
+    [STEP_IDS.details]: "Details",
+    [STEP_IDS.review]: "Review",
+  },
+  reviewGroup: "Review",
+  edit: "Edit",
+  editStep: (term: string) => `Edit ${term.toLowerCase()}`,
+  back: "Back",
+  continue: "Continue",
+  missingClient: "Enter a customer name or email. Use a payment link for an offer anyone can buy.",
   title: "New invoice",
   intro: "The client pays this exact amount by link.",
   noTokens:
     "No networks are enabled yet, so there is nothing to bill in. You can't create an invoice yet.",
-  tokensFailed: "We could not load the networks and tokens you can bill in.",
+  tokensFailed: "We could not load the assets you can bill in.",
   amountGroup: "Amount",
   payWithLabel: "How the client pays",
   payWith: { any: "Client chooses", fixed: "One token" } satisfies Record<PayWith, string>,
@@ -280,6 +294,7 @@ export const NEW_INVOICE_COPY = {
     network: "Network",
     payerPicks: "The payer picks",
     noItem: "Item",
+    noDue: "No due date",
     on: (network: string) => `on ${network}`,
     any: (symbols: string, networks: number) => `in ${symbols} on any of ${networks} networks`,
     payAny: (amount: string, symbols: string, networks: number) =>
@@ -299,7 +314,7 @@ export const NEW_REQUEST_COPY = {
   title: "Request money",
   intro: "The payer pays this exact amount by link.",
   noTokens: "No networks are enabled yet, so there is nothing to request in.",
-  tokensFailed: "We could not load the networks and tokens you can request in.",
+  tokensFailed: "We could not load the assets you can request in.",
   noteLabel: "Note to the payer (optional)",
   payWithLabel: "How the payer pays",
   payWith: { any: "Payer chooses", fixed: "One token" } satisfies Record<PayWith, string>,
@@ -338,6 +353,9 @@ export const INVOICE_COPY = {
   notFound: "No invoice has this link.",
   failed: "We could not load this invoice.",
   amount: "Amount",
+  total: "Total",
+  billedTo: (name: string) => `Billed to ${name}`,
+  dueOn: (date: string) => `Due ${date}`,
   progress: "Payment progress",
   steps: {
     [INVOICE_STEPS.waiting]: "Waiting",

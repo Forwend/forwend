@@ -16,6 +16,9 @@ import {
   STEP_STATES,
   StatTile,
   StatusPill,
+  Stepper,
+  TIMELINE_STATES,
+  Timeline,
   TokenChip,
   WALLET_STATES,
   type WalletState,
@@ -124,6 +127,51 @@ export function PaymentsShowcase() {
               Thanks for the order. The second box ships on Monday.
             </DetailRow>
           </DetailList>
+        </div>
+      </KitGroup>
+      <KitGroup title="Stepper">
+        <div className="flex w-full flex-col gap-6">
+          {[0, 2, 3].map((current) => (
+            <Stepper
+              key={current}
+              label={`Steps, at ${current + 1} of 4`}
+              current={current}
+              steps={[
+                { id: "customer", label: "Customer" },
+                { id: "items", label: "Items" },
+                { id: "details", label: "Details" },
+                { id: "review", label: "Review" },
+              ]}
+            />
+          ))}
+        </div>
+      </KitGroup>
+      <KitGroup title="Timeline">
+        <div className="w-full max-w-sm">
+          <Timeline
+            label="Payment timeline"
+            entries={[
+              {
+                id: "created",
+                title: "Created",
+                state: TIMELINE_STATES.done,
+                time: "Oct 28, 9:46 PM",
+                chips: [{ label: "From", value: "Payment link" }],
+              },
+              {
+                id: "detected",
+                title: "Payment detected",
+                state: TIMELINE_STATES.done,
+                time: "Oct 28, 9:46 PM",
+                chips: [
+                  { label: "Network", value: "Base Sepolia" },
+                  { label: "Tx", value: "0xf9a5…0b62" },
+                ],
+              },
+              { id: "paid", title: "Paid", state: TIMELINE_STATES.current },
+              { id: "wallet", title: "In your wallet", state: TIMELINE_STATES.upcoming },
+            ]}
+          />
         </div>
       </KitGroup>
       <KitGroup title="Payment timeline">

@@ -3,6 +3,7 @@
 import { Check, ChevronDown, Search } from "lucide-react";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
   useEffect,
   useId,
   useRef,
@@ -16,6 +17,8 @@ export interface ComboboxOption {
   label: string;
   /** A quieter second line, also searched, such as a client's email. */
   detail?: string;
+  /** A small mark before the label, such as a token or network logo; the field shows the chosen one's too. */
+  icon?: ReactNode;
 }
 
 export interface ComboboxFieldProps {
@@ -160,8 +163,9 @@ export function ComboboxField({
             open && "border-field-focus ring-2 ring-field-ring",
           )}
         >
-          <span className={cx("truncate", !chosen && "text-subtle")}>
-            {chosen?.label ?? placeholder}
+          <span className={cx("flex min-w-0 items-center gap-2", !chosen && "text-subtle")}>
+            {chosen?.icon ? <span className="flex shrink-0">{chosen.icon}</span> : null}
+            <span className="truncate">{chosen?.label ?? placeholder}</span>
           </span>
           <ChevronDown
             aria-hidden
@@ -232,7 +236,8 @@ export function ComboboxField({
                     "aria-selected:bg-surface-2 data-[chosen]:font-medium",
                   )}
                 >
-                  <span className="min-w-0">
+                  {option.icon ? <span className="flex shrink-0">{option.icon}</span> : null}
+                  <span className="min-w-0 flex-1">
                     <span className="block truncate">{option.label}</span>
                     {option.detail ? (
                       <span className="block truncate text-xs font-normal text-muted">

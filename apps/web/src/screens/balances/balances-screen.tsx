@@ -7,7 +7,6 @@ import { EstimateHint } from "@/features/balances/components/estimate-hint";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { formatUsd, marketUsd } from "@/features/balances/lib/balances";
 import { useGetPricesQuery } from "@/features/prices/api/prices-api";
-import { PricesUpdated } from "@/features/prices/components/prices-updated";
 import { PRICES_QUERY } from "@/features/prices/constants/prices";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { LIVE_QUERY } from "@/shared/config/refresh";
@@ -18,7 +17,7 @@ export function BalancesScreen() {
   const balances = useGetBalancesQuery(profile.profileId, LIVE_QUERY);
   const priced = useGetPricesQuery(undefined, PRICES_QUERY);
   const total = balances.currentData
-    ? marketUsd(balances.currentData, "wallet", priced.currentData?.prices, Date.now())
+    ? marketUsd(balances.currentData, "wallet", priced.currentData?.prices)
     : null;
   return (
     <div className="flex flex-col gap-6">
@@ -39,9 +38,6 @@ export function BalancesScreen() {
             <EstimateHint />
           </span>
         )}
-        {priced.currentData || priced.isError ? (
-          <PricesUpdated prices={priced.currentData?.prices} staleOnly />
-        ) : null}
       </div>
       <BalancesList
         balances={balances.currentData ?? null}
@@ -49,11 +45,6 @@ export function BalancesScreen() {
         failed={balances.isError}
         onRetry={balances.refetch}
       />
-      {priced.currentData || priced.isError ? (
-        <footer className="flex justify-end">
-          <PricesUpdated prices={priced.currentData?.prices} />
-        </footer>
-      ) : null}
     </div>
   );
 }

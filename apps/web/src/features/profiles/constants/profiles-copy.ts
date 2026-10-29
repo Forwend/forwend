@@ -33,7 +33,9 @@ export const BILLING_DETAILS_COPY = {
   saved: "Billing details saved",
   intro: "How clients see you on new invoices. Sent ones keep theirs.",
   contactGroup: "Contact",
+  contactNote: "The name and email clients see on invoices and receipts.",
   addressGroup: "Address and tax",
+  addressNote: "Printed under your name on every invoice; EU and UK invoices need a tax ID.",
   name: "Name or business name",
   nameHint: "Your own name, or your business's if you invoice as one.",
   businessName: "Business name",
@@ -70,14 +72,15 @@ export const TOKENS_COPY = {
   lastOn: "One stays on, so this profile can still be paid.",
   loadFailed: "We could not load the accepted assets.",
   saveFailed: "We could not save this setting. Try again.",
-  saved: (symbol: string, network: string, on: boolean) =>
-    `${symbol} on ${network} turned ${on ? "on" : "off"}`,
-  savedAll: (symbol: string, on: boolean) =>
-    `${symbol} turned ${on ? "on" : "off"} on every network`,
+  saving: "Saving…",
+  savedAll: "Changes saved.",
 } as const;
 
 /** R-80. */
 export const NOTIFICATIONS_COPY = {
+  emailSection: "Email",
+  emailNote:
+    "Payment emails for this profile. Payers' receipts and invoices to clients aren't affected.",
   title: "Email notifications",
   intro: "An email when an invoice is paid, reaches your wallet or has money held.",
   toggle: "Email me about this profile's invoices",

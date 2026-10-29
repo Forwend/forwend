@@ -14,7 +14,7 @@ test("a profile shows its balance, networks, receive address and activity; a new
   // With no network enabled in this database, the card says so instead.
   const balance = page.getByRole("region", { name: "Total balance" });
   const inWallet = balance.getByRole("button", {
-    name: /^Market value at CoinGecko prices/,
+    name: /^Market value in USD/,
   });
   await expect(inWallet.or(balance.getByText("No networks are enabled yet."))).toBeVisible();
   for (const action of ["Send", "Transfer", "Withdraw"]) {

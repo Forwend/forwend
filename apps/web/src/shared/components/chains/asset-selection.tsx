@@ -3,13 +3,14 @@
 import {
   BrandIcon,
   Button,
+  Checkbox,
   IconButton,
   SearchField,
   SegmentedControl,
   shortAddress,
 } from "@forwend/ui-web";
 import { ChevronDown } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 import { NoMatch } from "@/shared/components/no-match";
 import { CHAINS, TOKEN_ICONS } from "@/shared/constants/chains";
 import { assetGroups, selectionSummary } from "@/shared/lib/asset-selection";
@@ -116,12 +117,15 @@ export function AssetSelection({
             return (
               <li key={group.symbol}>
                 <div className="flex min-h-14 items-center gap-3 px-4 sm:px-5">
-                  <TriState
+                  <Checkbox
+                    hideLabel
                     label={COPY.allNetworks(group.symbol)}
                     checked={on === keys.length}
                     mixed={on > 0 && on < keys.length}
                     disabled={disabled || (on === keys.length && locked.some(Boolean))}
-                    onChange={(value) => onChange(keys, value)}
+                    // A partly chosen asset turns fully on, as a mixed checkbox does everywhere else.
+                    onChange={() => onChange(keys, on !== keys.length)}
+                    className="min-h-0"
                   />
                   <AssetIcon symbol={group.symbol} />
                   <span className="min-w-0 flex-1">
@@ -193,22 +197,29 @@ function NetworkRows({
         const reason = selected.has(key) ? (lockedReason?.(key) ?? null) : null;
         return (
           <li key={key} className="flex flex-col pr-4 pl-11 sm:pr-5 sm:pl-12">
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm">
-              <input
-                type="checkbox"
+            <div className="flex min-h-11 items-center gap-3 text-sm">
+              <Checkbox
+                id={key}
+                hideLabel
+                label={`${option.symbol} on ${COPY.contract(network, option.token)}`}
                 checked={selected.has(key)}
                 disabled={disabled || Boolean(reason)}
                 onChange={(event) => onChange([key], event.target.checked)}
-                aria-label={`${option.symbol} on ${COPY.contract(network, option.token)}`}
-                className="size-[var(--fw-icon-md)] shrink-0 rounded-sm accent-[var(--fw-accent)]"
+                className="min-h-0"
               />
-              <NetworkIcon chainId={option.chainId} />
-              <span className="min-w-0 flex-1 truncate text-ink">{network}</span>
-              {/* The exact contract: the same symbol on another network is another token. */}
-              <span className="shrink-0 font-mono text-xs text-muted" title={option.token}>
-                {shortAddress(option.token)}
-              </span>
-            </label>
+              {/* The row's text opens the same box, as a label would. */}
+              <label
+                htmlFor={key}
+                className="flex min-w-0 flex-1 cursor-pointer items-center gap-3"
+              >
+                <NetworkIcon chainId={option.chainId} />
+                <span className="min-w-0 flex-1 truncate text-ink">{network}</span>
+                {/* The exact contract: the same symbol on another network is another token. */}
+                <span className="shrink-0 font-mono text-xs text-muted" title={option.token}>
+                  {shortAddress(option.token)}
+                </span>
+              </label>
+            </div>
             {reason ? <p className="-mt-1 pb-2 pl-7 text-xs text-muted">{reason}</p> : null}
           </li>
         );
@@ -221,38 +232,6 @@ function NetworkRows({
         </li>
       ) : null}
     </ul>
-  );
-}
-
-function TriState({
-  label,
-  checked,
-  mixed,
-  disabled,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  mixed: boolean;
-  disabled?: boolean;
-  onChange: (on: boolean) => void;
-}) {
-  const ref = useRef<HTMLInputElement>(null);
-  // Mixed is a property, not an attribute: only script can set it.
-  useEffect(() => {
-    if (ref.current) ref.current.indeterminate = mixed;
-  }, [mixed]);
-  return (
-    <input
-      ref={ref}
-      type="checkbox"
-      aria-label={label}
-      checked={checked}
-      disabled={disabled}
-      // A partly chosen asset turns fully on, as a mixed checkbox does everywhere else.
-      onChange={() => onChange(!checked)}
-      className="size-[var(--fw-icon-md)] shrink-0 rounded-sm accent-[var(--fw-accent)]"
-    />
   );
 }
 

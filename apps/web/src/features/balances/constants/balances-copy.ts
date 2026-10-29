@@ -22,7 +22,7 @@ export const BALANCES_COPY = {
   moneyIn: "In",
   moneyOut: "Out",
   pastMonth: "Past 30 days",
-  estimateHint: "Market value at CoinGecko prices. Test tokens use their mainnet coin's price.",
+  estimateHint: "Market value in USD. Test tokens use their mainnet coin's price.",
   noPrices: "Market prices are unavailable right now, so no USD value is shown.",
   moving: "moving to your wallet",
   notFinal: "not final yet",

@@ -59,7 +59,7 @@ export function SettingsFrame({ children }: { children: ReactNode }) {
           ))}
         </div>
       </nav>
-      <div className="min-w-0 max-w-3xl">{children}</div>
+      <div className="min-w-0 max-w-5xl">{children}</div>
     </div>
   );
 }

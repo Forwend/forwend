@@ -22,7 +22,6 @@ export function marketUsd(
   balances: Balances,
   field: "wallet" | "pending" | "held" | "settling" | "notFinal",
   prices: readonly TokenPrice[] | undefined,
-  now: number,
 ): bigint | null {
   if (!prices || balances.tokens.length === 0) return null;
   const amounts = [];
@@ -37,5 +36,5 @@ export function marketUsd(
       decimals: t.decimals,
     });
   }
-  return totalUsdCents(prices, amounts, now);
+  return totalUsdCents(prices, amounts);
 }

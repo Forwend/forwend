@@ -72,6 +72,35 @@ async function fixUsdcOnBase(page: Page) {
   await page.getByRole("option", { name: "USDC · Base Sepolia" }).click();
 }
 
+// A bug a user hit: Continue on the step before Review also submitted the form, as React reused its button.
+test("the new invoice steps reach Review without creating the invoice", async ({ browser }) => {
+  const context = await browser.newContext({ storageState: session });
+  const page = await context.newPage();
+  const posts: string[] = [];
+  await page.route("/api/v1/profiles/*/invoices", (route) => {
+    if (route.request().method() !== "POST") return route.fallback();
+    posts.push(route.request().url());
+    return route.abort();
+  });
+  await page.goto("/app");
+  await chooseMerchant(page, () =>
+    page
+      .locator("aside")
+      .getByRole("button", { name: /^Switch profile/ })
+      .click(),
+  );
+  await page.goto("/app/invoices/new");
+  await page.getByRole("textbox", { name: /^(Legal|Full) name$/ }).fill("Step test client");
+  await page.getByRole("button", { name: /^Continue/ }).click();
+  await page.getByLabel(/^Amount/).fill("1");
+  await page.getByRole("button", { name: /^Continue/ }).click();
+  await page.getByRole("button", { name: /^Continue/ }).click();
+  await expect(page.getByRole("button", { name: "Create invoice" })).toBeVisible();
+  await page.waitForTimeout(500);
+  expect(posts).toEqual([]);
+  await context.close();
+});
+
 test("a merchant creates an invoice, finds it in the list and opens its detail with the pay link", async ({
   browser,
 }) => {

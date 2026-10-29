@@ -1,15 +1,8 @@
 import { describe, expect, it } from "vitest";
-import {
-  findPrice,
-  freshUsd,
-  pricesStatus,
-  totalUsdCents,
-  usdCents,
-} from "@/features/prices/lib/prices";
+import { findPrice, latestUsd, totalUsdCents, usdCents } from "@/features/prices/lib/prices";
 import { pricesSchema } from "@/features/prices/schemas/prices";
 import type { TokenPrice } from "@/features/prices/types/prices";
 
-const NOW = Date.parse("2026-10-28T10:30:00Z");
 const USDC = "0x036cbd53842c5426634e7929541ec2318f3dcf7e";
 const OUSD = "0x20c0000000000000000000006a37da5c996874be";
 const EURC = "0x1111111111111111111111111111111111111111";
@@ -57,29 +50,19 @@ describe("prices (R-178)", () => {
     const half = { chainId: 84532, token: USDC, baseUnits: 5_000n, decimals: 6 };
     expect(usdCents(half.baseUnits, half.decimals, "1.000001")).toBe(0n);
     const prices = [price(USDC, 84532, "1.000001"), price(OUSD, 42431, "1.000001")];
-    expect(totalUsdCents(prices, [half, { ...half, chainId: 42431, token: OUSD }], NOW)).toBe(1n);
-    expect(totalUsdCents(PRICES, [], NOW)).toBe(0n);
+    expect(totalUsdCents(prices, [half, { ...half, chainId: 42431, token: OUSD }])).toBe(1n);
+    expect(totalUsdCents(PRICES, [])).toBe(0n);
   });
 
-  it("gives no value without a fresh price, never 1 USD", () => {
+  it("gives no value without a price, never 1 USD, and values at an old price", () => {
     const usdc = { chainId: 84532, token: USDC, baseUnits: 1_000_000n, decimals: 6 };
     const eurc = { chainId: 84532, token: EURC, baseUnits: 1_000_000n, decimals: 6 };
-    expect(totalUsdCents(PRICES, [usdc], NOW)).toBe(99n);
-    expect(totalUsdCents(PRICES, [usdc, eurc], NOW)).toBeNull();
-    expect(totalUsdCents(PRICES, [usdc, { ...eurc, baseUnits: 0n }], NOW)).toBe(99n);
-    expect(totalUsdCents([], [usdc], NOW)).toBeNull();
-    expect(totalUsdCents([{ ...USDC_PRICE, stale: true }], [usdc], NOW)).toBeNull();
-    // The cached answer ages: an hour after the read, or a day after CoinGecko's update, it is stale.
-    expect(freshUsd(USDC_PRICE, Date.parse("2026-10-28T11:15:00Z"))).toBe("0.999542");
-    expect(freshUsd(USDC_PRICE, Date.parse("2026-10-28T11:15:01Z"))).toBeNull();
-    const oldSource = { ...USDC_PRICE, sourceUpdatedAt: "2026-10-27T10:29:59Z" };
-    expect(freshUsd(oldSource, NOW)).toBeNull();
-  });
-
-  it("reports the latest read and whether a coin's price is stale", () => {
-    expect(pricesStatus(PRICES, NOW)).toEqual({ updatedAt: "2026-10-28T10:15:00Z", stale: false });
-    expect(pricesStatus([...PRICES, price(USDC, 421614, null)], NOW).stale).toBe(true);
-    expect(pricesStatus([], NOW)).toEqual({ updatedAt: null, stale: false });
+    expect(totalUsdCents(PRICES, [usdc])).toBe(99n);
+    expect(totalUsdCents(PRICES, [usdc, eurc])).toBeNull();
+    expect(totalUsdCents(PRICES, [usdc, { ...eurc, baseUnits: 0n }])).toBe(99n);
+    expect(totalUsdCents([], [usdc])).toBeNull();
+    expect(totalUsdCents([{ ...USDC_PRICE, stale: true }], [usdc])).toBe(99n);
+    expect(latestUsd(undefined)).toBeNull();
   });
 
   it("refuses a price sent as a float", () => {

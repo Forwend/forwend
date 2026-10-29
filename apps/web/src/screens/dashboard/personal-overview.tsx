@@ -5,7 +5,6 @@ import { BalanceHero } from "@/features/balances/components/balance-hero";
 import { BalanceHistoryCard } from "@/features/balances/components/balance-history-card";
 import { MoneyFlowCard } from "@/features/balances/components/money-flow-card";
 import { useGetPricesQuery } from "@/features/prices/api/prices-api";
-import { PricesUpdated } from "@/features/prices/components/prices-updated";
 import { PRICES_QUERY } from "@/features/prices/constants/prices";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { profileLabel } from "@/features/profiles/lib/profile";
@@ -51,11 +50,6 @@ export function PersonalOverview() {
         title={TRANSACTIONS_COPY.recentTransactions}
         preview={RECENT}
       />
-      {priced.currentData || priced.isError ? (
-        <footer className="flex justify-end">
-          <PricesUpdated prices={priced.currentData?.prices} />
-        </footer>
-      ) : null}
     </div>
   );
 }

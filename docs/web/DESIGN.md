@@ -135,7 +135,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Money in that pays nothing reads Received with the sender, and opens it on Transactions.
   - A transfer still confirming says Confirming before its network and time.
   - View all opens Payments for a business and Transactions for a personal profile.
-- The account menu holds the email, the app's one theme control (a Dark mode switch item), Settings and Sign out.
+- The account menu holds the email, the app's one theme control (a Dark mode switch item) and Sign out.
   - Sign out of all devices (R-137) lives in Settings, Account and security, never in the menu.
 - The sidebar's foot, above the account row: the setup guide while steps remain, then a Settings row.
   - The setup guide is a small card: "Get started", "n of m done", one segment per step, the next step with its
@@ -166,11 +166,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   Figure strips and tables use hairline rules between cells and rows, not separate cards. On phones a panel is a
   full-width section between top and bottom hairlines (no side border or corners, no box inside a box), its title
   unruled above the rows, as in banking apps; panels become cards from small screens up (`fw-panel`, `fw-panel-head`).
-- Holdings across tokens (the total balance, Moving to wallet, Not final, Held for payers) are USD at CoinGecko market
-  prices (D-115). An info icon after "USD" says so in a tooltip.
-  - "Prices by CoinGecko · updated 10:32", linked to coingecko.com, sits once at the page's foot.
-  - Beside a total only a warning shows, and only when the prices behind it are stale or unavailable.
-  - Without a fresh price for a held token, the total is "—" with a line saying prices are unavailable: never 1 USD.
+- Holdings across tokens (the total balance, Moving to wallet, Not final, Held for payers) are USD at market prices
+  (D-115). An info icon after "USD" says so in a tooltip. Pages name no price provider.
+  - A value uses the latest known price, even an old one: stablecoins move little.
+  - Without any price for a held token, the total is "—": never 1 USD.
   - Payment flows and history (Received, Sent, money in and out, the charts) stay at face value, one USD per
     stablecoin: they are payment amounts, and there is no price history.
   - On the personal overview the icon hangs after USD and takes no width, so the total sits on the center line on
@@ -200,6 +199,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Phones stack the cards in that order. Filters, search and CSV export live on Transactions.
   - A range with nothing received draws a flat line at zero, as a real zero should.
   - A failed or missing history keeps the chart's frame and dates, faded, under a centered error or note.
+- Pending payments opens with the USD total not in the wallet yet, a two-part bar and its legend:
+  Moving to wallet (paid, ink) and Not final (confirming or partly paid, which may still be the payer's).
+- My assets' rows each carry their step's dot from the share bar and their share in percent ("<1%" for a sliver).
 - Unpaid (R-95, D-114) is a card on the overview's last row. It lists only what customers still owe.
   - The title, a one-line description and, when something is left, the USD total at its right.
   - Rows: the client (or title, or number), then the number and "12 days late" (warning color) or "Partially paid".
@@ -288,7 +290,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Days with more transactions than one file holds (R-118) say to choose a shorter period.
 - With a records currency, each amount has a quiet second line: the value as money in that currency.
   - The line is a small dotted-underline button; its tooltip, opened by hover, focus or tap, gives the ECB rate's day.
-- Record pages (payment, invoice, client, store, job, link) open with `DetailHeader`:
+- Record pages (payment, invoice, client, store, job, link) open with `DetailHeader`; payments and invoices add an icon
+  tile before the title and their amount as the figure beside the actions:
   - A 44px back link on phones, the title with its badges, one quiet meta line and the actions at the row's end.
   - Then the figure with its statuses, then one next-step sentence in a grey box.
   - The body is the 2:1 grid with a Details panel on the side; phones stack it.
@@ -314,7 +317,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The table shows the store, its project ID, when its checkout closes and its allowed origins.
   - New store and Edit store are form pages laid out like New client, with Store and Checkout panels.
   - Edit store shows the project ID with a Copy button. There is no delete yet.
-  - A Networks and tokens panel (R-136) uses the accepted-assets selector over the tokens the profile has on; one must
+  - An Accepted assets panel (R-136) uses the accepted-assets selector over the tokens the profile has on; one must
     stay chosen.
   - A Brand panel holds the logo and the accent color (R-135).
   - The logo shows in a bordered box with Upload or Replace logo, and Remove logo; a chosen file uploads at once.
@@ -328,18 +331,23 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - One toolbar row: the search (order, invoice, customer or amount), then Status, Source and, with two or more
     stores, Store as select menus. Every filter stays in the URL.
   - Columns: Payment (the order reference, else the invoice number, else the title), Customer, Source, Store, Amount,
-    Received, Status, Wallet, Created. Needs attention shows the issue in place of Wallet.
+    Received, Status, Wallet, Created. Needs attention shows the issue in place of Wallet and Created: a warning
+    dot, the problem in ink with its full text as the title, and "+n" for more.
     - Source and Store show only on the widest tables; the phone row and the payment page still name them.
     - Testnet is a neutral badge on each row, so it never outshouts a status that needs action.
   - The payment status and the wallet transfer are separate (D-114): a status badge, then quiet wallet text
     (Pending, In wallet, Delayed, Needs review, or a dash before anything is due).
   - Unpaid attempts stay visible; requested amounts never imply received or settled money.
-  - Payment details use `DetailHeader`. They lead with the order, how it was requested, the store and the time.
-  - Then one money strip: Requested, Received (with "Confirming, not final" under money not yet final), and Extra,
-    held for the customer (warning color) or Still due. The status and wallet transfer sit at the strip's end.
+  - Payment details use `DetailHeader` with the source's icon tile, the status and wallet badges by the title, and
+    the requested amount as the header's figure beside Open checkout or Open receipt and Export (both 40px).
   - Then one sentence of what happened and what to do next, such as "The customer sent more than requested."
-  - The body: Transfers (each transfer with its amount, time, state and explorer link, then the transfer to the
-    wallet), the items, and one closed Technical details panel holding the ledger entries and the contract checks.
+  - The body is two columns from extra-large screens: the main column and a 22rem side column.
+    - Main: Needs attention (only with a real problem), Amount (Received with "Confirming, not final" or "Final",
+      Extra held for the customer in the warning color or Still due, and Paid with), Transfers (a table of When,
+      Network, State, Amount and the explorer link, then the transfer to the wallet), and the items.
+    - Side: Details (reference, invoice, link, store, customer, checkout close, metadata, PDFs) and a Timeline:
+      Created, Payment detected, Paid, In your wallet (or Checkout closed), done or current or next by the API's facts.
+  - No ledger table or contract panel: a webhook that fails shows as a problem whose action opens Developers.
   - A list's Received amount over the request is in the warning color, with its reason as the cell's title.
   - Beside the money (a third of the width from extra-large screens) a Details panel links the order reference, the
     invoice, the payment link and the store, then the customer, the token, the checkout close, metadata and the PDFs.
@@ -352,7 +360,6 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Finality estimates use observed receipt blocks and chain time; missing evidence never produces a countdown.
   - Normal confirmation waits never repeat as payment problems. Actual failures keep their required action.
   - A missing total shows "Confirming"; its info tooltip keeps remaining blocks and estimated time when available.
-  - Technical details loads only when opened, with a manual refresh.
   - Normal detail polling requests only used options and options with money or actionable errors.
   - Test payments have a small Testnet label in lists, details and the public checkout header.
   - Layout references: [Stripe payment records](https://support.stripe.com/questions/view-payment-records-in-the-dashboard?locale=en-GB), [Adyen payment management](https://docs.adyen.com/account/manage-payments/), and [BitPay payments](https://support.bitpay.com/hc/en-us/articles/205769245-View-Payments-in-the-merchant-dashboard).
@@ -363,9 +370,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Unused pending history creates no merchant warning. Conflicting evidence shows a short explanation and the required action.
   - Shared wallet transactions and invoice activity explicitly name their profile-wide scope.
   - Reconciliation follows recorded UTC periods; opening, changes and closing remain separate per store and token.
-    - One table: a grey row per token and store, with a Verified, Still checking or Needs review badge.
-    - Under it three accounts: In payment addresses, On its way to your wallet, Held for payers.
-    - Phones show the Closing column only. The chain proof (blocks, counts) waits in Technical details.
+    - One row per token and store: Asset, Store, Status (a dot and Verified, Still checking or Needs review), the
+      closing balance of each account, and Moved to wallet in the period. It shows no read time.
+    - Search is always there; a segmented control filters by status with counts. Rows show 20 at a time.
+    - A row's button opens its breakdown: each account's opening, changes and closing, then the checks.
     - The period is one `DateRangePicker`, as on both exports (Payments, Transactions).
     - Built for thousands of tokens: a search past 10, tokens with nothing in them folded away, 20 groups at a time.
     - The count line (verified, still checking, needs review) covers only the tokens the table lists.
@@ -384,15 +392,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Amount has two choice cards: A fixed amount, or The payer enters it with an optional min and max.
   - A new link opens on its page after saving, where the address shows with a Copy button.
   - Editing keeps the store selector disabled; failed store loading blocks the form with a retry action.
-- Settings (`/app/settings`) opens from the account menu. It lists the settings that exist today as rows with an icon,
-  a name and one line: Billing details (freelancer, merchant), Networks and tokens, Email notifications and Team
-  (merchant). Each opens its own page. New settings join as their features ship; nothing waits there as Soon.
-  - Settings, Billing details, Email notifications, Networks and tokens and Team use one readable column (max-w-3xl).
-  - Developers keeps the full content width: its tables need the room, as on Stripe's developer pages.
-- Networks and tokens (R-136) opens from the account menu, after Email notifications, for every profile.
-  - It is laid out like Email notifications: one panel with a switch per token, named "USDC on Base Sepolia".
-  - A switch saves at once and says so in a toast.
-  - The last token on can't be turned off; a quiet line under that switch says one stays on.
+- Settings opens from its row at the sidebar's foot (see App shell); its sections share one frame.
+  - Developers keeps the full content width: its tables need the room.
+- Accepted assets (R-136) uses the accepted-assets selector: one row per asset, its networks under it.
+  - A change saves at once; one quiet status line says Saving or Changes saved, never a toast per box.
+  - The last token on can't be turned off; a quiet line under it says one stays on.
   - New invoice offers only the tokens on for the profile and the picked store.
 - Developers (R-145) is in the sidebar's Build group for a freelancer's or merchant's owner and Admins. It is laid out like Team.
   - An intro line says keys belong on a server, with a Read the API docs link to `/docs`.
@@ -413,8 +417,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - While open, the sheet asks for the deliveries again every 15 seconds, so a test event turns Delivered.
   - A delivery row: the event and its invoice number, when, a status badge, Resend, and its attempts in a disclosure.
   - Results and errors in the sheet show in its status line, not as toasts.
-- Team (R-139) opens from the account menu, after Networks and tokens, for a merchant profile's owner and members.
-  - It is laid out like Networks and tokens: an intro line, then panels.
+- Team (R-139) is a Settings section for a merchant profile's owner and members.
+  - It is laid out like the other sections: a title, an intro line, then panels.
   - An Admin sees Members, then Open invites, each a panel with a compact table (Member or Email, Stores, Role).
   - Invite sits beside the Members heading and opens a dialog: Email, a Role select with a hint, and store checkboxes.
   - The checkboxes show for Developer and Finance only.
@@ -499,6 +503,14 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Request money pairs Your name with the return link.
   - A note, an address, an invoice's return link, a choice row or a list of rows takes the whole row.
   - A lone date keeps one column, in line with the dates above it. Phones keep one column.
+- New invoice and Request money are steps: Customer, Items, Details, Review (a request has no Customer step).
+  - A `Stepper` heads the form: a check on finished steps, which go back to them, the current one ringed.
+  - Every step stays mounted, so Back keeps what was typed and the last submit reads every field.
+  - Continue checks only its step (a customer name or email; the amount or items). Create invoice checks
+    everything and returns to the step that holds the first error.
+  - Review lists the customer, amount, network, due date and payment window, each with Edit.
+  - The footer holds Back (or Cancel), then Continue or Create invoice at its end.
+- New client is three steps the same way: Contact, Address and tax, On invoices. Editing a client is one page.
 - New invoice and Request money: each field group is a panel with its title ruled off.
   - New invoice opens with Customer, because who is billed comes first; then Amount, Details and Dates.
   - Customer asks "Who are you billing?": a business (Legal name, tax ID) or a person (Full name, no tax ID).

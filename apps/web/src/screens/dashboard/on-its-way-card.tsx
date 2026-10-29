@@ -19,16 +19,24 @@ import { API_PAYMENT_STATES, API_WALLET_STATES } from "@/shared/constants/paymen
 
 const SHOWN = 3;
 
+const LEGEND = [
+  { key: "moving", dot: "bg-ink", label: COPY.legendMoving },
+  { key: "notFinal", dot: "bg-line-strong", label: COPY.legendNotFinal },
+] as const;
+
 export interface OnItsWayCardProps {
   profileId: string;
   /** Paid money moving to the wallet, in cents at market prices. */
   moving: bigint | null;
+  /** Confirming or partly paid money, in cents at market prices: may still turn out to be the payer's. */
+  notFinal: bigint | null;
   /** Money held for payers, in cents at market prices: theirs, shown apart. */
   held: bigint | null;
 }
 
 /** What is coming but not yet in the wallet: payments still confirming, then paid money on its way. */
-export function OnItsWayCard({ profileId, moving, held }: OnItsWayCardProps) {
+export function OnItsWayCard({ profileId, moving, notFinal, held }: OnItsWayCardProps) {
+  const pendingTotal = (moving ?? 0n) + (notFinal ?? 0n);
   const confirming = useGetPaymentsInfiniteQuery(
     { profileId, filters: { state: API_PAYMENT_STATES.confirming } },
     LIVE_QUERY,
@@ -58,6 +66,36 @@ export function OnItsWayCard({ profileId, moving, held }: OnItsWayCardProps) {
       }
       className="flex flex-col"
     >
+      {pendingTotal > 0n ? (
+        // How much is not in the wallet yet, split by how sure it is: moving is paid; not final may still be the payer's.
+        <div className="mb-4">
+          <p className="flex items-baseline gap-1.5">
+            <span className="text-2xl font-medium tracking-tight text-ink tabular-nums">
+              {formatUsd(pendingTotal)}
+            </span>
+            <span className="text-sm text-muted">{MONEY_COPY.usd}</span>
+          </p>
+          <div aria-hidden className="mt-2 flex h-2 gap-0.5 overflow-hidden rounded-sm">
+            {[moving ?? 0n, notFinal ?? 0n].map((cents, i) =>
+              cents > 0n ? (
+                <span
+                  key={LEGEND[i]?.key}
+                  className={LEGEND[i]?.dot}
+                  style={{ flexGrow: Number((cents * 1000n) / pendingTotal) }}
+                />
+              ) : null,
+            )}
+          </div>
+          <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+            {[moving ?? 0n, notFinal ?? 0n].map((cents, i) => (
+              <li key={LEGEND[i]?.key} className="flex items-center gap-1.5">
+                <span aria-hidden className={`size-2 rounded-pill ${LEGEND[i]?.dot}`} />
+                {LEGEND[i]?.label} <span className="text-ink tabular-nums">{formatUsd(cents)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {failed ? (
         <LoadError
           message={COPY.waysFailed}

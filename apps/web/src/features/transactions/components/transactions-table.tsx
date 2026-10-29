@@ -6,7 +6,6 @@ import {
   EmptyState,
   Money,
   PAYMENT_STATUS,
-  PAYMENT_STATUSES,
   SearchField,
   SegmentedControl,
   StatusPill,
@@ -428,15 +427,7 @@ function Counterparty({ t }: { t: Transaction }) {
 }
 
 function Status({ t }: { t: Transaction }) {
-  const status = transactionStatus(t);
-  return status === PAYMENT_STATUS.confirmed ? (
-    <span className="inline-flex items-center gap-2 whitespace-nowrap text-muted">
-      <span aria-hidden className="size-1.5 shrink-0 rounded-pill bg-success" />
-      {PAYMENT_STATUSES[status].label}
-    </span>
-  ) : (
-    <StatusPill status={status} />
-  );
+  return <StatusPill quiet status={transactionStatus(t)} />;
 }
 
 function Amount({ t }: { t: Transaction }) {

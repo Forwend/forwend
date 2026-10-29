@@ -43,7 +43,7 @@ export const API_KEYS_COPY = {
     [PERMISSIONS.invoicesRead]: "Read invoices",
     [PERMISSIONS.invoicesWrite]: "Create and change invoices",
     [PERMISSIONS.storesRead]: "Read stores",
-    [PERMISSIONS.tokensRead]: "Read networks and tokens",
+    [PERMISSIONS.tokensRead]: "Read accepted assets",
   } satisfies Record<KeyScope, string>,
   make: "Make key",
   cancel: "Cancel",

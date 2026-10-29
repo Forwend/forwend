@@ -100,8 +100,7 @@ export const PAY_COPY = {
   // Address poisoning: a look-alike address planted in the payer's wallet history after the first payment (R-77).
   copyFromHere:
     "Copy the address from this page for the rest, not from your wallet's history: scammers plant look-alike addresses there.",
-  overpaid: (extra: string, payee: string) =>
-    `You sent ${extra} more than asked. The extra is held for you; ask ${payee} to get it back.`,
+  overpaid: (extra: string) => `Overpaid by ${extra}. The extra is held for you.`,
   late: (late: string, payee: string) =>
     `${late} arrived after the checkout closed. It is held for you; ask ${payee} to get it back.`,
   // R-129.

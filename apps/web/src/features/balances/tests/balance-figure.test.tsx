@@ -38,13 +38,7 @@ function show(
   { failed = false, prices = PRICES as readonly TokenPrice[] | undefined } = {},
 ) {
   return render(
-    <BalanceFigure
-      balances={balances}
-      prices={prices}
-      pricesRead
-      failed={failed}
-      onRetry={() => {}}
-    />,
+    <BalanceFigure balances={balances} prices={prices} failed={failed} onRetry={() => {}} />,
     { wrapper: TooltipProvider },
   );
 }
@@ -93,7 +87,6 @@ describe("BalanceFigure", () => {
       <BalanceFigure
         balances={{ tokens: [usdc, { ...usdt, wallet: null }], estimatedUsdTotal: null }}
         prices={prices}
-        pricesRead
         failed={false}
         onRetry={() => {}}
       />,

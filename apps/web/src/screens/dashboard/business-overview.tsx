@@ -17,7 +17,6 @@ import type { HistoryRange } from "@/features/balances/types/balance-history";
 import { OwedToYou } from "@/features/invoices/components/owed-to-you";
 import { LatestPayments } from "@/features/payments/components/latest-payments";
 import { useGetPricesQuery } from "@/features/prices/api/prices-api";
-import { PricesUpdated } from "@/features/prices/components/prices-updated";
 import { PRICES_QUERY } from "@/features/prices/constants/prices";
 import { PERMISSIONS, PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
@@ -33,6 +32,9 @@ import { BUSINESS_COPY as COPY } from "@/screens/dashboard/constants/business-co
 import { OnItsWayCard } from "@/screens/dashboard/on-its-way-card";
 import { ReceivedCard } from "@/screens/dashboard/received-card";
 import { LIVE_QUERY } from "@/shared/config/refresh";
+
+// Every row splits at the same line, so the cards' edges line up down the page.
+const ROW = "grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]";
 
 // The C comp's order: what you have and what is coming, then how money came in and what it is in, then who still owes
 // you and the latest payments. Every card leads somewhere to act.
@@ -50,8 +52,8 @@ export function BusinessOverview() {
   );
   const prices = priced.currentData?.prices;
   const now = Date.now();
-  const market = (field: "wallet" | "settling" | "held") =>
-    balances.currentData ? marketUsd(balances.currentData, field, prices, now) : null;
+  const market = (field: "wallet" | "settling" | "notFinal" | "held") =>
+    balances.currentData ? marketUsd(balances.currentData, field, prices) : null;
 
   // The chart keeps the last range's line, dimmed, while the next loads; the figures wait for their own range.
   const received = history.data ? historySeries(history.data, HISTORY_FIELDS.received) : null;
@@ -88,14 +90,12 @@ export function BusinessOverview() {
         {COPY.overview}
       </h1>
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+      <div className={ROW}>
         <BalanceCard
           wallet={market("wallet")}
           loading={!balances.currentData && !balances.isError}
           failed={balances.isError}
           onRetry={() => void balances.refetch()}
-          prices={prices}
-          pricesRead={Boolean(priced.currentData || priced.isError)}
           merchant={profile.kind === PROFILE_KINDS.merchant}
           canBill={can(profile, PERMISSIONS.invoicesWrite)}
           onReceive={openReceive}
@@ -103,11 +103,12 @@ export function BusinessOverview() {
         <OnItsWayCard
           profileId={profile.profileId}
           moving={market("settling")}
+          notFinal={market("notFinal")}
           held={market("held")}
         />
       </div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+      <div className={ROW}>
         <ReceivedCard
           range={range}
           days={days}
@@ -130,16 +131,10 @@ export function BusinessOverview() {
         />
       </div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-2 xl:items-start">
-        <OwedToYou profileId={profile.profileId} />
+      <div className={ROW}>
         <LatestPayments profileId={profile.profileId} />
+        <OwedToYou profileId={profile.profileId} />
       </div>
-      {/* CoinGecko's attribution, once per page that shows its prices (D-115). */}
-      {priced.currentData || priced.isError ? (
-        <footer className="flex justify-end">
-          <PricesUpdated prices={prices} />
-        </footer>
-      ) : null}
     </div>
   );
 }

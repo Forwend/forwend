@@ -2,6 +2,7 @@
 
 import * as RadixMenu from "@radix-ui/react-dropdown-menu";
 import { Check } from "lucide-react";
+import { useRef } from "react";
 import { cx } from "../../lib/cx";
 
 export type MenuContentProps = RadixMenu.DropdownMenuContentProps;
@@ -30,13 +31,37 @@ export function MenuContent({
   className,
   align = "start",
   side = "bottom",
+  onCloseAutoFocus,
+  onPointerDown,
+  onPointerDownOutside,
+  onKeyDown,
   ...props
 }: MenuContentProps) {
+  // Closed by a pointer, focus stays where the pointer left it: returning it to the trigger would draw the
+  // keyboard focus ring on a control the person only clicked. A keyboard close still returns focus.
+  const byPointer = useRef(false);
   return (
     <RadixMenu.Portal>
       <RadixMenu.Content
         align={align}
         side={side}
+        onPointerDown={(event) => {
+          byPointer.current = true;
+          onPointerDown?.(event);
+        }}
+        onPointerDownOutside={(event) => {
+          byPointer.current = true;
+          onPointerDownOutside?.(event);
+        }}
+        onKeyDown={(event) => {
+          byPointer.current = false;
+          onKeyDown?.(event);
+        }}
+        onCloseAutoFocus={(event) => {
+          onCloseAutoFocus?.(event);
+          if (byPointer.current && !event.defaultPrevented) event.preventDefault();
+          byPointer.current = false;
+        }}
         sideOffset={8}
         collisionPadding={12}
         className={cx(
