@@ -120,7 +120,33 @@ func (p *pool) do(ctx context.Context, header http.Header, body []byte) (*http.R
 	}
 	ctx, cancel := context.WithTimeout(ctx, RequestTimeout)
 	defer cancel()
-	tried := map[*endpoint]bool{}
+	res, sent, err := p.try(ctx, r, header, body, map[*endpoint]bool{})
+	if err == nil && sent != nil && r.broadcast {
+		go p.echo(header.Clone(), body, r, sent)
+	}
+	return res, err
+}
+
+// echo sends a signed transaction to one more endpoint, on another host: a node that takes it and never passes it on
+// must not hold a settlement back. The bytes are the same, so a second copy changes nothing on chain.
+func (p *pool) echo(header http.Header, body []byte, r request, sent *endpoint) {
+	// The request limit, not one attempt's: a hung endpoint then rests on its attempt timeout and the next one gets it.
+	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
+	defer cancel()
+	sameHost := map[*endpoint]bool{}
+	for _, e := range p.endpoints {
+		if e.host == sent.host {
+			sameHost[e] = true
+		}
+	}
+	if res, _, err := p.try(ctx, r, header, body, sameHost); err == nil {
+		res.Body.Close()
+	}
+}
+
+// try sends body to the best endpoint not in tried, then the next, until one answers; it returns that endpoint, or
+// nil with the refusal every endpoint gave.
+func (p *pool) try(ctx context.Context, r request, header http.Header, body []byte, tried map[*endpoint]bool) (*http.Response, *endpoint, error) {
 	var refused *http.Response
 	for len(tried) < len(p.endpoints) {
 		e, at, probe, err := p.pick(ctx, r, tried)
@@ -129,20 +155,20 @@ func (p *pool) do(ctx context.Context, header http.Header, body []byte) (*http.R
 			if errors.As(err, &pending) {
 				select {
 				case <-ctx.Done():
-					return nil, ctx.Err()
+					return nil, nil, ctx.Err()
 				case <-pending.done:
 					continue
 				}
 			}
 			if refused != nil && errors.Is(err, ErrUnavailable) {
-				return refused, nil
+				return refused, nil, nil
 			}
-			return nil, err
+			return nil, nil, err
 		}
 		tried[e] = true
 		if err = sleepUntil(ctx, at); err != nil {
 			p.release(e, probe)
-			return nil, err
+			return nil, nil, err
 		}
 		if p.resting(e) {
 			p.release(e, probe)
@@ -152,11 +178,11 @@ func (p *pool) do(ctx context.Context, header http.Header, body []byte) (*http.R
 		var budgetErr budgetError
 		if errors.As(err, &budgetErr) {
 			p.release(e, probe)
-			return nil, err
+			return nil, nil, err
 		}
 		if ctx.Err() != nil {
 			p.release(e, probe)
-			return nil, ctx.Err()
+			return nil, nil, ctx.Err()
 		}
 		var size refusal
 		if errors.As(err, &size) {
@@ -172,19 +198,19 @@ func (p *pool) do(ctx context.Context, header http.Header, body []byte) (*http.R
 		}
 		p.done(e, err, probe)
 		if ctx.Err() != nil {
-			return nil, ctx.Err()
+			return nil, nil, ctx.Err()
 		}
 		if err == nil {
 			if refused != nil {
 				refused.Body.Close()
 			}
-			return res, nil
+			return res, e, nil
 		}
 	}
 	if refused != nil {
-		return refused, nil
+		return refused, nil, nil
 	}
-	return nil, fmt.Errorf("chain %d: %w", p.chainID, ErrUnavailable)
+	return nil, nil, fmt.Errorf("chain %d: %w", p.chainID, ErrUnavailable)
 }
 
 // refusal is an answer refusing the request's size (a log range, its result or a batch), or saying the endpoint lacks

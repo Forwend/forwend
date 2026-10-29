@@ -114,6 +114,10 @@ VALUES
 - Optional block-receipt support retains the watcher's existing fallback; broader per-method routing is deferred.
 - Only allowlisted stateless reads and `eth_sendRawTransaction` pass through the transport.
 - Retries replay the same signed bytes; the transport never signs, chooses nonces, increases fees or changes recipients.
+- After an endpoint answers `eth_sendRawTransaction`, the same bytes also go to one endpoint on another host (R-187).
+  - A node that takes a transaction and never passes it on can't hold a settlement back.
+  - The second send runs in the background, never delaying the caller, and its answer is ignored.
+  - It has the 30-second request limit, so a hung endpoint rests on its attempt timeout and the next one gets it.
 - A timeout may follow successful submission; settlement reconciles its saved hash and nonce before deciding what to send next.
 - Never treat a broadcast response or an “already known” message as finalized settlement.
 - Finalized balance snapshots pin the RPC-supplied block hash and require canonical state through [EIP-1898](https://eips.ethereum.org/EIPS/eip-1898).

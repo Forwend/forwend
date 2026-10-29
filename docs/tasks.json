@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 360,
+  "nextId": 361,
   "tasks": [
     {
       "id": "F332",
@@ -1590,12 +1590,86 @@
         "branch": "test/f359-the-balance-reader-s-hung-chain-test-che",
         "base": "main"
       }
+    },
+    {
+      "id": "F360",
+      "type": "fix",
+      "behavior": "A signed transaction reaches the chain even when one node drops it",
+      "acceptance": [
+        "After an endpoint answers eth_sendRawTransaction, the pool sends the same signed bytes to one endpoint on another host; reads are sent once; the second send never delays or fails the caller"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend-affected",
+        "docs-check"
+      ],
+      "refs": [
+        "R-187"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-29 review fail by independent-reviewer: Code is correct and safe; the test does not guard two of the three acceptance claims. (1) try() matches the old loop on refusals, probes (every exit calls release or done), budget and context errors, and body closing. (2) echo is safe: same bytes and hash, so one nonce mines once; the signer saves settle bytes before sending and checks every replaced hash, and the deploy and gap filler are idempotent or harmless; header is cloned, body is read-only, p.endpoints is immutable; single host or single endpoint is a no-op. (3) go test -race on chain and settlement passes; the new test passed 100 of 100 plus 120 more under 12-way CPU load, no timing flake. (4) Mutation checks I ran with go test -overlay: making the broadcast gate false fails the test (OK). Removing the same-host skip passes it (a twin URL of the same host then gets the copy, a=2 b=0). Making the echo synchronous passes it too (a hung second host delays the caller 5 s). So acceptance 'another host' and 'never delays the caller' are unguarded. Fix: in TestSignedTransactionAlsoGoesToAnotherHost add a same-host twin endpoint (a.URL plus a path suffix) and assert the copy reaches the other host and not the twin; add a case where the second host hangs and assert the caller returns in under 1 s. I wrote both and they fail on the mutants. Non-blocking: (a) a hung second endpoint is never rested, because the echo context (5 s) expires before the per-attempt timer, so only fast failures (HTTP 500 rests it) are counted; change the echo context to RequestTimeout or document it. (b) echo is not tracked by RPCs.Close; a copy in flight can redial a closed WSS socket for up to 5 s. (c) a batch holding a send is echoed whole, reads included. (d) TestLostBroadcastResponseRetriesIdenticalSignedBytes now depends on the failed endpoint still resting when the echo picks. Docs are true and every sentence is 25 words or fewer.",
+        "2026-10-29 review pass by independent-reviewer: Re-review passes. Both gaps from my first review are closed and checked with go test -overlay mutations: gate set to false fails TestSignedTransactionAlsoGoesToAnotherHost; same-host skip removed fails it too (sent 2 and 0 times, the twin got the copy); synchronous echo fails TestSecondSendNeverDelaysTheCaller (the caller waited 5.007s). With the 30 s echo context, a hung second host rests on its 5 s attempt timeout (log: timeout, rest set) and a third host gets the copy; a throwaway test confirmed it, and rpc.md says so. go test -race on internal/chain and internal/settlement passes; the three broadcast tests passed 15 of 15 at -cpu 1 and 4 with no flake; the hung handler is released in cleanup, so server Close does not hang. try() still matches the old loop; the same signed bytes cannot mine twice, and the signer saves settle bytes before sending. Left as is, accepted: a copy in flight at RPCs.Close is bounded by 30 s; the signer sends single calls only. Docs are true and every sentence is 25 words or fewer. Scratch files deleted; git status shows the same six files."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-29T23:03:14Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 239.4,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 37.6,
+            "log": ""
+          }
+        ],
+        "taskHash": "6cd55f9964985616",
+        "filesHash": "e5ee7ba350223e03",
+        "proof": {
+          "1": "backend-affected: chain TestSignedTransactionAlsoGoesToAnotherHost (with a same-host twin) and TestSecondSendNeverDelaysTheCaller pass 10 of 10 with -race; they fail without the second send, without the same-host skip, and with a synchronous second send"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent-reviewer",
+          "summary": "Re-review passes. Both gaps from my first review are closed and checked with go test -overlay mutations: gate set to false fails TestSignedTransactionAlsoGoesToAnotherHost; same-host skip removed fails it too (sent 2 and 0 times, the twin got the copy); synchronous echo fails TestSecondSendNeverDelaysTheCaller (the caller waited 5.007s). With the 30 s echo context, a hung second host rests on its 5 s attempt timeout (log: timeout, rest set) and a third host gets the copy; a throwaway test confirmed it, and rpc.md says so. go test -race on internal/chain and internal/settlement passes; the three broadcast tests passed 15 of 15 at -cpu 1 and 4 with no flake; the hung handler is released in cleanup, so server Close does not hang. try() still matches the old loop; the same signed bytes cannot mine twice, and the signer saves settle bytes before sending. Left as is, accepted: a copy in flight at RPCs.Close is bounded by 30 s; the signer sends single calls only. Docs are true and every sentence is 25 words or fewer. Scratch files deleted; git status shows the same six files.",
+          "at": "2026-10-29T23:13:24Z",
+          "filesHash": "e5ee7ba350223e03"
+        },
+        "commit": "2b9a2c08",
+        "doneAt": "2026-10-29T23:13:38Z"
+      },
+      "branch": "fix/f360-a-signed-transaction-reaches-the-chain-e",
+      "baseCommit": "f9fb9fdfc38623046778364cfa2a387eeec4742f",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f360-a-signed-transaction-reaches-the-chain-e",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-29T18:44:09Z",
+    "at": "2026-10-29T21:58:01Z",
     "clean": true,
     "problems": [],
-    "note": "F351 (PR 343) and F352 (PR 344) merged: RPC pool ranks endpoints by measured speed and fails over on size refusals; scans always progress; per-receiver evidence removed, payments book from the chain-wide scan. Next: promote main to staging and restart api, worker and signer so migration 91 runs; consider disabling free dRPC endpoints."
+    "note": "F353-F359 merged (#345-#351) and staging promoted to f9fb9fdf; staging CI run 40959515657 passed. Next: F345 as queued; open owner decisions are in the session report (payer-chooses dust, reopen during a queued Safe refund, executor gas cap, pay-link quotas, second broadcast endpoint)."
   }
 }

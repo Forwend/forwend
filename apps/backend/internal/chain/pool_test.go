@@ -652,6 +652,67 @@ func TestRevertReasonKeepsItsCategory(t *testing.T) {
 	}
 }
 
+func TestSignedTransactionAlsoGoesToAnotherHost(t *testing.T) {
+	sends := map[string]*atomic.Int32{}
+	reads := map[string]*atomic.Int32{}
+	server := func(name string) *httptest.Server {
+		sends[name], reads[name] = new(atomic.Int32), new(atomic.Int32)
+		s, _ := rpcServer(t, func(w http.ResponseWriter, id json.RawMessage, method string, _ []json.RawMessage) {
+			if method == "eth_sendRawTransaction" {
+				sends[name].Add(1)
+				fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":"0x%s"}`, id, strings.Repeat("ab", 32))
+				return
+			}
+			reads[name].Add(1)
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":"0x10"}`, id)
+		})
+		return s
+	}
+	a, b := server("a"), server("b")
+	r := newRPCs(t, a.URL, a.URL+"/twin", localhost(b.URL)) // the twin shares a's host, so it must not get the copy
+	var hash string
+	if err := r.Client.CallContext(t.Context(), &hash, "eth_sendRawTransaction", "0x01"); err != nil {
+		t.Fatal(err)
+	}
+	for deadline := time.Now().Add(2 * time.Second); sends["a"].Load()+sends["b"].Load() < 2; time.Sleep(10 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatalf("signed transaction reached %d and %d endpoints; want both hosts", sends["a"].Load(), sends["b"].Load())
+		}
+	}
+	if sends["a"].Load() != 1 || sends["b"].Load() != 1 {
+		t.Fatalf("sent %d and %d times; want once to each host", sends["a"].Load(), sends["b"].Load())
+	}
+	number(t, t.Context(), r.Client)
+	time.Sleep(100 * time.Millisecond)
+	if n := reads["a"].Load() + reads["b"].Load(); n != 1 {
+		t.Fatalf("a read went to %d endpoints, want 1", n)
+	}
+}
+
+func TestSecondSendNeverDelaysTheCaller(t *testing.T) {
+	answering, _ := rpcServer(t, func(w http.ResponseWriter, id json.RawMessage, _ string, _ []json.RawMessage) {
+		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":"0x%s"}`, id, strings.Repeat("ab", 32))
+	})
+	release := make(chan struct{})
+	hanging := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		select {
+		case <-release:
+		case <-r.Context().Done():
+		}
+	}))
+	t.Cleanup(hanging.Close)
+	t.Cleanup(func() { close(release) }) // runs first, so Close never waits on a hung handler
+	r := newRPCs(t, answering.URL, localhost(hanging.URL))
+	began := time.Now()
+	var hash string
+	if err := r.Client.CallContext(t.Context(), &hash, "eth_sendRawTransaction", "0x01"); err != nil {
+		t.Fatal(err)
+	}
+	if took := time.Since(began); took > time.Second {
+		t.Fatalf("the caller waited %v for the second send", took)
+	}
+}
+
 func TestFasterEndpointIsPreferredOverTheConfiguredOrder(t *testing.T) {
 	answer := func(delay time.Duration) func(http.ResponseWriter, json.RawMessage, string, []json.RawMessage) {
 		return func(w http.ResponseWriter, id json.RawMessage, _ string, _ []json.RawMessage) {
