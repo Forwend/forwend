@@ -87,7 +87,7 @@ func (s *Service) Owed(ctx context.Context, profileID string, stores []string, l
 		return OwedPage{}, fmt.Errorf("read owed: %w", err)
 	}
 	// ponytail: every row is read to add up the totals; the open status filter keeps them within the profile's open
-	// receive addresses (MaxOpen). Sum in SQL if that limit grows.
+	// receive addresses (twice MaxOpen: the owner's and its links'). Sum in SQL if that limit grows.
 	page := OwedPage{Items: []Owed{}, Totals: []OwedTotal{}}
 	totals := map[chain.Asset]*big.Int{}
 	var o Owed

@@ -43,7 +43,8 @@ const (
 	MaxReturnURL  = 2000
 )
 
-// Each watched receive address is in every scan until 30 days after its settle deadline.
+// Each watched receive address is in every scan until 30 days after its settle deadline. The owner's invoices and
+// those payers make on the profile's payment links each have these limits (R-188).
 const (
 	MaxOpen   = 1000
 	MaxPerDay = 500
