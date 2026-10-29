@@ -224,14 +224,8 @@ func TestLogRangeRetainsAcceptedSize(t *testing.T) {
 			}
 			return chaintest.Forward
 		}, wantSizes: []uint64{2000, 1000, 500, 500, 500}},
-		"HTTP 429 on the first query": {refuse: func(_ uint64, earlier int) chaintest.Fault {
-			if earlier == 0 {
-				return chaintest.HTTP429
-			}
-			return chaintest.Forward
-		}, wantSizes: []uint64{2000, 1000, 1000}},
-		"rate limited down to the floor": {refuse: func(uint64, int) chaintest.Fault { return chaintest.HTTP429 },
-			wantSizes: []uint64{2000, 1000, 500, 250, 125, 62, MinRange}, wantErr: true},
+		"a rate limit keeps the range": {refuse: func(uint64, int) chaintest.Fault { return chaintest.HTTP429 },
+			wantSizes: []uint64{2000}, wantErr: true},
 	} {
 		t.Run(name, func(t *testing.T) {
 			e := setup(t)
@@ -275,8 +269,8 @@ func TestLogRangeRetainsAcceptedSize(t *testing.T) {
 				t.Fatalf("ranges asked %v, want them to start %v", sizes, c.wantSizes)
 			}
 			if c.wantErr {
-				if err == nil || len(sizes) != len(c.wantSizes) || e.chain.span != MinRange {
-					t.Fatalf("scan error %v after ranges %v; want an error once %d blocks are refused", err, sizes, MinRange)
+				if err == nil || len(sizes) != len(c.wantSizes) || e.chain.span != MaxRange {
+					t.Fatalf("scan error %v after ranges %v, range now %d; want an error and the range kept", err, sizes, e.chain.span)
 				}
 				return
 			}
@@ -310,8 +304,8 @@ func logRange(t *testing.T, call chaintest.Call) (uint64, uint64) {
 
 func TestLongBacklogIsCaughtUpOverSeveralScans(t *testing.T) {
 	e := setup(t)
-	defer func(limit uint64) { scanLimit = limit }(scanLimit)
-	scanLimit = RescanDepth + 300
+	defer func(chunks uint64) { scanChunks = chunks }(scanChunks)
+	scanChunks = 2
 	e.anvil.Mine(3 * RescanDepth)
 	tx := e.anvil.Transfer(e.token, receive, "5000000")
 	e.anvil.Mine(2)
@@ -336,6 +330,93 @@ func TestLongBacklogIsCaughtUpOverSeveralScans(t *testing.T) {
 	}
 	if scans < 2 {
 		t.Fatalf("found in %d scan; want the backlog read in parts", scans)
+	}
+}
+
+func TestNarrowedLogRangeGrowsBack(t *testing.T) {
+	e := setup(t)
+	e.anvil.Mine(8 * MaxRange)
+	proxy := e.anvil.Proxy()
+	refusals := 0
+	proxy.Fail(func(call chaintest.Call) chaintest.Fault {
+		if call.Method != "eth_getLogs" {
+			return chaintest.Forward
+		}
+		if from, to := logRange(t, call); to-from+1 > 700 && refusals < 2 {
+			refusals++
+			return chaintest.TooManyResults
+		}
+		return chaintest.Forward
+	})
+	client, err := rpc.Dial(proxy.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	e.chain = NewChain(e.pool, chaintest.ChainID, client)
+	for e.chain.span < MaxRange {
+		before := len(proxy.Calls())
+		e.scan(t)
+		if len(proxy.Calls()) == before {
+			t.Fatalf("scans stopped with the range at %d blocks", e.chain.span)
+		}
+		if refusals < 2 {
+			t.Fatal("the provider never refused a range")
+		}
+		if e.anvil.Mine(MaxRange); e.chain.span < MaxRange && len(proxy.Calls()) > 400 {
+			t.Fatalf("range still %d blocks after %d calls; want it back at %d", e.chain.span, len(proxy.Calls()), MaxRange)
+		}
+	}
+}
+
+func TestSlowSmallRangeProviderStillMovesTheCursorEveryScan(t *testing.T) {
+	e := setup(t)
+	e.anvil.Mine(6 * MaxRange)
+	tx := e.anvil.Transfer(e.token, receive, "5000000")
+	e.anvil.Mine(2)
+	proxy := e.anvil.Proxy()
+	proxy.Fail(func(call chaintest.Call) chaintest.Fault {
+		if call.Method != "eth_getLogs" {
+			return chaintest.Forward
+		}
+		if from, to := logRange(t, call); to-from+1 > 62 {
+			return chaintest.TooManyResults
+		}
+		time.Sleep(5 * time.Millisecond)
+		return chaintest.Forward
+	})
+	client, err := rpc.Dial(proxy.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	e.chain = NewChain(e.pool, chaintest.ChainID, client)
+	cursor := func() (block int64) {
+		t.Helper()
+		if err := e.pool.QueryRow(context.Background(), "SELECT last_finalized_block FROM chain_cursors").Scan(&block); err != nil {
+			t.Fatal(err)
+		}
+		return block
+	}
+	last := cursor()
+	for scans := 1; ; scans++ {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		err := e.chain.ScanNew(ctx)
+		cancel()
+		if err != nil {
+			t.Fatalf("scan %d: %v", scans, err)
+		}
+		if now := cursor(); now <= last {
+			t.Fatalf("scan %d left the cursor at %d", scans, now)
+		} else {
+			last = now
+		}
+		if got, _ := e.rows(t); got[tx] != nil {
+			return
+		}
+		if scans == 30 {
+			t.Fatalf("deposit not found after %d scans; cursor at %d", scans, last)
+		}
 	}
 }
 

@@ -33,6 +33,7 @@ type Worker struct {
 	jobs            chain.Jobs
 	historical      chain.Jobs
 	budgets         []*chain.Budget
+	alertedAt       time.Time
 }
 
 // New sends each RPC at most rate calls per second.
@@ -54,6 +55,12 @@ func (w *Worker) Tick(ctx context.Context) {
 	if err != nil {
 		slog.Error("worker round", "err", err)
 		return
+	}
+	if time.Since(w.alertedAt) >= AlertEvery {
+		w.alertedAt = time.Now()
+		if err := w.alert(ctx); err != nil {
+			slog.Error("worker alerts", "err", err)
+		}
 	}
 	enabled := map[uint64]bool{}
 	for _, id := range ids {

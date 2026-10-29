@@ -238,6 +238,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-179 | Invoice forms preview the document, and invoice and receipt PDFs read like the app. | New invoice shows a live preview at every width: beside the form on wide screens, behind a Preview toggle on phones. The invoice PDF states the invoice's status (open, paid, partially paid, closed, canceled) and only asks for payment while it can be paid. Long item lists continue on more pages with repeated headers. The receipt lists every received payment with network, token and transaction. Amounts, numbers and statuses match the API. | backend, unit, e2e | R-88, R-113, D-114 |
 
+| R-180 | A chain's payment scan keeps moving when an RPC limits requests, and a stop is reported. | Given several endpoints, a log range or batch one endpoint refuses goes to the next one. The scan narrows only when every endpoint refuses, and grows back after accepted queries. The fastest, least failing endpoint is used first, not the first by name. Each scan records what it read in 60% of its deadline and always moves the cursor. The worker logs an `ALERT` for a stalled chain, a deposit stuck as detected, and paid money not settled in time. | backend | R-133, R-172, R-173, D-15 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.

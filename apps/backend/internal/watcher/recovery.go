@@ -16,10 +16,14 @@ type recoveryProgress struct {
 	next, target uint64
 }
 
+// recoveryChunks log ranges at most per recovery round.
+const recoveryChunks = 5
+
 // ScanNew follows new wallet blocks and rechecks detected transfers. Invoice overlap stays frequent for payment ordering.
 func (c *Chain) ScanNew(ctx context.Context) error {
-	var scanned uint64
-	err := c.pool.QueryRow(ctx, "SELECT last_scanned_block FROM chain_cursors WHERE chain_id = $1", c.chainID).Scan(&scanned)
+	var scanned, finalized uint64
+	err := c.pool.QueryRow(ctx, "SELECT last_scanned_block, last_finalized_block FROM chain_cursors WHERE chain_id = $1",
+		c.chainID).Scan(&scanned, &finalized)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return c.Scan(ctx)
 	}
@@ -41,7 +45,8 @@ func (c *Chain) ScanNew(ctx context.Context) error {
 	if latest < scanned {
 		walletFrom = from
 	}
-	return c.scanRange(ctx, from, min(latest, from+scanLimit-1), nil, walletFrom)
+	// Always past the old cursor, so a scan short of time still moves it.
+	return c.scanRange(ctx, from, min(latest, from+scanChunks*c.span-1), nil, walletFrom, finalized+1)
 }
 
 func (c *Chain) prepareRecovery(ctx context.Context) error {
@@ -110,6 +115,6 @@ func (c *Chain) Recover(ctx context.Context) error {
 		}
 		next, target = &from, &latest
 	}
-	end := min(*target, *next+5*MaxRange-1)
-	return c.scanRange(ctx, *next, end, &recoveryProgress{next: end + 1, target: *target}, *next)
+	end := min(*target, *next+recoveryChunks*c.span-1)
+	return c.scanRange(ctx, *next, end, &recoveryProgress{next: end + 1, target: *target}, *next, *next)
 }

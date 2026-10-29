@@ -53,7 +53,7 @@ func TestRoundSurvivesAnRPCGoing429MidRound(t *testing.T) {
 
 	limited := a.Proxy()
 	w := New(pool, map[uint64]chain.Spec{chaintest.ChainID: {ChainID: chaintest.ChainID,
-		AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, Priority: 0, URL: limited.URL, BudgetGroup: "budget-0"}, {ID: "rpc-1", Provider: "provider-1", Role: chain.Confirmation, Tier: chain.Public, Priority: 1, URL: a.URL, BudgetGroup: "budget-1"}, {ID: "rpc-2", Provider: "provider-2", Role: chain.Primary, Tier: chain.Public, Priority: 2, URL: strings.Replace(a.URL, "127.0.0.1", "localhost", 1), BudgetGroup: "budget-2"}}}}, 1000)
+		AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Private, Priority: 0, URL: limited.URL, BudgetGroup: "budget-0"}, {ID: "rpc-1", Provider: "provider-1", Role: chain.Confirmation, Tier: chain.Public, Priority: 1, URL: a.URL, BudgetGroup: "budget-1"}, {ID: "rpc-2", Provider: "provider-2", Role: chain.Primary, Tier: chain.Public, Priority: 2, URL: strings.Replace(a.URL, "127.0.0.1", "localhost", 1), BudgetGroup: "budget-2"}}}}, 1000)
 	defer w.Close()
 	w.Round(ctx) // the first scan starts the chain's cursor
 
@@ -244,7 +244,7 @@ func TestActivePaymentCompletesWhileLegacyReceiverScanHangs(t *testing.T) {
 	}
 	proxy := a.Proxy()
 	w := New(pool, map[uint64]chain.Spec{chaintest.ChainID: {ChainID: chaintest.ChainID,
-		AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, Priority: 0, URL: proxy.URL, BudgetGroup: "budget-0"}, {ID: "rpc-1", Provider: "provider-1", Role: chain.Confirmation, Tier: chain.Public, Priority: 1, URL: strings.Replace(a.URL, "127.0.0.1", "localhost", 1), BudgetGroup: "budget-1"}}}}, 1000)
+		AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Private, Priority: 0, URL: proxy.URL, BudgetGroup: "budget-0"}, {ID: "rpc-1", Provider: "provider-1", Role: chain.Confirmation, Tier: chain.Public, Priority: 1, URL: strings.Replace(a.URL, "127.0.0.1", "localhost", 1), BudgetGroup: "budget-1"}}}}, 1000)
 	defer w.Close()
 	w.Round(ctx)
 	w.historical.Wait()

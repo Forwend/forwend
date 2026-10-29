@@ -14,7 +14,8 @@ import (
 // RescanLimit bounds rescans per chain per round, so Check status calls take a bounded share of RPC budget (R-55).
 const RescanLimit = 5
 
-const rescanStep = 5 * MaxRange
+// rescanChunks log ranges at most per invoice per round.
+const rescanChunks = 5
 
 // Rescans never moves the chain's cursor: that would let the regular scan skip blocks for the other invoices. An
 // invoice past watchedAfterDeadline is not rescanned: its money is the refund authority's.
@@ -96,7 +97,7 @@ func (c *Chain) rescan(ctx context.Context, addr common.Address, inv receiver, f
 	if err != nil {
 		return 0, false, fmt.Errorf("read chain %d latest block: %w", c.chainID, err)
 	}
-	hi := min(latest, from+rescanStep-1)
+	hi := min(latest, from+rescanChunks*c.span-1)
 	invoices := map[common.Address]receiver{addr: inv}
 	found, err := c.logsIn(ctx, from, hi, invoices)
 	if err != nil {
@@ -127,12 +128,10 @@ func (c *Chain) rescan(ctx context.Context, addr common.Address, inv receiver, f
 
 func (c *Chain) logsIn(ctx context.Context, lo, hi uint64, invoices map[common.Address]receiver) ([]types.Log, error) {
 	var out []types.Log
-	span := c.span // the chain's step that its RPC last accepted
 	for lo <= hi {
-		top := min(lo+span-1, hi)
+		top := min(lo+c.span-1, hi)
 		found, err := c.logs(ctx, lo, top, invoices)
-		if next, ok := narrower(err, span); ok {
-			span, c.span = next, next
+		if c.narrow(err) {
 			continue
 		}
 		if err != nil {
