@@ -246,6 +246,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-183 | Refund-authority moves are recorded while a receiver still holds money. | Given an invoice past the deposit watch window, when its receiver still holds booked money, then the scan reads its settle, refund and recover events. The window ends 30 days after the settle deadline. Deposits after the window stay unwatched. | backend | R-164, R-181, D-116 |
 
+| R-184 | Money owed in full, recorded or refused never waits without a round or an alert. | Given a partly paid invoice whose payable reaches the amount, then each ledger round checks its finalized balance until it is paid. Given a failed scan, then the round still books recorded money. Given an invoice owed in full but not paid 45 minutes later, then the worker logs an `ALERT`. So does a receiver event unbooked for 30 minutes. A settlement waiting at the daily cap alerts only near its deadline. | backend | R-120, R-180 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.

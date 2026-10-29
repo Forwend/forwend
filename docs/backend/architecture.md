@@ -36,7 +36,12 @@ Read only the sections your task touches:
   - Every 5 minutes it logs an `ALERT` for symptoms that hold money (R-180):
     - a chain whose finalized cursor is over 45 minutes behind the clock;
     - a deposit still detected below the finalized block after 45 minutes;
+    - a receiver's settle or refund the ledger hasn't booked after 30 minutes, with the reason (R-184);
+    - an invoice owed in full but not paid 45 minutes after its last booking: its finalized balance check keeps failing;
     - a paid invoice not settled within 30 minutes, or within a day of its settle deadline, until that deadline.
+      - One waiting at its user's daily settlement cap alerts only within that day.
+  - A round books money already recorded even when its own scan fails (R-184).
+  - Each round checks the finalized balance of every invoice owed in full and not yet paid.
   - It also keeps the ECB's reference rates (`internal/ecb`, R-110): at start, every 6 hours, 10 minutes after a failure.
   - It reads the ECB's 90-day file only, so rates from before its first read, or gaps over 90 days, never arrive.
   - Only tests set `ECB_RATES_URL`: the e2e gate points the worker at a fake ECB.

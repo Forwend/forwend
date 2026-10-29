@@ -239,6 +239,57 @@ func TestUnexplainedBalanceWaitsLongerEachTime(t *testing.T) {
 	}
 }
 
+// The round that completes a partly paid invoice can meet an RPC behind the finalized block; later rounds still pay it.
+func TestPartlyPaidInvoiceCompletedWhileTheRPCLagsIsPaidLater(t *testing.T) {
+	s := newSim(t)
+	id, receive := s.invoice()
+	s.transfer(id, receive, 2000000, simExpires-100, "confirmed")
+	s.finalizedAt(simExpires - 500)
+	s.process(id)
+	if p, _ := s.payment(id); p != PartiallyPaid {
+		t.Fatalf("after the first deposit: %s, want partially paid", p)
+	}
+	s.transfer(id, receive, 3000000, simExpires-90, "confirmed")
+	s.behind[receive] = true
+	if err := s.service.ProcessChain(context.Background(), 1); err != nil {
+		t.Fatal(err)
+	}
+	s.behind[receive] = false
+	s.answer[receive] = big.NewInt(5000000)
+	if err := s.service.ProcessChain(context.Background(), 1); err != nil {
+		t.Fatal(err)
+	}
+	if p, _ := s.payment(id); p != Paid {
+		t.Fatalf("paid in full and finalized: %s, want paid", p)
+	}
+}
+
+// Less on chain than booked keeps an invoice owed in full from being paid; past the wait it is listed for an alert.
+func TestOwedInFullButShortOnChainIsListedForAnAlert(t *testing.T) {
+	s := newSim(t)
+	id, receive := s.invoice()
+	s.transfer(id, receive, 5000000, simExpires-100, "confirmed")
+	s.answer[receive] = big.NewInt(2500000)
+	partial, partialReceive := s.invoice()
+	s.transfer(partial, partialReceive, 2000000, simExpires-100, "confirmed")
+	s.finalizedAt(simExpires - 50)
+	if err := s.service.ProcessChain(context.Background(), 1); err != nil {
+		t.Fatal(err)
+	}
+	if p, _ := s.payment(id); p != Detected {
+		t.Fatalf("owed in full with half on chain: %s, want detected", p)
+	}
+	if p, _ := s.payment(partial); p != PartiallyPaid {
+		t.Fatalf("2 of 5 paid: %s, want partially paid, which is not owed in full", p)
+	}
+	if got, err := OwedNotPaid(context.Background(), s.pool, time.Hour); err != nil || len(got) != 0 {
+		t.Fatalf("listed before the wait: %v %v", got, err)
+	}
+	if got, err := OwedNotPaid(context.Background(), s.pool, -time.Second); err != nil || !reflect.DeepEqual(got, []string{id}) {
+		t.Fatalf("after the wait: %v %v, want %s", got, err, id)
+	}
+}
+
 // A missed on-time log and a second RPC behind the finalized block both read 0: that must not expire the invoice.
 func TestSecondRPCBehindFinalizedNeverDecides(t *testing.T) {
 	s := newSim(t)

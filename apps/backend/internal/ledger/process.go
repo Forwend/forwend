@@ -16,9 +16,10 @@ import (
 const BalanceTimeout = 10 * time.Second
 
 // Invoices with a deposit to book go first, so new money is booked even when the round runs out of time (R-120).
+// One owed in full but not yet paid waits for the finalized balance check, so it is checked every round.
 func (s *Service) ProcessChain(ctx context.Context, chainID uint64) error {
 	rows, err := s.pool.Query(ctx, `
-  SELECT id FROM (SELECT i.id, i.payment_status, i.closes_at, cursor.last_finalized_time,
+  SELECT id FROM (SELECT i.id, i.payment_status, i.closes_at, i.amount, cursor.last_finalized_time,
    EXISTS (SELECT 1 FROM chain_transfers t JOIN invoices option ON option.id=t.invoice_id
     WHERE coalesce(option.main_id,option.id)=coalesce(i.main_id,i.id) AND t.status='detected') AS observed,
    EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = i.id AND t.status = 'confirmed' AND NOT t.booked)
@@ -26,7 +27,10 @@ func (s *Service) ProcessChain(ctx context.Context, chainID uint64) error {
               AND o.ledger_transaction_id IS NULL) AS money
    FROM invoices i JOIN chain_cursors cursor ON cursor.chain_id = i.chain_id WHERE i.chain_id = $1) i
   WHERE money OR (payment_status IN ('open','detected','partially_paid')
-   AND (observed OR payment_status = 'detected' OR closes_at < last_finalized_time) AND NOT EXISTS
+   AND (observed OR payment_status = 'detected' OR closes_at < last_finalized_time
+    OR payment_status = 'partially_paid' AND (SELECT -coalesce(sum(e.amount), 0) FROM ledger_entries e
+     JOIN ledger_transactions t ON t.id = e.transaction_id
+     WHERE t.invoice_id = i.id AND e.account = 'recipient_payable') >= amount) AND NOT EXISTS
    (SELECT 1 FROM invoice_balance_alerts a WHERE a.invoice_id = i.id AND a.next_check_at > now()))
   ORDER BY money DESC`, chainID)
 	if err != nil {
@@ -389,7 +393,7 @@ func (s *Service) balanced(ctx context.Context, tx pgx.Tx, invoiceID string, cha
 		return false, alertAgainLater(ctx, tx, invoiceID)
 	}
 	if onChain.Cmp(booked) < 0 {
-		slog.Warn("receive address holds less than booked; not expiring", "invoice", invoiceID,
+		slog.Error("ALERT receive address holds less than booked; not expiring", "invoice", invoiceID,
 			"booked", booked.String(), "onChain", onChain.String())
 		return false, alertAgainLater(ctx, tx, invoiceID)
 	}

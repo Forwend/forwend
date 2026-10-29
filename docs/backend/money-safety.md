@@ -70,6 +70,7 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
   - So many such invoices can't use up a chain's round; a new deposit to book ends the wait.
   - After an operator refunds the money, the invoice expires at its next check, up to a day later. Deleting its
     `invoice_balance_alerts` row makes the worker check it in the next round.
+- Less on chain than booked at expiry logs `ALERT receive address holds less than booked; not expiring`, with the same backoff.
 - Deposits are booked in chain order: one waits while an earlier one is still detected, so the earliest payers are
   paid to the creator first and later ones held (D-27). An empty `balanceOf` answer is an error, never 0.
 - Before signing a new settle, the signer reads the finalized balance of the receive address.

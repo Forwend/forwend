@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 356,
+  "nextId": 357,
   "tasks": [
     {
       "id": "F332",
@@ -1232,6 +1232,80 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f355-refund-authority-moves-are-recorded-whil",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F356",
+      "type": "fix",
+      "behavior": "Money owed in full, recorded or refused never waits without a round or an alert",
+      "acceptance": [
+        "A partly paid invoice completed while the balance RPC lags is paid at a later round; a failed scan still books recorded money; an invoice owed in full but not paid after 45 minutes and receiver events unbooked for 30 minutes log an ALERT; a cap wait alerts only near its deadline"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend-affected",
+        "docs-check"
+      ],
+      "refs": [
+        "R-184"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-29 review fail by independent-reviewer: The code and all five claims hold; fix 3 small things in docs and tests, then re-verify. Ran: ledger ok, worker ok, settlement AfterTheWatchWindow ok. Claim 1: with main's process.go the new ledger test fails (partially_paid, want paid). Claim 2: with the old worker.go the worker test fails (invoice open, want paid). ScanNew records rows and moves the cursor in one transaction (record), so a failed or partial scan leaves a state a later Process could already see; the R-119 option choice reads only cursors, which a failed scan does not advance, so it only waits longer. Claim 3: removing the cap condition or the receiver_outflows alert fails the alerts test. Claim 4: the balanced path already has alertAgainLater (1 min doubling to a day). Claim 5: an expired invoice has payable 0 and later deposits are all held (split with final=true, so refund_status held); service_test.go:228 asserts this. Measured on 100k seeded invoices: holding() 542 ms to 60 ms; the new ProcessChain clause adds about 17 percent only while 5000 partly paid invoices are open (index lookups, never run for closed ones); OwedNotPaid 37 ms. Required fixes. (1) docs/PROJECT.md R-184: the sentence 'Given an invoice owed in full but not paid 45 minutes later, or a receiver event unbooked for 30 minutes, then the worker logs an ALERT.' has 26 words; D-84 limit is 25. Split it. (2) TestOwedInFullButShortOnChainIsListedForAnAlert never checks the owed-in-full filter: changing '>= i.amount' to '>= 0' in OwedNotPaid still passes. Without that filter every partly paid invoice alerts every 5 minutes after 45 minutes. Add a partly paid invoice below the amount that is not listed. (3) The worker loop that logs 'ALERT invoice owed in full is not paid' has no test: deleting it from alerts.go still passes TestAlerts. Seed one invoice in alerts_test and assert the log line. Optional: a cap-wait intent inside 24 h of its deadline should still alert (untested). Notes, no action needed: if the scan uses the whole 2 min RoundTimeout (hung RPC), ProcessChain shares that context and fails at once, so the fix covers fast scan failures only, and the log then shows two errors. money-safety.md lists only the 'more than booked' ALERT; the 'less than booked; not expiring' ALERT is not documented. Scratch copies and seed data removed; repo files unchanged.",
+        "2026-10-29 review pass by independent-reviewer: Re-review passes. Non-test code is unchanged since the first review, where all five claims were verified. Ran: ledger ok, worker ok, settlement AfterTheWatchWindow ok. All three fixes hold. (1) R-184 is now two sentences, 22 and 9 words; no new doc sentence over 25 words (longest 22). (2) Mutating OwedNotPaid to '>= 0' now fails the ledger test: the 2-of-5 invoice is listed with the owed one. (3) Removing the owed-in-full loop from alerts.go fails the worker test on invoice 04's ALERT line. Optional case also covered: invoice 01 as a cap wait inside 24 h of its deadline must alert; making cap waits never alert fails the test, and making them alert early fails the invoice 03 check. money-safety.md now documents the less-than-booked ALERT and its backoff; the text matches the code (alertAgainLater). Earlier mutants still fail: old process.go (ledger test), old worker.go (worker test), no receiver_outflows alert (alerts test). Scratch copies removed, no Anvil left running, repo files unchanged by me. Notes, no action needed: a hung scan that uses the whole 2 min RoundTimeout still leaves ProcessChain no time, so the fix covers fast scan failures only."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-29T19:56:06Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 229.9,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 35.6,
+            "log": ""
+          }
+        ],
+        "taskHash": "72e888dc78b32aea",
+        "filesHash": "43373414a45f2414",
+        "proof": {
+          "1": "backend-affected: ledger TestPartlyPaidInvoiceCompletedWhileTheRPCLagsIsPaidLater and TestOwedInFullButShortOnChainIsListedForAnAlert, worker TestRoundBooksRecordedMoneyWhenItsScanFails and TestAlertsNameAStalledChainAndPaidMoneyNotSettled; each fails when its change is removed"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent-reviewer",
+          "summary": "Re-review passes. Non-test code is unchanged since the first review, where all five claims were verified. Ran: ledger ok, worker ok, settlement AfterTheWatchWindow ok. All three fixes hold. (1) R-184 is now two sentences, 22 and 9 words; no new doc sentence over 25 words (longest 22). (2) Mutating OwedNotPaid to '>= 0' now fails the ledger test: the 2-of-5 invoice is listed with the owed one. (3) Removing the owed-in-full loop from alerts.go fails the worker test on invoice 04's ALERT line. Optional case also covered: invoice 01 as a cap wait inside 24 h of its deadline must alert; making cap waits never alert fails the test, and making them alert early fails the invoice 03 check. money-safety.md now documents the less-than-booked ALERT and its backoff; the text matches the code (alertAgainLater). Earlier mutants still fail: old process.go (ledger test), old worker.go (worker test), no receiver_outflows alert (alerts test). Scratch copies removed, no Anvil left running, repo files unchanged by me. Notes, no action needed: a hung scan that uses the whole 2 min RoundTimeout still leaves ProcessChain no time, so the fix covers fast scan failures only.",
+          "at": "2026-10-29T20:02:28Z",
+          "filesHash": "43373414a45f2414"
+        },
+        "commit": "35661f1b",
+        "doneAt": "2026-10-29T20:02:39Z"
+      },
+      "branch": "fix/f356-money-owed-in-full-recorded-or-refused-n",
+      "baseCommit": "24a3e503814e570517a0b9f6d11038652ea28a71",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f356-money-owed-in-full-recorded-or-refused-n",
         "base": "main"
       }
     }
