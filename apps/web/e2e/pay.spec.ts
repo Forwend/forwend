@@ -383,6 +383,9 @@ test.describe("pay page", () => {
       "Found 1,250.00 USDC. Recording it now. · Arbitrum Sepolia did not answer.",
     );
     await expect(page.getByText(/· Next check in 5 min$/)).toBeVisible();
+    // The status line agrees with what the check found: the money is there, so it no longer waits for it.
+    await expect(page.getByRole("status").filter({ hasText: "Payment found" })).toBeVisible();
+    await expect(page.getByText("Waiting for payment…")).toHaveCount(0);
     await expect(check).toBeDisabled();
     expect(calls).toBe(1);
     await mockInvoice(page, {
@@ -782,7 +785,7 @@ test.describe("pay page", () => {
     await expect(page.getByText("on Base Sepolia", { exact: true })).toBeVisible();
   });
 
-  test("links the logo home and the footer to Forwend, and offers the way back once paid (R-62)", async ({
+  test("leads with the payee, links the footer to Forwend, and offers the way back once paid (R-62)", async ({
     page,
   }) => {
     await openPay(
@@ -790,10 +793,8 @@ test.describe("pay page", () => {
       { ...OPEN, returnUrl: "https://shop.example/thanks" },
       { ...PAID, returnUrl: "https://shop.example/thanks" },
     );
-    await expect(page.getByRole("link", { name: "Forwend", exact: true })).toHaveAttribute(
-      "href",
-      "/",
-    );
+    // The payee's page: Forwend shows only in the footer.
+    await expect(page.getByRole("link", { name: "Forwend", exact: true })).toHaveCount(0);
     const footer = page.getByRole("link", { name: "Payments by Forwend (opens in a new tab)" });
     await expect(footer).toHaveAttribute("href", "/");
     await expect(footer).toHaveAttribute("target", "_blank");

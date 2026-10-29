@@ -36,7 +36,6 @@ export const FIRST_RUN_COPY = {
 export const CHECKLIST_COPY = {
   title: "Get started",
   progress: (done: number, all: number) => `${done} of ${all} done`,
-  close: "Close checklist",
   skip: "Skip",
   skipStep: (title: string) => `Skip: ${title}`,
   done: "Done",

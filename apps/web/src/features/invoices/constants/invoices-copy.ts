@@ -296,9 +296,9 @@ export const NEW_INVOICE_COPY = {
     noItem: "Item",
     noDue: "No due date",
     on: (network: string) => `on ${network}`,
-    any: (symbols: string, networks: number) => `in ${symbols} on any of ${networks} networks`,
-    payAny: (amount: string, symbols: string, networks: number) =>
-      `Pay ${amount} in ${symbols} on any of ${networks} networks, at 1 USD per token.`,
+    any: "in one of the available options",
+    payAny: (amount: string) => `Pay ${amount} in one of the available options.`,
+    payPick: "Scan the code or open the link, then pick the token and network.",
     payExact: (amount: string, network: string, chainId: number) =>
       `Send exactly ${amount} on ${network} (chain ID ${chainId}).`,
     payContract: (symbol: string, contract: string) => `${symbol} contract ${contract}`,

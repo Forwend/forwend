@@ -127,6 +127,9 @@ function ProfileTransactions({
   const days = groupByDay(rows, new Date());
   const dayId = useId();
   const filtered = !preview && filters.filtered;
+  // A profile with no transactions at all: search, the filter and Export have nothing to act on, so the page is the
+  // empty state alone, as on Invoices and Payment links.
+  const none = pageHeading && Boolean(data) && rows.length === 0 && !filtered;
   const stale = !preview && !paged.currentData && Boolean(pagedData);
   const Heading = pageHeading ? "h1" : "h2";
   const DayHeading = pageHeading ? "h2" : "h3";
@@ -164,8 +167,8 @@ function ProfileTransactions({
           </Link>
         ) : null}
       </div>
-      {intro ? <p className="-mt-2 text-sm text-muted lg:mt-0">{intro}</p> : null}
-      {preview ? null : (
+      {intro && !none ? <p className="-mt-2 text-sm text-muted lg:mt-0">{intro}</p> : null}
+      {preview || none ? null : (
         <ListToolbar
           search={
             <SearchField

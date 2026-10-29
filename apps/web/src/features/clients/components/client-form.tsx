@@ -148,7 +148,7 @@ export function ClientForm({ profileId, client }: ClientFormProps) {
       onInput={readTyped}
       error={formError}
       preview={
-        <FormPreview title={COPY.preview.title} note={COPY.preview.note}>
+        <FormPreview title={COPY.preview.title} note={COPY.preview.note} paper>
           <ClientPreview
             {...typed}
             kind={kind}

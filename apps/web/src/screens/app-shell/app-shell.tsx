@@ -219,7 +219,9 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
             <main
               id="app-content"
               tabIndex={-1}
-              className="fw-safe-x pt-6 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] outline-none sm:pt-8 lg:pb-10"
+              // A page whose only content is an empty or error state: the workspace is the screen under the header, and
+              // every box down to the state grows, so the state stands in the middle of what is left.
+              className="fw-safe-x pt-6 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] outline-none has-[[data-page-empty]]:flex has-[[data-page-empty]]:min-h-[calc(100dvh-4rem-env(safe-area-inset-top,0px))] has-[[data-page-empty]]:flex-col sm:pt-8 lg:pb-10 [&_*:has([data-page-empty])]:grow"
             >
               {children}
             </main>

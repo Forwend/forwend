@@ -38,6 +38,7 @@ import {
   paymentWallet,
 } from "@/features/payments/lib/payments";
 import type { PaymentDetail as PaymentDetailType } from "@/features/payments/types/payments";
+import { AssetStack } from "@/shared/components/chains/asset-stack";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { NetworkName } from "@/shared/components/chains/network-name";
 import { TokenMark } from "@/shared/components/chains/token-mark";
@@ -211,15 +212,14 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
                   />
                 </Figure>
               ) : null}
-              <Figure term={COPY.paidWith}>
+              {/* Before any money it says what the customer may pay with, never "Paid with". */}
+              <Figure term={lead ? COPY.paidWith : paidWith ? COPY.payingWith : COPY.accepts}>
                 {paidWith ? (
                   <span className="text-base font-medium">
                     <TokenMark chainId={paidWith.chainId} symbol={paidWith.symbol} />
                   </span>
                 ) : (
-                  <span className="text-base font-normal text-muted">
-                    {COPY.options(payment.optionCount)}
-                  </span>
+                  <AssetStack assets={payment.options} label={COPY.options(payment.optionCount)} />
                 )}
               </Figure>
             </dl>

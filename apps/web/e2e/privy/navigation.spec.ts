@@ -1184,6 +1184,15 @@ test("empty and filtered-out lists say so in one centered block with an icon", a
     expect(inner && outer && inner.width > outer.width * 0.9).toBe(true);
     await expect(block.locator("svg").first()).toBeVisible();
     await expect(title).toHaveCSS("text-align", "center");
+    // Centered in what the screen shows under the header, not in a height guessed from the whole window.
+    const offset = await block.evaluate((el) => {
+      const boxes = [...el.children].map((child) => child.getBoundingClientRect());
+      const middle =
+        (Math.min(...boxes.map((b) => b.top)) + Math.max(...boxes.map((b) => b.bottom))) / 2;
+      const top = document.querySelector("header")?.getBoundingClientRect().bottom ?? 0;
+      return Math.abs(middle - (top + innerHeight) / 2);
+    });
+    expect(offset).toBeLessThan(24);
   };
   for (const [path, title] of [
     ["/app/invoices", "No invoices yet"],

@@ -13,8 +13,8 @@ import { type FormEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Payee } from "@/features/pay/components/payee";
 import type { TokenRef, TokenSwitch } from "@/features/profiles/types/tokens";
-import { useSaveStoreMutation } from "@/features/stores/api/stores-api";
-import { StoreLogo } from "@/features/stores/components/store-logo";
+import { useSaveStoreLogoMutation, useSaveStoreMutation } from "@/features/stores/api/stores-api";
+import { StoreLogo, useObjectUrl } from "@/features/stores/components/store-logo";
 import {
   BRAND_COLOR_PATTERN,
   COLOR_PICKER_START,
@@ -24,6 +24,7 @@ import { STORES_COPY as COPY } from "@/features/stores/constants/stores-copy";
 import { invalidStoreField, originLines } from "@/features/stores/lib/stores";
 import type { Store, StoreBody, StoreField } from "@/features/stores/types/stores";
 import { AssetSelection } from "@/shared/components/chains/asset-selection";
+import { AssetStack } from "@/shared/components/chains/asset-stack";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { CopyValue } from "@/shared/components/copy-value";
 import { FieldGroup } from "@/shared/components/field-group";
@@ -43,16 +44,14 @@ export interface StoreFormProps {
 
 const tokenKey = (t: TokenRef) => `${t.chainId}:${t.token}`;
 
-const STEPS = { store: "store", brand: "brand", assets: "assets", checkout: "checkout" } as const;
+const STEPS = { store: "store", brand: "brand", assets: "assets" } as const;
 const FIELD_STEPS: Record<StoreField, string> = {
   name: STEPS.store,
+  defaultExpiresIn: STEPS.store,
+  allowedOrigins: STEPS.store,
   brandColor: STEPS.brand,
   tokensOff: STEPS.assets,
-  defaultExpiresIn: STEPS.checkout,
-  allowedOrigins: STEPS.checkout,
 };
-// The preview lists the first few; the payer's own picker searches all of them.
-const PREVIEW_ASSETS = 5;
 
 // R-134: a new store's id is made once, so a retried save after an error makes one store.
 export function StoreForm({
@@ -74,11 +73,14 @@ export function StoreForm({
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState(store?.name ?? "");
+  // A new store's logo waits for the store to exist; a saved store's uploads at once.
+  const [logo, setLogo] = useState<File | null>(null);
+  const logoSrc = useObjectUrl(logo);
+  const [saveLogo] = useSaveStoreLogoMutation();
   const flow = useFormSteps([
     { id: STEPS.store, label: COPY.storeGroup },
     { id: STEPS.brand, label: COPY.brandGroup },
     ...(shownTokens.length ? [{ id: STEPS.assets, label: COPY.tokensGroup }] : []),
-    { id: STEPS.checkout, label: COPY.checkoutGroup },
   ]);
   const accepted = shownTokens.filter((t) => !tokensOff.has(tokenKey(t)));
 
@@ -126,6 +128,12 @@ export function StoreForm({
     try {
       await save({ profileId, storeId: storeId.current, body }).unwrap();
       toast({ tone: TONES.success, title: COPY.saved(body.name) });
+      if (!store && logo) {
+        // The store is saved either way; a refused logo can be added again from its Edit page.
+        await saveLogo({ profileId, storeId: storeId.current, logo })
+          .unwrap()
+          .catch(() => toast({ tone: TONES.danger, title: COPY.errors.logoFailed }));
+      }
       router.push(`${APP_ROUTES.stores}/${storeId.current}`);
     } catch (error) {
       const message =
@@ -164,6 +172,7 @@ export function StoreForm({
           <div className="flex flex-col gap-4 rounded-md bg-surface p-5 shadow-sm ring-1 ring-line">
             <Payee
               as="p"
+              logoSrc={logoSrc}
               name={name.trim() || COPY.preview.noName}
               subtitle={COPY.preview.invoice}
               brand={{
@@ -174,18 +183,11 @@ export function StoreForm({
             />
             <div className="flex flex-col gap-2 border-t border-line pt-4">
               <p className="text-xs font-medium text-muted">{COPY.preview.payWith}</p>
-              <ul className="flex flex-col gap-2">
-                {accepted.slice(0, PREVIEW_ASSETS).map((t) => (
-                  <li key={tokenKey(t)}>
-                    <TokenMark chainId={t.chainId} symbol={t.symbol} />
-                  </li>
-                ))}
-              </ul>
-              {accepted.length > PREVIEW_ASSETS ? (
-                <p className="text-xs text-muted">
-                  {COPY.preview.more(accepted.length - PREVIEW_ASSETS)}
-                </p>
-              ) : null}
+              {accepted.length === 1 && accepted[0] ? (
+                <TokenMark chainId={accepted[0].chainId} symbol={accepted[0].symbol} />
+              ) : (
+                <AssetStack assets={accepted} label={COPY.preview.options(accepted.length)} />
+              )}
             </div>
             <p className="border-t border-line pt-4 text-sm text-muted">
               {COPY.preview.closes(closeChoices.find((c) => c.value === closes)?.label ?? closes)}
@@ -205,6 +207,24 @@ export function StoreForm({
             maxLength={STORE_LIMITS.name}
             error={errors.name}
           />
+          <SelectField
+            label={COPY.closesAfter}
+            value={closes}
+            onValueChange={setCloses}
+            options={closeChoices}
+            hint={COPY.closesAfterHint}
+            error={errors.defaultExpiresIn}
+          />
+          <TextAreaField
+            label={COPY.origins}
+            name="allowedOrigins"
+            defaultValue={store?.allowedOrigins.join("\n")}
+            placeholder="https://"
+            autoComplete="off"
+            spellCheck={false}
+            hint={COPY.originsHint}
+            error={errors.allowedOrigins}
+          />
           {store ? (
             <CopyValue
               label={COPY.projectId}
@@ -217,11 +237,7 @@ export function StoreForm({
       </div>
       <div data-step={STEPS.brand} className={flow.shows(STEPS.brand)}>
         <FieldGroup title={COPY.brandGroup}>
-          {store ? (
-            <StoreLogo profileId={profileId} store={store} />
-          ) : (
-            <p className="text-sm text-muted">{COPY.logoAfterSave}</p>
-          )}
+          <StoreLogo profileId={profileId} store={store} pending={logo} onPending={setLogo} />
           <TextField
             label={COPY.color}
             name="brandColor"
@@ -279,28 +295,6 @@ export function StoreForm({
           </FieldGroup>
         </div>
       ) : null}
-      <div data-step={STEPS.checkout} className={flow.shows(STEPS.checkout)}>
-        <FieldGroup title={COPY.checkoutGroup}>
-          <SelectField
-            label={COPY.closesAfter}
-            value={closes}
-            onValueChange={setCloses}
-            options={closeChoices}
-            hint={COPY.closesAfterHint}
-            error={errors.defaultExpiresIn}
-          />
-          <TextAreaField
-            label={COPY.origins}
-            name="allowedOrigins"
-            defaultValue={store?.allowedOrigins.join("\n")}
-            placeholder="https://"
-            autoComplete="off"
-            spellCheck={false}
-            hint={COPY.originsHint}
-            error={errors.allowedOrigins}
-          />
-        </FieldGroup>
-      </div>
     </StepForm>
   );
 }

@@ -1,3 +1,4 @@
+import { TIMELINE_STATES, Timeline } from "@forwend/ui-web";
 import { formatUsd } from "@/features/balances/lib/balances";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { RECORD_EVENTS } from "@/features/jobs/constants/jobs";
@@ -42,42 +43,36 @@ export interface JobRecordProps {
   acceptedEmail?: string | null;
 }
 
-// R-104: dispute evidence, so every time is the server's.
+// R-104: dispute evidence, so every time is the server's. The same timeline as the payment and invoice pages.
 export function JobRecord({ job, acceptedEmail = null }: JobRecordProps) {
   return (
     <section aria-labelledby="job-record" className="fw-panel">
       <h2 id="job-record" className="fw-panel-head text-base font-semibold text-ink">
         {COPY.title}
       </h2>
-      <ol className="flex flex-col gap-3 px-4 py-4 sm:px-5">
-        {jobRecord(job).map((event) => (
-          <li
-            key={`${event.kind}-${event.payment?.position ?? 0}`}
-            className="flex flex-col gap-0.5"
-          >
-            <time dateTime={event.at} className="text-xs text-muted tabular-nums">
-              {dateTime(event.at)}
-            </time>
-            <span className="min-w-0 text-sm break-words text-ink">
-              {describeEvent(event, job, acceptedEmail)}
-              {event.kind === RECORD_EVENTS.done && event.payment?.deliveryLink ? (
-                <>
-                  {" · "}
-                  <a
-                    href={event.payment.deliveryLink}
-                    target="_blank"
-                    rel="noopener noreferrer nofollow"
-                    className="underline underline-offset-2"
-                  >
-                    {COPY.deliveryLink}
-                    <span className="sr-only"> {COPY.inNewTab}</span>
-                  </a>
-                </>
-              ) : null}
-            </span>
-          </li>
-        ))}
-      </ol>
+      <div className="px-4 py-4 sm:px-5">
+        <Timeline
+          label={COPY.title}
+          entries={jobRecord(job).map((event) => ({
+            id: `${event.kind}-${event.payment?.position ?? 0}`,
+            title: describeEvent(event, job, acceptedEmail),
+            state: TIMELINE_STATES.done,
+            time: dateTime(event.at),
+            description:
+              event.kind === RECORD_EVENTS.done && event.payment?.deliveryLink ? (
+                <a
+                  href={event.payment.deliveryLink}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  className="underline underline-offset-2"
+                >
+                  {COPY.deliveryLink}
+                  <span className="sr-only"> {COPY.inNewTab}</span>
+                </a>
+              ) : undefined,
+          }))}
+        />
+      </div>
     </section>
   );
 }

@@ -5,6 +5,22 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { type FormEvent, type ReactNode, useState } from "react";
 import { flushSync } from "react-dom";
+import { FlatFieldGroups } from "@/shared/components/field-group";
+
+// From xl the form and its preview fill the screen below the page's intro: each scrolls on its own, so the footer's
+// buttons stay in view. Narrower screens scroll the page, and the footer sticks above the phone tab bar.
+export const SPLIT_CLASSES =
+  "grid grid-cols-[minmax(0,1fr)] items-start gap-6 xl:h-[calc(100dvh-11.5rem)] xl:min-h-[32rem] xl:grid-cols-[minmax(0,40rem)_minmax(0,1fr)] xl:items-stretch xl:gap-10";
+export const SPLIT_FORM_CLASSES = "min-h-0 xl:h-full";
+/** The form is one card: the steps in its head, the fields between, the footer at its foot. */
+export const STEP_CARD_CLASSES =
+  "fw-panel flex min-w-0 flex-col sm:rounded-lg xl:h-full xl:min-h-0";
+export const STEP_HEAD_CLASSES = "border-b border-line px-4 py-3.5 sm:px-5";
+export const SPLIT_FIELDS_CLASSES =
+  "flex min-w-0 flex-col gap-8 p-4 sm:p-5 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-contain";
+export const SPLIT_ASIDE_CLASSES = "xl:h-full xl:overflow-y-auto xl:overscroll-contain xl:pr-1";
+export const STEP_FOOTER_CLASSES =
+  "sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] z-[1] flex flex-col-reverse gap-2 rounded-b-lg border-t border-line bg-surface px-4 py-3 sm:flex-row sm:items-center sm:gap-3 sm:px-5 lg:bottom-0";
 
 /** One group of fields at a time. Every group stays mounted, so moving between steps keeps what was typed. */
 export function useFormSteps(steps: readonly StepperStep[]) {
@@ -84,36 +100,48 @@ export function StepForm({
     </Button>
   );
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 xl:grid-cols-[minmax(0,40rem)_minmax(0,1fr)] xl:gap-10">
-      <Form onSubmit={onSubmit} onInput={onInput}>
-        <Stepper label={label} steps={steps} current={step} onStepClick={setStep} free={editing} />
-        {children}
-        <div className="flex flex-col-reverse gap-2 border-t border-line pt-4 sm:flex-row sm:items-center sm:gap-3">
-          {step > 0 && !editing ? (
-            <Button variant="secondary" onClick={() => setStep(step - 1)}>
-              <ArrowLeft aria-hidden className="size-[var(--fw-icon-sm)]" />
-              {copy.back}
-            </Button>
-          ) : (
-            <Link href={cancelHref} className={buttonClasses({ variant: "ghost" })}>
-              {copy.cancel}
-            </Link>
-          )}
-          <span className="hidden flex-1 sm:block" />
-          {editing && !last ? continueButton : null}
-          {editing || last ? (
-            <Button key="save" type="submit" loading={busy}>
-              {copy.save}
-            </Button>
-          ) : (
-            continueButton
-          )}
+    <div className={SPLIT_CLASSES}>
+      <Form onSubmit={onSubmit} onInput={onInput} className={SPLIT_FORM_CLASSES}>
+        <div className={STEP_CARD_CLASSES}>
+          <div className={STEP_HEAD_CLASSES}>
+            <Stepper
+              label={label}
+              steps={steps}
+              current={step}
+              onStepClick={setStep}
+              free={editing}
+            />
+          </div>
+          <div className={SPLIT_FIELDS_CLASSES}>
+            <FlatFieldGroups value>{children}</FlatFieldGroups>
+            <p role="alert" className="text-sm text-danger empty:hidden">
+              {error}
+            </p>
+          </div>
+          <div className={STEP_FOOTER_CLASSES}>
+            {step > 0 && !editing ? (
+              <Button variant="secondary" onClick={() => setStep(step - 1)}>
+                <ArrowLeft aria-hidden className="size-[var(--fw-icon-sm)]" />
+                {copy.back}
+              </Button>
+            ) : (
+              <Link href={cancelHref} className={buttonClasses({ variant: "ghost" })}>
+                {copy.cancel}
+              </Link>
+            )}
+            <span className="hidden flex-1 sm:block" />
+            {editing && !last ? continueButton : null}
+            {editing || last ? (
+              <Button key="save" type="submit" loading={busy}>
+                {copy.save}
+              </Button>
+            ) : (
+              continueButton
+            )}
+          </div>
         </div>
-        <p role="alert" className="min-h-5 text-sm text-danger empty:hidden">
-          {error}
-        </p>
       </Form>
-      {preview ? <div className="max-xl:hidden xl:sticky xl:top-20">{preview}</div> : null}
+      {preview ? <div className={`max-xl:hidden ${SPLIT_ASIDE_CLASSES}`}>{preview}</div> : null}
     </div>
   );
 }
@@ -121,11 +149,13 @@ export function StepForm({
 export interface FormPreviewProps {
   title: string;
   note: string;
+  /** It stands for a PDF, which is white in both themes; pages follow the theme as the real ones do. */
+  paper?: boolean;
   children: ReactNode;
 }
 
-/** The preview panel: light paper in both themes, as the documents and pay pages it stands for. */
-export function FormPreview({ title, note, children }: FormPreviewProps) {
+/** The preview panel beside a step form. */
+export function FormPreview({ title, note, paper = false, children }: FormPreviewProps) {
   return (
     <section aria-label={title} className="fw-panel">
       <div className="fw-panel-head flex-col items-start gap-0.5">
@@ -133,7 +163,10 @@ export function FormPreview({ title, note, children }: FormPreviewProps) {
         <p className="text-sm text-muted">{note}</p>
       </div>
       <div className="p-4 sm:p-5">
-        <div data-theme="light" className="rounded-lg bg-surface-2 p-4 text-ink sm:p-6">
+        <div
+          data-theme={paper ? "light" : undefined}
+          className="rounded-lg bg-surface-2 p-4 text-ink sm:p-6"
+        >
           {children}
         </div>
       </div>

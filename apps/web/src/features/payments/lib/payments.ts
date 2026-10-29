@@ -54,7 +54,7 @@ export function receivedAmount(amounts: Payment["amounts"]): string {
 const DELAYED_MS = 5 * 60 * 1000;
 
 /** The one sentence a payment page leads with: what happened and what the merchant can do now. */
-/** What to know or do next; null once paid and in the wallet, where there is nothing to say. */
+/** What to know or do next; null where the status badge already says it all: waiting, or paid and in the wallet. */
 export function nextStep(payment: PaymentDetail, extra = 0n): string | null {
   const next = PAYMENT_DETAIL_COPY.next;
   if (payment.problems.some((p) => p.action === "review_funds" && p.code !== "held_funds")) {
@@ -86,7 +86,7 @@ export function nextStep(payment: PaymentDetail, extra = 0n): string | null {
   if (status === "expiredPartiallyPaid") return next.expiredPartly;
   if (status === "expired") return next.expired;
   if (status === "partiallyPaid") return next.partly;
-  return next.waiting;
+  return null;
 }
 
 /** One option's money against what it asked: received includes money still confirming. Extra is money held for the

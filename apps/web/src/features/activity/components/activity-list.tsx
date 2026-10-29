@@ -18,6 +18,7 @@ import type { ActivityItem } from "@/features/activity/types/activity";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { ChainBadge } from "@/shared/components/chains/chain-badge";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
+import { NetworkName } from "@/shared/components/chains/network-name";
 import { DataTable } from "@/shared/components/data-table";
 import { ListToolbar } from "@/shared/components/list-toolbar";
 import { LoadError } from "@/shared/components/load-error";
@@ -163,7 +164,15 @@ function ProfileActivity({ profileId }: ActivityListProps) {
                 header: ACTIVITY_COPY.columns.network,
                 from: "lg",
                 className: "w-40",
-                cell: ({ item }) => <span className="text-muted">{networkOf(item)}</span>,
+                cell: ({ item }) => (
+                  <span className="text-muted">
+                    {item.kind !== ACTIVITY_KINDS.deposit && item.optionCount > 1 ? (
+                      MONEY_COPY.anyNetwork
+                    ) : (
+                      <NetworkName chainId={item.chainId} />
+                    )}
+                  </span>
+                ),
               },
               {
                 key: "when",

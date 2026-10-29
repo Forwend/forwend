@@ -53,7 +53,7 @@ func TestPayerChoosesInvoice(t *testing.T) {
 
 	mustContain(t, pdfText(t, e.pdf(t, id, "invoice.pdf", "").body),
 		"Payment\n12.50 USD\nTotal\n12.50 USD\nAmount due\n12.50 USD",
-		"Pay 12.50 USD in one of these, at 1 USD per token:\nEURC on Base Sepolia\nUSDC on Base Sepolia\n"+
+		"Pay 12.50 USD in one of the available options.\n"+
 			"Scan the code or open the link, then pick the token and network.")
 
 	// EURC has 2 decimals: a cent fraction can't be paid in it exactly.

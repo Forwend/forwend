@@ -100,17 +100,10 @@ export const JOBS_COPY = {
     meta: (client: string, day: string) => `For ${client} · Made ${day}`,
     acceptedBadge: "Accepted",
     paidCount: (paid: number, payments: number) => `${paid} of ${payments} paid`,
-    nextSend: (client: string) =>
-      `Send ${client} the client's link. They read the quote there and accept it.`,
-    nextChange: (title: string) =>
-      `${title} waits for the client. It is billed once they accept it.`,
-    nextMarkDone: (title: string) => `When ${title} is done, mark it done to send its invoice.`,
     linkGroup: "Client's link",
-    linkHint: "Send it to the client. They read the quote there and accept it.",
-    linkHintAccepted: "The client finds each payment's invoice there.",
+    linkLabel: "Quote address",
+    openShort: "Open",
     copy: "Copy link",
-    copied: "Link copied",
-    copyFailed: "Select the link to copy it",
     open: "Open the client's page",
     inNewTab: "(opens in a new tab)",
     waiting: (client: string) => `Waiting for ${client} to accept.`,
@@ -181,7 +174,6 @@ export const JOBS_COPY = {
 /** R-102. */
 export const QUOTE_COPY = {
   title: "Quote",
-  from: (issuer: string) => `Quote from ${issuer}`,
   issuer: "From",
   taxId: "Tax ID",
   scope: "The work",

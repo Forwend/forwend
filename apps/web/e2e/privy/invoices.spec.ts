@@ -189,14 +189,14 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await page.getByRole("link", { name: "Add store" }).first().click();
     await expect(page).toHaveURL("/app/stores/new");
     await page.getByRole("textbox", { name: "Store name" }).fill("E2E pop-up");
-    // Store, Brand, Accepted assets, then Checkout.
-    for (const _ of [1, 2, 3]) await page.getByRole("button", { name: "Continue" }).click();
     await page.getByRole("combobox", { name: "Checkout closes after" }).click();
     await page.getByRole("option", { name: "1 hour" }).click();
     await page
       .getByRole("textbox", { name: "Allowed origins (optional)" })
       .fill("https://popup.example");
     expect(await blockingViolations(page)).toEqual([]);
+    // Store, then Brand and Accepted assets.
+    for (const _ of [1, 2]) await page.getByRole("button", { name: "Continue" }).click();
     await page.getByRole("button", { name: "Save store" }).click();
     await expect(page).toHaveURL(/\/app\/stores\/[0-9a-f-]{36}$/);
     await sidebar.getByRole("link", { name: "Stores" }).click();
@@ -219,7 +219,6 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
       .getByRole("navigation", { name: "Store form steps" })
       .getByRole("button", { name })
       .click();
-  await step(/Checkout/);
   const origins = page.getByRole("textbox", { name: "Allowed origins (optional)" });
   await origins.fill("https://shop.example/thanks");
   await page.getByRole("button", { name: "Save store" }).click();

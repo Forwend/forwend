@@ -155,8 +155,13 @@ export function ReceiveSheet({
           </Summary>
           {shown ? (
             <>
-              <div className="grid place-items-center py-2">
-                <QrCode value={shown} label={RECEIVE_COPY.receiveQrLabel} className="w-44 p-2" />
+              {/* The tile follows the theme; the code itself stays dark on light, as scanners need. */}
+              <div className="grid place-items-center rounded-lg bg-surface-2 p-5">
+                <QrCode
+                  value={shown}
+                  label={RECEIVE_COPY.receiveQrLabel}
+                  className="w-44 p-3 shadow-sm"
+                />
               </div>
               <ReceiveAddress
                 address={shown}

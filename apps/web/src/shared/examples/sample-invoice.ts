@@ -13,7 +13,7 @@ export interface SampleInvoice {
 
 // Demonstration data only. Shown with a "Sample" label wherever it appears.
 export const SAMPLE_INVOICE: SampleInvoice = {
-  id: "FW-0042",
+  id: "INV-0042",
   client: "Brightline Studio",
   service: "Brand site, phase 2",
   baseUnits: 1250000000n,

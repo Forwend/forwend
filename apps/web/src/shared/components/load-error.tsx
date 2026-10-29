@@ -33,7 +33,8 @@ export function LoadError({ message, onRetry, retrying, inline, page }: LoadErro
     // It fills what it stands in for, so a card keeps its size and the state sits in its middle.
     <div
       role="alert"
-      className={`flex w-full flex-1 flex-col items-center justify-center px-6 py-8 text-center ${page ? "min-h-[max(16rem,calc(100dvh-20rem))]" : "min-h-40"}`}
+      data-page-empty={page ? "" : undefined}
+      className={`flex w-full flex-1 flex-col items-center justify-center px-6 py-8 text-center ${page ? "min-h-64" : "min-h-40"}`}
     >
       <span className="grid size-10 place-items-center rounded-md bg-danger-soft">
         <AlertCircle aria-hidden className="size-[var(--fw-icon-lg)] text-danger" />

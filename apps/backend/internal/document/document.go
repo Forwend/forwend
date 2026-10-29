@@ -93,22 +93,6 @@ func anyOption(inv invoice.Invoice) bool {
 	return len(inv.Options) > 1
 }
 
-func accepted(inv invoice.Invoice) []string {
-	var symbols []string
-	nets := map[string][]string{}
-	for _, o := range inv.Options {
-		if _, seen := nets[o.Symbol]; !seen {
-			symbols = append(symbols, o.Symbol)
-		}
-		nets[o.Symbol] = append(nets[o.Symbol], NetworkName(o.ChainID))
-	}
-	var out []string
-	for _, s := range symbols {
-		out = append(out, s+" on "+strings.Join(nets[s], ", "))
-	}
-	return out
-}
-
 // TestMode marks a test-mode invoice's PDFs (R-143).
 const TestMode = "Test mode: testnet tokens have no value"
 
@@ -258,8 +242,10 @@ func Invoice(inv invoice.Invoice, payLink string, logo []byte, now time.Time) ([
 
 func payment(inv invoice.Invoice, s standing) []string {
 	if anyOption(inv) && !inv.OptionLocked {
-		return append(append([]string{"Pay " + s.amount + " in one of these, at 1 USD per token:"}, accepted(inv)...),
-			"Scan the code or open the link, then pick the token and network.")
+		return []string{
+			"Pay " + s.amount + " in one of the available options.",
+			"Scan the code or open the link, then pick the token and network.",
+		}
 	}
 	net := NetworkName(inv.ChainID)
 	return []string{

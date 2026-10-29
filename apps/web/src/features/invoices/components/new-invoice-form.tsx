@@ -80,7 +80,16 @@ import type {
 import { allowsReturnLink } from "@/features/stores/lib/stores";
 import type { Store } from "@/features/stores/types/stores";
 import { AssetIcon } from "@/shared/components/chains/asset-icon";
-import { FieldGroup } from "@/shared/components/field-group";
+import { FieldGroup, FlatFieldGroups } from "@/shared/components/field-group";
+import {
+  SPLIT_ASIDE_CLASSES,
+  SPLIT_CLASSES,
+  SPLIT_FIELDS_CLASSES,
+  SPLIT_FORM_CLASSES,
+  STEP_CARD_CLASSES,
+  STEP_FOOTER_CLASSES,
+  STEP_HEAD_CLASSES,
+} from "@/shared/components/step-form";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { chainName, TOKEN_SEARCH_FROM } from "@/shared/lib/chains";
@@ -562,7 +571,6 @@ export function NewInvoiceForm({
     expiry === CUSTOM_EXPIRY ? (closesOn ? formatDueDate(closesOn) : "") : COPY.expiry[expiry];
   const docKind = request ? "Request" : "Invoice";
   const sender = request ? typed.client : (issuer?.name ?? "");
-  const accepted = [...new Set(tokens.map((t) => t.symbol))].join(" or ");
   const preview: NewInvoicePreviewProps = {
     document: {
       label: COPY.preview.title,
@@ -624,7 +632,7 @@ export function NewInvoiceForm({
       ],
       note: typed.note,
       pay: any
-        ? [COPY.preview.payAny(money(total), accepted, new Set(tokens.map((t) => t.chainId)).size)]
+        ? [COPY.preview.payAny(money(total)), COPY.preview.payPick]
         : [
             COPY.preview.payExact(money(total), network, token.chainId),
             COPY.preview.payContract(token.symbol, token.token),
@@ -633,9 +641,7 @@ export function NewInvoiceForm({
     payer: {
       name: sender,
       amount: money(total),
-      network: any
-        ? COPY.preview.any(accepted, new Set(tokens.map((t) => t.chainId)).size)
-        : COPY.preview.on(network),
+      network: any ? COPY.preview.any : COPY.preview.on(network),
     },
     email: {
       subject: sender
@@ -702,7 +708,7 @@ export function NewInvoiceForm({
   ];
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 xl:grid-cols-[minmax(0,38rem)_minmax(0,1fr)] xl:gap-10">
+    <div className={SPLIT_CLASSES}>
       <SegmentedControl
         label={COPY.preview.switch}
         value={view}
@@ -716,517 +722,531 @@ export function NewInvoiceForm({
       <Form
         onSubmit={submit}
         onInput={readTyped}
-        className={view === "preview" ? "max-xl:hidden" : undefined}
+        className={`${SPLIT_FORM_CLASSES} ${view === "preview" ? "max-xl:hidden" : ""}`}
       >
-        {unavailableToken ? (
-          <p role="alert" className="text-sm text-danger">
-            The previously selected token is no longer accepted. Choose a token below.
-          </p>
-        ) : null}
-        <Stepper label={COPY.stepsLabel} steps={steps} current={step} onStepClick={setStep} />
-        {request ? null : (
-          <div
-            data-step={STEP_IDS.customer}
-            className={stepId === STEP_IDS.customer ? "contents" : "hidden"}
-          >
-            <FieldGroup title={COPY.client}>
-              {clients?.length ? (
-                <ComboboxField
-                  label={COPY.savedClient}
-                  placeholder={COPY.savedClientPlaceholder}
-                  searchLabel={COPY.searchClients}
-                  options={clients.map((c) => ({
-                    value: c.clientId,
-                    label: c.name,
-                    detail: c.email ?? undefined,
-                  }))}
-                  value={fill.key}
-                  onValueChange={(clientId) => {
-                    const picked = clients.find((c) => c.clientId === clientId);
-                    if (!picked) return;
-                    const values = clientBody(picked);
-                    setFill({ key: clientId, client: values });
-                    if (reference === "" || reference === filledReference.current) {
-                      filledReference.current = picked.reference ?? "";
-                      setReference(filledReference.current);
-                      clear(INVOICE_FIELDS.reference);
-                    }
-                    setCountry(values.country);
-                    setKind(clientKind(picked));
-                    setReminders(picked.reminders);
-                    clear(INVOICE_FIELDS.reminders);
-                    setTyped((shown) => ({ ...shown, client: values.name }));
-                    setErrors((shown) => ({
-                      ...shown,
-                      [INVOICE_FIELDS.clientName]: undefined,
-                      [INVOICE_FIELDS.clientEmail]: undefined,
-                      [INVOICE_FIELDS.clientAddress]: undefined,
-                      [INVOICE_FIELDS.clientCountry]: undefined,
-                      [INVOICE_FIELDS.clientTaxId]: undefined,
-                    }));
-                  }}
-                />
-              ) : null}
-              <div className="flex flex-col gap-1.5">
-                <p aria-hidden className="text-sm font-medium text-ink">
-                  {COPY.clientKind}
-                </p>
-                <SegmentedControl
-                  label={COPY.clientKind}
-                  value={kind}
-                  onValueChange={(next) => {
-                    setKind(next);
-                    clear(INVOICE_FIELDS.clientCountry);
-                    clear(INVOICE_FIELDS.clientTaxId);
-                  }}
-                  className="self-start"
-                  options={Object.values(CLIENT_KINDS).map((value) => ({
-                    value,
-                    label: COPY.clientKinds[value],
-                  }))}
-                />
-              </div>
-              <div key={fill.key} className="flex flex-col gap-5">
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <TextField
-                    label={
-                      kind === CLIENT_KINDS.business ? COPY.clientLegalName : COPY.clientPersonName
-                    }
-                    hint={kind === CLIENT_KINDS.business ? COPY.clientLegalNameHint : undefined}
-                    name="clientName"
-                    defaultValue={fill.client.name}
-                    autoComplete="off"
-                    maxLength={INVOICE_LIMITS.clientName}
-                    error={errors[INVOICE_FIELDS.clientName]}
-                  />
-                  <TextField
-                    type="email"
-                    label={COPY.clientEmail}
-                    name="clientEmail"
-                    defaultValue={fill.client.email}
-                    autoComplete="off"
-                    maxLength={INVOICE_LIMITS.clientEmail}
-                    error={errors[INVOICE_FIELDS.clientEmail]}
-                  />
-                </div>
-                {/* A person is billed by name and email; address, country and tax ID are a business's. */}
-                {/* As on the client form: a person has an address and country, but no tax ID. */}
-                <TextAreaField
-                  label={COPY.clientAddress}
-                  name="clientAddress"
-                  defaultValue={fill.client.address}
-                  maxLength={INVOICE_LIMITS.clientAddress}
-                  error={errors[INVOICE_FIELDS.clientAddress]}
-                />
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <ComboboxField
-                    label={COPY.clientCountry}
-                    options={countries}
-                    placeholder={COPY.noCountry}
-                    searchLabel={COPY.searchCountries}
-                    value={country}
-                    onValueChange={(next) => {
-                      setCountry(next);
-                      clear(INVOICE_FIELDS.clientCountry);
-                    }}
-                    error={errors[INVOICE_FIELDS.clientCountry]}
-                  />
-                  {kind === CLIENT_KINDS.person ? null : (
-                    <TextField
-                      label={COPY.clientTaxId}
-                      name="clientTaxId"
-                      defaultValue={fill.client.taxId}
-                      autoComplete="off"
-                      maxLength={INVOICE_LIMITS.clientTaxId}
-                      error={errors[INVOICE_FIELDS.clientTaxId]}
-                    />
-                  )}
-                </div>
-              </div>
-            </FieldGroup>
+        <div className={STEP_CARD_CLASSES}>
+          <div className={STEP_HEAD_CLASSES}>
+            <Stepper label={COPY.stepsLabel} steps={steps} current={step} onStepClick={setStep} />
           </div>
-        )}
-
-        <div
-          data-step={STEP_IDS.items}
-          className={stepId === STEP_IDS.items ? "contents" : "hidden"}
-        >
-          <FieldGroup title={COPY.amountGroup}>
-            {tokens.length > 1 ? (
-              <div className="flex flex-col gap-1.5">
-                <p aria-hidden className="text-sm font-medium text-ink">
-                  {COPY.payWithLabel}
+          <div className={SPLIT_FIELDS_CLASSES}>
+            <FlatFieldGroups value>
+              {unavailableToken ? (
+                <p role="alert" className="text-sm text-danger">
+                  The previously selected token is no longer accepted. Choose a token below.
                 </p>
-                <SegmentedControl
-                  label={COPY.payWithLabel}
-                  value={payWith}
-                  onValueChange={(value) => {
-                    setPayWith(value);
-                    clear(INVOICE_FIELDS.amount);
-                    setLineErrors({});
-                  }}
-                  className="self-start"
-                  options={Object.values(PAY_WITH).map((value) => ({
-                    value,
-                    label: COPY.payWith[value],
-                  }))}
-                />
-              </div>
-            ) : null}
-            {/* Empty when items stand in for the amount on any token: then the row takes no room. */}
-            <div className="grid gap-5 empty:hidden sm:grid-cols-2">
-              {any ? null : (
-                // Past a handful of tokens the picker searches, so "usdc base" finds one among hundreds.
-                <TokenPick
-                  label={COPY.tokenLabel}
-                  searchLabel={COPY.searchTokens}
-                  noResults={COPY.noTokenMatch}
-                  value={unavailableToken ? "" : tokenKey(token)}
-                  onValueChange={(value) => {
-                    setPicked(value);
-                    setFormError("");
-                    setLineErrors({});
-                  }}
-                  options={tokens.map((t) => ({
-                    value: tokenKey(t),
-                    icon: <AssetIcon chainId={t.chainId} symbol={t.symbol} />,
-                    label: `${t.symbol} · ${chainName(t.chainId)}`,
-                  }))}
-                />
+              ) : null}
+              {request ? null : (
+                <div
+                  data-step={STEP_IDS.customer}
+                  className={stepId === STEP_IDS.customer ? "contents" : "hidden"}
+                >
+                  <FieldGroup title={COPY.client}>
+                    {clients?.length ? (
+                      <ComboboxField
+                        label={COPY.savedClient}
+                        placeholder={COPY.savedClientPlaceholder}
+                        searchLabel={COPY.searchClients}
+                        options={clients.map((c) => ({
+                          value: c.clientId,
+                          label: c.name,
+                          detail: c.email ?? undefined,
+                        }))}
+                        value={fill.key}
+                        onValueChange={(clientId) => {
+                          const picked = clients.find((c) => c.clientId === clientId);
+                          if (!picked) return;
+                          const values = clientBody(picked);
+                          setFill({ key: clientId, client: values });
+                          if (reference === "" || reference === filledReference.current) {
+                            filledReference.current = picked.reference ?? "";
+                            setReference(filledReference.current);
+                            clear(INVOICE_FIELDS.reference);
+                          }
+                          setCountry(values.country);
+                          setKind(clientKind(picked));
+                          setReminders(picked.reminders);
+                          clear(INVOICE_FIELDS.reminders);
+                          setTyped((shown) => ({ ...shown, client: values.name }));
+                          setErrors((shown) => ({
+                            ...shown,
+                            [INVOICE_FIELDS.clientName]: undefined,
+                            [INVOICE_FIELDS.clientEmail]: undefined,
+                            [INVOICE_FIELDS.clientAddress]: undefined,
+                            [INVOICE_FIELDS.clientCountry]: undefined,
+                            [INVOICE_FIELDS.clientTaxId]: undefined,
+                          }));
+                        }}
+                      />
+                    ) : null}
+                    <div className="flex flex-col gap-1.5">
+                      <p aria-hidden className="text-sm font-medium text-ink">
+                        {COPY.clientKind}
+                      </p>
+                      <SegmentedControl
+                        label={COPY.clientKind}
+                        value={kind}
+                        onValueChange={(next) => {
+                          setKind(next);
+                          clear(INVOICE_FIELDS.clientCountry);
+                          clear(INVOICE_FIELDS.clientTaxId);
+                        }}
+                        className="self-start"
+                        options={Object.values(CLIENT_KINDS).map((value) => ({
+                          value,
+                          label: COPY.clientKinds[value],
+                        }))}
+                      />
+                    </div>
+                    <div key={fill.key} className="flex flex-col gap-5">
+                      <div className="grid gap-5 sm:grid-cols-2">
+                        <TextField
+                          label={
+                            kind === CLIENT_KINDS.business
+                              ? COPY.clientLegalName
+                              : COPY.clientPersonName
+                          }
+                          hint={
+                            kind === CLIENT_KINDS.business ? COPY.clientLegalNameHint : undefined
+                          }
+                          name="clientName"
+                          defaultValue={fill.client.name}
+                          autoComplete="off"
+                          maxLength={INVOICE_LIMITS.clientName}
+                          error={errors[INVOICE_FIELDS.clientName]}
+                        />
+                        <TextField
+                          type="email"
+                          label={COPY.clientEmail}
+                          name="clientEmail"
+                          defaultValue={fill.client.email}
+                          autoComplete="off"
+                          maxLength={INVOICE_LIMITS.clientEmail}
+                          error={errors[INVOICE_FIELDS.clientEmail]}
+                        />
+                      </div>
+                      {/* A person is billed by name and email; address, country and tax ID are a business's. */}
+                      {/* As on the client form: a person has an address and country, but no tax ID. */}
+                      <TextAreaField
+                        label={COPY.clientAddress}
+                        name="clientAddress"
+                        defaultValue={fill.client.address}
+                        maxLength={INVOICE_LIMITS.clientAddress}
+                        error={errors[INVOICE_FIELDS.clientAddress]}
+                      />
+                      <div className="grid gap-5 sm:grid-cols-2">
+                        <ComboboxField
+                          label={COPY.clientCountry}
+                          options={countries}
+                          placeholder={COPY.noCountry}
+                          searchLabel={COPY.searchCountries}
+                          value={country}
+                          onValueChange={(next) => {
+                            setCountry(next);
+                            clear(INVOICE_FIELDS.clientCountry);
+                          }}
+                          error={errors[INVOICE_FIELDS.clientCountry]}
+                        />
+                        {kind === CLIENT_KINDS.person ? null : (
+                          <TextField
+                            label={COPY.clientTaxId}
+                            name="clientTaxId"
+                            defaultValue={fill.client.taxId}
+                            autoComplete="off"
+                            maxLength={INVOICE_LIMITS.clientTaxId}
+                            error={errors[INVOICE_FIELDS.clientTaxId]}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </FieldGroup>
+                </div>
               )}
-              {items.length > 0 ? null : (
-                <TextField
-                  id={amountId}
-                  label={any ? COPY.amountUsdLabel : COPY.amountLabel}
-                  inputMode="decimal"
-                  autoComplete="off"
-                  placeholder="0.00"
-                  value={amount}
-                  onChange={(event) => {
-                    setAmount(event.target.value);
-                    clear(INVOICE_FIELDS.amount);
-                  }}
-                  onBlur={() =>
-                    amount.trim() &&
-                    setErrors((shown) => ({
-                      ...shown,
-                      [INVOICE_FIELDS.amount]: amountError(amount),
-                    }))
-                  }
-                  hint={
-                    any
-                      ? COPY.payWithAnyHint(
-                          [...new Set(tokens.map((t) => t.symbol))].join(" or "),
-                          new Set(tokens.map((t) => t.chainId)).size,
-                        )
-                      : COPY.amountHint(token.symbol, network, token.decimals)
-                  }
-                  error={errors[INVOICE_FIELDS.amount]}
-                />
-              )}
-            </div>
-            {items.length > 0 ? (
-              <LineItems
-                id={itemsId}
-                items={items}
-                onChange={(next) => {
-                  if (next.length === 0 && itemsTotal > 0n)
-                    setAmount(decimalText(itemsTotal, decimals));
-                  setItems(next);
-                  setLineErrors({});
-                  clear(INVOICE_FIELDS.lines);
-                }}
-                decimals={decimals}
-                unit={unit}
-                errors={lineErrors}
-                error={errors[INVOICE_FIELDS.lines]}
-              />
-            ) : request ? null : (
-              <Button
-                variant="secondary"
-                size="sm"
-                className="self-start"
-                onClick={() => {
-                  setItems([
-                    {
-                      id: crypto.randomUUID(),
-                      description: "",
-                      quantity: "1",
-                      price: amount.trim(),
-                    },
-                  ]);
-                  clear(INVOICE_FIELDS.amount);
-                }}
+
+              <div
+                data-step={STEP_IDS.items}
+                className={stepId === STEP_IDS.items ? "contents" : "hidden"}
               >
-                <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />
-                {COPY.items.add}
-              </Button>
-            )}
-            {request ? null : agreed ? (
-              <AgreedValueFields
-                id={agreedId}
-                value={agreed}
-                today={today}
-                errors={{
-                  currency: errors[INVOICE_FIELDS.agreedCurrency],
-                  amount: errors[INVOICE_FIELDS.agreedAmount],
-                  date: errors[INVOICE_FIELDS.agreedDate],
-                }}
-                onChange={(next) => {
-                  // Remove takes away the button that had focus: it goes back to Add agreed value.
-                  flushSync(() => setAgreed(next));
-                  if (!next) document.getElementById(agreedId)?.focus();
-                  setErrors((shown) => ({
-                    ...shown,
-                    [INVOICE_FIELDS.agreedCurrency]: undefined,
-                    [INVOICE_FIELDS.agreedAmount]: undefined,
-                    [INVOICE_FIELDS.agreedDate]: undefined,
-                  }));
-                }}
-              />
-            ) : (
-              <Button
-                id={agreedId}
-                variant="secondary"
-                size="sm"
-                className="self-start"
-                onClick={() => {
-                  // The button goes away: focus moves to the currency it asks for first.
-                  flushSync(() => setAgreed({ currency: "", amount: "", date: today }));
-                  document.getElementById(agreedId)?.focus();
-                }}
-              >
-                <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />
-                {COPY.agreed.add}
-              </Button>
-            )}
-          </FieldGroup>
-        </div>
-
-        <div
-          data-step={STEP_IDS.details}
-          className={stepId === STEP_IDS.details ? "contents" : "hidden"}
-        >
-          <FieldGroup title={COPY.detailsGroup}>
-            {stores && stores.length > 1 ? (
-              <div className="grid gap-5 sm:grid-cols-2">
-                <SelectField
-                  label={NEW_INVOICE_COPY.storeLabel}
-                  value={storeId}
-                  onValueChange={(value) => {
-                    setStoreId(value);
-                    // Its own close, unless a due date or the owner set one.
-                    if (closeBy === "default")
-                      setExpiry(
-                        expiryChoice(stores.find((s) => s.storeId === value)?.defaultExpiresIn),
-                      );
-                    clear(INVOICE_FIELDS.returnUrl);
-                  }}
-                  options={stores.map((s) => ({ value: s.storeId, label: s.name }))}
-                />
-              </div>
-            ) : null}
-            <div className="grid gap-5 empty:hidden sm:grid-cols-2">
-              {request ? null : (
-                <TextField
-                  label={COPY.titleLabel}
-                  name="title"
-                  defaultValue={start?.title}
-                  maxLength={INVOICE_LIMITS.title}
-                  placeholder={COPY.titlePlaceholder}
-                  error={errors[INVOICE_FIELDS.title]}
-                />
-              )}
-              {request ? null : (
-                <TextField
-                  label={COPY.referenceLabel}
-                  name="reference"
-                  value={reference}
-                  onChange={(event) => {
-                    setReference(event.target.value);
-                    clear(INVOICE_FIELDS.reference);
-                  }}
-                  autoComplete="off"
-                  maxLength={INVOICE_LIMITS.reference}
-                  hint={COPY.referenceHint}
-                  error={errors[INVOICE_FIELDS.reference]}
-                />
-              )}
-            </div>
-            <TextAreaField
-              label={COPY.noteLabel}
-              name="note"
-              defaultValue={start?.note}
-              maxLength={INVOICE_LIMITS.note}
-              error={errors[INVOICE_FIELDS.note]}
-            />
-            {request ? (
-              <div className="grid gap-5 sm:grid-cols-2">
-                <TextField
-                  label={NEW_REQUEST_COPY.senderLabel}
-                  name="senderName"
-                  autoComplete="name"
-                  defaultValue={request.senderName}
-                  maxLength={INVOICE_LIMITS.senderName}
-                  error={errors[INVOICE_FIELDS.senderName]}
-                />
-                {returnField}
-              </div>
-            ) : (
-              returnField
-            )}
-          </FieldGroup>
-
-          <FieldGroup title={COPY.datesGroup}>
-            <div className="grid gap-5 empty:hidden sm:grid-cols-2">
-              {request ? null : (
-                <DatePicker
-                  label={COPY.supplyLabel}
-                  name="supplyDate"
-                  value={supplyDate}
-                  onChange={setSupplyDate}
-                  clearLabel={COPY.supplyClear}
-                  hint={COPY.supplyHint}
-                  error={errors[INVOICE_FIELDS.supplyDate]}
-                />
-              )}
-              {request ? null : (
-                <DatePicker
-                  label={COPY.dueLabel}
-                  name="dueDate"
-                  value={dueDate}
-                  onChange={pickDueDate}
-                  min={today}
-                  clearLabel={COPY.dueClear}
-                  hint={COPY.dueHint}
-                  error={errors[INVOICE_FIELDS.dueDate]}
-                />
-              )}
-            </div>
-            {expiryField}
-            {request ? null : (
-              <div className="flex flex-col">
-                <Checkbox
-                  label={COPY.remindersLabel}
-                  checked={reminders}
-                  onChange={(event) => {
-                    setReminders(event.target.checked);
-                    clear(INVOICE_FIELDS.reminders);
-                  }}
-                  aria-invalid={errors[INVOICE_FIELDS.reminders] ? true : undefined}
-                  aria-describedby={remindersId}
-                />
-                <p id={remindersId} className="text-sm text-muted">
-                  {errors[INVOICE_FIELDS.reminders] ? (
-                    <span className="text-danger">{errors[INVOICE_FIELDS.reminders]}</span>
-                  ) : (
-                    COPY.remindersHint
-                  )}
-                </p>
-              </div>
-            )}
-            {request ? null : (
-              <div className="flex flex-col">
-                <Checkbox
-                  label={COPY.repeatLabel}
-                  checked={repeat}
-                  onChange={(event) => {
-                    setRepeat(event.target.checked);
-                    clear(INVOICE_FIELDS.repeat);
-                    clear(INVOICE_FIELDS.repeatEndDate);
-                  }}
-                  aria-invalid={errors[INVOICE_FIELDS.repeat] ? true : undefined}
-                  aria-describedby={repeatId}
-                />
-                <p id={repeatId} className="text-sm text-muted">
-                  {errors[INVOICE_FIELDS.repeat] ? (
-                    <span className="text-danger">{errors[INVOICE_FIELDS.repeat]}</span>
-                  ) : (
-                    COPY.repeatHint
-                  )}
-                </p>
-              </div>
-            )}
-            {repeat ? (
-              <div className="grid gap-5 sm:grid-cols-2">
-                <DatePicker
-                  label={COPY.repeatEndLabel}
-                  name="repeatEndDate"
-                  value={repeatEnd}
-                  onChange={(iso) => {
-                    setRepeatEnd(iso);
-                    clear(INVOICE_FIELDS.repeatEndDate);
-                  }}
-                  min={dueDate ?? today}
-                  clearLabel={COPY.repeatEndClear}
-                  hint={COPY.repeatEndHint}
-                  error={errors[INVOICE_FIELDS.repeatEndDate]}
-                />
-              </div>
-            ) : null}
-          </FieldGroup>
-        </div>
-
-        {stepId === STEP_IDS.review ? (
-          <FieldGroup title={COPY.reviewGroup}>
-            <DetailList>
-              {review.map((row) => (
-                <DetailRow key={row.term} term={row.term}>
-                  <span className="flex items-center justify-end gap-3">
-                    <span className="min-w-0 break-words">{row.value || "—"}</span>
+                <FieldGroup title={COPY.amountGroup}>
+                  {tokens.length > 1 ? (
+                    <div className="flex flex-col gap-1.5">
+                      <p aria-hidden className="text-sm font-medium text-ink">
+                        {COPY.payWithLabel}
+                      </p>
+                      <SegmentedControl
+                        label={COPY.payWithLabel}
+                        value={payWith}
+                        onValueChange={(value) => {
+                          setPayWith(value);
+                          clear(INVOICE_FIELDS.amount);
+                          setLineErrors({});
+                        }}
+                        className="self-start"
+                        options={Object.values(PAY_WITH).map((value) => ({
+                          value,
+                          label: COPY.payWith[value],
+                        }))}
+                      />
+                    </div>
+                  ) : null}
+                  {/* Empty when items stand in for the amount on any token: then the row takes no room. */}
+                  <div className="grid gap-5 empty:hidden sm:grid-cols-2">
+                    {any ? null : (
+                      // Past a handful of tokens the picker searches, so "usdc base" finds one among hundreds.
+                      <TokenPick
+                        label={COPY.tokenLabel}
+                        searchLabel={COPY.searchTokens}
+                        noResults={COPY.noTokenMatch}
+                        value={unavailableToken ? "" : tokenKey(token)}
+                        onValueChange={(value) => {
+                          setPicked(value);
+                          setFormError("");
+                          setLineErrors({});
+                        }}
+                        options={tokens.map((t) => ({
+                          value: tokenKey(t),
+                          icon: <AssetIcon chainId={t.chainId} symbol={t.symbol} />,
+                          label: `${t.symbol} · ${chainName(t.chainId)}`,
+                        }))}
+                      />
+                    )}
+                    {items.length > 0 ? null : (
+                      <TextField
+                        id={amountId}
+                        label={any ? COPY.amountUsdLabel : COPY.amountLabel}
+                        inputMode="decimal"
+                        autoComplete="off"
+                        placeholder="0.00"
+                        value={amount}
+                        onChange={(event) => {
+                          setAmount(event.target.value);
+                          clear(INVOICE_FIELDS.amount);
+                        }}
+                        onBlur={() =>
+                          amount.trim() &&
+                          setErrors((shown) => ({
+                            ...shown,
+                            [INVOICE_FIELDS.amount]: amountError(amount),
+                          }))
+                        }
+                        hint={
+                          any
+                            ? COPY.payWithAnyHint(
+                                [...new Set(tokens.map((t) => t.symbol))].join(" or "),
+                                new Set(tokens.map((t) => t.chainId)).size,
+                              )
+                            : COPY.amountHint(token.symbol, network, token.decimals)
+                        }
+                        error={errors[INVOICE_FIELDS.amount]}
+                      />
+                    )}
+                  </div>
+                  {items.length > 0 ? (
+                    <LineItems
+                      id={itemsId}
+                      items={items}
+                      onChange={(next) => {
+                        if (next.length === 0 && itemsTotal > 0n)
+                          setAmount(decimalText(itemsTotal, decimals));
+                        setItems(next);
+                        setLineErrors({});
+                        clear(INVOICE_FIELDS.lines);
+                      }}
+                      decimals={decimals}
+                      unit={unit}
+                      errors={lineErrors}
+                      error={errors[INVOICE_FIELDS.lines]}
+                    />
+                  ) : request ? null : (
                     <Button
+                      variant="secondary"
                       size="sm"
-                      variant="ghost"
-                      aria-label={COPY.editStep(row.term)}
-                      onClick={() => setStep(steps.findIndex((s) => s.id === row.step))}
+                      className="self-start"
+                      onClick={() => {
+                        setItems([
+                          {
+                            id: crypto.randomUUID(),
+                            description: "",
+                            quantity: "1",
+                            price: amount.trim(),
+                          },
+                        ]);
+                        clear(INVOICE_FIELDS.amount);
+                      }}
                     >
-                      {COPY.edit}
+                      <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />
+                      {COPY.items.add}
                     </Button>
-                  </span>
-                </DetailRow>
-              ))}
-            </DetailList>
-          </FieldGroup>
-        ) : null}
+                  )}
+                  {request ? null : agreed ? (
+                    <AgreedValueFields
+                      id={agreedId}
+                      value={agreed}
+                      today={today}
+                      errors={{
+                        currency: errors[INVOICE_FIELDS.agreedCurrency],
+                        amount: errors[INVOICE_FIELDS.agreedAmount],
+                        date: errors[INVOICE_FIELDS.agreedDate],
+                      }}
+                      onChange={(next) => {
+                        // Remove takes away the button that had focus: it goes back to Add agreed value.
+                        flushSync(() => setAgreed(next));
+                        if (!next) document.getElementById(agreedId)?.focus();
+                        setErrors((shown) => ({
+                          ...shown,
+                          [INVOICE_FIELDS.agreedCurrency]: undefined,
+                          [INVOICE_FIELDS.agreedAmount]: undefined,
+                          [INVOICE_FIELDS.agreedDate]: undefined,
+                        }));
+                      }}
+                    />
+                  ) : (
+                    <Button
+                      id={agreedId}
+                      variant="secondary"
+                      size="sm"
+                      className="self-start"
+                      onClick={() => {
+                        // The button goes away: focus moves to the currency it asks for first.
+                        flushSync(() => setAgreed({ currency: "", amount: "", date: today }));
+                        document.getElementById(agreedId)?.focus();
+                      }}
+                    >
+                      <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />
+                      {COPY.agreed.add}
+                    </Button>
+                  )}
+                </FieldGroup>
+              </div>
 
-        <div className="sticky bottom-0 z-[1] -mx-1 flex flex-col-reverse gap-2 border-t border-line bg-bg px-1 py-3 sm:flex-row sm:items-center sm:gap-3">
-          {step > 0 ? (
-            <Button variant="secondary" onClick={() => setStep(step - 1)}>
-              <ArrowLeft aria-hidden className="size-[var(--fw-icon-sm)]" />
-              {COPY.back}
-            </Button>
-          ) : request ? null : (
-            <Link href={APP_ROUTES.invoices} className={buttonClasses({ variant: "ghost" })}>
-              {COPY.cancel}
-            </Link>
-          )}
-          <span className="hidden flex-1 sm:block" />
-          {/* Keys keep these two separate elements: reusing one would turn Continue into a submit mid-click. */}
-          {stepId === STEP_IDS.review ? (
-            <Button key="create" type="submit" loading={busy} disabled={unavailableToken}>
-              {COPY.create}
-            </Button>
-          ) : (
-            <Button
-              key="continue"
-              onClick={(event) => {
-                event.preventDefault();
-                next(event.currentTarget.form);
-              }}
-            >
-              {COPY.continue}
-              <ArrowRight aria-hidden className="size-[var(--fw-icon-sm)]" />
-            </Button>
-          )}
+              <div
+                data-step={STEP_IDS.details}
+                className={stepId === STEP_IDS.details ? "contents" : "hidden"}
+              >
+                <FieldGroup title={COPY.detailsGroup}>
+                  {stores && stores.length > 1 ? (
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <SelectField
+                        label={NEW_INVOICE_COPY.storeLabel}
+                        value={storeId}
+                        onValueChange={(value) => {
+                          setStoreId(value);
+                          // Its own close, unless a due date or the owner set one.
+                          if (closeBy === "default")
+                            setExpiry(
+                              expiryChoice(
+                                stores.find((s) => s.storeId === value)?.defaultExpiresIn,
+                              ),
+                            );
+                          clear(INVOICE_FIELDS.returnUrl);
+                        }}
+                        options={stores.map((s) => ({ value: s.storeId, label: s.name }))}
+                      />
+                    </div>
+                  ) : null}
+                  <div className="grid gap-5 empty:hidden sm:grid-cols-2">
+                    {request ? null : (
+                      <TextField
+                        label={COPY.titleLabel}
+                        name="title"
+                        defaultValue={start?.title}
+                        maxLength={INVOICE_LIMITS.title}
+                        placeholder={COPY.titlePlaceholder}
+                        error={errors[INVOICE_FIELDS.title]}
+                      />
+                    )}
+                    {request ? null : (
+                      <TextField
+                        label={COPY.referenceLabel}
+                        name="reference"
+                        value={reference}
+                        onChange={(event) => {
+                          setReference(event.target.value);
+                          clear(INVOICE_FIELDS.reference);
+                        }}
+                        autoComplete="off"
+                        maxLength={INVOICE_LIMITS.reference}
+                        hint={COPY.referenceHint}
+                        error={errors[INVOICE_FIELDS.reference]}
+                      />
+                    )}
+                  </div>
+                  <TextAreaField
+                    label={COPY.noteLabel}
+                    name="note"
+                    defaultValue={start?.note}
+                    maxLength={INVOICE_LIMITS.note}
+                    error={errors[INVOICE_FIELDS.note]}
+                  />
+                  {request ? (
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <TextField
+                        label={NEW_REQUEST_COPY.senderLabel}
+                        name="senderName"
+                        autoComplete="name"
+                        defaultValue={request.senderName}
+                        maxLength={INVOICE_LIMITS.senderName}
+                        error={errors[INVOICE_FIELDS.senderName]}
+                      />
+                      {returnField}
+                    </div>
+                  ) : (
+                    returnField
+                  )}
+                </FieldGroup>
+
+                <FieldGroup title={COPY.datesGroup}>
+                  <div className="grid gap-5 empty:hidden sm:grid-cols-2">
+                    {request ? null : (
+                      <DatePicker
+                        label={COPY.supplyLabel}
+                        name="supplyDate"
+                        value={supplyDate}
+                        onChange={setSupplyDate}
+                        clearLabel={COPY.supplyClear}
+                        hint={COPY.supplyHint}
+                        error={errors[INVOICE_FIELDS.supplyDate]}
+                      />
+                    )}
+                    {request ? null : (
+                      <DatePicker
+                        label={COPY.dueLabel}
+                        name="dueDate"
+                        value={dueDate}
+                        onChange={pickDueDate}
+                        min={today}
+                        clearLabel={COPY.dueClear}
+                        hint={COPY.dueHint}
+                        error={errors[INVOICE_FIELDS.dueDate]}
+                      />
+                    )}
+                  </div>
+                  {expiryField}
+                  {request ? null : (
+                    <div className="flex flex-col">
+                      <Checkbox
+                        label={COPY.remindersLabel}
+                        checked={reminders}
+                        onChange={(event) => {
+                          setReminders(event.target.checked);
+                          clear(INVOICE_FIELDS.reminders);
+                        }}
+                        aria-invalid={errors[INVOICE_FIELDS.reminders] ? true : undefined}
+                        aria-describedby={remindersId}
+                      />
+                      <p id={remindersId} className="text-sm text-muted">
+                        {errors[INVOICE_FIELDS.reminders] ? (
+                          <span className="text-danger">{errors[INVOICE_FIELDS.reminders]}</span>
+                        ) : (
+                          COPY.remindersHint
+                        )}
+                      </p>
+                    </div>
+                  )}
+                  {request ? null : (
+                    <div className="flex flex-col">
+                      <Checkbox
+                        label={COPY.repeatLabel}
+                        checked={repeat}
+                        onChange={(event) => {
+                          setRepeat(event.target.checked);
+                          clear(INVOICE_FIELDS.repeat);
+                          clear(INVOICE_FIELDS.repeatEndDate);
+                        }}
+                        aria-invalid={errors[INVOICE_FIELDS.repeat] ? true : undefined}
+                        aria-describedby={repeatId}
+                      />
+                      <p id={repeatId} className="text-sm text-muted">
+                        {errors[INVOICE_FIELDS.repeat] ? (
+                          <span className="text-danger">{errors[INVOICE_FIELDS.repeat]}</span>
+                        ) : (
+                          COPY.repeatHint
+                        )}
+                      </p>
+                    </div>
+                  )}
+                  {repeat ? (
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <DatePicker
+                        label={COPY.repeatEndLabel}
+                        name="repeatEndDate"
+                        value={repeatEnd}
+                        onChange={(iso) => {
+                          setRepeatEnd(iso);
+                          clear(INVOICE_FIELDS.repeatEndDate);
+                        }}
+                        min={dueDate ?? today}
+                        clearLabel={COPY.repeatEndClear}
+                        hint={COPY.repeatEndHint}
+                        error={errors[INVOICE_FIELDS.repeatEndDate]}
+                      />
+                    </div>
+                  ) : null}
+                </FieldGroup>
+              </div>
+
+              {stepId === STEP_IDS.review ? (
+                <FieldGroup title={COPY.reviewGroup}>
+                  <DetailList>
+                    {review.map((row) => (
+                      <DetailRow key={row.term} term={row.term}>
+                        <span className="flex items-center justify-end gap-3">
+                          <span className="min-w-0 break-words">{row.value || "—"}</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            aria-label={COPY.editStep(row.term)}
+                            onClick={() => setStep(steps.findIndex((s) => s.id === row.step))}
+                          >
+                            {COPY.edit}
+                          </Button>
+                        </span>
+                      </DetailRow>
+                    ))}
+                  </DetailList>
+                </FieldGroup>
+              ) : null}
+            </FlatFieldGroups>
+            <p role="alert" className="text-sm text-danger empty:hidden">
+              {formError}
+            </p>
+          </div>
+
+          <div className={STEP_FOOTER_CLASSES}>
+            {step > 0 ? (
+              <Button variant="secondary" onClick={() => setStep(step - 1)}>
+                <ArrowLeft aria-hidden className="size-[var(--fw-icon-sm)]" />
+                {COPY.back}
+              </Button>
+            ) : request ? null : (
+              <Link href={APP_ROUTES.invoices} className={buttonClasses({ variant: "ghost" })}>
+                {COPY.cancel}
+              </Link>
+            )}
+            <span className="hidden flex-1 sm:block" />
+            {/* Keys keep these two separate elements: reusing one would turn Continue into a submit mid-click. */}
+            {stepId === STEP_IDS.review ? (
+              <Button key="create" type="submit" loading={busy} disabled={unavailableToken}>
+                {COPY.create}
+              </Button>
+            ) : (
+              <Button
+                key="continue"
+                onClick={(event) => {
+                  event.preventDefault();
+                  next(event.currentTarget.form);
+                }}
+              >
+                {COPY.continue}
+                <ArrowRight aria-hidden className="size-[var(--fw-icon-sm)]" />
+              </Button>
+            )}
+          </div>
         </div>
-        <p role="alert" className="min-h-5 text-sm text-danger">
-          {formError}
-        </p>
       </Form>
-      {/* Sticky beside the form, scrolling on its own when the pages run longer than the screen. */}
+      {/* Beside the form, scrolling on its own when the pages run longer than the screen. */}
       <aside
         aria-label={COPY.preview.title}
-        className={`flex-col xl:sticky xl:top-24 xl:flex xl:max-h-[calc(100dvh-8rem)] xl:overflow-y-auto xl:overscroll-contain xl:pr-1 ${view === "preview" ? "flex" : "hidden"}`}
+        className={`flex-col xl:flex ${SPLIT_ASIDE_CLASSES} ${view === "preview" ? "flex" : "hidden"}`}
       >
         <NewInvoicePreview {...preview} />
       </aside>

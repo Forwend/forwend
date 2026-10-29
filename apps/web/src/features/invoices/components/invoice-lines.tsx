@@ -15,28 +15,38 @@ export interface InvoiceLinesProps {
   total: bigint;
   /** What the payer sent so far, in the same units: adds Received and Still due under the total. */
   received?: bigint;
+  /** Rows on the page's own ground, as a checkout lists them, not a panel. */
+  plain?: boolean;
 }
 
 // An invoice can list up to 100 lines: past these, the rest wait behind Show all so the total stays in reach.
 const SHOWN = 10;
 
 // R-88: the same rows on every width, as the PDF lists them.
-export function InvoiceLines({ lines, decimals, unit, total, received }: InvoiceLinesProps) {
+export function InvoiceLines({ lines, decimals, unit, total, received, plain }: InvoiceLinesProps) {
+  const inset = plain ? "" : "px-4 sm:px-5";
   const [all, setAll] = useState(lines.length <= SHOWN);
   const money = (units: string | bigint) => {
     const baseUnits = BigInt(units);
     return `${formatTokenAmount({ baseUnits, decimals, fractionDigits: exactDigits(baseUnits, decimals) })} ${unit}`;
   };
   return (
-    <section aria-labelledby="invoice-items" className="fw-panel">
-      <h2 id="invoice-items" className="fw-panel-head text-base font-semibold text-ink">
+    <section aria-labelledby="invoice-items" className={plain ? "flex flex-col" : "fw-panel"}>
+      <h2
+        id="invoice-items"
+        className={
+          plain
+            ? "border-b border-line pb-2 text-sm font-medium text-muted"
+            : "fw-panel-head text-base font-semibold text-ink"
+        }
+      >
         {lines.length ? COPY.items : COPY.summary}
       </h2>
       <ul className="divide-y divide-line empty:hidden">
         {(all ? lines : lines.slice(0, SHOWN)).map((line, i) => (
           // Lines never change and keep their order, so the position is their key.
           // biome-ignore lint/suspicious/noArrayIndexKey: see above
-          <li key={i} className="flex items-start justify-between gap-4 px-4 py-3 text-sm sm:px-5">
+          <li key={i} className={`flex items-start justify-between gap-4 py-3 text-sm ${inset}`}>
             <span className="min-w-0">
               <span className="block break-words text-ink">{line.description}</span>
               <span className="block text-xs text-muted tabular-nums">
@@ -48,13 +58,15 @@ export function InvoiceLines({ lines, decimals, unit, total, received }: Invoice
         ))}
       </ul>
       {all ? null : (
-        <div className="border-t border-line px-4 py-2.5 sm:px-5">
+        <div className={`border-t border-line py-2.5 ${inset}`}>
           <Button size="sm" variant="ghost" onClick={() => setAll(true)}>
             {COPY.allItems(lines.length)}
           </Button>
         </div>
       )}
-      <dl className="flex flex-col gap-2 border-t border-line px-4 py-3 text-sm first-of-type:border-t-0 sm:px-5 [h2+&]:border-t-0">
+      <dl
+        className={`flex flex-col gap-2 border-t border-line py-3 text-sm [h2+&]:border-t-0 ${inset} ${plain ? "border-line-strong" : ""}`}
+      >
         <div className="flex items-baseline justify-between gap-4">
           <dt className="text-muted">{COPY.itemsTotal}</dt>
           <dd

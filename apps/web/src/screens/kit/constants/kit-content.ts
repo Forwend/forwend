@@ -18,7 +18,7 @@ export const TYPE_SCALE = [
   { token: "text-5xl", size: "4rem", sample: "Get paid in stablecoins." },
   { token: "text-4xl", size: "3rem", sample: "See every step." },
   { token: "text-3xl", size: "2.25rem", sample: "Payment settled to your wallet" },
-  { token: "text-2xl", size: "1.75rem", sample: "Invoice FW-0042" },
+  { token: "text-2xl", size: "1.75rem", sample: "Invoice INV-0042" },
   { token: "text-xl", size: "1.375rem", sample: "Where is my money right now?" },
   { token: "text-lg", size: "1.125rem", sample: "Each payment moves from detected to settled." },
   { token: "text-base", size: "1rem", sample: "Body copy reads at 65 to 75 characters a line." },

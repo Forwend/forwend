@@ -47,6 +47,8 @@ export interface LinksTableProps {
 export function LinksTable({ profileId, canWrite }: LinksTableProps) {
   const list = useListLinksQuery(profileId);
   const links = list.currentData ?? [];
+  // An empty list offers New link in its own block, so the toolbar would only repeat it.
+  const noLinks = Boolean(list.currentData) && links.length === 0;
   return (
     <section
       aria-labelledby="links-title"
@@ -58,12 +60,14 @@ export function LinksTable({ profileId, canWrite }: LinksTableProps) {
         <h1 id="links-title" className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
           {COPY.title}
         </h1>
-        {canWrite ? <NewLinkLink size="sm" className="lg:hidden" /> : null}
+        {canWrite && !noLinks ? <NewLinkLink size="sm" className="lg:hidden" /> : null}
       </div>
-      <ListToolbar
-        search={<p className="flex-1 text-sm text-muted">{COPY.intro}</p>}
-        actions={canWrite ? <NewLinkLink className="max-lg:hidden" /> : undefined}
-      />
+      {noLinks ? null : (
+        <ListToolbar
+          search={<p className="flex-1 text-sm text-muted">{COPY.intro}</p>}
+          actions={canWrite ? <NewLinkLink className="max-lg:hidden" /> : undefined}
+        />
+      )}
 
       {list.isError && !list.currentData ? (
         <LoadError

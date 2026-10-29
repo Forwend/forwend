@@ -62,7 +62,7 @@ export function PaymentsShowcase() {
         <div className="grid w-full gap-4 md:grid-cols-2">
           <Card
             id="kit-card"
-            title="On its way"
+            title="Pending payments"
             description="3 payments"
             action={<span className="text-xs text-muted">View all</span>}
           >
@@ -255,19 +255,19 @@ export function PaymentsShowcase() {
       <KitGroup title="Stat tiles">
         <div className="grid w-full gap-4 sm:grid-cols-3">
           <StatTile
-            label="Available"
+            label="In wallet"
             value={<Money baseUnits={4210500000n} decimals={6} token="USDC" />}
             note="On Base"
           />
           <StatTile
-            label="Incoming"
+            label="Moving to wallet"
             value={<Money baseUnits={1250000000n} decimals={6} token="USDC" />}
-            note="1 invoice confirming"
+            note="1 payment"
           />
           <StatTile
-            label="Held for refunds"
+            label="Held for payers"
             value={<Money baseUnits={25000000n} decimals={6} token="USDC" />}
-            note="Excess on FW-0039"
+            note="Extra on INV-0039"
           />
         </div>
       </KitGroup>
@@ -275,7 +275,7 @@ export function PaymentsShowcase() {
         <div className="w-full max-w-2xl divide-y divide-line rounded-lg border border-line bg-surface px-4">
           <ActivityRow
             title="Brightline Studio"
-            detail="Invoice FW-0042 · Base"
+            detail="Invoice INV-0042 · Base"
             direction={ACTIVITY_DIRECTIONS.incoming}
             amount={{ baseUnits: 1250000000n, decimals: 6, token: "USDC" }}
             status="settled"
@@ -293,13 +293,13 @@ export function PaymentsShowcase() {
           />
           <ActivityRow
             title="North Pier Coffee"
-            detail="Invoice FW-0041 · Base"
+            detail="Invoice INV-0041 · Base"
             direction={ACTIVITY_DIRECTIONS.incoming}
             amount={{ baseUnits: 300000000n, decimals: 6, token: "USDC" }}
             status="partiallyPaid"
           />
           <ActivityRow
-            title="Invoice FW-0043"
+            title="Invoice INV-0043"
             detail="Waiting for payment · Base"
             direction={ACTIVITY_DIRECTIONS.request}
             amount={{ baseUnits: 800000000n, decimals: 6, token: "USDC" }}
@@ -316,21 +316,21 @@ export function PaymentsShowcase() {
         <div className="w-full max-w-sm divide-y divide-line rounded-lg border border-line bg-surface px-4">
           <ActivityRow
             title="Aleksandra Wiśniewska-Kowalczyk Design Studio"
-            detail="Invoice FW-0044 · Arbitrum Sepolia Testnet · 2 payments"
+            detail="Invoice INV-0044 · Arbitrum Sepolia Testnet · 2 payments"
             direction={ACTIVITY_DIRECTIONS.incoming}
             amount={{ baseUnits: 123456789012123456n, decimals: 6, token: "USDC" }}
             status="expiredPartiallyPaid"
           />
           <ActivityRow
             title="Northwind Industries Holdings"
-            detail="Invoice FW-0045 · Base"
+            detail="Invoice INV-0045 · Base"
             direction={ACTIVITY_DIRECTIONS.incoming}
             amount={{ baseUnits: 4999999n, decimals: 6, token: "USDC" }}
             status="detected"
           />
           <ActivityRow
             title="Refund to Jo"
-            detail="Excess on FW-0039 · Base"
+            detail="Extra on INV-0039 · Base"
             direction={ACTIVITY_DIRECTIONS.outgoing}
             amount={{ baseUnits: -25000000n, decimals: 6, token: "USDC" }}
             status="refunded"

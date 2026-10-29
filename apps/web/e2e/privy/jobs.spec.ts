@@ -97,7 +97,7 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   const link = page.getByRole("region", { name: "Client's link" });
   await expect(link).toContainText("Waiting for E2E client to accept.");
   await link.getByRole("button", { name: "Copy link" }).click();
-  await expect(link.getByRole("button", { name: "Link copied" })).toBeVisible();
+  await expect(link.getByRole("status")).toHaveText("Copied");
   const quoteLink = await page.evaluate(() => navigator.clipboard.readText());
   expect(quoteLink).toMatch(/^http:\/\/localhost:3000\/w\/[0-9a-f]{64}$/);
   // R-102. No real accept here: it opens a deposit for 60 days and a job that can't be deleted (D-85).
@@ -105,7 +105,8 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   const quote = await client.newPage();
   await quote.goto(quoteLink);
   await expect(quote.getByRole("heading", { level: 1, name: title })).toBeVisible();
-  await expect(quote.getByText("Quote from E2E studio Ltd")).toBeVisible();
+  await expect(quote.getByText("E2E studio Ltd").first()).toBeVisible();
+  await expect(quote.getByText("Quote", { exact: true })).toBeVisible();
   await expect(quote.getByRole("region", { name: "Payments" })).toContainText("1,000.50 USD");
   await expect(quote.getByRole("button", { name: "Accept quote" })).toBeVisible();
   expect(await blockingViolations(quote)).toEqual([]);
@@ -116,7 +117,7 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   await expect(page.getByRole("region", { name: "Scope" })).toContainText("A logo in three ideas.");
   // R-104
   await expect(page.getByRole("region", { name: "Record" }).getByRole("listitem")).toHaveText([
-    /Quote made$/,
+    /Quote made/,
   ]);
   expect(await blockingViolations(page)).toEqual([]);
 

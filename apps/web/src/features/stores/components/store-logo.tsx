@@ -3,7 +3,7 @@
 import { Button, TONES, useToast } from "@forwend/ui-web";
 import { ImageUp, Trash2 } from "lucide-react";
 import Image from "next/image";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   useDeleteStoreLogoMutation,
   useSaveStoreLogoMutation,
@@ -15,12 +15,15 @@ import type { Store } from "@/features/stores/types/stores";
 
 export interface StoreLogoProps {
   profileId: string;
-  store: Store;
+  /** A saved store: a chosen file uploads at once, apart from the form's Save. */
+  store?: Store;
+  /** A new store's chosen file, which the form uploads once the store is saved. */
+  pending?: File | null;
+  onPending?: (file: File | null) => void;
 }
 
-// R-135: a chosen file uploads at once, apart from the form's Save. The API checks the image; this only spares a
-// request the API would refuse.
-export function StoreLogo({ profileId, store }: StoreLogoProps) {
+// R-135. The API checks the image; this only spares a request the API would refuse.
+export function StoreLogo({ profileId, store, pending = null, onPending }: StoreLogoProps) {
   const [saveLogo, saving] = useSaveStoreLogoMutation();
   const [deleteLogo, deleting] = useDeleteStoreLogoMutation();
   const toast = useToast();
@@ -28,6 +31,8 @@ export function StoreLogo({ profileId, store }: StoreLogoProps) {
   const hintId = useId();
   const [error, setError] = useState("");
   const busy = saving.isLoading || deleting.isLoading;
+  const local = useObjectUrl(pending);
+  const src = store?.logoAt ? storeLogoUrl(store.storeId, store.logoAt) : local;
 
   const upload = async (file: File | undefined) => {
     if (input.current) input.current.value = "";
@@ -40,6 +45,7 @@ export function StoreLogo({ profileId, store }: StoreLogoProps) {
       return;
     }
     setError("");
+    if (!store) return onPending?.(file);
     try {
       await saveLogo({ profileId, storeId: store.storeId, logo: file }).unwrap();
       toast({ tone: TONES.success, title: COPY.logoSaved });
@@ -53,6 +59,7 @@ export function StoreLogo({ profileId, store }: StoreLogoProps) {
   };
   const remove = async () => {
     setError("");
+    if (!store) return onPending?.(null);
     try {
       await deleteLogo({ profileId, storeId: store.storeId }).unwrap();
       toast({ tone: TONES.success, title: COPY.logoRemoved });
@@ -65,15 +72,15 @@ export function StoreLogo({ profileId, store }: StoreLogoProps) {
     <div className="flex flex-col gap-1.5">
       <p className="text-sm font-medium text-ink">{COPY.logo}</p>
       <div className="flex flex-wrap items-center gap-3">
-        {store.logoAt ? (
+        {src ? (
           // Light in both themes, as on the pay page: most logos are drawn for a light page.
           <span
             data-theme="light"
-            className="grid h-14 max-w-48 place-items-center rounded-md border border-line bg-surface px-2"
+            className="grid h-14 max-w-48 place-items-center rounded-md bg-surface px-2"
           >
             <Image
-              src={storeLogoUrl(store.storeId, store.logoAt)}
-              alt={COPY.logoAlt(store.name)}
+              src={src}
+              alt={COPY.logoAlt(store?.name ?? COPY.logo)}
               width={176}
               height={40}
               unoptimized
@@ -102,9 +109,9 @@ export function StoreLogo({ profileId, store }: StoreLogoProps) {
           onClick={() => input.current?.click()}
         >
           <ImageUp aria-hidden className="size-[var(--fw-icon-sm)]" />
-          {store.logoAt ? COPY.replaceLogo : COPY.uploadLogo}
+          {src ? COPY.replaceLogo : COPY.uploadLogo}
         </Button>
-        {store.logoAt ? (
+        {src ? (
           <Button
             size="sm"
             variant="ghost"
@@ -121,8 +128,23 @@ export function StoreLogo({ profileId, store }: StoreLogoProps) {
         {error}
       </p>
       <p id={hintId} className="text-sm text-muted">
-        {COPY.logoHint}
+        {store ? COPY.logoHint : COPY.logoHintNew}
       </p>
     </div>
   );
+}
+
+/** A local file's address for an image preview, released when the file changes or the preview goes. */
+export function useObjectUrl(file: File | null): string | null {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!file) {
+      setUrl(null);
+      return;
+    }
+    const next = URL.createObjectURL(file);
+    setUrl(next);
+    return () => URL.revokeObjectURL(next);
+  }, [file]);
+  return url;
 }

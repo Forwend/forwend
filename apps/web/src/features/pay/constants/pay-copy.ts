@@ -52,6 +52,8 @@ export const PAY_COPY = {
   contract: (symbol: string) => `${symbol} contract`,
   sendTo: (symbol: string, network: string) => `Send ${symbol} on ${network} to`,
   updatesItself: "This page updates on its own.",
+  found: "Payment found",
+  foundNote: "Recording it now. Don't pay again.",
   // R-68: once money is seen the payer has nothing left to do; saying so keeps them from paying twice.
   seen: "Payment detected",
   finalAround: (time: string) => `Final around ${time}`,
@@ -159,6 +161,7 @@ export const LINK_PAY_COPY = {
   continue: "Continue payment",
   another: "Start another purchase",
   next: "You pick the token and network on the next page.",
+  payPanel: "Pay with stablecoins",
   closed: {
     off: "This link is off. Ask the seller for another way to pay.",
     ended: "This link has ended. Ask the seller for another way to pay.",

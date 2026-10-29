@@ -81,7 +81,10 @@ test.describe("job quote page", () => {
     });
     await page.goto(`/w/${TOKEN}`);
     await expect(page.getByRole("heading", { level: 1, name: "Brand identity" })).toBeVisible();
-    await expect(page.getByText("Quote from Alice Design GmbH")).toBeVisible();
+    // Who quotes leads the page, as the payee leads the checkout.
+    const main = page.getByRole("main");
+    await expect(main.getByText("Alice Design GmbH").first()).toBeVisible();
+    await expect(main.getByText("Quote", { exact: true })).toBeVisible();
     const payments = page.getByRole("region", { name: "Payments" });
     await expect(payments).toContainText("Invoiced when you accept, due 7 days after");
     await expect(payments).toContainText("Invoiced as each step is done, due 14 days after");
@@ -103,10 +106,11 @@ test.describe("job quote page", () => {
     await expect(page.getByRole("status")).toContainText("Accepted by Jane Doe on");
     // R-104
     const record = page.getByRole("region", { name: "Record" });
+    // Oldest first; each entry is the event, then its time.
     await expect(record.getByRole("listitem")).toHaveText([
-      /Quote made$/,
-      /Accepted by Jane Doe$/,
-      /INV-0012 made for Deposit$/,
+      /Quote made/,
+      /Accepted by Jane Doe/,
+      /INV-0012 made for Deposit/,
     ]);
     await expect(page.getByRole("link", { name: "Pay the deposit" })).toHaveAttribute(
       "href",

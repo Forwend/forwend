@@ -24,12 +24,14 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div
+      // The page's workspace grows every box down to this one (app shell), so it centers in what is left on screen.
+      data-page-empty={page ? "" : undefined}
       className={cx(
         "flex w-full flex-col items-center justify-center px-6 text-center",
         compact
           ? "flex-1 py-10"
           : page
-            ? "min-h-[max(16rem,calc(100dvh-20rem))] py-10"
+            ? "min-h-64 grow py-10"
             : "min-h-[min(16rem,40dvh)] rounded-lg border border-line bg-surface py-10",
       )}
     >

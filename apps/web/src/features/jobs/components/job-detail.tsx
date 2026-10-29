@@ -1,18 +1,7 @@
 "use client";
 
-import {
-  Badge,
-  BigAmount,
-  BUTTON_VARIANTS,
-  Button,
-  buttonClasses,
-  COPY_STATUS,
-  StatusPill,
-  TONES,
-  useCopy,
-  useToast,
-} from "@forwend/ui-web";
-import { Check, Copy, ExternalLink } from "lucide-react";
+import { Badge, BUTTON_VARIANTS, Button, StatusPill, TONES, useToast } from "@forwend/ui-web";
+import { BriefcaseBusiness } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, type Ref, useEffect, useState } from "react";
 import { formatUsd } from "@/features/balances/lib/balances";
@@ -26,6 +15,7 @@ import { JOB_LIMITS, PAYMENT_STEPS } from "@/features/jobs/constants/jobs";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
 import { apiCents, isPendingChange, paymentStep } from "@/features/jobs/lib/jobs";
 import type { Job, JobPaymentStatus } from "@/features/jobs/types/jobs";
+import { CopyValue } from "@/shared/components/copy-value";
 import { DetailHeader } from "@/shared/components/detail-header";
 import { Party } from "@/shared/components/party";
 import { APP_ROUTES } from "@/shared/config/routes";
@@ -56,7 +46,6 @@ export interface JobDetailProps {
 export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps) {
   // The app renders only in the browser, after sign-in.
   const link = `${window.location.origin}/w/${job.token}`;
-  const [copyStatus, copy] = useCopy(link);
   const c = job.client;
   const next = job.acceptedAt
     ? job.payments.find((p) => !p.invoiceId && !isPendingChange(p))
@@ -66,13 +55,6 @@ export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps)
   const final = job.payments.at(pending ? -2 : -1);
   const agreed = job.payments.filter((p) => !isPendingChange(p));
   const paid = agreed.filter((p) => paymentStep(p) === PAYMENT_STEPS.paid).length;
-  const nextLine = !job.acceptedAt
-    ? COPY.nextSend(c.name)
-    : pending
-      ? COPY.nextChange(pending.title)
-      : next
-        ? COPY.nextMarkDone(next.title)
-        : null;
   const canPropose =
     Boolean(job.acceptedAt) &&
     !pending &&
@@ -99,36 +81,45 @@ export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps)
   }, [focusInvoice, made]);
   return (
     <div className="flex flex-col gap-6">
+      {/* As the payment and invoice pages: the status says where it stands, and each payment's row what to do. */}
       <DetailHeader
         back={{ href: APP_ROUTES.jobs, label: JOBS_COPY.title }}
+        icon={<BriefcaseBusiness aria-hidden />}
         title={
           <span ref={titleRef} tabIndex={-1} className="outline-none">
             {job.title}
           </span>
         }
-        badges={<Badge>{job.acceptedAt ? COPY.acceptedBadge : JOBS_COPY.waiting}</Badge>}
-        meta={COPY.meta(c.name, shortDate(job.createdAt))}
-        actions={actions}
-        summary={
-          <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <BigAmount
-              value={formatUsd(apiCents(job.totalUsd))}
-              unit={MONEY_COPY.usd}
-              className="text-3xl sm:text-4xl"
-            />
-            {job.acceptedAt ? (
-              <span className="text-sm text-muted">{COPY.paidCount(paid, agreed.length)}</span>
-            ) : null}
-          </span>
+        badges={
+          <Badge tone={job.acceptedAt ? TONES.success : TONES.neutral}>
+            {job.acceptedAt ? COPY.acceptedBadge : JOBS_COPY.waiting}
+          </Badge>
         }
-        next={nextLine}
+        meta={COPY.meta(c.name, shortDate(job.createdAt))}
+        figure={{
+          label: COPY.total,
+          value: (
+            <>
+              {formatUsd(apiCents(job.totalUsd))}{" "}
+              <span className="text-base font-normal text-muted">{MONEY_COPY.usd}</span>
+            </>
+          ),
+        }}
+        actions={actions}
       />
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
         <div className="flex min-w-0 flex-col gap-5">
           <section aria-labelledby="job-payments" className={PANEL}>
-            <h2 id="job-payments" tabIndex={-1} className={`${PANEL_TITLE} outline-none`}>
-              {COPY.payments}
-            </h2>
+            <div className={`${PANEL_TITLE} justify-between`}>
+              <h2 id="job-payments" tabIndex={-1} className="outline-none">
+                {COPY.payments}
+              </h2>
+              {job.acceptedAt ? (
+                <span className="text-sm font-normal text-muted">
+                  {COPY.paidCount(paid, agreed.length)}
+                </span>
+              ) : null}
+            </div>
             <ol className="pt-1">
               {job.payments.map((p, i) => (
                 <PaymentStep
@@ -263,53 +254,22 @@ export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps)
             <h2 id="job-link" className={PANEL_TITLE}>
               {COPY.linkGroup}
             </h2>
-            <div className="flex flex-col items-start gap-3 px-4 py-3 sm:px-5">
-              <p className="text-sm text-ink">
-                {job.acceptedAt && job.acceptedName
-                  ? COPY.acceptedBy(
-                      job.acceptedName,
-                      job.acceptedEmail ?? "",
-                      TIME.format(new Date(job.acceptedAt)),
-                    )
-                  : COPY.waiting(c.name)}
-              </p>
-              <p className="text-sm text-muted">
-                {job.acceptedAt ? COPY.linkHintAccepted : COPY.linkHint}
-              </p>
-              <p className="w-full truncate rounded-md bg-sunken px-3 py-2 font-mono text-xs text-ink">
-                {link}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="secondary" onClick={() => void copy()}>
-                  {copyStatus === COPY_STATUS.copied ? (
-                    <Check aria-hidden className="size-[var(--fw-icon-sm)]" />
-                  ) : (
-                    <Copy aria-hidden className="size-[var(--fw-icon-sm)]" />
-                  )}
-                  {copyStatus === COPY_STATUS.copied
-                    ? COPY.copied
-                    : copyStatus === COPY_STATUS.failed
-                      ? COPY.copyFailed
-                      : COPY.copy}
-                </Button>
-                <a
-                  href={link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={buttonClasses({ size: "sm", variant: "ghost" })}
-                >
-                  <ExternalLink aria-hidden className="size-[var(--fw-icon-sm)]" />
-                  {COPY.open}
-                  <span className="sr-only"> {COPY.inNewTab}</span>
-                </a>
-              </div>
-              <p role="status" className="sr-only">
-                {copyStatus === COPY_STATUS.copied
-                  ? COPY.copied
-                  : copyStatus === COPY_STATUS.failed
-                    ? COPY.copyFailed
-                    : ""}
-              </p>
+            <div className="px-4 py-4 sm:px-5">
+              <CopyValue
+                label={COPY.linkLabel}
+                value={link}
+                copyLabel={COPY.copy}
+                hint={
+                  job.acceptedAt && job.acceptedName
+                    ? COPY.acceptedBy(
+                        job.acceptedName,
+                        job.acceptedEmail ?? "",
+                        TIME.format(new Date(job.acceptedAt)),
+                      )
+                    : COPY.waiting(c.name)
+                }
+                open={{ label: COPY.openShort, name: COPY.open }}
+              />
             </div>
           </section>
           <JobRecord job={job} acceptedEmail={job.acceptedEmail} />

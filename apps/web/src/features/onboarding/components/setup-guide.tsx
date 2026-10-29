@@ -1,11 +1,11 @@
 "use client";
 
-import { Button, buttonClasses, IconButton } from "@forwend/ui-web";
+import { Button, buttonClasses } from "@forwend/ui-web";
 import { useLinkWithPasskey, usePrivy } from "@privy-io/react-auth";
 import { skipToken } from "@reduxjs/toolkit/query";
-import { X } from "lucide-react";
+import { ChevronUp } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useGetInvoicesInfiniteQuery } from "@/features/invoices/api/invoices-api";
 import { CHECKLIST_STEPS } from "@/features/onboarding/constants/onboarding";
 import { CHECKLIST_COPY as COPY } from "@/features/onboarding/constants/onboarding-copy";
@@ -37,7 +37,8 @@ function stepCopy(id: ChecklistStepId, kind: ProfileKind) {
 }
 
 // R-50, D-53: read from data the app already loads. A small card at the sidebar's foot (the phone's More sheet) shows
-// the progress and only the next step, so setup never takes over the overview. It goes once every step is done.
+// the progress; opened, only the next step, so setup never takes over the overview. It goes once every step is done
+// or skipped.
 export function SetupGuide() {
   const { profile, openReceive, openRequest } = useAppSession();
   const { profileId, kind } = profile;
@@ -46,6 +47,8 @@ export function SetupGuide() {
   const [dismissal, setDismissal] = useState<ChecklistDismissal>(() => readDismissal(profileId));
   const [linking, setLinking] = useState(false);
   const [error, setError] = useState("");
+  const [expanded, setExpanded] = useState(false);
+  const panelId = useId();
   const freelancer = kind === PROFILE_KINDS.freelancer;
   const open = !dismissal.closed && kind !== PROFILE_KINDS.merchant;
   const billing = useGetBillingDetailsQuery(open && freelancer ? profileId : skipToken);
@@ -99,23 +102,29 @@ export function SetupGuide() {
             : { onClick: openReceive };
 
   return (
-    <section aria-labelledby="setup-guide" className="rounded-lg border border-line bg-surface p-3">
-      <div className="flex items-center gap-2">
-        <h2 id="setup-guide" className="text-sm font-medium text-ink">
-          {COPY.title}
-        </h2>
-        <span className="text-xs text-muted tabular-nums">{COPY.progress(done, shown.length)}</span>
-        <IconButton
-          label={COPY.close}
-          size="xs"
-          onClick={() => dismiss({ ...dismissal, closed: true })}
-          className="ml-auto"
+    <section aria-labelledby="setup-guide" className="rounded-lg border border-line bg-surface">
+      {/* Closed, it is one row with the progress; it opens on the next step and stays until every step is done or
+          skipped. */}
+      <h2 id="setup-guide">
+        <button
+          type="button"
+          aria-expanded={expanded}
+          aria-controls={panelId}
+          onClick={() => setExpanded((value) => !value)}
+          className="flex w-full items-center gap-2 rounded-lg px-3 pt-3 pb-2 text-left outline-none focus-visible:outline-2 focus-visible:outline-focus"
         >
-          <X aria-hidden className="size-3.5" />
-        </IconButton>
-      </div>
+          <span className="text-sm font-medium text-ink">{COPY.title}</span>
+          <span className="text-xs text-muted tabular-nums">
+            {COPY.progress(done, shown.length)}
+          </span>
+          <ChevronUp
+            aria-hidden
+            className={`ml-auto size-3.5 text-muted transition-transform duration-[var(--fw-duration-base)] ease-out motion-reduce:transition-none ${expanded ? "" : "rotate-180"}`}
+          />
+        </button>
+      </h2>
       {/* One segment per step, so the count reads at a glance. */}
-      <ol aria-hidden className="mt-2 flex gap-1">
+      <ol aria-hidden className="flex gap-1 px-3 pb-3">
         {shown.map((step) => (
           <li
             key={step.id}
@@ -123,32 +132,50 @@ export function SetupGuide() {
           />
         ))}
       </ol>
-      <p className="mt-3 text-sm font-medium text-ink">{text.title}</p>
-      <p className="mt-0.5 text-xs text-muted">{text.hint}</p>
-      <div className="mt-3 flex items-center gap-1">
-        {"href" in action ? (
-          <Link href={action.href} className={buttonClasses({ variant: "secondary", size: "sm" })}>
-            {text.action}
-          </Link>
-        ) : (
-          <Button size="sm" variant="secondary" loading={action.busy} onClick={action.onClick}>
-            {text.action}
-          </Button>
-        )}
-        <Button
-          size="sm"
-          variant="ghost"
-          aria-label={COPY.skipStep(text.title)}
-          onClick={() => dismiss({ ...dismissal, skipped: [...dismissal.skipped, next.id] })}
-        >
-          {COPY.skip}
-        </Button>
+      <div
+        id={panelId}
+        inert={!expanded}
+        className={`grid transition-[grid-template-rows] duration-[var(--fw-duration-base)] ease-out motion-reduce:transition-none ${expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="border-t border-line px-3 pt-3 pb-3">
+            <p className="text-sm font-medium text-ink">{text.title}</p>
+            <p className="mt-0.5 text-xs text-muted">{text.hint}</p>
+            <div className="mt-3 flex items-center gap-1">
+              {"href" in action ? (
+                <Link
+                  href={action.href}
+                  className={buttonClasses({ variant: "secondary", size: "sm" })}
+                >
+                  {text.action}
+                </Link>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  loading={action.busy}
+                  onClick={action.onClick}
+                >
+                  {text.action}
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label={COPY.skipStep(text.title)}
+                onClick={() => dismiss({ ...dismissal, skipped: [...dismissal.skipped, next.id] })}
+              >
+                {COPY.skip}
+              </Button>
+            </div>
+            {error ? (
+              <p role="alert" className="mt-2 text-xs text-danger">
+                {error}
+              </p>
+            ) : null}
+          </div>
+        </div>
       </div>
-      {error ? (
-        <p role="alert" className="mt-2 text-xs text-danger">
-          {error}
-        </p>
-      ) : null}
     </section>
   );
 }

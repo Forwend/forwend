@@ -116,8 +116,9 @@ export const PAYMENT_DETAIL_COPY = {
   customer: "Customer",
   noCustomer: "Not provided",
   paidWith: "Paid with",
+  payingWith: "Paying with",
   accepts: "Accepts",
-  options: (n: number) => `${n} tokens, the customer picks`,
+  options: (n: number) => `${n} options, the customer picks`,
   closes: "Checkout closes",
   closed: "Checkout closed",
   documents: "Documents",
@@ -139,7 +140,6 @@ export const PAYMENT_DETAIL_COPY = {
     expiredPartly: "Checkout closed after a partial payment. Reopen it once, or bill the rest.",
     expired: "Checkout closed without payment. Send a new invoice or link to collect it.",
     partly: "Partly paid. The customer can pay the rest through the same checkout.",
-    waiting: "Waiting for the customer. Share the checkout link to collect payment.",
   },
 } as const;
 
