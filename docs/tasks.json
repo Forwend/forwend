@@ -1526,7 +1526,7 @@
         "A read that starts while a hung read of the same chain runs gets that read's failure instead of starting another hung request; no assertion depends on which of two goroutines finishes first"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend-affected"
       ],
@@ -1536,7 +1536,8 @@
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-29 review pass by independent-reviewer: Root-cause fix, not a weakened test. Old TestTimedOutRPCRests asserted a rest that never happens: with 300 ms caller deadlines the pool does not rest the endpoint (5 s attempt timeout; run with -v shows no 'RPC rests' log), and its fast second read passed only if it joined the first read's cache fill before the fill deleted its entry. Rest-after-attempt-timeout and caller-deadline-does-not-rest are covered in internal/chain pool_test.go (TestFailingEndpointRestsThenComesBack with Hang, TestHangingHostRestsWhole, TestCallerDeadlineDoesNotRestProviderForOtherWork) and the cancelled-read part stays in TestOneHungChainDoesNotBlockTheOthers; failed-read-not-kept stays in cache_test.go. New TestReadDuringAHungReadSharesItsFailure waits on the hung server's accept count, so the second read starts while the first fill is in flight, then needs the shared error well before its 10 s deadline and exactly 1 connection. No assertion depends on which goroutine finishes first; the only timing assumption is that the second read starts within the first read's 500 ms deadline, a margin of hundreds of ms over a ~1 ms poll. Mutation 'if true || e == nil' in cache.go (via -overlay) fails the test after 5.5 s (second read got its own 5.5 s failure). Ran go test -race -count=20 on the new test plus TestOneHungChainDoesNotBlockTheOthers: ok. Also ran the new test -race -count=40 at -cpu 1,2 under 28 busy-loop processes on 14 CPUs: ok. Nits, not blocking: the 'for accepted.Load() == 0' wait has no timeout, so a regression where the first read never dials hangs until the go test timeout instead of failing; a stall over 500 ms between the two reads would fail the test."
+        "2026-10-29 review pass by independent-reviewer: Root-cause fix, not a weakened test. Old TestTimedOutRPCRests asserted a rest that never happens: with 300 ms caller deadlines the pool does not rest the endpoint (5 s attempt timeout; run with -v shows no 'RPC rests' log), and its fast second read passed only if it joined the first read's cache fill before the fill deleted its entry. Rest-after-attempt-timeout and caller-deadline-does-not-rest are covered in internal/chain pool_test.go (TestFailingEndpointRestsThenComesBack with Hang, TestHangingHostRestsWhole, TestCallerDeadlineDoesNotRestProviderForOtherWork) and the cancelled-read part stays in TestOneHungChainDoesNotBlockTheOthers; failed-read-not-kept stays in cache_test.go. New TestReadDuringAHungReadSharesItsFailure waits on the hung server's accept count, so the second read starts while the first fill is in flight, then needs the shared error well before its 10 s deadline and exactly 1 connection. No assertion depends on which goroutine finishes first; the only timing assumption is that the second read starts within the first read's 500 ms deadline, a margin of hundreds of ms over a ~1 ms poll. Mutation 'if true || e == nil' in cache.go (via -overlay) fails the test after 5.5 s (second read got its own 5.5 s failure). Ran go test -race -count=20 on the new test plus TestOneHungChainDoesNotBlockTheOthers: ok. Also ran the new test -race -count=40 at -cpu 1,2 under 28 busy-loop processes on 14 CPUs: ok. Nits, not blocking: the 'for accepted.Load() == 0' wait has no timeout, so a regression where the first read never dials hangs until the go test timeout instead of failing; a stall over 500 ms between the two reads would fail the test.",
+        "2026-10-29 review pass by independent-reviewer: Re-reviewed the committed file (9dc8958f, tree clean). The only change since my first pass is the wait for the first connection: it now fails with 'the first read never reached the RPC' after 5 s instead of hanging. I proved it by overlaying a copy where the hung server never counts a connection: the test fails after 5.00 s with that message. Everything else is as before. The test waits for the hung server to accept the first read's connection, so the second read starts while the first fill is in flight. It then needs the shared error before 5 s and exactly 1 connection. No assertion depends on which goroutine finishes first. The only timing assumption is that the second read starts within the first read's 500 ms deadline. The earlier cache.go mutation 'if true || e == nil' still fails the test, found by the earlier run. Rest-after-attempt-timeout, caller-deadline-no-rest and failed-read-not-kept stay covered by internal/chain pool_test.go and balance cache_test.go. Re-ran go test -race -count=20 on the new test plus TestOneHungChainDoesNotBlockTheOthers: ok, 59 s. Remaining nit, not blocking: a stall over 500 ms between the two reads would fail the test."
       ],
       "blockedReason": null,
       "evidence": {
@@ -1570,11 +1571,25 @@
         "filesHash": "42d9e0332ec33275",
         "proof": {
           "1": "backend-affected: balance TestReadDuringAHungReadSharesItsFailure passes 20 of 20 with -race and fails when the cache stops sharing a read"
-        }
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent-reviewer",
+          "summary": "Re-reviewed the committed file (9dc8958f, tree clean). The only change since my first pass is the wait for the first connection: it now fails with 'the first read never reached the RPC' after 5 s instead of hanging. I proved it by overlaying a copy where the hung server never counts a connection: the test fails after 5.00 s with that message. Everything else is as before. The test waits for the hung server to accept the first read's connection, so the second read starts while the first fill is in flight. It then needs the shared error before 5 s and exactly 1 connection. No assertion depends on which goroutine finishes first. The only timing assumption is that the second read starts within the first read's 500 ms deadline. The earlier cache.go mutation 'if true || e == nil' still fails the test, found by the earlier run. Rest-after-attempt-timeout, caller-deadline-no-rest and failed-read-not-kept stay covered by internal/chain pool_test.go and balance cache_test.go. Re-ran go test -race -count=20 on the new test plus TestOneHungChainDoesNotBlockTheOthers: ok, 59 s. Remaining nit, not blocking: a stall over 500 ms between the two reads would fail the test.",
+          "at": "2026-10-29T21:37:53Z",
+          "filesHash": "42d9e0332ec33275"
+        },
+        "commit": "9dc8958f",
+        "doneAt": "2026-10-29T21:38:00Z"
       },
       "branch": "test/f359-the-balance-reader-s-hung-chain-test-che",
       "baseCommit": "cd8687a78b2cd743fc06cc30779900af47494c95",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "test/f359-the-balance-reader-s-hung-chain-test-che",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
