@@ -378,8 +378,9 @@ the API, pays it and waits for detected → paid → settled with the deposit go
 - Batch-size limits every endpoint gives split header and balance reads; ten accepted batches double them again.
 
 Receive addresses and wallets go into topic lists of at most 1,000: go-ethereum nodes, Arbitrum's public RPC
-among them, refuse more with "exceed max topics". Invoices leave the scan 30 days after their settle deadline (the
-contracts' `MAX_HOLD`), unless a deposit to them is still detected: later money is moved only by the refund authority, from the chain. A transfer already recorded
+among them, refuse more with "exceed max topics". Invoices leave the deposit scan 30 days after their settle deadline (the
+contracts' `MAX_HOLD`), unless a deposit to them is still detected: later money is moved only by the refund authority, from the chain.
+Their receivers' own events are still read while they hold booked money, so those moves are recorded (R-183). A transfer already recorded
 under another block and then mined again is skipped with an `ALERT` log, so the chain's scan goes on.
 Invoices on a chain are created only once the worker has its cursor (`ErrNotWatched`, 503): a first scan starts at the
 finalized block and would never see a payment made before it. One JSON-RPC batch then reads `finalized` and the header of every block it judges, so they usually come

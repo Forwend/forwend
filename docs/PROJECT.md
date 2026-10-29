@@ -244,6 +244,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-182 | Agents improve written behavior when a better one exists, and keep the frontend working. | Given a doc, requirement, decision or test that describes weak behavior, then an agent who knows a better one improves it. Rule, code and tests change together. A backend change checks every frontend and package reader, and keeps each one working. | docs-check | Owner instruction |
 
+| R-183 | Refund-authority moves are recorded while a receiver still holds money. | Given an invoice past the deposit watch window, when its receiver still holds booked money, then the scan reads its settle, refund and recover events. The window ends 30 days after the settle deadline. Deposits after the window stay unwatched. | backend | R-164, R-181, D-116 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.

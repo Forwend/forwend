@@ -39,7 +39,9 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
   - A receiver event first records the receiver's deploy time; an early deploy can shorten the checkout close (R-130).
 - The signer records its own settle from its finalized receipt, so `settled` never waits for the scan.
 - Recovery sweeps read every block again later, so a log one RPC answer missed is still found.
-- A receiver leaves the scan 30 days after its settle deadline; later refund-authority moves are not recorded.
+- Deposits to a receiver are read until 30 days after its settle deadline (R-183).
+  - Its own events are read longer, while the ledger shows it still holds booked money.
+  - So a late refund-authority settle or refund is still recorded and booked; a late recovery is recorded.
 - The signer records a receipt's events only when its block is the canonical one at that height.
 - A receiver event that is not a movement of its own invoice logs an `ALERT` and is skipped; the scan goes on.
 - A movement found after later ones were booked is refused for review, never booked against today's balances.

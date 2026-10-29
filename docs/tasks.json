@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 355,
+  "nextId": 356,
   "tasks": [
     {
       "id": "F332",
@@ -1160,6 +1160,73 @@
         "branch": "test/f354-the-webhook-concurrency-test-proves-the",
         "base": "main"
       }
+    },
+    {
+      "id": "F355",
+      "type": "fix",
+      "behavior": "Refund-authority moves are recorded while a receiver still holds money",
+      "acceptance": [
+        "The scan reads settle, refund and recover events of receivers past the deposit watch window while they still hold booked money (held for the payer, or paid and not settled); deposits after the window stay unwatched"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "backend-affected",
+        "docs-check"
+      ],
+      "refs": [
+        "R-183"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-29 review fail by independent-reviewer: Code is correct; FAIL on 4 proof and doc gaps. Reviewed with mutations in a scratch copy. Code: deposits still use the watched map; holding() is a superset of the watched set; pending-heights reads and the recovery path are unchanged in meaning; maps.Clone copies a non-nil map, no aliasing. The settlement test fails without the change (Refunded 0, Held 1000000) and passes with it. Both requested test commands pass. Blocking: (1) Acceptance says deposits after the window stay unwatched, but no test covers it for a holding receiver. Reading deposits from receivers instead of invoices passes watcher, settlement and worker tests. Add a transfer to the past-window receiver in the new test and assert no chain_transfers row. (2) The new test matches both status clauses at once: the invoice is paid, unsettled and has 1 USDC overpay held. Dropping either the refund_status='held' clause or the paid-unsettled clause still passes. Add a second case, or set state so each clause is proven alone. (3) docs/backend/money-safety.md says a late settle, refund or recovery is 'recorded and booked'. A Recovered event is recorded as kind recovery and never booked (ledger pendingMovements skips it). Say recorded for recovery, booked for settle and refund. (4) R-183 first sentence is 33 words, over the 25-word limit of D-84. Split it, for example: 'Given an invoice past the deposit watch window, when its receiver still holds booked money, then the scan reads its settle, refund and recover events.' (25 words), then 'The window ends 30 days after the settle deadline.' Non-blocking: architecture.md still says 'Invoices leave the scan' (33 words, old) while receivers stay read; say 'leave the deposit scan'. A partially_paid invoice whose expiry is blocked by a reconciliation check, past the window, holds creator-owed money and is not matched by the filter. A paid-unsettled invoice whose money was refunded or recovered by hand stays in the list forever. No backfill for refund events missed before this change. holding() and invoices() each scan the chain's invoices per round with no supporting index, same cost class as before. Status checks: refund_status is held exactly when payer_held is nonzero, and settlement pending is set only on the move to paid, which is terminal, so pending with another payment status cannot occur; a reopened invoice that expires again books its money back to payer_held, so it matches.",
+        "2026-10-29 review pass by independent-reviewer: Round 2 PASS. All 4 earlier findings are fixed. Checked in scratch copies with mutations: both new settlement tests fail on the HEAD watcher.go; dropping the refund_status='held' clause fails only the held test; dropping the settlement_status<>'settled' clause fails only the settle test; reading deposits for receivers (c.logs alone, or c.logs plus depositsOf) fails the held test, so 'deposits after the window stay unwatched' is now proven for a holding receiver. Passing here: the 3 settlement tests (new two plus the old authority-refund test), the full watcher package (45s), gofmt, go vet, check-docs (0 errors). Docs: money-safety now says recorded and booked for settle and refund, recorded for recovery, which matches the ledger; R-183 sentences are 25 words or fewer; architecture says 'deposit scan'. Non-blocking: (1) The new booked-balance condition has no test. Removing the ledger subquery still passes the watcher, worker and new settlement tests, so nothing guards against reading every past-window unsettled invoice. A small test that a never-paid past-window invoice is not in holding() would guard it. (2) Cost: on 100k past-window invoices, mostly expired and never paid, the query took about 125 ms against 15 ms for the status-only filter. The subquery runs for every row with settlement_status <> 'settled', which includes all expired never-paid invoices. Adding payment_status <> 'expired' to the second branch skips them (expired invoices with late money match refund_status='held'). ledger_transactions_invoice and the unique (transaction_id, account) index serve the subquery. (3) Invoices whose refund events were missed before this change show receiver balance above 0 in the ledger and stay in the list; there is no backfill. (4) The task's acceptance line still lists 'held for the payer, or paid and not settled' while the filter now uses the booked balance; the parenthetical is only an example. (5) The architecture.md sentence 'Invoices leave the deposit scan...' is still 34 words (old text)."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-29T19:15:31Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 231.4,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 37.2,
+            "log": ""
+          }
+        ],
+        "taskHash": "cf2aba45ea51eb64",
+        "filesHash": "b9c73759761ec063",
+        "proof": {
+          "1": "backend-affected: settlement TestRefundAfterTheWatchWindowIsBookedWhileHeldMoneyRemains and TestSettleAfterTheWatchWindowIsBookedWhilePaidMoneyRemains; each fails without its status clause, and the first fails when deposits are read past the window"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent-reviewer",
+          "summary": "Round 2 PASS. All 4 earlier findings are fixed. Checked in scratch copies with mutations: both new settlement tests fail on the HEAD watcher.go; dropping the refund_status='held' clause fails only the held test; dropping the settlement_status<>'settled' clause fails only the settle test; reading deposits for receivers (c.logs alone, or c.logs plus depositsOf) fails the held test, so 'deposits after the window stay unwatched' is now proven for a holding receiver. Passing here: the 3 settlement tests (new two plus the old authority-refund test), the full watcher package (45s), gofmt, go vet, check-docs (0 errors). Docs: money-safety now says recorded and booked for settle and refund, recorded for recovery, which matches the ledger; R-183 sentences are 25 words or fewer; architecture says 'deposit scan'. Non-blocking: (1) The new booked-balance condition has no test. Removing the ledger subquery still passes the watcher, worker and new settlement tests, so nothing guards against reading every past-window unsettled invoice. A small test that a never-paid past-window invoice is not in holding() would guard it. (2) Cost: on 100k past-window invoices, mostly expired and never paid, the query took about 125 ms against 15 ms for the status-only filter. The subquery runs for every row with settlement_status <> 'settled', which includes all expired never-paid invoices. Adding payment_status <> 'expired' to the second branch skips them (expired invoices with late money match refund_status='held'). ledger_transactions_invoice and the unique (transaction_id, account) index serve the subquery. (3) Invoices whose refund events were missed before this change show receiver balance above 0 in the ledger and stay in the list; there is no backfill. (4) The task's acceptance line still lists 'held for the payer, or paid and not settled' while the filter now uses the booked balance; the parenthetical is only an example. (5) The architecture.md sentence 'Invoices leave the deposit scan...' is still 34 words (old text).",
+          "at": "2026-10-29T19:28:27Z",
+          "filesHash": "b9c73759761ec063"
+        }
+      },
+      "branch": "fix/f355-refund-authority-moves-are-recorded-whil",
+      "baseCommit": "3dec2f0c1d036cbc053f195db2335d6475096dd6",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

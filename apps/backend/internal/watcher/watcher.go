@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"math/big"
 	"slices"
 	"strings"
@@ -112,11 +113,15 @@ func (c *Chain) scanRange(ctx context.Context, from, latest uint64, recovery *re
 	if err != nil {
 		return err
 	}
+	receivers, err := c.holding(ctx, invoices)
+	if err != nil {
+		return err
+	}
 	wallets, err := c.wallets(ctx)
 	if err != nil {
 		return err
 	}
-	logs, walletLogs, outflowLogs, next, readErr := c.scanLogs(ctx, from, latest, walletFrom, must, invoices, wallets)
+	logs, walletLogs, outflowLogs, next, readErr := c.scanLogs(ctx, from, latest, walletFrom, must, invoices, receivers, wallets)
 	if next == from && from <= latest { // nothing read; a range already past latest is recorded so recovery completes
 		return readErr
 	}
@@ -155,11 +160,11 @@ func (c *Chain) scanRange(ctx context.Context, from, latest uint64, recovery *re
 			hi = heights[used]
 			used++
 		}
-		pendingInvoices := invoices
+		pendingInvoices, pendingReceivers := invoices, receivers
 		if lo >= from {
-			pendingInvoices = nil
+			pendingInvoices, pendingReceivers = nil, nil
 		}
-		found, foundWallet, foundOutflows, _, err := c.scanLogs(ctx, lo, hi, lo, hi, pendingInvoices, wallets)
+		found, foundWallet, foundOutflows, _, err := c.scanLogs(ctx, lo, hi, lo, hi, pendingInvoices, pendingReceivers, wallets)
 		if err != nil {
 			return errors.Join(readErr, err)
 		}
@@ -192,7 +197,7 @@ func (c *Chain) scanRange(ctx context.Context, from, latest uint64, recovery *re
 	finalized := uint64(final.Number)
 
 	deposits, seen := depositsOf(logs, headers, invoices, finalized)
-	outflows, err := c.outflows(ctx, outflowLogs, headers, invoices, finalized)
+	outflows, err := c.outflows(ctx, outflowLogs, headers, receivers, finalized)
 	if err != nil {
 		return errors.Join(readErr, err)
 	}
@@ -229,10 +234,10 @@ func (c *Chain) scanRange(ctx context.Context, from, latest uint64, recovery *re
 		recovery), readErr)
 }
 
-// scanLogs reads invoice deposits and receiver events from from and wallet logs from walletFrom, in whole log ranges,
+// scanLogs reads invoice deposits and receivers' events from from and wallet logs from walletFrom, in whole log ranges,
 // and returns the first block it did not read. Past must it stops once scanShare of the deadline is used; a failed
 // read stops it anywhere.
-func (c *Chain) scanLogs(ctx context.Context, from, latest, walletFrom, must uint64, invoices map[common.Address]receiver,
+func (c *Chain) scanLogs(ctx context.Context, from, latest, walletFrom, must uint64, invoices, receivers map[common.Address]receiver,
 	wallets wallets) (logs, walletLogs, outflowLogs []types.Log, next uint64, err error) {
 	began := time.Now()
 	deadline, bounded := ctx.Deadline()
@@ -246,9 +251,9 @@ func (c *Chain) scanLogs(ctx context.Context, from, latest, walletFrom, must uin
 		var err error
 		if len(invoices) > 0 {
 			found, err = c.logs(ctx, lo, hi, invoices)
-			if err == nil {
-				foundOutflows, err = c.outflowLogs(ctx, lo, hi, invoices)
-			}
+		}
+		if err == nil && len(receivers) > 0 {
+			foundOutflows, err = c.outflowLogs(ctx, lo, hi, receivers)
 		}
 		if err == nil && hi >= walletFrom {
 			foundWallet, err = c.walletLogs(ctx, max(lo, walletFrom), hi, wallets)
@@ -368,6 +373,30 @@ func (c *Chain) invoices(ctx context.Context) (map[common.Address]receiver, erro
 }
 
 var watchedAfterDeadline = 30 * 24 * time.Hour
+
+// holding adds to the watched invoices the receivers past the watch window that still hold booked money: the refund
+// authority may still settle, refund or recover it (R-183). Settled ones can hold only money held for the payer.
+func (c *Chain) holding(ctx context.Context, invoices map[common.Address]receiver) (map[common.Address]receiver, error) {
+	rows, err := c.pool.Query(ctx, `SELECT receive_address, id, token_contract FROM invoices i
+		WHERE chain_id = $1 AND settle_deadline <= extract(epoch FROM now())::bigint - $2
+		  AND (refund_status = 'held' OR settlement_status <> 'settled')
+		  AND (SELECT coalesce(sum(e.amount), 0) FROM ledger_entries e JOIN ledger_transactions t ON t.id = e.transaction_id
+		       WHERE t.invoice_id = i.id AND e.account = 'receiver') > 0`,
+		c.chainID, int64(watchedAfterDeadline/time.Second))
+	if err != nil {
+		return nil, fmt.Errorf("read chain %d receivers holding money: %w", c.chainID, err)
+	}
+	defer rows.Close()
+	out := maps.Clone(invoices)
+	for rows.Next() {
+		var addr, id, token string
+		if err := rows.Scan(&addr, &id, &token); err != nil {
+			return nil, fmt.Errorf("read chain %d receivers holding money: %w", c.chainID, err)
+		}
+		out[common.HexToAddress(addr)] = receiver{id, token}
+	}
+	return out, rows.Err()
+}
 
 // scanChunks log ranges at most per scan, so a long backlog is caught up over several scans.
 var scanChunks uint64 = 20
