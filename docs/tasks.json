@@ -963,7 +963,7 @@
       "dependsOn": [
         "F351"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "backend-e2e",
@@ -1027,11 +1027,18 @@
           "summary": "PASS. Reviewed 8e1be772 (diff vs 7dd1d4df) plus the unstaged 00091 rewind change against main 25fc8a1b. First round FAIL on 3 blocking issues, all fixed with tests: (1) ledger/outflows.go bookOutflow refuses an outflow as historical_order (review) when a booked deposit or outflow sits at a later position (TestRefundFoundAfterLaterMovementsWaitsForReview); (2) settlement/reconcile.go confirmIfFinal records receipt events only when raw eth_getBlockByNumber hash equals r.BlockHash, and recordOutflow uses ON CONFLICT DO NOTHING so no unique key can stall a scan (TestReceiptFromABlockNoLongerCanonicalIsNotRecorded; signer-then-scan dedupe asserted in TestOwnSettleIsSettledFromItsReceiptWithoutAScan); (3) migration 00091 Up rewinds chain_recoveries to the lowest lagging non-legacy receiver of watched invoices, now only receivers with a non-reorged chain_transfers row, so never-paid options do not deepen the sweep (TestDroppingReceiverEvidenceRewindsRecoveryToTheLaggingReceiver). Also checked: no code, web or e2e references to dropped tables; API coverage shape stays nullable-compatible; Recovered events never booked; look-alike address and invoiceId checks; R-119 option choice via last_finalized_time; reopen refuses after recorded returns; settle refuses while finalized balanceOf < booked receiver; Down recreates the schema. Evidence: go build clean; go test -count=1 database, ledger, watcher ok; targeted settlement tests ok; migration rewind and rollback tests ok on main; harness verify passed 18:33:58Z after the 18:33:49Z migration edit. Accepted limits, documented: refunds after the 30-day watch window are not recorded; Recovered-only early deploys on never-paid options in the migration gap are not swept; an errBadEvent event is re-read and re-alerted within the 2000-block overlap; outflows()/deployTimes() RPC errors still fail the round.",
           "at": "2026-10-29T18:43:03Z",
           "filesHash": "c9ba343614c45df8"
-        }
+        },
+        "commit": "48cfa879",
+        "doneAt": "2026-10-29T18:43:16Z"
       },
       "branch": "fix/f352-payments-book-from-the-chain-wide-scan-w",
       "baseCommit": "25fc8a1b09a9db6faac0dd966a416356243f52e3",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f352-payments-book-from-the-chain-wide-scan-w",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
