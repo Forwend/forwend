@@ -394,7 +394,7 @@ export const INVOICE_COPY = {
     const missing = BigInt(r.onChain) - BigInt(r.recorded);
     if (r.rescanning && missing > 0n) return `Found ${money(missing)}. Recording it now.`;
     if (r.rescanning) return `Looking on ${network} again.`;
-    // A full look ran minutes ago and found no transfer for it, such as Arc's native USDC.
+    // A full look ran minutes ago and found no transfer for it: money that moved without a Transfer log.
     if (missing > 0n) return `${money(missing)} has no recorded transfer yet.`;
     if (BigInt(r.onChain) === 0n && BigInt(r.recorded) === 0n) return `Nothing on ${network} yet.`;
     return "Up to date";

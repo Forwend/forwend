@@ -233,7 +233,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		}
 	case finalizedTime > closesAt && !anyPending && !more && closedEverywhere:
 		// Expiry is final, so the ledger must explain the whole balance first: more on chain than booked is a
-		// deposit the watcher hasn't booked yet (a missed log, an Arc native-coin payment).
+		// deposit the watcher hasn't booked yet (a missed log).
 		if mayExpire, err = s.balanced(ctx, tx, invoiceID, chainID, finalizedBlock, token, receive); err != nil {
 			return err
 		}
@@ -387,7 +387,7 @@ func (s *Service) balanced(ctx context.Context, tx pgx.Tx, invoiceID string, cha
 		return false, err
 	}
 	if onChain.Cmp(booked) > 0 {
-		// A deposit the watcher never saw, or Arc USDC sent natively: an operator books it (money-safety.md).
+		// A deposit the watcher never saw: an operator refunds it (money-safety.md).
 		slog.Error("ALERT receive address holds money with no booked transfer; not expiring", "invoice", invoiceID,
 			"booked", booked.String(), "onChain", onChain.String())
 		return false, alertAgainLater(ctx, tx, invoiceID)
