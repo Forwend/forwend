@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 363,
+  "nextId": 364,
   "tasks": [
     {
       "id": "F332",
@@ -1812,6 +1812,55 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f362-no-provider-can-make-the-executor-pay-mo",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F363",
+      "type": "docs",
+      "behavior": "A Safe refund under way can't also go to the creator through reopen",
+      "acceptance": [
+        "PLAN 11.10.3 says approving a refund claim sets the invoice's refund status to refund_pending, which reopen already refuses, so held money a queued Safe refund will return can't settle to the creator first"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "docs-check"
+      ],
+      "refs": [
+        "R-130"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-29T23:58:51Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "1be8dc7bb60c5a1a",
+        "filesHash": "7f64708777ee7514",
+        "proof": {
+          "1": "docs-check: PLAN 11.10.3 refund_pending note passes link, ID and sentence checks"
+        },
+        "commit": "aaf5ca31",
+        "doneAt": "2026-10-29T23:58:56Z"
+      },
+      "branch": "docs/f363-a-safe-refund-under-way-can-t-also-go-to",
+      "baseCommit": "e25a680d573442fe571b6915f332c5b33911972c",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f363-a-safe-refund-under-way-can-t-also-go-to",
         "base": "main"
       }
     }
