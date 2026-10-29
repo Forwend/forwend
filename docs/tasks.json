@@ -1673,7 +1673,7 @@
         "Invoices payers make on payment links count toward their own open and daily limits, separate from the owner's; a day of link invoices leaves the owner's create working, and the links' own limit still refuses more"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend-affected",
         "docs-check"
@@ -1726,11 +1726,18 @@
           "summary": "PASS on the updated diff. TestOwnerInvoicesLeaveTheLinksQuota passes, and fails when the count is shared ('a profile's payment links create at most 500 receive addresses a day') and when the link count includes the owner's rows (the one mutation the first test missed). TestPaymentLinkInvoicesHaveTheirOwnQuota still fails on a shared count. Both quota tests and the existing cap tests pass; gofmt clean, docs-check 0 errors. owed.go comment now says twice MaxOpen, matching api.md. The only code changes since my first pass are the new test and that comment. Open limit untested and the profile-wide count scan left as is; both accepted as non-blocking.",
           "at": "2026-10-29T23:29:21Z",
           "filesHash": "e54928d7dbb7f598"
-        }
+        },
+        "commit": "cd2a4f59",
+        "doneAt": "2026-10-29T23:29:30Z"
       },
       "branch": "fix/f361-payment-link-traffic-never-stops-the-own",
       "baseCommit": "64e9407a29411617f7147ff13018c58dde29cb6e",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f361-payment-link-traffic-never-stops-the-own",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
