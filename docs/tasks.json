@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 346,
+  "nextId": 347,
   "tasks": [
     {
       "id": "F332",
@@ -443,6 +443,30 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
+    },
+    {
+      "id": "F346",
+      "type": "fix",
+      "behavior": "The payment page shows no next-step box",
+      "acceptance": [
+        "The payment detail page has no next-step sentence box; its status badges, Amount figures and Needs attention panel carry the state (owner request 2026-10-29)"
+      ],
+      "dependsOn": [],
+      "state": "active",
+      "verification": [
+        "web-unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-165"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null,
+      "branch": "fix/f346-the-payment-page-shows-no-next-step-box",
+      "baseCommit": "ea82085dc674ba355c932cafd47514b4065c8a2b"
     }
   ],
   "lastWrapup": {

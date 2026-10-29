@@ -18,8 +18,6 @@ export interface DetailHeaderProps {
   actions?: ReactNode;
   /** The record's figure and states, such as the amount with its payment status. */
   summary?: ReactNode;
-  /** One sentence: what happened and what to do now. */
-  next?: ReactNode;
 }
 
 /** The top of every record page (payment, invoice, link, store, client, job): the same order everywhere. */
@@ -32,7 +30,6 @@ export function DetailHeader({
   figure,
   actions,
   summary,
-  next,
 }: DetailHeaderProps) {
   return (
     <header className="flex flex-col gap-4">
@@ -71,11 +68,6 @@ export function DetailHeader({
       </div>
       {summary ? (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">{summary}</div>
-      ) : null}
-      {next ? (
-        <p role="status" className="rounded-md bg-surface-2 px-4 py-3 text-sm text-ink">
-          {next}
-        </p>
       ) : null}
     </header>
   );

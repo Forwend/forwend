@@ -304,7 +304,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Record pages (payment, invoice, client, store, job, link) open with `DetailHeader`; payments and invoices add an icon
   tile before the title and their amount as the figure beside the actions:
   - A 44px back link on phones, the title with its badges, one quiet meta line and the actions at the row's end.
-  - Then the figure with its statuses, then one next-step sentence in a grey box.
+  - Then the figure with its statuses.
+  - The payment page has no next-step sentence: its badges, Amount figures and Needs attention say the state.
   - The body is the 2:1 grid with a Details panel on the side; phones stack it.
 - Checkout (`/app/checkout`, merchants with invoices.write) takes a payment in person:
   - A form page: Store (when more than one), Amount in USD, Order reference and What it's for, then Show QR code.

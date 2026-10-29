@@ -32,7 +32,6 @@ import {
 import { SOURCE_ICONS, SOURCE_LABELS } from "@/features/payments/constants/payments";
 import { PAYMENT_DETAIL_COPY as COPY } from "@/features/payments/constants/payments-copy";
 import {
-  nextStep,
   optionFigures,
   paymentDisplayStatus,
   paymentLabel,
@@ -153,7 +152,6 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
             <ExportPayments profileId={profileId} paymentId={paymentId} />
           </>
         }
-        next={nextStep(payment, figures?.extra ?? 0n)}
       />
       {read.isError ? (
         <LoadError
