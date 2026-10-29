@@ -230,7 +230,7 @@
         "Deterministic browser tests (kit, landing, a11y axe, width checks) pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "tokens-unit",
         "ui-unit",
@@ -352,11 +352,18 @@
           "summary": "PASS. Reviewed commits 8195d227 and e5ae34af on top of the earlier pass at 0211dd01. 8195d227 moves the personal money group sub-bullet after the collapse lines (DESIGN.md:119), so the collapse note stays in the desktop paragraph; docs-check has 0 errors. e5ae34af replaces the fixed 30 ms wait with waitFor at the three points that wait on a read or save (records.test.tsx:309, :323, :330). The assertions are unchanged, so the test is not weaker; records.test.tsx passes 10/10 here. Verify passed again at 16:02:23Z. The live navigation results from the earlier pass still hold: the 5 failures are steps that fail on main too. NOTES, not blocking: (1) records.test.tsx still uses the fixed 30 ms settle in 9 other places (:88, :171, :178, :195, :197, :204, :206, :242, :304); any of them that waits on a mocked request can fail the same way under load. (2) The steps of navigation.spec.ts:24 after :95 have still not passed live. (3) Four images are still unused (balance-day, balance-night, hero-night, not-found .webp, 324 KB), and images.md:9 still says the old rows serve /kit/directions. (4) Three step markers keep separate state constants (stepper.tsx, display/timeline.tsx, payment-timeline.tsx). No secrets, no AI mention and no outside product names added.",
           "at": "2026-10-29T16:09:17Z",
           "filesHash": "74bbad68f2aa20d2"
-        }
+        },
+        "commit": "d9677514",
+        "doneAt": "2026-10-29T16:09:39Z"
       },
       "branch": "feat/f342-the-app-and-its-kit-follow-the-signal-di",
       "baseCommit": "e10da4f60438e0b379c55adab058cc25b1bb5d8e",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f342-the-app-and-its-kit-follow-the-signal-di",
+        "base": "main"
+      }
     },
     {
       "id": "F343",
