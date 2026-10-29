@@ -114,9 +114,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   scrolls. From top: one row with the logo mark, a slash and the profile switcher (name only, no wallet address);
   page links in named groups for the profile type (the current page on the second surface); the account menu at the
   bottom.
-  - A personal profile's money group: Overview, Transactions, My assets, Payments, Requests and Activity.
   The collapse button sits at the start of the header. Collapsed, the sidebar is an icon rail with the profile tile on
   top and names as tooltips; the choice is remembered in the browser.
+  - A personal profile's money group: Overview, Transactions, My assets, Payments, Requests and Activity.
 - Desktop header: a sticky bar across the content. Breadcrumb of links (profile, page, then the invoice number or the
   form under the page) on the left; on the right a search field with the ⌘K hint, notifications, then Send and
   Receive, every control 40px tall. Content uses the header's side padding, with no maximum width, so its edges line
