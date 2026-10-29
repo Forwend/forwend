@@ -1097,7 +1097,7 @@
         "TestWebhookClaimsRespectSharedConcurrency passes under load: concurrent claims never exceed the profile limit or lease an endpoint twice, and later claims fill exactly the limit with three endpoints"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend-affected"
       ],
@@ -1148,11 +1148,18 @@
           "summary": "Root-cause fix, not a weakened test. The old assertion needed a second claim to land inside a 12-way burst, but SKIP LOCKED on the profile row makes that depend on scheduling. The new test requires the burst to lease 1..2 distinct endpoints, then claims sequentially until nil and requires exactly 2 in total. 5/5 passes with -race -count=1. Mutation runs by overlay (3 each): removing the ProfileConcurrency checks (first query and re-read) fails at the burst bound ('leased 3 endpoints, want 1 to 2'), which the old two-endpoint test could not detect at all (it passed); removing the one-lease-per-endpoint NOT EXISTS fails with 'endpoint leased more than once'. Limit: removing only one of the two redundant limit checks is not caught, and neither was it before; the re-read-under-lock race is not isolated by this test. Three endpoints with 4 deliveries each correctly make the profile limit the only thing stopping a third lease. No repo files edited by review.",
           "at": "2026-10-29T18:55:41Z",
           "filesHash": "0eef8abb93ffc2ff"
-        }
+        },
+        "commit": "7fcb9987",
+        "doneAt": "2026-10-29T18:55:51Z"
       },
       "branch": "test/f354-the-webhook-concurrency-test-proves-the",
       "baseCommit": "61bec913c843c5db4d02d5d739199105c55f7ffd",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "test/f354-the-webhook-concurrency-test-proves-the",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
