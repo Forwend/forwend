@@ -1317,7 +1317,7 @@
         "wss endpoints share the pool's ranking, budget, answer checks, refusals and failover; one shared connection per endpoint with ids matched per call, quiet redial, batches over 50 ranked last on WSS; missing block or state answers fail over; dRPC rows removed and measured public HTTPS/WSS endpoints added"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend-affected",
         "docs-check"
@@ -1406,11 +1406,18 @@
           "summary": "PASS. All three must-fix findings and the should-fix are fixed, each with a test that fails when the fix is removed (checked by reverting each one in a throwaway overlay). (1) check() now uses probe(), which turns a refusal or miss from post() into a failed health check: repro now shows the broken endpoint probed once, failures 1, resting, and the single-endpoint caller gets unavailable, not the probe's answer. (2) The attempt context carries errAttemptTimeout as its cause and send() drops the connection only for that; a caller's own deadline no longer kills other requests. (3) Each exchange sums its frame bytes and deliver drops the connection past socket.limit. (4) connect() dials outside s.mu, one dial at a time; waiters keep their own deadlines and re-dial after a failed dial (checked: a waiter got its answer 250ms after the first dialer's deadline killed its dial; send re-checks s.conn under the lock). Low items: safeMessage keeps 'execution reverted' first, the missing check matches the message field only, acceptance says 'ranked last on WSS'. Checks run: go test -race ./internal/chain ./internal/outbound ok; watcher, worker, ledger and settlement RPC tests ok; go vet clean; check-docs 0 errors; no new doc sentence over 25 words; live run on Base, Arc and Tempo 0 failed calls. Remaining low, not blocking: Close() during an in-progress dial leaves that connection open (dial is outside the lock now; only at shutdown); frame bytes are charged to every exchange that has an answer in the frame (only matters if a server merges answers of several requests into one frame near 64 MiB); a connection that goes idle between connect() and the send lock gives one 'connection lost' failure (microsecond window); id-less result for a lone waiter still accepted (fails safe through safeResponse).",
           "at": "2026-10-29T20:41:00Z",
           "filesHash": "67adb505107e1908"
-        }
+        },
+        "commit": "8044bd82",
+        "doneAt": "2026-10-29T20:41:42Z"
       },
       "branch": "feat/f357-rpc-endpoints-use-https-or-wss-in-one-po",
       "baseCommit": "87508041946409692fb467cd075b8d0f114a6276",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f357-rpc-endpoints-use-https-or-wss-in-one-po",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
