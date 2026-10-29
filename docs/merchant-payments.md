@@ -72,19 +72,30 @@ flowchart LR
 - The notification bell and toasts share canonical payment events.
 - Delivery failures never change the customer payment state.
 
-| Display | Meaning |
+Payment status and wallet transfer are separate facts (D-114). The API derives both: `state` and `wallet`.
+
+| Payment status | Meaning |
 |---|---|
 | Waiting for payment | No payment is currently being confirmed. |
-| Confirming | An on-time transfer is detected or still awaits credit after confirmation. |
+| Confirming | An on-time transfer is detected, or the full amount is credited and awaits the finalized balance check. |
 | Partially paid | Credited payments cover part of the requested amount. |
 | Paid | The customer paid the requested amount with the required evidence. |
-| Expired | The checkout closed without completing payment. |
+| Overpaid | Paid, and money is held for the payer on any option: extra, late or sent to another option. |
+| Overdue | An unpaid numbered invoice past its due date; the web derives it from `dueDate`. |
+| Expired | The checkout closed without completing payment, including a session closed by the expire action. |
 | Canceled | The issuer canceled collection. |
-| Wallet transfer pending | Payment succeeded; the merchant's money has not reached the wallet. |
-| In wallet | The wallet transfer completed. |
 | Returned | Recorded money was returned; this does not erase the original receipt. |
 
-- Paid filters include payments already in the wallet; In wallet narrows that set.
+| Wallet transfer | Meaning |
+|---|---|
+| — | Not paid: nothing is due to move. |
+| Pending | Paid; the merchant's share is on its way to the wallet. |
+| Delayed | The transfer waits for a retry, the daily cap or an unresolved transaction. |
+| Needs review | The transfer was refused. |
+| In wallet | The wallet transfer completed. |
+
+- Held money is the payer's: it never counts toward Owed to you or the merchant's balance.
+- The Paid filter includes payments already in the wallet; the wallet filter narrows that set.
 - Received amounts include observed, non-reorged deposits, separated by token and network.
 - Each uncredited amount is explicitly labeled confirming; it never increases available merchant funds.
 - Normal payment details load used options and relevant problems.

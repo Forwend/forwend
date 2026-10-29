@@ -1,5 +1,4 @@
 import { z } from "zod";
-import type { StatusFilter } from "@/features/activity/types/activity";
 import { INVOICES_PAGE_SIZE } from "@/features/invoices/constants/invoices";
 import {
   createInvoiceBodySchema,
@@ -15,11 +14,12 @@ import type {
   Invoice,
   InvoiceEvent,
   InvoicesPage,
-  Owed,
+  OwedList,
   Recheck,
   StoppedReminders,
 } from "@/features/invoices/types/invoices";
 import { apiSlice } from "@/shared/api/api-slice";
+import type { ApiPaymentState } from "@/shared/types/payment-state";
 
 const INVOICES_TAG = "Invoices";
 
@@ -32,7 +32,8 @@ export const invoicesApi = apiSlice
     endpoints: (build) => ({
       getInvoices: build.infiniteQuery<
         InvoicesPage,
-        { profileId: string; status?: StatusFilter; q?: string },
+        // The Payments list's states (D-114), so both lists filter alike.
+        { profileId: string; state?: ApiPaymentState; q?: string },
         string | null
       >({
         infiniteQueryOptions: {
@@ -78,10 +79,9 @@ export const invoicesApi = apiSlice
         transformResponse: (data: { items: InvoiceEvent[] }) => data.items,
       }),
       /** Owed to you (R-95). */
-      getOwed: build.query<Owed[], string>({
+      getOwed: build.query<OwedList, string>({
         query: (profileId) => `/v1/profiles/${encodeURIComponent(profileId)}/owed`,
-        rawResponseSchema: owedListSchema,
-        transformResponse: (data: { items: Owed[] }) => data.items,
+        responseSchema: owedListSchema,
         providesTags: [INVOICES_TAG],
       }),
       /** Cancel before any money (R-79): 409 once money was seen or the checkout closed. */

@@ -6,6 +6,9 @@ import type { TransactionClass } from "@/features/transactions/types/transaction
 
 export const TRANSACTIONS_COPY = {
   transactions: "Transactions",
+  intro: "Every transfer in and out of this profile's wallet.",
+  introBusiness:
+    "Every transfer in and out of the profile's wallet, across all stores. Payments has each customer payment.",
   today: "Today",
   yesterday: "Yesterday",
   recentTransactions: "Recent transactions",
@@ -32,14 +35,14 @@ export const TRANSACTIONS_COPY = {
   exportTitle: "Export transactions",
   exportText:
     "Every transaction in the days you choose (UTC), with its USD value, type, invoice and client. Leave a day empty for no limit; a statement of income needs both.",
-  exportFrom: "From",
-  exportTo: "To",
+  exportPeriod: "Period",
+  clearPeriod: "Clear period",
+  periodNote: "Days are in UTC.",
   exportCancel: "Cancel",
   exportDownload: "Download CSV",
   downloadStatement: "Download statement (PDF)",
   statementFile: (from: string, to: string) => `forwend-statement-${from}-to-${to}.pdf`,
-  statementDay: "Choose a day: a statement covers a period.",
-  daysOrder: "Choose a day on or after From.",
+  statementDays: "Choose both days: a statement covers a period.",
   statementNeedsBilling: "A statement names you by your billing details. Add them first.",
   addBillingDetails: "Add billing details",
   statementFailed: "We could not make the statement. Try again.",
@@ -84,10 +87,17 @@ export const TRANSACTIONS_COPY = {
     `${address} on ${explorer} (opens in a new tab)`,
   loadMore: "Show more",
   updateFailed: "We could not update the transactions.",
-  latestOnly: "Showing the latest 100.",
   retry: "Try again",
   notifications: "Notifications",
   newCount: (n: number) => (n === 1 ? "1 new" : `${n} new`),
   noNotifications: "Nothing yet. You get a note here when money arrives.",
-  receivedNote: "Received",
+  // The bell (R-81): what happened, then the payment or sender it names, as on Activity.
+  bell: {
+    paid: "Paid",
+    inWallet: "In your wallet",
+    held: "Held for the payer",
+    received: "Received",
+    confirming: "Confirming",
+    failed: "We could not load your notifications.",
+  },
 } as const;

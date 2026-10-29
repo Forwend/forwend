@@ -38,3 +38,11 @@ export function runningTotal(series: HistorySeries): HistorySeries {
   let sum = 0n;
   return { dates: series.dates, values: series.values.map((v) => (sum += v)) };
 }
+
+/** `days` UTC days of zero ending today: the chart's frame when there is no history to draw. */
+export function flatSeries(days: number, now = Date.now()): HistorySeries {
+  const today = new Date(now);
+  const end = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  const dates = Array.from({ length: days }, (_, i) => new Date(end - (days - 1 - i) * 86_400_000));
+  return { dates, values: dates.map(() => 0n) };
+}

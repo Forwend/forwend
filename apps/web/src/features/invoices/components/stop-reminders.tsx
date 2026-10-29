@@ -18,7 +18,7 @@ export function StopReminders({ token }: { token: string }) {
     if (stopped) heading.current?.focus();
   }, [stopped]);
   return (
-    <div className="fw-panel flex w-full max-w-md flex-col gap-4 p-6 sm:p-8">
+    <div className="fw-panel flex max-w-md flex-col gap-4 p-6 sm:w-full sm:p-8">
       <h1
         ref={heading}
         tabIndex={-1}
@@ -41,6 +41,7 @@ export function StopReminders({ token }: { token: string }) {
           ) : null}
           <Button
             variant={BUTTON_VARIANTS.primary}
+            size="lg"
             loading={isLoading}
             onClick={() => void stop(token)}
             className="self-start"

@@ -1,26 +1,18 @@
-import { Logo } from "@forwend/ui-web";
-import Link from "next/link";
-import { LinkCheckout, LinkCheckoutMode } from "@/features/pay/components/link-checkout";
+import { LinkCheckout } from "@/features/pay/components/link-checkout";
+import { LEFT_PAD } from "@/features/pay/constants/pay";
 import { CheckoutFooter } from "@/screens/pay/checkout-footer";
-import { APP_ROUTES } from "@/shared/config/routes";
 
-/** A payment link's page (R-142): one column, then Pay opens the checkout (R-68). */
+/** A payment link's page (R-142), split as the invoice checkout: the link's summary on the left, Pay on the right; then
+ * Pay opens the checkout (R-68). */
 export function LinkPayScreen({ slug }: { slug: string }) {
   return (
-    <div className="mx-auto flex min-h-svh w-full max-w-6xl flex-col gap-8 fw-safe-x pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))] lg:gap-12 lg:py-10">
-      <header className="flex items-center gap-3">
-        <Link
-          href={APP_ROUTES.site}
-          className="self-start rounded-sm outline-none focus-visible:outline-2 focus-visible:outline-focus"
-        >
-          <Logo />
-        </Link>
-        <LinkCheckoutMode slug={slug} />
-      </header>
-      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-start has-[>[data-load-error]]:justify-center">
+    <div className="isolate flex min-h-svh flex-col gap-8 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))] max-lg:fw-safe-x lg:grid lg:grid-cols-2 lg:grid-rows-[1fr_auto] lg:gap-0 lg:p-0">
+      <main className="flex min-w-0 flex-1 flex-col gap-8 has-[>[data-load-error]]:justify-center lg:col-span-2 lg:grid lg:grid-cols-subgrid lg:items-start lg:gap-0">
         <LinkCheckout slug={slug} />
       </main>
-      <CheckoutFooter />
+      <CheckoutFooter
+        className={`lg:col-start-1 lg:justify-start lg:pt-4 lg:pb-8 lg:text-muted ${LEFT_PAD}`}
+      />
     </div>
   );
 }

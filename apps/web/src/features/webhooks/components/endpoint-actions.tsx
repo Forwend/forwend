@@ -48,6 +48,7 @@ export function EndpointActions({ profileId, stores, endpoint }: EndpointActions
   const toast = useToast();
   // What opens once the menu has closed and handed focus back (as on API keys).
   const chosen = useRef<Chosen | null>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   const open = useRef<Partial<Record<"edit" | "secret" | "rotate" | "delete", () => void>>>({});
   const [sheet, setSheet] = useState(false);
   const [secrets, setSecrets] = useState<WebhookSecret[] | null>(null);
@@ -123,8 +124,8 @@ export function EndpointActions({ profileId, stores, endpoint }: EndpointActions
     <>
       <Menu>
         <MenuTrigger asChild>
-          <IconButton label={COPY.actions(where)} title={COPY.actions(where)} size="md">
-            <Ellipsis aria-hidden className="size-[var(--fw-icon-md)]" />
+          <IconButton ref={trigger} label={COPY.actions(where)} title={COPY.actions(where)}>
+            <Ellipsis aria-hidden className="size-[var(--fw-icon-sm)]" />
           </IconButton>
         </MenuTrigger>
         <MenuContent
@@ -138,6 +139,8 @@ export function EndpointActions({ profileId, stores, endpoint }: EndpointActions
             if (choice === "toggle") return void toggle();
             if (choice === "secret") return void revealSecrets();
             event.preventDefault();
+            // The trigger holds focus as the dialog opens, so the dialog hands it back there when it closes.
+            trigger.current?.focus();
             if (choice === "deliveries") return setSheet(true);
             open.current[choice]?.();
           }}
@@ -183,7 +186,10 @@ export function EndpointActions({ profileId, stores, endpoint }: EndpointActions
             {COPY.errors.action}
           </p>
         ) : null}
-        <form method="dialog" className="mt-5 flex flex-wrap justify-end gap-2">
+        <form
+          method="dialog"
+          className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"
+        >
           <Button type="submit" variant={BUTTON_VARIANTS.secondary}>
             {COPY.keep}
           </Button>
@@ -204,7 +210,10 @@ export function EndpointActions({ profileId, stores, endpoint }: EndpointActions
             {COPY.errors.action}
           </p>
         ) : null}
-        <form method="dialog" className="mt-5 flex flex-wrap justify-end gap-2">
+        <form
+          method="dialog"
+          className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"
+        >
           <Button type="submit" variant={BUTTON_VARIANTS.secondary}>
             {COPY.keep}
           </Button>

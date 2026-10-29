@@ -21,6 +21,9 @@ export interface CheckStatusProps {
   messageClassName?: string;
 }
 
+/** Every Check status of one pay link shares its last answer, so the page's status line can read it too. */
+export const recheckKey = (payToken: string) => `recheck:${payToken}`;
+
 /** R-55. Rests until the next check the api allows, which the invoice read also gives. */
 export function CheckStatus({
   payToken,
@@ -30,7 +33,9 @@ export function CheckStatus({
   className = "flex flex-wrap items-center gap-x-3 gap-y-2",
   messageClassName = "",
 }: CheckStatusProps) {
-  const [recheck, { data, isLoading, error }] = useRecheckInvoiceMutation();
+  const [recheck, { data, isLoading, error }] = useRecheckInvoiceMutation({
+    fixedCacheKey: recheckKey(payToken),
+  });
   // Asked too soon (another tab, or before the read caught up): rest, then the button comes back.
   const tooSoon = (error as { status?: unknown } | undefined)?.status === TOO_MANY_REQUESTS;
   const [restUntil, setRestUntil] = useState(0);

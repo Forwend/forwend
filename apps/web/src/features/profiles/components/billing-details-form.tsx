@@ -29,10 +29,12 @@ export interface BillingDetailsFormProps {
   profileId: string;
   saved: BillingDetails | null;
   next: string;
+  /** A merchant always bills as a business; a freelancer may bill under their own name. */
+  business: boolean;
 }
 
 // R-43: one PUT replaces every field; the API checks them again.
-export function BillingDetailsForm({ profileId, saved, next }: BillingDetailsFormProps) {
+export function BillingDetailsForm({ profileId, saved, next, business }: BillingDetailsFormProps) {
   const [save] = useSaveBillingDetailsMutation();
   const toast = useToast();
   const router = useRouter();
@@ -87,12 +89,13 @@ export function BillingDetailsForm({ profileId, saved, next }: BillingDetailsFor
 
   return (
     <Form onSubmit={submit}>
-      <FieldGroup title={COPY.contactGroup}>
+      <FieldGroup title={COPY.contactGroup} description={COPY.contactNote}>
         <div className="grid gap-5 sm:grid-cols-2">
           <TextField
-            label={COPY.name}
+            label={business ? COPY.businessName : COPY.name}
+            hint={business ? COPY.businessNameHint : COPY.nameHint}
             name="name"
-            autoComplete="organization"
+            autoComplete={business ? "organization" : "name"}
             defaultValue={saved?.name}
             maxLength={BILLING_LIMITS.name}
             error={errors.name}
@@ -108,7 +111,7 @@ export function BillingDetailsForm({ profileId, saved, next }: BillingDetailsFor
           />
         </div>
       </FieldGroup>
-      <FieldGroup title={COPY.addressGroup}>
+      <FieldGroup title={COPY.addressGroup} description={COPY.addressNote}>
         <TextAreaField
           label={COPY.address}
           name="address"
@@ -133,6 +136,7 @@ export function BillingDetailsForm({ profileId, saved, next }: BillingDetailsFor
           />
           <TextField
             label={COPY.taxId}
+            hint={COPY.taxIdHint}
             name="taxId"
             defaultValue={saved?.taxId ?? ""}
             maxLength={BILLING_LIMITS.taxId}

@@ -36,6 +36,14 @@ export const activityItemSchema = z.object({
   closed: z.boolean(),
   // A deposit the owner gets none of, held for the payer (D-26); false for an invoice.
   held: z.boolean(),
+  // What tells rows apart: who paid and for what. Older reads leave them out.
+  number: z.number().int().positive().nullable().optional(),
+  reference: z.string().nullable().optional(),
+  clientName: z.string().nullable().optional(),
+  title: z.string().nullable().optional(),
+  // A booked deposit split between the owner and the payer; null until booked and for an invoice.
+  merchantAmount: baseUnits.nullable().optional(),
+  heldAmount: baseUnits.nullable().optional(),
 });
 
 export const activityPageSchema = pageOf(activityItemSchema);

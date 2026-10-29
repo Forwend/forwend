@@ -3,22 +3,25 @@
 import {
   BrandIcon,
   Button,
+  EmptyState,
   NetworkWarning,
   QrCode,
   ReceiveAddress,
   RowButton,
+  SearchField,
   Sheet,
   Skeleton,
 } from "@forwend/ui-web";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, WalletMinimal } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import type { Balances } from "@/features/balances/types/balances";
 import { CHAIN_FAMILIES } from "@/features/receive/constants/receive-choice";
 import { RECEIVE_COPY } from "@/features/receive/constants/receive-copy";
 import { addressFor, receiveChoice } from "@/features/receive/lib/receive-choice";
 import { TokenMark } from "@/shared/components/chains/token-mark";
+import { LoadError } from "@/shared/components/load-error";
 import { CHAINS, TOKEN_ICONS } from "@/shared/constants/chains";
-import { chainName, lookalikeOf } from "@/shared/lib/chains";
+import { chainName, lookalikeOf, TOKEN_SEARCH_FROM, tokenMatches } from "@/shared/lib/chains";
 
 export interface ReceiveSheetProps {
   open: boolean;
@@ -39,6 +42,8 @@ export function ReceiveSheet({
   onRetry,
 }: ReceiveSheetProps) {
   const [symbol, setSymbol] = useState<string | null>(null);
+  // One search box for whichever list shows; a pick clears it.
+  const [find, setFind] = useState("");
   const [network, setNetwork] = useState<string | null>(null);
   // Every opening starts from the token, so the address shows only for a choice made this time.
   const [wasOpen, setWasOpen] = useState(open);
@@ -63,30 +68,41 @@ export function ReceiveSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title={RECEIVE_COPY.receive}>
       {!address ? (
-        <p className="text-sm text-muted">{RECEIVE_COPY.noWallet}</p>
+        <EmptyState compact icon={WalletMinimal} title={RECEIVE_COPY.noWallet} />
       ) : !balances && failed ? (
-        <div role="alert" className="flex flex-col items-start gap-3 text-sm text-muted">
-          {RECEIVE_COPY.receiveFailed}
-          <Button size="sm" variant="secondary" onClick={onRetry}>
-            {RECEIVE_COPY.retry}
-          </Button>
-        </div>
+        <LoadError message={RECEIVE_COPY.receiveFailed} onRetry={onRetry} />
       ) : !balances ? (
-        <Skeleton className="h-128" />
+        // Shaped like the token choice that comes first.
+        <div aria-hidden className="flex flex-col gap-2">
+          <Skeleton className="h-4 w-14" />
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-14" />
+          ))}
+        </div>
       ) : options.length === 0 ? (
         <p className="text-sm text-muted">{RECEIVE_COPY.receiveNoTokens}</p>
       ) : !choice.symbol ? (
-        <Choices title={RECEIVE_COPY.token}>
-          {choice.symbols.map((s) => (
-            <Choice
-              key={s}
-              icon={<TokenIcon symbol={s} />}
-              label={s}
-              note={RECEIVE_COPY.networks(options.filter((o) => o.symbol === s).length)}
-              onClick={() => setSymbol(s)}
-            />
-          ))}
-        </Choices>
+        <div className="flex flex-col gap-3">
+          {choice.symbols.length > TOKEN_SEARCH_FROM ? (
+            <SearchField label={RECEIVE_COPY.searchTokens} value={find} onValueChange={setFind} />
+          ) : null}
+          <Choices title={RECEIVE_COPY.token}>
+            {choice.symbols
+              .filter((s) => tokenMatches({ symbol: s, chainId: 0 }, find))
+              .map((s) => (
+                <Choice
+                  key={s}
+                  icon={<TokenIcon symbol={s} />}
+                  label={s}
+                  note={RECEIVE_COPY.networks(options.filter((o) => o.symbol === s).length)}
+                  onClick={() => {
+                    setSymbol(s);
+                    setFind("");
+                  }}
+                />
+              ))}
+          </Choices>
+        </div>
       ) : !chosen ? (
         <div className="flex flex-col gap-4">
           {choice.symbols.length > 1 ? (
@@ -95,24 +111,32 @@ export function ReceiveSheet({
               <span className="text-sm font-medium text-ink">{choice.symbol}</span>
             </Summary>
           ) : null}
+          {choice.networks.length > TOKEN_SEARCH_FROM ? (
+            <SearchField label={RECEIVE_COPY.searchNetworks} value={find} onValueChange={setFind} />
+          ) : null}
           <Choices title={RECEIVE_COPY.network}>
-            {choice.networks.map((o) => {
-              const icon = CHAINS[o.chainId]?.icon;
-              return (
-                <Choice
-                  key={o.network}
-                  icon={
-                    icon ? (
-                      <BrandIcon name={icon} className="size-8 rounded-md" />
-                    ) : (
-                      <Initial text={chainName(o.chainId)} />
-                    )
-                  }
-                  label={chainName(o.chainId)}
-                  onClick={() => setNetwork(o.network)}
-                />
-              );
-            })}
+            {choice.networks
+              .filter((o) => tokenMatches({ symbol: "", chainId: o.chainId }, find))
+              .map((o) => {
+                const icon = CHAINS[o.chainId]?.icon;
+                return (
+                  <Choice
+                    key={o.network}
+                    icon={
+                      icon ? (
+                        <BrandIcon name={icon} className="size-8 rounded-md" />
+                      ) : (
+                        <Initial text={chainName(o.chainId)} />
+                      )
+                    }
+                    label={chainName(o.chainId)}
+                    onClick={() => {
+                      setNetwork(o.network);
+                      setFind("");
+                    }}
+                  />
+                );
+              })}
           </Choices>
         </div>
       ) : (
@@ -131,8 +155,13 @@ export function ReceiveSheet({
           </Summary>
           {shown ? (
             <>
-              <div className="grid place-items-center py-2">
-                <QrCode value={shown} label={RECEIVE_COPY.receiveQrLabel} className="w-44 p-2" />
+              {/* The tile follows the theme; the code itself stays dark on light, as scanners need. */}
+              <div className="grid place-items-center rounded-lg bg-surface-2 p-5">
+                <QrCode
+                  value={shown}
+                  label={RECEIVE_COPY.receiveQrLabel}
+                  className="w-44 p-3 shadow-sm"
+                />
               </div>
               <ReceiveAddress
                 address={shown}

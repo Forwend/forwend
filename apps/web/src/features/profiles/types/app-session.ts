@@ -6,4 +6,5 @@ export interface AppSession {
   chooseProfile: (profileId: string) => void;
   openReceive: () => void;
   openRequest: () => void;
+  signOut: () => Promise<void>;
 }

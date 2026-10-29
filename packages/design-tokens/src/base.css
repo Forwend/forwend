@@ -91,7 +91,7 @@
   }
 
   ::selection {
-    background: color-mix(in oklab, var(--fw-accent) 28%, transparent);
+    background: color-mix(in oklab, var(--fw-brand) 70%, transparent);
     color: var(--fw-ink);
   }
 
@@ -206,21 +206,19 @@
   }
 }
 
+/* A bar filling to its width once, from its start. */
+@keyframes fw-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
 @keyframes fw-progress {
   from {
     transform: translateX(-100%);
   }
   to {
     transform: translateX(250%);
-  }
-}
-
-@keyframes fw-progress-down {
-  from {
-    transform: translateY(-100%);
-  }
-  to {
-    transform: translateY(250%);
   }
 }
 
@@ -292,6 +290,13 @@
     animation: fw-scroll-fade linear both;
     animation-timeline: scroll(self inline);
   }
+}
+
+/* Tailwind 4's outline-none also sets --tw-outline-style to none, and focus-visible:outline-2 reads that variable,
+   so the ring a control declares never drew. Unlayered, this beats the utility while focused; a field that sets
+   outline-style: none itself (it shows a ring instead) is unaffected. */
+:focus-visible {
+  --tw-outline-style: solid;
 }
 
 /* Scroll reveal for marketing sections, driven by the scroll itself. Browsers without scroll timelines, and reduced

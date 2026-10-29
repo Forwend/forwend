@@ -2,14 +2,7 @@
 
 import { Button, IconButton, Skeleton, Tooltip } from "@forwend/ui-web";
 import { skipToken } from "@reduxjs/toolkit/query";
-import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  ChevronRight,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Search,
-} from "lucide-react";
+import { ChevronRight, PanelLeftClose, PanelLeftOpen, QrCode, Search, Send } from "lucide-react";
 import Link from "next/link";
 import { Fragment } from "react";
 import { AccountInitial, AccountMenu } from "@/features/auth/components/account-menu";
@@ -17,17 +10,17 @@ import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { useGetProfileInvoiceQuery } from "@/features/invoices/api/invoices-api";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
-import { PERMISSIONS } from "@/features/profiles/constants/profile";
+import { PERMISSIONS, PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { can, profileLabel } from "@/features/profiles/lib/profile";
 import type { Profile } from "@/features/profiles/types/profile";
 import { NotificationsMenu } from "@/features/transactions/components/notifications-menu";
-import { accountLinks, breadcrumb } from "@/screens/app-shell/lib/app-nav";
+import { breadcrumb, pageAllowed } from "@/screens/app-shell/lib/app-nav";
 import type { Crumb } from "@/screens/app-shell/types/app-nav";
 import { APP_ROUTES } from "@/shared/config/routes";
 
-// The two search triggers look like the list search fields they lead to: a soft filled pill.
+// The two search triggers look like the list search fields they lead to: a soft filled field.
 const SEARCH_TRIGGER =
-  "relative h-10 items-center gap-2 rounded-pill bg-surface-2 px-3.5 text-sm text-muted outline-none pointer-coarse:h-11 transition-colors duration-[var(--fw-duration-fast)] hover:text-ink active:bg-[color-mix(in_oklab,var(--fw-ink)_6%,var(--fw-surface-2))] focus-visible:outline-2 focus-visible:outline-focus";
+  "relative h-10 items-center gap-2 rounded-md bg-surface-2 px-3.5 text-sm text-muted outline-none pointer-coarse:h-11 transition-colors duration-[var(--fw-duration-fast)] hover:text-ink active:bg-[color-mix(in_oklab,var(--fw-ink)_6%,var(--fw-surface-2))] focus-visible:outline-2 focus-visible:outline-focus";
 
 const CRUMB =
   "block truncate rounded-sm text-muted outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-focus aria-[current=page]:font-medium aria-[current=page]:text-ink";
@@ -35,6 +28,7 @@ const CRUMB =
 export const HEADER_COPY = {
   breadcrumb: "Breadcrumb",
   search: "Search",
+  searchOrJump: "Search or jump to",
   searchShortcut: "⌘K",
   collapse: "Collapse sidebar",
   expand: "Expand sidebar",
@@ -63,13 +57,17 @@ export function AppHeader({
 }: AppHeaderProps) {
   const CollapseIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
   const money = can(active, PERMISSIONS.moneyRead);
+  // A business follows its payments; a personal profile's money in is its transfers, under Transactions.
+  const viewAll =
+    active.kind !== PROFILE_KINDS.personal && pageAllowed(active, APP_ROUTES.payments)
+      ? APP_ROUTES.payments
+      : APP_ROUTES.transactions;
   return (
-    <header className="sticky top-0 z-[var(--fw-z-nav)] flex min-h-16 items-center gap-3 border-b border-line bg-surface fw-safe-x pt-[env(safe-area-inset-top)]">
+    <header className="sticky top-0 z-[var(--fw-z-nav)] flex min-h-16 items-center gap-2 border-b border-line bg-[color-mix(in_oklab,var(--fw-bg)_88%,transparent)] fw-safe-x pt-[env(safe-area-inset-top)] backdrop-blur-md sm:gap-3">
       <div className="lg:hidden">
         <AccountMenu
           email={email}
           onSignOut={onSignOut}
-          links={accountLinks(active)}
           side="bottom"
           trigger={
             <IconButton label={`${AUTH_COPY.account}: ${email}`} size="md">
@@ -98,27 +96,27 @@ export function AppHeader({
         </IconButton>
       </div>
       <Breadcrumb active={active} pathname={pathname} />
-      <button type="button" onClick={onSearch} className={`${SEARCH_TRIGGER} hidden w-56 lg:flex`}>
+      <button type="button" onClick={onSearch} className={`${SEARCH_TRIGGER} hidden w-72 lg:flex`}>
         <Search aria-hidden className="size-[var(--fw-icon-sm)]" />
-        <span className="flex-1 text-left">{HEADER_COPY.search}</span>
+        <span className="flex-1 text-left">{HEADER_COPY.searchOrJump}</span>
         <kbd className="rounded-sm border border-line bg-surface px-1.5 font-mono text-2xs text-muted">
           {HEADER_COPY.searchShortcut}
         </kbd>
       </button>
 
-      <NotificationsMenu profileId={active.profileId} transfers={money} />
+      <NotificationsMenu profileId={active.profileId} transfers={money} viewAllHref={viewAll} />
 
-      <div className="hidden items-center gap-2 border-l border-line pl-3 lg:flex">
+      <div className="hidden items-center gap-2 lg:flex">
         <Tooltip content={BALANCES_COPY.comingSoon} side="bottom">
           <Button variant="soon" aria-disabled>
-            <ArrowUpRight aria-hidden className="size-[var(--fw-icon-sm)]" />
+            <Send aria-hidden className="size-[var(--fw-icon-sm)]" />
             {BALANCES_COPY.send}
             <span className="sr-only">: {BALANCES_COPY.sendSoon}</span>
           </Button>
         </Tooltip>
         {money ? (
           <Button onClick={onReceive}>
-            <ArrowDownLeft aria-hidden className="size-[var(--fw-icon-sm)]" />
+            <QrCode aria-hidden className="size-[var(--fw-icon-sm)]" />
             {BALANCES_COPY.receive}
           </Button>
         ) : null}

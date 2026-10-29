@@ -6,11 +6,16 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   CornerDownLeft,
+  FilePlus2,
   HandCoins,
+  Link2,
   type LucideIcon,
   Moon,
   Plus,
+  QrCode,
   Search,
+  Settings,
+  UserPlus,
   UserRound,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -22,8 +27,11 @@ import {
   useRef,
   useState,
 } from "react";
+import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
-import { NEW_REQUEST_COPY } from "@/features/invoices/constants/invoices-copy";
+import { CLIENTS_COPY } from "@/features/clients/constants/clients-copy";
+import { NEW_INVOICE_COPY, NEW_REQUEST_COPY } from "@/features/invoices/constants/invoices-copy";
+import { LINKS_COPY } from "@/features/links/constants/links-copy";
 import { PERMISSIONS, PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { PROFILES_COPY } from "@/features/profiles/constants/profiles-copy";
 import { can, profileLabel } from "@/features/profiles/lib/profile";
@@ -32,7 +40,7 @@ import { useGetTransactionsQuery } from "@/features/transactions/api/transaction
 import { TRANSACTION_DIRECTIONS } from "@/features/transactions/constants/transactions";
 import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transactions-copy";
 import { transactionKey } from "@/features/transactions/lib/transactions";
-import { navFor } from "@/screens/app-shell/lib/app-nav";
+import { navFor, pageAllowed } from "@/screens/app-shell/lib/app-nav";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { SEARCH_PARAM } from "@/shared/hooks/use-list-filters";
 import { chainName } from "@/shared/lib/chains";
@@ -122,19 +130,39 @@ export function CommandMenu({
     router.push(href);
   };
 
+  const business = active.kind !== PROFILE_KINDS.personal;
+  const billing = business && can(active, PERMISSIONS.invoicesWrite);
+  // The create pages a role can use, as their lists offer them (D-93).
+  const creates = [
+    { href: APP_ROUTES.newInvoice, label: NEW_INVOICE_COPY.title, icon: FilePlus2, shown: billing },
+    { href: APP_ROUTES.newLink, label: LINKS_COPY.newTitle, icon: Link2, shown: billing },
+    { href: APP_ROUTES.newClient, label: CLIENTS_COPY.newTitle, icon: UserPlus, shown: business },
+  ].filter((page) => page.shown && pageAllowed(active, page.href));
+
   const commands: Command[] = [
     ...navFor(active).flatMap((group) =>
       group.items.flatMap(({ href, label, icon }) =>
         href ? [{ id: href, group: COMMAND_COPY.pages, label, icon, run: go(href) }] : [],
       ),
     ),
+    ...(pageAllowed(active, APP_ROUTES.settings)
+      ? [
+          {
+            id: APP_ROUTES.settings,
+            group: COMMAND_COPY.pages,
+            label: AUTH_COPY.settings,
+            icon: Settings,
+            run: go(APP_ROUTES.settings),
+          },
+        ]
+      : []),
     ...(money
       ? [
           {
             id: "receive",
             group: COMMAND_COPY.actions,
             label: BALANCES_COPY.receive,
-            icon: ArrowDownLeft,
+            icon: QrCode,
             run: () => {
               close();
               onReceive();
@@ -142,6 +170,13 @@ export function CommandMenu({
           },
         ]
       : []),
+    ...creates.map(({ href, label, icon }) => ({
+      id: href,
+      group: COMMAND_COPY.actions,
+      label,
+      icon,
+      run: go(href),
+    })),
     ...(active.kind === PROFILE_KINDS.personal
       ? [
           {

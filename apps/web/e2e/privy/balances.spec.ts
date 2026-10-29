@@ -14,7 +14,7 @@ test("a profile shows its balance, networks, receive address and activity; a new
   // With no network enabled in this database, the card says so instead.
   const balance = page.getByRole("region", { name: "Total balance" });
   const inWallet = balance.getByRole("button", {
-    name: /^Estimated: each stablecoin counts as 1 USD/,
+    name: /^Market value in USD/,
   });
   await expect(inWallet.or(balance.getByText("No networks are enabled yet."))).toBeVisible();
   for (const action of ["Send", "Transfer", "Withdraw"]) {
@@ -23,14 +23,16 @@ test("a profile shows its balance, networks, receive address and activity; a new
       "true",
     );
   }
+  // The balance's history is its own card, with its range.
+  const history = page.getByRole("region", { name: "Balance", exact: true });
   await expect(
-    balance
+    history
       .getByRole("img", { name: /^Balance over the past month/ })
-      .or(balance.getByText("The history shows once every balance can be read.")),
+      .or(history.getByText("The history shows once every balance can be read.")),
   ).toBeVisible();
-  await balance.getByText("1W", { exact: true }).click();
-  await expect(balance.getByRole("radio", { name: "1W" })).toBeChecked();
-  await expect(page.getByRole("region", { name: "Balances by network" })).toBeVisible();
+  await history.getByText("1W", { exact: true }).click();
+  await expect(history.getByRole("radio", { name: "1W" })).toBeChecked();
+  await expect(page.getByRole("region", { name: "My assets" })).toBeVisible();
   const recent = page.getByRole("region", { name: "Recent transactions" });
   await expect(recent.getByText("No transactions yet").or(recent.getByRole("table"))).toBeVisible();
 
@@ -95,13 +97,13 @@ test("a profile shows its balance, networks, receive address and activity; a new
       page.getByRole("heading", { level: 1, name: "Merchant · E2E shop overview" }),
     ).toBeVisible();
     await expect(page.getByRole("region", { name: "Received" })).toBeVisible();
-    await expect(page.getByRole("region", { name: "Payments" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Latest payments" })).toBeVisible();
     expect(await blockingViolations(page)).toEqual([]);
     expect(await readAddress()).not.toBe(personalWallet);
   }
 
-  await sidebar.getByRole("link", { name: "Balances" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Balances" })).toBeVisible();
+  await sidebar.getByRole("link", { name: "My assets" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "My assets" })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
   // R-76. Wait for the URL, not a heading: the old page may still show it for a moment.
   await sidebar.getByRole("button", { name: /^Switch profile/ }).click();
@@ -109,13 +111,16 @@ test("a profile shows its balance, networks, receive address and activity; a new
   await expect(page).toHaveURL("/app");
   await expect(page.getByRole("heading", { level: 1, name: "Personal overview" })).toBeVisible();
   await expect(sidebar.getByRole("button", { name: /^Switch profile: Personal/ })).toBeVisible();
-  await sidebar.getByRole("link", { name: "Balances" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Balances" })).toBeVisible();
+  await sidebar.getByRole("link", { name: "My assets" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "My assets" })).toBeVisible();
   await sidebar.getByRole("link", { name: "Activity" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Activity" })).toBeVisible();
   await sidebar.getByRole("link", { name: "Transactions" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Transactions" })).toBeVisible();
-  await expect(page.getByRole("group", { name: "Direction" })).toBeVisible();
+  // An empty list without filters shows its empty state in place of the filters.
+  await expect(
+    page.getByRole("group", { name: "Direction" }).or(page.locator("[data-page-empty]")),
+  ).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
   await context.close();
 });
@@ -191,8 +196,8 @@ test("on a phone the app is a banking-style home with a tab bar", async ({ brows
   await expect(page.getByRole("dialog", { name: "Profiles" })).toBeVisible();
   await page.setViewportSize({ width: 1200, height: 800 });
   await expect(page.getByRole("dialog", { name: "Profiles" })).toBeHidden();
-  await page.locator("aside").getByRole("link", { name: "Balances" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Balances" })).toBeVisible();
+  await page.locator("aside").getByRole("link", { name: "My assets" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "My assets" })).toBeVisible();
   await context.close();
 });
 
@@ -228,13 +233,33 @@ test("pending and held summaries open the exact token balances", async ({ browse
       },
     }),
   );
+  // Both tokens at exactly 1 USD, so the totals are the token amounts (D-115).
+  const fresh = new Date().toISOString();
+  await page.route("**/api/v1/prices", (route) =>
+    route.fulfill({
+      json: {
+        prices: [
+          ["84532", "0x036cbd53842c5426634e7929541ec2318f3dcf7e", "USDC", "usd-coin"],
+          ["42431", "0x20c0000000000000000000006a37da5c996874be", "OUSD", "open-usd"],
+        ].map(([chainId, token, symbol, coinId]) => ({
+          chainId: Number(chainId),
+          token,
+          symbol,
+          coinId,
+          usd: "1",
+          sourceUpdatedAt: fresh,
+          fetchedAt: fresh,
+          stale: false,
+        })),
+      },
+    }),
+  );
   await page.goto("/app");
   const balance = page.getByRole("region", { name: "Total balance" });
   await expect(balance.getByText("26.25", { exact: true })).toBeVisible();
-  await expect(balance.getByRole("link", { name: "0.20 USD on its way" })).toHaveAttribute(
-    "href",
-    "/app/balances",
-  );
+  await expect(
+    balance.getByRole("link", { name: "0.20 USD moving to your wallet" }),
+  ).toHaveAttribute("href", "/app/balances");
   await balance.getByRole("link", { name: "0.77 USD held for payers" }).click();
   await expect(page).toHaveURL("/app/balances");
   const usdc = page.getByRole("listitem").filter({ hasText: "USDC" });

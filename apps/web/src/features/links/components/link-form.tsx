@@ -1,22 +1,19 @@
 "use client";
 
 import {
-  Button,
-  buttonClasses,
   Checkbox,
   ChoiceCard,
   DatePicker,
-  Form,
   SelectField,
   TextField,
   TONES,
   useToast,
 } from "@forwend/ui-web";
 import { PencilLine, Tag } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import { formatDueDate } from "@/features/invoices/lib/invoices";
 import { useSaveLinkMutation } from "@/features/links/api/links-api";
 import {
   AMOUNT_KINDS,
@@ -25,16 +22,18 @@ import {
   USD_PATTERN,
 } from "@/features/links/constants/links";
 import { LINKS_COPY as COPY } from "@/features/links/constants/links-copy";
-import { endsAtOf, invalidLinkField, linkAddress } from "@/features/links/lib/links";
+import { amountLabel, endsAtOf, invalidLinkField, linkAddress } from "@/features/links/lib/links";
 import type {
   AmountKind,
   LinkBody,
   LinkField,
   Link as PaymentLink,
 } from "@/features/links/types/links";
+import { Payee } from "@/features/pay/components/payee";
 import type { Store } from "@/features/stores/types/stores";
 import { CopyValue } from "@/shared/components/copy-value";
 import { FieldGroup } from "@/shared/components/field-group";
+import { FormPreview, StepForm, useFormSteps } from "@/shared/components/step-form";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 export interface LinkFormProps {
@@ -43,6 +42,15 @@ export interface LinkFormProps {
   /** A merchant's stores the user reaches; empty for a freelancer. */
   stores: readonly Store[];
 }
+
+const STEPS = { link: "link", amount: "amount", limits: "limits" } as const;
+const FIELD_STEPS: Record<LinkField, string> = {
+  title: STEPS.link,
+  amountUsd: STEPS.amount,
+  minUsd: STEPS.amount,
+  maxUsd: STEPS.amount,
+  maxPayments: STEPS.limits,
+};
 
 // R-140: a new link's id is made once, so a retried save after an error makes one link.
 export function LinkForm({ profileId, link, stores }: LinkFormProps) {
@@ -60,14 +68,36 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const form = event.currentTarget;
+  const [typed, setTyped] = useState(() => ({
+    title: link?.title ?? "",
+    amountUsd: link?.amountUsd ?? "",
+    minUsd: link?.minUsd ?? "",
+    maxUsd: link?.maxUsd ?? "",
+    maxPayments: link?.maxPayments ? String(link.maxPayments) : "",
+  }));
+  const readTyped = (event: FormEvent<HTMLFormElement>) => {
+    const data = new FormData(event.currentTarget);
+    const text = (name: string) => String(data.get(name) ?? "").trim();
+    setTyped({
+      title: text("title"),
+      amountUsd: text("amountUsd"),
+      minUsd: text("minUsd"),
+      maxUsd: text("maxUsd"),
+      maxPayments: text("maxPayments"),
+    });
+  };
+  const flow = useFormSteps([
+    { id: STEPS.link, label: COPY.linkGroup },
+    { id: STEPS.amount, label: COPY.amountGroup },
+    { id: STEPS.limits, label: COPY.limitsGroup },
+  ]);
+
+  const read = (form: HTMLFormElement): LinkBody => {
     const data = new FormData(form);
     const text = (name: string) => String(data.get(name) ?? "").trim();
     const usd = (name: string) => text(name) || null;
     const cap = text("maxPayments");
-    const body: LinkBody = {
+    return {
       title: text("title"),
       ...(store ? { storeId: store } : {}),
       amountUsd: kind === AMOUNT_KINDS.fixed ? usd("amountUsd") : null,
@@ -77,6 +107,11 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
       maxPayments: cap ? Number(cap) : null,
       active,
     };
+  };
+  // Every problem the form has now, whichever step holds it.
+  const problems = (form: HTMLFormElement) => {
+    const body = read(form);
+    const cap = String(new FormData(form).get("maxPayments") ?? "").trim();
     const shown: Partial<Record<LinkField, string>> = {};
     if (!body.title) shown.title = COPY.errors.required;
     if (kind === AMOUNT_KINDS.fixed && !body.amountUsd) shown.amountUsd = COPY.errors.amount;
@@ -89,14 +124,19 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
       shown.maxUsd = COPY.errors.range;
     if (cap && (!/^\d+$/.test(cap) || Number(cap) < 1 || Number(cap) > LINK_LIMITS.maxPayments))
       shown.maxPayments = COPY.errors.maxPayments;
+    return shown;
+  };
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const body = read(form);
+    const shown = problems(form);
     flushSync(() => {
       setErrors(shown);
       setFormError("");
     });
-    if (Object.keys(shown).length > 0) {
-      form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
-      return;
-    }
+    if (Object.keys(shown).length > 0) return flow.focusError(form);
     setBusy(true);
     try {
       await save({ profileId, linkId: linkId.current, body }).unwrap();
@@ -110,7 +150,7 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
       const field = invalidLinkField(message);
       if (field) {
         flushSync(() => setErrors({ [field]: COPY.errors.invalid[field] }));
-        form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+        flow.focusError(form);
       } else if (
         (error as { data?: { error?: { code?: string } } }).data?.error?.code ===
         LINK_SETUP_REQUIRED_CODE
@@ -121,142 +161,204 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
     }
   };
 
+  const picked = stores.find((s) => s.storeId === store);
+  const amount =
+    kind === AMOUNT_KINDS.fixed
+      ? typed.amountUsd && USD_PATTERN.test(typed.amountUsd)
+        ? amountLabel({ amountUsd: typed.amountUsd, minUsd: null, maxUsd: null })
+        : COPY.preview.noAmount
+      : amountLabel({
+          amountUsd: null,
+          minUsd: USD_PATTERN.test(typed.minUsd) ? typed.minUsd : null,
+          maxUsd: USD_PATTERN.test(typed.maxUsd) ? typed.maxUsd : null,
+        });
+  const limits = [
+    endsAt ? COPY.preview.until(formatDueDate(endsAt.slice(0, 10))) : null,
+    /^\d+$/.test(typed.maxPayments) ? COPY.preview.cap(Number(typed.maxPayments)) : null,
+  ].filter(Boolean);
   return (
-    <Form onSubmit={submit} noValidate>
-      <FieldGroup title={COPY.linkGroup}>
-        <div className="grid gap-5 sm:grid-cols-2">
-          <TextField
-            label={COPY.linkTitle}
-            name="title"
-            autoComplete="off"
-            defaultValue={link?.title}
-            maxLength={LINK_LIMITS.title}
-            hint={COPY.titleHint}
-            error={errors.title}
-          />
-          {stores.length > 0 ? (
-            <SelectField
-              label={COPY.store}
-              value={store}
-              disabled={!!link}
-              onValueChange={setStore}
-              options={stores.map((s) => ({ value: s.storeId, label: s.name }))}
+    <StepForm
+      label={COPY.stepsLabel}
+      flow={flow}
+      editing={Boolean(link)}
+      cancelHref={APP_ROUTES.links}
+      copy={COPY}
+      busy={busy}
+      onContinue={(form) => {
+        const here = Object.fromEntries(
+          Object.entries(problems(form)).filter(
+            ([field]) => FIELD_STEPS[field as LinkField] === flow.at,
+          ),
+        );
+        flushSync(() => setErrors(here));
+        if (Object.keys(here).length === 0) return true;
+        flow.focusError(form);
+        return false;
+      }}
+      onSubmit={submit}
+      onInput={readTyped}
+      error={formError}
+      preview={
+        <FormPreview title={COPY.preview.title} note={COPY.preview.note}>
+          <div className="flex flex-col gap-4 rounded-md bg-surface p-5 shadow-sm ring-1 ring-line">
+            <Payee
+              as="p"
+              name={picked?.name ?? (typed.title || COPY.preview.noTitle)}
+              subtitle={COPY.preview.subtitle}
+              brand={
+                picked
+                  ? { storeId: picked.storeId, color: picked.brandColor, logoAt: picked.logoAt }
+                  : null
+              }
+            />
+            <div className="flex flex-col gap-1 border-t border-line pt-4">
+              {picked ? (
+                <p
+                  className={`font-medium break-words ${typed.title ? "text-ink" : "text-subtle"}`}
+                >
+                  {typed.title || COPY.preview.noTitle}
+                </p>
+              ) : null}
+              <p className="text-2xl font-medium tracking-tight text-ink tabular-nums">{amount}</p>
+            </div>
+            {limits.length || !active ? (
+              <p className="border-t border-line pt-4 text-sm text-muted">
+                {active ? limits.join(" · ") : COPY.preview.off}
+              </p>
+            ) : null}
+          </div>
+        </FormPreview>
+      }
+    >
+      <div data-step={STEPS.link} className={flow.shows(STEPS.link)}>
+        <FieldGroup title={COPY.linkGroup}>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <TextField
+              label={COPY.linkTitle}
+              name="title"
+              autoComplete="off"
+              defaultValue={link?.title}
+              maxLength={LINK_LIMITS.title}
+              hint={COPY.titleHint}
+              error={errors.title}
+            />
+            {stores.length > 0 ? (
+              <SelectField
+                label={COPY.store}
+                value={store}
+                disabled={!!link}
+                onValueChange={setStore}
+                options={stores.map((s) => ({ value: s.storeId, label: s.name }))}
+              />
+            ) : null}
+          </div>
+          {link ? (
+            <CopyValue
+              label={COPY.address}
+              // The app renders only in the browser, after sign-in.
+              value={linkAddress(window.location.origin, link.slug)}
+              hint={COPY.addressHint}
+              copyLabel={COPY.copyLabel}
             />
           ) : null}
-        </div>
-        {link ? (
-          <CopyValue
-            label={COPY.address}
-            // The app renders only in the browser, after sign-in.
-            value={linkAddress(window.location.origin, link.slug)}
-            hint={COPY.addressHint}
-            copyLabel={COPY.copyLabel}
-          />
-        ) : null}
-      </FieldGroup>
-      <FieldGroup title={COPY.amountGroup}>
-        <fieldset className="grid gap-3 sm:grid-cols-2">
-          <legend className="sr-only">{COPY.amountKind}</legend>
-          <ChoiceCard
-            type="radio"
-            name="amountKind"
-            value={AMOUNT_KINDS.fixed}
-            checked={kind === AMOUNT_KINDS.fixed}
-            onChange={() => setKind(AMOUNT_KINDS.fixed)}
-            icon={Tag}
-            title={COPY.fixedKind}
-            hint={COPY.fixedHint}
-          />
-          <ChoiceCard
-            type="radio"
-            name="amountKind"
-            value={AMOUNT_KINDS.open}
-            checked={kind === AMOUNT_KINDS.open}
-            onChange={() => setKind(AMOUNT_KINDS.open)}
-            icon={PencilLine}
-            title={COPY.openKind}
-            hint={COPY.openHint}
-          />
-        </fieldset>
-        {kind === AMOUNT_KINDS.fixed ? (
-          <div className="grid gap-5 sm:grid-cols-2">
-            <TextField
-              label={COPY.amount}
-              name="amountUsd"
-              inputMode="decimal"
-              autoComplete="off"
-              defaultValue={link?.amountUsd ?? ""}
-              hint={COPY.usdHint}
-              error={errors.amountUsd}
-            />
-          </div>
-        ) : (
-          <div className="grid gap-5 sm:grid-cols-2">
-            <TextField
-              label={COPY.min}
-              id="link-min"
-              name="minUsd"
-              aria-describedby={errors.minUsd ? "link-min-error link-usd-hint" : "link-usd-hint"}
-              inputMode="decimal"
-              autoComplete="off"
-              defaultValue={link?.minUsd ?? ""}
-              error={errors.minUsd}
-            />
-            <TextField
-              label={COPY.max}
-              id="link-max"
-              name="maxUsd"
-              aria-describedby={errors.maxUsd ? "link-max-error link-usd-hint" : "link-usd-hint"}
-              inputMode="decimal"
-              autoComplete="off"
-              defaultValue={link?.maxUsd ?? ""}
-              error={errors.maxUsd}
-            />
-            <p id="link-usd-hint" className="text-sm text-muted sm:col-span-2">
-              {COPY.usdHint}
-            </p>
-          </div>
-        )}
-      </FieldGroup>
-      <FieldGroup title={COPY.limitsGroup}>
-        <div className="grid gap-5 sm:grid-cols-2">
-          <DatePicker
-            label={COPY.endsOn}
-            value={endsAt?.slice(0, 10) ?? null}
-            onChange={(day) => setEndsAt(day ? endsAtOf(day) : null)}
-            hint={COPY.endsOnHint}
-            clearLabel={COPY.clearDate}
-          />
-          <TextField
-            label={COPY.maxPayments}
-            name="maxPayments"
-            inputMode="numeric"
-            autoComplete="off"
-            defaultValue={link?.maxPayments ?? ""}
-            hint={COPY.maxPaymentsHint}
-            error={errors.maxPayments}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <Checkbox
-            label={COPY.active}
-            checked={active}
-            onChange={(e) => setActive(e.target.checked)}
-          />
-          <p className="text-sm text-muted">{COPY.activeHint}</p>
-        </div>
-      </FieldGroup>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-        <Button type="submit" loading={busy}>
-          {COPY.save}
-        </Button>
-        <Link href={APP_ROUTES.links} className={buttonClasses({ variant: "ghost" })}>
-          {COPY.cancel}
-        </Link>
+        </FieldGroup>
       </div>
-      <p role="alert" className="min-h-5 text-sm text-danger">
-        {formError}
-      </p>
-    </Form>
+      <div data-step={STEPS.amount} className={flow.shows(STEPS.amount)}>
+        <FieldGroup title={COPY.amountGroup}>
+          <fieldset className="grid gap-3 sm:grid-cols-2">
+            <legend className="sr-only">{COPY.amountKind}</legend>
+            <ChoiceCard
+              type="radio"
+              name="amountKind"
+              value={AMOUNT_KINDS.fixed}
+              checked={kind === AMOUNT_KINDS.fixed}
+              onChange={() => setKind(AMOUNT_KINDS.fixed)}
+              icon={Tag}
+              title={COPY.fixedKind}
+              hint={COPY.fixedHint}
+            />
+            <ChoiceCard
+              type="radio"
+              name="amountKind"
+              value={AMOUNT_KINDS.open}
+              checked={kind === AMOUNT_KINDS.open}
+              onChange={() => setKind(AMOUNT_KINDS.open)}
+              icon={PencilLine}
+              title={COPY.openKind}
+              hint={COPY.openHint}
+            />
+          </fieldset>
+          {kind === AMOUNT_KINDS.fixed ? (
+            <div className="grid gap-5 sm:grid-cols-2">
+              <TextField
+                label={COPY.amount}
+                name="amountUsd"
+                inputMode="decimal"
+                autoComplete="off"
+                defaultValue={link?.amountUsd ?? ""}
+                hint={COPY.usdHint}
+                error={errors.amountUsd}
+              />
+            </div>
+          ) : (
+            <div className="grid gap-5 sm:grid-cols-2">
+              <TextField
+                label={COPY.min}
+                id="link-min"
+                name="minUsd"
+                aria-describedby={errors.minUsd ? "link-min-error link-usd-hint" : "link-usd-hint"}
+                inputMode="decimal"
+                autoComplete="off"
+                defaultValue={link?.minUsd ?? ""}
+                error={errors.minUsd}
+              />
+              <TextField
+                label={COPY.max}
+                id="link-max"
+                name="maxUsd"
+                aria-describedby={errors.maxUsd ? "link-max-error link-usd-hint" : "link-usd-hint"}
+                inputMode="decimal"
+                autoComplete="off"
+                defaultValue={link?.maxUsd ?? ""}
+                error={errors.maxUsd}
+              />
+              <p id="link-usd-hint" className="text-sm text-muted sm:col-span-2">
+                {COPY.usdHint}
+              </p>
+            </div>
+          )}
+        </FieldGroup>
+      </div>
+      <div data-step={STEPS.limits} className={flow.shows(STEPS.limits)}>
+        <FieldGroup title={COPY.limitsGroup}>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <DatePicker
+              label={COPY.endsOn}
+              value={endsAt?.slice(0, 10) ?? null}
+              onChange={(day) => setEndsAt(day ? endsAtOf(day) : null)}
+              hint={COPY.endsOnHint}
+              clearLabel={COPY.clearDate}
+            />
+            <TextField
+              label={COPY.maxPayments}
+              name="maxPayments"
+              inputMode="numeric"
+              autoComplete="off"
+              defaultValue={link?.maxPayments ?? ""}
+              hint={COPY.maxPaymentsHint}
+              error={errors.maxPayments}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Checkbox
+              label={COPY.active}
+              checked={active}
+              onChange={(e) => setActive(e.target.checked)}
+            />
+            <p className="text-sm text-muted">{COPY.activeHint}</p>
+          </div>
+        </FieldGroup>
+      </div>
+    </StepForm>
   );
 }

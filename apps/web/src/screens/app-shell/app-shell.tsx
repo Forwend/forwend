@@ -116,6 +116,12 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     });
   };
 
+  // Signing out also gives the next user a fresh, empty store (StoreProvider).
+  const signOut = useCallback(async () => {
+    await logout();
+    router.replace(APP_ROUTES.signIn);
+  }, [logout, router]);
+
   const session = useMemo<AppSession | null>(
     () =>
       profiles && active
@@ -126,16 +132,12 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
             openReceive: () => setReceiving(true),
             // A request is a form of its own, on a page (R-71).
             openRequest: () => router.push(APP_ROUTES.newInvoice),
+            signOut,
           }
         : null,
-    [profiles, active, switchProfile, router],
+    [profiles, active, switchProfile, router, signOut],
   );
 
-  // Signing out also gives the next user a fresh, empty store (StoreProvider).
-  const signOut = async () => {
-    await logout();
-    router.replace(APP_ROUTES.signIn);
-  };
   // Signed up users always have a personal profile; none means the answer is wrong, not that it is loading.
   if (me.isError || (profiles && !active)) {
     return (
@@ -185,68 +187,72 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   return (
     // Phones: toasts sit above the tab bar, its border and the safe area.
     <ToastProvider className="max-lg:bottom-[calc(5rem+1px+env(safe-area-inset-bottom)+1rem)]">
-      <div className="min-h-dvh bg-bg">
-        <a
-          href="#app-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[var(--fw-z-toast)] focus:rounded-md focus:bg-primary focus:px-4 focus:py-3 focus:text-on-primary"
-        >
-          {SHELL_COPY.skip}
-        </a>
-        {money ? <PaymentToasts profileId={active.profileId} /> : null}
-        <AppSidebar
-          profiles={profiles}
-          active={active}
-          onSwitch={switchProfile}
-          pathname={pathname}
-          email={email}
-          onSignOut={signOut}
-          collapsed={collapsed}
-        />
-        <div className={`min-w-0 ${collapsed ? "lg:pl-16" : "lg:pl-64"}`}>
-          <AppHeader
+      <AppSessionContext value={session}>
+        <div className="min-h-dvh bg-bg">
+          <a
+            href="#app-content"
+            className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[var(--fw-z-toast)] focus:rounded-md focus:bg-primary focus:px-4 focus:py-3 focus:text-on-primary"
+          >
+            {SHELL_COPY.skip}
+          </a>
+          {money ? <PaymentToasts profileId={active.profileId} /> : null}
+          <AppSidebar
+            profiles={profiles}
             active={active}
+            onSwitch={switchProfile}
             pathname={pathname}
             email={email}
             onSignOut={signOut}
-            onSearch={() => setSearching(true)}
-            onReceive={() => setReceiving(true)}
             collapsed={collapsed}
-            onToggleCollapsed={toggleCollapsed}
           />
-          <main
-            id="app-content"
-            tabIndex={-1}
-            className="fw-safe-x pt-6 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] outline-none sm:pt-8 lg:pb-10"
-          >
-            <AppSessionContext value={session}>{children}</AppSessionContext>
-          </main>
+          <div className={`min-w-0 ${collapsed ? "lg:pl-16" : "lg:pl-64"}`}>
+            <AppHeader
+              active={active}
+              pathname={pathname}
+              email={email}
+              onSignOut={signOut}
+              onSearch={() => setSearching(true)}
+              onReceive={() => setReceiving(true)}
+              collapsed={collapsed}
+              onToggleCollapsed={toggleCollapsed}
+            />
+            <main
+              id="app-content"
+              tabIndex={-1}
+              // A page whose only content is an empty or error state: the workspace is the screen under the header, and
+              // every box down to the state grows, so the state stands in the middle of what is left.
+              className="fw-safe-x pt-6 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] outline-none has-[[data-page-empty]]:flex has-[[data-page-empty]]:min-h-[calc(100dvh-4rem-env(safe-area-inset-top,0px))] has-[[data-page-empty]]:flex-col sm:pt-8 lg:pb-10 [&_*:has([data-page-empty])]:grow"
+            >
+              {children}
+            </main>
+          </div>
+          <PhoneTabBar active={active} pathname={pathname} onProfiles={() => setChoosing(true)} />
+          <ProfileSheet
+            profiles={profiles}
+            active={active}
+            onSwitch={switchProfile}
+            open={choosing}
+            onOpenChange={setChoosing}
+          />
+          <ReceiveSheet
+            open={receiving}
+            onOpenChange={setReceiving}
+            address={active.walletAddress}
+            balances={balances.currentData ?? null}
+            failed={balances.isError}
+            onRetry={balances.refetch}
+          />
+          <CommandMenu
+            open={searching}
+            onOpenChange={setSearching}
+            profiles={profiles}
+            active={active}
+            onSwitch={switchProfile}
+            onReceive={() => setReceiving(true)}
+            onRequest={() => router.push(APP_ROUTES.newInvoice)}
+          />
         </div>
-        <PhoneTabBar active={active} pathname={pathname} onProfiles={() => setChoosing(true)} />
-        <ProfileSheet
-          profiles={profiles}
-          active={active}
-          onSwitch={switchProfile}
-          open={choosing}
-          onOpenChange={setChoosing}
-        />
-        <ReceiveSheet
-          open={receiving}
-          onOpenChange={setReceiving}
-          address={active.walletAddress}
-          balances={balances.currentData ?? null}
-          failed={balances.isError}
-          onRetry={balances.refetch}
-        />
-        <CommandMenu
-          open={searching}
-          onOpenChange={setSearching}
-          profiles={profiles}
-          active={active}
-          onSwitch={switchProfile}
-          onReceive={() => setReceiving(true)}
-          onRequest={() => router.push(APP_ROUTES.newInvoice)}
-        />
-      </div>
+      </AppSessionContext>
     </ToastProvider>
   );
 }

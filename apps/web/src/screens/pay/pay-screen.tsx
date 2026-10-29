@@ -1,31 +1,27 @@
-import { Logo } from "@forwend/ui-web";
-import Link from "next/link";
-import { CheckoutMode, PayInvoice } from "@/features/pay/components/pay-invoice";
+import { PayInvoice } from "@/features/pay/components/pay-invoice";
+import { LEFT_PAD } from "@/features/pay/constants/pay";
 import { CheckoutFooter } from "@/screens/pay/checkout-footer";
-import { APP_ROUTES } from "@/shared/config/routes";
-
-const LINK = "rounded-sm outline-none focus-visible:outline-2 focus-visible:outline-focus";
 
 export interface PayScreenProps {
   /** The pay link's token (D-86). */
   linkToken: string;
   option?: string;
+  /** The owner opened it from their payment: their visit is not a payer's view (R-125). */
+  preview?: boolean;
 }
 
-/** The public checkout (R-68). */
-export function PayScreen({ linkToken, option }: PayScreenProps) {
+/** The public checkout (R-68): from large screens the merchant's summary on the left half and the pay panel on the
+ * right, as hosted checkouts split it; on phones one column with the pay panel right under the amount. */
+export function PayScreen({ linkToken, option, preview }: PayScreenProps) {
   return (
-    <div className="mx-auto flex min-h-svh w-full max-w-6xl flex-col gap-8 fw-safe-x pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))] lg:gap-12 lg:py-10">
-      <header className="flex items-center gap-3">
-        <Link href={APP_ROUTES.site} className={`${LINK} self-start`}>
-          <Logo />
-        </Link>
-        <CheckoutMode linkToken={linkToken} />
-      </header>
-      <main className="grid flex-1 grid-cols-[minmax(0,1fr)] content-start items-start gap-8 has-[>[data-load-error]]:content-center lg:grid-cols-[minmax(0,1fr)_minmax(0,32rem)] lg:grid-rows-[auto_1fr] lg:has-[>[data-load-error]]:grid-rows-none lg:gap-x-16 lg:gap-y-8">
-        <PayInvoice linkToken={linkToken} option={option} />
+    <div className="isolate flex min-h-svh flex-col gap-8 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))] max-lg:fw-safe-x lg:grid lg:grid-cols-2 lg:grid-rows-[1fr_auto] lg:gap-0 lg:p-0">
+      <main className="flex min-w-0 flex-1 flex-col gap-8 has-[>[data-load-error]]:justify-center lg:col-span-2 lg:grid lg:grid-cols-subgrid lg:items-start lg:gap-0">
+        <PayInvoice linkToken={linkToken} option={option} preview={preview} />
       </main>
-      <CheckoutFooter />
+      {/* Under the summary, as hosted checkouts put "Powered by": the payee's page, run by Forwend. */}
+      <CheckoutFooter
+        className={`lg:col-start-1 lg:justify-start lg:pt-4 lg:pb-8 lg:text-muted ${LEFT_PAD}`}
+      />
     </div>
   );
 }

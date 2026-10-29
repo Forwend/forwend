@@ -34,7 +34,8 @@ export interface EndpointDialogProps {
   trigger?: (open: () => void) => ReactNode;
 }
 
-const ALL_STORES = "";
+// Not "": the select reads an empty value as nothing chosen and shows its placeholder. Store ids are UUIDs.
+const ALL_STORES = "all";
 
 // R-149: saving asks for a fresh sign-in when the last one is older than 5 minutes (D-63).
 export function EndpointDialog({ profileId, stores, endpoint, trigger }: EndpointDialogProps) {
@@ -88,7 +89,7 @@ export function EndpointDialog({ profileId, stores, endpoint, trigger }: Endpoin
         body: {
           url,
           description: values.description.trim(),
-          ...(values.store ? { storeId: values.store } : {}),
+          ...(values.store === ALL_STORES ? {} : { storeId: values.store }),
           events: values.events,
           enabled: values.enabled,
         },
@@ -115,7 +116,7 @@ export function EndpointDialog({ profileId, stores, endpoint, trigger }: Endpoin
         return trigger ? (
           trigger(loadAndOpen)
         ) : (
-          <Button onClick={loadAndOpen}>
+          <Button size="sm" variant={BUTTON_VARIANTS.secondary} onClick={loadAndOpen}>
             <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />
             {COPY.add}
           </Button>
@@ -160,20 +161,22 @@ export function EndpointDialog({ profileId, stores, endpoint, trigger }: Endpoin
           aria-describedby={errors.events ? eventsError : undefined}
         >
           <legend className="text-sm font-medium text-ink">{COPY.events}</legend>
-          {WEBHOOK_EVENTS.map((type) => (
-            <Checkbox
-              key={type}
-              label={COPY.eventLabels[type]}
-              checked={values.events.includes(type)}
-              onChange={(event) =>
-                set({
-                  events: event.target.checked
-                    ? WEBHOOK_EVENTS.filter((t) => t === type || values.events.includes(t))
-                    : values.events.filter((t) => t !== type),
-                })
-              }
-            />
-          ))}
+          <div className="grid gap-x-4 sm:grid-cols-2">
+            {WEBHOOK_EVENTS.map((type) => (
+              <Checkbox
+                key={type}
+                label={COPY.eventLabels[type]}
+                checked={values.events.includes(type)}
+                onChange={(event) =>
+                  set({
+                    events: event.target.checked
+                      ? WEBHOOK_EVENTS.filter((t) => t === type || values.events.includes(t))
+                      : values.events.filter((t) => t !== type),
+                  })
+                }
+              />
+            ))}
+          </div>
           {errors.events ? (
             <p id={eventsError} role="alert" className="text-sm text-danger">
               {errors.events}
@@ -190,7 +193,7 @@ export function EndpointDialog({ profileId, stores, endpoint, trigger }: Endpoin
             {errors.form}
           </p>
         ) : null}
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant={BUTTON_VARIANTS.secondary} onClick={close}>
             {COPY.cancel}
           </Button>

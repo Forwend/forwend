@@ -1,13 +1,14 @@
 "use client";
 
-import { Button, buttonClasses, Skeleton } from "@forwend/ui-web";
-import Link from "next/link";
+import { Skeleton } from "@forwend/ui-web";
 import { useEffect, useRef, useState } from "react";
 import { useGetJobQuery } from "@/features/jobs/api/jobs-api";
 import { JobActions } from "@/features/jobs/components/job-actions";
 import { JobDetail } from "@/features/jobs/components/job-detail";
 import { JOBS_COPY as COPY } from "@/features/jobs/constants/jobs-copy";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
+import { LoadError } from "@/shared/components/load-error";
+import { RecordLink } from "@/shared/components/record-link";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 
@@ -26,7 +27,7 @@ export function JobScreen({ jobId }: JobScreenProps) {
   // A delete the client's acceptance beat: once the refetch shows it, the menu and its dialog are gone, so focus moves
   // to the heading.
   const [tooLate, setTooLate] = useState(false);
-  const heading = useRef<HTMLHeadingElement>(null);
+  const heading = useRef<HTMLSpanElement>(null);
   const status = (job.error as { status?: unknown } | undefined)?.status;
   const data = job.currentData;
   const accepted = Boolean(data?.acceptedAt);
@@ -36,47 +37,43 @@ export function JobScreen({ jobId }: JobScreenProps) {
       setTooLate(false);
     }
   }, [tooLate, accepted]);
-  return (
-    <div className="flex flex-col gap-6">
-      <header className="flex items-start justify-between gap-3">
-        <h1
-          ref={heading}
-          tabIndex={-1}
-          className="min-w-0 text-2xl font-semibold tracking-tight break-words text-ink outline-none"
-        >
-          {data?.title ?? COPY.detailTitle}
-        </h1>
-        {data && !data.acceptedAt && !deleted ? (
-          <JobActions
-            profileId={profile.profileId}
-            job={data}
-            onDeleted={() => setDeleted(true)}
-            onTooLate={() => setTooLate(true)}
-          />
-        ) : null}
-      </header>
-      {data && !deleted ? (
-        <JobDetail profileId={profile.profileId} job={data} />
-      ) : status === NOT_FOUND && !deleted ? (
-        <div className="flex flex-col items-start gap-3 text-sm text-muted">
-          {COPY.gone}
-          <Link
-            href={APP_ROUTES.jobs}
-            className={buttonClasses({ size: "sm", variant: "secondary" })}
-          >
-            {COPY.backToList}
-          </Link>
-        </div>
-      ) : job.isError && !deleted ? (
-        <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-muted">
-          {COPY.failed}
-          <Button size="sm" variant="secondary" onClick={() => void job.refetch()}>
-            {COPY.retry}
-          </Button>
-        </div>
-      ) : (
-        <Skeleton className="h-96" />
-      )}
+
+  if (data && !deleted) {
+    return (
+      <JobDetail
+        profileId={profile.profileId}
+        job={data}
+        titleRef={heading}
+        actions={
+          data.acceptedAt ? null : (
+            <JobActions
+              profileId={profile.profileId}
+              job={data}
+              onDeleted={() => setDeleted(true)}
+              onTooLate={() => setTooLate(true)}
+            />
+          )
+        }
+      />
+    );
+  }
+  return status === NOT_FOUND && !deleted ? (
+    <p className="text-muted">
+      {COPY.gone} <RecordLink href={APP_ROUTES.jobs}>{COPY.backToList}</RecordLink>
+    </p>
+  ) : job.isError && !deleted ? (
+    <LoadError message={COPY.failed} onRetry={() => void job.refetch()} retrying={job.isFetching} />
+  ) : (
+    <div aria-hidden className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3">
+        <Skeleton className="h-8 w-72 max-w-full" />
+        <Skeleton className="h-4 w-56 max-w-full" />
+        <Skeleton className="h-10 w-48" />
+      </div>
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+        <Skeleton className="h-80" />
+        <Skeleton className="h-64" />
+      </div>
     </div>
   );
 }

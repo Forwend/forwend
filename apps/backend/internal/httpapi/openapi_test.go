@@ -4,8 +4,11 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
 
 // R-150, D-100: openapi.yaml is written by hand, so this keeps it to the routes: each route has its operation, and
@@ -87,6 +90,29 @@ func TestOpenAPINamesEveryRoute(t *testing.T) {
 	for operation := range operations {
 		if !routes[operation] {
 			t.Errorf("openapi.yaml's %s has no route", operation)
+		}
+	}
+}
+
+// D-114: the spec's state and wallet enums, on the filters and on Payment, are the values the API filters and returns.
+func TestOpenAPIPaymentStatesMatchTheAPI(t *testing.T) {
+	spec, err := os.ReadFile("../../api/openapi.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	enums := regexp.MustCompile(`enum: \[([^\]]*)\]`).FindAllStringSubmatch(string(spec), -1)
+	for _, want := range [][]string{invoice.PaymentStates, invoice.WalletStates} {
+		found := 0
+		for _, enum := range enums {
+			if got := strings.Split(enum[1], ", "); got[0] == want[0] && slices.Contains(got, want[2]) {
+				found++
+				if !slices.Equal(got, want) {
+					t.Errorf("openapi.yaml has %v, the API %v", got, want)
+				}
+			}
+		}
+		if found != 2 {
+			t.Errorf("openapi.yaml has %d enums like %v, want the filter's and Payment's", found, want)
 		}
 	}
 }

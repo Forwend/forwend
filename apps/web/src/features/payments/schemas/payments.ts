@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { DOCUMENT_KINDS, PAYMENT_PURPOSES } from "@/features/invoices/constants/invoices";
-import { depositSchema, paymentAmountsSchema } from "@/features/invoices/schemas/invoices";
+import {
+  depositSchema,
+  invoiceLineSchema,
+  paymentAmountsSchema,
+} from "@/features/invoices/schemas/invoices";
 import { PAYMENT_SOURCES } from "@/features/payments/constants/payments";
 import { apiTime, baseUnits, count, evmAddress, hash32, pageOf } from "@/shared/schemas/api";
 
@@ -16,6 +20,8 @@ export const paymentSchema = z.object({
         decimals: count,
         received: baseUnits,
         pending: baseUnits,
+        /** Booked money still owed to the payer on this option. */
+        held: baseUnits.optional(),
       }),
     )
     .optional(),
@@ -49,6 +55,10 @@ export const paymentSchema = z.object({
   closesAt: apiTime,
   hostedUrl: z.url().nullable(),
   amounts: paymentAmountsSchema,
+  /** Derived by the API (D-114); older reads leave them out and the raw facts decide. */
+  state: z.string().optional(),
+  wallet: z.string().optional(),
+  dueDate: z.string().nullable().optional(),
 });
 export const paymentProblemSchema = z.object({
   amount: signedUnits.nullable(),
@@ -81,6 +91,8 @@ const coverageSchema = z.object({
 });
 export const paymentDetailSchema = paymentSchema.extend({
   snapshotAt: apiTime,
+  /** Line items in base units of the option whose id is the payment's. */
+  items: z.array(invoiceLineSchema).optional(),
   customer: z.object({ name: z.string().nullable(), email: z.string().nullable() }),
   metadata: z.record(z.string(), z.string()),
   options: z.array(
@@ -192,29 +204,3 @@ export const reconciliationSchema = z.object({
     }),
   ),
 });
-export const movementsPageSchema = pageOf(
-  z.object({
-    id: z.string(),
-    state: z.string(),
-    status: z.string().optional(),
-    recordedAt: apiTime,
-    paymentId: hash32,
-    optionId: hash32,
-    kind: z.string(),
-    chainId: count,
-    token: evmAddress,
-    symbol: z.string().nullable(),
-    decimals: count.nullable(),
-    sourceAmount: signedUnits.nullable(),
-    receiverDelta: signedUnits.nullable(),
-    payableDelta: signedUnits.nullable(),
-    heldDelta: signedUnits.nullable(),
-    txHash: hash32.nullable(),
-    blockNumber: count.nullable(),
-    blockHash: hash32.nullable(),
-    logIndex: count.nullable(),
-    transferLogIndex: count.nullable(),
-    verified: z.boolean(),
-    reconciliationError: z.string().nullable(),
-  }),
-).extend({ snapshotAt: apiTime });

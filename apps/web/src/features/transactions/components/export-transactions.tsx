@@ -1,6 +1,6 @@
 "use client";
 
-import { BUTTON_VARIANTS, Button, Dialog, TextField } from "@forwend/ui-web";
+import { BUTTON_VARIANTS, Button, DateRangePicker, Dialog } from "@forwend/ui-web";
 import { Download } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
@@ -45,7 +45,7 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
     !savingCurrency.isError;
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [dayErrors, setDayErrors] = useState<{ from?: string; to?: string }>({});
+  const [dayError, setDayError] = useState("");
   const [error, setError] = useState("");
   // Each opening starts the records currency afresh: the dialog keeps its content while closed.
   const [opened, setOpened] = useState(0);
@@ -58,21 +58,14 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
     actions.current?.closest("dialog")?.close();
   };
 
+  // The picker keeps From on or before To; a statement needs both.
   const checkDays = (statementDays: boolean) => {
-    const shown = {
-      from: statementDays && !from ? COPY.statementDay : undefined,
-      to:
-        statementDays && !to
-          ? COPY.statementDay
-          : from && to && to < from
-            ? COPY.daysOrder
-            : undefined,
-    };
+    const shown = statementDays && (!from || !to) ? COPY.statementDays : "";
     flushSync(() => {
-      setDayErrors(shown);
+      setDayError(shown);
       setError("");
     });
-    if (!shown.from && !shown.to) return true;
+    if (!shown) return true;
     days.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
     return false;
   };
@@ -118,7 +111,7 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
           aria-label={COPY.export}
           onClick={() => {
             setError("");
-            setDayErrors({});
+            setDayError("");
             if (savingCurrency.isError) savingCurrency.reset();
             setOpened((n) => n + 1);
             open();
@@ -135,27 +128,17 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
       <div className="mt-4">
         <RecordsCurrency key={opened} profileId={profileId} />
       </div>
-      <div ref={days} className="mt-4 grid gap-4 sm:grid-cols-2">
-        <TextField
-          type="date"
-          label={COPY.exportFrom}
-          value={from}
-          max={to || undefined}
-          error={dayErrors.from}
-          onChange={(event) => {
-            setFrom(event.target.value);
-            setDayErrors({});
-          }}
-        />
-        <TextField
-          type="date"
-          label={COPY.exportTo}
-          value={to}
-          min={from || undefined}
-          error={dayErrors.to}
-          onChange={(event) => {
-            setTo(event.target.value);
-            setDayErrors({});
+      <div ref={days} className="mt-4">
+        <DateRangePicker
+          label={COPY.exportPeriod}
+          value={{ from: from || null, to: to || null }}
+          note={COPY.periodNote}
+          error={dayError || undefined}
+          clearLabel={COPY.clearPeriod}
+          onChange={(range) => {
+            setFrom(range.from ?? "");
+            setTo(range.to ?? "");
+            setDayError("");
           }}
         />
       </div>

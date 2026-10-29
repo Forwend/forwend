@@ -36,6 +36,12 @@ Read only the sections your task touches:
   - It also keeps the ECB's reference rates (`internal/ecb`, R-110): at start, every 6 hours, 10 minutes after a failure.
   - It reads the ECB's 90-day file only, so rates from before its first read, or gaps over 90 days, never arrive.
   - Only tests set `ECB_RATES_URL`: the e2e gate points the worker at a fake ECB.
+  - It keeps CoinGecko's USD prices of the stablecoins for display (`internal/price`, R-178, D-115).
+    - It reads them at start, every 15 minutes (`COINGECKO_INTERVAL`), and 2 minutes after a failure.
+    - A read times out after 10 s; a redirect or an answer over 64 KiB fails it.
+    - It sends `COINGECKO_API_KEY`, a Demo plan key, when set; only the worker holds it.
+    - A coin the answer gives no price keeps its last one, which turns stale.
+    - Only tests set `COINGECKO_API_URL`: the e2e gate points the worker at a fake CoinGecko.
 - `signer`: separate process, own credentials, no public routes, no user sessions. Accepts only
   typed intents ("settle invoice X") and signs only `factory.deploy` and `receiver.settle`. Refunds are never signed
   here: they will be Safe transactions the multisig owners approve (PLAN 11.10.3). Re-reads the ledger and the chain
@@ -136,6 +142,8 @@ everything) 10,000 users gave p95 2.4 ms, 0 errors and 1,333 RPC calls/s (334 wh
 - RPC demand ≈ users × tokens ÷ max(15 s, how long a finalized block stays) + chains ÷ 3 s. It has to fit
   the endpoint limits and shared weighted budget described below. These figures exclude worker and signer traffic.
 - `/balances` needs the `ledger_transactions_invoice` index (migration 00011): 21.5 ms without it, 0.37 ms with it.
+- `/balances` and activity deposits find a profile's invoice rows through `invoices_profile` (migration 00088).
+  - With 220,000 invoices, a profile without payments read its balances in 0.05 ms, not 19 ms.
 - The RPC pool keeps up to 100 idle connections per host ([scaling](#scaling)).
 
 Not covered: hosted RPC latency (tens of ms, not Anvil's 1 ms), separate machines, and load on the worker, signer and
@@ -224,6 +232,7 @@ with a test.
   log (chain, transaction, log index).
 - `ecb_rates` (R-110, D-82): the ECB's daily euro reference rates, units per 1 EUR, one per currency and day.
   - A rate the ECB corrects replaces the kept one.
+- `coin_prices` (R-178, D-115): CoinGecko's USD price per coin, with its source time and the worker's read time.
 - `profiles.records_currency` is the profile's other records currency (R-110), null for none.
 - `ledger_transactions` + `ledger_entries`: double-entry, append-only (below).
 - `settlement_intents` (unique per invoice): nonce and tx hash tracked, with the hashes a fee replacement replaced;

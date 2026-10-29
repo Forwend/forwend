@@ -1,4 +1,6 @@
 export const RECEIVE_COPY = {
+  searchTokens: "Search tokens",
+  searchNetworks: "Search networks",
   receive: "Receive",
   token: "Token",
   network: "Network",
@@ -12,5 +14,4 @@ export const RECEIVE_COPY = {
   receiveNote: "Money sent here shows in the balance once the network has finalized it.",
   yourAddress: (network: string) => `Your ${network} address`,
   noWallet: "This profile's wallet is not ready yet. Reload the page to try again.",
-  retry: "Try again",
 } as const;

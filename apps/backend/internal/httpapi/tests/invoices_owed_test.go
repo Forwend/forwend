@@ -99,30 +99,82 @@ func TestOwedToYou(t *testing.T) {
 	closed := create("closed", "5000000", day(-20))
 	e.closeCheckout(t, closed)
 
-	r := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/owed", "did:privy:alice", "", "")
-	if r.status != http.StatusOK {
-		t.Fatalf("owed: %d %v", r.status, r.body)
-	}
-	var got []string
-	for _, it := range r.body["items"].([]any) {
-		o := it.(map[string]any)
-		got = append(got, fmt.Sprintf("%s %s %v %s", o["kind"], o["invoiceId"], o["daysLate"], o["amount"]))
-		if o["symbol"] != "USDC" || o["decimals"] != float64(6) || o["optionCount"] != float64(1) {
-			t.Fatalf("item %v", o)
-		}
-	}
+	// D-114: the canceled invoice's money is held for its payer, so it is not owed.
 	want := []string{
 		"overdue " + late10 + " 10 5000000",
 		"overdue " + late3 + " 3 4000000",
 		"partlyPaid " + partly + " 0 3500000",
-		"held " + canceled + " 0 2000000",
 	}
-	if strings.Join(got, "\n") != strings.Join(want, "\n") {
-		t.Fatalf("owed:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	for _, limit := range []int{50, 2} {
+		r := e.call(t, "GET", fmt.Sprintf("/v1/profiles/%s/owed?limit=%d", e.aliceProfile, limit), "did:privy:alice", "", "")
+		if r.status != http.StatusOK {
+			t.Fatalf("owed: %d %v", r.status, r.body)
+		}
+		var got []string
+		for _, it := range r.body["items"].([]any) {
+			o := it.(map[string]any)
+			got = append(got, fmt.Sprintf("%s %s %v %s", o["kind"], o["invoiceId"], o["daysLate"], o["amount"]))
+			if o["symbol"] != "USDC" || o["decimals"] != float64(6) || o["optionCount"] != float64(1) ||
+				o["purpose"] != "invoice" || o["documentKind"] != "invoice" || o["number"] == nil {
+				t.Fatalf("item %v", o)
+			}
+		}
+		page := want[:min(limit, len(want))]
+		if strings.Join(got, "\n") != strings.Join(page, "\n") {
+			t.Fatalf("owed, limit %d:\n%s\nwant:\n%s", limit, strings.Join(got, "\n"), strings.Join(page, "\n"))
+		}
+		// Count and totals cover every row, not only the page's.
+		totals := fmt.Sprint(r.body["totals"])
+		if r.body["count"] != float64(3) ||
+			totals != "[map[amount:12500000 chainId:84532 decimals:6 symbol:USDC token:"+usdc+"]]" {
+			t.Fatalf("limit %d: count %v, totals %s", limit, r.body["count"], totals)
+		}
+	}
+	for _, limit := range []string{"0", "101"} {
+		if r := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/owed?limit="+limit, "did:privy:alice", "", ""); r.status != http.StatusUnprocessableEntity {
+			t.Fatalf("limit %s: %d %v", limit, r.status, r.body)
+		}
 	}
 
 	if r := e.call(t, "GET", "/v1/profiles/"+e.bobProfile+"/owed", "did:privy:alice", "", ""); r.status != http.StatusForbidden {
 		t.Fatalf("Bob's profile: %d %v, want 403", r.status, r.body)
+	}
+}
+
+// R-95, D-107: a checkout session has no number, so its order reference names it.
+func TestOwedListsOpenPartlyPaidCheckoutSessions(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	shop := e.merchant(t)
+	base := "/v1/profiles/" + shop
+	store := storeIDs(t, e, shop)[0]
+	session := func(key, reference string) string {
+		t.Helper()
+		r := e.call(t, "POST", base+"/checkout-sessions", alice, key, `{"storeId":"`+store+`","amountUsd":"2.00","reference":"`+reference+
+			`","customer":{"name":"Bea Buyer"}}`)
+		if r.status != http.StatusCreated {
+			t.Fatalf("create checkout: %d %v", r.status, r.body)
+		}
+		return r.body["sessionId"].(string)
+	}
+	partly := session("partly", "order-1")
+	e.deposit(t, partly, "500000")
+	e.deposit(t, session("paid", "order-2"), "2000000")
+	session("unpaid", "order-3")
+	closed := session("closed", "order-4")
+	e.deposit(t, closed, "500000")
+	e.closeCheckout(t, closed)
+
+	r := e.call(t, "GET", base+"/owed", alice, "", "")
+	items, _ := r.body["items"].([]any)
+	if r.status != http.StatusOK || len(items) != 1 || r.body["count"] != float64(1) {
+		t.Fatalf("owed: %d %v; want only the open, partly paid session", r.status, r.body)
+	}
+	o := items[0].(map[string]any)
+	if o["kind"] != "partlyPaid" || o["invoiceId"] != partly || o["number"] != nil || o["purpose"] != "checkout" ||
+		o["documentKind"] != "none" || o["reference"] != "order-1" || o["clientName"] != "Bea Buyer" ||
+		o["dueDate"] != nil || o["amount"] != "1500000" {
+		t.Fatalf("checkout row %v", o)
 	}
 }
 

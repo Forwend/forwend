@@ -6,7 +6,9 @@ import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
 import { PAYMENT_EVENTS } from "@/features/activity/constants/payment-events";
 import { newPaymentEvents } from "@/features/activity/lib/payment-events";
 import { useGetInvoiceEventsQuery } from "@/features/invoices/api/invoices-api";
+import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { LIVE_QUERY } from "@/shared/config/refresh";
+import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { exactDigits } from "@/shared/lib/money";
 
 export interface PaymentToastsProps {
@@ -38,14 +40,15 @@ function ProfileToasts({ profileId }: { profileId: string }) {
     for (const { kind, item } of events) {
       const units = BigInt(item.amount);
       const amount = `${formatTokenAmount({ baseUnits: units, decimals: item.decimals, fractionDigits: exactDigits(units, item.decimals) })} ${item.symbol}`;
-      toast(
-        kind === PAYMENT_EVENTS.settled
-          ? { tone: TONES.success, ...ACTIVITY_COPY.toasts.settled(amount) }
-          : {
-              tone: TONES.success,
-              ...ACTIVITY_COPY.toasts.paid(amount),
-            },
-      );
+      const payment = item.number
+        ? invoiceNumber(item.number)
+        : (item.title ?? MONEY_COPY.checkout(item.invoiceId));
+      toast({
+        tone: TONES.success,
+        ...(kind === PAYMENT_EVENTS.settled
+          ? ACTIVITY_COPY.toasts.settled(amount, payment)
+          : ACTIVITY_COPY.toasts.paid(amount, payment)),
+      });
     }
   }, [items, toast]);
 

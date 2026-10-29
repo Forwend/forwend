@@ -109,8 +109,8 @@ code; a wallet connects only to claim a refund (D-37).
     origin off the list is blocked. After 11.9.3.
 - 11.10 Refunds of held money (D-78). A refund goes ahead whatever the merchant profile's status (D-89). Forwend pays
   the network fee, and the minimum refund is 1 USD (D-90). After 11.11.1.
-  - 11.10.1 Overpaid handling: the pay page and the owner's invoice page show money sent above the amount (held for
-    the payer, D-26) with its next step and a way to return it. Until then neither page shows an overpaid line.
+  - 11.10.1 Overpaid handling: the owner's invoice page shows money sent above the amount (held for the payer, D-26)
+    with a way to return it. The pay page and the payment page already name the extra and that it is held.
     After 11.10.
   - 11.10.2 Refund claims on `/pay`: the payer presses Claim refund, then connects the wallet that sent the money and
     signs a claim naming the invoice and the destination (D-37); plain and smart-contract wallets are both checked.

@@ -1,78 +1,106 @@
 "use client";
 
-import { Button, Skeleton } from "@forwend/ui-web";
+import { BigAmount, Skeleton } from "@forwend/ui-web";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { EstimateHint } from "@/features/balances/components/estimate-hint";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
-import { formatUsd, usdTotal } from "@/features/balances/lib/balances";
-import type { Balances } from "@/features/balances/types/balances";
+import { formatUsd, marketUsd, notFinal } from "@/features/balances/lib/balances";
+import type { Balances, TokenBalance } from "@/features/balances/types/balances";
+import type { TokenPrice } from "@/features/prices/types/prices";
+import { LoadError } from "@/shared/components/load-error";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 
 export interface BalanceFigureProps {
   balances: Balances | null;
+  /** Market prices (D-115); undefined until read or after a failed read, which shows no USD value. */
+  prices: readonly TokenPrice[] | undefined;
   failed: boolean;
   onRetry: () => void;
+  /** The change over a range, right under the total. */
+  change?: ReactNode;
+  /** Off where a card beside it already shows the money moving, not final and held. */
+  pending?: boolean;
 }
 
 // Never a made-up 0 while loading or after a failed read. The parent is the size container.
-export function BalanceFigure({ balances, failed, onRetry }: BalanceFigureProps) {
+export function BalanceFigure({
+  balances,
+  prices,
+  failed,
+  onRetry,
+  change,
+  pending = true,
+}: BalanceFigureProps) {
   const tokens = balances?.tokens ?? [];
-  const total = balances ? usdTotal(balances, "wallet") : null;
+  const total = balances ? marketUsd(balances, "wallet", prices) : null;
   const text = total === null ? "—" : formatUsd(total);
-  const figure =
-    "text-[length:clamp(2rem,min(14cqi,160cqi_/_var(--chars)),5.25rem)] leading-none font-semibold tracking-[-0.03em] text-ink";
-  const align = "items-center text-center lg:items-start lg:text-left";
-  // px-7 leaves room for the hanging hint on both sides.
-  const row = "flex flex-wrap items-baseline justify-center gap-x-2 px-7 lg:justify-start lg:px-0";
+  const align = "items-center text-center sm:items-start sm:text-left";
 
   if (!balances && failed) {
-    return (
-      <div role="alert" className={`flex flex-col gap-3 text-sm text-muted ${align}`}>
-        {BALANCES_COPY.balancesFailed}
-        <Button size="sm" variant="secondary" onClick={onRetry}>
-          {BALANCES_COPY.retry}
-        </Button>
-      </div>
-    );
+    return <LoadError message={BALANCES_COPY.balancesFailed} onRetry={onRetry} />;
   }
   if (!balances)
-    return <Skeleton className="mx-auto h-[clamp(2rem,14cqi,5.25rem)] w-56 max-w-full lg:mx-0" />;
+    return <Skeleton className="mx-auto h-[clamp(2.5rem,13cqi,4rem)] w-56 max-w-full sm:mx-0" />;
   if (tokens.length === 0)
     return <p className={`flex ${align} text-muted`}>{BALANCES_COPY.noTokens}</p>;
 
   return (
     <div className={`flex w-full flex-col gap-2 ${align}`}>
-      <p className={row}>
-        <span className={figure} style={{ "--chars": text.length } as CSSProperties}>
-          {text}
-        </span>
-        {/* The hint hangs after USD and takes no width, so the total itself sits on the center line. */}
-        <span className="relative text-xl font-medium whitespace-nowrap text-muted">
-          {MONEY_COPY.usd}
-          <span className="absolute top-1/2 left-full ml-1 -translate-y-1/2">
+      {/* The hint hangs after USD and takes no width, so the total itself sits on the center line. */}
+      <p
+        className="max-w-full px-7 sm:px-0"
+        style={{ "--chars": text.length + MONEY_COPY.usd.length / 3 } as CSSProperties}
+      >
+        <span className="relative inline-block">
+          <BigAmount
+            value={text}
+            unit={MONEY_COPY.usd}
+            className="text-[length:clamp(2.5rem,min(13cqi,150cqi_/_var(--chars)),4rem)] leading-none"
+          />
+          <span className="absolute bottom-0 left-full ml-1">
             <EstimateHint />
           </span>
         </span>
       </p>
-      {total === null ? <p className="text-sm text-muted">{BALANCES_COPY.unavailable}</p> : null}
-      <PendingHeld balances={balances} />
+      {change}
+      {total === null ? (
+        <p className="text-sm text-muted">
+          {tokens.some((t) => t.wallet === null)
+            ? BALANCES_COPY.unavailable
+            : BALANCES_COPY.noPrices}
+        </p>
+      ) : null}
+      {pending ? <PendingHeld balances={balances} prices={prices} /> : null}
     </div>
   );
 }
 
-function PendingHeld({ balances }: { balances: Balances }) {
+function PendingHeld({
+  balances,
+  prices,
+}: {
+  balances: Balances;
+  prices: readonly TokenPrice[] | undefined;
+}) {
   const summaries = [
-    { field: "pending", label: BALANCES_COPY.pending },
+    { field: "settling", label: BALANCES_COPY.moving },
+    { field: "notFinal", label: BALANCES_COPY.notFinal },
     { field: "held", label: BALANCES_COPY.held },
   ] as const;
   return (
     <div className="flex max-w-full flex-wrap justify-center gap-x-3 gap-y-1 empty:hidden lg:justify-start">
       {summaries.map(({ field, label }) => {
-        if (!balances.tokens.some((t) => BigInt(t[field]) > 0n)) return null;
-        const total = usdTotal(balances, field);
+        const part = (t: TokenBalance) =>
+          field === "notFinal"
+            ? notFinal(t)
+            : field === "settling"
+              ? (t.settling ?? t.pending)
+              : t[field];
+        if (!balances.tokens.some((t) => BigInt(part(t)) > 0n)) return null;
+        const total = marketUsd(balances, field, prices);
         if (total === null) return null;
         return (
           <Link

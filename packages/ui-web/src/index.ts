@@ -15,13 +15,24 @@ export type { AccordionItem, AccordionProps } from "./components/display/accordi
 export { Accordion } from "./components/display/accordion";
 export type { BadgeProps } from "./components/display/badge";
 export { Badge } from "./components/display/badge";
+export type { CardProps } from "./components/display/card";
+export { Card } from "./components/display/card";
 export type { CodeBlockProps } from "./components/display/code-block";
 export { CodeBlock } from "./components/display/code-block";
+export type { DetailListProps, DetailRowProps } from "./components/display/detail-list";
+export { DetailList, DetailRow } from "./components/display/detail-list";
 export type { PanelProps, PanelTone } from "./components/display/panel";
 export { PANEL_TONES, Panel } from "./components/display/panel";
 export { ProgressBar } from "./components/display/progress-bar";
 export type { StatTileProps } from "./components/display/stat-tile";
 export { StatTile } from "./components/display/stat-tile";
+export type {
+  TimelineChip,
+  TimelineEntry,
+  TimelineProps,
+  TimelineState,
+} from "./components/display/timeline";
+export { TIMELINE_STATES, Timeline } from "./components/display/timeline";
 export { DotLoader } from "./components/feedback/dot-loader";
 export type { EmptyStateProps } from "./components/feedback/empty-state";
 export { EmptyState } from "./components/feedback/empty-state";
@@ -49,6 +60,15 @@ export type { CalendarProps } from "./components/forms/date-picker/calendar";
 export { Calendar } from "./components/forms/date-picker/calendar";
 export type { DatePickerProps } from "./components/forms/date-picker/date-picker";
 export { DatePicker } from "./components/forms/date-picker/date-picker";
+export type {
+  DateRange,
+  DateRangePickerProps,
+  DateRangePreset,
+} from "./components/forms/date-picker/date-range-picker";
+export {
+  DATE_RANGE_PRESETS,
+  DateRangePicker,
+} from "./components/forms/date-picker/date-range-picker";
 export type { CaptureStatus, EmailCaptureProps } from "./components/forms/email-capture";
 export { CAPTURE_STATUS, EmailCapture } from "./components/forms/email-capture";
 export type { FormProps } from "./components/forms/form";
@@ -69,6 +89,8 @@ export type { SegmentedControlProps } from "./components/navigation/segmented-co
 export { SegmentedControl } from "./components/navigation/segmented-control";
 export type { SelectMenuOption, SelectMenuProps } from "./components/navigation/select-menu";
 export { SelectMenu } from "./components/navigation/select-menu";
+export type { StepperProps, StepperStep } from "./components/navigation/stepper";
+export { Stepper } from "./components/navigation/stepper";
 export type { TabItem, TabsProps } from "./components/navigation/tabs";
 export { Tabs } from "./components/navigation/tabs";
 export type { ThemeSwitchProps } from "./components/navigation/theme-switch";
@@ -104,6 +126,8 @@ export { Address } from "./components/payments/address/address";
 export { shortAddress } from "./components/payments/address/short-address";
 export type { TruncatedAddressProps } from "./components/payments/address/truncated-address";
 export { TruncatedAddress } from "./components/payments/address/truncated-address";
+export type { BigAmountProps } from "./components/payments/money/big-amount";
+export { BigAmount } from "./components/payments/money/big-amount";
 export type { MoneyProps } from "./components/payments/money/money";
 export { Money } from "./components/payments/money/money";
 export type { TokenAmountInput } from "./components/payments/money/token-amount";
@@ -120,10 +144,17 @@ export type { QrCodeProps } from "./components/payments/qr-code";
 export { QrCode } from "./components/payments/qr-code";
 export type { ReceiveAddressProps } from "./components/payments/receive-address";
 export { ReceiveAddress } from "./components/payments/receive-address";
-export type { PaymentStatus } from "./components/payments/status-pill/payment-status";
-export { PAYMENT_STATUS, PAYMENT_STATUSES } from "./components/payments/status-pill/payment-status";
+export type { PaymentStatus, WalletState } from "./components/payments/status-pill/payment-status";
+export {
+  PAYMENT_STATUS,
+  PAYMENT_STATUSES,
+  WALLET_STATE,
+  WALLET_STATES,
+} from "./components/payments/status-pill/payment-status";
 export type { StatusPillProps } from "./components/payments/status-pill/status-pill";
-export { StatusPill } from "./components/payments/status-pill/status-pill";
+export { PAYMENT_STATUS_ICONS, StatusPill } from "./components/payments/status-pill/status-pill";
+export type { WalletStateLabelProps } from "./components/payments/status-pill/wallet-state-label";
+export { WalletStateLabel } from "./components/payments/status-pill/wallet-state-label";
 export type { TokenChipProps } from "./components/payments/token-chip";
 export { TokenChip } from "./components/payments/token-chip";
 export type { CopyStatus } from "./hooks/use-copy";
@@ -135,6 +166,7 @@ export type { CustomIconProps } from "./icons/custom-icons";
 export { FreelancerIcon, MerchantIcon, PaymentPathIcon } from "./icons/custom-icons";
 export type { LogoMarkProps, LogoProps } from "./icons/logo";
 export { Logo, LogoMark } from "./icons/logo";
+export { cx } from "./lib/cx";
 export { ROW_INTERACTIVE_CLASSES, TABLE_HEAD_CLASSES, TABLE_ROW_CLASSES } from "./lib/row-classes";
 export type { Tone } from "./lib/tone";
 export { TONES } from "./lib/tone";

@@ -1,13 +1,13 @@
-import {
-  API_DEPOSIT_STATUSES,
-  API_PAYMENT_STATUSES,
-  API_SETTLEMENT_STATUSES,
-} from "@/features/activity/constants/activity";
 import { RECONCILIATION_STATES } from "@/features/invoices/constants/invoices";
 import { depositAmount, tokenKey } from "@/features/invoices/lib/invoices";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import { PAY_STATES, PAY_TOKENS } from "@/features/pay/constants/pay";
 import type { PayState } from "@/features/pay/types/pay";
+import {
+  API_DEPOSIT_STATUSES,
+  API_PAYMENT_STATUSES,
+  API_SETTLEMENT_STATUSES,
+} from "@/shared/constants/payment-state";
 
 /** The `?option=` terms while no option has money; else the API's: the chosen option, or the first (R-56). */
 export function withOption(inv: Invoice, optionId: string | undefined): Invoice {

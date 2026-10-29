@@ -126,7 +126,7 @@ export function InvoiceActions({
                 </p>
               ) : null}
               <MenuItem asChild>
-                <a href={link} target="_blank" rel="noopener noreferrer">
+                <a href={`${link}?preview=1`} target="_blank" rel="noopener noreferrer">
                   <ExternalLink aria-hidden className="size-[var(--fw-icon-sm)]" />
                   {COPY.openPayPage}
                   <span className="sr-only"> {COPY.inNewTab}</span>

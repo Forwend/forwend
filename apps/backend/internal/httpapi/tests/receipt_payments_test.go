@@ -11,8 +11,8 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
-// R-121, D-26.
-func TestReceiptListsOnlyMoneyPaidToTheCreator(t *testing.T) {
+// R-121, R-179, D-26: every deposit is listed, but only the part paid to the creator counts as applied.
+func TestReceiptListsEveryDepositAndOnlyPaidMoneyAsApplied(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()
 	made := e.post(t, "did:privy:alice", e.aliceProfile, "key-1",
@@ -47,11 +47,8 @@ func TestReceiptListsOnlyMoneyPaidToTheCreator(t *testing.T) {
 		t.Fatalf("receipt: %d %s", r.status, r.body)
 	}
 	text := pdfText(t, r.body)
-	payments := text[strings.Index(text, "PAYMENTS"):]
-	if !strings.Contains(payments, "1.50 USDC") || !strings.Contains(payments, "0.50 USDC") ||
-		strings.Contains(payments, third) || strings.Contains(payments, "2.50 USDC") {
-		t.Fatalf("receipt payments:\n%s\nwant 1.50 and 0.50 USDC, not the held deposit", payments)
-	}
+	mustContain(t, text, "Amount paid\n2.00 USDC", "1.50 USDC\n1.50 USDC\n"+first, "1.50 USDC\n0.50 USDC\n"+second,
+		"2.50 USDC\n0.00 USDC\n"+third, "Received\n5.50 USDC\nApplied to this invoice\n2.00 USDC\nHeld for payer\n3.50 USDC")
 	paid := map[string]any{}
 	for _, d := range e.get(t, id).body["deposits"].([]any) {
 		paid[d.(map[string]any)["txHash"].(string)] = d.(map[string]any)["paid"]

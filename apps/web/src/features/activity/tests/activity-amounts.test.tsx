@@ -96,7 +96,7 @@ describe("Activity shows invoice amounts exactly, as the invoice list, detail, p
     );
     await settle();
     const toasts = screen.queryAllByRole("listitem").map((li) => li.textContent);
-    expect(toasts).toEqual(["Payment received0.0015 USDC paid by the customer."]);
+    expect(toasts).toEqual(["Payment receivedCheckout aaaaaa is paid: 0.0015 USDC."]);
   });
 });
 
@@ -113,7 +113,7 @@ describe("Activity names held money", () => {
     );
     await settle();
     const rows = screen.getAllByRole("listitem").map((li) => li.textContent ?? "");
-    expect(rows[0]).toContain("Held for the payer");
+    expect(rows[0]).toContain("Held for the customer");
     expect(rows[0]).not.toContain("Payment");
     expect(rows[1]).toContain("Payment");
   });

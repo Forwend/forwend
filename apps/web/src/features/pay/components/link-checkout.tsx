@@ -19,7 +19,10 @@ import {
 } from "@/features/links/constants/links";
 import { amountLabel } from "@/features/links/lib/links";
 import type { PublicLink } from "@/features/links/types/links";
+import { Backdrop } from "@/features/pay/components/backdrop";
 import { Payee } from "@/features/pay/components/payee";
+import { TestnetBadge } from "@/features/pay/components/testnet-badge";
+import { LEFT_PAD, RIGHT_PAD } from "@/features/pay/constants/pay";
 import { LINK_PAY_COPY as COPY, PAY_COPY } from "@/features/pay/constants/pay-copy";
 import { purchaseSearch, readPurchase, usdCents, usdFromCents } from "@/features/pay/lib/link-pay";
 import type { LinkPurchase } from "@/features/pay/types/link-pay";
@@ -43,7 +46,11 @@ export function LinkCheckout({ slug }: { slug: string }) {
   if (failure?.status === NOT_FOUND) notFound();
   if (link.isError) {
     return (
-      <div role="alert" data-load-error className="mx-auto w-full max-w-lg">
+      <div
+        role="alert"
+        data-load-error
+        className="mx-auto w-full max-w-lg lg:col-span-2 lg:self-center lg:justify-self-center"
+      >
         <EmptyState
           icon={WifiOff}
           title={PAY_COPY.failedTitle}
@@ -58,7 +65,7 @@ export function LinkCheckout({ slug }: { slug: string }) {
     );
   }
   return (
-    <div aria-busy="true" className="flex flex-col gap-4">
+    <div aria-busy="true" className={`flex flex-col gap-4 lg:col-span-2 lg:pt-8 ${LEFT_PAD}`}>
       <span role="status" className="sr-only">
         {COPY.loading}
       </span>
@@ -168,100 +175,122 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
     await startPurchase(next);
   };
 
+  // Before Pay the summary shows what the payer pays: the fixed amount, or the range they may enter.
+  const amountSummary = fixed ? (
+    <div className="flex flex-col gap-1.5">
+      <h2 id="link-amount" tabIndex={-1} className="text-sm text-muted outline-none">
+        {COPY.amount}
+      </h2>
+      <Money
+        baseUnits={usdCents(link.amountUsd ?? "0")}
+        decimals={2}
+        token="USD"
+        className="min-w-0 text-amount-lg text-ink"
+      />
+      <p className="text-sm text-muted">{COPY.fixedHint}</p>
+    </div>
+  ) : (
+    <div className="flex flex-col gap-1.5">
+      <p className="text-sm text-muted">{COPY.amount}</p>
+      <p className="text-2xl font-medium tracking-tight text-ink tabular-nums">{limits}</p>
+    </div>
+  );
+
+  // From large screens the summary is the left half and the action the right, as on the invoice checkout.
   return (
-    <section ref={section} aria-labelledby="link-amount" className="flex flex-col gap-6">
-      <Payee name={link.payee ?? link.title} subtitle={COPY.title} brand={link.brand} />
-      {link.payee && !purchase ? (
-        <p className="text-base break-words text-ink">{link.title}</p>
-      ) : null}
-      {purchase ? (
-        <div className="flex flex-col gap-4">
-          <h2 id="link-amount" tabIndex={-1} className="text-sm text-muted outline-none">
-            {COPY.previous}
-          </h2>
-          <Money
-            baseUnits={BigInt(purchase.cents)}
-            decimals={2}
-            token="USD"
-            className="text-amount-lg text-ink"
-          />
-          <p className="text-sm text-muted">{COPY.purchaseHelp}</p>
-          <div className="flex flex-wrap gap-3">
-            <Button loading={busy} onClick={() => void startPurchase(purchase)}>
-              {COPY.continue}
-            </Button>
-            <Button variant="secondary" disabled={busy} onClick={() => keepPurchase(null)}>
-              {COPY.another}
-            </Button>
-          </div>
-          <p role="alert" className="min-h-5 text-sm text-danger">
-            {formError}
-          </p>
+    <section
+      ref={section}
+      aria-labelledby="link-amount"
+      className="flex flex-col gap-8 lg:col-span-2 lg:grid lg:grid-cols-subgrid lg:gap-0 lg:self-stretch"
+    >
+      <Backdrop color={link.brand?.color} />
+      <div className={`flex min-w-0 flex-col gap-6 lg:pt-8 ${LEFT_PAD}`}>
+        <div className="flex items-center justify-between gap-3">
+          <Payee name={link.payee ?? link.title} subtitle={COPY.title} brand={link.brand} />
+          {link.livemode ? null : <TestnetBadge />}
         </div>
-      ) : link.state === LINK_STATES.on ? (
-        <Form onSubmit={submit} noValidate>
-          {fixed ? (
-            <div className="flex flex-col gap-1.5">
+        {link.payee ? (
+          <p className="text-base font-medium break-words text-ink">{link.title}</p>
+        ) : null}
+        {!purchase && link.state === LINK_STATES.on ? amountSummary : null}
+      </div>
+      <div className={`flex min-w-0 flex-col lg:self-stretch lg:py-8 lg:pl-16 ${RIGHT_PAD}`}>
+        {/* The action in a card, as the invoice checkout's pay panel. */}
+        <div className="fw-panel flex flex-col gap-4 p-4 sm:p-5 lg:my-auto">
+          {purchase ? (
+            <div className="flex flex-col gap-4">
               <h2 id="link-amount" tabIndex={-1} className="text-sm text-muted outline-none">
-                {COPY.amount}
+                {COPY.previous}
               </h2>
               <Money
-                baseUnits={usdCents(link.amountUsd ?? "0")}
+                baseUnits={BigInt(purchase.cents)}
                 decimals={2}
                 token="USD"
-                className="min-w-0 text-amount-lg text-ink"
+                className="text-amount-lg text-ink"
               />
-              <p className="text-sm text-muted">{COPY.fixedHint}</p>
+              <p className="text-sm text-muted">{COPY.purchaseHelp}</p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+                <Button size="lg" loading={busy} onClick={() => void startPurchase(purchase)}>
+                  {COPY.continue}
+                </Button>
+                <Button
+                  size="lg"
+                  variant="secondary"
+                  disabled={busy}
+                  onClick={() => keepPurchase(null)}
+                >
+                  {COPY.another}
+                </Button>
+              </div>
+              <p role="alert" className="min-h-5 text-sm text-danger">
+                {formError}
+              </p>
             </div>
+          ) : link.state === LINK_STATES.on ? (
+            <Form onSubmit={submit} noValidate gap="md">
+              <div className="flex flex-col gap-1">
+                <p className="text-sm font-medium text-ink">{COPY.payPanel}</p>
+                <p className="text-sm text-muted">{COPY.next}</p>
+              </div>
+              {fixed ? null : (
+                <>
+                  <h2 id="link-amount" className="sr-only">
+                    {COPY.amount}
+                  </h2>
+                  <TextField
+                    label={COPY.amountField}
+                    name="amountUsd"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    hint={COPY.amountHint(limits)}
+                    error={error}
+                  />
+                </>
+              )}
+              <Button type="submit" size="lg" loading={busy} className="w-full">
+                {COPY.pay}
+              </Button>
+              <p role="alert" className="text-sm text-danger empty:hidden">
+                {formError || (fixed ? error : "")}
+              </p>
+            </Form>
           ) : (
             <>
               <h2 id="link-amount" className="sr-only">
                 {COPY.amount}
               </h2>
-              <TextField
-                label={COPY.amountField}
-                name="amountUsd"
-                inputMode="decimal"
-                autoComplete="off"
-                hint={COPY.amountHint(limits)}
-                error={error}
-              />
+              <p
+                ref={reason}
+                tabIndex={-1}
+                role="status"
+                className="rounded-md bg-surface-2 px-4 py-3 text-sm text-ink outline-none"
+              >
+                {COPY.closed[link.state]}
+              </p>
             </>
           )}
-          <div className="flex flex-col gap-2">
-            <Button type="submit" loading={busy} className="w-full sm:w-auto">
-              {COPY.pay}
-            </Button>
-            <p className="text-sm text-muted">{COPY.next}</p>
-          </div>
-          <p role="alert" className="min-h-5 text-sm text-danger">
-            {formError || (fixed ? error : "")}
-          </p>
-        </Form>
-      ) : (
-        <>
-          <h2 id="link-amount" className="sr-only">
-            {COPY.amount}
-          </h2>
-          <p
-            ref={reason}
-            tabIndex={-1}
-            role="status"
-            className="rounded-md bg-surface-2 px-4 py-3 text-sm text-ink outline-none"
-          >
-            {COPY.closed[link.state]}
-          </p>
-        </>
-      )}
+        </div>
+      </div>
     </section>
   );
-}
-
-export function LinkCheckoutMode({ slug }: { slug: string }) {
-  const { data } = useGetPublicLinkQuery(slug);
-  return data && !data.livemode ? (
-    <span className="text-xs text-warning" title="Test tokens have no monetary value.">
-      Testnet
-    </span>
-  ) : null;
 }

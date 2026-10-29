@@ -2,6 +2,7 @@
 
 import * as RadixMenu from "@radix-ui/react-dropdown-menu";
 import { Check } from "lucide-react";
+import { useRef } from "react";
 import { cx } from "../../lib/cx";
 
 export type MenuContentProps = RadixMenu.DropdownMenuContentProps;
@@ -30,17 +31,41 @@ export function MenuContent({
   className,
   align = "start",
   side = "bottom",
+  onCloseAutoFocus,
+  onPointerDown,
+  onPointerDownOutside,
+  onKeyDown,
   ...props
 }: MenuContentProps) {
+  // Closed by a pointer, focus stays where the pointer left it: returning it to the trigger would draw the
+  // keyboard focus ring on a control the person only clicked. A keyboard close still returns focus.
+  const byPointer = useRef(false);
   return (
     <RadixMenu.Portal>
       <RadixMenu.Content
         align={align}
         side={side}
+        onPointerDown={(event) => {
+          byPointer.current = true;
+          onPointerDown?.(event);
+        }}
+        onPointerDownOutside={(event) => {
+          byPointer.current = true;
+          onPointerDownOutside?.(event);
+        }}
+        onKeyDown={(event) => {
+          byPointer.current = false;
+          onKeyDown?.(event);
+        }}
+        onCloseAutoFocus={(event) => {
+          onCloseAutoFocus?.(event);
+          if (byPointer.current && !event.defaultPrevented) event.preventDefault();
+          byPointer.current = false;
+        }}
         sideOffset={8}
         collisionPadding={12}
         className={cx(
-          "z-[var(--fw-z-overlay)] min-w-[var(--radix-dropdown-menu-trigger-width)] max-w-[calc(100vw-2rem)] rounded-lg border border-line bg-surface p-1.5 text-ink shadow-lg",
+          "z-[var(--fw-z-overlay)] min-w-[var(--radix-dropdown-menu-trigger-width)] max-w-[calc(100vw-2rem)] rounded-md border border-line bg-surface p-1 text-ink shadow-lg",
           "origin-[var(--radix-dropdown-menu-content-transform-origin)] data-[side=bottom]:[--fw-pop-y:-4px] motion-safe:data-[state=open]:animate-[fw-pop-in_var(--fw-duration-base)_var(--fw-ease-out)]",
           className,
         )}
@@ -51,7 +76,7 @@ export function MenuContent({
 }
 
 const ITEM =
-  "flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-3 text-sm outline-none select-none data-[disabled]:cursor-not-allowed data-[disabled]:text-subtle data-[highlighted]:bg-surface-2";
+  "flex min-h-9 cursor-pointer items-center gap-2.5 rounded-sm px-2.5 text-sm pointer-coarse:min-h-11 outline-none select-none data-[disabled]:cursor-not-allowed data-[disabled]:text-subtle data-[highlighted]:bg-surface-2";
 
 export function MenuItem({ className, ...props }: MenuItemProps) {
   return <RadixMenu.Item className={cx(ITEM, className)} {...props} />;

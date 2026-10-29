@@ -20,7 +20,7 @@ export function Networks() {
     <section
       data-section={LANDING_SECTIONS.networks}
       aria-labelledby="networks-title"
-      className="mx-auto max-w-6xl py-10 sm:px-8"
+      className="mx-auto max-w-7xl py-10 sm:px-8 lg:px-10"
     >
       <p id="networks-title" className="mb-6 px-4 text-center text-sm text-muted">
         {NETWORKS.label}

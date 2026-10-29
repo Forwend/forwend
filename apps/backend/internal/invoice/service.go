@@ -51,7 +51,8 @@ const invoiceColumns = `id, option_id, chosen_id IS NOT NULL,
 	coalesce((SELECT metadata FROM invoices m WHERE m.id = invoices.id), '{}'), purpose, document_kind,
 	coalesce(link_id::text, ''),
  (SELECT symbol FROM tokens t WHERE t.chain_id = invoices.chain_id AND t.contract = invoices.token_contract),
- (SELECT decimals FROM tokens t WHERE t.chain_id = invoices.chain_id AND t.contract = invoices.token_contract)`
+ (SELECT decimals FROM tokens t WHERE t.chain_id = invoices.chain_id AND t.contract = invoices.token_contract),
+ ` + PaymentStateSQL + `, ` + WalletSQL
 
 // The invoices_current view (migration 00020) aliased as invoices, so filters written for the table work on it.
 const invoicesCurrent = "invoices_current invoices"
@@ -73,7 +74,8 @@ func scanInvoice(row pgx.Row) (Invoice, error) {
 		&inv.SettlementTxHash, &inv.CreatedAt, &inv.ClientCountry, &inv.ClientTaxID, &inv.Confirming, &inv.Closed, &canceledAt,
 		&inv.SupplyDate, &inv.Reference, &agreedCurrency, &agreedAmount, &agreedDecimals, &agreedDate, &inv.PayToken,
 		&closesAt, &inv.receiverDeployedAt, &inv.StoreID, &inv.StoreName, &inv.BrandColor, &inv.LogoAt,
-		&inv.Livemode, &inv.Metadata, &inv.Purpose, &inv.DocumentKind, &inv.LinkID, &inv.Symbol, &inv.Decimals}
+		&inv.Livemode, &inv.Metadata, &inv.Purpose, &inv.DocumentKind, &inv.LinkID, &inv.Symbol, &inv.Decimals,
+		&inv.State, &inv.Wallet}
 	if err := row.Scan(dest...); errors.Is(err, pgx.ErrNoRows) {
 		return Invoice{}, ErrNotFound
 	} else if err != nil {

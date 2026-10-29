@@ -28,9 +28,13 @@ type balancesJSON struct {
 
 type tokenBalanceJSON struct {
 	tokenJSON
+	Livemode       bool    `json:"livemode"`
 	Wallet         *string `json:"wallet"`
 	FinalizedBlock *uint64 `json:"finalizedBlock"`
 	Pending        string  `json:"pending"`
+	Settling       string  `json:"settling"`
+	Confirming     string  `json:"confirming"`
+	Partial        string  `json:"partial"`
 	Held           string  `json:"held"`
 }
 
@@ -53,6 +57,23 @@ type activityItemJSON struct {
 	OptionCount      int    `json:"optionCount"`
 	Closed           bool   `json:"closed"`
 	Held             bool   `json:"held"`
+	// D-114: a booked deposit's parts; D-107: what names the payment.
+	MerchantAmount *string              `json:"merchantAmount"`
+	HeldAmount     *string              `json:"heldAmount"`
+	Purpose        invoice.Purpose      `json:"purpose"`
+	DocumentKind   invoice.DocumentKind `json:"documentKind"`
+	Number         *int64               `json:"number"`
+	Reference      *string              `json:"reference"`
+	ClientName     *string              `json:"clientName"`
+	Title          *string              `json:"title"`
+}
+
+func optionalAmount(amount *big.Int) *string {
+	if amount == nil {
+		return nil
+	}
+	value := amount.String()
+	return &value
 }
 
 type transactionsJSON struct {
@@ -137,6 +158,7 @@ type historyPointJSON struct {
 
 type tokenHistoryJSON struct {
 	tokenJSON
+	Livemode bool     `json:"livemode"`
 	Balances []string `json:"balances"`
 	Received []string `json:"received"`
 	Sent     []string `json:"sent"`

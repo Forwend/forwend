@@ -2,7 +2,7 @@
 
 import { Badge, Button, buttonClasses, Skeleton, TONES } from "@forwend/ui-web";
 import Link from "next/link";
-import { useListLinksQuery } from "@/features/links/api/links-api";
+import { useGetLinkQuery } from "@/features/links/api/links-api";
 import { LinkForm } from "@/features/links/components/link-form";
 import { LINKS_COPY as COPY } from "@/features/links/constants/links-copy";
 import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
@@ -15,11 +15,13 @@ export interface LinkFormScreenProps {
   linkId?: string;
 }
 
-// The link comes from the list the page above loaded (one request for all), as a store does.
 export function LinkFormScreen({ linkId }: LinkFormScreenProps) {
   const { profile } = useAppSession();
-  const list = useListLinksQuery(profile.profileId, { skip: !linkId });
-  const link = list.currentData?.find((l) => l.linkId === linkId);
+  const list = useGetLinkQuery(
+    { profileId: profile.profileId, linkId: linkId ?? "" },
+    { skip: !linkId },
+  );
+  const link = list.currentData;
   // A merchant's link is for one of its stores, of the ones the user reaches (R-138).
   const merchant = profile.kind === PROFILE_KINDS.merchant;
   const stores = useListStoresQuery(profile.profileId, { skip: !merchant });
@@ -29,7 +31,7 @@ export function LinkFormScreen({ linkId }: LinkFormScreenProps) {
     (linkId && list.isError && !list.currentData) ||
     (merchant && stores.isError && !stores.currentData);
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex max-w-6xl flex-col gap-6">
       <header className="flex min-w-0 flex-col gap-2">
         {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
         <h1 className="text-2xl font-semibold tracking-tight break-words text-ink lg:sr-only">

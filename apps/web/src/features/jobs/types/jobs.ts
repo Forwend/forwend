@@ -4,6 +4,7 @@ import type {
   ACCEPT_FIELDS,
   JOB_FIELDS,
   PAYMENT_FIELDS,
+  PAYMENT_STEPS,
   RECORD_EVENTS,
 } from "@/features/jobs/constants/jobs";
 import type {
@@ -36,6 +37,7 @@ export interface RecordEvent {
   payment?: JobPayment;
 }
 export type PaymentField = (typeof PAYMENT_FIELDS)[keyof typeof PAYMENT_FIELDS];
+export type PaymentStep = (typeof PAYMENT_STEPS)[keyof typeof PAYMENT_STEPS];
 export type AcceptField = (typeof ACCEPT_FIELDS)[keyof typeof ACCEPT_FIELDS];
 
 export interface PaymentDraft {

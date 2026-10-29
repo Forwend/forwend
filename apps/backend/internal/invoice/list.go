@@ -36,9 +36,13 @@ const StatusFilterSQL = `CASE WHEN invoices.settlement_status = 'settled' AND in
 	WHEN invoices.payment_status IN ('expired', 'expired_partially_paid') OR ` + ClosedSQL + ` THEN 'expired'
 	ELSE 'open' END`
 
-const ConfirmingSQL = `EXISTS (SELECT 1 FROM chain_transfers t JOIN invoices candidate ON candidate.id=t.invoice_id
+// ConfirmingSQL also holds once the ledger credited the whole amount but the finalized balance check is pending: the
+// status stays detected or partially_paid until then (ledger.status).
+const ConfirmingSQL = `(EXISTS (SELECT 1 FROM chain_transfers t JOIN invoices candidate ON candidate.id=t.invoice_id
  WHERE (candidate.id=invoices.option_id OR invoices.chosen_id IS NULL AND candidate.main_id=invoices.id)
- AND (t.status='detected' OR t.status='confirmed' AND NOT t.booked) AND t.block_time<=candidate.closes_at)`
+ AND (t.status='detected' OR t.status='confirmed' AND NOT t.booked) AND t.block_time<=candidate.closes_at)
+ OR invoices.payment_status IN ('detected','partially_paid') AND (SELECT -coalesce(sum(e.amount),0) FROM ledger_transactions l
+ JOIN ledger_entries e ON e.transaction_id=l.id WHERE l.invoice_id=invoices.option_id AND e.account='recipient_payable') >= invoices.amount)`
 
 const ListStatusFilterSQL = `CASE WHEN invoices.payment_status IN ('open','detected','partially_paid') AND NOT ` + ClosedSQL + `
  AND (invoices.payment_status = 'detected' OR ` + ConfirmingSQL + `) THEN 'confirming' ELSE ` + StatusFilterSQL + ` END`
@@ -57,13 +61,16 @@ type Page struct {
 // Newest first by number, which only grows. The caller must check the user's access to the profile.
 // stores, when not nil, keeps only those stores' invoices: a Developer's or Finance member's (R-138). live, when not
 // nil, keeps only that mode's: a key's (D-87).
-func (s *Service) List(ctx context.Context, profileID, cursor string, limit int, status string, q search.Query,
+func (s *Service) List(ctx context.Context, profileID, cursor string, limit int, status, state string, q search.Query,
 	stores []string, live *bool) (Page, error) {
 	if limit < 1 || limit > MaxLimit {
 		return Page{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxLimit)
 	}
 	if status != "" && !slices.Contains(StatusFilters, status) {
 		return Page{}, fmt.Errorf("%w: status must be one of %v", ErrInvalid, StatusFilters)
+	}
+	if state != "" && !slices.Contains(PaymentStates, state) {
+		return Page{}, fmt.Errorf("%w: state must be one of %v", ErrInvalid, PaymentStates)
 	}
 	var before *int64
 	if cursor != "" {
@@ -80,6 +87,11 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 	if status != "" {
 		args = append(args, status)
 		where += fmt.Sprintf(" AND ($%d = 'paid' AND invoices.payment_status = 'paid' OR %s = $%d)", len(args), ListStatusFilterSQL, len(args))
+	}
+	// D-114: the same states the Payments list filters by, so both lists name a payment alike.
+	if state != "" {
+		args = append(args, state)
+		where += fmt.Sprintf(" AND %s = $%d", PaymentStateSQL, len(args))
 	}
 	if stores != nil {
 		args = append(args, stores)

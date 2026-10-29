@@ -1,94 +1,105 @@
-/* Forwend design tokens (D-13). Light is the default; data-theme="dark" on <html> or any section switches.
+/* Forwend design tokens (D-113, Signal). Light is the default; data-theme="dark" on <html> or any section switches.
    test/contrast.test.ts reads the color values from this file. */
 
 :root,
 [data-theme="light"] {
   color-scheme: light;
 
-  --fw-bg: #f4f8f7;
+  --fw-bg: #ffffff;
   --fw-surface: #ffffff;
-  --fw-surface-2: #eaf2f0;
-  --fw-sunken: #e2ecea;
-  --fw-glass: rgb(255 255 255 / 0.72);
+  --fw-surface-2: #f6f7f5;
+  --fw-sunken: #eff0ed;
+  --fw-glass: rgb(255 255 255 / 0.78);
 
-  --fw-ink: #0f2219;
-  --fw-muted: #3a5047;
-  --fw-subtle: #566a62;
+  --fw-ink: #0e0f0e;
+  --fw-muted: #5b5e5a;
+  --fw-subtle: #676a66;
 
-  --fw-line: #dae5e1;
-  --fw-line-strong: #a9bfb8;
+  --fw-line: #e8e9e6;
+  --fw-line-strong: #cbcdc8;
   /* Fields: a quiet edge at rest, a gray-ink edge and a faint ring on focus (derived, so no new colors). */
   --fw-field: color-mix(in oklab, var(--fw-line-strong) 55%, var(--fw-line));
   --fw-field-focus: color-mix(in oklab, var(--fw-ink) 40%, var(--fw-line-strong));
   --fw-field-ring: color-mix(in oklab, var(--fw-ink) 7%, transparent);
 
-  --fw-primary: #0f2219;
-  --fw-on-primary: #f5faf7;
-  --fw-accent: #1f6a8c;
+  /* Ink fills: tooltips, a chosen day, avatars, meters. */
+  --fw-primary: #0e0f0e;
+  --fw-on-primary: #ffffff;
+  /* The lime fill is reserved for a view's main action; its edge keeps it from bleeding into white. */
+  --fw-brand: #c9ef5f;
+  --fw-brand-hover: #bde34f;
+  --fw-brand-edge: #a9cf3c;
+  --fw-on-brand: #0e0f0e;
+  /* Olive marks: focus, a switch that is on, the current step, a chosen option's check. */
+  --fw-accent: #4f6a07;
   --fw-on-accent: #ffffff;
-  --fw-focus: #1f6a8c;
+  --fw-focus: #4f6a07;
 
-  --fw-success: #1b6e45;
-  --fw-success-soft: #e2f2e9;
-  --fw-warning: #865500;
-  --fw-warning-soft: #f8eed8;
+  --fw-success: #16744a;
+  --fw-success-soft: #e7f3ec;
+  --fw-warning: #8f4d00;
+  --fw-warning-soft: #fbf1df;
   --fw-danger: #b42318;
-  --fw-danger-soft: #fbe9e7;
-  --fw-info: #1f6a8c;
-  --fw-info-soft: #e3f0f6;
+  --fw-danger-soft: #fdecea;
+  --fw-info: #2a5a86;
+  --fw-info-soft: #e9f0f7;
 
   /* Art: code-drawn ridges and halftone dots (footer, call to action) */
-  --fw-art-ridge-far: #a9c3cb;
-  --fw-art-ridge-mid: #8babaf;
-  --fw-art-ridge-near: #7da38f;
-  --fw-art-dot: #8dbfd4;
+  --fw-art-ridge-far: #dfe7d2;
+  --fw-art-ridge-mid: #cbd9b6;
+  --fw-art-ridge-near: #b5c99a;
+  --fw-art-dot: #b8cf8a;
 
-  /* Tinted with the ink color. */
-  --fw-shadow-sm: 0 1px 2px rgb(15 34 25 / 0.05);
-  --fw-shadow-md: 0 6px 18px -4px rgb(15 34 25 / 0.12), 0 1px 3px rgb(15 34 25 / 0.05);
-  --fw-shadow-lg: 0 22px 52px -14px rgb(15 34 25 / 0.24), 0 3px 10px rgb(15 34 25 / 0.06);
-  /* Behind modals: a darkening veil in both themes (the ink mix turned milky in dark). */
-  --fw-scrim: rgb(15 34 25 / 0.4);
+  /* Neutral, tinted with the ink. */
+  --fw-shadow-sm: 0 1px 2px rgb(14 15 14 / 0.05);
+  --fw-shadow-md: 0 6px 16px -4px rgb(14 15 14 / 0.1), 0 1px 3px rgb(14 15 14 / 0.05);
+  --fw-shadow-lg: 0 18px 44px -12px rgb(14 15 14 / 0.2), 0 3px 10px rgb(14 15 14 / 0.06);
+  /* Behind modals: a darkening veil in both themes. */
+  --fw-scrim: rgb(14 15 14 / 0.36);
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --fw-bg: #0d1412;
-  --fw-surface: #141d1a;
-  --fw-surface-2: #1a2521;
-  --fw-sunken: #0a0f0d;
-  --fw-glass: rgb(20 29 26 / 0.72);
+  --fw-bg: #0c0d0c;
+  --fw-surface: #141615;
+  --fw-surface-2: #1c1e1d;
+  --fw-sunken: #080908;
+  --fw-glass: rgb(20 22 21 / 0.78);
 
-  --fw-ink: #eef4f1;
-  --fw-muted: #b4c3bd;
-  --fw-subtle: #8fa29a;
+  --fw-ink: #eeefec;
+  --fw-muted: #a7aaa5;
+  --fw-subtle: #8f928d;
 
-  --fw-line: #25322d;
-  --fw-line-strong: #3a4a43;
+  --fw-line: #262826;
+  --fw-line-strong: #3b3e3b;
   --fw-field: var(--fw-line-strong);
   --fw-field-focus: color-mix(in oklab, var(--fw-ink) 40%, var(--fw-line-strong));
   --fw-field-ring: color-mix(in oklab, var(--fw-ink) 8%, transparent);
 
-  --fw-primary: #eef4f1;
-  --fw-on-primary: #0f2219;
-  --fw-accent: #7cc0dd;
-  --fw-on-accent: #0b1a22;
-  --fw-focus: #7cc0dd;
+  --fw-primary: #eeefec;
+  --fw-on-primary: #0e0f0e;
+  --fw-brand: #c9ef5f;
+  --fw-brand-hover: #d6f57d;
+  --fw-brand-edge: #c9ef5f;
+  --fw-on-brand: #0e0f0e;
+  --fw-accent: #c9ef5f;
+  --fw-on-accent: #0e0f0e;
+  --fw-focus: #c9ef5f;
 
-  --fw-success: #5cc08b;
-  --fw-success-soft: #12291e;
-  --fw-warning: #e3b054;
-  --fw-warning-soft: #2c2210;
-  --fw-danger: #f0857a;
-  --fw-danger-soft: #2f1714;
-  --fw-info: #7cc0dd;
-  --fw-info-soft: #102430;
+  --fw-success: #4cc08a;
+  --fw-success-soft: #10261b;
+  --fw-warning: #e9b863;
+  --fw-warning-soft: #2a2111;
+  --fw-danger: #f08a7f;
+  --fw-danger-soft: #2e1613;
+  --fw-info: #8db6de;
+  --fw-info-soft: #122130;
 
-  --fw-art-ridge-far: #1d2a33;
-  --fw-art-ridge-mid: #17222a;
-  --fw-art-ridge-near: #122019;
-  --fw-art-dot: #2f5f73;
+  --fw-art-ridge-far: #1a1d18;
+  --fw-art-ridge-mid: #161914;
+  --fw-art-ridge-near: #121510;
+  --fw-art-dot: #3d4a26;
 
   --fw-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
   --fw-shadow-md: 0 8px 22px -6px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.3);
@@ -98,14 +109,15 @@
 
 :root {
   /* The app sets the *-loaded variables with next/font; the rest are fallbacks. */
-  --fw-font-display: var(--fw-font-display-loaded, ui-serif), Georgia, serif;
+  --fw-font-display: var(--fw-font-sans);
   --fw-font-sans: var(--fw-font-sans-loaded, ui-sans-serif), system-ui, sans-serif;
   --fw-font-mono: var(--fw-font-mono-loaded, ui-monospace), "SFMono-Regular", monospace;
 
-  --fw-radius-sm: 0.5rem;
-  --fw-radius-md: 0.75rem;
-  --fw-radius-lg: 1.25rem;
-  --fw-radius-xl: 1.75rem;
+  /* Controls take md, panels lg, sheets and the landing's large cards xl. Pills are for avatars, dots and round actions. */
+  --fw-radius-sm: 0.375rem;
+  --fw-radius-md: 0.625rem;
+  --fw-radius-lg: 1rem;
+  --fw-radius-xl: 1.5rem;
   --fw-radius-pill: 9999px;
 
   --fw-icon-sm: 1rem;

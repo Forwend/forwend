@@ -53,6 +53,11 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
     later; the address never shows without its exact network and token warning.
   - Balances and activity are read again every 15 s while the tab is visible and when it comes back. Money sent
     straight to the wallet shows in the balance once final, not in activity.
+  - Display prices (`features/prices`, R-178, D-115) are one cache entry for the whole app.
+    - Pass `PRICES_QUERY`: they are read every 5 minutes while visible and on focus, and kept an hour unused.
+    - A value is bigint math on base units at the latest known price, cut to cents. Without any price there is no
+      value, never 1 USD.
+    - Pages name no price provider while the provider is temporary (D-115).
   - `/app/profiles/new` sends one idempotency key per visit (R-35) and the invoice form one per filled-in form (R-44).
     While `onboardedAt` is empty, every `/app` page sends to `/app/onboarding?next=<page>`, the first-run choice screen
     (R-50, D-73); once done that address returns to `next` (an `/app` path only, `afterOnboarding`), else `/app`.
@@ -104,6 +109,13 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
 - Team (R-139) leads to profiles (roles, permissions and the profile list) and to stores (the store names it offers).
 - API keys (R-145) lead to profiles (the permission names its scopes reuse) and to stores (a merchant key's store).
 - Links (R-140) lead to stores: a merchant's link names one of its stores, and the payer's read has its brand (R-142).
+- balances → prices: My assets values each token at its market price (R-178).
+- transactions → payments: the bell names a payment as the Payments list does.
+- In-person checkout (`features/checkout`) leads to:
+  - payments: the payment schema, its status words and the cache tag a new checkout refreshes.
+  - links: the USD amount pattern.
+  - stores: the stores a sale can belong to.
+  - balances: the USD formatting of the amount shown to the customer.
 - Checkout `/pay/<token>` (R-45) sits outside the `(app)` group: no Privy, no sign-in, `noindex`. A malformed token
   (an on-chain id too, D-86) is a 404; a token the API does not know shows the 404 page. It reads the public
   `GET /v1/invoices/{payToken}` every 15 s through a

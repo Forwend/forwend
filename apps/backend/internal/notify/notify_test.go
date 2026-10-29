@@ -471,7 +471,7 @@ func TestDeliverSendsTheInvoiceToTheClient(t *testing.T) {
 		!strings.HasPrefix(m.Key, "forwend-"+id+"-1-") {
 		t.Fatalf("email %+v", m)
 	}
-	for _, want := range []string{"Alice Design GmbH sent you INV-0001 for 5.00 USDC.", "Due date: 2026-11-30",
+	for _, want := range []string{"Alice Design GmbH sent you INV-0001 for 5.00 USDC.", "Due date: 30 Nov 2026",
 		"Network: Base Sepolia", "Invoice PDF: " + web + "/api/v1/invoices/" + payToken + "/invoice.pdf",
 		"View and pay: " + web + "/pay/" + payToken, "Reply to this email to reach them."} {
 		if !strings.Contains(m.Text, want) {
@@ -530,7 +530,7 @@ func TestDeliverSendsTheReminderToTheClient(t *testing.T) {
 		m.Unsubscribe != web+"/api/v1/reminders/"+token+"/stop" {
 		t.Fatalf("reminder %+v", m)
 	}
-	for _, want := range []string{"Alice Design GmbH reminds you that INV-0001 was due on 2026-11-30: 5.00 USDC left to pay.",
+	for _, want := range []string{"Alice Design GmbH reminds you that INV-0001 was due on 30 Nov 2026: 5.00 USDC left to pay.",
 		"View and pay: " + web + "/pay/" + payToken, "Stop reminders: " + web + "/reminders/" + token} {
 		if !strings.Contains(m.Text, want) {
 			t.Fatalf("text %q lacks %q", m.Text, want)

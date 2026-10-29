@@ -25,9 +25,9 @@ export interface EmailCaptureProps {
   placeholder?: string;
 }
 
-// One pill, one fixed height, for every state: the control never jumps and never shows a
+// One box, one fixed height, for every state: the control never jumps and never shows a
 // greyed-out button. 13.5 = 1px border + 6px padding + 40px button + 6px padding + 1px border.
-const PILL = "flex h-13.5 w-full items-center gap-2 rounded-pill border bg-surface p-1.5 shadow-md";
+const PILL = "flex h-13.5 w-full items-center gap-2 rounded-lg border bg-surface p-1.5";
 
 export function EmailCapture({
   status,
@@ -52,7 +52,7 @@ export function EmailCapture({
       </p>
       {isSuccess ? (
         <div data-capture="confirmation" className={cx(PILL, "border-line pr-5 pl-2")}>
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-pill bg-success-soft text-success">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-success-soft text-success">
             <Check aria-hidden className="size-[var(--fw-icon-md)]" strokeWidth={2.25} />
           </span>
           <span className="flex min-w-0 items-baseline gap-2">
@@ -107,12 +107,9 @@ export function EmailCapture({
         </form>
       )}
       {/* Fixed-height row under the pill for the error, so content below never moves. */}
-      <div className="mt-2 flex min-h-7 justify-center">
+      <div className="mt-1.5 flex min-h-6">
         {isError && message ? (
-          <p
-            id={`${id}-error`}
-            className="rounded-pill bg-surface px-3 py-1 text-sm text-danger shadow-sm"
-          >
+          <p id={`${id}-error`} className="text-sm text-danger">
             {message}
           </p>
         ) : null}

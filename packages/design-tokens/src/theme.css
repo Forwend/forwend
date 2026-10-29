@@ -22,6 +22,10 @@
   --color-field-ring: var(--fw-field-ring);
   --color-primary: var(--fw-primary);
   --color-on-primary: var(--fw-on-primary);
+  --color-brand: var(--fw-brand);
+  --color-brand-hover: var(--fw-brand-hover);
+  --color-brand-edge: var(--fw-brand-edge);
+  --color-on-brand: var(--fw-on-brand);
   --color-accent: var(--fw-accent);
   --color-on-accent: var(--fw-on-accent);
   --color-focus: var(--fw-focus);
@@ -79,12 +83,12 @@
   --text-6xl: 5.25rem;
   --text-6xl--line-height: 1;
 
-  --text-hero: clamp(2.75rem, 7vw, 5.25rem);
-  --text-hero--line-height: 1.02;
-  --text-hero--letter-spacing: -0.02em;
-  --text-section: clamp(2.25rem, 4.6vw, 3.75rem);
-  --text-section--line-height: 1.06;
-  --text-section--letter-spacing: -0.015em;
+  --text-hero: clamp(2.75rem, 7vw, 5.75rem);
+  --text-hero--line-height: 1;
+  --text-hero--letter-spacing: -0.045em;
+  --text-section: clamp(2rem, 4vw, 2.75rem);
+  --text-section--line-height: 1.08;
+  --text-section--letter-spacing: -0.035em;
   /* Oversized status numerals, separate from the heading scale. */
   --text-error-code: clamp(7rem, 22vw, 15rem);
   --text-error-code--line-height: 0.9;

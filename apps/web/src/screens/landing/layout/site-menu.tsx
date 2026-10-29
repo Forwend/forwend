@@ -2,7 +2,9 @@
 
 import { IconButton } from "@forwend/ui-web";
 import { Menu, X } from "lucide-react";
-import { NAV_LINKS, NAV_MENU } from "@/screens/landing/constants/landing-content";
+import Link from "next/link";
+import { NAV_LINKS, NAV_MENU, SIGN_IN } from "@/screens/landing/constants/landing-content";
+import { APP_ROUTES } from "@/shared/config/routes";
 
 // Phones only. A native popover keeps the landing page free of a menu library.
 export function SiteMenu() {
@@ -39,6 +41,14 @@ export function SiteMenu() {
               </a>
             </li>
           ))}
+          <li className="mt-1 border-t border-line pt-1">
+            <Link
+              href={APP_ROUTES.signIn}
+              className="flex min-h-11 items-center rounded-md px-3 text-sm font-medium hover:bg-surface-2"
+            >
+              {SIGN_IN}
+            </Link>
+          </li>
         </ul>
       </div>
     </>

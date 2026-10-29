@@ -13,8 +13,7 @@ export const JOBS_COPY = {
   add: "New job",
   newTitle: "New job",
   detailTitle: "Job",
-  intro:
-    "A quote with its payment schedule. Send the client its link: they accept it there, and each payment becomes an invoice.",
+  intro: "A quote with a payment schedule. Each payment becomes an invoice.",
   search: "Search jobs",
   searchPlaceholder: "Job or client",
   clearSearch: "Clear search",
@@ -24,7 +23,6 @@ export const JOBS_COPY = {
   empty: "No jobs yet",
   emptyText: "Write a quote with a deposit and milestones, then send the client its link.",
   failed: "We could not load your jobs.",
-  retry: "Try again",
   gone: "This job is not in your list anymore.",
   backToList: "Back to jobs",
   billingNeeded: {
@@ -67,6 +65,18 @@ export const JOBS_COPY = {
     defaults: { deposit: "Deposit", final: "Final payment" },
     create: "Create job",
     cancel: "Cancel",
+    back: "Back",
+    continue: "Continue",
+    stepsLabel: "New job steps",
+    preview: {
+      title: "Quote",
+      note: "What the client reads before accepting.",
+      for: (client: string) => `Quote for ${client}`,
+      noClient: "your client",
+      noTitle: "Job title",
+      onAccept: "Invoiced when the client accepts",
+      due: (days: string) => `Due ${days} days after its invoice`,
+    },
     errors: {
       required: "Fill in this field.",
       email: "Enter an email like name@example.com.",
@@ -87,12 +97,13 @@ export const JOBS_COPY = {
     },
   },
   detail: {
+    meta: (client: string, day: string) => `For ${client} · Made ${day}`,
+    acceptedBadge: "Accepted",
+    paidCount: (paid: number, payments: number) => `${paid} of ${payments} paid`,
     linkGroup: "Client's link",
-    linkHint: "Send it to the client. They read the quote there and accept it.",
-    linkHintAccepted: "The client finds each payment's invoice there.",
+    linkLabel: "Quote address",
+    openShort: "Open",
     copy: "Copy link",
-    copied: "Link copied",
-    copyFailed: "Select the link to copy it",
     open: "Open the client's page",
     inNewTab: "(opens in a new tab)",
     waiting: (client: string) => `Waiting for ${client} to accept.`,
@@ -163,7 +174,6 @@ export const JOBS_COPY = {
 /** R-102. */
 export const QUOTE_COPY = {
   title: "Quote",
-  from: (issuer: string) => `Quote from ${issuer}`,
   issuer: "From",
   taxId: "Tax ID",
   scope: "The work",
@@ -172,6 +182,7 @@ export const QUOTE_COPY = {
   afterDone: "Invoiced as each step is done",
   dueDays: dueAfter,
   total: "Total",
+  paymentCount: (count: number) => (count === 1 ? "in 1 payment" : `in ${count} payments`),
   pay: (number: string) => `Pay ${number}`,
   payDeposit: "Pay the deposit",
   delivered: "See the delivered work",
@@ -200,7 +211,6 @@ export const QUOTE_COPY = {
   },
   notFound: "This quote isn't here. The link may be wrong, or the sender withdrew it.",
   failed: "We could not load this quote.",
-  retry: "Try again",
   errors: {
     required: "Fill in this field.",
     email: "Enter an email like name@example.com.",

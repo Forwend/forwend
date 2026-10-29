@@ -52,11 +52,12 @@ export function FirstRun({ profiles, onDone }: FirstRunProps) {
     setPicked((was) => (was.includes(choice) ? was.filter((c) => c !== choice) : [...was, choice]));
 
   return (
-    <div className="min-h-dvh bg-bg">
-      <header className="fw-safe-x pt-[max(1.5rem,env(safe-area-inset-top))] lg:pt-8">
+    // The logo shares the question's column, so the screen reads as one block on wide screens.
+    <div className="mx-auto min-h-dvh w-full max-w-3xl bg-bg fw-safe-x">
+      <header className="pt-[max(1.5rem,env(safe-area-inset-top))] lg:pt-8">
         <Logo />
       </header>
-      <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 fw-safe-x pt-10 pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pt-16">
+      <main className="flex w-full flex-col gap-8 pt-10 pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pt-16">
         <div className="flex flex-col gap-3">
           <h1 className="text-3xl font-semibold tracking-tight text-balance text-ink">
             {COPY.title}

@@ -12,6 +12,11 @@ export const tokenBalanceSchema = z.object({
   finalizedBlock: count.nullable(),
   pending: baseUnits,
   held: baseUnits,
+  // The parts of pending: paid and moving to the wallet, still confirming, and partly paid (may expire into held).
+  settling: baseUnits.optional(),
+  confirming: baseUnits.optional(),
+  partial: baseUnits.optional(),
+  livemode: z.boolean().optional(),
 });
 
 export const balancesSchema = z.object({

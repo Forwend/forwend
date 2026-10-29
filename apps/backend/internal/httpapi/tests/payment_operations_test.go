@@ -1,14 +1,18 @@
 package tests
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/forwend/forwend/apps/backend/internal/ledger/ledgertest"
 )
 
@@ -672,6 +676,228 @@ func TestPaymentSearchKeepsPaginationAndProfileScope(t *testing.T) {
 	for _, q := range []string{"", "%00", strings.Repeat("a", 101)} {
 		if r := e.call(t, "GET", base+"/payments?q="+q, alice, "", ""); r.status != http.StatusUnprocessableEntity {
 			t.Fatalf("invalid search: %d", r.status)
+		}
+	}
+}
+
+// D-114: one state and one wallet vocabulary for list, detail and both filters.
+func TestPaymentStateAndWalletAgreeAcrossReadsAndFilters(t *testing.T) {
+	e := invoiceAPIWith(t, 200, webhookKey)
+	const alice = "did:privy:alice"
+	shop := e.merchant(t)
+	store := storeIDs(t, e, shop)[0]
+	base := "/v1/profiles/" + shop
+	checkout := func(key string) string {
+		t.Helper()
+		made := e.call(t, "POST", base+"/checkout-sessions", alice, key, `{"storeId":"`+store+`","amountUsd":"2"}`)
+		if made.status != http.StatusCreated {
+			t.Fatalf("checkout %s: %d %v", key, made.status, made.body)
+		}
+		return made.body["sessionId"].(string)
+	}
+	paid := func(key, amount string) string {
+		t.Helper()
+		id := checkout(key)
+		e.deposit(t, id, amount)
+		return id
+	}
+	want := map[string][2]string{} // state, wallet
+	want[checkout("waiting")] = [2]string{"waiting", "none"}
+	detected := checkout("detected")
+	e.exec(t, `INSERT INTO chain_transfers(chain_id,chain_family,token_contract,invoice_id,tx_hash,log_index,block_hash,
+ block_number,block_time,from_address,to_address,amount,status)
+ SELECT chain_id,chain_family,token_contract,id,'0x'||repeat('ab',32),0,'0x'||repeat('cd',32),100,closes_at-1,
+ receive_address,receive_address,1,'detected' FROM invoices WHERE id=$1`, detected)
+	want[detected] = [2]string{"confirming", "none"}
+	partial := paid("partial", "1000000")
+	want[partial] = [2]string{"partially_paid", "none"}
+
+	// The rest arrives and is credited, but the finalized balance shows only the first half: not paid yet.
+	awaiting := paid("awaiting", "1000000")
+	e.exec(t, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
+  block_hash, block_number, block_time, from_address, to_address, amount, status)
+  SELECT chain_id, chain_family, token_contract, id, '0x'||repeat('ef',32), 0, '0x'||repeat('ef',32), 91,
+  extract(epoch FROM now())::bigint, $2, receive_address, 1000000, 'confirmed' FROM invoices WHERE id = $1`, awaiting, aliceWallet)
+	short := func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
+		return big.NewInt(1000000), 100, nil
+	}
+	notDeployed := func(context.Context, uint64, string, string) (uint64, error) { return 0, nil }
+	if err := ledger.NewService(e.pool, short, notDeployed).Process(t.Context(), awaiting); err != nil {
+		t.Fatal(err)
+	}
+	// Verified history leaves only the balance check, a normal wait.
+	ledgertest.Checkpoint(t, e.pool, awaiting, 100, time.Now().Unix()+1, "2000000")
+	want[awaiting] = [2]string{"confirming", "none"}
+
+	want[paid("paid", "2000000")] = [2]string{"paid", "pending"}
+	overpaid := paid("overpaid", "2500000")
+	want[overpaid] = [2]string{"overpaid", "pending"}
+	delayed := paid("delayed", "2000000")
+	e.exec(t, `UPDATE settlement_intents SET wait = 'cap', next_attempt_at = now() + interval '1 hour' WHERE invoice_id = $1`, delayed)
+	want[delayed] = [2]string{"paid", "delayed"}
+	refused := paid("refused", "2000000")
+	e.exec(t, `UPDATE settlement_intents SET status = 'refused' WHERE invoice_id = $1`, refused)
+	want[refused] = [2]string{"paid", "refused"}
+	settled := paid("settled", "2000000")
+	e.exec(t, `UPDATE invoices SET settlement_status = 'settled' WHERE id = $1`, settled)
+	want[settled] = [2]string{"paid", "in_wallet"}
+
+	expiredByAction := checkout("expired-by-action")
+	if r := e.call(t, "POST", base+"/checkout-sessions/"+expiredByAction+"/expire", alice, "", ""); r.status != http.StatusOK ||
+		r.body["status"] != "expired" || r.body["payment"].(map[string]any)["state"] != "expired" {
+		t.Fatalf("expire: %d %v", r.status, r.body)
+	}
+	want[expiredByAction] = [2]string{"expired", "none"}
+	closed := checkout("closed")
+	e.closeCheckout(t, closed)
+	want[closed] = [2]string{"expired", "none"}
+	bill := e.post(t, alice, shop, "bill", `{"chainId":84532,"token":"`+usdc+`","amount":"2000000","storeId":"`+store+`"}`)
+	if bill.status != http.StatusCreated {
+		t.Fatalf("bill: %d %v", bill.status, bill.body)
+	}
+	canceled := bill.body["invoiceId"].(string)
+	if r := e.call(t, "POST", base+"/invoices/"+canceled+"/cancel", alice, "", ""); r.status != http.StatusOK {
+		t.Fatalf("cancel: %d %v", r.status, r.body)
+	}
+	want[canceled] = [2]string{"canceled", "none"}
+
+	list := e.call(t, "GET", base+"/payments?limit=100", alice, "", "")
+	if list.status != http.StatusOK || len(list.body["items"].([]any)) != len(want) {
+		t.Fatalf("list: %d %v", list.status, list.body)
+	}
+	byID := map[string]map[string]any{}
+	for _, item := range list.body["items"].([]any) {
+		row := item.(map[string]any)
+		byID[row["paymentId"].(string)] = row
+	}
+	for id, w := range want {
+		detail := e.call(t, "GET", base+"/payments/"+id, alice, "", "")
+		for name, read := range map[string]map[string]any{"list": byID[id], "detail": detail.body} {
+			if read["state"] != w[0] || read["wallet"] != w[1] {
+				t.Errorf("%s of %s reads %v/%v, want %v", name, id, read["state"], read["wallet"], w)
+			}
+		}
+	}
+	for column, filter := range []string{"state", "wallet"} {
+		values := invoice.PaymentStates
+		if filter == "wallet" {
+			values = invoice.WalletStates
+		}
+		for _, value := range values {
+			r := e.call(t, "GET", base+"/payments?limit=100&"+filter+"="+value, alice, "", "")
+			if r.status != http.StatusOK {
+				t.Fatalf("%s=%s: %d %v", filter, value, r.status, r.body)
+			}
+			for id, w := range want {
+				if containsPayment(r, id) != (w[column] == value) {
+					t.Errorf("%s=%s gets %s wrong, which reads %v", filter, value, id, w)
+				}
+			}
+		}
+	}
+	for _, bad := range []string{"state=open", "state=settled", "wallet=settled", "wallet=held"} {
+		if r := e.call(t, "GET", base+"/payments?"+bad, alice, "", ""); r.status != http.StatusUnprocessableEntity {
+			t.Fatalf("%s: %d", bad, r.status)
+		}
+	}
+
+	if read := byID[awaiting]; read["paymentStatus"] != "partially_paid" || read["confirming"] != true ||
+		read["amounts"].(map[string]any)["payable"] != "2000000" {
+		t.Fatalf("credited payment awaiting the balance check: %v", read)
+	}
+	if r := e.call(t, "GET", base+"/payments?status=confirming", alice, "", ""); !containsPayment(r, awaiting) {
+		t.Fatalf("status=confirming misses the payment awaiting its balance check: %v", r.body)
+	}
+	for _, problem := range e.call(t, "GET", base+"/payments/"+awaiting, alice, "", "").body["problems"].([]any) {
+		if problem.(map[string]any)["code"] == "partial_payment" {
+			t.Fatalf("nothing is left to pay, yet: %v", problem)
+		}
+	}
+	if r := e.call(t, "GET", base+"/payments/attention", alice, "", ""); containsPayment(r, awaiting) || !containsPayment(r, partial) {
+		t.Fatalf("attention should list only the partial payment with money still owed: %v", r.body)
+	}
+	if byID[expiredByAction]["paymentStatus"] != "canceled" {
+		t.Fatalf("the raw status of an expired checkout changed: %v", byID[expiredByAction])
+	}
+	if receipts := byID[overpaid]["receipts"].([]any); len(receipts) != 1 || receipts[0].(map[string]any)["held"] != "500000" {
+		t.Fatalf("held money missing from receipts: %v", receipts)
+	}
+}
+
+func containsPayment(r reply, id string) bool {
+	items, _ := r.body["items"].([]any)
+	for _, item := range items {
+		if item.(map[string]any)["paymentId"] == id {
+			return true
+		}
+	}
+	return false
+}
+
+// Money held on an option the payer did not choose makes a paid payment overpaid, though the chosen option holds none.
+func TestPaymentHeldOnAnotherOptionAndLookupByNumberHashAddressOrReference(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	shop := e.merchant(t)
+	store := storeIDs(t, e, shop)[0]
+	base := "/v1/profiles/" + shop
+	due := time.Now().UTC().AddDate(0, 0, 10).Format(time.DateOnly)
+	bill := e.post(t, alice, shop, "two-options", `{"chainId":84532,"token":"`+usdc+`","amount":"2000000","storeId":"`+store+
+		`","reference":"PO-77","dueDate":"`+due+`","lines":[{"description":"Logo","quantity":"2","unitPrice":"1000000"}]}`)
+	if bill.status != http.StatusCreated {
+		t.Fatalf("bill: %d %v", bill.status, bill.body)
+	}
+	id := bill.body["invoiceId"].(string)
+	e.exec(t, `INSERT INTO invoices (id,main_id,profile_id,chain_id,chain_family,token_contract,amount,
+ expires_at,settle_deadline,recipient_address,receive_method,factory_address,receive_address,idempotency_key,request_hash)
+ SELECT '0x'||repeat('77',32),i.id,profile_id,chain_id,chain_family,token_contract,amount,
+ expires_at,settle_deadline,recipient_address,receive_method,factory_address,'0x'||repeat('7a',20),idempotency_key,request_hash
+ FROM invoices i WHERE i.id=$1`, id)
+	other, otherAddress, hash := "0x"+strings.Repeat("77", 32), "0x"+strings.Repeat("7A", 20), "0x"+strings.Repeat("e1", 32)
+	e.deposit(t, id, "2000000")
+	e.exec(t, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
+  block_hash, block_number, block_time, from_address, to_address, amount, status)
+  SELECT chain_id, chain_family, token_contract, id, $2, 0, $2, 92, extract(epoch FROM now())::bigint, $3, receive_address,
+  700000, 'confirmed' FROM invoices WHERE id = $1`, other, hash, aliceWallet)
+	ledgertest.Checkpoint(t, e.pool, other, 100, time.Now().Unix()+1, "700000")
+	balances := func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
+		return big.NewInt(700000), 100, nil
+	}
+	notDeployed := func(context.Context, uint64, string, string) (uint64, error) { return 0, nil }
+	if err := ledger.NewService(e.pool, balances, notDeployed).Process(t.Context(), other); err != nil {
+		t.Fatal(err)
+	}
+
+	detail := e.call(t, "GET", base+"/payments/"+id+"?view=summary", alice, "", "")
+	if detail.status != http.StatusOK || detail.body["paymentStatus"] != "paid" || detail.body["refundStatus"] != "none" ||
+		detail.body["state"] != "overpaid" {
+		t.Fatalf("held money on the other option: %d %v", detail.status, detail.body)
+	}
+	held := map[string]string{}
+	for _, receipt := range detail.body["receipts"].([]any) {
+		r := receipt.(map[string]any)
+		held[r["optionId"].(string)] = r["held"].(string)
+	}
+	if held[id] != "0" || held[other] != "700000" {
+		t.Fatalf("held per option: %v", held)
+	}
+	items := detail.body["items"].([]any)
+	if detail.body["dueDate"] != due || detail.body["number"] == nil || len(items) != 1 ||
+		items[0].(map[string]any)["unitPrice"] != "1000000" || items[0].(map[string]any)["amount"] != "2000000" {
+		t.Fatalf("detail document fields: %v", detail.body)
+	}
+
+	number := fmt.Sprintf("INV-%04d", int(detail.body["number"].(float64)))
+	for _, query := range []string{"q=" + number, "q=" + hash, "q=" + otherAddress, "reference=PO-77"} {
+		if r := e.call(t, "GET", base+"/payments?"+query, alice, "", ""); r.status != http.StatusOK ||
+			len(r.body["items"].([]any)) != 1 || !containsPayment(r, id) {
+			t.Fatalf("%s: %d %v", query, r.status, r.body)
+		}
+	}
+	for _, path := range []string{base + "/payments?reference=PO-7", base + "/payments?q=0x" + strings.Repeat("e2", 32),
+		"/v1/profiles/" + e.aliceProfile + "/payments?q=" + hash} {
+		if r := e.call(t, "GET", path, alice, "", ""); r.status != http.StatusOK || len(r.body["items"].([]any)) != 0 {
+			t.Fatalf("%s: %d %v", path, r.status, r.body)
 		}
 	}
 }

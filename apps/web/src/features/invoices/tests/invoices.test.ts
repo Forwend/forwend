@@ -133,8 +133,22 @@ describe("invoiceProgress", () => {
     );
   });
 
+  it("keeps confirming a deposit that is final on chain until the ledger books it", () => {
+    const unbooked = {
+      ...open,
+      deposits: [{ ...deposit, status: "confirmed", blocksLeft: 0, blocksTotal: 12 }],
+    };
+    expect(invoiceProgress(unbooked)).toEqual({
+      done: 2,
+      current: "confirming",
+      blocksLeft: 0,
+      blocksTotal: 0,
+      secondsLeft: 0,
+    });
+  });
+
   it("is paid only on the API's word, and done once settled", () => {
-    const confirmed = { ...open, deposits: [{ ...deposit, status: "confirmed" }] };
+    const confirmed = { ...open, deposits: [{ ...deposit, status: "confirmed", paid: "5000000" }] };
     expect(invoiceProgress({ ...confirmed, paymentStatus: "partially_paid" })).toMatchObject({
       done: 3,
       current: "paid",

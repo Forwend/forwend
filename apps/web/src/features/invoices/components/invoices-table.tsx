@@ -5,16 +5,11 @@ import {
   type ButtonSize,
   buttonClasses,
   EmptyState,
-  ROW_INTERACTIVE_CLASSES,
   SearchField,
   StatusPill,
-  TABLE_HEAD_CLASSES,
-  TABLE_ROW_CLASSES,
 } from "@forwend/ui-web";
 import { FileText, Plus } from "lucide-react";
 import Link from "next/link";
-import { StatusFilter } from "@/features/activity/components/status-filter";
-import { STATUS_FILTERS } from "@/features/activity/constants/activity";
 import { useGetInvoicesInfiniteQuery } from "@/features/invoices/api/invoices-api";
 import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
 import { INVOICES_COPY, REQUESTS_COPY } from "@/features/invoices/constants/invoices-copy";
@@ -25,15 +20,19 @@ import {
   invoiceStatus,
 } from "@/features/invoices/lib/invoices";
 import type { InvoiceSummary, InvoiceToken } from "@/features/invoices/types/invoices";
-import { ChainBadge, hasChainBadge } from "@/shared/components/chains/chain-badge";
+import { ChainBadge } from "@/shared/components/chains/chain-badge";
 import { NetworkName } from "@/shared/components/chains/network-name";
+import { type DataColumn, DataTable } from "@/shared/components/data-table";
 import { InitialsAvatar } from "@/shared/components/initials-avatar";
 import { ListToolbar } from "@/shared/components/list-toolbar";
+import { LoadError } from "@/shared/components/load-error";
 import { NoMatch } from "@/shared/components/no-match";
+import { PaymentStateFilter } from "@/shared/components/payment-state-filter";
 import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { PAYMENT_STATE_FILTERS } from "@/shared/constants/payment-state";
 import { useListFilters } from "@/shared/hooks/use-list-filters";
 import { chainName } from "@/shared/lib/chains";
 
@@ -65,7 +64,6 @@ const invoiceHref = (inv: InvoiceSummary) => `${APP_ROUTES.invoices}/${inv.invoi
 const clientName = (inv: InvoiceSummary) => inv.client?.name ?? inv.client?.email ?? null;
 
 // A merchant invoice's store (R-134) follows its title.
-const subtitle = (inv: InvoiceSummary) => [inv.title, inv.store?.name].filter(Boolean).join(" · ");
 
 export interface InvoicesTableProps {
   profileId: string;
@@ -74,22 +72,27 @@ export interface InvoicesTableProps {
 }
 
 /** With onRequest the list is a personal profile's requests: no client or due date, so rows show the note. */
+const STATES = Object.values(PAYMENT_STATE_FILTERS);
+const REQUEST_HIDDEN = new Set(["client", "due", "store"]);
+
 export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTableProps) {
   const COPY = onRequest ? REQUESTS_COPY : INVOICES_COPY;
   const label = (inv: InvoiceSummary) => (onRequest ? inv.note : clientName(inv));
-  const filters = useListFilters("status", Object.values(STATUS_FILTERS), STATUS_FILTERS.all);
+  const filters = useListFilters("state", STATES, PAYMENT_STATE_FILTERS.all);
   const list = useGetInvoicesInfiniteQuery(
-    { profileId, status: filters.apiFilter, q: filters.apiQuery },
+    { profileId, state: filters.apiFilter, q: filters.apiQuery },
     LIVE_QUERY,
   );
-  // Only the current filter's rows: an older filter's answer never shows.
-  const rows = list.currentData?.pages.flatMap((page) => page.items) ?? [];
+  // A new filter keeps the last rows in place, dimmed and busy, until its own answer arrives.
+  const data = list.currentData ?? (list.isFetching ? list.data : undefined);
+  const stale = !list.currentData && Boolean(data);
+  const rows = data?.pages.flatMap((page) => page.items) ?? [];
   const noInvoices = !filters.filtered && list.currentData && rows.length === 0;
 
   return (
     <section
       aria-labelledby="invoices-title"
-      aria-busy={!list.currentData && !list.isError}
+      aria-busy={(!list.currentData && !list.isError) || undefined}
       className="flex flex-col gap-4"
     >
       {/* The header's breadcrumb names the page on desktop, so the heading and its action show only below that. */}
@@ -105,7 +108,7 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
           <NewInvoiceLink size="sm" className="lg:hidden" onRequest={onRequest} />
         )}
       </div>
-      {list.data && !noInvoices ? (
+      {!noInvoices ? (
         <ListToolbar
           search={
             <SearchField
@@ -116,171 +119,183 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
               className="flex-1"
             />
           }
-          filter={<StatusFilter value={filters.filter} onValueChange={filters.setFilter} />}
+          filter={<PaymentStateFilter value={filters.filter} onValueChange={filters.setFilter} />}
           actions={<NewInvoiceLink className="max-lg:hidden" onRequest={onRequest} />}
         />
       ) : null}
 
-      {list.isError && !list.currentData ? (
-        <div role="alert" className="flex flex-wrap items-center gap-4 text-sm text-muted">
-          {COPY.failed}
-          <Button size="sm" variant="secondary" onClick={() => void list.refetch()}>
-            {COPY.retry}
-          </Button>
-        </div>
-      ) : !list.currentData ? (
+      {list.isError && !data ? (
+        <LoadError
+          page
+          message={COPY.failed}
+          onRetry={() => void list.refetch()}
+          retrying={list.isFetching}
+        />
+      ) : !data ? (
         <RowsSkeleton count={SKELETON_ROWS} className="fw-panel" />
       ) : noInvoices ? (
         <EmptyState
+          page
           icon={FileText}
           title={COPY.emptyTitle}
           description={COPY.emptyText}
           action={<NewInvoiceLink onRequest={onRequest} />}
         />
       ) : rows.length === 0 ? (
-        <NoMatch onClear={filters.clear} />
+        <NoMatch page onClear={filters.clear} />
       ) : (
-        <div className="fw-panel overflow-hidden">
-          {/* Below xl the sidebar leaves too little room for five columns, so rows stack as on phones. */}
-          <div className={onRequest ? "hidden" : "hidden overflow-x-auto xl:block"}>
-            <table className="w-full min-w-[44rem] text-sm">
-              <thead>
-                <tr className={TABLE_HEAD_CLASSES}>
-                  <th scope="col" className="w-[30%]">
-                    {COPY.columns.invoice}
-                  </th>
-                  <th scope="col">{COPY.columns.client}</th>
-                  <th scope="col">{COPY.columns.due}</th>
-                  <th scope="col">{COPY.columns.status}</th>
-                  <th scope="col" className="text-right">
-                    {COPY.columns.amount}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {rows.map((inv) => (
-                  <tr
-                    key={inv.invoiceId}
-                    className={`relative transition-colors duration-[var(--fw-duration-fast)] ${TABLE_ROW_CLASSES} ${ROW_INTERACTIVE_CLASSES}`}
-                  >
-                    <td className="max-w-64">
-                      <Link
-                        href={invoiceHref(inv)}
-                        className="font-medium text-ink outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus"
-                      >
-                        {invoiceNumber(inv.number)}
-                      </Link>
-                      {subtitle(inv) ? (
-                        <span title={subtitle(inv)} className="block truncate text-xs text-muted">
-                          {subtitle(inv)}
-                        </span>
-                      ) : null}
-                    </td>
-                    <td title={clientName(inv) ?? undefined} className="max-w-56">
-                      {clientName(inv) ? (
-                        <span className="flex min-w-0 items-center gap-2.5">
-                          <Avatar name={clientName(inv)} small />
-                          <span className="truncate text-ink">{clientName(inv)}</span>
-                        </span>
-                      ) : (
-                        <span className="text-subtle">{COPY.noClient}</span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap text-muted tabular-nums">
-                      {inv.dueDate ? (
-                        <time dateTime={inv.dueDate}>{formatDueDate(inv.dueDate)}</time>
-                      ) : (
-                        <span className="text-subtle">{COPY.noDueDate}</span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap">
-                      <StatusPill status={invoiceStatus(inv)} />
-                    </td>
-                    <td className="text-right whitespace-nowrap">
-                      <InvoiceAmount
-                        invoice={inv}
-                        tokens={tokens}
-                        className="flex-nowrap justify-end text-ink"
-                      />
-                      <span className="flex justify-end text-xs text-muted">
-                        {inv.optionCount > 1 ? (
-                          MONEY_COPY.anyNetwork
-                        ) : (
-                          <NetworkName chainId={inv.chainId} />
-                        )}
+        <div
+          className={
+            stale ? "opacity-60 transition-opacity duration-[var(--fw-duration-fast)]" : undefined
+          }
+        >
+          <DataTable
+            label={COPY.invoices}
+            rows={rows}
+            rowKey={(inv) => inv.invoiceId}
+            rowHref={invoiceHref}
+            rowLabel={(inv) => [invoiceNumber(inv.number), label(inv)].filter(Boolean).join(", ")}
+            // A request has no client, due date or store: those columns leave, the rest match Invoices.
+            columns={(
+              [
+                {
+                  key: "invoice",
+                  header: COPY.columns.invoice,
+                  className: "w-32",
+                  cell: (inv) => (
+                    <span className="font-medium text-ink">{invoiceNumber(inv.number)}</span>
+                  ),
+                },
+                {
+                  key: "client",
+                  header: COPY.columns.client,
+                  title: (inv) => clientName(inv),
+                  cell: (inv) =>
+                    clientName(inv) ? (
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <Avatar name={clientName(inv)} small />
+                        <span className="truncate text-ink">{clientName(inv)}</span>
                       </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <ul className={`divide-y divide-line ${onRequest ? "" : "xl:hidden"}`}>
-            {rows.map((inv) => (
-              <li key={inv.invoiceId}>
-                <Link
-                  href={invoiceHref(inv)}
-                  className={`flex min-h-16 items-center gap-3 px-4 py-3 outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus sm:px-5 ${ROW_INTERACTIVE_CLASSES}`}
-                >
-                  {/* A request's note is no name, so its avatar keeps the document icon. */}
-                  <Avatar
-                    name={onRequest ? null : label(inv)}
-                    chainId={inv.optionCount > 1 ? null : inv.chainId}
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium text-ink">
-                      {label(inv) ?? invoiceNumber(inv.number)}
+                    ) : (
+                      <span className="text-subtle">{COPY.noClient}</span>
+                    ),
+                },
+                {
+                  key: "title",
+                  header: COPY.columns.title,
+                  // A request is named by its note, so the column stays at every width; an invoice's client comes first.
+                  from: onRequest ? undefined : "lg",
+                  cell: (inv) => (
+                    <span className="text-muted">
+                      {inv.title || (onRequest ? inv.note : null) || "—"}
                     </span>
-                    <span className="block truncate text-xs text-muted">
-                      {label(inv) ? invoiceNumber(inv.number) : null}
-                      {inv.dueDate ? (
-                        <>
-                          {label(inv) ? " · " : null}
-                          {COPY.due(formatDueDateShort(inv.dueDate, new Date()))}
-                        </>
-                      ) : null}
-                      {inv.optionCount > 1 ? (
-                        ` · ${MONEY_COPY.anyNetwork}`
-                      ) : hasChainBadge(inv.chainId) ? (
-                        <span className="sr-only">, {chainName(inv.chainId)}</span>
-                      ) : (
-                        ` · ${chainName(inv.chainId)}`
-                      )}
-                      {inv.store ? ` · ${inv.store.name}` : null}
-                    </span>
-                  </span>
-                  <span className="flex shrink-0 flex-col items-end gap-1 sm:flex-row-reverse sm:items-center sm:gap-6">
+                  ),
+                },
+                // A freelancer's invoices belong to no store, so the column shows only when one does.
+                ...(rows.some((inv) => inv.store)
+                  ? [
+                      {
+                        key: "store",
+                        header: COPY.columns.store,
+                        from: "xl",
+                        cell: (inv: InvoiceSummary) => (
+                          <span className="text-muted">{inv.store?.name ?? "—"}</span>
+                        ),
+                      } satisfies DataColumn<InvoiceSummary>,
+                    ]
+                  : []),
+                {
+                  key: "due",
+                  header: COPY.columns.due,
+                  className: "w-32",
+                  cell: (inv) =>
+                    inv.dueDate ? (
+                      <time dateTime={inv.dueDate} className="text-muted tabular-nums">
+                        {formatDueDate(inv.dueDate)}
+                      </time>
+                    ) : (
+                      <span className="text-subtle">{COPY.noDueDate}</span>
+                    ),
+                },
+                {
+                  key: "status",
+                  header: COPY.columns.status,
+                  className: "w-44",
+                  cell: (inv) => <StatusPill status={invoiceStatus(inv)} />,
+                },
+                {
+                  key: "amount",
+                  header: COPY.columns.amount,
+                  align: "end",
+                  className: "w-36",
+                  cell: (inv) => (
                     <InvoiceAmount
                       invoice={inv}
                       tokens={tokens}
-                      className="flex-nowrap justify-end text-ink sm:min-w-28"
+                      className="flex-nowrap justify-end text-ink"
                     />
-                    <StatusPill status={invoiceStatus(inv)} />
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+                  ),
+                },
+                {
+                  key: "network",
+                  header: COPY.columns.network,
+                  from: "md",
+                  className: "w-36",
+                  cell: (inv) =>
+                    inv.optionCount > 1 ? (
+                      <span className="text-muted">{MONEY_COPY.anyNetwork}</span>
+                    ) : (
+                      <span className="text-muted">
+                        <NetworkName chainId={inv.chainId} />
+                      </span>
+                    ),
+                },
+              ] satisfies DataColumn<InvoiceSummary>[]
+            ).filter((column) => !onRequest || !REQUEST_HIDDEN.has(column.key))}
+            phone={(inv) => ({
+              // A request's note is no name, so its avatar keeps the document icon.
+              leading: (
+                <Avatar
+                  name={onRequest ? null : label(inv)}
+                  chainId={inv.optionCount > 1 ? null : inv.chainId}
+                />
+              ),
+              title: label(inv) ?? invoiceNumber(inv.number),
+              detail: [
+                label(inv) ? invoiceNumber(inv.number) : null,
+                inv.dueDate ? COPY.due(formatDueDateShort(inv.dueDate, new Date())) : null,
+                inv.optionCount > 1 ? MONEY_COPY.anyNetwork : chainName(inv.chainId),
+                inv.store?.name,
+              ]
+                .filter(Boolean)
+                .join(" · "),
+              value: (
+                <InvoiceAmount invoice={inv} tokens={tokens} className="flex-nowrap justify-end" />
+              ),
+              meta: <StatusPill status={invoiceStatus(inv)} />,
+            })}
+            footer={
+              list.hasNextPage ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={list.isFetchingNextPage}
+                  onClick={() => void list.fetchNextPage()}
+                >
+                  {COPY.loadMore}
+                </Button>
+              ) : undefined
+            }
+          />
         </div>
       )}
-      {list.hasNextPage ? (
-        <Button
-          variant="secondary"
-          size="sm"
-          className="self-start"
-          loading={list.isFetchingNextPage}
-          onClick={() => void list.fetchNextPage()}
-        >
-          {COPY.loadMore}
-        </Button>
-      ) : null}
-      {list.isError && list.currentData ? (
-        <div role="alert" className="flex flex-wrap items-center gap-4 text-sm text-muted">
-          {COPY.updateFailed}
-          <Button size="sm" variant="secondary" onClick={() => void list.refetch()}>
-            {COPY.retry}
-          </Button>
-        </div>
+      {list.isError && data ? (
+        <LoadError
+          inline
+          message={COPY.updateFailed}
+          onRetry={() => void list.refetch()}
+          retrying={list.isFetching}
+        />
       ) : null}
     </section>
   );

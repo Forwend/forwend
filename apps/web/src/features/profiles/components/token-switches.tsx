@@ -1,53 +1,51 @@
 "use client";
 
-import { Switch, TONES, useToast } from "@forwend/ui-web";
 import { useSaveProfileTokensMutation } from "@/features/profiles/api/profiles-api";
 import { TOKENS_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
 import type { TokenSwitch } from "@/features/profiles/types/tokens";
-import { chainName } from "@/shared/lib/chains";
+import { AssetSelection, assetKey } from "@/shared/components/chains/asset-selection";
 
 export interface TokenSwitchesProps {
   profileId: string;
   saved: readonly TokenSwitch[];
 }
 
-// R-136: each switch saves at once. The last token on can't be turned off, as the API refuses it.
+// R-136: each change saves at once, said by one quiet line rather than a toast per box. The last token on can't be
+// turned off, as the API refuses it.
 export function TokenSwitches({ profileId, saved }: TokenSwitchesProps) {
-  const [save, { isLoading, isError }] = useSaveProfileTokensMutation();
-  const toast = useToast();
-  const onCount = saved.filter((t) => t.on).length;
-  const flip = async (flipped: TokenSwitch, on: boolean) => {
+  const [save, { isLoading, isError, isSuccess }] = useSaveProfileTokensMutation();
+  const selected = new Set(saved.filter((t) => t.on).map(assetKey));
+  const change = async (keys: readonly string[], on: boolean) => {
+    const next = new Set(selected);
+    for (const key of keys) {
+      if (on) next.add(key);
+      else next.delete(key);
+    }
+    if (next.size === 0) return;
     const off = saved
-      .filter((t) => (t === flipped ? !on : !t.on))
+      .filter((t) => !next.has(assetKey(t)))
       .map(({ chainId, token }) => ({ chainId, token }));
     try {
       await save({ profileId, off }).unwrap();
-      toast({
-        tone: TONES.success,
-        title: COPY.saved(flipped.symbol, chainName(flipped.chainId), on),
-      });
     } catch {
-      // Said below; the switch stays as saved.
+      // Said below; the boxes stay as saved.
     }
   };
   return (
-    <div className="fw-panel flex flex-col">
-      <ul className="divide-y divide-line">
-        {saved.map((t) => (
-          <li key={`${t.chainId}:${t.token}`} className="px-4 py-3 sm:px-5">
-            <Switch
-              label={COPY.toggle(t.symbol, chainName(t.chainId))}
-              checked={t.on}
-              onCheckedChange={(on) => void flip(t, on)}
-              disabled={isLoading || (t.on && onCount === 1)}
-              className="w-full flex-row-reverse justify-between font-medium text-ink"
-            />
-          </li>
-        ))}
-      </ul>
-      {onCount === 1 ? <p className="px-4 pb-3 text-sm text-muted sm:px-5">{COPY.lastOn}</p> : null}
+    <div className="flex flex-col gap-3">
+      <AssetSelection
+        label={COPY.title}
+        options={saved}
+        selected={selected}
+        onChange={(keys, on) => void change(keys, on)}
+        disabled={isLoading}
+        lockedReason={() => (selected.size === 1 ? COPY.lastOn : null)}
+      />
+      <p role="status" className="min-h-5 text-sm text-muted">
+        {isLoading ? COPY.saving : isError ? null : isSuccess ? COPY.savedAll : null}
+      </p>
       {isError ? (
-        <p role="alert" className="px-4 pb-3 text-sm text-danger sm:px-5">
+        <p role="alert" className="text-sm text-danger">
           {COPY.saveFailed}
         </p>
       ) : null}

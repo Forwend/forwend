@@ -1,28 +1,31 @@
 import { WaitlistForm } from "@/features/waitlist/components/waitlist-form";
 import { LANDING_SECTIONS } from "@/screens/landing/constants/landing-content";
 import { HERO } from "@/screens/landing/sections/hero/constants/hero-content";
-import { HeroJourney } from "@/screens/landing/sections/hero/hero-journey";
+import { HeroProduct } from "@/screens/landing/sections/hero/hero-product";
 
 export function Hero() {
   return (
     <section
       data-section={LANDING_SECTIONS.hero}
       aria-labelledby="hero-title"
-      className="relative isolate flex min-h-248 flex-col max-sm:min-h-[calc(100svh+32rem)] fw-safe-x pt-4 pb-6 sm:min-h-256 sm:[--fw-page-gutter:2rem] sm:pt-5 lg:min-h-svh"
+      className="pt-28 pb-12 sm:pt-36"
     >
-      {/* Phones: the headline and form fill the first screen, centered over the sky. The section is taller there, so
-          the river (which sits at a fixed share of the art's height) starts below the fold and leads to the invoice. */}
-      <div className="mx-auto flex w-full max-w-3xl flex-col items-center justify-center text-center max-sm:min-h-[calc(100svh-2.5rem)] max-sm:pt-16 sm:mt-36">
-        <h1 id="hero-title" className="font-display text-hero text-ink">
-          {HERO.title}
+      <div className="mx-auto w-full max-w-7xl fw-safe-x sm:[--fw-page-gutter:2rem] lg:[--fw-page-gutter:2.5rem]">
+        <h1
+          id="hero-title"
+          className="max-w-5xl text-hero font-medium tracking-[-0.045em] text-balance text-ink"
+        >
+          {HERO.title} <span className="text-subtle">{HERO.titleSub}</span>
         </h1>
-        <p className="mt-5 max-w-xl text-lg text-muted sm:text-xl">{HERO.body}</p>
-        <div className="mt-8 flex w-full justify-center">
-          <WaitlistForm id="hero" />
+        <div className="mt-8 grid gap-6 md:grid-cols-[minmax(0,26rem)_1fr] md:items-start md:gap-16">
+          <div className="flex flex-col gap-2 [&>div]:justify-start">
+            <WaitlistForm id="hero" />
+            <p className="text-sm text-subtle">{HERO.note}</p>
+          </div>
+          <p className="max-w-md text-lg text-muted md:justify-self-end">{HERO.body}</p>
         </div>
-        <p className="mt-1 text-sm text-ink">{HERO.note}</p>
+        <HeroProduct />
       </div>
-      <HeroJourney />
     </section>
   );
 }

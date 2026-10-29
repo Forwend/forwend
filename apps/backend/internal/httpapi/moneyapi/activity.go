@@ -31,7 +31,7 @@ func getActivity(activities *activity.Service) http.HandlerFunc {
 			return
 		}
 		query := r.URL.Query()
-		page, err := activities.List(r.Context(), r.PathValue("profileId"), query.Get("cursor"), limit, query.Get("status"), q)
+		page, err := activities.List(r.Context(), r.PathValue("profileId"), query.Get("cursor"), limit, query.Get("status"), query.Get("state"), q)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -44,7 +44,9 @@ func getActivity(activities *activity.Service) http.HandlerFunc {
 			out.Items = append(out.Items, activityItemJSON{PaymentStatus: it.PaymentStatus, Confirming: it.Confirming, Kind: it.Kind, At: it.At.UTC().Format(time.RFC3339Nano),
 				InvoiceID: it.InvoiceID, tokenJSON: toTokenJSON(it.Asset), Amount: it.Amount.String(),
 				Status: it.Status, SettlementStatus: it.SettlementStatus, TxHash: it.TxHash, OptionCount: it.OptionCount,
-				Closed: it.Closed, Held: it.Held})
+				Closed: it.Closed, Held: it.Held, MerchantAmount: optionalAmount(it.MerchantAmount),
+				HeldAmount: optionalAmount(it.HeldAmount), Purpose: it.Purpose, DocumentKind: it.DocumentKind, Number: it.Number,
+				Reference: httpio.OrNull(it.Reference), ClientName: httpio.OrNull(it.ClientName), Title: httpio.OrNull(it.Title)})
 		}
 		httpio.WriteJSON(w, http.StatusOK, out)
 	}

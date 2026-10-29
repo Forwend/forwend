@@ -59,16 +59,16 @@ export function ReceiptEmail({ linkToken, paid }: ReceiptEmailProps) {
             </p>
             {/* Once paid the receipt goes out at once; another address could only be refused (409). */}
             {paid ? null : (
-              <button
-                type="button"
+              <Button
+                variant="link"
                 onClick={() => {
                   reset();
                   setStep("form");
                 }}
-                className="-mx-1 mt-1 self-start rounded-sm px-1 text-sm text-accent underline-offset-4 outline-none hover:underline focus-visible:outline-2 focus-visible:outline-focus"
+                className="mt-1 self-start"
               >
                 {COPY.another}
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -98,14 +98,10 @@ export function ReceiptEmail({ linkToken, paid }: ReceiptEmailProps) {
           />
         </form>
       ) : (
-        <button
-          type="button"
-          onClick={() => setStep("form")}
-          className="-mx-2 inline-flex h-9 items-center gap-2 rounded-md px-2 text-sm text-muted outline-none hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
-        >
-          <Mail aria-hidden className="size-[var(--fw-icon-sm)]" />
+        <Button variant="ghost" onClick={() => setStep("form")} className="-mx-4">
+          <Mail aria-hidden className="size-[var(--fw-icon-sm)] text-muted" />
           {COPY.open}
-        </button>
+        </Button>
       )}
     </div>
   );

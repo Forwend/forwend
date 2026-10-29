@@ -47,6 +47,15 @@ type Worker struct {
 	Email       Email
 	// RatesURL is the ECB's reference rates file (R-110); ECB_RATES_URL is set only by tests that run a fake.
 	RatesURL string
+	Prices   Prices
+}
+
+// Prices is CoinGecko for the stablecoins' display prices (R-178). URL is its API root; COINGECKO_API_URL is set only
+// by tests that run a fake. Key is the optional Demo plan key: never log it.
+type Prices struct {
+	URL   string
+	Key   string
+	Every time.Duration
 }
 
 // Webhooks is what cmd/webhooks needs (R-148): the database and the key that opens the signing secrets, nothing else.
@@ -71,6 +80,11 @@ type Email struct {
 const DefaultRatesURL = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml"
 
 const DefaultEmailFrom = "Forwend <notifications@mail.forwend.com>"
+
+const (
+	DefaultPricesURL   = "https://api.coingecko.com/api/v3"
+	DefaultPricesEvery = 15 * time.Minute
+)
 
 type Chains struct {
 	RPCSecrets    Secrets `json:"-"`
@@ -117,6 +131,18 @@ func LoadWorker() (Worker, error) {
 	}
 	if c.RatesURL = os.Getenv("ECB_RATES_URL"); c.RatesURL == "" {
 		c.RatesURL = DefaultRatesURL
+	}
+	c.Prices = Prices{URL: os.Getenv("COINGECKO_API_URL"), Key: os.Getenv("COINGECKO_API_KEY"), Every: DefaultPricesEvery}
+	if c.Prices.URL == "" {
+		c.Prices.URL = DefaultPricesURL
+	}
+	// Keyless calls allow a few a minute and the Demo key 10,000 a month; every 15 minutes is about 3,000.
+	if raw := os.Getenv("COINGECKO_INTERVAL"); raw != "" {
+		d, err := time.ParseDuration(raw)
+		if err != nil || d < time.Minute {
+			r.invalid = append(r.invalid, "COINGECKO_INTERVAL (a duration of at least 1m, such as 15m)")
+		}
+		c.Prices.Every = d
 	}
 	if c.Email.ResendKey != "" {
 		c.Email.PublicWebURL = r.origin("PUBLIC_WEB_URL")

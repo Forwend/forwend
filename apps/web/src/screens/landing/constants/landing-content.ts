@@ -181,3 +181,6 @@ export const FOOTER = {
   ],
   legal: ["Terms (coming soon)", "Privacy (coming soon)"],
 } as const;
+
+/** Beta users already have an account: sign-in leads into the app and its first-run setup. */
+export const SIGN_IN = "Sign in";

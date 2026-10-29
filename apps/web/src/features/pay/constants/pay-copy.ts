@@ -42,12 +42,22 @@ export const PAY_COPY = {
   token: "Token",
   chooseNetwork: "Choose a network",
   chooseToken: "Choose a token",
+  searchNetworks: "Search networks",
+  searchTokens: "Search tokens",
+  noMatch: "No match",
   showAddress: "Show address",
   sendOnly: (symbol: string, network: string) => `Send only ${symbol} on ${network}.`,
   // R-78: a bridged token with the same name is another contract, and does not pay this invoice.
   notLookalike: (symbol: string, lookalike: string) => `Native ${symbol}, not ${lookalike}.`,
   contract: (symbol: string) => `${symbol} contract`,
   sendTo: (symbol: string, network: string) => `Send ${symbol} on ${network} to`,
+  updatesItself: "This page updates on its own.",
+  found: "Payment found",
+  foundNote: "Recording it now. Don't pay again.",
+  // R-68: once money is seen the payer has nothing left to do; saying so keeps them from paying twice.
+  seen: "Payment detected",
+  finalAround: (time: string) => `Final around ${time}`,
+  nothingToDo: "Don't pay again. This page updates on its own.",
   exactAmount: "Amount",
   copyAmount: "Copy amount",
   amountCopied: "Amount copied",
@@ -64,8 +74,9 @@ export const PAY_COPY = {
     [PAY_STATES.waiting]: () => "Waiting for payment…",
     // The steps say it arrived; the line counts the blocks (ConfirmingStatus).
     [PAY_STATES.confirming]: () => "Confirming",
+    // Final on chain, not yet booked: no time is promised, because none is known.
     [PAY_STATES.checking]: ({ delayed }) =>
-      delayed ? "Confirmation is delayed. No need to pay again." : "Confirming payment",
+      delayed ? "Confirmation is taking longer than usual." : "Awaiting confirmation.",
     [PAY_STATES.review]: () =>
       "Payment could not be verified. Contact the merchant before sending more.",
     [PAY_STATES.partial]: ({ received, total, remaining }) =>
@@ -91,6 +102,7 @@ export const PAY_COPY = {
   // Address poisoning: a look-alike address planted in the payer's wallet history after the first payment (R-77).
   copyFromHere:
     "Copy the address from this page for the rest, not from your wallet's history: scammers plant look-alike addresses there.",
+  overpaid: (extra: string) => `Overpaid by ${extra}. The extra is held for you.`,
   late: (late: string, payee: string) =>
     `${late} arrived after the checkout closed. It is held for you; ask ${payee} to get it back.`,
   // R-129.
@@ -128,6 +140,8 @@ export const PAY_COPY = {
   refund:
     "If you send more, or pay after the checkout closes, the extra is held for you and not paid out. Ask the recipient to get it back.",
   scam: "Forwend never asks you to pay a different address or an extra fee.",
+  testnet: "Testnet",
+  testnetHint: "Test tokens have no monetary value.",
   paymentsBy: "Payments by",
   forwend: "Forwend",
   newTab: " (opens in a new tab)",
@@ -147,6 +161,7 @@ export const LINK_PAY_COPY = {
   continue: "Continue payment",
   another: "Start another purchase",
   next: "You pick the token and network on the next page.",
+  payPanel: "Pay with stablecoins",
   closed: {
     off: "This link is off. Ask the seller for another way to pay.",
     ended: "This link has ended. Ask the seller for another way to pay.",

@@ -29,7 +29,7 @@ export function SearchField({
   return (
     <div
       className={cx(
-        "flex h-10 min-w-0 items-center rounded-pill border border-transparent bg-surface-2 pr-1 transition-[border-color,box-shadow] duration-[var(--fw-duration-fast)] ease-out focus-within:border-field-focus focus-within:ring-2 focus-within:ring-field-ring pointer-coarse:h-11",
+        "flex h-10 min-w-0 items-center rounded-md border border-transparent bg-surface-2 pr-1 transition-[border-color,box-shadow] duration-[var(--fw-duration-fast)] ease-out focus-within:border-field-focus focus-within:ring-2 focus-within:ring-field-ring pointer-coarse:h-11",
         className,
       )}
     >

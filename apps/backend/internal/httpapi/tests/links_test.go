@@ -132,6 +132,72 @@ func TestPaymentLinks(t *testing.T) {
 	}
 }
 
+// A page of links reads as the whole list does, and one link reads as its list item.
+func TestPaymentLinkPages(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	shop := e.merchant(t)
+	base := "/v1/profiles/" + shop + "/links"
+	for i := 1; i <= 5; i++ {
+		id := fmt.Sprintf("aaaaaaaa-0000-4000-8000-00000000000%d", i)
+		if r := e.call(t, "PUT", base+"/"+id, alice, "", fmt.Sprintf(`{"title": "Link %d", "amountUsd": "5"}`, i)); r.status !=
+			http.StatusCreated {
+			t.Fatalf("create link %d: %d %v", i, r.status, r.body)
+		}
+	}
+	// Two made at the same moment: the id breaks the tie.
+	e.exec(t, `UPDATE payment_links SET created_at = (SELECT created_at FROM payment_links WHERE id = 'aaaaaaaa-0000-4000-8000-000000000002')
+		WHERE id = 'aaaaaaaa-0000-4000-8000-000000000004'`)
+	whole := e.call(t, "GET", base, alice, "", "")
+	all, _ := whole.body["links"].([]any)
+	if whole.status != http.StatusOK || len(all) != 5 || whole.body["nextCursor"] != nil {
+		t.Fatalf("every link without a limit: %d %v", whole.status, whole.body)
+	}
+	var want []any
+	for _, l := range all {
+		want = append(want, l.(map[string]any)["linkId"])
+	}
+	for limit := 1; limit <= 5; limit++ {
+		var got []any
+		cursor := ""
+		for {
+			url := fmt.Sprintf("%s?limit=%d", base, limit)
+			if cursor != "" {
+				url += "&cursor=" + cursor
+			}
+			r := e.call(t, "GET", url, alice, "", "")
+			links, _ := r.body["links"].([]any)
+			if r.status != http.StatusOK || len(links) > limit {
+				t.Fatalf("limit %d: %d %v", limit, r.status, r.body)
+			}
+			for _, l := range links {
+				got = append(got, l.(map[string]any)["linkId"])
+			}
+			next, _ := r.body["nextCursor"].(string)
+			if cursor = next; cursor == "" {
+				break
+			}
+		}
+		if fmt.Sprint(got) != fmt.Sprint(want) {
+			t.Fatalf("limit %d: %v, want %v", limit, got, want)
+		}
+	}
+	for _, l := range all {
+		item := l.(map[string]any)
+		if r := e.call(t, "GET", base+"/"+item["linkId"].(string), alice, "", ""); r.status != http.StatusOK ||
+			fmt.Sprint(r.body) != fmt.Sprint(item) {
+			t.Fatalf("GET one link: %d %v, want its list item %v", r.status, r.body, item)
+		}
+	}
+	for query, status := range map[string]int{"limit=0": http.StatusUnprocessableEntity,
+		"limit=101": http.StatusUnprocessableEntity, "limit=x": http.StatusBadRequest,
+		"cursor=bm90LWEtY3Vyc29y": http.StatusUnprocessableEntity} {
+		if r := e.call(t, "GET", base+"?"+query, alice, "", ""); r.status != status {
+			t.Errorf("%s: %d %v, want %d", query, r.status, r.body, status)
+		}
+	}
+}
+
 // R-138: a Developer or Finance member reaches only their stores' links.
 func TestPaymentLinksOfAMembersStores(t *testing.T) {
 	e := invoiceAPI(t)

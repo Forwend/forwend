@@ -121,9 +121,14 @@ test("the owner adds a webhook endpoint, turns one off, reveals and rotates its 
   const calls = await mockWebhooks(page);
   await page.goto("/app/developers");
   const section = page.getByRole("region", { name: "Webhooks" });
-  const row = section.getByRole("listitem").filter({ hasText: "Orders" });
-  await expect(row).toContainText("shop.example.com/hooks · Paid, Money in your wallet");
-  await expect(row).toContainText("Test mode");
+  const row = section.getByRole("row").filter({ hasText: "Orders" });
+  await expect(row.getByText("shop.example.com/hooks", { exact: true })).toBeVisible();
+  for (const cell of ["All stores", "Paid, Money in your wallet", "On"])
+    await expect(row.getByRole("cell", { name: cell, exact: true })).toBeVisible();
+  // The newest delivery is the endpoint's health at a glance.
+  await expect(row.getByRole("cell", { name: /^Failed/ })).toBeVisible();
+  // Every endpoint is a test one, so the panel says it once.
+  await expect(section.getByText("Test mode", { exact: true })).toBeVisible();
   // The query may hold the receiver's token: the list never shows it.
   await expect(page.getByText("receiver-secret")).toHaveCount(0);
   expect(await blockingViolations(page)).toEqual([]);
@@ -155,16 +160,17 @@ test("the owner adds a webhook endpoint, turns one off, reveals and rotates its 
     events: ["invoice.detected", "invoice.paid", "invoice.settled"],
     enabled: true,
   });
-  await expect(section.getByRole("listitem").filter({ hasText: "Fulfilment" })).toContainText(
-    "hooks.example.com/forwend · Sample shop · 3 events",
-  );
+  const added = section.getByRole("row").filter({ hasText: "Fulfilment" });
+  await expect(added.getByText("hooks.example.com/forwend", { exact: true })).toBeVisible();
+  for (const cell of ["Sample shop", "3 events"])
+    await expect(added.getByRole("cell", { name: cell, exact: true })).toBeVisible();
 
   const actions = () =>
     row.getByRole("button", { name: "Actions for shop.example.com/hooks" }).click();
   // Turn off keeps everything else as it was.
   await actions();
   await page.getByRole("menuitem", { name: "Turn off" }).click();
-  await expect(row).toContainText("Off");
+  await expect(row.getByRole("cell", { name: "Off", exact: true })).toBeVisible();
   expect(writes(calls).at(-1)).toEqual({
     method: "PUT",
     path: `webhooks/${HOOK}`,
@@ -214,7 +220,7 @@ test("the owner adds a webhook endpoint, turns one off, reveals and rotates its 
   await expect(page.getByText("Sent again")).toBeVisible();
   await sheet.getByRole("button", { name: "Send test event" }).click();
   await expect(page.getByText("Test event sent")).toBeVisible();
-  await sheet.getByRole("combobox", { name: "Failed in the" }).click();
+  await sheet.getByRole("combobox", { name: "Failed in" }).click();
   await page.getByRole("option", { name: "Last 7 days" }).click();
   const before = Date.now();
   await sheet.getByRole("button", { name: "Resend failed" }).click();
@@ -249,7 +255,7 @@ test("the webhooks list and its deliveries fit a phone", async ({ browser }) => 
   await page.goto("/app/developers");
   const row = page
     .getByRole("region", { name: "Webhooks" })
-    .getByRole("listitem")
+    .getByRole("row")
     .filter({ hasText: "Orders" });
   await expect(row).toBeVisible();
   expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);

@@ -13,7 +13,7 @@ export function TypographySamples() {
   return (
     <div className="flex flex-col gap-10">
       <div>
-        <p className="text-sm text-muted">Display: Libre Caslon Display</p>
+        <p className="text-sm text-muted">Display: Hanken Grotesk, medium, tight tracking</p>
         <ul className="mt-4 flex flex-col gap-3">
           {TYPE_SCALE.slice(0, 5).map((t) => (
             <li
@@ -31,7 +31,7 @@ export function TypographySamples() {
         </ul>
       </div>
       <div>
-        <p className="text-sm text-muted">Text and money: Geist</p>
+        <p className="text-sm text-muted">Text and money: Hanken Grotesk</p>
         <ul className="mt-4 flex flex-col gap-3">
           {TYPE_SCALE.slice(4).map((t) => (
             <li
@@ -63,7 +63,7 @@ export function TypographySamples() {
         </ul>
       </div>
       <div>
-        <p className="text-sm text-muted">Money: Geist, tabular figures</p>
+        <p className="text-sm text-muted">Money: Hanken Grotesk, tabular figures</p>
         <p className="mt-4 text-amount-lg font-semibold tabular-nums text-ink">
           1,250.00 · 98,431.07
         </p>

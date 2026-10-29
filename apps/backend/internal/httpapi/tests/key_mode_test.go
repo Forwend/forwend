@@ -123,7 +123,7 @@ func TestKeyMode(t *testing.T) {
 		}
 	}
 
-	// Money held for the payer, which a canceled invoice still owes, narrows too.
+	// Money held for the payer, which a canceled invoice still owes, is the payer's: never owed (D-114).
 	e.exec(t, `WITH t AS (INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
 		        block_hash, block_number, block_time, from_address, to_address, amount, status)
 		    SELECT chain_id, 'evm', token_contract, id, id, 0, id, 90, extract(epoch FROM now())::bigint, $2,
@@ -132,11 +132,11 @@ func TestKeyMode(t *testing.T) {
 		        SELECT invoice_id, 'deposit', id FROM t RETURNING id)
 		INSERT INTO ledger_entries (transaction_id, account, amount) SELECT id, 'receiver', 1000000 FROM x
 		UNION ALL SELECT id, 'payer_held', -1000000 FROM x`, []string{appID, testID}, aliceWallet)
-	if got := ids(e.withKey(t, "GET", profile+"/owed", key, "")); !slices.Equal(got, []string{testID}) {
-		t.Errorf("held money with the key: %v, want only %s", got, testID)
+	if got := ids(e.withKey(t, "GET", profile+"/owed", key, "")); len(got) != 0 {
+		t.Errorf("held money with the key: %v, want none owed", got)
 	}
-	if got := ids(e.call(t, "GET", profile+"/owed", alice, "", "")); len(got) != 2 {
-		t.Errorf("held money for the owner: %v, want both", got)
+	if got := ids(e.call(t, "GET", profile+"/owed", alice, "", "")); len(got) != 0 {
+		t.Errorf("held money for the owner: %v, want none owed", got)
 	}
 
 	// The same key in live mode replays none of its test-mode creates, and sees only live mode.

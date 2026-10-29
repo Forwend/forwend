@@ -15,6 +15,8 @@ import {
   CodeInput,
   ComboboxField,
   DatePicker,
+  type DateRange,
+  DateRangePicker,
   Dialog,
   EmailCapture,
   EmptyState,
@@ -39,6 +41,7 @@ import {
   SelectMenu,
   Sheet,
   Skeleton,
+  Stepper,
   Switch,
   Tabs,
   TextAreaField,
@@ -159,6 +162,7 @@ function ToastDemo() {
 }
 
 export function ComponentsShowcase() {
+  const [step, setStep] = useState(2);
   const [on, setOn] = useState(true);
   const [weekly, setWeekly] = useState(false);
   const [menuChoice, setMenuChoice] = useState("personal");
@@ -169,6 +173,7 @@ export function ComponentsShowcase() {
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [dueDate, setDueDate] = useState<string | null>("2026-11-02");
+  const [period, setPeriod] = useState<DateRange>({ from: null, to: null });
   const [code, setCode] = useState("826");
   return (
     <div className="flex flex-col gap-10">
@@ -280,9 +285,9 @@ export function ComponentsShowcase() {
           onValueChange={setStatus}
           options={[
             { value: "All", label: "All", icon: ListFilter },
-            { value: "Open", label: "Open", icon: Circle },
+            { value: "Waiting", label: "Waiting", icon: Circle },
             { value: "Paid", label: "Paid", icon: CircleCheck },
-            { value: "Settled", label: "Settled", icon: Wallet },
+            { value: "In wallet", label: "In wallet", icon: Wallet },
             { value: "Expired", label: "Expired", icon: Clock },
             { value: "Canceled", label: "Canceled", icon: Ban },
           ]}
@@ -357,6 +362,26 @@ export function ComponentsShowcase() {
             value={null}
             onChange={() => {}}
             error="Pick a day within the next year."
+          />
+        </div>
+        <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-3">
+          <DateRangePicker
+            label="Period"
+            value={period}
+            onChange={setPeriod}
+            note="Days are in UTC."
+            clearLabel="Clear period"
+          />
+          <DateRangePicker
+            label="Period, chosen"
+            value={{ from: "2026-10-01", to: "2026-10-31" }}
+            onChange={() => {}}
+          />
+          <DateRangePicker
+            label="Statement period"
+            value={{ from: "2026-10-01", to: null }}
+            onChange={() => {}}
+            error="Choose both days: a statement covers a period."
           />
         </div>
         <div className="rounded-lg border border-line bg-surface p-3">
@@ -438,6 +463,7 @@ export function ComponentsShowcase() {
           <CodeInput label="Code (checking)" value="826104" onValueChange={noop} disabled />
         </div>
         <Checkbox label="Send a reminder on the due date" defaultChecked />
+        <Checkbox label="USDC on every network (some on)" mixed />
         <Switch label="Email me when a payment settles" checked={on} onCheckedChange={setOn} />
         <Switch label="Email me a weekly summary" checked={weekly} onCheckedChange={setWeekly} />
       </KitGroup>
@@ -576,6 +602,30 @@ export function ComponentsShowcase() {
             title="No invoices yet"
             description="Create your first invoice and share the link with your client."
             action={<Button size={BUTTON_SIZES.sm}>Create invoice</Button>}
+          />
+        </div>
+        {/* The page variant has no frame and fills its workspace; the dashed box stands in for the page. */}
+        <div className="flex h-72 w-full max-w-md flex-col rounded-lg border border-dashed border-line">
+          <EmptyState
+            page
+            title="No payment links yet"
+            description="Make one for a product, a service or a top-up."
+            action={<Button size={BUTTON_SIZES.sm}>New link</Button>}
+          />
+        </div>
+      </KitGroup>
+      <KitGroup title="Stepper: a finished step goes back to it">
+        <div className="w-full">
+          <Stepper
+            label="New invoice steps"
+            current={step}
+            onStepClick={setStep}
+            steps={[
+              { id: "customer", label: "Customer" },
+              { id: "items", label: "Items" },
+              { id: "details", label: "Details" },
+              { id: "review", label: "Review" },
+            ]}
           />
         </div>
       </KitGroup>

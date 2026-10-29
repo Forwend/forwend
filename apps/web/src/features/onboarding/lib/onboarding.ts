@@ -1,4 +1,3 @@
-import { API_PAYMENT_STATUSES } from "@/features/activity/constants/activity";
 import { CHECKLIST_STEPS } from "@/features/onboarding/constants/onboarding";
 import type {
   ChecklistDismissal,
@@ -12,6 +11,7 @@ import {
   TRANSACTION_STATUSES,
 } from "@/features/transactions/constants/transactions";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
 
 const LANDING_ORDER: readonly ProfileKind[] = [
   PROFILE_KINDS.freelancer,

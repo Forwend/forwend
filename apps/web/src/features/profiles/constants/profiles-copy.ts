@@ -16,7 +16,9 @@ export const NEW_PROFILE_COPY = {
     [PROFILE_KINDS.freelancer]: "Get paid by clients.",
     [PROFILE_KINDS.merchant]: "Take payments from customers.",
   },
+  group: "Profile",
   nameLabel: "Name (optional)",
+  nameHint: "Tells your profiles apart in the profile switcher.",
   create: "Create profile",
   cancel: "Cancel",
   errors: {
@@ -29,21 +31,25 @@ export const NEW_PROFILE_COPY = {
 export const BILLING_DETAILS_COPY = {
   title: "Billing details",
   saved: "Billing details saved",
-  intro:
-    "Your name and address as clients see them on each new invoice and its PDF. Invoices you already sent keep the details they had.",
+  intro: "How clients see you on new invoices. Sent ones keep theirs.",
   contactGroup: "Contact",
+  contactNote: "The name and email clients see on invoices and receipts.",
   addressGroup: "Address and tax",
+  addressNote: "Printed under your name on every invoice; EU and UK invoices need a tax ID.",
   name: "Name or business name",
+  nameHint: "Your own name, or your business's if you invoice as one.",
+  businessName: "Business name",
+  businessNameHint: "The legal name invoices and receipts show.",
   address: "Address",
   country: "Country",
   countryPlaceholder: "Choose a country",
   searchCountries: "Search countries",
   taxId: "Tax ID (optional)",
+  taxIdHint: "A VAT or tax number, if you have one.",
   email: "Contact email",
   save: "Save details",
   cancel: "Cancel",
   loadFailed: "We could not load your billing details.",
-  retry: "Try again",
   errors: {
     required: "Fill in this field.",
     country: "Choose a country.",
@@ -61,29 +67,27 @@ export const BILLING_DETAILS_COPY = {
 
 /** R-136. */
 export const TOKENS_COPY = {
-  title: "Networks and tokens",
-  intro:
-    "Turn off what you don't want to be paid in. New invoices and requests of this profile offer only what is on; ones you already sent keep theirs.",
-  toggle: (symbol: string, network: string) => `${symbol} on ${network}`,
-  lastOn: "One token stays on, so this profile can still be paid.",
-  loadFailed: "We could not load the networks and tokens.",
+  title: "Accepted assets",
+  intro: "The stablecoins and networks new invoices and requests accept. Sent ones keep theirs.",
+  lastOn: "One stays on, so this profile can still be paid.",
+  loadFailed: "We could not load the accepted assets.",
   saveFailed: "We could not save this setting. Try again.",
-  retry: "Try again",
-  saved: (symbol: string, network: string, on: boolean) =>
-    `${symbol} on ${network} turned ${on ? "on" : "off"}`,
+  saving: "Saving…",
+  savedAll: "Changes saved.",
 } as const;
 
 /** R-80. */
 export const NOTIFICATIONS_COPY = {
+  emailSection: "Email",
+  emailNote:
+    "Payment emails for this profile. Payers' receipts and invoices to clients aren't affected.",
   title: "Email notifications",
-  intro:
-    "Get an email when an invoice of this profile is paid, reaches your wallet, or gets money held for the payer.",
+  intro: "An email when an invoice is paid, reaches your wallet or has money held.",
   toggle: "Email me about this profile's invoices",
   to: (address: string) => `Emails go to ${address}, the email you sign in with.`,
   noAddress:
     "Your account has no email to send to: you sign in with a passkey alone. Sign in with email or Google to get emails.",
   loadFailed: "We could not load this setting.",
   saveFailed: "We could not save this setting. Try again.",
-  retry: "Try again",
   saved: (on: boolean) => (on ? "Email notifications on" : "Email notifications off"),
 } as const;

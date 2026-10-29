@@ -1,6 +1,15 @@
 "use client";
 
-import { Badge, Button, Dialog, EmptyState, TONES } from "@forwend/ui-web";
+import {
+  Badge,
+  cx,
+  Dialog,
+  EmptyState,
+  Skeleton,
+  TABLE_HEAD_CLASSES,
+  TABLE_ROW_CLASSES,
+  TONES,
+} from "@forwend/ui-web";
 import { KeyRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useListKeysQuery } from "@/features/api-keys/api/api-keys-api";
@@ -8,8 +17,10 @@ import { KeyActions } from "@/features/api-keys/components/key-actions";
 import { KeySecret } from "@/features/api-keys/components/key-secret";
 import { NewKeyDialog } from "@/features/api-keys/components/new-key-dialog";
 import { API_KEYS_COPY as COPY } from "@/features/api-keys/constants/api-keys-copy";
+import type { ApiKey } from "@/features/api-keys/types/api-keys";
 import { useListStoresQuery } from "@/features/stores/api/stores-api";
-import { RowsSkeleton } from "@/shared/components/rows-skeleton";
+import { LoadError } from "@/shared/components/load-error";
+import { dateTime, shortDate } from "@/shared/lib/dates";
 
 export interface ApiKeysProps {
   profileId: string;
@@ -17,8 +28,10 @@ export interface ApiKeysProps {
   merchant: boolean;
 }
 
-const ROW = "flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 sm:px-5";
-const WHEN = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
+// The panel's width decides, not the screen's: below it a row keeps only the name cell, which then lists the rest.
+const WIDE = "hidden @3xl:table-cell";
+const NARROW = "block text-xs text-muted @3xl:hidden";
+const ROW = cx(TABLE_ROW_CLASSES, "max-sm:[&>td:first-child]:pl-4 max-sm:[&>td:last-child]:pr-3");
 
 // R-145: the profile's working keys, newest first, each with its last use and, once rolled, when it stops.
 export function ApiKeys({ profileId, merchant }: ApiKeysProps) {
@@ -41,63 +54,117 @@ export function ApiKeys({ profileId, merchant }: ApiKeysProps) {
   const storesFailed = merchant && stores.isError && !stores.currentData;
   if ((keys.isError && !keys.currentData) || storesFailed) {
     return (
-      <div role="alert" className="flex flex-wrap items-center gap-4 text-sm text-muted">
-        {COPY.loadFailed}
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => {
-            void keys.refetch();
-            if (storesFailed) void stores.refetch();
-          }}
-        >
-          {COPY.retry}
-        </Button>
-      </div>
+      <LoadError
+        message={COPY.loadFailed}
+        retrying={keys.isFetching || stores.isFetching}
+        onRetry={() => {
+          void keys.refetch();
+          if (storesFailed) void stores.refetch();
+        }}
+      />
     );
   }
-  if (!keys.currentData || (merchant && !stores.currentData)) {
-    return <RowsSkeleton count={2} className="fw-panel" />;
-  }
   const list = keys.currentData;
+  const loading = !list || (merchant && !stores.currentData);
+  // Every key is a test key today; a badge on each row would repeat the panel's.
+  const allTest = !!list?.length && list.every((k) => !k.livemode);
+  const storeName = (key: ApiKey) => (key.storeId ? (names.get(key.storeId) ?? key.storeId) : null);
+  const scopes = (key: ApiKey) => key.scopes.map((scope) => COPY.scopeLabels[scope]).join(", ");
   return (
-    <section aria-labelledby="api-keys" className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-3">
-        <h2 id="api-keys" className="text-lg font-semibold text-ink">
-          {COPY.keys}
-        </h2>
-        <NewKeyDialog
-          profileId={profileId}
-          stores={merchant ? (stores.currentData ?? []) : null}
-          onMade={setSecret}
-        />
+    <section aria-labelledby="api-keys" className="fw-panel @container">
+      <div className="fw-panel-head justify-between">
+        <div className="flex min-w-0 items-center gap-2">
+          <h2 id="api-keys" className="text-base font-semibold text-ink">
+            {COPY.keys}
+          </h2>
+          {allTest ? <Badge tone={TONES.warning}>{COPY.testMode}</Badge> : null}
+        </div>
+        {loading ? null : (
+          <NewKeyDialog
+            profileId={profileId}
+            stores={merchant ? (stores.currentData ?? []) : null}
+            onMade={setSecret}
+          />
+        )}
       </div>
-      {list.length === 0 ? (
-        <EmptyState icon={KeyRound} title={COPY.empty} description={COPY.emptyBody} />
+      {loading ? (
+        <KeysSkeleton />
+      ) : list.length === 0 ? (
+        <EmptyState compact icon={KeyRound} title={COPY.empty} description={COPY.emptyBody} />
       ) : (
-        <ul className="fw-panel divide-y divide-line">
-          {list.map((key) => (
-            <li key={key.keyId} className={ROW}>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium text-ink">{key.name}</span>
-                <span className="block text-sm break-words text-muted">
-                  <code className="font-mono">{COPY.keyText(key.last4)}</code>
-                  {key.storeId ? ` · ${names.get(key.storeId) ?? key.storeId}` : null}
-                  {" · "}
-                  {key.scopes.map((scope) => COPY.scopeLabels[scope]).join(", ")}
-                </span>
-                <span className="block text-sm text-muted">
-                  {key.lastUsedAt
-                    ? COPY.lastUsed(WHEN.format(new Date(key.lastUsedAt)))
-                    : COPY.neverUsed}
-                  {key.expiresAt ? ` · ${COPY.stops(WHEN.format(new Date(key.expiresAt)))}` : null}
-                </span>
-              </span>
-              {key.livemode ? null : <Badge tone={TONES.warning}>{COPY.testMode}</Badge>}
-              <KeyActions profileId={profileId} apiKey={key} onRolled={setSecret} />
-            </li>
-          ))}
-        </ul>
+        <table className="w-full table-fixed text-sm">
+          <thead className="hidden @3xl:table-header-group">
+            <tr className={TABLE_HEAD_CLASSES}>
+              <th scope="col" className="w-[24%]">
+                {COPY.columns.name}
+              </th>
+              <th scope="col" className="w-36">
+                {COPY.columns.key}
+              </th>
+              {merchant ? (
+                <th scope="col" className="w-[16%]">
+                  {COPY.columns.store}
+                </th>
+              ) : null}
+              <th scope="col">{COPY.columns.access}</th>
+              <th scope="col" className="w-28">
+                {COPY.columns.lastUsed}
+              </th>
+              <th scope="col" className="w-14">
+                <span className="sr-only">{COPY.columns.actions}</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {list.map((key) => (
+              <tr key={key.keyId} className={ROW}>
+                <td>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="truncate font-medium text-ink">{key.name}</span>
+                    {!allTest && !key.livemode ? (
+                      <Badge tone={TONES.warning}>{COPY.testMode}</Badge>
+                    ) : null}
+                  </span>
+                  <span className={NARROW}>
+                    <code className="font-mono">{COPY.keyText(key.last4)}</code>
+                    {storeName(key) ? ` · ${storeName(key)}` : null}
+                    {` · ${scopes(key)}`}
+                  </span>
+                  <span className={NARROW}>
+                    {key.lastUsedAt ? COPY.lastUsed(shortDate(key.lastUsedAt)) : COPY.neverUsed}
+                  </span>
+                  {/* A roll's overlap can be an hour, so the time matters. */}
+                  {key.expiresAt ? (
+                    <span className="block text-xs text-warning">
+                      {COPY.stops(dateTime(key.expiresAt))}
+                    </span>
+                  ) : null}
+                </td>
+                <td className={cx(WIDE, "truncate")}>
+                  <code className="font-mono text-xs text-muted">{COPY.keyText(key.last4)}</code>
+                </td>
+                {merchant ? (
+                  <td className={cx(WIDE, "truncate text-ink")}>{storeName(key)}</td>
+                ) : null}
+                <td className={cx(WIDE, "truncate text-muted")} title={scopes(key)}>
+                  {scopes(key)}
+                </td>
+                <td
+                  className={cx(WIDE, "whitespace-nowrap text-muted tabular-nums")}
+                  title={key.lastUsedAt ? dateTime(key.lastUsedAt) : undefined}
+                >
+                  {key.lastUsedAt ? shortDate(key.lastUsedAt) : COPY.never}
+                </td>
+                <td className="w-14">
+                  {/* Not text-right: the row's dialogs live in this cell and would inherit it. */}
+                  <div className="flex justify-end">
+                    <KeyActions profileId={profileId} apiKey={key} onRolled={setSecret} />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
       <Dialog
         triggerLabel={COPY.secretTitle}
@@ -118,5 +185,20 @@ export function ApiKeys({ profileId, merchant }: ApiKeysProps) {
         </div>
       </Dialog>
     </section>
+  );
+}
+
+function KeysSkeleton() {
+  return (
+    <ul aria-hidden className="divide-y divide-line">
+      {[0, 1].map((i) => (
+        <li key={i} className="flex h-14 items-center gap-6 px-4 sm:px-5">
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="hidden h-4 w-28 @3xl:block" />
+          <Skeleton className="hidden h-4 flex-1 @3xl:block" />
+          <Skeleton className="ml-auto size-8" />
+        </li>
+      ))}
+    </ul>
   );
 }

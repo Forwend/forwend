@@ -16,6 +16,7 @@ import {
 import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
 import { API_KEYS_COPY } from "@/features/api-keys/constants/api-keys-copy";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
+import { CHECKOUT_COPY } from "@/features/checkout/constants/checkout-copy";
 import { CLIENTS_COPY } from "@/features/clients/constants/clients-copy";
 import { INVOICES_COPY, REQUESTS_COPY } from "@/features/invoices/constants/invoices-copy";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
@@ -97,7 +98,13 @@ export const NAV = {
     icon: Store,
     permission: PERMISSIONS.storesRead,
   },
-  checkout: { href: null, label: "Checkout", icon: ShoppingBag },
+  // In person: a one-off checkout shown to the customer as a QR code.
+  checkout: {
+    href: APP_ROUTES.checkout,
+    label: CHECKOUT_COPY.title,
+    icon: ShoppingBag,
+    permission: PERMISSIONS.invoicesWrite,
+  },
   // R-145: the profile's secret API keys, for the owner and Admins (D-95).
   developers: {
     href: APP_ROUTES.developers,
@@ -113,7 +120,7 @@ const INSIGHTS: NavGroup = { label: "Insights", items: [NAV.analytics] };
 
 export const APP_NAV: Readonly<Record<ProfileKind, readonly NavGroup[]>> = {
   [PROFILE_KINDS.personal]: [
-    { ...MONEY, items: [...MONEY.items, NAV.requests, NAV.activity] },
+    { ...MONEY, items: [...MONEY.items, NAV.payments, NAV.requests, NAV.activity] },
     INSIGHTS,
   ],
   [PROFILE_KINDS.freelancer]: [
@@ -150,6 +157,7 @@ export const MENU_PAGES: readonly { href: string; permission: Permission }[] = [
   { href: APP_ROUTES.billingDetails, permission: PERMISSIONS.billingRead },
   { href: APP_ROUTES.notifications, permission: PERMISSIONS.notifications },
   { href: APP_ROUTES.networks, permission: PERMISSIONS.tokensRead },
+  { href: APP_ROUTES.settings, permission: PERMISSIONS.tokensRead },
   // Every member may leave; an Admin also manages the team there.
   { href: APP_ROUTES.team, permission: PERMISSIONS.leave },
 ];

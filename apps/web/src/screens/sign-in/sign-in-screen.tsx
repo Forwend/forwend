@@ -9,7 +9,7 @@ import { useEffect } from "react";
 import { SignInForm } from "@/features/auth/components/sign-in-form";
 import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 import { SIGN_IN_COPY } from "@/features/auth/constants/sign-in";
-import { HERO_IMAGE, HERO_NIGHT_IMAGE } from "@/shared/assets/images";
+import { HERO_IMAGE } from "@/shared/assets/images";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 export function SignInScreen() {
@@ -23,21 +23,14 @@ export function SignInScreen() {
   return (
     <div className="flex min-h-dvh flex-col bg-bg lg:block">
       <div className="relative h-44 overflow-hidden sm:h-64 lg:h-72">
+        {/* One artwork in both themes; dark mode mutes it toward the near-black ground (D-113). */}
         <Image
           src={HERO_IMAGE.src}
           alt=""
           fill
           priority
           sizes="100vw"
-          className="object-cover object-[50%_52%] dark:hidden"
-        />
-        <Image
-          src={HERO_NIGHT_IMAGE.src}
-          alt=""
-          fill
-          loading="eager"
-          sizes="100vw"
-          className="hidden object-cover object-[50%_52%] dark:block"
+          className="object-cover object-[50%_70%] saturate-[.65] dark:brightness-[.45] dark:grayscale-[.7]"
         />
         <div className="absolute inset-x-0 bottom-0 h-3/4 bg-[linear-gradient(to_bottom,transparent,var(--fw-bg)_85%)]" />
         <Link

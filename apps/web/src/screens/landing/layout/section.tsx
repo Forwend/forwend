@@ -28,12 +28,15 @@ export function Section({
       id={id}
       data-section={section}
       aria-labelledby={headingId}
-      className={`mx-auto max-w-6xl fw-safe-x py-20 sm:[--fw-page-gutter:2rem] sm:py-24 ${
+      className={`mx-auto max-w-7xl fw-safe-x py-20 sm:[--fw-page-gutter:2rem] lg:[--fw-page-gutter:2.5rem] sm:py-24 ${
         split ? "lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-16" : ""
       } ${className}`}
     >
       <div>
-        <h2 id={headingId} className="fw-reveal max-w-3xl font-display text-section text-ink">
+        <h2
+          id={headingId}
+          className="fw-reveal max-w-3xl font-display font-medium text-section text-ink"
+        >
           {title}
         </h2>
         {body ? (

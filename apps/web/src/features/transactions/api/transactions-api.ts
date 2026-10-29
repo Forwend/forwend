@@ -1,3 +1,4 @@
+import { TRANSACTIONS_PAGE_SIZE } from "@/features/transactions/constants/transactions";
 import {
   recordsCurrencySchema,
   transactionsPageSchema,
@@ -28,6 +29,27 @@ export const transactionsApi = apiSlice
         query: ({ profileId, ...params }) => ({
           url: `/v1/profiles/${encodeURIComponent(profileId)}/transactions`,
           params,
+        }),
+        responseSchema: transactionsPageSchema,
+        providesTags: [TRANSACTIONS_TAG],
+      }),
+      /** Cursor pages for the Transactions page, so history reaches its start however long it is. */
+      getTransactionPages: build.infiniteQuery<
+        TransactionsPage,
+        { profileId: string; direction?: TransactionDirection; q?: string },
+        string | null
+      >({
+        infiniteQueryOptions: {
+          initialPageParam: null,
+          getNextPageParam: (last) => last.nextCursor,
+        },
+        query: ({ queryArg: { profileId, ...params }, pageParam }) => ({
+          url: `/v1/profiles/${encodeURIComponent(profileId)}/transactions`,
+          params: {
+            ...params,
+            limit: TRANSACTIONS_PAGE_SIZE,
+            ...(pageParam ? { cursor: pageParam } : {}),
+          },
         }),
         responseSchema: transactionsPageSchema,
         providesTags: [TRANSACTIONS_TAG],
@@ -86,6 +108,7 @@ export const transactionsApi = apiSlice
 
 export const {
   useGetTransactionsQuery,
+  useGetTransactionPagesInfiniteQuery,
   useLabelTransactionMutation,
   useLazyExportTransactionsQuery,
   useGetRecordsCurrencyQuery,

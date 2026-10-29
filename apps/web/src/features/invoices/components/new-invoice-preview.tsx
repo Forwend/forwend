@@ -1,75 +1,120 @@
-import { Money } from "@forwend/ui-web";
-import type {
-  NEW_INVOICE_COPY,
-  NEW_REQUEST_COPY,
-} from "@/features/invoices/constants/invoices-copy";
-import { exactDigits } from "@/shared/lib/money";
+import { Tabs } from "@forwend/ui-web";
+import {
+  InvoiceDocument,
+  type InvoiceDocumentProps,
+} from "@/features/invoices/components/invoice-document";
 
 export interface NewInvoicePreviewProps {
-  copy: typeof NEW_INVOICE_COPY.preview | typeof NEW_REQUEST_COPY.preview;
-  units: bigint;
-  decimals: number;
-  unit: string;
-  payLine: string;
-  title: string;
-  note: string;
-  client: string;
-  due: string | null;
-  closes: string;
+  document: InvoiceDocumentProps;
+  /** Who the payer sees asking, the amount and how it can be paid. */
+  payer: { name: string; amount: string; network: string };
+  /** The email the client gets when it is sent. */
+  email: { subject: string; lead: string; details: readonly (readonly [string, string])[] };
 }
 
-// Hidden from screen readers: the form's fields already say all of it.
-export function NewInvoicePreview({
-  copy,
-  units,
-  decimals,
-  unit,
-  payLine,
-  title,
-  note,
-  client,
-  due,
-  closes,
-}: NewInvoicePreviewProps) {
-  const rows = [
-    [copy.client, client || copy.noClient],
-    [copy.due, due ?? copy.noDue],
-    [copy.closes, closes],
-  ] as const;
+const COPY = {
+  label: "Preview",
+  invoice: "Invoice",
+  payer: "Payer page",
+  email: "Email",
+  amount: "Amount",
+  payWith: "Pay with",
+  showAddress: "Show address",
+  sample: "Preview: the address shows once it is created.",
+  viewAndPay: "View and pay",
+  emailNote: "Sent from Forwend. Replies go to you.",
+} as const;
+
+/** The three things the client will see, drawn from what the form holds now; switching keeps every typed value. */
+export function NewInvoicePreview({ document, payer, email }: NewInvoicePreviewProps) {
   return (
-    <aside
-      aria-hidden
-      className="sticky top-24 hidden flex-col rounded-lg border border-line bg-surface xl:flex"
-    >
-      <p className="border-b border-line px-5 py-4 text-base font-semibold text-ink">
-        {copy.title}
-      </p>
-      <div className="flex flex-col gap-5 p-5">
-        <div className="flex min-w-0 flex-col gap-1">
-          <p className="truncate text-sm text-muted">{title || copy.untitled}</p>
-          <Money
-            baseUnits={units}
-            decimals={decimals}
-            fractionDigits={exactDigits(units, decimals)}
-            token={unit}
-            className="min-w-0 text-amount text-ink"
-          />
-          <p className="text-sm text-muted">{payLine}</p>
-        </div>
-        <dl className="flex flex-col divide-y divide-line border-y border-line text-sm">
-          {rows.map(([label, value]) => (
-            <div key={label} className="flex items-baseline justify-between gap-4 py-2.5">
-              <dt className="text-muted">{label}</dt>
-              <dd className="min-w-0 truncate text-right text-ink">{value}</dd>
+    <Tabs
+      label={COPY.label}
+      items={[
+        { value: "invoice", label: COPY.invoice, content: <InvoiceDocument {...document} /> },
+        {
+          value: "payer",
+          label: COPY.payer,
+          content: <PayerPage {...payer} document={document} />,
+        },
+        {
+          value: "email",
+          label: COPY.email,
+          content: <EmailPage {...email} amount={payer.amount} />,
+        },
+      ]}
+    />
+  );
+}
+
+/** The pay page's first screen, in its layout: who asks, the amount, then the pay box. */
+function PayerPage({
+  name,
+  amount,
+  network,
+  document,
+}: NewInvoicePreviewProps["payer"] & { document: InvoiceDocumentProps }) {
+  return (
+    <div className="flex flex-col gap-5 rounded-lg border border-line bg-bg p-5">
+      <div className="flex items-center gap-3">
+        <span className="grid size-10 place-items-center rounded-md border border-line bg-surface text-sm font-semibold">
+          {(name || "?").charAt(0).toUpperCase()}
+        </span>
+        <span className="min-w-0">
+          <span className="block truncate font-semibold text-ink">{name || "—"}</span>
+          <span className="block text-sm text-muted">
+            {document.kind} {document.number}
+          </span>
+        </span>
+      </div>
+      <div>
+        <p className="text-sm text-muted">{COPY.amount}</p>
+        <p className="text-3xl font-medium tracking-tight text-ink tabular-nums">{amount}</p>
+        <p className="text-sm text-muted">{network}</p>
+      </div>
+      {document.title ? <p className="text-sm font-medium text-ink">{document.title}</p> : null}
+      <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4">
+        <p className="text-sm text-muted">{COPY.payWith}</p>
+        <p className="text-sm font-medium text-ink">{network}</p>
+        <span className="grid h-12 place-items-center rounded-md bg-brand text-sm font-medium text-on-brand opacity-60">
+          {COPY.showAddress}
+        </span>
+        <p className="text-xs text-muted">{COPY.sample}</p>
+      </div>
+    </div>
+  );
+}
+
+/** The invoice email's layout (apps/backend/internal/notify), at a phone's width when the panel is narrow. */
+function EmailPage({
+  subject,
+  lead,
+  details,
+  amount,
+}: NewInvoicePreviewProps["email"] & { amount: string }) {
+  return (
+    <div data-theme="light" className="rounded-lg bg-surface-2 p-4 text-ink sm:p-6">
+      <p className="mb-3 truncate text-sm text-muted">{subject}</p>
+      <div className="mx-auto max-w-[37.5rem] rounded-lg border border-line bg-surface p-6 sm:p-8">
+        <p className="text-lg font-semibold">Forwend</p>
+        <h3 className="mt-6 text-xl font-semibold tracking-tight [overflow-wrap:anywhere]">
+          {subject}
+        </h3>
+        <p className="mt-2 text-3xl font-medium tracking-tight tabular-nums">{amount}</p>
+        <p className="mt-4 text-sm text-muted [overflow-wrap:anywhere]">{lead}</p>
+        <dl className="mt-5 text-sm">
+          {details.map(([term, value]) => (
+            <div key={term} className="flex justify-between gap-4 border-t border-line py-2.5">
+              <dt className="text-muted">{term}</dt>
+              <dd className="text-right [overflow-wrap:anywhere]">{value}</dd>
             </div>
           ))}
         </dl>
-        {note ? (
-          <p className="line-clamp-4 border-l-2 border-line-strong pl-3 text-sm break-words whitespace-pre-line text-ink">
-            {note}
-          </p>
-        ) : null}
+        <span className="mt-6 inline-flex h-11 items-center rounded-md border border-brand-edge bg-brand px-5 text-sm font-medium text-on-brand">
+          {COPY.viewAndPay}
+        </span>
       </div>
-    </aside>
+      <p className="mx-auto mt-4 max-w-[37.5rem] text-xs text-muted">{COPY.emailNote}</p>
+    </div>
   );
 }

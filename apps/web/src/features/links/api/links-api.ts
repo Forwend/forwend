@@ -22,6 +22,11 @@ export const linksApi = apiSlice.enhanceEndpoints({ addTagTypes: [LINKS_TAG] }).
       transformResponse: (data: { links: Link[] }) => data.links,
       providesTags: [LINKS_TAG],
     }),
+    getLink: build.query<Link, { profileId: string; linkId: string }>({
+      query: ({ profileId, linkId }) => `${linksUrl(profileId)}/${encodeURIComponent(linkId)}`,
+      responseSchema: linkSchema,
+      providesTags: [LINKS_TAG],
+    }),
     /** PUT to an id the browser picks, so a retried save makes one link (as a store). */
     saveLink: build.mutation<Link, { profileId: string; linkId: string; body: LinkBody }>({
       query: ({ profileId, linkId, body }) => ({
@@ -60,6 +65,7 @@ export const linksApi = apiSlice.enhanceEndpoints({ addTagTypes: [LINKS_TAG] }).
 
 export const {
   useListLinksQuery,
+  useGetLinkQuery,
   useSaveLinkMutation,
   useGetPublicLinkQuery,
   useCountLinkVisitMutation,

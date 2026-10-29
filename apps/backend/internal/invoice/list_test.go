@@ -8,7 +8,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// searchText must stay the invoices_search index expression (migration 00032), or every search reads all invoices.
+// searchText and paymentSearchText must stay their index expressions (migrations 00032, 00088), or every search reads
+// all invoices.
 func TestSearchCanUseItsIndex(t *testing.T) {
 	pool, profile := open(t)
 	ctx := context.Background()
@@ -33,15 +34,17 @@ func TestSearchCanUseItsIndex(t *testing.T) {
 	if _, err := tx.Exec(ctx, "SET LOCAL enable_seqscan = off"); err != nil {
 		t.Fatal(err)
 	}
-	rows, err := tx.Query(ctx, "EXPLAIN SELECT id FROM "+invoicesCurrent+" WHERE "+searchText+" ILIKE '%po-4500%'")
-	if err != nil {
-		t.Fatal(err)
-	}
-	plan, err := pgx.CollectRows(rows, pgx.RowTo[string])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(strings.Join(plan, "\n"), "invoices_search") {
-		t.Fatalf("the search does not use invoices_search:\n%s", strings.Join(plan, "\n"))
+	for text, index := range map[string]string{searchText: "invoices_search", paymentSearchText: "invoices_payment_search"} {
+		rows, err := tx.Query(ctx, "EXPLAIN SELECT id FROM "+invoicesCurrent+" WHERE "+text+" ILIKE '%po-4500%'")
+		if err != nil {
+			t.Fatal(err)
+		}
+		plan, err := pgx.CollectRows(rows, pgx.RowTo[string])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(strings.Join(plan, "\n"), index+" ") {
+			t.Fatalf("the search does not use %s:\n%s", index, strings.Join(plan, "\n"))
+		}
 	}
 }

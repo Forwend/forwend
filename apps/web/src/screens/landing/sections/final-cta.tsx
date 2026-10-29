@@ -12,7 +12,7 @@ export function FinalCta() {
     >
       <HalftoneRidge soft className="absolute inset-x-0 bottom-0 -z-10 h-1/2 w-full opacity-50" />
       <div className="mx-auto flex max-w-3xl flex-col items-center fw-safe-x pt-20 pb-40 text-center sm:pt-28 sm:pb-48">
-        <h2 id="cta-title" className="font-display text-section text-ink">
+        <h2 id="cta-title" className="font-display font-medium text-section text-ink">
           {FINAL_CTA.title}
         </h2>
         <p className="mt-5 max-w-lg text-lg text-muted">{FINAL_CTA.body}</p>

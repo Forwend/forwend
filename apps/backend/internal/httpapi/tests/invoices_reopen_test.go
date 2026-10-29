@@ -62,7 +62,7 @@ func TestReopenAnInvoiceThatClosedPartlyPaid(t *testing.T) {
 		t.Fatalf("reopen: %d %v", r.status, r.body)
 	}
 	mustContain(t, pdfText(t, e.pdf(t, id, "invoice.pdf", "").body),
-		"Checkout closes\n"+deadline.Add(-24*time.Hour).Format("2006-01-02 15:04")+" UTC")
+		"Payment window closes\n"+deadline.Add(-24*time.Hour).UTC().Format("2 Jan 2006, 15:04")+" UTC")
 	// The late 2 USDC pays now, and 1 more in the new window completes it.
 	deposit(3, expires.Unix()+90, 1000000)
 	ledgertest.Checkpoint(t, e.pool, id, 10, expires.Unix()+120, "5000000")

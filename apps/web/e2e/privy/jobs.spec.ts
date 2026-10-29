@@ -22,7 +22,7 @@ async function chooseFreelancer(page: Page, open: () => Promise<void>) {
 // R-92: the shared profile saves its billing details once, first.
 async function openNewJob(page: Page) {
   await page.getByRole("main").getByRole("link", { name: "New job" }).first().click();
-  const form = page.getByRole("button", { name: "Create job" });
+  const form = page.getByRole("navigation", { name: "New job steps" });
   const billing = page.getByRole("main").getByRole("link", { name: "Add billing details" });
   await expect(form.or(billing)).toBeVisible();
   if (await billing.isVisible()) {
@@ -63,17 +63,22 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   expect(await blockingViolations(page)).toEqual([]);
 
   await openNewJob(page);
-  await page.getByRole("button", { name: "Create job" }).click();
+  const next = () => page.getByRole("button", { name: "Continue" }).click();
+  await next();
   await expect(page.getByRole("textbox", { name: "Title" })).toBeFocused();
   const title = `E2E job ${Date.now()}`;
   await page.getByRole("textbox", { name: "Title" }).fill(title);
   await page.getByRole("textbox", { name: "Scope (optional)" }).fill("A logo in three ideas.");
+  await next();
   await page.getByRole("textbox", { name: "Name", exact: true }).fill("E2E client");
   // Resend's test inbox, so an email from a test never reaches a real person.
   await page.getByRole("textbox", { name: "Billing email" }).fill("delivered@resend.dev");
+  await next();
   await page.getByRole("textbox", { name: "Amount in USD of payment 1" }).fill("300");
   await page.getByRole("textbox", { name: "Amount in USD of payment 2" }).fill("700.5");
-  await expect(page.getByText("1,000.50 USD", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("group", { name: "Payments" }).getByText("1,000.50 USD", { exact: true }),
+  ).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
   const created = page.waitForResponse(
     (r) => /\/api\/v1\/profiles\/[^/]+\/jobs$/.test(r.url()) && r.request().method() === "POST",
@@ -92,7 +97,7 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   const link = page.getByRole("region", { name: "Client's link" });
   await expect(link).toContainText("Waiting for E2E client to accept.");
   await link.getByRole("button", { name: "Copy link" }).click();
-  await expect(link.getByRole("button", { name: "Link copied" })).toBeVisible();
+  await expect(link.getByRole("status")).toHaveText("Copied");
   const quoteLink = await page.evaluate(() => navigator.clipboard.readText());
   expect(quoteLink).toMatch(/^http:\/\/localhost:3000\/w\/[0-9a-f]{64}$/);
   // R-102. No real accept here: it opens a deposit for 60 days and a job that can't be deleted (D-85).
@@ -100,7 +105,8 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   const quote = await client.newPage();
   await quote.goto(quoteLink);
   await expect(quote.getByRole("heading", { level: 1, name: title })).toBeVisible();
-  await expect(quote.getByText("Quote from E2E studio Ltd")).toBeVisible();
+  await expect(quote.getByText("E2E studio Ltd").first()).toBeVisible();
+  await expect(quote.getByText("Quote", { exact: true })).toBeVisible();
   await expect(quote.getByRole("region", { name: "Payments" })).toContainText("1,000.50 USD");
   await expect(quote.getByRole("button", { name: "Accept quote" })).toBeVisible();
   expect(await blockingViolations(quote)).toEqual([]);
@@ -111,7 +117,7 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   await expect(page.getByRole("region", { name: "Scope" })).toContainText("A logo in three ideas.");
   // R-104
   await expect(page.getByRole("region", { name: "Record" }).getByRole("listitem")).toHaveText([
-    /Quote made$/,
+    /Quote made/,
   ]);
   expect(await blockingViolations(page)).toEqual([]);
 
@@ -238,7 +244,7 @@ test("a freelancer writes a quote, opens the job with the client's link, and del
   await expect(page.getByRole("heading", { level: 1, name: "Jobs" })).toBeVisible();
   await expect.poll(() => sidewaysScroll(page)).toBeLessThanOrEqual(0);
   await page.getByRole("main").getByRole("link", { name: "New job" }).first().click();
-  await expect(page.getByRole("button", { name: "Create job" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continue" })).toBeVisible();
   await expect.poll(() => sidewaysScroll(page)).toBeLessThanOrEqual(0);
   expect(await blockingViolations(page)).toEqual([]);
   await context.close();

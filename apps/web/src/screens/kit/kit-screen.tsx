@@ -56,7 +56,7 @@ export function KitScreen() {
       </KitSection>
       <KitSection
         title="Typography"
-        note="A display serif for headlines, a quiet grotesk for everything else, mono for money."
+        note="One grotesk for headlines, interface and money; mono for addresses, hashes and code."
       >
         <TypographySamples />
       </KitSection>

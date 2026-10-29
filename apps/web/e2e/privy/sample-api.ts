@@ -210,20 +210,23 @@ interface SampleLists {
 const SAMPLE_LISTS: SampleLists = { invoices: INVOICES, activity: ACTIVITY, transfers: TRANSFERS };
 
 // The API's filters and search (docs/backend/api.md) on the fields these samples use, then its cursor pages.
-const invoiceFilter = (inv: Pick<SampleInvoice, "paymentStatus" | "settlementStatus">) =>
-  inv.settlementStatus === "settled"
-    ? "settled"
-    : inv.paymentStatus === "paid"
-      ? "paid"
-      : inv.paymentStatus.startsWith("expired")
-        ? "expired"
-        : "open";
+// The `state` filter (D-114): paid stays paid once in the wallet; a detected payment is confirming.
+const invoiceFilter = (inv: Pick<SampleInvoice, "paymentStatus">) =>
+  inv.paymentStatus === "paid"
+    ? "paid"
+    : inv.paymentStatus.startsWith("expired")
+      ? "expired"
+      : inv.paymentStatus === "detected"
+        ? "confirming"
+        : inv.paymentStatus === "partially_paid" || inv.paymentStatus === "canceled"
+          ? inv.paymentStatus
+          : "waiting";
 const itemFilter = (item: SampleItem) =>
   item.kind === "invoice"
-    ? invoiceFilter({ paymentStatus: item.status, settlementStatus: item.settlementStatus ?? "" })
+    ? invoiceFilter({ paymentStatus: item.status })
     : item.status === "confirmed"
       ? "paid"
-      : "open";
+      : "confirming";
 function listPage<T>(
   url: URL,
   items: T[],
@@ -232,7 +235,7 @@ function listPage<T>(
 ) {
   const limit = Number(url.searchParams.get("limit") ?? 20);
   const start = Number(url.searchParams.get("cursor") ?? 0);
-  const filter = url.searchParams.get("status") ?? url.searchParams.get("direction");
+  const filter = url.searchParams.get("state") ?? url.searchParams.get("direction");
   const q = url.searchParams.get("q")?.toLowerCase();
   const matched = items.filter(
     (t) =>

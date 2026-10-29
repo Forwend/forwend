@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addressLink, lookalikeOf, txLink } from "@/shared/lib/chains";
+import { addressLink, lookalikeOf, tokenMatches, txLink } from "@/shared/lib/chains";
 
 const HASH = `0x${"ab".repeat(32)}`;
 
@@ -38,5 +38,15 @@ describe("lookalikeOf", () => {
     expect(lookalikeOf(421614, "USDC")).toBe("USDC.e");
     expect(lookalikeOf(84532, "USDC")).toBeUndefined();
     expect(lookalikeOf(421614, "USDT")).toBeUndefined();
+  });
+});
+
+describe("tokenMatches", () => {
+  it("matches every word against the symbol or the network, ignoring case", () => {
+    const usdc = { symbol: "USDC", chainId: 84532 };
+    expect(tokenMatches(usdc, "usdc base")).toBe(true);
+    expect(tokenMatches(usdc, "  sepolia ")).toBe(true);
+    expect(tokenMatches(usdc, "usdt")).toBe(false);
+    expect(tokenMatches(usdc, "")).toBe(true);
   });
 });

@@ -31,7 +31,7 @@ export function NotificationsForm({ profileId, saved }: NotificationsFormProps) 
         disabled={isLoading}
         className="w-full flex-row-reverse justify-between font-medium text-ink"
       />
-      <p className="pb-1 text-sm text-muted">
+      <p className="-mt-1.5 pb-1 text-sm text-muted">
         {saved.address ? COPY.to(saved.address) : COPY.noAddress}
       </p>
       {isError ? (

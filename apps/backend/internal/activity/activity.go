@@ -34,7 +34,8 @@ const (
 var ErrInvalid = errors.New("invalid activity request")
 
 // Item is an invoice or a non-reorged deposit. For an invoice, Status is its payment status, SettlementStatus is set
-// and TxHash is the settle transaction once settled; for a deposit, Status is detected or confirmed.
+// and TxHash is the settle transaction once settled; for a deposit, Status is detected or confirmed and At is its block
+// time, or its payment's creation when that is later within the block's whole second.
 type Item struct {
 	PaymentStatus    string
 	Confirming       bool
@@ -54,7 +55,17 @@ type Item struct {
 	// Held: a deposit the owner gets none of, held for the payer (D-26); under no status filter but all. False for an
 	// invoice.
 	Held bool
-	key  string
+	// A booked deposit's parts: what the ledger booked to the owner and what it holds for the payer (D-114). They add
+	// up to Amount; both nil for an invoice and for a deposit not booked yet.
+	MerchantAmount, HeldAmount *big.Int
+	// The payment's: Number is nil for a checkout session, whose Reference names the order (D-107).
+	Purpose      invoice.Purpose
+	DocumentKind invoice.DocumentKind
+	Number       *int64
+	Reference    string
+	ClientName   string
+	Title        string
+	key          string
 }
 
 // NextCursor is "" on the last page.
@@ -71,65 +82,135 @@ func NewService(pool *pgxpool.Pool) *Service {
 	return &Service{pool: pool}
 }
 
+// heldSQL says whether the owner gets none of chain transfer t, on option row i.
+// Booked: held when none went to the owner, or after a partly paid expiry moved it to the payer.
+// Not booked yet: the ledger's split rule (ledger.Final, late, money on an option the client didn't pay with).
+// Only deposit and reopen rows name a transfer; saying so lets the lookup use their index.
+const heldSQL = `CASE WHEN t.booked THEN NOT EXISTS (SELECT 1 FROM ledger_transactions x
+    JOIN ledger_entries e ON e.transaction_id = x.id WHERE x.chain_transfer_id = t.id
+    AND x.kind IN ('deposit', 'reopen') AND e.account = 'recipient_payable') OR i.payment_status = 'expired_partially_paid'
+  ELSE t.block_time > i.closes_at OR i.payment_status IN ('paid', 'expired', 'expired_partially_paid', 'canceled')
+    OR coalesce((SELECT m.chosen_id <> i.id FROM invoices m WHERE m.id = coalesce(i.main_id, i.id)), false) END`
+
+// depositAtSQL is chain transfer t's block time, but never before its option row i was made: a block time has whole
+// seconds, and money paid within the second a payment was made still comes after it.
+const depositAtSQL = `greatest(to_timestamp(t.block_time), i.created_at)`
+
+// merchantSQL is the part of booked transfer t the owner gets: none once a partly paid expiry moved it to the payer.
+const merchantSQL = `CASE WHEN t.booked THEN CASE WHEN i.payment_status = 'expired_partially_paid' THEN 0
+  ELSE (` + invoice.DepositPaidSQL + `)::numeric END END`
+
 // List filters both billing events and deposits by their payment's state. Held deposits appear only without a filter.
-func (s *Service) List(ctx context.Context, profileID, cursor string, limit int, status string, q search.Query) (Page, error) {
+// An invoice or request appears once numbered; a checkout session has no document, so only its deposits appear.
+func (s *Service) List(ctx context.Context, profileID, cursor string, limit int, status, state string, q search.Query) (Page, error) {
 	if limit < 1 || limit > MaxLimit {
 		return Page{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxLimit)
 	}
-	var filter *string
-	if status != "" {
-		if !slices.Contains(invoice.StatusFilters, status) {
-			return Page{}, fmt.Errorf("%w: status must be one of %v", ErrInvalid, invoice.StatusFilters)
-		}
-		filter = &status
+	if status != "" && !slices.Contains(invoice.StatusFilters, status) {
+		return Page{}, fmt.Errorf("%w: status must be one of %v", ErrInvalid, invoice.StatusFilters)
 	}
-	var after *time.Time
-	var afterKind, afterKey string
+	if state != "" && !slices.Contains(invoice.PaymentStates, state) {
+		return Page{}, fmt.Errorf("%w: state must be one of %v", ErrInvalid, invoice.PaymentStates)
+	}
+	// Each condition is added only when used: a cached generic plan of "$n IS NULL OR ..." never uses the index.
+	args := []any{profileID, limit + 1}
+	arg := func(v any) string {
+		args = append(args, v)
+		return fmt.Sprintf("$%d", len(args))
+	}
+	invoices := "invoices.profile_id = $1 AND invoices.number IS NOT NULL"
+	deposits := "i.profile_id = $1 AND t.status <> 'reorged'"
+	depositsFrom := "chain_transfers t JOIN invoices i ON i.id = t.invoice_id"
+	// Newest first; at the same time a deposit comes before an invoice, and the key breaks the other ties, so pages
+	// never skip or repeat an item. Each part reads only rows after the cursor, and at most a page of them.
 	if cursor != "" {
-		at, kind, key, err := decode(cursor)
+		after, kind, afterKey, err := decode(cursor)
 		if err != nil {
 			return Page{}, err
 		}
-		after, afterKind, afterKey = &at, kind, key
+		at, key := arg(after), arg(afterKey)
+		if kind == Invoice {
+			invoices += " AND (invoices.created_at, invoices.id) < (" + at + ", " + key + ")"
+			deposits += " AND " + depositAtSQL + " < " + at
+		} else {
+			invoices += " AND invoices.created_at <= " + at
+			deposits += " AND (" + depositAtSQL + ", t.id::text) < (" + at + ", " + key + ")"
+		}
 	}
-	// Newest first; kind and key break ties, so pages never skip or repeat an item.
+	if status != "" {
+		filter := arg(status)
+		match := "(" + filter + " = 'paid' AND invoices.payment_status = 'paid' OR " + invoice.ListStatusFilterSQL +
+			" = " + filter + ")"
+		invoices += " AND " + match
+		deposits += " AND NOT " + heldSQL + " AND " + match
+	}
+	// D-114: the Payments list's states; a deposit takes its payment's.
+	if state != "" {
+		match := invoice.PaymentStateSQL + " = " + arg(state)
+		invoices += " AND " + match
+		deposits += " AND NOT " + heldSQL + " AND " + match
+	}
+	if status != "" || state != "" {
+		depositsFrom += " JOIN invoices_current invoices ON invoices.id = coalesce(i.main_id, i.id)"
+	}
+	if q.Like != nil {
+		like := arg(*q.Like)
+		amount := "NULL"
+		if q.Amount != nil {
+			amount = arg(*q.Amount)
+		}
+		token := func(chainID, contract, value string) string {
+			return "EXISTS (SELECT 1 FROM tokens tk WHERE tk.chain_id = " + chainID + " AND tk.contract = " + contract +
+				" AND (tk.symbol ILIKE " + like + " OR " + value + " = " + amount + "::numeric * 10::numeric ^ tk.decimals))"
+		}
+		// A settled invoice matches its settle transaction.
+		invoices += ` AND (coalesce((SELECT s.tx_hash FROM settlement_intents s WHERE s.invoice_id = invoices.option_id
+			AND s.status = 'confirmed'), '') ILIKE ` + like + " OR " +
+			token("invoices.chain_id", "invoices.token_contract", "invoices.amount") + ")"
+		deposits += " AND (t.tx_hash ILIKE " + like + " OR " + token("t.chain_id", "t.token_contract", "t.amount") + ")"
+	}
 	rows, err := s.pool.Query(ctx, `
-		SELECT a.kind,a.at,a.key,a.invoice_id,a.chain_id,a.token,tk.symbol,tk.decimals,a.amount::text,a.status,
- a.settlement_status,a.tx_hash,a.option_count,`+invoice.ClosedSQL+`,a.held,invoices.payment_status,`+invoice.ConfirmingSQL+` FROM (
-		    SELECT 'invoice' AS kind, created_at AS at, id AS key, id AS invoice_id, chain_id,
-		           token_contract AS token, amount, payment_status AS status, settlement_status,
-		           coalesce((SELECT s.tx_hash FROM settlement_intents s WHERE s.invoice_id = invoices.option_id
-		                     AND s.status = 'confirmed'), '') AS tx_hash,
-		           (SELECT count(*) FROM invoices o WHERE o.id = invoices.id OR o.main_id = invoices.id) AS option_count,
-		           `+invoice.ClosedSQL+` AS closed, false AS held
-		    FROM invoices_current invoices WHERE profile_id = $1 AND number IS NOT NULL
+		SELECT a.kind, a.at, a.key, a.invoice_id, a.chain_id, a.token, tk.symbol, tk.decimals, a.amount::text, a.status,
+		    CASE a.kind WHEN 'invoice' THEN invoices.settlement_status ELSE '' END,
+		    CASE a.kind WHEN 'invoice' THEN coalesce((SELECT s.tx_hash FROM settlement_intents s
+		        WHERE s.invoice_id = invoices.option_id AND s.status = 'confirmed'), '') ELSE t.tx_hash END,
+		    CASE a.kind WHEN 'invoice' THEN (SELECT count(*) FROM invoices o WHERE o.id = invoices.id OR o.main_id = invoices.id)
+		        ELSE 1 END,
+		    `+invoice.ClosedSQL+`, CASE a.kind WHEN 'deposit' THEN `+heldSQL+` ELSE false END,
+		    invoices.payment_status, `+invoice.ConfirmingSQL+`, (`+merchantSQL+`)::text, (t.amount - (`+merchantSQL+`))::text,
+		    invoices.purpose, invoices.document_kind, invoices.number, coalesce(invoices.reference, ''),
+		    coalesce(invoices.client_name, ''), coalesce(invoices.title, '')
+		FROM (
+		    (SELECT 'invoice' AS kind, invoices.created_at AS at, invoices.id AS key, invoices.id AS invoice_id,
+		         NULL::bigint AS transfer_id, invoices.chain_id, invoices.token_contract AS token, invoices.amount,
+		         invoices.payment_status AS status
+		     FROM invoices_current invoices WHERE `+invoices+`
+		     ORDER BY invoices.created_at DESC, invoices.id DESC LIMIT $2)
 		    UNION ALL
-		    SELECT 'deposit', t.created_at, t.id::text, coalesce(i.main_id, i.id), t.chain_id, t.token_contract, t.amount, t.status,
-		           '', t.tx_hash, 1, false,
-		           h.held
-		    FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id JOIN invoices m ON m.id = coalesce(i.main_id, i.id)
-		    -- Booked: held when none went to the owner, or after a partly paid expiry moved it to the payer.
-		    -- Not booked yet: the ledger's split rule (ledger.Final, late, money on an option the client didn't pay with).
-		    CROSS JOIN LATERAL (SELECT CASE WHEN t.booked THEN NOT EXISTS (SELECT 1 FROM ledger_transactions x
-		            JOIN ledger_entries e ON e.transaction_id = x.id WHERE x.chain_transfer_id = t.id
-		            AND e.account = 'recipient_payable') OR i.payment_status = 'expired_partially_paid'
-		        ELSE t.block_time > i.closes_at OR i.payment_status IN ('paid', 'expired', 'expired_partially_paid', 'canceled')
-		            OR coalesce(m.chosen_id <> i.id, false) END AS held) h
-		    WHERE i.profile_id = $1 AND t.status <> 'reorged'
-		) a JOIN tokens tk ON tk.chain_id = a.chain_id AND tk.contract = a.token JOIN invoices_current invoices ON invoices.id=a.invoice_id
-		WHERE ($2::timestamptz IS NULL OR (at, kind, key) < ($2, $3, $4)) AND ($6::text IS NULL OR NOT a.held AND ($6 = 'paid' AND invoices.payment_status = 'paid' OR `+invoice.ListStatusFilterSQL+` = $6))
-		  AND ($7::text IS NULL OR tx_hash ILIKE $7 OR tk.symbol ILIKE $7 OR a.amount = $8::numeric * 10::numeric ^ tk.decimals)
-		ORDER BY at DESC, kind DESC, key DESC LIMIT $5`,
-		profileID, after, afterKind, afterKey, limit+1, filter, q.Like, q.Amount)
+		    (SELECT 'deposit', `+depositAtSQL+`, t.id::text, coalesce(i.main_id, i.id), t.id, t.chain_id, t.token_contract,
+		         t.amount, t.status
+		     FROM `+depositsFrom+` WHERE `+deposits+`
+		     ORDER BY `+depositAtSQL+` DESC, t.id::text DESC LIMIT $2)
+		) a JOIN tokens tk ON tk.chain_id = a.chain_id AND tk.contract = a.token
+		JOIN invoices_current invoices ON invoices.id = a.invoice_id
+		LEFT JOIN chain_transfers t ON t.id = a.transfer_id LEFT JOIN invoices i ON i.id = t.invoice_id
+		ORDER BY a.at DESC, a.kind, a.key DESC LIMIT $2`, args...)
 	if err != nil {
 		return Page{}, fmt.Errorf("read activity: %w", err)
 	}
 	items, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (Item, error) {
 		var it Item
 		var amount string
+		var merchant, held *string
 		err := row.Scan(&it.Kind, &it.At, &it.key, &it.InvoiceID, &it.ChainID, &it.Token, &it.Symbol, &it.Decimals,
-			&amount, &it.Status, &it.SettlementStatus, &it.TxHash, &it.OptionCount, &it.Closed, &it.Held, &it.PaymentStatus, &it.Confirming)
+			&amount, &it.Status, &it.SettlementStatus, &it.TxHash, &it.OptionCount, &it.Closed, &it.Held, &it.PaymentStatus,
+			&it.Confirming, &merchant, &held, &it.Purpose, &it.DocumentKind, &it.Number, &it.Reference, &it.ClientName,
+			&it.Title)
 		it.Amount, _ = new(big.Int).SetString(amount, 10)
+		if merchant != nil && held != nil {
+			it.MerchantAmount, _ = new(big.Int).SetString(*merchant, 10)
+			it.HeldAmount, _ = new(big.Int).SetString(*held, 10)
+		}
 		return it, err
 	})
 	if err != nil {

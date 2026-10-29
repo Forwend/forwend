@@ -75,11 +75,22 @@ async function mockNewUser(page: Page, user: NewUser) {
   });
 }
 
-const checklist = (page: Page) => page.getByRole("region", { name: "Get started" });
-const step = (page: Page, title: string) =>
-  checklist(page).getByRole("listitem").filter({ hasText: title });
+// R-50: the setup guide at the sidebar's foot (the phone's More sheet). It starts closed with its progress; its title
+// row opens it on the next step, which has its action and Skip.
+const checklist = (page: Page) => page.getByRole("region", { name: /^Get started/ });
+const openGuide = async (page: Page) => {
+  const toggle = checklist(page).getByRole("button", { name: /^Get started/ });
+  await expect(toggle).toBeVisible();
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+};
+// The passkey step reads the shared Privy test account, which may have a passkey linked: skip it when it is next.
+const skipPasskey = async (page: Page) => {
+  const skip = checklist(page).getByRole("button", { name: "Skip: Add a passkey" });
+  if (await skip.count()) await skip.click();
+};
 
-test("a new user picks what they want to do once and lands on the new profile with its checklist", async ({
+test("a new user picks what they want to do once and lands on the new profile with its setup guide", async ({
   browser,
 }) => {
   const context = await browser.newContext({
@@ -120,19 +131,20 @@ test("a new user picks what they want to do once and lands on the new profile wi
   await sidebar.getByRole("button", { name: /^Switch profile/ }).click();
   await expect(page.getByRole("menuitemradio")).toHaveCount(3);
   await page.keyboard.press("Escape");
-  await expect(checklist(page).getByRole("listitem")).toHaveCount(5);
-  // The passkey step reads the shared Privy test account, which may have a passkey linked.
-  await expect(step(page, "Add a passkey")).toContainText(/Done|Add passkey/);
-  await expect(
-    step(page, "Add billing details").getByRole("link", { name: "Add details" }),
-  ).toHaveAttribute("href", "/app/billing-details");
-  await expect(
-    step(page, "Send your first invoice").getByRole("link", { name: "New invoice" }),
-  ).toHaveAttribute("href", "/app/invoices/new");
-  await expect(step(page, "Get an invoice paid")).toContainText("Not done");
+  // Closed, it shows only the progress over a freelancer's five steps.
+  await expect(checklist(page)).toContainText(/[01] of 5 done/);
+  await expect(checklist(page).getByRole("button", { name: /^Get started/ })).toHaveAttribute(
+    "aria-expanded",
+    "false",
+  );
+  await expect(checklist(page).getByRole("button", { name: /Close/ })).toHaveCount(0);
+  await openGuide(page);
+  await skipPasskey(page);
+  const addDetails = checklist(page).getByRole("link", { name: "Add details" });
+  await expect(addDetails).toHaveAttribute("href", "/app/billing-details");
   expect(await blockingViolations(page)).toEqual([]);
 
-  await step(page, "Add billing details").getByRole("link", { name: "Add details" }).click();
+  await addDetails.click();
   await expect(page).toHaveURL("/app/billing-details");
   await page.getByRole("button", { name: "Save details" }).click();
   await expect(page.getByRole("textbox", { name: "Name or business name" })).toHaveAttribute(
@@ -150,7 +162,12 @@ test("a new user picks what they want to do once and lands on the new profile wi
   await page.getByRole("button", { name: "Save details" }).click();
   await expect(page).toHaveURL("/app");
   expect(user.billing).toMatchObject({ name: "Ada Design", country: "DE", taxId: null });
-  await expect(step(page, "Add billing details")).toContainText("Done");
+  // With billing details saved, the next step is the first invoice.
+  await openGuide(page);
+  await expect(checklist(page).getByRole("link", { name: "New invoice" })).toHaveAttribute(
+    "href",
+    "/app/invoices/new",
+  );
 
   await page.reload();
   await expect(sidebar.getByRole("button", { name: /^Switch profile/ })).toBeVisible();
@@ -158,7 +175,7 @@ test("a new user picks what they want to do once and lands on the new profile wi
   await context.close();
 });
 
-test("on a phone a new user skips the first run and gets the personal checklist", async ({
+test("on a phone a new user skips the first run and finds the personal setup guide in More", async ({
   browser,
 }) => {
   const context = await browser.newContext({
@@ -178,12 +195,15 @@ test("on a phone a new user skips the first run and gets the personal checklist"
   expect(await blockingViolations(page)).toEqual([]);
   await page.getByRole("button", { name: "Skip for now" }).click();
 
+  await page.getByRole("button", { name: "More", exact: true }).click();
   await expect(checklist(page)).toBeVisible();
   expect(user.choices).toEqual([[]]);
   expect(user.profiles).toHaveLength(1);
-  await expect(checklist(page).getByRole("listitem")).toHaveCount(4);
-  await expect(step(page, "Add billing details")).toHaveCount(0);
-  await step(page, "Request money").getByRole("button", { name: "Request", exact: true }).click();
+  // A personal profile has four steps: no billing details.
+  await expect(checklist(page)).toContainText(/of 4 done/);
+  await openGuide(page);
+  await skipPasskey(page);
+  await checklist(page).getByRole("button", { name: "Request", exact: true }).click();
   await expect(page).toHaveURL("/app/invoices/new");
   await expect(page.getByRole("heading", { level: 1, name: "Request money" })).toBeAttached();
   expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
@@ -215,7 +235,7 @@ test("the first run keeps the page a new user asked for, and is closed once done
   await context.close();
 });
 
-test("the checklist reads its steps from the data, and a skipped step or a closed card stays hidden", async ({
+test("the setup guide reads its steps from the data, keeps a skipped step hidden, and goes once all are done", async ({
   browser,
 }) => {
   const context = await browser.newContext({ storageState: session });
@@ -230,36 +250,27 @@ test("the checklist reads its steps from the data, and a skipped step or a close
   await mockNewUser(page, user);
   await page.goto("/app");
 
-  await expect(step(page, "Request money")).toContainText("Done");
-  await expect(step(page, "Get a request paid")).toContainText("Done");
-  await expect(step(page, "Request money").getByRole("button")).toHaveCount(0);
-  await expect(step(page, "Receive money")).toContainText("Not done");
-  // The passkey step reads the shared Privy test account, which may have a passkey linked.
+  // The request and its payment are done; money in that is not final yet leaves Receive money open.
+  await openGuide(page);
   const passkeyDone =
-    (await step(page, "Add a passkey").getByRole("button", { name: "Add passkey" }).count()) === 0;
+    (await checklist(page).getByRole("button", { name: "Add passkey" }).count()) === 0;
   await expect(checklist(page)).toContainText(`${passkeyDone ? 3 : 2} of 4 done`);
-  await step(page, "Receive money").getByRole("button", { name: "Receive", exact: true }).click();
+  if (!passkeyDone) {
+    await skipPasskey(page);
+    await page.reload();
+    await openGuide(page);
+    await expect(checklist(page).getByRole("button", { name: "Skip: Add a passkey" })).toHaveCount(
+      0,
+    );
+  }
+  await expect(checklist(page)).toContainText("Receive money");
+  await checklist(page).getByRole("button", { name: "Receive", exact: true }).click();
   await expect(page.getByRole("dialog", { name: /Receive/ })).toBeVisible();
   await page.keyboard.press("Escape");
 
-  if (!passkeyDone) {
-    await step(page, "Add a passkey").getByRole("button", { name: "Skip: Add a passkey" }).click();
-    await expect(step(page, "Add a passkey")).toHaveCount(0);
-    await page.reload();
-    await expect(step(page, "Receive money")).toBeVisible();
-    await expect(step(page, "Add a passkey")).toHaveCount(0);
-  }
-
+  // It has no close button: it goes once every step is done or skipped.
+  await expect(checklist(page).getByRole("button", { name: /Close/ })).toHaveCount(0);
   user.transfers = [{ ...TRANSFERS[0], direction: "in", status: "confirmed" }];
-  await page.reload();
-  await expect(page.getByRole("region", { name: "Total balance" })).toBeVisible();
-  await expect(checklist(page)).toHaveCount(0);
-
-  user.transfers = [];
-  await page.reload();
-  await expect(checklist(page)).toBeVisible();
-  await checklist(page).getByRole("button", { name: "Close checklist" }).click();
-  await expect(checklist(page)).toHaveCount(0);
   await page.reload();
   await expect(page.getByRole("region", { name: "Total balance" })).toBeVisible();
   await expect(checklist(page)).toHaveCount(0);

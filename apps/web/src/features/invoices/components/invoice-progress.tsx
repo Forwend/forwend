@@ -3,7 +3,6 @@
 import { IconButton, PaymentTimeline, STEP_STATES, TONES, Tooltip } from "@forwend/ui-web";
 import { Info } from "lucide-react";
 import { useEffect, useState } from "react";
-import { API_PAYMENT_STATUSES } from "@/features/activity/constants/activity";
 import { INVOICE_STEPS, INVOICE_TIMELINE } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
 import {
@@ -12,6 +11,7 @@ import {
   invoiceProgress,
 } from "@/features/invoices/lib/invoices";
 import type { Invoice, InvoiceStep } from "@/features/invoices/types/invoices";
+import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
 
 export interface InvoiceTimelineProps {
   invoice: Invoice;
@@ -94,17 +94,22 @@ export interface ConfirmingStatusProps {
 export function ConfirmingStatus({ blocks, total, seconds }: ConfirmingStatusProps) {
   const target = total != null && blocks != null ? Math.max(total, blocks) : 0;
   const done = Math.max(0, target - (blocks ?? 0));
-  const hint = COPY.confirmingHint(seconds, target === 0 ? blocks : null);
   return (
     <span className="inline-flex items-center gap-1 text-sm text-muted">
       <span className="tabular-nums">{COPY.confirmingCount(done, target)}</span>
-      {hint ? (
-        <Tooltip content={hint}>
-          <IconButton label={hint} size="xs">
-            <Info aria-hidden className="size-3.5" />
-          </IconButton>
-        </Tooltip>
-      ) : null}
+      <ConfirmingHint blocks={target === 0 ? blocks : null} seconds={seconds} />
     </span>
   );
+}
+
+/** The blocks and time left, in an info tooltip beside a confirming state. */
+export function ConfirmingHint({ blocks, seconds }: Omit<ConfirmingStatusProps, "total">) {
+  const hint = COPY.confirmingHint(seconds, blocks);
+  return hint ? (
+    <Tooltip content={hint}>
+      <IconButton label={hint} size="xs">
+        <Info aria-hidden className="size-3.5" />
+      </IconButton>
+    </Tooltip>
+  ) : null;
 }

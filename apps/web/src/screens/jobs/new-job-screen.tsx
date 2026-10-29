@@ -18,7 +18,7 @@ export function NewJobScreen() {
   // Without the list the form still works: the picker just doesn't show.
   const clients = useListClientsQuery(profile.profileId);
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex max-w-6xl flex-col gap-6">
       <div className="flex flex-col gap-2">
         {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
         <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
@@ -30,6 +30,7 @@ export function NewJobScreen() {
         <Skeleton className="h-96" />
       ) : billing.currentData === null ? (
         <EmptyState
+          page
           icon={IdCard}
           title={COPY.billingNeeded.title}
           description={COPY.billingNeeded.text}

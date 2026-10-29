@@ -1,4 +1,4 @@
-// Every color token in tokens.css, in display order. test/tokens-sync.test.ts keeps this in sync.
+// Every color token in tokens.css, in display order, for the /kit swatches.
 export const COLOR_TOKENS = [
   "bg",
   "surface",
@@ -11,6 +11,10 @@ export const COLOR_TOKENS = [
   "line-strong",
   "primary",
   "on-primary",
+  "brand",
+  "brand-hover",
+  "brand-edge",
+  "on-brand",
   "accent",
   "on-accent",
   "focus",

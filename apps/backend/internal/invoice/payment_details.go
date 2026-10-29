@@ -103,6 +103,9 @@ func (s *Service) PaymentDetails(ctx context.Context, profileID, id string, q Pa
 		return PaymentDetails{}, err
 	}
 	result.Invoice.Receipts = receipts[id]
+	if result.Invoice.Lines, err = s.lines(ctx, id); err != nil {
+		return PaymentDetails{}, err
+	}
 
 	result.Deliveries, err = webhook.PaymentDeliveries(ctx, tx, id)
 	if err != nil {

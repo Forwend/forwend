@@ -1,7 +1,6 @@
 "use client";
 
 import { formatTokenAmount, SelectField, shortAddress, TONES, useToast } from "@forwend/ui-web";
-import Link from "next/link";
 import { useState } from "react";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { useLabelTransactionMutation } from "@/features/transactions/api/transactions-api";
@@ -15,6 +14,7 @@ import type {
   TransactionClass,
   TransactionLabel,
 } from "@/features/transactions/types/transactions";
+import { RecordLink } from "@/shared/components/record-link";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { exactDigits } from "@/shared/lib/money";
 
@@ -38,23 +38,18 @@ export function TransactionType({ profileId, t }: TransactionTypeProps) {
   const [chosen, setChosen] = useState<string | null>(null);
   if (chosen !== null && chosen === t.classification) setChosen(null);
   const needsReview = !!t.payment?.policyException || !!t.payment?.unreconciled;
+  // Money that paid a payment opens it: the invoice number and client, or a checkout's payment.
   if (t.invoice && !t.labelable)
     return (
-      <Link
-        href={`${APP_ROUTES.payments}/${t.invoice.invoiceId}`}
-        className="font-medium text-ink underline underline-offset-2"
-      >
-        Transfer to wallet · {invoiceNumber(t.invoice.number)}
-      </Link>
+      <RecordLink href={`${APP_ROUTES.payments}/${t.invoice.invoiceId}`}>
+        {COPY.invoicePaid(invoiceNumber(t.invoice.number), t.invoice.clientName)}
+      </RecordLink>
     );
   if (!t.labelable && t.payment)
     return (
-      <Link
-        href={`${APP_ROUTES.payments}/${t.payment.paymentId}`}
-        className="font-medium text-ink underline underline-offset-2"
-      >
-        Transfer to wallet
-      </Link>
+      <RecordLink href={`${APP_ROUTES.payments}/${t.payment.paymentId}`}>
+        {COPY.classes[TRANSACTION_CLASSES.payment]}
+      </RecordLink>
     );
   if (!t.labelable)
     return (

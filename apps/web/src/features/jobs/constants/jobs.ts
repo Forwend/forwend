@@ -44,3 +44,11 @@ export const ACCEPT_FIELDS = { name: "name", email: "email" } as const;
 export const CHANGE_ERRORS = { pending: "change_pending", finished: "job_finished" } as const;
 
 export const PAYMENT_FIELDS = { title: "title", amount: "amount", dueDays: "dueDays" } as const;
+
+/** Where a payment stands on the job's Payments timeline. */
+export const PAYMENT_STEPS = {
+  paid: "paid",
+  invoiced: "invoiced",
+  change: "change",
+  upcoming: "upcoming",
+} as const;

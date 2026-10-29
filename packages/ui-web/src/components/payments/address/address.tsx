@@ -28,7 +28,7 @@ export function Address({
   const copied = status === COPY_STATUS.copied;
   const failed = status === COPY_STATUS.failed;
   return (
-    <span className="inline-flex max-w-full items-center gap-1 rounded-pill border border-line bg-surface py-1 pr-1 pl-3 text-sm">
+    <span className="inline-flex max-w-full items-center gap-1 rounded-md border border-line bg-surface py-1 pr-1 pl-3 text-sm">
       <span
         className={cx("min-w-0 font-mono text-ink", failed && "break-all select-all")}
         title={address}

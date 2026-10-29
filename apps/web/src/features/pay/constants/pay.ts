@@ -23,3 +23,8 @@ export const PAY_STATES = {
   canceled: "canceled",
   waiting: "waiting",
 } as const;
+
+/** The checkout's summary side from large screens: its content ends 4rem left of the page's center and is at most
+ * 26rem wide; the pay side mirrors it. Shared by the summary column and the footer under it. */
+export const LEFT_PAD = "lg:pr-16 lg:pl-[max(2.5rem,calc(50vw-30rem))]";
+export const RIGHT_PAD = "lg:pr-[max(2.5rem,calc(50vw-32rem))]";

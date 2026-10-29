@@ -70,7 +70,7 @@ export function NewKeyDialog({ profileId, stores, onMade }: NewKeyDialogProps) {
       title={COPY.newTitle}
       onClose={reset}
       trigger={(open) => (
-        <Button onClick={open}>
+        <Button size="sm" onClick={open}>
           <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />
           {COPY.add}
         </Button>
@@ -127,7 +127,7 @@ export function NewKeyDialog({ profileId, stores, onMade }: NewKeyDialogProps) {
             {errors.form}
           </p>
         ) : null}
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant={BUTTON_VARIANTS.secondary} onClick={close}>
             {COPY.cancel}
           </Button>

@@ -32,10 +32,10 @@ export function ActionButton({
     >
       <span
         className={cx(
-          "grid size-12 place-items-center rounded-pill border shadow-sm transition-[background-color,border-color,color,opacity,scale] duration-[var(--fw-duration-fast)] ease-[var(--fw-ease-out)] group-active:scale-95 group-aria-disabled:group-active:scale-100 motion-reduce:group-active:scale-100 group-focus-visible:outline-2 group-focus-visible:outline-offset-2 group-focus-visible:outline-focus",
+          "grid size-12 place-items-center rounded-pill border transition-[background-color,border-color,color,opacity,scale] duration-[var(--fw-duration-fast)] ease-[var(--fw-ease-out)] group-active:scale-95 group-aria-disabled:group-active:scale-100 motion-reduce:group-active:scale-100 group-focus-visible:outline-2 group-focus-visible:outline-offset-2 group-focus-visible:outline-focus",
           primary && !disabled
-            ? "border-primary bg-primary text-on-primary group-hover:opacity-90"
-            : "border-line bg-surface group-hover:bg-surface-2 group-aria-disabled:bg-surface-2 group-aria-disabled:shadow-none",
+            ? "border-brand-edge bg-brand text-on-brand group-hover:bg-brand-hover"
+            : "border-line bg-surface group-hover:bg-surface-2 group-aria-disabled:bg-surface-2",
         )}
       >
         <Icon aria-hidden className="size-[var(--fw-icon-md)]" />
