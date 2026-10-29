@@ -256,6 +256,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-188 | Payment-link traffic never stops the owner from creating invoices. | Given invoices payers make on a profile's payment links, then they count toward their own open and daily limits. The owner's invoices keep theirs. A stranger who spams a public link uses up only the links' quota. | backend | R-142, R-117 |
 
+| R-189 | No provider can make the executor pay more than a set fee per gas, and a draining executor alerts early. | Given any fee suggestion, then the signer signs at most the chain's ceiling per gas unit, replacements included. A chain without a ceiling is not served. Given an executor holding less than 20 deploys and settles, then the signer logs an `ALERT` every 5 minutes. | backend | R-22, R-180 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.

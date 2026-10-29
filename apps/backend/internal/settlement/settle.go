@@ -272,7 +272,7 @@ func (s *Signer) replace(ctx context.Context, client *ethclient.Client, in inten
 	if err != nil {
 		return nil, err
 	}
-	limit := new(big.Int).Mul(feeCap, big.NewInt(MaxFeeFactor))
+	limit := minBig(new(big.Int).Mul(feeCap, big.NewInt(MaxFeeFactor)), maxFeePerGas[in.chainID])
 	bump := func(x *big.Int) *big.Int {
 		return new(big.Int).Div(new(big.Int).Add(new(big.Int).Mul(x, big.NewInt(9)), big.NewInt(7)), big.NewInt(8))
 	}
@@ -329,10 +329,11 @@ func (s *Signer) overStuck(ctx context.Context, client *ethclient.Client, chainI
 		int64(chainID), strings.ToLower(s.sender.Hex()), int64(mined)).Scan(&saved); err != nil || saved {
 		return tx, err
 	}
-	two := big.NewInt(2)
+	two, ceiling := big.NewInt(2), maxFeePerGas[chainID]
+	tip, feeCap := minBig(new(big.Int).Mul(tx.GasTipCap(), two), ceiling), minBig(new(big.Int).Mul(tx.GasFeeCap(), two), ceiling)
 	slog.Warn("deploy replaces a stuck transaction", "chain", chainID, "nonce", mined)
 	return types.SignTx(types.NewTx(&types.DynamicFeeTx{ChainID: tx.ChainId(), Nonce: mined,
-		GasTipCap: new(big.Int).Mul(tx.GasTipCap(), two), GasFeeCap: new(big.Int).Mul(tx.GasFeeCap(), two),
+		GasTipCap: tip, GasFeeCap: feeCap,
 		Gas: tx.Gas(), To: tx.To(), Data: tx.Data()}), types.LatestSignerForChainID(tx.ChainId()), s.key)
 }
 
@@ -355,7 +356,20 @@ func fees(ctx context.Context, client *ethclient.Client, chainID uint64) (tip, f
 	if head.BaseFee == nil {
 		return nil, nil, fmt.Errorf("chain %d has no base fee (EIP-1559)", chainID)
 	}
-	return tip, new(big.Int).Add(new(big.Int).Mul(head.BaseFee, big.NewInt(2)), tip), nil
+	ceiling, ok := maxFeePerGas[chainID]
+	if !ok {
+		return nil, nil, fmt.Errorf("chain %d has no fee ceiling (settlement.maxFeePerGas)", chainID)
+	}
+	feeCap = minBig(new(big.Int).Add(new(big.Int).Mul(head.BaseFee, big.NewInt(2)), tip), ceiling)
+	return minBig(tip, feeCap), feeCap, nil
+}
+
+// minBig returns a copy, so a ceiling in maxFeePerGas is never handed out to be changed.
+func minBig(a, b *big.Int) *big.Int {
+	if a.Cmp(b) <= 0 {
+		return new(big.Int).Set(a)
+	}
+	return new(big.Int).Set(b)
 }
 
 // awaitCode: a node that hasn't seen the deploy estimates settle far too low.

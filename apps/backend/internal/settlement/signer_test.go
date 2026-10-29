@@ -1503,6 +1503,60 @@ func TestDeployReplacesAStuckTransaction(t *testing.T) {
 	}
 }
 
+// At a base fee whose doubled fee cap passes the ceiling, the stuck-nonce deploy signs at the ceiling, and the node takes it.
+func TestStuckDeployReplacementStopsAtTheCeiling(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	e.anvilCall(t, "anvil_setNextBlockBaseFeePerGas", hexutil.EncodeUint64(400e9))
+	e.anvil.Mine(1)
+	if err := e.anvil.RPC.Call(nil, "evm_setAutomine", false); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = e.anvil.RPC.Call(nil, "evm_setAutomine", true) }()
+	s := e.signer(t)
+	stuck, err := s.sign(ctx, e.client, chaintest.ChainID, s.sender, nil, 0, 21_000, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.client.SendTransaction(ctx, stuck); err != nil {
+		t.Fatal(err)
+	}
+	next, err := s.sign(ctx, e.client, chaintest.ChainID, s.sender, nil, 0, 21_000, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	over, err := s.overStuck(ctx, e.client, chaintest.ChainID, next)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ceiling := maxFeePerGas[chaintest.ChainID]
+	if over.GasFeeCap().Cmp(ceiling) != 0 || over.GasTipCap().Cmp(over.GasFeeCap()) > 0 {
+		t.Fatalf("replacement fee cap %s, tip %s; want the %s ceiling and a tip within it", over.GasFeeCap(), over.GasTipCap(), ceiling)
+	}
+	if err := e.client.SendTransaction(ctx, over); err != nil {
+		t.Fatalf("the replacement is refused: %v", err)
+	}
+}
+
+// A saved settle already at the ceiling is sent again as it is: no replacement signs past it.
+func TestReplacementNeverPassesTheCeiling(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	e.anvilCall(t, "anvil_setNextBlockBaseFeePerGas", hexutil.EncodeUint64(400e9))
+	e.anvil.Mine(1)
+	s := e.signer(t)
+	ceiling := maxFeePerGas[chaintest.ChainID]
+	old, err := types.SignTx(types.NewTx(&types.DynamicFeeTx{ChainID: big.NewInt(chaintest.ChainID), GasTipCap: big.NewInt(1e9),
+		GasFeeCap: ceiling, Gas: 21_000, To: &s.sender}), types.LatestSignerForChainID(big.NewInt(chaintest.ChainID)), s.key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.replace(ctx, e.client, intent{chainID: chaintest.ChainID, invoiceID: "0x01"}, old)
+	if err != nil || got.Hash() != old.Hash() {
+		t.Fatalf("replacing a settle at the ceiling: %v %v; want it sent again as it is", got, err)
+	}
+}
+
 // Tempo is detected by code at its fee manager.
 func TestTempoSettleGasFloor(t *testing.T) {
 	e := setup(t)
