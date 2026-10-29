@@ -452,7 +452,7 @@
         "The payment detail page has no next-step sentence box; its status badges, Amount figures and Needs attention panel carry the state (owner request 2026-10-29)"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "e2e"
@@ -526,11 +526,18 @@
           "summary": "Pass. f40ca851 fixes the earlier findings. docs/web/DESIGN.md no longer describes a next-step sentence under payment details; line 308 matches the code. apps/web/e2e/privy/payments.spec.ts:517-519 now checks that the header badge reads Partially paid and that no Needs attention heading shows. The panel title is an h2 (payment-detail.tsx:503), so the test fails if partial_payment stops being routine (payment-detail.tsx:61). The stale comment above NEXT_BOX in invoice-detail.tsx is gone. Nothing still uses the removed function, copy or the header's next prop. Money and safety facts still show: review_funds problems in Needs attention, held money as the Extra figure, refunds as Returned, confirming as the badge and 'Confirming, not final'. Note, not blocking: a partial payment awaiting evidence reads Partially paid with Still due, and nothing says the rest is still being checked; the owner accepted this. Verify passed at 16:33Z, and the live log shows 12 of 12 payments.spec.ts tests passed.",
           "at": "2026-10-29T16:34:53Z",
           "filesHash": "ff40937bf30c50b4"
-        }
+        },
+        "commit": "9f62a166",
+        "doneAt": "2026-10-29T16:35:06Z"
       },
       "branch": "fix/f346-the-payment-page-shows-no-next-step-box",
       "baseCommit": "ea82085dc674ba355c932cafd47514b4065c8a2b",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f346-the-payment-page-shows-no-next-step-box",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
