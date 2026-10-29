@@ -452,7 +452,7 @@
         "The payment detail page has no next-step sentence box; its status badges, Amount figures and Needs attention panel carry the state (owner request 2026-10-29)"
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "web-unit",
         "e2e"
@@ -463,19 +463,20 @@
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-29 review fail by independent-reviewer: Fail. The box is gone from the payment page (payment-detail.tsx, detail-header.tsx), and nothing still calls the removed function, copy or the header's next prop. Money and safety facts still show elsewhere: review_funds problems stay in Needs attention with 'Contact support' (payment-problems.tsx); held money shows as the Extra figure in warning tone; refunds show as Returned; confirming shows as the badge, 'Confirming, not final' and the Transfers state. Blocking: (1) docs/web/DESIGN.md:355-356 still says the payment page shows one sentence of what happened and what to do next. That contradicts DESIGN.md:308 and the code; fix or remove those lines. (2) apps/web/e2e/privy/payments.spec.ts:517-518 no longer proves anything. Every payment page has a status badge, and no code in apps/web/src or packages/ui-web/src renders 'pay the rest' or 'share checkout'. So the test passes whatever the page shows. Assert real output instead, for example the Partially paid badge and no 'Open checkout' problem link or 'remaining amount' line; or delete the test if its claim no longer applies. Minor: apps/web/src/features/invoices/components/invoice-detail.tsx:495 comment still points to the payment page's next-step box. Note, not blocking: a partial payment awaiting evidence (partial_payment with action wait, hidden by payment-detail.tsx:61) now reads Partially paid, Received Final and Still due, and nothing says the rest is still being checked. The owner accepted this when asking to remove the box. Checks passed per harness history, and the live log shows 12 of 12 payments.spec.ts tests passed."
+        "2026-10-29 review fail by independent-reviewer: Fail. The box is gone from the payment page (payment-detail.tsx, detail-header.tsx), and nothing still calls the removed function, copy or the header's next prop. Money and safety facts still show elsewhere: review_funds problems stay in Needs attention with 'Contact support' (payment-problems.tsx); held money shows as the Extra figure in warning tone; refunds show as Returned; confirming shows as the badge, 'Confirming, not final' and the Transfers state. Blocking: (1) docs/web/DESIGN.md:355-356 still says the payment page shows one sentence of what happened and what to do next. That contradicts DESIGN.md:308 and the code; fix or remove those lines. (2) apps/web/e2e/privy/payments.spec.ts:517-518 no longer proves anything. Every payment page has a status badge, and no code in apps/web/src or packages/ui-web/src renders 'pay the rest' or 'share checkout'. So the test passes whatever the page shows. Assert real output instead, for example the Partially paid badge and no 'Open checkout' problem link or 'remaining amount' line; or delete the test if its claim no longer applies. Minor: apps/web/src/features/invoices/components/invoice-detail.tsx:495 comment still points to the payment page's next-step box. Note, not blocking: a partial payment awaiting evidence (partial_payment with action wait, hidden by payment-detail.tsx:61) now reads Partially paid, Received Final and Still due, and nothing says the rest is still being checked. The owner accepted this when asking to remove the box. Checks passed per harness history, and the live log shows 12 of 12 payments.spec.ts tests passed.",
+        "2026-10-29 review pass by independent-reviewer: Pass. f40ca851 fixes the earlier findings. docs/web/DESIGN.md no longer describes a next-step sentence under payment details; line 308 matches the code. apps/web/e2e/privy/payments.spec.ts:517-519 now checks that the header badge reads Partially paid and that no Needs attention heading shows. The panel title is an h2 (payment-detail.tsx:503), so the test fails if partial_payment stops being routine (payment-detail.tsx:61). The stale comment above NEXT_BOX in invoice-detail.tsx is gone. Nothing still uses the removed function, copy or the header's next prop. Money and safety facts still show: review_funds problems in Needs attention, held money as the Extra figure, refunds as Returned, confirming as the badge and 'Confirming, not final'. Note, not blocking: a partial payment awaiting evidence reads Partially paid with Still due, and nothing says the rest is still being checked; the owner accepted this. Verify passed at 16:33Z, and the live log shows 12 of 12 payments.spec.ts tests passed."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-29T16:26:11Z",
+        "at": "2026-10-29T16:33:24Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.5,
+            "seconds": 3.2,
             "log": ""
           },
           {
@@ -489,7 +490,7 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
+            "seconds": 0.2,
             "log": ""
           },
           {
@@ -503,28 +504,28 @@
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 47.6,
+            "seconds": 44.7,
             "log": ""
           },
           {
             "id": "web-unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.8,
+            "seconds": 3.7,
             "log": ""
           }
         ],
         "taskHash": "e788df29349ddf9f",
-        "filesHash": "191fec426cbbfd3d",
+        "filesHash": "ff40937bf30c50b4",
         "proof": {
-          "1": "web-unit: the payment unit tests pass with the next-step logic, copy and header prop removed; the live payments spec, run by hand (12/12), checks the page has no next-step sentence"
+          "1": "web-unit: the payment unit tests pass with the next-step logic, copy and header prop removed; the live payments spec, run by hand (12/12), checks the sentence is gone and that a partial payment shows its badge with no Needs attention panel"
         },
         "review": {
-          "result": "fail",
+          "result": "pass",
           "by": "independent-reviewer",
-          "summary": "Fail. The box is gone from the payment page (payment-detail.tsx, detail-header.tsx), and nothing still calls the removed function, copy or the header's next prop. Money and safety facts still show elsewhere: review_funds problems stay in Needs attention with 'Contact support' (payment-problems.tsx); held money shows as the Extra figure in warning tone; refunds show as Returned; confirming shows as the badge, 'Confirming, not final' and the Transfers state. Blocking: (1) docs/web/DESIGN.md:355-356 still says the payment page shows one sentence of what happened and what to do next. That contradicts DESIGN.md:308 and the code; fix or remove those lines. (2) apps/web/e2e/privy/payments.spec.ts:517-518 no longer proves anything. Every payment page has a status badge, and no code in apps/web/src or packages/ui-web/src renders 'pay the rest' or 'share checkout'. So the test passes whatever the page shows. Assert real output instead, for example the Partially paid badge and no 'Open checkout' problem link or 'remaining amount' line; or delete the test if its claim no longer applies. Minor: apps/web/src/features/invoices/components/invoice-detail.tsx:495 comment still points to the payment page's next-step box. Note, not blocking: a partial payment awaiting evidence (partial_payment with action wait, hidden by payment-detail.tsx:61) now reads Partially paid, Received Final and Still due, and nothing says the rest is still being checked. The owner accepted this when asking to remove the box. Checks passed per harness history, and the live log shows 12 of 12 payments.spec.ts tests passed.",
-          "at": "2026-10-29T16:29:44Z",
-          "filesHash": "191fec426cbbfd3d"
+          "summary": "Pass. f40ca851 fixes the earlier findings. docs/web/DESIGN.md no longer describes a next-step sentence under payment details; line 308 matches the code. apps/web/e2e/privy/payments.spec.ts:517-519 now checks that the header badge reads Partially paid and that no Needs attention heading shows. The panel title is an h2 (payment-detail.tsx:503), so the test fails if partial_payment stops being routine (payment-detail.tsx:61). The stale comment above NEXT_BOX in invoice-detail.tsx is gone. Nothing still uses the removed function, copy or the header's next prop. Money and safety facts still show: review_funds problems in Needs attention, held money as the Extra figure, refunds as Returned, confirming as the badge and 'Confirming, not final'. Note, not blocking: a partial payment awaiting evidence reads Partially paid with Still due, and nothing says the rest is still being checked; the owner accepted this. Verify passed at 16:33Z, and the live log shows 12 of 12 payments.spec.ts tests passed.",
+          "at": "2026-10-29T16:34:53Z",
+          "filesHash": "ff40937bf30c50b4"
         }
       },
       "branch": "fix/f346-the-payment-page-shows-no-next-step-box",
