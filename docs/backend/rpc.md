@@ -5,6 +5,9 @@
 - `chains` owns canonical numeric IDs, readable unique names, EVM family, activation and maximum latest-head age.
 - `rpc_endpoints` owns provider identity, legacy role label, private/public tier, priority, enablement, destination reference and budget group.
 - Migration 82 seeds existing public endpoints without activating chains; Base Sepolia is added disabled if missing.
+- Migration 92 removes dRPC and adds public HTTPS and WSS endpoints measured on 2026-10-29.
+  - They passed chain ID, finalized tag, log range, batch and block-hash `eth_call` checks.
+  - Tenderly's WSS is left out: it never answers a batch.
 - Private endpoints require `secret_ref` and prohibit `public_url`; public endpoints require `public_url` and prohibit `secret_ref`.
 - `RPC_ENDPOINT_SECRETS` maps references to complete URLs in the backend environment.
 - Example format: `RPC_ENDPOINT_SECRETS='{"BASE_PRIMARY":"https://provider.example/api/replace-with-secret"}'`.
@@ -43,6 +46,8 @@ VALUES
 ## Routing and health
 
 - Keep go-ethereum for RPC serialization, typed clients and transactions; the HTTP transport owns routing and destination checks.
+- An endpoint URL is `https://` or `wss://`; both kinds share one pool and one ranking, measured the same way (R-185).
+  - Budgets, pacing, answer checks, refusals and failover are the same for both.
 - [Go RPC documentation](https://pkg.go.dev/github.com/ethereum/go-ethereum/rpc) documents custom HTTP clients and typed errors.
 - Each request goes to the best eligible endpoint, chosen in this order:
   - one not known to refuse the request's size;
@@ -55,9 +60,16 @@ VALUES
 - A log range, log result or batch an endpoint refuses goes to the next endpoint unchanged.
   - The endpoint stays healthy. For one hour it is asked last for requests that size or larger.
   - The refusal reaches the caller only when no other endpoint answered; only then does the caller narrow its query.
-  - Providers differ: dRPC's free plan takes 101 blocks and 3 calls per batch, `sepolia.base.org` 201 blocks.
+  - Providers differ: `sepolia.base.org` takes 201 blocks, and Arc stops at 20,000 log results.
+  - A batch refused for its size, however the provider words it, counts as a batch limit, not a log range.
+- An answer that the block or state is missing goes to the next endpoint, which may have it.
+  - Examples: a block past a lagging node's head, or state a pruned node dropped (PublicNode on Arbitrum).
+  - The endpoint stays healthy, and the miss doesn't count as a fast answer.
+  - A health check that gets a miss or a refusal fails, so that endpoint rests.
+  - A revert keeps its category, whatever its reason text says.
+  - The miss reaches the caller only when no endpoint has the data.
 - The whole request has a 30-second maximum, including health checks and budget waits; shorter caller deadlines take precedence.
-- Each HTTP exchange has a five-second timeout and a 64 MiB response limit.
+- Each exchange has a five-second timeout and a 64 MiB response limit.
 - Each failed endpoint rests for 0.5–1 second initially, doubling toward a 2.5–5-minute maximum.
 - HTTP 401, 403, 404 and malformed responses use the maximum cooldown immediately.
 - HTTP 429 honors `Retry-After`, bounded at five minutes; JSON-RPC rate limits also trigger failover.
@@ -74,6 +86,24 @@ VALUES
 - Local circuit state is not shared across processes; weighted budgets are shared through Postgres.
 - Structured warnings name chain ID, endpoint ID, cooldown and a safe failure category.
 - Operators must monitor unavailable-chain warnings and existing worker/signer errors until dedicated metrics are implemented.
+
+## WebSocket endpoints
+
+- A `wss://` endpoint keeps one connection, shared by all its requests.
+  - Each call gets an ID unique on the connection, so answers find their requests whatever IDs callers chose.
+  - An answer error without an ID goes to the only request waiting; with several waiting, the connection drops.
+- A connection idle 45 seconds is replaced before the next request: PublicNode drops silent ones at 60 seconds.
+- A connection the server closes is dialed again on the next request, with no failure counted.
+- No answer within the attempt timeout drops the connection; the endpoint rests like any failed one.
+  - A caller's own shorter deadline leaves the connection to the other requests on it.
+- One dial runs at a time; requests waiting for it keep their own deadlines.
+- One answer may come in several frames, as PublicNode sends batches. All its frames together stay within 64 MiB.
+- Only a failed dial rests the host's other endpoints. A lost or silent connection rests only the WSS endpoint.
+- A refused upgrade counts as its HTTP status: 401, 403 or 404 rest it the maximum, 429 honors `Retry-After`.
+- Batches over 50 calls go to HTTPS endpoints first: PublicNode never answers larger WSS batches.
+- The pool subscribes to nothing. Server notifications are ignored; money evidence comes from finalized reads only.
+- The dial uses the same destination checks as HTTPS, never a proxy, sends no `Origin`, and never follows a redirect.
+- `gorilla/websocket`, already built in through go-ethereum's `rpc` package, carries the connection.
 
 ## Errors and transaction safety
 
@@ -94,7 +124,8 @@ VALUES
 
 ## Network and secret controls
 
-- HTTPS is required; userinfo and fragments are rejected; IP literals must name public addresses.
+- HTTPS or WSS is required; userinfo and fragments are rejected; IP literals must name public addresses.
+  - A WSS URL passes exactly the checks of its HTTPS form; `ws://` and `http://` work only for local Anvil.
 - Destination addresses are checked immediately before each connection, including addresses returned after DNS changes.
 - Private, loopback, link-local, metadata and reserved addresses are refused; redirects and ambient proxies are disabled.
 - `RPC_ALLOW_LOOPBACK=1` permits local Anvil only; production Compose fixes it to `0`.

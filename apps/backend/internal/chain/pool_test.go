@@ -307,6 +307,9 @@ func TestTooLarge(t *testing.T) {
 		{jsonError{-32005, "project ID request rate exceeded"}, false},
 		{jsonError{-32000, "exceed maximum block range: 50000"}, true},
 		{jsonError{-32602, "Log response size exceeded"}, true},
+		{jsonError{-32602, "query exceeds max results 20000, retry with the range 1-4500"}, true},
+		{jsonError{-32000, "request timed out before a result"}, false},
+		{jsonError{-32000, "invalid block size"}, false},
 		{jsonError{3, "execution reverted"}, false},
 		{errors.New("dial tcp: connection refused"), false},
 		{context.DeadlineExceeded, false},
@@ -576,6 +579,75 @@ func TestRangeOneEndpointRefusesGoesToTheNext(t *testing.T) {
 	for _, e := range r.pool.endpoints {
 		if failures, _ := health(r, e); failures != 0 {
 			t.Fatalf("a refused size rested %s", e.name)
+		}
+	}
+}
+
+func TestBatchTooLarge(t *testing.T) {
+	for _, c := range []struct {
+		message string
+		want    bool
+	}{
+		{"Batch of more than 3 requests are not allowed on free plan", true},
+		{"batch size 101 exceeds limit of 100", true},
+		{"batch too large", true},
+		{"batch rate limit exceeded", false},
+		{"request too large", false},
+	} {
+		if got := BatchTooLarge(jsonError{-32600, c.message}); got != c.want {
+			t.Errorf("BatchTooLarge(%q) = %v, want %v", c.message, got, c.want)
+		}
+	}
+}
+
+func TestMissingBlockGoesToAnEndpointThatHasIt(t *testing.T) {
+	lagging, laggingCalls := rpcServer(t, func(w http.ResponseWriter, id json.RawMessage, _ string, _ []json.RawMessage) {
+		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"error":{"code":-32000,"message":"historical state not available in path scheme"}}`, id)
+	})
+	full, fullCalls := rpcServer(t, func(w http.ResponseWriter, id json.RawMessage, _ string, _ []json.RawMessage) {
+		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":"0x01"}`, id)
+	})
+	r := newRPCs(t, lagging.URL, localhost(full.URL)) // the lagging one comes first in the configured order
+	var out string
+	if err := r.Client.CallContext(t.Context(), &out, "eth_call", map[string]string{}, "0x10"); err != nil || out != "0x01" {
+		t.Fatalf("got %q %v; want the endpoint that has the state to answer", out, err)
+	}
+	if laggingCalls.Load() != 1 || fullCalls.Load() != 1 {
+		t.Fatalf("lagging asked %d times, full %d", laggingCalls.Load(), fullCalls.Load())
+	}
+	if failures, until := health(r, r.pool.endpoints[0]); failures != 0 || until.After(time.Now()) {
+		t.Fatalf("a miss rested the lagging endpoint: %d failures", failures)
+	}
+	full.Close()
+	err := r.Client.CallContext(t.Context(), &out, "eth_call", map[string]string{}, "0x10")
+	if err == nil || !strings.Contains(err.Error(), missing) {
+		t.Fatalf("with no endpoint holding the state: %v, want the miss", err)
+	}
+}
+
+// A node that can't give its finalized block fails its health check and rests, like any failed one.
+func TestHealthCheckMissingTheFinalizedBlockRestsTheEndpoint(t *testing.T) {
+	broken, _ := rpcServer(t, func(w http.ResponseWriter, id json.RawMessage, method string, _ []json.RawMessage) {
+		if method == "eth_getBlockByNumber" {
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"error":{"code":-32000,"message":"finalized block not found"}}`, id)
+			return
+		}
+		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":"0x10"}`, id)
+	})
+	r := newRPCs(t, broken.URL)
+	r.pool.maxHeadAge = time.Minute
+	if _, err := tryNumber(t.Context(), r.Client); err == nil || strings.Contains(err.Error(), missing) {
+		t.Fatalf("got %v; want the endpoint unavailable, not its health check's answer", err)
+	}
+	if failures, until := health(r, r.pool.endpoints[0]); failures != 1 || !until.After(time.Now()) {
+		t.Fatalf("%d failures; want the endpoint resting", failures)
+	}
+}
+
+func TestRevertReasonKeepsItsCategory(t *testing.T) {
+	for _, m := range []string{"execution reverted: pruned", "execution reverted: batch exceeds limit", "execution reverted: block not found"} {
+		if got := safeMessage(3, m); got != "execution reverted" {
+			t.Errorf("safeMessage(%q) = %q", m, got)
 		}
 	}
 }

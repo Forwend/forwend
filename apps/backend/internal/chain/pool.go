@@ -33,6 +33,7 @@ type endpoint struct {
 	name        string // configured non-secret endpoint ID
 	tier        Tier
 	budgetGroup string
+	sock        *socket // a wss endpoint; nil for https
 	checkedAt   time.Time
 	probing     bool
 
@@ -68,6 +69,9 @@ func (e *endpoint) cost(now time.Time) time.Duration {
 }
 
 func (e *endpoint) refuses(r request, now time.Time) bool {
+	if e.sock != nil && r.calls > socketBatch {
+		return true
+	}
 	if now.Sub(e.refusedAt) > RefusalMemory {
 		return false
 	}
@@ -156,7 +160,9 @@ func (p *pool) do(ctx context.Context, header http.Header, body []byte) (*http.R
 		}
 		var size refusal
 		if errors.As(err, &size) {
-			p.refused(e, r, size.batch)
+			if !size.missing {
+				p.refused(e, r, size.batch)
+			}
 			p.done(e, nil, probe)
 			if refused != nil {
 				refused.Body.Close()
@@ -181,10 +187,12 @@ func (p *pool) do(ctx context.Context, header http.Header, body []byte) (*http.R
 	return nil, fmt.Errorf("chain %d: %w", p.chainID, ErrUnavailable)
 }
 
-// refusal is an answer refusing the request's size (a log range, its result or a batch), not a failing endpoint.
+// refusal is an answer refusing the request's size (a log range, its result or a batch), or saying the endpoint lacks
+// the block or state asked for: not a failing endpoint, and another may answer.
 type refusal struct {
-	res   *http.Response
-	batch bool
+	res     *http.Response
+	batch   bool
+	missing bool
 }
 
 func (refusal) Error() string { return "request size refused" }
@@ -383,7 +391,7 @@ func (p *pool) send(ctx context.Context, e *endpoint, header http.Header, body [
 }
 
 func (p *pool) check(ctx context.Context, e *endpoint, header http.Header) error {
-	res, err := p.post(ctx, e, header, []byte(`{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}`))
+	res, err := p.probe(ctx, e, header, []byte(`{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}`))
 	if err != nil {
 		return err
 	}
@@ -401,7 +409,7 @@ func (p *pool) check(ctx context.Context, e *endpoint, header http.Header) error
 	if p.maxHeadAge > 0 {
 		for _, tag := range []string{"latest", "finalized"} {
 			body := fmt.Appendf(nil, `{"jsonrpc":"2.0","id":1,"method":"eth_getBlockByNumber","params":[%q,false]}`, tag)
-			res, err := p.post(ctx, e, header, body)
+			res, err := p.probe(ctx, e, header, body)
 			if err != nil {
 				return err
 			}
@@ -428,6 +436,17 @@ func (p *pool) check(ctx context.Context, e *endpoint, header http.Header) error
 	return nil
 }
 
+// probe sends one health check. A refusal or a missing block is a failed check: the endpoint can't serve the chain's head.
+func (p *pool) probe(ctx context.Context, e *endpoint, header http.Header, body []byte) (*http.Response, error) {
+	res, err := p.post(ctx, e, header, body)
+	var size refusal
+	if errors.As(err, &size) {
+		size.res.Body.Close()
+		return nil, fmt.Errorf("%s: health check refused", e.name)
+	}
+	return res, err
+}
+
 // maxAnswer bounds one RPC answer, far above a 2,000-block eth_getLogs, so a hostile host can't exhaust memory.
 const maxAnswer = 64 << 20
 
@@ -437,22 +456,12 @@ func (p *pool) post(ctx context.Context, e *endpoint, header http.Header, body [
 			return nil, err
 		}
 	}
-	ctx, cancel := context.WithTimeout(ctx, p.timeout)
+	ctx, cancel := context.WithTimeoutCause(ctx, p.timeout, errAttemptTimeout)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, e.url, bytes.NewReader(body))
-	if err != nil {
-		return nil, fmt.Errorf("%s: invalid URL", e.name)
-	}
-	req.Header = header.Clone()
 	began := time.Now()
-	res, err := p.http.Do(req)
+	raw, status, answerHeader, err := p.exchange(ctx, e, header, body)
 	if err != nil {
-		return nil, p.unanswered(e, err)
-	}
-	raw, err := io.ReadAll(io.LimitReader(res.Body, maxAnswer+1))
-	res.Body.Close()
-	if err != nil {
-		return nil, p.unanswered(e, err)
+		return nil, err
 	}
 	took := time.Since(began)
 	if len(raw) > maxAnswer {
@@ -461,31 +470,31 @@ func (p *pool) post(ctx context.Context, e *endpoint, header http.Header, body [
 	// Classify the provider text before discarding it. No untrusted error body crosses this boundary.
 	batchLimit := BatchTooLarge(rpc.HTTPError{StatusCode: http.StatusBadRequest, Body: raw})
 	batchRequest := len(bytes.TrimSpace(body)) > 0 && bytes.TrimSpace(body)[0] == '['
-	queryLimit := res.StatusCode/100 == 2 && batchRequest && batchLimit || BatchTooLarge(rpc.HTTPError{StatusCode: res.StatusCode, Body: raw}) ||
-		(res.StatusCode == 400 || res.StatusCode == 413) && TooLarge(rpc.HTTPError{StatusCode: res.StatusCode, Body: raw})
+	// A batch can be refused whole by one error answer with no id; over WebSocket it comes with status 200.
+	queryLimit := status/100 == 2 && batchRequest && (batchLimit || TooLarge(rpc.HTTPError{StatusCode: http.StatusBadRequest, Body: raw})) ||
+		BatchTooLarge(rpc.HTTPError{StatusCode: status, Body: raw}) ||
+		(status == 400 || status == 413) && TooLarge(rpc.HTTPError{StatusCode: status, Body: raw})
 	if queryLimit {
+		// A batch refused for its size, however the provider words it, is a batch limit, not a log range.
+		batchLimit = batchLimit || batchRequest
 		message := "log result size too large"
 		if batchLimit {
 			message = "batch too large"
 		}
-		safe := fmt.Appendf(nil, `{"jsonrpc":"2.0","id":null,"error":{"code":-32005,"message":%q}}`, message)
-		if res.StatusCode/100 == 2 {
-			res.StatusCode = http.StatusBadRequest
+		if status/100 == 2 {
+			status = http.StatusBadRequest
 		}
-		res.Status = fmt.Sprintf("%d %s", res.StatusCode, http.StatusText(res.StatusCode))
-		res.Header = make(http.Header)
-		res.Body = io.NopCloser(bytes.NewReader(safe))
-		res.ContentLength = int64(len(safe))
 		p.measured(e, took)
-		return nil, refusal{res: res, batch: batchLimit}
+		return nil, refusal{res: answer(status, fmt.Appendf(nil, `{"jsonrpc":"2.0","id":null,"error":{"code":-32005,"message":%q}}`, message)),
+			batch: batchLimit}
 	}
 
-	if res.StatusCode/100 != 2 && !queryLimit {
-		failure := fmt.Errorf("%s: HTTP %d", e.name, res.StatusCode)
-		if res.StatusCode == 429 {
-			return nil, retryAfter{failure, retryDelay(res.Header.Get("Retry-After"))}
+	if status/100 != 2 {
+		failure := fmt.Errorf("%s: HTTP %d", e.name, status)
+		if status == 429 {
+			return nil, retryAfter{failure, retryDelay(answerHeader.Get("Retry-After"))}
 		}
-		if res.StatusCode == 401 || res.StatusCode == 403 || res.StatusCode == 404 {
+		if status == 401 || status == 403 || status == 404 {
 			return nil, lasting{failure}
 		}
 		return nil, failure
@@ -501,17 +510,53 @@ func (p *pool) post(ctx context.Context, e *endpoint, header http.Header, body [
 	if err != nil {
 		return nil, lasting{fmt.Errorf("%s: invalid RPC response", e.name)}
 	}
-	res.Header = make(http.Header)
-	res.Header.Set("Content-Type", "application/json")
-	res.StatusCode, res.Status = 200, "200 OK"
-	res.Body = io.NopCloser(bytes.NewReader(safe))
-	res.ContentLength = int64(len(safe))
+	res := answer(http.StatusOK, safe)
+	if bytes.Contains(safe, []byte(`"message":"`+missing+`"`)) {
+		return nil, refusal{res: res, missing: true} // not counted as an answer: a fast miss must not make it look fast
+	}
 	// Only answers count toward the answer time: a fast error must not make an endpoint look fast.
 	p.measured(e, took)
 	if r, _ := parseRequest(body); r.blocks > 0 && bytes.Contains(safe, []byte(`"log result size too large"`)) {
 		return nil, refusal{res: res}
 	}
 	return res, nil
+}
+
+// exchange sends body to one endpoint over its transport and returns the raw answer with its status.
+func (p *pool) exchange(ctx context.Context, e *endpoint, header http.Header, body []byte) ([]byte, int, http.Header, error) {
+	if e.sock != nil {
+		raw, status, answerHeader, err := e.sock.send(ctx, body)
+		var lost socketLost
+		if errors.As(err, &lost) {
+			return nil, 0, nil, fmt.Errorf("%s: %s", e.name, lost.reason)
+		}
+		if err != nil {
+			return nil, 0, nil, p.unanswered(e, err)
+		}
+		return raw, status, answerHeader, nil
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, e.url, bytes.NewReader(body))
+	if err != nil {
+		return nil, 0, nil, fmt.Errorf("%s: invalid URL", e.name)
+	}
+	req.Header = header.Clone()
+	res, err := p.http.Do(req)
+	if err != nil {
+		return nil, 0, nil, p.unanswered(e, err)
+	}
+	raw, err := io.ReadAll(io.LimitReader(res.Body, maxAnswer+1))
+	res.Body.Close()
+	if err != nil {
+		return nil, 0, nil, p.unanswered(e, err)
+	}
+	return raw, res.StatusCode, res.Header, nil
+}
+
+func answer(status int, body []byte) *http.Response {
+	header := http.Header{}
+	header.Set("Content-Type", "application/json")
+	return &http.Response{StatusCode: status, Status: fmt.Sprintf("%d %s", status, http.StatusText(status)), Header: header,
+		Body: io.NopCloser(bytes.NewReader(body)), ContentLength: int64(len(body))}
 }
 
 // measured keeps a moving average of the endpoint's answer time; one that sat unused starts again.
@@ -612,10 +657,19 @@ func rateLimited(code int, message string) bool {
 }
 
 // tooLarge reports a lowercase error message about a log query's block range or result size, such as "query returned
-// more than 10000 results" (Infura), "exceed maximum block range" or "log response size exceeded".
+// more than 10000 results" (Infura), "exceed maximum block range", "query exceeds max results 20000, retry with the
+// range" (Arc) or "log response size exceeded". A timeout or other failure that only mentions a result is not one.
 func tooLarge(m string) bool {
-	return strings.Contains(m, "range") || strings.Contains(m, "result") || strings.Contains(m, "size") ||
-		strings.Contains(m, "too large")
+	return strings.Contains(m, "range") || strings.Contains(m, "results") || strings.Contains(m, "response size") ||
+		strings.Contains(m, "result size") || strings.Contains(m, "too large") || strings.Contains(m, "too big")
+}
+
+// batchLimit reports a lowercase error message refusing a batch's size, such as "batch of more than 3 requests are not
+// allowed" or "batch size 101 exceeds limit of 100".
+func batchLimit(m string) bool {
+	return strings.Contains(m, "batch") && !strings.Contains(m, "rate") && (strings.Contains(m, "not allowed") ||
+		strings.Contains(m, "too large") || strings.Contains(m, "maximum batch") || strings.Contains(m, "exceeds") ||
+		strings.Contains(m, "limit"))
 }
 
 func TooLarge(err error) bool {
@@ -629,10 +683,7 @@ func TooLarge(err error) bool {
 }
 
 func BatchTooLarge(err error) bool {
-	limited := func(message string) bool {
-		m := strings.ToLower(message)
-		return strings.Contains(m, "batch") && (strings.Contains(m, "not allowed") || strings.Contains(m, "too large") || strings.Contains(m, "maximum batch"))
-	}
+	limited := func(message string) bool { return batchLimit(strings.ToLower(message)) }
 	var rpcErr rpc.Error
 	if errors.As(err, &rpcErr) {
 		return limited(rpcErr.Error())

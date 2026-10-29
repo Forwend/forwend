@@ -104,9 +104,15 @@ func safeResponse(raw, request []byte) ([]byte, error) {
 	return json.Marshal(answers[0])
 }
 
+// missing is the safe message for a block or state the endpoint doesn't have: one behind the head, or a pruned node.
+const missing = "block or state not available"
+
 func safeMessage(code int, message string) string {
 	m := strings.ToLower(message)
-	if strings.Contains(m, "batch") && (strings.Contains(m, "not allowed") || strings.Contains(m, "too large") || strings.Contains(m, "maximum batch")) {
+	if strings.Contains(m, "execution reverted") {
+		return "execution reverted" // a revert reason is the contract's text, whatever words it holds
+	}
+	if batchLimit(m) {
 		return "batch too large"
 	}
 	if tooLarge(m) {
@@ -115,8 +121,14 @@ func safeMessage(code int, message string) string {
 	if rateLimited(code, m) {
 		return "rate limited"
 	}
+	for _, lacks := range []string{"header not found", "unknown block", "block not found", "missing trie node", "historical state",
+		"state not available", "state is not available", "pruned"} {
+		if strings.Contains(m, lacks) {
+			return missing
+		}
+	}
 	for _, known := range []string{"execution reverted", "already known", "already imported", "nonce too low", "replacement transaction underpriced",
-		"insufficient funds", "header not found", "method not found", "method not supported", "transaction underpriced"} {
+		"insufficient funds", "method not found", "method not supported", "transaction underpriced"} {
 		if strings.Contains(m, known) {
 			return known
 		}
