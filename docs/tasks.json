@@ -375,7 +375,7 @@
         "Payment detail links its invoice, link, store and documents; the payments, invoices and activity lists page by cursor with bounded reads"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "web-unit",
@@ -486,11 +486,18 @@
           "summary": "Pass. Proof 1 now says the six tables compile against shared/components/data-table.tsx and take their states from the shared RowsSkeleton, LoadError, ListToolbar, EmptyState and NoMatch where the list has them. That matches the code: payment-list.tsx and payments-screen.tsx, invoices-table.tsx, clients-table.tsx and jobs-table.tsx use all five. links-table.tsx has no NoMatch, and stores-table.tsx has no EmptyState or NoMatch; R-134 says stores are never empty. The two live specs named in proof 1 passed in live-f343.log. Accept 2 and proof 2 hold, as in the first review. Accept 3 and proof 3 hold, as in the second review: payments, invoices and activity page by cursor with a limit in the backend tests. payments.spec.ts:823-840 checks the payment page's invoice, link, store and invoice PDF links and passed at 1440px and 390px in live-f343b.log. Only docs/tasks.json changed since 4476517f, and verify passed at 17:02Z. Links paging and single-record client and store pages remain open as F348 and F349 against R-177.",
           "at": "2026-10-29T17:02:50Z",
           "filesHash": "c5e4144bf1103c88"
-        }
+        },
+        "commit": "3cac0394",
+        "doneAt": "2026-10-29T17:03:03Z"
       },
       "branch": "feat/f343-a-merchant-can-follow-one-payment-from-r",
       "baseCommit": "5d04798c889e6a9246e441010f3f2b3ca7fcc882",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f343-a-merchant-can-follow-one-payment-from-r",
+        "base": "main"
+      }
     },
     {
       "id": "F344",
