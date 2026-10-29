@@ -49,7 +49,7 @@ VALUES
   - a private endpoint before a public one;
   - the soonest expected answer: its pacing wait plus its measured answer time.
 - The answer time is a moving average, raised by the endpoint's recent failure share.
-- An endpoint unused for 10 minutes is measured again: it costs nothing until it answers.
+- An endpoint without a usable answer for 10 minutes is measured again: it costs nothing until it answers.
 - Priority and endpoint ID break ties, so they only order endpoints not yet measured.
 - An eligible endpoint gets at most one attempt per request; no eligible endpoint returns `chain.ErrUnavailable`.
 - A log range, log result or batch an endpoint refuses goes to the next endpoint unchanged.
@@ -90,7 +90,7 @@ VALUES
 - Do not recompute block hashes with Ethereum headers: Tempo's header format differs.
 - Providers lacking canonical block-hash state reads fail closed; verify this capability before enabling them.
 - Batches retry as a whole; [Geth's batch documentation](https://geth.ethereum.org/docs/interacting-with-geth/rpc/batch) does not promise atomic state snapshots.
-- Watcher checkpoints, reorg detection, ledger transactions and finalized receiver evidence remain governed by [money safety](money-safety.md).
+- Watcher checkpoints, reorg detection, ledger transactions and finalized receiver movements remain governed by [money safety](money-safety.md).
 
 ## Network and secret controls
 

@@ -15,17 +15,6 @@ func book(ctx context.Context, tx pgx.Tx, invoiceID, kind string, transferID *in
 }
 
 func bookTransaction(ctx context.Context, tx pgx.Tx, invoiceID, kind string, transferID *int64, intoReceiver, toCreator, toHeld *big.Int) (int64, error) {
-	var position *ReopenPosition
-	if kind == "reopen" {
-		var err error
-		position, err = ReadReopenPosition(ctx, tx, invoiceID)
-		if err != nil {
-			return 0, err
-		}
-		if position == nil {
-			return 0, ErrReconciliationPending
-		}
-	}
 	var id int64
 	if err := tx.QueryRow(ctx, `INSERT INTO ledger_transactions (invoice_id, kind, chain_transfer_id) VALUES ($1, $2, $3)
 		RETURNING id`, invoiceID, kind, transferID).Scan(&id); err != nil {
@@ -42,12 +31,6 @@ func bookTransaction(ctx context.Context, tx pgx.Tx, invoiceID, kind string, tra
 			return 0, fmt.Errorf("book invoice %s %s: %w", invoiceID, kind, err)
 		}
 	}
-	if position != nil {
-		if _, err := tx.Exec(ctx, "INSERT INTO ledger_checkpoints (transaction_id, block_number, block_hash) VALUES ($1,$2,$3)", id, position.Block, position.Hash); err != nil {
-			return 0, err
-		}
-	}
-
 	return id, nil
 }
 

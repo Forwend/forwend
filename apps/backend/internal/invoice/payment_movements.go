@@ -105,29 +105,29 @@ const paymentMovementRows = `, journal AS (
    CASE WHEN j.kind IN ('deposit','refund','settlement') THEN coalesce(d.amount,o.amount) END AS source_amount,
    abs(j.receiver) AS booked_amount,j.receiver,j.payable,j.held,
    coalesce(d.tx_hash,o.tx_hash,'') AS tx_hash,
-   coalesce(d.log_index,o.log_index) AS log_index,coalesce(d.log_index,o.transfer_log_index) AS transfer_log_index,coalesce(d.block_hash,o.block_hash,checkpoint.block_hash,'') AS block_hash,
-   coalesce(d.block_number,o.block_number,checkpoint.block_number) AS block_number,coalesce(d.block_time,o.block_time) AS block_time,
+   coalesce(d.log_index,o.log_index) AS log_index,coalesce(d.log_index,o.transfer_log_index) AS transfer_log_index,coalesce(d.block_hash,o.block_hash,'') AS block_hash,
+   coalesce(d.block_number,o.block_number) AS block_number,coalesce(d.block_time,o.block_time) AS block_time,
    CASE WHEN j.kind = 'deposit' THEN d.from_address WHEN j.kind IN ('refund','settlement') THEN coalesce(o.receiver_address,'') ELSE '' END AS from_address,
    CASE WHEN j.kind = 'deposit' THEN d.to_address WHEN j.kind IN ('refund','settlement') THEN coalesce(o.destination,'') ELSE '' END AS to_address,
    CASE WHEN j.kind = 'deposit' OR o.id IS NOT NULL THEN 'confirmed' WHEN j.kind IN ('refund','settlement') THEN 'unmatched' ELSE 'internal' END AS status,
-   CASE WHEN j.kind = 'deposit' THEN proof.chain_transfer_id IS NOT NULL WHEN j.kind IN ('refund','settlement') THEN o.id IS NOT NULL ELSE false END AS verified,
-   coalesce(proof.verified_block,o.block_number) AS verified_block,coalesce(proof.verified_hash,o.block_hash,'') AS verified_hash,
+   CASE WHEN j.kind = 'deposit' THEN d.id IS NOT NULL WHEN j.kind IN ('refund','settlement') THEN o.id IS NOT NULL ELSE false END AS verified,
+   coalesce(d.block_number,o.block_number) AS verified_block,coalesce(d.block_hash,o.block_hash,'') AS verified_hash,
    coalesce(o.policy_exception,'') AS policy_exception,
-   CASE WHEN j.kind = 'deposit' AND proof.chain_transfer_id IS NULL OR j.kind IN ('refund','settlement') AND o.id IS NULL
+   CASE WHEN j.kind IN ('refund','settlement') AND o.id IS NULL
       THEN 'source_evidence_missing' ELSE coalesce(o.reconciliation_error,'') END AS reconciliation_error
  FROM journal j JOIN invoices i ON i.id = j.invoice_id JOIN payment_scope p ON p.id = coalesce(i.main_id,i.id)
  JOIN tokens tk ON tk.chain_id = i.chain_id AND tk.contract = i.token_contract
- LEFT JOIN chain_transfers d ON d.id = j.chain_transfer_id AND j.kind = 'deposit' LEFT JOIN receiver_deposit_proofs proof ON proof.chain_transfer_id = d.id
- LEFT JOIN receiver_outflows o ON o.ledger_transaction_id = j.id LEFT JOIN ledger_checkpoints checkpoint ON checkpoint.transaction_id = j.id
+ LEFT JOIN chain_transfers d ON d.id = j.chain_transfer_id AND j.kind = 'deposit'
+ LEFT JOIN receiver_outflows o ON o.ledger_transaction_id = j.id
  UNION ALL
  SELECT 'deposit:' || d.id::text,'observed',d.created_at,p.id,i.id,coalesce(p.store_id::text,''),p.store_name,p.source,p.livemode,p.document_kind,
    p.number,p.reference,p.title,d.chain_id,(SELECT name FROM chains WHERE chain_id = d.chain_id),d.token_contract,tk.symbol,tk.decimals,'deposit',d.amount,NULL,NULL,NULL,NULL,
-   d.tx_hash,d.log_index,d.log_index,d.block_hash,d.block_number,d.block_time,d.from_address,d.to_address,d.status,proof.chain_transfer_id IS NOT NULL,proof.verified_block,coalesce(proof.verified_hash,''),'',
-   CASE WHEN proof.chain_transfer_id IS NULL THEN 'awaiting_verification' ELSE 'awaiting_booking' END
+   d.tx_hash,d.log_index,d.log_index,d.block_hash,d.block_number,d.block_time,d.from_address,d.to_address,d.status,d.status = 'confirmed',
+   CASE WHEN d.status = 'confirmed' THEN d.block_number END,CASE WHEN d.status = 'confirmed' THEN d.block_hash ELSE '' END,'',
+   CASE WHEN d.status = 'confirmed' THEN 'awaiting_booking' ELSE 'awaiting_verification' END
  FROM chain_transfers d JOIN selected_movements selection ON selection.source_type = 'deposit' AND selection.row_id = d.id
  JOIN invoices i ON i.id = d.invoice_id JOIN payment_scope p ON p.id = coalesce(i.main_id,i.id)
  JOIN tokens tk ON tk.chain_id = d.chain_id AND tk.contract = d.token_contract
- LEFT JOIN receiver_deposit_proofs proof ON proof.chain_transfer_id = d.id
  UNION ALL
  SELECT 'outflow:' || o.id::text,'observed',o.created_at,p.id,i.id,coalesce(p.store_id::text,''),p.store_name,p.source,p.livemode,p.document_kind,
    p.number,p.reference,p.title,o.chain_id,(SELECT name FROM chains WHERE chain_id = o.chain_id),o.token_contract,coalesce(tk.symbol,''),tk.decimals,o.kind,o.amount,NULL,NULL,NULL,NULL,

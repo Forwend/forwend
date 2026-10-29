@@ -1,7 +1,6 @@
 package settlement
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,7 +13,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -51,16 +49,9 @@ func TestAuthorityRefundReducesHeldFundsWithoutInventingSettlement(t *testing.T)
 	if err := e.watch.Scan(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if complete, err := e.watch.Receiver(t.Context(), id); err != nil || !complete {
-		t.Fatalf("receiver evidence: complete=%v, %v", complete, err)
-	}
 	var observations int
-	var checkpoint string
 	if err := e.pool.QueryRow(t.Context(), "SELECT count(*) FROM receiver_outflows WHERE invoice_id = $1 AND kind = 'refund'", id).Scan(&observations); err != nil || observations != 1 {
 		t.Fatalf("observations=%d, %v", observations, err)
-	}
-	if err := e.pool.QueryRow(t.Context(), "SELECT balance::text FROM receiver_scans WHERE invoice_id = $1", id).Scan(&checkpoint); err != nil || checkpoint != "5000000" {
-		t.Fatalf("checkpoint=%s, %v", checkpoint, err)
 	}
 	if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
 		t.Fatal(err)
@@ -92,9 +83,6 @@ func TestOfflinePurchaseAndExternalSettlementBookInChainOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	for range 2 {
-		if complete, err := e.watch.Receiver(t.Context(), id); err != nil || !complete {
-			t.Fatalf("complete=%v, %v", complete, err)
-		}
 		if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
 			t.Fatal(err)
 		}
@@ -131,9 +119,6 @@ func TestReturnedPartialFundingCannotAccumulateIntoPaid(t *testing.T) {
 	if err := e.watch.Scan(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if complete, err := e.watch.Receiver(t.Context(), id); err != nil || !complete {
-		t.Fatalf("complete=%v, %v", complete, err)
-	}
 	if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
 		t.Fatal(err)
 	}
@@ -142,15 +127,13 @@ func TestReturnedPartialFundingCannotAccumulateIntoPaid(t *testing.T) {
 		t.Fatalf("early receiver deadline passed: payment=%s; want expired_partially_paid", got.PaymentStatus)
 	}
 	var payable string
-	var proof bool
 	if err := e.pool.QueryRow(t.Context(), `SELECT
   (-coalesce((SELECT sum(e.amount) FROM ledger_entries e JOIN ledger_transactions t ON t.id = e.transaction_id
-               WHERE t.invoice_id = $1 AND e.account = 'recipient_payable'),0))::text,
-  EXISTS (SELECT 1 FROM receiver_funding WHERE invoice_id = $1)`, id).Scan(&payable, &proof); err != nil {
+               WHERE t.invoice_id = $1 AND e.account = 'recipient_payable'),0))::text`, id).Scan(&payable); err != nil {
 		t.Fatal(err)
 	}
-	if payable != "0" || proof || e.balance(t, receive) != 2000000 {
-		t.Fatalf("payable=%s proof=%v; want zero payable, 2 held and no full funding proof", payable, proof)
+	if payable != "0" || e.balance(t, receive) != 2000000 {
+		t.Fatalf("payable=%s; want zero payable and 2 held", payable)
 	}
 }
 
@@ -171,9 +154,6 @@ func TestRepeatedAuthorityReturnsConsumeHeldThenPayableAndBlockReopen(t *testing
 		t.Fatal(err)
 	}
 	for range 2 {
-		if complete, err := e.watch.Receiver(t.Context(), id); err != nil || !complete {
-			t.Fatalf("coverage complete=%v: %v", complete, err)
-		}
 		if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
 			t.Fatal(err)
 		}
@@ -215,9 +195,6 @@ func TestRepeatedAuthorityReturnsConsumeHeldThenPayableAndBlockReopen(t *testing
 	if err := e.watch.Scan(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.watch.Receiver(t.Context(), id); err != nil {
-		t.Fatal(err)
-	}
 	if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
 		t.Fatal(err)
 	}
@@ -237,78 +214,6 @@ func TestRepeatedAuthorityReturnsConsumeHeldThenPayableAndBlockReopen(t *testing
 	}
 }
 
-func TestReceiverCatchupDoesNotExpectFutureSettlementBeforeDeployment(t *testing.T) {
-	e := setupChain(t, chaintest.StartArchive(t))
-	id, receive := e.create(t, 43)
-	if err := e.anvil.RPC.Call(nil, "anvil_mine", 10020); err != nil {
-		t.Fatal(err)
-	}
-	e.anvil.Transfer(e.token, receive, "5000000")
-	e.deployReceiver(t, id)
-	e.anvil.Send(receive, "settle()")
-	e.anvil.Mine(2)
-	if err := e.watch.Scan(t.Context()); err != nil {
-		t.Fatal(err)
-	}
-	caughtUp := false
-	for range 6 {
-		var err error
-		caughtUp, err = e.watch.Receiver(t.Context(), id)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if caughtUp {
-			break
-		}
-	}
-	if !caughtUp {
-		t.Fatal("initial bounded catchup did not finish")
-	}
-
-	if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := e.pool.Exec(t.Context(), `INSERT INTO chain_transfers (invoice_id,chain_id,chain_family,token_contract,tx_hash,
-   log_index,block_hash,block_number,block_time,from_address,to_address,amount,status)
-   SELECT id,chain_id,chain_family,token_contract,'0x' || repeat('43',32),0,'0x' || repeat('43',32),1,1,
-   recipient_address,receive_address,1,'confirmed' FROM invoices WHERE id = $1`, id); err != nil {
-		t.Fatal(err)
-	}
-	if complete, err := e.watch.Receiver(t.Context(), id); err != nil || complete {
-		t.Fatalf("rewind complete=%v: %v", complete, err)
-	}
-	if complete, err := e.watch.Receiver(t.Context(), id); err != nil || complete {
-		t.Fatalf("predeployment chunk complete=%v: %v", complete, err)
-	}
-	var progress uint64
-	if err := e.pool.QueryRow(t.Context(), "SELECT scanned_block FROM receiver_scans WHERE invoice_id = $1", id).Scan(&progress); err != nil || progress != watcher.MaxRange {
-		t.Fatalf("coverage=%d: %v", progress, err)
-	}
-	complete := false
-	for range 6 {
-		var err error
-		complete, err = e.watch.Receiver(t.Context(), id)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if complete {
-			break
-		}
-	}
-	if !complete {
-		t.Fatal("bounded historical catchup did not finish")
-	}
-	var conflicts, outflows int
-	if err := e.pool.QueryRow(t.Context(), `SELECT (SELECT count(*) FROM receiver_conflicts WHERE invoice_id = $1),
-   (SELECT count(*) FROM receiver_outflows WHERE invoice_id = $1 AND ledger_transaction_id IS NOT NULL)`, id).Scan(&conflicts, &outflows); err != nil || conflicts != 1 || outflows != 1 {
-		t.Fatalf("conflicts=%d booked=%d: %v", conflicts, outflows, err)
-	}
-	a, err := ledger.ReadAmounts(t.Context(), e.pool, id)
-	if err != nil || !a.Unreconciled || a.Receiver.Sign() != 0 || a.Settled.String() != "5000000" {
-		t.Fatalf("source conflict was hidden: %+v %v", a, err)
-	}
-}
-
 func TestUnloggedFundingReturnStaysObservedWithoutInventedBooking(t *testing.T) {
 	e := setup(t)
 	id, receive := e.create(t, 44)
@@ -323,9 +228,6 @@ func TestUnloggedFundingReturnStaysObservedWithoutInventedBooking(t *testing.T) 
 	e.anvil.Mine(2)
 	if err := e.watch.Scan(t.Context()); err != nil {
 		t.Fatal(err)
-	}
-	if complete, err := e.watch.Receiver(t.Context(), id); err != nil || !complete {
-		t.Fatalf("complete=%v: %v", complete, err)
 	}
 	if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
 		t.Fatal(err)
@@ -353,9 +255,6 @@ func TestAuthoritySettlementOfHeldFundsIsAnExceptionWithoutPaid(t *testing.T) {
 	e.anvil.AsAuthority(receive, "settle()")
 	e.anvil.Mine(2)
 	if err := e.watch.Scan(t.Context()); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := e.watch.Receiver(t.Context(), id); err != nil {
 		t.Fatal(err)
 	}
 	for range 2 {
@@ -398,8 +297,8 @@ func TestNativeRecoveryDoesNotCreateAcceptedTokenRefund(t *testing.T) {
 	}
 	e.anvil.AsAuthority(receive, "recover(address,address,uint256)", common.Address{}.Hex(), wallet, "1048576")
 	e.anvil.Mine(2)
-	if complete, err := e.watch.Receiver(t.Context(), id); err != nil || !complete {
-		t.Fatalf("complete=%v: %v", complete, err)
+	if err := e.watch.Scan(t.Context()); err != nil {
+		t.Fatal(err)
 	}
 	if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
 		t.Fatal(err)
@@ -411,29 +310,6 @@ func TestNativeRecoveryDoesNotCreateAcceptedTokenRefund(t *testing.T) {
 	var amount, reason, token string
 	if err := e.pool.QueryRow(t.Context(), "SELECT amount::text,reconciliation_error,token_contract FROM receiver_outflows WHERE invoice_id = $1", id).Scan(&amount, &reason, &token); err != nil || amount != "1048576" || reason != "different_asset" || token != strings.ToLower(common.Address{}.Hex()) {
 		t.Fatalf("native source=%s %s %s %v", amount, reason, token, err)
-	}
-}
-
-func TestReceiverFinalizedReorgKeepsEvidenceAndRequiresReview(t *testing.T) {
-	e := setup(t)
-	id, receive := e.paidInvoice(t)
-	e.deployReceiver(t, id)
-	e.anvil.AsAuthority(receive, "refund(address,uint256)", wallet, "1000000")
-	e.anvil.Mine(2)
-	if _, err := e.watch.Receiver(t.Context(), id); err != nil {
-		t.Fatal(err)
-	}
-	if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
-		t.Fatal(err)
-	}
-	e.anvil.Reorg(3)
-	e.anvil.Mine(2)
-	if _, err := e.watch.Receiver(t.Context(), id); err == nil {
-		t.Fatal("changed finalized history accepted")
-	}
-	a, err := ledger.ReadAmounts(t.Context(), e.pool, id)
-	if err != nil || !a.Unreconciled || a.Refunded.String() != "1000000" || a.Receiver.String() != "5000000" {
-		t.Fatalf("finalized history silently rewritten: %+v %v", a, err)
 	}
 }
 
@@ -496,9 +372,6 @@ func TestOneAuthorityTransactionRefundsTwiceWithDistinctTransferProofs(t *testin
 	t.Cleanup(client.Close)
 	e.watch = watcher.NewChain(e.pool, e.chainID, client)
 	for range 2 {
-		if complete, err := e.watch.Receiver(t.Context(), id); err != nil || !complete {
-			t.Fatalf("complete=%v: %v", complete, err)
-		}
 		if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
 			t.Fatal(err)
 		}
@@ -548,11 +421,6 @@ func TestLateReturnedOptionDoesNotChooseOrCloseAnotherOpenOption(t *testing.T) {
 		if err := e.watch.Scan(t.Context()); err != nil {
 			t.Fatal(err)
 		}
-		for _, option := range []string{main, id} {
-			if _, err := e.watch.Receiver(t.Context(), option); err != nil {
-				t.Fatal(err)
-			}
-		}
 		if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
 			t.Fatal(err)
 		}
@@ -582,72 +450,6 @@ func TestLateReturnedOptionDoesNotChooseOrCloseAnotherOpenOption(t *testing.T) {
 	}
 }
 
-func TestLegacyAllocationConflictPreservesBalancesAndUnbookedReturn(t *testing.T) {
-	e := setup(t)
-	id, receive := e.createFor(t, 50, 60*86400)
-	e.deployReceiver(t, id)
-	e.anvil.Transfer(e.token, receive, "3000000")
-	e.anvil.Wait(31 * 86400)
-	e.anvil.AsAuthority(receive, "refund(address,uint256)", wallet, "3000000")
-	e.anvil.Transfer(e.token, receive, "2000000")
-	e.anvil.Mine(2)
-	if err := e.watch.Scan(t.Context()); err != nil {
-		t.Fatal(err)
-	}
-	// Existing primary-only allocations are immutable migration input; no complete receiver evidence existed yet.
-	if err := e.ledger.Process(t.Context(), id); err != nil {
-		t.Fatal(err)
-	}
-	before, err := ledger.ReadAmounts(t.Context(), e.pool, id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if before.Payable.String() != "5000000" || before.Receiver.String() != "5000000" {
-		t.Fatalf("legacy setup: %+v", before)
-	}
-	if _, err := e.watch.Receiver(t.Context(), id); err != nil {
-		t.Fatal(err)
-	}
-	if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
-		t.Fatal(err)
-	}
-	after, err := ledger.ReadAmounts(t.Context(), e.pool, id)
-	if err != nil || !after.Unreconciled || after.ObservedRefunded.String() != "3000000" || after.Refunded.Sign() != 0 ||
-		after.Payable.Cmp(before.Payable) != 0 || after.Receiver.Cmp(before.Receiver) != 0 {
-		t.Fatalf("legacy allocations rewritten: %+v %v", after, err)
-	}
-	if e.balance(t, receive) != 2000000 || e.balance(t, wallet) != 3000000 {
-		t.Fatal("legacy conflict chain evidence differs")
-	}
-}
-
-func TestConcurrentReceiverScanAndLegacyConflictBookingFinishTogether(t *testing.T) {
-	e := setup(t)
-	id, _ := e.create(t, 51)
-	if _, err := e.pool.Exec(t.Context(), `WITH movement AS (INSERT INTO ledger_transactions (invoice_id,kind)
-   VALUES ($1,'expiry') RETURNING id) INSERT INTO ledger_entries (transaction_id,account,amount)
-   SELECT id,'payer_held',1 FROM movement UNION ALL SELECT id,'recipient_payable',-1 FROM movement`, id); err != nil {
-		t.Fatal(err)
-	}
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	defer cancel()
-	failures := make(chan error, 6)
-	for range 3 {
-		go func() { _, err := e.watch.Receiver(ctx, id); failures <- err }()
-		go func() { failures <- e.ledger.Process(ctx, id) }()
-	}
-	for range 6 {
-		if err := <-failures; err != nil {
-			t.Fatal(err)
-		}
-	}
-	var reason string
-	var complete bool
-	if err := e.pool.QueryRow(t.Context(), "SELECT booking_error,history_complete FROM receiver_scans WHERE invoice_id = $1", id).Scan(&reason, &complete); err != nil || reason != "negative_legacy_balance" || !complete {
-		t.Fatalf("concurrent outcome reason=%s complete=%v: %v", reason, complete, err)
-	}
-}
-
 func TestBroadcastSettlementReconcilesAfterAnAuthorityReturn(t *testing.T) {
 	e := setup(t)
 	id, receive := e.paidInvoice(t)
@@ -661,9 +463,6 @@ func TestBroadcastSettlementReconcilesAfterAnAuthorityReturn(t *testing.T) {
 	e.anvil.AsAuthority(receive, "refund(address,uint256)", wallet, "1000000")
 	e.anvil.Mine(2)
 	if err := e.watch.Scan(t.Context()); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := e.watch.Receiver(t.Context(), id); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.signer(t).Run(t.Context()); err != nil {
@@ -682,7 +481,7 @@ func TestBroadcastSettlementReconcilesAfterAnAuthorityReturn(t *testing.T) {
 	}
 }
 
-func TestReopenWaitsForCurrentCoverageBeforeDiscoveringAConfirmedReturn(t *testing.T) {
+func TestReopenRefusesOnceTheScanRecordsAReturn(t *testing.T) {
 	e := setup(t)
 	var profile string
 	if err := e.pool.QueryRow(t.Context(), "SELECT id FROM profiles LIMIT 1").Scan(&profile); err != nil {
@@ -700,14 +499,11 @@ func TestReopenWaitsForCurrentCoverageBeforeDiscoveringAConfirmedReturn(t *testi
 	if err := e.watch.Scan(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.watch.Receiver(t.Context(), inv.ID); err != nil {
-		t.Fatal(err)
-	}
 	if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
 		t.Fatal(err)
 	}
-	if position, err := ledger.ReadReopenPosition(t.Context(), e.pool, inv.ID); err != nil || position == nil {
-		t.Fatalf("initial verified checkpoint unavailable: %v %v", position, err)
+	if ready, err := ledger.ReopenReady(t.Context(), e.pool, inv.ID); err != nil || !ready {
+		t.Fatalf("expired partial payment not ready to reopen: %v %v", ready, err)
 	}
 	e.deployReceiver(t, inv.ID)
 	e.anvil.AsAuthority(inv.ReceiveAddress, "refund(address,uint256)", wallet, "1000000")
@@ -715,11 +511,8 @@ func TestReopenWaitsForCurrentCoverageBeforeDiscoveringAConfirmedReturn(t *testi
 	if err := e.watch.Scan(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.Reopen(t.Context(), profile, inv.ID); !errors.Is(err, ledger.ErrReconciliationPending) {
-		t.Fatalf("stale coverage reopened funds: %v", err)
-	}
-	if _, err := e.watch.Receiver(t.Context(), inv.ID); err != nil {
-		t.Fatal(err)
+	if _, err := service.Reopen(t.Context(), profile, inv.ID); !errors.Is(err, invoice.ErrNotReopenable) {
+		t.Fatalf("a recorded, unbooked return reopened funds: %v", err)
 	}
 	if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
 		t.Fatal(err)
@@ -729,6 +522,6 @@ func TestReopenWaitsForCurrentCoverageBeforeDiscoveringAConfirmedReturn(t *testi
 	}
 	a, err := ledger.ReadAmounts(t.Context(), e.pool, inv.ID)
 	if err != nil || a.Unreconciled || a.Held.String() != "5000000" || a.Payable.Sign() != 0 || a.Refunded.String() != "1000000" || a.HasPolicyException {
-		t.Fatalf("stale checkpoint invented allocation: %+v %v", a, err)
+		t.Fatalf("return allocation: %+v %v", a, err)
 	}
 }

@@ -4,16 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math/big"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -257,7 +262,7 @@ func TestLogRangeRetainsAcceptedSize(t *testing.T) {
 			var sizes []uint64
 			var answered [][2]uint64
 			for _, call := range proxy.Calls() {
-				if call.Method == "eth_getLogs" {
+				if call.Method == "eth_getLogs" && strings.Contains(string(call.Params[0]), transferTopic.Hex()) {
 					from, to := logRange(t, call)
 					sizes = append(sizes, to-from+1)
 					if call.Fault == chaintest.Forward {
@@ -534,4 +539,41 @@ func TestLogSpamDoesNotStopTheChain(t *testing.T) {
 	got, _ := e.rows(t)
 	t.Fatalf("payment %s to another invoice never recorded after 5 scans (rows %v); last scan error: %v",
 		payment, got, lastErr)
+}
+
+func TestOnlyNewFinalCanonicalEventsOfWatchedReceiversAreRecorded(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	invoices, err := e.chain.invoices(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := "0x" + strings.Repeat("01", 32)
+	amount := common.LeftPadBytes(big.NewInt(5000000).Bytes(), 32)
+	settled := func(address common.Address, block uint64, hash common.Hash) types.Log {
+		return types.Log{Address: address, BlockNumber: block, BlockHash: hash, TxHash: common.HexToHash("0xfeed"), Index: 1, Data: amount,
+			Topics: []common.Hash{settledTopic, common.HexToHash(id), common.BytesToHash(common.HexToAddress("0x1111111111111111111111111111111111111111").Bytes())}}
+	}
+	final, other := common.HexToHash("0xf1"), common.HexToHash("0xf2")
+	headers := map[uint64]header{5: {Number: 5, Hash: final}, 6: {Number: 6, Hash: final}, 50: {Number: 50, Hash: final}}
+	watched := common.HexToAddress(receive)
+	removed := settled(watched, 5, final)
+	removed.Removed = true
+	logs := []types.Log{
+		settled(watched, 5, final),
+		settled(watched, 50, final),                     // above the finalized block
+		settled(watched, 6, other),                      // another block than the one the chain shows at that height
+		settled(common.HexToAddress("0xbad"), 5, final), // not a watched receiver
+		removed,
+	}
+	got, err := e.chain.outflows(ctx, logs, headers, invoices, 10)
+	if err != nil || len(got) != 1 || got[0].Log.BlockNumber != 5 || got[0].InvoiceID != id {
+		t.Fatalf("outflows %+v (%v); want only the final, canonical event of the watched receiver", got, err)
+	}
+	if err := pgx.BeginFunc(ctx, e.pool, func(tx pgx.Tx) error { return RecordOutflows(ctx, tx, chaintest.ChainID, got) }); err != nil {
+		t.Fatal(err)
+	}
+	if again, err := e.chain.outflows(ctx, logs, headers, invoices, 10); err != nil || len(again) != 0 {
+		t.Fatalf("a recorded event was read again: %+v (%v)", again, err)
+	}
 }

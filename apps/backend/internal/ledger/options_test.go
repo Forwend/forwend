@@ -9,7 +9,6 @@ import (
 
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 	"github.com/forwend/forwend/apps/backend/internal/history/historytest"
-	"github.com/forwend/forwend/apps/backend/internal/ledger/ledgertest"
 )
 
 // option adds an accepted option of invoice main (R-56): its own id and receive address, the main row's other terms.
@@ -188,38 +187,11 @@ func (o optionSim) pay(id string, chainID int, receive string, amount, blockTime
 		VALUES ($1, 'evm', $2, $3, $4, 0, $4, $5, $6, '0x00000000000000000000000000000000000000ff', $7, $8, 'confirmed')`,
 		chainID, simToken, id, fmt.Sprintf("0x%064x", o.n), o.n, blockTime, receive, amount)
 	o.answer[receive].Add(o.answer[receive], big.NewInt(amount))
-	var at int64
-	if err := o.pool.QueryRow(o.t.Context(), "SELECT coalesce(block_time,0) FROM receiver_scans WHERE invoice_id = $1", id).Scan(&at); err != nil {
-		o.t.Fatal(err)
-	}
-	if at >= blockTime {
-		o.scanned(int64(chainID), at)
-	}
 }
 
 // scanned says the chain was read, and is final, up to time.
 func (o optionSim) scanned(chainID, time int64) {
 	o.exec("UPDATE chain_cursors SET last_scanned_time = $2, last_finalized_time = $2 WHERE chain_id = $1", chainID, time)
-	rows, err := o.pool.Query(o.t.Context(), "SELECT id,receive_address FROM invoices WHERE chain_id = $1", chainID)
-	if err != nil {
-		o.t.Fatal(err)
-	}
-	type receiver struct{ ID, Address string }
-	var receivers []receiver
-	for rows.Next() {
-		var r receiver
-		if err := rows.Scan(&r.ID, &r.Address); err != nil {
-			o.t.Fatal(err)
-		}
-		receivers = append(receivers, r)
-	}
-	if err := rows.Err(); err != nil {
-		o.t.Fatal(err)
-	}
-	rows.Close()
-	for _, r := range receivers {
-		ledgertest.Checkpoint(o.t, o.pool, r.ID, 100, time, o.answer[r.Address].String())
-	}
 }
 
 func TestMainRowWaitsForTheChoiceBeforeExpiring(t *testing.T) {

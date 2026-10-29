@@ -89,16 +89,13 @@ func ReadAmountsFor(ctx context.Context, db interface {
 	return result, rows.Err()
 }
 
-// invoiceID is a trusted SQL expression, never request text.
+// UnreconciledSQL: a movement the ledger has not booked yet, an outflow it refused, a balance it can't explain, or a
+// negative balance. invoiceID is a trusted SQL expression, never request text.
 func UnreconciledSQL(invoiceID string) string {
-	return `EXISTS (SELECT 1 FROM receiver_scans WHERE invoice_id = ` + invoiceID + ` AND (NOT history_complete OR reconciliation_error IS NOT NULL OR booking_error IS NOT NULL))
- OR EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = ` + invoiceID + ` AND kind <> 'recovery' AND ledger_transaction_id IS NULL)
- OR EXISTS (SELECT 1 FROM chain_transfers d WHERE d.invoice_id = ` + invoiceID + ` AND d.status = 'confirmed'
-            AND (NOT d.booked OR NOT EXISTS (SELECT 1 FROM receiver_deposit_proofs p WHERE p.chain_transfer_id = d.id)))
- OR ` + unpositionedCashSQL(invoiceID) + `
- OR ` + receiverBalanceMismatchSQL(invoiceID) + `
+	return `EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = ` + invoiceID + ` AND kind <> 'recovery' AND ledger_transaction_id IS NULL)
+ OR EXISTS (SELECT 1 FROM chain_transfers d WHERE d.invoice_id = ` + invoiceID + ` AND d.status = 'confirmed' AND NOT d.booked)
+ OR EXISTS (SELECT 1 FROM invoice_balance_alerts WHERE invoice_id = ` + invoiceID + `)
  OR ` + negativeBalancesSQL(invoiceID)
-
 }
 
 func negativeBalancesSQL(invoiceID string) string {
@@ -108,29 +105,9 @@ func negativeBalancesSQL(invoiceID string) string {
       OR (e.account IN ('payer_held','recipient_payable') AND sum(e.amount) > 0))`
 }
 
-func receiverBalanceMismatchSQL(invoiceID string) string {
-	return receiverBalanceMismatchAgainstSQL(invoiceID, "0")
-}
-
-func receiverBalanceMismatchAgainstSQL(invoiceID, pendingDelta string) string {
-	return `EXISTS (SELECT 1 FROM receiver_scans scan WHERE scan.invoice_id = ` + invoiceID + ` AND scan.balance IS NOT NULL
- AND (` + ComparableReceiverSQL(invoiceID, "scan.scanned_block") + `) AND scan.balance <> (
- SELECT coalesce(sum(entry.amount),0) FROM ledger_entries entry JOIN ledger_transactions journal ON journal.id = entry.transaction_id
- WHERE journal.invoice_id = ` + invoiceID + ` AND entry.account = 'receiver') + (` + pendingDelta + `))`
-}
-
-func unexplainedReceiverMismatchSQL(invoiceID string) string {
-	delta := `(SELECT coalesce(sum(pending_deposit.amount),0) FROM chain_transfers pending_deposit WHERE pending_deposit.invoice_id = ` + invoiceID + `
- AND pending_deposit.status = 'confirmed' AND NOT pending_deposit.booked AND pending_deposit.block_number <= scan.scanned_block
- AND EXISTS (SELECT 1 FROM receiver_deposit_proofs pending_proof WHERE pending_proof.chain_transfer_id = pending_deposit.id))
- - (SELECT coalesce(sum(pending_flow.amount),0) FROM receiver_outflows pending_flow WHERE pending_flow.invoice_id = ` + invoiceID + `
- AND pending_flow.kind <> 'recovery' AND pending_flow.ledger_transaction_id IS NULL AND pending_flow.block_number <= scan.scanned_block
- AND pending_flow.token_contract = (SELECT token_contract FROM invoices pending_invoice WHERE pending_invoice.id = ` + invoiceID + `))`
-	return receiverBalanceMismatchAgainstSQL(invoiceID, delta)
-}
-
+// reconciliationReviewSQL: what an operator must look at, as opposed to work the next round does.
 func reconciliationReviewSQL(invoiceID string) string {
-	return `EXISTS (SELECT 1 FROM receiver_scans review_scan WHERE review_scan.invoice_id = ` + invoiceID + ` AND (review_scan.reconciliation_error NOT IN ('opening_balance','rescan_required') OR review_scan.booking_error IS NOT NULL))
- OR (` + unpositionedOutflowSQL(invoiceID) + `) OR (` + unexplainedReceiverMismatchSQL(invoiceID) + `) OR (` + negativeBalancesSQL(invoiceID) + `)
- OR EXISTS (SELECT 1 FROM receiver_outflows review_flow WHERE review_flow.invoice_id = ` + invoiceID + ` AND review_flow.ledger_transaction_id IS NULL AND review_flow.kind <> 'recovery' AND review_flow.reconciliation_error NOT IN ('','awaiting_booking','awaiting_coverage'))`
+	return `EXISTS (SELECT 1 FROM invoice_balance_alerts review_alert WHERE review_alert.invoice_id = ` + invoiceID + `)
+ OR (` + negativeBalancesSQL(invoiceID) + `)
+ OR EXISTS (SELECT 1 FROM receiver_outflows review_flow WHERE review_flow.invoice_id = ` + invoiceID + ` AND review_flow.ledger_transaction_id IS NULL AND review_flow.kind <> 'recovery' AND review_flow.reconciliation_error NOT IN ('','awaiting_booking'))`
 }

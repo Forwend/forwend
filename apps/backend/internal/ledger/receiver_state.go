@@ -8,6 +8,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// ReceiverState is what the chain's scan has verified for a receive address. The scan reads every watched address
+// together, so its coverage is the chain's finalized cursor; a balance the ledger can't explain has a balance alert.
 type ReceiverState struct {
 	InvoiceID                                                                            string
 	PaymentStatus, SettlementStatus, RefundStatus                                        string
@@ -26,18 +28,15 @@ type ReceiverState struct {
 
 func ReadReceiverStates(ctx context.Context, db interface {
 	Query(context.Context, string, ...any) (pgx.Rows, error)
-}, ids []string, amounts map[string]*Amounts) (map[string]*ReceiverState, error) {
-	rows, err := db.Query(ctx, `SELECT i.id,i.payment_status,i.settlement_status,i.refund_status,s.history_complete,
-   s.scanned_block,coalesce(s.scanned_hash,''),s.block_time,s.balance::text,coalesce(s.reconciliation_error,''),
-   coalesce(s.booking_error,''),s.retry_at,s.updated_at,c.last_finalized_block,
+}, ids []string) (map[string]*ReceiverState, error) {
+	rows, err := db.Query(ctx, `SELECT i.id,i.payment_status,i.settlement_status,i.refund_status,
+   c.last_finalized_block,c.last_finalized_time,coalesce(c.updated_at,i.created_at),a.invoice_id IS NOT NULL,a.next_check_at,
    (SELECT count(*) FROM chain_transfers d WHERE d.invoice_id = i.id AND d.status <> 'reorged'),
    (SELECT count(*) FROM chain_transfers d WHERE d.invoice_id = i.id AND d.status = 'detected'),
    (SELECT count(*) FROM chain_transfers d WHERE d.invoice_id = i.id AND d.status = 'confirmed' AND NOT d.booked),
-   (SELECT count(*) FROM chain_transfers d WHERE d.invoice_id = i.id AND d.status = 'confirmed'
-     AND NOT EXISTS (SELECT 1 FROM receiver_deposit_proofs p WHERE p.chain_transfer_id = d.id)),
-   (SELECT count(*) FROM receiver_outflows o WHERE o.invoice_id = i.id AND o.kind <> 'recovery' AND o.ledger_transaction_id IS NULL),
-   `+ComparableReceiverSQL("i.id", "s.scanned_block")+`
-   FROM invoices i JOIN receiver_scans s ON s.invoice_id = i.id LEFT JOIN chain_cursors c ON c.chain_id = i.chain_id
+   (SELECT count(*) FROM receiver_outflows o WHERE o.invoice_id = i.id AND o.kind <> 'recovery' AND o.ledger_transaction_id IS NULL)
+   FROM invoices i LEFT JOIN chain_cursors c ON c.chain_id = i.chain_id
+   LEFT JOIN invoice_balance_alerts a ON a.invoice_id = i.id
    WHERE i.id = ANY($1::text[])`, ids)
 	if err != nil {
 		return nil, err
@@ -45,46 +44,23 @@ func ReadReceiverStates(ctx context.Context, db interface {
 	defer rows.Close()
 	result := make(map[string]*ReceiverState, len(ids))
 	for rows.Next() {
-		state := &ReceiverState{}
+		state := &ReceiverState{HistoryComplete: true}
 		var at *int64
-		var balance *string
-		var comparable bool
-		if err := rows.Scan(&state.InvoiceID, &state.PaymentStatus, &state.SettlementStatus, &state.RefundStatus, &state.HistoryComplete,
-			&state.VerifiedBlock, &state.VerifiedHash, &at, &balance, &state.ReconciliationError, &state.BookingError, &state.RetryAt, &state.UpdatedAt,
-			&state.ChainFinalizedBlock, &state.TotalDeposits, &state.PendingDeposits, &state.UnbookedDeposits, &state.UnprovedDeposits, &state.UnbookedOutflows, &comparable); err != nil {
+		var unexplained bool
+		if err := rows.Scan(&state.InvoiceID, &state.PaymentStatus, &state.SettlementStatus, &state.RefundStatus,
+			&state.VerifiedBlock, &at, &state.UpdatedAt, &unexplained, &state.RetryAt, &state.TotalDeposits,
+			&state.PendingDeposits, &state.UnbookedDeposits, &state.UnbookedOutflows); err != nil {
 			return nil, err
 		}
+		state.ChainFinalizedBlock = state.VerifiedBlock
 		if at != nil {
 			value := time.Unix(*at, 0).UTC()
 			state.VerifiedTime = &value
 		}
-		if balance != nil {
-			state.ObservedBalance, _ = new(big.Int).SetString(*balance, 10)
-			if a := amounts[state.InvoiceID]; comparable && a != nil {
-				state.BalanceDifference = new(big.Int).Sub(state.ObservedBalance, a.Receiver)
-			}
+		if unexplained {
+			state.ReconciliationError = "unexplained_balance"
 		}
 		result[state.InvoiceID] = state
 	}
 	return result, rows.Err()
-}
-
-// Arguments are trusted SQL expressions, never request text.
-func ComparableReceiverSQL(invoiceID, block string) string {
-	return `NOT (` + unpositionedCashSQL(invoiceID) + `)
- AND NOT EXISTS (SELECT 1 FROM chain_transfers comparable_deposit WHERE comparable_deposit.invoice_id = ` + invoiceID + ` AND comparable_deposit.booked AND comparable_deposit.block_number > ` + block + `)
- AND NOT EXISTS (SELECT 1 FROM receiver_outflows comparable_outflow WHERE comparable_outflow.invoice_id = ` + invoiceID + ` AND comparable_outflow.ledger_transaction_id IS NOT NULL AND comparable_outflow.block_number > ` + block + `)`
-}
-
-func unpositionedCashSQL(invoiceID string) string {
-	return `EXISTS (SELECT 1 FROM ledger_transactions comparable_journal JOIN ledger_entries comparable_entry ON comparable_entry.transaction_id = comparable_journal.id
- WHERE comparable_journal.invoice_id = ` + invoiceID + ` AND comparable_entry.account = 'receiver' AND comparable_journal.kind = 'deposit'
- AND NOT EXISTS (SELECT 1 FROM receiver_deposit_proofs comparable_proof WHERE comparable_proof.chain_transfer_id = comparable_journal.chain_transfer_id)) OR (` + unpositionedOutflowSQL(invoiceID) + `)`
-}
-
-func unpositionedOutflowSQL(invoiceID string) string {
-	return `EXISTS (SELECT 1 FROM ledger_transactions unpositioned_journal JOIN ledger_entries unpositioned_entry ON unpositioned_entry.transaction_id = unpositioned_journal.id
- WHERE unpositioned_journal.invoice_id = ` + invoiceID + ` AND unpositioned_entry.account = 'receiver' AND (
-  unpositioned_journal.kind IN ('refund','settlement') AND NOT EXISTS (SELECT 1 FROM receiver_outflows unpositioned_source WHERE unpositioned_source.ledger_transaction_id = unpositioned_journal.id)
-  OR unpositioned_journal.kind NOT IN ('deposit','refund','settlement')))`
 }

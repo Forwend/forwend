@@ -241,11 +241,8 @@ with a test.
 - `ledger_transactions` + `ledger_entries`: double-entry, append-only (below).
 - `settlement_intents` (unique per invoice): nonce and tx hash tracked, with the hashes a fee replacement replaced;
   reconcile before any retry.
-- `receiver_scans` stores each option's historical coverage, verified checkpoint balance, retry schedule and reconciliation errors.
-- `receiver_deposit_proofs` prevents an unproved primary transfer from borrowing a previous coverage checkpoint.
 - `receiver_outflows` preserves actual receiver events, exact outgoing transfer identity and once-only journal attribution.
-- `receiver_conflicts` retains conflicting source observations without altering established evidence.
-- `receiver_funding` identifies an actual fully funded historical prefix; `ledger_checkpoints` locates non-cash reopen allocations.
+  - The chain's scan records them; the signer also records its own settle from its receipt.
 - These records remain separate from signer intents, webhook delivery and merchant financial classification.
 - `outbox_events`: `invoice.paid`, `invoice.held`, `invoice.settled` and `invoice.receipt`, queued by the ledger and
   the signer in the transaction that makes the change (`internal/outbox`), and `account.welcome` (with `user_id`, no
@@ -330,7 +327,7 @@ never holds the app's load.
 - Health checks validate chain identity, latest-head freshness and finalized-header support.
 - Error responses retain codes and safe categories; provider text, URLs and error data cannot enter logs or public errors.
 - Node-managed signing and unknown RPC methods are refused; signed transaction retries retain identical bytes.
-- Every batch stays together on one endpoint per attempt; receiver verification reads each source once.
+- Every batch stays together on one endpoint per attempt.
 - API, worker and signer also share a weighted budget in PostgreSQL (`rpc_budgets`, R-133).
 - Its rate is `RPC_RATE_PER_SECOND × 80` units per second.
 - Ordinary calls cost 80 units; `eth_chainId` costs 5, logs 255, gas estimates 300, and block receipts 1,000.
@@ -356,7 +353,7 @@ the API, pays it and waits for detected → paid → settled with the deposit go
 - `internal/watcher` (R-20) runs one active job and one historical job per chain under the [worker lock](#startup).
 - Separate watcher objects keep range adaptation local; only active jobs advance the fast cursor.
 - Historical work shares provider capacity but does not delay ledger scheduling until it completes.
-- Receiver proof and retry rules live in [money safety](money-safety.md#receiver-evidence-and-actual-outflows).
+- The same ranges also read the watched receivers' settle, refund and recover events ([receiver movements](money-safety.md#receiver-movements)).
 - `ScanNew` follows new wallet blocks and re-reads one log range of invoice overlap, at most 20 log ranges a round.
 - Invoice overlap stays frequent so an earlier missed payment is found before a later payment decides ownership.
 - It reads logs for at most 60% of its deadline, then records what it read; it always reads past the old cursor.
@@ -410,7 +407,7 @@ Scanning again changes nothing, so a restarted worker resumes from the cursor.
 - Each scan starts one minute before invoice creation, found by binary search and saved before reading logs.
 - Each invocation reads at most five log ranges per invoice and saves its next block.
 - Failed requested rescans wait one minute, allowing later requests through.
-- Wallet recovery and legacy receiver scans each have their own ten-second budget.
+- Wallet recovery has its own ten-second budget.
 - Rescans record observations without moving the fast cursor; a later active job verifies and books them.
 - Requests outside the watch window are dropped because those funds belong to the refund authority.
 
@@ -442,7 +439,9 @@ signer:
    - When the executor's next mined nonce has nothing pending and no saved settle holds it (a settle saved but never
      sent, then settled by the refund authority), a zero-value transfer to the executor fills it, so the settles after
      it can mine.
-2. Otherwise requires sufficient net merchant payable and reconciled receiver evidence before signing new settlement bytes.
+2. Otherwise it signs new settlement bytes only when all of these hold:
+   - the merchant payable covers the amount and every movement of the invoice is booked;
+   - the finalized balance is at least the ledger's booked receiver balance (else an `ALERT`).
    It re-reads the terms and refuses for good (`refused` with a reason, nothing sent) unless the invoice is
    `paid`, the recipient is the profile's wallet, the factory is the compiled one and the terms recompute the stored
    receive address; also when `factory.status` predicts another address.
@@ -474,9 +473,10 @@ signer:
    - for our settle, its receipt's block is final too;
    - the selected RPC reads `settled()` true at its finalized block (D-15, as for paid).
 
-   Then, in one transaction: intent `confirmed`, a `settlement` ledger transaction (receiver and recipient_payable
-   each −amount; one per invoice) and the invoice's `settlement_status` `settled`. A settle a reorg drops before that
-   is reconciled like an unsent one.
+   Then it records the receipt's `Settled` event as a receiver movement and books the invoice.
+   - Booking the settlement confirms the intent and sets the invoice's `settlement_status` `settled`.
+   - A receiver another settler settled waits for the chain's scan to record its event.
+   - A settle a reorg drops before that is reconciled like an unsent one.
 A waiting intent also stores its wait kind (`retry`, `cap` for the sponsored limit, `unresolved`), cleared when a
 settle is signed, so the invoice API can tell the owner why the money waits (R-54) without reading the reason text.
 - Each intent has a three-minute deadline; its chain processes intents sequentially to preserve nonce ordering.

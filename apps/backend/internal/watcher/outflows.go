@@ -1,0 +1,290 @@
+package watcher
+
+import (
+	"cmp"
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"math/big"
+	"slices"
+	"strings"
+	"time"
+
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/forwend/forwend/apps/backend/internal/history"
+	"github.com/jackc/pgx/v5"
+)
+
+var (
+	settledTopic   = crypto.Keccak256Hash([]byte("Settled(bytes32,address,uint256)"))
+	refundedTopic  = crypto.Keccak256Hash([]byte("Refunded(bytes32,address,uint256)"))
+	recoveredTopic = crypto.Keccak256Hash([]byte("Recovered(bytes32,address,address,uint256)"))
+)
+
+// Outflow is one settle, refund or recover event of a receiver at or below the finalized block, with the token
+// Transfer logs of its transaction, which name the transfer that moved the money.
+type Outflow struct {
+	InvoiceID string
+	Log       types.Log
+	Transfers []types.Log
+	Time      uint64 // the event's block time
+	Verified  uint64 // the finalized block that confirmed it
+}
+
+// outflowLogs reads the settle, refund and recover events the watched receivers emitted in [lo, hi].
+func (c *Chain) outflowLogs(ctx context.Context, lo, hi uint64, invoices map[common.Address]receiver) ([]types.Log, error) {
+	var addresses []common.Address
+	for addr := range invoices {
+		addresses = append(addresses, addr)
+	}
+	var out []types.Log
+	for _, part := range parts(addresses) {
+		found, err := c.filterLogs(ctx, ethereum.FilterQuery{FromBlock: new(big.Int).SetUint64(lo), ToBlock: new(big.Int).SetUint64(hi),
+			Addresses: part, Topics: [][]common.Hash{{settledTopic, refundedTopic, recoveredTopic}}})
+		if err != nil {
+			return nil, fmt.Errorf("read chain %d receiver events %d-%d: %w", c.chainID, lo, hi, err)
+		}
+		out = append(out, found...)
+	}
+	return out, nil
+}
+
+// outflows keeps new events of canonical blocks at or below finalized and reads their transactions' token transfers.
+// Events already recorded cost no reads, so the scan's overlap stays cheap.
+func (c *Chain) outflows(ctx context.Context, logs []types.Log, headers map[uint64]header,
+	invoices map[common.Address]receiver, finalized uint64) ([]Outflow, error) {
+	var hashes []string
+	for _, l := range logs {
+		hashes = append(hashes, hexutil.Encode(l.BlockHash[:]))
+	}
+	recorded := map[logKey]bool{}
+	if len(hashes) > 0 {
+		rows, err := c.pool.Query(ctx, `SELECT block_hash, log_index FROM receiver_outflows
+			WHERE chain_id = $1 AND block_hash = ANY($2::text[])`, c.chainID, hashes)
+		if err != nil {
+			return nil, fmt.Errorf("read chain %d recorded receiver events: %w", c.chainID, err)
+		}
+		for rows.Next() {
+			var k logKey
+			if err := rows.Scan(&k.blockHash, &k.index); err != nil {
+				rows.Close()
+				return nil, err
+			}
+			recorded[k] = true
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return nil, fmt.Errorf("read chain %d recorded receiver events: %w", c.chainID, err)
+		}
+	}
+	var out []Outflow
+	for _, l := range logs {
+		h, ok := headers[l.BlockNumber]
+		inv, watched := invoices[l.Address]
+		if l.Removed || !watched || l.BlockNumber > finalized || !ok || h.Hash != l.BlockHash ||
+			recorded[logKey{hexutil.Encode(l.BlockHash[:]), uint64(l.Index)}] {
+			continue
+		}
+		block := new(big.Int).SetUint64(l.BlockNumber)
+		transfers, err := c.filterLogs(ctx, ethereum.FilterQuery{FromBlock: block, ToBlock: block,
+			Addresses: []common.Address{common.HexToAddress(inv.token)},
+			Topics:    [][]common.Hash{{transferTopic}, {common.BytesToHash(l.Address.Bytes())}}})
+		if err != nil {
+			return nil, fmt.Errorf("read chain %d receiver %s transfers: %w", c.chainID, l.Address.Hex(), err)
+		}
+		out = append(out, Outflow{InvoiceID: inv.invoiceID, Log: l, Transfers: transfers, Time: uint64(h.Timestamp), Verified: finalized})
+	}
+	return out, nil
+}
+
+// ReceiptOutflows are the receiver's events in a mined, finalized receipt; at is its block's time.
+func ReceiptOutflows(invoiceID string, receiver common.Address, r *types.Receipt, at, verified uint64) []Outflow {
+	transfers := make([]types.Log, len(r.Logs))
+	for i, l := range r.Logs {
+		transfers[i] = *l
+	}
+	var out []Outflow
+	for _, l := range transfers {
+		if l.Address == receiver && len(l.Topics) > 0 &&
+			(l.Topics[0] == settledTopic || l.Topics[0] == refundedTopic || l.Topics[0] == recoveredTopic) {
+			out = append(out, Outflow{InvoiceID: invoiceID, Log: l, Transfers: transfers, Time: at, Verified: verified})
+		}
+	}
+	return out
+}
+
+var errBadEvent = errors.New("not a movement of the receiver's invoice")
+
+// RecordOutflows records receiver events once; booking them is the ledger's. An event a receiver did not emit for its
+// own invoice is refused, so look-alike contracts can't move booked money.
+func RecordOutflows(ctx context.Context, tx pgx.Tx, chainID uint64, outflows []Outflow) error {
+	slices.SortFunc(outflows, func(a, b Outflow) int {
+		if order := cmp.Compare(a.Log.BlockNumber, b.Log.BlockNumber); order != 0 {
+			return order
+		}
+		return cmp.Compare(a.Log.Index, b.Log.Index)
+	})
+	previous := map[common.Hash]*uint{}
+	for _, o := range outflows {
+		err := recordOutflow(ctx, tx, chainID, o, previous[o.Log.TxHash])
+		if errors.Is(err, errBadEvent) {
+			// The receiver's code can't emit it, so an operator looks; the chain's scan goes on.
+			slog.Error("ALERT receiver event is not a movement of its invoice; skipped", "chain", chainID,
+				"invoice", o.InvoiceID, "tx", o.Log.TxHash.Hex(), "log", o.Log.Index, "err", err)
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		index := o.Log.Index
+		previous[o.Log.TxHash] = &index
+	}
+	return nil
+}
+
+// recordOutflow pairs the event with the latest matching token transfer before it in the same transaction, and after
+// the previous event of that transaction.
+func recordOutflow(ctx context.Context, tx pgx.Tx, chainID uint64, o Outflow, previous *uint) error {
+	var receive, token, recipient, amountText string
+	if err := tx.QueryRow(ctx, `SELECT receive_address, token_contract, recipient_address, amount::text FROM invoices
+		WHERE id = $1 AND chain_id = $2`, o.InvoiceID, chainID).Scan(&receive, &token, &recipient, &amountText); err != nil {
+		return fmt.Errorf("read invoice %s for its receiver event: %w", o.InvoiceID, err)
+	}
+	l := o.Log
+	if l.Address != common.HexToAddress(receive) {
+		return fmt.Errorf("receiver %s movement came from another contract: %w", o.InvoiceID, errBadEvent)
+	}
+	if len(l.Data) != 32 || len(l.Topics) < 3 || l.Topics[1] != common.HexToHash(o.InvoiceID) {
+		return fmt.Errorf("receiver %s emitted malformed movement evidence: %w", o.InvoiceID, errBadEvent)
+	}
+	kind, destination, reason := "", common.BytesToAddress(l.Topics[2].Bytes()), "awaiting_booking"
+	switch l.Topics[0] {
+	case settledTopic:
+		kind = "settlement"
+		if len(l.Topics) != 3 || destination != common.HexToAddress(recipient) {
+			reason = "invalid_terms"
+		}
+	case refundedTopic:
+		kind = "refund"
+		if len(l.Topics) != 3 {
+			reason = "invalid_terms"
+		}
+	case recoveredTopic:
+		kind = "recovery"
+		if len(l.Topics) != 4 {
+			return fmt.Errorf("receiver %s emitted malformed recovery: %w", o.InvoiceID, errBadEvent)
+		}
+		token, destination = strings.ToLower(destination.Hex()), common.BytesToAddress(l.Topics[3].Bytes())
+		reason = "different_asset"
+	default:
+		return fmt.Errorf("receiver %s emitted unknown movement: %w", o.InvoiceID, errBadEvent)
+	}
+	amount := new(big.Int).SetBytes(l.Data)
+	if kind == "settlement" && amount.String() != amountText {
+		reason = "invalid_terms"
+	}
+	if amount.Sign() == 0 {
+		return nil
+	}
+	var transferIndex *uint64
+	if kind != "recovery" {
+		for _, candidate := range o.Transfers {
+			if candidate.TxHash == l.TxHash && candidate.BlockHash == l.BlockHash && candidate.Index < l.Index && (previous == nil || candidate.Index > *previous) &&
+				candidate.Address == common.HexToAddress(token) && len(candidate.Topics) == 3 && len(candidate.Data) == 32 &&
+				common.BytesToAddress(candidate.Topics[1].Bytes()) == common.HexToAddress(receive) &&
+				common.BytesToAddress(candidate.Topics[2].Bytes()) == destination && new(big.Int).SetBytes(candidate.Data).Cmp(amount) == 0 {
+				index := uint64(candidate.Index)
+				if transferIndex == nil || index > *transferIndex {
+					transferIndex = &index
+				}
+			}
+		}
+		if transferIndex == nil {
+			reason = "transfer_evidence_missing"
+		}
+	}
+	_, err := tx.Exec(ctx, `INSERT INTO receiver_outflows (invoice_id, chain_id, receiver_address, token_contract,
+  kind, destination, amount, tx_hash, log_index, block_hash, block_number, block_time, verified_block, reconciliation_error, transfer_log_index)
+  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) ON CONFLICT DO NOTHING`,
+		o.InvoiceID, chainID, receive, token, kind, strings.ToLower(destination.Hex()), amount.String(),
+		hexutil.Encode(l.TxHash[:]), l.Index, hexutil.Encode(l.BlockHash[:]), l.BlockNumber, o.Time, o.Verified, reason, transferIndex)
+	return err
+}
+
+// deployTimes reads factory.deployedAt for receivers with events and no deploy time yet. A receiver deployed early by
+// a recovery settles only until 30 days after its deploy, which shortens its checkout close.
+func (c *Chain) deployTimes(ctx context.Context, outflows []Outflow, finalized uint64) (map[string]uint64, error) {
+	var ids []string
+	for _, o := range outflows {
+		ids = append(ids, o.InvoiceID)
+	}
+	rows, err := c.pool.Query(ctx, `SELECT id, factory_address, receive_address FROM invoices
+		WHERE id = ANY($1::text[]) AND coalesce(receiver_deployed_at, 0) = 0`, ids)
+	if err != nil {
+		return nil, fmt.Errorf("read chain %d receivers without a deploy time: %w", c.chainID, err)
+	}
+	type receiverRow struct{ ID, Factory, Receive string }
+	missing, err := pgx.CollectRows(rows, pgx.RowToStructByPos[receiverRow])
+	if err != nil {
+		return nil, err
+	}
+	times := map[string]uint64{}
+	for _, r := range missing {
+		at, err := c.receiverDeployedAt(ctx, r.Factory, r.Receive, finalized)
+		if err != nil {
+			return nil, err
+		}
+		if at > 0 {
+			times[r.ID] = at
+		}
+	}
+	return times, nil
+}
+
+func recordDeployTimes(ctx context.Context, tx pgx.Tx, times map[string]uint64) error {
+	for id, at := range times {
+		var before, after int64
+		if err := tx.QueryRow(ctx, "SELECT closes_at FROM invoices WHERE id = $1", id).Scan(&before); err != nil {
+			return err
+		}
+		if err := tx.QueryRow(ctx, `UPDATE invoices SET receiver_deployed_at = $2 WHERE id = $1
+			AND coalesce(receiver_deployed_at, 0) = 0 RETURNING closes_at`, id, int64(at)).Scan(&after); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("record invoice %s receiver deploy time: %w", id, err)
+		}
+		if after != 0 && after != before {
+			if err := history.Add(ctx, tx, id, history.CheckoutCloseChanged, history.System,
+				history.Data{Option: id, Until: time.Unix(after, 0).UTC().Format(time.RFC3339)}); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (c *Chain) receiverDeployedAt(ctx context.Context, factory, receive string, block uint64) (uint64, error) {
+	to := common.HexToAddress(factory)
+	data := append(crypto.Keccak256([]byte("deployedAt(address)"))[:4], common.LeftPadBytes(common.HexToAddress(receive).Bytes(), 32)...)
+	at := new(big.Int).SetUint64(block)
+	out, err := c.eth.CallContract(ctx, ethereum.CallMsg{To: &to, Data: data}, at)
+	if err != nil {
+		return 0, err
+	}
+	if len(out) == 0 {
+		code, err := c.eth.CodeAt(ctx, to, at)
+		if err != nil {
+			return 0, err
+		}
+		if len(code) == 0 {
+			return 0, nil
+		}
+	}
+	if len(out) != 32 || !new(big.Int).SetBytes(out).IsUint64() {
+		return 0, fmt.Errorf("receiver %s returned invalid deploy time", receive)
+	}
+	return new(big.Int).SetBytes(out).Uint64(), nil
+}

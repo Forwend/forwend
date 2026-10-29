@@ -55,7 +55,7 @@ flowchart LR
 - Observed returns and booked returns remain distinct; missing preceding records produce an explicit unreconciled condition.
 - Refunds reduce net held first, then unsettled merchant payable; neither balance can become negative.
 - Record actual authority settlement independently of signer intent; payable-first/held-second allocation makes exceptional held-money settlement visible.
-- Preserve all movements in finalized block/log order with durable scan coverage and independent balance checkpoints.
+- Preserve all movements in finalized block/log order; finalized balances decide paid and expiry.
 - Prevent reopening after confirmed returns; late deposits create new held liabilities.
 - Wallet attribution requires actual settlement evidence, not only receiver counterparty and token equality.
 - Export one row per booked movement; never repeat aggregate totals as independently summable financial rows.

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
-	"github.com/forwend/forwend/apps/backend/internal/ledger/ledgertest"
 )
 
 // deposit books a confirmed transfer of amount to the invoice id; the ledger reads 2.5 USDC on chain.
@@ -22,37 +21,6 @@ func (e invoiceEnv) deposit(t *testing.T, id, amount string) {
 		    block_hash, block_number, block_time, from_address, to_address, amount, status)
 		SELECT 84532, 'evm', $1, $2, $2, 0, $2, 90, extract(epoch FROM now())::bigint, $3, receive_address, $4::numeric,
 		    'confirmed' FROM invoices WHERE id = $2`, usdc, id, aliceWallet, amount)
-	rows, err := e.pool.Query(t.Context(), `SELECT i.id, i.id = $1, count(*) OVER() FROM invoices i WHERE
-  coalesce(i.main_id,i.id) = (SELECT coalesce(main_id,id) FROM invoices WHERE id = $1)`, id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	type option struct {
-		ID       string
-		Selected bool
-		Count    int
-	}
-	var options []option
-	for rows.Next() {
-		var o option
-		if err := rows.Scan(&o.ID, &o.Selected, &o.Count); err != nil {
-			t.Fatal(err)
-		}
-		options = append(options, o)
-	}
-	if err := rows.Err(); err != nil {
-		t.Fatal(err)
-	}
-	rows.Close()
-	for _, o := range options {
-		if o.Count > 1 {
-			balance := "0"
-			if o.Selected {
-				balance = amount
-			}
-			ledgertest.Checkpoint(t, e.pool, o.ID, 100, time.Now().Unix()+1, balance)
-		}
-	}
 	balances := func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
 		return big.NewInt(2500000), 100, nil
 	}

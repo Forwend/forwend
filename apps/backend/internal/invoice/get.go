@@ -188,11 +188,11 @@ func (s *Service) get(ctx context.Context, profileID, id string, summary bool) (
 			if err := s.pool.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = $1 AND kind IN ('refund','settlement'))", inv.OptionID).Scan(&returned); err != nil {
 				return Invoice{}, err
 			}
-			position, err := ledger.ReadReopenPosition(ctx, s.pool, inv.OptionID)
+			ready, err := ledger.ReopenReady(ctx, s.pool, inv.OptionID)
 			if err != nil {
 				return Invoice{}, err
 			}
-			capacity := !returned && position != nil && position.Time < until.Unix()
+			capacity := !returned && ready
 			if inv.LinkID != "" && capacity {
 				if err := s.pool.QueryRow(ctx, linkCapacitySQL, inv.LinkID).Scan(&capacity); err != nil {
 					return Invoice{}, fmt.Errorf("read payment link capacity: %w", err)
@@ -286,8 +286,7 @@ func readPaymentOptionsFor(ctx context.Context, db paymentReader, ids []string, 
         OR i.id = (SELECT coalesce(m.chosen_id,m.id) FROM invoices m WHERE m.id=coalesce(i.main_id,i.id))
         OR EXISTS (SELECT 1 FROM chain_transfers d WHERE d.invoice_id=i.id AND d.status <> 'reorged')
         OR EXISTS (SELECT 1 FROM receiver_outflows o WHERE o.invoice_id=i.id)
-        OR EXISTS (SELECT 1 FROM receiver_scans s WHERE s.invoice_id=i.id AND
-            (s.booking_error IS NOT NULL OR s.reconciliation_error NOT IN ('rescan_required','opening_balance'))))
+        OR EXISTS (SELECT 1 FROM invoice_balance_alerts a WHERE a.invoice_id=i.id))
         ORDER BY coalesce(i.main_id,i.id),i.chain_id,t.symbol,i.token_contract`, ids, activeOnly)
 	if err != nil {
 		return nil, fmt.Errorf("read payment options: %w", err)

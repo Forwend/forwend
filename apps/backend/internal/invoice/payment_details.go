@@ -158,7 +158,7 @@ func readOperationOptions(ctx context.Context, db paymentReader, invoices []Invo
 	if err != nil {
 		return nil, err
 	}
-	states, err := ledger.ReadReceiverStates(ctx, db, ids, amounts)
+	states, err := ledger.ReadReceiverStates(ctx, db, ids)
 	if err != nil {
 		return nil, err
 	}

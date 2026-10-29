@@ -110,24 +110,22 @@ func reconciliationSQL(scope string, from, to int) string {
  FROM ledger_transactions t JOIN ledger_entries e ON e.transaction_id = t.id JOIN options receiver ON receiver.id = t.invoice_id
  WHERE t.created_at < ` + upper + ` GROUP BY t.invoice_id
  ), evidence AS (
- SELECT receiver.id,s.history_complete,s.scanned_block,s.balance,(` + ledger.ComparableReceiverSQL("receiver.id", "s.scanned_block") + `) AS comparable,
+ SELECT receiver.id,cur.last_finalized_block AS scanned_block,
  (` + ledger.UnreconciledSQL("receiver.id") + `) AS unreconciled,
  (SELECT count(*) FROM chain_transfers d WHERE d.invoice_id = receiver.id AND d.status = 'detected') AS pending,
  (SELECT count(*) FROM chain_transfers d WHERE d.invoice_id = receiver.id AND d.status = 'confirmed' AND NOT d.booked) AS unbooked,
- (SELECT count(*) FROM chain_transfers d WHERE d.invoice_id = receiver.id AND d.status = 'confirmed'
-   AND NOT EXISTS (SELECT 1 FROM receiver_deposit_proofs proof WHERE proof.chain_transfer_id = d.id)) AS unproved,
  (SELECT count(*) FROM receiver_outflows flow WHERE flow.invoice_id = receiver.id AND flow.kind <> 'recovery' AND flow.ledger_transaction_id IS NULL) AS outflows,
  (SELECT count(*) FROM receiver_outflows flow WHERE flow.invoice_id = receiver.id AND flow.kind = 'recovery') AS other_assets,
  (SELECT count(*) FROM receiver_outflows flow WHERE flow.invoice_id = receiver.id AND flow.policy_exception IS NOT NULL) AS exceptions
- FROM options receiver JOIN receiver_scans s ON s.invoice_id = receiver.id
+ FROM options receiver LEFT JOIN chain_cursors cur ON cur.chain_id = receiver.chain_id
  ) SELECT coalesce(receiver.store_id::text,''),receiver.store_name,receiver.chain_id,receiver.token_contract,token.symbol,token.decimals,c.livemode,
  coalesce(sum(e.opening_receiver),0)::text,coalesce(sum(e.opening_payable),0)::text,coalesce(sum(e.opening_held),0)::text,
  coalesce(sum(e.receiver_change),0)::text,coalesce(sum(e.payable_change),0)::text,coalesce(sum(e.held_change),0)::text,
  coalesce(sum(e.closing_receiver),0)::text,coalesce(sum(e.closing_payable),0)::text,coalesce(sum(e.closing_held),0)::text,
  coalesce(sum(e.settled),0)::text,coalesce(sum(e.refunded),0)::text,
- CASE WHEN bool_and(proof.balance IS NOT NULL AND proof.comparable) THEN sum(proof.balance)::text END,
- count(*),count(*) FILTER (WHERE proof.history_complete),count(*) FILTER (WHERE proof.unreconciled),
- coalesce(sum(proof.pending),0)::bigint,coalesce(sum(proof.unbooked),0)::bigint,coalesce(sum(proof.unproved),0)::bigint,
+ NULL::text,
+ count(*),count(*),count(*) FILTER (WHERE proof.unreconciled),
+ coalesce(sum(proof.pending),0)::bigint,coalesce(sum(proof.unbooked),0)::bigint,0::bigint,
  coalesce(sum(proof.outflows),0)::bigint,coalesce(sum(proof.other_assets),0)::bigint,coalesce(sum(proof.exceptions),0)::bigint,
  coalesce(sum(e.movements),0)::bigint,min(proof.scanned_block),max(proof.scanned_block),max(progress.last_finalized_block)
  FROM options receiver JOIN tokens token ON token.chain_id = receiver.chain_id AND token.contract = receiver.token_contract JOIN chains c ON c.chain_id = receiver.chain_id
