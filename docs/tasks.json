@@ -230,7 +230,7 @@
         "Deterministic browser tests (kit, landing, a11y axe, width checks) pass"
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "tokens-unit",
         "ui-unit",
@@ -249,13 +249,14 @@
       "notes": [
         "2026-10-29 review fail by independent-reviewer: BLOCKING: (1) Accept 1 and R-176/D-113 say the sidebar's structure stays unchanged, but the branch changes it with no requirement row behind it: SetupGuide card and a Settings row at the sidebar foot (apps/web/src/screens/app-shell/app-sidebar.tsx:127-147), Payments added to the personal nav (apps/web/src/screens/app-shell/constants/app-nav.ts:123), account-menu page links removed, and in the phone More sheet Billing details is replaced by Settings plus the guide (phone-tab-bar.tsx:106,126). R-50 (checklist on the personal and freelancer overviews) and R-39 (More lists billing details) still describe the old behavior. The live Privy spec apps/web/e2e/privy/onboarding.spec.ts:78-260 still expects an overview checklist with step list items and a Close checklist button. SetupGuide hides its steps (aria-hidden ol) and has no close button, so those tests would fail. Fix: record owner approval (update R-176/accept 1, R-50, R-39, and fix and run onboarding.spec.ts) or keep the sidebar as it was. SHOULD FIX WITH IT (F342 surface): kit-screen.tsx:59 Typography note still says display serif and mono for money; tabs.tsx:30 triggers keep sm:rounded-pill inside a sm:rounded-md list; phone-tab-bar.tsx:30 current-page tile uses info blue, not the olive current-state mark; DESIGN.md:159,161,182,647 are stale (Billing details in More, river blue, Get started on overview, Geist amount). NOTES: tone.ts:25 comment says accent equals info (no longer true; accent on info-soft is 5.4:1 light, 12.4:1 dark, untested pair); tokens.css:116 says pills are for badges, but Badge is now rounded-sm and DESIGN.md:72 disagrees; base.css:225 fw-progress-down keyframe and 4 images (balance-day, balance-night, hero-night, not-found .webp, about 320 KB) are now unreferenced, and images.md says the old rows are kept for /kit/directions, which uses none of these four; app-header.tsx:60 says a personal profile has no Payments page, but the personal nav now has one; wallet-state-label.tsx:9,16,26 repeat the none literal instead of WALLET_STATE.none; three separate done/current/upcoming markers (stepper.tsx, display/timeline.tsx, payment-timeline.tsx) with separate state constants; /kit lacks Stepper's clickable-back state, StatusPill quiet, EmptyState page, Checkbox mixed and option icons; screens/app-shell and screens/settings import each other (app-sidebar.tsx:13, settings-sections.ts:3); Settings label defined twice (AUTH_COPY.settings, SETTINGS_COPY.title). Whole diff: docs/PROJECT.md:359 D-114 rationale names outside products (added here); docs/web/architecture.md:59 says pages show PricesUpdated and CoinGecko attribution, against D-115/R-178 and the code; F344 accept 2 also says with attribution. OK: tokens (Hanken Grotesk, Geist Mono, white/near-black, lime brand plus olive edge, 10px md and 16px lg radii); contrast test 56/56 and ui-web 15/15 rerun pass; Signal artwork logged and used by hero, sign-in, 404 and balance cards; kit shows badges, wallet transfer, detail list, card, stepper, timeline, date range; no secrets or debug leftovers; features do not import screens; shared and ui-web do not import features.",
         "2026-10-29 review pass by independent-reviewer: PASS. Earlier fail items: the sidebar foot (setup guide, Settings row), Settings in More and Sign out of all devices in Settings are now in R-176, R-50, R-39, R-137 and DESIGN.md; onboarding.spec.ts was rewritten for the setup guide and its 4 tests pass in the last full live run. Should-fix items are fixed: kit Typography note (kit-screen.tsx:59), tab triggers (tabs.tsx:30), olive current icon on phones (phone-tab-bar.tsx:35), stale DESIGN.md lines. Earlier notes fixed too: tone.ts comment plus the accent on info-soft contrast pair, tokens.css radius comment, unused keyframe, app-header.tsx comment, WALLET_STATE.none, kit states (quiet pill, mixed checkbox, page empty state, stepper that goes back), the shell no longer imports the settings screen, one Settings label, D-114 rationale, architecture.md prices line, F344 accept 2. Rerun here: design-tokens 58/58, ui-web 15/15, docs-check 0 errors, images-check pass. Live suite: balances, jobs, keys and payments pass in the rerun. Of the 5 navigation failures, 4 (navigation.spec.ts:291, :320, :414, :1221) are tests unchanged from main that look for parts the owner invoice page on main does not render either (Check status, the settling line, the Payment progress list, the deposits list), so they fail on main too. NOTES, not blocking: (1) navigation.spec.ts:24 failed at :65 in the last run but passed that step the run before. The branch changed :33 from Open (2 rows) to Confirming (1 row), so the count at :60 no longer waits for the search to land. Wait for the q parameter before picking All, then rerun the file; the steps edited after :65 have not passed live yet. (2) Payments in the personal sidebar (app-nav.ts:123) is still in no requirement row or DESIGN.md. (3) D-113 (PROJECT.md:358) still says the sidebar structure stays; align it with R-176. (4) Four images are now unused (balance-day, balance-night, hero-night, not-found .webp, 324 KB), and images.md:9 says the old rows serve /kit/directions, which uses none of them. (5) The sidebar Settings row (app-sidebar.tsx:143) lacks the pressed step of the nav rows (:105). (6) Three step markers keep separate state constants (stepper.tsx, display/timeline.tsx, payment-timeline.tsx). (7) The kit status menu demo still uses Open and Settled (components-showcase.tsx:287-292). (8) The test name at navigation.spec.ts:791 says account menu, but the test goes through Settings. (9) payment-detail.tsx:221 repeats the canceled literal. (10) The new R-50 sentence and DESIGN.md:733 run past 25 words (D-84). No secrets, no AI mention and no outside product names added.",
-        "2026-10-29 review pass by independent-reviewer: PASS. Reviewed commit 0211dd01 on top of the earlier pass at a6f55aa5. It settles notes 1, 2, 3, 5, 7, 8, 9 and 10: navigation.spec.ts:61 now waits for the q parameter before counting rows; DESIGN.md:117 lists the personal money group with Payments; D-113 (PROJECT.md:358) matches R-176 on the sidebar foot; the Settings row (app-sidebar.tsx:143) has the pressed step of the nav rows; the kit status menu uses Waiting and In wallet (components-showcase.tsx:288-290); the notifications test is named for Settings (navigation.spec.ts:793); payment-detail.tsx:221 uses PAYMENT_STATUS.canceled; R-50 and DESIGN.md:734-738 are split into short sentences. Verify passed again at 15:54:39Z and docs-check has 0 errors. Live navigation rerun (live-nav.log): 17 passed, 5 failed. The test at :24 now passes the search step and the new header and confirmation steps. It stops at :95, which looks for a Payment progress list in the Amount panel. The same step is in the main version of the test (line 88), and the owner invoice page on main renders no such list, so it fails on main too. The other 4 failures (:293, :322, :416, :1223) are the same tests as before: unchanged from main, failing there for the same missing parts. NOTES, not blocking: (1) The steps of the :24 test after :95 (activity table, Paid filter, record links) have still not passed live, because :95 stops the test first. Fix or drop the old progress steps in a follow-up so the rest runs. (2) Four images are still unused (balance-day, balance-night, hero-night, not-found .webp, 324 KB), and images.md:9 still says the old rows serve /kit/directions. (3) Three step markers keep separate state constants (stepper.tsx, display/timeline.tsx, payment-timeline.tsx). (4) In DESIGN.md:117-119 the new sub-bullet sits before the collapse-button lines, so they render inside it; move it after them. No secrets, no AI mention and no outside product names added."
+        "2026-10-29 review pass by independent-reviewer: PASS. Reviewed commit 0211dd01 on top of the earlier pass at a6f55aa5. It settles notes 1, 2, 3, 5, 7, 8, 9 and 10: navigation.spec.ts:61 now waits for the q parameter before counting rows; DESIGN.md:117 lists the personal money group with Payments; D-113 (PROJECT.md:358) matches R-176 on the sidebar foot; the Settings row (app-sidebar.tsx:143) has the pressed step of the nav rows; the kit status menu uses Waiting and In wallet (components-showcase.tsx:288-290); the notifications test is named for Settings (navigation.spec.ts:793); payment-detail.tsx:221 uses PAYMENT_STATUS.canceled; R-50 and DESIGN.md:734-738 are split into short sentences. Verify passed again at 15:54:39Z and docs-check has 0 errors. Live navigation rerun (live-nav.log): 17 passed, 5 failed. The test at :24 now passes the search step and the new header and confirmation steps. It stops at :95, which looks for a Payment progress list in the Amount panel. The same step is in the main version of the test (line 88), and the owner invoice page on main renders no such list, so it fails on main too. The other 4 failures (:293, :322, :416, :1223) are the same tests as before: unchanged from main, failing there for the same missing parts. NOTES, not blocking: (1) The steps of the :24 test after :95 (activity table, Paid filter, record links) have still not passed live, because :95 stops the test first. Fix or drop the old progress steps in a follow-up so the rest runs. (2) Four images are still unused (balance-day, balance-night, hero-night, not-found .webp, 324 KB), and images.md:9 still says the old rows serve /kit/directions. (3) Three step markers keep separate state constants (stepper.tsx, display/timeline.tsx, payment-timeline.tsx). (4) In DESIGN.md:117-119 the new sub-bullet sits before the collapse-button lines, so they render inside it; move it after them. No secrets, no AI mention and no outside product names added.",
+        "2026-10-29 review pass by independent-reviewer: PASS. Reviewed commits 8195d227 and e5ae34af on top of the earlier pass at 0211dd01. 8195d227 moves the personal money group sub-bullet after the collapse lines (DESIGN.md:119), so the collapse note stays in the desktop paragraph; docs-check has 0 errors. e5ae34af replaces the fixed 30 ms wait with waitFor at the three points that wait on a read or save (records.test.tsx:309, :323, :330). The assertions are unchanged, so the test is not weaker; records.test.tsx passes 10/10 here. Verify passed again at 16:02:23Z. The live navigation results from the earlier pass still hold: the 5 failures are steps that fail on main too. NOTES, not blocking: (1) records.test.tsx still uses the fixed 30 ms settle in 9 other places (:88, :171, :178, :195, :197, :204, :206, :242, :304); any of them that waits on a mocked request can fail the same way under load. (2) The steps of navigation.spec.ts:24 after :95 have still not passed live. (3) Four images are still unused (balance-day, balance-night, hero-night, not-found .webp, 324 KB), and images.md:9 still says the old rows serve /kit/directions. (4) Three step markers keep separate state constants (stepper.tsx, display/timeline.tsx, payment-timeline.tsx). No secrets, no AI mention and no outside product names added."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
-        "status": "failed",
-        "at": "2026-10-29T16:01:04Z",
+        "status": "passed",
+        "at": "2026-10-29T16:02:23Z",
         "checks": [
           {
             "id": "harness",
@@ -276,7 +277,7 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
+            "seconds": 0.2,
             "log": ""
           },
           {
@@ -288,23 +289,74 @@
           },
           {
             "id": "unit",
-            "outcome": "failed",
-            "exit": 1,
-            "seconds": 7.4,
-            "log": "docs/runs/F342-20261029T160104Z-unit.log"
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 306.3,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.3,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 58.9,
+            "log": ""
+          },
+          {
+            "id": "tokens-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "images-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.6,
+            "log": ""
           }
         ],
         "taskHash": "24b8343cceeddefe",
-        "filesHash": "4a12fcf455320a39",
+        "filesHash": "74bbad68f2aa20d2",
         "proof": {
           "1": "tokens-unit: token contrast tests pass for text on every surface in light and dark, accent badge included; ui-unit covers the kit components; the sidebar keeps its sections and order with the setup guide and Settings at its foot",
           "2": "e2e: kit spec loads /kit with every component state in both themes, and the landing, sign-in and 404 specs render the logged Signal artwork; images-check validates the artwork files",
           "3": "e2e: the deterministic browser suite (kit, landing, pay, a11y axe in both themes, width checks) passes"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent-reviewer",
+          "summary": "PASS. Reviewed commits 8195d227 and e5ae34af on top of the earlier pass at 0211dd01. 8195d227 moves the personal money group sub-bullet after the collapse lines (DESIGN.md:119), so the collapse note stays in the desktop paragraph; docs-check has 0 errors. e5ae34af replaces the fixed 30 ms wait with waitFor at the three points that wait on a read or save (records.test.tsx:309, :323, :330). The assertions are unchanged, so the test is not weaker; records.test.tsx passes 10/10 here. Verify passed again at 16:02:23Z. The live navigation results from the earlier pass still hold: the 5 failures are steps that fail on main too. NOTES, not blocking: (1) records.test.tsx still uses the fixed 30 ms settle in 9 other places (:88, :171, :178, :195, :197, :204, :206, :242, :304); any of them that waits on a mocked request can fail the same way under load. (2) The steps of navigation.spec.ts:24 after :95 have still not passed live. (3) Four images are still unused (balance-day, balance-night, hero-night, not-found .webp, 324 KB), and images.md:9 still says the old rows serve /kit/directions. (4) Three step markers keep separate state constants (stepper.tsx, display/timeline.tsx, payment-timeline.tsx). No secrets, no AI mention and no outside product names added.",
+          "at": "2026-10-29T16:09:17Z",
+          "filesHash": "74bbad68f2aa20d2"
         }
       },
       "branch": "feat/f342-the-app-and-its-kit-follow-the-signal-di",
       "baseCommit": "e10da4f60438e0b379c55adab058cc25b1bb5d8e",
-      "failedVerifies": 1
+      "failedVerifies": 0
     },
     {
       "id": "F343",
