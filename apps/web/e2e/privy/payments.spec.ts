@@ -824,6 +824,20 @@ for (const width of [1440, 390]) {
         "href",
         `/app/invoices/${payment.paymentId}`,
       );
+      // R-177: the payment also links its payment link, store and documents.
+      const details = page.getByRole("main").getByRole("region", { name: "Details" });
+      await expect(details.getByRole("link", { name: "Coffee order 42" })).toHaveAttribute(
+        "href",
+        `/app/links/${linkId}`,
+      );
+      await expect(details.getByRole("link", { name: "Sample shop" })).toHaveAttribute(
+        "href",
+        `/app/stores/${STORE}`,
+      );
+      await expect(details.getByRole("link", { name: /^Invoice PDF/ })).toHaveAttribute(
+        "href",
+        /\/v1\/invoices\/d{64}\/invoice\.pdf$/,
+      );
       await page.goto(`/app/invoices/${payment.paymentId}`);
       await expect(
         page

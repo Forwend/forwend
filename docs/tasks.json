@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 348,
+  "nextId": 350,
   "tasks": [
     {
       "id": "F332",
@@ -372,10 +372,10 @@
       "acceptance": [
         "Payments, invoices, links, stores, clients and jobs use one compact DataTable with shared loading, empty, error and filter states",
         "Payment status and wallet transfer come from one shared mapper and the backend's derived state; Owed to you lists receivables only",
-        "Payment detail links its invoice, link, store and documents; lists page by cursor with bounded reads"
+        "Payment detail links its invoice, link, store and documents; the payments, invoices and activity lists page by cursor with bounded reads"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "active",
       "verification": [
         "backend",
         "web-unit",
@@ -390,7 +390,9 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-29 review fail by independent-reviewer: Fail. The code meets accept 2 and most of accepts 1 and 3. Proofs 1 and 3 claim more than their tests show, and accept 3 does not hold for links. Accept 1: the six tables render through shared/components/data-table.tsx with the shared RowsSkeleton, LoadError, EmptyState, NoMatch and ListToolbar. Accept 2: holds. Badges go through shared/lib/payment-state.ts, which reads the backend state and wallet fields. TestOwedToYou (invoices_owed_test.go:66) and TestHeldCheckoutDoesNotBreakBillingOwedList (payment_purposes_test.go:59) exist, and payments.test.tsx:20-28 tests the mapper. Blocking: (1) Proof 3 says the live payments spec checks that the payment page links its invoice, link, store and documents. It checks only the invoice link (payments.spec.ts:823-826). The code renders all of them (payment-detail.tsx:323-339, 362-365), but nothing tests the link, store or PDF links on that page. Add those assertions or narrow the proof. (2) Proof 1 names build, which only shows the tables compile. The states it claims rest on live runs outside the harness, and those runs do not cover the claim. The empty-state test covers only invoices, activity and transactions (navigation.spec.ts:1167-1218). No live test checks the clients, links or stores list states. navigation.spec.ts:24 (filter and search) still failed in the last run by hand. Links, stores, clients and jobs have no paging at all. Live runs by hand are not acceptable as written: name the exact specs that passed and claim only what they cover, or run them through the harness. (3) Accept 3 says lists page by cursor with bounded reads. Payments, invoices and activity do. Links do not: links-api.ts:19 reads every link, link/read.go:33 and :43 read all rows without a limit, and links have no per-profile cap. Clients, jobs and stores read whole lists but are capped at 1000, 1000 and 20. The client and store pages also load the whole list to show one record (client-screen.tsx:29-32, store-screen.tsx:34-36), which R-177 rules out. Narrow accept 3 to the lists that page, and record links paging and those two pages as follow-up work, or fix them."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
@@ -448,6 +450,13 @@
           "1": "build: the payments, invoices, links, stores, clients and jobs tables all render through shared/components/data-table.tsx; their loading, empty, filtered and paged states pass in the live list tests run by hand on 2026-10-29",
           "2": "backend: TestOwedToYou and TestHeldCheckoutDoesNotBreakBillingOwedList keep Owed to you to receivables; web-unit payment tests read status and wallet state through the shared payment-state mapper",
           "3": "backend: payment operation and list search tests page by cursor with bounded reads; the live payments spec checks the payment page links its invoice, link, store and documents"
+        },
+        "review": {
+          "result": "fail",
+          "by": "independent-reviewer",
+          "summary": "Fail. The code meets accept 2 and most of accepts 1 and 3. Proofs 1 and 3 claim more than their tests show, and accept 3 does not hold for links. Accept 1: the six tables render through shared/components/data-table.tsx with the shared RowsSkeleton, LoadError, EmptyState, NoMatch and ListToolbar. Accept 2: holds. Badges go through shared/lib/payment-state.ts, which reads the backend state and wallet fields. TestOwedToYou (invoices_owed_test.go:66) and TestHeldCheckoutDoesNotBreakBillingOwedList (payment_purposes_test.go:59) exist, and payments.test.tsx:20-28 tests the mapper. Blocking: (1) Proof 3 says the live payments spec checks that the payment page links its invoice, link, store and documents. It checks only the invoice link (payments.spec.ts:823-826). The code renders all of them (payment-detail.tsx:323-339, 362-365), but nothing tests the link, store or PDF links on that page. Add those assertions or narrow the proof. (2) Proof 1 names build, which only shows the tables compile. The states it claims rest on live runs outside the harness, and those runs do not cover the claim. The empty-state test covers only invoices, activity and transactions (navigation.spec.ts:1167-1218). No live test checks the clients, links or stores list states. navigation.spec.ts:24 (filter and search) still failed in the last run by hand. Links, stores, clients and jobs have no paging at all. Live runs by hand are not acceptable as written: name the exact specs that passed and claim only what they cover, or run them through the harness. (3) Accept 3 says lists page by cursor with bounded reads. Payments, invoices and activity do. Links do not: links-api.ts:19 reads every link, link/read.go:33 and :43 read all rows without a limit, and links have no per-profile cap. Clients, jobs and stores read whole lists but are capped at 1000, 1000 and 20. The client and store pages also load the whole list to show one record (client-screen.tsx:29-32, store-screen.tsx:34-36), which R-177 rules out. Narrow accept 3 to the lists that page, and record links paging and those two pages as follow-up work, or fix them.",
+          "at": "2026-10-29T16:49:56Z",
+          "filesHash": "61a4b09f26333224"
         }
       },
       "branch": "feat/f343-a-merchant-can-follow-one-payment-from-r",
@@ -692,6 +701,50 @@
         "branch": "chore/f347-unused-landscape-images-are-removed",
         "base": "main"
       }
+    },
+    {
+      "id": "F348",
+      "type": "fix",
+      "behavior": "The links list pages by cursor with bounded reads",
+      "acceptance": [
+        "GET links reads one page at a time with a limit and a cursor, and the links list loads the next page on demand"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "web-unit"
+      ],
+      "refs": [
+        "R-177"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F349",
+      "type": "fix",
+      "behavior": "Client and store pages read only their own record",
+      "acceptance": [
+        "The client and store pages read their record by id and never load the whole list to show it"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "web-unit"
+      ],
+      "refs": [
+        "R-177"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {
