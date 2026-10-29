@@ -27,7 +27,7 @@ export function Tabs({ items, label, defaultValue }: TabsProps) {
           <RadixTabs.Trigger
             key={item.value}
             value={item.value}
-            className="relative inline-flex shrink-0 items-center justify-center gap-2 rounded-sm px-4 py-2 text-sm font-medium text-muted transition-[background-color,color,box-shadow] duration-[var(--fw-duration-fast)] ease-out before:absolute before:inset-x-0 before:-inset-y-1 hover:text-ink sm:rounded-pill data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-sm dark:data-[state=active]:bg-[color-mix(in_oklab,var(--fw-ink)_12%,var(--fw-surface-2))]"
+            className="relative inline-flex shrink-0 items-center justify-center gap-2 rounded-sm px-4 py-2 text-sm font-medium text-muted transition-[background-color,color,box-shadow] duration-[var(--fw-duration-fast)] ease-out before:absolute before:inset-x-0 before:-inset-y-1 hover:text-ink data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-sm dark:data-[state=active]:bg-[color-mix(in_oklab,var(--fw-ink)_12%,var(--fw-surface-2))]"
           >
             {item.icon}
             {item.label}

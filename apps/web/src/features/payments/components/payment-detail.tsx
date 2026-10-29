@@ -19,6 +19,7 @@ import {
 import { ArrowDownLeft, ExternalLink, FileDown } from "lucide-react";
 import { type ReactNode, useId } from "react";
 import { InvoiceLines } from "@/features/invoices/components/invoice-lines";
+import { ConfirmingStatus } from "@/features/invoices/components/invoice-progress";
 import { invoiceNumber, invoicePdfUrl } from "@/features/invoices/lib/invoices";
 import { useGetPaymentQuery } from "@/features/payments/api/payments-api";
 import { ExportPayments } from "@/features/payments/components/export-payments";
@@ -195,6 +196,15 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
                   <span className="text-subtle">{COPY.nothing}</span>
                 )}
               </Figure>
+              {lead && BigInt(lead.amounts.refunded) > 0n ? (
+                <Figure term={COPY.returned}>
+                  <PaymentAmount
+                    amount={lead.amounts.refunded}
+                    decimals={lead.decimals}
+                    symbol={lead.symbol}
+                  />
+                </Figure>
+              ) : null}
               {lead && figures && figures.extra > 0n ? (
                 <Figure term={COPY.extra} note={COPY.extraNote} tone="warning">
                   <PaymentAmount
@@ -203,7 +213,12 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
                     symbol={lead.symbol}
                   />
                 </Figure>
-              ) : lead && figures && figures.due > 0n && figures.received > 0n ? (
+              ) : lead &&
+                figures &&
+                figures.due > 0n &&
+                figures.received > 0n &&
+                !payment.closed &&
+                status !== "canceled" ? (
                 <Figure term={COPY.due}>
                   <PaymentAmount
                     amount={figures.due.toString()}
@@ -378,10 +393,18 @@ function DepositState({ deposit }: { deposit: Deposit }) {
   if (deposit.status === "detected" || deposit.paid === null)
     return (
       <span className="flex flex-col items-start gap-1 text-xs text-muted">
-        <StatusPill status={PAYMENT_STATUS.confirming} />
-        {deposit.status === "detected"
-          ? COPY.depositConfirming(deposit.blocksTotal - deposit.blocksLeft, deposit.blocksTotal)
-          : COPY.depositVerifying}
+        {deposit.status === "detected" ? (
+          <ConfirmingStatus
+            blocks={deposit.blocksLeft}
+            total={deposit.blocksTotal}
+            seconds={deposit.secondsLeft}
+          />
+        ) : (
+          <>
+            <StatusPill status={PAYMENT_STATUS.confirming} />
+            {COPY.depositVerifying}
+          </>
+        )}
       </span>
     );
   return <StatusPill status={PAYMENT_STATUS.confirmed} />;

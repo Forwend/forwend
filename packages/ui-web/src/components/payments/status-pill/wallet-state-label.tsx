@@ -1,19 +1,19 @@
 import { AlertTriangle, Ban, Clock, Wallet } from "lucide-react";
 import { cx } from "../../../lib/cx";
-import { WALLET_STATES, type WalletState } from "./payment-status";
+import { WALLET_STATE, WALLET_STATES, type WalletState } from "./payment-status";
 
 export interface WalletStateLabelProps {
   state: WalletState;
 }
 
-const ICONS: Record<Exclude<WalletState, "none">, typeof Wallet> = {
+const ICONS: Record<Exclude<WalletState, typeof WALLET_STATE.none>, typeof Wallet> = {
   pending: Clock,
   inWallet: Wallet,
   delayed: AlertTriangle,
   refused: Ban,
 };
 
-const TEXT: Record<Exclude<WalletState, "none">, string> = {
+const TEXT: Record<Exclude<WalletState, typeof WALLET_STATE.none>, string> = {
   pending: "text-muted",
   inWallet: "text-success",
   delayed: "text-warning",
@@ -23,7 +23,7 @@ const TEXT: Record<Exclude<WalletState, "none">, string> = {
 /** Quiet text beside the payment status, so a row never shows two pills. */
 export function WalletStateLabel({ state }: WalletStateLabelProps) {
   // Nothing to move yet: a quiet dash in a row, still named for screen readers.
-  if (state === "none") {
+  if (state === WALLET_STATE.none) {
     return (
       <span data-wallet={state} className="text-sm text-subtle">
         <span aria-hidden>—</span>

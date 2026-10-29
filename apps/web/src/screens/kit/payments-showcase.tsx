@@ -109,6 +109,10 @@ export function PaymentsShowcase() {
           <StatusPill key={status} status={status} />
         ))}
       </KitGroup>
+      <KitGroup title="Payment status, quiet: Confirmed as a dot in long lists">
+        <StatusPill quiet status="confirmed" />
+        <StatusPill quiet status="confirming" />
+      </KitGroup>
       <KitGroup title="Wallet transfer: no transfer yet, pending, in wallet, delayed, needs review">
         {WALLET.map((state) => (
           <WalletStateLabel key={state} state={state} />

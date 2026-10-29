@@ -18,11 +18,20 @@ async function chooseMerchant(page: Page, open: () => Promise<void>) {
   await expect(page).toHaveURL("/app");
 }
 
-// Returns null when this database has no enabled network.
-async function createInvoice(page: Page, fill: () => Promise<void>) {
+// Returns null when this database has no enabled network. Each callback fills its own step; Continue then opens the
+// next one, and the invoice is created on Review.
+async function createInvoice(
+  page: Page,
+  steps: {
+    customer: () => Promise<void>;
+    items: () => Promise<void>;
+    details: () => Promise<void>;
+  },
+) {
   await expect(page.getByRole("heading", { level: 1, name: "New invoice" })).toBeVisible();
   const noNetworks = page.getByText("No networks are enabled yet");
-  const form = noNetworks.or(page.getByRole("button", { name: "Create invoice" }));
+  const next = page.getByRole("main").getByRole("button", { name: "Continue" });
+  const form = noNetworks.or(next);
   // R-92: billing details are saved once, before the profile's first invoice.
   const billing = page.getByRole("main").getByRole("link", { name: "Add billing details" });
   await expect(form.or(billing)).toBeVisible();
@@ -42,11 +51,10 @@ async function createInvoice(page: Page, fill: () => Promise<void>) {
     expect(await blockingViolations(page)).toEqual([]);
     return null;
   }
-  await fill();
-  const recipient = page.getByRole("textbox", { name: /^(Legal|Full) name$/ });
-  const recipientEmail = page.getByRole("textbox", { name: "Email", exact: true });
-  if (!(await recipient.inputValue()) && !(await recipientEmail.inputValue()))
-    await recipient.fill("E2E individual customer");
+  for (const fill of [steps.customer, steps.items, steps.details]) {
+    await fill();
+    await next.click();
+  }
   const created = page.waitForResponse(
     (r) => /\/api\/v1\/profiles\/[^/]+\/invoices$/.test(r.url()) && r.request().method() === "POST",
   );
@@ -252,96 +260,120 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
   let due = "";
   let supplied = "";
   let lastDue = "";
-  const invoice = await createInvoice(page, async () => {
-    await fixUsdcOnBase(page);
-    // R-134: the first store is picked with its close, and another store brings its own.
-    const store = page.getByRole("combobox", { name: "Store" });
-    await expect(store).toContainText("E2E shop");
-    await expect(page.getByRole("radio", { name: "7 days" })).toBeChecked();
-    await store.click();
-    await page.getByRole("option", { name: "E2E pop-up" }).click();
-    await expect(page.getByRole("radio", { name: "1 hour" })).toBeChecked();
-    await store.click();
-    await page.getByRole("option", { name: "E2E shop" }).click();
-    await expect(page.getByRole("radio", { name: "7 days" })).toBeChecked();
-    // An amount the token can't hold and a link that is not https.
-    const amount = page.getByRole("textbox", { name: "Amount" });
-    const link = page.getByRole("textbox", { name: "Return link (optional)" });
-    await amount.fill("1.1234567");
-    await link.fill("http://shop.example/thanks");
-    await page.getByRole("button", { name: "Create invoice" }).click();
-    await expect(page.getByRole("alert").filter({ hasText: /has 6 decimals/ })).toBeVisible();
-    await expect(page.getByRole("alert").filter({ hasText: "Enter an https link" })).toBeVisible();
-    await expect(amount).toHaveAttribute("aria-invalid", "true");
-    await expect(link).toHaveAttribute("aria-invalid", "true");
-    // Customer comes first on the form, and no client is filled in yet: its name is the first error.
-    await expect(page.getByRole("textbox", { name: /^(Legal|Full) name$/ })).toBeFocused();
-    expect(await blockingViolations(page)).toEqual([]);
-    await link.fill("https://elsewhere.example/thanks");
-    await page.getByRole("button", { name: "Create invoice" }).click();
-    await expect(
-      page.getByRole("alert").filter({ hasText: "one of this store's allowed origins" }),
-    ).toBeVisible();
-    await amount.fill("12.5");
-    await link.fill("https://shop.example/thanks");
-    await page.getByRole("textbox", { name: "Title (optional)" }).fill(title);
-    await page.getByRole("textbox", { name: "Note to the client (optional)" }).fill("Thank you");
-    // R-89
-    await page.getByRole("button", { name: /^Supply date \(optional\)/ }).click();
-    await page.keyboard.press("PageUp");
-    await page.keyboard.press("Enter");
-    supplied = await page.locator('input[name="supplyDate"]').inputValue();
-    expect(supplied).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    // R-59
-    await page.getByRole("button", { name: /^Due date \(optional\)/ }).click();
-    await page.keyboard.press("PageDown");
-    await page.keyboard.press("Enter");
-    due = await page.locator('input[name="dueDate"]').inputValue();
-    expect(due).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    // D-80 (R-87): the checkout then stays open 60 days past the due date; a shorter close is allowed but warned.
-    await expect(page.getByRole("radio", { name: "Custom" })).toBeChecked();
-    const openUntil = new Intl.DateTimeFormat("en-US", {
-      dateStyle: "medium",
-      timeZone: "UTC",
-    }).format(new Date(Date.parse(`${due}T00:00:00Z`) + 60 * 86_400_000));
-    await expect(
-      page
-        .getByRole("status")
-        .filter({ hasText: `Open until ${openUntil}, so a client who pays late` }),
-    ).toBeVisible();
-    await page.getByText("1 day", { exact: true }).click();
-    await expect(page.getByRole("radio", { name: "1 day" })).toBeChecked();
-    await expect(
-      page
-        .getByRole("status")
-        .filter({ hasText: `This closes before ${openUntil}, 60 days after the due date.` }),
-    ).toBeVisible();
-    expect(await blockingViolations(page)).toEqual([]);
-    await page.getByRole("button", { name: /^Saved client/ }).click();
-    await page.getByRole("combobox", { name: /Saved client/ }).fill(clientName);
-    await page.getByRole("option", { name: new RegExp(`^${clientName}`) }).click();
-    await expect(page.getByRole("textbox", { name: /^(Legal|Full) name$/ })).toHaveValue(
-      clientName,
-    );
-    await expect(page.getByRole("textbox", { name: "Tax or VAT ID" })).toHaveValue("DE123456789");
-    // R-90
-    await expect(page.getByRole("textbox", { name: "PO or reference (optional)" })).toHaveValue(po);
-    await expect(page.getByRole("checkbox", { name: "Send payment reminders" })).toBeChecked();
-    // R-99: a retainer; the test stops it below, so no run leaves one running (D-85).
-    await page.getByRole("checkbox", { name: "Repeat every month" }).check();
-    // A last due date two months on caps a retainer that a failed run leaves running.
-    await page.getByRole("button", { name: /^Last due date \(optional\)/ }).click();
-    await page.keyboard.press("PageDown");
-    await page.keyboard.press("PageDown");
-    await page.keyboard.press("Enter");
-    lastDue = await page.locator('input[name="repeatEndDate"]').inputValue();
-    expect(lastDue > due).toBe(true);
-    // R-93
-    await page.getByRole("button", { name: "Add agreed value" }).click();
-    await page.getByRole("button", { name: /^Agreed in/ }).click();
-    await page.getByRole("combobox", { name: /Agreed in/ }).fill("euro");
-    await page.keyboard.press("Enter");
-    await page.getByRole("textbox", { name: "Agreed amount" }).fill("1150.5");
+  const next = page.getByRole("main").getByRole("button", { name: "Continue" });
+  const invoice = await createInvoice(page, {
+    customer: async () => {
+      // No client is filled in yet: its name is the step's error.
+      await next.click();
+      await expect(
+        page.getByRole("alert").filter({ hasText: "Enter a customer name or email" }),
+      ).toBeVisible();
+      await expect(page.getByRole("textbox", { name: /^(Legal|Full) name$/ })).toBeFocused();
+      await page.getByRole("button", { name: /^Saved client/ }).click();
+      await page.getByRole("combobox", { name: /Saved client/ }).fill(clientName);
+      await page.getByRole("option", { name: new RegExp(`^${clientName}`) }).click();
+      await expect(page.getByRole("textbox", { name: /^(Legal|Full) name$/ })).toHaveValue(
+        clientName,
+      );
+      await expect(page.getByRole("textbox", { name: "Tax or VAT ID" })).toHaveValue("DE123456789");
+    },
+    items: async () => {
+      await fixUsdcOnBase(page);
+      // An amount the token can't hold.
+      const amount = page.getByRole("textbox", { name: "Amount" });
+      await amount.fill("1.1234567");
+      await next.click();
+      await expect(page.getByRole("alert").filter({ hasText: /has 6 decimals/ })).toBeVisible();
+      await expect(amount).toHaveAttribute("aria-invalid", "true");
+      await expect(amount).toBeFocused();
+      expect(await blockingViolations(page)).toEqual([]);
+      await amount.fill("12.5");
+      // R-93
+      await page.getByRole("button", { name: "Add agreed value" }).click();
+      await page.getByRole("button", { name: /^Agreed in/ }).click();
+      await page.getByRole("combobox", { name: /Agreed in/ }).fill("euro");
+      await page.keyboard.press("Enter");
+      await page.getByRole("textbox", { name: "Agreed amount" }).fill("1150.5");
+    },
+    details: async () => {
+      // R-134: the first store is picked with its close, and another store brings its own.
+      const store = page.getByRole("combobox", { name: "Store" });
+      await expect(store).toContainText("E2E shop");
+      await expect(page.getByRole("radio", { name: "7 days" })).toBeChecked();
+      await store.click();
+      await page.getByRole("option", { name: "E2E pop-up" }).click();
+      await expect(page.getByRole("radio", { name: "1 hour" })).toBeChecked();
+      await store.click();
+      await page.getByRole("option", { name: "E2E shop" }).click();
+      await expect(page.getByRole("radio", { name: "7 days" })).toBeChecked();
+      // A link that is not https.
+      const link = page.getByRole("textbox", { name: "Return link (optional)" });
+      await link.fill("http://shop.example/thanks");
+      await page.getByRole("textbox", { name: "Title (optional)" }).fill(title);
+      await page.getByRole("textbox", { name: "Note to the client (optional)" }).fill("Thank you");
+      // R-90: from the saved client.
+      await expect(page.getByRole("textbox", { name: "PO or reference (optional)" })).toHaveValue(
+        po,
+      );
+      await expect(page.getByRole("checkbox", { name: "Send payment reminders" })).toBeChecked();
+      // R-89
+      await page.getByRole("button", { name: /^Supply date \(optional\)/ }).click();
+      await page.keyboard.press("PageUp");
+      await page.keyboard.press("Enter");
+      supplied = await page.locator('input[name="supplyDate"]').inputValue();
+      expect(supplied).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      // R-59
+      await page.getByRole("button", { name: /^Due date \(optional\)/ }).click();
+      await page.keyboard.press("PageDown");
+      await page.keyboard.press("Enter");
+      due = await page.locator('input[name="dueDate"]').inputValue();
+      expect(due).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      // D-80 (R-87): the checkout then stays open 60 days past the due date; a shorter close is allowed but warned.
+      await expect(page.getByRole("radio", { name: "Custom" })).toBeChecked();
+      const openUntil = new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+        timeZone: "UTC",
+      }).format(new Date(Date.parse(`${due}T00:00:00Z`) + 60 * 86_400_000));
+      await expect(
+        page
+          .getByRole("status")
+          .filter({ hasText: `Open until ${openUntil}, so a client who pays late` }),
+      ).toBeVisible();
+      await page.getByText("1 day", { exact: true }).click();
+      await expect(page.getByRole("radio", { name: "1 day" })).toBeChecked();
+      await expect(
+        page
+          .getByRole("status")
+          .filter({ hasText: `This closes before ${openUntil}, 60 days after the due date.` }),
+      ).toBeVisible();
+      // R-99: a retainer; the test stops it below, so no run leaves one running (D-85).
+      await page.getByRole("checkbox", { name: "Repeat every month" }).check();
+      // A last due date two months on caps a retainer that a failed run leaves running.
+      await page.getByRole("button", { name: /^Last due date \(optional\)/ }).click();
+      await page.keyboard.press("PageDown");
+      await page.keyboard.press("PageDown");
+      await page.keyboard.press("Enter");
+      lastDue = await page.locator('input[name="repeatEndDate"]').inputValue();
+      expect(lastDue > due).toBe(true);
+      expect(await blockingViolations(page)).toEqual([]);
+      // Create checks every step again and opens the one with the first error.
+      await next.click();
+      await page.getByRole("button", { name: "Create invoice" }).click();
+      await expect(
+        page.getByRole("alert").filter({ hasText: "Enter an https link" }),
+      ).toBeVisible();
+      await expect(link).toHaveAttribute("aria-invalid", "true");
+      await expect(link).toBeFocused();
+      expect(await blockingViolations(page)).toEqual([]);
+      await link.fill("https://elsewhere.example/thanks");
+      await next.click();
+      await page.getByRole("button", { name: "Create invoice" }).click();
+      await expect(
+        page.getByRole("alert").filter({ hasText: "one of this store's allowed origins" }),
+      ).toBeVisible();
+      await expect(link).toBeFocused();
+      await link.fill("https://shop.example/thanks");
+    },
   });
   if (invoice) {
     expect(invoice.returnUrl).toBe("https://shop.example/thanks");
@@ -352,10 +384,12 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     }).format(new Date(`${due}T00:00:00Z`));
     await expect(page.getByRole("heading", { level: 1, name: invoice.number })).toBeVisible();
     await expect(page.getByText(title)).toBeVisible();
-    const amount = page.getByRole("region", { name: "Amount" });
-    await expect(amount).toContainText("12.50 USDC");
-    await expect(amount.getByText("Waiting for payment", { exact: true })).toBeVisible();
-    await expect(amount.getByRole("link", { name: "View payment", exact: true })).toHaveAttribute(
+    const header = page.getByRole("main").locator("header");
+    await expect(header).toContainText("12.50 USDC");
+    await expect(
+      page.getByRole("main").getByText("Waiting for payment", { exact: true }),
+    ).toBeVisible();
+    await expect(header.getByRole("link", { name: "View payment", exact: true })).toHaveAttribute(
       "href",
       `/app/payments/${invoice.invoiceId}`,
     );
@@ -374,7 +408,9 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     );
     await expect(details).toContainText("Checkout closes");
     // R-60
-    await expect(page.getByRole("main").locator("header [data-status]")).toHaveCount(0);
+    await expect(page.getByRole("main").locator("header [data-status]")).toHaveText(
+      "Waiting for payment",
+    );
     await expect(page.getByRole("main").locator("header")).not.toContainText("Checkout closes");
     // R-143: Base Sepolia is a testnet.
     await expect(page.getByRole("main").locator("header")).toContainText("Testnet");
@@ -463,6 +499,13 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
       .click();
     await page.getByRole("menuitem", { name: "Duplicate" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "New invoice" })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: /^(Legal|Full) name$/ })).toHaveValue(
+      clientName,
+    );
+    await next.click();
+    await expect(page.getByRole("textbox", { name: "Amount", exact: true })).toHaveValue("12.5");
+    await expect(page.getByRole("textbox", { name: "Agreed amount" })).toHaveValue("1150.5");
+    await next.click();
     await expect(page.getByRole("textbox", { name: "Title (optional)" })).toHaveValue(title);
     await expect(page.getByRole("textbox", { name: "PO or reference (optional)" })).toHaveValue(po);
     await expect(page.getByRole("textbox", { name: "Note to the client (optional)" })).toHaveValue(
@@ -471,13 +514,8 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(page.getByRole("textbox", { name: "Return link (optional)" })).toHaveValue(
       "https://shop.example/thanks",
     );
-    await expect(page.getByRole("textbox", { name: /^(Legal|Full) name$/ })).toHaveValue(
-      clientName,
-    );
-    await expect(page.getByRole("textbox", { name: "Amount", exact: true })).toHaveValue("12.5");
     await expect(page.locator('input[name="dueDate"]')).toHaveValue("");
     await expect(page.locator('input[name="supplyDate"]')).toHaveValue("");
-    await expect(page.getByRole("textbox", { name: "Agreed amount" })).toHaveValue("1150.5");
     // R-97, R-99
     await expect(page.getByRole("checkbox", { name: "Send payment reminders" })).toBeChecked();
     await expect(page.getByRole("checkbox", { name: "Repeat every month" })).not.toBeChecked();
@@ -640,12 +678,21 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
   });
   await tabs.getByRole("button", { name: "More" }).click();
   await expect(more.getByRole("link", { name: "Activity", exact: true })).toBeVisible();
-  await expect(more.getByRole("link", { name: "Billing details", exact: true })).toBeVisible();
+  await more.getByRole("link", { name: "Settings", exact: true }).click();
+  await expect(
+    page
+      .getByRole("navigation", { name: "Settings" })
+      .getByRole("link", { name: "Billing details", exact: true }),
+  ).toBeVisible();
+  await fits();
+  await tabs.getByRole("button", { name: "More" }).click();
   // R-86
   await more.getByRole("link", { name: "Clients", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Clients" })).toBeVisible();
   await fits();
   await page.getByRole("link", { name: "Add client" }).first().click();
+  await page.getByRole("textbox", { name: "Legal name" }).fill("E2E phone client");
+  await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: /^Country \(optional\)/ }).click();
   await expect(page.getByRole("combobox", { name: /Country \(optional\)/ })).toBeFocused();
   await fits();
@@ -657,36 +704,49 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
   await page.getByRole("link", { name: "New invoice" }).first().click();
   // Payer chooses is the default (R-56): the amount is in USD.
   let choosing = false;
-  const invoice = await createInvoice(page, async () => {
-    await fits();
-    choosing = (await page.getByRole("radio", { name: "Client chooses" }).count()) > 0;
-    if (choosing) await expect(page.getByRole("radio", { name: "Client chooses" })).toBeChecked();
-    await page.getByRole("textbox", { name: choosing ? "Amount in USD" : "Amount" }).fill("0.5");
-    // Its addresses stop counting toward the shared profile's open cap within the hour (D-85).
-    await page.getByText("1 hour", { exact: true }).click();
-    // R-88
-    await page.getByRole("button", { name: "Add item" }).click();
-    await page.getByRole("textbox", { name: "Item 1", exact: true }).fill("E2E logo");
-    await page.getByRole("textbox", { name: "Qty" }).fill("2");
-    await expect(page.getByText("Total", { exact: true }).locator("..")).toHaveText(
-      choosing ? "Total1.00 USD" : "Total1.00 USDC",
-    );
-    await page.getByRole("textbox", { name: /^(Legal|Full) name$/ }).fill("E2E phone client");
-    await page.getByRole("button", { name: "Add agreed value" }).click();
-    await page.getByRole("button", { name: /^Agreed in/ }).click();
-    await page.getByRole("combobox", { name: /Agreed in/ }).fill("pound");
-    await page.keyboard.press("Enter");
-    await page.getByRole("textbox", { name: "Agreed amount" }).fill("0.8");
-    await fits();
-    expect(await blockingViolations(page)).toEqual([]);
+  const invoice = await createInvoice(page, {
+    customer: async () => {
+      await page.getByRole("textbox", { name: /^(Legal|Full) name$/ }).fill("E2E phone client");
+      await fits();
+    },
+    items: async () => {
+      choosing = (await page.getByRole("radio", { name: "Client chooses" }).count()) > 0;
+      if (choosing) await expect(page.getByRole("radio", { name: "Client chooses" })).toBeChecked();
+      await page.getByRole("textbox", { name: choosing ? "Amount in USD" : "Amount" }).fill("0.5");
+      // R-88
+      await page.getByRole("button", { name: "Add item" }).click();
+      await page.getByRole("textbox", { name: "Item 1", exact: true }).fill("E2E logo");
+      await page.getByRole("textbox", { name: "Qty" }).fill("2");
+      await expect(
+        page
+          .getByRole("group", { name: "Amount", exact: true })
+          .getByText("Total", { exact: true })
+          .locator(".."),
+      ).toHaveText(choosing ? "Total1.00 USD" : "Total1.00 USDC");
+      await page.getByRole("button", { name: "Add agreed value" }).click();
+      await page.getByRole("button", { name: /^Agreed in/ }).click();
+      await page.getByRole("combobox", { name: /Agreed in/ }).fill("pound");
+      await page.keyboard.press("Enter");
+      await page.getByRole("textbox", { name: "Agreed amount" }).fill("0.8");
+      await fits();
+      expect(await blockingViolations(page)).toEqual([]);
+    },
+    details: async () => {
+      // Its addresses stop counting toward the shared profile's open cap within the hour (D-85).
+      await page.getByText("1 hour", { exact: true }).click();
+      await fits();
+    },
   });
   if (invoice) {
     await expect(page.getByRole("heading", { level: 1, name: invoice.number })).toBeVisible();
-    const amount = page.getByRole("region", { name: "Amount" });
-    await expect(amount).toContainText(choosing ? "1.00 USD" : "1.00 USDC");
+    await expect(page.getByRole("main").locator("header")).toContainText(
+      choosing ? "1.00 USD" : "1.00 USDC",
+    );
     if (choosing) {
       expect(invoice.options.length).toBeGreaterThan(1);
-      await expect(amount).toContainText(`The client picks one of ${invoice.options.length}`);
+      await expect(page.getByRole("main").locator("header")).toContainText(
+        `The client picks one of ${invoice.options.length}`,
+      );
     }
     await expect(page.getByRole("region", { name: "Items" })).toContainText(
       choosing ? "E2E logo2 × 0.50 USD1.00 USD" : "E2E logo2 × 0.50 USDC1.00 USDC",
@@ -703,6 +763,7 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
       .getByRole("button", { name: "More actions" })
       .click();
     await page.getByRole("menuitem", { name: "Duplicate" }).click();
+    await page.getByRole("main").getByRole("button", { name: "Continue" }).click();
     await expect(page.getByRole("textbox", { name: "Item 1", exact: true })).toHaveValue(
       "E2E logo",
     );

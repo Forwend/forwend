@@ -13,7 +13,7 @@ async function openRequest(page: Page) {
   await expect(page.getByRole("dialog")).toHaveCount(0);
   const sheet = page.getByRole("main");
   const noNetworks = sheet.getByText("No networks are enabled yet");
-  await expect(noNetworks.or(sheet.getByRole("button", { name: "Create request" }))).toBeVisible();
+  await expect(noNetworks.or(sheet.getByRole("button", { name: "Continue" }))).toBeVisible();
   if (await noNetworks.isVisible()) {
     expect(await blockingViolations(page)).toEqual([]);
     return false;
@@ -27,6 +27,7 @@ async function openRequest(page: Page) {
 }
 
 async function createRequest(page: Page) {
+  await page.getByRole("main").getByRole("button", { name: "Continue" }).click();
   const created = page.waitForResponse(
     (r) => /\/api\/v1\/profiles\/[^/]+\/invoices$/.test(r.url()) && r.request().method() === "POST",
   );
@@ -62,10 +63,12 @@ test("a personal profile requests money, sends the pay link and the payer sees w
 
   if (await openRequest(page)) {
     const sheet = page.getByRole("main");
+    const next = sheet.getByRole("button", { name: "Continue" });
+    await sheet.getByRole("textbox", { name: "Amount" }).fill("3.25");
+    await next.click();
     const name = sheet.getByRole("textbox", { name: "Your name (shown to the payer)" });
     await name.fill("");
-    await sheet.getByRole("textbox", { name: "Amount" }).fill("3.25");
-    await sheet.getByRole("button", { name: "Create request" }).click();
+    await next.click();
     await expect(
       sheet.getByRole("alert").filter({ hasText: "Enter the name the payer will see." }),
     ).toBeVisible();
@@ -79,6 +82,8 @@ test("a personal profile requests money, sends the pay link and the payer sees w
     await page.keyboard.press("Enter"); // today
     const time = sheet.getByLabel("At", { exact: true });
     await time.fill("00:00");
+    // Create checks every step again and opens the one with the first error.
+    await next.click();
     await sheet.getByRole("button", { name: "Create request" }).click();
     await expect(
       sheet.getByRole("alert").filter({ hasText: "from 15 minutes to 365 days" }),
@@ -95,7 +100,7 @@ test("a personal profile requests money, sends the pay link and the payer sees w
     // The API takes seconds from now, so the close lands within a minute of the time picked.
     expect(Math.abs(Date.parse(request.expiresAt) - tomorrow.getTime())).toBeLessThan(60_000);
 
-    await expect(page.getByRole("region", { name: "Amount" })).toContainText("3.25");
+    await expect(page.getByRole("main").locator("header")).toContainText("3.25");
     const link = `http://localhost:3000/pay/${request.payToken}`;
     await page
       .getByRole("main")
@@ -119,7 +124,7 @@ test("a personal profile requests money, sends the pay link and the payer sees w
     await expect(page.getByRole("region", { name: "From" })).toContainText("E2E Requester");
     await expect(page.getByRole("region", { name: "Billed to" })).toHaveCount(0);
     expect(await blockingViolations(page)).toEqual([]);
-    await sidebar.getByRole("link", { name: "Requests" }).click();
+    await sidebar.getByRole("link", { name: "Requests", exact: true }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Requests" })).toBeAttached();
     // The request's row shows its note.
     await expect(
@@ -161,6 +166,7 @@ test("on a phone a personal profile requests money from the round actions withou
   if (await openRequest(page)) {
     const sheet = page.getByRole("main");
     await sheet.getByRole("textbox", { name: "Amount" }).fill("1");
+    await sheet.getByRole("button", { name: "Continue" }).click();
     await sheet.getByRole("textbox", { name: "Your name (shown to the payer)" }).fill("E2E Phone");
     // It stops counting toward the shared profile's open cap within the hour (D-85).
     await sheet.getByText("1 hour", { exact: true }).click();

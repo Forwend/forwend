@@ -1,7 +1,7 @@
 import { Badge, PAYMENT_STATUS, StatusPill, TABLE_ROW_CLASSES, TONES } from "@forwend/ui-web";
 import { ArrowUpRight, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { ConfirmingStatus } from "@/features/invoices/components/invoice-progress";
+import { ConfirmingHint } from "@/features/invoices/components/invoice-progress";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
 import { PAYMENT_DETAIL_COPY as COPY } from "@/features/payments/constants/payments-copy";
 import type { PaymentDetail } from "@/features/payments/types/payments";
@@ -31,9 +31,9 @@ export function WalletTransferRow({ option }: WalletTransferRowProps) {
   ) : settlement?.wait === "cap" ? (
     <Badge tone={TONES.warning}>{COPY.transferCap}</Badge>
   ) : settlement?.blocksLeft != null || settlement?.status === "sent" ? (
-    <span className="flex flex-col items-start gap-1 text-xs text-muted">
+    <span className="inline-flex items-center gap-1">
       <StatusPill status={PAYMENT_STATUS.confirming} />
-      <ConfirmingStatus blocks={settlement.blocksLeft} seconds={settlement.secondsLeft} />
+      <ConfirmingHint blocks={settlement.blocksLeft} seconds={settlement.secondsLeft} />
     </span>
   ) : settlement?.wait ? (
     <Badge tone={TONES.warning}>{COPY.transferDelayed}</Badge>
@@ -47,7 +47,7 @@ export function WalletTransferRow({ option }: WalletTransferRowProps) {
           icon={ArrowUpRight}
           label={COPY.toWallet}
           time={settlement?.signedAt ? dateTime(settlement.signedAt) : null}
-          state={state}
+          state={<span role="status">{state}</span>}
         />
       </td>
       <td className="whitespace-nowrap max-2xl:hidden">

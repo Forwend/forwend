@@ -222,15 +222,6 @@
   }
 }
 
-@keyframes fw-progress-down {
-  from {
-    transform: translateY(-100%);
-  }
-  to {
-    transform: translateY(250%);
-  }
-}
-
 @keyframes fw-draw-in {
   from {
     stroke-dashoffset: 1;

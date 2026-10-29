@@ -61,7 +61,8 @@ export function nextStep(payment: PaymentDetail, extra = 0n): string | null {
     return next.review;
   }
   const status = paymentDisplayStatus(payment);
-  if (payment.refundStatus === "refunded") return next.returned;
+  if (payment.refundStatus === "refunded")
+    return status === "paid" || status === "overpaid" ? next.returnedExtra : next.returned;
   if (status === "canceled") return next.canceled;
   if (status === "overpaid") return next.overpaid;
   if (status === "paid") {

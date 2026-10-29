@@ -97,7 +97,7 @@ test("a profile shows its balance, networks, receive address and activity; a new
       page.getByRole("heading", { level: 1, name: "Merchant · E2E shop overview" }),
     ).toBeVisible();
     await expect(page.getByRole("region", { name: "Received" })).toBeVisible();
-    await expect(page.getByRole("region", { name: "Payments" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Latest payments" })).toBeVisible();
     expect(await blockingViolations(page)).toEqual([]);
     expect(await readAddress()).not.toBe(personalWallet);
   }
@@ -117,7 +117,10 @@ test("a profile shows its balance, networks, receive address and activity; a new
   await expect(page.getByRole("heading", { level: 1, name: "Activity" })).toBeVisible();
   await sidebar.getByRole("link", { name: "Transactions" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Transactions" })).toBeVisible();
-  await expect(page.getByRole("group", { name: "Direction" })).toBeVisible();
+  // An empty list without filters shows its empty state in place of the filters.
+  await expect(
+    page.getByRole("group", { name: "Direction" }).or(page.locator("[data-page-empty]")),
+  ).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
   await context.close();
 });

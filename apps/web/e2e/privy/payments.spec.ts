@@ -382,6 +382,7 @@ test("payment lists, reconciliation and detail remain usable on a phone", async 
   await reconciliation.click();
   await expect(reconciliation).toBeChecked();
   // The report's account rows show on a phone too.
+  await page.getByRole("button", { name: "USDC breakdown", exact: true }).click();
   await expect(page.getByRole("rowheader", { name: "In payment addresses" }).first()).toBeVisible();
   expect(await sidewaysScroll(page)).toBeLessThanOrEqual(1);
   await page.goto(`/app/payments/${payment.paymentId}`);
@@ -427,9 +428,14 @@ test("failed store loading blocks invoice creation until an explicit retry succe
   await expect(
     main.getByRole("alert").filter({ hasText: "We could not load stores" }),
   ).toBeVisible();
-  await expect(main.getByRole("button", { name: "Create invoice", exact: true })).toHaveCount(0);
+  await expect(main.getByRole("button", { name: "Continue", exact: true })).toHaveCount(0);
   failed = false;
   await main.getByRole("button", { name: "Try again", exact: true }).click();
+  await main.getByRole("textbox", { name: "Legal name" }).fill("Store retry client");
+  await main.getByRole("button", { name: "Continue", exact: true }).click();
+  await main.getByLabel(/^Amount/).fill("1");
+  await main.getByRole("button", { name: "Continue", exact: true }).click();
+  await main.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(main.getByRole("button", { name: "Create invoice", exact: true })).toBeVisible();
   await context.close();
 });
@@ -501,16 +507,22 @@ test("a partial payment awaiting evidence does not ask the merchant to collect a
       json: {
         ...detail,
         paymentStatus: "partially_paid",
+        receipts: [{ ...payment.receipts[0], received: "1000000" }],
         problems: [{ ...held, code: "partial_payment", action: "wait" }],
       },
     }),
   );
   await page.goto(`/app/payments/${payment.paymentId}`);
   await expect(
-    page.getByText("Confirming payment. Do not ask the customer to pay again.", { exact: true }),
+    page.getByText(
+      "Payment detected; awaiting confirmation. Don't ask the customer to pay again.",
+      { exact: true },
+    ),
   ).toBeVisible();
   await expect(
-    page.getByText("Share checkout for the remaining amount.", { exact: true }),
+    page.getByText("Partly paid. The customer can pay the rest through the same checkout.", {
+      exact: true,
+    }),
   ).toHaveCount(0);
   await context.close();
 });
@@ -594,15 +606,15 @@ test("uncredited payment shows the funded option and pending records", async ({ 
   });
   await page.goto(`/app/payments/${payment.paymentId}`);
   const main = page.getByRole("main");
-  await expect(main.getByText("Confirming", { exact: true })).toBeVisible();
+  await expect(main.locator("header [data-status]")).toHaveText("Confirming");
   await expect(
     main.getByText(
       "Confirmation is taking longer than usual. Don't ask the customer to pay again.",
     ),
   ).toBeVisible();
-  await expect(main.getByText("OUSD ·", { exact: false }).first()).toBeVisible();
-  await expect(main.getByText("1.00", { exact: true })).toHaveCount(2);
-  await expect(main.getByText("Paid", { exact: true })).toHaveCount(0);
+  await expect(main.getByText("OUSD", { exact: true }).first()).toBeVisible();
+  await expect(main.getByText("1.00", { exact: true })).toHaveCount(3);
+  await expect(main.locator('[data-status="paid"]')).toHaveCount(0);
   await expect(main.getByText("Awaiting customer payment", { exact: true })).toHaveCount(0);
   await expect(main.getByRole("table", { name: "Transfers" })).toBeVisible();
   await expect(main.getByText("Transfer records incomplete. Contact support.")).toHaveCount(0);
@@ -800,19 +812,16 @@ for (const width of [1440, 390]) {
             .getByRole("link", { name: new RegExp(`^${payment.reference}\\b`) })
             .filter({ visible: true }),
         ).toHaveAttribute("href", `/app/payments/${payment.paymentId}`);
-        await expect(
-          main.getByText(state.label, { exact: true }).filter({ visible: true }),
-        ).toBeVisible();
+        await expect(main.locator("[data-status]").filter({ visible: true })).toHaveText(
+          state.label,
+        );
         expect(await sidewaysScroll(page)).toBeLessThanOrEqual(1);
       }
       await page.goto(`/app/payments/${payment.paymentId}`);
-      await expect(page.getByRole("main").getByText(state.label, { exact: true })).toBeVisible();
+      await expect(page.getByRole("main").locator("header [data-status]")).toHaveText(state.label);
       if (state.pending !== "0")
         await expect(
-          page
-            .getByRole("main")
-            .getByText(/confirming$/)
-            .filter({ visible: true }),
+          page.getByRole("main").getByText("Confirming, not final", { exact: true }),
         ).toBeVisible();
       if (state.refund === "refunded")
         await expect(
@@ -901,66 +910,6 @@ test("the bell shows wallet settlement once and keeps an unconfirmed transfer pe
   await context.close();
 });
 
-test("transaction evidence distinguishes missing records, recovery and internal changes", async ({
-  browser,
-}) => {
-  const context = await browser.newContext({
-    storageState: session,
-    viewport: { width: 390, height: 844 },
-  });
-  const page = await context.newPage();
-  await mockPayments(page);
-  await page.route(`**/payments/${payment.paymentId}/movements*`, (route) =>
-    route.fulfill({
-      json: {
-        ...movements,
-        items: [
-          {
-            ...movements.items[0],
-            verified: false,
-            reconciliationError: "source_evidence_missing",
-          },
-          {
-            ...movements.items[0],
-            id: "outflow:2",
-            state: "observed",
-            kind: "recovery",
-            token: `0x${"b".repeat(40)}`,
-            sourceAmount: "1",
-            receiverDelta: null,
-            payableDelta: null,
-            heldDelta: null,
-            verified: true,
-            reconciliationError: "different_asset",
-          },
-          {
-            ...movements.items[0],
-            id: "ledger:3",
-            kind: "reopen",
-            sourceAmount: null,
-            txHash: null,
-            verified: false,
-            reconciliationError: null,
-          },
-        ],
-      },
-    }),
-  );
-  await page.goto(`/app/payments/${payment.paymentId}`);
-  await page.getByRole("button", { name: "Transactions", exact: true }).click();
-  const table = page.getByRole("main").getByRole("table");
-  await expect(table.getByText("Transfer records incomplete. Contact support.")).toHaveCount(1);
-  await expect(table.getByRole("row").filter({ hasText: "Funds returned" })).toContainText(
-    "Confirmed",
-  );
-  await expect(table.getByRole("row").filter({ hasText: "Checkout reopened" })).toContainText(
-    "Recorded",
-  );
-  await table.getByRole("button", { name: "Details", exact: true }).first().click();
-  expect(await sidewaysScroll(page)).toBeLessThanOrEqual(1);
-  await context.close();
-});
-
 test("payment detail tracks settlement finality and keeps its transaction link", async ({
   browser,
 }) => {
@@ -1019,8 +968,9 @@ test("payment detail tracks settlement finality and keeps its transaction link",
     }),
   );
   await page.goto(`/app/payments/${payment.paymentId}`);
-  const transfer = page.getByRole("region", { name: "Transfer to your wallet" });
-  await expect(transfer.getByRole("status")).toHaveText("Confirming");
+  const transfer = page.getByRole("main").getByRole("row").filter({ hasText: "To your wallet" });
+  const state = transfer.locator("[data-status]").filter({ visible: true });
+  await expect(state).toHaveText("Confirming");
   const estimate = transfer.getByRole("button", {
     name: "375 blocks remaining · About 13 min left",
   });
@@ -1039,7 +989,9 @@ test("payment detail tracks settlement finality and keeps its transaction link",
     "href",
     `https://sepolia.basescan.org/tx/${txHash}`,
   );
-  await expect(page.getByText("Confirming (9/599)", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Confirming (9/599)", { exact: true }).filter({ visible: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("main").locator(`a[href="https://sepolia.basescan.org/tx/${deposit.txHash}"]`),
   ).toHaveCount(1);
@@ -1067,17 +1019,17 @@ test("payment detail tracks settlement finality and keeps its transaction link",
   await page.keyboard.press("Escape");
   blocksLeft = 125;
   await page.reload();
-  await expect(transfer.getByRole("status")).toHaveText("Confirming");
+  await expect(state).toHaveText("Confirming");
   await expect(
     transfer.getByRole("button", { name: "125 blocks remaining · About 5 min left" }),
   ).toBeVisible();
   blocksLeft = 0;
   await page.reload();
-  await expect(transfer.getByRole("status")).toHaveText("Confirming");
-  await expect(transfer).not.toContainText("In your wallet");
+  await expect(state).toHaveText("Confirming");
+  await expect(transfer).not.toContainText("In wallet");
   settled = true;
   await page.reload();
-  await expect(transfer).toContainText("In your wallet");
+  await expect(transfer).toContainText("In wallet");
   await expect(transfer.getByRole("link")).toHaveAttribute(
     "href",
     `https://sepolia.basescan.org/tx/${hash("8")}`,

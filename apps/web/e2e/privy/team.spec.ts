@@ -138,15 +138,18 @@ test("a Developer sees only its pages, and lands on Payments", async ({ browser 
   await expect(main.getByRole("row", { name: /Logo refresh/ })).toContainText("2.00 USDC");
   await main.getByRole("link", { name: "New invoice" }).first().click();
   await expect(page.getByRole("heading", { level: 1, name: "New invoice" })).toBeAttached();
+  await main.getByRole("textbox", { name: "Legal name" }).fill("E2E client");
+  await main.getByRole("button", { name: "Continue" }).click();
   await expect(main.getByRole("textbox", { name: "Amount" })).toBeVisible();
   // A hidden page's address leads to the first page the role can use.
   await page.goto("/app/clients");
   await expect(page).toHaveURL(/\/app\/payments$/);
 
-  await sidebar.getByRole("button", { name: /Account/ }).click();
-  await expect(page.getByRole("menuitem", { name: "Email notifications" })).toHaveCount(0);
-  await page.getByRole("menuitem", { name: "Team" }).click();
+  await sidebar.getByRole("link", { name: "Settings", exact: true }).click();
+  const settings = page.getByRole("navigation", { name: "Settings" });
+  await settings.getByRole("link", { name: "Team" }).click();
   await expect(page).toHaveURL(/\/app\/team$/);
+  await expect(settings.getByRole("link", { name: "Notifications" })).toHaveCount(0);
   await expect(page.getByText("You are Developer on this profile.")).toBeVisible();
   // Only an Admin manages the team.
   await expect(page.getByRole("heading", { name: "Members" })).toHaveCount(0);

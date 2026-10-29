@@ -813,6 +813,7 @@ export function NewInvoiceForm({
                           autoComplete="off"
                           maxLength={INVOICE_LIMITS.clientName}
                           error={errors[INVOICE_FIELDS.clientName]}
+                          onChange={() => clear(INVOICE_FIELDS.clientName)}
                         />
                         <TextField
                           type="email"
@@ -822,6 +823,14 @@ export function NewInvoiceForm({
                           autoComplete="off"
                           maxLength={INVOICE_LIMITS.clientEmail}
                           error={errors[INVOICE_FIELDS.clientEmail]}
+                          onChange={() => {
+                            clear(INVOICE_FIELDS.clientEmail);
+                            // A name or an email is enough: typing either answers the missing-client error.
+                            if (
+                              errors[INVOICE_FIELDS.clientName] === NEW_INVOICE_COPY.missingClient
+                            )
+                              clear(INVOICE_FIELDS.clientName);
+                          }}
                         />
                       </div>
                       {/* A person is billed by name and email; address, country and tax ID are a business's. */}
@@ -1246,6 +1255,8 @@ export function NewInvoiceForm({
       {/* Beside the form, scrolling on its own when the pages run longer than the screen. */}
       <aside
         aria-label={COPY.preview.title}
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users scroll pages longer than the screen
+        tabIndex={0}
         className={`flex-col xl:flex ${SPLIT_ASIDE_CLASSES} ${view === "preview" ? "flex" : "hidden"}`}
       >
         <NewInvoicePreview {...preview} />

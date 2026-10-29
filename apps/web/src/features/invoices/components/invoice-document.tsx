@@ -243,7 +243,7 @@ function Items({
   );
 }
 
-function Tail({ totals, note, pay }: InvoiceDocumentProps) {
+function Tail({ kind, totals, note, pay }: InvoiceDocumentProps) {
   return (
     <>
       <dl className="ml-auto flex w-1/2 flex-col" style={{ marginTop: mm(2), fontSize: pt(9.5) }}>
@@ -287,7 +287,7 @@ function Tail({ totals, note, pay }: InvoiceDocumentProps) {
           />
           <span className="flex min-w-0 flex-col [overflow-wrap:anywhere]">
             <span className="font-bold" style={{ fontSize: pt(11) }}>
-              Pay this invoice
+              Pay this {kind.toLowerCase()}
             </span>
             {pay.map((line) => (
               <span key={line} style={{ fontSize: pt(9.5) }}>

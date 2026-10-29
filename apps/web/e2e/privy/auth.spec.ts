@@ -134,11 +134,13 @@ test("the Privy test account signs in and lands in the app shell with its person
 
   await expect(sidebar.getByRole("switch")).toHaveCount(0);
   const theme = await page.locator("html").getAttribute("data-theme");
-  await sidebar.getByRole("button", { name: /^Account: / }).click();
-  await expect(page.getByRole("menuitem", { name: "Settings" })).toHaveAttribute(
+  // Settings is one row at the sidebar's foot, not also in the account menu.
+  await expect(sidebar.getByRole("link", { name: "Settings", exact: true })).toHaveAttribute(
     "href",
     "/app/settings",
   );
+  await sidebar.getByRole("button", { name: /^Account: / }).click();
+  await expect(page.getByRole("menuitem", { name: "Settings" })).toHaveCount(0);
   await page.getByRole("menuitemcheckbox", { name: "Dark mode" }).click();
   await expect(page.locator("html")).not.toHaveAttribute("data-theme", theme ?? "");
   await page.keyboard.press("Escape");

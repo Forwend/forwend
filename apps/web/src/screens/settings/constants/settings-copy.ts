@@ -1,5 +1,7 @@
+import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
+
 export const SETTINGS_COPY = {
-  title: "Settings",
+  title: AUTH_COPY.settings,
   yourAccount: "Your account",
   thisProfile: "This profile",
   account: {

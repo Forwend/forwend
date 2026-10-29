@@ -41,6 +41,7 @@ import {
   SelectMenu,
   Sheet,
   Skeleton,
+  Stepper,
   Switch,
   Tabs,
   TextAreaField,
@@ -161,6 +162,7 @@ function ToastDemo() {
 }
 
 export function ComponentsShowcase() {
+  const [step, setStep] = useState(2);
   const [on, setOn] = useState(true);
   const [weekly, setWeekly] = useState(false);
   const [menuChoice, setMenuChoice] = useState("personal");
@@ -461,6 +463,7 @@ export function ComponentsShowcase() {
           <CodeInput label="Code (checking)" value="826104" onValueChange={noop} disabled />
         </div>
         <Checkbox label="Send a reminder on the due date" defaultChecked />
+        <Checkbox label="USDC on every network (some on)" mixed />
         <Switch label="Email me when a payment settles" checked={on} onCheckedChange={setOn} />
         <Switch label="Email me a weekly summary" checked={weekly} onCheckedChange={setWeekly} />
       </KitGroup>
@@ -599,6 +602,30 @@ export function ComponentsShowcase() {
             title="No invoices yet"
             description="Create your first invoice and share the link with your client."
             action={<Button size={BUTTON_SIZES.sm}>Create invoice</Button>}
+          />
+        </div>
+        {/* The page variant has no frame and fills its workspace; the dashed box stands in for the page. */}
+        <div className="flex h-72 w-full max-w-md flex-col rounded-lg border border-dashed border-line">
+          <EmptyState
+            page
+            title="No payment links yet"
+            description="Make one for a product, a service or a top-up."
+            action={<Button size={BUTTON_SIZES.sm}>New link</Button>}
+          />
+        </div>
+      </KitGroup>
+      <KitGroup title="Stepper: a finished step goes back to it">
+        <div className="w-full">
+          <Stepper
+            label="New invoice steps"
+            current={step}
+            onStepClick={setStep}
+            steps={[
+              { id: "customer", label: "Customer" },
+              { id: "items", label: "Items" },
+              { id: "details", label: "Details" },
+              { id: "review", label: "Review" },
+            ]}
           />
         </div>
       </KitGroup>

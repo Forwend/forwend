@@ -4,15 +4,6 @@ import { accountLinks, pageAllowed } from "@/screens/app-shell/lib/app-nav";
 import { SETTINGS_COPY as COPY } from "@/screens/settings/constants/settings-copy";
 import { APP_ROUTES } from "@/shared/config/routes";
 
-/** Every settings page, for marking Settings as the current place. */
-export const SETTINGS_PATHS: readonly string[] = [
-  APP_ROUTES.settings,
-  APP_ROUTES.notifications,
-  APP_ROUTES.billingDetails,
-  APP_ROUTES.networks,
-  APP_ROUTES.team,
-];
-
 export interface SettingsSection {
   href: string;
   label: string;

@@ -49,6 +49,8 @@ const PAIRS: readonly (readonly [string, string, number])[] = [
   ["warning", "warning-soft", BODY],
   ["danger", "danger-soft", BODY],
   ["info", "info-soft", BODY],
+  // The accent badge: olive text on the info ground (ui-web tone.ts).
+  ["accent", "info-soft", BODY],
   ["muted", "sunken", BODY],
   ["subtle", "sunken", BODY],
   ["subtle", "surface-2", BODY],

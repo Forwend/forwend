@@ -57,7 +57,7 @@ export function AppHeader({
 }: AppHeaderProps) {
   const CollapseIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
   const money = can(active, PERMISSIONS.moneyRead);
-  // A business follows its payments; a personal profile has no Payments page, so its money is under Transactions.
+  // A business follows its payments; a personal profile's money in is its transfers, under Transactions.
   const viewAll =
     active.kind !== PROFILE_KINDS.personal && pageAllowed(active, APP_ROUTES.payments)
       ? APP_ROUTES.payments

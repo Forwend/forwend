@@ -9,8 +9,12 @@ import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 import { SetupGuide } from "@/features/onboarding/components/setup-guide";
 import { ProfileSwitcher } from "@/features/profiles/components/profile-switcher";
 import type { Profile } from "@/features/profiles/types/profile";
-import { isCurrentPage, navFor, pageAllowed } from "@/screens/app-shell/lib/app-nav";
-import { SETTINGS_PATHS } from "@/screens/settings/lib/settings-sections";
+import {
+  isCurrentPage,
+  navFor,
+  pageAllowed,
+  SETTINGS_PATHS,
+} from "@/screens/app-shell/lib/app-nav";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 const SIDEBAR_COPY = {

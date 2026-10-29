@@ -156,9 +156,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A user with no email login reads that they need one, with Close.
 - Phones: the header becomes a top bar with the account initial, a search pill and notifications. A bottom tab bar has Home, Transactions, My assets and More;
   large icons over labels, with the whole current tab on the second surface. More opens a sheet: first a profile card
-  (avatar, name, Switch profile and an up/down selector icon, then Billing details for businesses, then Settings), then the remaining
+  (avatar, name, Switch profile and an up/down selector icon), then the setup guide while steps remain, then the remaining
   sidebar pages for the profile type as grouped cards of rows with an icon tile (white cards with hairlines, neutral
-  tiles; the current page's tile is river blue), then unbuilt pages as small
+  tiles; the current page's icon is olive), then Settings, then unbuilt pages as small
   Coming soon chips that are not links. Current-page links include nested pages; More stays selected for those pages.
   The bar and page padding include the bottom safe area, and toasts sit above it. A switch opens the new profile's overview (R-76).
 - A choice opened from the sidebar is a menu; the same choice on a phone is a bottom sheet, which becomes a centered
@@ -179,7 +179,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - On the personal overview the icon hangs after USD and takes no width, so the total sits on the center line on
     phones. A row for one token keeps its symbol.
 - Personal overview follows the C comp's balance card, in rows of cards like the business overview:
-  - Row 1: the balance card beside My assets; then Get started; then the Balance chart beside Money in and out.
+  - Row 1: the balance card beside My assets; then the Balance chart beside Money in and out. The setup guide is in
+    the sidebar, never on the overview.
   - Recent transactions spans the width below. Phones stack them in that order.
   - The balance card: Total balance, the total (`BigAmount`, cents subtle), its change over the past month.
   - Under them the pending and held links, the prices line, then the round actions at the card's foot.
@@ -353,13 +354,14 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     Where the status badge already says it all (waiting for payment, or paid and in the wallet) it shows none.
   - The body is two columns from extra-large screens: the main column and a 22rem side column.
     - Main: Needs attention (only with a real problem), Amount (Received with "Confirming, not final" or "Final",
-      Extra held for the customer in the warning color or Still due, and Paid with), Transfers, and the items.
+      Returned to the payer once refunded, Extra held for the customer in the warning color or Still due while the
+      checkout is open, and Paid with), Transfers, and the items.
     - Before money arrives the last figure is Accepts: an `AssetStack` and "4 options, the customer picks", or
       "Paying with" and the token once the customer locked one. "Paid with" only follows money.
     - Transfers is one table: Transfer (From customer or To your wallet, its time under it), State, Amount and the
       explorer link. Network shows from 2xl screens; on phones the state sits under the time.
-    - State is a badge: Confirmed, Confirming with its blocks or "being verified", In wallet, or a warning such as
-      Held for the customer. Amounts stay on one line.
+    - State is a badge: Confirmed, "Confirming (n/m)" with the time left in an info tooltip, Confirming with
+      "being verified", In wallet, or a warning such as Held for the customer. Amounts stay on one line.
     - Side: Details (reference, invoice, link, store, customer, checkout close, metadata, PDFs) and a Timeline:
       Created, Payment detected, Paid, In your wallet (or Checkout closed), done or current or next by the API's facts.
   - No ledger table or contract panel: a webhook that fails shows as a problem whose action opens Developers.
@@ -644,7 +646,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - The box stays light in the dark theme too, since most logos are drawn for a light page.
     - "Invoice INV-0001" under the name; a payment-link invoice before its first deposit reads "Invoice" alone (R-141).
     - A test-mode invoice (R-143) starts the column with a warning box: its testnet tokens have no value.
-    - The amount (Geist, tabular, featured size) and "on <network>". USD until the payer picks.
+    - The amount (tabular figures, featured size) and "on <network>". USD until the payer picks.
   - Left, then, as a hosted invoice page lists them:
     - Title, reference (R-90), agreed value (R-93) and due date: quiet rows with a small icon, no rules.
     - The note.
@@ -728,9 +730,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   Up to four steps always sit side by side (the payer's timeline, the landing's samples). The owner's five don't fit a
   phone, so in a container narrower than 28rem they stack into one upright list of markers beside larger labels.
 - A test-mode invoice's page (R-143) has a warning Test mode badge under its header's name.
-- The invoice page (R-60) says each thing once: the header only names the invoice (its title, or its number when there
-  is none); the timeline says the status, and Details the times: when the checkout closes ("Checkout closed" once
-  past) and, once canceled, Canceled on. So the header has no status pill or time. At its top right sits one More
+- The invoice page (R-60) says each thing once. The header names the invoice by its number, with its status badges (the
+  confirming count while confirming) and one line under it: the title, Billed to, the due date, "Received X of Y"
+  when partly paid, and that the client picks the token when they do. Details says the times: when the checkout
+  closes ("Checkout closed" once past) and, once canceled, Canceled on. At its top right sits one More
   actions menu: Copy link and Open pay page (a new tab) while the checkout can take money, Edit always (R-127),
   Revise while it can still be canceled (R-129), Duplicate always (New invoice filled from this one, R-91), and while
   it can still be canceled, Cancel in the danger color, which asks to confirm in a dialog. Copying keeps the menu

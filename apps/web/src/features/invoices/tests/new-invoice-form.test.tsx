@@ -302,6 +302,25 @@ describe("new invoice form", () => {
     );
   });
 
+  it("clears the missing-client error once a name or an email is typed", () => {
+    render(
+      <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+        <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} />
+      </Provider>,
+    );
+    const name = screen.getByRole("textbox", { name: /^(Legal|Full) name/ });
+    const email = screen.getByRole("textbox", { name: "Email" });
+    fireEvent.click(screen.getByRole("button", { name: /^Continue/ }));
+    expect(name.getAttribute("aria-invalid")).toBe("true");
+    fireEvent.change(name, { target: { value: "A" } });
+    expect(name.getAttribute("aria-invalid")).not.toBe("true");
+    fireEvent.change(name, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Continue/ }));
+    expect(name.getAttribute("aria-invalid")).toBe("true");
+    fireEvent.change(email, { target: { value: "a@example.com" } });
+    expect(name.getAttribute("aria-invalid")).not.toBe("true");
+  });
+
   it("keeps keyboard focus on the items as they are added and removed", () => {
     render(
       <Provider store={makeStore({ getAccessToken: async () => "token" })}>

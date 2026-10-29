@@ -157,7 +157,8 @@ export interface FormPreviewProps {
 /** The preview panel beside a step form. */
 export function FormPreview({ title, note, paper = false, children }: FormPreviewProps) {
   return (
-    <section aria-label={title} className="fw-panel">
+    // biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users scroll a preview longer than the screen
+    <section aria-label={title} tabIndex={0} className="fw-panel">
       <div className="fw-panel-head flex-col items-start gap-0.5">
         <h2 className="text-base font-semibold text-ink">{title}</h2>
         <p className="text-sm text-muted">{note}</p>

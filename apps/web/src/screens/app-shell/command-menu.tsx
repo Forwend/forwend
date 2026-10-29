@@ -27,6 +27,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { CLIENTS_COPY } from "@/features/clients/constants/clients-copy";
 import { NEW_INVOICE_COPY, NEW_REQUEST_COPY } from "@/features/invoices/constants/invoices-copy";
@@ -40,7 +41,6 @@ import { TRANSACTION_DIRECTIONS } from "@/features/transactions/constants/transa
 import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transactions-copy";
 import { transactionKey } from "@/features/transactions/lib/transactions";
 import { navFor, pageAllowed } from "@/screens/app-shell/lib/app-nav";
-import { SETTINGS_COPY } from "@/screens/settings/constants/settings-copy";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { SEARCH_PARAM } from "@/shared/hooks/use-list-filters";
 import { chainName } from "@/shared/lib/chains";
@@ -150,7 +150,7 @@ export function CommandMenu({
           {
             id: APP_ROUTES.settings,
             group: COMMAND_COPY.pages,
-            label: SETTINGS_COPY.title,
+            label: AUTH_COPY.settings,
             icon: Settings,
             run: go(APP_ROUTES.settings),
           },

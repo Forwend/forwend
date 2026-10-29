@@ -198,8 +198,7 @@ function Loaded({
     invoice.options.every((o) => o.deposits.length === 0);
   return (
     <>
-      {/* R-60: each thing is said once, so the header only names the invoice; with a title, the breadcrumb
-          carries the number on desktop. */}
+      {/* R-60: the number names the invoice; the line under it carries the title, client, due date and money. */}
       <DetailHeader
         icon={<FileText aria-hidden />}
         title={invoiceNumber(invoice.number)}
@@ -227,6 +226,7 @@ function Loaded({
             received > 0n && received < amount && token
               ? COPY.receivedOf(money(received), money(amount))
               : null,
+            choosing ? COPY.clientChooses(invoice.optionCount) : null,
           ]
             .filter(Boolean)
             .join(" · ") || null

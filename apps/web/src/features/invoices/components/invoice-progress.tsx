@@ -94,17 +94,22 @@ export interface ConfirmingStatusProps {
 export function ConfirmingStatus({ blocks, total, seconds }: ConfirmingStatusProps) {
   const target = total != null && blocks != null ? Math.max(total, blocks) : 0;
   const done = Math.max(0, target - (blocks ?? 0));
-  const hint = COPY.confirmingHint(seconds, target === 0 ? blocks : null);
   return (
     <span className="inline-flex items-center gap-1 text-sm text-muted">
       <span className="tabular-nums">{COPY.confirmingCount(done, target)}</span>
-      {hint ? (
-        <Tooltip content={hint}>
-          <IconButton label={hint} size="xs">
-            <Info aria-hidden className="size-3.5" />
-          </IconButton>
-        </Tooltip>
-      ) : null}
+      <ConfirmingHint blocks={target === 0 ? blocks : null} seconds={seconds} />
     </span>
   );
+}
+
+/** The blocks and time left, in an info tooltip beside a confirming state. */
+export function ConfirmingHint({ blocks, seconds }: Omit<ConfirmingStatusProps, "total">) {
+  const hint = COPY.confirmingHint(seconds, blocks);
+  return hint ? (
+    <Tooltip content={hint}>
+      <IconButton label={hint} size="xs">
+        <Info aria-hidden className="size-3.5" />
+      </IconButton>
+    </Tooltip>
+  ) : null;
 }

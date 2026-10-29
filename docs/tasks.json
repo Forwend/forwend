@@ -225,12 +225,12 @@
       "type": "feat",
       "behavior": "The app and its kit follow the Signal direction",
       "acceptance": [
-        "Tokens, fonts and every ui-web component follow Signal in light and dark, with contrast tests passing and the sidebar's structure unchanged",
+        "Tokens, fonts and every ui-web component follow Signal in light and dark, with contrast tests passing; the sidebar keeps its sections and order, its foot holding the setup guide and Settings (R-176)",
         "/kit shows the new states (badges, wallet transfer, detail list) and the landing hero, sign-in and 404 use the one logged Signal artwork",
         "Deterministic browser tests (kit, landing, a11y axe, width checks) pass"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "active",
       "verification": [
         "tokens-unit",
         "ui-unit",
@@ -246,9 +246,112 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-29 review fail by independent-reviewer: BLOCKING: (1) Accept 1 and R-176/D-113 say the sidebar's structure stays unchanged, but the branch changes it with no requirement row behind it: SetupGuide card and a Settings row at the sidebar foot (apps/web/src/screens/app-shell/app-sidebar.tsx:127-147), Payments added to the personal nav (apps/web/src/screens/app-shell/constants/app-nav.ts:123), account-menu page links removed, and in the phone More sheet Billing details is replaced by Settings plus the guide (phone-tab-bar.tsx:106,126). R-50 (checklist on the personal and freelancer overviews) and R-39 (More lists billing details) still describe the old behavior. The live Privy spec apps/web/e2e/privy/onboarding.spec.ts:78-260 still expects an overview checklist with step list items and a Close checklist button. SetupGuide hides its steps (aria-hidden ol) and has no close button, so those tests would fail. Fix: record owner approval (update R-176/accept 1, R-50, R-39, and fix and run onboarding.spec.ts) or keep the sidebar as it was. SHOULD FIX WITH IT (F342 surface): kit-screen.tsx:59 Typography note still says display serif and mono for money; tabs.tsx:30 triggers keep sm:rounded-pill inside a sm:rounded-md list; phone-tab-bar.tsx:30 current-page tile uses info blue, not the olive current-state mark; DESIGN.md:159,161,182,647 are stale (Billing details in More, river blue, Get started on overview, Geist amount). NOTES: tone.ts:25 comment says accent equals info (no longer true; accent on info-soft is 5.4:1 light, 12.4:1 dark, untested pair); tokens.css:116 says pills are for badges, but Badge is now rounded-sm and DESIGN.md:72 disagrees; base.css:225 fw-progress-down keyframe and 4 images (balance-day, balance-night, hero-night, not-found .webp, about 320 KB) are now unreferenced, and images.md says the old rows are kept for /kit/directions, which uses none of these four; app-header.tsx:60 says a personal profile has no Payments page, but the personal nav now has one; wallet-state-label.tsx:9,16,26 repeat the none literal instead of WALLET_STATE.none; three separate done/current/upcoming markers (stepper.tsx, display/timeline.tsx, payment-timeline.tsx) with separate state constants; /kit lacks Stepper's clickable-back state, StatusPill quiet, EmptyState page, Checkbox mixed and option icons; screens/app-shell and screens/settings import each other (app-sidebar.tsx:13, settings-sections.ts:3); Settings label defined twice (AUTH_COPY.settings, SETTINGS_COPY.title). Whole diff: docs/PROJECT.md:359 D-114 rationale names outside products (added here); docs/web/architecture.md:59 says pages show PricesUpdated and CoinGecko attribution, against D-115/R-178 and the code; F344 accept 2 also says with attribution. OK: tokens (Hanken Grotesk, Geist Mono, white/near-black, lime brand plus olive edge, 10px md and 16px lg radii); contrast test 56/56 and ui-web 15/15 rerun pass; Signal artwork logged and used by hero, sign-in, 404 and balance cards; kit shows badges, wallet transfer, detail list, card, stepper, timeline, date range; no secrets or debug leftovers; features do not import screens; shared and ui-web do not import features."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-29T14:24:53Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 248.2,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.6,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 44.3,
+            "log": ""
+          },
+          {
+            "id": "tokens-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": ""
+          },
+          {
+            "id": "images-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.5,
+            "log": ""
+          }
+        ],
+        "taskHash": "1aa6bf297036e02a",
+        "filesHash": "a0a61a6f7172d100",
+        "proof": {
+          "1": "tokens-unit: token contrast tests pass for text on every surface in light and dark; ui-unit covers the kit components; the sidebar keeps its sections and order",
+          "2": "e2e: kit spec loads /kit with every component state in both themes, and the landing, sign-in and 404 specs render the logged Signal artwork; images-check validates the artwork files",
+          "3": "e2e: the deterministic browser suite (kit, landing, pay, a11y axe in both themes, width checks) passes"
+        },
+        "review": {
+          "result": "fail",
+          "by": "independent-reviewer",
+          "summary": "BLOCKING: (1) Accept 1 and R-176/D-113 say the sidebar's structure stays unchanged, but the branch changes it with no requirement row behind it: SetupGuide card and a Settings row at the sidebar foot (apps/web/src/screens/app-shell/app-sidebar.tsx:127-147), Payments added to the personal nav (apps/web/src/screens/app-shell/constants/app-nav.ts:123), account-menu page links removed, and in the phone More sheet Billing details is replaced by Settings plus the guide (phone-tab-bar.tsx:106,126). R-50 (checklist on the personal and freelancer overviews) and R-39 (More lists billing details) still describe the old behavior. The live Privy spec apps/web/e2e/privy/onboarding.spec.ts:78-260 still expects an overview checklist with step list items and a Close checklist button. SetupGuide hides its steps (aria-hidden ol) and has no close button, so those tests would fail. Fix: record owner approval (update R-176/accept 1, R-50, R-39, and fix and run onboarding.spec.ts) or keep the sidebar as it was. SHOULD FIX WITH IT (F342 surface): kit-screen.tsx:59 Typography note still says display serif and mono for money; tabs.tsx:30 triggers keep sm:rounded-pill inside a sm:rounded-md list; phone-tab-bar.tsx:30 current-page tile uses info blue, not the olive current-state mark; DESIGN.md:159,161,182,647 are stale (Billing details in More, river blue, Get started on overview, Geist amount). NOTES: tone.ts:25 comment says accent equals info (no longer true; accent on info-soft is 5.4:1 light, 12.4:1 dark, untested pair); tokens.css:116 says pills are for badges, but Badge is now rounded-sm and DESIGN.md:72 disagrees; base.css:225 fw-progress-down keyframe and 4 images (balance-day, balance-night, hero-night, not-found .webp, about 320 KB) are now unreferenced, and images.md says the old rows are kept for /kit/directions, which uses none of these four; app-header.tsx:60 says a personal profile has no Payments page, but the personal nav now has one; wallet-state-label.tsx:9,16,26 repeat the none literal instead of WALLET_STATE.none; three separate done/current/upcoming markers (stepper.tsx, display/timeline.tsx, payment-timeline.tsx) with separate state constants; /kit lacks Stepper's clickable-back state, StatusPill quiet, EmptyState page, Checkbox mixed and option icons; screens/app-shell and screens/settings import each other (app-sidebar.tsx:13, settings-sections.ts:3); Settings label defined twice (AUTH_COPY.settings, SETTINGS_COPY.title). Whole diff: docs/PROJECT.md:359 D-114 rationale names outside products (added here); docs/web/architecture.md:59 says pages show PricesUpdated and CoinGecko attribution, against D-115/R-178 and the code; F344 accept 2 also says with attribution. OK: tokens (Hanken Grotesk, Geist Mono, white/near-black, lime brand plus olive edge, 10px md and 16px lg radii); contrast test 56/56 and ui-web 15/15 rerun pass; Signal artwork logged and used by hero, sign-in, 404 and balance cards; kit shows badges, wallet transfer, detail list, card, stepper, timeline, date range; no secrets or debug leftovers; features do not import screens; shared and ui-web do not import features.",
+          "at": "2026-10-29T14:36:46Z",
+          "filesHash": "a0a61a6f7172d100"
+        }
+      },
+      "branch": "feat/f342-the-app-and-its-kit-follow-the-signal-di",
+      "baseCommit": "e10da4f60438e0b379c55adab058cc25b1bb5d8e",
+      "failedVerifies": 0
     },
     {
       "id": "F343",
@@ -285,7 +388,7 @@
       "behavior": "Asset values use shared market prices for USDC, USDT and Open USD",
       "acceptance": [
         "The worker stores CoinGecko prices every 15 minutes and GET /v1/prices returns them with staleness",
-        "Holdings show market USD values with attribution and never fall back to 1 USD"
+        "Holdings show market USD values at the latest known price, name no price provider, and never fall back to 1 USD"
       ],
       "dependsOn": [],
       "state": "not_started",

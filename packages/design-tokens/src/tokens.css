@@ -113,7 +113,7 @@
   --fw-font-sans: var(--fw-font-sans-loaded, ui-sans-serif), system-ui, sans-serif;
   --fw-font-mono: var(--fw-font-mono-loaded, ui-monospace), "SFMono-Regular", monospace;
 
-  /* Controls take md, panels lg, sheets and the landing's large cards xl. Pills are for badges and avatars. */
+  /* Controls take md, panels lg, sheets and the landing's large cards xl. Pills are for avatars, dots and round actions. */
   --fw-radius-sm: 0.375rem;
   --fw-radius-md: 0.625rem;
   --fw-radius-lg: 1rem;

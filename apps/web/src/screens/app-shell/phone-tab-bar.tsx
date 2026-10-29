@@ -4,14 +4,19 @@ import { Sheet } from "@forwend/ui-web";
 import { ChevronRight, ChevronsUpDown, Home, Menu, Settings } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 import { SetupGuide } from "@/features/onboarding/components/setup-guide";
 import { ProfileAvatar } from "@/features/profiles/components/profile-avatar";
 import { PROFILES_COPY } from "@/features/profiles/constants/profiles-copy";
 import { profileLabel } from "@/features/profiles/lib/profile";
 import type { Profile } from "@/features/profiles/types/profile";
 import { NAV } from "@/screens/app-shell/constants/app-nav";
-import { isCurrentPage, navFor, pageAllowed } from "@/screens/app-shell/lib/app-nav";
-import { SETTINGS_COPY } from "@/screens/settings/constants/settings-copy";
+import {
+  isCurrentPage,
+  navFor,
+  pageAllowed,
+  SETTINGS_PATHS,
+} from "@/screens/app-shell/lib/app-nav";
 import { DESKTOP_QUERY } from "@/shared/config/breakpoints";
 import { APP_ROUTES } from "@/shared/config/routes";
 
@@ -27,7 +32,7 @@ const CARD = "overflow-hidden rounded-md border border-line bg-surface divide-y 
 const ROW =
   "group flex min-h-14 w-full items-center gap-3 px-3 text-left text-sm font-medium text-ink outline-none hover:bg-surface-2 active:bg-surface-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus";
 const ROW_ICON =
-  "grid size-9 shrink-0 place-items-center rounded-sm bg-surface-2 text-muted group-aria-[current=page]:bg-info-soft group-aria-[current=page]:text-info";
+  "grid size-9 shrink-0 place-items-center rounded-sm bg-surface-2 text-muted group-aria-[current=page]:text-accent";
 const HEADING = "px-1 pb-2 text-xs font-medium text-muted";
 
 export interface PhoneTabBarProps {
@@ -124,11 +129,14 @@ export function PhoneTabBar({ pathname, active, onProfiles }: PhoneTabBarProps) 
               <ChevronsUpDown aria-hidden className="size-5 shrink-0 text-muted" />
             </button>
             {pageAllowed(active, APP_ROUTES.settings) ? (
-              <Link {...pageLink(APP_ROUTES.settings)}>
+              <Link
+                {...pageLink(APP_ROUTES.settings)}
+                aria-current={SETTINGS_PATHS.includes(pathname) ? "page" : undefined}
+              >
                 <span className={ROW_ICON}>
                   <Settings aria-hidden className="size-5" />
                 </span>
-                {SETTINGS_COPY.title}
+                {AUTH_COPY.settings}
                 <ChevronRight aria-hidden className="ml-auto size-4 text-muted" />
               </Link>
             ) : null}

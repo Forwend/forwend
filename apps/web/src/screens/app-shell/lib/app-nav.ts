@@ -1,4 +1,5 @@
 import { API_KEYS_COPY } from "@/features/api-keys/constants/api-keys-copy";
+import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 import { CLIENTS_COPY } from "@/features/clients/constants/clients-copy";
 import { NEW_INVOICE_COPY, NEW_REQUEST_COPY } from "@/features/invoices/constants/invoices-copy";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
@@ -15,8 +16,16 @@ import { STORES_COPY } from "@/features/stores/constants/stores-copy";
 import { TEAM_COPY } from "@/features/team/constants/team-copy";
 import { APP_NAV, MENU_PAGES, NAV } from "@/screens/app-shell/constants/app-nav";
 import type { Crumb, NavGroup, NavItem } from "@/screens/app-shell/types/app-nav";
-import { SETTINGS_COPY } from "@/screens/settings/constants/settings-copy";
 import { APP_ROUTES } from "@/shared/config/routes";
+
+/** Every settings page, for marking Settings as the current place. */
+export const SETTINGS_PATHS: readonly string[] = [
+  APP_ROUTES.settings,
+  APP_ROUTES.notifications,
+  APP_ROUTES.billingDetails,
+  APP_ROUTES.networks,
+  APP_ROUTES.team,
+];
 
 export function isCurrentPage(pathname: string, href: string): boolean {
   return pathname === href || (href !== APP_ROUTES.home && pathname.startsWith(`${href}/`));
@@ -77,7 +86,7 @@ export function breadcrumb(
     };
   }
   if (pathname === APP_ROUTES.settings) {
-    return { trail: [{ label: SETTINGS_COPY.title, href: APP_ROUTES.settings }], invoiceId: null };
+    return { trail: [{ label: AUTH_COPY.settings, href: APP_ROUTES.settings }], invoiceId: null };
   }
   if (pathname === APP_ROUTES.networks) {
     return { trail: [{ label: TOKENS_COPY.title, href: APP_ROUTES.networks }], invoiceId: null };
