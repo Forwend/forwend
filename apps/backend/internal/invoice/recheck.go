@@ -16,7 +16,7 @@ import (
 // RecheckEvery spaces the checks of one invoice, across api replicas (R-55).
 const RecheckEvery = 5 * time.Minute
 
-// Money no log explains (Arc native USDC, docs/backend/money-safety.md) must not start a full rescan on every press.
+// Money no log explains (docs/backend/money-safety.md) must not start a full rescan on every press.
 const RescanAgainAfter = 10 * time.Minute
 
 var ErrChainUnavailable = errors.New("chain unavailable")

@@ -402,10 +402,10 @@ re-mined copy gets a new row). A token disabled while one of its
 transfers is still detected stays in the scan until those rows confirm or are reorged, so their pending state can still resolve;
 its new transfers are not recorded. New wallet subscriptions trigger recovery through the previous checkpoint's 2,000-block overlap.
 Transfers older than that window are not looked for: those of wallets made before this table existed, or before a
-chain's first scan. Arc native-coin sends log no token `Transfer`, so they are not recorded.
+chain's first scan. Arc native-coin sends to a wallet log only the system emitter's `Transfer`, which this scan doesn't read, so they are not recorded.
 Only the invoice's own
-token counts, and the row stores the emitting contract, so the foreign key also rejects a look-alike. Block hashes and
-times come from the RPC, never computed in Go. Arc's native-coin `Transfer` logs are ignored (see money-safety).
+token counts. The row stores the emitting contract (`0x3600…` for an Arc native send), so the foreign key also rejects a look-alike. Block hashes and
+times come from the RPC, never computed in Go. On Arc, native USDC sends to a receive address count from the system emitter's logs (R-186, money-safety).
 Scanning again changes nothing, so a restarted worker resumes from the cursor.
 
 - Check status (R-55) queues an invoice rescan in `invoice_rechecks`.
@@ -535,7 +535,7 @@ Refused intents (`status = 'refused'`) also carry their reason; waiting ones are
   the selected RPC's finalized `balanceOf` covers every booked deposit (D-15). An invoice owed in full never expires; it waits for
   the finalized balance check. Otherwise it becomes `expired` or `expired_partially_paid` once the chain's finalized block time
   passes `closes_at`, no transfer is still `detected`, and the finalized token balance equals the booked amount. More on
-  chain than booked (a missed log, an Arc native-coin payment) blocks expiry and logs a warning; so does less. Such
+  chain than booked (a missed log) blocks expiry and logs a warning; so does less. Such
   an invoice is read again after a growing wait (R-120), and a round books invoices with new deposits first. An expired partial
   payment is moved to `payer_held` by an `expiry` ledger transaction. `refund_status` becomes `held` while
   `payer_held` > 0. One invoice's error doesn't stop the others; each balance call has a 10 s limit.

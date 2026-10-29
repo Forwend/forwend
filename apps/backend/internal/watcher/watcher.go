@@ -472,6 +472,9 @@ func (c *Chain) logs(ctx context.Context, lo, hi uint64, invoices map[common.Add
 		tokens[common.HexToAddress(inv.token)] = true
 		receivers = append(receivers, common.BytesToHash(addr.Bytes()))
 	}
+	if tokens[arcUSDC] {
+		tokens[arcEmitter] = true // Arc USDC sent as the native coin logs only there
+	}
 	var tokenList []common.Address
 	for t := range tokens {
 		tokenList = append(tokenList, t)
@@ -494,11 +497,11 @@ func (c *Chain) logs(ctx context.Context, lo, hi uint64, invoices map[common.Add
 		}
 		inv, ok := invoices[common.BytesToAddress(l.Topics[2].Bytes())]
 		// Only the invoice's own token counts: anyone can emit Transfer from a look-alike contract.
-		if ok && strings.EqualFold(l.Address.Hex(), inv.token) {
+		if ok && (strings.EqualFold(l.Address.Hex(), inv.token) || l.Address == arcEmitter && common.HexToAddress(inv.token) == arcUSDC) {
 			out = append(out, l)
 		}
 	}
-	return out, nil
+	return nativeSends(out), nil
 }
 
 // table is chain_transfers or wallet_transfers.

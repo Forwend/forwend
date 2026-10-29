@@ -62,10 +62,17 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 - Only `balanceOf` of the allowlisted token (chain ID + address) on an address we computed.
 - Ignore logs from every other address: anyone can deploy a look-alike token or clone that emits the same events.
 - The selected RPC provides finalized balances before "paid" or a webhook, and finalized receiver state before "settled".
-- Arc: checkout builds an ERC-20 `transfer` on `0x3600…`, never a native send. Native USDC sends log `Transfer` from
-  a system emitter (18 decimals) that the watcher ignores, so such a payment has no transfer row. When the selected RPC's
-  `balanceOf` holds more than is booked, the worker logs `ALERT receive address holds money with no booked transfer`
-  and the invoice never expires: an operator checks the chain and refunds the money with the refund authority.
+- Arc: checkout builds an ERC-20 `transfer` on `0x3600…`, but a payer may send USDC as the native coin (R-186).
+  - Every Arc USDC movement logs `Transfer` from the system emitter `0xffff…fffe` in 18 decimals; a native send logs only that.
+  - The scan reads both. A system log with a `0x3600` twin one or two logs later (same from, to, amount) is the same transfer.
+  - Each `0x3600` log takes at most one twin, so every transfer counts once.
+  - A system log without a twin is a native send: it counts as `0x3600` money, floored to 6 decimals.
+  - Under one micro-USDC is no deposit: `balanceOf` truncates it too.
+  - Several native sends with sub-micro parts can book less than `balanceOf` shows; paid still holds, and expiry alerts.
+  - No contract can emit from the system emitter: it has no code.
+- When the selected RPC's `balanceOf` holds more than is booked, the invoice never expires.
+  - The worker logs `ALERT receive address holds money with no booked transfer`.
+  - An operator checks the chain and refunds the money with the refund authority.
   - The worker reads that balance again after 1 min, doubling to at most a day (`invoice_balance_alerts`, R-120).
   - So many such invoices can't use up a chain's round; a new deposit to book ends the wait.
   - After an operator refunds the money, the invoice expires at its next check, up to a day later. Deleting its

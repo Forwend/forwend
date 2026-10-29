@@ -1010,7 +1010,7 @@ seconds (when the next token is back) and runs nothing else.
   payer may have paid any); the answer is an option holding more than recorded, else the shown one. An option whose
   network does not answer is listed in `unreadable` and the others are still checked. When the shown option can't be
   read and no other holds unrecorded money, it is 503: another option's empty read never answers for it. A rescan is asked only when the address holds more than is
-  recorded and no rescan finished in the last 10 minutes, so money no log explains (Arc native USDC) doesn't start a
+  recorded and no rescan finished in the last 10 minutes, so money no log explains doesn't start a
   full rescan on every press.
 - `POST /v1/invoices/{payToken}/views` (R-125): per link, 5 at once, then one every 5 s. It slows a run-up of one link's
   count; it can't stop one.

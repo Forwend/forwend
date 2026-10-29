@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 358,
+  "nextId": 359,
   "tasks": [
     {
       "id": "F332",
@@ -1416,6 +1416,105 @@
       "delivery": {
         "mode": "pr",
         "branch": "feat/f357-rpc-endpoints-use-https-or-wss-in-one-po",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F358",
+      "type": "fix",
+      "behavior": "USDC sent as Arc's native coin is credited once, like an ERC-20 transfer",
+      "acceptance": [
+        "The deposit scan reads Arc's system-emitter Transfer logs with 0x3600's; a system log with a 0x3600 twin one or two logs later is not counted again; one without a twin is credited as 0x3600 money floored to 6 decimals; under one micro-USDC is skipped"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend-affected",
+        "docs-check"
+      ],
+      "refs": [
+        "R-186"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-29 review fail by independent-reviewer: Money logic is sound; failing only on stale comments and two test gaps. Tests pass (watcher, ledger). Mutants of arc.go and watcher.go: killed one back-step, ignore value, no break, no tx in key, no floor, no zero skip, no emitter query, no pairing. Survived: ignore from, ignore to, and the inv.token == 0x3600 guard. Live Arc testnet: about 86k non-zero 0x3600 logs sampled, every non-self log has its twin 1 or 2 logs before it, none after (60 of 60 mints from 0x0 at 2). 12 twinless logs are self-transfers, kept as before. balanceOf equals floor(native/1e12) on 60 addresses; the emitter has no code. Floor keeps booked <= balanceOf, so paid holds and the ceiling note is honest. Re-reads keep the ERC-20 row key and drop the twin, so no double credit; native sends in the overlap are newly booked, as intended. Wallet scans and outflows.go read only 0x3600 logs and are unaffected. MUST FIX 1: three Go comments now say the opposite of R-186 and money-safety.md: ledger/process.go:236 (an Arc native-coin payment), ledger/process.go:390 (Arc USDC sent natively: an operator books it), invoice/recheck.go:19 (Arc native USDC). api.md, architecture.md and the web comment were fixed; these were missed. MUST FIX 2: add test cases for a different sender between twin and token log, and for an emitter log to a receiver whose invoice token is not 0x3600. Nits: arc.go comment names CCTP burns only but mints also sit at 2; the moved money-safety sentence starting When the selected RPC's balanceOf is 36 words (not new); architecture.md says the row stores the emitting contract, which is 0x3600 for converted logs.",
+        "2026-10-29 review fail by independent-reviewer: Previous findings are fixed. The three stale Go comments are gone. The new tests kill all three earlier survivors (ignore from, ignore to, drop the inv.token == 0x3600 guard) and six other mutants: one back-step, ignore value, no break, no emitter query, emitter always asked, no pairing. Arc tests pass with -race; gofmt and build are clean. One doc rule is broken by the nit fix: docs/backend/architecture.md (around line 407) now has a 27-word sentence, up from 21. It reads Only the invoice's own token counts, and the row stores the emitting contract (0x3600 for an Arc native send), so the foreign key also rejects a look-alike. Split it in two, for example end the first sentence after counts. Nothing else is open. Optional: the ledger/process.go comment A deposit the watcher never saw: an operator books it was there before; money-safety.md says the operator refunds, so books is loose.",
+        "2026-10-29 review pass by independent-reviewer: Pass. The architecture.md sentence is split: the row sentence is now 20 words and no changed doc sentence is over 25 (docs-check 0 errors). The ledger/process.go comment now says an operator refunds it, which matches money-safety.md. Earlier fixes hold: no stale Arc native-coin comments remain in ledger or invoice, and the new tests kill all nine mutants I tried (ignore from, ignore to, ignore value, one back-step, no break, guard dropped, no emitter query, emitter always asked, no pairing). Arc tests pass with -race; gofmt and build are clean. Money safety: twin pairing is deterministic per tx, floor keeps booked <= balanceOf, ERC-20 rows keep their log id on re-reads so nothing is credited twice, wallet scans and outflows.go are unaffected. Live Arc testnet sampling confirmed twins 1 or 2 logs before the token log, never after; twinless token logs were self-transfers only."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-29T21:18:11Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 240.8,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 37.9,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          }
+        ],
+        "taskHash": "33801e8e0cab7995",
+        "filesHash": "619bc87a0614be7b",
+        "proof": {
+          "1": "backend-affected: watcher TestArcUSDCIsCreditedOncePerMovement (10 cases, incl. other sender and other receiver) and TestArcDepositScanReadsNativeSends (incl. a non-USDC invoice); live Arc testnet blocks 69721290-69721300: a 1 USDC native send credited 1000000, a 1.555431 USDC ERC-20 transfer credited once"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent-reviewer",
+          "summary": "Pass. The architecture.md sentence is split: the row sentence is now 20 words and no changed doc sentence is over 25 (docs-check 0 errors). The ledger/process.go comment now says an operator refunds it, which matches money-safety.md. Earlier fixes hold: no stale Arc native-coin comments remain in ledger or invoice, and the new tests kill all nine mutants I tried (ignore from, ignore to, ignore value, one back-step, no break, guard dropped, no emitter query, emitter always asked, no pairing). Arc tests pass with -race; gofmt and build are clean. Money safety: twin pairing is deterministic per tx, floor keeps booked <= balanceOf, ERC-20 rows keep their log id on re-reads so nothing is credited twice, wallet scans and outflows.go are unaffected. Live Arc testnet sampling confirmed twins 1 or 2 logs before the token log, never after; twinless token logs were self-transfers only.",
+          "at": "2026-10-29T21:23:17Z",
+          "filesHash": "619bc87a0614be7b"
+        },
+        "commit": "45741a95",
+        "doneAt": "2026-10-29T21:23:32Z"
+      },
+      "branch": "fix/f358-usdc-sent-as-arc-s-native-coin-is-credit",
+      "baseCommit": "f9ef81c53d378166d285f8d6695db592f8fd6b89",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f358-usdc-sent-as-arc-s-native-coin-is-credit",
         "base": "main"
       }
     }
