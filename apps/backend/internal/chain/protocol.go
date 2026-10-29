@@ -11,8 +11,9 @@ import (
 
 // request is the size of one HTTP request: its number of calls, and the blocks of a single eth_getLogs.
 type request struct {
-	calls  int
-	blocks uint64
+	calls     int
+	blocks    uint64
+	broadcast bool // it sends a signed transaction
 }
 
 // Only stateless reads and already-signed transactions can cross provider boundaries safely.
@@ -42,6 +43,9 @@ func parseRequest(body []byte) (request, error) {
 		}
 	}
 	r := request{calls: len(calls)}
+	for _, c := range calls {
+		r.broadcast = r.broadcast || c.Method == "eth_sendRawTransaction"
+	}
 	if len(calls) == 1 && calls[0].Method == "eth_getLogs" && len(calls[0].Params) == 1 {
 		var filter struct{ FromBlock, ToBlock hexutil.Uint64 }
 		if json.Unmarshal(calls[0].Params[0], &filter) == nil && filter.ToBlock >= filter.FromBlock {

@@ -252,6 +252,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-186 | USDC sent as Arc's native coin is credited once, like an ERC-20 transfer. | Given a native USDC send to an Arc receive address, then the scan credits it as `0x3600` money, floored to 6 decimals. Given an ERC-20 transfer, then its system-emitter twin is not counted again. Under one micro-USDC is no deposit. | backend | R-120, D-15 |
 
+| R-187 | A signed transaction reaches the chain even when one node drops it. | Given a signed settlement sent through the pool, when an endpoint answers, then the same signed bytes also go to one endpoint on another host. A node that takes the transaction and never passes it on can't hold a settlement back. | backend | R-185, R-22 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.
