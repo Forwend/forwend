@@ -521,7 +521,9 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-29 review pass by independent-reviewer: Pass. Accept 1 holds. config.go:86 sets DefaultPricesEvery to 15 minutes, and cmd/worker/main.go:82 and :104 tick the keeper with it. TestKeeperReadsWhenDue reads at the first tick and again only after the interval. It retries 2 minutes after a failure and keeps a coin's last price when an answer has none. TestListGivesEachEnabledTokenItsCoinPrice gives a test token its mainnet coin's price and marks old reads stale. TestPrices (httpapi/tests/prices_test.go:11) returns usd, sourceUpdatedAt, fetchedAt and stale for any signed-in user, and null before any read. Accept 2 holds. Holdings values (balance-figure.tsx, balances-screen.tsx, balances-list.tsx, assets-card.tsx, business-overview.tsx) go through marketUsd or latestUsd and usdCents in features/prices/lib/prices.ts. Those value exact base units at the latest price, even a stale one, and return null without a price. The two named web tests exist; balances and prices unit tests pass (16 of 16). In apps/web/src and packages the provider is named only in two comments in features/prices/schemas/prices.ts:4 and :10, in no text users see. Notes, not blocking: (1) the doc comment at features/balances/lib/balances.ts:11-12 sits above settling, not marketUsd, and says 'no fresh price', but the code uses stale prices. (2) The balance history chart, its change figure and the received and sent totals still count each stablecoin as 1 USD (balance/history.go:22-23, openapi estimatedUsd). So the chart's last point can differ by cents from the market-value total beside it. This is by design, not a fallback, but the owner may want to decide it. (3) on-its-way-card.tsx:39 and :90 show 0.00 for a part that has no price when the other part has one."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
@@ -564,6 +566,13 @@
         "proof": {
           "1": "backend: config sets DefaultPricesEvery to 15 minutes; TestKeeperReadsWhenDue stores prices only when due, TestListGivesEachEnabledTokenItsCoinPrice maps each enabled token to its coin, and TestPrices returns each price with sourceUpdatedAt, fetchedAt and stale",
           "2": "web-unit: balances.test 'values at the latest market price, even an old one, and gives no total without one instead of 1 USD' and balance-figure.test 'values tokens at their market prices, and never at 1 USD without one' pass; in apps/web/src the provider's name appears only in two schema comments, in no text users see"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent-reviewer",
+          "summary": "Pass. Accept 1 holds. config.go:86 sets DefaultPricesEvery to 15 minutes, and cmd/worker/main.go:82 and :104 tick the keeper with it. TestKeeperReadsWhenDue reads at the first tick and again only after the interval. It retries 2 minutes after a failure and keeps a coin's last price when an answer has none. TestListGivesEachEnabledTokenItsCoinPrice gives a test token its mainnet coin's price and marks old reads stale. TestPrices (httpapi/tests/prices_test.go:11) returns usd, sourceUpdatedAt, fetchedAt and stale for any signed-in user, and null before any read. Accept 2 holds. Holdings values (balance-figure.tsx, balances-screen.tsx, balances-list.tsx, assets-card.tsx, business-overview.tsx) go through marketUsd or latestUsd and usdCents in features/prices/lib/prices.ts. Those value exact base units at the latest price, even a stale one, and return null without a price. The two named web tests exist; balances and prices unit tests pass (16 of 16). In apps/web/src and packages the provider is named only in two comments in features/prices/schemas/prices.ts:4 and :10, in no text users see. Notes, not blocking: (1) the doc comment at features/balances/lib/balances.ts:11-12 sits above settling, not marketUsd, and says 'no fresh price', but the code uses stale prices. (2) The balance history chart, its change figure and the received and sent totals still count each stablecoin as 1 USD (balance/history.go:22-23, openapi estimatedUsd). So the chart's last point can differ by cents from the market-value total beside it. This is by design, not a fallback, but the owner may want to decide it. (3) on-its-way-card.tsx:39 and :90 show 0.00 for a part that has no price when the other part has one.",
+          "at": "2026-10-29T17:06:36Z",
+          "filesHash": "c5e4144bf1103c88"
         }
       },
       "branch": "feat/f344-asset-values-use-shared-market-prices-fo",
