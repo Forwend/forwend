@@ -187,8 +187,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The Balance chart card holds the range control; beside it Money in and out stacks In over Out.
 - Business overview (merchant, freelancer, R-63) follows the C comp, in three rows of cards (`Card`, unruled headers):
   - Row 1: the Balance card and Pending payments.
-    - Balance: Total balance at market prices (`BigAmount`, cents subtle) over the art with a surface veil.
-    - Under it the prices line, then round actions: New invoice (lime), Payment link, Checkout (merchants), Receive.
+    - Balance: the personal card's figure over the art with a surface veil: the total, USD and its hint, then
+      its change over the past month. Its pending and held links stay off: Pending payments sits beside it.
+    - Then round actions: New invoice (lime), Payment link, Checkout (merchants), Receive.
     - Pending payments: payments still confirming (not final), then paid money moving to the wallet.
       Up to three rows open their payment.
     - Money held for payers is a separate quiet row at the card's foot, linking to My assets. It is theirs.
@@ -218,7 +219,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   Pointer, tap or arrow keys choose a point; only keyboard moves are announced, and a hidden table gives screen
   readers every value. Range choice is a segmented control. Reduced motion shows every chart in place. A failed figure shows "—" with Try again,
   never an endless skeleton.
-- My assets: Total balance (`BigAmount`) with the prices line, then one row per token.
+- My assets: Total balance (`BigAmount`), then one row per token.
   - Columns: Asset, In wallet (with its market value), Moving to wallet, Not final, Held for payers.
   - Moving to wallet is paid money being transferred; Not final is confirming or partly paid money, which may still
     turn out to be the payer's. Each header's title says so.

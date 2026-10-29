@@ -52,7 +52,7 @@ export function BusinessOverview() {
   );
   const prices = priced.currentData?.prices;
   const now = Date.now();
-  const market = (field: "wallet" | "settling" | "notFinal" | "held") =>
+  const market = (field: "settling" | "notFinal" | "held") =>
     balances.currentData ? marketUsd(balances.currentData, field, prices) : null;
 
   // The chart keeps the last range's line, dimmed, while the next loads; the figures wait for their own range.
@@ -92,8 +92,9 @@ export function BusinessOverview() {
 
       <div className={ROW}>
         <BalanceCard
-          wallet={market("wallet")}
-          loading={!balances.currentData && !balances.isError}
+          profileId={profile.profileId}
+          balances={balances.currentData ?? null}
+          prices={prices}
           failed={balances.isError}
           onRetry={() => void balances.refetch()}
           merchant={profile.kind === PROFILE_KINDS.merchant}

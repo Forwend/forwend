@@ -1,9 +1,9 @@
 "use client";
 
 import { Skeleton } from "@forwend/ui-web";
-import { TrendingDown, TrendingUp } from "lucide-react";
 import Image from "next/image";
 import { useGetBalanceHistoryQuery } from "@/features/balances/api/balances-api";
+import { BalanceChange } from "@/features/balances/components/balance-change";
 import { BalanceFigure } from "@/features/balances/components/balance-figure";
 import { MoneyActions } from "@/features/balances/components/money-actions";
 import {
@@ -12,15 +12,12 @@ import {
   HISTORY_RANGES,
 } from "@/features/balances/constants/balance-history";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
-import { historySeries, seriesChange } from "@/features/balances/lib/balance-history";
-import { formatUsd } from "@/features/balances/lib/balances";
-import type { HistorySeries } from "@/features/balances/types/balance-history";
+import { historySeries } from "@/features/balances/lib/balance-history";
 import type { Balances } from "@/features/balances/types/balances";
 import { useGetPricesQuery } from "@/features/prices/api/prices-api";
 import { PRICES_QUERY } from "@/features/prices/constants/prices";
 import { HERO_IMAGE } from "@/shared/assets/images";
 import { LIVE_QUERY } from "@/shared/config/refresh";
-import { MONEY_COPY } from "@/shared/constants/money-copy";
 
 export interface BalanceHeroProps {
   profileId: string;
@@ -84,7 +81,7 @@ export function BalanceHero({
               onRetry={onRetry}
               change={
                 series ? (
-                  <Change series={series} />
+                  <BalanceChange series={series} />
                 ) : history.currentData || history.isError ? null : (
                   <Skeleton className="h-5 w-40" />
                 )
@@ -97,32 +94,5 @@ export function BalanceHero({
         </div>
       </div>
     </section>
-  );
-}
-
-// Direction in words and an icon, not color alone.
-function Change({ series }: { series: HistorySeries }) {
-  const change = seriesChange(series);
-  const rangeName = BALANCES_COPY.rangeNames[DEFAULT_RANGE];
-  if (change === 0n) {
-    return (
-      <p className="text-sm text-muted">
-        {BALANCES_COPY.noChange} · {rangeName}
-      </p>
-    );
-  }
-  const up = change > 0n;
-  const Icon = up ? TrendingUp : TrendingDown;
-  return (
-    <p className="flex items-center gap-1.5 text-sm">
-      <span className={`inline-flex items-center gap-1 ${up ? "text-success" : "text-danger"}`}>
-        <Icon aria-hidden className="size-[var(--fw-icon-sm)]" />
-        <span className="tabular-nums">
-          {up ? "+" : "−"}
-          {formatUsd(change < 0n ? -change : change)} {MONEY_COPY.usd}
-        </span>
-      </span>
-      <span className="text-muted">{rangeName}</span>
-    </p>
   );
 }

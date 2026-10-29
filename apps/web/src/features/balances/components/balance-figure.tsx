@@ -21,10 +21,19 @@ export interface BalanceFigureProps {
   onRetry: () => void;
   /** The change over a range, right under the total. */
   change?: ReactNode;
+  /** Off where a card beside it already shows the money moving, not final and held. */
+  pending?: boolean;
 }
 
 // Never a made-up 0 while loading or after a failed read. The parent is the size container.
-export function BalanceFigure({ balances, prices, failed, onRetry, change }: BalanceFigureProps) {
+export function BalanceFigure({
+  balances,
+  prices,
+  failed,
+  onRetry,
+  change,
+  pending = true,
+}: BalanceFigureProps) {
   const tokens = balances?.tokens ?? [];
   const total = balances ? marketUsd(balances, "wallet", prices) : null;
   const text = total === null ? "—" : formatUsd(total);
@@ -64,7 +73,7 @@ export function BalanceFigure({ balances, prices, failed, onRetry, change }: Bal
             : BALANCES_COPY.noPrices}
         </p>
       ) : null}
-      <PendingHeld balances={balances} prices={prices} />
+      {pending ? <PendingHeld balances={balances} prices={prices} /> : null}
     </div>
   );
 }
