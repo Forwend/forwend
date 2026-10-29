@@ -285,9 +285,9 @@ export function ComponentsShowcase() {
           onValueChange={setStatus}
           options={[
             { value: "All", label: "All", icon: ListFilter },
-            { value: "Open", label: "Open", icon: Circle },
+            { value: "Waiting", label: "Waiting", icon: Circle },
             { value: "Paid", label: "Paid", icon: CircleCheck },
-            { value: "Settled", label: "Settled", icon: Wallet },
+            { value: "In wallet", label: "In wallet", icon: Wallet },
             { value: "Expired", label: "Expired", icon: Clock },
             { value: "Canceled", label: "Canceled", icon: Ban },
           ]}

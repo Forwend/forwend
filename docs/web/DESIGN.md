@@ -114,6 +114,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   scrolls. From top: one row with the logo mark, a slash and the profile switcher (name only, no wallet address);
   page links in named groups for the profile type (the current page on the second surface); the account menu at the
   bottom.
+  - A personal profile's money group: Overview, Transactions, My assets, Payments, Requests and Activity.
   The collapse button sits at the start of the header. Collapsed, the sidebar is an icon rail with the profile tile on
   top and names as tooltips; the choice is remembered in the browser.
 - Desktop header: a sticky bar across the content. Breadcrumb of links (profile, page, then the invoice number or the
@@ -730,10 +731,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   Up to four steps always sit side by side (the payer's timeline, the landing's samples). The owner's five don't fit a
   phone, so in a container narrower than 28rem they stack into one upright list of markers beside larger labels.
 - A test-mode invoice's page (R-143) has a warning Test mode badge under its header's name.
-- The invoice page (R-60) says each thing once. The header names the invoice by its number, with its status badges (the
-  confirming count while confirming) and one line under it: the title, Billed to, the due date, "Received X of Y"
-  when partly paid, and that the client picks the token when they do. Details says the times: when the checkout
-  closes ("Checkout closed" once past) and, once canceled, Canceled on. At its top right sits one More
+- The invoice page (R-60) says each thing once.
+  - The header names the invoice by its number, with its status badges (the confirming count while confirming).
+  - One line under it: the title, Billed to, the due date, "Received X of Y" when partly paid, and who picks the token.
+  - Details says the times: when the checkout closes ("Checkout closed" once past) and, once canceled, Canceled on.
+  - At its top right sits one More
   actions menu: Copy link and Open pay page (a new tab) while the checkout can take money, Edit always (R-127),
   Revise while it can still be canceled (R-129), Duplicate always (New invoice filled from this one, R-91), and while
   it can still be canceled, Cancel in the danger color, which asks to confirm in a dialog. Copying keeps the menu

@@ -57,6 +57,8 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
   await expect(rows).toHaveCount(1);
   const search = main.getByRole("searchbox", { name: "Search invoices" });
   await search.fill("brightline");
+  // Confirming already shows one row: wait for the search to reach the URL before the count means anything.
+  await expect(page).toHaveURL(/[?&]q=brightline/);
   await expect(rows).toHaveCount(1);
   await expect(rows).toContainText("INV-0004");
   await pickStatus(page, "All");
@@ -788,7 +790,7 @@ test("the owner cancels an invoice before any money, after confirming", async ({
 });
 
 // R-80
-test("the owner turns email notifications off from the account menu", async ({ browser }) => {
+test("the owner turns email notifications off from Settings", async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
     storageState: session,

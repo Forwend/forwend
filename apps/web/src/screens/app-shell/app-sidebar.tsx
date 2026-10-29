@@ -140,7 +140,7 @@ export function AppSidebar({
             <Link
               href={APP_ROUTES.settings}
               aria-current={SETTINGS_PATHS.includes(pathname) ? "page" : undefined}
-              className={`${ROW} text-muted transition-colors duration-[var(--fw-duration-fast)] hover:bg-surface-2 hover:text-ink aria-[current=page]:bg-surface-2 aria-[current=page]:font-medium aria-[current=page]:text-ink ${collapsed ? "w-9 justify-center" : "px-3"}`}
+              className={`${ROW} text-muted transition-colors duration-[var(--fw-duration-fast)] hover:bg-surface-2 active:bg-[color-mix(in_oklab,var(--fw-ink)_6%,var(--fw-surface-2))] hover:text-ink aria-[current=page]:bg-surface-2 aria-[current=page]:font-medium aria-[current=page]:text-ink ${collapsed ? "w-9 justify-center" : "px-3"}`}
             >
               <Settings aria-hidden className="size-[var(--fw-icon-sm)] shrink-0" />
               <span className={collapsed ? "sr-only" : ""}>{AUTH_COPY.settings}</span>

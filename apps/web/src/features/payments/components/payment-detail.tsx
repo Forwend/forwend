@@ -218,7 +218,7 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
                 figures.due > 0n &&
                 figures.received > 0n &&
                 !payment.closed &&
-                status !== "canceled" ? (
+                status !== PAYMENT_STATUS.canceled ? (
                 <Figure term={COPY.due}>
                   <PaymentAmount
                     amount={figures.due.toString()}
