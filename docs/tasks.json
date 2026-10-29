@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 350,
+  "nextId": 351,
   "tasks": [
     {
       "id": "F332",
@@ -836,6 +836,33 @@
       ],
       "refs": [
         "R-177"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F350",
+      "type": "fix",
+      "behavior": "The owner invoice page and the balance chart match their requirements",
+      "acceptance": [
+        "The owner's invoice page again shows why paid money still waits (R-54), Check status (R-55), and the payment progress strip and transactions list (R-69), or the owner rewrites those rows to the current page; the live navigation tests for them pass",
+        "The balance chart, its change figure and the received and sent totals value tokens at the same market prices as the total beside them, or R-178 records why they count each stablecoin as 1 USD"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "backend",
+        "live-e2e"
+      ],
+      "refs": [
+        "R-54",
+        "R-55",
+        "R-69",
+        "R-178"
       ],
       "keep": [],
       "review": false,
