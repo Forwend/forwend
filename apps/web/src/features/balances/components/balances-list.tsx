@@ -4,6 +4,7 @@ import { Button, EmptyState, Money, SearchField, Skeleton } from "@forwend/ui-we
 import { Wallet } from "lucide-react";
 import { useState } from "react";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
+import { notFinal } from "@/features/balances/lib/balances";
 import type { Balances, TokenBalance } from "@/features/balances/types/balances";
 import { findPrice, formatUsdCents, freshUsd, usdCents } from "@/features/prices/lib/prices";
 import type { TokenPrice } from "@/features/prices/types/prices";
@@ -32,7 +33,7 @@ export function BalancesList({ balances, prices, failed, onRetry }: BalancesList
   if (!balances) return <Skeleton className="h-40" />;
   if (balances.tokens.length === 0)
     return <EmptyState icon={Wallet} title={BALANCES_COPY.noTokens} />;
-  const columns = "md:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,1fr))]";
+  const columns = "md:grid-cols-[minmax(0,1.2fr)_repeat(4,minmax(0,1fr))]";
   const found = balances.tokens.filter((t) => tokenMatches(t, query));
   // Tokens on but never used would bury what is held; a search still finds them.
   const shown = query || showEmpty ? found : found.filter((t) => !isEmpty(t));
@@ -56,8 +57,9 @@ export function BalancesList({ balances, prices, failed, onRetry }: BalancesList
         >
           <span className="text-left">{BALANCES_COPY.asset}</span>
           <span>{BALANCES_COPY.inWallet}</span>
-          <span>{BALANCES_COPY.pendingLabel}</span>
-          <span>{BALANCES_COPY.heldLabel}</span>
+          <span title={BALANCES_COPY.movingHint}>{BALANCES_COPY.movingLabel}</span>
+          <span title={BALANCES_COPY.notFinalHint}>{BALANCES_COPY.notFinalLabel}</span>
+          <span title={BALANCES_COPY.heldHint}>{BALANCES_COPY.heldLabel}</span>
         </div>
         <ul className="divide-y divide-line">
           {shown.map((t) => (
@@ -73,7 +75,8 @@ export function BalancesList({ balances, prices, failed, onRetry }: BalancesList
                 usd={freshUsd(findPrice(prices ?? [], t.chainId, t.token), Date.now())}
                 strong
               />
-              <Amount label={BALANCES_COPY.pendingLabel} t={t} value={t.pending} />
+              <Amount label={BALANCES_COPY.movingLabel} t={t} value={t.settling ?? t.pending} />
+              <Amount label={BALANCES_COPY.notFinalLabel} t={t} value={notFinal(t)} />
               <Amount label={BALANCES_COPY.heldLabel} t={t} value={t.held} />
             </li>
           ))}

@@ -40,7 +40,7 @@ export function BalancesScreen() {
           </span>
         )}
         {priced.currentData || priced.isError ? (
-          <PricesUpdated prices={priced.currentData?.prices} />
+          <PricesUpdated prices={priced.currentData?.prices} staleOnly />
         ) : null}
       </div>
       <BalancesList
@@ -49,6 +49,11 @@ export function BalancesScreen() {
         failed={balances.isError}
         onRetry={balances.refetch}
       />
+      {priced.currentData || priced.isError ? (
+        <footer className="flex justify-end">
+          <PricesUpdated prices={priced.currentData?.prices} />
+        </footer>
+      ) : null}
     </div>
   );
 }

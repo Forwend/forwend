@@ -234,7 +234,7 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 		if options > 1 { // the client chooses the token and network, each at 1 USD (D-75)
 			symbol, network = "USD", ""
 		}
-		return sent(reference, document.Amount(units, decimals, symbol), network, issuer, typed, due,
+		return sent(reference, document.Amount(units, decimals, symbol), network, issuer, typed, document.DateText(due),
 			replyTo, webURL+"/pay/"+pay, webURL+"/api/v1/invoices/"+pay+"/invoice.pdf"), &client, true, nil
 	}
 	var v view
@@ -486,7 +486,7 @@ func reminderEmail(ctx context.Context, tx pgx.Tx, id string, p outbox.Payload, 
 	if options > 1 && !locked { // the client still chooses the token and network, each at 1 USD (D-75)
 		symbol, network = "USD", ""
 	}
-	v := reminder(p.Step, document.Number(number), document.Amount(units, decimals, symbol), network, issuer, sender, due,
+	v := reminder(p.Step, document.Number(number), document.Amount(units, decimals, symbol), network, issuer, sender, document.DateText(due),
 		replyTo, webURL+"/pay/"+pay, webURL+"/api/v1/invoices/"+pay+"/invoice.pdf")
 	v.Stop, v.Unsubscribe = webURL+"/reminders/"+token, webURL+"/api/v1/reminders/"+token+"/stop"
 	return v, &to, on, nil

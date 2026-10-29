@@ -65,17 +65,15 @@ export const BILLING_DETAILS_COPY = {
 
 /** R-136. */
 export const TOKENS_COPY = {
-  search: "Search tokens",
-  searchPlaceholder: "Token or network",
-  clearSearch: "Clear search",
-  title: "Networks and tokens",
-  intro: "What new invoices and requests can be paid in. Sent ones keep theirs.",
-  toggle: (symbol: string, network: string) => `${symbol} on ${network}`,
-  lastOn: "One token stays on, so this profile can still be paid.",
-  loadFailed: "We could not load the networks and tokens.",
+  title: "Accepted assets",
+  intro: "The stablecoins and networks new invoices and requests accept. Sent ones keep theirs.",
+  lastOn: "One stays on, so this profile can still be paid.",
+  loadFailed: "We could not load the accepted assets.",
   saveFailed: "We could not save this setting. Try again.",
   saved: (symbol: string, network: string, on: boolean) =>
     `${symbol} on ${network} turned ${on ? "on" : "off"}`,
+  savedAll: (symbol: string, on: boolean) =>
+    `${symbol} turned ${on ? "on" : "off"} on every network`,
 } as const;
 
 /** R-80. */

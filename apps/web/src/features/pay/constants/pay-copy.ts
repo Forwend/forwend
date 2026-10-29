@@ -53,9 +53,9 @@ export const PAY_COPY = {
   sendTo: (symbol: string, network: string) => `Send ${symbol} on ${network} to`,
   updatesItself: "This page updates on its own.",
   // R-68: once money is seen the payer has nothing left to do; saying so keeps them from paying twice.
-  seen: "We see your payment",
+  seen: "Payment detected",
   finalAround: (time: string) => `Final around ${time}`,
-  nothingToDo: "Nothing for you to do. This page updates on its own.",
+  nothingToDo: "Don't pay again. This page updates on its own.",
   exactAmount: "Amount",
   copyAmount: "Copy amount",
   amountCopied: "Amount copied",
@@ -72,8 +72,9 @@ export const PAY_COPY = {
     [PAY_STATES.waiting]: () => "Waiting for payment…",
     // The steps say it arrived; the line counts the blocks (ConfirmingStatus).
     [PAY_STATES.confirming]: () => "Confirming",
+    // Final on chain, not yet booked: no time is promised, because none is known.
     [PAY_STATES.checking]: ({ delayed }) =>
-      delayed ? "Confirmation is delayed. No need to pay again." : "Confirming payment",
+      delayed ? "Confirmation is taking longer than usual." : "Awaiting confirmation.",
     [PAY_STATES.review]: () =>
       "Payment could not be verified. Contact the merchant before sending more.",
     [PAY_STATES.partial]: ({ received, total, remaining }) =>
@@ -99,6 +100,8 @@ export const PAY_COPY = {
   // Address poisoning: a look-alike address planted in the payer's wallet history after the first payment (R-77).
   copyFromHere:
     "Copy the address from this page for the rest, not from your wallet's history: scammers plant look-alike addresses there.",
+  overpaid: (extra: string, payee: string) =>
+    `You sent ${extra} more than asked. The extra is held for you; ask ${payee} to get it back.`,
   late: (late: string, payee: string) =>
     `${late} arrived after the checkout closed. It is held for you; ask ${payee} to get it back.`,
   // R-129.

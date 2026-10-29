@@ -201,7 +201,11 @@ export function invoiceProgress(inv: Invoice) {
         ? inv.options.flatMap((o) => o.deposits)
         : inv.deposits
   ).filter((d) => !d.late);
-  const confirming = deposits.filter((d) => d.status !== API_DEPOSIT_STATUSES.confirmed);
+  const onChain = deposits.filter((d) => d.status !== API_DEPOSIT_STATUSES.confirmed);
+  // Final on chain is not confirmed for the payer until the ledger books it (paid is set).
+  const confirming = deposits.filter(
+    (d) => d.status !== API_DEPOSIT_STATUSES.confirmed || d.paid === null,
+  );
   const settled =
     inv.paymentStatus === API_PAYMENT_STATUSES.paid &&
     inv.settlementStatus === API_SETTLEMENT_STATUSES.settled;
@@ -225,8 +229,8 @@ export function invoiceProgress(inv: Invoice) {
   return {
     done,
     current: ended ? null : (INVOICE_TIMELINE[done] ?? null),
-    ...slowest(confirming),
-    secondsLeft: Math.max(0, ...confirming.map((d) => d.secondsLeft)),
+    ...slowest(onChain),
+    secondsLeft: Math.max(0, ...onChain.map((d) => d.secondsLeft)),
   };
 }
 

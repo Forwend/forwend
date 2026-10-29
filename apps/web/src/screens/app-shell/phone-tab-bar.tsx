@@ -1,12 +1,12 @@
 "use client";
 
 import { Sheet } from "@forwend/ui-web";
-import { ChevronRight, ChevronsUpDown, Home, Menu, ReceiptText, Settings } from "lucide-react";
+import { ChevronRight, ChevronsUpDown, Home, Menu, Settings } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { SetupGuide } from "@/features/onboarding/components/setup-guide";
 import { ProfileAvatar } from "@/features/profiles/components/profile-avatar";
-import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
-import { BILLING_DETAILS_COPY, PROFILES_COPY } from "@/features/profiles/constants/profiles-copy";
+import { PROFILES_COPY } from "@/features/profiles/constants/profiles-copy";
 import { profileLabel } from "@/features/profiles/lib/profile";
 import type { Profile } from "@/features/profiles/types/profile";
 import { NAV } from "@/screens/app-shell/constants/app-nav";
@@ -103,6 +103,7 @@ export function PhoneTabBar({ pathname, active, onProfiles }: PhoneTabBarProps) 
       </nav>
       <Sheet open={open} onOpenChange={setOpen} title={TAB_COPY.more}>
         <div className="flex flex-col gap-6">
+          <SetupGuide key={active.profileId} />
           <div className={CARD}>
             <button
               type="button"
@@ -122,16 +123,6 @@ export function PhoneTabBar({ pathname, active, onProfiles }: PhoneTabBarProps) 
               </span>
               <ChevronsUpDown aria-hidden className="size-5 shrink-0 text-muted" />
             </button>
-            {active.kind !== PROFILE_KINDS.personal &&
-            pageAllowed(active, APP_ROUTES.billingDetails) ? (
-              <Link {...pageLink(APP_ROUTES.billingDetails)}>
-                <span className={ROW_ICON}>
-                  <ReceiptText aria-hidden className="size-5" />
-                </span>
-                {BILLING_DETAILS_COPY.title}
-                <ChevronRight aria-hidden className="ml-auto size-4 text-muted" />
-              </Link>
-            ) : null}
             {pageAllowed(active, APP_ROUTES.settings) ? (
               <Link {...pageLink(APP_ROUTES.settings)}>
                 <span className={ROW_ICON}>

@@ -1,19 +1,29 @@
 export const SETTINGS_COPY = {
   title: "Settings",
-  billing: {
-    title: "Billing details",
-    text: "The name, address and tax ID your invoices and receipts show.",
+  yourAccount: "Your account",
+  thisProfile: "This profile",
+  account: {
+    title: "Account and security",
+    intro: "How you sign in, and where.",
+    signInWith: "Sign-in methods",
+    methods: {
+      email: "Email code",
+      google: "Google",
+      passkey: "Passkey",
+    },
+    passkeyMade: (where: string) => `Made on ${where}`,
+    addPasskey: "Add a passkey",
+    passkeyHint: "Sign in with your fingerprint, face or device PIN instead of a code.",
+    passkeyFailed: "The passkey was not added. Try again.",
+    passkeyAdded: "Passkey added",
+    device: "This device",
+    deviceHint: "Forwend can't list your other devices: it only knows this one.",
+    signOut: "Sign out",
+    everywhere: "Sign out of all devices",
+    everywhereHint: "Ends every session, this one too. You sign in again with your email.",
   },
-  networks: {
-    title: "Networks and tokens",
-    text: "Which stablecoins and networks customers can pay with.",
-  },
-  notifications: {
-    title: "Email notifications",
-    text: "Emails when a payment arrives or reaches your wallet.",
-  },
-  team: {
-    title: "Team",
-    text: "Who can open this profile, and what each person can do.",
-  },
+  billing: { title: "Billing details" },
+  networks: { title: "Accepted assets" },
+  notifications: { title: "Notifications" },
+  team: { title: "Team" },
 } as const;

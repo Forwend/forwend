@@ -213,9 +213,10 @@ function ProfileTransactions({
           description={TRANSACTIONS_COPY.emptyText}
           // An overview card has its own frame.
           compact={!pageHeading}
+          page={pageHeading}
         />
       ) : rows.length === 0 ? (
-        <NoMatch onClear={filters.clear} compact={!pageHeading} />
+        <NoMatch onClear={filters.clear} compact={!pageHeading} page={pageHeading} />
       ) : (
         // Columns show by the list's own width, as on every record table, so a collapsed sidebar shows more.
         <div

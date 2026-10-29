@@ -12,11 +12,24 @@ const DAY_AND_TIME = new Intl.DateTimeFormat(undefined, {
 export interface PricesUpdatedProps {
   /** The answer's prices; undefined after a failed read, which shows as unavailable. */
   prices: readonly TokenPrice[] | undefined;
+  /** Beside a total: only a warning, and only when the prices behind it are old or missing. The attribution then
+   * sits once at the page's foot. */
+  staleOnly?: boolean;
 }
 
 /** CoinGecko's attribution, which every page showing its prices needs, and when they were read. */
-export function PricesUpdated({ prices }: PricesUpdatedProps) {
+export function PricesUpdated({ prices, staleOnly }: PricesUpdatedProps) {
   const { updatedAt, stale } = pricesStatus(prices ?? [], Date.now());
+  if (staleOnly) {
+    if (updatedAt && !stale) return null;
+    return (
+      <p className="text-xs text-warning">
+        {updatedAt
+          ? PRICES_COPY.staleTotal(DAY_AND_TIME.format(Date.parse(updatedAt)))
+          : PRICES_COPY.noTotal}
+      </p>
+    );
+  }
   let when: string = PRICES_COPY.unavailable;
   if (updatedAt) {
     when = stale

@@ -1,13 +1,16 @@
 "use client";
 
 import { IconButton, LogoMark, Tooltip } from "@forwend/ui-web";
+import { Settings } from "lucide-react";
 import Link from "next/link";
 import type { ReactElement } from "react";
 import { AccountInitial, AccountMenu } from "@/features/auth/components/account-menu";
 import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
+import { SetupGuide } from "@/features/onboarding/components/setup-guide";
 import { ProfileSwitcher } from "@/features/profiles/components/profile-switcher";
 import type { Profile } from "@/features/profiles/types/profile";
-import { accountLinks, isCurrentPage, navFor } from "@/screens/app-shell/lib/app-nav";
+import { isCurrentPage, navFor, pageAllowed } from "@/screens/app-shell/lib/app-nav";
+import { SETTINGS_PATHS } from "@/screens/settings/lib/settings-sections";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 const SIDEBAR_COPY = {
@@ -121,12 +124,31 @@ export function AppSidebar({
         ))}
       </nav>
 
+      {collapsed ? null : (
+        <div className="px-3 pb-3">
+          <SetupGuide key={active.profileId} />
+        </div>
+      )}
+      {pageAllowed(active, APP_ROUTES.settings) ? (
+        <div className={`pb-2 ${collapsed ? "grid justify-center px-2" : "px-3"}`}>
+          {named(
+            AUTH_COPY.settings,
+            <Link
+              href={APP_ROUTES.settings}
+              aria-current={SETTINGS_PATHS.includes(pathname) ? "page" : undefined}
+              className={`${ROW} text-muted transition-colors duration-[var(--fw-duration-fast)] hover:bg-surface-2 hover:text-ink aria-[current=page]:bg-surface-2 aria-[current=page]:font-medium aria-[current=page]:text-ink ${collapsed ? "w-9 justify-center" : "px-3"}`}
+            >
+              <Settings aria-hidden className="size-[var(--fw-icon-sm)] shrink-0" />
+              <span className={collapsed ? "sr-only" : ""}>{AUTH_COPY.settings}</span>
+            </Link>,
+          )}
+        </div>
+      ) : null}
       <div className={`border-t border-line ${collapsed ? "grid place-items-center py-3" : "p-3"}`}>
         {collapsed ? (
           <AccountMenu
             email={email}
             onSignOut={onSignOut}
-            links={accountLinks(active)}
             side="right"
             trigger={
               <IconButton label={`${AUTH_COPY.account}: ${email}`} size="md">
@@ -135,7 +157,7 @@ export function AppSidebar({
             }
           />
         ) : (
-          <AccountMenu email={email} onSignOut={onSignOut} links={accountLinks(active)} />
+          <AccountMenu email={email} onSignOut={onSignOut} />
         )}
       </div>
     </aside>

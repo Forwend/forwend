@@ -73,6 +73,7 @@ export function ClientsTable({ profileId }: ClientsTableProps) {
 
       {list.isError && !list.currentData ? (
         <LoadError
+          page
           message={COPY.failed}
           onRetry={() => void list.refetch()}
           retrying={list.isFetching}
@@ -81,13 +82,14 @@ export function ClientsTable({ profileId }: ClientsTableProps) {
         <RowsSkeleton count={SKELETON_ROWS} className="fw-panel" />
       ) : noClients ? (
         <EmptyState
+          page
           icon={Users}
           title={COPY.empty}
           description={COPY.emptyText}
           action={<AddClientLink />}
         />
       ) : rows.length === 0 ? (
-        <NoMatch onClear={() => setSearch("")} clearLabel={COPY.clearSearch} />
+        <NoMatch page onClear={() => setSearch("")} clearLabel={COPY.clearSearch} />
       ) : (
         <DataTable
           label={COPY.title}

@@ -264,18 +264,33 @@ export const NEW_INVOICE_COPY = {
   invalid: "We could not create the invoice with these values. Check them and try again.",
   preview: {
     title: "Preview",
-    untitled: "Invoice",
+    edit: "Edit",
+    switch: "Edit or preview",
+    draft: "Draft",
+    waiting: "Waiting for payment",
+    dueOn: (date: string) => `Due ${date}.`,
+    closesIn: (closes: string) => (closes ? `Pay within ${closes}.` : ""),
+    amountDue: "Amount due",
+    total: "Total",
+    unchecked: "Name not checked by Forwend",
+    issued: "Issued",
+    supply: "Supply date",
+    due: "Due date",
+    closes: "Payment window",
+    network: "Network",
+    payerPicks: "The payer picks",
+    noItem: "Item",
     on: (network: string) => `on ${network}`,
     any: (symbols: string, networks: number) => `in ${symbols} on any of ${networks} networks`,
-    client: "Billed to",
-    noClient: "No client",
-    due: "Due",
-    noDue: "No due date",
-    closes: "Checkout closes after",
-    noItem: "Item",
-    moreItems: (n: number) => (n === 1 ? "And 1 more item" : `And ${n} more items`),
-    quantity: (qty: string) => `Qty ${qty}`,
-    open: "Preview",
+    payAny: (amount: string, symbols: string, networks: number) =>
+      `Pay ${amount} in ${symbols} on any of ${networks} networks, at 1 USD per token.`,
+    payExact: (amount: string, network: string, chainId: number) =>
+      `Send exactly ${amount} on ${network} (chain ID ${chainId}).`,
+    payContract: (symbol: string, contract: string) => `${symbol} contract ${contract}`,
+    emailSubject: (kind: string, from: string) => `${kind} from ${from}`,
+    emailLead: (from: string, amount: string) =>
+      `${from} sent you an invoice for ${amount}. You pay it in stablecoins on the payment page.`,
+    someone: "Someone",
   },
 } as const;
 
@@ -296,9 +311,8 @@ export const NEW_REQUEST_COPY = {
   create: "Create request",
   preview: {
     ...NEW_INVOICE_COPY.preview,
-    untitled: "Money request",
-    client: "Shown as",
-    noClient: "No name yet",
+    emailLead: (from: string, amount: string) =>
+      `${from} asked you for ${amount}. You pay it in stablecoins on the payment page.`,
   },
   failed: "We could not create the request. Try again.",
   invalid: "We could not create the request with these values. Check them and try again.",
@@ -635,8 +649,8 @@ export const STOP_REMINDERS_COPY = {
 
 // R-95, D-114: what customers still owe. Money held for a payer is theirs, so it never shows here.
 export const OWED_COPY = {
-  title: "Owed to you",
-  description: "Most urgent first.",
+  title: "Unpaid",
+  description: "Not paid in full yet, most urgent first.",
   totalLabel: "Left to pay",
   kinds: {
     [OWED_KINDS.overdue]: (days: number) => (days === 1 ? "1 day late" : `${days} days late`),
@@ -644,11 +658,11 @@ export const OWED_COPY = {
     [OWED_KINDS.held]: () => "Held for the payer",
   } satisfies Record<OwedKind, (days: number) => string>,
   left: "left to pay",
-  none: "No customer owes you anything right now.",
-  failed: "We could not load what you are owed.",
+  none: "Nothing unpaid right now.",
+  failed: "We could not load unpaid payments.",
   retry: "Try again",
   showAll: (n: number) => `Show all ${n}`,
   checkout: "Checkout",
-  more: (n: number) => (n === 1 ? "1 more is owed." : `${n} more are owed.`),
+  more: (n: number) => (n === 1 ? "1 more is unpaid." : `${n} more are unpaid.`),
   inPayments: "Open Payments",
 } as const;

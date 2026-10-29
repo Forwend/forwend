@@ -75,6 +75,7 @@ export function JobsTable({ profileId }: JobsTableProps) {
 
       {list.isError && !list.currentData ? (
         <LoadError
+          page
           message={COPY.failed}
           onRetry={() => void list.refetch()}
           retrying={list.isFetching}
@@ -83,13 +84,14 @@ export function JobsTable({ profileId }: JobsTableProps) {
         <RowsSkeleton count={SKELETON_ROWS} className="fw-panel" />
       ) : noJobs ? (
         <EmptyState
+          page
           icon={BriefcaseBusiness}
           title={COPY.empty}
           description={COPY.emptyText}
           action={<NewJobLink />}
         />
       ) : rows.length === 0 ? (
-        <NoMatch onClear={() => setSearch("")} clearLabel={COPY.clearSearch} />
+        <NoMatch page onClear={() => setSearch("")} clearLabel={COPY.clearSearch} />
       ) : (
         <DataTable
           label={COPY.title}

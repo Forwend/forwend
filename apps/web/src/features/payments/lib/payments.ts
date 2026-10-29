@@ -54,7 +54,7 @@ export function receivedAmount(amounts: Payment["amounts"]): string {
 const DELAYED_MS = 5 * 60 * 1000;
 
 /** The one sentence a payment page leads with: what happened and what the merchant can do now. */
-export function nextStep(payment: PaymentDetail): string {
+export function nextStep(payment: PaymentDetail, extra = 0n): string {
   const next = PAYMENT_DETAIL_COPY.next;
   if (payment.problems.some((p) => p.action === "review_funds" && p.code !== "held_funds")) {
     return next.review;
@@ -78,9 +78,29 @@ export function nextStep(payment: PaymentDetail): string {
   const checking = payment.problems.some(
     (p) => p.code === "partial_payment" && p.action === "wait",
   );
-  if (status === "confirming" || checking) return delayed ? next.delayed : next.confirming;
+  if (status === "confirming" || checking) {
+    if (extra > 0n) return next.overpaidConfirming;
+    return delayed ? next.delayed : next.confirming;
+  }
   if (status === "expiredPartiallyPaid") return next.expiredPartly;
   if (status === "expired") return next.expired;
   if (status === "partiallyPaid") return next.partly;
   return next.waiting;
+}
+
+/** One option's money against what it asked: received includes money still confirming. Extra is money held for the
+ * payer once booked, else what arrived over the amount, which the ledger will hold for them (D-24). */
+export function optionFigures(
+  amount: string,
+  receipt: { received: string; pending: string; held?: string } | undefined,
+): { received: bigint; confirming: bigint; extra: bigint; due: bigint } {
+  const asked = BigInt(amount);
+  const received = BigInt(receipt?.received ?? "0");
+  const held = BigInt(receipt?.held ?? "0");
+  return {
+    received,
+    confirming: BigInt(receipt?.pending ?? "0"),
+    extra: held > 0n ? held : received > asked ? received - asked : 0n,
+    due: received < asked ? asked - received : 0n,
+  };
 }

@@ -20,11 +20,11 @@ import { PaymentDiagnostics } from "@/features/payments/components/payment-diagn
 import { PaymentMovements } from "@/features/payments/components/payment-movements";
 import { PaymentProblems } from "@/features/payments/components/payment-problems";
 import { PaymentProgress } from "@/features/payments/components/payment-progress";
-import { PaymentReceived } from "@/features/payments/components/payment-received";
 import { SOURCE_LABELS } from "@/features/payments/constants/payments";
 import { PAYMENT_DETAIL_COPY as COPY } from "@/features/payments/constants/payments-copy";
 import {
   nextStep,
+  optionFigures,
   paymentDisplayStatus,
   paymentLabel,
   paymentWallet,
@@ -32,6 +32,7 @@ import {
 import type { PaymentDetail as PaymentDetailType } from "@/features/payments/types/payments";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { NetworkName } from "@/shared/components/chains/network-name";
+import { TokenMark } from "@/shared/components/chains/token-mark";
 import { DetailHeader } from "@/shared/components/detail-header";
 import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
@@ -81,6 +82,12 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
   const chosen = payment.options.find((option) => option.optionId === payment.optionId);
   // Items are in the base units of the option whose id is the payment's.
   const main = payment.options.find((option) => option.optionId === payment.paymentId);
+  const receiptOf = (option: Option) =>
+    (payment.receipts ?? []).find((receipt) => receipt.optionId === option.optionId);
+  // The strip shows the option the money went to; a payment paid on two options lists both below it.
+  const lead = funded[0];
+  const figures = lead ? optionFigures(lead.amount, receiptOf(lead)) : null;
+  const asked = payment.optionCount > 1 ? MONEY_COPY.usd : payment.symbol;
   return (
     <div className="flex flex-col gap-5">
       <DetailHeader
@@ -111,20 +118,66 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
         }
         summary={
           <>
-            <span className="text-3xl font-medium tracking-tight text-ink tabular-nums">
-              <PaymentAmount
-                amount={payment.amount}
-                decimals={payment.decimals}
-                symbol={payment.optionCount > 1 ? "USD" : payment.symbol}
-              />
+            <dl className="flex flex-wrap gap-x-10 gap-y-3">
+              <Figure term={COPY.requested}>
+                <PaymentAmount amount={payment.amount} decimals={payment.decimals} symbol={asked} />
+              </Figure>
+              <Figure
+                term={COPY.receivedOf}
+                note={
+                  figures && figures.confirming > 0n ? (
+                    lead && figures.confirming === figures.received ? (
+                      COPY.allConfirming
+                    ) : lead ? (
+                      <>
+                        <PaymentAmount
+                          amount={figures.confirming.toString()}
+                          decimals={lead.decimals}
+                          symbol={lead.symbol}
+                        />{" "}
+                        {COPY.stillConfirming}
+                      </>
+                    ) : null
+                  ) : null
+                }
+              >
+                {lead && figures && figures.received > 0n ? (
+                  <PaymentAmount
+                    amount={figures.received.toString()}
+                    decimals={lead.decimals}
+                    symbol={lead.symbol}
+                  />
+                ) : (
+                  <span className="text-subtle">{COPY.nothing}</span>
+                )}
+              </Figure>
+              {lead && figures && figures.extra > 0n ? (
+                <Figure term={COPY.extra} note={COPY.extraNote} tone="warning">
+                  <PaymentAmount
+                    amount={figures.extra.toString()}
+                    decimals={lead.decimals}
+                    symbol={lead.symbol}
+                  />
+                </Figure>
+              ) : lead && figures && figures.due > 0n && figures.received > 0n ? (
+                <Figure term={COPY.due}>
+                  <PaymentAmount
+                    amount={figures.due.toString()}
+                    decimals={lead.decimals}
+                    symbol={lead.symbol}
+                  />
+                </Figure>
+              ) : null}
+            </dl>
+            <span className="flex flex-wrap items-center gap-3 sm:ml-auto">
+              <StatusPill status={status} />
+              {paymentWallet(payment) === "none" ? null : (
+                <WalletStateLabel state={paymentWallet(payment)} />
+              )}
             </span>
-            <StatusPill status={status} />
-            {paymentWallet(payment) === "none" ? null : (
-              <WalletStateLabel state={paymentWallet(payment)} />
-            )}
           </>
         }
-        next={nextStep(payment)}
+        next={nextStep(payment, figures?.extra ?? 0n)}
       />
       {read.isError ? (
         <LoadError
@@ -143,60 +196,37 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
               </div>
             </Panel>
           ) : null}
-          <Panel title={COPY.received}>
-            <ul className="divide-y divide-line">
-              {used.map((option) => (
-                <li key={option.optionId} className="flex flex-col gap-3 px-4 py-3 sm:px-5">
-                  <div className="flex flex-wrap items-baseline justify-between gap-3 text-sm">
-                    <span className="font-medium text-ink">
-                      {payment.optionLocked ||
-                      payment.optionCount === 1 ||
-                      option.deposits.length ? (
-                        <>
-                          {option.symbol} · <NetworkName chainId={option.chainId} />
-                        </>
-                      ) : (
-                        COPY.noTokenYet
-                      )}
-                    </span>
-                    {option.deposits.length === 0 ? (
-                      <span className="text-muted">{COPY.nothingYet}</span>
+          {used.length ? (
+            <Panel title={COPY.transfers}>
+              <ul className="divide-y divide-line">
+                {used.map((option) => (
+                  <li key={option.optionId} className="flex flex-col gap-3 px-4 py-3 sm:px-5">
+                    {payment.optionLocked || payment.optionCount === 1 || option.deposits.length ? (
+                      <TokenMark chainId={option.chainId} symbol={option.symbol} />
                     ) : (
-                      <span className="text-muted">
-                        {COPY.receivedOf}{" "}
-                        <span className="font-medium text-ink">
-                          <PaymentReceived
-                            payment={{
-                              ...payment,
-                              ...option,
-                              receipts: (payment.receipts ?? []).filter(
-                                (receipt) => receipt.optionId === option.optionId,
-                              ),
-                            }}
-                          />
-                        </span>
-                      </span>
+                      <p className="text-sm text-muted">{COPY.noTokenYet}</p>
                     )}
-                  </div>
-                  <FinalDeposits
-                    deposits={option.deposits.filter((d) => d.status !== "detected")}
-                    option={option}
-                  />
-                  {BigInt(option.amounts.refunded) > 0n ? (
-                    <p className="text-sm text-muted">
-                      {COPY.returned}{" "}
-                      <PaymentAmount
-                        amount={option.amounts.refunded}
-                        decimals={option.decimals}
-                        symbol={option.symbol}
-                      />
-                    </p>
-                  ) : null}
-                  <PaymentProgress option={option} />
-                </li>
-              ))}
-            </ul>
-          </Panel>
+                    {option.deposits.length ? (
+                      <Deposits deposits={option.deposits} option={option} />
+                    ) : (
+                      <p className="text-sm text-muted">{COPY.nothingYet}</p>
+                    )}
+                    {BigInt(option.amounts.refunded) > 0n ? (
+                      <p className="text-sm text-muted">
+                        {COPY.returned}{" "}
+                        <PaymentAmount
+                          amount={option.amounts.refunded}
+                          decimals={option.decimals}
+                          symbol={option.symbol}
+                        />
+                      </p>
+                    ) : null}
+                    <PaymentProgress option={option} />
+                  </li>
+                ))}
+              </ul>
+            </Panel>
+          ) : null}
           {payment.items?.length && main ? (
             <InvoiceLines
               lines={payment.items}
@@ -205,11 +235,15 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
               total={BigInt(main.amount)}
             />
           ) : null}
-          <Disclosure title={COPY.transactions}>
-            <PaymentMovements profileId={profileId} paymentId={paymentId} />
-          </Disclosure>
+          {/* Ledger entries and contract checks are for investigating a problem, so they stay closed and unread. */}
           <Disclosure title={COPY.technical}>
-            <PaymentDiagnostics profileId={profileId} paymentId={paymentId} />
+            <div className="flex flex-col gap-6">
+              <section aria-label={COPY.transactions} className="flex flex-col gap-2">
+                <h3 className="text-sm font-medium text-ink">{COPY.transactions}</h3>
+                <PaymentMovements profileId={profileId} paymentId={paymentId} />
+              </section>
+              <PaymentDiagnostics profileId={profileId} paymentId={paymentId} />
+            </div>
           </Disclosure>
         </div>
         <Panel title={COPY.details}>
@@ -285,41 +319,66 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
 
 type Option = PaymentDetailType["options"][number];
 
-/** Final deposits with their time and transaction. One deposit is the received amount above, so it adds no second
- * amount; several list each part. Confirming deposits show with their progress instead. */
-function FinalDeposits({ deposits, option }: { deposits: Option["deposits"]; option: Option }) {
-  const [only] = deposits;
-  if (!only) return null;
-  if (deposits.length === 1)
-    return (
-      <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
-        {dateTime(only.blockTime)}
-        {only.late ? <span>{COPY.late}</span> : null}
-        <ExplorerLink chainId={option.chainId} txHash={only.txHash} />
-      </p>
-    );
+/** Every transfer into the payment, newest last: its amount, when, where it stands and its transaction. */
+function Deposits({ deposits, option }: { deposits: Option["deposits"]; option: Option }) {
   return (
-    <ul className="flex flex-col gap-1.5 text-sm">
+    <ul className="flex flex-col divide-y divide-line rounded-md border border-line">
       {deposits.map((deposit) => (
         <li
           key={`${deposit.txHash}:${deposit.logIndex}`}
-          className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1"
+          className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-3 py-2.5 text-sm"
         >
-          <span className="text-ink tabular-nums">
-            <PaymentAmount
-              amount={deposit.amount}
-              decimals={option.decimals}
-              symbol={option.symbol}
-            />
-            {deposit.late ? <span className="text-muted"> · {COPY.late}</span> : null}
+          <span className="flex min-w-0 flex-col">
+            <span className="font-medium text-ink tabular-nums">
+              <PaymentAmount
+                amount={deposit.amount}
+                decimals={option.decimals}
+                symbol={option.symbol}
+              />
+            </span>
+            <span className="text-xs text-muted">
+              {dateTime(deposit.blockTime)} ·{" "}
+              {deposit.late
+                ? COPY.late
+                : deposit.status === "detected"
+                  ? COPY.depositConfirming(
+                      deposit.blocksTotal - deposit.blocksLeft,
+                      deposit.blocksTotal,
+                    )
+                  : deposit.paid === null
+                    ? COPY.depositVerifying
+                    : COPY.depositFinal}
+            </span>
           </span>
-          <span className="flex items-center gap-3 text-muted">
-            {dateTime(deposit.blockTime)}
-            <ExplorerLink chainId={option.chainId} txHash={deposit.txHash} />
-          </span>
+          <ExplorerLink chainId={option.chainId} txHash={deposit.txHash} />
         </li>
       ))}
     </ul>
+  );
+}
+
+/** A labelled figure in the money strip. */
+function Figure({
+  term,
+  note,
+  tone,
+  children,
+}: {
+  term: string;
+  note?: ReactNode;
+  tone?: "warning";
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <dt className="text-xs text-muted">{term}</dt>
+      <dd
+        className={`text-2xl font-medium tracking-tight tabular-nums ${tone ? "text-warning" : "text-ink"}`}
+      >
+        {children}
+      </dd>
+      {note ? <dd className="text-xs text-muted">{note}</dd> : null}
+    </div>
   );
 }
 

@@ -9,6 +9,8 @@ export interface EmptyStateProps {
   icon?: LucideIcon;
   /** Inside a panel that already has its frame, such as an overview card: no border, less height. */
   compact?: boolean;
+  /** The whole page's content: no frame, centered in the workspace below the page's toolbar. */
+  page?: boolean;
 }
 
 // R-75: an empty or filtered-out list never looks broken.
@@ -18,6 +20,7 @@ export function EmptyState({
   action,
   icon: Icon = Inbox,
   compact,
+  page,
 }: EmptyStateProps) {
   return (
     <div
@@ -25,7 +28,9 @@ export function EmptyState({
         "flex w-full flex-col items-center justify-center px-6 text-center",
         compact
           ? "flex-1 py-10"
-          : "min-h-[min(16rem,40dvh)] rounded-lg border border-line bg-surface py-10",
+          : page
+            ? "min-h-[max(16rem,calc(100dvh-20rem))] py-10"
+            : "min-h-[min(16rem,40dvh)] rounded-lg border border-line bg-surface py-10",
       )}
     >
       <span className="grid size-10 place-items-center rounded-md bg-surface-2">

@@ -67,6 +67,7 @@ export function LinksTable({ profileId, canWrite }: LinksTableProps) {
 
       {list.isError && !list.currentData ? (
         <LoadError
+          page
           message={COPY.failed}
           onRetry={() => void list.refetch()}
           retrying={list.isFetching}
@@ -75,6 +76,7 @@ export function LinksTable({ profileId, canWrite }: LinksTableProps) {
         <RowsSkeleton count={2} className="fw-panel" />
       ) : links.length === 0 ? (
         <EmptyState
+          page
           icon={Link2}
           title={COPY.empty}
           description={COPY.emptyBody}

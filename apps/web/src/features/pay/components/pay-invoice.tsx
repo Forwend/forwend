@@ -26,7 +26,6 @@ import {
   FileDown,
   Handshake,
   Hash,
-  LoaderCircle,
   ShieldAlert,
   TriangleAlert,
   WifiOff,
@@ -651,7 +650,6 @@ function PayBox({
         options={payerNoticeOptions(invoice.options)}
         showVerification={pay.state !== PAY_STATES.review}
       />
-      {/* Overpaid gets its own handling later (PLAN 11.10.1); late money is held for the payer now. */}
       {pay.late > 0n ? (
         <p className="text-sm text-warning">{COPY.late(money(pay.late), payeeOf(invoice))}</p>
       ) : null}
@@ -827,15 +825,7 @@ function Received({
       <h2 id="pay-progress" className="sr-only">
         {COPY.progress}
       </h2>
-      {lead ? (
-        <p className="flex items-center gap-2.5 text-base font-semibold text-ink">
-          <LoaderCircle
-            aria-hidden
-            className="size-[var(--fw-icon-md)] shrink-0 animate-[fw-spin_var(--fw-duration-slower)_linear_infinite] text-accent"
-          />
-          {COPY.seen}
-        </p>
-      ) : null}
+      {lead ? <p className="text-base font-semibold text-ink">{COPY.seen}</p> : null}
       <InvoiceTimeline invoice={invoice} label={COPY.progress} steps={PAYER_STEPS} />
       <div className="-mt-1 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <p role="status" className="text-sm text-ink">
@@ -888,6 +878,7 @@ function Received({
             );
           })}
       </ul>
+      <Overpaid invoice={invoice} money={money} />
       {/* The rest may already be sent and missed: the payer can ask once in a while (R-55). */}
       {pay.state === PAY_STATES.partial ? (
         <CheckStatus
@@ -899,6 +890,13 @@ function Received({
       ) : null}
     </section>
   );
+}
+
+/** Money over the amount stays held for the payer (D-24); with no refund flow yet, the payee returns it. */
+function Overpaid({ invoice, money }: { invoice: Invoice; money: (units: bigint) => string }) {
+  const extra = depositAmount(invoice, false) - BigInt(invoice.amount);
+  if (extra <= 0n) return null;
+  return <p className="text-sm text-warning">{COPY.overpaid(money(extra), payeeOf(invoice))}</p>;
 }
 
 // Paid is the end for the payer: settling is the sender's business (R-68).
@@ -955,6 +953,9 @@ function Paid({
           </DetailRow>
         ) : null}
       </DetailList>
+      <div className="px-4 pt-4 empty:hidden sm:px-5">
+        <Overpaid invoice={invoice} money={(units) => formatMoney(units, token)} />
+      </div>
       {/* With a return link the way back leads, and the receipt steps down to secondary under it. */}
       <div className="flex flex-col gap-2 p-4 sm:p-5">
         {back ? (

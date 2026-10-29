@@ -179,9 +179,9 @@ func statusOf(inv invoice.Invoice, now time.Time) standing {
 		case inv.PaymentStatus == ledger.PartiallyPaid:
 			s.label, s.detail = "Partially paid", "Received "+token(received)+" of "+total+"."
 		case inv.DueDate != "" && inv.DueDate < now.UTC().Format(time.DateOnly):
-			s.label, s.detail = "Overdue", "Was due "+inv.DueDate+"."
+			s.label, s.detail = "Overdue", "Was due "+DateText(inv.DueDate)+"."
 		case inv.DueDate != "":
-			s.detail = "Due " + inv.DueDate + "."
+			s.detail = "Due " + DateText(inv.DueDate) + "."
 		}
 		if received.Sign() > 0 {
 			s.figure, s.amount = "Left to pay", token(left)
@@ -234,7 +234,7 @@ func records(inv invoice.Invoice) string {
 func Invoice(inv invoice.Invoice, payLink string, logo []byte, now time.Time) ([]byte, error) {
 	s := statusOf(inv, now)
 	d := start(inv, "Invoice", logo, s)
-	due, last := [2]string{"Due date", inv.DueDate}, [2]string{"Payment window closes", stamp(inv.ClosesAt)}
+	due, last := [2]string{"Due date", DateText(inv.DueDate)}, [2]string{"Payment window closes", stamp(inv.ClosesAt)}
 	switch {
 	case inv.PaymentStatus == ledger.Canceled:
 		due, last = [2]string{}, [2]string{"Canceled", stamp(inv.CanceledAt)}
@@ -243,7 +243,7 @@ func Invoice(inv invoice.Invoice, payLink string, logo []byte, now time.Time) ([
 	case s.closed:
 		last[0] = "Payment window closed"
 	}
-	d.facts([2]string{"Issued", day(inv.CreatedAt)}, [2]string{"Supply date", inv.SupplyDate}, due, last)
+	d.facts([2]string{"Issued", day(inv.CreatedAt)}, [2]string{"Supply date", DateText(inv.SupplyDate)}, due, last)
 	agreed := "For reference only: the invoice is in the token amount above."
 	if s.payable {
 		agreed = "For reference only: pay the token amount above."
@@ -277,7 +277,7 @@ func Receipt(inv invoice.Invoice, payLink string, logo []byte) ([]byte, error) {
 	// The payer's proof of payment: when and how they paid. Settling is the creator's business (R-61).
 	s := statusOf(inv, inv.PaidAt)
 	d := start(inv, "Receipt", logo, s)
-	d.facts([2]string{"Issued", day(inv.CreatedAt)}, [2]string{"Supply date", inv.SupplyDate},
+	d.facts([2]string{"Issued", day(inv.CreatedAt)}, [2]string{"Supply date", DateText(inv.SupplyDate)},
 		[2]string{"Paid", stamp(inv.PaidAt)})
 	d.items(inv, s.totals, "For reference only: the token amount above was paid.")
 	d.payments(inv)
@@ -340,7 +340,7 @@ func (d doc) payments(inv invoice.Invoice) {
 		if tr.Paid != nil {
 			applied = Amount(tr.Paid, tr.option.Decimals, tr.option.Symbol)
 		}
-		return [][]string{{tr.BlockTime.UTC().Format("2006-01-02 15:04")}, d.fit(NetworkName(tr.option.ChainID), t.w(1), 2),
+		return [][]string{{tr.BlockTime.UTC().Format("2 Jan 2006, 15:04")}, d.fit(NetworkName(tr.option.ChainID), t.w(1), 2),
 			d.fit(Amount(tr.Amount, tr.option.Decimals, tr.option.Symbol), t.w(2), 12), d.fit(applied, t.w(3), 12)}
 	}
 	// The totals and returns stay with the last transfer, like a line table's totals.
@@ -441,7 +441,7 @@ func start(inv invoice.Invoice, kind string, logo []byte, s standing) doc {
 		d.Rect(margin, y, width, 9, "F")
 		d.SetXY(margin+5, y+2)
 		d.SetFont(font, "B", 8)
-		d.CellFormat(18, lineHeight, "TESTNET", "", 0, "L", false, 0, "")
+		d.CellFormat(18, lineHeight, "Testnet", "", 0, "L", false, 0, "")
 		d.SetFont(font, "", 9)
 		d.CellFormat(width-28, lineHeight, TestMode, "", 0, "L", false, 0, "")
 		d.SetY(y + 9 + 5)
@@ -638,7 +638,7 @@ func (d doc) summary(s standing) {
 	d.SetXY(right, y+pad-0.5)
 	d.SetFont(font, "B", 7.5)
 	d.text(subtle)
-	d.CellFormat(amountW, lineHeight, strings.ToUpper(s.figure), "", 2, "R", false, 0, "")
+	d.CellFormat(amountW, lineHeight, s.figure, "", 2, "R", false, 0, "")
 	d.SetFont(font, "B", size)
 	d.text(ink)
 	d.SetY(y + pad + 5)
@@ -655,7 +655,7 @@ func (d doc) party(x, y float64, heading, name string, details ...string) float6
 	d.SetXY(x, y)
 	d.text(subtle)
 	d.SetFont(font, "B", 7.5)
-	d.CellFormat(w, lineHeight, strings.ToUpper(heading), "", 2, "L", false, 0, "")
+	d.CellFormat(w, lineHeight, heading, "", 2, "L", false, 0, "")
 	d.SetY(d.GetY() + 0.5)
 	d.text(ink)
 	d.SetFont(font, "B", 10)
@@ -742,7 +742,7 @@ func (t table) header() {
 	d.text(subtle)
 	for i, h := range t.heads {
 		d.SetXY(t.x(i), y)
-		d.CellFormat(t.w(i), lineHeight, strings.ToUpper(h), "", 0, t.align(i), false, 0, "")
+		d.CellFormat(t.w(i), lineHeight, h, "", 0, t.align(i), false, 0, "")
 	}
 	d.SetY(y + headerHeight)
 	d.hairline(line)
@@ -930,7 +930,7 @@ func (d doc) heading(text string) {
 	d.pageFor(3 * lineHeight)
 	d.text(subtle)
 	d.SetFont(font, "B", 7.5)
-	d.CellFormat(width, lineHeight, strings.ToUpper(text), "", 1, "L", false, 0, "")
+	d.CellFormat(width, lineHeight, text, "", 1, "L", false, 0, "")
 	d.text(ink)
 	d.Ln(1)
 }
@@ -1078,10 +1078,20 @@ func Amount(n *big.Int, decimals int, symbol string) string {
 	return whole + " " + symbol
 }
 
+// Day before month name, so no reader confuses 03/04 for March or April.
 func stamp(t time.Time) string {
-	return t.UTC().Format("2006-01-02 15:04 UTC")
+	return t.UTC().Format("2 Jan 2006, 15:04 UTC")
 }
 
 func day(t time.Time) string {
-	return t.UTC().Format(time.DateOnly)
+	return t.UTC().Format("2 Jan 2006")
+}
+
+// DateText writes a stored YYYY-MM-DD as day() does; "" stays "" so its fact is left out.
+func DateText(s string) string {
+	t, err := time.Parse(time.DateOnly, s)
+	if err != nil {
+		return s
+	}
+	return day(t)
 }

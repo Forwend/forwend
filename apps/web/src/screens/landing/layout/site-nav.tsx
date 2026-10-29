@@ -1,7 +1,8 @@
 import { BUTTON_SIZES, buttonClasses, Logo, NavPill, ThemeSwitch } from "@forwend/ui-web";
 import { CTA } from "@/features/waitlist/constants/waitlist";
-import { LANDING_SECTIONS, NAV_LINKS } from "@/screens/landing/constants/landing-content";
+import { LANDING_SECTIONS, NAV_LINKS, SIGN_IN } from "@/screens/landing/constants/landing-content";
 import { SiteMenu } from "@/screens/landing/layout/site-menu";
+import { APP_ROUTES } from "@/shared/config/routes";
 
 export function SiteNav() {
   return (
@@ -16,6 +17,12 @@ export function SiteNav() {
           <span className="flex items-center gap-1.5 max-[22rem]:gap-1">
             <SiteMenu />
             <ThemeSwitch className="relative size-9 border-transparent bg-transparent after:absolute after:-inset-1 pointer-coarse:size-9" />
+            <a
+              href={APP_ROUTES.signIn}
+              className={`${buttonClasses({ size: BUTTON_SIZES.md, variant: "ghost" })} max-sm:hidden`}
+            >
+              {SIGN_IN}
+            </a>
             <a
               href="#join"
               className={`${buttonClasses({ size: BUTTON_SIZES.md })} max-[22rem]:px-2.5`}

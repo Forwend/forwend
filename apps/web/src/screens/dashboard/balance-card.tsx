@@ -87,7 +87,7 @@ export function BalanceCard({
           </div>
           {pricesRead ? (
             <div className="mt-1">
-              <PricesUpdated prices={prices} />
+              <PricesUpdated prices={prices} staleOnly />
             </div>
           ) : null}
         </>

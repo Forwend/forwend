@@ -6,8 +6,8 @@ import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { EstimateHint } from "@/features/balances/components/estimate-hint";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
-import { formatUsd, marketUsd } from "@/features/balances/lib/balances";
-import type { Balances } from "@/features/balances/types/balances";
+import { formatUsd, marketUsd, notFinal } from "@/features/balances/lib/balances";
+import type { Balances, TokenBalance } from "@/features/balances/types/balances";
 import { PricesUpdated } from "@/features/prices/components/prices-updated";
 import type { TokenPrice } from "@/features/prices/types/prices";
 import { LoadError } from "@/shared/components/load-error";
@@ -75,7 +75,7 @@ export function BalanceFigure({
         </p>
       ) : null}
       <PendingHeld balances={balances} prices={prices} />
-      {pricesRead ? <PricesUpdated prices={prices} /> : null}
+      {pricesRead ? <PricesUpdated prices={prices} staleOnly /> : null}
     </div>
   );
 }
@@ -88,13 +88,20 @@ function PendingHeld({
   prices: readonly TokenPrice[] | undefined;
 }) {
   const summaries = [
-    { field: "pending", label: BALANCES_COPY.pending },
+    { field: "settling", label: BALANCES_COPY.moving },
+    { field: "notFinal", label: BALANCES_COPY.notFinal },
     { field: "held", label: BALANCES_COPY.held },
   ] as const;
   return (
     <div className="flex max-w-full flex-wrap justify-center gap-x-3 gap-y-1 empty:hidden lg:justify-start">
       {summaries.map(({ field, label }) => {
-        if (!balances.tokens.some((t) => BigInt(t[field]) > 0n)) return null;
+        const part = (t: TokenBalance) =>
+          field === "notFinal"
+            ? notFinal(t)
+            : field === "settling"
+              ? (t.settling ?? t.pending)
+              : t[field];
+        if (!balances.tokens.some((t) => BigInt(part(t)) > 0n)) return null;
         const total = marketUsd(balances, field, prices, Date.now());
         if (total === null) return null;
         return (

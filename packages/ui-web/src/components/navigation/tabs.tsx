@@ -21,7 +21,7 @@ export function Tabs({ items, label, defaultValue }: TabsProps) {
     <RadixTabs.Root defaultValue={defaultValue ?? items[0]?.value}>
       <RadixTabs.List
         aria-label={label}
-        className="grid w-full grid-cols-2 gap-1 rounded-lg bg-surface-2 p-1 sm:inline-flex sm:w-auto sm:rounded-md"
+        className="grid w-full auto-cols-fr grid-flow-col gap-1 rounded-lg bg-surface-2 p-1 sm:inline-flex sm:w-auto sm:rounded-md"
       >
         {items.map((item) => (
           <RadixTabs.Trigger

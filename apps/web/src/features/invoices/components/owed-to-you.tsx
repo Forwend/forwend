@@ -61,7 +61,7 @@ export function OwedToYou({ profileId }: { profileId: string }) {
       className="flex flex-col"
     >
       {/* One height for every state, so the card beside it never jumps. */}
-      <div className="flex min-h-72 flex-1 flex-col">
+      <div className="flex min-h-40 flex-1 flex-col">
         {owed.isError && !items ? (
           <LoadError message={COPY.failed} onRetry={() => void owed.refetch()} />
         ) : !rows ? (

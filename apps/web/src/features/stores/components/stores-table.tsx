@@ -62,6 +62,7 @@ export function StoresTable({ profileId, closeLabel, canAdd }: StoresTableProps)
 
       {list.isError && !list.currentData ? (
         <LoadError
+          page
           message={COPY.failed}
           onRetry={() => void list.refetch()}
           retrying={list.isFetching}

@@ -7,13 +7,13 @@ import {
   ComboboxField,
   DatePicker,
   Form,
+  formatTokenAmount,
   SegmentedControl,
   SelectField,
-  Sheet,
   TextAreaField,
   TextField,
 } from "@forwend/ui-web";
-import { Eye, Plus, TriangleAlert } from "lucide-react";
+import { Plus, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
@@ -41,6 +41,7 @@ import {
   NEW_INVOICE_COPY,
   NEW_REQUEST_COPY,
 } from "@/features/invoices/constants/invoices-copy";
+import { documentDate } from "@/features/invoices/lib/invoice-document";
 import {
   agreedDigits,
   customExpiresIn,
@@ -76,6 +77,7 @@ import { FieldGroup } from "@/shared/components/field-group";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { chainName, TOKEN_SEARCH_FROM } from "@/shared/lib/chains";
+import { exactDigits } from "@/shared/lib/money";
 
 const INVALID_VALUE = 422;
 // R-129: the invoice it replaces can no longer be canceled.
@@ -98,6 +100,14 @@ export interface NewInvoiceFormProps {
   stores?: readonly Store[];
   /** Started from a client's page: filled as if that saved client was picked. */
   startClient?: Client;
+  /** The billing details new invoices copy (R-92), for the preview's From block. */
+  issuer?: {
+    name: string;
+    address: string;
+    country: string;
+    taxId: string | null;
+    email: string;
+  } | null;
 }
 
 const NO_CLIENT: ClientBody = { name: "", email: "", address: "", country: "", taxId: "" };
@@ -113,6 +123,7 @@ export function NewInvoiceForm({
   clients,
   replaces,
   stores,
+  issuer,
 }: NewInvoiceFormProps) {
   const COPY = request ? NEW_REQUEST_COPY : NEW_INVOICE_COPY;
   const [createInvoice] = useCreateInvoiceMutation();
@@ -150,7 +161,8 @@ export function NewInvoiceForm({
   const [errors, setErrors] = useState<Partial<Record<InvoiceField, string>>>({});
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [previewing, setPreviewing] = useState(false);
+  // Below the two-column width the form and its preview take turns; both stay mounted, so nothing typed is lost.
+  const [view, setView] = useState<"edit" | "preview">("edit");
   // R-88: with items the amount is their total; the amount field stands in only while there are none.
   const [items, setItems] = useState<LineDraft[]>(start?.items ?? []);
   const [lineErrors, setLineErrors] = useState<Record<string, LineFieldErrors>>({});
@@ -179,6 +191,8 @@ export function NewInvoiceForm({
     title: start?.title ?? "",
     note: start?.note ?? "",
     client: request?.senderName ?? start?.client.name ?? "",
+    clientAddress: start?.client.address ?? startClient?.address ?? "",
+    clientTaxId: start?.client.taxId ?? startClient?.taxId ?? "",
   });
   const pickedToken = tokens.find((t) => tokenKey(t) === picked);
   const token = pickedToken ?? tokens[0];
@@ -235,6 +249,8 @@ export function NewInvoiceForm({
       title: text("title"),
       note: text("note"),
       client: text(request ? "senderName" : "clientName"),
+      clientAddress: text("clientAddress"),
+      clientTaxId: text("clientTaxId"),
     });
   };
 
@@ -522,41 +538,118 @@ export function NewInvoiceForm({
     />
   );
 
+  const money = (units: bigint) =>
+    `${formatTokenAmount({ baseUnits: units, decimals, fractionDigits: Math.max(2, exactDigits(units, decimals)) })} ${unit}`;
+  const total = typeof typedUnits === "string" ? 0n : typedUnits;
+  const closes =
+    expiry === CUSTOM_EXPIRY ? (closesOn ? formatDueDate(closesOn) : "") : COPY.expiry[expiry];
+  const docKind = request ? "Request" : "Invoice";
+  const sender = request ? typed.client : (issuer?.name ?? "");
+  const accepted = [...new Set(tokens.map((t) => t.symbol))].join(" or ");
   const preview: NewInvoicePreviewProps = {
-    copy: COPY.preview,
-    units: typeof typedUnits === "string" ? 0n : typedUnits,
-    decimals,
-    unit,
-    payLine: any
-      ? COPY.preview.any(
-          [...new Set(tokens.map((t) => t.symbol))].join(" or "),
-          new Set(tokens.map((t) => t.chainId)).size,
-        )
-      : COPY.preview.on(network),
-    title: typed.title,
-    note: typed.note,
-    client: typed.client,
-    due: dueDate ? formatDueDate(dueDate) : null,
-    closes:
-      expiry === CUSTOM_EXPIRY
-        ? closesOn
-          ? formatDueDate(closesOn)
-          : COPY.expiry[CUSTOM_EXPIRY]
-        : COPY.expiry[expiry],
-    lines: items.map((item) => {
-      const line = lineUnits(item, decimals);
-      return {
-        id: item.id,
-        description: item.description.trim(),
-        quantity: item.quantity.trim(),
-        units: typeof line === "string" ? null : line.units,
-      };
-    }),
+    document: {
+      label: COPY.preview.title,
+      kind: docKind,
+      number: COPY.preview.draft,
+      reference,
+      testnet: true,
+      status: {
+        label: COPY.preview.waiting,
+        detail: dueDate ? COPY.preview.dueOn(documentDate(dueDate)) : COPY.preview.closesIn(closes),
+        figure: COPY.preview.amountDue,
+        amount: money(total),
+      },
+      from: request
+        ? sender
+          ? { name: sender, lines: [COPY.preview.unchecked] }
+          : null
+        : issuer
+          ? {
+              name: issuer.name,
+              lines: [
+                issuer.address,
+                issuer.country,
+                issuer.taxId ? `Tax ID ${issuer.taxId}` : "",
+                issuer.email,
+              ],
+            }
+          : null,
+      to:
+        request || !typed.client
+          ? null
+          : {
+              name: typed.client,
+              lines: [
+                typed.clientAddress,
+                country,
+                typed.clientTaxId ? `Tax ID ${typed.clientTaxId}` : "",
+              ],
+            },
+      facts: [
+        [COPY.preview.issued, documentDate(today)],
+        [COPY.preview.supply, supplyDate ? documentDate(supplyDate) : ""],
+        [COPY.preview.due, dueDate ? documentDate(dueDate) : ""],
+        [COPY.preview.closes, closes],
+      ],
+      title: typed.title,
+      lines: items.map((item) => {
+        const line = lineUnits(item, decimals);
+        return {
+          description: item.description.trim() || COPY.preview.noItem,
+          quantity: item.quantity.trim() || "—",
+          unitPrice: typeof line === "string" ? "—" : money(line.price),
+          amount: typeof line === "string" ? "—" : money(line.units),
+        };
+      }),
+      totals: [
+        [COPY.preview.total, money(total)],
+        [COPY.preview.amountDue, money(total)],
+      ],
+      note: typed.note,
+      pay: any
+        ? [COPY.preview.payAny(money(total), accepted, new Set(tokens.map((t) => t.chainId)).size)]
+        : [
+            COPY.preview.payExact(money(total), network, token.chainId),
+            COPY.preview.payContract(token.symbol, token.token),
+          ],
+    },
+    payer: {
+      name: sender,
+      amount: money(total),
+      network: any
+        ? COPY.preview.any(accepted, new Set(tokens.map((t) => t.chainId)).size)
+        : COPY.preview.on(network),
+    },
+    email: {
+      subject: sender
+        ? COPY.preview.emailSubject(docKind, sender)
+        : `${docKind} ${COPY.preview.draft}`,
+      lead: COPY.preview.emailLead(sender || COPY.preview.someone, money(total)),
+      details: [
+        [docKind, COPY.preview.draft],
+        ...(dueDate ? [[COPY.preview.due, formatDueDate(dueDate)] as const] : []),
+        [COPY.preview.network, any ? COPY.preview.payerPicks : network],
+      ],
+    },
   };
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
-      <Form onSubmit={submit} onInput={readTyped}>
+    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 xl:grid-cols-[minmax(0,38rem)_minmax(0,1fr)] xl:gap-10">
+      <SegmentedControl
+        label={COPY.preview.switch}
+        value={view}
+        onValueChange={(value) => setView(value === "preview" ? "preview" : "edit")}
+        options={[
+          { value: "edit", label: COPY.preview.edit },
+          { value: "preview", label: COPY.preview.title },
+        ]}
+        className="xl:hidden"
+      />
+      <Form
+        onSubmit={submit}
+        onInput={readTyped}
+        className={view === "preview" ? "max-xl:hidden" : undefined}
+      >
         {unavailableToken ? (
           <p role="alert" className="text-sm text-danger">
             The previously selected token is no longer accepted. Choose a token below.
@@ -990,10 +1083,6 @@ export function NewInvoiceForm({
           <Button type="submit" loading={busy} disabled={unavailableToken}>
             {COPY.create}
           </Button>
-          <Button variant="secondary" className="xl:hidden" onClick={() => setPreviewing(true)}>
-            <Eye aria-hidden className="size-[var(--fw-icon-sm)]" />
-            {COPY.preview.open}
-          </Button>
           {request ? null : (
             <Link href={APP_ROUTES.invoices} className={buttonClasses({ variant: "ghost" })}>
               {COPY.cancel}
@@ -1004,20 +1093,13 @@ export function NewInvoiceForm({
           {formError}
         </p>
       </Form>
+      {/* Sticky beside the form, scrolling on its own when the pages run longer than the screen. */}
       <aside
-        aria-hidden
-        className="sticky top-24 hidden flex-col rounded-lg border border-line bg-surface xl:flex"
+        aria-label={COPY.preview.title}
+        className={`flex-col xl:sticky xl:top-24 xl:flex xl:max-h-[calc(100dvh-8rem)] xl:overflow-y-auto xl:overscroll-contain xl:pr-1 ${view === "preview" ? "flex" : "hidden"}`}
       >
-        <p className="border-b border-line px-5 py-3.5 text-sm font-medium text-ink">
-          {COPY.preview.title}
-        </p>
-        <div className="p-5">
-          <NewInvoicePreview {...preview} />
-        </div>
-      </aside>
-      <Sheet open={previewing} onOpenChange={setPreviewing} title={COPY.preview.title}>
         <NewInvoicePreview {...preview} />
-      </Sheet>
+      </aside>
     </div>
   );
 }

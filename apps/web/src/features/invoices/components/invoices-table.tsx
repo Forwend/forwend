@@ -126,6 +126,7 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
 
       {list.isError && !data ? (
         <LoadError
+          page
           message={COPY.failed}
           onRetry={() => void list.refetch()}
           retrying={list.isFetching}
@@ -134,13 +135,14 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
         <RowsSkeleton count={SKELETON_ROWS} className="fw-panel" />
       ) : noInvoices ? (
         <EmptyState
+          page
           icon={FileText}
           title={COPY.emptyTitle}
           description={COPY.emptyText}
           action={<NewInvoiceLink onRequest={onRequest} />}
         />
       ) : rows.length === 0 ? (
-        <NoMatch onClear={filters.clear} />
+        <NoMatch page onClear={filters.clear} />
       ) : (
         <div
           className={
@@ -167,6 +169,7 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
                 {
                   key: "client",
                   header: COPY.columns.client,
+                  title: (inv) => clientName(inv),
                   cell: (inv) =>
                     clientName(inv) ? (
                       <span className="flex min-w-0 items-center gap-2.5">

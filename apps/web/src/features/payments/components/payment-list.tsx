@@ -57,6 +57,7 @@ export function PaymentList({
   if (!data) {
     return list.isError ? (
       <LoadError
+        page={!empty}
         message={COPY.failed}
         onRetry={() => void list.refetch()}
         retrying={list.isFetching}
@@ -80,15 +81,18 @@ export function PaymentList({
       ) : null}
       {rows.length === 0 ? (
         filtered && onClear ? (
-          <NoMatch onClear={onClear} />
+          <NoMatch onClear={onClear} page={!empty} />
         ) : attention ? (
           <EmptyState
+            page
             icon={CircleCheck}
             title={COPY.attentionEmptyTitle}
             description={COPY.attentionEmptyText}
           />
         ) : (
           <EmptyState
+            // The whole Payments page fills its workspace; a record page's own section keeps its frame.
+            page={!empty}
             icon={ArrowLeftRight}
             title={empty?.title ?? COPY.emptyTitle}
             description={empty?.text ?? COPY.emptyText}

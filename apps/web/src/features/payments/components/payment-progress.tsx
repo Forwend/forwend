@@ -8,48 +8,38 @@ export interface PaymentProgressProps {
   option: PaymentOption;
 }
 
+/** The transfer of the paid amount to the merchant's wallet; deposits list their own confirmation. */
 export function PaymentProgress({ option }: PaymentProgressProps) {
-  const pending = option.deposits.filter((deposit) => deposit.status === "detected");
   const settlement = option.settlement;
   const settled = option.settlementStatus === "settled";
+  if (!settlement && !settled) return null;
   const txHash = settled ? settlement?.txHash : (settlement?.receiptTxHash ?? settlement?.txHash);
   return (
-    <div className="flex flex-col gap-3 text-sm">
-      {pending.map((deposit) => (
-        <div key={`${deposit.txHash}:${deposit.logIndex}`} className="flex flex-col gap-1">
-          <div role="status">
-            <ConfirmingStatus
-              blocks={deposit.blocksLeft}
-              total={deposit.blocksTotal}
-              seconds={deposit.secondsLeft}
-            />
-          </div>
-          <ExplorerLink chainId={option.chainId} txHash={deposit.txHash} named />
-        </div>
-      ))}
-      {settlement || settled ? (
-        <section aria-label="Transfer to your wallet" className="flex flex-col gap-1">
-          <p className="font-medium text-ink">Transfer to your wallet</p>
-          <div role="status" className="text-muted">
-            {settled ? (
-              "In your wallet"
-            ) : settlement?.status === "refused" ? (
-              "Transfer needs review."
-            ) : settlement?.wait === "unresolved" ? (
-              "Confirmation unavailable. Check the transaction."
-            ) : settlement?.wait === "cap" ? (
-              "Daily sending limit reached."
-            ) : settlement?.blocksLeft != null || settlement?.status === "sent" ? (
-              <ConfirmingStatus blocks={settlement.blocksLeft} seconds={settlement.secondsLeft} />
-            ) : settlement?.wait ? (
-              "Transfer delayed. Waiting to retry."
-            ) : (
-              "Preparing transfer"
-            )}
-          </div>
-          {txHash ? <ExplorerLink chainId={option.chainId} txHash={txHash} named /> : null}
-        </section>
-      ) : null}
-    </div>
+    <section
+      aria-label="Transfer to your wallet"
+      className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm"
+    >
+      <span className="flex flex-col">
+        <span className="font-medium text-ink">Transfer to your wallet</span>
+        <span role="status" className="text-muted">
+          {settled ? (
+            "In your wallet"
+          ) : settlement?.status === "refused" ? (
+            "Transfer needs review."
+          ) : settlement?.wait === "unresolved" ? (
+            "Confirmation unavailable. Check the transaction."
+          ) : settlement?.wait === "cap" ? (
+            "Daily sending limit reached."
+          ) : settlement?.blocksLeft != null || settlement?.status === "sent" ? (
+            <ConfirmingStatus blocks={settlement.blocksLeft} seconds={settlement.secondsLeft} />
+          ) : settlement?.wait ? (
+            "Transfer delayed. Waiting to retry."
+          ) : (
+            "Preparing transfer"
+          )}
+        </span>
+      </span>
+      {txHash ? <ExplorerLink chainId={option.chainId} txHash={txHash} named /> : null}
+    </section>
   );
 }

@@ -121,6 +121,7 @@ function ProfileActivity({ profileId }: ActivityListProps) {
       ) : null}
       {list.isError && !data ? (
         <LoadError
+          page
           message={ACTIVITY_COPY.activityFailed}
           onRetry={() => void list.refetch()}
           retrying={list.isFetching}
@@ -129,12 +130,13 @@ function ProfileActivity({ profileId }: ActivityListProps) {
         <RowsSkeleton count={skeletonRows} className="fw-panel overflow-hidden" />
       ) : noActivity ? (
         <EmptyState
+          page
           icon={History}
           title={ACTIVITY_COPY.emptyTitle}
           description={ACTIVITY_COPY.emptyText}
         />
       ) : rows.length === 0 ? (
-        <NoMatch onClear={filters.clear} />
+        <NoMatch page onClear={filters.clear} />
       ) : (
         <div
           className={
@@ -149,6 +151,7 @@ function ProfileActivity({ profileId }: ActivityListProps) {
               {
                 key: "event",
                 header: ACTIVITY_COPY.columns.event,
+                title: ({ item }) => rowTitle(item),
                 cell: ({ item }) => (
                   <span className="flex min-w-0 items-center gap-3">
                     <Lead item={item} />

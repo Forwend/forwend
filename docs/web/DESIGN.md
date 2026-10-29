@@ -85,6 +85,13 @@ Every control comes from `@forwend/ui-web`; a link that looks like a button uses
   select and opens a panel under it with a search box over the options; typing narrows them, ignoring letter case and
   accents ("cote" finds Côte d'Ivoire), arrow keys move, Enter picks and Escape closes. A short list (a network, a
   token) stays a select.
+- Accepted assets (Settings and a store's form) use one selector (`AssetSelection`, `shared/components/chains`).
+  - One row per asset with a tri-state checkbox, "n of m networks" and an expand control; each network below it is its
+    own exact contract, shown shortened with the full address as its title.
+  - A summary line says what is accepted ("Accepting USDC on 3 networks and OUSD on 1").
+  - Search matches the name, the network or the contract; All or Selected narrows the list.
+  - It renders 30 assets and 12 networks at a time with Show more, so thousands of pairs keep a small page.
+  - Measured with 10,000 pairs: about 1,200 DOM nodes, search under 0.1 s in development mode.
 - Search is a soft filled field without an outline at rest, with a clear button once it holds text: the list search
   fields and both header search triggers.
 - A list's toolbar (Invoices or Requests, Activity, Transactions): the search on the left, the filter beside it, the
@@ -128,8 +135,17 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Money in that pays nothing reads Received with the sender, and opens it on Transactions.
   - A transfer still confirming says Confirming before its network and time.
   - View all opens Payments for a business and Transactions for a personal profile.
-- The account menu holds the app's one theme control, a Dark mode switch item, on desktop and phones.
-  - Sign out everywhere (R-137) follows Sign out and asks first: Keep me signed in, or the danger Sign out everywhere.
+- The account menu holds the email, the app's one theme control (a Dark mode switch item), Settings and Sign out.
+  - Sign out of all devices (R-137) lives in Settings, Account and security, never in the menu.
+- The sidebar's foot, above the account row: the setup guide while steps remain, then a Settings row.
+  - The setup guide is a small card: "Get started", "n of m done", one segment per step, the next step with its
+    action and Skip, and a close button. It goes once every step is done; phones show it at the top of More.
+- Settings is one area with a section column beside the page (13rem); phones get a row of text tabs instead.
+  - Your account: Account and security, Notifications. This profile (its name): Billing details, Accepted assets, Team.
+  - Each section shows only to a role that can open it (D-93). The pages keep their addresses.
+  - Account and security lists the sign-in methods (email, Google, passkeys with the device they were made on),
+    this device (browser and system from its user agent), Sign out, and Sign out of all devices with its dialog.
+  - Privy can't list sessions or end one alone ([freezing users](https://docs.privy.io/user-management/users/managing-users/freezing-users.md)), so no session list is shown.
 - Confirm it's you (R-137) opens over any page when a change needs a fresh sign-in.
   - It sends the code to the login email at once and says where; the code boxes are the sign-in page's.
   - Send a new code, Cancel and Confirm sit at its foot. Confirm repeats the change; Cancel leaves it unsaved.
@@ -150,9 +166,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   Figure strips and tables use hairline rules between cells and rows, not separate cards. On phones a panel is a
   full-width section between top and bottom hairlines (no side border or corners, no box inside a box), its title
   unruled above the rows, as in banking apps; panels become cards from small screens up (`fw-panel`, `fw-panel-head`).
-- Holdings across tokens (the total balance, Balance today, On its way, Held for payers) are USD at CoinGecko market
-  prices (D-115). An info icon after "USD" says so in a tooltip; "Prices by CoinGecko · updated 10:32" sits under the
-  figures, linked to coingecko.com, and turns to a warning when prices are stale or unavailable.
+- Holdings across tokens (the total balance, Moving to wallet, Not final, Held for payers) are USD at CoinGecko market
+  prices (D-115). An info icon after "USD" says so in a tooltip.
+  - "Prices by CoinGecko · updated 10:32", linked to coingecko.com, sits once at the page's foot.
+  - Beside a total only a warning shows, and only when the prices behind it are stale or unavailable.
   - Without a fresh price for a held token, the total is "—" with a line saying prices are unavailable: never 1 USD.
   - Payment flows and history (Received, Sent, money in and out, the charts) stay at face value, one USD per
     stablecoin: they are payment amounts, and there is no price history.
@@ -170,24 +187,25 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Phones center the total with the actions under it (five equal columns, labels smaller below 360 px).
   - The Balance chart card holds the range control; beside it Money in and out stacks In over Out.
 - Business overview (merchant, freelancer, R-63) follows the C comp, in three rows of cards (`Card`, unruled headers):
-  - Row 1: the Balance card and On its way.
+  - Row 1: the Balance card and Pending payments.
     - Balance: Total balance at market prices (`BigAmount`, cents subtle) over the art with a surface veil.
     - Under it the prices line, then round actions: New invoice (lime), Payment link, Checkout (merchants), Receive.
-    - On its way: payments confirming, then paid money moving to the wallet, up to three rows that open the payment.
+    - Pending payments: payments still confirming (not final), then paid money moving to the wallet.
+      Up to three rows open their payment.
     - Money held for payers is a separate quiet row at the card's foot, linking to My assets. It is theirs.
   - Row 2: the Received card (range control in its header, the range total, Sent, the running-total chart) beside
     My assets (a share bar, then each token's amount and market value).
-  - Row 3: Owed to you beside Latest payments.
+  - Row 3: Unpaid beside Latest payments; each sizes to its rows instead of matching the other's height.
   - Latest payments: six rows from the Payments list's first page, with a source icon (the payment always comes in).
   - Phones stack the cards in that order. Filters, search and CSV export live on Transactions.
   - A range with nothing received draws a flat line at zero, as a real zero should.
   - A failed or missing history keeps the chart's frame and dates, faded, under a centered error or note.
-- Owed to you (R-95, D-114) is a card on the overview's last row. It lists only what customers still owe.
+- Unpaid (R-95, D-114) is a card on the overview's last row. It lists only what customers still owe.
   - The title, a one-line description and, when something is left, the USD total at its right.
   - Rows: the client (or title, or number), then the number and "12 days late" (warning color) or "Partially paid".
   - The amount sits on the right with "left to pay" under it. A checkout row opens its payment, an invoice row its invoice.
   - Money held for a payer is theirs: it shows as Overpaid on its payment and as Held for payers in My assets, never here.
-  - Five rows, then Show all n, which moves focus to the first row it adds. Nothing owed says so in one quiet line.
+  - Five rows, then Show all n, which moves focus to the first row it adds. Nothing unpaid says so in one quiet line.
 - Charts are drawn by us, with no grid lines and no value axis: the readout gives each exact amount and the dates
   (first, middle, last; first and last on phones) sit under the plot. The balance is one smooth ink line (monotone, so
   it never overshoots a real value or dips under zero) over a wash that fades down, from zero with a little headroom;
@@ -199,10 +217,13 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   readers every value. Range choice is a segmented control. Reduced motion shows every chart in place. A failed figure shows "—" with Try again,
   never an endless skeleton.
 - My assets: Total balance (`BigAmount`) with the prices line, then one row per token.
-  - Columns: Asset, In wallet (with its market value), On its way, Held for payers.
-  - Nothing on its way or held is a quiet dash on wide screens and no row at all on phones.
+  - Columns: Asset, In wallet (with its market value), Moving to wallet, Not final, Held for payers.
+  - Moving to wallet is paid money being transferred; Not final is confirming or partly paid money, which may still
+    turn out to be the payer's. Each header's title says so.
+  - Nothing in a column is a quiet dash on wide screens and no row at all on phones.
 - Invoices and Activity: the shared status filter (below) and a search; a row opens its
-  invoice. Activity and Transactions page through the API's cursor, so their history reaches its start.
+  invoice. An Activity row is a past-tense event ("Invoice created", "Payment received", "Held for the customer");
+  its status column is headed "Status now", because it is where the payment stands today, not what the event did. Activity and Transactions page through the API's cursor, so their history reaches its start.
   Transactions has a direction filter (All, In, Out) and a search. The API filters and searches the whole list, and the
   URL keeps both. A confirmed transfer shows its status as a green dot and plain text; only one still confirming gets
   a pill, and phone rows name a status only while it is still confirming. A filter or search with no rows says nothing matched, with a button to clear them. A transaction hash links to the chain's block explorer in a new tab (Transactions, Activity,
@@ -232,6 +253,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - They sit where the content would, centered on both axes: an icon tile, a one-line title, then the action.
   - A card or panel keeps its loaded size: its body has one minimum height for every state.
   - Error and empty share one shape: `LoadError` (danger tile, Try again) and `EmptyState compact` (grey tile).
+  - When the state is the page's whole content (a list with nothing yet, nothing matching, or a failed read), it has
+    no frame and fills the workspace under the toolbar (`page`), so no shallow box sits above empty space.
   - Only when the last data still shows does a failed refresh become a one-line notice above it (`LoadError inline`).
   - A new filter or search keeps the last rows in place, dimmed and busy, until its own answer arrives.
   - Show more sits in the table's footer. A list stays live (polled) only while it shows its first page.
@@ -291,7 +314,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The table shows the store, its project ID, when its checkout closes and its allowed origins.
   - New store and Edit store are form pages laid out like New client, with Store and Checkout panels.
   - Edit store shows the project ID with a Copy button. There is no delete yet.
-  - A Networks and tokens panel (R-136) has a checkbox per token the profile has on; one must stay checked.
+  - A Networks and tokens panel (R-136) uses the accepted-assets selector over the tokens the profile has on; one must
+    stay chosen.
   - A Brand panel holds the logo and the accent color (R-135).
   - The logo shows in a bordered box with Upload or Replace logo, and Remove logo; a chosen file uploads at once.
   - New store says to save first, then add the logo.
@@ -310,8 +334,13 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The payment status and the wallet transfer are separate (D-114): a status badge, then quiet wallet text
     (Pending, In wallet, Delayed, Needs review, or a dash before anything is due).
   - Unpaid attempts stay visible; requested amounts never imply received or settled money.
-  - Payment details use `DetailHeader`. They lead with the order, how it was requested, the store and the time; the amount, status and wallet
-    transfer; then one sentence of what happened and what to do next.
+  - Payment details use `DetailHeader`. They lead with the order, how it was requested, the store and the time.
+  - Then one money strip: Requested, Received (with "Confirming, not final" under money not yet final), and Extra,
+    held for the customer (warning color) or Still due. The status and wallet transfer sit at the strip's end.
+  - Then one sentence of what happened and what to do next, such as "The customer sent more than requested."
+  - The body: Transfers (each transfer with its amount, time, state and explorer link, then the transfer to the
+    wallet), the items, and one closed Technical details panel holding the ledger entries and the contract checks.
+  - A list's Received amount over the request is in the warning color, with its reason as the cell's title.
   - Beside the money (a third of the width from extra-large screens) a Details panel links the order reference, the
     invoice, the payment link and the store, then the customer, the token, the checkout close, metadata and the PDFs.
   - Open checkout or Open receipt opens the pay page in a new tab, marked as the owner's preview.
@@ -323,7 +352,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Finality estimates use observed receipt blocks and chain time; missing evidence never produces a countdown.
   - Normal confirmation waits never repeat as payment problems. Actual failures keep their required action.
   - A missing total shows "Confirming"; its info tooltip keeps remaining blocks and estimated time when available.
-  - Ledger movements and Technical details are panels that load only when opened, with a manual refresh.
+  - Technical details loads only when opened, with a manual refresh.
   - Normal detail polling requests only used options and options with money or actionable errors.
   - Test payments have a small Testnet label in lists, details and the public checkout header.
   - Layout references: [Stripe payment records](https://support.stripe.com/questions/view-payment-records-in-the-dashboard?locale=en-GB), [Adyen payment management](https://docs.adyen.com/account/manage-payments/), and [BitPay payments](https://support.bitpay.com/hc/en-us/articles/205769245-View-Payments-in-the-merchant-dashboard).
@@ -457,14 +486,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   screens up) with an icon, a hint and the profile each one adds, then Continue and Skip for now. Continue with nothing
   picked is Skip. Afterwards the app opens on the overview of the new freelancer profile, else the new merchant, else
   the personal one (D-73).
-- Onboarding checklist: a "Get started" panel on the personal overview (under the balance card) and the freelancer
-  overview (above the figure strip), with "n of m done", a short ink meter (from small screens up) and a close button
-  in its ruled header. Each step is a row
-  with a round mark (filled ink with a check when done), title and hint (a done step shows its title only); a step not done has its action (secondary
-  button or link) and Skip. Steps come from data: passkey linked, billing details (freelancer), first invoice or
-  request, first paid in full, first final money in. Skipped steps and the closed card are remembered per profile in
-  the browser; the card hides when closed or when every step left is done.
-- Form pages fill the content width, as lists do, with no fixed narrow column beside empty space.
+- Onboarding checklist: the setup guide at the sidebar's foot (see App shell), never a card on the overview.
+  Steps come from data: passkey linked, billing details (freelancer), first invoice or request, first paid in full,
+  first final money in. Skipped steps and the closed guide are remembered per profile in the browser.
+- Form pages stop at 56rem (`max-w-4xl`), so a field never runs across a wide screen; New invoice uses the room
+  beside the form for its preview, and settings pages sit in the settings frame.
   - They are New invoice, Request money, New job, New and Edit client, Billing details, New profile and Email
     notifications.
   - Each field group is a full-width panel with its title ruled off. Billing details has Contact, then Address and tax.
@@ -501,11 +527,12 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   shows its error under the field it belongs to. Removing the last item leaves its total as the amount.
   The invoice page lists the items in an Items panel under Amount: each row the description with "qty × unit price"
   quietly under it and the line's amount on the right, then a ruled Total row, the same on every width.
-  From extra-large screens a sticky Preview panel takes a third of the width beside the form. It echoes the form in
-  the pay page's order: the title, then the amount with how it is paid, the items with their quantity and amount,
-  then Billed to (Shown as for a request), Due and Checkout closes after as ruled rows, then the note. It is hidden
-  from screen readers, since the fields already say all of it. Narrower screens have a Preview button beside Create,
-  which opens the same preview in a sheet that screen readers can read.
+  From extra-large screens the form takes 38rem and a sticky preview takes the rest, scrolling on its own.
+  - Its tabs are Invoice, Payer page and Email; switching keeps every typed value.
+  - Invoice draws the PDF (`InvoiceDocument`): A4 pages in mm with the PDF's blocks, sizes, Noto Sans face and page
+    breaks, on white paper in both themes. The number reads Draft until the invoice exists.
+  - Payer page shows the pay page's first screen; Email shows the invoice email's layout.
+  - Narrower screens switch between Edit and Preview with a segmented control; the form stays mounted.
 - Money actions are round icon buttons with the label underneath, on desktop and phones. Only the view's main
   action is filled with the lime; other working actions are surface circles, and coming ones are subtle.
   In the header, Send is a dashed outline button in the subtle color until it is built.
@@ -585,11 +612,15 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - Nothing waits before the address shows.
   - Once money is seen:
     - The panel keeps its place ("Paying with" while nothing more is due).
-    - With nothing more due, the status leads the panel: a turning icon and "We see your payment".
-      - Then the steps, the count with "Final around <time>" at its end, and "Nothing for you to do."
+    - With nothing more due, the status leads the panel: "Payment detected".
+      - Then the steps, one status line beside them, and "Don't pay again. This page updates on its own."
       - The Paying with row follows, folded to one line.
-    - The steps Detected, Confirming and Paid fade in; the waiting one moves. Partially paid is tinted on Paid.
-    - One line for what the steps can't say: "Confirming payment", or what is left to pay.
+    - The steps are Detected, Confirming and Paid. Partially paid is tinted on Paid.
+      - Confirming stays current until the API books the money: final on chain but not booked is still Confirming.
+      - A delay changes the line, never the steps: "Confirmation is taking longer than usual." No time is promised.
+    - One line for what the steps can't say: the block count, "Awaiting confirmation.", or what is left to pay.
+    - Money over the amount: "You sent X more than asked. The extra is held for you; ask <payee> to get it back."
+      It shows under the payments while confirming and on the receipt once paid (D-24).
     - Each payment with its amount, time, short hash and explorer link.
     - The address stays only while money is still due.
   - Receipt email, once money is seen and once paid:
@@ -621,15 +652,16 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   always, the receipt PDF once paid.
 - While a payment confirms, the step label stays "Confirming"; one full-width row below the steps shows "Confirming (4/12)"
   and a small info icon whose tooltip says "About 19 min left". Keep the count out of the narrow
-  step columns on both payer and owner pages, including four-digit counts on phones. Its bar fills as blocks pass
-  (a sweep until the first block passes); done, the step reads "Confirmed". The count is blocks passed of those the
+  step columns on both payer and owner pages, including four-digit counts on phones. Its ring fills as blocks pass
+  (a turning quarter until the first block passes); done, the step reads "Confirmed". The count is blocks passed of those the
   payment had to wait when first seen, from the API, so a reload keeps it (R-73). The live status announces the count; the estimate opens on hover, keyboard focus or tap.
-  The owner's steps are Waiting, Detected, Confirming, Paid and In wallet. The step that waits always moves, so it never
-  reads as stuck: a sweep on Waiting before any money and on In wallet while the money is on its way to the wallet, a
-  fill by the share received when partly paid (R-69).
+  The owner's steps are Waiting, Detected, Confirming, Paid and In wallet.
+  - Done, now and next differ by shape: a filled ink disc with a check, a ring, and an empty circle.
+  - The line to the next step is ink once a step is done.
+  - The current ring fills only by real evidence (blocks passed, or the share received when partly paid, R-69).
+  - Without a known share it turns; reduced motion keeps a still quarter. Nothing fills because time passed.
   Up to four steps always sit side by side (the payer's timeline, the landing's samples). The owner's five don't fit a
-  phone, so in a container narrower than 28rem they stack into one upright path, the same bars running down beside
-  larger labels, so no label is squeezed against the next.
+  phone, so in a container narrower than 28rem they stack into one upright list of markers beside larger labels.
 - A test-mode invoice's page (R-143) has a warning Test mode badge under its header's name.
 - The invoice page (R-60) says each thing once: the header only names the invoice (its title, or its number when there
   is none); the timeline says the status, and Details the times: when the checkout closes ("Checkout closed" once
@@ -736,10 +768,18 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 
 ## Emails
 
-- Every email is one layout (`apps/backend/internal/notify/layout.html.tmpl`) in the app's look: the logo and name
-  above one card with the panel's edge and large corners; a status badge in the pill tones; the title in the UI
-  heading face (Geist semibold, never the display serif); the amount large with tabular figures; detail rows ruled like
-  a statement; one primary button as the action; a quiet footer. Colors are the token values for both color schemes.
+- Every email is one layout (`apps/backend/internal/notify/layout.html.tmpl`) in the Signal look.
+  - The logo and name above one white card with a hairline and 16px corners, on the light grey ground.
+  - A status badge in the tone pairs; the title semibold; the amount large with tabular figures.
+  - Detail rows ruled like a statement; links are underlined ink.
+  - One action: the lime button with its olive edge and 10px corners. Its padding sits on the link, so the whole
+    button is the target; it is text, never an image.
+  - Type is the system stack: mail clients don't load Hanken Grotesk.
+  - The logo is decorative (`alt=""`): the name beside it says Forwend with images off. No fact lives in an image.
+  - Colors are the token values for both schemes, with `[data-ogsc]` rules for the Outlook app's dark mode.
+  - Dates read "30 Nov 2026", as in the PDFs. `html/template` drops HTML comments, so no Outlook conditionals.
+- Invoice and receipt PDFs (`apps/backend/internal/document`) keep Noto Sans: it covers Greek and Cyrillic names.
+  - Labels are sentence case, never tracked capitals; dates read "28 Oct 2026, 13:00 UTC".
 
 ## Theme and behavior
 

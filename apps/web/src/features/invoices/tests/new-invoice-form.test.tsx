@@ -5,6 +5,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { NewInvoiceForm } from "@/features/invoices/components/new-invoice-form";
 import { makeStore } from "@/store/store";
 
+// The preview beside the form repeats its values, so value checks look inside the form itself.
+const form = () => within(document.querySelector("form") as HTMLElement);
+
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 const NodeRequest = globalThis.Request;
@@ -165,7 +168,7 @@ describe("new invoice form", () => {
     };
 
     fill([TOKEN]);
-    expect(screen.getByText("750.50 USDC")).toBeTruthy();
+    expect(form().getByText("750.50 USDC")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
     await settle();
     expect(bodies[0]).toMatchObject({
@@ -212,7 +215,7 @@ describe("new invoice form", () => {
     fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "12.345" } });
     fireEvent.click(screen.getByRole("button", { name: "Add item" }));
     fireEvent.change(screen.getByLabelText("Item 1"), { target: { value: "Design" } });
-    expect(screen.getByText("Total").parentElement?.textContent).toBe("Total12.345 USDC");
+    expect(form().getByText("Total").parentElement?.textContent).toBe("Total12.345 USDC");
     expect(screen.queryByText("12.34 USDC")).toBeNull();
   });
 
@@ -478,7 +481,7 @@ describe("new invoice form", () => {
     };
     pick(/^Due date/, (days) => days[10] as HTMLElement);
     pick(/^Last due date/, (days) => days.at(-1) as HTMLElement);
-    fireEvent.change(screen.getByLabelText(/^Email/), { target: { value: "ap@bob.example" } });
+    fireEvent.change(form().getByLabelText(/^Email/), { target: { value: "ap@bob.example" } });
     const due = (document.querySelector('input[name="dueDate"]') as HTMLInputElement).value;
     const end = (document.querySelector('input[name="repeatEndDate"]') as HTMLInputElement).value;
     expect(end > due).toBe(true);

@@ -3,8 +3,13 @@ import { receivedAmount } from "@/features/payments/lib/payments";
 import type { Payment } from "@/features/payments/types/payments";
 import { chainName } from "@/shared/lib/chains";
 
+const OVER = "More than requested; the extra is held for the customer";
+
 export interface PaymentReceivedProps {
-  payment: Pick<Payment, "receipts" | "amounts" | "decimals" | "symbol" | "paymentStatus">;
+  payment: Pick<
+    Payment,
+    "receipts" | "amounts" | "decimals" | "symbol" | "paymentStatus" | "amount"
+  >;
   /** One line for a table row: the received total, or a dash when nothing arrived. */
   compact?: boolean;
 }
@@ -22,12 +27,18 @@ export function PaymentReceived({ payment, compact }: PaymentReceivedProps) {
     if (!received || BigInt(received.received) === 0n) {
       return <span className="text-subtle">—</span>;
     }
+    // Every accepted token is priced 1:1 against the request, so the same decimals compare exactly.
+    const over =
+      received.decimals === payment.decimals && BigInt(received.received) > BigInt(payment.amount);
     return (
-      <PaymentAmount
-        amount={received.received}
-        decimals={received.decimals}
-        symbol={received.symbol}
-      />
+      <span className={over ? "text-warning" : undefined} title={over ? OVER : undefined}>
+        <PaymentAmount
+          amount={received.received}
+          decimals={received.decimals}
+          symbol={received.symbol}
+        />
+        {over ? <span className="sr-only"> ({OVER})</span> : null}
+      </span>
     );
   }
   if (!receipts.length) {

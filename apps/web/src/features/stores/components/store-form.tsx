@@ -3,9 +3,7 @@
 import {
   Button,
   buttonClasses,
-  Checkbox,
   Form,
-  SearchField,
   SelectField,
   type SelectOption,
   TextAreaField,
@@ -17,7 +15,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { TOKENS_COPY } from "@/features/profiles/constants/profiles-copy";
 import type { TokenRef, TokenSwitch } from "@/features/profiles/types/tokens";
 import { useSaveStoreMutation } from "@/features/stores/api/stores-api";
 import { StoreLogo } from "@/features/stores/components/store-logo";
@@ -29,10 +26,10 @@ import {
 import { STORES_COPY as COPY } from "@/features/stores/constants/stores-copy";
 import { invalidStoreField, originLines } from "@/features/stores/lib/stores";
 import type { Store, StoreBody, StoreField } from "@/features/stores/types/stores";
+import { AssetSelection } from "@/shared/components/chains/asset-selection";
 import { CopyValue } from "@/shared/components/copy-value";
 import { FieldGroup } from "@/shared/components/field-group";
 import { APP_ROUTES } from "@/shared/config/routes";
-import { chainName, TOKEN_SEARCH_FROM, tokenMatches } from "@/shared/lib/chains";
 
 export interface StoreFormProps {
   profileId: string;
@@ -62,7 +59,6 @@ export function StoreForm({
   const [closes, setCloses] = useState(String(store?.defaultExpiresIn ?? defaultClose));
   const [color, setColor] = useState(store?.brandColor ?? "");
   const shownTokens = tokens.filter((t) => t.on);
-  const [tokenQuery, setTokenQuery] = useState("");
   const [tokensOff, setTokensOff] = useState(() => new Set(store?.tokensOff.map(tokenKey)));
   const [errors, setErrors] = useState<Partial<Record<StoreField, string>>>({});
   const [formError, setFormError] = useState("");
@@ -177,37 +173,20 @@ export function StoreForm({
       </FieldGroup>
       {shownTokens.length > 0 ? (
         <FieldGroup title={COPY.tokensGroup}>
-          {shownTokens.length > TOKEN_SEARCH_FROM ? (
-            <SearchField
-              label={TOKENS_COPY.search}
-              placeholder={TOKENS_COPY.searchPlaceholder}
-              value={tokenQuery}
-              onValueChange={setTokenQuery}
-              className="sm:max-w-sm"
-            />
-          ) : null}
-          <fieldset
-            aria-describedby="store-tokens-hint"
-            className="grid max-h-96 gap-1 overflow-y-auto sm:grid-cols-2"
-          >
-            <legend className="sr-only">{COPY.tokensGroup}</legend>
-            {shownTokens
-              .filter((t) => tokenMatches(t, tokenQuery))
-              .map((t) => (
-                <Checkbox
-                  key={tokenKey(t)}
-                  label={TOKENS_COPY.toggle(t.symbol, chainName(t.chainId))}
-                  checked={!tokensOff.has(tokenKey(t))}
-                  onChange={(event) => {
-                    const next = new Set(tokensOff);
-                    if (event.target.checked) next.delete(tokenKey(t));
-                    else next.add(tokenKey(t));
-                    setTokensOff(next);
-                    setErrors((current) => ({ ...current, tokensOff: undefined }));
-                  }}
-                />
-              ))}
-          </fieldset>
+          <AssetSelection
+            label={COPY.tokensGroup}
+            options={shownTokens}
+            selected={new Set(shownTokens.map(tokenKey).filter((key) => !tokensOff.has(key)))}
+            onChange={(keys, on) => {
+              const next = new Set(tokensOff);
+              for (const key of keys) {
+                if (on) next.delete(key);
+                else next.add(key);
+              }
+              setTokensOff(next);
+              setErrors((current) => ({ ...current, tokensOff: undefined }));
+            }}
+          />
           <p role="alert" className="text-sm text-danger empty:hidden">
             {errors.tokensOff}
           </p>

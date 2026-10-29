@@ -21,6 +21,8 @@ export interface DataColumn<T> {
   key: string;
   header: string;
   cell: (row: T) => ReactNode;
+  /** The cell's full text, shown on hover when the column cuts it short. */
+  title?: (row: T) => string | null;
   align?: "end";
   from?: keyof typeof COLUMN_FROM;
   className?: string;
@@ -99,6 +101,7 @@ export function DataTable<T>({
               {columns.map((column, i) => (
                 <td
                   key={column.key}
+                  title={column.title?.(row) ?? undefined}
                   className={cx(
                     "max-w-0 truncate",
                     column.align === "end" && "text-right tabular-nums",

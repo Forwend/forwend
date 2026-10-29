@@ -113,7 +113,7 @@ describe("Activity names held money", () => {
     );
     await settle();
     const rows = screen.getAllByRole("listitem").map((li) => li.textContent ?? "");
-    expect(rows[0]).toContain("Held for the payer");
+    expect(rows[0]).toContain("Held for the customer");
     expect(rows[0]).not.toContain("Payment");
     expect(rows[1]).toContain("Payment");
   });

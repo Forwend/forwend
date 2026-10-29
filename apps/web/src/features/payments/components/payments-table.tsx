@@ -32,6 +32,7 @@ export function PaymentsTable({ rows, attention, showStore, footer }: PaymentsTa
       key: "payment",
       header: COPY.columns.payment,
       className: "w-[22%]",
+      title: paymentLabel,
       cell: (p) => (
         <span className="flex min-w-0 items-center gap-2">
           <span className="truncate font-medium text-ink">{paymentLabel(p)}</span>
@@ -44,6 +45,7 @@ export function PaymentsTable({ rows, attention, showStore, footer }: PaymentsTa
       key: "customer",
       header: COPY.columns.customer,
       from: "lg",
+      title: customer,
       cell: (p) => customer(p) ?? <span className="text-subtle">{COPY.noCustomer}</span>,
     },
     {

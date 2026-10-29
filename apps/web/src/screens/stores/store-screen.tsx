@@ -8,7 +8,6 @@ import { tokensOn } from "@/features/invoices/lib/invoices";
 import { PaymentList } from "@/features/payments/components/payment-list";
 import { useGetProfileTokensQuery } from "@/features/profiles/api/profiles-api";
 import { PERMISSIONS } from "@/features/profiles/constants/profile";
-import { TOKENS_COPY } from "@/features/profiles/constants/profiles-copy";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { can } from "@/features/profiles/lib/profile";
 import { useListStoresQuery } from "@/features/stores/api/stores-api";
@@ -16,11 +15,12 @@ import { ProjectId } from "@/features/stores/components/project-id";
 import { STORES_COPY as COPY } from "@/features/stores/constants/stores-copy";
 import { storeLogoUrl } from "@/features/stores/lib/stores";
 import { closeLabel } from "@/screens/stores/lib/close-choices";
+import { assetKey } from "@/shared/components/chains/asset-selection";
 import { DetailHeader } from "@/shared/components/detail-header";
 import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
 import { APP_ROUTES } from "@/shared/config/routes";
-import { chainName } from "@/shared/lib/chains";
+import { selectionSummary } from "@/shared/lib/asset-selection";
 import { shortDate } from "@/shared/lib/dates";
 
 export interface StoreScreenProps {
@@ -112,9 +112,9 @@ export function StoreScreen({ storeId }: StoreScreenProps) {
             <DetailRow term={COPY.columns.origins} stacked={store.allowedOrigins.length > 0}>
               {store.allowedOrigins.length > 0 ? store.allowedOrigins.join("\n") : none}
             </DetailRow>
-            <DetailRow term={COPY.tokensGroup} stacked>
+            <DetailRow term={COPY.tokensGroup}>
               {accepted ? (
-                accepted.map((t) => TOKENS_COPY.toggle(t.symbol, chainName(t.chainId))).join("\n")
+                selectionSummary(accepted, new Set(accepted.map(assetKey)))
               ) : tokens.isError ? (
                 COPY.tokensFailed
               ) : (

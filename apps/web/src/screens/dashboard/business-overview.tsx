@@ -17,6 +17,7 @@ import type { HistoryRange } from "@/features/balances/types/balance-history";
 import { OwedToYou } from "@/features/invoices/components/owed-to-you";
 import { LatestPayments } from "@/features/payments/components/latest-payments";
 import { useGetPricesQuery } from "@/features/prices/api/prices-api";
+import { PricesUpdated } from "@/features/prices/components/prices-updated";
 import { PRICES_QUERY } from "@/features/prices/constants/prices";
 import { PERMISSIONS, PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
@@ -30,7 +31,6 @@ import { AssetsCard } from "@/screens/dashboard/assets-card";
 import { BalanceCard } from "@/screens/dashboard/balance-card";
 import { BUSINESS_COPY as COPY } from "@/screens/dashboard/constants/business-copy";
 import { OnItsWayCard } from "@/screens/dashboard/on-its-way-card";
-import { OverviewChecklist } from "@/screens/dashboard/overview-checklist";
 import { ReceivedCard } from "@/screens/dashboard/received-card";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 
@@ -88,8 +88,6 @@ export function BusinessOverview() {
         {COPY.overview}
       </h1>
 
-      {profile.kind === PROFILE_KINDS.freelancer ? <OverviewChecklist /> : null}
-
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
         <BalanceCard
           wallet={market("wallet")}
@@ -132,10 +130,16 @@ export function BusinessOverview() {
         />
       </div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-2 xl:items-start">
         <OwedToYou profileId={profile.profileId} />
         <LatestPayments profileId={profile.profileId} />
       </div>
+      {/* CoinGecko's attribution, once per page that shows its prices (D-115). */}
+      {priced.currentData || priced.isError ? (
+        <footer className="flex justify-end">
+          <PricesUpdated prices={prices} />
+        </footer>
+      ) : null}
     </div>
   );
 }

@@ -43,7 +43,7 @@ export function LatestPayments({ profileId }: { profileId: string }) {
         </Link>
       }
     >
-      <div className="flex min-h-72 flex-1 flex-col">
+      <div className="flex min-h-40 flex-1 flex-col">
         {list.isError && !rows ? (
           <LoadError message={COPY.failed} onRetry={() => void list.refetch()} />
         ) : !rows ? (

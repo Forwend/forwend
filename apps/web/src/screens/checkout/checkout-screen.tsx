@@ -46,6 +46,7 @@ export function CheckoutScreen() {
         <Skeleton className="h-72 max-w-2xl" />
       ) : stores.currentData.length === 0 ? (
         <EmptyState
+          page
           icon={Store}
           title={COPY.noStores}
           description={COPY.noStoresText}

@@ -16,10 +16,9 @@ import { TEAM_COPY as COPY } from "@/features/team/constants/team-copy";
 export function TeamScreen() {
   const { profile } = useAppSession();
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
-        <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">{COPY.title}</h1>
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-xl font-semibold tracking-tight text-ink">{COPY.title}</h1>
         <p className="text-sm text-muted">
           {profile.kind === PROFILE_KINDS.merchant ? COPY.intro : COPY.notMerchant}
         </p>

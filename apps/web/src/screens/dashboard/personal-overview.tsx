@@ -5,13 +5,13 @@ import { BalanceHero } from "@/features/balances/components/balance-hero";
 import { BalanceHistoryCard } from "@/features/balances/components/balance-history-card";
 import { MoneyFlowCard } from "@/features/balances/components/money-flow-card";
 import { useGetPricesQuery } from "@/features/prices/api/prices-api";
+import { PricesUpdated } from "@/features/prices/components/prices-updated";
 import { PRICES_QUERY } from "@/features/prices/constants/prices";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { profileLabel } from "@/features/profiles/lib/profile";
 import { TransactionsTable } from "@/features/transactions/components/transactions-table";
 import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transactions-copy";
 import { AssetsCard } from "@/screens/dashboard/assets-card";
-import { OverviewChecklist } from "@/screens/dashboard/overview-checklist";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 
 const RECENT = 6;
@@ -42,7 +42,6 @@ export function PersonalOverview() {
           prices={priced.currentData?.prices}
         />
       </div>
-      <OverviewChecklist />
       <div className={ROW}>
         <BalanceHistoryCard profileId={profile.profileId} />
         <MoneyFlowCard profileId={profile.profileId} />
@@ -52,6 +51,11 @@ export function PersonalOverview() {
         title={TRANSACTIONS_COPY.recentTransactions}
         preview={RECENT}
       />
+      {priced.currentData || priced.isError ? (
+        <footer className="flex justify-end">
+          <PricesUpdated prices={priced.currentData?.prices} />
+        </footer>
+      ) : null}
     </div>
   );
 }

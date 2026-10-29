@@ -721,7 +721,7 @@ test("the overview lists what clients owe, with the total left to pay, and fits 
       .getByRole("button", { name: /^Switch profile/ })
       .click(),
   );
-  const owed = page.getByRole("region", { name: "Owed to you" });
+  const owed = page.getByRole("region", { name: "Unpaid" });
   await expect(owed.getByText("Left to pay: 580.50 USD")).toBeAttached();
   const links = owed.getByRole("link");
   await expect(links).toHaveCount(5);

@@ -1,4 +1,4 @@
-import { Clock } from "lucide-react";
+import { Check, Clock } from "lucide-react";
 import type { CSSProperties } from "react";
 import { cx } from "../../lib/cx";
 import { TONE_CLASSES, type Tone } from "../../lib/tone";
@@ -17,7 +17,8 @@ export interface TimelineStep {
   label: string;
   state: StepState;
   detail?: string;
-  /** The current step's share done, 0 to 1; null sweeps the bar (no known share); left out, the bar is full. */
+  /** The current step's share done, 0 to 1, drawn as its ring's fill; null or left out, the ring turns (no share is
+   * known, so nothing pretends to approach the end). */
   progress?: number | null;
   /** Shows the label as a tinted badge, for a step that ended in a state worth noticing (partly paid). */
   tone?: Tone;
@@ -34,11 +35,33 @@ export interface PaymentTimelineProps {
   notStartedLabel?: string;
 }
 
-// Each bar is a track with a fill that grows from the left, so a step filling or completing slides rather than jumps.
-function fill(step: TimelineStep): number {
-  if (step.state === STEP_STATES.complete) return 1;
-  if (step.state === STEP_STATES.upcoming) return 0;
-  return typeof step.progress === "number" ? Math.min(1, Math.max(0, step.progress)) : 1;
+/** Done, now and next differ by shape as well as color: a filled disc with a check, a ring, and an empty circle. */
+function Marker({ step }: { step: TimelineStep }) {
+  if (step.state === STEP_STATES.complete) {
+    return (
+      <span className="grid size-5 shrink-0 place-items-center rounded-pill bg-ink text-bg">
+        <Check aria-hidden strokeWidth={3} className="size-3" />
+      </span>
+    );
+  }
+  if (step.state === STEP_STATES.upcoming) {
+    return <span className="size-5 shrink-0 rounded-pill border border-line-strong bg-surface" />;
+  }
+  const share = typeof step.progress === "number" ? Math.min(1, Math.max(0, step.progress)) : null;
+  return (
+    <span className="relative grid size-5 shrink-0 place-items-center rounded-pill bg-surface">
+      {share === null ? (
+        // Turning says "working on it", not "almost there"; reduced motion keeps a still quarter.
+        <span className="absolute inset-0 rounded-pill border-2 border-line border-t-accent animate-[fw-spin_var(--fw-duration-slower)_linear_infinite] motion-reduce:animate-none" />
+      ) : (
+        <span
+          className="absolute inset-0 rounded-pill [background:conic-gradient(var(--fw-accent)_calc(var(--fw-share)*1turn),var(--fw-line)_0)] [mask:radial-gradient(circle,transparent_calc(50%-2px),#000_calc(50%-2px))]"
+          style={{ "--fw-share": share } as CSSProperties}
+        />
+      )}
+      <span className="size-1.5 rounded-pill bg-accent" />
+    </span>
+  );
 }
 
 export function PaymentTimeline({
@@ -48,61 +71,52 @@ export function PaymentTimeline({
   notStartedLabel = ", not started",
 }: PaymentTimelineProps) {
   // Side by side while each step has room. Five steps can't share a phone's width, so narrower than 28rem they stack
-  // into one vertical path, the same bars standing upright beside their labels; up to four always sit side by side.
+  // into one vertical path; up to four always sit side by side.
   const stack = steps.length > 4;
   return (
     <div className="@container">
       <ol
         aria-label={label}
         className={cx(
-          "grid grid-cols-[repeat(var(--fw-steps),minmax(min-content,1fr))] gap-2",
-          stack && "@max-md:grid-cols-1 @max-md:gap-1",
+          "grid grid-cols-[repeat(calc(var(--fw-steps)-1),minmax(0,1fr))_auto]",
+          stack && "@max-md:grid-cols-1",
         )}
         style={{ "--fw-steps": steps.length } as CSSProperties}
       >
         {steps.map((step, i) => {
-          const sweeping = step.state === STEP_STATES.current && step.progress === null;
+          const last = i === steps.length - 1;
           return (
             <li
-              // A label can change while its step runs (a count); the place keeps the bar mounted, so it slides.
+              // A label can change while its step runs (a count); the place keeps the marker mounted.
               // biome-ignore lint/suspicious/noArrayIndexKey: the steps are a fixed list in a fixed order
               key={i}
               aria-current={step.state === STEP_STATES.current ? "step" : undefined}
               className={cx(
-                "flex flex-col gap-2",
+                "grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-2 gap-y-1.5",
+                !stack && "grid-rows-[1.25rem_auto]",
                 stack &&
-                  "@max-md:grid @max-md:grid-cols-[0.25rem_minmax(0,1fr)] @max-md:gap-x-3 @max-md:gap-y-0",
+                  "@md:grid-rows-[1.25rem_auto] @max-md:grid-rows-[1.25rem_auto] @max-md:gap-x-3",
               )}
             >
+              <Marker step={step} />
+              {/* The line to the next step: ink once this step is done, so the path shows how far it got. */}
+              <span
+                aria-hidden
+                className={cx(
+                  "h-px self-center",
+                  last ? "invisible" : "",
+                  !last && "mr-2",
+                  step.state === STEP_STATES.complete ? "bg-ink" : "bg-line-strong",
+                  stack && "@max-md:hidden",
+                )}
+              />
               <span
                 className={cx(
-                  "relative h-1 overflow-hidden rounded-pill",
-                  stack && "@max-md:row-span-2 @max-md:h-auto @max-md:w-1",
-                  sweeping
-                    ? "bg-[color-mix(in_oklab,var(--fw-accent)_30%,var(--fw-line))]"
-                    : "bg-line",
+                  "col-span-2 flex flex-wrap items-center gap-1 pr-2",
+                  stack &&
+                    "@max-md:col-span-1 @max-md:col-start-2 @max-md:row-start-1 @max-md:pr-0",
                 )}
               >
-                {sweeping ? (
-                  <span
-                    className={cx(
-                      "absolute inset-y-0 left-0 w-2/5 rounded-pill bg-accent animate-[fw-progress_calc(var(--fw-duration-slower)*1.6)_var(--fw-ease-in-out)_infinite] motion-reduce:hidden",
-                      stack &&
-                        "@max-md:inset-x-0 @max-md:top-0 @max-md:bottom-auto @max-md:h-2/5 @max-md:w-auto @max-md:animate-[fw-progress-down_calc(var(--fw-duration-slower)*1.6)_var(--fw-ease-in-out)_infinite]",
-                    )}
-                  />
-                ) : (
-                  <span
-                    className={cx(
-                      "absolute inset-0 origin-left rounded-pill [transform:scaleX(var(--fw-fill))] transition-[transform,background-color] duration-[var(--fw-duration-slow)] ease-out",
-                      stack && "@max-md:origin-top @max-md:[transform:scaleY(var(--fw-fill))]",
-                      step.state === STEP_STATES.complete ? "bg-ink" : "bg-accent",
-                    )}
-                    style={{ "--fw-fill": fill(step) } as CSSProperties}
-                  />
-                )}
-              </span>
-              <span className={cx("flex flex-wrap items-center gap-1", stack && "@max-md:min-h-8")}>
                 <span
                   className={cx(
                     "text-xs",
@@ -110,7 +124,6 @@ export function PaymentTimeline({
                     step.tone
                       ? cx(
                           "self-start rounded-pill border px-2 py-0.5 font-medium",
-                          stack && "@max-md:self-center",
                           TONE_CLASSES[step.tone],
                         )
                       : step.state === STEP_STATES.upcoming
@@ -136,8 +149,8 @@ export function PaymentTimeline({
               {step.detail ? (
                 <span
                   className={cx(
-                    "font-mono text-xs text-subtle [overflow-wrap:anywhere]",
-                    stack && "@max-md:pb-2",
+                    "col-span-2 text-xs text-muted tabular-nums [overflow-wrap:anywhere]",
+                    stack && "@max-md:col-span-1 @max-md:col-start-2 @max-md:pb-2",
                   )}
                 >
                   {step.detail}

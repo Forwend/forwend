@@ -14,7 +14,7 @@ import { PERMISSIONS, PROFILE_KINDS } from "@/features/profiles/constants/profil
 import { can, profileLabel } from "@/features/profiles/lib/profile";
 import type { Profile } from "@/features/profiles/types/profile";
 import { NotificationsMenu } from "@/features/transactions/components/notifications-menu";
-import { accountLinks, breadcrumb, pageAllowed } from "@/screens/app-shell/lib/app-nav";
+import { breadcrumb, pageAllowed } from "@/screens/app-shell/lib/app-nav";
 import type { Crumb } from "@/screens/app-shell/types/app-nav";
 import { APP_ROUTES } from "@/shared/config/routes";
 
@@ -68,7 +68,6 @@ export function AppHeader({
         <AccountMenu
           email={email}
           onSignOut={onSignOut}
-          links={accountLinks(active)}
           side="bottom"
           trigger={
             <IconButton label={`${AUTH_COPY.account}: ${email}`} size="md">

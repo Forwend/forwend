@@ -124,6 +124,7 @@ export function NewInvoiceScreen() {
         <Skeleton className="h-96" />
       ) : billingNeeded ? (
         <EmptyState
+          page
           icon={IdCard}
           title={NEW_INVOICE_COPY.billingNeeded.title}
           description={NEW_INVOICE_COPY.billingNeeded.text}
@@ -144,6 +145,7 @@ export function NewInvoiceScreen() {
           <NewInvoiceForm
             key={`${profile.profileId}:${from ?? ""}:${clientId ?? ""}`}
             profileId={profile.profileId}
+            issuer={billing.currentData}
             tokens={tokens}
             start={start}
             startClient={startClient}
