@@ -1048,7 +1048,7 @@
         "AGENTS.md shared rules say written behavior is not final: improve weak rules, change rule, code and tests together, and keep every frontend reader working after a backend change"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check"
       ],
@@ -1076,11 +1076,18 @@
         "filesHash": "23ab1257fdd5e8e9",
         "proof": {
           "1": "docs-check: AGENTS.md shared rules and R-182 pass link, ID and sentence checks"
-        }
+        },
+        "commit": "b273eedf",
+        "doneAt": "2026-10-29T18:48:11Z"
       },
       "branch": "docs/f353-agents-improve-written-behavior-when-a-b",
       "baseCommit": "f0f447d3ad3752a6cc7bb8a7fe913527f7745c17",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f353-agents-improve-written-behavior-when-a-b",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
