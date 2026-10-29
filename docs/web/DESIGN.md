@@ -352,8 +352,6 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Unpaid attempts stay visible; requested amounts never imply received or settled money.
   - Payment details use `DetailHeader` with the source's icon tile, the status and wallet badges by the title, and
     the requested amount as the header's figure beside Open checkout or Open receipt and Export (both 40px).
-  - Then one sentence of what happened and what to do next, such as "The customer sent more than requested."
-    Where the status badge already says it all (waiting for payment, or paid and in the wallet) it shows none.
   - The body is two columns from extra-large screens: the main column and a 22rem side column.
     - Main: Needs attention (only with a real problem), Amount (Received with "Confirming, not final" or "Final",
       Returned to the payer once refunded, Extra held for the customer in the warning color or Still due while the

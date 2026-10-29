@@ -514,8 +514,9 @@ test("a partial payment awaiting evidence does not ask the merchant to collect a
   );
   await page.goto(`/app/payments/${payment.paymentId}`);
   const main = page.getByRole("main");
-  await expect(main.locator("header [data-status]")).toBeVisible();
-  await expect(main.getByText(/pay the rest|share checkout/i)).toHaveCount(0);
+  await expect(main.locator("header [data-status]")).toHaveText("Partially paid");
+  // The rest is still being checked: no Needs attention panel offers the checkout to collect it.
+  await expect(main.getByRole("heading", { name: "Needs attention" })).toHaveCount(0);
   await context.close();
 });
 

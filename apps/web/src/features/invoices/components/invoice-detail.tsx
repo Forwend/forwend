@@ -492,7 +492,6 @@ function Loaded({
 }
 
 /** Under the status (R-77): a new invoice after the close, or once, a partly paid one reopened (R-130, D-25). */
-// The same box as the payment page's next step, so both records say what to do in one place.
 const NEXT_BOX = "rounded-md bg-surface-2 px-4 py-3 text-sm text-ink";
 
 function NextStep({
