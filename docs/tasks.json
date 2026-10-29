@@ -508,7 +508,7 @@
         "Holdings show market USD values at the latest known price, name no price provider, and never fall back to 1 USD"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend",
         "web-unit",
@@ -523,7 +523,52 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-29T17:03:32Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 42.4,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          }
+        ],
+        "taskHash": "cf3d0e472fb4c309",
+        "filesHash": "c5e4144bf1103c88",
+        "proof": {
+          "1": "backend: config sets DefaultPricesEvery to 15 minutes; TestKeeperReadsWhenDue stores prices only when due, TestListGivesEachEnabledTokenItsCoinPrice maps each enabled token to its coin, and TestPrices returns each price with sourceUpdatedAt, fetchedAt and stale",
+          "2": "web-unit: balances.test 'values at the latest market price, even an old one, and gives no total without one instead of 1 USD' and balance-figure.test 'values tokens at their market prices, and never at 1 USD without one' pass; in apps/web/src the provider's name appears only in two schema comments, in no text users see"
+        }
+      },
+      "branch": "feat/f344-asset-values-use-shared-market-prices-fo",
+      "baseCommit": "2526268d0e27963add5b416aef5a3bf0cfb14a89",
+      "failedVerifies": 0
     },
     {
       "id": "F345",
