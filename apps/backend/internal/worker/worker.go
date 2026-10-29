@@ -4,6 +4,7 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -106,10 +107,8 @@ func (w *Worker) Tick(ctx context.Context) {
 				ledger.DeployedFrom(map[uint64]*ethclient.Client{id: client}))
 			// A hanging RPC must not stop the other chains.
 			chainCtx, cancel := context.WithTimeout(ctx, RoundTimeout)
-			err := watch.ScanNew(chainCtx)
-			if err == nil {
-				err = book.ProcessChain(chainCtx, id)
-			}
+			// Recorded money is booked even when this round's scan failed: it only adds rows below its own cursor.
+			err := errors.Join(watch.ScanNew(chainCtx), book.ProcessChain(chainCtx, id))
 			cancel()
 			if err != nil {
 				slog.Error("worker round", "chain", id, "err", chain.Redact(err))

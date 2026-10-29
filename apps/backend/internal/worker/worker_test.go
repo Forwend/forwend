@@ -86,6 +86,63 @@ func TestRoundSurvivesAnRPCGoing429MidRound(t *testing.T) {
 	}
 }
 
+// A deposit already recorded (by a Check status rescan, or a round whose ledger step failed) is booked even when this
+// round's own scan fails.
+func TestRoundBooksRecordedMoneyWhenItsScanFails(t *testing.T) {
+	ctx := context.Background()
+	a := chaintest.Start(t)
+	token := a.DeployToken()
+	a.Mint(token, "100000000")
+	url := databasetest.New(t)
+	if err := database.Migrate(ctx, url); err != nil {
+		t.Fatal(err)
+	}
+	pool, err := database.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	if _, err := pool.Exec(ctx, `
+		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES ($1, 'evm', 'anvil', true)),
+		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
+		            VALUES ($1, 'evm', $2, 'USDC', 6, true)),
+		     u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:alice') RETURNING id),
+		     p AS (INSERT INTO profiles (user_id, kind) SELECT id, 'freelancer' FROM u RETURNING id)
+		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
+		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
+		SELECT '0x' || repeat('01', 32), id, $1, 'evm', $2, 5000000, 1800000000, 1800086400,
+		    '0x1111111111111111111111111111111111111111', 'evm_create2', '0x2222222222222222222222222222222222222222',
+		    $3, 'key-1', decode(repeat('00', 32), 'hex') FROM p`, chaintest.ChainID, token, receive); err != nil {
+		t.Fatal(err)
+	}
+	proxy := a.Proxy()
+	w := New(pool, map[uint64]chain.Spec{chaintest.ChainID: {ChainID: chaintest.ChainID, AllowLoopback: true,
+		Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Private,
+			Priority: 0, URL: proxy.URL, BudgetGroup: "budget-0"}}}}, 1000)
+	defer w.Close()
+	w.Round(ctx) // the first scan starts the chain's cursor
+	a.Transfer(token, receive, "5000000")
+	a.Mine(2)
+	if _, err := pool.Exec(ctx, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash,
+		    log_index, block_hash, block_number, block_time, from_address, to_address, amount, status)
+		SELECT $1, 'evm', $2, '0x' || repeat('01', 32), '0x' || repeat('0a', 32), 0, '0x' || repeat('0b', 32),
+		    last_finalized_block, last_finalized_time, '0x00000000000000000000000000000000000000ff', $3, 5000000, 'confirmed'
+		FROM chain_cursors WHERE chain_id = $1`, chaintest.ChainID, token, receive); err != nil {
+		t.Fatal(err)
+	}
+	proxy.Fail(func(c chaintest.Call) chaintest.Fault {
+		if c.Method == "eth_getLogs" {
+			return chaintest.InternalError
+		}
+		return chaintest.Forward
+	})
+	w.Round(ctx)
+	var status string
+	if err := pool.QueryRow(ctx, "SELECT payment_status FROM invoices").Scan(&status); err != nil || status != "paid" {
+		t.Fatalf("invoice %s (%v) after a round whose scan failed, want paid", status, err)
+	}
+}
+
 // missedDeposit pays an invoice in a block the regular scan has passed without seeing (its cursor is far above the
 // deposit's block).
 func missedDeposit(t *testing.T, ctx context.Context, settleDeadline int64) (*pgxpool.Pool, *Worker, *chaintest.Anvil, func() string) {

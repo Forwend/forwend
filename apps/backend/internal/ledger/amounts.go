@@ -2,7 +2,9 @@ package ledger
 
 import (
 	"context"
+	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -110,4 +112,21 @@ func reconciliationReviewSQL(invoiceID string) string {
 	return `EXISTS (SELECT 1 FROM invoice_balance_alerts review_alert WHERE review_alert.invoice_id = ` + invoiceID + `)
  OR (` + negativeBalancesSQL(invoiceID) + `)
  OR EXISTS (SELECT 1 FROM receiver_outflows review_flow WHERE review_flow.invoice_id = ` + invoiceID + ` AND review_flow.ledger_transaction_id IS NULL AND review_flow.kind <> 'recovery' AND review_flow.reconciliation_error NOT IN ('','awaiting_booking'))`
+}
+
+// OwedNotPaid lists invoices owed in full whose newest booking is older than after, yet not paid: the finalized
+// balance check keeps failing, so money may have left unbooked or the balance RPC disagrees with the scan (R-184).
+func OwedNotPaid(ctx context.Context, db interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+}, after time.Duration) ([]string, error) {
+	rows, err := db.Query(ctx, `SELECT i.id FROM invoices i
+		WHERE i.payment_status IN ('detected', 'partially_paid')
+		  AND (SELECT -coalesce(sum(e.amount), 0) FROM ledger_entries e JOIN ledger_transactions t ON t.id = e.transaction_id
+		       WHERE t.invoice_id = i.id AND e.account = 'recipient_payable') >= i.amount
+		  AND (SELECT max(t.created_at) FROM ledger_transactions t WHERE t.invoice_id = i.id) < now() - $1 * interval '1 second'
+		ORDER BY i.id LIMIT 20`, int64(after/time.Second))
+	if err != nil {
+		return nil, fmt.Errorf("read invoices owed but not paid: %w", err)
+	}
+	return pgx.CollectRows(rows, pgx.RowTo[string])
 }

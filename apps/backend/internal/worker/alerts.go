@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
+
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
 const (
@@ -20,7 +22,8 @@ const (
 )
 
 // alert logs an ALERT for symptoms that hold money: a chain whose scan stopped, a deposit that stays detected below
-// the finalized block, and paid money not settled in time or close to its settle deadline.
+// the finalized block, a receiver's settle or refund the ledger can't book, money owed in full that never becomes
+// paid, and paid money not settled in time or close to its settle deadline.
 func (w *Worker) alert(ctx context.Context) error {
 	rows, err := w.pool.Query(ctx, `SELECT c.chain_id, extract(epoch FROM now())::bigint - cur.last_finalized_time,
 		    (SELECT count(*) FROM chain_transfers t WHERE t.chain_id = c.chain_id AND t.status = 'detected'
@@ -47,11 +50,39 @@ func (w *Worker) alert(ctx context.Context) error {
 	if err := rows.Err(); err != nil {
 		return err
 	}
+	rows, err = w.pool.Query(ctx, `SELECT invoice_id, chain_id, kind, reconciliation_error FROM receiver_outflows
+		WHERE ledger_transaction_id IS NULL AND kind <> 'recovery' AND created_at < now() - $1 * interval '1 second'
+		ORDER BY created_at LIMIT 20`, int64(UnsettledAfter/time.Second))
+	if err != nil {
+		return fmt.Errorf("read unbooked receiver events: %w", err)
+	}
+	for rows.Next() {
+		var invoice, kind, reason string
+		var chainID int64
+		if err := rows.Scan(&invoice, &chainID, &kind, &reason); err != nil {
+			rows.Close()
+			return err
+		}
+		slog.Error("ALERT receiver event not booked", "invoice", invoice, "chain", chainID, "kind", kind, "reason", reason)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	owed, err := ledger.OwedNotPaid(ctx, w.pool, StalledAfter)
+	if err != nil {
+		return err
+	}
+	for _, invoice := range owed {
+		slog.Error("ALERT invoice owed in full is not paid: its finalized balance check keeps failing", "invoice", invoice)
+	}
+	// A user at the daily settlement cap waits by design; only its deadline makes it alert.
 	rows, err = w.pool.Query(ctx, `SELECT i.id, i.chain_id, si.status, coalesce(si.reason, ''),
 		    extract(epoch FROM now() - si.created_at)::bigint, i.settle_deadline - extract(epoch FROM now())::bigint
 		FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id
 		WHERE si.status <> 'confirmed' AND i.settle_deadline > extract(epoch FROM now())::bigint
-		  AND (si.created_at < now() - $1 * interval '1 second' OR i.settle_deadline < extract(epoch FROM now())::bigint + $2)
+		  AND (si.created_at < now() - $1 * interval '1 second' AND si.wait IS DISTINCT FROM 'cap'
+		       OR i.settle_deadline < extract(epoch FROM now())::bigint + $2)
 		ORDER BY i.settle_deadline LIMIT 20`, int64(UnsettledAfter/time.Second), int64(DeadlineSoon/time.Second))
 	if err != nil {
 		return fmt.Errorf("read late settlements: %w", err)
