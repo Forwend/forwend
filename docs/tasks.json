@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 362,
+  "nextId": 363,
   "tasks": [
     {
       "id": "F332",
@@ -1736,6 +1736,82 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f361-payment-link-traffic-never-stops-the-own",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F362",
+      "type": "fix",
+      "behavior": "No provider can make the executor pay more than a set fee per gas, and a draining executor alerts early",
+      "acceptance": [
+        "fees(), replacements and stuck-deploy replacements never exceed the chain's maxFeePerGas; a chain without one fails the signer's start-up check; below 20 deploys and settles of gas the signer logs ALERT executor gas runs low every 5 minutes, bounded by its attempt timeout"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend-affected",
+        "docs-check"
+      ],
+      "refs": [
+        "R-189"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-29 review fail by independent-reviewer: FAIL on two points; the money logic itself is correct. (1) Docs: the new startup bullet in docs/backend/architecture.md (\"Every 5 minutes the signer checks again for GasAlertSettlements (20) deploys and settles: below that it logs ALERT executor gas runs low, long before it cannot pay a settle (R-189)\") is one 30-word sentence; the limit is 25 (D-84). The Signer section is also stale: line 429 says every transaction uses the provider tip and base fee, line 449 says a replacement is capped only by MaxFeeFactor, line 471 says a stuck-deploy replacement is twice today fee; none mentions the ceiling. (2) Tests: acceptance names replacements and stuck-deploy replacements, but no test guards them. Mutation runs with go test -overlay: removing the ceiling from replace() limit and removing it from overStuck each leave TestFees|TestCheckGas|TestStuckSettle|TestReplace|TestDeployReplaces|TestReplacement|TestNonceGap green (the full package passed unmutated in 227 s). Dropping the ceiling in fees() fails TestFeesNeverExceedTheChainCeiling, dropping the tip clamp fails it too, no alert fails TestSignerAlertsWhenExecutorGasRunsLow, using 1 instead of 20 fails it, no timeout on the check fails TestHangingRPCDoesNotStallTheSigner, dropping MaxFeeFactor from replace() fails TestStuckSettleOverTheMaxFeeIsSentAgainAsItIs. Not caught: the 5-minute pacing (always checking passes), and the Tempo path ignoring the count of 20. Fix: add two Anvil tests (throwaway versions I ran passed on the real code and failed on both mutations): replace() with an old fee cap at the ceiling, or whose 9/8 bump passes it, at a 400 gwei base fee, returns old unchanged; overStuck at a 400 gwei base fee gives fee cap at most the ceiling and tip at most fee cap, and the node accepts it. Optionally test the pacing with a second Run and the Tempo count. Verified correct: tip is clamped to fee cap so it never exceeds it; a replacement at the ceiling is resent as is, never signed underpriced; a 1,000,000 gwei tip signs at exactly the ceiling and settles; with base fee 2000 gwei (above the 1000 ceiling) Anvil refuses the deploy (\"max fee per gas less than block base fee\"), the intent stays pending, retries every 30 s and settles after the fee drops, so it waits and is not stuck for good. Only settle.go sign, replace, overStuck and reconcile.go fillGap sign transactions, all bounded. Ceilings are sane: 200x, 50x, 19x (Arc fee cap 52.5 gwei vs 1000) and 167x over measured; Tempo ceiling costs about 0.23 USD per deploy and settle at TempoMinGas; an Arbitrum or Base testnet spike over 1 gwei makes settlements wait, which the docs accept. A chain without a ceiling stops the whole signer at start-up, like a CheckGas shortfall and an unconfigured chain (CheckEnabled returns the first error); a chain enabled later fails closed per chain at runtime. Alert: one Signer per chain job, Run is serial per chain so gasCheckedAt needs no lock; it runs about 4 RPC reads per 5 min, bounded by attemptTimeout (the production pool also caps requests at 30 s); only errFundIt errors are logged, built from chain, executor address and balances, no RPC text or secrets. Non-blocking: minBig can return the global ceiling pointer (safe today because types.NewTx copies it); non-fund errors in the alert check are dropped silently; Anvil ids 31337 and 31338 sit in the production map.",
+        "2026-10-29 review fail by independent-reviewer: FAIL on one docs item only; code and tests are fine. Both changed sentences in docs/backend/architecture.md now break the 25-word limit (D-84, AGENTS.md). (1) The replacement line was exactly 25 words at HEAD; the new text \"A replacement whose fee cap would pass MaxFeeFactor (2) times a new settle fee cap, or the chain ceiling, is not signed; the saved bytes are sent again as they are\" is 29 words. (2) The stuck-deploy line was 36 words at HEAD and is now 41 (\"the deploy takes that nonce at twice today fee, up to the chain ceiling, so later transactions do not queue behind it\"). Fix: split each into a lead sentence plus a sub-bullet, for example \"A replacement that would pass MaxFeeFactor (2) times a new settle fee cap, or the chain ceiling, is not signed.\" (20 words) with the sub-bullet \"The saved bytes are sent again as they are.\"; and \"When a transaction we never saved waits at the executor next mined nonce (an earlier deploy the fee left behind), the deploy takes that nonce:\" with sub-bullets \"At twice today fee, up to the chain ceiling.\" and \"So later transactions do not queue behind it.\" Everything else passes. Docs checked: the startup bullet is split (15 and 17 words), line 429 is 22 words and true, PROJECT and money-safety rows unchanged and fine, docs-check 0 errors. Tests (go test -count=1 ./internal/settlement/ passed in 232 s; targeted TestCheckGas|TestFees|TestSignerAlerts pass; go vet and go build clean; gofmt clean). Mutation runs with go test -overlay, all reverted: replace() limit without the ceiling fails TestReplacementNeverPassesTheCeiling (intent 0 moved on); overStuck ceiling set to 1e18 fails TestStuckDeployReplacementStopsAtTheCeiling (fee cap 1602 gwei); always checking gas fails TestSignerAlertsWhenExecutorGasRunsLow (2 alerts in two rounds); Tempo path ignoring the count of 20 fails TestCheckGasInFeeToken in both subtests. Earlier results still hold: fees() without the ceiling or tip clamp, no alert, count 1, no timeout on the check and no MaxFeeFactor each fail their test. minBig now returns a copy, fine. Silent non-fund errors and the Anvil ids in the map are accepted as you explained.",
+        "2026-10-29 review pass by independent-reviewer: PASS. The two split lines in docs/backend/architecture.md are within 25 words and true. Replacement: lead sentence 20 words, sub-bullet 9 words, and it matches replace() (limit is the smaller of MaxFeeFactor times the new fee cap and the chain ceiling; over it the old bytes are sent again). Stuck deploy: lead sentence 25 words (at the limit), sub-bullet 17 words, and it matches overStuck() (twice the fee, clamped to the ceiling). Every sentence added or changed in the task is 25 words or fewer: startup bullets 14 and 16, ceiling bullets 16, 18 and 16, line 429 at 22. docs-check reports 0 errors. Code and tests are unchanged from my last review: go test -count=1 ./internal/settlement/ passed in full (232 s) then, and the targeted TestCheckGas, TestFees, TestSignerAlerts, TestReplacementNeverPassesTheCeiling, TestStuckDeployReplacementStopsAtTheCeiling, TestDeployReplacesAStuckTransaction and TestStuckSettle runs pass again now; gofmt, go vet and go build are clean. Mutation checks from the earlier rounds all fail the right test: no ceiling in fees(), no tip clamp, no ceiling in replace(), 1e18 ceiling in overStuck(), no alert, count of 1, no pacing, Tempo ignoring the count, no timeout on the check, no MaxFeeFactor. Money and liveness findings stand: tip is clamped to the fee cap; a replacement at the ceiling is resent as is; a base fee above the ceiling makes the node refuse the send, the intent stays pending and settles once the fee drops; only sign(), replace(), overStuck() and fillGap() sign, all bounded; a chain without a ceiling stops start-up like a CheckGas shortfall. Accepted non-blocking: silent non-fund errors in the alert check, and Anvil ids 31337 and 31338 in the ceiling map."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-29T23:56:47Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 37.4,
+            "log": ""
+          }
+        ],
+        "taskHash": "af75805013a61f86",
+        "filesHash": "8684d6fa879b6308",
+        "proof": {
+          "1": "backend-affected: settlement TestFeesNeverExceedTheChainCeiling, TestReplacementNeverPassesTheCeiling and TestStuckDeployReplacementStopsAtTheCeiling each fail without their ceiling; TestSignerAlertsWhenExecutorGasRunsLow (paced, once per GasCheckEvery); TestCheckGasInFeeToken checks Tempo's 20-settlement count"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent-reviewer",
+          "summary": "PASS. The two split lines in docs/backend/architecture.md are within 25 words and true. Replacement: lead sentence 20 words, sub-bullet 9 words, and it matches replace() (limit is the smaller of MaxFeeFactor times the new fee cap and the chain ceiling; over it the old bytes are sent again). Stuck deploy: lead sentence 25 words (at the limit), sub-bullet 17 words, and it matches overStuck() (twice the fee, clamped to the ceiling). Every sentence added or changed in the task is 25 words or fewer: startup bullets 14 and 16, ceiling bullets 16, 18 and 16, line 429 at 22. docs-check reports 0 errors. Code and tests are unchanged from my last review: go test -count=1 ./internal/settlement/ passed in full (232 s) then, and the targeted TestCheckGas, TestFees, TestSignerAlerts, TestReplacementNeverPassesTheCeiling, TestStuckDeployReplacementStopsAtTheCeiling, TestDeployReplacesAStuckTransaction and TestStuckSettle runs pass again now; gofmt, go vet and go build are clean. Mutation checks from the earlier rounds all fail the right test: no ceiling in fees(), no tip clamp, no ceiling in replace(), 1e18 ceiling in overStuck(), no alert, count of 1, no pacing, Tempo ignoring the count, no timeout on the check, no MaxFeeFactor. Money and liveness findings stand: tip is clamped to the fee cap; a replacement at the ceiling is resent as is; a base fee above the ceiling makes the node refuse the send, the intent stays pending and settles once the fee drops; only sign(), replace(), overStuck() and fillGap() sign, all bounded; a chain without a ceiling stops start-up like a CheckGas shortfall. Accepted non-blocking: silent non-fund errors in the alert check, and Anvil ids 31337 and 31338 in the ceiling map.",
+          "at": "2026-10-29T23:58:16Z",
+          "filesHash": "8684d6fa879b6308"
+        },
+        "commit": "59442c2c",
+        "doneAt": "2026-10-29T23:58:29Z"
+      },
+      "branch": "fix/f362-no-provider-can-make-the-executor-pay-mo",
+      "baseCommit": "673b18f65c922a66c4058061d8f38e511bdbbf0d",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f362-no-provider-can-make-the-executor-pay-mo",
         "base": "main"
       }
     }

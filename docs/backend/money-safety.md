@@ -165,7 +165,8 @@ Limits:
 
 - One provider can establish payment and settlement evidence. A dishonest provider can defeat checks that depend on its chain data.
 - Extra endpoints provide failover; operational payments do not require agreement between independent providers.
-- The selected provider supplies gas-price suggestions; an independent provider no longer limits its suggested tip.
+- The selected provider supplies gas-price suggestions; no independent provider checks its suggested tip.
+  - A per-chain ceiling per gas unit bounds what a wrong or lying suggestion can cost (R-189).
 
 - The executor can settle money the backend would hold (late, cancelled) before the deadline. It still goes only to
   the recipient.

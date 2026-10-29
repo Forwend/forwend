@@ -7,6 +7,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math/big"
 	"sync"
 	"time"
@@ -42,6 +43,8 @@ type Signer struct {
 	// outlast a dropped lock connection.
 	held  func(context.Context) error
 	users *userTurns
+	// gasCheckedAt paces the executor's gas check: a drain shows long before the signer can't pay a settle.
+	gasCheckedAt time.Time
 }
 
 func NewSigner(pool *pgxpool.Pool, key *ecdsa.PrivateKey, clients map[uint64]*ethclient.Client) *Signer {
@@ -69,6 +72,16 @@ type intent struct {
 
 // Run serves only the chains this signer has a client for; one intent's failure doesn't stop the others.
 func (s *Signer) Run(ctx context.Context) error {
+	if time.Since(s.gasCheckedAt) >= GasCheckEvery {
+		s.gasCheckedAt = time.Now()
+		for id, client := range s.clients {
+			checkCtx, cancel := context.WithTimeout(ctx, s.attemptTimeout) // a hanging RPC must not stall the round
+			if err := checkGas(checkCtx, client, id, s.sender, GasAlertSettlements); errors.Is(err, errFundIt) {
+				slog.Error("ALERT executor gas runs low", "chain", id, "err", err.Error())
+			}
+			cancel()
+		}
+	}
 	chains := make([]int64, 0, len(s.clients))
 	for id := range s.clients {
 		chains = append(chains, int64(id))

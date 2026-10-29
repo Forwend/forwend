@@ -98,6 +98,12 @@ D-71); a chain whose RPCs don't answer is logged and skipped:
   manager, else PathUSD) and needs ceil(fee cap × `TempoMinGas` / 10^12) of its 6-decimal units, since Tempo prices
   gas in attodollars. `TempoMinGas` is 2,262,000: Tempo charges far more for creating contracts and storage, and its
   testnet deploy and settle used 1,305,758 and 572,845 gas.
+  - Every 5 minutes the signer checks again for `GasAlertSettlements` (20) deploys and settles (R-189).
+    - Below that it logs `ALERT executor gas runs low`, long before it can't pay a settle.
+  - No fee it signs exceeds the chain's ceiling per gas unit (`settlement.maxFeePerGas`), whatever a provider suggests.
+    - Base and Arbitrum Sepolia: 1 gwei. Arc: 1,000 gwei. Tempo: 100 gwei (attodollars). Fees in October 2026 were far below.
+    - Replacements and stuck-deploy replacements stop at it too; above it a settlement waits and its delay alert fires.
+    - A chain without a ceiling fails the start-up check, so the signer never serves it unbounded.
 
 Then each logs its ready line: `api listening`, `worker ready`, `signer ready`. The checks run once; an RPC failing
 later is handled by the pool as before.
@@ -420,7 +426,7 @@ Scanning again changes nothing, so a restarted worker resumes from the cursor.
 ## Signer
 
 `internal/settlement` (R-22), one `Signer` per executor key (the signer's lock, [startup](#startup)). When the ledger marks an invoice `paid` it queues one
-settlement intent (unique per invoice) in the same transaction. Every transaction uses the selected provider's suggested tip and current base fee (D-15). For each due intent the
+settlement intent (unique per invoice) in the same transaction. Every transaction uses the selected provider's suggested tip and current base fee (D-15), never above the chain's ceiling per gas unit (R-189). For each due intent the
 signer:
 1. If a settle is already saved (`sent`), finishes it first, whatever changed since.
    - The saved bytes must decode to `settle()` on this receiver on this chain with the saved hash.
@@ -440,8 +446,8 @@ signer:
      - a higher fee: at least an eighth more tip and fee cap (geth wants a tenth) and at least what a new settle gets
        now, so the settles after it on the chain are not held up.
    - The new version is saved before it is sent, keeping the old hash.
-   - A replacement whose fee cap would pass `MaxFeeFactor` (2) times a new settle's is not signed; the saved bytes are
-     sent again as they are.
+   - A replacement that would pass `MaxFeeFactor` (2) times a new settle's fee cap, or the chain's ceiling, is not signed.
+     - The saved bytes are sent again as they are.
    - When the executor's next mined nonce has nothing pending and no saved settle holds it (a settle saved but never
      sent, then settled by the refund authority), a zero-value transfer to the executor fills it, so the settles after
      it can mine.
@@ -462,7 +468,8 @@ signer:
      Tiny invoices paid back and forth would otherwise drain the executor's gas for everyone. This logs an `ALERT`.
 4. Deploys the receiver if needed (`deploy` is idempotent).
    - When a transaction we never saved waits at the executor's next mined nonce (an earlier deploy the fee left
-     behind), the deploy takes that nonce at twice today's fee, so later transactions don't queue behind it.
+     behind), the deploy takes that nonce.
+     - It pays twice today's fee, up to the chain's ceiling, so later transactions don't queue behind it.
    - Then waits up to 10 s for the RPC to show the receiver's code at the deploy's block or later (else the attempt
      ends and is tried again). A node that has not seen the deploy estimates settle as a call to an empty address,
      which runs out of gas.

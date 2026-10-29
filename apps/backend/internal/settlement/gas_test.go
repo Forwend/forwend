@@ -3,7 +3,9 @@ package settlement
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
 	"math/big"
 	"strings"
 	"testing"
@@ -135,6 +137,66 @@ func TestCheckGasInFeeToken(t *testing.T) {
 			if err := CheckGas(ctx, chaintest.ChainID, executor, client); err != nil {
 				t.Fatalf("funded, with no native coin: %v", err)
 			}
+			// Enough for one settle is short of the alert's GasAlertSettlements.
+			if err := checkGas(ctx, client, chaintest.ChainID, executor, GasAlertSettlements); !errors.Is(err, errFundIt) ||
+				!strings.Contains(err.Error(), "20 deploys and settles") {
+				t.Fatalf("one settle's fee token against the alert's 20: %v", err)
+			}
 		})
+	}
+}
+
+// A provider that suggests a huge tip, wrongly or to drain the executor, can't push a fee over the chain's ceiling.
+func TestFeesNeverExceedTheChainCeiling(t *testing.T) {
+	ctx := context.Background()
+	a := chaintest.Start(t)
+	greedy := a.Proxy()
+	greedy.Stale(func(c chaintest.Call) json.RawMessage {
+		if c.Method == "eth_maxPriorityFeePerGas" {
+			return json.RawMessage(`"0x38d7ea4c68000"`) // 1,000,000 gwei
+		}
+		return nil
+	})
+	client, err := ethclient.Dial(greedy.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	tip, feeCap, err := fees(ctx, client, chaintest.ChainID)
+	ceiling := maxFeePerGas[chaintest.ChainID]
+	if err != nil || feeCap.Cmp(ceiling) != 0 || tip.Cmp(feeCap) > 0 {
+		t.Fatalf("tip %v, fee cap %v (%v); want both at most the %v ceiling", tip, feeCap, err, ceiling)
+	}
+	if _, _, err := fees(ctx, ethclient.NewClient(a.RPC), 999); err == nil || !strings.Contains(err.Error(), "no fee ceiling") {
+		t.Fatalf("a chain without a ceiling: %v, want refused", err)
+	}
+}
+
+// Enough for one settle but not for GasAlertSettlements alerts, long before the signer can't pay.
+func TestSignerAlertsWhenExecutorGasRunsLow(t *testing.T) {
+	e := setup(t)
+	s := e.signer(t)
+	_, feeCap, err := fees(t.Context(), e.client, e.chainID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	low := new(big.Int).Mul(feeCap, big.NewInt(MinGas*2))
+	if err := e.anvil.RPC.Call(nil, "anvil_setBalance", s.sender, hexutil.EncodeBig(low)); err != nil {
+		t.Fatal(err)
+	}
+	var logs strings.Builder
+	defer slog.SetDefault(slog.Default())
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	if err := s.Run(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(logs.String(), "ALERT executor gas runs low") || !strings.Contains(logs.String(), "20 deploys and settles") {
+		t.Fatalf("logs lack the low gas alert:\n%s", logs.String())
+	}
+	if err := s.Run(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(logs.String(), "ALERT executor gas runs low"); n != 1 {
+		t.Fatalf("%d gas alerts in two rounds; want one per GasCheckEvery", n)
 	}
 }

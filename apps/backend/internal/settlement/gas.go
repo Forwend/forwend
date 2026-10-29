@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -21,6 +22,24 @@ const MinGas = (160_000 + SettleGasFloor) * 6 / 5
 // Tempo's testnet flow (deployments.json) used 1,305,758 gas to deploy and 572,845 to settle.
 const TempoMinGas = (1_310_000 + 575_000) * 6 / 5
 
+// maxFeePerGas bounds what one unit of gas may cost on each chain, in its fee unit (wei, or attodollars on Tempo), so a
+// wrong or lying fee suggestion from one provider can't drain the executor (R-189). Fees on 2026-10-30 were far below:
+// Base Sepolia 0.005 gwei, Arbitrum Sepolia 0.02, Arc 20 plus a 12.5 tip, Tempo 0.6. A chain without one is not served.
+var maxFeePerGas = map[uint64]*big.Int{
+	84532:   big.NewInt(1e9),
+	421614:  big.NewInt(1e9),
+	5042002: big.NewInt(1000e9),
+	42431:   big.NewInt(100e9),
+	31337:   big.NewInt(1000e9), // Anvil, in tests
+	31338:   big.NewInt(1000e9), // a second Anvil, in tests
+}
+
+// GasAlertSettlements: below this many deploys and settles at the current fees, the signer alerts every GasCheckEvery.
+const (
+	GasAlertSettlements = 20
+	GasCheckEvery       = 5 * time.Minute
+)
+
 // Tempo has no native coin (eth_getBalance is a placeholder): fees are paid in the executor's fee token, else PathUSD.
 var (
 	tempoFeeManager = common.HexToAddress("0xfeec000000000000000000000000000000000000")
@@ -33,7 +52,7 @@ var (
 func CheckGas(ctx context.Context, chainID uint64, executor common.Address, clients ...*ethclient.Client) error {
 	var err error
 	for _, client := range clients {
-		if err = checkGas(ctx, client, chainID, executor); err == nil || errors.Is(err, errFundIt) {
+		if err = checkGas(ctx, client, chainID, executor, 1); err == nil || errors.Is(err, errFundIt) {
 			return err
 		}
 	}
@@ -42,7 +61,8 @@ func CheckGas(ctx context.Context, chainID uint64, executor common.Address, clie
 
 var errFundIt = errors.New("fund it")
 
-func checkGas(ctx context.Context, client *ethclient.Client, chainID uint64, executor common.Address) error {
+// checkGas fails unless the executor holds the gas of settlements deploys and settles at the current fee cap.
+func checkGas(ctx context.Context, client *ethclient.Client, chainID uint64, executor common.Address, settlements int64) error {
 	_, feeCap, err := fees(ctx, client, chainID)
 	if err != nil {
 		return fmt.Errorf("chain %d: %w", chainID, err)
@@ -51,17 +71,22 @@ func checkGas(ctx context.Context, client *ethclient.Client, chainID uint64, exe
 	if err != nil {
 		return fmt.Errorf("chain %d: %w", chainID, err)
 	}
-	if token != (common.Address{}) {
-		return checkFeeToken(ctx, client, chainID, executor, token, new(big.Int).Mul(feeCap, big.NewInt(TempoMinGas)))
+	what := "one deploy and settle"
+	if settlements > 1 {
+		what = fmt.Sprintf("%d deploys and settles", settlements)
 	}
-	need := new(big.Int).Mul(feeCap, big.NewInt(MinGas))
+	if token != (common.Address{}) {
+		return checkFeeToken(ctx, client, chainID, executor, token,
+			new(big.Int).Mul(feeCap, big.NewInt(TempoMinGas*settlements)), what)
+	}
+	need := new(big.Int).Mul(feeCap, big.NewInt(MinGas*settlements))
 	have, err := client.BalanceAt(ctx, executor, nil)
 	if err != nil {
 		return fmt.Errorf("chain %d: read the executor's balance: %w", chainID, err)
 	}
 	if have.Cmp(need) < 0 {
-		return fmt.Errorf("chain %d: executor %s holds %s of the native coin, below the %s that one deploy and settle "+
-			"cost at the current gas price: %w", chainID, executor.Hex(), ether(have), ether(need), errFundIt)
+		return fmt.Errorf("chain %d: executor %s holds %s of the native coin, below the %s that %s "+
+			"cost at the current gas price: %w", chainID, executor.Hex(), ether(have), ether(need), what, errFundIt)
 	}
 	return nil
 }
@@ -89,7 +114,7 @@ func feeToken(ctx context.Context, client *ethclient.Client, executor common.Add
 }
 
 func checkFeeToken(ctx context.Context, client *ethclient.Client, chainID uint64, executor, token common.Address,
-	attodollars *big.Int) error {
+	attodollars *big.Int, what string) error {
 	scale := big.NewInt(1e12) // gas prices are attodollars; the token has 6 decimals
 	need := new(big.Int).Div(new(big.Int).Add(attodollars, new(big.Int).Sub(scale, big.NewInt(1))), scale)
 	block, err := client.BlockNumber(ctx)
@@ -101,8 +126,8 @@ func checkFeeToken(ctx context.Context, client *ethclient.Client, chainID uint64
 		return fmt.Errorf("chain %d: read the executor's fee token balance: %w", chainID, err)
 	}
 	if have.Cmp(need) < 0 {
-		return fmt.Errorf("chain %d: executor %s holds %s of fee token %s, below the %s that one deploy and settle "+
-			"cost at the current gas price: %w", chainID, executor.Hex(), usd(have), token.Hex(), usd(need), errFundIt)
+		return fmt.Errorf("chain %d: executor %s holds %s of fee token %s, below the %s that %s "+
+			"cost at the current gas price: %w", chainID, executor.Hex(), usd(have), token.Hex(), usd(need), what, errFundIt)
 	}
 	return nil
 }
