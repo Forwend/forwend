@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 347,
+  "nextId": 348,
   "tasks": [
     {
       "id": "F332",
@@ -538,6 +538,30 @@
         "branch": "fix/f346-the-payment-page-shows-no-next-step-box",
         "base": "main"
       }
+    },
+    {
+      "id": "F347",
+      "type": "chore",
+      "behavior": "Unused landscape images are removed",
+      "acceptance": [
+        "balance-day, balance-night, hero-night and not-found .webp and their images.md rows are gone; images-check passes and no code refers to them (owner request 2026-10-29)"
+      ],
+      "dependsOn": [],
+      "state": "active",
+      "verification": [
+        "images-check",
+        "e2e"
+      ],
+      "refs": [
+        "D-113"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null,
+      "branch": "chore/f347-unused-landscape-images-are-removed",
+      "baseCommit": "a7af9efd6ac9386d894a2779f453d0aa7dc721f9"
     }
   ],
   "lastWrapup": {
