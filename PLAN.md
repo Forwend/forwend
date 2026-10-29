@@ -121,6 +121,8 @@ code; a wallet connects only to claim a refund (D-37).
     (D-60) and prints the `refund(to, amount)` call for the refund-authority Safe; one refund of everything held by
     default (D-57). The watcher books the refund. No new hot key. A refund shows in the invoice's Transactions list on
     the owner page, beside the payments and the settlement (R-69). After 11.10.2.
+    - Approving a claim sets the invoice's refund status to `refund_pending` before the Safe call is queued.
+    - Reopen (R-130) already refuses then, so money a queued refund returns can't settle to the creator first.
   - 11.10.4 Wrong-network help: the payer gives the tx hash, the API finds it on an enabled chain and
     opens a recovery claim; `recover()` works only where our factory exists, and recovery is never promised (D-33).
     After 11.10.2.
