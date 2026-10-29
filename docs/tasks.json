@@ -230,7 +230,7 @@
         "Deterministic browser tests (kit, landing, a11y axe, width checks) pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "active",
       "verification": [
         "tokens-unit",
         "ui-unit",
@@ -254,15 +254,16 @@
       "blockedReason": null,
       "evidence": {
         "version": 3,
-        "status": "passed",
-        "at": "2026-10-29T15:54:39Z",
+        "status": "failed",
+        "at": "2026-10-29T16:01:04Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.6,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "docs-check",
@@ -275,7 +276,7 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
+            "seconds": 0.3,
             "log": ""
           },
           {
@@ -287,74 +288,23 @@
           },
           {
             "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 251.6,
-            "log": ""
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": ""
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 44.9,
-            "log": ""
-          },
-          {
-            "id": "tokens-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "ui-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "images-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.1,
-            "log": ""
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 4.0,
-            "log": ""
+            "outcome": "failed",
+            "exit": 1,
+            "seconds": 7.4,
+            "log": "docs/runs/F342-20261029T160104Z-unit.log"
           }
         ],
         "taskHash": "24b8343cceeddefe",
-        "filesHash": "d3e01863cd5b1904",
+        "filesHash": "4a12fcf455320a39",
         "proof": {
           "1": "tokens-unit: token contrast tests pass for text on every surface in light and dark, accent badge included; ui-unit covers the kit components; the sidebar keeps its sections and order with the setup guide and Settings at its foot",
           "2": "e2e: kit spec loads /kit with every component state in both themes, and the landing, sign-in and 404 specs render the logged Signal artwork; images-check validates the artwork files",
           "3": "e2e: the deterministic browser suite (kit, landing, pay, a11y axe in both themes, width checks) passes"
-        },
-        "review": {
-          "result": "pass",
-          "by": "independent-reviewer",
-          "summary": "PASS. Reviewed commit 0211dd01 on top of the earlier pass at a6f55aa5. It settles notes 1, 2, 3, 5, 7, 8, 9 and 10: navigation.spec.ts:61 now waits for the q parameter before counting rows; DESIGN.md:117 lists the personal money group with Payments; D-113 (PROJECT.md:358) matches R-176 on the sidebar foot; the Settings row (app-sidebar.tsx:143) has the pressed step of the nav rows; the kit status menu uses Waiting and In wallet (components-showcase.tsx:288-290); the notifications test is named for Settings (navigation.spec.ts:793); payment-detail.tsx:221 uses PAYMENT_STATUS.canceled; R-50 and DESIGN.md:734-738 are split into short sentences. Verify passed again at 15:54:39Z and docs-check has 0 errors. Live navigation rerun (live-nav.log): 17 passed, 5 failed. The test at :24 now passes the search step and the new header and confirmation steps. It stops at :95, which looks for a Payment progress list in the Amount panel. The same step is in the main version of the test (line 88), and the owner invoice page on main renders no such list, so it fails on main too. The other 4 failures (:293, :322, :416, :1223) are the same tests as before: unchanged from main, failing there for the same missing parts. NOTES, not blocking: (1) The steps of the :24 test after :95 (activity table, Paid filter, record links) have still not passed live, because :95 stops the test first. Fix or drop the old progress steps in a follow-up so the rest runs. (2) Four images are still unused (balance-day, balance-night, hero-night, not-found .webp, 324 KB), and images.md:9 still says the old rows serve /kit/directions. (3) Three step markers keep separate state constants (stepper.tsx, display/timeline.tsx, payment-timeline.tsx). (4) In DESIGN.md:117-119 the new sub-bullet sits before the collapse-button lines, so they render inside it; move it after them. No secrets, no AI mention and no outside product names added.",
-          "at": "2026-10-29T16:00:41Z",
-          "filesHash": "d3e01863cd5b1904"
         }
       },
       "branch": "feat/f342-the-app-and-its-kit-follow-the-signal-di",
       "baseCommit": "e10da4f60438e0b379c55adab058cc25b1bb5d8e",
-      "failedVerifies": 0
+      "failedVerifies": 1
     },
     {
       "id": "F343",

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { ToastProvider, TooltipProvider } from "@forwend/ui-web";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { ExportTransactions } from "@/features/transactions/components/export-transactions";
@@ -306,8 +306,7 @@ describe("records", () => {
         screen.getByRole("button", { name: downloadLabel }) as HTMLButtonElement;
       expect(download().disabled).toBe(true);
       finishRead?.();
-      await settle();
-      expect(download().disabled).toBe(false);
+      await waitFor(() => expect(download().disabled).toBe(false));
       pickRange("2026-10-01", "2026-10-31");
       await choose("EUR · Euro");
       expect(download().disabled).toBe(true);
@@ -321,14 +320,14 @@ describe("records", () => {
       expect((screen.getByRole("combobox") as HTMLButtonElement).disabled).toBe(true);
       expect(writes).toBe(1);
       finishSave?.(false);
-      await settle();
-      expect(screen.getByText("We could not save the currency. Try again.")).toBeTruthy();
+      await waitFor(() =>
+        expect(screen.getByText("We could not save the currency. Try again.")).toBeTruthy(),
+      );
       expect(download().disabled).toBe(true);
       await choose("EUR · Euro");
       expect(writes).toBe(2);
       finishSave?.(true);
-      await settle();
-      expect(download().disabled).toBe(false);
+      await waitFor(() => expect(download().disabled).toBe(false));
       fireEvent.click(download());
       await settle();
       expect(exported).toEqual(["EUR"]);
