@@ -375,7 +375,7 @@
         "Payment detail links its invoice, link, store and documents; the payments, invoices and activity lists page by cursor with bounded reads"
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "backend",
         "web-unit",
@@ -391,14 +391,24 @@
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-29 review fail by independent-reviewer: Fail. The code meets accept 2 and most of accepts 1 and 3. Proofs 1 and 3 claim more than their tests show, and accept 3 does not hold for links. Accept 1: the six tables render through shared/components/data-table.tsx with the shared RowsSkeleton, LoadError, EmptyState, NoMatch and ListToolbar. Accept 2: holds. Badges go through shared/lib/payment-state.ts, which reads the backend state and wallet fields. TestOwedToYou (invoices_owed_test.go:66) and TestHeldCheckoutDoesNotBreakBillingOwedList (payment_purposes_test.go:59) exist, and payments.test.tsx:20-28 tests the mapper. Blocking: (1) Proof 3 says the live payments spec checks that the payment page links its invoice, link, store and documents. It checks only the invoice link (payments.spec.ts:823-826). The code renders all of them (payment-detail.tsx:323-339, 362-365), but nothing tests the link, store or PDF links on that page. Add those assertions or narrow the proof. (2) Proof 1 names build, which only shows the tables compile. The states it claims rest on live runs outside the harness, and those runs do not cover the claim. The empty-state test covers only invoices, activity and transactions (navigation.spec.ts:1167-1218). No live test checks the clients, links or stores list states. navigation.spec.ts:24 (filter and search) still failed in the last run by hand. Links, stores, clients and jobs have no paging at all. Live runs by hand are not acceptable as written: name the exact specs that passed and claim only what they cover, or run them through the harness. (3) Accept 3 says lists page by cursor with bounded reads. Payments, invoices and activity do. Links do not: links-api.ts:19 reads every link, link/read.go:33 and :43 read all rows without a limit, and links have no per-profile cap. Clients, jobs and stores read whole lists but are capped at 1000, 1000 and 20. The client and store pages also load the whole list to show one record (client-screen.tsx:29-32, store-screen.tsx:34-36), which R-177 rules out. Narrow accept 3 to the lists that page, and record links paging and those two pages as follow-up work, or fix them."
+        "2026-10-29 review fail by independent-reviewer: Fail. The code meets accept 2 and most of accepts 1 and 3. Proofs 1 and 3 claim more than their tests show, and accept 3 does not hold for links. Accept 1: the six tables render through shared/components/data-table.tsx with the shared RowsSkeleton, LoadError, EmptyState, NoMatch and ListToolbar. Accept 2: holds. Badges go through shared/lib/payment-state.ts, which reads the backend state and wallet fields. TestOwedToYou (invoices_owed_test.go:66) and TestHeldCheckoutDoesNotBreakBillingOwedList (payment_purposes_test.go:59) exist, and payments.test.tsx:20-28 tests the mapper. Blocking: (1) Proof 3 says the live payments spec checks that the payment page links its invoice, link, store and documents. It checks only the invoice link (payments.spec.ts:823-826). The code renders all of them (payment-detail.tsx:323-339, 362-365), but nothing tests the link, store or PDF links on that page. Add those assertions or narrow the proof. (2) Proof 1 names build, which only shows the tables compile. The states it claims rest on live runs outside the harness, and those runs do not cover the claim. The empty-state test covers only invoices, activity and transactions (navigation.spec.ts:1167-1218). No live test checks the clients, links or stores list states. navigation.spec.ts:24 (filter and search) still failed in the last run by hand. Links, stores, clients and jobs have no paging at all. Live runs by hand are not acceptable as written: name the exact specs that passed and claim only what they cover, or run them through the harness. (3) Accept 3 says lists page by cursor with bounded reads. Payments, invoices and activity do. Links do not: links-api.ts:19 reads every link, link/read.go:33 and :43 read all rows without a limit, and links have no per-profile cap. Clients, jobs and stores read whole lists but are capped at 1000, 1000 and 20. The client and store pages also load the whole list to show one record (client-screen.tsx:29-32, store-screen.tsx:34-36), which R-177 rules out. Narrow accept 3 to the lists that page, and record links paging and those two pages as follow-up work, or fix them.",
+        "2026-10-29 review fail by independent-reviewer: Fail, on one false sentence in proof 1; everything else is settled. 4476517f narrows accept 3 to payments, invoices and activity. Those page by cursor with a limit in TestPaymentSearchKeepsPaginationAndProfileScope (payment_operations_test.go:629), the invoice and activity cases in list_search_test.go:15-32, and activity_test.go:109. Links paging and single-record client and store pages are queued as F348 and F349 against R-177. payments.spec.ts:827-840 now checks the payment page's link, store and invoice PDF links in the Details region; they match payment-detail.tsx:330-362. The spec was edited at 18:51, before both live runs. live-f343b.log passed at 1440px and 390px. The earlier 390px failure (live-f343.log) stopped at payments.spec.ts:804, before the new lines. Proofs 2 and 3 now say what proves them. Blocking: proof 1 says shared/components/data-table.tsx owns the loading skeleton, load error, empty state, no-match state and toolbar. It does not: data-table.tsx renders only the table and the phone rows. The states come from separate shared components: rows-skeleton.tsx, load-error.tsx, no-match.tsx, list-toolbar.tsx and the kit's EmptyState, which each table imports. So the build check does not show what that sentence claims. Reword it, for example: all six tables compile against data-table.tsx and import the shared RowsSkeleton, LoadError, NoMatch, ListToolbar and EmptyState. Keep the two named live specs as they are; both passed in live-f343.log.",
+        "2026-10-29 review pass by independent-reviewer: Pass. Proof 1 now says the six tables compile against shared/components/data-table.tsx and take their states from the shared RowsSkeleton, LoadError, ListToolbar, EmptyState and NoMatch where the list has them. That matches the code: payment-list.tsx and payments-screen.tsx, invoices-table.tsx, clients-table.tsx and jobs-table.tsx use all five. links-table.tsx has no NoMatch, and stores-table.tsx has no EmptyState or NoMatch; R-134 says stores are never empty. The two live specs named in proof 1 passed in live-f343.log. Accept 2 and proof 2 hold, as in the first review. Accept 3 and proof 3 hold, as in the second review: payments, invoices and activity page by cursor with a limit in the backend tests. payments.spec.ts:823-840 checks the payment page's invoice, link, store and invoice PDF links and passed at 1440px and 390px in live-f343b.log. Only docs/tasks.json changed since 4476517f, and verify passed at 17:02Z. Links paging and single-record client and store pages remain open as F348 and F349 against R-177."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-29T16:41:30Z",
+        "at": "2026-10-29T17:02:33Z",
         "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
           {
             "id": "docs-check",
             "outcome": "passed",
@@ -407,11 +417,28 @@
             "log": ""
           },
           {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "e2e",
@@ -425,8 +452,9 @@
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 243.6,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "web-unit",
@@ -440,23 +468,24 @@
             "id": "web-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 22.1,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           }
         ],
-        "taskHash": "8ba29d1992d2dbae",
-        "filesHash": "61a4b09f26333224",
+        "taskHash": "677c5b1bcc38e820",
+        "filesHash": "c5e4144bf1103c88",
         "proof": {
-          "1": "build: the payments, invoices, links, stores, clients and jobs tables all render through shared/components/data-table.tsx; their loading, empty, filtered and paged states pass in the live list tests run by hand on 2026-10-29",
+          "1": "build: all six tables compile against shared/components/data-table.tsx and take their states from the shared RowsSkeleton, LoadError, ListToolbar, EmptyState and NoMatch where the list has them; run by hand on 2026-10-29, navigation.spec 'empty and filtered-out lists' (invoices, activity, transactions) and payments.spec 'payment lists, reconciliation and detail remain usable on a phone' passed",
           "2": "backend: TestOwedToYou and TestHeldCheckoutDoesNotBreakBillingOwedList keep Owed to you to receivables; web-unit payment tests read status and wallet state through the shared payment-state mapper",
-          "3": "backend: payment operation and list search tests page by cursor with bounded reads; the live payments spec checks the payment page links its invoice, link, store and documents"
+          "3": "backend: payment operation and list search tests page payments, invoices and activity by cursor with a limit; run by hand on 2026-10-29, payments.spec 'the same payment agrees across collection pages' (1440px and 390px) checks the payment page's invoice, link, store and invoice PDF links"
         },
         "review": {
-          "result": "fail",
+          "result": "pass",
           "by": "independent-reviewer",
-          "summary": "Fail. The code meets accept 2 and most of accepts 1 and 3. Proofs 1 and 3 claim more than their tests show, and accept 3 does not hold for links. Accept 1: the six tables render through shared/components/data-table.tsx with the shared RowsSkeleton, LoadError, EmptyState, NoMatch and ListToolbar. Accept 2: holds. Badges go through shared/lib/payment-state.ts, which reads the backend state and wallet fields. TestOwedToYou (invoices_owed_test.go:66) and TestHeldCheckoutDoesNotBreakBillingOwedList (payment_purposes_test.go:59) exist, and payments.test.tsx:20-28 tests the mapper. Blocking: (1) Proof 3 says the live payments spec checks that the payment page links its invoice, link, store and documents. It checks only the invoice link (payments.spec.ts:823-826). The code renders all of them (payment-detail.tsx:323-339, 362-365), but nothing tests the link, store or PDF links on that page. Add those assertions or narrow the proof. (2) Proof 1 names build, which only shows the tables compile. The states it claims rest on live runs outside the harness, and those runs do not cover the claim. The empty-state test covers only invoices, activity and transactions (navigation.spec.ts:1167-1218). No live test checks the clients, links or stores list states. navigation.spec.ts:24 (filter and search) still failed in the last run by hand. Links, stores, clients and jobs have no paging at all. Live runs by hand are not acceptable as written: name the exact specs that passed and claim only what they cover, or run them through the harness. (3) Accept 3 says lists page by cursor with bounded reads. Payments, invoices and activity do. Links do not: links-api.ts:19 reads every link, link/read.go:33 and :43 read all rows without a limit, and links have no per-profile cap. Clients, jobs and stores read whole lists but are capped at 1000, 1000 and 20. The client and store pages also load the whole list to show one record (client-screen.tsx:29-32, store-screen.tsx:34-36), which R-177 rules out. Narrow accept 3 to the lists that page, and record links paging and those two pages as follow-up work, or fix them.",
-          "at": "2026-10-29T16:49:56Z",
-          "filesHash": "61a4b09f26333224"
+          "summary": "Pass. Proof 1 now says the six tables compile against shared/components/data-table.tsx and take their states from the shared RowsSkeleton, LoadError, ListToolbar, EmptyState and NoMatch where the list has them. That matches the code: payment-list.tsx and payments-screen.tsx, invoices-table.tsx, clients-table.tsx and jobs-table.tsx use all five. links-table.tsx has no NoMatch, and stores-table.tsx has no EmptyState or NoMatch; R-134 says stores are never empty. The two live specs named in proof 1 passed in live-f343.log. Accept 2 and proof 2 hold, as in the first review. Accept 3 and proof 3 hold, as in the second review: payments, invoices and activity page by cursor with a limit in the backend tests. payments.spec.ts:823-840 checks the payment page's invoice, link, store and invoice PDF links and passed at 1440px and 390px in live-f343b.log. Only docs/tasks.json changed since 4476517f, and verify passed at 17:02Z. Links paging and single-record client and store pages remain open as F348 and F349 against R-177.",
+          "at": "2026-10-29T17:02:50Z",
+          "filesHash": "c5e4144bf1103c88"
         }
       },
       "branch": "feat/f343-a-merchant-can-follow-one-payment-from-r",
