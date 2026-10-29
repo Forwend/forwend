@@ -1823,7 +1823,7 @@
         "PLAN 11.10.3 says approving a refund claim sets the invoice's refund status to refund_pending, which reopen already refuses, so held money a queued Safe refund will return can't settle to the creator first"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check"
       ],
@@ -1851,11 +1851,18 @@
         "filesHash": "7f64708777ee7514",
         "proof": {
           "1": "docs-check: PLAN 11.10.3 refund_pending note passes link, ID and sentence checks"
-        }
+        },
+        "commit": "aaf5ca31",
+        "doneAt": "2026-10-29T23:58:56Z"
       },
       "branch": "docs/f363-a-safe-refund-under-way-can-t-also-go-to",
       "baseCommit": "e25a680d573442fe571b6915f332c5b33911972c",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f363-a-safe-refund-under-way-can-t-also-go-to",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
