@@ -357,7 +357,7 @@ func TestStatement(t *testing.T) {
 		t.Fatalf("statement: %d %.40q", got.status, got.raw)
 	}
 	text := pdfText(t, []byte(got.raw))
-	mustContain(t, text, "Statement", "2025-10-01 to 2025-10-31", "ACCOUNT HOLDER", "Alice Design GmbH",
+	mustContain(t, text, "Statement", "2025-10-01 to 2025-10-31", "Account holder", "Alice Design GmbH",
 		"Tax ID DE123456789", "EUR",
 		"2025-10-09 10:00", "INV-0001 · Bob Ltd", "5.00", "4.00", "5.00 USDC on Base Sepolia", paid,
 		"2025-10-09 12:00", "Income", "1.23", "0.99", "1.234567 USDC on Base Sepolia", income,

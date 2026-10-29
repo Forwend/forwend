@@ -101,8 +101,8 @@ func TestCanceledInvoicePDF(t *testing.T) {
 		t.Fatalf("a canceled invoice's PDF must not answer 304 for the payable one: %d", r.status)
 	}
 	text := pdfText(t, r.body)
-	mustContain(t, text, "Forwend\nInvoice\nINV-0001\nReference PO-7\nTESTNET\nTest mode: testnet tokens have no value\nCanceled\n",
-		"Do not send money.", "Supply date\n2026-10-01\nCanceled", "Total\n5.00 USDC\nAgreed value 4.00 GBP on 2026-10-01")
+	mustContain(t, text, "Forwend\nInvoice\nINV-0001\nReference PO-7\nTestnet\nTest mode: testnet tokens have no value\nCanceled\n",
+		"Do not send money.", "Supply date\n1 Oct 2026\nCanceled", "Total\n5.00 USDC\nAgreed value 4.00 GBP on 2026-10-01")
 	if qrDrawn(t, r.body) {
 		t.Fatalf("the canceled PDF still has a QR code")
 	}
