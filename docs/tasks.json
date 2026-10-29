@@ -1747,7 +1747,7 @@
         "fees(), replacements and stuck-deploy replacements never exceed the chain's maxFeePerGas; a chain without one fails the signer's start-up check; below 20 deploys and settles of gas the signer logs ALERT executor gas runs low every 5 minutes, bounded by its attempt timeout"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend-affected",
         "docs-check"
@@ -1802,11 +1802,18 @@
           "summary": "PASS. The two split lines in docs/backend/architecture.md are within 25 words and true. Replacement: lead sentence 20 words, sub-bullet 9 words, and it matches replace() (limit is the smaller of MaxFeeFactor times the new fee cap and the chain ceiling; over it the old bytes are sent again). Stuck deploy: lead sentence 25 words (at the limit), sub-bullet 17 words, and it matches overStuck() (twice the fee, clamped to the ceiling). Every sentence added or changed in the task is 25 words or fewer: startup bullets 14 and 16, ceiling bullets 16, 18 and 16, line 429 at 22. docs-check reports 0 errors. Code and tests are unchanged from my last review: go test -count=1 ./internal/settlement/ passed in full (232 s) then, and the targeted TestCheckGas, TestFees, TestSignerAlerts, TestReplacementNeverPassesTheCeiling, TestStuckDeployReplacementStopsAtTheCeiling, TestDeployReplacesAStuckTransaction and TestStuckSettle runs pass again now; gofmt, go vet and go build are clean. Mutation checks from the earlier rounds all fail the right test: no ceiling in fees(), no tip clamp, no ceiling in replace(), 1e18 ceiling in overStuck(), no alert, count of 1, no pacing, Tempo ignoring the count, no timeout on the check, no MaxFeeFactor. Money and liveness findings stand: tip is clamped to the fee cap; a replacement at the ceiling is resent as is; a base fee above the ceiling makes the node refuse the send, the intent stays pending and settles once the fee drops; only sign(), replace(), overStuck() and fillGap() sign, all bounded; a chain without a ceiling stops start-up like a CheckGas shortfall. Accepted non-blocking: silent non-fund errors in the alert check, and Anvil ids 31337 and 31338 in the ceiling map.",
           "at": "2026-10-29T23:58:16Z",
           "filesHash": "8684d6fa879b6308"
-        }
+        },
+        "commit": "59442c2c",
+        "doneAt": "2026-10-29T23:58:29Z"
       },
       "branch": "fix/f362-no-provider-can-make-the-executor-pay-mo",
       "baseCommit": "673b18f65c922a66c4058061d8f38e511bdbbf0d",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f362-no-provider-can-make-the-executor-pay-mo",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
