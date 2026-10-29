@@ -357,7 +357,8 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
 - Each asset row counts pending, unbooked, exceptional and other-asset movements, and the chain's finalized block.
 - `checkpointBalance` and `checkpointDifference` are null: the scan keeps no balance per receiver (D-116).
 - `unprovedDeposits` is 0 and every receiver counts as verified.
-  - The chain's scan covers each watched address from its creation until 30 days after its settle deadline.
+  - The chain's scan reads each address's deposits from its creation until 30 days after its settle deadline.
+  - It reads the receiver's own events for as long as the receiver holds booked money.
 - Missing source evidence stays explicit; financial journals and immutable source records remain independently inspectable.
 - Every operation uses one repeatable-read database snapshot; CSV snapshot headers identify its cutoff.
 - Wallet transaction exports and statements also read their records-currency setting inside the same snapshot as their rows.

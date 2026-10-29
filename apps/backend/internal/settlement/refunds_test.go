@@ -72,6 +72,70 @@ func TestAuthorityRefundReducesHeldFundsWithoutInventingSettlement(t *testing.T)
 	}
 }
 
+// pastWatchWindow moves an invoice 40 days past its settle deadline; deposits are watched only 30 days past it.
+func (e env) pastWatchWindow(t *testing.T, id string) {
+	t.Helper()
+	for _, q := range []string{"ALTER TABLE invoices DISABLE TRIGGER invoices_guard",
+		"UPDATE invoices SET expires_at = extract(epoch FROM now())::bigint - 41 * 86400, settle_deadline = extract(epoch FROM now())::bigint - 40 * 86400 WHERE id = '" + id + "'",
+		"ALTER TABLE invoices ENABLE TRIGGER invoices_guard"} {
+		if _, err := e.pool.Exec(t.Context(), q); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func (e env) scanAndBook(t *testing.T) {
+	t.Helper()
+	e.anvil.Mine(2)
+	if err := e.watch.Scan(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.ledger.ProcessChain(t.Context(), e.chainID); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRefundAfterTheWatchWindowIsBookedWhileHeldMoneyRemains(t *testing.T) {
+	e := setup(t)
+	id, receive := e.paidInvoice(t) // 5 USDC paid 6: 1 held for the payer
+	e.deployReceiver(t, id)
+	e.anvil.Send(receive, "settle()")
+	e.scanAndBook(t)
+	if got := e.invoice(t, id); got.SettlementStatus != "settled" || got.RefundStatus != "held" {
+		t.Fatalf("before the window ends: settlement %s, refund %s", got.SettlementStatus, got.RefundStatus)
+	}
+	e.pastWatchWindow(t, id)
+	e.create(t, 8) // deposits are still read for invoices inside the window
+	e.anvil.AsAuthority(receive, "refund(address,uint256)", chaintest.Sender, "1000000")
+	e.anvil.Transfer(e.token, receive, "2000000")
+	e.scanAndBook(t)
+	a, err := ledger.ReadAmounts(t.Context(), e.pool, id)
+	if err != nil || a.Refunded.String() != "1000000" || a.Held.Sign() != 0 || a.Unreconciled {
+		t.Fatalf("refund of held money after the watch window: %+v %v", a, err)
+	}
+	var deposits int
+	if err := e.pool.QueryRow(t.Context(), "SELECT count(*) FROM chain_transfers WHERE invoice_id = $1", id).Scan(&deposits); err != nil || deposits != 1 {
+		t.Fatalf("a deposit after the watch window was recorded: %d rows, %v", deposits, err)
+	}
+}
+
+func TestSettleAfterTheWatchWindowIsBookedWhilePaidMoneyRemains(t *testing.T) {
+	e := setup(t)
+	id, receive := e.create(t, 7)
+	e.anvil.Transfer(e.token, receive, "5000000")
+	e.scanAndBook(t)
+	e.deployReceiver(t, id)
+	e.pastWatchWindow(t, id)
+	if got := e.invoice(t, id); got.PaymentStatus != "paid" || got.RefundStatus != "none" {
+		t.Fatalf("paid exactly: payment %s, refund %s", got.PaymentStatus, got.RefundStatus)
+	}
+	e.anvil.Send(receive, "settle()")
+	e.scanAndBook(t)
+	if got := e.invoice(t, id); got.SettlementStatus != "settled" {
+		t.Fatalf("a settle after the watch window: settlement %s, want settled", got.SettlementStatus)
+	}
+}
+
 func TestOfflinePurchaseAndExternalSettlementBookInChainOrder(t *testing.T) {
 	e := setup(t)
 	id, receive := e.create(t, 41)
