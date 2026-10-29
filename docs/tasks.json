@@ -372,10 +372,10 @@
       "acceptance": [
         "Payments, invoices, links, stores, clients and jobs use one compact DataTable with shared loading, empty, error and filter states",
         "Payment status and wallet transfer come from one shared mapper and the backend's derived state; Owed to you lists receivables only",
-        "Payment detail links its invoice, link, store, documents and next step; lists page by cursor with bounded reads"
+        "Payment detail links its invoice, link, store and documents; lists page by cursor with bounded reads"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend",
         "web-unit",
@@ -392,7 +392,67 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-29T16:41:30Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 243.6,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 22.1,
+            "log": ""
+          }
+        ],
+        "taskHash": "8ba29d1992d2dbae",
+        "filesHash": "61a4b09f26333224",
+        "proof": {
+          "1": "build: the payments, invoices, links, stores, clients and jobs tables all render through shared/components/data-table.tsx; their loading, empty, filtered and paged states pass in the live list tests run by hand on 2026-10-29",
+          "2": "backend: TestOwedToYou and TestHeldCheckoutDoesNotBreakBillingOwedList keep Owed to you to receivables; web-unit payment tests read status and wallet state through the shared payment-state mapper",
+          "3": "backend: payment operation and list search tests page by cursor with bounded reads; the live payments spec checks the payment page links its invoice, link, store and documents"
+        }
+      },
+      "branch": "feat/f343-a-merchant-can-follow-one-payment-from-r",
+      "baseCommit": "5d04798c889e6a9246e441010f3f2b3ca7fcc882",
+      "failedVerifies": 0
     },
     {
       "id": "F344",
