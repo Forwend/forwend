@@ -1,13 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
-import {
-  nextStep,
-  optionFigures,
-  paymentState,
-  paymentWallet,
-} from "@/features/payments/lib/payments";
-import type { PaymentDetail } from "@/features/payments/types/payments";
+import { optionFigures, paymentState, paymentWallet } from "@/features/payments/lib/payments";
 
 describe("merchant payment money", () => {
   it("keeps large base units, negative changes and subcent precision exact", () => {
@@ -61,28 +55,5 @@ describe("optionFigures", () => {
       extra: 0n,
       due: 100000n,
     });
-  });
-});
-
-describe("nextStep", () => {
-  const refunded = (paymentStatus: string, closed: boolean) =>
-    ({
-      problems: [],
-      refundStatus: "refunded",
-      paymentStatus,
-      closed,
-      confirming: false,
-      settlementStatus: "none",
-      options: [],
-      snapshotAt: "2026-10-29T12:00:00Z",
-    }) as unknown as PaymentDetail;
-
-  it("calls a refunded payment complete only when it was paid", () => {
-    expect(nextStep(refunded("partially_paid", true))).toBe(
-      "The money received was returned to the payer.",
-    );
-    expect(nextStep(refunded("paid", false))).toBe(
-      "Paid. The extra money was returned to the payer.",
-    );
   });
 });

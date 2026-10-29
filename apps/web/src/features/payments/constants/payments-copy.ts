@@ -123,23 +123,6 @@ export const PAYMENT_DETAIL_COPY = {
   invoicePdf: "Invoice PDF",
   receiptPdf: "Receipt PDF",
   noDocuments: "Receipt once paid",
-  next: {
-    review:
-      "Payment records need a check. Contact support before asking the customer to pay again.",
-    returned: "The money received was returned to the payer.",
-    returnedExtra: "Paid. The extra money was returned to the payer.",
-    canceled: "This payment was canceled. Money sent to it now is held for the payer.",
-    overpaid:
-      "Paid. The customer sent more than requested; the extra is held for them, not paid to you.",
-    overpaidConfirming:
-      "The customer sent more than requested. Once confirmed, the extra is held for them. Don't ask them to pay again.",
-    paidPending: "Paid. The transfer to your wallet is in progress.",
-    delayed: "Confirmation is taking longer than usual. Don't ask the customer to pay again.",
-    confirming: "Payment detected; awaiting confirmation. Don't ask the customer to pay again.",
-    expiredPartly: "Checkout closed after a partial payment. Reopen it once, or bill the rest.",
-    expired: "Checkout closed without payment. Send a new invoice or link to collect it.",
-    partly: "Partly paid. The customer can pay the rest through the same checkout.",
-  },
 } as const;
 
 export const RECONCILIATION_COPY = {

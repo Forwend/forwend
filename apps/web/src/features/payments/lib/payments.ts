@@ -1,8 +1,7 @@
 import { PAYMENT_STATUSES, type PaymentStatus, type WalletState } from "@forwend/ui-web";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { PAYMENT_PROBLEMS } from "@/features/payments/constants/payments";
-import { PAYMENT_DETAIL_COPY } from "@/features/payments/constants/payments-copy";
-import type { Payment, PaymentDetail } from "@/features/payments/types/payments";
+import type { Payment } from "@/features/payments/types/payments";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { paymentStatusOf, walletStateOf } from "@/shared/lib/payment-state";
 /** What the merchant knows the payment by: their order reference, else the invoice number, else its title. */
@@ -48,46 +47,6 @@ export function receivedAmount(amounts: Payment["amounts"]): string {
     BigInt(amounts.settled) +
     BigInt(amounts.refunded)
   ).toString();
-}
-
-// A confirmed deposit the ledger has not booked within this long reads as delayed, not routine.
-const DELAYED_MS = 5 * 60 * 1000;
-
-/** The one sentence a payment page leads with: what happened and what the merchant can do now. */
-/** What to know or do next; null where the status badge already says it all: waiting, or paid and in the wallet. */
-export function nextStep(payment: PaymentDetail, extra = 0n): string | null {
-  const next = PAYMENT_DETAIL_COPY.next;
-  if (payment.problems.some((p) => p.action === "review_funds" && p.code !== "held_funds")) {
-    return next.review;
-  }
-  const status = paymentDisplayStatus(payment);
-  if (payment.refundStatus === "refunded")
-    return status === "paid" || status === "overpaid" ? next.returnedExtra : next.returned;
-  if (status === "canceled") return next.canceled;
-  if (status === "overpaid") return next.overpaid;
-  if (status === "paid") {
-    return payment.settlementStatus === "settled" ? null : next.paidPending;
-  }
-  const delayed = payment.options.some((option) =>
-    option.deposits.some(
-      (deposit) =>
-        deposit.status === "confirmed" &&
-        deposit.paid === null &&
-        Date.parse(payment.snapshotAt) - Date.parse(deposit.blockTime) > DELAYED_MS,
-    ),
-  );
-  // A partial payment whose rest is still being checked is confirming, not a reason to collect again.
-  const checking = payment.problems.some(
-    (p) => p.code === "partial_payment" && p.action === "wait",
-  );
-  if (status === "confirming" || checking) {
-    if (extra > 0n) return next.overpaidConfirming;
-    return delayed ? next.delayed : next.confirming;
-  }
-  if (status === "expiredPartiallyPaid") return next.expiredPartly;
-  if (status === "expired") return next.expired;
-  if (status === "partiallyPaid") return next.partly;
-  return null;
 }
 
 /** One option's money against what it asked: received includes money still confirming. Extra is money held for the

@@ -513,17 +513,10 @@ test("a partial payment awaiting evidence does not ask the merchant to collect a
     }),
   );
   await page.goto(`/app/payments/${payment.paymentId}`);
-  await expect(
-    page.getByText(
-      "Payment detected; awaiting confirmation. Don't ask the customer to pay again.",
-      { exact: true },
-    ),
-  ).toBeVisible();
-  await expect(
-    page.getByText("Partly paid. The customer can pay the rest through the same checkout.", {
-      exact: true,
-    }),
-  ).toHaveCount(0);
+  const main = page.getByRole("main");
+  await expect(main.locator("header [data-status]")).toHaveText("Partially paid");
+  // The rest is still being checked: no Needs attention panel offers the checkout to collect it.
+  await expect(main.getByRole("heading", { name: "Needs attention" })).toHaveCount(0);
   await context.close();
 });
 
@@ -607,11 +600,8 @@ test("uncredited payment shows the funded option and pending records", async ({ 
   await page.goto(`/app/payments/${payment.paymentId}`);
   const main = page.getByRole("main");
   await expect(main.locator("header [data-status]")).toHaveText("Confirming");
-  await expect(
-    main.getByText(
-      "Confirmation is taking longer than usual. Don't ask the customer to pay again.",
-    ),
-  ).toBeVisible();
+  // The status badges and figures say the state; the page has no next-step sentence (owner request).
+  await expect(main.getByText(/Don't ask the customer to pay again/)).toHaveCount(0);
   await expect(main.getByText("OUSD", { exact: true }).first()).toBeVisible();
   await expect(main.getByText("1.00", { exact: true })).toHaveCount(3);
   await expect(main.locator('[data-status="paid"]')).toHaveCount(0);

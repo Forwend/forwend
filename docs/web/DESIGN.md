@@ -304,7 +304,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Record pages (payment, invoice, client, store, job, link) open with `DetailHeader`; payments and invoices add an icon
   tile before the title and their amount as the figure beside the actions:
   - A 44px back link on phones, the title with its badges, one quiet meta line and the actions at the row's end.
-  - Then the figure with its statuses, then one next-step sentence in a grey box.
+  - Then the figure with its statuses.
+  - The payment page has no next-step sentence: its badges, Amount figures and Needs attention say the state.
   - The body is the 2:1 grid with a Details panel on the side; phones stack it.
 - Checkout (`/app/checkout`, merchants with invoices.write) takes a payment in person:
   - A form page: Store (when more than one), Amount in USD, Order reference and What it's for, then Show QR code.
@@ -351,8 +352,6 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Unpaid attempts stay visible; requested amounts never imply received or settled money.
   - Payment details use `DetailHeader` with the source's icon tile, the status and wallet badges by the title, and
     the requested amount as the header's figure beside Open checkout or Open receipt and Export (both 40px).
-  - Then one sentence of what happened and what to do next, such as "The customer sent more than requested."
-    Where the status badge already says it all (waiting for payment, or paid and in the wallet) it shows none.
   - The body is two columns from extra-large screens: the main column and a 22rem side column.
     - Main: Needs attention (only with a real problem), Amount (Received with "Confirming, not final" or "Final",
       Returned to the payer once refunded, Extra held for the customer in the warning color or Still due while the
