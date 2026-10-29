@@ -11,7 +11,15 @@ import (
 
 // Client checks each resolved address immediately before connecting, including after DNS changes.
 func Client(allowLoopback bool) *http.Client {
-	dialer := &net.Dialer{Timeout: 5 * time.Second, Control: func(_, address string, _ syscall.RawConn) error {
+	return &http.Client{Transport: &http.Transport{DialContext: Dialer(allowLoopback).DialContext,
+		ForceAttemptHTTP2: true, TLSHandshakeTimeout: 5 * time.Second, ResponseHeaderTimeout: 5 * time.Second,
+		IdleConnTimeout: time.Minute, MaxIdleConns: 100, MaxIdleConnsPerHost: 100, MaxResponseHeaderBytes: 64 << 10},
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+}
+
+// Dialer refuses, at connection time, every address that is not public (loopback only when allowed).
+func Dialer(allowLoopback bool) *net.Dialer {
+	return &net.Dialer{Timeout: 5 * time.Second, Control: func(_, address string, _ syscall.RawConn) error {
 		host, _, err := net.SplitHostPort(address)
 		if err != nil {
 			return errors.New("invalid destination")
@@ -22,8 +30,4 @@ func Client(allowLoopback bool) *http.Client {
 		}
 		return nil
 	}}
-	return &http.Client{Transport: &http.Transport{DialContext: dialer.DialContext,
-		ForceAttemptHTTP2: true, TLSHandshakeTimeout: 5 * time.Second, ResponseHeaderTimeout: 5 * time.Second,
-		IdleConnTimeout: time.Minute, MaxIdleConns: 100, MaxIdleConnsPerHost: 100, MaxResponseHeaderBytes: 64 << 10},
-		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 }

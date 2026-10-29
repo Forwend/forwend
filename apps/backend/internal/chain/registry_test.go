@@ -40,7 +40,7 @@ func TestDatabaseEndpointConfiguration(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := specs[84532]
-	if s.Name != "base-sepolia" || len(s.Endpoints) != 4 || ordered(s.Endpoints)[0].ID != "private-a" {
+	if s.Name != "base-sepolia" || len(s.Endpoints) != 6 || ordered(s.Endpoints)[0].ID != "private-a" {
 		t.Fatal("registry lost chain or endpoint priority")
 	}
 	for _, e := range s.Endpoints {

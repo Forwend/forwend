@@ -248,6 +248,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-184 | Money owed in full, recorded or refused never waits without a round or an alert. | Given a partly paid invoice whose payable reaches the amount, then each ledger round checks its finalized balance until it is paid. Given a failed scan, then the round still books recorded money. Given an invoice owed in full but not paid 45 minutes later, then the worker logs an `ALERT`. So does a receiver event unbooked for 30 minutes. A settlement waiting at the daily cap alerts only near its deadline. | backend | R-120, R-180 |
 
+| R-185 | RPC endpoints use HTTPS or WSS in one pool, ranked by measured speed, and dRPC is not used. | Given HTTPS and WSS endpoints for a chain, then each request goes to the one expected to answer soonest. Both share budgets, answer checks, refusals and failover. A WSS endpoint keeps one shared connection and dials again quietly after a drop. An answer that a block or state is missing goes to the next endpoint. Migration 92 removes dRPC. | backend | R-180, D-116 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.

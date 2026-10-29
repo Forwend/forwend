@@ -114,7 +114,7 @@ func validate(spec Spec) error {
 			return invalid("duplicate endpoint")
 		}
 		ids[e.ID], urls[e.URL] = true, true
-		if !outbound.ValidURL(e.URL, spec.AllowLoopback) {
+		if !outbound.ValidURL(httpTwin(e.URL), spec.AllowLoopback) {
 			return invalid("invalid or disallowed RPC URL")
 		}
 	}
@@ -122,6 +122,17 @@ func validate(spec Spec) error {
 		return fmt.Errorf("chain %d: at least one RPC endpoint required", spec.ChainID)
 	}
 	return nil
+}
+
+// httpTwin is a WebSocket URL as http(s), so it passes exactly the checks an HTTP URL does.
+func httpTwin(raw string) string {
+	if rest, ok := strings.CutPrefix(raw, "wss://"); ok {
+		return "https://" + rest
+	}
+	if rest, ok := strings.CutPrefix(raw, "ws://"); ok {
+		return "http://" + rest
+	}
+	return raw
 }
 
 func ordered(endpoints []Endpoint) []Endpoint {

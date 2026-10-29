@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 357,
+  "nextId": 358,
   "tasks": [
     {
       "id": "F332",
@@ -1306,6 +1306,116 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f356-money-owed-in-full-recorded-or-refused-n",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F357",
+      "type": "feat",
+      "behavior": "RPC endpoints use HTTPS or WSS in one pool, ranked by measured speed, and dRPC is not used",
+      "acceptance": [
+        "wss endpoints share the pool's ranking, budget, answer checks, refusals and failover; one shared connection per endpoint with ids matched per call, quiet redial, batches over 50 ranked last on WSS; missing block or state answers fail over; dRPC rows removed and measured public HTTPS/WSS endpoints added"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend-affected",
+        "docs-check"
+      ],
+      "refs": [
+        "R-185"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-29 review fail by independent-reviewer: FAIL, 2 must-fix + 1 must-fix cap. (1) Regression: check() calls post(), so a probe answer such as 'finalized block not found' now returns refusal.missing. do() treats it as a refusal: done(e,nil), no rest, endpoint never marked checked. Repro: such an endpoint is re-probed (chainId, latest, finalized) on every request, failures stay 0, probes burn the shared budget group (publicnode https+wss share one), and with no other endpoint the caller gets the probe's reply 'block or state not available'. Before, the same text was a plain failure and the endpoint rested. Fix: in check() turn a refusal from post() into an ordinary failure; add a test. (2) A caller deadline drops the shared socket: send() drops the connection on any DeadlineExceeded, including the caller's own short deadline. Repro: one call with a 100ms deadline killed a healthy 300ms call on the same socket (ErrUnavailable) and rested the endpoint (failures=1). This contradicts rpc.md 'request deadlines release the endpoint without changing its health'. Fix: drop only when the pool's attempt timeout fired (let post decide using the parent ctx), add a test. (3) No total cap on a batch answered in several frames: each frame is limited to 64 MiB but x.got grows without limit (4 frames of 50 MiB = 200 MiB accepted before post rejects it; up to 50 x 64 MiB for a batch of 50). maxAnswer exists so a hostile host cannot exhaust memory. Fix: sum bytes per exchange, drop the connection past maxAnswer; add a test. Should-fix: send() holds s.mu during dial and write, so a second caller with a 200ms deadline waited 1.9s (up to AttemptTimeout, 5s in production) behind a hung dial. Low: an id-less frame goes to the lone waiter even when it is a result, not an error, and a late id-less error from a cancelled request can reach another lone waiter (fail-safe: safeResponse and failover still apply); safeMessage rewrites revert reasons containing 'pruned' or 'batch ... exceeds/limit' (check 'execution reverted' first); the missing check is a substring over the whole safe body (look at error messages only); refuses() only ranks wss last for batches over 50, so acceptance 'kept off WSS' is 'last' (docs say first, accurate), and the watcher's MaxBatch is 100 so its full batches are HTTPS only. Verified OK: go test -race ./internal/chain ./internal/outbound pass; watcher, worker, and ledger/settlement RPC tests pass; go mod tidy -diff clean; check-docs 0 errors and no changed sentence over 25 words. Socket: no double close or double send (channel is sent once per exchange, closed once, only while registered under s.mu); no id leak on cancel, drop or write failure; hostile frames (binary, non-JSON, 65 MiB, fake ids, notification) drop the connection quickly with no leaked ids and no URL in errors. SSRF: production dialer refuses loopback at dial time for wss, no proxy, 302 on upgrade not followed (0 hits on target). Missing failover: bounded by the tried set, all-miss gives no rest and no loop, a miss never becomes a success so it fails closed; no code reads the old 'header not found' text. tooLarge narrowing keeps Infura, Alchemy, QuickNode, Arc, Base, dRPC-style messages (TestTooLarge plus provider wording checked). Migration 92: Down restores the four dRPC rows exactly as migration 82 seeded them; new ids do not collide; registry count 4 to 6 is right (-1 drpc, +3 new on Base Sepolia). Live run on all four chains: 0 failed calls; PublicNode Base WSS sometimes answers a 20-call batch with a partial frame and no more, costing a 5s wait then drop and failover (provider behaviour, pool recovers).",
+        "2026-10-29 review pass by independent-reviewer: PASS. All three must-fix findings and the should-fix are fixed, each with a test that fails when the fix is removed (checked by reverting each one in a throwaway overlay). (1) check() now uses probe(), which turns a refusal or miss from post() into a failed health check: repro now shows the broken endpoint probed once, failures 1, resting, and the single-endpoint caller gets unavailable, not the probe's answer. (2) The attempt context carries errAttemptTimeout as its cause and send() drops the connection only for that; a caller's own deadline no longer kills other requests. (3) Each exchange sums its frame bytes and deliver drops the connection past socket.limit. (4) connect() dials outside s.mu, one dial at a time; waiters keep their own deadlines and re-dial after a failed dial (checked: a waiter got its answer 250ms after the first dialer's deadline killed its dial; send re-checks s.conn under the lock). Low items: safeMessage keeps 'execution reverted' first, the missing check matches the message field only, acceptance says 'ranked last on WSS'. Checks run: go test -race ./internal/chain ./internal/outbound ok; watcher, worker, ledger and settlement RPC tests ok; go vet clean; check-docs 0 errors; no new doc sentence over 25 words; live run on Base, Arc and Tempo 0 failed calls. Remaining low, not blocking: Close() during an in-progress dial leaves that connection open (dial is outside the lock now; only at shutdown); frame bytes are charged to every exchange that has an answer in the frame (only matters if a server merges answers of several requests into one frame near 64 MiB); a connection that goes idle between connect() and the send lock gives one 'connection lost' failure (microsecond window); id-less result for a lone waiter still accepted (fails safe through safeResponse)."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-29T20:27:40Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 243.6,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.7,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 41.4,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 244.2,
+            "log": ""
+          }
+        ],
+        "taskHash": "e05f5c3e737d4ee3",
+        "filesHash": "67adb505107e1908",
+        "proof": {
+          "1": "backend-affected: chain socket tests (shared connection, redial, silent socket, caller deadline, size limit over frames, dial wait, large batch, refused upgrade, id-less batch refusal, split frames, URL checks), TestHealthCheckMissingTheFinalizedBlockRestsTheEndpoint, TestMissingBlockGoesToAnEndpointThatHasIt, TestRevertReasonKeepsItsCategory, TestBatchTooLarge, TestTooLarge; live run on four chains: 0 failed calls"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent-reviewer",
+          "summary": "PASS. All three must-fix findings and the should-fix are fixed, each with a test that fails when the fix is removed (checked by reverting each one in a throwaway overlay). (1) check() now uses probe(), which turns a refusal or miss from post() into a failed health check: repro now shows the broken endpoint probed once, failures 1, resting, and the single-endpoint caller gets unavailable, not the probe's answer. (2) The attempt context carries errAttemptTimeout as its cause and send() drops the connection only for that; a caller's own deadline no longer kills other requests. (3) Each exchange sums its frame bytes and deliver drops the connection past socket.limit. (4) connect() dials outside s.mu, one dial at a time; waiters keep their own deadlines and re-dial after a failed dial (checked: a waiter got its answer 250ms after the first dialer's deadline killed its dial; send re-checks s.conn under the lock). Low items: safeMessage keeps 'execution reverted' first, the missing check matches the message field only, acceptance says 'ranked last on WSS'. Checks run: go test -race ./internal/chain ./internal/outbound ok; watcher, worker, ledger and settlement RPC tests ok; go vet clean; check-docs 0 errors; no new doc sentence over 25 words; live run on Base, Arc and Tempo 0 failed calls. Remaining low, not blocking: Close() during an in-progress dial leaves that connection open (dial is outside the lock now; only at shutdown); frame bytes are charged to every exchange that has an answer in the frame (only matters if a server merges answers of several requests into one frame near 64 MiB); a connection that goes idle between connect() and the send lock gives one 'connection lost' failure (microsecond window); id-less result for a lone waiter still accepted (fails safe through safeResponse).",
+          "at": "2026-10-29T20:41:00Z",
+          "filesHash": "67adb505107e1908"
+        },
+        "commit": "8044bd82",
+        "doneAt": "2026-10-29T20:41:42Z"
+      },
+      "branch": "feat/f357-rpc-endpoints-use-https-or-wss-in-one-po",
+      "baseCommit": "87508041946409692fb467cd075b8d0f114a6276",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f357-rpc-endpoints-use-https-or-wss-in-one-po",
         "base": "main"
       }
     }
