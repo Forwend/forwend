@@ -13,7 +13,6 @@ import (
 
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
-	"github.com/forwend/forwend/apps/backend/internal/ledger/ledgertest"
 )
 
 func TestMerchantPaymentFiltersSeparateSourcesAndKeepUnpaidAttempts(t *testing.T) {
@@ -50,8 +49,8 @@ func TestMerchantPaymentFiltersSeparateSourcesAndKeepUnpaidAttempts(t *testing.T
 			t.Fatalf("source %s returned %d %v", source, got.status, got.body)
 		}
 		item := items[0].(map[string]any)
-		if item["amounts"].(map[string]any)["reconciliationStatus"] != "pending" {
-			t.Errorf("unscanned option classified as a manual problem: %v", item["amounts"])
+		if item["amounts"].(map[string]any)["reconciliationStatus"] != "verified" {
+			t.Errorf("an unpaid option with no movement was classified as needing work: %v", item["amounts"])
 		}
 		if item["source"] != source || item["amounts"] == nil {
 			t.Fatalf("missing source or net amounts: %v", item)
@@ -141,14 +140,12 @@ func TestPaymentAttentionShowsNetFundsAndDeliveryWithoutChangingPaymentTruth(t *
 	}
 	partial := makePayment("partial")
 	e.deposit(t, partial, "1000000")
-	ledgertest.Checkpoint(t, e.pool, partial, 100, time.Now().Unix()+1, "1000000")
 	endpoint := "33000000-0000-4000-8000-000000000002"
 	if got := e.call(t, "PUT", base+"/webhooks/"+endpoint, alice, "", `{"url":"https://merchant.example/hooks","events":["invoice.paid"],"storeId":"`+first+`"}`); got.status != http.StatusCreated {
 		t.Fatalf("webhook: %d %v", got.status, got.body)
 	}
 	paid := makePayment("held")
 	e.deposit(t, paid, "2500000")
-	ledgertest.Checkpoint(t, e.pool, paid, 100, time.Now().Unix()+1, "2500000")
 	e.exec(t, `UPDATE webhook_deliveries d SET status = 'failed', attempts = 1 FROM webhook_events e
    WHERE d.event_id = e.id AND e.invoice_id = $1`, paid)
 	e.exec(t, `INSERT INTO webhook_attempts (endpoint_id,event_id,status_code,error,duration_ms)
@@ -227,11 +224,11 @@ func TestPaymentAttentionShowsNetFundsAndDeliveryWithoutChangingPaymentTruth(t *
 		t.Fatalf("reconciliation: %d %v", reconciled.status, reconciled.body)
 	}
 	asset := reconciled.body["assets"].([]any)[0].(map[string]any)
-	if asset["closing"].(map[string]any)["receiver"] != "2500000" || asset["checkpointDifference"] != "0" {
+	if asset["closing"].(map[string]any)["receiver"] != "2500000" || asset["checkpointDifference"] != nil {
 		t.Fatalf("reconciliation totals: %v", asset)
 	}
 	coverage := option["coverage"].(map[string]any)
-	if coverage["historyComplete"] != true || coverage["balanceDifference"] != "0" || len(option["deposits"].([]any)) != 1 {
+	if coverage["historyComplete"] != true || coverage["balanceDifference"] != nil || len(option["deposits"].([]any)) != 1 {
 		t.Fatalf("receiver evidence missing: %v", option)
 	}
 	deliveries := detail.body["deliveries"].([]any)
@@ -284,7 +281,6 @@ func TestPaymentMovementExportReconcilesReturnsAndKeepsObservationsOutOfBookedTo
  SELECT i.id,i.chain_id,i.receive_address,i.token_contract,'refund',$2,500000,'0x'||repeat('a',64),1,0,i.id,91,extract(epoch FROM now())::bigint,100,j.id,'' FROM invoices i JOIN ledger_transactions j ON j.invoice_id = i.id AND j.kind = 'refund' WHERE i.id = $1`, id, aliceWallet)
 	e.exec(t, `INSERT INTO receiver_outflows (invoice_id,chain_id,receiver_address,token_contract,kind,destination,amount,tx_hash,log_index,transfer_log_index,block_hash,block_number,block_time,verified_block,reconciliation_error)
  SELECT id,chain_id,receive_address,token_contract,'refund',$2,200000,'0x'||repeat('b',64),1,0,'0x'||repeat('b',64),92,extract(epoch FROM now())::bigint,100,'awaiting_booking' FROM invoices WHERE id = $1`, id, aliceWallet)
-	ledgertest.Checkpoint(t, e.pool, id, 100, time.Now().Unix()+1, "2300000")
 	exported := e.call(t, "GET", base+"/payments/"+id+"/movements.csv", alice, "", "")
 	if exported.status != http.StatusOK {
 		t.Fatalf("CSV: %d %v", exported.status, exported.body)
@@ -329,7 +325,7 @@ func TestPaymentMovementExportReconcilesReturnsAndKeepsObservationsOutOfBookedTo
 		t.Fatalf("summary: %d %v", summary.status, summary.body)
 	}
 	asset := summary.body["assets"].([]any)[0].(map[string]any)
-	if asset["opening"].(map[string]any)["receiver"] != "3000000" || asset["changes"].(map[string]any)["receiver"] != "-500000" || asset["closing"].(map[string]any)["receiver"] != total.String() || asset["checkpointDifference"] != "-200000" || asset["unbookedOutflows"] != float64(1) || asset["refunded"] != "500000" {
+	if asset["opening"].(map[string]any)["receiver"] != "3000000" || asset["changes"].(map[string]any)["receiver"] != "-500000" || asset["closing"].(map[string]any)["receiver"] != total.String() || asset["checkpointDifference"] != nil || asset["unbookedOutflows"] != float64(1) || asset["refunded"] != "500000" {
 		t.Fatalf("summary did not reconcile: %v", asset)
 	}
 	yesterday := time.Now().UTC().AddDate(0, 0, -1).Format(time.DateOnly)
@@ -383,7 +379,6 @@ func TestPaymentMovementExportPreservesLargeBaseUnitsAndRejectsMoreThanTenThousa
  SELECT chain_id,chain_family,token_contract,id,id,0,id,90,extract(epoch FROM now())::bigint,$2,receive_address,$3,'confirmed' FROM invoices WHERE id = $1`, id, aliceWallet, units)
 	e.exec(t, `WITH journal AS (INSERT INTO ledger_transactions (invoice_id,kind,chain_transfer_id) SELECT invoice_id,'deposit',id FROM chain_transfers WHERE invoice_id = $1 RETURNING id)
  INSERT INTO ledger_entries (transaction_id,account,amount) SELECT id,'receiver',$2::numeric FROM journal UNION ALL SELECT id,'recipient_payable',-$2::numeric FROM journal`, id, units)
-	ledgertest.Checkpoint(t, e.pool, id, 100, time.Now().Unix()+1, units)
 	rows := e.call(t, "GET", base+"/payments/"+id+"/movements", alice, "", "")
 	if rows.status != http.StatusOK {
 		t.Fatalf("movements: %d %v", rows.status, rows.body)
@@ -415,76 +410,37 @@ func TestPaymentMovementExportPreservesLargeBaseUnitsAndRejectsMoreThanTenThousa
 	}
 }
 
-func TestPaymentMovementEvidenceKeepsAllocationsAndUnknownCashSourcesDistinct(t *testing.T) {
-	for _, scenario := range []string{"reopen", "unknown_refund"} {
-		t.Run(scenario, func(t *testing.T) {
-			e := invoiceAPI(t)
-			const alice = "did:privy:alice"
-			shop := e.merchant(t)
-			made := e.post(t, alice, shop, scenario, `{"chainId":84532,"token":"`+usdc+`","amount":"2000000"}`)
-			if made.status != http.StatusCreated {
-				t.Fatalf("create: %d %v", made.status, made.body)
-			}
-			id := made.body["invoiceId"].(string)
-			e.deposit(t, id, "1000000")
-			ledgertest.Checkpoint(t, e.pool, id, 100, time.Now().Unix()+1, "1000000")
-			base := "/v1/profiles/" + shop + "/payments/" + id
-			if scenario == "reopen" {
-				e.exec(t, `WITH journal AS (INSERT INTO ledger_transactions (invoice_id,kind) VALUES ($1,'expiry') RETURNING id)
+func TestPaymentMovementAllocationKeepsNoTransferIdentity(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	shop := e.merchant(t)
+	made := e.post(t, alice, shop, "reopen", `{"chainId":84532,"token":"`+usdc+`","amount":"2000000"}`)
+	if made.status != http.StatusCreated {
+		t.Fatalf("create: %d %v", made.status, made.body)
+	}
+	id := made.body["invoiceId"].(string)
+	e.deposit(t, id, "1000000")
+	e.exec(t, `WITH journal AS (INSERT INTO ledger_transactions (invoice_id,kind) VALUES ($1,'expiry') RETURNING id)
       INSERT INTO ledger_entries (transaction_id,account,amount) SELECT id,'recipient_payable',1000000 FROM journal UNION ALL SELECT id,'payer_held',-1000000 FROM journal`, id)
-				e.exec(t, `WITH journal AS (INSERT INTO ledger_transactions (invoice_id,kind,chain_transfer_id) SELECT $1,'reopen',id FROM chain_transfers WHERE invoice_id = $1 RETURNING id),
-      checkpoint AS (INSERT INTO ledger_checkpoints (transaction_id,block_number,block_hash) SELECT id,110,'0x'||repeat('c',64) FROM journal)
+	e.exec(t, `WITH journal AS (INSERT INTO ledger_transactions (invoice_id,kind,chain_transfer_id) SELECT $1,'reopen',id FROM chain_transfers WHERE invoice_id = $1 RETURNING id)
       INSERT INTO ledger_entries (transaction_id,account,amount) SELECT id,'recipient_payable',-1000000 FROM journal UNION ALL SELECT id,'payer_held',1000000 FROM journal`, id)
-				movements := e.call(t, "GET", base+"/movements", alice, "", "")
-				if movements.status != http.StatusOK {
-					t.Fatalf("movements: %d %v", movements.status, movements.body)
-				}
-				found := false
-				for _, entry := range movements.body["items"].([]any) {
-					row := entry.(map[string]any)
-					if row["kind"] != "reopen" {
-						continue
-					}
-					found = true
-					if row["blockNumber"] != float64(110) || row["blockHash"] != "0x"+strings.Repeat("c", 64) || row["txHash"] != nil || row["logIndex"] != nil || row["transferLogIndex"] != nil || row["blockTime"] != nil || row["sourceAmount"] != nil || row["receiverDelta"] != "0" {
-						t.Fatalf("allocation reused old transfer identity: %v", row)
-					}
-				}
-				if !found {
-					t.Fatal("reopen allocation missing")
-				}
-				return
-			}
-			e.exec(t, `WITH journal AS (INSERT INTO ledger_transactions (invoice_id,kind) VALUES ($1,'refund') RETURNING id)
-      INSERT INTO ledger_entries (transaction_id,account,amount) SELECT id,'receiver',-100000 FROM journal UNION ALL SELECT id,'recipient_payable',100000 FROM journal`, id)
-			detail := e.call(t, "GET", base, alice, "", "")
-			option := detail.body["options"].([]any)[0].(map[string]any)
-			if option["amounts"].(map[string]any)["reconciliationStatus"] != "review" {
-				t.Errorf("missing booked source did not require review: %v", option)
-			}
-			if option["coverage"].(map[string]any)["balanceDifference"] != nil || option["amounts"].(map[string]any)["unreconciled"] != true {
-				t.Fatalf("unknown cash position compared to checkpoint: %v", option)
-			}
-			summary := e.call(t, "GET", base+"/reconciliation", alice, "", "")
-			asset := summary.body["assets"].([]any)[0].(map[string]any)
-			if asset["checkpointBalance"] != nil || asset["checkpointDifference"] != nil || asset["unreconciledReceivers"] != float64(1) {
-				t.Fatalf("unknown source omitted: %v", asset)
-			}
-			movements := e.call(t, "GET", base+"/movements", alice, "", "")
-			refunds := 0
-			for _, entry := range movements.body["items"].([]any) {
-				row := entry.(map[string]any)
-				if row["kind"] == "refund" {
-					refunds++
-				}
-				if row["kind"] == "refund" && (row["sourceAmount"] != nil || row["to"] != nil || row["from"] != nil || row["txHash"] != nil || row["verified"] != false || row["receiverDelta"] != "-100000") {
-					t.Fatalf("unknown refund source fabricated: %v", row)
-				}
-			}
-			if refunds != 1 {
-				t.Fatalf("unknown refund journal missing: %v", movements.body)
-			}
-		})
+	movements := e.call(t, "GET", "/v1/profiles/"+shop+"/payments/"+id+"/movements", alice, "", "")
+	if movements.status != http.StatusOK {
+		t.Fatalf("movements: %d %v", movements.status, movements.body)
+	}
+	found := false
+	for _, entry := range movements.body["items"].([]any) {
+		row := entry.(map[string]any)
+		if row["kind"] != "reopen" {
+			continue
+		}
+		found = true
+		if row["blockNumber"] != nil || row["blockHash"] != nil || row["txHash"] != nil || row["logIndex"] != nil || row["transferLogIndex"] != nil || row["blockTime"] != nil || row["sourceAmount"] != nil || row["receiverDelta"] != "0" {
+			t.Fatalf("allocation reused old transfer identity: %v", row)
+		}
+	}
+	if !found {
+		t.Fatal("reopen allocation missing")
 	}
 }
 
@@ -500,7 +456,6 @@ func TestPaymentVerificationWaitsForExplainedSourcesAndAutomaticRescans(t *testi
 	base := "/v1/profiles/" + shop
 	e.exec(t, `INSERT INTO chain_transfers (chain_id,chain_family,token_contract,invoice_id,tx_hash,log_index,block_hash,block_number,block_time,from_address,to_address,amount,status)
  SELECT chain_id,chain_family,token_contract,id,id,0,id,90,extract(epoch FROM now())::bigint,$2,receive_address,1000000,'confirmed' FROM invoices WHERE id=$1`, id, aliceWallet)
-	ledgertest.Checkpoint(t, e.pool, id, 100, time.Now().Unix()+1, "1000000")
 	check := func(want string) {
 		t.Helper()
 		got := e.call(t, "GET", base+"/payments/"+id, alice, "", "")
@@ -528,26 +483,15 @@ func TestPaymentVerificationWaitsForExplainedSourcesAndAutomaticRescans(t *testi
 	check("pending")
 	e.exec(t, `INSERT INTO receiver_outflows (invoice_id,chain_id,receiver_address,token_contract,kind,destination,amount,tx_hash,log_index,transfer_log_index,block_hash,block_number,block_time,verified_block,reconciliation_error)
  SELECT id,chain_id,receive_address,token_contract,'refund',$2,500000,'0x'||repeat('a',64),1,0,'0x'||repeat('a',64),91,extract(epoch FROM now())::bigint,100,'awaiting_booking' FROM invoices WHERE id=$1`, id, aliceWallet)
-	ledgertest.Checkpoint(t, e.pool, id, 100, time.Now().Unix()+1, "500000")
 	check("pending")
-	e.exec(t, "UPDATE receiver_outflows SET reconciliation_error='awaiting_coverage' WHERE invoice_id=$1", id)
-	check("pending")
-	for _, reason := range []string{"opening_balance", "rescan_required"} {
-		e.exec(t, "UPDATE receiver_scans SET reconciliation_error=$2 WHERE invoice_id=$1", id, reason)
-		check("pending")
-	}
 	e.exec(t, `INSERT INTO receiver_outflows (invoice_id,chain_id,receiver_address,token_contract,kind,destination,amount,tx_hash,log_index,block_hash,block_number,block_time,verified_block,reconciliation_error)
  SELECT id,chain_id,receive_address,'0x'||repeat('0',40),'recovery',$2,1,'0x'||repeat('c',64),2,'0x'||repeat('c',64),92,extract(epoch FROM now())::bigint,100,'different_asset' FROM invoices WHERE id=$1`, id, aliceWallet)
 	check("pending")
-	e.exec(t, "UPDATE receiver_scans SET balance=400000 WHERE invoice_id=$1", id)
+	e.exec(t, "INSERT INTO invoice_balance_alerts (invoice_id, alerts, next_check_at) VALUES ($1, 1, now())", id)
 	check("review")
-	e.exec(t, "UPDATE receiver_scans SET balance=500000 WHERE invoice_id=$1", id)
+	e.exec(t, "DELETE FROM invoice_balance_alerts WHERE invoice_id=$1", id)
 	check("pending")
-
-	e.exec(t, "UPDATE receiver_scans SET reconciliation_error='provider_disagreement' WHERE invoice_id=$1", id)
-	check("review")
-	e.exec(t, "UPDATE receiver_scans SET reconciliation_error=NULL WHERE invoice_id=$1", id)
-	e.exec(t, "UPDATE receiver_outflows SET reconciliation_error='insufficient_liability' WHERE invoice_id=$1", id)
+	e.exec(t, "UPDATE receiver_outflows SET reconciliation_error='unexplained_outflow' WHERE invoice_id=$1 AND kind='refund'", id)
 	check("review")
 }
 
@@ -585,8 +529,8 @@ func TestPaymentSummaryOmitsUnusedOptionsWithoutCertifyingTheirHistory(t *testin
 	summaryJSON, _ := json.Marshal(summary.body)
 	t.Logf("300 options: full bytes=%d elapsed=%s; summary bytes=%d elapsed=%s", len(fullJSON), fullElapsed, len(summaryJSON), time.Since(start))
 	amounts := summary.body["amounts"].(map[string]any)
-	if amounts["reconciliationStatus"] != "pending" || amounts["unreconciled"] != true {
-		t.Fatalf("missing history was certified: %v", amounts)
+	if amounts["reconciliationStatus"] != "verified" || amounts["unreconciled"] != false {
+		t.Fatalf("a payment with no movement has nothing to reconcile: %v", amounts)
 	}
 	attention := e.call(t, "GET", "/v1/profiles/"+shop+"/payments/attention", alice, "", "")
 	if attention.status != http.StatusOK || len(attention.body["items"].([]any)) != 0 {
@@ -726,7 +670,6 @@ func TestPaymentStateAndWalletAgreeAcrossReadsAndFilters(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Verified history leaves only the balance check, a normal wait.
-	ledgertest.Checkpoint(t, e.pool, awaiting, 100, time.Now().Unix()+1, "2000000")
 	want[awaiting] = [2]string{"confirming", "none"}
 
 	want[paid("paid", "2000000")] = [2]string{"paid", "pending"}
@@ -859,7 +802,6 @@ func TestPaymentHeldOnAnotherOptionAndLookupByNumberHashAddressOrReference(t *te
   block_hash, block_number, block_time, from_address, to_address, amount, status)
   SELECT chain_id, chain_family, token_contract, id, $2, 0, $2, 92, extract(epoch FROM now())::bigint, $3, receive_address,
   700000, 'confirmed' FROM invoices WHERE id = $1`, other, hash, aliceWallet)
-	ledgertest.Checkpoint(t, e.pool, other, 100, time.Now().Unix()+1, "700000")
 	balances := func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
 		return big.NewInt(700000), 100, nil
 	}

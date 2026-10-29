@@ -1,11 +1,12 @@
 package ledger
 
 import (
+	"context"
 	"fmt"
+	"math/big"
 	"testing"
 
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
-	"github.com/forwend/forwend/apps/backend/internal/ledger/ledgertest"
 )
 
 func TestDepositBacklogCommitsBoundedExactProgress(t *testing.T) {
@@ -31,8 +32,9 @@ func TestDepositBacklogCommitsBoundedExactProgress(t *testing.T) {
  last_finalized_time=1800000001 WHERE chain_id=$1`, chaintest.ChainID); err != nil {
 				t.Fatal(err)
 			}
-			ledgertest.Checkpoint(t, e.pool, id, 10000, 1800000001, fmt.Sprint(count+first-1))
-			service := NewService(e.pool, nil, nil)
+			service := NewService(e.pool, func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
+				return big.NewInt(int64(count + first - 1)), 10000, nil
+			}, nil)
 			for attempt := 1; attempt <= 5; attempt++ {
 				if err := service.Process(ctx, id); err != nil {
 					t.Fatal(err)
@@ -66,7 +68,7 @@ func TestDepositBacklogCommitsBoundedExactProgress(t *testing.T) {
 	}
 }
 
-func TestFundedBatchWaitsForRefundTailBeforeSettlement(t *testing.T) {
+func TestBatchTheChainNoLongerHoldsIsNotPaid(t *testing.T) {
 	e := newChainEnv(t)
 	ctx := t.Context()
 	id, receive := e.invoice(t, 1, 100, 1800000000)
@@ -90,8 +92,10 @@ func TestFundedBatchWaitsForRefundTailBeforeSettlement(t *testing.T) {
  last_finalized_time=1800000001 WHERE chain_id=$1`, chaintest.ChainID); err != nil {
 		t.Fatal(err)
 	}
-	ledgertest.Checkpoint(t, e.pool, id, 10000, 1800000001, "1")
-	service := NewService(e.pool, nil, nil)
+	// On chain: 101 deposited, 100 refunded. The finalized balance keeps the first 100 from counting as paid.
+	service := NewService(e.pool, func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
+		return big.NewInt(1), 10000, nil
+	}, func(context.Context, uint64, string, string) (uint64, error) { return 0, nil })
 	if err := service.Process(ctx, id); err != nil {
 		t.Fatal(err)
 	}
@@ -100,8 +104,8 @@ func TestFundedBatchWaitsForRefundTailBeforeSettlement(t *testing.T) {
 	if err := e.pool.QueryRow(ctx, `SELECT payment_status,NOT (`+UnreconciledSQL("$1")+`) FROM invoices WHERE id=$1`, id).Scan(&state, &ready); err != nil {
 		t.Fatal(err)
 	}
-	if state != Paid || ready {
-		t.Fatalf("funded prefix state=%s settlement ready=%v", state, ready)
+	if state == Paid || ready {
+		t.Fatalf("a batch the chain no longer holds: state=%s settlement ready=%v", state, ready)
 	}
 	for range 2 {
 		if err := service.Process(ctx, id); err != nil {
@@ -118,7 +122,49 @@ func TestFundedBatchWaitsForRefundTailBeforeSettlement(t *testing.T) {
  (SELECT count(*) FROM history_events WHERE invoice_id=$1 AND kind='invoice.paid')`, id).Scan(&receiver, &payable, &held, &refunds, &paid); err != nil {
 		t.Fatal(err)
 	}
-	if receiver != "1" || payable != "0" || held != "1" || refunds != 1 || paid != 1 {
+	if receiver != "1" || payable != "0" || held != "1" || refunds != 1 || paid != 0 {
 		t.Fatalf("receiver=%s payable=%s held=%s refunds=%d paid=%d", receiver, payable, held, refunds, paid)
+	}
+}
+
+func TestRefundFoundAfterLaterMovementsWaitsForReview(t *testing.T) {
+	e := newChainEnv(t)
+	ctx := t.Context()
+	id, receive := e.invoice(t, 2, 5, 1800000000)
+	if _, err := e.pool.Exec(ctx, `INSERT INTO chain_transfers
+ (invoice_id,chain_id,chain_family,token_contract,tx_hash,log_index,block_hash,block_number,block_time,from_address,to_address,amount,status)
+ SELECT $1,$2,'evm',$3,'0x'||lpad(to_hex(b),64,'0'),0,'0x'||lpad(to_hex(b),64,'0'),b,t,'0x4444444444444444444444444444444444444444',$4,5,'confirmed'
+ FROM (VALUES (10,10),(110,1800000100)) AS d(b,t)`, id, chaintest.ChainID, e.token, receive); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.pool.Exec(ctx, `UPDATE chain_cursors SET last_scanned_block=10000,last_finalized_block=10000,
+ last_finalized_time=1800000200 WHERE chain_id=$1`, chaintest.ChainID); err != nil {
+		t.Fatal(err)
+	}
+	service := NewService(e.pool, func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
+		return big.NewInt(10), 10000, nil
+	}, nil)
+	if err := service.Process(ctx, id); err != nil {
+		t.Fatal(err)
+	}
+	// A refund at block 100 that the scan missed until now: the late deposit at 110 is already held for its payer.
+	if _, err := e.pool.Exec(ctx, `INSERT INTO receiver_outflows
+ (invoice_id,chain_id,receiver_address,token_contract,kind,destination,amount,tx_hash,log_index,block_hash,block_number,block_time,verified_block,transfer_log_index)
+ VALUES($1,$2,$3,$4,'refund','0x4444444444444444444444444444444444444444',5,'0x'||repeat('a',64),1,'0x'||lpad(to_hex(100),64,'0'),100,100,10000,0)`,
+		id, chaintest.ChainID, receive, e.token); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.Process(ctx, id); err != nil {
+		t.Fatal(err)
+	}
+	var reason string
+	var booked bool
+	if err := e.pool.QueryRow(ctx, `SELECT reconciliation_error, ledger_transaction_id IS NOT NULL FROM receiver_outflows
+ WHERE invoice_id = $1`, id).Scan(&reason, &booked); err != nil || booked || reason != "historical_order" {
+		t.Fatalf("late refund booked=%v reason=%q (%v); want it refused for review", booked, reason, err)
+	}
+	a, err := ReadAmounts(ctx, e.pool, id)
+	if err != nil || a.ReconciliationStatus != ReconciliationReview || a.Payable.String() != "5" || a.Held.String() != "5" {
+		t.Fatalf("balances after a refused late refund: %+v %v", a, err)
 	}
 }

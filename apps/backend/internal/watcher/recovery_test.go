@@ -56,8 +56,8 @@ func TestFastScanDoesNotRepeatOldWalletLogsAndStillConfirmsPending(t *testing.T)
 			logs++
 		}
 	}
-	if logs != 1 {
-		t.Fatalf("unchanged head used %d log queries, want only the invoice safety query", logs)
+	if logs != 2 {
+		t.Fatalf("unchanged head used %d log queries, want only the invoice and receiver-event safety queries", logs)
 	}
 }
 
@@ -202,7 +202,7 @@ func TestPendingWalletHeightsShareLogRanges(t *testing.T) {
 			logs++
 		}
 	}
-	if logs != 3 {
-		t.Fatalf("pending heights used %d queries, want one invoice and two wallet queries", logs)
+	if logs != 4 {
+		t.Fatalf("pending heights used %d queries, want one invoice, one receiver-event and two wallet queries", logs)
 	}
 }

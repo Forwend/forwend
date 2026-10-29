@@ -15,7 +15,7 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 - Reopen (R-130) gives money held for the payer back to the creator. Only for an option that closed partly paid.
   - Once per invoice, a day or more before its receiver's settle deadline, so a payment at the new close still settles.
   - A receiver deployed early, by a recovery, settles only until 30 days after its deploy (`MAX_HOLD`).
-  - The selected RPC verifies deployment time at the receiver scan checkpoint; known positive deployment evidence never moves back to zero.
+  - The chain's scan reads the deploy time when a receiver first emits an event; a known deploy time never moves back to zero.
   - An early deployment shortens operational `closesAt` to one day before settlement ends. Signed terms remain unchanged.
   - The canary independently verifies a shortened close against both providers' finalized deployment state.
   - Not while a refund is under way: that money goes back to the payer.
@@ -27,40 +27,32 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 - The recipient wallet must exist on the invoice's chain before the invoice is created.
 - Receivers are deployed only when settling, refunding or recovering.
 
-## Receiver evidence and actual outflows
+## Receiver movements
 
-- The signer stores successful settlement receipt observations for progress display, including mined replacement hashes.
-- Missing or reverted receipts clear those observations; they never determine finality, booking or spendable balances.
+- One chain scan reads every watched receive address together (D-116). It has no per-address scan, proof or coverage gate.
+  - Money in: the allowlisted token's `Transfer` logs to the address.
+  - Money out: the receiver's own `Settled`, `Refunded` and `Recovered` events.
+- A deposit or a receiver event counts only at or below the finalized block, with the block hash the RPC returned.
+- Each receiver event is recorded once in `receiver_outflows`, with its block, transaction and log.
+  - The token `Transfer` before it in the same transaction names the transfer that moved the money.
+  - Activity uses that transfer to link a settlement to the profile wallet's incoming transfer.
+  - A receiver event first records the receiver's deploy time; an early deploy can shorten the checkout close (R-130).
+- The signer records its own settle from its finalized receipt, so `settled` never waits for the scan.
+- Recovery sweeps read every block again later, so a log one RPC answer missed is still found.
+- A receiver leaves the scan 30 days after its settle deadline; later refund-authority moves are not recorded.
+- The signer records a receipt's events only when its block is the canonical one at that height.
+- A receiver event that is not a movement of its own invoice logs an `ALERT` and is skipped; the scan goes on.
+- A movement found after later ones were booked is refused for review, never booked against today's balances.
+- The ledger books deposits and receiver events together, in chain order, against the balances at that point.
+  - A movement waits while an earlier deposit is still detected.
+  - Refunds take held money first, then payable; settlements take payable first, then held.
+  - Either exception is recorded as a policy exception and shown to the owner.
+  - An event the balances can't cover stays unbooked with its reason, and later movements wait behind it.
+  - The ledger tries it again every round, so a late-found earlier deposit lets it book.
+- Native or other-asset recoveries are recorded but never booked as accepted-token money.
 - Payment reads calculate remaining blocks and estimated chain time against the saved finalized cursor.
-
-- Migration 78 seeds bounded historical scans for existing receivers; new receivers start at the saved chain cursor.
-- Active payment scans share source reads in groups of 32, then commit evidence separately for each receiver.
-- Catch-up checkpoints use the learned provider range limit, capped at 2,000 blocks; deeper receivers skip batch prefetch.
-- Advancing active checkpoints can continue within the round budget; retries and legacy work remain deferred.
-- Untouched options wait until payment or expiry needs their evidence. Missing evidence remains unverified.
-- Historical receivers run separately, at most two per round and 2,000 blocks per receiver.
-- Successful scans resume from their saved next block. Missing older deposits rewind to that deposit's block.
-- Failed historical reads back off from one minute to six hours; active failures stop at five minutes.
-- Fresh confirmed deposits bypass active retry waits. Failed reads never advance coverage.
-- Requested rescans save their start before reading logs and run outside the active payment job.
-- Unchanged finalized heads retain hash checks without repeating log and balance reads.
-- Nonzero opening balances require scanning from genesis. Empty historical token code is verified before treating balance as zero.
-- Finalized headers bind incoming transfers, receiver events and outgoing transfers; the checkpoint balance must match their net amount.
-- Every confirmed deposit needs its own immutable proof; a later primary observation cannot borrow an older scan checkpoint.
-- Receiver events retain block, transaction and log identity. Exact outgoing transfer identity supports wallet attribution.
-- Coverage commits with source observations. Booking runs separately and preserves unexplained balances, source conflicts and allocation errors.
-- Refunds consume net held before payable. Settlements consume payable before held, with policy exceptions recorded explicitly.
-- Historical fully funded prefixes retain payment truth after actual returns; returned partial deposits cannot accumulate into a false payment.
-- Native or unsupported-asset movements never invent accepted-token deposits or financial bookings.
-- Missing logs on unchanged canonical blocks retry without advancing coverage or creating permanent conflicts (R-175).
-- Legacy missing-transfer conflicts resolve only after exact canonical transfer fields and deposit proofs verify.
-  - Original conflicts and their verified resolutions remain append-only. Genuine contradictions remain blocked.
-  - Migration 85 refuses rollback after resolutions exist; repair forward instead of deleting evidence.
-- Ledger rounds commit at most 100 movements per invoice, preserving chain order and exact balances (R-175).
-  - Pending batches prevent premature expiry. Certified funded prefixes retain historical payment truth.
-  - Unbooked financial movements prevent automatic settlement.
-- Old financial allocations remain permanent. Incompatible historical evidence requires review instead of rewriting balances.
-- Scanner and ledger lock invoice groups before scan rows. Failed receivers retry later without blocking the whole queue.
+- The signer stores successful settlement receipts for progress display, including mined replacement hashes.
+  - Missing or reverted receipts clear them; they never decide finality, booking or balances.
 - Refund claims and execution controls remain in PLAN 11.10.
 
 ## Deciding "paid"
@@ -78,6 +70,8 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
     `invoice_balance_alerts` row makes the worker check it in the next round.
 - Deposits are booked in chain order: one waits while an earlier one is still detected, so the earliest payers are
   paid to the creator first and later ones held (D-27). An empty `balanceOf` answer is an error, never 0.
+- Before signing a new settle, the signer reads the finalized balance of the receive address.
+  - Less than the ledger's booked receiver balance means money left unbooked; it signs nothing and logs an `ALERT`.
 - A deposit is received when seen and paid only at or below the chain's `finalized` block (D-45); show blocks and
   time left until then (`internal/finality`). Read headers, logs and receipts only, and compare block hashes the RPC
   returns: go-ethereum can't decode Base, Arbitrum and Tempo system transactions, and its `Header.Hash()` is wrong on

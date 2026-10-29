@@ -16,7 +16,6 @@ import (
 
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
-	"github.com/forwend/forwend/apps/backend/internal/ledger/ledgertest"
 )
 
 func TestInvoiceDepositPreviewKeepsExactTotalsAndReceipt(t *testing.T) {
@@ -331,7 +330,6 @@ func TestReceiptPDF(t *testing.T) {
 	deposit(first, 90, paidAt.Add(-time.Minute), "1500000")
 	notPaid("partially paid")
 	deposit(second, 95, paidAt, "500000")
-	ledgertest.Checkpoint(t, e.pool, id, 100, paidAt.Unix(), "2000000")
 
 	r := e.pdf(t, id, "receipt.pdf", "")
 	if r.status != http.StatusOK || r.header.Get("Content-Type") != "application/pdf" ||
@@ -389,7 +387,6 @@ func TestReceiptPDF(t *testing.T) {
         SELECT i.id,i.chain_id,i.receive_address,i.token_contract,'settlement',i.recipient_address,i.amount,
         $2,1,$2,100,$3,100,0,t.id,'' FROM invoices i JOIN ledger_transactions t ON t.invoice_id = i.id AND t.kind = 'settlement'
         WHERE i.id = $1`, id, settled, settledAt.Unix())
-	ledgertest.Checkpoint(t, e.pool, id, 100, settledAt.Unix(), "0")
 	times("settled", paid, time.Unix(settledAt.Unix(), 0).UTC().Format(time.RFC3339))
 	if after := e.pdf(t, id, "receipt.pdf", r.header.Get("ETag")); after.status != http.StatusNotModified {
 		t.Fatalf("settled, with the paid receipt's ETag: %d", after.status)

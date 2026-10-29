@@ -12,10 +12,12 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/forwend/forwend/apps/backend/internal/watcher"
+	"github.com/jackc/pgx/v5"
 )
 
 // reconcile: our receipt (any version) with the Settled log decides first, whatever a lagging node says. A reverted
@@ -63,7 +65,7 @@ func (s *Signer) reconcile(ctx context.Context, client *ethclient.Client, in int
 	}
 	if final {
 		in.txHash = nil
-		return s.confirm(ctx, in)
+		return s.confirm(ctx, in, nil)
 	}
 	if now, err := receiverSettled(ctx, client, receive, nil); err != nil || now {
 		return err
@@ -91,7 +93,7 @@ func (s *Signer) unmined(ctx context.Context, client *ethclient.Client, in inten
 	switch {
 	case final && !taken:
 		in.txHash = nil
-		return nil, s.confirm(ctx, in)
+		return nil, s.confirm(ctx, in, nil)
 	case final:
 		// Ours, with a node that lags on receipts, or our nonce went to another transaction: wait for the receipt.
 		return nil, s.stall(ctx, in, "no receipt for any of its settle's hashes, but the receiver is settled and "+
@@ -169,17 +171,19 @@ func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, i
 	if err != nil {
 		return fmt.Errorf("read finalized block: %w", err)
 	}
+	var block uint64 // the receipt's block time
 	if r != nil {
-		block, err := client.HeaderByHash(ctx, r.BlockHash)
+		header, err := client.HeaderByHash(ctx, r.BlockHash)
 		if err != nil {
 			return fmt.Errorf("read settlement receipt block: %w", err)
 		}
-		if block.Number.Cmp(r.BlockNumber) != 0 {
+		if header.Number.Cmp(r.BlockNumber) != 0 {
 			return fmt.Errorf("settlement receipt block number disagrees with header")
 		}
-		// This observation is display-only; finality and evidence-backed booking still decide settlement.
+		block = header.Time
+		// This observation is display-only; finality and the booked settlement decide settled.
 		if _, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET receipt_tx_hash = $2,
- receipt_block = $3, receipt_time = $4 WHERE id = $1`, in.id, r.TxHash.Hex(), r.BlockNumber.Uint64(), block.Time); err != nil {
+ receipt_block = $3, receipt_time = $4 WHERE id = $1`, in.id, r.TxHash.Hex(), r.BlockNumber.Uint64(), block); err != nil {
 			return err
 		}
 	}
@@ -192,33 +196,36 @@ func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, i
 	}
 	if r == nil {
 		in.txHash = nil
+		return s.confirm(ctx, in, nil)
 	}
-	return s.confirm(ctx, in)
-}
-
-func (s *Signer) confirm(ctx context.Context, in intent) error {
-	primary := s.clients[in.chainID]
-	if primary == nil {
-		return fmt.Errorf("chain %d has no RPC for receiver evidence", in.chainID)
+	// The hash comes from the RPC, never computed in Go (Tempo's header differs): a stale receipt's block isn't recorded.
+	var canonical struct{ Hash common.Hash }
+	if err := client.Client().CallContext(ctx, &canonical, "eth_getBlockByNumber", hexutil.EncodeBig(r.BlockNumber), false); err != nil {
+		return fmt.Errorf("read settlement block %s: %w", r.BlockNumber, err)
 	}
-	watch := watcher.NewChain(s.pool, in.chainID, primary.Client())
-	complete, err := watch.Receiver(ctx, in.invoiceID)
-	if err != nil || !complete {
-		return err
-	}
-	var ready bool
-	if err := s.pool.QueryRow(ctx, "SELECT reconciliation_error IS NULL FROM receiver_scans WHERE invoice_id = $1", in.invoiceID).Scan(&ready); err != nil {
-		return err
-	}
-	if !ready {
+	if canonical.Hash != r.BlockHash {
 		return nil
 	}
-	if ready {
-		clients := map[uint64]*ethclient.Client{in.chainID: primary}
-		book := ledger.NewService(s.pool, ledger.BalanceFrom(clients), ledger.DeployedFrom(clients))
-		if err := book.Process(ctx, in.invoiceID); err != nil {
-			return err
+	return s.confirm(ctx, in, watcher.ReceiptOutflows(in.invoiceID, common.HexToAddress(in.receive), r, block, head.Number.Uint64()))
+}
+
+// confirm records our settle's events from its receipt, then books the invoice: the booked settlement confirms the
+// intent. A receiver settled by another settler waits for the chain's scan to record its event.
+func (s *Signer) confirm(ctx context.Context, in intent, outflows []watcher.Outflow) error {
+	client := s.clients[in.chainID]
+	if client == nil {
+		return fmt.Errorf("no RPC for chain %d", in.chainID)
+	}
+	if len(outflows) > 0 {
+		if err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+			return watcher.RecordOutflows(ctx, tx, in.chainID, outflows)
+		}); err != nil {
+			return fmt.Errorf("record settlement of invoice %s: %w", in.invoiceID, err)
 		}
+	}
+	clients := map[uint64]*ethclient.Client{in.chainID: client}
+	if err := ledger.NewService(s.pool, ledger.BalanceFrom(clients), ledger.DeployedFrom(clients)).Process(ctx, in.invoiceID); err != nil {
+		return err
 	}
 	var confirmed bool
 	if err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM receiver_outflows o WHERE o.invoice_id = $1
@@ -228,9 +235,9 @@ func (s *Signer) confirm(ctx context.Context, in intent) error {
 	if confirmed {
 		return nil
 	}
-	_, err = s.pool.Exec(ctx, `UPDATE settlement_intents SET reason = 'receiver settlement evidence remains unreconciled',
+	_, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET reason = 'the receiver is settled; waiting for its settle to be booked',
   wait = $2, attempts = attempts + 1, next_attempt_at = `+backoff+`, updated_at = now()
-  WHERE id = $1 AND status <> 'confirmed'`, in.id, waitUnresolved)
+  WHERE id = $1 AND status <> 'confirmed'`, in.id, waitRetry)
 	return err
 }
 

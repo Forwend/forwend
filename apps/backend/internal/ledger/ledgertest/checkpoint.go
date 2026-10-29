@@ -9,23 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Checkpoint supplies observer input to database-level tests; RPC certification has separate Anvil tests.
-func Checkpoint(t *testing.T, pool *pgxpool.Pool, invoiceID string, block uint64, at int64, balance string) {
-	t.Helper()
-	tag, err := pool.Exec(t.Context(), `UPDATE receiver_scans SET start_block = 0, next_block = $2::bigint + 1,
-  opening_checked = true, history_complete = true, scanned_block = $2, scanned_hash = $3, block_time = $4, balance = $5
-  WHERE invoice_id = $1 AND reconciliation_error IS NULL AND booking_error IS NULL`,
-		invoiceID, block, fmt.Sprintf("0x%064x", block), at, balance)
-	if err == nil {
-		_, err = pool.Exec(t.Context(), `INSERT INTO receiver_deposit_proofs (chain_transfer_id,invoice_id,verified_block,verified_hash)
-  SELECT id,invoice_id,$2,$3 FROM chain_transfers WHERE invoice_id = $1 AND status = 'confirmed'
-  AND block_number <= $2 AND block_time <= $4 ON CONFLICT DO NOTHING`, invoiceID, block, fmt.Sprintf("0x%064x", block), at)
-	}
-	if err != nil || tag.RowsAffected() != 1 {
-		t.Fatalf("checkpoint fixture: rows=%d, %v", tag.RowsAffected(), err)
-	}
-}
-
 // Settlement supplies exact source and journal records to wallet-reader tests.
 func Settlement(t *testing.T, pool *pgxpool.Pool, invoiceID, hash string, held bool) {
 	t.Helper()
@@ -91,10 +74,4 @@ func Settlement(t *testing.T, pool *pgxpool.Pool, invoiceID, hash string, held b
 	if err != nil {
 		t.Fatal(err)
 	}
-	var block uint64
-	var at int64
-	if err := pool.QueryRow(ctx, "SELECT block_number,block_time FROM wallet_transfers WHERE tx_hash = $1", hash).Scan(&block, &at); err != nil {
-		t.Fatal(err)
-	}
-	Checkpoint(t, pool, invoiceID, block, at, "0")
 }

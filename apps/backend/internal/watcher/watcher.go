@@ -10,7 +10,6 @@ import (
 	"math/big"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
@@ -54,7 +53,6 @@ type Chain struct {
 	// batchSize is the most calls per batch, kept like span.
 	batchSize     int
 	batchAccepted int
-	receiverMu    sync.Mutex
 }
 
 func NewChain(pool *pgxpool.Pool, chainID uint64, client *rpc.Client) *Chain {
@@ -118,7 +116,7 @@ func (c *Chain) scanRange(ctx context.Context, from, latest uint64, recovery *re
 	if err != nil {
 		return err
 	}
-	logs, walletLogs, next, readErr := c.scanLogs(ctx, from, latest, walletFrom, must, invoices, wallets)
+	logs, walletLogs, outflowLogs, next, readErr := c.scanLogs(ctx, from, latest, walletFrom, must, invoices, wallets)
 	if next == from && from <= latest { // nothing read; a range already past latest is recorded so recovery completes
 		return readErr
 	}
@@ -161,11 +159,12 @@ func (c *Chain) scanRange(ctx context.Context, from, latest uint64, recovery *re
 		if lo >= from {
 			pendingInvoices = nil
 		}
-		found, foundWallet, _, err := c.scanLogs(ctx, lo, hi, lo, hi, pendingInvoices, wallets)
+		found, foundWallet, foundOutflows, _, err := c.scanLogs(ctx, lo, hi, lo, hi, pendingInvoices, wallets)
 		if err != nil {
 			return errors.Join(readErr, err)
 		}
 		logs, walletLogs = append(logs, found...), append(walletLogs, foundWallet...)
+		outflowLogs = append(outflowLogs, foundOutflows...)
 		heights = heights[used:]
 	}
 
@@ -175,6 +174,9 @@ func (c *Chain) scanRange(ctx context.Context, from, latest uint64, recovery *re
 		numbers = append(numbers, l.BlockNumber)
 	}
 	for _, l := range walletLogs {
+		numbers = append(numbers, l.BlockNumber)
+	}
+	for _, l := range outflowLogs {
 		numbers = append(numbers, l.BlockNumber)
 	}
 	for _, p := range open {
@@ -190,6 +192,14 @@ func (c *Chain) scanRange(ctx context.Context, from, latest uint64, recovery *re
 	finalized := uint64(final.Number)
 
 	deposits, seen := depositsOf(logs, headers, invoices, finalized)
+	outflows, err := c.outflows(ctx, outflowLogs, headers, invoices, finalized)
+	if err != nil {
+		return errors.Join(readErr, err)
+	}
+	deployed, err := c.deployTimes(ctx, outflows, finalized)
+	if err != nil {
+		return errors.Join(readErr, err)
+	}
 	transfers := wallets.transfers(walletLogs, openWallet, headers, finalized, seen)
 	// A detected row is reorged only when the chain shows another block at its height. A log that is merely
 	// missing from one answer proves nothing.
@@ -215,13 +225,15 @@ func (c *Chain) scanRange(ctx context.Context, from, latest uint64, recovery *re
 	if !ok { // a node behind the one that answered latest: the scanned time stays safe, at the finalized block's
 		head = header{Number: hexutil.Uint64(latest), Timestamp: final.Timestamp}
 	}
-	return errors.Join(c.record(ctx, reorgedOf(open), deposits, reorgedOf(openWallet), transfers, final, head, recovery), readErr)
+	return errors.Join(c.record(ctx, reorgedOf(open), deposits, reorgedOf(openWallet), transfers, outflows, deployed, final, head,
+		recovery), readErr)
 }
 
-// scanLogs reads invoice logs from from and wallet logs from walletFrom, in whole log ranges, and returns the first
-// block it did not read. Past must it stops once scanShare of the deadline is used; a failed read stops it anywhere.
+// scanLogs reads invoice deposits and receiver events from from and wallet logs from walletFrom, in whole log ranges,
+// and returns the first block it did not read. Past must it stops once scanShare of the deadline is used; a failed
+// read stops it anywhere.
 func (c *Chain) scanLogs(ctx context.Context, from, latest, walletFrom, must uint64, invoices map[common.Address]receiver,
-	wallets wallets) (logs, walletLogs []types.Log, next uint64, err error) {
+	wallets wallets) (logs, walletLogs, outflowLogs []types.Log, next uint64, err error) {
 	began := time.Now()
 	deadline, bounded := ctx.Deadline()
 	lo := from
@@ -230,10 +242,13 @@ func (c *Chain) scanLogs(ctx context.Context, from, latest, walletFrom, must uin
 			break
 		}
 		hi := min(lo+c.span-1, latest)
-		var found, foundWallet []types.Log
+		var found, foundWallet, foundOutflows []types.Log
 		var err error
 		if len(invoices) > 0 {
 			found, err = c.logs(ctx, lo, hi, invoices)
+			if err == nil {
+				foundOutflows, err = c.outflowLogs(ctx, lo, hi, invoices)
+			}
 		}
 		if err == nil && hi >= walletFrom {
 			foundWallet, err = c.walletLogs(ctx, max(lo, walletFrom), hi, wallets)
@@ -242,12 +257,13 @@ func (c *Chain) scanLogs(ctx context.Context, from, latest, walletFrom, must uin
 			continue
 		}
 		if err != nil {
-			return logs, walletLogs, lo, err
+			return logs, walletLogs, outflowLogs, lo, err
 		}
 		logs, walletLogs = append(logs, found...), append(walletLogs, foundWallet...)
+		outflowLogs = append(outflowLogs, foundOutflows...)
 		lo = hi + 1
 	}
-	return logs, walletLogs, lo, nil
+	return logs, walletLogs, outflowLogs, lo, nil
 }
 
 func depositsOf(logs []types.Log, headers map[uint64]header, invoices map[common.Address]receiver,
@@ -356,15 +372,15 @@ var watchedAfterDeadline = 30 * 24 * time.Hour
 // scanChunks log ranges at most per scan, so a long backlog is caught up over several scans.
 var scanChunks uint64 = 20
 
-// go-ethereum nodes refuse more with "exceed max topics"; a smaller block range doesn't help.
+// go-ethereum nodes refuse more topic or address values with "exceed max topics"; a smaller block range doesn't help.
 var topicLimit = 1000
 
-func topicParts(addresses []common.Hash) [][]common.Hash {
-	var parts [][]common.Hash
-	for len(addresses) > topicLimit {
-		parts, addresses = append(parts, addresses[:topicLimit]), addresses[topicLimit:]
+func parts[T any](items []T) [][]T {
+	var out [][]T
+	for len(items) > topicLimit {
+		out, items = append(out, items[:topicLimit]), items[topicLimit:]
 	}
-	return append(parts, addresses)
+	return append(out, items)
 }
 
 // narrow halves the log range after a refusal and reports that the query should be asked again; growAfter accepted
@@ -431,7 +447,7 @@ func (c *Chain) logs(ctx context.Context, lo, hi uint64, invoices map[common.Add
 		tokenList = append(tokenList, t)
 	}
 	var logs []types.Log
-	for _, part := range topicParts(receivers) {
+	for _, part := range parts(receivers) {
 		found, err := c.filterLogs(ctx, ethereum.FilterQuery{
 			FromBlock: new(big.Int).SetUint64(lo), ToBlock: new(big.Int).SetUint64(hi),
 			Addresses: tokenList, Topics: [][]common.Hash{{transferTopic}, nil, part},
@@ -513,7 +529,8 @@ func (c *Chain) headers(ctx context.Context, numbers []uint64) (header, map[uint
 
 // record marks reorged rows first, so a re-mined copy of one can be live.
 func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit, reorgedWallet []int64,
-	transfers []walletTransfer, finalized, scanned header, recovery *recoveryProgress) error {
+	transfers []walletTransfer, outflows []Outflow, deployed map[string]uint64, finalized, scanned header,
+	recovery *recoveryProgress) error {
 	tx, err := c.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("record chain %d scan: %w", c.chainID, err)
@@ -529,6 +546,12 @@ func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit,
 		return fmt.Errorf("mark chain %d reorged wallet transfers: %w", c.chainID, err)
 	}
 	if err := c.insertDeposits(ctx, tx, deposits); err != nil {
+		return err
+	}
+	if err := recordDeployTimes(ctx, tx, deployed); err != nil {
+		return err
+	}
+	if err := RecordOutflows(ctx, tx, c.chainID, outflows); err != nil {
 		return err
 	}
 	for _, t := range transfers {

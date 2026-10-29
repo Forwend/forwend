@@ -65,7 +65,7 @@ func (c *Chain) walletLogs(ctx context.Context, lo, hi uint64, w wallets) ([]typ
 	seen := map[logKey]bool{}
 	// One filter can't match a wallet as sender or receiver, so: sent, then received.
 	var filters [][][]common.Hash
-	for _, part := range topicParts(addresses) {
+	for _, part := range parts(addresses) {
 		filters = append(filters, [][]common.Hash{{transferTopic}, part}, [][]common.Hash{{transferTopic}, nil, part})
 	}
 	for _, topics := range filters {

@@ -108,11 +108,6 @@ func (w *Worker) Tick(ctx context.Context) {
 			chainCtx, cancel := context.WithTimeout(ctx, RoundTimeout)
 			err := watch.ScanNew(chainCtx)
 			if err == nil {
-				receiverCtx, cancelReceivers := context.WithTimeout(chainCtx, 30*time.Second)
-				if receiverErr := watch.Receivers(receiverCtx); receiverErr != nil {
-					slog.Error("worker receiver evidence", "chain", id, "err", chain.Redact(receiverErr))
-				}
-				cancelReceivers()
 				err = book.ProcessChain(chainCtx, id)
 			}
 			cancel()
@@ -131,11 +126,6 @@ func (w *Worker) Tick(ctx context.Context) {
 				slog.Error("worker recovery", "chain", id, "err", chain.Redact(recoveryErr))
 			}
 			cancelRecovery()
-			historyCtx, cancelHistory := context.WithTimeout(ctx, 10*time.Second)
-			defer cancelHistory()
-			if receiverErr := historyWatch.HistoricalReceivers(historyCtx); receiverErr != nil {
-				slog.Error("worker historical evidence", "chain", id, "err", chain.Redact(receiverErr))
-			}
 		})
 	}
 }

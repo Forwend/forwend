@@ -30,8 +30,7 @@ func paymentAttentionSQL(delay string) string {
     OR ((` + ledger.UnreconciledSQL("attention.id") + `) AND (
       EXISTS (SELECT 1 FROM chain_transfers d WHERE d.invoice_id=attention.id AND d.status<>'reorged')
       OR EXISTS (SELECT 1 FROM receiver_outflows o WHERE o.invoice_id=attention.id)
-      OR EXISTS (SELECT 1 FROM receiver_scans s WHERE s.invoice_id=attention.id AND
-        (s.booking_error IS NOT NULL OR s.reconciliation_error NOT IN ('rescan_required','opening_balance')))))
+      OR EXISTS (SELECT 1 FROM invoice_balance_alerts a WHERE a.invoice_id=attention.id)))
     OR EXISTS (SELECT 1 FROM receiver_outflows o WHERE o.invoice_id = attention.id AND o.policy_exception IS NOT NULL)
     OR EXISTS (SELECT 1 FROM settlement_intents intent WHERE intent.invoice_id = attention.id AND intent.status <> 'confirmed'
       AND (intent.status = 'refused' OR intent.wait IS NOT NULL OR intent.created_at <= transaction_timestamp()-make_interval(secs => ` + delay + `)))

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
-	"github.com/forwend/forwend/apps/backend/internal/ledger/ledgertest"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -39,7 +38,6 @@ func closedPartly(t *testing.T, pool *pgxpool.Pool, s *Service, profile string, 
 	}).Process(ctx, inv.ID); err != nil {
 		t.Fatal(err)
 	}
-	ledgertest.Checkpoint(t, pool, inv.ID, 10, inv.ExpiresAt.Unix()+60, "2000000")
 	return inv
 }
 

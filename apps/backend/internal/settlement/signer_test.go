@@ -117,9 +117,6 @@ func (e env) pay(t *testing.T, n int) (id, receive string) {
 	if err := e.watch.Scan(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.watch.Receiver(ctx, id); err != nil {
-		t.Fatal(err)
-	}
 	if err := e.ledger.ProcessChain(ctx, e.chainID); err != nil {
 		t.Fatal(err)
 	}
@@ -160,6 +157,22 @@ func (e env) final(t *testing.T, s *Signer) {
 	t.Helper()
 	e.anvil.Mine(2)
 	if err := s.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// finalWithWorker also runs a worker round first: its scan records another settler's events.
+func (e env) finalWithWorker(t *testing.T, s *Signer) {
+	t.Helper()
+	ctx := context.Background()
+	e.anvil.Mine(2)
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.ledger.ProcessChain(ctx, e.chainID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Run(ctx); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -278,6 +291,86 @@ func TestSettlesAPaidInvoiceOnce(t *testing.T) {
 	var pgErr *pgconn.PgError
 	if !errors.As(err, &pgErr) || pgErr.Code != "23505" {
 		t.Fatalf("a second intent for the invoice: %v, want a unique violation", err)
+	}
+}
+
+func TestOwnSettleIsSettledFromItsReceiptWithoutAScan(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, _ := e.paidInvoice(t)
+	if err := e.signer(t).Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	e.anvil.Mine(2)
+	if err := e.signer(t).Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" {
+		t.Fatalf("intent %s, invoice %s; want the signer alone to confirm its finalized settle", status, settlement)
+	}
+	var transfer *int64
+	if err := e.pool.QueryRow(ctx, `SELECT transfer_log_index FROM receiver_outflows WHERE invoice_id = $1
+		AND kind = 'settlement' AND ledger_transaction_id IS NOT NULL`, id).Scan(&transfer); err != nil || transfer == nil {
+		t.Fatalf("booked settlement without the transfer that paid the wallet: %v %v", transfer, err)
+	}
+	// The worker's scan then sees the same event: it is recorded and booked once.
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.ledger.ProcessChain(ctx, e.chainID); err != nil {
+		t.Fatal(err)
+	}
+	var rows, bookings int
+	if err := e.pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM receiver_outflows WHERE invoice_id = $1),
+		(SELECT count(*) FROM ledger_transactions WHERE invoice_id = $1 AND kind = 'settlement')`, id).Scan(&rows, &bookings); err != nil ||
+		rows != 1 || bookings != 1 {
+		t.Fatalf("settle recorded %d times and booked %d (%v); want once each", rows, bookings, err)
+	}
+}
+
+func TestReceiptFromABlockNoLongerCanonicalIsNotRecorded(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, _ := e.paidInvoice(t)
+	proxy := e.anvil.Proxy()
+	s := e.signerVia(t, proxy.URL)
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var saved string
+	if err := e.pool.QueryRow(ctx, "SELECT tx_hash FROM settlement_intents WHERE invoice_id = $1", id).Scan(&saved); err != nil {
+		t.Fatal(err)
+	}
+	r, err := e.client.TransactionReceipt(ctx, common.HexToHash(saved))
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.anvil.Mine(2)
+	height := strings.ToLower(`"` + hexutil.EncodeBig(r.BlockNumber) + `"`)
+	proxy.Stale(func(c chaintest.Call) json.RawMessage {
+		if c.Method == "eth_getBlockByNumber" && param(c, 0) == height {
+			return json.RawMessage(`{"hash":"0x` + strings.Repeat("ab", 32) + `"}`)
+		}
+		return nil
+	})
+	e.dueNow(t)
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var recorded int
+	if err := e.pool.QueryRow(ctx, "SELECT count(*) FROM receiver_outflows WHERE invoice_id = $1", id).Scan(&recorded); err != nil || recorded != 0 {
+		t.Fatalf("recorded %d events from a receipt the node no longer holds as canonical (%v)", recorded, err)
+	}
+	if status, settlement, _ := e.intent(t, id); status != "sent" || settlement != "pending" {
+		t.Fatalf("intent %s, invoice %s; want sent and pending until the block is canonical", status, settlement)
+	}
+	proxy.Stale(nil)
+	e.dueNow(t)
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" {
+		t.Fatalf("intent %s, invoice %s; want confirmed once the receipt's block is canonical", status, settlement)
 	}
 }
 
@@ -404,9 +497,6 @@ func TestPaidWhileTheWorkerWasDownSettlesAfterARestart(t *testing.T) {
 			before := e.nonce(t)
 			client := map[uint64]*ethclient.Client{chaintest.ChainID: e.client}
 			if err := watcher.NewChain(e.pool, chaintest.ChainID, e.anvil.RPC).Scan(ctx); err != nil {
-				t.Fatal(err)
-			}
-			if _, err := e.watch.Receiver(ctx, id); err != nil {
 				t.Fatal(err)
 			}
 			ledgers := ledger.NewService(e.pool, ledger.BalanceFrom(client), ledger.DeployedFrom(client))
@@ -593,7 +683,7 @@ func TestExternallySettledIntentIsConfirmed(t *testing.T) {
 	if status, _, _ := e.intent(t, id); status != "pending" {
 		t.Fatalf("settled outside but not final: intent %s, want pending", status)
 	}
-	e.final(t, e.signer(t))
+	e.finalWithWorker(t, e.signer(t))
 	if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" {
 		t.Fatalf("intent %s, invoice %s; want confirmed and settled", status, settlement)
 	}
@@ -703,7 +793,7 @@ func TestAfterTheDeadlineTheSignerWaitsForTheRefundAuthority(t *testing.T) {
 	if _, err := e.pool.Exec(ctx, "UPDATE settlement_intents SET next_attempt_at = now()"); err != nil {
 		t.Fatal(err)
 	}
-	e.final(t, s)
+	e.finalWithWorker(t, s)
 	if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" || e.balance(t, wallet) != 5000000 {
 		t.Fatalf("after the authority settled: intent %s, invoice %s, recipient %d", status, settlement, e.balance(t, wallet))
 	}
@@ -762,7 +852,7 @@ func TestSettledByTheRefundAuthorityAfterOurSettleFailedRecordsActualTxHash(t *t
 			if err := s.Run(ctx); err != nil {
 				t.Fatal(err)
 			}
-			e.final(t, s)
+			e.finalWithWorker(t, s)
 			if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" || e.balance(t, wallet) != 5000000 {
 				t.Fatalf("intent %s, invoice %s, recipient %d", status, settlement, e.balance(t, wallet))
 			}
@@ -1506,9 +1596,6 @@ func TestSettlesTheOptionPaidFirst(t *testing.T) {
 	round := func() {
 		t.Helper()
 		if err := e.watch.Scan(ctx); err != nil {
-			t.Fatal(err)
-		}
-		if err := e.watch.Receivers(ctx); err != nil {
 			t.Fatal(err)
 		}
 		if err := e.ledger.ProcessChain(ctx, chaintest.ChainID); err != nil {

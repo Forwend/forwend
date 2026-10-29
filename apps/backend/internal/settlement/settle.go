@@ -97,7 +97,29 @@ func (s *Signer) settle(ctx context.Context, id int64, release func()) error {
 		return err
 	}
 	if !funded {
-		return s.postpone(ctx, in, waitUnresolved, "merchant payable was returned or receiver evidence is unresolved")
+		return s.postpone(ctx, in, waitUnresolved, "merchant payable was returned or a movement is not booked")
+	}
+	// Less at the finalized block than the ledger booked means money left the receiver unbooked: settling could take
+	// what is held for payers.
+	var bookedText string
+	if err := s.pool.QueryRow(ctx, `SELECT coalesce(sum(e.amount), 0)::text FROM ledger_entries e
+		JOIN ledger_transactions t ON t.id = e.transaction_id WHERE t.invoice_id = $1 AND e.account = 'receiver'`,
+		in.invoiceID).Scan(&bookedText); err != nil {
+		return err
+	}
+	booked, _ := new(big.Int).SetString(bookedText, 10)
+	head, err := client.HeaderByNumber(ctx, finalized)
+	if err != nil {
+		return fmt.Errorf("read finalized block: %w", err)
+	}
+	held, err := chain.TokenBalanceAt(ctx, client, in.chainID, in.token, in.receive, head.Number.Uint64())
+	if err != nil {
+		return err
+	}
+	if held.Cmp(booked) < 0 {
+		slog.Error("ALERT receive address holds less than the ledger booked; not settling", "invoice", in.invoiceID,
+			"booked", booked.String(), "onChain", held.String())
+		return s.postpone(ctx, in, waitUnresolved, "the receive address holds less than the ledger booked")
 	}
 	var used int
 	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id

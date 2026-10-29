@@ -3255,7 +3255,7 @@ components:
         lastReturnTxHash: { type: [string, "null"], pattern: "^0x[0-9a-f]{64}$" }
         unreconciled:
           type: boolean
-          description: Historical coverage, source attribution or financial booking remains unresolved. Never treat a negative legacy balance as available money.
+          description: A movement awaits booking, an outflow was refused, or a balance can't be explained. Never treat a negative legacy balance as available money.
     PaymentReceipt:
       type: object
       description: Observed incoming transfers by used option. Pending amounts are not credited or proof of payment.

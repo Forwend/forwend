@@ -313,9 +313,9 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
 - Payment reads add a nullable `dueDate`; payment detail adds `items` in the main option's base units.
 - Payment reads include canonical symbol, decimals, option ID, option count and whether an option has been locked.
 - Token metadata follows the stored chain and contract, including tokens disabled after the payment was created.
-- Net amounts include `reconciliationStatus`: `verified`, `pending` history checks, or `review` for conflicting evidence.
+- Net amounts include `reconciliationStatus`: `verified`, `pending` booking, or `review` for evidence an operator must check.
 - The existing `unreconciled` flag continues blocking unsafe financial actions during either pending verification or manual review.
-- Automatic rescans and certified movements awaiting booking remain pending; unexplained residuals, source conflicts and policy exceptions require review.
+- Movements awaiting booking remain pending; unexplained balances, refused outflows and policy exceptions require review.
 - Other-asset recovery records remain distinct from accepted-token reconciliation.
 - The owner page groups option verification into one notice; token-specific returns remain separate.
 - Customer checkout and receipt PDFs distinguish pending verification from manual review without changing payment truth.
@@ -344,10 +344,9 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
 - CSV headers include snapshot time and record count; text cells prevent spreadsheet formulas while signed financial numbers remain numeric.
 - Movement pages are live views; booking can replace an observation between pages.
 - Use CSV for a complete period from one consistent snapshot.
-- Deposit verification fields identify its certification checkpoint; outflow verification fields identify the certified source-event block and hash.
-- Internal allocation rows use their own checkpoint and never inherit the original deposit transaction identity.
+- Verification fields identify the finalized block and hash of a deposit or receiver event.
+- Internal allocation rows (expiry, reopen) carry no block or transaction identity.
 - Missing cash sources leave source amount, destination and transaction identity unknown; only journal deltas remain summable.
-- Unpositioned or unproved cash bookings suppress numerical checkpoint comparisons while remaining explicitly unreconciled.
 - Movement dates filter the UTC day recorded in Forwend, not block time; `from` and `to` are inclusive.
 - Block time remains a separate field; records discovered later enter later recorded periods.
 - USD deltas use exact decimal units and the accepted stablecoin's nominal one-dollar value, without a market-price claim.
@@ -355,9 +354,10 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
 - `GET /v1/profiles/{profileId}/payments/{paymentId}/reconciliation` restricts that report to one payment.
 - Reconciliation dates use journal recorded time; its response `to` is exclusive UTC midnight after the requested inclusive day.
 - Opening plus changes equals closing; receiver equals merchant payable plus payer-held funds.
-- Source checkpoints include coverage ranges and pending, unproved, unbooked, exceptional and other-asset movement counts.
-- Receiver checkpoints can reference different finalized blocks; their sum is not a global balance at one common chain block.
-- Checkpoint differences appear only for current periods with comparable booked cash positions; historical closing balances never compare against current checkpoints.
+- Each asset row counts pending, unbooked, exceptional and other-asset movements, and the chain's finalized block.
+- `checkpointBalance` and `checkpointDifference` are null: the scan keeps no balance per receiver (D-116).
+- `unprovedDeposits` is 0 and every receiver counts as verified.
+  - The chain's scan covers each watched address from its creation until 30 days after its settle deadline.
 - Missing source evidence stays explicit; financial journals and immutable source records remain independently inspectable.
 - Every operation uses one repeatable-read database snapshot; CSV snapshot headers identify its cutoff.
 - Wallet transaction exports and statements also read their records-currency setting inside the same snapshot as their rows.
@@ -605,7 +605,6 @@ R-19 and R-42; the full schema is in openapi.yaml.
   that do not add up to the invoice's amount at commit.
 - The number, these fields and `issuer` never change, like the terms: a database trigger rejects any update.
 - `settlementTxHash` identifies the actual booked receiver settlement, including an authority settlement outside the signer.
-  - Legacy records without receiver evidence retain their previous transaction reference and require reconciliation.
   - Deposit activity preserves gross observed movements; net liabilities come from `amounts`.
 - An invoice carries `confirming` when an on-time transfer awaits finality or credit after confirmation. A
   `partially_paid` invoice keeps that status while the rest confirms, so readers show it as confirming (R-69).
@@ -615,7 +614,8 @@ R-19 and R-42; the full schema is in openapi.yaml.
 - Detail reads and payment reads expose `amounts` in the selected option's base units.
   - `receiver`, `payable` and `held` are current net balances; `settled` and `refunded` are booked outflow totals.
   - `observedRefunded` and `lastReturnTxHash` expose confirmed returns, including returns still awaiting financial attribution.
-  - `unreconciled` means coverage, source identity or booking needs review. Negative legacy balances remain visible.
+  - `unreconciled` means a movement waits for booking, an outflow was refused, or a balance can't be explained.
+  - Negative legacy balances remain visible.
   - `hasPolicyException` identifies an authority movement outside ordinary allocation policy, even when its accounting fully reconciles.
   - Each option carries its own `amounts` and effective `closesAt`.
 - Detail `deposits` previews contain at most 100 transfers per option, in chain order, excluding reorged transfers (R-174).
@@ -667,7 +667,7 @@ R-19 and R-42; the full schema is in openapi.yaml.
 - `POST /v1/profiles/{profileId}/invoices/{invoiceId}/reopen` (R-130) reopens an invoice that closed partly paid.
   - Only once, and a day or more before its receiver's settle deadline.
   - That deadline is the settle deadline, or 30 days after an early receiver deploy if sooner.
-  - Confirmed refunds or settlements prevent reopening. A matching verified receiver checkpoint is required.
+  - Confirmed refunds or settlements prevent reopening. Every movement of the option must be booked first.
   - Missing evidence returns 409 `payment_reconciliation_pending`; eligibility failures return `invoice_not_reopenable`.
   - Otherwise 409 `invoice_not_reopenable`.
   - Its checkout opens again until a day before that deadline, at the same address and terms.
