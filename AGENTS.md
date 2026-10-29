@@ -52,3 +52,7 @@ shared caches, secrets and persistent data; never blanket-delete `~/.foundry`. A
 - **Reuse before creating.** Use existing shared components and utilities. If something similar exists, improve or extend it. Create something new only when there is no suitable option.
 - **Check for the same bug elsewhere.** When you find a bug, check every place that uses the affected component or method. Review similar components and methods for the same issue.
 - **Design for the best user experience.** When creating or updating a component, research similar examples for inspiration. Consider different user needs, situations, and edge cases. Look for ways to make the component clearer and easier to use.
+- **Written behavior is not final.** Docs, requirements, decisions and tests describe the app as it is today, not the best it can be (R-182).
+  - When a written rule or behavior is weak and you know a better one, improve it. Extend, add, change or remove behavior when that serves the app.
+  - Change the rule, the code and the tests together, and say why in the commit.
+  - When you change the backend, find every frontend and package reader of what changed, and keep each one working.

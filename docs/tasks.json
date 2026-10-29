@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 353,
+  "nextId": 354,
   "tasks": [
     {
       "id": "F332",
@@ -1039,12 +1039,61 @@
         "branch": "fix/f352-payments-book-from-the-chain-wide-scan-w",
         "base": "main"
       }
+    },
+    {
+      "id": "F353",
+      "type": "docs",
+      "behavior": "Agents improve written behavior when a better one exists, and keep the frontend working",
+      "acceptance": [
+        "AGENTS.md shared rules say written behavior is not final: improve weak rules, change rule, code and tests together, and keep every frontend reader working after a backend change"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "docs-check"
+      ],
+      "refs": [
+        "R-182"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-29T18:48:11Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "44d834cb05a70760",
+        "filesHash": "23ab1257fdd5e8e9",
+        "proof": {
+          "1": "docs-check: AGENTS.md shared rules and R-182 pass link, ID and sentence checks"
+        },
+        "commit": "b273eedf",
+        "doneAt": "2026-10-29T18:48:11Z"
+      },
+      "branch": "docs/f353-agents-improve-written-behavior-when-a-b",
+      "baseCommit": "f0f447d3ad3752a6cc7bb8a7fe913527f7745c17",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f353-agents-improve-written-behavior-when-a-b",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-27T17:01:57Z",
+    "at": "2026-10-29T18:44:09Z",
     "clean": true,
     "problems": [],
-    "note": "CI job budget fix rebased onto F338 hotfix; seven checks and independent review passed. F338/F339 and nextId340 preserved. Merge and promote, then validate exact staging commit. Temporary checkout will be removed after promotion."
+    "note": "F351 (PR 343) and F352 (PR 344) merged: RPC pool ranks endpoints by measured speed and fails over on size refusals; scans always progress; per-receiver evidence removed, payments book from the chain-wide scan. Next: promote main to staging and restart api, worker and signer so migration 91 runs; consider disabling free dRPC endpoints."
   }
 }
