@@ -105,16 +105,14 @@ func (c *Chain) receiverRound(ctx context.Context, ids []string) (*receiverRound
 	for lo := r.from; lo <= r.final; {
 		hi := min(r.final, lo+c.span-1)
 		outgoing, e := c.filterLogs(ctx, ethereum.FilterQuery{FromBlock: new(big.Int).SetUint64(lo), ToBlock: new(big.Int).SetUint64(hi), Addresses: addresses, Topics: [][]common.Hash{{settledTopic, refundedTopic, recoveredTopic}}})
-		if next, ok := narrower(e, c.span); ok {
-			c.span = next
+		if c.narrow(e) {
 			continue
 		}
 		if e != nil {
 			return nil, e
 		}
 		transfers, e := c.filterLogs(ctx, ethereum.FilterQuery{FromBlock: new(big.Int).SetUint64(lo), ToBlock: new(big.Int).SetUint64(hi), Addresses: tokenList, Topics: [][]common.Hash{{transferTopic}, topics}})
-		if next, ok := narrower(e, c.span); ok {
-			c.span = next
+		if c.narrow(e) {
 			continue
 		}
 		if e != nil {

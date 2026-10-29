@@ -33,6 +33,10 @@ Read only the sections your task touches:
   machine and ledger booking, Check status rescans, payment reminders and retainer invoices (R-96, R-98), and the
   email from `outbox_events` after each round
   (`internal/notify`, R-80, R-82, R-84; only the worker holds `RESEND_API_KEY`, and without it nothing is sent).
+  - Every 5 minutes it logs an `ALERT` for symptoms that hold money (R-180):
+    - a chain whose finalized cursor is over 45 minutes behind the clock;
+    - a deposit still detected below the finalized block after 45 minutes;
+    - a paid invoice not settled within 30 minutes, or within a day of its settle deadline, until that deadline.
   - It also keeps the ECB's reference rates (`internal/ecb`, R-110): at start, every 6 hours, 10 minutes after a failure.
   - It reads the ECB's 90-day file only, so rates from before its first read, or gaps over 90 days, never arrive.
   - Only tests set `ECB_RATES_URL`: the e2e gate points the worker at a fake ECB.
@@ -318,8 +322,8 @@ never holds the app's load.
 - `internal/chain` owns configuration validation and go-ethereum client construction.
 - Payment services receive resolved chain specifications; they never read secrets or construct provider URLs.
 - Each chain has one pool containing all enabled endpoints; legacy role labels do not restrict routing.
-- Private endpoints precede public endpoints, ordered by priority and then endpoint ID.
-- Reordering endpoints changes selection priority.
+- Private endpoints precede public endpoints; then the fastest measured answer wins ([routing](rpc.md#routing-and-health)).
+- An endpoint that refuses a request's size passes it to the next one; priority orders only unmeasured endpoints.
 - Each request tries each eligible endpoint once, bounded by its caller deadline and a 30-second transport deadline.
 - HTTP exchanges have a five-second timeout; exhausted groups return a controlled unavailable error.
 - Failed endpoints cool down with exponential jitter; one recovery probe validates them before reuse.
@@ -353,13 +357,16 @@ the API, pays it and waits for detected → paid → settled with the deposit go
 - Separate watcher objects keep range adaptation local; only active jobs advance the fast cursor.
 - Historical work shares provider capacity but does not delay ledger scheduling until it completes.
 - Receiver proof and retry rules live in [money safety](money-safety.md#receiver-evidence-and-actual-outflows).
-- `ScanNew` follows new wallet blocks and keeps the existing invoice overlap, at most 40,000 blocks per round.
+- `ScanNew` follows new wallet blocks and re-reads one log range of invoice overlap, at most 20 log ranges a round.
 - Invoice overlap stays frequent so an earlier missed payment is found before a later payment decides ownership.
+- It reads logs for at most 60% of its deadline, then records what it read; it always reads past the old cursor.
+  - So a slow or narrow provider still moves the cursor every round, and a backlog is caught up over several rounds.
 - It also re-reads detected transfers' block heights, so confirmation still requires fresh logs and matching headers.
+  - A detected transfer below the scan's start is read at its own height and never holds the start back.
 - An unchanged head without detected wallet transfers needs no wallet log queries.
 - `Recover` keeps a separate durable checkpoint in `chain_recoveries`.
 - Each sweep starts 2,000 blocks before its previous completed checkpoint and pins its target before reading.
-- Each round recovers at most 10,000 blocks; successful chunks commit their progress with their transfers.
+- Each round recovers at most five log ranges; successful chunks commit their progress with their transfers.
 - Fast scans never move the recovery checkpoint. Recovery never moves the fast cursor.
 - Failed chunks retain their position; restarts resume unfinished sweeps.
 - A completed sweep schedules the next sweep one minute later.
@@ -367,11 +374,11 @@ the API, pays it and waits for detected → paid → settled with the deposit go
 - Subscription changes preserve unfinished progress, rewinding only when the new wallet overlap requires it.
 - Startup uses the existing full `Scan` to establish a new chain's cursor.
 - Log queries cover at most 2,000 blocks each.
-- Rate-limited ranges shrink to 50 blocks; oversized ranges shrink to one block.
+- A range every endpoint refuses halves, down to one block; rate limits never shrink it.
 - An oversized single block uses `eth_getBlockReceipts`, filtered by the same token and topic rules.
-- Successful queries retain the accepted range; later scans reuse it.
+- Ten accepted queries double a narrowed range again, up to 2,000 blocks.
 - HTTP scan limits shrink queries without marking the provider unavailable.
-- Explicit batch-size limits split header and balance reads; successful smaller batches remain in use.
+- Batch-size limits every endpoint gives split header and balance reads; ten accepted batches double them again.
 
 Receive addresses and wallets go into topic lists of at most 1,000: go-ethereum nodes, Arbitrum's public RPC
 among them, refuse more with "exceed max topics". Invoices leave the scan 30 days after their settle deadline (the
@@ -401,7 +408,7 @@ Scanning again changes nothing, so a restarted worker resumes from the cursor.
 - Check status (R-55) queues an invoice rescan in `invoice_rechecks`.
 - Historical jobs take at most five requested rescans, with a separate 30-second deadline.
 - Each scan starts one minute before invoice creation, found by binary search and saved before reading logs.
-- Each invocation reads at most 10,000 blocks per invoice and saves its next block.
+- Each invocation reads at most five log ranges per invoice and saves its next block.
 - Failed requested rescans wait one minute, allowing later requests through.
 - Wallet recovery and legacy receiver scans each have their own ten-second budget.
 - Rescans record observations without moving the fast cursor; a later active job verifies and books them.

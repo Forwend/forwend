@@ -479,14 +479,12 @@ func (c *Chain) receiver(ctx context.Context, id string, round *receiverRound) (
 
 func (c *Chain) receiverLogs(ctx context.Context, from, hi uint64, receive common.Address) ([]types.Log, error) {
 	var out []types.Log
-	span := c.span
 	for from <= hi {
-		top := min(hi, from+span-1)
+		top := min(hi, from+c.span-1)
 		found, err := c.filterLogs(ctx, ethereum.FilterQuery{FromBlock: new(big.Int).SetUint64(from),
 			ToBlock: new(big.Int).SetUint64(top), Addresses: []common.Address{receive},
 			Topics: [][]common.Hash{{settledTopic, refundedTopic, recoveredTopic}}})
-		if next, ok := narrower(err, span); ok {
-			span, c.span = next, next
+		if c.narrow(err) {
 			continue
 		}
 		if err != nil {
@@ -639,13 +637,11 @@ func (c *Chain) prepareReceiverDeposits(ctx context.Context, tx pgx.Tx, deposits
 
 func (c *Chain) receiverTokenTransfers(ctx context.Context, from, hi uint64, receive, token common.Address) ([]types.Log, error) {
 	var out []types.Log
-	span := c.span
 	for from <= hi {
-		top := min(hi, from+span-1)
+		top := min(hi, from+c.span-1)
 		found, err := c.filterLogs(ctx, ethereum.FilterQuery{FromBlock: new(big.Int).SetUint64(from), ToBlock: new(big.Int).SetUint64(top),
 			Addresses: []common.Address{token}, Topics: [][]common.Hash{{transferTopic}, {common.BytesToHash(receive.Bytes())}}})
-		if next, ok := narrower(err, span); ok {
-			span, c.span = next, next
+		if c.narrow(err) {
 			continue
 		}
 		if err != nil {

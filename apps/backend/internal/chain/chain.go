@@ -39,7 +39,7 @@ func NewRPCs(spec Spec, rate float64, budgets ...*Budget) (RPCs, error) {
 		p.budget = budgets[0]
 	}
 	for _, e := range ordered(spec.Endpoints) {
-		p.endpoints = append(p.endpoints, &endpoint{url: e.URL, host: hostOf(e.URL), name: e.ID,
+		p.endpoints = append(p.endpoints, &endpoint{url: e.URL, host: hostOf(e.URL), name: e.ID, tier: e.Tier,
 			budgetGroup: e.BudgetGroup})
 	}
 	r := RPCs{pool: p}

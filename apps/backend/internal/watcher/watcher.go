@@ -29,15 +29,17 @@ import (
 var transferTopic = crypto.Keccak256Hash([]byte("Transfer(address,address,uint256)"))
 
 const (
-	// MaxRange is the most blocks one eth_getLogs call covers; RPCs reject larger result sets (S-4).
+	// MaxRange is the most blocks one eth_getLogs call covers; RPCs reject larger result sets (S-4). A range every
+	// endpoint refuses halves, down to one block and then its receipts, so zero-value Transfer spam can't stop the chain.
 	MaxRange = 2000
-	// MinRange is the fewest blocks for a rate limit: a range this small that is still rate limited fails the scan. A
-	// result too large narrows to one block, then its receipts, so zero-value Transfer spam can't stop the chain.
-	MinRange = 50
-	// RescanDepth finalized blocks are read again on every scan, so one lagging or empty eth_getLogs answer is never
-	// the last look at a block. On Arc and Tempo finalized is latest, and 2,000 blocks are still 15 minutes or more.
+	// RescanDepth finalized blocks, at most one log range, are read again on every scan, so one lagging or empty
+	// eth_getLogs answer is never the last look at a block. Recovery sweeps everything again later.
 	RescanDepth = MaxRange
 	MaxBatch    = 100
+	// growAfter accepted queries or batches double a narrowed log range or batch again, up to MaxRange or MaxBatch.
+	growAfter = 10
+	// scanShare of a scan's deadline goes to reading logs; the rest is kept for headers and the commit.
+	scanShare = 0.6
 )
 
 // Run one Chain per chain: two at once would race on the cursor.
@@ -46,10 +48,13 @@ type Chain struct {
 	chainID uint64
 	rpc     *rpc.Client
 	eth     *ethclient.Client
-	// span is the blocks per eth_getLogs call; it retains a smaller range after the provider refuses one.
-	span       uint64
-	batchSize  int
-	receiverMu sync.Mutex
+	// span is the blocks per eth_getLogs call: halved when every endpoint refuses it, grown back after accepted ones.
+	span     uint64
+	accepted int
+	// batchSize is the most calls per batch, kept like span.
+	batchSize     int
+	batchAccepted int
+	receiverMu    sync.Mutex
 }
 
 func NewChain(pool *pgxpool.Pool, chainID uint64, client *rpc.Client) *Chain {
@@ -88,8 +93,8 @@ type pending struct {
 	logIndex    uint64
 }
 
-// Scan reads from RescanDepth below the last finalized block (or the oldest detected row) to latest, in one
-// transaction. Scanning the same range again changes nothing.
+// Scan reads from RescanDepth below the last finalized block to latest, in one transaction. Scanning the same range
+// again changes nothing.
 func (c *Chain) Scan(ctx context.Context) error {
 	latest, err := c.eth.BlockNumber(ctx)
 	if err != nil {
@@ -99,26 +104,27 @@ func (c *Chain) Scan(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return c.scanRange(ctx, from, min(latest, from+scanLimit-1), nil, from)
+	return c.scanRange(ctx, from, min(latest, from+scanChunks*c.span-1), nil, from, from)
 }
 
-func (c *Chain) scanRange(ctx context.Context, from, latest uint64, recovery *recoveryProgress, walletFrom uint64) error {
+// scanRange records what it read up to latest, or up to the last whole log range read in scanShare of the deadline,
+// but always past must. Ranges read before a provider error are recorded too, and the error returned.
+func (c *Chain) scanRange(ctx context.Context, from, latest uint64, recovery *recoveryProgress, walletFrom, must uint64) error {
 	invoices, err := c.invoices(ctx)
 	if err != nil {
 		return err
 	}
-	var emptyWallets wallets
 	wallets, err := c.wallets(ctx)
 	if err != nil {
 		return err
 	}
-	logs, _, err := c.scanLogs(ctx, from, latest, invoices, emptyWallets)
-	if err != nil {
-		return err
+	logs, walletLogs, next, readErr := c.scanLogs(ctx, from, latest, walletFrom, must, invoices, wallets)
+	if next == from && from <= latest { // nothing read; a range already past latest is recorded so recovery completes
+		return readErr
 	}
-	_, walletLogs, err := c.scanLogs(ctx, walletFrom, latest, nil, wallets)
-	if err != nil {
-		return err
+	latest = next - 1
+	if recovery != nil {
+		recovery.next = latest + 1
 	}
 	open, err := c.pending(ctx, "chain_transfers", 0)
 	if err != nil {
@@ -155,9 +161,9 @@ func (c *Chain) scanRange(ctx context.Context, from, latest uint64, recovery *re
 		if lo >= from {
 			pendingInvoices = nil
 		}
-		found, foundWallet, err := c.scanLogs(ctx, lo, hi, pendingInvoices, wallets)
+		found, foundWallet, _, err := c.scanLogs(ctx, lo, hi, lo, hi, pendingInvoices, wallets)
 		if err != nil {
-			return err
+			return errors.Join(readErr, err)
 		}
 		logs, walletLogs = append(logs, found...), append(walletLogs, foundWallet...)
 		heights = heights[used:]
@@ -209,33 +215,39 @@ func (c *Chain) scanRange(ctx context.Context, from, latest uint64, recovery *re
 	if !ok { // a node behind the one that answered latest: the scanned time stays safe, at the finalized block's
 		head = header{Number: hexutil.Uint64(latest), Timestamp: final.Timestamp}
 	}
-	return c.record(ctx, reorgedOf(open), deposits, reorgedOf(openWallet), transfers, final, head, recovery)
+	return errors.Join(c.record(ctx, reorgedOf(open), deposits, reorgedOf(openWallet), transfers, final, head, recovery), readErr)
 }
 
-func (c *Chain) scanLogs(ctx context.Context, from, latest uint64, invoices map[common.Address]receiver,
-	wallets wallets) ([]types.Log, []types.Log, error) {
-	var logs, walletLogs []types.Log
-	for lo := from; lo <= latest; {
+// scanLogs reads invoice logs from from and wallet logs from walletFrom, in whole log ranges, and returns the first
+// block it did not read. Past must it stops once scanShare of the deadline is used; a failed read stops it anywhere.
+func (c *Chain) scanLogs(ctx context.Context, from, latest, walletFrom, must uint64, invoices map[common.Address]receiver,
+	wallets wallets) (logs, walletLogs []types.Log, next uint64, err error) {
+	began := time.Now()
+	deadline, bounded := ctx.Deadline()
+	lo := from
+	for lo <= latest {
+		if bounded && lo > must && time.Since(began) > time.Duration(scanShare*float64(deadline.Sub(began))) {
+			break
+		}
 		hi := min(lo+c.span-1, latest)
 		var found, foundWallet []types.Log
 		var err error
 		if len(invoices) > 0 {
 			found, err = c.logs(ctx, lo, hi, invoices)
 		}
-		if err == nil {
-			foundWallet, err = c.walletLogs(ctx, lo, hi, wallets)
+		if err == nil && hi >= walletFrom {
+			foundWallet, err = c.walletLogs(ctx, max(lo, walletFrom), hi, wallets)
 		}
-		if next, ok := narrower(err, c.span); ok {
-			c.span = next
+		if c.narrow(err) {
 			continue
 		}
 		if err != nil {
-			return nil, nil, err
+			return logs, walletLogs, lo, err
 		}
 		logs, walletLogs = append(logs, found...), append(walletLogs, foundWallet...)
 		lo = hi + 1
 	}
-	return logs, walletLogs, nil
+	return logs, walletLogs, lo, nil
 }
 
 func depositsOf(logs []types.Log, headers map[uint64]header, invoices map[common.Address]receiver,
@@ -262,17 +274,13 @@ func depositsOf(logs []types.Log, headers map[uint64]header, invoices map[common
 	return deposits, seen
 }
 
-// A new chain starts at its finalized block: earlier deposits and wallet transfers are never looked for.
+// A new chain starts at its finalized block: earlier deposits and wallet transfers are never looked for. Detected rows
+// below the start are read at their own heights, so one that never confirms can't hold the scan back.
 // ponytail: add a start block to chains if a chain is enabled after invoices on it exist.
 func (c *Chain) start(ctx context.Context) (uint64, error) {
 	var from int64
-	err := c.pool.QueryRow(ctx, `
-		SELECT least(greatest(cur.last_finalized_block + 1 - $2, 0),
-		             coalesce((SELECT min(block_number) FROM chain_transfers
-		                       WHERE chain_id = $1 AND status = 'detected'), cur.last_finalized_block + 1),
-		             coalesce((SELECT min(block_number) FROM wallet_transfers
-		                       WHERE chain_id = $1 AND status = 'detected'), cur.last_finalized_block + 1))
-		FROM chain_cursors cur WHERE cur.chain_id = $1`, c.chainID, RescanDepth).Scan(&from)
+	err := c.pool.QueryRow(ctx, `SELECT greatest(last_finalized_block + 1 - $2, 0) FROM chain_cursors WHERE chain_id = $1`,
+		c.chainID, min(RescanDepth, c.span)).Scan(&from)
 	if errors.Is(err, pgx.ErrNoRows) {
 		finalized, _, err := c.headers(ctx, nil)
 		return uint64(finalized.Number) + 1, err
@@ -345,8 +353,8 @@ func (c *Chain) invoices(ctx context.Context) (map[common.Address]receiver, erro
 
 var watchedAfterDeadline = 30 * 24 * time.Hour
 
-// A round that times out records nothing, so a long backlog is caught up over several scans.
-var scanLimit uint64 = 20 * MaxRange
+// scanChunks log ranges at most per scan, so a long backlog is caught up over several scans.
+var scanChunks uint64 = 20
 
 // go-ethereum nodes refuse more with "exceed max topics"; a smaller block range doesn't help.
 var topicLimit = 1000
@@ -359,16 +367,22 @@ func topicParts(addresses []common.Hash) [][]common.Hash {
 	return append(parts, addresses)
 }
 
-func narrower(err error, span uint64) (uint64, bool) {
+// narrow halves the log range after a refusal and reports that the query should be asked again; growAfter accepted
+// queries double it back. The pool already sent a refused query to every endpoint, so no endpoint takes this range.
+// Rate limits never narrow it: smaller ranges only mean more requests.
+func (c *Chain) narrow(err error) bool {
 	switch {
 	case err == nil:
-		return span, false
-	case chain.TooLarge(err) && span > 1:
-		return span / 2, true
-	case chain.Overloaded(err) && span > MinRange:
-		return max(span/2, MinRange), true
+		if c.span < MaxRange {
+			if c.accepted++; c.accepted >= growAfter {
+				c.span, c.accepted = min(2*c.span, MaxRange), 0
+			}
+		}
+	case chain.TooLarge(err) && c.span > 1:
+		c.span, c.accepted = c.span/2, 0
+		return true
 	}
-	return span, false
+	return false
 }
 
 func (c *Chain) filterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
@@ -589,11 +603,16 @@ func (c *Chain) batchCall(ctx context.Context, batch []rpc.BatchElem) error {
 			limited = limited || chain.BatchTooLarge(call.Error)
 		}
 		if limited && size > 1 {
-			c.batchSize = max(1, size/2)
+			c.batchSize, c.batchAccepted = max(1, size/2), 0
 			continue
 		}
 		if err != nil {
 			return err
+		}
+		if c.batchSize < MaxBatch && size == c.batchSize {
+			if c.batchAccepted++; c.batchAccepted >= growAfter {
+				c.batchSize, c.batchAccepted = min(2*c.batchSize, MaxBatch), 0
+			}
 		}
 		offset += size
 	}

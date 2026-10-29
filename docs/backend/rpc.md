@@ -34,8 +34,9 @@ VALUES
 - Populate `BASE_PRIMARY` in `RPC_ENDPOINT_SECRETS` for API, worker and signer before restarting them.
 - Missing references or invalid URLs stop startup with a safe configuration error.
 - Use the same budget group for endpoints sharing an account quota, including endpoints on different chains.
-- Lower priority numbers win within each tier; endpoint ID breaks ties deterministically.
-- Disable an endpoint with `enabled=false`; edit its priority to reorder it, then restart consumers.
+- Priority sets the starting order within each tier; lower numbers come first, and endpoint ID breaks ties.
+- After that, measured answers decide (see [routing](#routing-and-health)), not the configured order.
+- Disable an endpoint with `enabled=false`; edit its priority to change the starting order, then restart consumers.
 - Every enabled endpoint participates in failover, including endpoints previously labeled `confirmation`.
 - Additional endpoints improve availability; payment processing does not wait for a second provider.
 
@@ -43,8 +44,18 @@ VALUES
 
 - Keep go-ethereum for RPC serialization, typed clients and transactions; the HTTP transport owns routing and destination checks.
 - [Go RPC documentation](https://pkg.go.dev/github.com/ethereum/go-ethereum/rpc) documents custom HTTP clients and typed errors.
-- Private endpoints precede public endpoints in one pool, then priority and endpoint ID decide the order.
+- Each request goes to the best eligible endpoint, chosen in this order:
+  - one not known to refuse the request's size;
+  - a private endpoint before a public one;
+  - the soonest expected answer: its pacing wait plus its measured answer time.
+- The answer time is a moving average, raised by the endpoint's recent failure share.
+- An endpoint unused for 10 minutes is measured again: it costs nothing until it answers.
+- Priority and endpoint ID break ties, so they only order endpoints not yet measured.
 - An eligible endpoint gets at most one attempt per request; no eligible endpoint returns `chain.ErrUnavailable`.
+- A log range, log result or batch an endpoint refuses goes to the next endpoint unchanged.
+  - The endpoint stays healthy. For one hour it is asked last for requests that size or larger.
+  - The refusal reaches the caller only when no other endpoint answered; only then does the caller narrow its query.
+  - Providers differ: dRPC's free plan takes 101 blocks and 3 calls per batch, `sepolia.base.org` 201 blocks.
 - The whole request has a 30-second maximum, including health checks and budget waits; shorter caller deadlines take precedence.
 - Each HTTP exchange has a five-second timeout and a 64 MiB response limit.
 - Each failed endpoint rests for 0.5–1 second initially, doubling toward a 2.5–5-minute maximum.
@@ -52,7 +63,7 @@ VALUES
 - HTTP 429 honors `Retry-After`, bounded at five minutes; JSON-RPC rate limits also trigger failover.
 - Connection failures rest endpoints sharing the same host; rejected credentials rest only the affected endpoint.
 - Caller cancellation and request deadlines release the endpoint without changing its health; the separate HTTP attempt timeout still triggers failover.
-- One probe per endpoint validates recovery; healthy recovered private endpoints regain priority automatically.
+- One probe per endpoint validates recovery; healthy recovered private endpoints are preferred again automatically.
 - Identity and health are rechecked on demand at least every 30 seconds of use, plus after failures.
 - A wrong chain ID quarantines that endpoint until restart after operator correction.
 - Probes require the configured chain ID, a recent latest header and a valid finalized header.
@@ -69,7 +80,7 @@ VALUES
 - Preserve RPC error codes and safe message categories while discarding arbitrary provider text and error data.
 - HTTP error bodies and redirect locations never reach callers or logs.
 - Execution reverts, invalid input, insufficient funds and nonce errors do not trigger infrastructure failover.
-- Log-range and batch-limit errors remain recognizable so callers can reduce query size.
+- Log-range and batch-limit errors that every endpoint gave remain recognizable so callers can reduce query size.
 - Optional block-receipt support retains the watcher's existing fallback; broader per-method routing is deferred.
 - Only allowlisted stateless reads and `eth_sendRawTransaction` pass through the transport.
 - Retries replay the same signed bytes; the transport never signs, chooses nonces, increases fees or changes recipients.

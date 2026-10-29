@@ -31,6 +31,7 @@ type endpoint struct {
 	url         string // secret: never log or return
 	host        string
 	name        string // configured non-secret endpoint ID
+	tier        Tier
 	budgetGroup string
 	checkedAt   time.Time
 	probing     bool
@@ -40,6 +41,38 @@ type endpoint struct {
 	failures  int  // in a row
 	restUntil time.Time
 	next      time.Time // pacing: the earliest start of its next request
+
+	// Measured service: answer time and failure share, both moving averages.
+	latency  time.Duration
+	failRate float64
+	usedAt   time.Time
+	// The smallest log range and batch it refused, forgotten after RefusalMemory.
+	refusedBlocks uint64
+	refusedCalls  int
+	refusedAt     time.Time
+}
+
+// MeasureMemory: an endpoint unused this long is measured afresh, so one slow answer doesn't bench it for good.
+const MeasureMemory = 10 * time.Minute
+
+// RefusalMemory: an endpoint whose plan changed is tried with larger requests again after this.
+const RefusalMemory = time.Hour
+
+// cost is how long an answer is expected to take once the endpoint is free; unmeasured endpoints cost nothing, so
+// each gets measured.
+func (e *endpoint) cost(now time.Time) time.Duration {
+	if now.Sub(e.usedAt) > MeasureMemory {
+		return 0
+	}
+	return time.Duration(float64(e.latency) * (1 + 4*e.failRate))
+}
+
+func (e *endpoint) refuses(r request, now time.Time) bool {
+	if now.Sub(e.refusedAt) > RefusalMemory {
+		return false
+	}
+	return r.blocks > 0 && e.refusedBlocks > 0 && r.blocks >= e.refusedBlocks ||
+		r.calls > 1 && e.refusedCalls > 0 && r.calls >= e.refusedCalls
 }
 
 type pool struct {
@@ -52,7 +85,7 @@ type pool struct {
 
 	mu        sync.Mutex
 	changed   chan struct{}
-	endpoints []*endpoint // private before public, then priority and ID
+	endpoints []*endpoint // private before public, then priority and ID: the order before any measurement
 }
 
 // transport sends each call or batch through the endpoint pool.
@@ -74,16 +107,19 @@ var ErrUnavailable = errors.New("RPC endpoints unavailable")
 const RequestTimeout = 30 * time.Second
 const HealthInterval = 30 * time.Second
 
+// A request one endpoint refuses as too large goes to the others first: plans differ, and the caller should narrow
+// only when no endpoint takes it. The refusal is returned only then.
 func (p *pool) do(ctx context.Context, header http.Header, body []byte) (*http.Response, error) {
-	calls, err := requestCalls(body)
+	r, err := parseRequest(body)
 	if err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, RequestTimeout)
 	defer cancel()
 	tried := map[*endpoint]bool{}
+	var refused *http.Response
 	for len(tried) < len(p.endpoints) {
-		e, at, probe, err := p.pick(ctx, calls, tried)
+		e, at, probe, err := p.pick(ctx, r, tried)
 		if err != nil {
 			var pending probePending
 			if errors.As(err, &pending) {
@@ -93,6 +129,9 @@ func (p *pool) do(ctx context.Context, header http.Header, body []byte) (*http.R
 				case <-pending.done:
 					continue
 				}
+			}
+			if refused != nil && errors.Is(err, ErrUnavailable) {
+				return refused, nil
 			}
 			return nil, err
 		}
@@ -115,15 +154,59 @@ func (p *pool) do(ctx context.Context, header http.Header, body []byte) (*http.R
 			p.release(e, probe)
 			return nil, ctx.Err()
 		}
+		var size refusal
+		if errors.As(err, &size) {
+			p.refused(e, r, size.batch)
+			p.done(e, nil, probe)
+			if refused != nil {
+				refused.Body.Close()
+			}
+			refused = size.res
+			continue
+		}
 		p.done(e, err, probe)
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
 		if err == nil {
+			if refused != nil {
+				refused.Body.Close()
+			}
 			return res, nil
 		}
 	}
+	if refused != nil {
+		return refused, nil
+	}
 	return nil, fmt.Errorf("chain %d: %w", p.chainID, ErrUnavailable)
+}
+
+// refusal is an answer refusing the request's size (a log range, its result or a batch), not a failing endpoint.
+type refusal struct {
+	res   *http.Response
+	batch bool
+}
+
+func (refusal) Error() string { return "request size refused" }
+
+func (p *pool) refused(e *endpoint, r request, batch bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	now := time.Now()
+	if now.Sub(e.refusedAt) > RefusalMemory {
+		e.refusedBlocks, e.refusedCalls = 0, 0
+	}
+	// A refused single block is its result size, as with log spam: no endpoint does better, so nothing is learned.
+	switch {
+	case batch && (e.refusedCalls == 0 || r.calls < e.refusedCalls):
+		e.refusedCalls = r.calls
+	case !batch && r.blocks > 1 && (e.refusedBlocks == 0 || r.blocks < e.refusedBlocks):
+		e.refusedBlocks = r.blocks
+	default:
+		return
+	}
+	e.refusedAt = now
+	slog.Info("RPC refuses a request size", "chain", p.chainID, "rpc", e.name, "blocks", e.refusedBlocks, "calls", e.refusedCalls)
 }
 
 type probePending struct{ done <-chan struct{} }
@@ -147,11 +230,17 @@ func (p *pool) release(e *endpoint, probe bool) {
 	p.mu.Unlock()
 }
 
-func (p *pool) pick(ctx context.Context, calls int, tried map[*endpoint]bool) (*endpoint, time.Time, bool, error) {
+// pick prefers, in order: an endpoint not known to refuse the request's size, a private one, then the soonest
+// expected answer (its pacing wait plus its measured answer time). The configured order breaks ties.
+func (p *pool) pick(ctx context.Context, r request, tried map[*endpoint]bool) (*endpoint, time.Time, bool, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	now := time.Now()
-	pending := false
+	pending, late := false, false
+	var best *endpoint
+	var bestAt time.Time
+	var bestRefuses, bestPublic bool
+	var bestCost time.Duration
 	for _, e := range p.endpoints {
 		if !tried[e] && !e.wrong && e.probing {
 			pending = true
@@ -164,13 +253,33 @@ func (p *pool) pick(ctx context.Context, calls int, tried map[*endpoint]bool) (*
 			at = e.next
 		}
 		if deadline, ok := ctx.Deadline(); ok && at.After(deadline) {
-			return nil, time.Time{}, false, context.DeadlineExceeded
+			late = true
+			continue
 		}
-		e.next = at.Add(time.Duration(calls) * p.perCall)
-		if !e.checked || e.failures > 0 || now.Sub(e.checkedAt) >= HealthInterval {
-			e.probing = true
+		refuses, public, cost := e.refuses(r, now), e.tier == Public, at.Sub(now)+e.cost(now)
+		better := best == nil
+		switch {
+		case better:
+		case refuses != bestRefuses:
+			better = !refuses
+		case public != bestPublic:
+			better = !public
+		default:
+			better = cost < bestCost
 		}
-		return e, at, e.probing, nil
+		if better {
+			best, bestAt, bestRefuses, bestPublic, bestCost = e, at, refuses, public, cost
+		}
+	}
+	if best != nil {
+		best.next = bestAt.Add(time.Duration(r.calls) * p.perCall)
+		if !best.checked || best.failures > 0 || now.Sub(best.checkedAt) >= HealthInterval {
+			best.probing = true
+		}
+		return best, bestAt, best.probing, nil
+	}
+	if late {
+		return nil, time.Time{}, false, context.DeadlineExceeded
 	}
 	if pending {
 		if p.changed == nil {
@@ -188,12 +297,14 @@ func (p *pool) done(e *endpoint, failure error, probe bool) {
 		p.changedLocked()
 	}
 	if failure == nil {
+		e.failRate *= 0.8
 		if !e.restUntil.After(time.Now()) {
 			e.failures = 0
 		}
 		p.mu.Unlock()
 		return
 	}
+	e.failRate = 0.8*e.failRate + 0.2
 	if e.restUntil.After(time.Now()) {
 		p.mu.Unlock()
 		return // a request sent before this rest began: the rest already counts its failure
@@ -333,6 +444,7 @@ func (p *pool) post(ctx context.Context, e *endpoint, header http.Header, body [
 		return nil, fmt.Errorf("%s: invalid URL", e.name)
 	}
 	req.Header = header.Clone()
+	began := time.Now()
 	res, err := p.http.Do(req)
 	if err != nil {
 		return nil, p.unanswered(e, err)
@@ -342,6 +454,7 @@ func (p *pool) post(ctx context.Context, e *endpoint, header http.Header, body [
 	if err != nil {
 		return nil, p.unanswered(e, err)
 	}
+	took := time.Since(began)
 	if len(raw) > maxAnswer {
 		return nil, fmt.Errorf("%s: answer over %d bytes", e.name, maxAnswer)
 	}
@@ -363,7 +476,8 @@ func (p *pool) post(ctx context.Context, e *endpoint, header http.Header, body [
 		res.Header = make(http.Header)
 		res.Body = io.NopCloser(bytes.NewReader(safe))
 		res.ContentLength = int64(len(safe))
-		return res, nil
+		p.measured(e, took)
+		return nil, refusal{res: res, batch: batchLimit}
 	}
 
 	if res.StatusCode/100 != 2 && !queryLimit {
@@ -392,7 +506,25 @@ func (p *pool) post(ctx context.Context, e *endpoint, header http.Header, body [
 	res.StatusCode, res.Status = 200, "200 OK"
 	res.Body = io.NopCloser(bytes.NewReader(safe))
 	res.ContentLength = int64(len(safe))
+	// Only answers count toward the answer time: a fast error must not make an endpoint look fast.
+	p.measured(e, took)
+	if r, _ := parseRequest(body); r.blocks > 0 && bytes.Contains(safe, []byte(`"log result size too large"`)) {
+		return nil, refusal{res: res}
+	}
 	return res, nil
+}
+
+// measured keeps a moving average of the endpoint's answer time; one that sat unused starts again.
+func (p *pool) measured(e *endpoint, took time.Duration) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	now := time.Now()
+	if now.Sub(e.usedAt) > MeasureMemory {
+		e.latency = took
+	} else {
+		e.latency = (4*e.latency + took) / 5
+	}
+	e.usedAt = now
 }
 
 type retryAfter struct {
@@ -484,23 +616,6 @@ func rateLimited(code int, message string) bool {
 func tooLarge(m string) bool {
 	return strings.Contains(m, "range") || strings.Contains(m, "result") || strings.Contains(m, "size") ||
 		strings.Contains(m, "too large")
-}
-
-// Overloaded reports an error that a smaller eth_getLogs block range may avoid: a rate limit that every endpoint
-// answered (HTTP 429 or a JSON-RPC rate-limit error), or an RPC refusing the range or the size of the result.
-func Overloaded(err error) bool {
-	if TooLarge(err) {
-		return true
-	}
-	var status rpc.HTTPError
-	if errors.As(err, &status) {
-		return status.StatusCode == http.StatusTooManyRequests
-	}
-	var e rpc.Error
-	if !errors.As(err, &e) {
-		return false
-	}
-	return rateLimited(e.ErrorCode(), e.Error()) || tooLarge(strings.ToLower(e.Error()))
 }
 
 func TooLarge(err error) bool {

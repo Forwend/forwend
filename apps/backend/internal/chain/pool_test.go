@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 )
@@ -53,6 +54,11 @@ func TestFailingEndpointRestsThenComesBack(t *testing.T) {
 
 			bad.Fail(nil)
 			time.Sleep(time.Until(until))
+			r.pool.mu.Lock()
+			for _, other := range r.pool.endpoints[1:] {
+				other.latency, other.usedAt = time.Minute, time.Now()
+			}
+			r.pool.mu.Unlock()
 			if got := number(t, ctx, r.Client); got != want || len(bad.Calls()) != calls+2 {
 				t.Fatalf("after its rest: block %d, %d calls to it; want it used again", got, len(bad.Calls())-calls)
 			}
@@ -166,17 +172,17 @@ func TestFailedKeyMovesToTheNextKeyOnItsHost(t *testing.T) {
 	})
 	ctx := context.Background()
 	number(t, ctx, r.Client)
-	beforeOther := answered(other)
-	number(t, ctx, r.Client)
 	key2 := 0
 	for _, c := range infura.Calls() {
 		if c.Path == "/v3/key2" && c.Fault == chaintest.Forward {
 			key2++
 		}
 	}
-	if key2 == 0 || answered(other) != beforeOther {
-		t.Fatalf("key2 answered %d calls, the other host %d; want key2 used before the next host",
-			key2, answered(other)-beforeOther)
+	if key2 == 0 || answered(other) != 0 {
+		t.Fatalf("key2 answered %d calls, the other host %d; want key2 used before the next host", key2, answered(other))
+	}
+	if _, until := health(r, r.pool.endpoints[1]); until.After(time.Now()) {
+		t.Fatal("key1's rate limit rested key2")
 	}
 	if failures, _ := health(r, r.pool.endpoints[0]); failures != 1 {
 		t.Fatalf("key1 has %d failures, want 1", failures)
@@ -213,7 +219,7 @@ func TestURLsStayOutOfErrorsAndLogs(t *testing.T) {
 // A batch counts each of its calls against the selected endpoint's pace.
 func TestEachEndpointIsPaced(t *testing.T) {
 	a := chaintest.Start(t)
-	r, err := NewRPCs(testSpec(chaintest.ChainID, a.URL, localhost(a.URL)), 20) // 50 ms a call
+	r, err := NewRPCs(testSpec(chaintest.ChainID, a.URL), 20) // 50 ms a call
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,23 +295,24 @@ func TestOutageIsToldFromAnAnswer(t *testing.T) {
 	}
 }
 
-func TestOverloaded(t *testing.T) {
+// Only a refused range or result narrows a log query; a rate limit never does.
+func TestTooLarge(t *testing.T) {
 	for _, c := range []struct {
 		err  error
 		want bool
 	}{
-		{rpc.HTTPError{StatusCode: 429, Status: "429 Too Many Requests"}, true},
+		{rpc.HTTPError{StatusCode: 429, Status: "429 Too Many Requests"}, false},
 		{fmt.Errorf("read logs: %w", rpc.HTTPError{StatusCode: 503}), false},
 		{fmt.Errorf("read logs: %w", jsonError{-32005, "query returned more than 10000 results"}), true},
-		{jsonError{-32005, "project ID request rate exceeded"}, true},
+		{jsonError{-32005, "project ID request rate exceeded"}, false},
 		{jsonError{-32000, "exceed maximum block range: 50000"}, true},
 		{jsonError{-32602, "Log response size exceeded"}, true},
 		{jsonError{3, "execution reverted"}, false},
 		{errors.New("dial tcp: connection refused"), false},
 		{context.DeadlineExceeded, false},
 	} {
-		if got := Overloaded(c.err); got != c.want {
-			t.Errorf("Overloaded(%v) = %v, want %v", c.err, got, c.want)
+		if got := TooLarge(c.err); got != c.want {
+			t.Errorf("TooLarge(%v) = %v, want %v", c.err, got, c.want)
 		}
 	}
 }
@@ -394,7 +401,7 @@ func TestOversizedAnswerIsAnOutage(t *testing.T) {
 func TestCallerDeadlineDoesNotRestProviderForOtherWork(t *testing.T) {
 	a := chaintest.Start(t)
 	proxy := a.Proxy()
-	r := newRPCs(t, proxy.URL, localhost(a.URL))
+	r := newRPCs(t, proxy.URL)
 	if _, err := tryNumber(t.Context(), r.Client); err != nil {
 		t.Fatal(err)
 	}
@@ -416,7 +423,7 @@ func TestCallerDeadlineDoesNotRestProviderForOtherWork(t *testing.T) {
 func TestRequestsThatCannotMeetTheirDeadlineDoNotDelayLaterReads(t *testing.T) {
 	a := chaintest.Start(t)
 	proxy := a.Proxy()
-	r, err := NewRPCs(testSpec(chaintest.ChainID, proxy.URL, localhost(a.URL)), 10)
+	r, err := NewRPCs(testSpec(chaintest.ChainID, proxy.URL), 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -469,11 +476,13 @@ func TestHTTPLogRangeErrorsDoNotRestProvider(t *testing.T) {
 			if !TooLarge(err) {
 				t.Fatalf("range error cannot be narrowed: %v", err)
 			}
-			if calls.Load() != 2 {
-				t.Fatalf("chain ID plus one request expected; got %d", calls.Load())
+			if calls.Load() != 4 {
+				t.Fatalf("each endpoint asked for its chain ID and the range once; got %d calls", calls.Load())
 			}
-			if failures, _ := health(r, r.pool.endpoints[0]); failures != 0 {
-				t.Fatalf("range error rested healthy provider: failures=%d", failures)
+			for _, e := range r.pool.endpoints {
+				if failures, _ := health(r, e); failures != 0 {
+					t.Fatalf("range error rested healthy provider: failures=%d", failures)
+				}
 			}
 		})
 	}
@@ -504,10 +513,132 @@ func TestHTTPBatchLimitDoesNotRestProvider(t *testing.T) {
 	if !BatchTooLarge(err) {
 		t.Fatalf("batch limit cannot be split: %v", err)
 	}
-	if calls.Load() != 2 {
-		t.Fatalf("expected one failed batch, got %d calls", calls.Load())
+	if calls.Load() != 4 {
+		t.Fatalf("expected one failed batch per endpoint, got %d calls", calls.Load())
 	}
-	if failures, _ := health(r, r.pool.endpoints[0]); failures != 0 {
-		t.Fatalf("batch limit rested provider: %d", failures)
+	for _, e := range r.pool.endpoints {
+		if failures, _ := health(r, e); failures != 0 {
+			t.Fatalf("batch limit rested provider: %d", failures)
+		}
+	}
+}
+
+// rpcServer answers eth_chainId for the test chain; answer handles every other call.
+func rpcServer(t *testing.T, answer func(w http.ResponseWriter, id json.RawMessage, method string, params []json.RawMessage)) (*httptest.Server, *atomic.Int32) {
+	t.Helper()
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var request struct {
+			ID     json.RawMessage
+			Method string
+			Params []json.RawMessage
+		}
+		_ = json.NewDecoder(r.Body).Decode(&request)
+		if request.Method == "eth_chainId" {
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":"0x7a69"}`, request.ID)
+			return
+		}
+		calls.Add(1)
+		answer(w, request.ID, request.Method, request.Params)
+	}))
+	t.Cleanup(server.Close)
+	return server, &calls
+}
+
+func getLogs(ctx context.Context, c *rpc.Client, from, to uint64) error {
+	var logs []any
+	return c.CallContext(ctx, &logs, "eth_getLogs", map[string]string{"fromBlock": fmt.Sprintf("0x%x", from), "toBlock": fmt.Sprintf("0x%x", to)})
+}
+
+func TestRangeOneEndpointRefusesGoesToTheNext(t *testing.T) {
+	limited, limitedCalls := rpcServer(t, func(w http.ResponseWriter, id json.RawMessage, _ string, params []json.RawMessage) {
+		var filter struct{ FromBlock, ToBlock hexutil.Uint64 }
+		_ = json.Unmarshal(params[0], &filter)
+		if filter.ToBlock-filter.FromBlock >= 100 {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"error":{"code":35,"message":"ranges over 10000 blocks are not supported on free plan"}}`, id)
+			return
+		}
+		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":[]}`, id)
+	})
+	full, fullCalls := rpcServer(t, func(w http.ResponseWriter, id json.RawMessage, _ string, _ []json.RawMessage) {
+		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":[]}`, id)
+	})
+	r := newRPCs(t, limited.URL, localhost(full.URL)) // the limited one comes first in the configured order
+	for i := range 3 {
+		if err := getLogs(t.Context(), r.Client, 1, 2000); err != nil {
+			t.Fatalf("query %d: %v; want the endpoint that takes 2,000 blocks to answer", i, err)
+		}
+	}
+	if limitedCalls.Load() != 1 || fullCalls.Load() != 3 {
+		t.Fatalf("limited endpoint asked %d times, full one %d; want the refusal remembered", limitedCalls.Load(), fullCalls.Load())
+	}
+	for _, e := range r.pool.endpoints {
+		if failures, _ := health(r, e); failures != 0 {
+			t.Fatalf("a refused size rested %s", e.name)
+		}
+	}
+}
+
+func TestFasterEndpointIsPreferredOverTheConfiguredOrder(t *testing.T) {
+	answer := func(delay time.Duration) func(http.ResponseWriter, json.RawMessage, string, []json.RawMessage) {
+		return func(w http.ResponseWriter, id json.RawMessage, _ string, _ []json.RawMessage) {
+			time.Sleep(delay)
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":"0x10"}`, id)
+		}
+	}
+	slow, slowCalls := rpcServer(t, answer(80*time.Millisecond))
+	fast, fastCalls := rpcServer(t, answer(0))
+	r := newRPCs(t, slow.URL, localhost(fast.URL))
+	for range 12 {
+		number(t, t.Context(), r.Client)
+	}
+	if slowCalls.Load() > 2 || fastCalls.Load() < 10 {
+		t.Fatalf("slow endpoint answered %d calls, fast one %d; want the fast one used once both are measured",
+			slowCalls.Load(), fastCalls.Load())
+	}
+}
+
+func TestBatchOneEndpointRefusesGoesToTheNext(t *testing.T) {
+	batchServer := func(limit int) (*httptest.Server, *atomic.Int32) {
+		var batches atomic.Int32
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			body, _ := io.ReadAll(r.Body)
+			var calls []struct{ ID json.RawMessage }
+			if json.Unmarshal(body, &calls) != nil {
+				var one struct{ ID json.RawMessage }
+				_ = json.Unmarshal(body, &one)
+				fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":"0x7a69"}`, one.ID) // the health probe's eth_chainId
+				return
+			}
+			batches.Add(1)
+			if len(calls) > limit {
+				w.WriteHeader(http.StatusInternalServerError)
+				fmt.Fprint(w, `[{"jsonrpc":"2.0","id":1,"error":{"code":31,"message":"Batch of more than 3 requests are not allowed on free plan"}}]`)
+				return
+			}
+			answers := make([]string, len(calls))
+			for i, c := range calls {
+				answers[i] = fmt.Sprintf(`{"jsonrpc":"2.0","id":%s,"result":"0x10"}`, c.ID)
+			}
+			fmt.Fprint(w, "["+strings.Join(answers, ",")+"]")
+		}))
+		t.Cleanup(server.Close)
+		return server, &batches
+	}
+	limited, limitedBatches := batchServer(3)
+	full, fullBatches := batchServer(100)
+	r := newRPCs(t, limited.URL, localhost(full.URL))
+	for i := range 2 {
+		batch := make([]rpc.BatchElem, 5)
+		for j := range batch {
+			batch[j] = rpc.BatchElem{Method: "eth_blockNumber", Result: new(string)}
+		}
+		if err := r.Client.BatchCallContext(t.Context(), batch); err != nil || batch[0].Error != nil {
+			t.Fatalf("batch %d: %v %v; want the endpoint that takes 5 calls to answer", i, err, batch[0].Error)
+		}
+	}
+	if limitedBatches.Load() != 1 || fullBatches.Load() != 2 {
+		t.Fatalf("limited endpoint got %d batches, full one %d; want the refusal remembered", limitedBatches.Load(), fullBatches.Load())
 	}
 }

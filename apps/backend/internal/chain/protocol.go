@@ -5,20 +5,32 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
+// request is the size of one HTTP request: its number of calls, and the blocks of a single eth_getLogs.
+type request struct {
+	calls  int
+	blocks uint64
+}
+
 // Only stateless reads and already-signed transactions can cross provider boundaries safely.
-func requestCalls(body []byte) (int, error) {
-	var calls []struct{ Method string }
+func parseRequest(body []byte) (request, error) {
+	type call struct {
+		Method string
+		Params []json.RawMessage
+	}
+	var calls []call
 	if err := json.Unmarshal(body, &calls); err != nil {
-		var one struct{ Method string }
+		var one call
 		if json.Unmarshal(body, &one) != nil {
-			return 0, errors.New("invalid RPC request")
+			return request{}, errors.New("invalid RPC request")
 		}
 		calls = append(calls, one)
 	}
 	if len(calls) == 0 {
-		return 0, errors.New("empty RPC batch")
+		return request{}, errors.New("empty RPC batch")
 	}
 	for _, c := range calls {
 		switch c.Method {
@@ -26,10 +38,17 @@ func requestCalls(body []byte) (int, error) {
 			"eth_getLogs", "eth_getBalance", "eth_getCode", "eth_call", "eth_getTransactionCount", "eth_getTransactionByHash",
 			"eth_getTransactionReceipt", "eth_estimateGas", "eth_gasPrice", "eth_maxPriorityFeePerGas", "eth_feeHistory", "eth_sendRawTransaction":
 		default:
-			return 0, errors.New("RPC method is not permitted")
+			return request{}, errors.New("RPC method is not permitted")
 		}
 	}
-	return len(calls), nil
+	r := request{calls: len(calls)}
+	if len(calls) == 1 && calls[0].Method == "eth_getLogs" && len(calls[0].Params) == 1 {
+		var filter struct{ FromBlock, ToBlock hexutil.Uint64 }
+		if json.Unmarshal(calls[0].Params[0], &filter) == nil && filter.ToBlock >= filter.FromBlock {
+			r.blocks = uint64(filter.ToBlock-filter.FromBlock) + 1
+		}
+	}
+	return r, nil
 }
 
 type response struct {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 351,
+  "nextId": 352,
   "tasks": [
     {
       "id": "F332",
@@ -869,6 +869,86 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
+    },
+    {
+      "id": "F351",
+      "type": "fix",
+      "behavior": "A chain's payment scan keeps moving when an RPC limits requests",
+      "acceptance": [
+        "A log range or batch one endpoint refuses goes to the next endpoint; the scan narrows only when no endpoint takes it, and grows back after accepted queries",
+        "Endpoints are chosen by measured answer time and failure share, not by name; private endpoints stay first",
+        "Each scan records what it read within 60% of its deadline and always moves the cursor, so a slow or narrow provider cannot stall a chain",
+        "The worker logs an ALERT for a stalled chain, a deposit stuck as detected, and paid money not settled in time or near its deadline"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend-affected",
+        "backend-e2e",
+        "docs-check"
+      ],
+      "refs": [
+        "R-180"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-29 review pass by independent-reviewer: PASS. Both blocking findings from the F350 review are fixed. (1) docs/tasks.json now only adds F351 and sets nextId 351 to 352; F343, F344 and F347-F350 match HEAD 7e5b37b8. (2) rpc.md:56-57 now match the code: a refusing endpoint is ranked last for that size for an hour (pool.go:262-263), and the refusal reaches the caller only when no other endpoint answered (pool.go:133-135, 178-180).\nFixes checked: alerts.go only alerts intents whose settle deadline is still ahead, and alerts_test adds a past-deadline intent that must stay silent. TestBatchOneEndpointRefusesGoesToTheNext (pool_test.go:602) sends a 5-call batch past a 3-call endpoint and checks the refusal is remembered; the old pool returned the first refusal, so it fails there. post() measures only usable answers and size refusals (pool.go:474, 506). refused() sets refusedAt only when it records a size and ignores single-block refusals (pool.go:192-209). scanRange records when from > latest (watcher.go:122): latest becomes from-1, the cursor cannot pass the node finalized block (record keeps the greatest), and a recovery sweep with target below next completes. This also fixes a case the earlier version had: a new chain whose finalized block equals latest (Tempo, Arc) got from = finalized+1 > latest, so the first Scan never created its cursor.\nRe-run: changed pool tests with -race, TestAlerts, and the watcher range, backlog, growth, slow-provider and Recover tests all pass. harness verify passed at 17:48:55Z, after the last source edit (17:48:42Z). docs-check 0 errors; no added doc sentence over 25 words.\nNon-blocking: (a) rpc.md:51 says an endpoint unused for 10 minutes costs nothing; since failures no longer update usedAt, an endpoint that only failed for 10 minutes also costs nothing and is tried first after each rest (a hanging one costs up to 5 s per try). Say: without a usable answer for 10 minutes. (b) Unchanged by agreement: a refusal during the health probe counts as a size refusal (pool.go:157-166); the overlap is min(2000, span), so with a narrowed span recovery is the only second look; a failed pending-row re-read (watcher.go:164-166) drops the main progress, and a started range can run past the 60% mark. (c) No test covers the first Scan of a chain whose finalized block equals latest."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-29T17:48:55Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 245.2,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 44.3,
+            "log": ""
+          }
+        ],
+        "taskHash": "cd6141841f633f24",
+        "filesHash": "ff6a829af242a3c6",
+        "proof": {
+          "1": "backend-affected: chain TestRangeOneEndpointRefusesGoesToTheNext, TestBatchOneEndpointRefusesGoesToTheNext; watcher TestNarrowedLogRangeGrowsBack, TestLogRangeRetainsAcceptedSize",
+          "2": "backend-affected: chain TestFasterEndpointIsPreferredOverTheConfiguredOrder and TestPrivatePriorityFallbackAndRecovery",
+          "3": "backend-affected: watcher TestSlowSmallRangeProviderStillMovesTheCursorEveryScan and TestLongBacklogIsCaughtUpOverSeveralScans; backend-e2e runs the money loop",
+          "4": "backend-affected: worker TestAlertsNameAStalledChainAndPaidMoneyNotSettled"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent-reviewer",
+          "summary": "PASS. Both blocking findings from the F350 review are fixed. (1) docs/tasks.json now only adds F351 and sets nextId 351 to 352; F343, F344 and F347-F350 match HEAD 7e5b37b8. (2) rpc.md:56-57 now match the code: a refusing endpoint is ranked last for that size for an hour (pool.go:262-263), and the refusal reaches the caller only when no other endpoint answered (pool.go:133-135, 178-180).\nFixes checked: alerts.go only alerts intents whose settle deadline is still ahead, and alerts_test adds a past-deadline intent that must stay silent. TestBatchOneEndpointRefusesGoesToTheNext (pool_test.go:602) sends a 5-call batch past a 3-call endpoint and checks the refusal is remembered; the old pool returned the first refusal, so it fails there. post() measures only usable answers and size refusals (pool.go:474, 506). refused() sets refusedAt only when it records a size and ignores single-block refusals (pool.go:192-209). scanRange records when from > latest (watcher.go:122): latest becomes from-1, the cursor cannot pass the node finalized block (record keeps the greatest), and a recovery sweep with target below next completes. This also fixes a case the earlier version had: a new chain whose finalized block equals latest (Tempo, Arc) got from = finalized+1 > latest, so the first Scan never created its cursor.\nRe-run: changed pool tests with -race, TestAlerts, and the watcher range, backlog, growth, slow-provider and Recover tests all pass. harness verify passed at 17:48:55Z, after the last source edit (17:48:42Z). docs-check 0 errors; no added doc sentence over 25 words.\nNon-blocking: (a) rpc.md:51 says an endpoint unused for 10 minutes costs nothing; since failures no longer update usedAt, an endpoint that only failed for 10 minutes also costs nothing and is tried first after each rest (a hanging one costs up to 5 s per try). Say: without a usable answer for 10 minutes. (b) Unchanged by agreement: a refusal during the health probe counts as a size refusal (pool.go:157-166); the overlap is min(2000, span), so with a narrowed span recovery is the only second look; a failed pending-row re-read (watcher.go:164-166) drops the main progress, and a started range can run past the 60% mark. (c) No test covers the first Scan of a chain whose finalized block equals latest.",
+          "at": "2026-10-29T17:54:09Z",
+          "filesHash": "ff6a829af242a3c6"
+        },
+        "commit": "7dd1d4df",
+        "doneAt": "2026-10-29T18:31:05Z"
+      },
+      "branch": "fix/f351-a-chain-s-payment-scan-keeps-moving-when",
+      "baseCommit": "7e5b37b89cebbac5070531bdf990af46c8ffa747",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f351-a-chain-s-payment-scan-keeps-moving-when",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
