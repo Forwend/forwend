@@ -1243,7 +1243,7 @@
         "A partly paid invoice completed while the balance RPC lags is paid at a later round; a failed scan still books recorded money; an invoice owed in full but not paid after 45 minutes and receiver events unbooked for 30 minutes log an ALERT; a cap wait alerts only near its deadline"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend-affected",
         "docs-check"
@@ -1296,11 +1296,18 @@
           "summary": "Re-review passes. Non-test code is unchanged since the first review, where all five claims were verified. Ran: ledger ok, worker ok, settlement AfterTheWatchWindow ok. All three fixes hold. (1) R-184 is now two sentences, 22 and 9 words; no new doc sentence over 25 words (longest 22). (2) Mutating OwedNotPaid to '>= 0' now fails the ledger test: the 2-of-5 invoice is listed with the owed one. (3) Removing the owed-in-full loop from alerts.go fails the worker test on invoice 04's ALERT line. Optional case also covered: invoice 01 as a cap wait inside 24 h of its deadline must alert; making cap waits never alert fails the test, and making them alert early fails the invoice 03 check. money-safety.md now documents the less-than-booked ALERT and its backoff; the text matches the code (alertAgainLater). Earlier mutants still fail: old process.go (ledger test), old worker.go (worker test), no receiver_outflows alert (alerts test). Scratch copies removed, no Anvil left running, repo files unchanged by me. Notes, no action needed: a hung scan that uses the whole 2 min RoundTimeout still leaves ProcessChain no time, so the fix covers fast scan failures only.",
           "at": "2026-10-29T20:02:28Z",
           "filesHash": "43373414a45f2414"
-        }
+        },
+        "commit": "35661f1b",
+        "doneAt": "2026-10-29T20:02:39Z"
       },
       "branch": "fix/f356-money-owed-in-full-recorded-or-refused-n",
       "baseCommit": "24a3e503814e570517a0b9f6d11038652ea28a71",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f356-money-owed-in-full-recorded-or-refused-n",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
