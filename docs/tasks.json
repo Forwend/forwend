@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 347,
+  "nextId": 348,
   "tasks": [
     {
       "id": "F332",
@@ -536,6 +536,100 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f346-the-payment-page-shows-no-next-step-box",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F347",
+      "type": "chore",
+      "behavior": "Unused landscape images are removed",
+      "acceptance": [
+        "balance-day, balance-night, hero-night and not-found .webp and their images.md rows are gone; images-check passes and no code refers to them (owner request 2026-10-29)"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "images-check",
+        "e2e"
+      ],
+      "refs": [
+        "D-113"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-29 review pass by independent-reviewer: Pass. 3be4a6ea deletes balance-day, balance-night, hero-night and not-found .webp from apps/web/public/images and their four rows from docs/web/images.md. No code, test, doc, email, PDF or metadata file refers to them; a search of all files, including untracked ones, finds them only in earlier review notes in docs/tasks.json. node scripts/check-images.mjs reports 9 images, all recorded, and images.md has the same 9 rows. The intro at images.md:9 says the older rows are kept for /kit/directions. That is now true for all eight: hero-dawn, checkout-dusk and hero-c-halftone-horizon in kit-directions/constants/directions.ts, and the five candidates in image-directions.ts. This settles the earlier note that images.md:9 named rows /kit/directions did not use. Note, not blocking and older than this change: the same intro calls those rows 'the Dawn Path images' with one shared style suffix, but only hero-dawn is Dawn Path; the others are directions B to H with their own prompts. Verify passed at 16:38Z."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-29T16:38:38Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 44.0,
+            "log": ""
+          },
+          {
+            "id": "images-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.6,
+            "log": ""
+          }
+        ],
+        "taskHash": "3522c82fc99fe0d2",
+        "filesHash": "61a4b09f26333224",
+        "proof": {
+          "1": "images-check: 9 images, all recorded in images.md; the four files and their rows are gone, and no code or doc refers to them"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent-reviewer",
+          "summary": "Pass. 3be4a6ea deletes balance-day, balance-night, hero-night and not-found .webp from apps/web/public/images and their four rows from docs/web/images.md. No code, test, doc, email, PDF or metadata file refers to them; a search of all files, including untracked ones, finds them only in earlier review notes in docs/tasks.json. node scripts/check-images.mjs reports 9 images, all recorded, and images.md has the same 9 rows. The intro at images.md:9 says the older rows are kept for /kit/directions. That is now true for all eight: hero-dawn, checkout-dusk and hero-c-halftone-horizon in kit-directions/constants/directions.ts, and the five candidates in image-directions.ts. This settles the earlier note that images.md:9 named rows /kit/directions did not use. Note, not blocking and older than this change: the same intro calls those rows 'the Dawn Path images' with one shared style suffix, but only hero-dawn is Dawn Path; the others are directions B to H with their own prompts. Verify passed at 16:38Z.",
+          "at": "2026-10-29T16:40:35Z",
+          "filesHash": "61a4b09f26333224"
+        },
+        "commit": "8de4c090",
+        "doneAt": "2026-10-29T16:40:48Z"
+      },
+      "branch": "chore/f347-unused-landscape-images-are-removed",
+      "baseCommit": "a7af9efd6ac9386d894a2779f453d0aa7dc721f9",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "chore/f347-unused-landscape-images-are-removed",
         "base": "main"
       }
     }
