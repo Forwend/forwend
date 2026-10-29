@@ -207,6 +207,59 @@ func TestInvoicesPerProfilePerDayAreCapped(t *testing.T) {
 	}
 }
 
+// A stranger who spams a public payment link uses up only the links' quota, never the owner's (R-188).
+func TestPaymentLinkInvoicesHaveTheirOwnQuota(t *testing.T) {
+	ctx := context.Background()
+	pool, profile := open(t)
+	link := "00000000-0000-0000-0000-0000000000aa"
+	if _, err := pool.Exec(ctx, `INSERT INTO payment_links (id, profile_id, slug, title) VALUES ($1, $2, 'abcdefghijkl', 'Seat')`,
+		link, profile); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
+		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash, link_id)
+		SELECT '0x' || lpad(to_hex(n), 64, '0'), $1, 84532, 'evm', $2, 5000000, 1, 86401,
+		    '0x1111111111111111111111111111111111111111', 'evm_create2', '0x2222222222222222222222222222222222222222',
+		    '0x' || lpad(to_hex(n), 40, '0'), 'link-' || n, decode(repeat('00', 32), 'hex'), $4
+		FROM generate_series(1, $3::int) n`, profile, usdc, MaxPerDay, link); err != nil {
+		t.Fatal(err)
+	}
+	req := Request{ChainID: 84532, Token: usdc, Amount: "5000000"}
+	if _, _, err := NewService(pool).Create(ctx, profile, "owner", req); err != nil {
+		t.Fatalf("the owner's invoice after a day of link invoices: %v", err)
+	}
+	req.LinkID = link
+	if _, _, err := NewService(pool).Create(ctx, profile, "payer", req); !errors.Is(err, ErrInvalid) ||
+		!strings.Contains(err.Error(), "payment links") {
+		t.Fatalf("over the links' daily quota: %v, want ErrInvalid", err)
+	}
+}
+
+// The other way too: a day of the owner's invoices leaves payers on its links their own quota.
+func TestOwnerInvoicesLeaveTheLinksQuota(t *testing.T) {
+	ctx := context.Background()
+	pool, profile := open(t)
+	link := "00000000-0000-0000-0000-0000000000aa"
+	if _, err := pool.Exec(ctx, `INSERT INTO payment_links (id, profile_id, slug, title) VALUES ($1, $2, 'abcdefghijkl', 'Seat')`,
+		link, profile); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
+		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
+		SELECT '0x' || lpad(to_hex(n), 64, '0'), $1, 84532, 'evm', $2, 5000000, 1, 86401,
+		    '0x1111111111111111111111111111111111111111', 'evm_create2', '0x2222222222222222222222222222222222222222',
+		    '0x' || lpad(to_hex(n), 40, '0'), 'day-' || n, decode(repeat('00', 32), 'hex')
+		FROM generate_series(1, $3::int) n`, profile, usdc, MaxPerDay); err != nil {
+		t.Fatal(err)
+	}
+	req := Request{ChainID: 84532, Token: usdc, Amount: "5000000", LinkID: link}
+	if _, _, err := NewService(pool).Create(ctx, profile, "payer", req); err != nil {
+		t.Fatalf("a payer's invoice after a day of the owner's: %v", err)
+	}
+}
+
 func TestConcurrentRetryReplaysWhenTheWinnerUsesTheLastDailySlot(t *testing.T) {
 	ctx := t.Context()
 	pool, profileID := open(t)

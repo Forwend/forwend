@@ -188,18 +188,26 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		return Invoice{}, false, fmt.Errorf("%w: this invoice must be %s mode, and no token of that mode is enabled",
 			ErrInvalid, modeName(live))
 	}
+	// Invoices payers make on payment links have their own quota, so a stranger who spams a public link can't stop
+	// the owner's invoices (R-188).
+	fromLink := r.LinkID != ""
+	whose, has, creates := "a profile", "has", "creates"
+	if fromLink {
+		whose, has, creates = "a profile's payment links", "have", "create"
+	}
 	var open, today int
 	if err := tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE closes_at > $2),
-		count(*) FILTER (WHERE created_at > now() - interval '1 day') FROM invoices WHERE profile_id = $1`,
-		profileID, s.currentTime().Unix()).Scan(&open, &today); err != nil {
+		count(*) FILTER (WHERE created_at > now() - interval '1 day') FROM invoices
+		WHERE profile_id = $1 AND (link_id IS NOT NULL) = $3`,
+		profileID, s.currentTime().Unix(), fromLink).Scan(&open, &today); err != nil {
 		return Invoice{}, false, fmt.Errorf("count open invoices: %w", err)
 	}
 	// Each option is a watched receive address, so it counts.
 	if open+len(options) > MaxOpen {
-		return Invoice{}, false, fmt.Errorf("%w: a profile has at most %d receive addresses open at once", ErrInvalid, MaxOpen)
+		return Invoice{}, false, fmt.Errorf("%w: %s %s at most %d receive addresses open at once", ErrInvalid, whose, has, MaxOpen)
 	}
 	if today+len(options) > MaxPerDay {
-		return Invoice{}, false, fmt.Errorf("%w: a profile creates at most %d receive addresses a day", ErrInvalid, MaxPerDay)
+		return Invoice{}, false, fmt.Errorf("%w: %s %s at most %d receive addresses a day", ErrInvalid, whose, creates, MaxPerDay)
 	}
 	if r.Before != nil {
 		if err := r.Before(ctx, tx); err != nil {

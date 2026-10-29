@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 361,
+  "nextId": 362,
   "tasks": [
     {
       "id": "F332",
@@ -1662,6 +1662,80 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f360-a-signed-transaction-reaches-the-chain-e",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F361",
+      "type": "fix",
+      "behavior": "Payment-link traffic never stops the owner from creating invoices",
+      "acceptance": [
+        "Invoices payers make on payment links count toward their own open and daily limits, separate from the owner's; a day of link invoices leaves the owner's create working, and the links' own limit still refuses more"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend-affected",
+        "docs-check"
+      ],
+      "refs": [
+        "R-188"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-29 review pass by independent-reviewer: PASS. Both pools are counted in one query under the same profile row lock, so no race passes either limit; 20 concurrent creates at 499 of 500 link rows gave 1 link success while 20 owner creates all passed (scratch test via overlay, deleted). Only invoice.Create inserts invoices; its callers are owner create, key checkout API, job accept/done, retainers (owner pool) and link Pay (link pool). Option rows carry the same link_id, link_id is never updated, no ON DELETE SET NULL, so nothing bypasses both pools. Index: planner uses invoices_profile or invoices_link, no seq scan on multi-profile data; same cost as before. Watcher splits topics in chunks of 1000, so 2x MaxOpen per profile only adds one getLogs per range per extra 1000 addresses. 422 invalid_value mapping unchanged; owner message text identical to before; web pay page maps any 422 to its generic failed copy, same as before. Tests: invoice package and httpapi Link tests pass; mutating the filter to shared, flipped, or no-link-count fails the new test (shared: 'a profile creates at most 500 receive addresses a day'). docs-check 0 errors, no sentence over 25 words. Non-blocking: (1) the test does not cover the reverse direction; making link counts include owner rows still passes. (2) owed.go:89 comment still says the open filter keeps rows within MaxOpen; it is now twice MaxOpen (api.md was updated). (3) the open limit for links has no test, only the daily one. (4) the count query reads all of a profile's historic rows (before this change too).",
+        "2026-10-29 review pass by independent-reviewer: PASS on the updated diff. TestOwnerInvoicesLeaveTheLinksQuota passes, and fails when the count is shared ('a profile's payment links create at most 500 receive addresses a day') and when the link count includes the owner's rows (the one mutation the first test missed). TestPaymentLinkInvoicesHaveTheirOwnQuota still fails on a shared count. Both quota tests and the existing cap tests pass; gofmt clean, docs-check 0 errors. owed.go comment now says twice MaxOpen, matching api.md. The only code changes since my first pass are the new test and that comment. Open limit untested and the profile-wide count scan left as is; both accepted as non-blocking."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-29T23:24:23Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 230.9,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 39.3,
+            "log": ""
+          }
+        ],
+        "taskHash": "da98041dff1c4bde",
+        "filesHash": "e54928d7dbb7f598",
+        "proof": {
+          "1": "backend-affected: invoice TestPaymentLinkInvoicesHaveTheirOwnQuota and TestOwnerInvoicesLeaveTheLinksQuota fail when link and owner invoices share one count; the existing cap tests pass"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent-reviewer",
+          "summary": "PASS on the updated diff. TestOwnerInvoicesLeaveTheLinksQuota passes, and fails when the count is shared ('a profile's payment links create at most 500 receive addresses a day') and when the link count includes the owner's rows (the one mutation the first test missed). TestPaymentLinkInvoicesHaveTheirOwnQuota still fails on a shared count. Both quota tests and the existing cap tests pass; gofmt clean, docs-check 0 errors. owed.go comment now says twice MaxOpen, matching api.md. The only code changes since my first pass are the new test and that comment. Open limit untested and the profile-wide count scan left as is; both accepted as non-blocking.",
+          "at": "2026-10-29T23:29:21Z",
+          "filesHash": "e54928d7dbb7f598"
+        },
+        "commit": "cd2a4f59",
+        "doneAt": "2026-10-29T23:29:30Z"
+      },
+      "branch": "fix/f361-payment-link-traffic-never-stops-the-own",
+      "baseCommit": "64e9407a29411617f7147ff13018c58dde29cb6e",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f361-payment-link-traffic-never-stops-the-own",
         "base": "main"
       }
     }

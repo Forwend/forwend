@@ -254,6 +254,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-187 | A signed transaction reaches the chain even when one node drops it. | Given a signed settlement sent through the pool, when an endpoint answers, then the same signed bytes also go to one endpoint on another host. A node that takes the transaction and never passes it on can't hold a settlement back. | backend | R-185, R-22 |
 
+| R-188 | Payment-link traffic never stops the owner from creating invoices. | Given invoices payers make on a profile's payment links, then they count toward their own open and daily limits. The owner's invoices keep theirs. A stranger who spams a public link uses up only the links' quota. | backend | R-142, R-117 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.

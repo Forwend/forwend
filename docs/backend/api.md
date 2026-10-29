@@ -716,7 +716,7 @@ R-19 and R-42; the full schema is in openapi.yaml.
     - Balances show it as `held`, and each payment shows its own.
   - Order: overdue (most days late first), then partly paid.
   - `items` holds the first `limit` rows (1–100, default 50). `count` and per-token `totals` cover every row.
-  - The read adds up every row; the open filter keeps them within the `MaxOpen` receive addresses.
+  - The read adds up every row; the open filter keeps them within twice `MaxOpen` receive addresses (the owner's and its links').
 - `settlementWait` (owner reads and create only) says why a paid invoice's money has not reached the profile wallet
   yet, null when it is not paid or already settled (R-54): `{kind, until, secondsLeft}` with `kind` one of `signing`,
   `finalizing` (`secondsLeft` estimates the chain time until the settle is final), `retrying` and `dailyLimit` (the
@@ -992,6 +992,7 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
 - 400 malformed, 401 no or bad token, 403 not yours, 404 missing, 409 conflict, 422 invalid value, 429 too many
   requests, 503 a network the worker has not scanned yet (`network_not_ready` on invoice create, `network_unavailable` when a recheck cannot read it), 500 anything else.
   A profile has at most 1,000 invoices open for payment at once and creates at most 500 a day: 422 above.
+  Invoices payers make on its payment links have the same limits, counted apart, so link traffic never blocks the owner (R-188).
 - A 500 never shows internal details. `httpio.WriteError` maps sentinel errors to codes in one place.
 
 ## Rate limits
