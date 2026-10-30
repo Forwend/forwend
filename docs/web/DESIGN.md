@@ -43,6 +43,8 @@ Read only the sections your change touches. Any new control also needs
 ## Type and color
 
 - Hanken Grotesk sets every heading, the UI, body text and money; the display role reuses it.
+  - Its latin and latin-ext files are preloaded and show from the first paint; a late one waits for the next load.
+  - Until then its fallback is Arial, or Liberation Sans or Arimo where Arial is missing, sized to Hanken.
   - Large headings use the medium weight with tight tracking (the `text-hero` and `text-section` roles carry it).
   - Geist Mono only for addresses, hashes, contract links, raw base units, keyboard hints and code.
   - Geist Mono is preloaded and shows from the first paint; one that arrives too late waits for the next page load.

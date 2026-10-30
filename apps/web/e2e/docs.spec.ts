@@ -82,7 +82,7 @@ for (const width of [360, 390]) {
   });
 }
 
-test("the docs page doesn't shift when its code font arrives late", async ({ page }) => {
+test("the docs page doesn't shift when its fonts arrive late", async ({ page }) => {
   // The font files arrive well after the first paint.
   await page.route(/\/_next\/static\/media\/.*\.woff2$/, async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 800));
