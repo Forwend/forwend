@@ -279,6 +279,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-204 | Motion uses the motion tokens, and the current page's mark moves with the page. | Given any transition, then its duration and easing are motion tokens. Given a page switch, then the sidebar's, tab bar's and settings' mark moves at once; only hover fades. | loading-live-e2e | R-66, R-201 |
 
+| R-205 | Sign-in and the app send no WalletConnect requests. | Given `/sign-in` or an `/app` page, then no request goes to WalletConnect. Given the email code, then sign-in still lands in the app shell. | auth-live-e2e | D-21 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.
