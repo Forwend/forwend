@@ -1,7 +1,7 @@
 # Web architecture
 
 One Next.js app (App Router, TypeScript strict) for every surface: landing `/`, private `/kit`, the signed-in
-app `/app`, the public checkout `/pay/<token>`, the public stop reminders page `/reminders/<token>`, the public
+app `/app`, the public checkout `/pay/<token>` and its embed `/embed/<token>`, the public stop reminders page `/reminders/<token>`, the public
 quote page `/w/<token>` and the public API docs `/docs` (PROJECT D-2, R-96, R-102, R-155). Rules: [rules.md](rules.md).
 Whole system: [architecture.md](../architecture.md).
 
@@ -29,6 +29,12 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
 - Every page sends Privy's recommended CSP, `frame-ancestors 'none'` and `X-Frame-Options: DENY` (no page, checkout
   included, can be framed), `nosniff`, a referrer and a permissions policy, and HSTS (`next.config.ts`). Scripts allow
   `'unsafe-inline'` because Next inlines its own; nonces would make every page dynamic.
+  - `/embed/<token>` is the one exception (R-168, D-117): `src/proxy.ts` replaces its CSP.
+  - Its `frame-ancestors` names the query's `origin` only when `GET /v1/invoices/{payToken}/embed` allows it.
+  - Otherwise, a failed check included, it stays `'none'`.
+  - `X-Frame-Options: DENY` stays too; browsers skip it when a CSP names `frame-ancestors` (HTML standard).
+  - Header rules match paths in any case and the proxy does not, so every path keeps the denying headers.
+  - The proxy reads `API_URL` at run time, so the runtime image sets it as well as the build.
 - Users sign in on `/sign-in` with our own forms (email code with the `CodeInput` boxes, Google, passkey; D-21) on the Privy
   React SDK's headless hooks; Privy's modal is not used. With no wallet login, Privy's wallet list is empty and its
   WalletConnect is off, so no page fetches WalletConnect's registry or loads its code. Users add a passkey from the
@@ -120,6 +126,12 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   - balances: the USD formatting of the amount shown to the customer.
 - `/l/<slug>` and `/pay/<token>` share the `(checkout)` group, whose layout mounts one public store.
   - Pay on a link reads the new invoice into it, then opens the checkout, so it renders at once.
+- `/embed/<token>?layout=full|element&origin=…&theme=light|dark` (R-168) is `/pay/<token>` in a merchant's page.
+  - `PayScreen` takes `embed`: the page is as tall as its content, never the screen.
+  - An element drops the title, items, note and PDF. The footer adds a link that opens `/pay/<token>` in a new tab.
+  - `features/pay/hooks/use-embed-messages.ts` posts `ready`, `resize` and `status` to `origin` only (D-117).
+  - Links that would load another page in the frame open a new tab, or the top page for the way back.
+  - The embed listens to no message from its page.
 - Checkout `/pay/<token>` (R-45) sits outside the `(app)` group: no Privy, no sign-in, `noindex`. A malformed token
   (an on-chain id too, D-86) is a 404; a token the API does not know shows the 404 page. It reads the public
   `GET /v1/invoices/{payToken}` every 15 s through a

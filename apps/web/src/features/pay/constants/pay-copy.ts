@@ -136,6 +136,9 @@ export const PAY_COPY = {
   help: "Need help?",
   host: "You are on",
   hostHint: "Check that this is the site your link opened.",
+  embeddedHost: "This checkout comes from",
+  embeddedHostHint: "Open it in a new tab to see that address in your browser.",
+  openInTab: "Open in a new tab",
   unverifiedName: "The name is what the recipient gave; Forwend doesn't check it.",
   refund:
     "If you send more, or pay after the checkout closes, the extra is held for you and not paid out. Ask the recipient to get it back.",

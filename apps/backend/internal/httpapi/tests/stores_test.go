@@ -121,6 +121,13 @@ func TestStores(t *testing.T) {
 		{"defaultExpiresIn", `899`, "invalid_value", http.StatusUnprocessableEntity},
 		{"defaultExpiresIn", `31536001`, "invalid_value", http.StatusUnprocessableEntity},
 		{"allowedOrigins", `["http://shop.example.com"]`, "invalid_value", http.StatusUnprocessableEntity},
+		{"allowedOrigins", `["http://localhost.example.com:3000"]`, "invalid_value", http.StatusUnprocessableEntity},
+		{"allowedOrigins", `["http://localhost:3000/shop"]`, "invalid_value", http.StatusUnprocessableEntity},
+		// An origin goes into frame-ancestors (R-168): a wildcard or a separator there would let any site frame.
+		{"allowedOrigins", `["https://*"]`, "invalid_value", http.StatusUnprocessableEntity},
+		{"allowedOrigins", `["https://*.example.com"]`, "invalid_value", http.StatusUnprocessableEntity},
+		{"allowedOrigins", `["https://shop.example.com;sandbox"]`, "invalid_value", http.StatusUnprocessableEntity},
+		{"allowedOrigins", `["https://shop.example.com,evil.example"]`, "invalid_value", http.StatusUnprocessableEntity},
 		{"allowedOrigins", `["https://shop.example.com/thanks"]`, "invalid_value", http.StatusUnprocessableEntity},
 		{"allowedOrigins", `["https://shop.example.com?a=1"]`, "invalid_value", http.StatusUnprocessableEntity},
 		{"allowedOrigins", `["https://shop.example.com?"]`, "invalid_value", http.StatusUnprocessableEntity},

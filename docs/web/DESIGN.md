@@ -14,7 +14,7 @@ Read only the sections your change touches. Any new control also needs
 | [Type and color](#type-and-color) | Fonts, money and address type, role tokens, status colors, surfaces, fields |
 | [Controls](#controls) | Heights, buttons, segmented controls, selects, search, toolbars, forms, settings rows |
 | [App shell](#app-shell) | `/app`: sidebar, header, search, sheets, panels, overviews, charts, lists, tables, first run, onboarding, the invoice forms, money actions, toasts |
-| [Checkout](#checkout) | The pay page `/pay/<token>`, PDF links, the confirming row, the owner's invoice page |
+| [Checkout](#checkout) | The pay page `/pay/<token>` and its embed, PDF links, the confirming row, the owner's invoice page |
 | [API docs](#api-docs) | The public developer docs `/docs` |
 | [Emails](#emails) | The email layout |
 | [Theme and behavior](#theme-and-behavior) | Empty lists, theme, loading, motion, touch targets, accessibility, width checks |
@@ -875,6 +875,22 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A change withdrawn before the accept: a notice in danger text opens the Payments panel and takes focus.
   - The quote's and the change's forms are one consent form: the change's is the compact one.
   - Record is the job page's timeline, without the client's email.
+
+- The embedded checkout `/embed/<token>` (R-168, D-117) is the pay page inside a merchant's page.
+  - Patterns from Stripe's embedded form and Payment Element, Paddle inline, BitPay's modal and Daimo's embed.
+  - It is as tall as its content, never the screen; the merchant's page sizes the frame from `ready` and `resize`.
+  - Height goes out at most once per frame, after layout, so a step's rise sends one change.
+  - Until the checkout loads, the frame shows its own placeholders or its error with Try again; `ready` follows.
+  - `layout=full` is the whole page. Inside a narrow frame it takes the phone layout, the pay panel under the amount.
+  - `layout=element` keeps the payee row, the Testnet badge, the amount, Closes in and the pay panel.
+    - It drops the title, items, note, updates and PDF: the merchant's page shows the order.
+    - Paid offers no way back there, since the merchant's page goes on by itself.
+  - In full, Back to the store opens in the top page, and only after the payer presses it.
+  - The footer adds "Open in a new tab", the hosted page: the address bar then shows Forwend's address.
+  - Need help? names the frame's host and says that a new tab shows it in the browser.
+  - `theme=light|dark` picks the theme; without it the system's applies. Colors and fonts never come from the URL.
+  - No focus moves on load: the frame never scrolls the merchant's page unasked.
+  - Copy works when the merchant's frame has `allow="clipboard-write"`; without it, the select-to-copy fallback shows.
 
 ## API docs
 

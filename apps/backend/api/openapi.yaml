@@ -2313,6 +2313,36 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/invoices/{payToken}/embed:
+    get:
+      operationId: checkEmbedOrigin
+      summary: Whether a page may frame this checkout (public, like the checkout)
+      description: |
+        R-168. The web app asks before it lets a page frame `/embed/<payToken>`. allowed is true when origin is exactly
+        a browser's origin and one of the allowedOrigins of the store the invoice records. A live invoice takes only
+        https origins; a test-mode one also takes the store's loopback http origins. It never lists the origins.
+      security: []
+      parameters:
+        - name: payToken
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/PayToken" }
+        - name: origin
+          in: query
+          required: true
+          schema: { type: string, example: "https://shop.example.com" }
+      responses:
+        "200":
+          description: The answer
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [allowed]
+                properties:
+                  allowed: { type: boolean }
+        "404": { $ref: "#/components/responses/InvoiceNotFound" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/invoices/{payToken}/views:
     post:
       operationId: countView
@@ -4251,6 +4281,8 @@ components:
           description: |
             https origins like https://shop.example.com, without a path, query or fragment; repeats count once. They are
             kept in lower case without the default port. A return link must start with one of them; empty allows none.
+            An http origin on localhost or 127.0.0.1 is for test mode: only a test-mode checkout embeds under it (R-168).
+            The host is a hostname of letters, digits, hyphens and dots with an optional port; no wildcard.
         brandColor:
           type: string
           pattern: "^(#[0-9a-fA-F]{6})?$"

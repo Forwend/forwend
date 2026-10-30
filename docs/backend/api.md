@@ -237,7 +237,10 @@ R-134; the full schema is in openapi.yaml. Members reach it with `stores.read` a
   - 201 the first time, 200 after; the 21st store is 422.
   - `name` (1–64 characters on one line, not naming Forwend) and `defaultExpiresIn` (900–31536000 seconds) are required.
   - `allowedOrigins`: up to 20 https origins without a path, query or fragment.
+  - The host is a hostname of letters, digits, hyphens and dots, with an optional port: no `*`, since an origin can frame.
   - Origins are kept in lower case without the default port, and repeats count once.
+  - An http origin on `localhost` or `127.0.0.1` is also taken, for test mode (R-168).
+  - Return links stay https only, so a loopback origin never allows one.
   - A personal or freelancer profile is 409 `not_merchant`; another profile's store id is 404 `store_not_found`.
 - The store id is the project ID: public, with no authority (D-31). There is no delete yet: invoices point at stores.
 - Branding (R-135): `brandColor` is `#rrggbb` (kept in lower case) or empty for none; stores read back `logoAt`.
@@ -661,8 +664,13 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - Each field that changes writes one `invoice.edited` history row with `field`, never the value.
   - The memo is the owner's own note: only the owner's reads return `memo`, and no pay page, PDF or email shows it.
   - It changes this invoice only: a retainer's later months keep the details it started with.
+- `GET /v1/invoices/{payToken}/embed?origin=…` (R-168) answers `{"allowed": bool}`; the web app asks it before `/embed`.
+  - true only for an origin exactly as a browser writes it, on the list of the store the invoice records.
+  - A live invoice takes https origins only; a test-mode invoice also takes the store's loopback http origins.
+  - An invoice without a store is never framed. An unknown token is 404; the store's origins are never listed.
 - `POST /v1/invoices/{payToken}/views` (R-125) counts one pay page load and answers 204.
   - The page sends it once per load, not with each status refresh.
+  - The pay page links on the owner's invoice and payment pages add `?preview=1`; the page then sends none (R-125).
   - `invoice_views` keeps a count, the first time and the last time; never an IP or user agent.
   - The owner's reads return `views` `{count, firstAt, lastAt}`; the times are null before the first load.
   - The R-51 canary blocks it, so its checks are not counted.
@@ -1035,7 +1043,7 @@ seconds (when the next token is back) and runs nothing else.
   - Per link: 3 at once, then one every 10 s.
   - For everyone together: 20 at once, then 5 a second, spent only by an accept that changes a job (R-117).
   - A bad body, an unknown link or a job already accepted answers before it.
-- The other public routes (`GET /v1/invoices/{payToken}`, `GET /v1/jobs/{token}`, `GET /v1/links/{slug}`, both PDFs and `POST /v1/reminders/{token}/stop`) have no limit in the api. Next's `/api` rewrite adds
+- The other public routes (`GET /v1/invoices/{payToken}`, its `/embed` check, `GET /v1/jobs/{token}`, `GET /v1/links/{slug}`, both PDFs and `POST /v1/reminders/{token}/stop`) have no limit in the api. Next's `/api` rewrite adds
   no `X-Forwarded-For` of its own and passes a client's header through unchanged (measured 2026-10-15 with a stub
   behind `next start`: no header without one, a sent `1.2.3.4` arrived as is), so the api sees one address for every
   payer and cannot trust the header. Limit them

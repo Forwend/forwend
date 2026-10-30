@@ -1,8 +1,8 @@
 # Web app
 
-Next.js app: landing page, private `/kit`, signed-in `/app`, public checkout `/pay/<token>`, the public
-stop reminders page `/reminders/<token>`, the public quote page `/w/<token>`, the public payment link page
-`/l/<slug>` and the public API docs `/docs`. Team invites open `/invite/<token>`.
+Next.js app: landing page, private `/kit`, signed-in `/app`, public checkout `/pay/<token>` and its embed
+`/embed/<token>`, the public stop reminders page `/reminders/<token>`, the public quote page `/w/<token>`, the public
+payment link page `/l/<slug>` and the public API docs `/docs`. Team invites open `/invite/<token>`.
 
 ## Commands
 

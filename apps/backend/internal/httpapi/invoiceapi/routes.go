@@ -51,6 +51,7 @@ func Routes(mux *http.ServeMux, g mid.Guards, invoices *invoice.Service, profile
 		g.Can(auth.InvoicesRead)(listWebhookEvents(invoices, hooks)))
 	mux.Handle("GET /v1/profiles/{profileId}/owed", g.Can(auth.InvoicesRead)(listOwed(invoices)))
 	mux.Handle("GET /v1/invoices/{payToken}", getInvoice(invoices)) // checkout reads
+	mux.Handle("GET /v1/invoices/{payToken}/embed", embedAllowed(invoices))
 	mux.Handle("POST /v1/invoices/{payToken}/recheck", recheckInvoice(invoices, balances, rechecks, owners))
 	perInvoice := func(r *http.Request) string { return r.PathValue("payToken") }
 	mux.Handle("PUT /v1/invoices/{payToken}/payer-email",

@@ -66,6 +66,7 @@ import { type Choice, OptionPicker } from "@/features/pay/components/option-pick
 import { Payee } from "@/features/pay/components/payee";
 import { ReceiptEmail } from "@/features/pay/components/receipt-email";
 import { TestnetBadge } from "@/features/pay/components/testnet-badge";
+import { EMBED_LAYOUTS } from "@/features/pay/constants/embed";
 import { ENTER, LEFT_PAD, PAY_STATES, RIGHT_PAD } from "@/features/pay/constants/pay";
 import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
 import {
@@ -79,7 +80,7 @@ import {
   withOption,
 } from "@/features/pay/lib/pay";
 import { checkedReceiveAddress } from "@/features/pay/lib/receive-address";
-import type { PayToken } from "@/features/pay/types/pay";
+import type { EmbedLayout, PayToken } from "@/features/pay/types/pay";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { ServerStrip } from "@/shared/components/server-strip";
@@ -106,9 +107,11 @@ export interface PayInvoiceProps {
   option?: string;
   /** The owner's preview from their payment page: it counts no view. */
   preview?: boolean;
+  /** In a merchant's page (R-168): links that would leave the frame open a tab or the top page instead. */
+  embed?: EmbedLayout;
 }
 
-export function PayInvoice({ linkToken, option, preview = false }: PayInvoiceProps) {
+export function PayInvoice({ linkToken, option, preview = false, embed }: PayInvoiceProps) {
   // The checkout shares the link page's store, so Back then Forward finds an older read: read it again once it is
   // older than one refresh. Pay's own read, a moment old, opens the checkout without a second request.
   const invoice = useGetInvoiceQuery(linkToken, {
@@ -141,6 +144,7 @@ export function PayInvoice({ linkToken, option, preview = false }: PayInvoicePro
         preview={preview}
         stale={stale}
         readAt={invoice.fulfilledTimeStamp ?? null}
+        embed={embed}
       />
     );
   }
@@ -218,6 +222,7 @@ function Loaded({
   preview,
   stale,
   readAt,
+  embed,
 }: {
   invoice: Invoice;
   linkToken: string;
@@ -226,6 +231,7 @@ function Loaded({
   stale: ReactNode;
   /** When the read was answered: the confirming estimate counts from it. */
   readAt: number | null;
+  embed?: EmbedLayout;
 }) {
   const now = useNow();
   // Payer chooses (R-57): Show address keeps the pick on the invoice, so the pay link opens on it again. `?option=`
@@ -273,7 +279,8 @@ function Loaded({
           panel right under the amount. */}
       <div className={`contents lg:flex lg:flex-col lg:gap-6 lg:pt-8 ${LEFT_PAD}`}>
         <Summary invoice={invoice} token={token} pay={pay} picking={picking} />
-        <Terms invoice={invoice} linkToken={linkToken} />
+        {/* The merchant's own checkout page already shows the order. */}
+        {embed === EMBED_LAYOUTS.element ? null : <Terms invoice={invoice} linkToken={linkToken} />}
       </div>
       {/* "Closes in" stays at the top right like a header; the pay panel stands in the middle of the screen's height. */}
       <div
@@ -293,6 +300,7 @@ function Loaded({
             picking={picking}
             kept={kept}
             keep={keep}
+            embed={embed}
           />
         </div>
       </div>
@@ -469,6 +477,7 @@ function PayBox({
   picking,
   kept,
   keep,
+  embed,
 }: {
   invoice: Invoice;
   linkToken: string;
@@ -483,6 +492,7 @@ function PayBox({
   kept: string | null;
   /** Keeps the shown option on the invoice for the payer's next visit (R-57). */
   keep?: (optionId: string) => void;
+  embed?: EmbedLayout;
 }) {
   // A canceled invoice takes no money on any option; invoice.closed is only the checkout's time.
   const canChoose =
@@ -570,7 +580,7 @@ function PayBox({
     <div className="flex min-w-0 flex-col gap-4">
       <div className={PANEL}>
         {done ? (
-          <Paid invoice={invoice} linkToken={linkToken} token={token} />
+          <Paid invoice={invoice} linkToken={linkToken} token={token} embed={embed} />
         ) : (
           <>
             {statusFirst ? received : null}
@@ -713,8 +723,11 @@ function PayBox({
       {invoice.replacedBy?.payToken ? (
         <p className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-ink">
           {COPY.replaced(invoiceNumber(invoice.replacedBy.number))}
+          {/* No page but /embed opens in a frame: from an embed the new invoice opens in a tab. */}
           <Link
             href={`/pay/${invoice.replacedBy.payToken}`}
+            target={embed ? "_blank" : undefined}
+            rel={embed ? "noopener" : undefined}
             className={buttonClasses({ size: "sm", variant: "secondary" })}
           >
             {COPY.openReplacement(invoiceNumber(invoice.replacedBy.number))}
@@ -1002,16 +1015,22 @@ function Paid({
   invoice,
   linkToken,
   token,
+  embed,
 }: {
   invoice: Invoice;
   linkToken: string;
   token: PayToken;
+  embed?: EmbedLayout;
 }) {
   const amount = BigInt(invoice.amount);
   const last = receiptDeposits(invoice).at(-1);
   const tx = last ? txLink(invoice.chainId, last.txHash) : null;
   const name = invoice.issuer?.name ?? invoice.senderName;
-  const back = invoice.returnUrl && isReturnLink(invoice.returnUrl) ? invoice.returnUrl : null;
+  // An element sits in the merchant's own page, which goes on by itself: it has no way back to offer.
+  const back =
+    embed !== EMBED_LAYOUTS.element && invoice.returnUrl && isReturnLink(invoice.returnUrl)
+      ? invoice.returnUrl
+      : null;
   const backLabel = back ? COPY.backTo(new URL(back).host) : "";
   return (
     <div className="flex flex-col">
@@ -1023,7 +1042,7 @@ function Paid({
           <p role="status" className="text-lg font-semibold text-ink">
             {COPY.paid}
           </p>
-          <p className="text-sm text-muted">{COPY.closeHint}</p>
+          {embed ? null : <p className="text-sm text-muted">{COPY.closeHint}</p>}
         </div>
       </div>
       <DetailList className="border-y border-line">
@@ -1057,8 +1076,10 @@ function Paid({
       {/* With a return link the way back leads, and the receipt steps down to secondary under it. */}
       <div className="flex flex-col gap-2 p-4 sm:p-5">
         {back ? (
+          // From a full embed the way back leaves the merchant's checkout page, not the frame.
           <a
             href={back}
+            target={embed ? "_top" : undefined}
             rel="noopener noreferrer"
             title={backLabel}
             className={`${buttonClasses({ variant: "primary", size: "lg" })} w-full`}

@@ -20,6 +20,8 @@ FROM node:26-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+# src/proxy.ts asks the api at run time whether a page may frame /embed (R-168).
+ENV API_URL=http://api:8080
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 COPY --from=build --chown=node:node /app/apps/web/.next/standalone ./

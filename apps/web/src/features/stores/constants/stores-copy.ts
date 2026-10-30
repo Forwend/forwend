@@ -63,7 +63,7 @@ export const STORES_COPY = {
   closesAfterHint: "New invoices start with this. You can change it on each invoice.",
   origins: "Allowed origins (optional)",
   originsHint:
-    "One per line, like https://shop.example.com. A return link on this store's invoices must start with one of them.",
+    "One per line, like https://shop.example.com. A return link on this store's invoices must start with one of them, and only these sites can embed its checkout. For test mode, http://localhost:3000 works too.",
   save: "Save store",
   cancel: "Cancel",
   back: "Back",
@@ -89,7 +89,7 @@ export const STORES_COPY = {
     invalid: {
       name: `Use at most ${STORE_LIMITS.name} characters on one line, with no hidden characters. It can't name Forwend.`,
       defaultExpiresIn: "Choose when the checkout closes.",
-      allowedOrigins: `Use https origins only, like https://shop.example.com, without a path. At most ${STORE_LIMITS.origins}.`,
+      allowedOrigins: `Use https origins like https://shop.example.com, without a path, or http://localhost with a port for test mode. At most ${STORE_LIMITS.origins}.`,
       brandColor: "Enter a color like #1f6a8c, or leave it empty.",
       tokensOff:
         "Keep at least one token on. If a token was just switched off for everyone, reload the page.",

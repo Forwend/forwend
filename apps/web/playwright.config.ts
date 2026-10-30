@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { KIT_PORT, KIT_URL, PUBLIC_PORT, PUBLIC_URL } from "./e2e/servers";
+import { API_URL, KIT_PORT, KIT_URL, PUBLIC_PORT, PUBLIC_URL } from "./e2e/servers";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -12,10 +12,11 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  // Playwright starts these in order: the first builds, the second reuses that build.
+  // Playwright starts these in order: the first builds, the second reuses that build. The public server's proxy reads
+  // API_URL at run time (src/proxy.ts); the build keeps its own for the rewrite.
   webServer: [
     {
-      command: `pnpm --workspace-root exec turbo run build --filter=@forwend/web && pnpm start -p ${PUBLIC_PORT}`,
+      command: `pnpm --workspace-root exec turbo run build --filter=@forwend/web && API_URL=${API_URL} pnpm start -p ${PUBLIC_PORT}`,
       url: PUBLIC_URL,
       reuseExistingServer: false,
       timeout: 240_000,
