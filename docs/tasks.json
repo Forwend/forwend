@@ -44,7 +44,7 @@
         "Message origin/source checks, strict CSP, revocation, expiration and forged parent/redirect events are tested; browser hints never prove fulfillment."
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend-affected",
         "backend-e2e",
@@ -57,9 +57,125 @@
         "packages/contracts/src/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-30 review fail by reviewer: FAIL, two security defects. (1) apps/web/next.config.ts:35: Next matches header sources without case (routes-manifest caseSensitive false), so (?!embed/) also skips /EMBED/ and /Embed/. The proxy matcher (src/proxy.ts:35) and the app routes are case-sensitive. Result: /EMBED/<anything> answers the 404 page with no CSP and no X-Frame-Options. Reproduced on the verified build with curl. In Chromium a page on another origin framed it, and a click on Back to Forwend soft-navigated the frame to / (landing h1 rendered inside the foreign frame). Control /embedX/... was refused. Before this change every response had frame-ancestors 'none' and DENY. Fix: make the skip and the proxy agree, for example keep FRAME_HEADERS on every path and let the proxy replace them on /embed/<token> (a probe showed the proxy's CSP replaces the config one), or make the proxy send 'none' for every path except an exact /embed/<token>. Add /EMBED/<token> to the header test (e2e/pay.spec.ts:1199). (2) apps/backend/internal/profile/stores.go:73-88: origin() takes any host url.Parse takes, including *, *.example.com, a.com;sandbox, a.com'x and a.com,b.com. A store can save https://*. FramedBy (stores.go:66) then allows origin=https://* because it equals the stored value, and the proxy sends frame-ancestors https://*: any https site can frame that store's checkout. So the exact-origin rule (accept 2, D-117, FramedBy doc, openapi) is not enforced. No whitespace gets through, so no other directive value can be injected. Fix: accept only a hostname (letters, digits, hyphen, dot) or 127.0.0.1 plus a numeric port, and add https://* and https://*.example.com rejection cases to stores_test.go. Non-blocking: page.tsx:19 reads a repeated origin param as empty while proxy.ts:13 checks the first value; postMessage('') then throws (nothing leaks), and the status post in use-embed-messages.ts:28 would throw inside an effect. No ready is posted when the invoice fails to load. new-invoice-form.tsx:559 and invoices-copy.ts:147 list http://localhost origins as return-link starts, but return links stay https only (invoice.go:488). docs/web/architecture.md PayScreen bullet is 26 words. Checked and fine: proxy fails closed on a bad token, missing API_URL, backend down or timeout, non-200, bad JSON. A third party cannot inject into the CSP. /embed/<token> sends one CSP and no XFO. /, /app, /pay and bare /embed keep 'none' and DENY. postMessage never goes to *, only to the origin the CSP allowed, and the embed has no message listener. Live invoices are https only. Return links are still https only. The hook posts ready once, status only after ready, and cancels rAF and the observer on cleanup (StrictMode safe). Leaving links open _blank or _top, and PDFs are attachment downloads. The theme script takes only a THEMES value. Docker runtime API_URL is read at run time. The Go embed test passes (ran it). The refused-frame and header e2e tests would fail without the protection, and they fit Which tests to keep. No fixed waits. Structure and dependency direction are fine.",
+        "2026-10-30 review pass by reviewer: PASS. Both earlier defects are fixed, checked against the current build (verify of 2026-10-30T22:28:49Z). (1) apps/web/next.config.ts sends CSP frame-ancestors 'none' and X-Frame-Options DENY on every path again. src/proxy.ts:16 replaces only the CSP. curl on the built server with a stub api: /, /pay/<token>, /embed, /EMBED/<token>, /Embed/<token> and refused /embed/<token> (other origin, no origin, first of two origins not allowed) each send exactly one CSP with 'none' plus DENY. An allowed /embed/<token> sends one CSP naming that origin, plus DENY. In Chromium the allowed origin loads the frame; another origin, /EMBED/<token> and /pay/<token> are refused. pay.spec.ts now checks /EMBED/<token> and DENY on each refused path. (2) stores.go origin() checks the host against originHost (stores.go:133), so *, *.example.com, ;sandbox and , are refused (stores_test.go:126-130). invoices_embed_test.go:70 shows a wildcard already in the database frames nothing. Both Go tests pass (ran them). Smaller fixes are in: page.tsx:20 takes the first origin value as the proxy does; returnLinkOrigins keeps loopback origins out of the return-link check and hint (stores.ts:27, new-invoice-form.tsx:545); the docs are split and match the code. Earlier passes still hold: the proxy fails closed, postMessage goes only to the allowed origin, live invoices are https only, return links are https only. Non-blocking: keeping DENY on /embed relies on browsers skipping X-Frame-Options when a CSP names frame-ancestors. Only Chromium is tested (e2e and my probe); Firefox and WebKit are not installed here. If one did not skip it, the embed would be refused, which fails closed. /embed/<token>/x and /%65mbed/<token> answer a 404 page that only the store's allowed origin may frame; harmless. stores.test.ts has no case for a loopback origin in allowsReturnLink; the backend still refuses http return links (invoice.go:488).",
+        "2026-10-30 F333 verified (11 checks) and review passed; uncommitted, waiting for the owner's commit, push and merge go-ahead; then done F333",
+        "2026-10-30 review pass by reviewer: PASS. Since my last pass (verify of 22:28:49Z) only docs/PROJECT.md and docs/backend/api.md changed. Their modification times are 00:57 local; every other changed file is 00:28 or older, which I reviewed. No code changed. The new R-125 text matches the code. The owner's links open the pay page with ?preview=1: invoice-actions.tsx:129 (Open pay page) and payment-detail.tsx:132 (Open checkout or View receipt). pay/[token]/page.tsx:22 passes preview, and PayInvoice skips countView when preview is set (pay-invoice.tsx:125). The api.md views bullet says the same. The public quote page /w links to /pay without preview, which is right: those are client views. Non-blocking: R-125 names only Open pay page links, but the payment page's Open checkout and View receipt buttons also add preview. The words 'an opened link means someone else opened it' overstate a little: the owner pasting the copied link without preview still counts a view. All earlier findings stand: both security fixes are in and the F333 checks pass (verify 2026-10-30T22:57:15Z).",
+        "2026-10-30 review pass by reviewer: PASS. Since my last pass only docs/PROJECT.md and docs/backend/api.md changed (01:04 local); every other changed file is 00:28 or older and was reviewed, and no code changed. R-125 and the api.md views bullet now say the pay page links on the owner's invoice and payment pages add ?preview=1 and count no view. This matches invoice-actions.tsx:129, payment-detail.tsx:132, pay/[token]/page.tsx:22 and pay-invoice.tsx:125. The overstated 'someone else opened it' claim is gone. All earlier findings stand; verify passed 2026-10-30T23:04:06Z."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T23:04:06Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 254.0,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 37.7,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 35.6,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "16b0b8e8c47a823e",
+        "filesHash": "9e3b8aac1cdd229f",
+        "proof": {
+          "1": "web-e2e",
+          "2": "backend-affected",
+          "3": "web-e2e"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS. Since my last pass only docs/PROJECT.md and docs/backend/api.md changed (01:04 local); every other changed file is 00:28 or older and was reviewed, and no code changed. R-125 and the api.md views bullet now say the pay page links on the owner's invoice and payment pages add ?preview=1 and count no view. This matches invoice-actions.tsx:129, payment-detail.tsx:132, pay/[token]/page.tsx:22 and pay-invoice.tsx:125. The overstated 'someone else opened it' claim is gone. All earlier findings stand; verify passed 2026-10-30T23:04:06Z.",
+          "at": "2026-10-30T23:09:50Z",
+          "filesHash": "9e3b8aac1cdd229f"
+        },
+        "commit": "8af1e998",
+        "doneAt": "2026-10-30T23:10:13Z"
+      },
+      "branch": "feat/f333-implement-hosted-and-origin-restricted-e",
+      "baseCommit": "346e3bff383292e4c055a339e62c480ec508cf96",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f333-implement-hosted-and-origin-restricted-e",
+        "base": "main"
+      }
     },
     {
       "id": "F334",
@@ -361,9 +477,9 @@
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-30T20:49:38Z",
+    "at": "2026-10-30T22:41:40Z",
     "clean": true,
     "problems": [],
-    "note": "Corrected payment-link wording and phase 11 order. Onboarding remains blocked until all other phase 11 features and checks finish. Documentation and dependency checks pass. No temporary processes or test fixtures created. Changes are uncommitted."
+    "note": "F333 verified (11 checks) and review passed; uncommitted, waiting for the owner's commit, push and merge go-ahead; then done F333"
   }
 }

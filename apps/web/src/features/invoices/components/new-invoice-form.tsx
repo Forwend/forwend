@@ -77,7 +77,7 @@ import type {
   LineError,
   PayWith,
 } from "@/features/invoices/types/invoices";
-import { allowsReturnLink } from "@/features/stores/lib/stores";
+import { allowsReturnLink, returnLinkOrigins } from "@/features/stores/lib/stores";
 import type { Store } from "@/features/stores/types/stores";
 import { AssetIcon } from "@/shared/components/chains/asset-icon";
 import { FieldGroup, FlatFieldGroups } from "@/shared/components/field-group";
@@ -542,6 +542,7 @@ export function NewInvoiceForm({
     </div>
   );
 
+  const returnOrigins = store ? returnLinkOrigins(store.allowedOrigins) : [];
   const returnField = (
     <TextField
       type="url"
@@ -555,8 +556,8 @@ export function NewInvoiceForm({
       hint={
         !store
           ? COPY.returnHint
-          : store.allowedOrigins.length > 0
-            ? NEW_INVOICE_COPY.returnOrigins(store.allowedOrigins.join(", "))
+          : returnOrigins.length > 0
+            ? NEW_INVOICE_COPY.returnOrigins(returnOrigins.join(", "))
             : NEW_INVOICE_COPY.returnNoOrigins
       }
       error={errors[INVOICE_FIELDS.returnUrl]}

@@ -1,28 +1,12 @@
 import path from "node:path";
 import type { NextConfig } from "next";
 import { API_BASE } from "./src/shared/config/api";
+import { contentSecurityPolicy } from "./src/shared/config/security-headers";
 
-// Privy's recommended policy (docs.privy.io/security/implementation-guide/content-security-policy). Scripts allow
-// 'unsafe-inline' because Next inlines its own scripts; nonces would make every page dynamic.
-const CSP = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-  "child-src https://auth.privy.io https://verify.walletconnect.com https://verify.walletconnect.org",
-  "frame-src https://auth.privy.io https://verify.walletconnect.com https://verify.walletconnect.org https://challenges.cloudflare.com",
-  "connect-src 'self' https://auth.privy.io wss://relay.walletconnect.com wss://relay.walletconnect.org wss://www.walletlink.org https://*.rpc.privy.systems https://explorer-api.walletconnect.com",
-  "worker-src 'self'",
-  "manifest-src 'self'",
-].join("; ");
-
+// No page can be framed. src/proxy.ts replaces the policy on /embed/<token> for the store's one origin (R-168);
+// browsers then skip X-Frame-Options, as the HTML standard says when a policy names frame-ancestors.
 const SECURITY_HEADERS = [
-  { key: "Content-Security-Policy", value: CSP },
+  { key: "Content-Security-Policy", value: contentSecurityPolicy("'none'") },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },

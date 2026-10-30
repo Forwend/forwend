@@ -348,6 +348,20 @@ func putPick(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
+// R-168: the web app asks before it lets a page frame /embed.
+func embedAllowed(invoices *invoice.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		allowed, err := invoices.EmbedAllowed(r.Context(), r.PathValue("payToken"), r.URL.Query().Get("origin"))
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusOK, struct {
+			Allowed bool `json:"allowed"`
+		}{allowed})
+	}
+}
+
 // R-125.
 func countView(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

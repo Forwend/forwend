@@ -85,6 +85,7 @@
 
 - Compose sets `DATABASE_URL`, `API_ADDR`, `RPC_ALLOW_LOOPBACK=0`, `PRIVY_APP_ID` and `PRIVY_JWKS_URL` internally.
 - The web build fixes `API_URL=http://api:8080`. Its runtime sets `NODE_ENV`, `HOSTNAME` and `PORT`.
+- The web runtime also sets `API_URL=http://api:8080`: `/embed` asks the api before a page may frame it (R-168).
 - `POSTGRES_PORT` is local only. The staging database has no host port.
 - `PRIVY_TEST_EMAIL` and `PRIVY_TEST_OTP` are browser test credentials, excluded from deployment.
 - `DEPLOYER_PRIVATE_KEY` and `REFUND_AUTHORITY_PRIVATE_KEY` are contract tooling credentials, excluded from deployment.

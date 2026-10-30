@@ -1,8 +1,9 @@
+import { createServer, type Server } from "node:http";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
 import { readPayPage } from "../scripts/canary-pay-page";
 import { blockingViolations } from "./privy/axe";
-import { PUBLIC_URL } from "./servers";
+import { API_PORT, API_URL, PUBLIC_URL } from "./servers";
 import { sidewaysScroll } from "./sideways";
 
 // ID is keccak256(PAY) (D-86). RECEIVE is factory.predict of these terms (R-15), so the page shows it
@@ -1126,4 +1127,177 @@ test.describe("pay page", () => {
       await context.close();
     });
   }
+});
+
+// R-168: the checkout inside a merchant's page.
+test.describe("embedded checkout", () => {
+  // Both origins are the one server below, so Chromium sees a local page framing a local one. PARENT is the store's
+  // allowed origin; OTHER is another site.
+  const PARENT = `http://localhost:${API_PORT}`;
+  const OTHER = `http://127.0.0.1:${API_PORT}`;
+  const RETURN = "https://shop.example.com/done";
+
+  // The api the proxy asks before a page may frame /embed (only PARENT may frame PAY), and the merchant's page, which
+  // frames ?src and keeps what the frame posts to it.
+  let api: Server;
+  test.beforeAll(async () => {
+    api = createServer((req, res) => {
+      const url = new URL(req.url ?? "/", API_URL);
+      if (url.pathname === "/shop") {
+        res.setHeader("Content-Type", "text/html");
+        res.end(`<!doctype html><html lang="en"><title>Shop</title><script>
+          window.heard = [];
+          addEventListener("message", (e) => {
+            if (e.source === document.querySelector("iframe").contentWindow) heard.push({ origin: e.origin, data: e.data });
+          });
+        </script><iframe title="Checkout" src="${url.searchParams.get("src")}" style="width:400px;height:640px;border:0"></iframe></html>`);
+        return;
+      }
+      const allowed =
+        url.pathname === `/v1/invoices/${PAY}/embed` && url.searchParams.get("origin") === PARENT;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ allowed }));
+    });
+    await new Promise<void>((resolve) => api.listen(API_PORT, "127.0.0.1", resolve));
+  });
+  test.afterAll(() => new Promise<void>((resolve) => api.close(() => resolve())));
+
+  const embedUrl = (layout: string, origin = PARENT, theme = "") =>
+    `${PUBLIC_URL}/embed/${PAY}?layout=${layout}&origin=${encodeURIComponent(origin)}${theme ? `&theme=${theme}` : ""}`;
+
+  type Heard = { origin: string; data: Record<string, unknown> };
+  async function openShop(page: Page, origin: string, src: string, ...bodies: object[]) {
+    await page.clock.install({ time: NOW });
+    await mockInvoice(page, ...bodies);
+    await page.goto(`${origin}/shop?src=${encodeURIComponent(src)}`);
+    return page.frameLocator("iframe");
+  }
+  const heard = (page: Page) =>
+    page.evaluate(() => (window as unknown as { heard: Heard[] }).heard);
+  const message = async (page: Page, type: string) =>
+    (await heard(page)).find((m) => m.data.type === type);
+
+  test("only the origin its store allows can frame an embed, and every other page none", async ({
+    request,
+  }) => {
+    const headers = async (path: string) => (await request.get(path)).headers();
+    const framed = await headers(
+      `/embed/${PAY}?layout=element&origin=${encodeURIComponent(PARENT)}`,
+    );
+    // One policy, the pages' own, naming that one origin: a second would apply too. DENY stays: browsers skip it when
+    // a policy names frame-ancestors, as the framed tests below show.
+    expect(framed["content-security-policy"]).toContain(`frame-ancestors ${PARENT};`);
+    expect(framed["content-security-policy"]).toContain("default-src 'self'");
+    expect(framed["content-security-policy"]).not.toContain("frame-ancestors 'none'");
+    expect(framed["x-frame-options"]).toBe("DENY");
+    expect(framed["x-content-type-options"]).toBe("nosniff");
+    for (const path of [
+      `/embed/${PAY}?origin=${encodeURIComponent(OTHER)}`,
+      `/embed/${PAY}`,
+      `/embed/not-a-token?origin=${encodeURIComponent(PARENT)}`,
+      // Header rules ignore case; the proxy and the routes don't.
+      `/EMBED/${PAY}?origin=${encodeURIComponent(PARENT)}`,
+    ]) {
+      const refused = await headers(path);
+      expect(refused["content-security-policy"], path).toContain("frame-ancestors 'none'");
+      expect(refused["x-frame-options"], path).toBe("DENY");
+    }
+    const pay = await headers(`/pay/${PAY}`);
+    expect(pay["content-security-policy"]).toContain("frame-ancestors 'none'");
+    expect(pay["x-frame-options"]).toBe("DENY");
+  });
+
+  test("a page can't frame an embed under another origin's name", async ({ page }) => {
+    await openShop(page, OTHER, embedUrl("element", PARENT), OPEN);
+    // The browser refuses the frame and shows its own error page in it.
+    await expect
+      .poll(() => page.frames().map((f) => f.url()))
+      .toContain("chrome-error://chromewebdata/");
+    expect(await heard(page)).toEqual([]);
+  });
+
+  test("an element tells its page its height and payment status, and only hints", async ({
+    page,
+  }) => {
+    const frame = await openShop(page, PARENT, embedUrl("element"), { ...OPEN, returnUrl: RETURN });
+    await expect.poll(() => message(page, "ready")).toBeTruthy();
+    const ready = await message(page, "ready");
+    expect(ready?.origin).toBe(PUBLIC_URL);
+    expect(ready?.data).toMatchObject({
+      source: "forwend",
+      v: 1,
+      invoiceId: ID,
+      paymentStatus: "open",
+    });
+    const height = Number(ready?.data.height);
+    expect(height).toBeGreaterThan(0);
+
+    // The merchant's page shows the order: the element keeps the payee, the amount and the pay panel.
+    await expect(frame.getByText("Alice Design GmbH")).toBeVisible();
+    await expect(frame.getByText("Logo design")).toHaveCount(0);
+    await expect(frame.getByRole("link", { name: "Open in a new tab" })).toHaveAttribute(
+      "href",
+      `/pay/${PAY}`,
+    );
+    await expect(frame.getByRole("link", { name: "Open in a new tab" })).toHaveAttribute(
+      "target",
+      "_blank",
+    );
+
+    // The frame takes no orders from its page: a forged message changes nothing.
+    await page.evaluate(() =>
+      document
+        .querySelector("iframe")
+        ?.contentWindow?.postMessage(
+          { source: "forwend", v: 1, type: "status", paymentStatus: "paid" },
+          "*",
+        ),
+    );
+    await frame.getByRole("button", { name: "Show address" }).click();
+    await expect(frame.getByText(RECEIVE)).toBeVisible();
+    await expect
+      .poll(async () => Number((await message(page, "resize"))?.data.height))
+      .toBeGreaterThan(height);
+    expect(await message(page, "status")).toBeUndefined();
+    expect(await blockingViolations(page)).toEqual([]);
+
+    await mockInvoice(page, { ...PAID, returnUrl: RETURN });
+    await page.clock.runFor(POLL_MS);
+    await expect
+      .poll(async () => (await message(page, "status"))?.data)
+      .toMatchObject({
+        type: "status",
+        invoiceId: ID,
+        paymentStatus: "paid",
+      });
+    await expect(frame.getByRole("status").filter({ hasText: /^Paid$/ })).toBeVisible();
+    // The merchant's page goes on by itself: the element offers no way back.
+    await expect(frame.getByRole("link", { name: /Back to/ })).toHaveCount(0);
+    for (const m of await heard(page)) expect(m.origin).toBe(PUBLIC_URL);
+  });
+
+  test("an expired checkout takes no money in the frame and tells its page", async ({ page }) => {
+    const frame = await openShop(page, PARENT, embedUrl("element"), CLOSED);
+    await expect
+      .poll(async () => (await message(page, "ready"))?.data.paymentStatus)
+      .toBe("expired");
+    await expect(frame.getByText("Alice Design GmbH", { exact: true })).toBeVisible();
+    await expect(frame.getByRole("button", { name: "Show address" })).toHaveCount(0);
+    await expect(frame.getByText(/^Closes in/)).toHaveCount(0);
+  });
+
+  test("a full embed keeps the whole checkout, takes the page's theme and goes back from the top", async ({
+    page,
+  }) => {
+    const frame = await openShop(page, PARENT, embedUrl("full", PARENT, "dark"), {
+      ...PAID,
+      returnUrl: RETURN,
+    });
+    await expect(frame.locator("html")).toHaveAttribute("data-theme", "dark");
+    await expect(frame.getByText("Logo design")).toBeVisible();
+    await expect(frame.getByRole("link", { name: "Back to shop.example.com" })).toHaveAttribute(
+      "target",
+      "_top",
+    );
+  });
 });

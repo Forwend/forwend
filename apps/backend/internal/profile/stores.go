@@ -60,14 +60,34 @@ func (s Store) Allows(link string) bool {
 	return o != "" && slices.Contains(s.AllowedOrigins, o)
 }
 
-// origin is link's https origin in lower case, without the default port; ok is false when link has more than an
-// origin (a path, query or fragment).
+// FramedBy reports whether a page at browserOrigin may frame the checkout of a store with these allowed origins
+// (R-168). browserOrigin must be exactly as a browser writes it, so it can go into a header unchanged. A loopback
+// http origin is for test mode only.
+func FramedBy(allowed []string, browserOrigin string, live bool) bool {
+	o, ok := origin(browserOrigin)
+	return ok && o == browserOrigin && slices.Contains(allowed, o) && (!live || strings.HasPrefix(o, "https://"))
+}
+
+// origin is link's origin in lower case, without the default port: https, or http on a loopback host for test mode
+// (R-168). ok is false when link has more than an origin (a path, query or fragment).
 func origin(link string) (o string, ok bool) {
 	u, err := url.Parse(link)
-	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.Opaque != "" {
+	if err != nil || u.Host == "" || u.User != nil || u.Opaque != "" {
 		return "", false
 	}
-	o = "https://" + strings.TrimSuffix(strings.ToLower(u.Host), ":443")
+	// Only a hostname and a port: an origin goes into a page's frame-ancestors, where "*" or ";" would mean more.
+	host := strings.ToLower(u.Host)
+	if !originHost.MatchString(host) {
+		return "", false
+	}
+	switch {
+	case u.Scheme == "https":
+		o = "https://" + strings.TrimSuffix(host, ":443")
+	case u.Scheme == "http" && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1"):
+		o = "http://" + strings.TrimSuffix(host, ":80")
+	default:
+		return "", false
+	}
 	return o, (u.Path == "" || u.Path == "/") && u.RawQuery == "" && !u.ForceQuery && u.Fragment == "" &&
 		!strings.HasSuffix(link, "#")
 }
@@ -94,7 +114,8 @@ func (d *StoreDetails) check() error {
 	for _, link := range d.AllowedOrigins {
 		o, ok := origin(strings.TrimSpace(link))
 		if !ok || len(o) > 300 || !PlainText(o, false) || strings.ContainsFunc(o, func(r rune) bool { return r > '~' }) {
-			return fmt.Errorf("%w: allowedOrigins must be https origins like https://shop.example.com", ErrInvalid)
+			return fmt.Errorf("%w: allowedOrigins must be https origins like https://shop.example.com, or "+
+				"http://localhost:<port> for test mode", ErrInvalid)
 		}
 		if !slices.Contains(origins, o) {
 			origins = append(origins, o)
@@ -107,7 +128,10 @@ func (d *StoreDetails) check() error {
 	return nil
 }
 
-var brandColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+var (
+	brandColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+	originHost = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:[0-9]{1,5})?$`)
+)
 
 const storeColumns = `id::text, name, default_expires_in, allowed_origins, coalesce(brand_color, ''), updated_at, logo_at,
 	coalesce((SELECT array_agg(o.chain_id::text || ':' || o.token_contract ORDER BY o.chain_id, o.token_contract)
