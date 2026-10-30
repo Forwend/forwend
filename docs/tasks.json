@@ -1156,7 +1156,7 @@
         "F333 no longer depends on onboarding; F332 follows integration and remains blocked until all other phase 11 features are complete."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check"
       ],
@@ -1201,11 +1201,18 @@
         "proof": {
           "1": "docs-check: PLAN 11.3 describes document-free checkout attempts; 11.10 keeps payer claims limited to held money.",
           "2": "docs-check: PLAN and D-112 require onboarding last. Harness-state assertions passed: F333 is ready, F334 and F335 follow in order, F332 stays blocked after F335, and there is no cycle. F331 is already merged as ef494bab; F333 has no pending dependency on its stale local archive."
-        }
+        },
+        "commit": "aba7dafc",
+        "doneAt": "2026-10-30T20:51:08Z"
       },
       "branch": "docs/f407-phase-11-builds-checkout-and-refund-feat",
       "baseCommit": "8ad15c9de54a01d8e6184d8a13e40755b9fe5e25",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f407-phase-11-builds-checkout-and-refund-feat",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
