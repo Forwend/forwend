@@ -27,7 +27,7 @@ const TABS = [
   NAV.balances,
 ] as const;
 const TAB =
-  "flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-md px-1 text-xs font-medium text-muted outline-none transition-colors duration-[var(--fw-duration-fast)] hover:bg-surface-2 active:bg-surface-2 focus-visible:outline-2 focus-visible:outline-focus data-[active=true]:bg-surface-2 data-[active=true]:text-ink";
+  "flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-md px-1 text-xs font-medium text-muted outline-none hover:transition-colors hover:bg-surface-2 active:bg-surface-2 focus-visible:outline-2 focus-visible:outline-focus data-[active=true]:bg-surface-2 data-[active=true]:text-ink";
 const CARD = "overflow-hidden rounded-md border border-line bg-surface divide-y divide-line";
 const ROW =
   "group flex min-h-14 w-full items-center gap-3 px-3 text-left text-sm font-medium text-ink outline-none hover:bg-surface-2 active:bg-surface-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus";

@@ -3068,19 +3068,124 @@
         "The sidebar's, tab bar's and settings' current-page mark switches with the page, with no fade"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
+        "loading-live-e2e",
         "web-build",
         "web-e2e"
       ],
-      "refs": [],
+      "refs": [
+        "R-204"
+      ],
       "keep": [
         "apps/backend/*"
       ],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-30 review pass by reviewer: Pass. tasks.json changes only F384. Build CSS: .transition-colors/.transition now use var(--tw-ease,var(--fw-ease-out)) and var(--tw-duration,var(--fw-duration-fast)); no Tailwind 150ms or cubic-bezier(.4,0,.2,1) left; --tw-ease/--tw-duration are inherits:false; animate-* untouched. Every transition in apps/web/src and ui-web/src names a property; no bare duration left, so no transition-property all. hover:transition-colors sits in @media (hover:hover): hover-in and desktop press still fade, hover-out and touch press snap, focus ring appears at once; RowButton data-[state=open] snaps, matching menus that close at once. loading-live-e2e passed; a scratch run with the old row classes put back failed 4/4 (alpha 1, .44, .19, ...) and the committed code passed 4/4. Docs-check 0 errors; R-204 and DESIGN.md lines under 25 words. Nits, not blocking: the profile-switcher trigger keeps a base fade while the account RowButton trigger now snaps; DESIGN.md lists the profile sheet as a current page mark, but it marks the current profile; the test stores samples on window.frames, which shadows a built-in, and its comment restates the assertion; animate-ping/animate-pulse and fw-halo 2.4s are animations off the tokens (outside R-204)."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T05:45:13Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.6,
+            "log": ""
+          },
+          {
+            "id": "tokens-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.0,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.5,
+            "log": ""
+          },
+          {
+            "id": "web-build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.2,
+            "log": ""
+          },
+          {
+            "id": "loading-live-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 22.6,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 22.3,
+            "log": ""
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "53a12c3f9e9b29b5",
+        "filesHash": "4e3b2378e0c48833",
+        "proof": {
+          "1": "web-build: theme.css maps Tailwind's --default-transition-duration and --default-transition-timing-function to --fw-duration-fast and --fw-ease-out; the build's CSS carries both, so the 29 transitions that named no easing (they used Tailwind's cubic-bezier(0.4,0,0.2,1)) now ease out on the token, and none uses 150 ms.",
+          "2": "loading-live-e2e: e2e/privy/loading.spec.ts 'the sidebar's mark moves with the page, with no fade left behind' samples the old row's background every frame while Invoices -> Payments: on the old code it faded over several frames after the page changed (0.96, 0.79, 0.48 alpha); now it clears in the frame the page changes. The rows keep their hover fade (hover:transition-colors, no base duration, since a base duration with transition-property all would fade every property)."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass. tasks.json changes only F384. Build CSS: .transition-colors/.transition now use var(--tw-ease,var(--fw-ease-out)) and var(--tw-duration,var(--fw-duration-fast)); no Tailwind 150ms or cubic-bezier(.4,0,.2,1) left; --tw-ease/--tw-duration are inherits:false; animate-* untouched. Every transition in apps/web/src and ui-web/src names a property; no bare duration left, so no transition-property all. hover:transition-colors sits in @media (hover:hover): hover-in and desktop press still fade, hover-out and touch press snap, focus ring appears at once; RowButton data-[state=open] snaps, matching menus that close at once. loading-live-e2e passed; a scratch run with the old row classes put back failed 4/4 (alpha 1, .44, .19, ...) and the committed code passed 4/4. Docs-check 0 errors; R-204 and DESIGN.md lines under 25 words. Nits, not blocking: the profile-switcher trigger keeps a base fade while the account RowButton trigger now snaps; DESIGN.md lists the profile sheet as a current page mark, but it marks the current profile; the test stores samples on window.frames, which shadows a built-in, and its comment restates the assertion; animate-ping/animate-pulse and fw-halo 2.4s are animations off the tokens (outside R-204).",
+          "at": "2026-10-30T05:53:13Z",
+          "filesHash": "4e3b2378e0c48833"
+        }
+      },
+      "branch": "fix/f384-motion-uses-the-motion-tokens-and-the-cu",
+      "baseCommit": "2d56b9982aa102b1b720ebadebf4b870afc33aef",
+      "failedVerifies": 0
     },
     {
       "id": "F385",

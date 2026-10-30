@@ -9,7 +9,7 @@ import { profileLabel } from "@/features/profiles/lib/profile";
 import { settingsSections } from "@/screens/settings/lib/settings-sections";
 
 const ROW =
-  "flex min-h-9 items-center gap-3 rounded-md px-3 text-sm text-muted outline-none transition-colors duration-[var(--fw-duration-fast)] hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-focus aria-[current=page]:bg-surface-2 aria-[current=page]:font-medium aria-[current=page]:text-ink pointer-coarse:min-h-11";
+  "flex min-h-9 items-center gap-3 rounded-md px-3 text-sm text-muted outline-none hover:transition-colors hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-focus aria-[current=page]:bg-surface-2 aria-[current=page]:font-medium aria-[current=page]:text-ink pointer-coarse:min-h-11";
 
 /** Settings share one frame: the sections in a column beside the page on wide screens, a row of tabs on phones. */
 export function SettingsFrame({ children }: { children: ReactNode }) {

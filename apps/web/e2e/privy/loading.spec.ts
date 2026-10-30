@@ -184,3 +184,44 @@ test("the overview's balance and pending cards keep their size while they load, 
   expect(seen.heights["on-its-way"]).toHaveLength(1);
   await context.close();
 });
+
+test("the sidebar's mark moves with the page, with no fade left behind", async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await mockApi(page);
+  await page.goto("/app/invoices");
+  const sidebar = page.locator("aside");
+  const invoices = sidebar.getByRole("link", { name: "Invoices", exact: true });
+  await expect(invoices).toHaveAttribute("aria-current", "page");
+  const rest = await sidebar
+    .getByRole("link", { name: "Clients", exact: true })
+    .evaluate((el) => getComputedStyle(el).backgroundColor);
+  await page.evaluate(() => {
+    const w = window as unknown as { frames: { path: string; mark: string }[] };
+    w.frames = [];
+    const row = document.querySelector<HTMLElement>('aside a[href="/app/invoices"]');
+    const sample = () => {
+      w.frames.push({
+        path: location.pathname,
+        mark: row ? getComputedStyle(row).backgroundColor : "",
+      });
+      requestAnimationFrame(sample);
+    };
+    sample();
+  });
+  await sidebar.getByRole("link", { name: "Payments", exact: true }).click();
+  await expect(sidebar.getByRole("link", { name: "Payments", exact: true })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await page.waitForTimeout(300);
+  const frames = await page.evaluate(
+    () => (window as unknown as { frames: { path: string; mark: string }[] }).frames,
+  );
+  // Once the page is Payments, Invoices is never still half marked.
+  expect(frames.filter((f) => f.path === "/app/payments" && f.mark !== rest)).toEqual([]);
+  await context.close();
+});
