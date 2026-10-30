@@ -30,7 +30,7 @@ export interface OnItsWayCardProps {
   moving: bigint | null;
   /** Confirming or partly paid money, in cents at market prices: may still turn out to be the payer's. */
   notFinal: bigint | null;
-  /** Money held for payers, in cents at market prices: theirs, shown apart. */
+  /** Money on hold (sent late or over the amount), in cents at market prices: not part of the balance, shown apart. */
   held: bigint | null;
 }
 
@@ -138,14 +138,19 @@ export function OnItsWayCard({ profileId, moving, notFinal, held }: OnItsWayCard
       {held !== null && held > 0n ? (
         <Link
           href={APP_ROUTES.balances}
-          className="mt-auto flex items-center gap-2 border-t border-line pt-3 text-sm text-muted outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+          className="group mt-auto flex items-center gap-3 border-t border-line pt-3 text-sm outline-none focus-visible:outline-2 focus-visible:outline-focus"
         >
-          <ShieldCheck aria-hidden className="size-[var(--fw-icon-sm)] shrink-0" />
+          <ShieldCheck aria-hidden className="size-[var(--fw-icon-sm)] shrink-0 text-muted" />
           <span className="min-w-0 flex-1">
-            {COPY.heldForPayers(formatUsd(held))}
-            <span className="block text-xs text-subtle">{COPY.heldNote}</span>
+            <span className="block font-medium text-ink tabular-nums">
+              {COPY.heldForPayers(formatUsd(held))}
+            </span>
+            <span className="block text-xs text-muted">{COPY.heldNote}</span>
           </span>
-          <ChevronRight aria-hidden className="size-[var(--fw-icon-sm)] shrink-0" />
+          <ChevronRight
+            aria-hidden
+            className="size-[var(--fw-icon-sm)] shrink-0 text-muted group-hover:text-ink"
+          />
         </Link>
       ) : null}
     </Card>
@@ -175,8 +180,8 @@ function Status({
         icon
       )}
       <div>
-        <p className="font-medium text-ink">{title}</p>
-        <p className="text-sm text-muted">{note}</p>
+        <p className="text-sm font-medium text-ink">{title}</p>
+        <p className="text-xs text-muted">{note}</p>
       </div>
     </div>
   );

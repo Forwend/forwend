@@ -269,7 +269,7 @@ export function PaymentsShowcase() {
             note="1 payment"
           />
           <StatTile
-            label="Held for payers"
+            label="On hold"
             value={<Money baseUnits={25000000n} decimals={6} token="USDC" />}
             note="Extra on INV-0039"
           />

@@ -264,6 +264,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-192 | A payment's page says each fact once, in plain words. | Given a payment page, then no Needs attention panel repeats what Amount and Transfers show. A problem shown nowhere else is a warning strip under the header. Details and Timeline take two fifths of the width from extra-large screens. The list's problem view is called Issues. | web-unit | R-166, R-177 |
 
+| R-193 | Money on hold reads as a plain fact, never as a debt. | Given money sent late or over the amount, then the overview, My assets and payments call it "on hold". It is "Not part of your balance", never "theirs" or "owed". Every row of Pending payments shares one type: a medium line and a small muted line. | web-unit | R-33, D-114 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.

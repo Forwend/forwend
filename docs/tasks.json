@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 368,
+  "nextId": 369,
   "tasks": [
     {
       "id": "F332",
@@ -2186,6 +2186,85 @@
         "branch": "fix/f367-a-payment-s-page-says-each-fact-once-in",
         "base": "main"
       }
+    },
+    {
+      "id": "F368",
+      "type": "fix",
+      "behavior": "Money on hold reads as a plain fact, never as a debt",
+      "acceptance": [
+        "Overview, My assets and payments name held money On hold with Not part of your balance; no copy says theirs or owed; Pending payments rows share one type"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "web-unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-193"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T02:16:21Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.8,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 27.7,
+            "log": ""
+          }
+        ],
+        "taskHash": "bddcc2e4f4fac973",
+        "filesHash": "c372d9be04fda625",
+        "proof": {
+          "1": "web-unit: balances test finds the '<0.01 USD on hold' link; dashboard, balances and payments copy name held money On hold, Not part of your balance; no copy says theirs or owed"
+        }
+      },
+      "branch": "fix/f368-money-on-hold-reads-as-a-plain-fact-neve",
+      "baseCommit": "839a29eee3bea8954e93881e705ea8937012d15b",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

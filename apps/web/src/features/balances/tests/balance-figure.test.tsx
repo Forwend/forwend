@@ -51,7 +51,7 @@ describe("BalanceFigure", () => {
 
   it("does not hide held money smaller than one cent", () => {
     show({ tokens: [{ ...usdc, held: "1" }], estimatedUsdTotal: "2.50" });
-    expect(screen.getByRole("link", { name: "<0.01 USD held for payers" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "<0.01 USD on hold" })).toBeTruthy();
   });
 
   it("values tokens at their market prices, and never at 1 USD without one", () => {

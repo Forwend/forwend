@@ -155,7 +155,7 @@ export const RECONCILIATION_COPY = {
   accounts: {
     receiver: "In payment addresses",
     payable: "Moving to wallet",
-    held: "Held for payers",
+    held: "On hold",
   },
   profilePayments: "Profile payments",
   testMode: "Test mode",

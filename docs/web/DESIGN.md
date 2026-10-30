@@ -171,7 +171,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   Figure strips and tables use hairline rules between cells and rows, not separate cards. On phones a panel is a
   full-width section between top and bottom hairlines (no side border or corners, no box inside a box), its title
   unruled above the rows, as in banking apps; panels become cards from small screens up (`fw-panel`, `fw-panel-head`).
-- Holdings across tokens (the total balance, Moving to wallet, Not final, Held for payers) are USD at market prices
+- Holdings across tokens (the total balance, Moving to wallet, Not final, On hold) are USD at market prices
   (D-115). An info icon after "USD" says so in a tooltip. Pages name no price provider.
   - A value uses the latest known price, even an old one: stablecoins move little.
   - Without any price for a held token, the total is "—": never 1 USD.
@@ -198,7 +198,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - Then round actions: New invoice (lime), Payment link, Checkout (merchants), Receive.
     - Pending payments: payments still confirming (not final), then paid money moving to the wallet.
       Up to three rows open their payment.
-    - Money held for payers is a separate quiet row at the card's foot, linking to My assets. It is theirs.
+    - Money on hold is a separate row at the card's foot, linking to My assets: "0.89 USD on hold".
+      - Under it: "Extra or late payments. Not part of your balance." No wording says who owes whom.
+    - Every row in the card shares one type: a medium ink line, then a small muted line.
   - Row 2: the Received card (range control in its header, the range total, Sent, the running-total chart) beside
     My assets (a share bar, then each token's amount and market value).
   - Row 3: Unpaid beside Latest payments; each sizes to its rows instead of matching the other's height.
@@ -213,7 +215,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The title, a one-line description and, when something is left, the USD total at its right.
   - Rows: the client (or title, or number), then the number and "12 days late" (warning color) or "Partially paid".
   - The amount sits on the right with "left to pay" under it. A checkout row opens its payment, an invoice row its invoice.
-  - Money held for a payer is theirs: it shows as Overpaid on its payment and as Held for payers in My assets, never here.
+  - Money on hold shows as Overpaid on its payment and as On hold in My assets, never here.
   - Five rows, then Show all n, which moves focus to the first row it adds. Nothing unpaid says so in one quiet line.
 - Charts are drawn by us, with no grid lines and no value axis: the readout gives each exact amount and the dates
   (first, middle, last; first and last on phones) sit under the plot. The balance is one smooth ink line (monotone, so
@@ -226,7 +228,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   readers every value. Range choice is a segmented control. Reduced motion shows every chart in place. A failed figure shows "—" with Try again,
   never an endless skeleton.
 - My assets: Total balance (`BigAmount`), then one row per token.
-  - Columns: Asset, In wallet (with its market value), Moving to wallet, Not final, Held for payers.
+  - Columns: Asset, In wallet (with its market value), Moving to wallet, Not final, On hold.
   - Moving to wallet is paid money being transferred; Not final is confirming or partly paid money, which may still
     turn out to be the payer's. Each header's title says so.
   - Nothing in a column is a quiet dash on wide screens and no row at all on phones.
