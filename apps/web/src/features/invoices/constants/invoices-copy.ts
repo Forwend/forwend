@@ -282,7 +282,6 @@ export const NEW_INVOICE_COPY = {
     waiting: "Waiting for payment",
     amountDue: "Amount due",
     total: "Total",
-    unchecked: "Name not checked by Forwend",
     issued: "Issued",
     supply: "Supply date",
     due: "Due date",

@@ -296,7 +296,8 @@ func receipt(number, amount, symbol, network, issuer, sender, tx, pdf string) vi
 	case issuer != "":
 		to = issuer
 	case sender != "":
-		// Same wording as the pay page and PDF.
+		// Same wording as the pay page's Need help. An email comes from Forwend, so a typed name says so here; the PDF
+		// is the sender's own document and shows the name alone.
 		to, v.Note = sender, "The name is what the invoice's creator gave; Forwend doesn't check it."
 	}
 	if to != "" {

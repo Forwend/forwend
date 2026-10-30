@@ -74,10 +74,10 @@ column existed were set to their signup time (migration 00013), so they never se
   - The letters come from Unicode's confusables (`profile/lookalikes.go`, made by `lookalikes_gen.go`). A few it lacks,
     such as small capitals, are added by hand. A symbol that looks like a letter counts both ways: as that letter
     (`℮` as e) and as a gap (`|`).
-  - Emails and the PDF of a request without billing details say a typed sender name is not checked. The pay page's
-    Need help always says so.
-  - Emails and PDFs show billing details without that note: they are the issuer's own legal details, shown as on any
-    invoice. The look-alike check is what keeps them from reading as Forwend.
+  - The pay page's Need help and the emails of a request without billing details say a typed sender name is not
+    checked. The PDF shows the name without that note.
+  - Billing details carry no note: they are the issuer's own legal details. The look-alike check keeps names from
+    reading as Forwend.
 - Onboarding counts toward the 10 profiles too.
 
 ## Notifications

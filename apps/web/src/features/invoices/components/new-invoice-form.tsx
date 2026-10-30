@@ -586,7 +586,7 @@ export function NewInvoiceForm({
       },
       from: request
         ? sender
-          ? { name: sender, lines: [COPY.preview.unchecked] }
+          ? { name: sender, lines: [] }
           : null
         : issuer
           ? {

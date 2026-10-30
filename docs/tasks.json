@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 403,
+  "nextId": 404,
   "tasks": [
     {
       "id": "F332",
@@ -720,6 +720,118 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f402-the-pay-page-s-loading-placeholders-sit",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F403",
+      "type": "fix",
+      "behavior": "A request's PDF and its preview show the sender's name without a note that Forwend did not check it",
+      "acceptance": [
+        "A personal request's PDF and the new-request preview show From with the sender's name only"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend",
+        "web-e2e"
+      ],
+      "refs": [
+        "R-122",
+        "R-47"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-30 review fail by reviewer: PDF and preview fix is correct: document.go start() serves both invoice and receipt PDFs; preview's copy entry removed; owner detail shows name only; Need help unverifiedName and R-122 look-alike check unchanged; no PROJECT.md row required the PDF note. TestInvoicePDF passes at HEAD and fails with main's document.go (file restored, hash c07c0af2 unchanged); document tests pass; docs-check 0 errors. Defect: docs/backend/api.md:77 now says 'Emails and PDFs show names without that note', and the commit says the old email claim was already untrue. Both are false: notify.go:300/321/501 (receipt, sent, reminder emails) still add 'The name is what the invoice's creator gave; Forwend doesn't check it.' for a sender name without billing details, and notify_test.go:353 (TestDeliverSendsTheReceiptToThePayer, passing) asserts it. The same note shows in emails, unfixed and unnamed (AGENTS.md: a fix covers every reader). Fix: either drop the email notes too (notify.go 3 places, its 'Same wording as the pay page and PDF' comment at :299, notify_test.go:353 assertion) or keep them and make api.md:77 and the commit say emails still carry it; owner's call, since 'why we even have it there' reads as applying to emails too.",
+        "2026-10-30 review pass by reviewer: Doc defect fixed. api.md:77 now true: Need help (pay-copy.ts unverifiedName) and the receipt, sent and reminder emails (notify.go:301/322/502, sender name without issuer) carry the note; document.go draws From with the name only. notify.go:299 comment now matches the code. Only grep hits for the note are those emails, their test (notify_test.go:353), Need help and its e2e; nothing else claims the PDF note. Commit message matches the diff. docs-check 0 errors; document tests pass (notify tests need DATABASE_URL, not run; comment-only change there; verify passed after the commit). Nit, not blocking: the comment says 'Same wording as the pay page's Need help', but the pay page says 'the recipient gave' and the emails 'the invoice's creator gave'."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T18:03:16Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 261.3,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 258.3,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 39.1,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          }
+        ],
+        "taskHash": "d16ec9673a89d112",
+        "filesHash": "eee9ff4916854a16",
+        "proof": {
+          "1": "backend: internal/httpapi/tests/invoices_pdf_test.go TestInvoicePDF now expects a request's PDF to show 'From' and 'Mara Ilić' with no 'not checked' line; with main's document.go it failed ('a request's PDF still says its name is not checked'). web-e2e: the new-request preview's From block shows the sender's name only; COPY.preview.unchecked is removed. The emails of a request without billing details keep their note (notify.go; TestDeliverSendsTheReceiptToThePayer still checks it), since they come from Forwend's address; api.md and notify.go's comment now say so. The pay page's Need help still says the typed name isn't checked, and R-122's look-alike check is unchanged."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Doc defect fixed. api.md:77 now true: Need help (pay-copy.ts unverifiedName) and the receipt, sent and reminder emails (notify.go:301/322/502, sender name without issuer) carry the note; document.go draws From with the name only. notify.go:299 comment now matches the code. Only grep hits for the note are those emails, their test (notify_test.go:353), Need help and its e2e; nothing else claims the PDF note. Commit message matches the diff. docs-check 0 errors; document tests pass (notify tests need DATABASE_URL, not run; comment-only change there; verify passed after the commit). Nit, not blocking: the comment says 'Same wording as the pay page's Need help', but the pay page says 'the recipient gave' and the emails 'the invoice's creator gave'.",
+          "at": "2026-10-30T18:13:44Z",
+          "filesHash": "eee9ff4916854a16"
+        },
+        "commit": "5ada9537",
+        "doneAt": "2026-10-30T18:13:56Z"
+      },
+      "branch": "fix/f403-a-request-s-pdf-and-its-preview-show-the",
+      "baseCommit": "e42c6f77eecc5d27d4790110d185d8c4a616b12d",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f403-a-request-s-pdf-and-its-preview-show-the",
         "base": "main"
       }
     }

@@ -239,8 +239,11 @@ func TestInvoicePDF(t *testing.T) {
 	mustContain(t, text, "INV-0001", "Description\nAmount\nPayment\n", "on Base Sepolia (chain ID 84532)")
 	mustContain(t, strings.ReplaceAll(text, "\n", ""), webURL+"/pay/"+e.link(t, plain))
 
-	mustContain(t, pdfText(t, e.pdf(t, request, "invoice.pdf", "").body),
-		"From\n", "Mara Ilić", "Name not checked by Forwend")
+	requestText := pdfText(t, e.pdf(t, request, "invoice.pdf", "").body)
+	mustContain(t, requestText, "From\n", "Mara Ilić")
+	if strings.Contains(requestText, "not checked") {
+		t.Fatalf("a request's PDF still says its name is not checked:\n%s", requestText)
+	}
 	for _, block := range []string{"Billed to\n", "Reference", "Supply date", "Due date", "Agreed value", "Note\n"} {
 		if strings.Contains(text, block) {
 			t.Fatalf("an invoice without a client or details says %q:\n%s", block, text)
