@@ -53,7 +53,7 @@ export const PAY_COPY = {
   sendTo: (symbol: string, network: string) => `Send ${symbol} on ${network} to`,
   updatesItself: "This page updates on its own.",
   found: "Payment found",
-  foundNote: "Recording it now. Don't pay again.",
+  foundNote: (amount: string) => `Found ${amount}. Recording it now. Don't pay again.`,
   // R-68: once money is seen the payer has nothing left to do; saying so keeps them from paying twice.
   seen: "Payment detected",
   finalAround: (time: string) => `Final around ${time}`,

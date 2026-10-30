@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 391,
+  "nextId": 394,
   "tasks": [
     {
       "id": "F332",
@@ -3772,6 +3772,139 @@
         "branch": "fix/f390-record-pages-keep-their-panels-in-place",
         "base": "main"
       }
+    },
+    {
+      "id": "F391",
+      "type": "fix",
+      "behavior": "The pay panel's Show address enters with motion, the send-only warning sits under the amount, and a found payment locks the pick",
+      "acceptance": [
+        "Show address rises in like the panel's other parts, and the send-only warning sits under the Amount box",
+        "Once Check status finds a payment, the footer says so in one line with no Check status, and Change is gone"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "web-e2e"
+      ],
+      "refs": [
+        "R-55",
+        "R-57"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-30 review fail by reviewer: Defect (a11y, money-adjacent): with CheckStatus unmounted while found, its always-rendered live region goes too, and the new found line 'Found X. Recording it now. Don't pay again.' sits outside any live region. Probe: after pressing Check status, role=status texts on origin/main are ['Payment found','Found 1,250.00 USDC. Recording it now.']; on HEAD only ['Payment found']. Screen reader users no longer hear the amount found or the don't-pay-again line. Fix: put the note's text in a live region that exists before the answer (e.g. inside the status p, or an always-rendered role=status in StatusLine), and assert it via getByRole('status') in the R-55 test. Everything else holds: e2e pay+link-pay 42/42 pass; the R-55 and new Change tests both fail on main's pay-invoice.tsx/pay-copy.ts for the right reasons; useFound follows hook rules and equals the old condition (waiting && rescanning && onChain>recorded) plus the same amount COPY.recheck used; ENTER wrapper transitions opacity/translate only, separate from Button's own (bg/border/color/shadow/scale), and reduced motion gives 1e-05s; no sideways scroll at 360 px with a long multi-word network name or the look-alike line (a single unbreakable word overflows 2px, not a real chain name); docs-check 0 errors, added DESIGN lines under 25 words; commit message accurate. Hiding Check status while found is acceptable: the rescan request is durable in invoice_rechecks, the page polls every 15 s, and 'Don't pay again' is the safe message; a reload brings the resting button back. Notes, not blocking: (1) R-57 and DESIGN.md say a found check locks the choice, but the lock is page-state only and a reload before booking brings Change back; word it as this visit until F392 adds the API lock. (2) For a fixed invoice the section and the new wrapper both carry ENTER on first render, so Show address rises 8px. (3) The R-55 mock keeps unreadable:[421614] with no assertion; the F144 'did not answer' copy now has no e2e check; move it to the non-found Check status test. (4) tasks.json also adds not-started F392 and F393 records.",
+        "2026-10-30 review fail by reviewer: Defect (a11y, keyboard focus): when Check status finds money, the pressed button unmounts and focus drops to <body>. Probe at HEAD: focus Check status, Enter, found -> document.activeElement = BODY. On a nothing-found answer the disabled button keeps focus (probe: activeElement = BUTTON Check status), and on origin/main the found path kept the disabled button, so this is new. The pay panel's own rule is that a pressed button that goes away moves focus (show: 'focus moves to the address it revealed'; startOver: beforeHeading). Fix: on the found transition move focus to a stable target in the panel (e.g. the found line with tabIndex=-1, or the send heading) without a double announcement; add an e2e assert on the focused element. Everything else passes: live region fixed. role=status texts after found = ['Payment found', \"Found 1,250.00 USDC. Recording it now. Don't pay again.\"], nothing doubled; the sr-only empty p is position:absolute, and the pending grid (rows '32px 10px', every visible box) is identical with it hidden at 1440/390/360. e2e pay.spec.ts + link-pay.spec.ts: 42 passed. The extra check.click() before the loop only adds the unreadable assert; each loop pass reloads (mutation cache gone, nextCheckAt null) and clicks again, so the loop proves the same thing. check-docs 0 errors; changed doc bullets are at most 25 words; comments give reasons; commit message matches the diff. Note: found + unreadable no longer names the network that did not answer (fine while money is found).",
+        "2026-10-30 review fail by reviewer: Defect (layout jump on phones, DESIGN.md 'No scroll hijacking or layout jumps during state changes'): the new found-focus effect calls sendHeading.current?.focus() without preventScroll. The heading is sr-only (clipped), so Chrome treats it as not visible and centers it, scrolling the page up. Probe at 390x664, Check status at the viewport bottom, found: scrollY 277 -> 0 and the found line 'Found 1,250.00 USDC. Recording it now. Don't pay again.' moves from y=399 to y=658-674, cut at the bottom edge. Same with a Safari-like blurred button. Control with the effect off: scrollY 277 -> 259 (layout shrink only), line stays at y=399, but focus is BODY and the R-55 toBeFocused fails ('Received: inactive'), confirming the author's claim. Fix verified: focus({ preventScroll: true }) in that effect keeps the heading focused (R-55 passes) and scrollY 277 -> 259, line at y=399. Consider a test that the found line stays in view on a phone. Everything else holds: the body check leaves focus alone when it moved elsewhere before the answer (probe: stays on the contract link); the heading is mounted whenever found > 0 on the pay page; nothing is read twice (CheckStatus unmounts in the same commit before it renders the answer; heading text differs from both live lines); biome passes; e2e pay+link-pay 46/46 pass; docs-check 0 errors; commit message accurate.",
+        "2026-10-30 review pass by reviewer: Prior defect fixed: the found-focus effect calls sendHeading.current?.focus({ preventScroll: true }). R-55 test at 390x664 asserts the found line toBeInViewport({ ratio: 1 }); probe without preventScroll fails at ratio 0.377, restored code passes. The phone viewport is safe for the rest of the test (after reload Check status is disabled and 'Next check in 4 min' is visible). pnpm --filter @forwend/web e2e e2e/pay.spec.ts e2e/link-pay.spec.ts: 42 passed. Comments give reasons only. Non-blocking nit: the commit message says 'The heading is clipped off-screen, so the focus doesn't scroll'; clipping is why a scroll would hurt, preventScroll is what stops it. The test paragraph also omits the new phone viewport and in-viewport check."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T13:29:26Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.0,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.9,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 29.8,
+            "log": ""
+          }
+        ],
+        "taskHash": "68ea3af60bd50065",
+        "filesHash": "47681354a2bab3a8",
+        "proof": {
+          "1": "web-e2e: Show address enters with ENTER after a pick (on a Fixed invoice it comes with its section, which already rises). The send-only warning sits in the amount's column under the Amount box; docs/runs/f391-pay-panel-after-{375,768,1440}.png show it beside the code, wrapping within the column at 375.",
+          "2": "web-e2e: e2e/pay.spec.ts 'Check status says once what it found…' (390x664 phone) expects the found line as a status (an always-present live region), no Check status and no Next check while recording, focus moved to the address's heading without scrolling (the found line stays fully in view; without preventScroll it was 38% in view, and without the focus effect focus was on the body), and after a reload the button resting with 'Next check in 4 min'. 'once Check status finds a payment, the payer can't change the network and token' expects Change gone after a found check. Both failed on main."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Prior defect fixed: the found-focus effect calls sendHeading.current?.focus({ preventScroll: true }). R-55 test at 390x664 asserts the found line toBeInViewport({ ratio: 1 }); probe without preventScroll fails at ratio 0.377, restored code passes. The phone viewport is safe for the rest of the test (after reload Check status is disabled and 'Next check in 4 min' is visible). pnpm --filter @forwend/web e2e e2e/pay.spec.ts e2e/link-pay.spec.ts: 42 passed. Comments give reasons only. Non-blocking nit: the commit message says 'The heading is clipped off-screen, so the focus doesn't scroll'; clipping is why a scroll would hurt, preventScroll is what stops it. The test paragraph also omits the new phone viewport and in-viewport check.",
+          "at": "2026-10-30T13:32:06Z",
+          "filesHash": "47681354a2bab3a8"
+        }
+      },
+      "branch": "fix/f391-the-pay-panel-s-show-address-enters-with",
+      "baseCommit": "336f13fc8b6963ea798358eaa75f5116042da500",
+      "failedVerifies": 0
+    },
+    {
+      "id": "F392",
+      "type": "feat",
+      "behavior": "The payer's token pick is saved on the invoice, and the pay page address carries no query",
+      "acceptance": [
+        "Show address saves the pick on the invoice, so the pay link opens on it again in any browser",
+        "The pay page URL has no ?option=, and the API refuses a new pick once a payment is found"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "web-e2e",
+        "unit"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F393",
+      "type": "fix",
+      "behavior": "One strip says the server can't be reached, on the pay page and under the app's header",
+      "acceptance": [
+        "The pay page's strip has no Try again and its text is centered",
+        "When the server can't be reached the app shows one strip under its header, and the inline refresh notices step back"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "web-e2e"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

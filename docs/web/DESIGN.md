@@ -643,7 +643,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Start another purchase moves focus to the amount or offer heading.
   - A bad amount shows on the field and focuses it; a busy or failed Pay says so under the button.
 - Each step of the checkout's pay panel moves, never jumps:
-  - A part a step brings rises 4px and fades in on `duration-base`: the picker, the chosen option's row, the address, what was seen.
+  - A part a step brings rises 4px and fades in on `duration-base`: the picker, Show address, the chosen option's row,
+    the address, what was seen.
   - What a step replaces goes at once.
   - The network's line under the amount keeps its place while the payer picks, so its text arriving moves nothing.
 - `/pay/<token>` (R-68) is the payee's page, laid out as hosted checkouts split it. It has no Forwend header: Forwend
@@ -657,7 +658,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - Right half: "Closes in …" at its top right like a header while the checkout can take money (warning color in the
       last 30 minutes). The pay panel, at most 28rem and starting 4rem right of the center, stands in the middle of the
       screen's height.
-    - "Send only <token> on <network>." is one line, small, on its own row under the code and amount.
+    - "Send only <token> on <network>." sits small under the amount, beside the code.
   - Phones: the pay panel comes right after the amount; the title, dates, note and PDF link follow it. The payer reaches
     the address first.
   - Left, top. It says only who asks and how much:
@@ -678,9 +679,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Right: one panel. While money is due, top to bottom:
     - Pay with: the one option as a token mark, or Network and Token selects (they scale to many chains and tokens).
     - A Show address button.
-    - The QR, and beside it the exact amount and the warning line "Send only USDC on Base Sepolia." with a warning
-      icon. The warning uses the small size on phones, so it stays on one line beside the QR down to 360 px. Where a
-      bridged look-alike exists, it adds "Native USDC, not USDC.e."
+    - The QR, and beside it the exact amount with the warning "Send only USDC on Base Sepolia." under it.
+      - The warning has a warning icon and the small size; on phones it wraps within the amount's column.
+      - Where a bridged look-alike exists, it adds "Native USDC, not USDC.e."
     - The address, full width.
     - The token contract as a short explorer link, and one exchange hint that names the network to withdraw on.
   - Amount and address boxes:
@@ -696,6 +697,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - Under the address, one row: "Waiting for payment…" with a pulsing dot, and Check status on its right.
     - "This page updates on its own." sits quietly under the waiting line.
     - What a check found, and when the next check is allowed, take their own line below. The button never moves.
+    - Money a check found turns the row into "Payment found" with one line: "Found 0.10 USDC. Recording it now.
+      Don't pay again."
+      - No Check status then; while that answer shows, Change goes too, so a payer can't switch options and pay twice.
     - Nothing waits before the address shows.
   - Once money is seen:
     - The panel keeps its place ("Paying with" while nothing more is due).
