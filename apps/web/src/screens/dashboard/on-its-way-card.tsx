@@ -143,7 +143,7 @@ export function OnItsWayCard({ profileId, moving, notFinal, held }: OnItsWayCard
           <ShieldCheck aria-hidden className="size-[var(--fw-icon-sm)] shrink-0 text-muted" />
           <span className="min-w-0 flex-1">
             <span className="block font-medium text-ink tabular-nums">
-              {COPY.heldForPayers(formatUsd(held))}
+              {COPY.onHold(formatUsd(held))}
             </span>
             <span className="block text-xs text-muted">{COPY.heldNote}</span>
           </span>
