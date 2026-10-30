@@ -917,3 +917,4 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
 - A keyboard skip link moves directly to app content. Focused content clears sticky navigation. Native modal
   dialogs contain scrolling and lock the page behind them; the scrollbar's room stays reserved, so the page never
   shifts sideways when one opens. Close buttons use the shared icon control.
+- An open select list keeps the page's scrollbar and width. Until it closes, only that scrollbar scrolls the page.
