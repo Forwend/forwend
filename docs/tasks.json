@@ -2725,7 +2725,7 @@
         "Placeholders appear only after a wait long enough to notice, so a quick answer shows none"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "loading-live-e2e",
         "ui-unit"
@@ -2831,11 +2831,18 @@
           "summary": "Pass. loading-live-e2e passed twice (20s). A probe held each list's answer and measured the placeholder, then the loaded rows. At 1440px, nine lists: head 36/36, rows 44/44, y off by 0.5px (collapsed border); Activity and Transactions rows 44.5-45. At 390px: Invoices, Activity, Payments rows 69 vs 70; Clients, Links, Stores, Jobs 60/60; Transactions day heading 39/39, rows 95/95. The 1px is real: the amount line is 21px, the skeleton bar 20px; it adds up to about 4px by row 5. Client invoices showed its empty state in the probe, so its rows were not measured; they use the same phone row as Invoices. Reduced motion: the compiled CSS has [data-skeleton] after :not([data-motion=essential]), same specificity, same @layer base, both !important; the computed animation is fw-fade-in 0.01ms, delay 0.4s, 1 run. Answers at 100, 150 and 300ms, with and without reduced motion, mounted 36 placeholders for 8-18 frames, and opacity stayed 0. So the spec's 100ms check is not vacuous. The test tolerances match what was measured. The status flag and phone slot are small, and the Transactions shape stays in its feature file. Docs keep sentences at 24 words or fewer; comments give reasons. Known limits, not defects: Transactions rows that wait for a label (select) are 115px against the 95px placeholder (12 of 20 sample rows). Activity rows for confirmed deposits drop the pill (60 vs 69). Latest payments and Owed to you on the overview keep RowsSkeleton; they are cards, not list pages, and outside R-201.",
           "at": "2026-10-30T04:23:46Z",
           "filesHash": "9c49d45b4b93f307"
-        }
+        },
+        "commit": "3c43e6b7",
+        "doneAt": "2026-10-30T04:24:07Z"
       },
       "branch": "fix/f381-a-list-page-loads-without-a-flash-or-a-j",
       "baseCommit": "98319f30830ef5599879f569f3e5f4b6ca44fcc0",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f381-a-list-page-loads-without-a-flash-or-a-j",
+        "base": "main"
+      }
     },
     {
       "id": "F382",
