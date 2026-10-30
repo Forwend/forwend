@@ -439,7 +439,7 @@
         "On Chromium for Linux, /docs at 1440 px with every font file arriving late shifts less than 0.01"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "lighthouse"
       ],
@@ -521,11 +521,18 @@
           "summary": "Rebase check passed. HEAD d5d9d4a3 is one commit on origin/main 9be1095b (F397). git diff origin/main HEAD outside docs/tasks.json matches f377f2eb's reviewed diff line for line (index lines aside). docs/tasks.json vs main only adds the F400 record and moves nextId 398 to 401. F397's record, lastWrapup and the other tasks are unchanged. validate: only the pre-existing 'F332 depends on unknown task F331'. docs.spec.ts in the Linux browser (pw-linux-fonts): 6 of 6 passed, font test included. Commit body now says 'The changes:'. Note: baseCommit is still ef0457ce, the pre-rebase merge-base. changed_since then also counts F397's files, so check selection is wider, not narrower.",
           "at": "2026-10-30T17:16:21Z",
           "filesHash": "fcac69bcfb7d7cd4"
-        }
+        },
+        "commit": "86a1180c",
+        "doneAt": "2026-10-30T17:16:34Z"
       },
       "branch": "fix/f400-docs-and-code-text-keep-their-place-on-l",
       "baseCommit": "ef0457ced12e515bb03472332f3dc0a4b4d63d60",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f400-docs-and-code-text-keep-their-place-on-l",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
