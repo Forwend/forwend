@@ -17,6 +17,8 @@ export const apiSlice = createApi({
     withRateLimit(
       fetchBaseQuery({
         baseUrl: API_BASE,
+        // The api stops writing an answer after 30 s; a request still open then is a stalled connection, so fail it.
+        timeout: 30_000,
         prepareHeaders: async (headers, { extra }) => {
           const token = await (extra as ApiExtra).getAccessToken();
           if (token) headers.set("Authorization", `Bearer ${token}`);

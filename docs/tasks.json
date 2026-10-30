@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 387,
+  "nextId": 389,
   "tasks": [
     {
       "id": "F332",
@@ -2846,27 +2846,93 @@
     },
     {
       "id": "F382",
-      "type": "perf",
-      "behavior": "App pages reuse fresh data, poll balances only where shown, and end a hung request",
+      "type": "fix",
+      "behavior": "A request with no answer never loads forever",
       "acceptance": [
-        "Returning to a page within five minutes shows its last data at once and reads it again when older than a minute, with no more requests than before",
-        "Pages that show no balance send no balance request every 15 seconds; Receive reads them while open",
         "A request with no answer within 30 seconds fails with Try again instead of loading forever"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
-        "web-unit",
-        "web-e2e"
+        "web-unit"
       ],
-      "refs": [],
+      "refs": [
+        "R-202"
+      ],
       "keep": [
         "apps/backend/*"
       ],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-30 review fail by subagent: Accept 1 ('no more requests than before') is false, and the prices rule is silently broken. RTK 2.13: isForcedQuery uses arg.forceRefetch ?? api refetchOnMountOrArgChange, compared with the last fulfilledTimeStamp, not with when the entry went unused. So every subscribe to data fulfilled >=60 s ago re-reads. Before, a cached entry was never re-read on mount. Measured with the real store and fake timers on this build: (a) prices: leave a priced page at 10 s, open one at 70 s -> 2 GET /v1/prices (base 1: PRICES_KEEP_S keeps it an hour, no mount refetch). PRICES_QUERY does not set refetchOnMountOrArgChange, so each Overview/Balances open after a minute re-reads prices. That contradicts the PRICES_KEEP_S comment and the architecture.md prices bullet. (b) an entry held or just left without polling (tokens, stores, clients, billing): a second reader after 120 s -> 2 reads (base 1). Example: Stores list -> store page, or Invoices -> New invoice for tokens. (c) infinite lists: 3 pages loaded, leave, come back at 70 s -> 3 more reads (base 1: entry dropped at 60 s). Activity and Transactions stop polling past page 1 to avoid exactly this. Invoices after Show more hits it too, the proof's own page. Fix: add refetchOnMountOrArgChange: false to PRICES_QUERY, or document the change. Then either reword accept 1 and R-202 to what is true (net fewer requests, since the shell balance poll is gone), or limit the re-read. OK: overrides keepUnusedDataFor 0, PRICES_KEEP_S and hook-level true still win. Menus, the bell, Cmd-K, setup guide and the receive sheet add nothing: they are always mounted or share the bell's polled key, and Sheet keeps its children mounted. The timeout matches the api WriteTimeout 30 s and Next's 30 s proxyTimeout. The 429 sleep and the fresh-sign-in retry run outside each fetch's own timer. Receive shows a skeleton, then LoadError with retry when there is no data, and nothing else reads the shell's balance entry. One small change: a failed one-time read is no longer retried in the background. The test is sound, follows schema-validation.test.ts and hangs without the timeout. R-202 sentences are 24/23/17 words. tasks.json only updates F382 and adds F387/F388. pnpm --filter @forwend/web test: 42 files, 209 tests passed.",
+        "2026-10-30 review fail by reviewer: Money data can now show stale past the 15 s contract, and docs claim otherwise. Measured with the real store, fake timers, base = keepUnusedDataFor 60 + shell LIVE_QUERY (scratch test). (1) Activity, Transactions and Payments set pollingInterval 0 past page 1. Show more twice, leave, back after 120 s, stay 61 s: this build shows the old 3 pages and sends 0 reads; base drops the entry at 60 s and sends 5 (1 open + 4 polls), fresh and live. The list stays stale until a tab focus or a mutation. That contradicts R-202, architecture.md and the api-slice comment ('a live list reads it again on its next poll'). (2) Shell balances: the shell's unpolled read shares the getBalances(profileId) key with Overview, Balances and the personal overview, and it is never unused, so it is kept all session. Payment lands at 100 s, user opens Overview at 600 s: this build shows the 0 s balance for 15 s (1 read before open); base shows the new one (41 reads). The age of the shown balance is unbounded, not <=15 s. The prior review's 'nothing else reads the shell's balance entry' is wrong; docs don't mention it. (3) Cost: Invoices polls every loaded page (no pages>1 guard). Same revisit: 12 reads in 61 s vs 5 on base. Same for LatestPayments, which shares the unfiltered Payments key. The commit says the dropped approach would read multi-page lists more often; this one does too, through polling. Fix ideas: keep the infinite-list endpoints at keepUnusedDataFor 60; give getBalances readers refetchOnMountOrArgChange 15 (age-from-answer fits there), or let Receive own its read; then restate R-202. OK: focus refetch and tag invalidation skip or drop unused entries, so no extra reads there; overrides keepUnusedDataFor 0 and PRICES_KEEP_S win; polling stops on unsubscribe. Timeout 30 s matches api WriteTimeout; the unit test is sound. Receive only uses token symbols and chains. R-202 sentences are 18/9/22/17 words; docs-check 0 errors. tasks.json changes only F382 plus new F387/F388. pnpm --filter @forwend/web test: 42 files, 209 passed. Aside, not from F382: SetupGuide in the sidebar polls the unfiltered Invoices key, so after Show more every page polls all loaded invoice pages.",
+        "2026-10-30 review pass by reviewer: Pass. HEAD~1 is origin/main; the diff touches 5 files: api-slice.ts adds only timeout: 30_000, plus the test, R-202, one architecture.md bullet and tasks.json. app-shell.tsx, keepUnusedDataFor, polling and refetchOnMount are untouched (those words appear only in the old review notes). tasks.json changes only F382's record and nextId, and adds F387/F388. A 30 s timeout cuts off no valid answer: the api's WriteTimeout is 30 s with no per-route SetWriteDeadline, and Next 16.4.2's rewrite proxyTimeout defaults to 30 s. Exports, statement.pdf, sign-out-everywhere (Privy freeze+unfreeze, up to 2x20 s) and webhook test all go through apiSlice and are already capped at 30 s by the server. In RTK 2.13 the timer starts in each fetchBaseQuery call, before prepareHeaders, and covers the body read. withRateLimit's 429 waits and withFreshSignIn's dialog run between base calls, so each resend gets a new timer. apiSlice is the web's only request path. LoadError shows Try again on any error. R-202 is 8/17 words; docs-check 0 errors. The test runs the real store, is still loading at 29 s, gets TIMEOUT_ERROR at 30 s, and hangs without the timeout. pnpm --filter @forwend/web test: 42 files, 209 passed. Minor: the branch name still says perf/...poll-balances."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T04:57:32Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.9,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 26.6,
+            "log": ""
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "7f0037cb41f7c03f",
+        "filesHash": "ca5f06202295f119",
+        "proof": {
+          "1": "web-unit: src/shared/api/tests/request-timeout.test.ts drives a never-answering fetch through the real store: still loading at 29 s, TIMEOUT_ERROR at 30 s, so LoadError's Try again shows. Without fetchBaseQuery's timeout it hangs and the test times out."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass. HEAD~1 is origin/main; the diff touches 5 files: api-slice.ts adds only timeout: 30_000, plus the test, R-202, one architecture.md bullet and tasks.json. app-shell.tsx, keepUnusedDataFor, polling and refetchOnMount are untouched (those words appear only in the old review notes). tasks.json changes only F382's record and nextId, and adds F387/F388. A 30 s timeout cuts off no valid answer: the api's WriteTimeout is 30 s with no per-route SetWriteDeadline, and Next 16.4.2's rewrite proxyTimeout defaults to 30 s. Exports, statement.pdf, sign-out-everywhere (Privy freeze+unfreeze, up to 2x20 s) and webhook test all go through apiSlice and are already capped at 30 s by the server. In RTK 2.13 the timer starts in each fetchBaseQuery call, before prepareHeaders, and covers the body read. withRateLimit's 429 waits and withFreshSignIn's dialog run between base calls, so each resend gets a new timer. apiSlice is the web's only request path. LoadError shows Try again on any error. R-202 is 8/17 words; docs-check 0 errors. The test runs the real store, is still loading at 29 s, gets TIMEOUT_ERROR at 30 s, and hangs without the timeout. pnpm --filter @forwend/web test: 42 files, 209 passed. Minor: the branch name still says perf/...poll-balances.",
+          "at": "2026-10-30T05:00:33Z",
+          "filesHash": "ca5f06202295f119"
+        }
+      },
+      "branch": "perf/f382-app-pages-reuse-fresh-data-poll-balances",
+      "baseCommit": "1ee45f34256a121839422f630a2a09ee0c05c27a",
+      "failedVerifies": 0
     },
     {
       "id": "F383",
@@ -2946,6 +3012,50 @@
       "dependsOn": [],
       "state": "not_started",
       "verification": [
+        "web-e2e"
+      ],
+      "refs": [],
+      "keep": [
+        "apps/backend/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F387",
+      "type": "fix",
+      "behavior": "Paying from a payment link moves smoothly from the link to the address",
+      "acceptance": [
+        "Pay keeps the link page still until the checkout opens with its invoice, with no placeholder or empty page between",
+        "Each step of the pay panel brings its new part in with motion, and picking the network moves nothing below"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "web-e2e"
+      ],
+      "refs": [],
+      "keep": [
+        "apps/backend/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F388",
+      "type": "fix",
+      "behavior": "Dialogs and centered sheets open with motion",
+      "acceptance": [
+        "A modal dialog and the centered sheet fade in and settle on open, and open at once with reduced motion"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "kit-e2e",
         "web-e2e"
       ],
       "refs": [],

@@ -273,6 +273,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-201 | A list page loads without a flash or a jump. | Given a list waiting for its first answer, then its placeholder has the table's header and row heights, and the phone rows' height. Given an answer within 400 ms, then no placeholder shows. | loading-live-e2e | R-75, R-64 |
 
+| R-202 | A request with no answer never loads forever. | Given a request with no answer in 30 s, then it fails and the page offers Try again. | web-unit | D-47 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.
