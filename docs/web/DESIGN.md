@@ -189,12 +189,15 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Under them the pending and held links, the prices line, then the round actions at the card's foot.
   - The valley art sits behind a surface veil: from small screens it shows only on the right, on phones it is faint.
   - The card is at least 16rem tall (20rem on phones). The total scales with its column (container units).
+  - It keeps its own height: a taller My assets beside it doesn't stretch it.
   - Pending and held money each use one USD summary link to Balances; never list every token in the card.
   - Positive totals below a cent read `<0.01 USD`.
   - Phones center the total with the actions under it (five equal columns, labels smaller below 360 px).
   - The Balance chart card holds the range control; beside it Money in and out stacks In over Out.
 - Business overview (merchant, freelancer, R-63) follows the C comp, in three rows of cards (`Card`, unruled headers):
   - Row 1: the Balance card and Pending payments.
+    - The Balance card keeps its own height: a taller Pending payments doesn't stretch it.
+    - A shorter Pending payments still stretches to the Balance card's height.
     - Balance: the personal card's figure over the art with a surface veil: the total, USD and its hint, then
       its change over the past month. Its pending and held links stay off: Pending payments sits beside it.
     - Then round actions: New invoice (lime), Payment link, Checkout (merchants), Receive.

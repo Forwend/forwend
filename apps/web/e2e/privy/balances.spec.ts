@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { sidewaysScroll } from "../sideways";
 import { blockingViolations } from "./axe";
+import { hash, mockApi } from "./sample-api";
 import { session } from "./session";
 
 test("a profile shows its balance, networks, receive address and activity; a new profile gets its own wallet", async ({
@@ -198,6 +199,117 @@ test("on a phone the app is a banking-style home with a tab bar", async ({ brows
   await expect(page.getByRole("dialog", { name: "Profiles" })).toBeHidden();
   await page.locator("aside").getByRole("link", { name: "My assets" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "My assets" })).toBeVisible();
+  await context.close();
+});
+
+test("the business balance card keeps its own height beside a taller Pending payments, and matches a shorter one", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    storageState: session,
+    viewport: { width: 1440, height: 900 },
+  });
+  const page = await context.newPage();
+  await mockApi(page);
+  // The innermost section holding the card's title: the card itself.
+  const card = (id: string) => page.locator(`section:has(#${id})`).last();
+  const heights = async () => {
+    const [balance, pending] = await Promise.all(
+      ["balance-title", "on-its-way"].map((id) => card(id).boundingBox()),
+    );
+    return { balance: balance?.height ?? 0, pending: pending?.height ?? 0 };
+  };
+  await page.goto("/app");
+  await expect(page.getByRole("main").getByText("18,420", { exact: false }).first()).toBeVisible();
+  // Nothing pending: the shorter card stretches to the balance card.
+  await expect(card("on-its-way").locator("[data-skeleton]")).toHaveCount(0);
+  const empty = await heights();
+  expect(Math.abs(empty.pending - empty.balance)).toBeLessThan(1);
+
+  // Three pending payments: Pending payments grows; the balance card keeps its height.
+  const moving = [1, 2, 3].map((i) => ({
+    chainId: 84532,
+    token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+    symbol: "USDC",
+    decimals: 6,
+    paymentId: hash(String(i)),
+    optionId: hash(String(i)),
+    optionLocked: true,
+    optionCount: 1,
+    source: "checkout",
+    purpose: "checkout",
+    documentKind: "none",
+    number: null,
+    storeId: "66666666-6666-4666-8666-666666666666",
+    storeName: "Sample shop",
+    linkId: null,
+    livemode: false,
+    title: `Order ${i}`,
+    reference: `order-${i}`,
+    customerName: null,
+    customerEmail: null,
+    amount: "1000000",
+    paymentStatus: "paid",
+    settlementStatus: "pending",
+    refundStatus: "none",
+    confirming: false,
+    closed: false,
+    createdAt: "2026-10-27T06:00:00Z",
+    closesAt: "2026-10-28T06:00:00Z",
+    hostedUrl: null,
+    amounts: {
+      receiver: "1000000",
+      payable: "1000000",
+      held: "0",
+      settled: "0",
+      refunded: "0",
+      observedRefunded: "0",
+      lastReturnTxHash: null,
+      unreconciled: false,
+      hasPolicyException: false,
+    },
+    receipts: [],
+  }));
+  await page.route(/\/api\/v1\/profiles\/[^/]+\/payments\?/, (route) =>
+    route.fulfill({ json: { items: moving, nextCursor: null } }),
+  );
+  await page.reload();
+  await expect(card("on-its-way").getByRole("link", { name: "order-3" })).toBeVisible();
+  const full = await heights();
+  expect(full.pending - full.balance).toBeGreaterThan(10);
+  expect(Math.abs(full.balance - empty.balance)).toBeLessThan(1);
+  await context.close();
+});
+
+test("the personal balance card keeps its own height when My assets beside it is taller", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    storageState: session,
+    viewport: { width: 1440, height: 900 },
+  });
+  const page = await context.newPage();
+  // Five tokens: the most My assets lists, so it is taller than the balance card.
+  const tokens = ["USDC", "EURC", "PYUSD", "USDT", "DAI"].map((symbol, i) => ({
+    chainId: 84532,
+    token: `0x${String(i + 1).repeat(40)}`,
+    symbol,
+    decimals: 6,
+    wallet: `${(i + 1) * 1_000_000}`,
+    finalizedBlock: 100,
+    pending: "0",
+    held: "0",
+  }));
+  await page.route("**/api/v1/profiles/*/balances", (route) =>
+    route.fulfill({ json: { tokens, estimatedUsdTotal: "15.00" } }),
+  );
+  await page.goto("/app");
+  const balance = page.getByRole("region", { name: "Total balance" });
+  const assets = page.getByRole("region", { name: "My assets" });
+  await expect(assets.getByText("DAI", { exact: true })).toBeVisible();
+  const ownHeight = await balance.boundingBox();
+  const beside = await assets.boundingBox();
+  expect(ownHeight && beside && beside.height - ownHeight.height).toBeGreaterThan(40);
   await context.close();
 });
 
