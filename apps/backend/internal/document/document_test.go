@@ -110,6 +110,42 @@ func TestStatusAsksForMoneyOnlyWhilePayable(t *testing.T) {
 			t.Errorf("%s: %q %q %q payable %v; want %q %q %q payable %v", c.name, s.label, s.figure, s.amount, s.payable,
 				c.label, c.figure, c.amount, c.payable)
 		}
+		// R-195: the dates row has the dates, and the totals give the panel's figure again only to finish the sum.
+		if strings.Contains(s.detail, s.amount) || strings.Contains(s.detail, "2026") {
+			t.Errorf("%s: the panel's line %q repeats its figure or a date", c.name, s.detail)
+		}
+		for _, row := range s.totals[1:] {
+			if row[1] == s.amount && row[0] != "Left to pay" {
+				t.Errorf("%s: the totals repeat the panel's %s as %s", c.name, s.amount, row[0])
+			}
+		}
+	}
+	partial := statusOf(with(ledger.PartiallyPaid, func(i *invoice.Invoice) { i.Amounts.Payable = big.NewInt(4_000000) }), now)
+	if got := fmt.Sprint(partial.totals); got != "[[Total 10.00 USDC] [Received 4.00 USDC] [Left to pay 6.00 USDC]]" {
+		t.Errorf("partially paid totals %s; want Total, Received and Left to pay", got)
+	}
+}
+
+// R-195: one transfer applied whole says it all in its row, with no Applied column and no totals under it.
+func TestReceiptOfOneWholeTransfer(t *testing.T) {
+	paidAt := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)
+	ten := big.NewInt(10_000000)
+	usdc := chain.Asset{ChainID: 84532, Symbol: "USDC", Decimals: 6}
+	amounts := &ledger.Amounts{ReconciliationStatus: ledger.ReconciliationVerified, Payable: ten, Held: new(big.Int),
+		Settled: new(big.Int), Refunded: new(big.Int)}
+	tx := "0x" + strings.Repeat("ab", 32)
+	inv := invoice.Invoice{Asset: usdc, Amount: ten, PaymentStatus: ledger.Paid, PaidAt: paidAt, CreatedAt: paidAt,
+		ClosesAt: paidAt.Add(time.Hour), OptionID: "o", Amounts: amounts, Options: []invoice.Option{{ID: "o",
+			Asset: usdc, Amount: ten, Amounts: amounts,
+			Deposits: []invoice.Deposit{{TxHash: tx, Amount: ten, Paid: ten, BlockTime: paidAt, Status: "confirmed"}}}}}
+	pdf, err := Receipt(inv, "https://example.com/pay/x", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := strings.Join(pages(t, pdf), "\n")
+	if !strings.Contains(text, "Payment received\nDate (UTC)\nNetwork\nAmount\n28 Oct 2026, 12:00\nBase Sepolia\n10.00 USDC\n"+tx) ||
+		strings.Contains(text, "Applied") || strings.Contains(text, "\nReceived\n") {
+		t.Fatalf("one whole transfer: want its row alone, without Applied or totals:\n%s", text)
 	}
 }
 

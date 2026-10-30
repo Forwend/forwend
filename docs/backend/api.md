@@ -793,14 +793,13 @@ PDF prints, so a change updates both. Both are public like `GET /v1/invoices/{pa
   - Paid, canceled and expired invoices have no pay link and no QR code.
 - `receipt.pdf`: 409 `invoice_not_paid` until `paymentStatus` is `paid` (it stays paid once settled).
   - It has the paid time beside the issue day and supply date.
-  - Payments (Payment for one) lists every transfer on any option, oldest first.
+  - Payments received lists every transfer on any option, oldest first.
   - Each row has the block time, network and amount received.
   - An Applied column shows only when a transfer wasn't applied whole (R-121, R-195).
   - Then a transfer the ledger hasn't booked reads Pending; held money is applied as 0 (D-26).
   - Under each row are the full tx hash and a "View on <explorer>" link.
   - The totals per option: Received, Applied to this invoice, Held for payer and Returned to payer.
-  - One transfer applied whole has no totals: its row says it all.
-  - Received shows for more than one transfer; Applied to this invoice only beside the Applied column.
+  - They show only beside the Applied column: transfers applied whole need no totals.
   - Received is payable + held + settled + refunded, as Payments counts it; Returned to payer is the ledger's `refunded`.
   - The latest return's transaction follows them.
   - It ends with the pay link and its QR code, since a PDF can be edited.

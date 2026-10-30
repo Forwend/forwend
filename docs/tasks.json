@@ -2396,12 +2396,14 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-30 review fail by independent-reviewer: Expired, partially paid invoice.pdf still prints the same figure three times: the panel figure Received 4.00 USDC, the sentence 'The 4.00 USDC sent is held', and a Received row in the totals. This breaks R-195 ('totals repeat no figure the panel shows') and accept 1. Fix: in statusOf, drop the Received total in the expired-partial branch. Add a PDF text test, since only the label/figure/amount unit test covers it. Accept 1 says 'no totals when every transfer was applied whole', but a receipt with two or more whole transfers still prints Received equal to Amount paid and Total. Drop that row or narrow R-195 and accept 1. api.md 'Received shows for more than one transfer' omits the other two conditions (more than one option, or Applied column) and holds two facts. Test gaps: nothing covers a single transfer applied whole (singular 'Payment' heading, three columns, no totals); nothing covers a partially paid invoice PDF showing Received and Left to pay now that the panel no longer says Received X of Y. Minor: R-121 still says every row has an Applied amount. The 'Payment' section heading now matches the default line title 'Payment' on item-less invoices. TestPayerChoosesInvoice lost its Amount-due absence proof. Checked OK: every other money fact survives (one and several transfers, held, partial refund, two options, USD payer-chooses, Pending, records note, issuer-less); dropping Amount due on unpaid is fine since Total is the same figure and the panel says Amount due; ETag is the hash of the bytes and output is deterministic; layout of the Paid panel and the single-transfer receipt is clean; the Go tests pass; docs-check passes and all changed bullets are 25 words or fewer; no other reader of this PDF text exists (the web preview is the only mirror and it matches)."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-30T02:35:03Z",
+        "at": "2026-10-30T02:53:14Z",
         "checks": [
           {
             "id": "docs-check",
@@ -2414,56 +2416,58 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
+            "seconds": 0.4,
             "log": ""
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.5,
+            "seconds": 0.2,
             "log": ""
           },
           {
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 254.1,
+            "seconds": 253.3,
             "log": ""
           },
           {
             "id": "backend-affected",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 260.0,
+            "seconds": 248.4,
             "log": ""
           },
           {
             "id": "backend-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 35.9,
+            "seconds": 37.5,
             "log": ""
           },
           {
             "id": "web-unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 5.3,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "web-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 29.0,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           }
         ],
         "taskHash": "8f3865a7d4ad6fc5",
-        "filesHash": "c401ad523335243e",
+        "filesHash": "688d5bfda0f8b261",
         "proof": {
-          "1": "backend: invoices_pdf_test: the invoice's panel says no date and its totals no Amount due; the receipt's panel says Paid once, with no Applied column or totals when each transfer was applied whole; a held deposit still shows Applied"
+          "1": "backend: document_test: no panel line repeats its figure or a date, and no totals row but Total and Left to pay repeats the panel's figure, across every status; partly paid totals Total, Received, Left to pay; one whole transfer's receipt has no Applied column or totals. invoices_pdf_test: a Pending transfer brings back Applied and its totals"
         }
       },
       "branch": "fix/f370-an-invoice-or-receipt-pdf-says-each-fact",

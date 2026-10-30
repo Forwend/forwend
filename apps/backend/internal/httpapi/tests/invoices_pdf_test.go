@@ -343,11 +343,11 @@ func TestReceiptPDF(t *testing.T) {
 	mustContain(t, text, "Forwend\nReceipt\nINV-0001\nReference PO-7\nTestnet\nTest mode: testnet tokens have no value\n"+
 		"Paid\nAmount paid\n2.00 USDC", "Supply date\n1 Oct 2026\nPaid\n"+stamp(paidAt),
 		"Payment\n2.00 USDC\nTotal\n2.00 USDC\nAgreed value 300 JPY on 2026-10-01",
-		// Each transfer applied whole: no Applied column, and the two rows add up under them once.
-		"Payments\nDate (UTC)\nNetwork\nAmount\n"+row(paidAt.Add(-time.Minute))+"\nBase Sepolia\n1.50 USDC\n"+
+		// Each transfer applied whole: no Applied column and no totals; the panel and Total already say 2.00 USDC.
+		"Payments received\nDate (UTC)\nNetwork\nAmount\n"+row(paidAt.Add(-time.Minute))+"\nBase Sepolia\n1.50 USDC\n"+
 			first+"\nView on Basescan\n"+row(paidAt)+"\nBase Sepolia\n0.50 USDC\n"+second+"\nView on Basescan\n"+
-			"Received\n2.00 USDC\nCheck this receipt\nA PDF can be edited.")
-	if strings.Count(text, stamp(paidAt)) != 1 || strings.Contains(text, "Applied") {
+			"Check this receipt\nA PDF can be edited.")
+	if strings.Count(text, stamp(paidAt)) != 1 || strings.Contains(text, "Applied") || strings.Contains(text, "\nReceived\n") {
 		t.Fatalf("the receipt repeats the paid date or applied amounts:\n%s", text)
 	}
 	mustContain(t, strings.ReplaceAll(text, "\n", ""), link)

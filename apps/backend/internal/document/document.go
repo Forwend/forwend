@@ -148,9 +148,8 @@ func statusOf(inv invoice.Invoice, now time.Time) standing {
 		s.detail = payee(inv) + " canceled this invoice. Do not send money."
 	case closed && received.Sign() > 0:
 		s.label, s.figure, s.amount, s.closed = "Expired, partially paid", "Received", token(received), true
-		s.detail = "The payment window closed before the full amount arrived. The " + s.amount +
-			" sent is held for the payer; ask " + payee(inv) + " to get it back."
-		s.totals = append(s.totals, [2]string{"Received", s.amount})
+		s.detail = "The payment window closed before the full amount arrived. The money sent is held for the payer; ask " +
+			payee(inv) + " to get it back."
 	case closed:
 		s.label, s.figure, s.closed = "Expired", "Total", true
 		s.detail = "The payment window closed without payment. Do not pay this invoice."
@@ -294,8 +293,8 @@ func (d doc) payments(inv invoice.Invoice) {
 	for _, tr := range transfers {
 		split = split || tr.Paid == nil || tr.Paid.Cmp(tr.Amount) != 0
 	}
-	// What the ledger did with the money, per token and network: applied, held or returned add up to received. One
-	// transfer applied whole needs none of it: its row says it all.
+	// What the ledger did with the money, per token and network: applied, held or returned add up to received.
+	// Transfers applied whole need none of it: their rows say it all.
 	var totals [][2]string
 	var returns []invoice.Option
 	for _, o := range received {
@@ -304,11 +303,11 @@ func (d doc) payments(inv invoice.Invoice) {
 			suffix = " · " + o.Symbol + " on " + NetworkName(o.ChainID)
 		}
 		money := func(n *big.Int) string { return Amount(n, o.Decimals, o.Symbol) }
-		if len(transfers) > 1 || len(received) > 1 || split {
+		if split {
 			totals = append(totals, [2]string{"Received" + suffix, money(booked(o.Amounts))})
-		}
-		if o.ID == inv.OptionID && split {
-			totals = append(totals, [2]string{"Applied to this invoice" + suffix, money(inv.Amount)})
+			if o.ID == inv.OptionID {
+				totals = append(totals, [2]string{"Applied to this invoice" + suffix, money(inv.Amount)})
+			}
 		}
 		if o.Amounts.Held.Sign() > 0 {
 			totals = append(totals, [2]string{"Held for payer" + suffix, money(o.Amounts.Held)})
@@ -349,9 +348,9 @@ func (d doc) payments(inv invoice.Invoice) {
 		first += end
 	}
 	d.pageFor(lineHeight + 1 + headerHeight + first)
-	heading := "Payments"
+	heading := "Payments received"
 	if len(transfers) == 1 {
-		heading = "Payment"
+		heading = "Payment received"
 	}
 	d.heading(heading)
 	t.header()
