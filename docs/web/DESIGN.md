@@ -45,6 +45,7 @@ Read only the sections your change touches. Any new control also needs
 - Hanken Grotesk sets every heading, the UI, body text and money; the display role reuses it.
   - Large headings use the medium weight with tight tracking (the `text-hero` and `text-section` roles carry it).
   - Geist Mono only for addresses, hashes, contract links, raw base units, keyboard hints and code.
+  - Geist Mono is preloaded and shows from the first paint; one that arrives too late waits for the next page load.
   - Money uses tabular figures everywhere: medium weight in rows, medium and tight for headline figures.
 - No eyebrow labels or tracked uppercase kickers.
 - Neutrals are white and near-black with true greys: no green tint in grounds, lines or text.

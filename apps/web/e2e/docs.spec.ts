@@ -81,3 +81,26 @@ for (const width of [360, 390]) {
     await context.close();
   });
 }
+
+test("the docs page doesn't shift when its code font arrives late", async ({ page }) => {
+  // The font files arrive well after the first paint.
+  await page.route(/\/_next\/static\/media\/.*\.woff2$/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    await route.fallback();
+  });
+  await page.addInitScript(() => {
+    const w = window as unknown as { shift: number };
+    w.shift = 0;
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries())
+        w.shift += (entry as unknown as { value: number }).value;
+    }).observe({ type: "layout-shift", buffered: true });
+  });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`${PUBLIC_URL}/docs`);
+  await page.waitForLoadState("networkidle");
+  await page.waitForTimeout(300);
+  expect(await page.evaluate(() => (window as unknown as { shift: number }).shift)).toBeLessThan(
+    0.01,
+  );
+});
