@@ -968,7 +968,7 @@
         "Migration 00094 adds thirdweb for Base, Arbitrum and Arc in its own budget group, and turns off the Tenderly and PublicNode WebSocket endpoints"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -1028,11 +1028,18 @@
           "summary": "Docs fixed and accurate. rpc.md:11-13 adds a migration 94 entry (thirdweb 1000 blocks / 25 calls, Tenderly and PublicNode WSS off); only base-tenderly and arbitrum-tenderly exist and both are off; Arc keeps blockdaemon-wss and official-wss, so 'PublicNode's WSS' is exact. R-185 cites 92 and 94. money-safety.md:43-44: PublicNode/Blockdaemon line plus thirdweb 170 h line sit under 'kept by no RPC any more' and before the manual next_block/target_block reset, so 'can be read again' points at that step; R-191 landed 2026-10-30 03:47, so every range skipped so far is inside 170 h. All new lines under 25 words; check-docs.py 0 errors. Tests: live probe of 84532.rpc.thirdweb.com today gave exactly the two test strings: 100-call batch -> HTTP 413 -32600 'batch of 100 exceeds the limit of 25 calls for keyless access. Upgrade your plan at https://thirdweb.com/pricing'; 2000-block getLogs -> HTTP 200 -32005 'Log response size exceeded. Maximum allowed number of requested blocks is 1000'. go test ./internal/chain/ -count=1 ok (11.9 s). Nit: 'so ranges skipped before it can be read again' can be misread as one clause; 'ranges skipped earlier can now be read again' would be clearer.",
           "at": "2026-10-30T18:58:51Z",
           "filesHash": "0c52b0d8f8180ff6"
-        }
+        },
+        "commit": "7f990a27",
+        "doneAt": "2026-10-30T18:59:05Z"
       },
       "branch": "fix/f405-base-arbitrum-and-arc-read-through-one-m",
       "baseCommit": "b3c9984fa0e64057eba6f16739d033cb711afc37",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f405-base-arbitrum-and-arc-read-through-one-m",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
