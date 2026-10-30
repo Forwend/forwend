@@ -6,6 +6,7 @@ import {
   EmptyState,
   formatTokenAmount,
   ROW_INTERACTIVE_CLASSES,
+  Skeleton,
 } from "@forwend/ui-web";
 import { CircleCheck, FileText } from "lucide-react";
 import Link from "next/link";
@@ -19,7 +20,7 @@ import type { OwedKind } from "@/features/invoices/types/invoices";
 import { InitialsAvatar } from "@/shared/components/initials-avatar";
 import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
-import { RowsSkeleton } from "@/shared/components/rows-skeleton";
+import { LineSkeleton, RowsSkeleton } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
@@ -65,7 +66,17 @@ export function OwedToYou({ profileId }: { profileId: string }) {
         {owed.isError && !items ? (
           <LoadError message={COPY.failed} onRetry={() => void owed.refetch()} />
         ) : !rows ? (
-          <RowsSkeleton count={5} />
+          <RowsSkeleton count={5}>
+            <Skeleton className="size-7 shrink-0 rounded-pill" />
+            <span className="min-w-0 flex-1">
+              <LineSkeleton className="w-2/5" />
+              <LineSkeleton size="text-xs" className="w-1/4" />
+            </span>
+            <span className="flex shrink-0 flex-col items-end gap-0.5">
+              <LineSkeleton className="w-16" />
+              <LineSkeleton size="text-xs" className="w-14" />
+            </span>
+          </RowsSkeleton>
         ) : rows.length === 0 ? (
           <EmptyState compact icon={CircleCheck} title={COPY.none} />
         ) : (

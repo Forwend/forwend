@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 389,
+  "nextId": 390,
   "tasks": [
     {
       "id": "F332",
@@ -2946,23 +2946,118 @@
       "type": "fix",
       "behavior": "The overview's cards keep their size and show no wrong state while they load",
       "acceptance": [
-        "Each overview card's body keeps one minimum height while loading, empty, failed and loaded, so the cards below do not move",
+        "The balance and pending cards keep one height from their first frame to loaded, with placeholders in the loaded parts' places",
         "A balance shows its placeholder until prices answer, never a no-prices line that the prices then replace"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
+        "loading-live-e2e",
         "web-unit",
         "web-e2e"
       ],
-      "refs": [],
+      "refs": [
+        "R-203"
+      ],
       "keep": [
         "apps/backend/*"
       ],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-30 review fail by reviewer: Fail: one real defect, in RowsSkeleton. A probe loaded the business overview with prices, payments and owed late by 1.5 s and sampled every frame at 390, 1024, 1280 and 1440 px. Real Latest payments rows are 70 px (amount over a status pill). Real Unpaid rows are 62-63 px (amount over 'left to pay'). The new RowsSkeleton row is 56 px, with no icon and one right-hand line; the old one was 64 px. So the change widens the gap: Latest payments 6 -> 14 px per row, Unpaid 1 -> 7 px. The commit's '56 px real ones' is wrong. The new DESIGN.md line ('placeholders take ... the rows') and the component doc claim a match that is not there. Fix: shape the row like the real ones (32 px leading icon, two-line right column), or give each card its own row, then measure. The -mx-4 border-t list shape does match (same top and width). The rest holds. usePricedBalances gates on isLoading, which is true only on a first load: a stalled prices read fails at 30 s, an error ends it, and a refetch after an error keeps isLoading false, so balances never hide for good. Every price reader gets the gated balances (BalanceCard, BalanceHero, AssetsCard, BalancesList, on-its-way market()); the Receive sheet uses no prices. No frame showed 'Market prices are unavailable' at any width. The Balance card (256/288 px) and the Pending card each kept one height at every width. min-h-50 changes nothing at xl, where the row is 288 px from the Balance card; at 1024 the empty Pending card is 282 px instead of 258, only extra space. BalanceFigure renders change once; only a profile with zero tokens shows the change line while loading and drops it after. loading-live-e2e passed (20.8 s); web-unit 210 passed; lint, typecheck and docs-check pass. tasks.json changes only F383. Smaller notes: 'Not fixed here' names only the Received header wrap (337 -> 381 px at 390), but the Assets card also shrinks 188 -> 153 px at 390 when it loads. Acceptance 1 was narrowed from every card to two cards with no note or follow-up task. The live test's balance-card height check passes anyway because of min-h-64. The Sent placeholder shows on the first load only, not on a range switch. BalanceHero still reads prices itself instead of taking the hook's prices.",
+        "2026-10-30 Narrowed to the balance and pending cards, the prices flash and the row placeholders of Latest payments and Unpaid. Left for F390: the Received card's description wraps its range control onto a new line on a phone when the transfer count arrives (shared Card header), and My assets shrinks 188 -> 153 px at 390 px when it loads.",
+        "2026-10-30 Correction: that follow-up is F389, not F390.",
+        "2026-10-30 review fail by reviewer: Fail: the Latest payments and Unpaid row placeholders still change the cards' size. A temporary live probe held prices, payments and owed 1.5 s late and sampled every frame at 390 and 1440 px, on mocked rows (7 payments; 6 owed, overdue and partly paid) and on the real E2E shop. (1) Latest payments draws 5 placeholder rows (count={5}) but shows SHOWN = 6 rows. The card grows 421 -> 496 px at 390 and 429 -> 504 px at 1440, on both data sets. At 390 this pushes Unpaid down 75 px. Per row it is 69 vs 70 px, as claimed. Fix: count={SHOWN}. (2) Unpaid placeholder rows are 58.56 px; loaded rows are 63 px (62 last). Every Unpaid row renders 'left to pay' (COPY.left is unconditional), so '60-66 px depending on left to pay' is wrong. The placeholder leaves out that line. (3) LineSkeleton is one line box only as a flex item. In block flow its my-[0.15lh] margins collapse through the wrapper span and between siblings. The wrappers measure 14, 11.19 and 16.8 px instead of 20, 16 and 24. The text-sm + text-xs column is 33.58 px instead of 36; base + xs is 37.56 instead of 40. Fix: make the wrapper flow-root or flex, or use padding. Tailwind v4 compiles both values (.h-[0.7lh]{height:.7lh}, .my-[0.15lh]{margin-block:.15lh}). So the new DESIGN.md line and the RowsSkeleton/LineSkeleton docs claim a match that is not there. Smaller: the Latest payments placeholder has no 32 px leading icon, so its bars start 44 px left of the loaded text. Still sound: balance card 256/288 px and pending card 273.59/288 px hold one height on every frame at both widths and data sets. No frame showed 'Market prices are unavailable'. usePricedBalances feeds every price reader; app-shell's balances go only to the Receive sheet, which uses no prices. min-h-50 compiles. BalanceFigure renders change once. loading-live-e2e passed (21.2 s); web-unit 210 passed; docs-check 0 errors. R-203 and DESIGN.md sentences are at most 25 words; comments give reasons. tasks.json changes only F383 and adds F389, which covers the Received header wrap and My assets.",
+        "2026-10-30 review pass by reviewer: Pass. A temporary live probe (deleted) held prices, payments and owed 1.5 s late and sampled every frame at 390 and 1440 px, on mocked rows (7 payments; 5 owed, overdue and partly paid) and on the real E2E shop. The three points from the last review are fixed. (1) Latest payments draws 6 placeholder rows for SHOWN = 6, with a 32 px leading circle. (2) Unpaid placeholder rows are 62.95 px against 63 px loaded (list 314.77 vs 315); the right column has the 'left to pay' line. (3) LineSkeleton uses padding: wrappers measure 20 / 15.97 / 23.98 px for text-sm / text-xs / base, the same in block flow (left column) and in flex (right column). Latest payments rows are 69 px against 70 px; the list goes 414 -> 420 px and the card 490 -> 496 px at 390 and 498 -> 504 px at 1440, on both data sets. The cause is the shared Money line: 21 px in a 20 px text-sm slot (mixed type sizes). I accept this: R-203's acceptance names the balance and pending cards, which hold exactly; R-201 and loading.spec already accept the same 1 px for the same Money line; at 390 the 6 px only moves Unpaid, the last card, far below the first screen; at 1440 nothing sits below. Fixing it would mean changing the shared Money component, outside this task. Still sound: balance card 256 / 288 px and pending card 273.59 / 288 px hold one height on every frame with empty pending lists; no frame showed 'Market prices are unavailable'; every price reader takes usePricedBalances, and app-shell's balances feed only the Receive sheet. tasks.json changes only F383, adds F389 and bumps nextId. loading-live-e2e passed (20.8 s); web-unit 210 passed. Notes, not defects: the pending card grows when payments are on their way (273.59 -> 304.59 px at 390 with 3 rows), since its body fits the empty state on purpose. On the real shop Unpaid has no rows, so it shrinks 406 -> 252 px at 390 when its empty answer arrives; it is the last card, and the old placeholder did the same. A Testnet badge makes the loaded label line 24 px against the placeholder's 20 px, hidden by the taller right column. The RowsSkeleton doc ('so each row keeps its height') is 1 px generous for Latest payments."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T05:32:13Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.7,
+            "log": ""
+          },
+          {
+            "id": "loading-live-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 24.7,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 20.2,
+            "log": ""
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "f67d42069f78f895",
+        "filesHash": "b03c747ba8334559",
+        "proof": {
+          "1": "loading-live-e2e: e2e/privy/loading.spec.ts loads the business overview at 390 px with prices and payments answering 1.2 s late and samples every frame: the balance card holds 256 px and the pending card one height from first frame to loaded (before: 234 -> 270 px). A live probe on the E2E shop at 390 and 1440 px: Latest payments draws 6 placeholder rows of 69 px for its 6 real 70 px rows (card 490 -> 496 px, 1 px per row from the amount's mixed type sizes; before 5 rows of 64 px); Unpaid's placeholder rows are 63 px, as the reviewer measured real rows.",
+          "2": "loading-live-e2e: the same test watches every frame for 'Market prices are unavailable': on the old code it showed while prices were on the way; now balances wait for prices (usePricedBalances). web-unit: src/features/balances/tests/use-priced-balances.test.tsx holds the balances back while prices are pending and fails without the hold."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass. A temporary live probe (deleted) held prices, payments and owed 1.5 s late and sampled every frame at 390 and 1440 px, on mocked rows (7 payments; 5 owed, overdue and partly paid) and on the real E2E shop. The three points from the last review are fixed. (1) Latest payments draws 6 placeholder rows for SHOWN = 6, with a 32 px leading circle. (2) Unpaid placeholder rows are 62.95 px against 63 px loaded (list 314.77 vs 315); the right column has the 'left to pay' line. (3) LineSkeleton uses padding: wrappers measure 20 / 15.97 / 23.98 px for text-sm / text-xs / base, the same in block flow (left column) and in flex (right column). Latest payments rows are 69 px against 70 px; the list goes 414 -> 420 px and the card 490 -> 496 px at 390 and 498 -> 504 px at 1440, on both data sets. The cause is the shared Money line: 21 px in a 20 px text-sm slot (mixed type sizes). I accept this: R-203's acceptance names the balance and pending cards, which hold exactly; R-201 and loading.spec already accept the same 1 px for the same Money line; at 390 the 6 px only moves Unpaid, the last card, far below the first screen; at 1440 nothing sits below. Fixing it would mean changing the shared Money component, outside this task. Still sound: balance card 256 / 288 px and pending card 273.59 / 288 px hold one height on every frame with empty pending lists; no frame showed 'Market prices are unavailable'; every price reader takes usePricedBalances, and app-shell's balances feed only the Receive sheet. tasks.json changes only F383, adds F389 and bumps nextId. loading-live-e2e passed (20.8 s); web-unit 210 passed. Notes, not defects: the pending card grows when payments are on their way (273.59 -> 304.59 px at 390 with 3 rows), since its body fits the empty state on purpose. On the real shop Unpaid has no rows, so it shrinks 406 -> 252 px at 390 when its empty answer arrives; it is the last card, and the old placeholder did the same. A Testnet badge makes the loaded label line 24 px against the placeholder's 20 px, hidden by the taller right column. The RowsSkeleton doc ('so each row keeps its height') is 1 px generous for Latest payments.",
+          "at": "2026-10-30T05:40:22Z",
+          "filesHash": "b03c747ba8334559"
+        },
+        "commit": "8fd7df4a",
+        "doneAt": "2026-10-30T05:40:48Z"
+      },
+      "branch": "fix/f383-the-overview-s-cards-keep-their-size-and",
+      "baseCommit": "2478457ed97f9b8f5ff9a53d399affc9173230a0",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f383-the-overview-s-cards-keep-their-size-and",
+        "base": "main"
+      }
     },
     {
       "id": "F384",
@@ -3064,6 +3159,27 @@
       "verification": [
         "kit-e2e",
         "web-e2e"
+      ],
+      "refs": [],
+      "keep": [
+        "apps/backend/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F389",
+      "type": "fix",
+      "behavior": "The overview's Received and My assets cards keep their size while they load",
+      "acceptance": [
+        "On a phone the Received card's range control keeps its line when the transfer count arrives, and My assets keeps its height from loading to loaded"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "loading-live-e2e"
       ],
       "refs": [],
       "keep": [

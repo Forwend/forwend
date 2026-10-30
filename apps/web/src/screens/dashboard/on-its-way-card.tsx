@@ -66,75 +66,80 @@ export function OnItsWayCard({ profileId, moving, notFinal, held }: OnItsWayCard
       }
       className="flex flex-col"
     >
-      {pendingTotal > 0n ? (
-        // How much is not in the wallet yet, split by how sure it is: moving is paid; not final may still be the payer's.
-        <div className="mb-4">
-          <p className="flex items-baseline gap-1.5">
-            <span className="text-2xl font-medium tracking-tight text-ink tabular-nums">
-              {formatUsd(pendingTotal)}
-            </span>
-            <span className="text-sm text-muted">{MONEY_COPY.usd}</span>
-          </p>
-          <div aria-hidden className="mt-2 flex h-2 gap-0.5 overflow-hidden rounded-sm">
-            {[moving ?? 0n, notFinal ?? 0n].map((cents, i) =>
-              cents > 0n ? (
-                <span
-                  key={LEGEND[i]?.key}
-                  className={LEGEND[i]?.dot}
-                  style={{ flexGrow: Number((cents * 1000n) / pendingTotal) }}
-                />
-              ) : null,
-            )}
+      {/* One minimum height for loading, empty and loaded, so the cards below stay: tall enough for the empty state,
+          which most profiles show. */}
+      <div className="flex min-h-50 flex-1 flex-col">
+        {pendingTotal > 0n ? (
+          // How much is not in the wallet yet, split by how sure it is: moving is paid; not final may still be the payer's.
+          <div className="mb-4">
+            <p className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-medium tracking-tight text-ink tabular-nums">
+                {formatUsd(pendingTotal)}
+              </span>
+              <span className="text-sm text-muted">{MONEY_COPY.usd}</span>
+            </p>
+            <div aria-hidden className="mt-2 flex h-2 gap-0.5 overflow-hidden rounded-sm">
+              {[moving ?? 0n, notFinal ?? 0n].map((cents, i) =>
+                cents > 0n ? (
+                  <span
+                    key={LEGEND[i]?.key}
+                    className={LEGEND[i]?.dot}
+                    style={{ flexGrow: Number((cents * 1000n) / pendingTotal) }}
+                  />
+                ) : null,
+              )}
+            </div>
+            <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+              {[moving ?? 0n, notFinal ?? 0n].map((cents, i) => (
+                <li key={LEGEND[i]?.key} className="flex items-center gap-1.5">
+                  <span aria-hidden className={`size-2 rounded-pill ${LEGEND[i]?.dot}`} />
+                  {LEGEND[i]?.label}{" "}
+                  <span className="text-ink tabular-nums">{formatUsd(cents)}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
-            {[moving ?? 0n, notFinal ?? 0n].map((cents, i) => (
-              <li key={LEGEND[i]?.key} className="flex items-center gap-1.5">
-                <span aria-hidden className={`size-2 rounded-pill ${LEGEND[i]?.dot}`} />
-                {LEGEND[i]?.label} <span className="text-ink tabular-nums">{formatUsd(cents)}</span>
-              </li>
+        ) : null}
+        {failed ? (
+          <LoadError
+            message={COPY.waysFailed}
+            onRetry={() => {
+              void confirming.refetch();
+              void pending.refetch();
+            }}
+          />
+        ) : loading ? (
+          <Skeleton className="h-16" />
+        ) : waiting.length ? (
+          <Status
+            spinning
+            title={COPY.confirming(shown(waiting.length, Boolean(confirming.hasNextPage)))}
+            note={COPY.confirmingNote}
+          />
+        ) : settling.length || (moving !== null && moving > 0n) ? (
+          <Status
+            title={COPY.moving}
+            note={COPY.movingNote(moving === null ? "—" : formatUsd(moving))}
+            icon={
+              <Wallet aria-hidden className="mt-0.5 size-[var(--fw-icon-sm)] shrink-0 text-muted" />
+            }
+          />
+        ) : (
+          <EmptyState
+            compact
+            icon={Wallet}
+            title={COPY.nothingOnWay}
+            description={COPY.nothingOnWayNote}
+          />
+        )}
+        {rows.length ? (
+          <ul className="mt-3 divide-y divide-line border-t border-line">
+            {rows.map((payment) => (
+              <Row key={payment.paymentId} payment={payment} />
             ))}
           </ul>
-        </div>
-      ) : null}
-      {failed ? (
-        <LoadError
-          message={COPY.waysFailed}
-          onRetry={() => {
-            void confirming.refetch();
-            void pending.refetch();
-          }}
-        />
-      ) : loading ? (
-        <Skeleton className="h-16" />
-      ) : waiting.length ? (
-        <Status
-          spinning
-          title={COPY.confirming(shown(waiting.length, Boolean(confirming.hasNextPage)))}
-          note={COPY.confirmingNote}
-        />
-      ) : settling.length || (moving !== null && moving > 0n) ? (
-        <Status
-          title={COPY.moving}
-          note={COPY.movingNote(moving === null ? "—" : formatUsd(moving))}
-          icon={
-            <Wallet aria-hidden className="mt-0.5 size-[var(--fw-icon-sm)] shrink-0 text-muted" />
-          }
-        />
-      ) : (
-        <EmptyState
-          compact
-          icon={Wallet}
-          title={COPY.nothingOnWay}
-          description={COPY.nothingOnWayNote}
-        />
-      )}
-      {rows.length ? (
-        <ul className="mt-3 divide-y divide-line border-t border-line">
-          {rows.map((payment) => (
-            <Row key={payment.paymentId} payment={payment} />
-          ))}
-        </ul>
-      ) : null}
+        ) : null}
+      </div>
       {held !== null && held > 0n ? (
         <Link
           href={APP_ROUTES.balances}

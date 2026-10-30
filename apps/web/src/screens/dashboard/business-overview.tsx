@@ -1,23 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import {
-  useGetBalanceHistoryQuery,
-  useGetBalancesQuery,
-} from "@/features/balances/api/balances-api";
+import { useGetBalanceHistoryQuery } from "@/features/balances/api/balances-api";
 import {
   DEFAULT_RANGE,
   HISTORY_FIELDS,
   HISTORY_RANGES,
 } from "@/features/balances/constants/balance-history";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
+import { usePricedBalances } from "@/features/balances/hooks/use-priced-balances";
 import { historySeries } from "@/features/balances/lib/balance-history";
 import { marketUsd } from "@/features/balances/lib/balances";
 import type { HistoryRange } from "@/features/balances/types/balance-history";
 import { OwedToYou } from "@/features/invoices/components/owed-to-you";
 import { LatestPayments } from "@/features/payments/components/latest-payments";
-import { useGetPricesQuery } from "@/features/prices/api/prices-api";
-import { PRICES_QUERY } from "@/features/prices/constants/prices";
 import { PERMISSIONS, PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { can, profileLabel } from "@/features/profiles/lib/profile";
@@ -43,17 +39,15 @@ export function BusinessOverview() {
   const [range, setRange] = useState<HistoryRange>(DEFAULT_RANGE);
   const days = HISTORY_RANGES[range];
   const rangeName = BALANCES_COPY.rangeNames[range];
-  const balances = useGetBalancesQuery(profile.profileId, LIVE_QUERY);
+  const { balances, prices, failed, retry } = usePricedBalances(profile.profileId);
   const history = useGetBalanceHistoryQuery({ profileId: profile.profileId, days }, LIVE_QUERY);
-  const priced = useGetPricesQuery(undefined, PRICES_QUERY);
   const latest = useGetTransactionsQuery(
     { profileId: profile.profileId, limit: TRANSACTIONS_MAX },
     LIVE_QUERY,
   );
-  const prices = priced.currentData?.prices;
   const now = Date.now();
   const market = (field: "settling" | "notFinal" | "held") =>
-    balances.currentData ? marketUsd(balances.currentData, field, prices) : null;
+    balances ? marketUsd(balances, field, prices) : null;
 
   // The chart keeps the last range's line, dimmed, while the next loads; the figures wait for their own range.
   const received = history.data ? historySeries(history.data, HISTORY_FIELDS.received) : null;
@@ -93,10 +87,10 @@ export function BusinessOverview() {
       <div className={ROW}>
         <BalanceCard
           profileId={profile.profileId}
-          balances={balances.currentData ?? null}
+          balances={balances}
           prices={prices}
-          failed={balances.isError}
-          onRetry={() => void balances.refetch()}
+          failed={failed}
+          onRetry={retry}
           merchant={profile.kind === PROFILE_KINDS.merchant}
           canBill={can(profile, PERMISSIONS.invoicesWrite)}
           onReceive={openReceive}
@@ -124,12 +118,7 @@ export function BusinessOverview() {
           failed={history.isError}
           onRetry={() => void history.refetch()}
         />
-        <AssetsCard
-          balances={balances.currentData ?? null}
-          failed={balances.isError}
-          onRetry={() => void balances.refetch()}
-          prices={prices}
-        />
+        <AssetsCard balances={balances} failed={failed} onRetry={retry} prices={prices} />
       </div>
 
       <div className={ROW}>

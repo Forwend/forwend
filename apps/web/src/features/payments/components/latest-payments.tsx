@@ -5,6 +5,7 @@ import {
   Card,
   EmptyState,
   ROW_INTERACTIVE_CLASSES,
+  Skeleton,
   StatusPill,
 } from "@forwend/ui-web";
 import { ArrowDownLeft, ChevronRight } from "lucide-react";
@@ -16,7 +17,7 @@ import { PAYMENTS_COPY as COPY } from "@/features/payments/constants/payments-co
 import { paymentDisplayStatus, paymentLabel } from "@/features/payments/lib/payments";
 import type { Payment } from "@/features/payments/types/payments";
 import { LoadError } from "@/shared/components/load-error";
-import { RowsSkeleton } from "@/shared/components/rows-skeleton";
+import { LineSkeleton, RowsSkeleton } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
@@ -47,7 +48,17 @@ export function LatestPayments({ profileId }: { profileId: string }) {
         {list.isError && !rows ? (
           <LoadError message={COPY.failed} onRetry={() => void list.refetch()} />
         ) : !rows ? (
-          <RowsSkeleton count={5} />
+          <RowsSkeleton count={SHOWN}>
+            <Skeleton className="size-8 shrink-0 rounded-pill" />
+            <span className="min-w-0 flex-1">
+              <LineSkeleton size="text-sm" className="w-2/5" />
+              <LineSkeleton size="text-xs" className="w-1/4" />
+            </span>
+            <span className="flex shrink-0 flex-col items-end gap-1">
+              <LineSkeleton size="text-sm" className="w-16" />
+              <Skeleton className="h-6 w-20" />
+            </span>
+          </RowsSkeleton>
         ) : rows.length === 0 ? (
           <EmptyState compact icon={ArrowDownLeft} title={COPY.emptyTitle} />
         ) : (
