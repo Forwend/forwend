@@ -47,10 +47,11 @@ type endpoint struct {
 	latency  time.Duration
 	failRate float64
 	usedAt   time.Time
-	// The smallest log range and batch it refused, forgotten after RefusalMemory.
-	refusedBlocks uint64
-	refusedCalls  int
-	refusedAt     time.Time
+	// The smallest log range, batch and address list it refused, forgotten after RefusalMemory.
+	refusedBlocks    uint64
+	refusedCalls     int
+	refusedAddresses int
+	refusedAt        time.Time
 }
 
 // MeasureMemory: an endpoint unused this long is measured afresh, so one slow answer doesn't bench it for good.
@@ -76,7 +77,8 @@ func (e *endpoint) refuses(r request, now time.Time) bool {
 		return false
 	}
 	return r.blocks > 0 && e.refusedBlocks > 0 && r.blocks >= e.refusedBlocks ||
-		r.calls > 1 && e.refusedCalls > 0 && r.calls >= e.refusedCalls
+		r.calls > 1 && e.refusedCalls > 0 && r.calls >= e.refusedCalls ||
+		r.addresses > 1 && e.refusedAddresses > 0 && r.addresses >= e.refusedAddresses
 }
 
 type pool struct {
@@ -187,7 +189,7 @@ func (p *pool) try(ctx context.Context, r request, header http.Header, body []by
 		var size refusal
 		if errors.As(err, &size) {
 			if !size.missing {
-				p.refused(e, r, size.batch)
+				p.refused(e, r, size)
 			}
 			p.done(e, nil, probe)
 			if refused != nil {
@@ -213,34 +215,38 @@ func (p *pool) try(ctx context.Context, r request, header http.Header, body []by
 	return nil, nil, fmt.Errorf("chain %d: %w", p.chainID, ErrUnavailable)
 }
 
-// refusal is an answer refusing the request's size (a log range, its result or a batch), or saying the endpoint lacks
-// the block or state asked for: not a failing endpoint, and another may answer.
+// refusal is an answer refusing the request's size (a log range, its result, its address list or a batch), or saying
+// the endpoint lacks the block or state asked for: not a failing endpoint, and another may answer.
 type refusal struct {
-	res     *http.Response
-	batch   bool
-	missing bool
+	res       *http.Response
+	batch     bool
+	addresses bool
+	missing   bool
 }
 
 func (refusal) Error() string { return "request size refused" }
 
-func (p *pool) refused(e *endpoint, r request, batch bool) {
+func (p *pool) refused(e *endpoint, r request, size refusal) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	now := time.Now()
 	if now.Sub(e.refusedAt) > RefusalMemory {
-		e.refusedBlocks, e.refusedCalls = 0, 0
+		e.refusedBlocks, e.refusedCalls, e.refusedAddresses = 0, 0, 0
 	}
 	// A refused single block is its result size, as with log spam: no endpoint does better, so nothing is learned.
 	switch {
-	case batch && (e.refusedCalls == 0 || r.calls < e.refusedCalls):
+	case size.batch && (e.refusedCalls == 0 || r.calls < e.refusedCalls):
 		e.refusedCalls = r.calls
-	case !batch && r.blocks > 1 && (e.refusedBlocks == 0 || r.blocks < e.refusedBlocks):
+	case size.addresses && (e.refusedAddresses == 0 || r.addresses < e.refusedAddresses):
+		e.refusedAddresses = r.addresses
+	case !size.batch && !size.addresses && r.blocks > 1 && (e.refusedBlocks == 0 || r.blocks < e.refusedBlocks):
 		e.refusedBlocks = r.blocks
 	default:
 		return
 	}
 	e.refusedAt = now
-	slog.Info("RPC refuses a request size", "chain", p.chainID, "rpc", e.name, "blocks", e.refusedBlocks, "calls", e.refusedCalls)
+	slog.Info("RPC refuses a request size", "chain", p.chainID, "rpc", e.name, "blocks", e.refusedBlocks, "calls", e.refusedCalls,
+		"addresses", e.refusedAddresses)
 }
 
 type probePending struct{ done <-chan struct{} }
@@ -500,6 +506,12 @@ func (p *pool) post(ctx context.Context, e *endpoint, header http.Header, body [
 	queryLimit := status/100 == 2 && batchRequest && (batchLimit || TooLarge(rpc.HTTPError{StatusCode: http.StatusBadRequest, Body: raw})) ||
 		BatchTooLarge(rpc.HTTPError{StatusCode: status, Body: raw}) ||
 		(status == 400 || status == 413) && TooLarge(rpc.HTTPError{StatusCode: status, Body: raw})
+	// PublicNode refuses more than 10 addresses with HTTP 403 over HTTPS: a refusal of this query, not of the endpoint.
+	if r, _ := parseRequest(body); r.addresses > 1 && AddressesTooMany(rpc.HTTPError{StatusCode: http.StatusBadRequest, Body: raw}) {
+		p.measured(e, took)
+		return nil, refusal{res: answer(http.StatusBadRequest,
+			fmt.Appendf(nil, `{"jsonrpc":"2.0","id":null,"error":{"code":-32005,"message":%q}}`, tooManyAddresses)), addresses: true}
+	}
 	if queryLimit {
 		// A batch refused for its size, however the provider words it, is a batch limit, not a log range.
 		batchLimit = batchLimit || batchRequest
@@ -688,6 +700,26 @@ func rateLimited(code int, message string) bool {
 func tooLarge(m string) bool {
 	return strings.Contains(m, "range") || strings.Contains(m, "results") || strings.Contains(m, "response size") ||
 		strings.Contains(m, "result size") || strings.Contains(m, "too large") || strings.Contains(m, "too big")
+}
+
+// addressLimit reports a lowercase error message refusing a log query for the contracts it names, such as "a maximum of
+// 10 addresses is allowed" (PublicNode).
+// A rate limit that names the caller's IP address is not one, nor is a range or result refusal.
+func addressLimit(m string) bool {
+	return strings.Contains(m, "address") && !strings.Contains(m, "rate") && !tooLarge(m) &&
+		(strings.Contains(m, "maximum") || strings.Contains(m, "too many") || strings.Contains(m, "limit") ||
+			strings.Contains(m, "exceed"))
+}
+
+// AddressesTooMany reports a log query refused for the number of contracts it names, by the pool or a provider.
+func AddressesTooMany(err error) bool {
+	var status rpc.HTTPError
+	if errors.As(err, &status) {
+		var answer struct{ Error *struct{ Message string } }
+		return json.Unmarshal(status.Body, &answer) == nil && answer.Error != nil && addressLimit(strings.ToLower(answer.Error.Message))
+	}
+	var e rpc.Error
+	return errors.As(err, &e) && addressLimit(strings.ToLower(e.Error()))
 }
 
 // batchLimit reports a lowercase error message refusing a batch's size, such as "batch of more than 3 requests are not

@@ -583,6 +583,20 @@ func TestRangeOneEndpointRefusesGoesToTheNext(t *testing.T) {
 	}
 }
 
+func TestAddressLimitIsNotARateLimit(t *testing.T) {
+	for m, want := range map[string]bool{
+		"a maximum of 10 addresses is allowed. no limit on a dedicated node": true,
+		"too many addresses":                          true,
+		"rate limit exceeded for your ip address":     false,
+		"query exceeds max results 20000 for address": false,
+		"invalid address":                             false,
+	} {
+		if got := addressLimit(m); got != want {
+			t.Errorf("addressLimit(%q) = %v, want %v", m, got, want)
+		}
+	}
+}
+
 func TestBatchTooLarge(t *testing.T) {
 	for _, c := range []struct {
 		message string
@@ -710,6 +724,44 @@ func TestSecondSendNeverDelaysTheCaller(t *testing.T) {
 	}
 	if took := time.Since(began); took > time.Second {
 		t.Fatalf("the caller waited %v for the second send", took)
+	}
+}
+
+// PublicNode answers a log query naming more than 10 contracts with HTTP 403: the query goes on, the endpoint stays healthy.
+func TestAddressLimitGoesToTheNextEndpoint(t *testing.T) {
+	limited, limitedCalls := rpcServer(t, func(w http.ResponseWriter, id json.RawMessage, _ string, params []json.RawMessage) {
+		var filter struct{ Address []string }
+		_ = json.Unmarshal(params[0], &filter)
+		if len(filter.Address) > 10 {
+			w.WriteHeader(http.StatusForbidden)
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","error":{"code":-32602,"message":"A maximum of 10 addresses is allowed. No limit on a dedicated node"},"id":%s}`, id)
+			return
+		}
+		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":[]}`, id)
+	})
+	full, fullCalls := rpcServer(t, func(w http.ResponseWriter, id json.RawMessage, _ string, _ []json.RawMessage) {
+		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":[]}`, id)
+	})
+	r := newRPCs(t, limited.URL, localhost(full.URL)) // the limited one comes first in the configured order
+	addresses := make([]string, 22)
+	for i := range addresses {
+		addresses[i] = fmt.Sprintf("0x%040x", i+1)
+	}
+	for i := range 3 {
+		var logs []any
+		if err := r.Client.CallContext(t.Context(), &logs, "eth_getLogs", map[string]any{"fromBlock": "0x1", "toBlock": "0x2", "address": addresses}); err != nil {
+			t.Fatalf("query %d: %v; want the endpoint that takes 22 addresses to answer", i, err)
+		}
+	}
+	if limitedCalls.Load() != 1 || fullCalls.Load() != 3 {
+		t.Fatalf("limited endpoint asked %d times, full one %d; want the refusal remembered", limitedCalls.Load(), fullCalls.Load())
+	}
+	if failures, until := health(r, r.pool.endpoints[0]); failures != 0 || until.After(time.Now()) {
+		t.Fatalf("an address refusal rested the endpoint: %d failures", failures)
+	}
+	now := time.Now()
+	if e := r.pool.endpoints[0]; e.refuses(request{addresses: 5}, now) || !e.refuses(request{addresses: 22}, now) {
+		t.Fatal("want the endpoint asked last only for lists as long as the one it refused")
 	}
 }
 

@@ -258,6 +258,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-189 | No provider can make the executor pay more than a set fee per gas, and a draining executor alerts early. | Given any fee suggestion, then the signer signs at most the chain's ceiling per gas unit, replacements included. A chain without a ceiling is not served. Given an executor holding less than 20 deploys and settles, then the signer logs an `ALERT` every 5 minutes. | backend | R-22, R-180 |
 
+| R-190 | A log query an endpoint refuses for its number of addresses goes elsewhere, and still gets read. | Given an endpoint that refuses a log query for its address count, then the pool sends it to the next endpoint. The first one doesn't rest. PublicNode allows 10. When no endpoint takes it, the scan splits the address list. | backend | R-180, R-185 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.

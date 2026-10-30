@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/history"
 	"github.com/jackc/pgx/v5"
 )
@@ -43,13 +44,22 @@ func (c *Chain) outflowLogs(ctx context.Context, lo, hi uint64, invoices map[com
 		addresses = append(addresses, addr)
 	}
 	var out []types.Log
-	for _, part := range parts(addresses) {
+	// Endpoints limit how many contracts one query names (PublicNode: 10). The pool tries the others first; when none
+	// takes this many, smaller parts are read instead.
+	size := topicLimit
+	for len(addresses) > 0 {
+		part := addresses[:min(size, len(addresses))]
 		found, err := c.filterLogs(ctx, ethereum.FilterQuery{FromBlock: new(big.Int).SetUint64(lo), ToBlock: new(big.Int).SetUint64(hi),
 			Addresses: part, Topics: [][]common.Hash{{settledTopic, refundedTopic, recoveredTopic}}})
+		if len(part) > 1 && chain.AddressesTooMany(err) {
+			size = len(part) / 2
+			continue
+		}
 		if err != nil {
 			return nil, fmt.Errorf("read chain %d receiver events %d-%d: %w", c.chainID, lo, hi, err)
 		}
 		out = append(out, found...)
+		addresses = addresses[len(part):]
 	}
 	return out, nil
 }

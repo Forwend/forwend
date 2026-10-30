@@ -62,6 +62,9 @@ VALUES
   - The refusal reaches the caller only when no other endpoint answered; only then does the caller narrow its query.
   - Providers differ: `sepolia.base.org` takes 201 blocks, and Arc stops at 20,000 log results.
   - A batch refused for its size, however the provider words it, counts as a batch limit, not a log range.
+  - A log query refused for the number of contracts it names goes to the next endpoint the same way (R-190).
+    - PublicNode allows 10, and refuses more with HTTP 403 over HTTPS.
+    - When no endpoint takes the list, the scan reads the receivers' events in smaller parts.
 - An answer that the block or state is missing goes to the next endpoint, which may have it.
   - Examples: a block past a lagging node's head, or state a pruned node dropped (PublicNode on Arbitrum).
   - The endpoint stays healthy, and the miss doesn't count as a fast answer.
