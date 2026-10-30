@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -77,6 +79,15 @@ func (c *Chain) rescanOne(ctx context.Context, id, receive, token string, saved 
 		}
 	}
 	next, done, err := c.rescan(ctx, common.HexToAddress(receive), receiver{id, token}, from)
+	if chain.Missing(err) {
+		// An invoice older than the history the RPCs keep: its rescan moves past the pruned blocks (R-191).
+		kept, ok, prunedErr := c.pruned(ctx, from)
+		if prunedErr != nil || !ok {
+			return errors.Join(err, prunedErr)
+		}
+		slog.Warn("rescan skips blocks no RPC keeps any more", "invoice", id, "chain", c.chainID, "from", from, "to", kept-1)
+		next, done, err = kept, false, nil
+	}
 	if err != nil {
 		return err
 	}

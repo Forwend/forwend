@@ -71,6 +71,8 @@ VALUES
   - A health check that gets a miss or a refusal fails, so that endpoint rests.
   - A revert keeps its category, whatever its reason text says.
   - The miss reaches the caller only when no endpoint has the data.
+  - It is the answer only when every endpoint serving the chain gave it; otherwise the caller gets `ErrUnavailable`.
+  - For finalized blocks such a miss means pruned history: recovery and rescans move past it (R-191, [money safety](money-safety.md)).
 - The whole request has a 30-second maximum, including health checks and budget waits; shorter caller deadlines take precedence.
 - Each exchange has a five-second timeout and a 64 MiB response limit.
 - Each failed endpoint rests for 0.5–1 second initially, doubling toward a 2.5–5-minute maximum.

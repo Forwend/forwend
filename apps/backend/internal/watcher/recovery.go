@@ -6,9 +6,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
+	"math/big"
 	"slices"
 	"strings"
 
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -116,5 +121,63 @@ func (c *Chain) Recover(ctx context.Context) error {
 		next, target = &from, &latest
 	}
 	end := min(*target, *next+recoveryChunks*c.span-1)
-	return c.scanRange(ctx, *next, end, &recoveryProgress{next: end + 1, target: *target}, *next, *next)
+	err = c.scanRange(ctx, *next, end, &recoveryProgress{next: end + 1, target: *target}, *next, *next)
+	if !chain.Missing(err) {
+		return err
+	}
+	var from uint64
+	if readErr := c.pool.QueryRow(ctx, "SELECT next_block FROM chain_recoveries WHERE chain_id = $1", c.chainID).Scan(&from); readErr != nil {
+		return errors.Join(err, readErr)
+	}
+	kept, ok, prunedErr := c.pruned(ctx, from)
+	if prunedErr != nil || !ok {
+		return errors.Join(err, prunedErr)
+	}
+	// Waiting can't read blocks no RPC keeps, and would hold the second look at every later block (R-191). The fast
+	// scan read them once; an operator who adds an endpoint with full history can move next_block back.
+	slog.Error("ALERT recovery skips blocks no RPC keeps any more", "chain", c.chainID, "from", from, "to", kept-1)
+	_, err = c.pool.Exec(ctx, "UPDATE chain_recoveries SET next_block = $3 WHERE chain_id = $1 AND next_block = $2",
+		c.chainID, from, kept)
+	return err
+}
+
+// pruned finds the first block from from on that some RPC still serves logs for, halving the gap with one-block reads.
+// ok is false when from is served, or the finalized block isn't: then the miss is no pruning, and waiting is right.
+func (c *Chain) pruned(ctx context.Context, from uint64) (kept uint64, ok bool, err error) {
+	var finalized uint64
+	if err := c.pool.QueryRow(ctx, "SELECT last_finalized_block FROM chain_cursors WHERE chain_id = $1", c.chainID).
+		Scan(&finalized); err != nil {
+		return 0, false, err
+	}
+	serves := func(block uint64) (bool, error) {
+		n := new(big.Int).SetUint64(block)
+		_, err := c.eth.FilterLogs(ctx, ethereum.FilterQuery{FromBlock: n, ToBlock: n, Addresses: []common.Address{{}}})
+		if chain.Missing(err) {
+			return false, nil
+		}
+		return err == nil, err
+	}
+	if from >= finalized {
+		return 0, false, nil
+	}
+	if served, err := serves(finalized); !served || err != nil {
+		return 0, false, err
+	}
+	if served, err := serves(from); served || err != nil {
+		return 0, false, err
+	}
+	lo, hi := from+1, finalized // from is not served, finalized is
+	for lo < hi {
+		mid := lo + (hi-lo)/2
+		served, err := serves(mid)
+		if err != nil {
+			return 0, false, err
+		}
+		if served {
+			hi = mid
+		} else {
+			lo = mid + 1
+		}
+	}
+	return lo, true, nil
 }

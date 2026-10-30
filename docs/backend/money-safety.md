@@ -39,6 +39,13 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
   - A receiver event first records the receiver's deploy time; an early deploy can shorten the checkout close (R-130).
 - The signer records its own settle from its finalized receipt, so `settled` never waits for the scan.
 - Recovery sweeps read every block again later, so a log one RPC answer missed is still found.
+  - Some finalized blocks may be kept by no RPC any more (R-191).
+    - The reachable Arc nodes served logs 13 hours old but not 47 hours old (measured 2026-10-30).
+  - Only when every endpoint serving the chain answers that it lacks them does the sweep move on, to the oldest kept block.
+    - It logs an `ALERT` with the skipped range. An endpoint that failed or rests may hold them, so the sweep waits then.
+  - The fast scan read those blocks once. To read them again, add an endpoint with full history.
+    - Then set `chain_recoveries.next_block` and `target_block` together to the skipped range.
+  - A Check status rescan moves past such blocks too, instead of retrying every minute.
 - Deposits to a receiver are read until 30 days after its settle deadline (R-183).
   - Its own events are read longer, while the ledger shows it still holds booked money.
   - So a late refund-authority settle or refund is still recorded and booked; a late recovery is recorded.

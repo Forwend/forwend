@@ -150,6 +150,16 @@ func (p *pool) echo(header http.Header, body []byte, r request, sent *endpoint) 
 // nil with the refusal every endpoint gave.
 func (p *pool) try(ctx context.Context, r request, header http.Header, body []byte, tried map[*endpoint]bool) (*http.Response, *endpoint, error) {
 	var refused *http.Response
+	refusedMissing, missed := false, 0
+	// A miss is the answer only when every endpoint serving the chain gave it: one that failed or rests may hold the
+	// data, and callers move past history only when no endpoint keeps it (R-191).
+	answer := func() (*http.Response, *endpoint, error) {
+		if refusedMissing && missed < p.serving() {
+			refused.Body.Close()
+			return nil, nil, fmt.Errorf("chain %d: %w", p.chainID, ErrUnavailable)
+		}
+		return refused, nil, nil
+	}
 	for len(tried) < len(p.endpoints) {
 		e, at, probe, err := p.pick(ctx, r, tried)
 		if err != nil {
@@ -163,7 +173,7 @@ func (p *pool) try(ctx context.Context, r request, header http.Header, body []by
 				}
 			}
 			if refused != nil && errors.Is(err, ErrUnavailable) {
-				return refused, nil, nil
+				return answer()
 			}
 			return nil, nil, err
 		}
@@ -188,14 +198,16 @@ func (p *pool) try(ctx context.Context, r request, header http.Header, body []by
 		}
 		var size refusal
 		if errors.As(err, &size) {
-			if !size.missing {
+			if size.missing {
+				missed++
+			} else {
 				p.refused(e, r, size)
 			}
 			p.done(e, nil, probe)
 			if refused != nil {
 				refused.Body.Close()
 			}
-			refused = size.res
+			refused, refusedMissing = size.res, size.missing
 			continue
 		}
 		p.done(e, err, probe)
@@ -210,7 +222,7 @@ func (p *pool) try(ctx context.Context, r request, header http.Header, body []by
 		}
 	}
 	if refused != nil {
-		return refused, nil, nil
+		return answer()
 	}
 	return nil, nil, fmt.Errorf("chain %d: %w", p.chainID, ErrUnavailable)
 }
@@ -384,6 +396,19 @@ func (p *pool) answered() (ok, all int) {
 		}
 	}
 	return len(good), len(hosts)
+}
+
+// serving counts the endpoints that serve this chain.
+func (p *pool) serving() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	n := 0
+	for _, e := range p.endpoints {
+		if !e.wrong {
+			n++
+		}
+	}
+	return n
 }
 
 func (p *pool) serves() bool {
@@ -709,6 +734,12 @@ func addressLimit(m string) bool {
 	return strings.Contains(m, "address") && !strings.Contains(m, "rate") && !tooLarge(m) &&
 		(strings.Contains(m, "maximum") || strings.Contains(m, "too many") || strings.Contains(m, "limit") ||
 			strings.Contains(m, "exceed"))
+}
+
+// Missing reports an answer that no endpoint has the block or state asked for (see missing), from the pool or a provider.
+func Missing(err error) bool {
+	var e rpc.Error
+	return errors.As(err, &e) && (e.Error() == missing || lacksData(strings.ToLower(e.Error())))
 }
 
 // AddressesTooMany reports a log query refused for the number of contracts it names, by the pool or a provider.

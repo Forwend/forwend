@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 366,
+  "nextId": 367,
   "tasks": [
     {
       "id": "F332",
@@ -2000,6 +2000,80 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f365-a-log-query-an-endpoint-refuses-for-its",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F366",
+      "type": "fix",
+      "behavior": "History no endpoint keeps any more doesn't stall the second look at newer blocks",
+      "acceptance": [
+        "When every endpoint answers block or state not available for finalized blocks, the recovery sweep moves to the oldest block one still keeps (binary search) with one ALERT naming the skipped range, and a Check status rescan moves past them too; a miss at or above the finalized block still waits"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend-affected",
+        "docs-check"
+      ],
+      "refs": [
+        "R-191"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-30 review fail by independent-reviewer: FAIL. Required tests pass (watcher, chain). Two blocking findings, one nit group. (1) Skip can fire on a transient fault. chain.Missing is true when every REACHABLE endpoint missed, not every endpoint: pool.try returns the missing refusal when the other endpoints failed or rest. Reproduced with a throwaway chain test (pruned endpoint + a keeping endpoint that is closed, or answers 429): Missing(err)=true, also on repeated probes while it rests. So pruned() sees the keeping endpoint as absent, the binary search lands on the pruned node's boundary, and Recover/rescanOne skip history an archive endpoint could serve. The ALERT then says no RPC keeps it, which is false. This contradicts accept 1 ('every endpoint answers') and the R-191 and money-safety text. Fix: let the pool return the exact missing message only when every endpoint it could use answered missing and none failed, rested or was skipped (otherwise a different message or ErrUnavailable), with a pool test and a watcher test; or narrow the acceptance, docs and ALERT wording to 'every reachable RPC' and say so. (2) Acceptance clause 'a miss at or above the finalized block still waits' has no test. I removed the 'from >= finalized' guard in a throwaway copy and both new tests still pass; with that guard gone a node lacking blocks above finalized makes Recover skip block finalized+1 (my overlay test fails on the mutant, passes on the real code). The 'serves(from)' guard (miss from headers or other non-log reads) also survives removal. Add tests for both. Mutating only the two skips, as the author did, misses these. Checked and fine: binary search invariants (from unserved, finalized served, lo<hi, at most about 20 probes, non-Missing errors abort without skipping); pool failover gives a union of retained suffixes so the search is monotone when endpoints are stable; all endpoints rate-limited gives ErrUnavailable, not Missing; guarded UPDATE has no race (only Recover writes next_block, same goroutine, partial progress is re-read first); next_block above a stale target completes cleanly (overlay test, headers served); rescan skip leaves done-detection, rescan_retry_at and R-55 recheck coherent (R-120 balanceOf ALERT stays the backstop). Non-blocking: R-191 row has a 27-word sentence (limit 25); 'about a day' is unmeasured (13 h served, 47 h pruned); operator step 'move next_block back' fails the CHECK once the sweep is idle (next_block and target_block must be set together); hexutil import sits in the stdlib group in recovery_test.go; header pruning at the 47 h age on Arc is unmeasured (the skip's follow-up scan reads the header of kept-1); rescan skip logs Warn only.",
+        "2026-10-30 review pass by independent-reviewer: PASS on re-review. Both blocking findings are fixed. (1) pool.try now returns the missing answer only when every non-wrong endpoint answered missing in that call (missed == serving); a failed, resting or skipped endpoint gives ErrUnavailable, so recovery and rescans wait. Verified: mutating out 'missed < p.serving()' fails TestMissingBlockGoesToAnEndpointThatHasIt and TestRecoveryWaitsWhenAnEndpointThatMayKeepHistoryIsDown (real chain.NewRPCs pool, one pruning proxy plus a closed endpoint). My own overlay run through a real pool with two endpoints of different retention (50 and 70) moves next_block to 50 via the sanitized message, so the union and the sanitized path work. No other caller reads the missing message or ErrUnavailable, so the stricter rule changes nothing else. (2) TestPrunedFindsOnlyHistoryNoRPCKeeps kills the mutants I found: removing 'from >= finalized' fails it, removing 'serves(from)' fails it, and removing the finalized-served check fails TestRecoveryMovesPastHistoryNoRPCKeeps. Required tests pass: go test -count=1 ./internal/watcher/ ./internal/chain/ ok; gofmt clean; check-docs 0 errors; added doc sentences are at most 23 words. Operating notes, not blocking: the rule is deliberately strict, so any enabled Arc endpoint that keeps failing (for example the 403 geo-blocked Circle or QuickNode ones on the author's machine) or a WSS twin that drops keeps the sweep waiting with 'RPC endpoints unavailable' instead of skipping; disable such endpoints for the skip to engage locally. The 13 h / 47 h retention figures in money-safety.md come from the author's measurement and I did not re-measure them. Header pruning at the 47 h age is still unmeasured (the follow-up scan after a skip reads the header of kept-1). The rescan skip logs a Warn only; the R-120 balance ALERT stays the backstop."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T01:39:26Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 249.6,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 35.8,
+            "log": ""
+          }
+        ],
+        "taskHash": "e707399765d1924f",
+        "filesHash": "26b2d29e5001f552",
+        "proof": {
+          "1": "backend-affected: watcher TestRecoveryMovesPastHistoryNoRPCKeeps, TestRescanMovesPastHistoryNoRPCKeeps, TestPrunedFindsOnlyHistoryNoRPCKeeps (finalized and served-start guards) and TestRecoveryWaitsWhenAnEndpointThatMayKeepHistoryIsDown; chain TestMissingBlockGoesToAnEndpointThatHasIt (a miss only when every endpoint misses); each fails without its fix"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent-reviewer",
+          "summary": "PASS on re-review. Both blocking findings are fixed. (1) pool.try now returns the missing answer only when every non-wrong endpoint answered missing in that call (missed == serving); a failed, resting or skipped endpoint gives ErrUnavailable, so recovery and rescans wait. Verified: mutating out 'missed < p.serving()' fails TestMissingBlockGoesToAnEndpointThatHasIt and TestRecoveryWaitsWhenAnEndpointThatMayKeepHistoryIsDown (real chain.NewRPCs pool, one pruning proxy plus a closed endpoint). My own overlay run through a real pool with two endpoints of different retention (50 and 70) moves next_block to 50 via the sanitized message, so the union and the sanitized path work. No other caller reads the missing message or ErrUnavailable, so the stricter rule changes nothing else. (2) TestPrunedFindsOnlyHistoryNoRPCKeeps kills the mutants I found: removing 'from >= finalized' fails it, removing 'serves(from)' fails it, and removing the finalized-served check fails TestRecoveryMovesPastHistoryNoRPCKeeps. Required tests pass: go test -count=1 ./internal/watcher/ ./internal/chain/ ok; gofmt clean; check-docs 0 errors; added doc sentences are at most 23 words. Operating notes, not blocking: the rule is deliberately strict, so any enabled Arc endpoint that keeps failing (for example the 403 geo-blocked Circle or QuickNode ones on the author's machine) or a WSS twin that drops keeps the sweep waiting with 'RPC endpoints unavailable' instead of skipping; disable such endpoints for the skip to engage locally. The 13 h / 47 h retention figures in money-safety.md come from the author's measurement and I did not re-measure them. Header pruning at the 47 h age is still unmeasured (the follow-up scan after a skip reads the header of kept-1). The rescan skip logs a Warn only; the R-120 balance ALERT stays the backstop.",
+          "at": "2026-10-30T01:47:33Z",
+          "filesHash": "26b2d29e5001f552"
+        },
+        "commit": "b397f7df",
+        "doneAt": "2026-10-30T01:47:50Z"
+      },
+      "branch": "fix/f366-history-no-endpoint-keeps-any-more-doesn",
+      "baseCommit": "efc2d4361e1fbde6b279b0a2c98ede6c0e86043e",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f366-history-no-endpoint-keeps-any-more-doesn",
         "base": "main"
       }
     }

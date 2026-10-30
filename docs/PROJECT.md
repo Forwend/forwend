@@ -260,6 +260,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-190 | A log query an endpoint refuses for its number of addresses goes elsewhere, and still gets read. | Given an endpoint that refuses a log query for its address count, then the pool sends it to the next endpoint. The first one doesn't rest. PublicNode allows 10. When no endpoint takes it, the scan splits the address list. | backend | R-180, R-185 |
 
+| R-191 | History no endpoint keeps any more doesn't stall the second look at newer blocks. | Given finalized blocks every endpoint has pruned, then the recovery sweep moves to the oldest block one still keeps. It logs an `ALERT` with the skipped range. A Check status rescan moves past them too. Near the head a miss still waits. | backend | R-55, R-181 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.
