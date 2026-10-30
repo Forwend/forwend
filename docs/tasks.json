@@ -2290,7 +2290,7 @@
         "A failed pay page refresh keeps the last read under a Notice at the very top: Connection lost. Retrying… with Try again, spanning both halves from large screens and first on phones"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "docs-check"
@@ -2364,11 +2364,18 @@
           "summary": "Layout, states, axe, e2e and docs checked in a browser; no blocker. At 390, 768, 1024, 1280, 1440 and 1920, light and dark, the strip is flush at x=0,y=0 and full width from lg, a rounded full-gutter strip first on phones; no sideways scroll; its icon lines up with the payee tile and Try again with the Closes-in right edge; page shifts down by exactly 48px (strip height), pay panel stays centered in the remaining right half (checked with address shown and with the network/token chooser); Backdrop wash sits at the foot, no clash. Load error stays centered and skeleton is unchanged (same main height). axe: 0 violations on the stale state in both themes at 1440, 1024 and 390. pay.spec 28/28 pass; the new test passed 20/20 repeats (fake clock, no sleeps). Non-blocking follow-ups, all inherited from the old box or app-wide: (1) isError is false while a refetch is in flight, so with real timers the strip is removed at each poll start and re-added when it fails (seen at 16s add, 31s remove, 31.4s add): a blink and a 48px page shift every 15s, and the role=status node is re-inserted each time; the e2e test cannot see this because its fake failure is instant. (2) Try again unmounts its own button at once (refetch starts, isError false), so focus falls to BODY; same in LoadError inline elsewhere. (3) Role is the default status, while Notice's own doc and LoadError inline use alert for a failed refresh; alert would repeat each 15s until (1) is fixed. (4) The strip's padding re-types the max(2.5rem,calc(50vw-30rem/32rem)) values already held by LEFT_PAD and RIGHT_PAD in features/pay/constants/pay.ts. (5) Docs: R-194 first sentence is 26 words when the quoted copy counts whole; its Check column says web-unit but the only test is e2e; the DESIGN sub-bullet joins two facts with a semicolon. (6) Copy: 'Connection lost' reads as the payer's network even when the API failed (the test uses a 500); it matches the kit's Notice sample, so left to the owner.",
           "at": "2026-10-30T02:33:56Z",
           "filesHash": "36a604461042ae3b"
-        }
+        },
+        "commit": "8fc310ac",
+        "doneAt": "2026-10-30T02:34:09Z"
       },
       "branch": "fix/f369-a-pay-page-that-lost-the-connection-says",
       "baseCommit": "646627cb39ec78b37759017aa02bb70b6b9a834d",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f369-a-pay-page-that-lost-the-connection-says",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
