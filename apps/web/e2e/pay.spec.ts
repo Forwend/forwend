@@ -764,6 +764,31 @@ test.describe("pay page", () => {
     );
   });
 
+  test("the loading page puts its placeholders where the payee and the pay panel arrive", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    let release = () => {};
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.clock.install({ time: NOW });
+    await page.route("**/api/v1/invoices/*", async (route) => {
+      await held;
+      return route.fulfill({ json: OPEN });
+    });
+    await page.goto(`/pay/${PAY}`);
+    const row = (selector: string) => page.locator(selector).first().boundingBox();
+    await expect(page.locator("[data-skeleton]").first()).toBeAttached();
+    const payeeWaiting = await row("main [aria-busy] [data-skeleton]");
+    const panelWaiting = await row("main .fw-panel");
+    release();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Alice Design GmbH");
+    const payee = await row("section[aria-labelledby='pay-amount'] > div");
+    const panel = await row("main .fw-panel");
+    expect(Math.abs((payeeWaiting?.y ?? 0) - (payee?.y ?? 0))).toBeLessThanOrEqual(2);
+    expect(Math.abs((panelWaiting?.x ?? 0) - (panel?.x ?? 0))).toBeLessThanOrEqual(2);
+    expect(Math.abs((panelWaiting?.width ?? 0) - (panel?.width ?? 0))).toBeLessThanOrEqual(2);
+  });
+
   // R-79
   test("tells the payer a canceled invoice takes no money", async ({ page }) => {
     await openPay(page, CANCELED);

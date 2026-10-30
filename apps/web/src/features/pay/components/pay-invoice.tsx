@@ -166,30 +166,45 @@ export function PayInvoice({ linkToken, option, preview = false }: PayInvoicePro
       </div>
     );
   }
-  // Shaped like the page: who asks and the amount, then the pay panel beside it (under it on phones).
+  // In the loaded page's own columns and backdrop (Loaded), so each placeholder sits where its part arrives.
   return (
-    <div
-      aria-busy="true"
-      className={`grid gap-y-8 lg:col-span-2 lg:grid-cols-subgrid lg:items-start ${LEFT_PAD} lg:[&>*:last-child]:pt-12 lg:[&>*:last-child]:pr-[max(2.5rem,calc(50vw-32rem))] lg:[&>*:last-child]:pl-16`}
-    >
+    <>
+      <Backdrop />
       <span role="status" className="sr-only">
         {COPY.loading}
       </span>
-      <div className="flex flex-col gap-5 lg:gap-8">
-        <div className="flex items-center gap-3">
-          <Skeleton className="size-10 rounded-md sm:size-11" />
+      {/* From large screens the backdrop is surface-2, the placeholders' own color: here they take the line color. */}
+      <div
+        aria-busy="true"
+        className={`contents lg:flex lg:flex-col lg:gap-6 lg:pt-8 lg:[&_[data-skeleton]]:bg-line ${LEFT_PAD}`}
+      >
+        <div className="order-1 flex flex-col gap-5 lg:gap-6">
+          <div className="flex items-center gap-3">
+            <Skeleton className="size-10 rounded-md sm:size-11" />
+            <div className="flex flex-col gap-2">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+          </div>
           <div className="flex flex-col gap-2">
-            <Skeleton className="h-5 w-40" />
-            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-9 w-48" />
           </div>
         </div>
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-4 w-20" />
-          <Skeleton className="h-9 w-48" />
+      </div>
+      <div
+        aria-hidden
+        className={`order-2 flex min-w-0 flex-col gap-4 lg:self-stretch lg:py-8 lg:pl-16 ${RIGHT_PAD}`}
+      >
+        <div className="lg:my-auto">
+          <div className={`${PANEL} flex flex-col gap-4 p-4 sm:p-5`}>
+            <Skeleton className="h-5 w-20" />
+            <Skeleton className="h-12" />
+            <Skeleton className="h-12" />
+          </div>
         </div>
       </div>
-      <Skeleton className="h-52 rounded-lg" />
-    </div>
+    </>
   );
 }
 
