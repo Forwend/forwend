@@ -731,7 +731,7 @@
         "A personal request's PDF and the new-request preview show From with the sender's name only"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "web-e2e"
@@ -822,11 +822,18 @@
           "summary": "Doc defect fixed. api.md:77 now true: Need help (pay-copy.ts unverifiedName) and the receipt, sent and reminder emails (notify.go:301/322/502, sender name without issuer) carry the note; document.go draws From with the name only. notify.go:299 comment now matches the code. Only grep hits for the note are those emails, their test (notify_test.go:353), Need help and its e2e; nothing else claims the PDF note. Commit message matches the diff. docs-check 0 errors; document tests pass (notify tests need DATABASE_URL, not run; comment-only change there; verify passed after the commit). Nit, not blocking: the comment says 'Same wording as the pay page's Need help', but the pay page says 'the recipient gave' and the emails 'the invoice's creator gave'.",
           "at": "2026-10-30T18:13:44Z",
           "filesHash": "eee9ff4916854a16"
-        }
+        },
+        "commit": "5ada9537",
+        "doneAt": "2026-10-30T18:13:56Z"
       },
       "branch": "fix/f403-a-request-s-pdf-and-its-preview-show-the",
       "baseCommit": "e42c6f77eecc5d27d4790110d185d8c4a616b12d",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f403-a-request-s-pdf-and-its-preview-show-the",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
