@@ -3426,7 +3426,7 @@
         "Each step of the pay panel brings its new part in with motion, and picking the network moves nothing below"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-e2e"
       ],
@@ -3509,11 +3509,18 @@
           "summary": "Pass. Both earlier defects fixed. link-pay+pay e2e: 41 passed twice, 2nd run under 12-core CPU load. Probe: Pay makes 1 invoice read and the checkout opens on it; Back 16 s then Forward reads again on mount; Back 3 s then Forward reads 15 s after mount (data ~19 s old; worst case ~30 s, once, only after Back/Forward). RTK 2.13 source confirms number = seconds since last fulfilled read, and a skipped read leaves error alone, so the stale notice is unchanged. Owner preview opens /pay?preview=1 in a new tab with a fresh store: no change. Focus stays on the aria-busy, aria-disabled Pay (probe-checked), which keeps its name. Continue still focuses its heading, as on main. ease-out maps to --fw-ease-out, so ENTER keeps the token. No transform/translate mismatch left. Docs check 0 errors; bullets <= 24 words. tasks.json changes only F387. Notes: a smaller refetch age (2-5 s) would cap Forward staleness. Back to /l reuses its link read up to 60 s, but /l never polls and Pay's expectedVersion guards it. R-207 acceptance has no When clause.",
           "at": "2026-10-30T09:40:12Z",
           "filesHash": "d82a4b99fc736a5e"
-        }
+        },
+        "commit": "aec2fdfe",
+        "doneAt": "2026-10-30T09:40:30Z"
       },
       "branch": "fix/f387-paying-from-a-payment-link-moves-smoothl",
       "baseCommit": "91dfcede79417f87848c274106416767fb072a58",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f387-paying-from-a-payment-link-moves-smoothl",
+        "base": "main"
+      }
     },
     {
       "id": "F388",
