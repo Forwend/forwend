@@ -2950,7 +2950,7 @@
         "A balance shows its placeholder until prices answer, never a no-prices line that the prices then replace"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "loading-live-e2e",
         "web-unit",
@@ -3046,11 +3046,18 @@
           "summary": "Pass. A temporary live probe (deleted) held prices, payments and owed 1.5 s late and sampled every frame at 390 and 1440 px, on mocked rows (7 payments; 5 owed, overdue and partly paid) and on the real E2E shop. The three points from the last review are fixed. (1) Latest payments draws 6 placeholder rows for SHOWN = 6, with a 32 px leading circle. (2) Unpaid placeholder rows are 62.95 px against 63 px loaded (list 314.77 vs 315); the right column has the 'left to pay' line. (3) LineSkeleton uses padding: wrappers measure 20 / 15.97 / 23.98 px for text-sm / text-xs / base, the same in block flow (left column) and in flex (right column). Latest payments rows are 69 px against 70 px; the list goes 414 -> 420 px and the card 490 -> 496 px at 390 and 498 -> 504 px at 1440, on both data sets. The cause is the shared Money line: 21 px in a 20 px text-sm slot (mixed type sizes). I accept this: R-203's acceptance names the balance and pending cards, which hold exactly; R-201 and loading.spec already accept the same 1 px for the same Money line; at 390 the 6 px only moves Unpaid, the last card, far below the first screen; at 1440 nothing sits below. Fixing it would mean changing the shared Money component, outside this task. Still sound: balance card 256 / 288 px and pending card 273.59 / 288 px hold one height on every frame with empty pending lists; no frame showed 'Market prices are unavailable'; every price reader takes usePricedBalances, and app-shell's balances feed only the Receive sheet. tasks.json changes only F383, adds F389 and bumps nextId. loading-live-e2e passed (20.8 s); web-unit 210 passed. Notes, not defects: the pending card grows when payments are on their way (273.59 -> 304.59 px at 390 with 3 rows), since its body fits the empty state on purpose. On the real shop Unpaid has no rows, so it shrinks 406 -> 252 px at 390 when its empty answer arrives; it is the last card, and the old placeholder did the same. A Testnet badge makes the loaded label line 24 px against the placeholder's 20 px, hidden by the taller right column. The RowsSkeleton doc ('so each row keeps its height') is 1 px generous for Latest payments.",
           "at": "2026-10-30T05:40:22Z",
           "filesHash": "b03c747ba8334559"
-        }
+        },
+        "commit": "8fd7df4a",
+        "doneAt": "2026-10-30T05:40:48Z"
       },
       "branch": "fix/f383-the-overview-s-cards-keep-their-size-and",
       "baseCommit": "2478457ed97f9b8f5ff9a53d399affc9173230a0",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f383-the-overview-s-cards-keep-their-size-and",
+        "base": "main"
+      }
     },
     {
       "id": "F384",
