@@ -287,6 +287,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-208 | Dialogs and the centered sheet open with motion. | Given a modal dialog or the sheet from small screens up, when it opens, then it and its backdrop fade in on `duration-base`. Given reduced motion, then both show at once. | kit-e2e | R-204 |
 
+| R-209 | Record pages keep their panels in place while the record loads. | Given a record page that loads, then its header placeholder has the header's parts in their places: back link, icon, title, line, figure and actions. Then the panels below it stay where the loaded page puts them, unless the record's status badges wrap under its title on a phone. | loading-live-e2e | R-201, R-203 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.

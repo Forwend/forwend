@@ -42,7 +42,7 @@ import { AssetStack } from "@/shared/components/chains/asset-stack";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { NetworkName } from "@/shared/components/chains/network-name";
 import { TokenMark } from "@/shared/components/chains/token-mark";
-import { DetailHeader } from "@/shared/components/detail-header";
+import { DetailHeader, DetailHeaderSkeleton } from "@/shared/components/detail-header";
 import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
 import { LIVE_QUERY } from "@/shared/config/refresh";
@@ -512,13 +512,12 @@ function DetailSkeleton() {
       <span className="sr-only" role="status">
         {COPY.loading}
       </span>
-      <div className="flex items-center gap-3">
-        <Skeleton className="size-11" />
-        <span className="flex flex-col gap-2">
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-4 w-72" />
-        </span>
-      </div>
+      <DetailHeaderSkeleton
+        back={{ href: APP_ROUTES.payments, label: COPY.back }}
+        // The source's icon is not known yet: an empty tile.
+        icon={<span />}
+        figure={COPY.requested}
+      />
       <Skeleton className="h-11 w-full" />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(24rem,2fr)]">
         <span className="flex flex-col gap-6">

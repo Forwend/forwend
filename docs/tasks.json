@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 390,
+  "nextId": 391,
   "tasks": [
     {
       "id": "F332",
@@ -3670,6 +3670,108 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
+    },
+    {
+      "id": "F390",
+      "type": "fix",
+      "behavior": "Record pages keep their panels in place while the record loads",
+      "acceptance": [
+        "While a record page loads, its header placeholder has the header's parts in their places, so the panels below stay where they load"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "web-e2e",
+        "loading-live-e2e"
+      ],
+      "refs": [
+        "R-209"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-30 review fail by reviewer: Header placeholder has no figure, so pages with a figure still jump on phones. Measured header bottom loading vs loaded (temporary spec, 2 s delay): client and store 0 px at 375 and 1440, invoice 0 px at 1440 but 79 px at 375. Passing a figure placeholder through DetailHeaderSkeleton (figure value as LineSkeleton in the text-2xl span) cut invoice 375 to 27 px (the rest is the meta line wrapping) and kept 1440 at 0. Payment has the same gap: Requested figure plus View checkout and Export wrap to two rows at 375 (about 44 px missing). Job and link fit one row by luck. R-209 and the DESIGN bullet claim every record page keeps its panels in place, so add the figure to the invoice and payment (and job and link, for consistency) placeholders, or narrow the claim. Rest is sound: wrapper reproduces header gap-4 exactly; BackLink outside aria-hidden is correct and matches the loaded label on every page; empty h1, tile and actions are inside aria-hidden with nothing focusable; icon <span /> is fine; all DetailHeader users are covered; the test passes on HEAD and fails on main's store-screen with 142.8 px; docs-check passes; sentences are within 25 words; tasks.json changes only F390 and nextId. Note: one cold-start run alone stopped at 'Loading your profiles' past the 5 s skeleton wait; it passed on retry.",
+        "2026-10-30 review pass by reviewer: Figure fix is sound. The placeholder value is an inline-block, align-top, with lh-based padding and height. Inside the text-2xl span (28px / 1.25) that gives a 35px box, the same as the strut, so the line box is 35px and the baseline sits where the real text's does. Money's inline-flex and the job's text-base USD suffix don't grow the real line either. Labels match the loaded headers: invoice COPY.amount (Total only when part paid), payment COPY.requested, job JOBS_COPY.detail.total = detail COPY.total, link COPY.price. Actions: job size-10 = IconButton md; link h-10 w-16 vs a secondary md Edit button (~60px); payment and invoice keep w-72. Leaving badges out is right: on one row a badge is shorter than the 30.8px title line, so a badge placeholder adds no height; it would only matter if it wrapped, and that depends on the title and badge count (a livemode invoice with one pill usually doesn't wrap). Small leftovers, not failing: on phones an accepted job (actions null) or a link viewer without invoices.write shifts about 5px (35 vs 40px row). For the link, profile is known while loading, so it could pass can(profile, PERMISSIONS.invoicesWrite) ? the skeleton : null. R-209's exception names only badges, but a long title or meta line (invoice: title · Billed to · Due) wrapping on a phone shifts the panels the same way; consider wording it as the record's own text wrapping. The commit's 'no longer inside an aria-hidden wrapper' describes the earlier draft; on main the placeholders had no back link at all. tasks.json changes only F390 and nextId. docs-check passes; R-209 sentences are 25 and 24 words. Comments give reasons. pnpm --filter @forwend/web e2e: 79 passed. The passed live log isn't kept (the harness deletes passed logs); the evidence records loading-live-e2e as passed, exit 0. The one F390 log left in docs/runs is an earlier failed web-e2e run (sign-in axe, unrelated, ignored by git)."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T12:54:25Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.5,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.8,
+            "log": ""
+          },
+          {
+            "id": "loading-live-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 32.1,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 25.9,
+            "log": ""
+          }
+        ],
+        "taskHash": "867d92b43ea1d983",
+        "filesHash": "76bac2748f510984",
+        "proof": {
+          "1": "loading-live-e2e: e2e/privy/loading.spec.ts 'a record page keeps its panels in place while it loads' opens a store page on a 375 px phone with the stores list answering 1.5 s late, and compares the first panel's top while loading and loaded: within 1 px (143 px with main's placeholder). Records with a figure (invoice, payment, job, link) pass its label, and job and link pass their narrow actions. A temporary probe (removed) on the invoice page with the read 1.5 s late: header parts identical at 768 and 1440; at 375 the figure row matches and 32 px is left, from the status badges wrapping under the title, which depend on the record. Production build, real API: client 0.4025 -> 0.2644 at 375 and 0.0056 -> 0 at 1440; store 0.317 -> 0.150 at 375 and 0.0065 -> 0.0003 at 1440; the rest on phones is the Details panel pushed by the record's own list. axe on the loading state of client, store, link, payment and invoice pages: no serious or critical violation."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Figure fix is sound. The placeholder value is an inline-block, align-top, with lh-based padding and height. Inside the text-2xl span (28px / 1.25) that gives a 35px box, the same as the strut, so the line box is 35px and the baseline sits where the real text's does. Money's inline-flex and the job's text-base USD suffix don't grow the real line either. Labels match the loaded headers: invoice COPY.amount (Total only when part paid), payment COPY.requested, job JOBS_COPY.detail.total = detail COPY.total, link COPY.price. Actions: job size-10 = IconButton md; link h-10 w-16 vs a secondary md Edit button (~60px); payment and invoice keep w-72. Leaving badges out is right: on one row a badge is shorter than the 30.8px title line, so a badge placeholder adds no height; it would only matter if it wrapped, and that depends on the title and badge count (a livemode invoice with one pill usually doesn't wrap). Small leftovers, not failing: on phones an accepted job (actions null) or a link viewer without invoices.write shifts about 5px (35 vs 40px row). For the link, profile is known while loading, so it could pass can(profile, PERMISSIONS.invoicesWrite) ? the skeleton : null. R-209's exception names only badges, but a long title or meta line (invoice: title · Billed to · Due) wrapping on a phone shifts the panels the same way; consider wording it as the record's own text wrapping. The commit's 'no longer inside an aria-hidden wrapper' describes the earlier draft; on main the placeholders had no back link at all. tasks.json changes only F390 and nextId. docs-check passes; R-209 sentences are 25 and 24 words. Comments give reasons. pnpm --filter @forwend/web e2e: 79 passed. The passed live log isn't kept (the harness deletes passed logs); the evidence records loading-live-e2e as passed, exit 0. The one F390 log left in docs/runs is an earlier failed web-e2e run (sign-in axe, unrelated, ignored by git).",
+          "at": "2026-10-30T13:00:35Z",
+          "filesHash": "76bac2748f510984"
+        },
+        "commit": "b6c2c1ab",
+        "doneAt": "2026-10-30T13:01:05Z"
+      },
+      "branch": "fix/f390-record-pages-keep-their-panels-in-place",
+      "baseCommit": "153c70c905c72aa2ae5d421aa63d0a5baed81236",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f390-record-pages-keep-their-panels-in-place",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
