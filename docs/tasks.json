@@ -2011,7 +2011,7 @@
         "When every endpoint answers block or state not available for finalized blocks, the recovery sweep moves to the oldest block one still keeps (binary search) with one ALERT naming the skipped range, and a Check status rescan moves past them too; a miss at or above the finalized block still waits"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend-affected",
         "docs-check"
@@ -2064,11 +2064,18 @@
           "summary": "PASS on re-review. Both blocking findings are fixed. (1) pool.try now returns the missing answer only when every non-wrong endpoint answered missing in that call (missed == serving); a failed, resting or skipped endpoint gives ErrUnavailable, so recovery and rescans wait. Verified: mutating out 'missed < p.serving()' fails TestMissingBlockGoesToAnEndpointThatHasIt and TestRecoveryWaitsWhenAnEndpointThatMayKeepHistoryIsDown (real chain.NewRPCs pool, one pruning proxy plus a closed endpoint). My own overlay run through a real pool with two endpoints of different retention (50 and 70) moves next_block to 50 via the sanitized message, so the union and the sanitized path work. No other caller reads the missing message or ErrUnavailable, so the stricter rule changes nothing else. (2) TestPrunedFindsOnlyHistoryNoRPCKeeps kills the mutants I found: removing 'from >= finalized' fails it, removing 'serves(from)' fails it, and removing the finalized-served check fails TestRecoveryMovesPastHistoryNoRPCKeeps. Required tests pass: go test -count=1 ./internal/watcher/ ./internal/chain/ ok; gofmt clean; check-docs 0 errors; added doc sentences are at most 23 words. Operating notes, not blocking: the rule is deliberately strict, so any enabled Arc endpoint that keeps failing (for example the 403 geo-blocked Circle or QuickNode ones on the author's machine) or a WSS twin that drops keeps the sweep waiting with 'RPC endpoints unavailable' instead of skipping; disable such endpoints for the skip to engage locally. The 13 h / 47 h retention figures in money-safety.md come from the author's measurement and I did not re-measure them. Header pruning at the 47 h age is still unmeasured (the follow-up scan after a skip reads the header of kept-1). The rescan skip logs a Warn only; the R-120 balance ALERT stays the backstop.",
           "at": "2026-10-30T01:47:33Z",
           "filesHash": "26b2d29e5001f552"
-        }
+        },
+        "commit": "b397f7df",
+        "doneAt": "2026-10-30T01:47:50Z"
       },
       "branch": "fix/f366-history-no-endpoint-keeps-any-more-doesn",
       "baseCommit": "efc2d4361e1fbde6b279b0a2c98ede6c0e86043e",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f366-history-no-endpoint-keeps-any-more-doesn",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
