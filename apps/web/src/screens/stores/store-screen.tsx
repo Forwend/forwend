@@ -16,12 +16,11 @@ import { ProjectId } from "@/features/stores/components/project-id";
 import { STORES_COPY as COPY } from "@/features/stores/constants/stores-copy";
 import { storeLogoUrl } from "@/features/stores/lib/stores";
 import { closeLabel } from "@/screens/stores/lib/close-choices";
-import { assetKey } from "@/shared/components/chains/asset-selection";
+import { AssetStack } from "@/shared/components/chains/asset-stack";
 import { DetailHeader, DetailHeaderSkeleton } from "@/shared/components/detail-header";
 import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
 import { APP_ROUTES } from "@/shared/config/routes";
-import { selectionSummary } from "@/shared/lib/asset-selection";
 import { shortDate } from "@/shared/lib/dates";
 
 export interface StoreScreenProps {
@@ -124,7 +123,7 @@ export function StoreScreen({ storeId }: StoreScreenProps) {
             </DetailRow>
             <DetailRow term={COPY.tokensGroup}>
               {accepted ? (
-                selectionSummary(accepted, new Set(accepted.map(assetKey)))
+                <AssetStack assets={accepted} label={COPY.optionCount(accepted.length)} />
               ) : tokens.isError ? (
                 COPY.tokensFailed
               ) : (

@@ -52,6 +52,7 @@ export const STORES_COPY = {
   pickColor: "Pick the accent color",
   checkoutGroup: "Checkout",
   tokensGroup: "Accepted assets",
+  optionCount: (count: number) => (count === 1 ? "1 option" : `${count} options`),
   tokensHint:
     "This store's invoices offer only the ones checked. The rest of your profile's are off in Settings, Accepted assets.",
   name: "Store name",

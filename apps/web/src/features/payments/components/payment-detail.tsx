@@ -343,7 +343,7 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
               ))}
               {payToken ? (
                 <DetailRow term={COPY.documents}>
-                  <span className="flex flex-col items-end gap-1">
+                  <span className="flex flex-wrap justify-end gap-x-5 gap-y-1">
                     {payment.documentKind !== "none" ? (
                       <PdfLink href={invoicePdfUrl(payToken, "invoice")}>{COPY.invoicePdf}</PdfLink>
                     ) : null}
@@ -496,10 +496,7 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
 
 function PdfLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <a
-      href={href}
-      className="inline-flex items-center gap-1.5 text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink"
-    >
+    <a href={href} className={`${buttonClasses({ variant: "link" })} gap-1.5 text-sm`}>
       <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />
       {children}
     </a>
