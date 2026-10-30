@@ -4002,7 +4002,7 @@
         "When the server can't be reached the app shows one strip under its header, and the inline refresh notices step back"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "loading-live-e2e",
         "kit-e2e"
@@ -4108,11 +4108,18 @@
           "summary": "Pass. Re-review after amend. git diff 12822c5e..1ed26694 (pre-amend commit from reflog) shows exactly the three changes, plus tasks.json bookkeeping. (1) loading.spec.ts now sets up waitForResponse for a 500 on /payments? before the synthetic focus and awaits it before asserting no 'We could not refresh payments' notice. (2) /kit's first Notice with Try again now reads 'We could not refresh payments. The last loaded payments are shown.'; the centered server line has no button; kit.spec.ts reads neither string. (3) Commit body says the api's own JSON 4xx and 500 errors and schema failures keep their notice, which matches unreachable(): numeric 500 is not in GATEWAY, CUSTOM_ERROR is false. It also mentions the kit change and the wait for the failed refetch. Nothing else changed. Ran: pnpm --filter @forwend/web e2e e2e/kit.spec.ts e2e/pay.spec.ts -> 37 passed. Cosmetic: the body's last paragraph has an early line break ('the strip gone once' / 'the api answers'). Open minor items (2), (4)-(6) from the first review are unchanged and not blocking.",
           "at": "2026-10-30T14:54:32Z",
           "filesHash": "7115be2f5d524215"
-        }
+        },
+        "commit": "9fb152e8",
+        "doneAt": "2026-10-30T14:54:45Z"
       },
       "branch": "fix/f393-one-strip-says-the-server-can-t-be-reach",
       "baseCommit": "bef78e547236b52de0f37c67ae27089ea1d2bd95",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f393-one-strip-says-the-server-can-t-be-reach",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
