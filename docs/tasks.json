@@ -3881,7 +3881,7 @@
         "The pay page URL has no ?option=, and the API refuses a new pick once a payment is found"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend"
       ],
@@ -3980,11 +3980,18 @@
           "summary": "Pass. One commit on origin/main. api.md diff is additions only; payer-email keeps both sub-bullets, the pick bullet follows it whole. check-docs: 0 errors. pnpm --filter @forwend/web e2e e2e/pay.spec.ts: 30 passed, including the kept-pick and canary ?option= tests. Comments give reasons; pick.go now says options then main row so they can't deadlock. Commit message matches the diff (422 for Fixed and foreign ids, 409 pick_locked, history row, document history leaves it out via the payment category). Nit, not blocking: the api.md lead line is 29 words counting the endpoint label and (R-57, public like the checkout); 22 after the colon, same label style as payer-email.",
           "at": "2026-10-30T14:31:26Z",
           "filesHash": "c8608e103539d317"
-        }
+        },
+        "commit": "75a352ba",
+        "doneAt": "2026-10-30T14:31:39Z"
       },
       "branch": "feat/f392-the-payer-s-token-pick-is-saved-on-the-i",
       "baseCommit": "fdc1abccdac921dac4eb9f50b0989a7c4cca7a80",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f392-the-payer-s-token-pick-is-saved-on-the-i",
+        "base": "main"
+      }
     },
     {
       "id": "F393",
