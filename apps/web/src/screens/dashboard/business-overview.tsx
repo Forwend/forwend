@@ -10,7 +10,6 @@ import {
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { usePricedBalances } from "@/features/balances/hooks/use-priced-balances";
 import { historySeries } from "@/features/balances/lib/balance-history";
-import { marketUsd } from "@/features/balances/lib/balances";
 import type { HistoryRange } from "@/features/balances/types/balance-history";
 import { OwedToYou } from "@/features/invoices/components/owed-to-you";
 import { LatestPayments } from "@/features/payments/components/latest-payments";
@@ -46,8 +45,6 @@ export function BusinessOverview() {
     LIVE_QUERY,
   );
   const now = Date.now();
-  const market = (field: "settling" | "notFinal" | "held") =>
-    balances ? marketUsd(balances, field, prices) : null;
 
   // The chart keeps the last range's line, dimmed, while the next loads; the figures wait for their own range.
   const received = history.data ? historySeries(history.data, HISTORY_FIELDS.received) : null;
@@ -95,12 +92,7 @@ export function BusinessOverview() {
           canBill={can(profile, PERMISSIONS.invoicesWrite)}
           onReceive={openReceive}
         />
-        <OnItsWayCard
-          profileId={profile.profileId}
-          moving={market("settling")}
-          notFinal={market("notFinal")}
-          held={market("held")}
-        />
+        <OnItsWayCard balances={balances} prices={prices} failed={failed} onRetry={retry} />
       </div>
 
       <div className={ROW}>

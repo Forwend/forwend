@@ -66,11 +66,7 @@ export function BalanceCard({
     { label: COPY.receive, icon: ArrowDownLeft, onClick: onReceive, primary: !canBill },
   ];
   return (
-    // self-start: a taller Pending payments beside it doesn't stretch it; a shorter one still stretches to it.
-    <Card
-      id="balance-title"
-      className="isolate flex min-h-64 flex-col overflow-hidden xl:min-h-72 xl:self-start"
-    >
+    <Card id="balance-title" className="isolate flex min-h-64 flex-col overflow-hidden xl:min-h-72">
       {/* The figures sit on the surface; the art shows only on the right and fades out under them. */}
       <Image
         src={HERO_IMAGE.src}

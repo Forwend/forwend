@@ -46,6 +46,7 @@ export const PAYMENTS_COPY = {
   clearFilters: "Clear filters",
   storeGone: "This store is unavailable.",
   linkFilter: "Purchases from one payment link.",
+  movingFilter: "Paid payments whose money is still moving to your wallet.",
   viewLink: "View link",
   clearLink: "Show all payments",
   webhooks: "Webhook delivery",
