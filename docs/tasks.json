@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 364,
+  "nextId": 365,
   "tasks": [
     {
       "id": "F332",
@@ -1863,12 +1863,61 @@
         "branch": "docs/f363-a-safe-refund-under-way-can-t-also-go-to",
         "base": "main"
       }
+    },
+    {
+      "id": "F364",
+      "type": "chore",
+      "behavior": "The webhooks process unsets only secrets the backend still uses",
+      "acceptance": [
+        "with-env.sh no longer unsets INFURA_API_KEYS, which no backend process reads; every other secret it drops stays dropped"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "backend-affected"
+      ],
+      "refs": [
+        "R-148"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T00:38:33Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 249.4,
+            "log": ""
+          }
+        ],
+        "taskHash": "d807f5cad6d3c976",
+        "filesHash": "9415f0729aae64b8",
+        "proof": {
+          "1": "backend-affected: with-env.sh webhooks case drops the same secrets minus INFURA_API_KEYS, which no backend code reads (git grep finds none in apps/backend)"
+        }
+      },
+      "branch": "chore/f364-the-webhooks-process-unsets-only-secrets",
+      "baseCommit": "98f7b71fecd8ea9b7b6f03b6d5f951259f844865",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-29T21:58:01Z",
+    "at": "2026-10-30T00:20:01Z",
     "clean": true,
     "problems": [],
-    "note": "F353-F359 merged (#345-#351) and staging promoted to f9fb9fdf; staging CI run 40959515657 passed. Next: F345 as queued; open owner decisions are in the session report (payer-chooses dust, reopen during a queued Safe refund, executor gas cap, pay-link quotas, second broadcast endpoint)."
+    "note": "F360-F363 merged (#352-#355) after F353-F359; staging promoted to 98f7b71f and CI run 40976748124 passed. Next: F345 as queued."
   }
 }
