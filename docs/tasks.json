@@ -341,7 +341,7 @@
         "An invoice that waits to settle says why under its header; an open one offers Check status there; its progress and transactions show once, on its payment page; the live invoice-page tests check that and pass"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "docs-check"
@@ -418,11 +418,18 @@
           "summary": "Pass. Split is right: payment page shows Timeline and Transfers once, plus settlement hash, late flag and held money on other options (R-77, D-25). Header rendered at 390 and 1440, light and dark, for open, resting, confirming, partly paid, signing, finalizing, retrying, dailyLimit, refused, settled: no overflow, no duplicate with badges, axe clean, live-spec selectors match the real DOM. Web unit 216 pass. Docs sentences are 25 words or fewer. Follow-ups, none blocking: (1) show F397 has no note for the hand-run live suite, though the proof says see note; record it with note F397 before done. (2) R-60 still describes the removed amount timeline and payments list and now contradicts R-69. (3) With refused or dailyLimit the badge reads Pending beside Stopped or Paused, because the invoice read has no wallet field. (4) e2e settleTx getByText check is vacuous, since a hash shows short; use a Basescan link count of 0. (5) Commit message says payments.spec.ts covers the removed phone test; it only checks sideways scroll and axe. (6) invoice-deposits.tsx and its copy are dead code from #330. (7) Payer address no longer shows on either page.",
           "at": "2026-10-30T17:00:28Z",
           "filesHash": "9c133bf68c480e82"
-        }
+        },
+        "commit": "34a11fcd",
+        "doneAt": "2026-10-30T17:00:58Z"
       },
       "branch": "fix/f397-the-invoice-page-says-why-its-money-wait",
       "baseCommit": "ef0457ced12e515bb03472332f3dc0a4b4d63d60",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f397-the-invoice-page-says-why-its-money-wait",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
