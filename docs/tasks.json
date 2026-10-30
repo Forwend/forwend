@@ -3530,19 +3530,125 @@
         "A modal dialog and the centered sheet fade in and settle on open, and open at once with reduced motion"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "kit-e2e",
         "web-e2e"
       ],
-      "refs": [],
+      "refs": [
+        "R-208"
+      ],
       "keep": [
         "apps/backend/*"
       ],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-30 review fail by reviewer: Two defects. (1) Flaky check: the reduced-motion assertion expect(seen[1]).toBe(1) reads 0 when the first rAF lands in the frame that starts the 0.01ms transition. Replaying the test's exact steps gave 2 failures in 80 reduced-motion opens (frames [0,0,1,1]), about 5% per run. Assert on a later frame instead (seen.at(-1) or seen.slice(2)); no-preference still reads about 0.83-0.90 there. (2) Reduced motion does not cover the backdrop: base.css matches *, *::before, *::after, not ::backdrop, so under reduce the panel shows at once but the scrim fades over 0.2s (measured backdrop transition-duration 0.2s, opacity 0.43 to 1). R-208 says it shows at once. Add *::backdrop to that selector (it also fixes the phone sheet's existing backdrop fade), and sample ::backdrop opacity in the test. Otherwise sound: built CSS has @starting-style rules for :is([open],:popover-open,:open) and ::backdrop; Chromium 156 measured opacity 0 to 1 and scale 0.98 to none over 0.2s with cubic-bezier(0.16,1,0.3,1); transition-property is only opacity, scale; reopen animates again; phone sheet still slides with translate only; kit-e2e passed 6 of 6 runs; check-docs 0 errors; tasks.json changes only F388. Notes, not blocking: while the dialog settles its scale makes it the containing block for position:fixed children (a fixed probe sat at the dialog origin, then at 0,0 after), so a select list or date picker opened in the first 200ms is misplaced, and use-popover-position.ts's comment that a dialog has no transform is now briefly false. DIALOG_ENTER's comment's first clause restates the classes. Firefox and Safari were not run (only Chromium is installed); without @starting-style support the rule is skipped, so they show at once with no stuck opacity.",
+        "2026-10-30 review fail by reviewer: One doc defect; code and test are sound. (1) docs/web/DESIGN.md line 906 'The ⌘K dialog is the exception: no motion, as above.' is indented 4 spaces right after the sub-bullet '    - No scale or translate: ...', so Markdown joins it to that sub-bullet as a lazy continuation. The ⌘K exception renders as part of the scale reason, two facts in one bullet (D-84). Move the line above the sub-bullet (continuing the parent bullet), or make it its own '    - ' sub-bullet. Every other 4-space continuation in DESIGN.md follows a '  - ' bullet; this is the only one after a sub-bullet. (2) Not blocking, fix while there: the test comment 'The panel's and the backdrop's opacity over the first frames after it opens.' restates the code below it (AGENTS: comment a test only for setup a reader can't follow). Evidence: tasks.json changes only F388 (parsed diff). kit-e2e fade test passed 20 of 20 with --repeat-each 20; full kit.spec passed 7 of 7. With *::backdrop removed from base.css the test failed 5 of 5 (reduce, backdrop 0.903 at frame 4); file restored exactly. With dialog.tsx and sheet.tsx at HEAD~1 the no-preference branch failed (min opacity 1). Probe of 48 opens per mode: no-preference frame 4 reads 0.69-0.90 at 35-49 ms for both panel and backdrop; reduce frame 4 always 1/1, frame 1 sometimes 0, so seen.at(-1) is stable and has teeth. *::backdrop affects only elements with transitions on ::backdrop (Dialog, Sheet both sizes); the ⌘K dialog and the site-menu popover have none, so no change there. Opacity does not create a containing block for fixed children, so the date-picker concern is gone; DIALOG_ENTER comment states reasons only. R-208 and DESIGN.md sentences are at most 25 words; check-docs 0 errors. Commit message matches the diff. Phone sheet still translate-only (old behavior).",
+        "2026-10-30 review pass by reviewer: Pass. The doc defect is fixed: in DESIGN.md the ⌘K line is now its own 4-space sub-bullet under the dialog fade bullet, one fact per bullet, every new sentence under 25 words; check-docs 0 errors. One commit on origin/main (d9e4c4cd); tasks.json changes only F388 (parsed diff). The restating test comment is gone; the remaining test comment, the DIALOG_ENTER comment and the sheet comment give reasons only. Only three <dialog> elements exist: Dialog and Sheet (both changed) and the ⌘K command menu (kept with no motion, as documented). No stale doc text says the centered panel appears without motion. *::backdrop in the reduced-motion rule is fine. kit-e2e passed 7 of 7 (pnpm --filter @forwend/web e2e e2e/kit.spec.ts). Its servers stopped on their own and the tree is clean."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T12:25:29Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.3,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": ""
+          },
+          {
+            "id": "tokens-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "kit-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 11.2,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.7,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 27.4,
+            "log": ""
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "c7641ee70ed86bbe",
+        "filesHash": "956858e987eff148",
+        "proof": {
+          "1": "kit-e2e: e2e/kit.spec.ts 'a dialog and a centered sheet fade in as they open, and at once with reduced motion' opens the kit's dialog and the sheet at 1280 px and samples the panel's and the ::backdrop's opacity over the first 4 frames: below 1 while they fade, and both 1 by the 4th frame with reduced motion. 20 of 20 repeats passed. On main the panel read 1 from the first frame; without the new *::backdrop reduced-motion rule the backdrop still faded and the test failed. Opacity only, no scale: a transform would make the dialog the containing block of a date picker's fixed popover."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass. The doc defect is fixed: in DESIGN.md the ⌘K line is now its own 4-space sub-bullet under the dialog fade bullet, one fact per bullet, every new sentence under 25 words; check-docs 0 errors. One commit on origin/main (d9e4c4cd); tasks.json changes only F388 (parsed diff). The restating test comment is gone; the remaining test comment, the DIALOG_ENTER comment and the sheet comment give reasons only. Only three <dialog> elements exist: Dialog and Sheet (both changed) and the ⌘K command menu (kept with no motion, as documented). No stale doc text says the centered panel appears without motion. *::backdrop in the reduced-motion rule is fine. kit-e2e passed 7 of 7 (pnpm --filter @forwend/web e2e e2e/kit.spec.ts). Its servers stopped on their own and the tree is clean.",
+          "at": "2026-10-30T12:27:29Z",
+          "filesHash": "956858e987eff148"
+        },
+        "commit": "9950e46b",
+        "doneAt": "2026-10-30T12:27:45Z"
+      },
+      "branch": "fix/f388-dialogs-and-centered-sheets-open-with-mo",
+      "baseCommit": "d9e4c4cd7690a060d87f0c1140f27241e8f8eb94",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f388-dialogs-and-centered-sheets-open-with-mo",
+        "base": "main"
+      }
     },
     {
       "id": "F389",

@@ -285,6 +285,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-207 | Paying from a payment link moves smoothly from the link to the address. | Given Pay on a link, then the link page stays as it is until the checkout opens with its invoice. Given each pick on the pay panel, then its new part enters with motion and nothing below moves. | web-e2e | R-142, R-68 |
 
+| R-208 | Dialogs and the centered sheet open with motion. | Given a modal dialog or the sheet from small screens up, when it opens, then it and its backdrop fade in on `duration-base`. Given reduced motion, then both show at once. | kit-e2e | R-204 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.

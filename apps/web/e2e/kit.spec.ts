@@ -86,3 +86,47 @@ test("a tap opens a tooltip on a touch screen, and a tap elsewhere closes it", a
   await expect(tip).toBeHidden();
   await context.close();
 });
+
+test("a dialog and a centered sheet fade in as they open, and at once with reduced motion", async ({
+  browser,
+}) => {
+  for (const reducedMotion of ["no-preference", "reduce"] as const) {
+    const context = await browser.newContext({
+      reducedMotion,
+      viewport: { width: 1280, height: 800 },
+    });
+    const page = await context.newPage();
+    await page.goto(`${KIT_URL}/kit`);
+    for (const [trigger, name] of [
+      ["Open dialog", "Confirm withdrawal"],
+      ["Open sheet", "Receive"],
+    ]) {
+      await page.getByRole("button", { name: trigger, exact: true }).click();
+      const dialog = page.getByRole("dialog", { name });
+      const seen = await dialog.evaluate(
+        (el) =>
+          new Promise<number[][]>((resolve) => {
+            const frames: number[][] = [];
+            const sample = () => {
+              frames.push([
+                Number(getComputedStyle(el).opacity),
+                Number(getComputedStyle(el, "::backdrop").opacity),
+              ]);
+              if (frames.length < 4) requestAnimationFrame(sample);
+              else resolve(frames);
+            };
+            sample();
+          }),
+      );
+      // Reduced motion: both whole a few frames in, while a 200 ms fade is still under way.
+      if (reducedMotion === "reduce") expect(seen.at(-1)).toEqual([1, 1]);
+      else expect(Math.min(...seen.flat())).toBeLessThan(1);
+      await expect
+        .poll(() => dialog.evaluate((el) => Number(getComputedStyle(el).opacity)))
+        .toBe(1);
+      await page.keyboard.press("Escape");
+      await expect(dialog).toBeHidden();
+    }
+    await context.close();
+  }
+});

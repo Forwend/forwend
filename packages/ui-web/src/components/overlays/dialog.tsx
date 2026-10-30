@@ -2,8 +2,14 @@
 
 import { X } from "lucide-react";
 import { type ReactNode, useRef } from "react";
+import { cx } from "../../lib/cx";
 import { BUTTON_VARIANTS, Button, type ButtonVariant } from "../buttons/button";
 import { IconButton } from "../buttons/icon-button";
+
+/** Opacity only: a scale or translate would make the dialog the containing block of a date picker's fixed popover.
+ * It closes at once, as a menu does: an exit transition needs a discrete display transition, which only Chromium has. */
+const DIALOG_ENTER =
+  "transition-opacity duration-[var(--fw-duration-base)] ease-out starting:open:opacity-0 backdrop:transition-opacity backdrop:duration-[var(--fw-duration-base)] backdrop:ease-out starting:open:backdrop:opacity-0";
 
 export interface DialogProps {
   triggerLabel: string;
@@ -48,7 +54,10 @@ export function Dialog({
         onClick={(event) => {
           if (event.target === ref.current) ref.current.close(); // a click on the backdrop
         }}
-        className="m-auto max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain w-[calc(100vw-(--spacing(8)))] max-w-lg rounded-lg border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[var(--fw-scrim)]"
+        className={cx(
+          "m-auto max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain w-[calc(100vw-(--spacing(8)))] max-w-lg rounded-lg border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[var(--fw-scrim)]",
+          DIALOG_ENTER,
+        )}
       >
         <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-4">
           <h2 className="text-lg font-semibold">{title}</h2>

@@ -166,7 +166,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - A choice opened from the sidebar is a menu; the same choice on a phone is a bottom sheet, which becomes a centered
   panel from small screens up. Both are solid surface panels with the float shadow; modal backdrops use a scrim without blur. Menus rise from the edge they
   open on and close at once (a fade-out would return focus late and shut a menu reopened meanwhile); the phone sheet
-  slides up from the screen edge; the centered panel appears without motion. Reduced
+  slides up from the screen edge; the centered panel fades in like a dialog. Reduced
   motion removes the movement. Behind a modal the page darkens with the `scrim` token in both themes.
 - Panels are solid surface with a hairline border, large corners and no shadow; a panel's header row is ruled off.
   Figure strips and tables use hairline rules between cells and rows, not separate cards. On phones a panel is a
@@ -901,6 +901,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     fades.
   - Enter from an edge: menus, toasts and the phone sheet rise from where they open on `duration-base` with
     `ease-out`, and close at once.
+  - A modal dialog and the centered sheet fade in on `duration-base`, and close at once.
+    - No scale or translate: either would misplace a date picker opened inside while it runs.
+    - The ⌘K dialog is the exception: no motion, as above.
   - Disclosure: the chevron turns on `duration-fast`; the content appears without a height animation, since
     tables inside can be long.
   - Data: typing, filtering, polling and new rows never animate. A list waiting for a new filter dims its last rows
