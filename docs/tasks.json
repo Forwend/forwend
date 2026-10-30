@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 365,
+  "nextId": 366,
   "tasks": [
     {
       "id": "F332",
@@ -1928,6 +1928,73 @@
         "branch": "chore/f364-the-webhooks-process-unsets-only-secrets",
         "base": "main"
       }
+    },
+    {
+      "id": "F365",
+      "type": "fix",
+      "behavior": "A log query an endpoint refuses for its number of addresses goes elsewhere, and still gets read",
+      "acceptance": [
+        "An address-count refusal (PublicNode's 'A maximum of 10 addresses is allowed', HTTP 403 or a JSON-RPC error) sends the query to the next endpoint without resting the first, and is remembered like range and batch refusals; when every endpoint refuses, the receiver-event scan splits its address list"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "backend-affected",
+        "docs-check"
+      ],
+      "refs": [
+        "R-190"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-30 review fail by independent-reviewer: Fail on 3 points. (1) TestAddressLimitGoesToTheNextEndpoint is flaky: the required 'go test -race -count=1 ./internal/chain/' failed 2 of 7 runs with 'a query of 5 addresses skipped the endpoint that takes 10' (pool_test.go:753). Cause: neither endpoint refuses 5 addresses, so pick() ranks by measured latency, and the refused endpoint has one sample. A 30 ms refusal delay makes it fail every time. Fix: drop that last step, or assert refuses(request{addresses:5}) is false and refuses(request{addresses:22}) is true. (2) addressLimit misreads rate limits that name an IP address. 'Rate limit exceeded for your IP address' on a 22-address getLogs, as HTTP 429 or as 200 with -32005, becomes an address refusal: no rest, refusedAddresses=22, and the watcher would split. Fix: exclude 'rate' like batchLimit does, and skip it when tooLarge(m), so post matches safeMessage order. (3) docs: the R-190 'Given...' sentence has 28 words (limit 25); the rpc.md bullet 'So does a log query...' reads as 'counts as a batch limit'. Checked and fine: removing either half of the fix makes its test fail (pool half: chain and watcher test; watcher half: watcher test); the split loop ends (22 gives 22,11,5,2,1 and stops with the error at one address; a non-limit error returns after 1 call); RefusalMemory reset matches the block and batch memory; c.logs and walletLogs name token contracts from the tokens table (a few per chain), not receivers; batches and single-address queries are not touched; the watcher test passes.",
+        "2026-10-30 review pass by independent-reviewer: Pass. All 3 earlier findings are fixed. (1) The flaky step is gone: 'go test -race -count=1 ./internal/chain/' passed 8 of 8 runs and the two address tests passed 50 of 50 with -race; the new assertion uses refuses() directly, not latency. (2) addressLimit now skips messages with 'rate' or that tooLarge matches. A 22-address getLogs answered 'Rate limit exceeded for your IP address' as HTTP 429 or as 200 with -32005 now rests the endpoint and sets no refusedAddresses; with the two exclusions removed, TestAddressLimitIsNotARateLimit fails on two cases. (3) Docs: no added sentence is over 25 words (longest 21); check-docs has 0 errors. Still true: removing the post classification fails the chain and watcher tests, and the original outflows.go fails the watcher test; the split loop ends; watcher tests pass. Residual risk, not blocking: the exclusions assume PublicNode's live text has no 'rate' or range/results words after 'A maximum of 10 addresses is allowed.' (the test text 'No limit on a dedicated node' has none). Re-run the real-endpoint local check once and look for the 'RPC refuses a request size ... addresses=22' log line."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T01:11:55Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 243.3,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 35.9,
+            "log": ""
+          }
+        ],
+        "taskHash": "53194f26ed5883b7",
+        "filesHash": "5802702e8499cc02",
+        "proof": {
+          "1": "backend-affected: chain TestAddressLimitGoesToTheNextEndpoint (10 of 10 with -race) and TestAddressLimitIsNotARateLimit; watcher TestReceiverEventsAreReadInPartsWhenEveryEndpointRefusesTheList; each fails without its half of the fix; a 90 s local run on real Arbitrum endpoints showed no round error"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent-reviewer",
+          "summary": "Pass. All 3 earlier findings are fixed. (1) The flaky step is gone: 'go test -race -count=1 ./internal/chain/' passed 8 of 8 runs and the two address tests passed 50 of 50 with -race; the new assertion uses refuses() directly, not latency. (2) addressLimit now skips messages with 'rate' or that tooLarge matches. A 22-address getLogs answered 'Rate limit exceeded for your IP address' as HTTP 429 or as 200 with -32005 now rests the endpoint and sets no refusedAddresses; with the two exclusions removed, TestAddressLimitIsNotARateLimit fails on two cases. (3) Docs: no added sentence is over 25 words (longest 21); check-docs has 0 errors. Still true: removing the post classification fails the chain and watcher tests, and the original outflows.go fails the watcher test; the split loop ends; watcher tests pass. Residual risk, not blocking: the exclusions assume PublicNode's live text has no 'rate' or range/results words after 'A maximum of 10 addresses is allowed.' (the test text 'No limit on a dedicated node' has none). Re-run the real-endpoint local check once and look for the 'RPC refuses a request size ... addresses=22' log line.",
+          "at": "2026-10-30T01:20:25Z",
+          "filesHash": "5802702e8499cc02"
+        }
+      },
+      "branch": "fix/f365-a-log-query-an-endpoint-refuses-for-its",
+      "baseCommit": "05980307ab0471aa2da5e21a19408c1a7d7565c7",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

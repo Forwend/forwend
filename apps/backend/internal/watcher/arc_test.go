@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 )
 
 var (
@@ -131,5 +132,51 @@ func TestArcDepositScanReadsNativeSends(t *testing.T) {
 	}
 	if got := credited(logs); !slices.Equal(got, []string{lookalike.Hex()[:6] + ":0:9000000"}) {
 		t.Fatalf("credited %v; want only the invoice's own token", got)
+	}
+}
+
+// When every endpoint refuses the receivers' list for its length, the scan reads it in smaller parts.
+func TestReceiverEventsAreReadInPartsWhenEveryEndpointRefusesTheList(t *testing.T) {
+	var asked []int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			ID     json.RawMessage
+			Method string
+			Params []struct{ Address []common.Address }
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		if req.Method == "eth_chainId" {
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":"0x4cef52"}`, req.ID)
+			return
+		}
+		asked = append(asked, len(req.Params[0].Address))
+		if len(req.Params[0].Address) > 2 {
+			w.WriteHeader(http.StatusForbidden)
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","error":{"code":-32602,"message":"A maximum of 2 addresses is allowed."},"id":%s}`, req.ID)
+			return
+		}
+		var logs []types.Log
+		for _, a := range req.Params[0].Address {
+			l := arcLog(arcPayer, a, 1, 0, big.NewInt(1))
+			l.Topics[0] = settledTopic
+			logs = append(logs, l)
+		}
+		out, _ := json.Marshal(logs)
+		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":%s}`, req.ID, out)
+	}))
+	t.Cleanup(server.Close)
+	r, err := chain.NewRPCs(chain.Spec{ChainID: 5042002, AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0",
+		Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, URL: server.URL, BudgetGroup: "budget-0"}}}, 1000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(r.Close)
+	receivers := map[common.Address]receiver{}
+	for i := range 5 {
+		receivers[common.BigToAddress(big.NewInt(int64(0xb0+i)))] = receiver{fmt.Sprintf("0x%02x", i), hexutil.Encode(arcUSDC[:])}
+	}
+	logs, err := NewChain(nil, 5042002, r.Client).outflowLogs(t.Context(), 1, 10, receivers)
+	if err != nil || len(logs) != 5 {
+		t.Fatalf("%d receiver events, %v; want all 5 read in parts (asked %v)", len(logs), err, asked)
 	}
 }

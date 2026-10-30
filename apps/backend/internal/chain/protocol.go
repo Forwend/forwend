@@ -13,6 +13,7 @@ import (
 type request struct {
 	calls     int
 	blocks    uint64
+	addresses int  // contracts a single eth_getLogs names
 	broadcast bool // it sends a signed transaction
 }
 
@@ -47,9 +48,16 @@ func parseRequest(body []byte) (request, error) {
 		r.broadcast = r.broadcast || c.Method == "eth_sendRawTransaction"
 	}
 	if len(calls) == 1 && calls[0].Method == "eth_getLogs" && len(calls[0].Params) == 1 {
-		var filter struct{ FromBlock, ToBlock hexutil.Uint64 }
+		var filter struct {
+			FromBlock, ToBlock hexutil.Uint64
+			Address            json.RawMessage
+		}
 		if json.Unmarshal(calls[0].Params[0], &filter) == nil && filter.ToBlock >= filter.FromBlock {
 			r.blocks = uint64(filter.ToBlock-filter.FromBlock) + 1
+		}
+		var addresses []string
+		if json.Unmarshal(filter.Address, &addresses) == nil {
+			r.addresses = len(addresses)
 		}
 	}
 	return r, nil
@@ -111,6 +119,9 @@ func safeResponse(raw, request []byte) ([]byte, error) {
 // missing is the safe message for a block or state the endpoint doesn't have: one behind the head, or a pruned node.
 const missing = "block or state not available"
 
+// tooManyAddresses is the safe message for a log query refused for the number of contracts it names.
+const tooManyAddresses = "too many addresses"
+
 func safeMessage(code int, message string) string {
 	m := strings.ToLower(message)
 	if strings.Contains(m, "execution reverted") {
@@ -121,6 +132,9 @@ func safeMessage(code int, message string) string {
 	}
 	if tooLarge(m) {
 		return "log result size too large"
+	}
+	if addressLimit(m) {
+		return tooManyAddresses
 	}
 	if rateLimited(code, m) {
 		return "rate limited"
