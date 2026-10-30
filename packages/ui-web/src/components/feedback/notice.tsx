@@ -9,6 +9,8 @@ export interface NoticeProps {
   tone?: NoticeTone;
   /** One short way out at the strip's end, such as Try again. */
   action?: ReactNode;
+  /** alert for something that just went wrong while the view was open, such as a failed refresh. */
+  role?: "status" | "alert";
   className?: string;
 }
 
@@ -22,11 +24,12 @@ export function Notice({
   children,
   tone = NOTICE_TONES.warning,
   action,
+  role,
   className = "",
 }: NoticeProps) {
   return (
     <div
-      role={tone === NOTICE_TONES.danger ? "alert" : "status"}
+      role={role ?? (tone === NOTICE_TONES.danger ? "alert" : "status")}
       className={`flex w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-4 py-2 text-sm ${TONE_CLASSES[tone]} ${className}`}
     >
       <TriangleAlert aria-hidden className="size-[var(--fw-icon-sm)] shrink-0" />

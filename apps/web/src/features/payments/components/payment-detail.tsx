@@ -150,8 +150,11 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
           retrying={read.isFetching}
         />
       ) : null}
-      <PaymentProblems problems={payment.problems} />
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(22rem,1fr)] xl:items-start">
+      <PaymentProblems
+        problems={payment.problems}
+        extraShown={lead && figures && figures.extra > 0n ? lead.optionId : null}
+      />
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(24rem,2fr)] xl:items-start">
         <div className="flex min-w-0 flex-col gap-6">
           <Panel title={COPY.amount}>
             <dl className="grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] divide-line max-sm:divide-y sm:divide-x">
@@ -517,7 +520,7 @@ function DetailSkeleton() {
         </span>
       </div>
       <Skeleton className="h-11 w-full" />
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(22rem,1fr)]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(24rem,2fr)]">
         <span className="flex flex-col gap-6">
           <Skeleton className="h-32" />
           <Skeleton className="h-48" />

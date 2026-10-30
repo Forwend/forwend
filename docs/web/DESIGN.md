@@ -352,9 +352,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Unpaid attempts stay visible; requested amounts never imply received or settled money.
   - Payment details use `DetailHeader` with the source's icon tile, the status and wallet badges by the title, and
     the requested amount as the header's figure beside Open checkout or Open receipt and Export (both 40px).
-  - A notice under the header names each problem no other part shows: payment records to review, an unexpected
-    transfer, a webhook that fails (R-192). Extra money, the wallet transfer and what is still due are never repeated.
-  - The body is two columns from extra-large screens: the main column takes two thirds, the side a third (at least 22rem).
+  - A notice under the header names each problem no other part shows, once (R-192).
+    - Payment records to review, an unexpected transfer, a webhook that fails, money held on another option.
+    - Extra money in Amount, the wallet transfer and what is still due are never repeated.
+  - The body is two columns from extra-large screens: three fifths for the main column, two fifths (at least 24rem) beside it.
     - Main: Amount (Received with "Confirming, not final" or "Final",
       Returned to the payer once refunded, Extra held for the customer in the warning color or Still due while the
       checkout is open, and Paid with), Transfers, and the items.
@@ -368,7 +369,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
       Created, Payment detected, Paid, In your wallet (or Checkout closed), done or current or next by the API's facts.
   - No ledger table or contract panel: a webhook that fails shows as a notice whose action opens Developers.
   - A list's Received amount over the request is in the warning color, with its reason as the cell's title.
-  - Beside the money (a third of the width from extra-large screens) a Details panel links the order reference, the
+  - Beside the money (two fifths of the width from extra-large screens) a Details panel links the order reference, the
     invoice, the payment link and the store, then the customer, the token, the checkout close, metadata and the PDFs.
   - Open checkout or Open receipt opens the pay page in a new tab, marked as the owner's preview.
   - Desktop rows stay on one line; phone rows show the same payment and wallet states in a compact stack.
@@ -859,7 +860,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   circle, a title ("No invoices yet", "Nothing matches"), a line or the next step under it ("Clear filter and
   search"), as wide as the list and at least about half the screen tall. Inside an overview card it drops its frame
   and most of its height.
-- A notice (`Notice`) is one short warning line across the view's full width, with at most one action at its end.
+- A notice (`Notice`) is one short warning line across the view's full width.
+  - At most one action sits at its end, such as Try again.
   - It is for what concerns the whole view: a refresh that failed, or a problem the view shows nowhere else.
   - Plain words, never blame: say what happened and what to do, not whose money it is.
 

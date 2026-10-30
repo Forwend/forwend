@@ -88,7 +88,7 @@ export const PAYMENT_DETAIL_COPY = {
   nothing: "Nothing yet",
   allConfirming: "Confirming, not final",
   extra: "Extra, held for the customer",
-  extraNote: "Owed back to them, not yours",
+  extraNote: "Not part of your balance",
   due: "Still due",
   transfers: "Transfers",
   nothingYet: "Nothing received yet",

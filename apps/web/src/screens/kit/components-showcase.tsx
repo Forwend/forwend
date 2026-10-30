@@ -604,7 +604,9 @@ export function ComponentsShowcase() {
           >
             Connection lost. Retrying…
           </Notice>
-          <Notice tone={NOTICE_TONES.danger}>Webhook delivery failed. The payment is fine.</Notice>
+          <Notice tone={NOTICE_TONES.danger}>
+            Webhook delivery failed or paused. Payment status is unchanged.
+          </Notice>
         </div>
       </KitGroup>
       <KitGroup title="Loading and empty">
