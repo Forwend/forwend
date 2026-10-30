@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 402,
+  "nextId": 403,
   "tasks": [
     {
       "id": "F332",
@@ -627,6 +627,99 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f401-a-closed-or-canceled-pay-link-shows-that",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F402",
+      "type": "fix",
+      "behavior": "The pay page's loading placeholders sit where the payee, amount and pay panel arrive",
+      "acceptance": [
+        "While a pay page loads, the payee, amount and pay panel placeholders take the loaded parts' places, with the left half's backdrop"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "web-e2e"
+      ],
+      "refs": [
+        "R-68"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-30 review pass by reviewer: Loading branch mirrors Loaded: Backdrop, the contents/lg:flex summary column with LEFT_PAD and lg:pt-8, the order-2 right column with RIGHT_PAD, lg:my-auto and PANEL. Phone order matches (summary order-1, panel order-2). A11y fine: status line now sits outside aria-busy, so it is no longer muted; panel placeholder is aria-hidden. The bg-line override builds as a (0,2,0) descendant rule from lg, scoped to the summary column; visible in both themes (light e8e9e6 on f6f7f5, dark 262826 on 141615). e2e link-pay + pay: 46 passed, F387 whole-checkout handoff holds. New test is allowed (owner-hit bug) and fails on main, but by a 30 s timeout waiting for main .fw-panel, not by the measurements. Nits, not blocking: (1) assert the placeholder panel is visible first, so a main-like regression fails fast; boundingBox ?? 0 lets two nulls pass. (2) The code comment and commit say the backdrop is surface-2; in dark it is surface, so the override is needed only in light. (3) Branded stores now see the lime wash switch to the brand color on load. docs-check 0 errors; DESIGN.md bullets 18 and 20 words."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T17:43:59Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.2,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.0,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 34.3,
+            "log": ""
+          }
+        ],
+        "taskHash": "c86fbf0a7782c57e",
+        "filesHash": "6226d0919736db42",
+        "proof": {
+          "1": "web-e2e: e2e/pay.spec.ts 'the loading page puts its placeholders where the payee and the pay panel arrive' holds the invoice read at 1440 px and compares the placeholders with the loaded page: the payee row's top within 2 px (main's placeholder sat at y 0, cut by the page's top), and the pay panel's x and width within 2 px (main drew one 650 px block across the right column, its offsets set on the block itself). It failed on main. docs/runs/f402-pay-loading-after-{1440-light,1440-dark,390}.png show the placeholders in the loaded columns over the left half's backdrop; from large screens they take the line color, since the backdrop is their own surface-2. 46 pay and link-pay tests pass."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Loading branch mirrors Loaded: Backdrop, the contents/lg:flex summary column with LEFT_PAD and lg:pt-8, the order-2 right column with RIGHT_PAD, lg:my-auto and PANEL. Phone order matches (summary order-1, panel order-2). A11y fine: status line now sits outside aria-busy, so it is no longer muted; panel placeholder is aria-hidden. The bg-line override builds as a (0,2,0) descendant rule from lg, scoped to the summary column; visible in both themes (light e8e9e6 on f6f7f5, dark 262826 on 141615). e2e link-pay + pay: 46 passed, F387 whole-checkout handoff holds. New test is allowed (owner-hit bug) and fails on main, but by a 30 s timeout waiting for main .fw-panel, not by the measurements. Nits, not blocking: (1) assert the placeholder panel is visible first, so a main-like regression fails fast; boundingBox ?? 0 lets two nulls pass. (2) The code comment and commit say the backdrop is surface-2; in dark it is surface, so the override is needed only in light. (3) Branded stores now see the lime wash switch to the brand color on load. docs-check 0 errors; DESIGN.md bullets 18 and 20 words.",
+          "at": "2026-10-30T17:48:54Z",
+          "filesHash": "6226d0919736db42"
+        },
+        "commit": "5dbb4453",
+        "doneAt": "2026-10-30T17:49:13Z"
+      },
+      "branch": "fix/f402-the-pay-page-s-loading-placeholders-sit",
+      "baseCommit": "b21cbcce976abe98d49dde5b5cc103704549f1bd",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f402-the-pay-page-s-loading-placeholders-sit",
         "base": "main"
       }
     }
