@@ -251,9 +251,12 @@
   }
 }
 
+/* filter, not opacity: a placeholder fades in on opacity, and Chromium can't composite two animations of one
+   property on one element. With the pulse on filter, the wait and the pulse both run on the compositor, so a busy
+   page can't stall them. */
 @keyframes fw-pulse {
   50% {
-    opacity: 0.5;
+    filter: opacity(0.5);
   }
 }
 

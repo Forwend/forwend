@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 404,
+  "nextId": 405,
   "tasks": [
     {
       "id": "F332",
@@ -832,6 +832,131 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f403-a-request-s-pdf-and-its-preview-show-the",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F404",
+      "type": "perf",
+      "behavior": "Placeholders pulse on the compositor, so a busy page doesn't stall them",
+      "acceptance": [
+        "Every placeholder's wait and pulse run on the compositor: Chromium reports no incompatible animations for them"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "kit-e2e",
+        "web-e2e",
+        "loading-live-e2e"
+      ],
+      "refs": [
+        "R-201"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-30 review pass by reviewer: Cause confirmed. Bare page, Chromium 156 trace: two opacity animations both report compositeFailed=64; filter pulse plus opacity fade report 0; layer count unchanged (54 vs 54 for 50 spans). 64 is 1<<6 kTargetHasIncompatibleAnimations in compositor_animations.h. filter: opacity(0.5) differs from opacity by at most 2/255 per channel (rounding); Skeleton is an empty span, so its stacking context and containing block change nothing, and opacity already made one. The reduced-motion [data-skeleton] shorthand still keeps only the fade. No other element runs two opacity animations. Kit spec passed twice, and the new test passed 8 of 8 with --repeat-each. With main's base.css and a clean .next it fails (131136 = 64 + 1<<17 no-visible-change), and the restore is exact. docs-check: 0 errors. Nits, not blocking: (1) e2e/privy/loading.spec.ts:38 says the pulse keeps opacity between half and full, but computed opacity no longer pulses. (2) base.css comment 'so they stalled while a page loaded' tells history. (3) A renamed compositeFailed trace field would let the test pass silently.",
+        "2026-10-30 review fail by reviewer: Only the two comments and docs/tasks.json changed since the reviewed e596675d; the commit message is unchanged. The test comment in e2e/privy/loading.spec.ts:38 is accurate. docs-check: 0 errors. Fail: the new base.css comment above fw-pulse is wrong. It says 'Chromium composites only one animation of a property per element'. That implies one of two opacity animations still composites. In fact neither does: the first review's trace showed both report compositeFailed=64, and Chromium cancels the running one too. The commit message says 'runs both on the main thread'. DESIGN.md says 'two animations of one property can't run on the compositor'. The comment contradicts both. Also 'both run there' has no antecedent, because the sentence never names the compositor. Suggested text: 'filter, not opacity: a placeholder fades in on opacity, and Chromium can't composite two animations of one property on one element. With the pulse on filter, the wait and the pulse both run on the compositor, so a busy page can't stall them.' No code defect.",
+        "2026-10-30 review pass by reviewer: base.css comment above fw-pulse is now accurate: Chromium can't composite two animations of one property on one element; it gives reasons only, no history. It agrees with the commit message and DESIGN.md:942. loading.spec.ts:38 comment accurate. docs-check: 0 errors. No other changes."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T18:28:07Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.3,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": ""
+          },
+          {
+            "id": "tokens-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.9,
+            "log": ""
+          },
+          {
+            "id": "kit-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 12.8,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.9,
+            "log": ""
+          },
+          {
+            "id": "loading-live-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 41.9,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 29.2,
+            "log": ""
+          }
+        ],
+        "taskHash": "6371fb3420624940",
+        "filesHash": "6aa22faa07837970",
+        "proof": {
+          "1": "kit-e2e: e2e/kit.spec.ts 'a placeholder's wait and pulse run on the compositor, so a busy page doesn't stall them' traces /kit and expects no fw-pulse or fw-fade-in animation to carry Chromium's 'target has incompatible animations' reason (64); with main's keyframes it failed. On the signed-in overview at 4x CPU the trace showed 124 placeholder animations failing to composite before, 0 after. loading-live-e2e: the list, overview and record placeholders still wait, show and keep their places."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "base.css comment above fw-pulse is now accurate: Chromium can't composite two animations of one property on one element; it gives reasons only, no history. It agrees with the commit message and DESIGN.md:942. loading.spec.ts:38 comment accurate. docs-check: 0 errors. No other changes.",
+          "at": "2026-10-30T18:30:09Z",
+          "filesHash": "6aa22faa07837970"
+        },
+        "commit": "0049025d",
+        "doneAt": "2026-10-30T18:30:18Z"
+      },
+      "branch": "perf/f404-placeholders-pulse-on-the-compositor-so",
+      "baseCommit": "da1cc2011ea57c272daae1325edfa5834081ca2a",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "perf/f404-placeholders-pulse-on-the-compositor-so",
         "base": "main"
       }
     }
