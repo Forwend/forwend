@@ -22,7 +22,7 @@ export function InitialsAvatar({ name, small = false, fallback, children }: Init
   );
 }
 
-function initials(name: string): string {
+export function initials(name: string): string {
   return name
     .split(/\s+/)
     .filter((word) => /\p{L}/u.test(word))

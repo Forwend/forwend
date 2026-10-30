@@ -314,12 +314,16 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Days with more transactions than one file holds (R-118) say to choose a shorter period.
 - With a records currency, each amount has a quiet second line: the value as money in that currency.
   - The line is a small dotted-underline button; its tooltip, opened by hover, focus or tap, gives the ECB rate's day.
-- Record pages (payment, invoice, client, store, job, link) open with `DetailHeader`; payments and invoices add an icon
-  tile before the title and their amount as the figure beside the actions:
+- Record pages (payment, invoice, client, store, job, link) open with `DetailHeader`, with an icon tile before the
+  title:
+  - A client's tile holds its initials, as its avatar in the list; a store's holds the store icon.
+  - Payments and invoices add their amount as the figure beside the actions.
   - A 44px back link on phones, the title with its badges, one quiet meta line and the actions at the row's end.
   - Then the figure with its statuses.
   - The payment page has no next-step sentence: its badges, Amount figures and any notice say the state.
-  - The body is the 2:1 grid with a Details panel on the side; phones stack it.
+  - The body is a main column with a Details panel on the side; phones stack it.
+  - Link, client and store pages give the side 22rem and keep it in view while the main column scrolls.
+  - Their list's own actions (Open in Invoices or Payments, Export) sit at the list's head, not in the header.
 - Checkout (`/app/checkout`, merchants with invoices.write) takes a payment in person:
   - A form page: Store (when more than one), Amount in USD, Order reference and What it's for, then Show QR code.
   - Then the customer's side: the reference, `BigAmount` in USD and one QR code of the pay link.
@@ -337,7 +341,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   or reference and the payment reminders default (R-97), as panels); Delete waits in the More actions menu at the page's top right and asks to confirm in a
   dialog, as Cancel does on an invoice.
 - Stores (R-134) sits in a merchant's Payments group after Clients. It is laid out like Clients, without search.
-  A store's page is a record page (project ID with Copy, View payments, Edit for stores.write) with its payments:
+  A store's page is a record page (project ID with Copy, Edit for stores.write) with its payments:
   - The toolbar holds a one-line intro, with Add store at its end (beside the title on phones).
   - The table shows the store, its project ID, when its checkout closes and its allowed origins.
   - New store and Edit store are form pages laid out like New client, with Store and Checkout panels.

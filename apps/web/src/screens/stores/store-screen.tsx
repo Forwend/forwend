@@ -1,10 +1,11 @@
 "use client";
 
 import { buttonClasses, DetailList, DetailRow, Skeleton } from "@forwend/ui-web";
-import { ArrowLeftRight, Pencil } from "lucide-react";
+import { Pencil, Store } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { tokensOn } from "@/features/invoices/lib/invoices";
+import { ExportPayments } from "@/features/payments/components/export-payments";
 import { PaymentList } from "@/features/payments/components/payment-list";
 import { useGetProfileTokensQuery } from "@/features/profiles/api/profiles-api";
 import { PERMISSIONS } from "@/features/profiles/constants/profile";
@@ -50,10 +51,11 @@ export function StoreScreen({ storeId }: StoreScreenProps) {
       <div className="flex flex-col gap-6">
         <DetailHeaderSkeleton
           back={{ href: APP_ROUTES.stores, label: COPY.title }}
+          icon={<Store aria-hidden />}
           // The Project ID line is as tall as its copy button.
           meta={<Skeleton className="h-6 w-64 max-w-full" />}
         />
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+        <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
           <Skeleton className="h-72" />
           <Skeleton className="h-56" />
         </div>
@@ -73,41 +75,45 @@ export function StoreScreen({ storeId }: StoreScreenProps) {
     <div className="flex flex-col gap-6">
       <DetailHeader
         back={{ href: APP_ROUTES.stores, label: COPY.title }}
+        icon={<Store aria-hidden />}
         title={store.name}
         meta={<ProjectId storeId={store.storeId} />}
         actions={
-          <>
+          can(profile, PERMISSIONS.storesWrite) ? (
             <Link
-              href={`${APP_ROUTES.payments}?storeId=${store.storeId}`}
+              href={`${APP_ROUTES.stores}/${store.storeId}/edit`}
               className={buttonClasses({ variant: "secondary" })}
             >
-              <ArrowLeftRight aria-hidden className="size-[var(--fw-icon-sm)]" />
-              {COPY.payments}
+              <Pencil aria-hidden className="size-[var(--fw-icon-sm)]" />
+              {COPY.edit}
             </Link>
-            {can(profile, PERMISSIONS.storesWrite) ? (
-              <Link
-                href={`${APP_ROUTES.stores}/${store.storeId}/edit`}
-                className={buttonClasses({ variant: "secondary" })}
-              >
-                <Pencil aria-hidden className="size-[var(--fw-icon-sm)]" />
-                {COPY.edit}
-              </Link>
-            ) : null}
-          </>
+          ) : null
         }
       />
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] xl:items-start">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+        {/* As a link's purchases: the list's own actions sit at its head. */}
         <section aria-labelledby="store-payments" className="flex min-w-0 flex-col gap-3">
-          <h2 id="store-payments" className="text-base font-semibold text-ink">
-            {COPY.latestPayments}
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="store-payments" className="text-base font-semibold text-ink">
+              {COPY.latestPayments}
+            </h2>
+            <div className="flex items-center gap-2">
+              <Link
+                href={`${APP_ROUTES.payments}?storeId=${store.storeId}`}
+                className={buttonClasses({ variant: "ghost", size: "sm" })}
+              >
+                {COPY.payments}
+              </Link>
+              <ExportPayments profileId={profile.profileId} filters={{ storeId: store.storeId }} />
+            </div>
+          </div>
           <PaymentList
             profileId={profile.profileId}
             filters={{ storeId: store.storeId }}
             empty={{ title: COPY.noPayments, text: COPY.noPaymentsText }}
           />
         </section>
-        <section aria-labelledby="store-details" className="fw-panel min-w-0">
+        <section aria-labelledby="store-details" className="fw-panel min-w-0 xl:sticky xl:top-20">
           <h2 id="store-details" className="fw-panel-head text-base font-semibold text-ink">
             {COPY.details}
           </h2>
