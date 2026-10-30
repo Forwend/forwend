@@ -2852,7 +2852,7 @@
         "A request with no answer within 30 seconds fails with Try again instead of loading forever"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit"
       ],
@@ -2928,11 +2928,18 @@
           "summary": "Pass. HEAD~1 is origin/main; the diff touches 5 files: api-slice.ts adds only timeout: 30_000, plus the test, R-202, one architecture.md bullet and tasks.json. app-shell.tsx, keepUnusedDataFor, polling and refetchOnMount are untouched (those words appear only in the old review notes). tasks.json changes only F382's record and nextId, and adds F387/F388. A 30 s timeout cuts off no valid answer: the api's WriteTimeout is 30 s with no per-route SetWriteDeadline, and Next 16.4.2's rewrite proxyTimeout defaults to 30 s. Exports, statement.pdf, sign-out-everywhere (Privy freeze+unfreeze, up to 2x20 s) and webhook test all go through apiSlice and are already capped at 30 s by the server. In RTK 2.13 the timer starts in each fetchBaseQuery call, before prepareHeaders, and covers the body read. withRateLimit's 429 waits and withFreshSignIn's dialog run between base calls, so each resend gets a new timer. apiSlice is the web's only request path. LoadError shows Try again on any error. R-202 is 8/17 words; docs-check 0 errors. The test runs the real store, is still loading at 29 s, gets TIMEOUT_ERROR at 30 s, and hangs without the timeout. pnpm --filter @forwend/web test: 42 files, 209 passed. Minor: the branch name still says perf/...poll-balances.",
           "at": "2026-10-30T05:00:33Z",
           "filesHash": "ca5f06202295f119"
-        }
+        },
+        "commit": "ed051e99",
+        "doneAt": "2026-10-30T05:00:42Z"
       },
       "branch": "perf/f382-app-pages-reuse-fresh-data-poll-balances",
       "baseCommit": "1ee45f34256a121839422f630a2a09ee0c05c27a",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "perf/f382-app-pages-reuse-fresh-data-poll-balances",
+        "base": "main"
+      }
     },
     {
       "id": "F383",
