@@ -246,8 +246,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     A column that drops has its fact in the phone row or on the record's page.
   - Narrower than 48rem the rows become two short lines: what it is, then details; the amount and status on the right.
   - A table never breaks into day bands: the date is a column.
-  - Loading shows rows shaped like the real ones; a failed read is one `LoadError` with Try again; an empty list says
-    what fills it; a filter with no rows offers to clear it.
+  - Loading shows `DataTableSkeleton`: the table's header and row heights, and the phone rows' height below.
+  - On the money lists its phone rows end in an amount over a status; Transactions adds its day heading.
+  - A failed read is one `LoadError` with Try again; an empty list says what fills it; a filter with no rows offers
+    to clear it.
 - One status filter on every payment list (Payments, Invoices, Activity): `PaymentStateFilter`.
   - All, then the D-114 states: Waiting for payment, Confirming, Partially paid, Paid, Overpaid, Expired, Canceled.
   - Each option has its status pill's label and icon. In wallet is a wallet state, so it is a column, not a status.
@@ -891,6 +893,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Data: typing, filtering, polling and new rows never animate. A list waiting for a new filter dims its last rows
     (opacity, `duration-fast`) and keeps their place.
   - Progress: a bar fills once with `ease-out` on `duration-slower`; a spinner turns while work runs.
+  - Placeholders wait `duration-slow`, then fade in on `duration-base` and pulse, so a quick answer shows none.
+  - Reduced motion keeps that wait and drops the pulse.
   - Reduced motion removes movement and keeps every state change (color, text, the filled bar).
 - Touch targets are at least 44px on touch screens; small controls keep their look and grow only their hit area. A
   segmented track, the list search and the header search triggers grow to 44px themselves (a scrolling track would

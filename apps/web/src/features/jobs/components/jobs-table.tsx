@@ -9,11 +9,11 @@ import { useListJobsQuery } from "@/features/jobs/api/jobs-api";
 import { JOBS_COPY as COPY } from "@/features/jobs/constants/jobs-copy";
 import { apiCents, matchesJob } from "@/features/jobs/lib/jobs";
 import type { JobSummary } from "@/features/jobs/types/jobs";
-import { DataTable } from "@/shared/components/data-table";
+import { DataTable, DataTableSkeleton } from "@/shared/components/data-table";
 import { ListToolbar } from "@/shared/components/list-toolbar";
 import { LoadError } from "@/shared/components/load-error";
 import { NoMatch } from "@/shared/components/no-match";
-import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
+import { SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { shortDate } from "@/shared/lib/dates";
@@ -81,7 +81,7 @@ export function JobsTable({ profileId }: JobsTableProps) {
           retrying={list.isFetching}
         />
       ) : !list.currentData ? (
-        <RowsSkeleton count={SKELETON_ROWS} className="fw-panel" />
+        <DataTableSkeleton count={SKELETON_ROWS} className="fw-panel" />
       ) : noJobs ? (
         <EmptyState
           page

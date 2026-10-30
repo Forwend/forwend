@@ -6,10 +6,9 @@ import Link from "next/link";
 import { useListStoresQuery } from "@/features/stores/api/stores-api";
 import { STORES_COPY as COPY } from "@/features/stores/constants/stores-copy";
 import type { Store } from "@/features/stores/types/stores";
-import { DataTable } from "@/shared/components/data-table";
+import { DataTable, DataTableSkeleton } from "@/shared/components/data-table";
 import { ListToolbar } from "@/shared/components/list-toolbar";
 import { LoadError } from "@/shared/components/load-error";
-import { RowsSkeleton } from "@/shared/components/rows-skeleton";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 const storeHref = (store: Store) => `${APP_ROUTES.stores}/${store.storeId}`;
@@ -68,7 +67,7 @@ export function StoresTable({ profileId, closeLabel, canAdd }: StoresTableProps)
           retrying={list.isFetching}
         />
       ) : !list.currentData ? (
-        <RowsSkeleton count={2} className="fw-panel" />
+        <DataTableSkeleton count={2} className="fw-panel" />
       ) : (
         <DataTable
           label={COPY.title}

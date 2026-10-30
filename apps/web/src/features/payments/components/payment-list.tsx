@@ -10,9 +10,10 @@ import {
 import { PaymentsTable } from "@/features/payments/components/payments-table";
 import { PAYMENTS_COPY as COPY } from "@/features/payments/constants/payments-copy";
 import type { PaymentFilters } from "@/features/payments/types/payments";
+import { DataTableSkeleton } from "@/shared/components/data-table";
 import { LoadError } from "@/shared/components/load-error";
 import { NoMatch } from "@/shared/components/no-match";
-import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
+import { SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 
@@ -63,7 +64,7 @@ export function PaymentList({
         retrying={list.isFetching}
       />
     ) : (
-      <RowsSkeleton count={SKELETON_ROWS} className="fw-panel" />
+      <DataTableSkeleton status count={SKELETON_ROWS} className="fw-panel" />
     );
   }
   return (

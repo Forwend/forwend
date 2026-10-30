@@ -22,13 +22,13 @@ import {
 import type { InvoiceSummary, InvoiceToken } from "@/features/invoices/types/invoices";
 import { ChainBadge } from "@/shared/components/chains/chain-badge";
 import { NetworkName } from "@/shared/components/chains/network-name";
-import { type DataColumn, DataTable } from "@/shared/components/data-table";
+import { type DataColumn, DataTable, DataTableSkeleton } from "@/shared/components/data-table";
 import { InitialsAvatar } from "@/shared/components/initials-avatar";
 import { ListToolbar } from "@/shared/components/list-toolbar";
 import { LoadError } from "@/shared/components/load-error";
 import { NoMatch } from "@/shared/components/no-match";
 import { PaymentStateFilter } from "@/shared/components/payment-state-filter";
-import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
+import { SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
@@ -132,7 +132,7 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
           retrying={list.isFetching}
         />
       ) : !data ? (
-        <RowsSkeleton count={SKELETON_ROWS} className="fw-panel" />
+        <DataTableSkeleton status count={SKELETON_ROWS} className="fw-panel" />
       ) : noInvoices ? (
         <EmptyState
           page

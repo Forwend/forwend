@@ -8,6 +8,7 @@ import {
   PAYMENT_STATUS,
   SearchField,
   SegmentedControl,
+  Skeleton,
   StatusPill,
   shortAddress,
   TABLE_HEAD_CLASSES,
@@ -40,10 +41,11 @@ import type { Transaction } from "@/features/transactions/types/transactions";
 import { ChainBadge, hasChainBadge } from "@/shared/components/chains/chain-badge";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { NetworkName } from "@/shared/components/chains/network-name";
+import { DataTableSkeleton } from "@/shared/components/data-table";
 import { ListToolbar } from "@/shared/components/list-toolbar";
 import { LoadError } from "@/shared/components/load-error";
 import { NoMatch } from "@/shared/components/no-match";
-import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
+import { SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { useListFilters, useShownData } from "@/shared/hooks/use-list-filters";
@@ -207,7 +209,11 @@ function ProfileTransactions({
           />
         </div>
       ) : !data ? (
-        <RowsSkeleton count={skeletonRows} className={pageHeading ? "fw-panel" : ""} />
+        <DataTableSkeleton
+          count={skeletonRows}
+          className={pageHeading ? "fw-panel" : ""}
+          phone={<PhoneRowsSkeleton count={skeletonRows} typed={!preview} />}
+        />
       ) : rows.length === 0 && !filtered ? (
         <EmptyState
           icon={ArrowLeftRight}
@@ -448,5 +454,32 @@ function Amount({ t }: { t: Transaction }) {
       </span>
       {t.recordsValue ? <RecordsValue value={t.recordsValue} /> : null}
     </span>
+  );
+}
+
+/** The phone list's loading form: a day heading over rows of the same height, the type line under each. */
+function PhoneRowsSkeleton({ count, typed }: { count: number; typed: boolean }) {
+  return (
+    <>
+      <p className="border-b border-line px-4 pt-4 pb-1.5 sm:px-5">
+        <Skeleton className="h-4 w-16" />
+      </p>
+      <ul className="divide-y divide-line">
+        {Array.from({ length: count }, (_, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: placeholder rows have nothing else to tell them apart
+          <li key={i} className="min-h-15 px-4 py-2.5 sm:px-5">
+            <div className="flex items-center gap-3">
+              <Skeleton className="size-9 shrink-0 rounded-pill" />
+              <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+                <Skeleton className="h-4 w-2/5" />
+                <Skeleton className="h-3 w-1/4" />
+              </span>
+              <Skeleton className="h-5 w-16 shrink-0" />
+            </div>
+            {typed ? <Skeleton className="mt-1.5 ml-12 h-8 w-28" /> : null}
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }

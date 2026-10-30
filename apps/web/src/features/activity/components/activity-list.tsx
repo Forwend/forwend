@@ -19,12 +19,12 @@ import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { ChainBadge } from "@/shared/components/chains/chain-badge";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { NetworkName } from "@/shared/components/chains/network-name";
-import { DataTable } from "@/shared/components/data-table";
+import { DataTable, DataTableSkeleton } from "@/shared/components/data-table";
 import { ListToolbar } from "@/shared/components/list-toolbar";
 import { LoadError } from "@/shared/components/load-error";
 import { NoMatch } from "@/shared/components/no-match";
 import { PaymentStateFilter } from "@/shared/components/payment-state-filter";
-import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
+import { SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { CHAINS } from "@/shared/constants/chains";
@@ -127,7 +127,7 @@ function ProfileActivity({ profileId }: ActivityListProps) {
           retrying={list.isFetching}
         />
       ) : !data ? (
-        <RowsSkeleton count={skeletonRows} className="fw-panel overflow-hidden" />
+        <DataTableSkeleton status count={skeletonRows} className="fw-panel overflow-hidden" />
       ) : noActivity ? (
         <EmptyState
           page

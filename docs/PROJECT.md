@@ -271,6 +271,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-200 | Opening a select keeps the scrollbar and the page in place. | Given a page with a select, when its list opens and closes, then the scrollbar, the page width and the content's left edge stay. While it is open, keys and the wheel do not scroll the page; only its scrollbar does. | kit-e2e | R-66 |
 
+| R-201 | A list page loads without a flash or a jump. | Given a list waiting for its first answer, then its placeholder has the table's header and row heights, and the phone rows' height. Given an answer within 400 ms, then no placeholder shows. | loading-live-e2e | R-75, R-64 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.

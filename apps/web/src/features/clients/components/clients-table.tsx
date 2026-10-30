@@ -8,12 +8,12 @@ import { useListClientsQuery } from "@/features/clients/api/clients-api";
 import { CLIENTS_COPY as COPY } from "@/features/clients/constants/clients-copy";
 import { countryName, matchesClient } from "@/features/clients/lib/clients";
 import type { Client } from "@/features/clients/types/clients";
-import { DataTable } from "@/shared/components/data-table";
+import { DataTable, DataTableSkeleton } from "@/shared/components/data-table";
 import { InitialsAvatar } from "@/shared/components/initials-avatar";
 import { ListToolbar } from "@/shared/components/list-toolbar";
 import { LoadError } from "@/shared/components/load-error";
 import { NoMatch } from "@/shared/components/no-match";
-import { RowsSkeleton, SKELETON_ROWS } from "@/shared/components/rows-skeleton";
+import { SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 const clientHref = (client: Client) => `${APP_ROUTES.clients}/${client.clientId}`;
@@ -79,7 +79,7 @@ export function ClientsTable({ profileId }: ClientsTableProps) {
           retrying={list.isFetching}
         />
       ) : !list.currentData ? (
-        <RowsSkeleton count={SKELETON_ROWS} className="fw-panel" />
+        <DataTableSkeleton count={SKELETON_ROWS} className="fw-panel" />
       ) : noClients ? (
         <EmptyState
           page
