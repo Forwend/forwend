@@ -60,6 +60,9 @@
 
   --ease-out: var(--fw-ease-out);
   --ease-in-out: var(--fw-ease-in-out);
+  /* A transition that names no duration or easing takes the motion tokens, not Tailwind's own. */
+  --default-transition-duration: var(--fw-duration-fast);
+  --default-transition-timing-function: var(--fw-ease-out);
 
   /* Heading scale: display never above 6rem. */
   --text-xs: 0.75rem;

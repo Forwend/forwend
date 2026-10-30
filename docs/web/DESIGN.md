@@ -888,6 +888,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   opened by keyboard many times a day.
 - Motion rules (the motion tokens; the only ones the app uses):
   - Press: a button scales to 0.98 (a round action to 0.95) on `duration-fast`; color changes use the same.
+  - A transition that names no duration or easing takes `duration-fast` and `ease-out`.
+  - The current page's mark (sidebar, tab bar, settings, profile sheet) moves with the page at once; only hover
+    fades.
   - Enter from an edge: menus, toasts and the phone sheet rise from where they open on `duration-base` with
     `ease-out`, and close at once.
   - Disclosure: the chevron turns on `duration-fast`; the content appears without a height animation, since
