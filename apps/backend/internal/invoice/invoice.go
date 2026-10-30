@@ -239,12 +239,13 @@ type Invoice struct {
 	LinkID       string
 	Lines        []Line // set by Get
 	// A copy taken at creation; later billing changes don't reach it.
-	Issuer       *profile.Issuer
-	ID           string // the main row's on-chain id: keccak256 of PayToken
-	PayToken     string // the pay link's secret (D-86); "" for an invoice made before it
-	OptionID     string // the on-chain id of the terms below; ID for a fixed invoice
-	OptionLocked bool   // an option received money, so the payer can't pick another
-	OptionCount  int    // accepted options: 1 for a fixed invoice
+	Issuer         *profile.Issuer
+	ID             string // the main row's on-chain id: keccak256 of PayToken
+	PayToken       string // the pay link's secret (D-86); "" for an invoice made before it
+	OptionID       string // the on-chain id of the terms below; ID for a fixed invoice
+	OptionLocked   bool   // an option received money, so the payer can't pick another
+	PickedOptionID string // the option the payer picked (R-57); "" before a pick
+	OptionCount    int    // accepted options: 1 for a fixed invoice
 	// Confirming: a payment before the close is seen, not final. A partly paid invoice stays confirming while the rest
 	// confirms, since the database allows no way back to detected (R-69).
 	Confirming bool

@@ -105,6 +105,14 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   for everyone together; per IP belongs to the edge (Q-8).
   - The limit for everyone is spent only when the receipt goes out now (R-117).
   - A bad body or an unknown link answers before it, so junk can't block Send to client, which shares it.
+- `PUT /v1/invoices/{payToken}/pick` (R-57, public like the checkout): the option the payer showed the address for,
+  kept on the main row's `picked_id`, so the pay link opens on it again. The read returns it as `pickedOptionId`.
+  - It decides nothing: the first money still makes an option the invoice's (R-56).
+  - A changed pick adds one `payer.option_picked` row to the history; the same pick again adds none.
+  - An id that isn't one of the invoice's options is 422, and so is any pick on a Fixed invoice.
+  - Once money is seen on any option it is 409 `pick_locked`.
+  - It locks the options, then the main row, as cancel and the ledger do.
+  - Limited per invoice (10, then one per 5 s); per IP belongs to the edge (Q-8).
 - Payment reminders (R-96): each worker round (`invoice.QueueReminders`) queues `invoice.reminder` rows.
   - Steps: `before` 3 days before the due date, `due` on it, `after` 7 days after, in UTC days.
   - Only the latest step whose day has come is queued, once per invoice and step (a unique index on the step).

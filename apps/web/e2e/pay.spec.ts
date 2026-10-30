@@ -817,10 +817,33 @@ test.describe("pay page", () => {
     await expect(change).toHaveCount(0);
   });
 
-  test("lets the payer pick the network and token with selects, keeps the pick after a reload, and locks it once money arrives", async ({
+  test("the canary's ?option= link asks for Show address and keeps no pick, whatever the invoice kept", async ({
     page,
   }) => {
-    await openPay(page, CHOOSING, CHOOSING, CHOOSING, { ...CHOOSING, optionLocked: true });
+    await page.clock.install({ time: NOW });
+    await mockInvoice(page, { ...CHOOSING, pickedOptionId: OPTION_ID });
+    let kept = 0;
+    await page.route(`**/api/v1/invoices/${PAY}/pick`, (route) => {
+      kept++;
+      return route.fulfill({ status: 204 });
+    });
+    await page.goto(`/pay/${PAY}?option=${OPTION_ID}`);
+    await expect(page.getByText(OPTION_RECEIVE)).toHaveCount(0);
+    await showAddress(page).click();
+    await expect(page.getByText(OPTION_RECEIVE)).toBeVisible();
+    expect(kept).toBe(0);
+  });
+
+  test("lets the payer pick the network and token with selects, keeps the pick on the invoice for the next visit, and locks it once money arrives", async ({
+    page,
+  }) => {
+    const picked = { ...CHOOSING, pickedOptionId: OPTION_ID };
+    await openPay(page, CHOOSING, picked, picked, { ...picked, optionLocked: true });
+    const kept: unknown[] = [];
+    await page.route(`**/api/v1/invoices/${PAY}/pick`, (route) => {
+      kept.push(route.request().postDataJSON());
+      return route.fulfill({ status: 204 });
+    });
     await expect(page.locator("[data-money]")).toHaveText("1,250.00 USD");
     await expect(showAddress(page)).toHaveCount(0);
     expect(await blockingViolations(page)).toEqual([]);
@@ -829,9 +852,11 @@ test.describe("pay page", () => {
     await page.getByRole("combobox", { name: "Network" }).click();
     await page.getByRole("option", { name: "Arbitrum Sepolia" }).click();
     await expect(page.getByRole("combobox", { name: "Token" })).toHaveText(/USDC/);
-    await expect(page).toHaveURL(new RegExp(`\\?option=${OPTION_ID}$`));
     await showAddress(page).click();
     await expect(page.getByText(OPTION_RECEIVE)).toBeVisible();
+    // Show address keeps the pick on the invoice; the address stays the bare pay link.
+    expect(kept).toEqual([{ optionId: OPTION_ID }]);
+    expect(new URL(page.url()).search).toBe("");
     // R-78
     await expect(page.getByRole("note")).toHaveText(
       "Send only USDC on Arbitrum Sepolia. Native USDC, not USDC.e.",
@@ -841,6 +866,8 @@ test.describe("pay page", () => {
       "https://sepolia.arbiscan.io/address/0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d",
     );
 
+    // The next visit, with nothing in this browser: the link opens on the kept pick and its address.
+    await page.evaluate(() => sessionStorage.clear());
     await page.reload();
     await expect(page.getByText(OPTION_RECEIVE)).toBeVisible();
     await expect(page.getByRole("combobox", { name: "Network" })).toHaveCount(0);

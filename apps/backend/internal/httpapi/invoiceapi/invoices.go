@@ -330,6 +330,24 @@ func putPayerEmail(invoices *invoice.Service, emails *mid.Buckets) http.HandlerF
 	}
 }
 
+// R-57.
+func putPick(invoices *invoice.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			OptionID string `json:"optionId"`
+		}
+		if err := httpio.DecodeJSON(w, r, &body); err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		if err := invoices.PickOption(r.Context(), r.PathValue("payToken"), body.OptionID); err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 // R-125.
 func countView(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

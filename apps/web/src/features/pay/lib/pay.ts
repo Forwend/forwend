@@ -9,7 +9,7 @@ import {
   API_SETTLEMENT_STATUSES,
 } from "@/shared/constants/payment-state";
 
-/** The `?option=` terms while no option has money; else the API's: the chosen option, or the first (R-56). */
+/** The picked option's terms while no option has money; else the API's: the chosen option, or the first (R-56). */
 export function withOption(inv: Invoice, optionId: string | undefined): Invoice {
   const o = inv.optionLocked
     ? undefined

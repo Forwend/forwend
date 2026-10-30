@@ -50,6 +50,7 @@ export const HISTORY_KINDS = {
   canceled: "invoice.canceled",
   payerEmail: "payer.email_given",
   optionChosen: "payer.option_chosen",
+  optionPicked: "payer.option_picked",
   // A reorg took away the only payment seen.
   open: "invoice.open",
   detected: "invoice.detected",
@@ -99,6 +100,7 @@ export const HISTORY_CATEGORY_OF = {
   [HISTORY_KINDS.canceled]: HISTORY_CATEGORIES.change,
   [HISTORY_KINDS.payerEmail]: HISTORY_CATEGORIES.email,
   [HISTORY_KINDS.optionChosen]: HISTORY_CATEGORIES.payment,
+  [HISTORY_KINDS.optionPicked]: HISTORY_CATEGORIES.payment,
   [HISTORY_KINDS.open]: HISTORY_CATEGORIES.payment,
   [HISTORY_KINDS.detected]: HISTORY_CATEGORIES.payment,
   [HISTORY_KINDS.partiallyPaid]: HISTORY_CATEGORIES.payment,

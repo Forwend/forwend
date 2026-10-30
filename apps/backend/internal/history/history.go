@@ -17,6 +17,7 @@ const (
 	Canceled             = "invoice.canceled"
 	PayerEmail           = "payer.email_given"   // the payer gave an address for their receipt (R-82)
 	OptionChosen         = "payer.option_chosen" // the option the money came to first (D-76); data names it
+	OptionPicked         = "payer.option_picked" // the option the payer showed the address for (R-57); data names it
 	Held                 = "invoice.held"        // money held for the payer; data has its amount in base units and reason
 	SettlementQueued     = "invoice.settlement_queued"
 	ReceiverSettled      = "receiver.settled"
