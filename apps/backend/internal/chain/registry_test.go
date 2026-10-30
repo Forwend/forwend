@@ -40,7 +40,8 @@ func TestDatabaseEndpointConfiguration(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := specs[84532]
-	if s.Name != "base-sepolia" || len(s.Endpoints) != 6 || ordered(s.Endpoints)[0].ID != "private-a" {
+	// The private endpoint and Base's four enabled public ones: official, PublicNode, Pocket and thirdweb (00094).
+	if s.Name != "base-sepolia" || len(s.Endpoints) != 5 || ordered(s.Endpoints)[0].ID != "private-a" {
 		t.Fatal("registry lost chain or endpoint priority")
 	}
 	for _, e := range s.Endpoints {

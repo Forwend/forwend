@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 405,
+  "nextId": 406,
   "tasks": [
     {
       "id": "F332",
@@ -957,6 +957,87 @@
       "delivery": {
         "mode": "pr",
         "branch": "perf/f404-placeholders-pulse-on-the-compositor-so",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F405",
+      "type": "fix",
+      "behavior": "Base, Arbitrum and Arc read through one more public RPC provider, without the endpoints that rate-limit or drop batches",
+      "acceptance": [
+        "Migration 00094 adds thirdweb for Base, Arbitrum and Arc in its own budget group, and turns off the Tenderly and PublicNode WebSocket endpoints"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend"
+      ],
+      "refs": [
+        "R-185",
+        "R-191"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-30 review fail by subagent: Code and migration are correct; docs were not updated, and one money-safety line is now false.\nOK: 1) Safety. No rule needs two providers or distinct budget groups: rpc.md:26 says one endpoint is enough; money-safety.md:173-174 accepts one provider. The canary has its own CANARY_RPC_URLS. R-187 echo still has 3+ hosts per chain. Base and Arbitrum keep 4 public endpoints, 4 groups, 4 hosts. Arc keeps blockdaemon x2, publicnode and thirdweb usable; official and quicknode answer 403 'error code: 1009' (rechecked once). thirdweb passed block-hash eth_call on all three chains, a third such endpoint on Arbitrum, where PublicNode lacks the state. 2) thirdweb refusals. Static trace of pool.post: the 413 batch body maps to BatchTooLarge/refusal{batch}. The 200 -32005 log answer: outage() skips it because tooLarge() wins over -32005, then safeResponse() and the r.blocks check give a refusal. A throwaway Go test with the exact bodies passed: both refused once, size remembered, 0 failures, alone they surface as BatchTooLarge/TooLarge, 1000 blocks pass (test file deleted). Live: chainId ok; 25-call batch 25/25; 26 calls give 413; 2000 blocks give 200 -32005 with the request id 42; 1000 blocks give 200. 3) Disabling matches rpc.md:42. Nothing re-enables rows; EnableTestnetTokens touches only chains/tokens. Down is the inverse, but it would also turn on a row an operator had turned off by hand before 00094 (same pattern as 00092, minor). 4) go test ./internal/chain/ ./internal/database/ passes, including the rollback test. The count 6->5 is fair (minus tenderly and publicnode-wss, plus thirdweb), and the check is still exact.\nFAIL, docs (AGENTS.md: update the owning doc when behavior changes): a) docs/backend/rpc.md:7-10 lists migrations 82 and 92 but not 94. It still reads as if Tenderly and PublicNode WSS are in the pool. Add a 94 bullet: thirdweb 1000 blocks/25 calls, Tenderly and PublicNode WSS turned off and why. Also consider rpc.md:63, and R-185 in PROJECT.md (cites only migration 92). b) docs/backend/money-safety.md:43 says the reachable Arc nodes lack logs 47 h old. Measured now, thirdweb on Arc served 1000-block USDC logs 60 h and 170 h old. Update the line, and say that ranges R-191 skipped can now be re-read (money-safety.md:46-47).\nNits: the commit names Blockdaemon non-JSON-RPC answers as a symptom but doesn't say why Blockdaemon stays (it passed every probe). Arc 1000-block unfiltered USDC logs took 4.6-5.6 s on thirdweb, near the 5 s exchange timeout; watcher filters are narrower. Optional: add the two thirdweb messages to TestBatchTooLarge/TestOutageIsToldFromAnAnswer; batchLimit depends on the text not containing 'rate'. Task has no refs (R-185).",
+        "2026-10-30 review pass by reviewer: Docs fixed and accurate. rpc.md:11-13 adds a migration 94 entry (thirdweb 1000 blocks / 25 calls, Tenderly and PublicNode WSS off); only base-tenderly and arbitrum-tenderly exist and both are off; Arc keeps blockdaemon-wss and official-wss, so 'PublicNode's WSS' is exact. R-185 cites 92 and 94. money-safety.md:43-44: PublicNode/Blockdaemon line plus thirdweb 170 h line sit under 'kept by no RPC any more' and before the manual next_block/target_block reset, so 'can be read again' points at that step; R-191 landed 2026-10-30 03:47, so every range skipped so far is inside 170 h. All new lines under 25 words; check-docs.py 0 errors. Tests: live probe of 84532.rpc.thirdweb.com today gave exactly the two test strings: 100-call batch -> HTTP 413 -32600 'batch of 100 exceeds the limit of 25 calls for keyless access. Upgrade your plan at https://thirdweb.com/pricing'; 2000-block getLogs -> HTTP 200 -32005 'Log response size exceeded. Maximum allowed number of requested blocks is 1000'. go test ./internal/chain/ -count=1 ok (11.9 s). Nit: 'so ranges skipped before it can be read again' can be misread as one clause; 'ranges skipped earlier can now be read again' would be clearer."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T18:48:31Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 241.6,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 244.4,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 35.2,
+            "log": ""
+          }
+        ],
+        "taskHash": "5655ffb7a2fb2f7c",
+        "filesHash": "0c52b0d8f8180ff6",
+        "proof": {
+          "1": "backend: migration 00094 adds base-thirdweb, arbitrum-thirdweb and arc-thirdweb (https://<chainId>.rpc.thirdweb.com, budget group thirdweb-public) and turns off base-tenderly, arbitrum-tenderly and the PublicNode WebSocket rows on Base, Arbitrum and Arc. TestDatabaseEndpointConfiguration counts Base's enabled endpoints after all migrations: private plus official, PublicNode, Pocket and thirdweb. TestBatchTooLarge and TestOutageIsToldFromAnAnswer carry thirdweb's exact keyless refusals: a batch over 25 is a batch limit, a log range over 1000 blocks is not an outage. Measured 2026-10-30 (56 candidates): Tenderly answered a 100-call batch with HTTP 429 -32005; PublicNode WSS answered 2-3 of a 3-10 call batch then nothing for 15 s in 9 of 9 tries. thirdweb on Arc served logs 170 h old where PublicNode and Blockdaemon lacked 47 h."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Docs fixed and accurate. rpc.md:11-13 adds a migration 94 entry (thirdweb 1000 blocks / 25 calls, Tenderly and PublicNode WSS off); only base-tenderly and arbitrum-tenderly exist and both are off; Arc keeps blockdaemon-wss and official-wss, so 'PublicNode's WSS' is exact. R-185 cites 92 and 94. money-safety.md:43-44: PublicNode/Blockdaemon line plus thirdweb 170 h line sit under 'kept by no RPC any more' and before the manual next_block/target_block reset, so 'can be read again' points at that step; R-191 landed 2026-10-30 03:47, so every range skipped so far is inside 170 h. All new lines under 25 words; check-docs.py 0 errors. Tests: live probe of 84532.rpc.thirdweb.com today gave exactly the two test strings: 100-call batch -> HTTP 413 -32600 'batch of 100 exceeds the limit of 25 calls for keyless access. Upgrade your plan at https://thirdweb.com/pricing'; 2000-block getLogs -> HTTP 200 -32005 'Log response size exceeded. Maximum allowed number of requested blocks is 1000'. go test ./internal/chain/ -count=1 ok (11.9 s). Nit: 'so ranges skipped before it can be read again' can be misread as one clause; 'ranges skipped earlier can now be read again' would be clearer.",
+          "at": "2026-10-30T18:58:51Z",
+          "filesHash": "0c52b0d8f8180ff6"
+        },
+        "commit": "7f990a27",
+        "doneAt": "2026-10-30T18:59:05Z"
+      },
+      "branch": "fix/f405-base-arbitrum-and-arc-read-through-one-m",
+      "baseCommit": "b3c9984fa0e64057eba6f16739d033cb711afc37",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f405-base-arbitrum-and-arc-read-through-one-m",
         "base": "main"
       }
     }

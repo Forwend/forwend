@@ -279,6 +279,8 @@ func TestOutageIsToldFromAnAnswer(t *testing.T) {
 		{`{"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"header not found"}}`, false},
 		{`{"jsonrpc":"2.0","id":1,"error":{"code":-32005,"message":"query returned more than 10000 results"}}`, false},
 		{`{"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"exceed maximum block range: 50000"}}`, false},
+		// thirdweb without a key (migration 94): a log range it refuses, not an outage.
+		{`{"jsonrpc":"2.0","id":1,"error":{"code":-32005,"message":"Log response size exceeded. Maximum allowed number of requested blocks is 1000"}}`, false},
 		{`{"jsonrpc":"2.0","id":1,"error":{"code":-32005,"message":"project ID request rate exceeded"}}`, true},
 		{`{"jsonrpc":"2.0","id":1,"error":{"code":-32005,"message":"daily request count exceeded, request rate limited"}}`, true},
 		{`{"jsonrpc":"2.0","id":1,"error":{"code":429,"message":"Your app has exceeded its compute units per second capacity"}}`, true},
@@ -605,6 +607,8 @@ func TestBatchTooLarge(t *testing.T) {
 		{"Batch of more than 3 requests are not allowed on free plan", true},
 		{"batch size 101 exceeds limit of 100", true},
 		{"batch too large", true},
+		// thirdweb without a key (migration 94).
+		{"batch of 100 exceeds the limit of 25 calls for keyless access. Upgrade your plan at https://thirdweb.com/pricing", true},
 		{"batch rate limit exceeded", false},
 		{"request too large", false},
 	} {
