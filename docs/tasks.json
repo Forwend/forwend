@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 407,
+  "nextId": 408,
   "tasks": [
     {
       "id": "F332",
@@ -9,10 +9,11 @@
       "acceptance": [
         "Merchant and developer setup guides sharing a link, billing a customer or integrating checkout using actual billing/store/branding/acceptance/key/origin/webhook state.",
         "The existing first store is reused; completion survives reload through actual resources and respects role permissions.",
-        "KYB honestly remains not_required and never blocks test keys or invoices; obsolete API-later messaging is removed."
+        "KYB honestly remains not_required and never blocks test keys or invoices; obsolete API-later messaging is removed.",
+        "Onboarding starts only after all other phase 11 features and their checks are complete, including integration, held-money refunds and history."
       ],
       "dependsOn": [
-        "F331"
+        "F335"
       ],
       "state": "blocked",
       "verification": [
@@ -41,9 +42,7 @@
         "Only configured exact origins can frame an embed; normal pay pages remain unframeable; loopback HTTP is test-only and live returns require HTTPS.",
         "Message origin/source checks, strict CSP, revocation, expiration and forged parent/redirect events are tested; browser hints never prove fulfillment."
       ],
-      "dependsOn": [
-        "F332"
-      ],
+      "dependsOn": [],
       "state": "not_started",
       "verification": [
         "backend-affected",
@@ -1147,12 +1146,79 @@
         "branch": "feat/f406-pending-payments-shows-how-much-is-movin",
         "base": "main"
       }
+    },
+    {
+      "id": "F407",
+      "type": "docs",
+      "behavior": "Phase 11 builds checkout and refund features before merchant onboarding",
+      "acceptance": [
+        "Payment-link wording matches document-free checkout; phase 11 refunds remain limited to held funds.",
+        "F333 no longer depends on onboarding; F332 follows integration and remains blocked until all other phase 11 features are complete."
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "docs-check"
+      ],
+      "refs": [
+        "R-142",
+        "R-167",
+        "R-168",
+        "D-107",
+        "D-112"
+      ],
+      "keep": [
+        "apps/*",
+        "packages/*"
+      ],
+      "review": false,
+      "notes": [
+        "2026-10-30 Corrected payment-link wording and phase 11 order. Onboarding remains blocked until all other phase 11 features and checks finish. Documentation and dependency checks pass. No temporary processes or test fixtures created. Changes are uncommitted."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T20:49:38Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "e5ede04af20a556b",
+        "filesHash": "62405b038c14b83b",
+        "proof": {
+          "1": "docs-check: PLAN 11.3 describes document-free checkout attempts; 11.10 keeps payer claims limited to held money.",
+          "2": "docs-check: PLAN and D-112 require onboarding last. Harness-state assertions passed: F333 is ready, F334 and F335 follow in order, F332 stays blocked after F335, and there is no cycle. F331 is already merged as ef494bab; F333 has no pending dependency on its stale local archive."
+        },
+        "commit": "aba7dafc",
+        "doneAt": "2026-10-30T20:51:08Z"
+      },
+      "branch": "docs/f407-phase-11-builds-checkout-and-refund-feat",
+      "baseCommit": "8ad15c9de54a01d8e6184d8a13e40755b9fe5e25",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f407-phase-11-builds-checkout-and-refund-feat",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-30T00:20:01Z",
+    "at": "2026-10-30T20:49:38Z",
     "clean": true,
     "problems": [],
-    "note": "F360-F363 merged (#352-#355) after F353-F359; staging promoted to 98f7b71f and CI run 40976748124 passed. Next: F345 as queued."
+    "note": "Corrected payment-link wording and phase 11 order. Onboarding remains blocked until all other phase 11 features and checks finish. Documentation and dependency checks pass. No temporary processes or test fixtures created. Changes are uncommitted."
   }
 }
