@@ -166,7 +166,9 @@ function Loaded({
   const received = exception.received;
   // R-77: a closed or canceled invoice's next step sits with its actions; its status and Details say what happened.
   // Not while its records are in review or the final ones are still being read: money may still change the answer.
+  // A revised one already has its replacement, linked in Details.
   const restart =
+    invoice.replacedBy ||
     invoice.amounts?.unreconciled ||
     invoice.amounts?.hasPolicyException ||
     (invoice.closed && invoice.amounts && BigInt(invoice.amounts.payable) > 0n)
@@ -276,9 +278,10 @@ function Loaded({
               />
             ) : null}
             {restart ? (
+              // R-130: while it can reopen, reopening is the first way to collect the rest.
               <Link
                 href={invoiceCopyHref(invoice.invoiceId, false)}
-                className={buttonClasses({ variant: "primary" })}
+                className={buttonClasses({ variant: reopen ? "secondary" : "primary" })}
               >
                 <FilePlus2 aria-hidden className="size-[var(--fw-icon-sm)]" />
                 {request ? COPY.newRequest : COPY.newInvoice}
@@ -513,7 +516,6 @@ function Loaded({
   );
 }
 
-/** Under the status (R-77): a new invoice after the close, or once, a partly paid one reopened (R-130, D-25). */
 function Row({
   term,
   stacked = false,

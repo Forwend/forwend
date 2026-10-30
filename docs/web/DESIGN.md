@@ -799,9 +799,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     in two lines.
 - An expired or canceled invoice's next step sits in the header's actions, before View payment (R-77).
   - New invoice (lime) opens New invoice filled from it; the status badge and Details say what happened.
-  - While the API's `reopenUntil` is set, Reopen checkout sits before it (R-130).
+  - While the API's `reopenUntil` is set, Reopen checkout (lime) sits before it, and New invoice turns secondary (R-130).
   - Neither shows while its records are in review or the final ones are still being read.
-  - Held money shows on the payment page, not on the invoice.
+  - A revised invoice shows neither: Details links its replacement.
+  - Held amounts show on the payment page; the invoice only marks a late transfer as late.
   - Reopen asks to confirm in a dialog that names the new close and says it happens once.
   - Once reopened, focus moves to Details' Checkout closes row, which shows the new close.
 - Revise (R-129) opens New invoice filled from the invoice, under a warning-tinted notice:

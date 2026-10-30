@@ -50,7 +50,7 @@ export function ReopenInvoice({
       triggerLabel={COPY.trigger}
       title={COPY.title(number)}
       trigger={(open) => (
-        <Button size="sm" variant={BUTTON_VARIANTS.secondary} onClick={open}>
+        <Button variant={BUTTON_VARIANTS.primary} onClick={open}>
           {COPY.trigger}
         </Button>
       )}

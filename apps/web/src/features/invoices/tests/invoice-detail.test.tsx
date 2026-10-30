@@ -434,12 +434,37 @@ describe("owner's invoice page", () => {
       expect(screen.queryByText(/can't take money again|is held for the payer/)).toBeNull();
       cleanup();
     }
-    serve(OPEN);
-    show();
-    await settle();
-    expect(
-      within(screen.getByRole("banner")).queryByRole("link", { name: "New invoice" }),
-    ).toBeNull();
+    // Open, already revised, or money still being booked: no New invoice yet.
+    const booking = {
+      receiver: "0",
+      payable: "1250000000",
+      held: "0",
+      settled: "0",
+      refunded: "0",
+      observedRefunded: "0",
+      lastReturnTxHash: null,
+      unreconciled: false,
+      hasPolicyException: false,
+      reconciliationStatus: "verified",
+    };
+    for (const invoice of [
+      OPEN,
+      {
+        ...OPEN,
+        paymentStatus: "canceled",
+        canceledAt: past,
+        replacedBy: { invoiceId: `0x${"b".repeat(64)}`, number: 2, payToken: null },
+      },
+      { ...OPEN, expiresAt: past, closesAt: past, closed: true, amounts: booking },
+    ]) {
+      serve(invoice);
+      show();
+      await settle();
+      expect(
+        within(screen.getByRole("banner")).queryByRole("link", { name: "New invoice" }),
+      ).toBeNull();
+      cleanup();
+    }
   });
 
   // R-130: the reopen window ended, or another tab reopened it, after the page loaded.

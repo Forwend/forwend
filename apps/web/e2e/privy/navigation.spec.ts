@@ -578,7 +578,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   body = { ...OPEN_INVOICE, paymentStatus: "expired", deposits: [] };
   await page.reload();
   await shown();
-  await expect(main.locator("header")).toContainText("The checkout closed with nothing paid.");
+  await expect(main.locator("header").getByRole("link", { name: "New invoice" })).toBeVisible();
   await expect(main.getByRole("button", { name: "Check status" })).toHaveCount(0);
   await context.close();
 });
