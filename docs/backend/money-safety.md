@@ -133,7 +133,7 @@ pay page stops showing the address 5 minutes before the close. The canary then:
 3. Calls `predict` with the database's terms on both RPCs and requires both to agree and to equal the api's
    `receiveAddress`.
 4. Runs the script once for all ids, with a deadline that grows with their number. It opens
-   `<web>/pay/<pay_token>?option=<id>`, which shows that option while none has money, in
+   `<web>/pay/<pay_token>?option=<id>`, which shows that option while none has money and keeps no pick, in
    Chromium as a payer would, presses Show address and reads the send box's text and QR code. The text
    must show that one address, each QR code must draw what `uqr` encodes for it, as `QrCode` in
    `packages/ui-web` does, and the amount panel must name the token's symbol and the chain (`Base Sepolia` for

@@ -598,6 +598,7 @@ export const INVOICE_COPY = {
       [HISTORY_KINDS.canceled]: "Canceled",
       [HISTORY_KINDS.payerEmail]: "Receipt email added",
       [HISTORY_KINDS.optionChosen]: "Token chosen",
+      [HISTORY_KINDS.optionPicked]: "Token picked",
       [HISTORY_KINDS.open]: "Payment dropped",
       [HISTORY_KINDS.detected]: "Payment detected",
       [HISTORY_KINDS.partiallyPaid]: "Partially paid",

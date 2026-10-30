@@ -89,6 +89,8 @@ export const invoiceSummarySchema = z.object({
   optionId: hash32,
   // An option received money, so the payer can't pick another (R-56).
   optionLocked: z.boolean(),
+  // The option the payer last picked (R-57); it decides nothing, the first money does (R-56).
+  pickedOptionId: hash32.nullable().optional(),
   optionCount: z.number().int().positive(),
   // A payment before expiry is seen and not final: a partly paid invoice reads as confirming meanwhile (R-69).
   confirming: z.boolean(),

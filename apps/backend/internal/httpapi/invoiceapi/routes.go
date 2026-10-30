@@ -23,6 +23,7 @@ const (
 // from mailing many addresses. Per IP belongs to the edge (Q-8). Send to client (R-94) shares the budget.
 const (
 	PayerEmailRate, PayerEmailBurst       = 0.1, 3
+	PickRate, PickBurst                   = 0.2, 10
 	PayerEmailAllRate, PayerEmailAllBurst = 5, 20
 )
 
@@ -54,6 +55,7 @@ func Routes(mux *http.ServeMux, g mid.Guards, invoices *invoice.Service, profile
 	perInvoice := func(r *http.Request) string { return r.PathValue("payToken") }
 	mux.Handle("PUT /v1/invoices/{payToken}/payer-email",
 		mid.Limit(mid.NewBuckets(PayerEmailRate, PayerEmailBurst), perInvoice, putPayerEmail(invoices, emails)))
+	mux.Handle("PUT /v1/invoices/{payToken}/pick", mid.Limit(mid.NewBuckets(PickRate, PickBurst), perInvoice, putPick(invoices)))
 	mux.Handle("POST /v1/invoices/{payToken}/views", mid.Limit(mid.NewBuckets(ViewRate, ViewBurst), perInvoice,
 		countView(invoices)))
 	mux.Handle("POST /v1/reminders/{token}/stop", stopReminders(invoices)) // the client's stop link: no sign-in

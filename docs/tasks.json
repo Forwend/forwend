@@ -3881,17 +3881,110 @@
         "The pay page URL has no ?option=, and the API refuses a new pick once a payment is found"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
-        "web-e2e",
-        "unit"
+        "backend"
       ],
-      "refs": [],
+      "refs": [
+        "R-57",
+        "R-56"
+      ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-30 review fail by reviewer: Fail, two defects. (1) Deadlock: PickOption locks the main row FOR NO KEY UPDATE, then UPDATE picked_id makes the FK check take FOR KEY SHARE on the option row. Cancel, Revise and Edit hold options FOR UPDATE and wait for the main row, so the two deadlock. Reproduced on real Postgres with pick's statements interleaved with POST .../cancel: cancel answered 500 'deadlock detected (40P01)'. No deadlock with ledger.Process (NO KEY UPDATE is compatible with KEY SHARE). Fix: lock the group options first, main last (SELECT ... WHERE coalesce(main_id,id)=$1 ORDER BY main_id IS NULL, id FOR NO KEY UPDATE); with that order the same interleaving passed (cancel 200). (2) Canary false alert: the API accepts a pick on a fixed invoice (main id is its own option; checked: 204, pickedOptionId set). The pay page then shows the address with no Show address button, also under ?option=, because sending reads invoice.pickedOptionId without the choosing/!option guard that keep has. readPayPage against {...OPEN, pickedOptionId: ID} with ?option=ID: 'locator.click: Timeout exceeded', so the canary alerts for that invoice every run; anyone with a fixed link can cause it. For a payer-chooses invoice whose kept pick is the canary's option, the canary clicks Change (gate reads 'Confirm change') and passes only because the address is already shown, not by pressing Show address as money-safety.md says. Fix: 422 for a pick on a one-option invoice, and read pickedOptionId only when choosing && !option (preview too, if the owner wants). Passed: go test httpapi/tests -run 'TestPayerPick|TestPayerChooses|TestPayerEmail' ok; history and database ok; TestOpenAPI ok; pay.spec.ts 30 passed; the new pay test fails on the base web source; check-docs 0 errors. Fine: validation (lowercase ids only, 422/404/409 mapping, DisallowUnknownFields), no webhook for the new kind, hidden from document history, picked_id never read by ledger/settlement/canary/invoices_current, lock condition (chosen_id or any non-reorged transfer), migration-test filter still guards old rows, zod optional is safe, packages/node needs nothing. Notes: picks are accepted on canceled or expired invoices; like payer email, a link holder can add a history row every 5 s with no cap, and the owner read returns all history; a failed PUT is silent and a reload then loses the tab's pick.",
+        "2026-10-30 review fail by reviewer: Fail, one defect, in docs only. docs/backend/api.md: the new pick bullet went in between the payer-email bullet and its last sub-bullet, so 'A bad body or an unknown link answers before it, so junk can't block Send to client, which shares it.' now sits under PUT .../pick. It is false there: pick has no shared budget, and mid.Limit runs before the body is decoded. The payer-email entry also lost that fact. Fix: move that line back under payer-email (after the R-117 sub-bullet), above the pick bullet. Both earlier defects are fixed. (1) Lock order: PickOption locks the group with the same ORDER BY main_id IS NULL, id as cancel, edit, reopen and ledger.Process; payer email and reminders lock only the main row; the picked_id FK and the history insert take KEY SHARE on rows the tx already holds. A temporary test (removed) held pick's lock while POST .../cancel arrived, 3 rounds: cancel 200; with the old main-first lock it got 500 deadlock detected (40P01); 15 rounds of 4 real picks plus a cancel at once: no 5xx. (2) Canary: canary.go always opens ?option=<id>; kept is null there and for Fixed or locked invoices, so the gate shows Show address and no PUT is sent; a Fixed pick is 422 (len(group) == 1), in api.md and openapi.yaml. Passed: go test httpapi/tests -run 'TestPayerPick|TestPayerChooses' ok (both ran); history and database ok; httpapi -run TestOpenAPI ok; pay.spec.ts 30 passed; check-docs 0 errors. Notes, not blocking: openapi Invoice 'required' leaves out pickedOptionId though the API always sends it; the pick.go comment 'so the two never wait on each other' should say they can't deadlock (cancel does wait); after Change and a reload in the same tab the kept pick's address shows again, since Change doesn't clear picked_id. Commit message is accurate.",
+        "2026-10-30 review pass by reviewer: Pass. One commit on origin/main. api.md diff is additions only; payer-email keeps both sub-bullets, the pick bullet follows it whole. check-docs: 0 errors. pnpm --filter @forwend/web e2e e2e/pay.spec.ts: 30 passed, including the kept-pick and canary ?option= tests. Comments give reasons; pick.go now says options then main row so they can't deadlock. Commit message matches the diff (422 for Fixed and foreign ids, 409 pick_locked, history row, document history leaves it out via the payment category). Nit, not blocking: the api.md lead line is 29 words counting the endpoint label and (R-57, public like the checkout); 22 after the colon, same label style as payer-email."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T14:20:46Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.2,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 244.2,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 245.1,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 34.7,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          }
+        ],
+        "taskHash": "0a0b0ca69413eef0",
+        "filesHash": "c8608e103539d317",
+        "proof": {
+          "1": "backend: internal/httpapi/tests/pick_test.go TestPayerPickIsKeptUntilMoneyIsSeen: a payer-chooses invoice reads pickedOptionId null; PUT /v1/invoices/{payToken}/pick with its second option answers 204 and the read names it while the terms stay the first option's; the same pick again adds no second payer.option_picked row; another invoice's id 422; a Fixed invoice's pick 422; an unknown link 404; after a detected transfer 409 pick_locked and the kept pick stays. Temporary concurrent tests (removed, by the author and the reviewer): with options-then-main locking, a cancel during a pick answers 200; the first draft's main-first order deadlocked (500). web-e2e: 'lets the payer pick … keeps the pick on the invoice for the next visit …' expects the PUT and, with session storage cleared, the kept pick and its address after a reload.",
+          "2": "web-e2e: the same test expects no query in the pay page URL (failed on main). 'the canary's ?option= link asks for Show address and keeps no pick, whatever the invoice kept': no address until Show address, and no PUT (failed on the first draft)."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass. One commit on origin/main. api.md diff is additions only; payer-email keeps both sub-bullets, the pick bullet follows it whole. check-docs: 0 errors. pnpm --filter @forwend/web e2e e2e/pay.spec.ts: 30 passed, including the kept-pick and canary ?option= tests. Comments give reasons; pick.go now says options then main row so they can't deadlock. Commit message matches the diff (422 for Fixed and foreign ids, 409 pick_locked, history row, document history leaves it out via the payment category). Nit, not blocking: the api.md lead line is 29 words counting the endpoint label and (R-57, public like the checkout); 22 after the colon, same label style as payer-email.",
+          "at": "2026-10-30T14:31:26Z",
+          "filesHash": "c8608e103539d317"
+        }
+      },
+      "branch": "feat/f392-the-payer-s-token-pick-is-saved-on-the-i",
+      "baseCommit": "fdc1abccdac921dac4eb9f50b0989a7c4cca7a80",
+      "failedVerifies": 0
     },
     {
       "id": "F393",

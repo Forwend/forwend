@@ -131,8 +131,9 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   API also needs an entry there. The address and QR show only after the payer picks the network and presses Show
   address, with one line naming the exact token and network. A payer-chooses invoice (R-57) lists its `options`: until
   one has money the payer picks the network, then a token on it, with selects (`features/pay/components/option-picker.tsx`), and
-  the page checks that option's terms with its own id, which must derive from the invoice id; the pick goes into
-  `?option=<id>` and the shown address into session storage, so a reload keeps both (R-68). Paid and settled come only from the API (D-29). It loads no
+  the page checks that option's terms with its own id, which must derive from the invoice id. Show address keeps the
+  pick on the invoice (`PUT /v1/invoices/{payToken}/pick`), so the link opens on it and its address again; the URL
+  carries no query. Session storage keeps a shown address for a reload in the same tab (R-68). Paid and settled come only from the API (D-29). It loads no
   third-party scripts ([money-safety.md](../backend/money-safety.md)).
 
 ## Tests

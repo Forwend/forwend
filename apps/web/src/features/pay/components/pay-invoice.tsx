@@ -33,11 +33,12 @@ import {
   WifiOff,
 } from "lucide-react";
 import Link from "next/link";
-import { notFound, usePathname, useRouter } from "next/navigation";
+import { notFound } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   useCountViewMutation,
   useGetInvoiceQuery,
+  usePickOptionMutation,
   useRecheckInvoiceMutation,
 } from "@/features/invoices/api/invoices-api";
 import { CheckStatus, recheckKey } from "@/features/invoices/components/check-status";
@@ -152,6 +153,7 @@ export function PayInvoice({ linkToken, option, preview = false }: PayInvoicePro
         invoice={invoice.data}
         linkToken={linkToken}
         option={option}
+        preview={preview}
         stale={stale}
         readAt={invoice.fulfilledTimeStamp ?? null}
       />
@@ -213,22 +215,30 @@ function Loaded({
   invoice: answer,
   linkToken,
   option,
+  preview,
   stale,
   readAt,
 }: {
   invoice: Invoice;
   linkToken: string;
   option?: string;
+  preview: boolean;
   stale: ReactNode;
   /** When the read was answered: the confirming estimate counts from it. */
   readAt: number | null;
 }) {
   const now = useNow();
-  const router = useRouter();
-  const path = usePathname();
-  // Payer chooses (R-57): the link keeps the pick (?option=), so a reload shows the same.
+  // Payer chooses (R-57): Show address keeps the pick on the invoice, so the pay link opens on it again. `?option=`
+  // (the canary's) opens one option and keeps nothing; neither does the owner's preview.
   const choosing = !answer.optionLocked && answer.options.length > 1 && !firstPaymentOption(answer);
-  const [picked, setPicked] = useState(option?.toLowerCase());
+  // The kept pick counts only where the payer chooses, never on `?option=`: the canary always presses Show address.
+  const kept = choosing && !option ? (answer.pickedOptionId ?? null) : null;
+  const [picked, setPicked] = useState(option?.toLowerCase() ?? kept ?? undefined);
+  const [pickOption] = usePickOptionMutation();
+  const keep =
+    choosing && !preview && !option
+      ? (optionId: string) => void pickOption({ payToken: linkToken, optionId })
+      : undefined;
   const invoice = useMemo(() => withOption(answer, picked), [answer, picked]);
   const address = useMemo(() => checkedReceiveAddress(invoice, linkToken), [invoice, linkToken]);
   const token = payToken(invoice);
@@ -237,10 +247,7 @@ function Loaded({
     ? {
         options: answer.options,
         picked: pickedOption?.optionId,
-        onPick: (id) => {
-          setPicked(id);
-          router.replace(id ? `${path}?option=${id}` : path, { scroll: false });
-        },
+        onPick: setPicked,
       }
     : null;
   // Before a pick the amount is the same in every option: USD at 1 per stablecoin (D-75), with no network yet.
@@ -284,6 +291,8 @@ function Loaded({
             readAt={readAt}
             choice={choice}
             picking={picking}
+            kept={kept}
+            keep={keep}
           />
         </div>
       </div>
@@ -458,6 +467,8 @@ function PayBox({
   readAt,
   choice,
   picking,
+  kept,
+  keep,
 }: {
   invoice: Invoice;
   linkToken: string;
@@ -468,6 +479,10 @@ function PayBox({
   readAt: number | null;
   choice: Choice | null;
   picking: boolean;
+  /** The option kept on the invoice, whose address shows on the next visit (R-57). */
+  kept: string | null;
+  /** Keeps the shown option on the invoice for the payer's next visit (R-57). */
+  keep?: (optionId: string) => void;
 }) {
   const canChoose =
     choice !== null &&
@@ -481,7 +496,8 @@ function PayBox({
   const lookalike = lookalikeOf(invoice.chainId, token.symbol);
   const contract = addressLink(invoice.chainId, invoice.token);
   const optionId = invoice.optionId;
-  // The address shows once the payer asked for it for this option; a reload in the same tab keeps it.
+  // The address shows once the payer asked for it for this option: in this tab, or kept on the invoice (R-57). After
+  // Change it is "" until the next Show address, so the kept pick doesn't bring the old address back.
   const [shown, setShown] = useState<string | null>(null);
   useEffect(() => {
     try {
@@ -506,6 +522,7 @@ function PayBox({
   const show = () => {
     setShown(optionId);
     setPresses((n) => n + 1);
+    keep?.(optionId);
     try {
       sessionStorage.setItem(shownKey(invoice.invoiceId), optionId);
     } catch {
@@ -514,7 +531,7 @@ function PayBox({
   };
   // Back to the selects, with no address shown; focus stays in the box.
   const startOver = () => {
-    setShown(null);
+    setShown("");
     try {
       sessionStorage.removeItem(shownKey(invoice.invoiceId));
     } catch {
@@ -525,7 +542,7 @@ function PayBox({
   };
   const money = (units: bigint) => formatMoney(units, token);
   const done = pay.state === PAY_STATES.paid || pay.state === PAY_STATES.settled;
-  const sending = shown === optionId && !picking;
+  const sending = (shown ?? kept) === optionId && !picking;
   const seen =
     pay.state === PAY_STATES.confirming ||
     pay.state === PAY_STATES.checking ||

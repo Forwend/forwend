@@ -195,6 +195,14 @@ export const invoicesApi = apiSlice
         }),
         responseSchema: z.object({ email: z.string() }),
       }),
+      /** Keeps the payer's pick for the next visit (R-57): public; 409 once money is seen, which the next read shows. */
+      pickOption: build.mutation<void, { payToken: string; optionId: string }>({
+        query: ({ payToken, optionId }) => ({
+          url: `/v1/invoices/${encodeURIComponent(payToken)}/pick`,
+          method: "PUT",
+          body: { optionId },
+        }),
+      }),
       /** One invoice per idempotency key, so a retried request never makes two. */
       createInvoice: build.mutation<
         Invoice,
@@ -233,6 +241,7 @@ export const {
   useGetOwedQuery,
   useRecheckInvoiceMutation,
   useSetPayerEmailMutation,
+  usePickOptionMutation,
   useCountViewMutation,
   useEditInvoiceMutation,
 } = invoicesApi;

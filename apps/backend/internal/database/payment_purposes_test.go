@@ -71,7 +71,9 @@ func TestPaymentPurposeMigrationPreservesLegacyDocuments(t *testing.T) {
 		}
 	}
 	var after string
-	if err := conn.QueryRowContext(ctx, `SELECT jsonb_agg(to_jsonb(i) - 'purpose' - 'document_kind' ORDER BY id)::text FROM invoices i`).Scan(&after); err != nil {
+	// picked_id came later (R-57); old rows have none.
+	if err := conn.QueryRowContext(ctx, `SELECT jsonb_agg(to_jsonb(i) - 'purpose' - 'document_kind' - 'picked_id' ORDER BY id)::text
+		FROM invoices i WHERE picked_id IS NULL`).Scan(&after); err != nil {
 		t.Fatal(err)
 	}
 	if before != after {

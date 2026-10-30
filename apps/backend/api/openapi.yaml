@@ -2281,6 +2281,38 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/invoices/{payToken}/pick:
+    put:
+      operationId: putPick
+      summary: Keep the payer's pick of an option (public, like the checkout)
+      description: |
+        R-57. The pay page sends it when the payer presses Show address, so the pay link opens on that option again.
+        It only shows the pick: the first money still decides the invoice's option (R-56). A Fixed invoice has
+        nothing to pick (422). Refused once money is seen on any option. Limited per invoice; per IP at the edge (Q-8).
+      security: []
+      parameters:
+        - name: payToken
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/PayToken" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [optionId]
+              properties:
+                optionId: { $ref: "#/components/schemas/InvoiceId" }
+      responses:
+        "204": { description: Kept }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "404": { $ref: "#/components/responses/InvoiceNotFound" }
+        "409": { $ref: "#/components/responses/PickLocked" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/invoices/{payToken}/views:
     post:
       operationId: countView
@@ -5140,7 +5172,7 @@ components:
               type: array
               description: |
                 Only in the owner's responses; the public GET leaves it out. Every change to the invoice (R-123, R-124),
-                newest first. kind is invoice.created, invoice.canceled, payer.email_given, payer.option_chosen,
+                newest first. kind is invoice.created, invoice.canceled, payer.email_given, payer.option_chosen, payer.option_picked,
                 invoice.held, invoice.settlement_queued, invoice.settled, "invoice." and the new payment status,
                 reminders.on, reminders.off, reminders.stopped, repeat.stopped, email.invoice_, email.reminder_ or
                 email.receipt_ and sent or failed (R-126), invoice.edited (R-127), invoice.replaced (R-129),
@@ -5254,6 +5286,11 @@ components:
           description: |
             An option received money, so it is the invoice's for good; money sent to any other option is held for the
             payer (D-76).
+        pickedOptionId:
+          oneOf: [{ type: "null" }, { $ref: "#/components/schemas/InvoiceId" }]
+          description: |
+            The option the payer last picked with Show address (R-57), null before a pick. It only shows the pick; the
+            first money decides the option (R-56).
         number:
           type: [integer, "null"]
           minimum: 1
@@ -5608,6 +5645,11 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     BillingDetailsNotFound:
       description: The profile has not saved billing details yet (billing_details_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    PickLocked:
+      description: Money was seen on the invoice, so its option no longer changes (pick_locked)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
