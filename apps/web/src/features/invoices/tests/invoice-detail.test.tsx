@@ -392,11 +392,11 @@ describe("owner's invoice page", () => {
     );
     show();
     await settle();
-    expect(
-      screen.getByText(
-        /Reopen to count it toward this invoice, or send a new invoice for 1,250\.00 USDC/,
-      ),
-    ).toBeTruthy();
+    // R-77: the next steps sit with the header's actions, with no box under the title.
+    const header = within(screen.getByRole("banner"));
+    expect(header.getByRole("button", { name: "Reopen checkout" })).toBeTruthy();
+    expect(header.getByRole("link", { name: "New invoice" })).toBeTruthy();
+    expect(screen.queryByText(/is held for the payer/)).toBeNull();
     act(() => screen.getByRole("button", { name: "Reopen checkout" }).click());
     const dialog = within(screen.getByRole("dialog", { name: "Reopen INV-0001?" }));
     expect(
@@ -415,6 +415,31 @@ describe("owner's invoice page", () => {
     expect(
       [...(row?.querySelectorAll("td") ?? [])].slice(0, 3).map((td) => td.textContent),
     ).toEqual(["Reopened", "You", `Until ${day}`]);
+  });
+
+  // R-77
+  it("offers New invoice beside View payment once the checkout closed or the invoice was canceled", async () => {
+    const past = new Date(Date.now() - 10 * 60_000).toISOString();
+    for (const invoice of [
+      { ...OPEN, expiresAt: past, closesAt: past, closed: true },
+      { ...OPEN, paymentStatus: "canceled", canceledAt: past },
+    ]) {
+      serve(invoice);
+      show();
+      await settle();
+      const header = within(screen.getByRole("banner"));
+      const restart = header.getByRole("link", { name: "New invoice" });
+      expect(restart.getAttribute("href")).toBe(`/app/invoices/new?from=${ID}`);
+      expect(restart.nextElementSibling?.textContent).toBe("View payment");
+      expect(screen.queryByText(/can't take money again|is held for the payer/)).toBeNull();
+      cleanup();
+    }
+    serve(OPEN);
+    show();
+    await settle();
+    expect(
+      within(screen.getByRole("banner")).queryByRole("link", { name: "New invoice" }),
+    ).toBeNull();
   });
 
   // R-130: the reopen window ended, or another tab reopened it, after the page loaded.

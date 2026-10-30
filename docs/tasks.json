@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 394,
+  "nextId": 395,
   "tasks": [
     {
       "id": "F332",
@@ -4120,6 +4120,85 @@
         "branch": "fix/f393-one-strip-says-the-server-can-t-be-reach",
         "base": "main"
       }
+    },
+    {
+      "id": "F394",
+      "type": "fix",
+      "behavior": "A closed or canceled invoice offers New invoice beside View payment, with no next-step box",
+      "acceptance": [
+        "An expired or canceled invoice's page shows New invoice (and Reopen checkout while it can reopen) in its header actions beside View payment; the next-step box under the title is gone; records in review or still being checked show neither button"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "web-unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-77",
+        "R-130"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T15:30:40Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.0,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.7,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.0,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 37.6,
+            "log": ""
+          }
+        ],
+        "taskHash": "8eae40dfc26b6964",
+        "filesHash": "d1f893a9dcf1e562",
+        "proof": {
+          "1": "web-unit: invoice-detail tests: an expired and a canceled invoice show New invoice right before View payment in the header and no next-step text; an open one shows none; a partly paid closed one has Reopen checkout and New invoice in the header. Both tests fail on the old page"
+        }
+      },
+      "branch": "fix/f394-a-closed-or-canceled-invoice-offers-new",
+      "baseCommit": "5cbbb58d6adbcbf20a3b5c4771d4f735c19c92c1",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
