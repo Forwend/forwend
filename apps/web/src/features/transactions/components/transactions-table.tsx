@@ -340,7 +340,7 @@ function ProfileTransactions({
           ) : null}
         </div>
       )}
-      {list.isError && data ? (
+      {list.error && data ? (
         <div className={pageHeading ? undefined : "px-4 pb-4 sm:px-5"}>
           <LoadError
             inline

@@ -4,6 +4,8 @@ import { act, cleanup, render, screen, within } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { InvoiceDetail } from "@/features/invoices/components/invoice-detail";
+import { INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
+import { REFRESH_MS } from "@/shared/config/refresh";
 import { makeStore } from "@/store/store";
 
 vi.stubGlobal("matchMedia", () => ({
@@ -163,6 +165,35 @@ const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 30))
 afterEach(cleanup);
 
 describe("owner's invoice page", () => {
+  it("keeps the client panel's error in place, its button busy, while a retry runs", async () => {
+    vi.useFakeTimers();
+    let answer: () => Promise<Response> = async () => Response.json(OPEN);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => answer()),
+    );
+    try {
+      show();
+      await act(() => vi.advanceTimersByTimeAsync(30));
+      answer = async () => new Response("{}", { status: 500 });
+      await act(() => vi.advanceTimersByTimeAsync(REFRESH_MS));
+      const client = within(screen.getByRole("region", { name: INVOICE_COPY.client }));
+      const error = client.getByRole("alert");
+      let release = () => {};
+      answer = () => new Promise((resolve) => (release = () => resolve(Response.json(OPEN))));
+      await act(() => vi.advanceTimersByTimeAsync(REFRESH_MS));
+      expect(client.getByRole("alert")).toBe(error);
+      expect(
+        within(error).getByRole("button", { name: "Try again" }).getAttribute("aria-busy"),
+      ).toBe("true");
+      release();
+      await act(() => vi.advanceTimersByTimeAsync(30));
+      expect(client.queryByRole("alert")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("keeps confirmation progress visible on the owner's invoice", async () => {
     const pending = {
       ...DEPOSIT,

@@ -83,7 +83,7 @@ export function LinkScreen({ linkId }: LinkScreenProps) {
           ) : null
         }
       />
-      {read.isError ? (
+      {read.error ? (
         <LoadError
           inline
           message={COPY.stale}

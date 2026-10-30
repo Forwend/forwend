@@ -86,7 +86,7 @@ export function PaymentsScreen() {
         <ExportPayments
           profileId={profile.profileId}
           filters={filters}
-          disabled={unknownSource || unknownStore || (merchant && stores.isError)}
+          disabled={unknownSource || unknownStore || (merchant && stores.error !== undefined)}
         />
       </div>
       {view === PAYMENT_VIEWS.reconciliation ? null : (
@@ -143,8 +143,13 @@ export function PaymentsScreen() {
           </Button>
         </p>
       ) : null}
-      {merchant && stores.isError ? (
-        <LoadError inline message={COPY.storesFailed} onRetry={() => void stores.refetch()} />
+      {merchant && stores.error ? (
+        <LoadError
+          inline
+          message={COPY.storesFailed}
+          onRetry={() => void stores.refetch()}
+          retrying={stores.isFetching}
+        />
       ) : null}
       {unknownSource || unknownStore ? (
         <p role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">
