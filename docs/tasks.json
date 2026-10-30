@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 370,
+  "nextId": 371,
   "tasks": [
     {
       "id": "F332",
@@ -2374,6 +2374,118 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f369-a-pay-page-that-lost-the-connection-says",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F370",
+      "type": "fix",
+      "behavior": "An invoice or receipt PDF says each fact once",
+      "acceptance": [
+        "Invoice and receipt PDFs: no date repeated in the status panel, no Amount due or Amount paid row repeating the panel, no Applied column or totals when every transfer was applied whole; the new invoice preview matches"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend",
+        "web-unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-195"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-30 review fail by independent-reviewer: Expired, partially paid invoice.pdf still prints the same figure three times: the panel figure Received 4.00 USDC, the sentence 'The 4.00 USDC sent is held', and a Received row in the totals. This breaks R-195 ('totals repeat no figure the panel shows') and accept 1. Fix: in statusOf, drop the Received total in the expired-partial branch. Add a PDF text test, since only the label/figure/amount unit test covers it. Accept 1 says 'no totals when every transfer was applied whole', but a receipt with two or more whole transfers still prints Received equal to Amount paid and Total. Drop that row or narrow R-195 and accept 1. api.md 'Received shows for more than one transfer' omits the other two conditions (more than one option, or Applied column) and holds two facts. Test gaps: nothing covers a single transfer applied whole (singular 'Payment' heading, three columns, no totals); nothing covers a partially paid invoice PDF showing Received and Left to pay now that the panel no longer says Received X of Y. Minor: R-121 still says every row has an Applied amount. The 'Payment' section heading now matches the default line title 'Payment' on item-less invoices. TestPayerChoosesInvoice lost its Amount-due absence proof. Checked OK: every other money fact survives (one and several transfers, held, partial refund, two options, USD payer-chooses, Pending, records note, issuer-less); dropping Amount due on unpaid is fine since Total is the same figure and the panel says Amount due; ETag is the hash of the bytes and output is deterministic; layout of the Paid panel and the single-transfer receipt is clean; the Go tests pass; docs-check passes and all changed bullets are 25 words or fewer; no other reader of this PDF text exists (the web preview is the only mirror and it matches).",
+        "2026-10-30 review pass by independent-reviewer: Re-reviewed HEAD 2bb6d371. The three earlier blockers are fixed. (1) Expired, partially paid: the panel line no longer holds the amount and the totals are Total only; checked in a rendered PDF, Received 4.00 USDC now appears once. (2) Receipt totals show only with the Applied column: two whole transfers and two whole options print no Received row; over-payment with a return, held late money and Pending still show Received, Applied to this invoice, Held and Returned. Accept 1, R-195, R-121 and api.md now agree with the code. (3) Tests: TestStatusAsksForMoneyOnlyWhilePayable now checks every status for no amount or date in the panel line and no repeating totals row, and pins the partial-paid totals; TestReceiptOfOneWholeTransfer and TestReceiptPDF cover one and two whole transfers; TestPayerChoosesInvoice again proves Total is followed by Pay this invoice. Against the previous document.go, the status test and the one-transfer test fail; TestReceiptPDF guards the multi-transfer case. Go tests in document and httpapi/tests pass, gofmt and vet are clean, docs-check passes, the doc sentences are 25 words or fewer, and the ETag is still the hash of deterministic bytes. Notes, not blockers: api.md no longer says the heading is singular for one transfer (the test pins it); when held money is not among the listed transfers, as in a preview of a long list, Held for payer prints alone without Received, which still reads correctly; the new-invoice preview has no screenshot proof in the diff."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T02:53:14Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 253.3,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 248.4,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 37.5,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          }
+        ],
+        "taskHash": "8f3865a7d4ad6fc5",
+        "filesHash": "688d5bfda0f8b261",
+        "proof": {
+          "1": "backend: document_test: no panel line repeats its figure or a date, and no totals row but Total and Left to pay repeats the panel's figure, across every status; partly paid totals Total, Received, Left to pay; one whole transfer's receipt has no Applied column or totals. invoices_pdf_test: a Pending transfer brings back Applied and its totals"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent-reviewer",
+          "summary": "Re-reviewed HEAD 2bb6d371. The three earlier blockers are fixed. (1) Expired, partially paid: the panel line no longer holds the amount and the totals are Total only; checked in a rendered PDF, Received 4.00 USDC now appears once. (2) Receipt totals show only with the Applied column: two whole transfers and two whole options print no Received row; over-payment with a return, held late money and Pending still show Received, Applied to this invoice, Held and Returned. Accept 1, R-195, R-121 and api.md now agree with the code. (3) Tests: TestStatusAsksForMoneyOnlyWhilePayable now checks every status for no amount or date in the panel line and no repeating totals row, and pins the partial-paid totals; TestReceiptOfOneWholeTransfer and TestReceiptPDF cover one and two whole transfers; TestPayerChoosesInvoice again proves Total is followed by Pay this invoice. Against the previous document.go, the status test and the one-transfer test fail; TestReceiptPDF guards the multi-transfer case. Go tests in document and httpapi/tests pass, gofmt and vet are clean, docs-check passes, the doc sentences are 25 words or fewer, and the ETag is still the hash of deterministic bytes. Notes, not blockers: api.md no longer says the heading is singular for one transfer (the test pins it); when held money is not among the listed transfers, as in a preview of a long list, Held for payer prints alone without Received, which still reads correctly; the new-invoice preview has no screenshot proof in the diff.",
+          "at": "2026-10-30T03:03:39Z",
+          "filesHash": "688d5bfda0f8b261"
+        },
+        "commit": "b4b6975e",
+        "doneAt": "2026-10-30T03:03:48Z"
+      },
+      "branch": "fix/f370-an-invoice-or-receipt-pdf-says-each-fact",
+      "baseCommit": "d0cae9c2da7aa4e8dff7c9bad4050e2ea2a3b201",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f370-an-invoice-or-receipt-pdf-says-each-fact",
         "base": "main"
       }
     }

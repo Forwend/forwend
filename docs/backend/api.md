@@ -771,7 +771,7 @@ PDF prints, so a change updates both. Both are public like `GET /v1/invoices/{pa
   - Without items it has one row: the title (or "Payment") and the amount.
   - The table header repeats on every page it continues on.
   - The last row moves with the totals, so totals never start a page alone.
-  - The totals: Total, then the status's rows (Amount due; Received and Left to pay; Amount paid).
+  - The status panel and the dates say each fact once, so the totals add only Received and Left to pay (R-195).
   - The agreed value (R-93) sits quietly under them, marked as for reference only.
   - Every page's footer names the document, says Test mode when it is, gives Page X of Y and the invoice id.
 - Network names and explorers are a copy of `apps/web/src/shared/constants/chains.ts`.
@@ -779,11 +779,11 @@ PDF prints, so a change updates both. Both are public like `GET /v1/invoices/{pa
   - The `chains` table holds only slugs, so it can't be the source of display names.
   - A chain neither copy names prints "Chain <id>", as in the app.
 - `invoice.pdf` states the status in the app's status words.
-  - Waiting for payment, with the due date or the checkout close.
-  - Overdue: open with nothing received, and the due date before today's UTC day.
+  - Waiting for payment, or Overdue: open with nothing received, and the due date before today's UTC day.
   - Confirming: money before the close is not final yet.
   - Partially paid, with Received and Left to pay.
-  - Paid, with the paid time; Canceled, with the cancel time; Expired, or Expired, partially paid.
+  - Paid; Canceled, saying who canceled it; Expired, or Expired, partially paid.
+  - Dates show only in the dates row: the panel never repeats them.
   - Received counts as the pay page does: booked to the creator, plus money still confirming, or plus held money once closed.
 - `invoice.pdf` asks for money only while the pay page would show the address.
   - That is: not paid, canceled or closed, records not in review, and something left to pay.
@@ -794,10 +794,12 @@ PDF prints, so a change updates both. Both are public like `GET /v1/invoices/{pa
 - `receipt.pdf`: 409 `invoice_not_paid` until `paymentStatus` is `paid` (it stays paid once settled).
   - It has the paid time beside the issue day and supply date.
   - Payments received lists every transfer on any option, oldest first.
-  - Each row has the block time, network, amount received and the part applied to the invoice (R-121).
-  - A transfer the ledger hasn't booked reads Pending; held money is applied as 0 (D-26).
+  - Each row has the block time, network and amount received.
+  - An Applied column shows only when a transfer wasn't applied whole (R-121, R-195).
+  - Then a transfer the ledger hasn't booked reads Pending; held money is applied as 0 (D-26).
   - Under each row are the full tx hash and a "View on <explorer>" link.
   - The totals per option: Received, Applied to this invoice, Held for payer and Returned to payer.
+  - They show only beside the Applied column: transfers applied whole need no totals.
   - Received is payable + held + settled + refunded, as Payments counts it; Returned to payer is the ledger's `refunded`.
   - The latest return's transaction follows them.
   - It ends with the pay link and its QR code, since a PDF can be edited.

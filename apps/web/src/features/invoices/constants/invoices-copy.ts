@@ -282,8 +282,6 @@ export const NEW_INVOICE_COPY = {
     switch: "Edit or preview",
     draft: "Draft",
     waiting: "Waiting for payment",
-    dueOn: (date: string) => `Due ${date}.`,
-    closesIn: (closes: string) => (closes ? `Pay within ${closes}.` : ""),
     amountDue: "Amount due",
     total: "Total",
     unchecked: "Name not checked by Forwend",
