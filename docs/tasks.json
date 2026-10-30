@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 397,
+  "nextId": 398,
   "tasks": [
     {
       "id": "F332",
@@ -330,6 +330,104 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f396-the-overview-s-balance-card-keeps-its-ow",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F397",
+      "type": "fix",
+      "behavior": "The invoice page says why its money waits and offers Check status again",
+      "acceptance": [
+        "An invoice that waits to settle says why under its header; an open one offers Check status there; its progress and transactions show once, on its payment page; the live invoice-page tests check that and pass"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "web-unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-54",
+        "R-55",
+        "R-69"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-30 review pass by independent-reviewer: Pass. Split is right: payment page shows Timeline and Transfers once, plus settlement hash, late flag and held money on other options (R-77, D-25). Header rendered at 390 and 1440, light and dark, for open, resting, confirming, partly paid, signing, finalizing, retrying, dailyLimit, refused, settled: no overflow, no duplicate with badges, axe clean, live-spec selectors match the real DOM. Web unit 216 pass. Docs sentences are 25 words or fewer. Follow-ups, none blocking: (1) show F397 has no note for the hand-run live suite, though the proof says see note; record it with note F397 before done. (2) R-60 still describes the removed amount timeline and payments list and now contradicts R-69. (3) With refused or dailyLimit the badge reads Pending beside Stopped or Paused, because the invoice read has no wallet field. (4) e2e settleTx getByText check is vacuous, since a hash shows short; use a Basescan link count of 0. (5) Commit message says payments.spec.ts covers the removed phone test; it only checks sideways scroll and axe. (6) invoice-deposits.tsx and its copy are dead code from #330. (7) Payer address no longer shows on either page.",
+        "2026-10-30 Live run by hand, 2026-10-30, ports lent by the other session: on F397's code, all of e2e/privy/navigation.spec.ts and e2e/privy/jobs.spec.ts passed (22 tests), including the five invoice-page tests that failed on main since #330 (breadcrumb, still settling, Check status, shows each state once; the invoice-transactions phone test is removed, as that list is now the payment page's Transfers)."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T16:49:49Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.6,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 30.7,
+            "log": ""
+          }
+        ],
+        "taskHash": "9ce43e612646a558",
+        "filesHash": "9c133bf68c480e82",
+        "proof": {
+          "1": "web-unit: invoice-detail test: an open invoice offers Check status under its header; a paid one waiting to settle says 'Sending to your wallet · waiting for Base Sepolia to finalize, about 12 min left' there, with no Check status. The live invoice-page tests, run by hand, check the rest (see note)"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent-reviewer",
+          "summary": "Pass. Split is right: payment page shows Timeline and Transfers once, plus settlement hash, late flag and held money on other options (R-77, D-25). Header rendered at 390 and 1440, light and dark, for open, resting, confirming, partly paid, signing, finalizing, retrying, dailyLimit, refused, settled: no overflow, no duplicate with badges, axe clean, live-spec selectors match the real DOM. Web unit 216 pass. Docs sentences are 25 words or fewer. Follow-ups, none blocking: (1) show F397 has no note for the hand-run live suite, though the proof says see note; record it with note F397 before done. (2) R-60 still describes the removed amount timeline and payments list and now contradicts R-69. (3) With refused or dailyLimit the badge reads Pending beside Stopped or Paused, because the invoice read has no wallet field. (4) e2e settleTx getByText check is vacuous, since a hash shows short; use a Basescan link count of 0. (5) Commit message says payments.spec.ts covers the removed phone test; it only checks sideways scroll and axe. (6) invoice-deposits.tsx and its copy are dead code from #330. (7) Payer address no longer shows on either page.",
+          "at": "2026-10-30T17:00:28Z",
+          "filesHash": "9c133bf68c480e82"
+        },
+        "commit": "34a11fcd",
+        "doneAt": "2026-10-30T17:00:58Z"
+      },
+      "branch": "fix/f397-the-invoice-page-says-why-its-money-wait",
+      "baseCommit": "ef0457ced12e515bb03472332f3dc0a4b4d63d60",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f397-the-invoice-page-says-why-its-money-wait",
         "base": "main"
       }
     }

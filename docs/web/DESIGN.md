@@ -778,13 +778,12 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   actions menu: Copy link and Open pay page (a new tab) while the checkout can take money, Edit always (R-127),
   Revise while it can still be canceled (R-129), Duplicate always (New invoice filled from this one, R-91), and while
   it can still be canceled, Cancel in the danger color, which asks to confirm in a dialog. Copying keeps the menu
-  open and the item says Link copied; if the clipboard refuses, the whole link shows there to select. Below, two
-  columns from extra-large screens up: the amount ("Received X of Y" under it when partly paid) with the timeline, where
-  the Paid step reads "Partially paid" as a warning-tinted label when partly paid, the status line (only the confirming
-  count or why settling waits; the state itself is the timeline's), one Transactions list (each payment, then the
-  settlement to the wallet, later refunds: kind, amount, the other side, time and hash with its explorer link, no status
-  pill of its own; Details repeats none of them) and Check status only while the checkout can take money.
-  - The main column then holds the Items panel, then Billed to and From side by side, as on a paper invoice.
+  open and the item says Link copied; if the clipboard refuses, the whole link shows there to select.
+  - Under the header, one quiet line says why paid money still waits to reach the wallet (R-54).
+  - Check status sits there too, only while the checkout can take money (R-55).
+  - Its progress and every transaction show once, on its payment page: View payment opens it.
+  - Below, from extra-large screens up, the main column holds the Items panel.
+  - Then Billed to and From side by side, as on a paper invoice.
   - History (R-124) ends the main column: a ruled table of changes, newest first, like the other tables.
     - Columns: Event, By (You, Payer, Forwend), Details and Time, which sits on the right.
     - Event is the short name in medium weight after a dot in its category's color: payments success, changes subtle,
@@ -804,9 +803,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Your memo (R-127) is a Details row after the note: the owner's own text, stacked under its term.
   - Replaced by and Replaces (R-129) are Details rows after Canceled on, each the other invoice's number as a link.
   - From shows "None on this invoice" with a link to add billing details when there are none.
-  - Narrower screens stack the amount, Items, Billed to, From, History, then the details.
-  - A transaction is one row once its list is 42rem wide. Narrower, the list's own width, not the screen's, splits it
-    in two lines.
+  - Narrower screens stack Items, Billed to, From, History, then the details.
 - An expired or canceled invoice's next step sits in the header's actions, before View payment (R-77).
   - New invoice (lime) opens New invoice filled from it; the status badge and Details say what happened.
   - While the API's `reopenUntil` is set, Reopen checkout (lime) sits before it, and New invoice turns secondary (R-130).

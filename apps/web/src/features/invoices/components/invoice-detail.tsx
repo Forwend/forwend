@@ -15,6 +15,7 @@ import { FileDown, FilePlus2, FileText, UserRound } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, type Ref, useEffect, useRef, useState } from "react";
 import { useGetProfileInvoiceQuery } from "@/features/invoices/api/invoices-api";
+import { CheckStatus } from "@/features/invoices/components/check-status";
 import { InvoiceActions } from "@/features/invoices/components/invoice-actions";
 import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
 import { InvoiceHistory } from "@/features/invoices/components/invoice-history";
@@ -60,11 +61,13 @@ import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
+import { chainName } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 import { walletStateOf } from "@/shared/lib/payment-state";
 
 const NOT_FOUND = 404;
 const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
+const CLOCK = new Intl.DateTimeFormat(undefined, { timeStyle: "short" });
 const COUNTRY = new Intl.DisplayNames(undefined, { type: "region" });
 const PANEL = "fw-panel";
 const PANEL_TITLE = "fw-panel-head text-base font-semibold text-ink";
@@ -162,6 +165,7 @@ function Loaded({
   const closed = Date.parse(invoice.closesAt) <= Date.now();
   const status = invoiceStatus(invoice);
   const { blocksLeft, blocksTotal, secondsLeft } = invoiceProgress(invoice);
+  const wait = invoice.settlementWait ?? null;
   const exception = invoiceException(invoice, status);
   const received = exception.received;
   // R-77: a closed or canceled invoice's next step sits with its actions; its status and Details say what happened.
@@ -247,6 +251,31 @@ function Loaded({
           ]
             .filter(Boolean)
             .join(" · ") || null
+        }
+        // R-54, R-55: why paid money still waits, and Check status while it can take money. Progress and every
+        // transaction show on its payment page (View payment).
+        summary={
+          wait || (payable && invoice.payToken) ? (
+            <>
+              {wait ? (
+                <p role="status" className="text-sm text-muted">
+                  {COPY.settling[wait.kind](
+                    chainName(invoice.chainId),
+                    wait.secondsLeft ?? 0,
+                    wait.until ? CLOCK.format(new Date(wait.until)) : "",
+                  )}
+                </p>
+              ) : null}
+              {payable && invoice.payToken ? (
+                <CheckStatus
+                  payToken={invoice.payToken}
+                  network={chainName(invoice.chainId)}
+                  money={money}
+                  nextCheckAt={invoice.nextCheckAt}
+                />
+              ) : null}
+            </>
+          ) : undefined
         }
         figure={{
           label: received > 0n && received < amount ? COPY.total : COPY.amount,

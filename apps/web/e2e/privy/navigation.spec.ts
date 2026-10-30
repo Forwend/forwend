@@ -84,24 +84,12 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
   const confirmation = main.getByRole("status", { name: "Payment confirmation" });
   await expect(confirmation).toHaveText("Confirming (0/120)");
   await expect(confirmation.getByRole("button", { name: "About 6 min left" })).toBeVisible();
-  // R-69
-  const amountPanel = main.getByRole("region", { name: "Amount" });
-  await expect(amountPanel.locator("[data-status]")).toHaveCount(0);
-  await expect(
-    amountPanel
-      .getByRole("list", { name: "Payment progress" })
-      .getByRole("listitem")
-      .filter({ hasText: "Confirming" }),
-  ).toHaveAttribute("aria-current", "step");
-  const payment = main.getByRole("link", { name: "View transaction on Basescan" });
-  await expect(payment).toHaveAttribute("href", basescan(hash("d")));
-  await expect(payment).toHaveAttribute("target", "_blank");
-  const paymentRow = main
-    .getByRole("listitem")
-    .filter({ has: page.getByRole("link", { name: "View transaction on Basescan" }) });
-  await paymentRow.getByRole("button", { name: "0xcccc…cccc" }).focus();
-  await expect(page.getByRole("tooltip")).toHaveText(`0x${"c".repeat(40)}`);
-  await expect(paymentRow.locator("time")).toHaveAttribute("datetime", "2026-10-09T08:30:00Z");
+  // R-69: its progress and transactions show once, on its payment page.
+  await expect(main.locator("header [data-status]")).toHaveCount(0);
+  await expect(main.locator("header").getByRole("link", { name: "View payment" })).toHaveAttribute(
+    "href",
+    `/app/payments/${CONFIRMING_INVOICE.invoiceId}`,
+  );
   expect(await blockingViolations(page)).toEqual([]);
   await crumbs.getByRole("link", { name: "Invoices" }).click();
   await expect(page).toHaveURL("/app/invoices");
@@ -304,8 +292,11 @@ test("a paid invoice that is still settling says why its money waits", async ({ 
     deposits: [],
   };
   const wait = { kind: "finalizing", until: null, secondsLeft: 720 };
-  await page.route(`/api/v1/profiles/*/invoices/${paid.invoiceId}`, (route) =>
-    route.fulfill({ json: { ...paid, settlementWait: wait } }),
+  // The page reads its summary view (`?view=summary`), so match the path alone.
+  await page.route(
+    (url) =>
+      url.pathname.startsWith("/api/") && url.pathname.endsWith(`/invoices/${paid.invoiceId}`),
+    (route) => route.fulfill({ json: { ...paid, settlementWait: wait } }),
   );
   await page.goto(`/app/invoices/${paid.invoiceId}`);
   await expect(
@@ -413,9 +404,7 @@ test("money tables share row hover, show network logos, keep Export at the right
 });
 
 // R-69
-test("the owner's invoice page shows each state once, with the waiting step moving", async ({
-  browser,
-}) => {
+test("the owner's invoice page shows each state once, in its header", async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
     storageState: session,
@@ -444,29 +433,23 @@ test("the owner's invoice page shows each state once, with the waiting step movi
     secondsLeft: blocksLeft * 3,
   });
   const main = page.getByRole("main");
-  const progress = main.getByRole("list", { name: "Payment progress" });
-  const current = progress.locator("[aria-current=step]");
-  const payments = main.locator("ul").filter({ hasText: "From" });
+  const header = main.locator("header");
+  const confirmation = header.getByRole("status", { name: "Payment confirmation" });
   // A reload signs in and redraws the shell, which under the full suite can outlast one check's wait.
-  const shown = () => expect(progress).toBeVisible({ timeout: 15_000 });
+  const shown = () =>
+    expect(header.getByRole("link", { name: "View payment" })).toBeVisible({ timeout: 15_000 });
 
-  // R-69, R-60
+  // R-69, R-60: the header carries the state; progress and transactions show on the payment page.
   body = { ...OPEN_INVOICE, deposits: [] };
   await page.goto(`/app/invoices/${OPEN_INVOICE.invoiceId}`);
-  await expect(progress.getByRole("listitem")).toHaveText([
-    /^Waiting/,
-    /^Detected/,
-    /^Confirming/,
-    /^Paid/,
-    /^Settled/,
-  ]);
-  await expect(current).toHaveText("Waiting");
-  await expect(current.locator("[class*='fw-progress']")).toHaveCount(1);
-  await main.locator("header").getByRole("button", { name: "More actions" }).click();
+  await shown();
+  await expect(main.getByRole("list", { name: "Payment progress" })).toHaveCount(0);
+  await expect(header.getByText("Waiting for payment")).toBeVisible();
+  await header.getByRole("button", { name: "More actions" }).click();
   await expect(page.getByRole("menuitem", { name: "Copy link" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: /^Open pay page/ })).toHaveAttribute(
     "href",
-    `http://localhost:3000/pay/${OPEN_INVOICE.payToken}`,
+    `http://localhost:3000/pay/${OPEN_INVOICE.payToken}?preview=1`,
   );
   await page.keyboard.press("Escape");
   await expect(main.getByRole("button", { name: "Check status" })).toBeVisible();
@@ -479,16 +462,10 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   };
   await page.reload();
   await shown();
-  await expect(main.getByRole("status").filter({ hasText: /Confirming/ })).toContainText(
-    "Confirming (0/120) · about 6 min left",
-  );
-  // R-60
-  await expect(main.locator("header [data-status]")).toHaveCount(0);
-  // R-69
-  await expect(current).toHaveText("Confirming");
-  await expect(main.getByRole("button", { name: "About 6 min left" })).toBeVisible();
-  await expect(main.getByText("0 / 120 blocks confirmed", { exact: true })).toBeVisible();
-  await expect(payments.locator("[data-status]")).toHaveCount(0);
+  // R-60, R-69: while confirming, the count is the status, with no second badge.
+  await expect(confirmation).toHaveText("Confirming (0/120)");
+  await expect(confirmation.getByRole("button", { name: "About 6 min left" })).toBeVisible();
+  await expect(header.locator("[data-status]")).toHaveCount(0);
   await expect(main.getByText(/test network|no real value/i)).toHaveCount(0); // R-72
   expect(await blockingViolations(page)).toEqual([]);
   // R-73
@@ -499,9 +476,8 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   };
   await page.reload();
   await shown();
-  await expect(main.getByRole("status").filter({ hasText: /Confirming/ })).toContainText(
-    "Confirming (60/120) · about 3 min left",
-  );
+  await expect(confirmation).toHaveText("Confirming (60/120)");
+  await expect(confirmation.getByRole("button", { name: "About 3 min left" })).toBeVisible();
 
   body = {
     ...OPEN_INVOICE,
@@ -510,8 +486,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   };
   await page.reload();
   await shown();
-  await expect(current).toContainText("Partially paid");
-  await expect(progress.getByText("Partially paid")).toHaveClass(/bg-warning-soft/);
+  await expect(header.getByText("Partially paid")).toBeVisible();
   await expect(main.getByText("Received 1.00 USDC of 2.00 USDC")).toBeVisible();
   await expect(main.getByRole("status").filter({ hasText: "Partially paid" })).toHaveCount(0);
   expect(await blockingViolations(page)).toEqual([]);
@@ -528,8 +503,8 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   };
   await page.reload();
   await shown();
-  await expect(current).toHaveText("Confirming");
-  await expect(progress.getByText("Partially paid")).toHaveCount(0);
+  await expect(confirmation).toContainText("Confirming");
+  await expect(header.getByText("Partially paid")).toHaveCount(0);
 
   body = {
     ...OPEN_INVOICE,
@@ -540,9 +515,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   };
   await page.reload();
   await shown();
-  await expect(current).toHaveText("In wallet");
-  await expect(progress.getByRole("listitem").nth(2)).toHaveText(/^Confirmed/);
-  await expect(current.locator("[class*='fw-progress']")).toHaveCount(1);
+  await expect(header.getByText("Paid", { exact: true })).toBeVisible();
   await expect(main.getByRole("button", { name: "Check status" })).toHaveCount(0);
   // R-91
   await main.getByRole("button", { name: "More actions" }).click();
@@ -562,15 +535,8 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   };
   await page.reload();
   await shown();
-  const transactions = main.locator("ul").filter({ hasText: "Settlement" });
-  await expect(main.getByText("Transactions", { exact: true })).toBeVisible();
-  await expect(transactions.getByRole("listitem")).toHaveText([/^Payment/, /^Settlement/]);
-  const settlementRow = transactions.getByRole("listitem").nth(1);
-  await expect(settlementRow).toContainText("2.00 USDC");
-  await expect(settlementRow.getByRole("link", { name: /Basescan/ })).toHaveAttribute(
-    "href",
-    `https://sepolia.basescan.org/tx/${settleTx}`,
-  );
+  // The settlement is one of the payment page's transfers, never repeated here.
+  await expect(main.getByText(settleTx)).toHaveCount(0);
   await expect(main.getByRole("region", { name: "Details" })).not.toContainText("Settlement");
   expect(await blockingViolations(page)).toEqual([]);
 
@@ -1214,68 +1180,6 @@ test("empty and filtered-out lists say so in one centered block with an icon", a
   await fills("Nothing matches");
   await main.getByRole("button", { name: "Clear filter and search" }).click();
   await expect(main.getByText("No transactions yet", { exact: true })).toBeVisible();
-  await context.close();
-});
-
-// R-69
-test("the invoice's transactions read in two lines on a phone", async ({ browser }) => {
-  const context = await browser.newContext({
-    viewport: { width: 390, height: 844 },
-    storageState: session,
-  });
-  const page = await context.newPage();
-  await mockApi(page);
-  const deposit = {
-    txHash: hash("9"),
-    logIndex: 0,
-    from: `0x${"c".repeat(40)}`,
-    amount: OPEN_INVOICE.amount,
-    blockNumber: 1000,
-    blockTime: "2026-10-09T08:30:00Z",
-    status: "confirmed",
-    late: false,
-    paid: OPEN_INVOICE.amount,
-    blocksLeft: 0,
-    blocksTotal: 0,
-    secondsLeft: 0,
-  };
-  await page.route(
-    (url) =>
-      url.pathname.startsWith("/api/") &&
-      url.pathname.endsWith(`/invoices/${OPEN_INVOICE.invoiceId}`),
-    (route) =>
-      route.fulfill({
-        json: {
-          ...OPEN_INVOICE,
-          paymentStatus: "paid",
-          settlementStatus: "settled",
-          paidAt: "2026-10-09T08:31:00Z",
-          settledAt: "2026-10-09T08:40:00Z",
-          settlementTxHash: hash("5"),
-          deposits: [deposit],
-        },
-      }),
-  );
-  await page.goto(`/app/invoices/${OPEN_INVOICE.invoiceId}`);
-  const rows = page
-    .getByRole("main")
-    .locator("ul")
-    .filter({ hasText: "Settlement" })
-    .getByRole("listitem");
-  await expect(rows).toHaveCount(2);
-  for (const row of await rows.all()) {
-    const box = await row.boundingBox();
-    // Kind and amount take two text lines, the side and transaction one more: never four or five wrapped lines.
-    expect(box && box.height < 96).toBe(true);
-    const [time, link] = await Promise.all([
-      row.locator("time").boundingBox(),
-      row.getByRole("link", { name: /Basescan/ }).boundingBox(),
-    ]);
-    expect(time && box && time.y - box.y < 20).toBe(true);
-    expect(link && time && link.y > time.y).toBe(true);
-  }
-  expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
-  expect(await blockingViolations(page)).toEqual([]);
   await context.close();
 });
 
