@@ -476,6 +476,8 @@ function PayBox({
       (option) => now < checkoutClosesAt({ closesAt: option.closesAt ?? invoice.closesAt }),
     );
   const network = chainName(invoice.chainId);
+  // Found money locks the pick: paying again on another option would be a second payment.
+  const found = useFound(linkToken, pay);
   const lookalike = lookalikeOf(invoice.chainId, token.symbol);
   const contract = addressLink(invoice.chainId, invoice.token);
   const optionId = invoice.optionId;
@@ -495,6 +497,12 @@ function PayBox({
   useEffect(() => {
     if (presses > 0) sendHeading.current?.focus();
   }, [presses]);
+  // Found money takes away the Check status just pressed: focus waits on the address heading, not the page. The
+  // heading is clipped off-screen, so focusing it must not scroll the found line away.
+  useEffect(() => {
+    if (found > 0n && document.activeElement === document.body)
+      sendHeading.current?.focus({ preventScroll: true });
+  }, [found]);
   const show = () => {
     setShown(optionId);
     setPresses((n) => n + 1);
@@ -560,7 +568,7 @@ function PayBox({
                 >
                   {pay.canSend || canChoose ? COPY.payWith : COPY.payingWith}
                 </h2>
-                {choice ? (
+                {choice && found === 0n ? (
                   <PickedOption
                     chainId={invoice.chainId}
                     symbol={token.symbol}
@@ -589,9 +597,12 @@ function PayBox({
                   <TokenMark chainId={invoice.chainId} symbol={token.symbol} />
                 )}
                 {!pay.canSend || picking ? null : (
-                  <Button size="lg" className="w-full" onClick={show}>
-                    {COPY.showAddress}
-                  </Button>
+                  // After a pick it appears on its own; without one it comes with the section, which already rises.
+                  <div className={choice ? ENTER : undefined}>
+                    <Button size="lg" className="w-full" onClick={show}>
+                      {COPY.showAddress}
+                    </Button>
+                  </div>
                 )}
               </section>
             ) : null}
@@ -609,22 +620,23 @@ function PayBox({
                     label={COPY.qr}
                     className="w-26 border border-line p-1 sm:w-32"
                   />
-                  <ExactAmount amount={pay.remaining} token={token} />
-                  {/* Its own row under the code and amount: the panel's full width keeps the warning on one line. */}
-                  <p
-                    role="note"
-                    className="col-span-2 flex flex-col gap-0.5 text-xs font-medium text-warning"
-                  >
-                    <span className="flex items-center gap-1.5 whitespace-nowrap">
-                      <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
-                      {COPY.sendOnly(token.symbol, network)}
-                    </span>
-                    {/* The space keeps the two sentences apart when read aloud; the flex column drops it on screen. */}
-                    {lookalike ? " " : null}
-                    {lookalike ? (
-                      <span className="pl-5">{COPY.notLookalike(token.symbol, lookalike)}</span>
-                    ) : null}
-                  </p>
+                  <div className="flex min-w-0 flex-col gap-2">
+                    <ExactAmount amount={pay.remaining} token={token} />
+                    <p
+                      role="note"
+                      className="flex flex-col gap-0.5 text-xs font-medium text-warning"
+                    >
+                      <span className="flex items-start gap-1.5">
+                        <TriangleAlert aria-hidden className="mt-px size-3.5 shrink-0" />
+                        {COPY.sendOnly(token.symbol, network)}
+                      </span>
+                      {/* The space keeps the two sentences apart when read aloud; the flex column drops it on screen. */}
+                      {lookalike ? " " : null}
+                      {lookalike ? (
+                        <span className="pl-5">{COPY.notLookalike(token.symbol, lookalike)}</span>
+                      ) : null}
+                    </p>
+                  </div>
                 </div>
                 <ReceiveAddress address={address} label={COPY.sendTo(token.symbol, network)} />
                 {contract ? (
@@ -732,12 +744,9 @@ function StatusLine({
   network: string;
   bordered: boolean;
 }) {
-  const [, { data: recheck }] = useRecheckInvoiceMutation({ fixedCacheKey: recheckKey(linkToken) });
-  // A check found money the ledger has not booked yet: never "Waiting for payment" beside "Found it".
-  const found =
-    pay.state === PAY_STATES.waiting &&
-    Boolean(recheck?.rescanning) &&
-    BigInt(recheck?.onChain ?? "0") > BigInt(recheck?.recorded ?? "0");
+  const missing = useFound(linkToken, pay);
+  // Never "Waiting for payment" beside what a check found.
+  const found = missing > 0n;
   const pending = pay.state === PAY_STATES.waiting && !found;
   return (
     // What a check found takes its own row, so the button never moves when it answers.
@@ -762,19 +771,22 @@ function StatusLine({
         ) : null}
         <span>{found ? COPY.found : COPY.states[pay.state](values(invoice, pay, money))}</span>
       </p>
-      {found ? (
-        <p className="col-start-1 row-start-2 -mt-1.5 pl-6.5 text-xs text-muted">
-          {COPY.foundNote}
-        </p>
-      ) : null}
+      {/* Always rendered, so the live region exists before a check finds money. */}
+      <p
+        role="status"
+        className={found ? "col-start-1 row-start-2 -mt-1.5 pl-6.5 text-xs text-muted" : "sr-only"}
+      >
+        {found ? COPY.foundNote(money(missing)) : null}
+      </p>
       {/* Placed under the status, so the button keeps the first row and a check's answer the third. */}
       {pending ? (
         <p className="col-start-1 row-start-2 -mt-1.5 pl-4.5 text-xs text-muted">
           {COPY.updatesItself}
         </p>
       ) : null}
-      {/* Money not seen yet may be a missed log: the payer can ask once in a while (R-55). */}
-      {pending || found ? (
+      {/* Money not seen yet may be a missed log: the payer can ask once in a while (R-55). Found money needs no
+          other check. */}
+      {pending ? (
         <CheckStatus
           payToken={linkToken}
           network={network}
@@ -786,6 +798,13 @@ function StatusLine({
       ) : null}
     </div>
   );
+}
+
+/** What a check found that the ledger has not booked yet (R-55), or 0. */
+function useFound(linkToken: string, pay: Pay): bigint {
+  const [, { data: recheck }] = useRecheckInvoiceMutation({ fixedCacheKey: recheckKey(linkToken) });
+  const missing = BigInt(recheck?.onChain ?? "0") - BigInt(recheck?.recorded ?? "0");
+  return pay.state === PAY_STATES.waiting && recheck?.rescanning && missing > 0n ? missing : 0n;
 }
 
 const payeeOf = (invoice: Invoice) => invoice.issuer?.name ?? invoice.senderName ?? COPY.creator;

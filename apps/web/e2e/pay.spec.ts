@@ -362,7 +362,11 @@ test.describe("pay page", () => {
   });
 
   // R-55
-  test("Check status says what it found and when the next check is allowed", async ({ page }) => {
+  test("Check status says once what it found, and a reload shows when the next check is allowed", async ({
+    page,
+  }) => {
+    // A phone, where Check status sits low on the screen.
+    await page.setViewportSize({ width: 390, height: 664 });
     await openPay(page, OPEN);
     await showAddress(page).click();
     let calls = 0;
@@ -374,20 +378,30 @@ test.describe("pay page", () => {
           recorded: "0",
           rescanning: true,
           nextCheckAt: new Date(NOW.getTime() + 300_000).toISOString(),
-          unreadable: [421614],
+          unreadable: [],
         },
       });
     });
     const check = page.getByRole("button", { name: "Check status" });
     await check.click();
-    await expect(page.getByRole("status").filter({ hasText: /^Found/ })).toHaveText(
-      "Found 1,250.00 USDC. Recording it now. · Arbitrum Sepolia did not answer.",
-    );
-    await expect(page.getByText(/· Next check in 5 min$/)).toBeVisible();
     // The status line agrees with what the check found: the money is there, so it no longer waits for it.
     await expect(page.getByRole("status").filter({ hasText: "Payment found" })).toBeVisible();
+    await expect(
+      page
+        .getByRole("status")
+        .filter({ hasText: "Found 1,250.00 USDC. Recording it now. Don't pay again." }),
+    ).toBeVisible();
     await expect(page.getByText("Waiting for payment…")).toHaveCount(0);
-    await expect(check).toBeDisabled();
+    // Found money needs no other check; focus moves from the button that went to the address's heading.
+    await expect(check).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: /^Send USDC on/ })).toBeFocused();
+    // Moving focus scrolls nothing: the found line stays on screen.
+    await expect(
+      page
+        .getByRole("status")
+        .filter({ hasText: "Found 1,250.00 USDC. Recording it now. Don't pay again." }),
+    ).toBeInViewport({ ratio: 1 });
+    await expect(page.getByText(/Next check in/)).toHaveCount(0);
     expect(calls).toBe(1);
     await mockInvoice(page, {
       ...OPEN,
@@ -410,13 +424,18 @@ test.describe("pay page", () => {
           recorded: "0",
           rescanning: false,
           nextCheckAt: new Date(NOW.getTime() + 300_000).toISOString(),
-          unreadable: [],
+          unreadable: [421614],
         },
       }),
     );
     const waiting = page.getByRole("status").filter({ hasText: "Waiting for payment…" });
     const check = page.getByRole("button", { name: "Check status" });
     const answer = page.getByText(/· Next check in 5 min$/);
+    await check.click();
+    // A network that did not answer is named beside what the check saw.
+    await expect(page.getByRole("status").filter({ hasText: /did not answer/ })).toHaveText(
+      "Nothing on Base Sepolia yet. · Arbitrum Sepolia did not answer.",
+    );
     for (const width of [1440, 390, 360]) {
       await page.setViewportSize({ width, height: 900 });
       await page.reload();
@@ -771,6 +790,31 @@ test.describe("pay page", () => {
     await expect(page.getByText(/^Closes in/)).toBeVisible();
     await showAddress(page).click();
     await expect(page.getByText(RECEIVE)).toBeVisible();
+  });
+
+  test("once Check status finds a payment, the payer can't change the network and token", async ({
+    page,
+  }) => {
+    await openPay(page, CHOOSING);
+    await page.getByRole("combobox", { name: "Network" }).click();
+    await page.getByRole("option", { name: "Arbitrum Sepolia" }).click();
+    await showAddress(page).click();
+    const change = page.getByRole("button", { name: "Change network and token" });
+    await expect(change).toBeVisible();
+    await page.route(`**/api/v1/invoices/${PAY}/recheck`, (route) =>
+      route.fulfill({
+        json: {
+          onChain: "1250000000",
+          recorded: "0",
+          rescanning: true,
+          nextCheckAt: new Date(NOW.getTime() + 300_000).toISOString(),
+          unreadable: [],
+        },
+      }),
+    );
+    await page.getByRole("button", { name: "Check status" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Payment found" })).toBeVisible();
+    await expect(change).toHaveCount(0);
   });
 
   test("lets the payer pick the network and token with selects, keeps the pick after a reload, and locks it once money arrives", async ({
