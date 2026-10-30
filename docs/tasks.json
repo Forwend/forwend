@@ -542,7 +542,7 @@
         "When the payee closed or canceled the payment, the pay panel shows one closed state with no Pay with pickers"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-e2e"
       ],
@@ -617,11 +617,18 @@
           "summary": "Test-strength defect fixed: with '!choosable && ' removed from shut, 'a closed payment option leaves another option available' fails at pay.spec.ts:609 (Checkout closed count Expected 0, Received 1); restored (same sha1 de4f0a46), it passes. Diff re-read: canChoose excludes canceled; shut only when nothing can be picked; one persistent role=status region; PAY_STATES.closed is closed with nothing received, so 'expired with nothing seen' is right. Commit message matches the diff. Worktree clean.",
           "at": "2026-10-30T17:40:30Z",
           "filesHash": "468a57de10dacd31"
-        }
+        },
+        "commit": "ae414a5d",
+        "doneAt": "2026-10-30T17:40:43Z"
       },
       "branch": "fix/f401-a-closed-or-canceled-pay-link-shows-that",
       "baseCommit": "b3cb26321e66f8163abec17282a9fde72c807c66",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f401-a-closed-or-canceled-pay-link-shows-that",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
