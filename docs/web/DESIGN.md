@@ -716,6 +716,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
       Don't pay again."
       - No Check status then; while that answer shows, Change goes too, so a payer can't switch options and pay twice.
     - Nothing waits before the address shows.
+  - Canceled, or expired with nothing seen and nothing left to pick: the panel holds one closed state.
+    - An icon tile, "Payment closed" or "Checkout closed", and the reason under it. No Pay with pickers.
+    - It looks like an empty state, and it reuses the status line's live region, so it is announced.
   - Once money is seen:
     - The panel keeps its place ("Paying with" while nothing more is due).
     - With nothing more due, the status leads the panel: "Payment detected".

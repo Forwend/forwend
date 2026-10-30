@@ -469,8 +469,10 @@ function PayBox({
   /** Keeps the shown option on the invoice for the payer's next visit (R-57). */
   keep?: (optionId: string) => void;
 }) {
+  // A canceled invoice takes no money on any option; invoice.closed is only the checkout's time.
   const canChoose =
     choice !== null &&
+    pay.state !== PAY_STATES.canceled &&
     !invoice.closed &&
     choice.options.some(
       (option) => now < checkoutClosesAt({ closesAt: option.closesAt ?? invoice.closesAt }),
@@ -677,6 +679,7 @@ function PayBox({
                 money={money}
                 network={network}
                 bordered={pay.canSend}
+                choosable={canChoose}
               />
             )}
           </>
@@ -738,6 +741,7 @@ function StatusLine({
   money,
   network,
   bordered,
+  choosable,
 }: {
   invoice: Invoice;
   linkToken: string;
@@ -745,18 +749,36 @@ function StatusLine({
   money: (units: bigint) => string;
   network: string;
   bordered: boolean;
+  /** Another option can still be picked: a closed one then keeps its one-line row under the pickers. */
+  choosable: boolean;
 }) {
   const missing = useFound(linkToken, pay);
   // Never "Waiting for payment" beside what a check found.
   const found = missing > 0n;
   const pending = pay.state === PAY_STATES.waiting && !found;
+  // Nothing to pay and nothing to pick: the panel says so in the middle, as an empty state does.
+  const shut =
+    !choosable && (pay.state === PAY_STATES.canceled || pay.state === PAY_STATES.closed)
+      ? pay.state
+      : null;
   return (
     // What a check found takes its own row, so the button never moves when it answers.
     <div
-      className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 p-4 sm:p-5 ${bordered ? "border-t border-line" : ""}`}
+      className={`${shut ? "" : "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 p-4 sm:p-5"} ${bordered ? "border-t border-line" : ""}`}
     >
-      <p role="status" className="flex items-start gap-2.5 text-sm font-medium text-ink">
-        {found ? (
+      {/* One live region in every state, so a payer watching hears the payment close. */}
+      <div
+        role="status"
+        className={shut ? undefined : "flex items-start gap-2.5 text-sm font-medium text-ink"}
+      >
+        {shut ? (
+          <EmptyState
+            compact
+            icon={shut === PAY_STATES.canceled ? Ban : Clock}
+            title={COPY.closedTitles[shut]}
+            description={COPY.states[shut](values(invoice, pay, money))}
+          />
+        ) : found ? (
           <LoaderCircle
             aria-hidden
             className={`${ICON} text-muted motion-safe:animate-[fw-spin_var(--fw-duration-slower)_linear_infinite]`}
@@ -766,13 +788,13 @@ function StatusLine({
             <span className="absolute inset-0 rounded-pill bg-accent opacity-60 motion-safe:animate-ping" />
             <span className="relative size-2 rounded-pill bg-accent" />
           </span>
-        ) : pay.state === PAY_STATES.canceled ? (
-          <Ban aria-hidden className={`${ICON} text-muted`} />
         ) : pay.closed ? (
           <Clock aria-hidden className={`${ICON} text-muted`} />
         ) : null}
-        <span>{found ? COPY.found : COPY.states[pay.state](values(invoice, pay, money))}</span>
-      </p>
+        {shut ? null : (
+          <span>{found ? COPY.found : COPY.states[pay.state](values(invoice, pay, money))}</span>
+        )}
+      </div>
       {/* Always rendered, so the live region exists before a check finds money. */}
       <p
         role="status"
