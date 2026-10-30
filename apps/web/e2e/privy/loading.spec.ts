@@ -116,3 +116,71 @@ test("switching to a list page keeps its rows in place while it loads, and a qui
   expect(await small.evaluate(() => (window as unknown as { seen: number }).seen)).toBe(0);
   await phone.close();
 });
+
+test("the overview's balance and pending cards keep their size while they load, and a total never says prices are missing on the way", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await mockApi(page);
+  const late = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  const fresh = new Date().toISOString();
+  // Prices and the pending payments answer after the balances, as they often do.
+  await page.route("**/api/v1/prices", async (route) => {
+    await late(1200);
+    await route.fulfill({
+      json: {
+        prices: [
+          {
+            chainId: 84532,
+            token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+            symbol: "USDC",
+            coinId: "usd-coin",
+            usd: "1",
+            sourceUpdatedAt: fresh,
+            fetchedAt: fresh,
+            stale: false,
+          },
+        ],
+      },
+    });
+  });
+  await page.route(/\/api\/v1\/profiles\/[^/]+\/payments\?/, async (route) => {
+    await late(1200);
+    await route.fallback();
+  });
+  await page.addInitScript(() => {
+    const w = window as unknown as { missing: boolean; heights: Record<string, number[]> };
+    w.missing = false;
+    w.heights = {};
+    const sample = () => {
+      if (document.querySelector("main")?.textContent?.includes("Market prices are unavailable"))
+        w.missing = true;
+      for (const id of ["balance-title", "on-its-way"]) {
+        const card = document.getElementById(id)?.closest("section");
+        if (card) {
+          const height = Math.round(card.getBoundingClientRect().height);
+          w.heights[id] ??= [];
+          if (w.heights[id].at(-1) !== height) w.heights[id].push(height);
+        }
+      }
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+  await page.goto("/app");
+  await expect(page.getByRole("main").getByText("18,420", { exact: false }).first()).toBeVisible();
+  await expect(page.getByRole("main").locator("[data-skeleton]")).toHaveCount(0);
+  const seen = await page.evaluate(() => {
+    const w = window as unknown as { missing: boolean; heights: Record<string, number[]> };
+    return { missing: w.missing, heights: w.heights };
+  });
+  expect(seen.missing).toBe(false);
+  // Each card has one height from its first frame to its loaded one.
+  expect(seen.heights["balance-title"]).toHaveLength(1);
+  expect(seen.heights["on-its-way"]).toHaveLength(1);
+  await context.close();
+});

@@ -175,6 +175,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   (D-115). An info icon after "USD" says so in a tooltip. Pages name no price provider.
   - A value uses the latest known price, even an old one: stablecoins move little.
   - Without any price for a held token, the total is "—": never 1 USD.
+  - While the prices load, the total keeps its placeholder; it never shows the no-prices line meanwhile.
   - Payment flows and history (Received, Sent, money in and out, the charts) stay at face value, one USD per
     stablecoin: they are payment amounts, and there is no price history.
   - On the personal overview the icon hangs after USD and takes no width, so the total sits on the center line on
@@ -265,6 +266,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Empty and failed states, everywhere:
   - They sit where the content would, centered on both axes: an icon tile, a one-line title, then the action.
   - A card or panel keeps its loaded size: its body has one minimum height for every state.
+  - A card's placeholders take the loaded parts' places: the figure's line box, the change line, the rows.
   - Error and empty share one shape: `LoadError` (danger tile, Try again) and `EmptyState compact` (grey tile).
   - When the state is the page's whole content (a list with nothing yet, nothing matching, or a failed read), it has
     no frame and fills the workspace under the toolbar (`page`), so no shallow box sits above empty space.

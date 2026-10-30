@@ -71,12 +71,15 @@ export function ReceivedCard({
         ) : failed || (!loading && !received) ? (
           <p className="text-3xl font-medium text-muted">—</p>
         ) : (
-          <Skeleton className="h-9 w-40" />
+          // The figure's own line box, so the loaded figure takes its place.
+          <Skeleton className="h-[1.15em] w-40 text-3xl" />
         )}
         {sentNow ? (
           <p className="text-sm text-muted tabular-nums">
             {COPY.sent(formatUsd(seriesTotal(sentNow)))}
           </p>
+        ) : loading ? (
+          <Skeleton className="h-5 w-28" />
         ) : null}
       </div>
       <div className="mt-3 grid min-h-48 flex-1 grid-rows-[minmax(0,1fr)] sm:min-h-56">

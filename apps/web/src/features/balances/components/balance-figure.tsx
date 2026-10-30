@@ -42,8 +42,14 @@ export function BalanceFigure({
   if (!balances && failed) {
     return <LoadError message={BALANCES_COPY.balancesFailed} onRetry={onRetry} />;
   }
+  // The change line keeps its place under the placeholder, as it sits under the figure.
   if (!balances)
-    return <Skeleton className="mx-auto h-[clamp(2.5rem,13cqi,4rem)] w-56 max-w-full sm:mx-0" />;
+    return (
+      <div className={`flex w-full flex-col gap-2 ${align}`}>
+        <Skeleton className="h-[clamp(2.5rem,13cqi,4rem)] w-56 max-w-full" />
+        {change}
+      </div>
+    );
   if (tokens.length === 0)
     return <p className={`flex ${align} text-muted`}>{BALANCES_COPY.noTokens}</p>;
 
