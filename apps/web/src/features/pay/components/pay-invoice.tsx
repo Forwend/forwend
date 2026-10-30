@@ -66,7 +66,7 @@ import { type Choice, OptionPicker } from "@/features/pay/components/option-pick
 import { Payee } from "@/features/pay/components/payee";
 import { ReceiptEmail } from "@/features/pay/components/receipt-email";
 import { TestnetBadge } from "@/features/pay/components/testnet-badge";
-import { LEFT_PAD, PAY_STATES, RIGHT_PAD } from "@/features/pay/constants/pay";
+import { ENTER, LEFT_PAD, PAY_STATES, RIGHT_PAD } from "@/features/pay/constants/pay";
 import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
 import {
   checkoutClosesAt,
@@ -82,7 +82,7 @@ import { checkedReceiveAddress } from "@/features/pay/lib/receive-address";
 import type { PayToken } from "@/features/pay/types/pay";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { TokenMark } from "@/shared/components/chains/token-mark";
-import { LIVE_QUERY } from "@/shared/config/refresh";
+import { LIVE_QUERY, REFRESH_MS } from "@/shared/config/refresh";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { addressLink, chainName, lookalikeOf, txLink } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
@@ -108,7 +108,12 @@ export interface PayInvoiceProps {
 }
 
 export function PayInvoice({ linkToken, option, preview = false }: PayInvoiceProps) {
-  const invoice = useGetInvoiceQuery(linkToken, LIVE_QUERY);
+  // The checkout shares the link page's store, so Back then Forward finds an older read: read it again once it is
+  // older than one refresh. Pay's own read, a moment old, opens the checkout without a second request.
+  const invoice = useGetInvoiceQuery(linkToken, {
+    ...LIVE_QUERY,
+    refetchOnMountOrArgChange: REFRESH_MS / 1000,
+  });
   const [countView] = useCountViewMutation();
   // R-125: one view per load. The ref holds across React's dev double mount, and status refreshes don't count.
   const counted = useRef(false);
@@ -340,9 +345,10 @@ function Summary({
           token={picking ? MONEY_COPY.usd : token.symbol}
           className="min-w-0 text-amount-lg text-ink"
         />
-        {picking ? null : (
-          <p className="text-sm text-muted">{COPY.on(chainName(invoice.chainId))}</p>
-        )}
+        {/* Kept in place while the payer picks, so the network's line arriving moves nothing below it. */}
+        <p className={`text-sm text-muted ${picking ? "invisible" : ""}`}>
+          {COPY.on(chainName(invoice.chainId))}
+        </p>
       </div>
     </section>
   );
@@ -544,7 +550,7 @@ function PayBox({
             {(pay.canSend || seen || canChoose) && folded ? (
               <section
                 aria-labelledby="pay-before"
-                className={`flex min-h-16 items-center gap-3 px-4 py-3 sm:px-5 ${statusFirst ? "border-t border-line" : ""}`}
+                className={`flex min-h-16 items-center gap-3 px-4 py-3 sm:px-5 ${ENTER} ${statusFirst ? "border-t border-line" : ""}`}
               >
                 <h2
                   id="pay-before"
@@ -565,7 +571,10 @@ function PayBox({
                 )}
               </section>
             ) : pay.canSend || canChoose ? (
-              <section aria-labelledby="pay-before" className="flex flex-col gap-4 p-4 sm:p-5">
+              <section
+                aria-labelledby="pay-before"
+                className={`flex flex-col gap-4 p-4 sm:p-5 ${ENTER}`}
+              >
                 <h2
                   id="pay-before"
                   ref={beforeHeading}
@@ -589,7 +598,7 @@ function PayBox({
             {pay.canSend && sending ? (
               <section
                 aria-labelledby="pay-send"
-                className="flex flex-col gap-4 border-t border-line p-4 sm:p-5"
+                className={`flex flex-col gap-4 border-t border-line p-4 sm:p-5 ${ENTER}`}
               >
                 <h2 id="pay-send" ref={sendHeading} tabIndex={-1} className="sr-only">
                   {COPY.sendTo(token.symbol, network)}
@@ -851,7 +860,7 @@ function Received({
   return (
     <section
       aria-labelledby="pay-progress"
-      className={`flex flex-col gap-4 p-4 transition-[opacity,transform] duration-[var(--fw-duration-base)] ease-out starting:translate-y-1 starting:opacity-0 sm:p-5 ${lead ? "" : "border-t border-line"}`}
+      className={`flex flex-col gap-4 p-4 sm:p-5 ${ENTER} ${lead ? "" : "border-t border-line"}`}
     >
       <h2 id="pay-progress" className="sr-only">
         {COPY.progress}
@@ -949,7 +958,7 @@ function Paid({
   return (
     <div className="flex flex-col">
       <div className="flex items-center gap-3 p-4 sm:p-5">
-        <span className="grid size-10 shrink-0 place-items-center rounded-pill bg-success-soft text-success transition-[opacity,transform] duration-[var(--fw-duration-base)] ease-out starting:scale-90 starting:opacity-0">
+        <span className="grid size-10 shrink-0 place-items-center rounded-pill bg-success-soft text-success transition-[opacity,scale] duration-[var(--fw-duration-base)] ease-out starting:scale-90 starting:opacity-0">
           <Check aria-hidden className="size-5" />
         </span>
         <div className="min-w-0">

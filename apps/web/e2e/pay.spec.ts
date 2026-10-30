@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
 import { readPayPage } from "../scripts/canary-pay-page";
+import { blockingViolations } from "./privy/axe";
 import { PUBLIC_URL } from "./servers";
 import { sidewaysScroll } from "./sideways";
 
@@ -778,10 +779,7 @@ test.describe("pay page", () => {
     await openPay(page, CHOOSING, CHOOSING, CHOOSING, { ...CHOOSING, optionLocked: true });
     await expect(page.locator("[data-money]")).toHaveText("1,250.00 USD");
     await expect(showAddress(page)).toHaveCount(0);
-    const serious = (await new AxeBuilder({ page }).analyze()).violations.filter(
-      (v) => v.impact === "serious" || v.impact === "critical",
-    );
-    expect(serious.map((v) => v.id)).toEqual([]);
+    expect(await blockingViolations(page)).toEqual([]);
 
     // Arbitrum carries one token, so picking the network picks it.
     await page.getByRole("combobox", { name: "Network" }).click();
@@ -862,11 +860,7 @@ test.describe("pay page", () => {
     await expect(logo).toBeVisible();
     expect(await logo.evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBe(40);
     await expect(page.getByRole("heading", { level: 1, name: "Alice Design GmbH" })).toBeVisible();
-    const blocking = async () =>
-      (await new AxeBuilder({ page }).analyze()).violations
-        .filter((v) => v.impact === "serious" || v.impact === "critical")
-        .map((v) => v.id);
-    expect(await blocking()).toEqual([]);
+    expect(await blockingViolations(page)).toEqual([]);
     await mockInvoice(page, { ...OPEN, brand: { ...brand, logoAt: null } });
     await page.reload();
     await expect(page.getByText("A", { exact: true })).toBeVisible();

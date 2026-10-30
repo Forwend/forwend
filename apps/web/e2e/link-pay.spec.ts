@@ -92,6 +92,48 @@ test.describe("payment link page", () => {
     expect(calls.pays[2]?.key).not.toBe(first?.key);
   });
 
+  test("Pay keeps the link page still and the checkout opens whole, with no empty page between", async ({
+    page,
+  }) => {
+    await mockLink(page, FIXED);
+    // Pay and the checkout's invoice answer late, so the pages are seen while they wait.
+    for (const path of [`**/api/v1/links/${SLUG}/pay`, "**/api/v1/invoices/*"]) {
+      await page.route(path, async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        await route.fallback();
+      });
+    }
+    await page.goto(`/l/${SLUG}`);
+    await expect(page.locator("[data-money]")).toHaveText("50.00 USD");
+    await page.evaluate(() => {
+      const w = window as unknown as {
+        samples: { path: string; previous: boolean; whole: boolean }[];
+      };
+      w.samples = [];
+      const sample = () => {
+        w.samples.push({
+          path: location.pathname,
+          previous: Boolean(document.body.textContent?.includes("Your previous payment")),
+          // The checkout's own content: its amount, or the warning this sample invoice gets.
+          whole: Boolean(document.querySelector("#pay-amount, main [role=alert]")),
+        });
+        requestAnimationFrame(sample);
+      };
+      sample();
+    });
+    await payButton(page).click();
+    await expect(page).toHaveURL(new RegExp(`/pay/${INVOICE.payToken}$`));
+    // The sample invoice's terms don't derive its address, so the checkout opens on its mismatch warning.
+    await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
+    const frames = await page.evaluate(
+      () =>
+        (window as unknown as { samples: { path: string; previous: boolean; whole: boolean }[] })
+          .samples,
+    );
+    expect(frames.filter((f) => f.previous)).toEqual([]);
+    expect(frames.filter((f) => f.path.startsWith("/pay/") && !f.whole)).toEqual([]);
+  });
+
   test("an uncertain response survives reload when browser storage is unavailable", async ({
     page,
   }) => {

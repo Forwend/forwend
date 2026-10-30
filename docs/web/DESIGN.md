@@ -634,8 +634,15 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Pay first records one purchase identity, original amount and offer version in the URL.
   - Returning or refreshing offers Continue this checkout and Start another purchase; independent visitors never share an attempt.
   - Uncertain failures preserve that identity; changed offers require reviewing a new purchase.
-  - Focus moves to the pending heading, then to the amount or offer heading when starting another purchase.
+  - Pay keeps the link's page as it is, with the button busy, until the checkout's invoice is read.
+  - The checkout then opens whole: no placeholder or empty page between the two.
+  - A failed Pay shows the pending purchase and moves focus to its heading.
+  - Start another purchase moves focus to the amount or offer heading.
   - A bad amount shows on the field and focuses it; a busy or failed Pay says so under the button.
+- Each step of the checkout's pay panel moves, never jumps:
+  - A part a step brings rises 4px and fades in on `duration-base`: the picker, the chosen option's row, the address, what was seen.
+  - What a step replaces goes at once.
+  - The network's line under the amount keeps its place while the payer picks, so its text arriving moves nothing.
 - `/pay/<token>` (R-68) is the payee's page, laid out as hosted checkouts split it. It has no Forwend header: Forwend
   shows only in the footer.
   - From large screens the page is two halves that fit one screen, with no page scroll for a usual invoice.

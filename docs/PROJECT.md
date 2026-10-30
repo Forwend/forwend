@@ -283,6 +283,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-206 | Code and addresses keep their place while the mono font loads. | Given `/docs` at 1440 px, when the mono font arrives after the first paint, then the layout shift stays below 0.01. | e2e | R-155 |
 
+| R-207 | Paying from a payment link moves smoothly from the link to the address. | Given Pay on a link, then the link page stays as it is until the checkout opens with its invoice. Given each pick on the pay panel, then its new part enters with motion and nothing below moves. | web-e2e | R-142, R-68 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.

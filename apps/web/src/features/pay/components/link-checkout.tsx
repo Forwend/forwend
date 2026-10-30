@@ -5,6 +5,7 @@ import { WifiOff } from "lucide-react";
 import { notFound, useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import { useLazyGetInvoiceQuery } from "@/features/invoices/api/invoices-api";
 import {
   useCountLinkVisitMutation,
   useGetPublicLinkQuery,
@@ -78,6 +79,7 @@ export function LinkCheckout({ slug }: { slug: string }) {
 function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) {
   const router = useRouter();
   const [pay] = usePayLinkMutation();
+  const [readInvoice] = useLazyGetInvoiceQuery();
   const [purchase, setPurchase] = useState(() => readPurchase(window.location.search));
   const [error, setError] = useState("");
   const [formError, setFormError] = useState("");
@@ -92,10 +94,15 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
   const fixed = link.amountUsd !== null;
   const limits = amountLabel(link);
 
-  const keepPurchase = (next: LinkPurchase | null) => {
+  // The purchase is in the address from the moment Pay is pressed, so a reload or a retry reuses its idempotency key.
+  const savePurchase = (next: LinkPurchase | null) => {
     const url = new URL(window.location.href);
     url.search = purchaseSearch(url.search, next);
     window.history.replaceState(window.history.state, "", url);
+  };
+
+  const keepPurchase = (next: LinkPurchase | null) => {
+    savePurchase(next);
     flushSync(() => {
       setPurchase(next);
       setRefused(false);
@@ -115,7 +122,8 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
       setBusy(true);
       setFormError("");
     });
-    section.current?.querySelector<HTMLElement>("#link-amount")?.focus();
+    // From the pending purchase, focus waits on its heading; from the form it stays on Pay.
+    if (purchase) section.current?.querySelector<HTMLElement>("#link-amount")?.focus();
     try {
       const { payToken } = await pay({
         slug: link.slug,
@@ -124,6 +132,9 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
         expectedAmountUsd: usdFromCents(BigInt(request.cents)),
         expectedVersion: request.offerVersion ?? undefined,
       }).unwrap();
+      // The checkout shares this page's store (app/(checkout)/layout.tsx): read its invoice first, so it opens whole.
+      router.prefetch(`/pay/${payToken}`);
+      await readInvoice(payToken);
       router.push(`/pay/${payToken}`);
     } catch (err) {
       const failure = err as { status?: unknown; data?: { error?: { code?: string } } };
@@ -132,14 +143,17 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
         keepPurchase(null);
         setRefused(true);
         onClosed();
-      } else if (code === LINK_CHANGED_CODE) {
-        setFormError(COPY.errors.changed);
-        onClosed();
       } else if (code === LINK_NOT_READY_CODE) {
         keepPurchase(null);
         setFormError(COPY.errors.notReady);
-      } else if (failure.status === TOO_MANY) setFormError(COPY.errors.busy);
-      else setFormError(COPY.errors.failed);
+      } else {
+        // A failed Pay from the form offers this purchase again, with the same key.
+        if (!purchase) keepPurchase(request);
+        if (code === LINK_CHANGED_CODE) {
+          setFormError(COPY.errors.changed);
+          onClosed();
+        } else setFormError(failure.status === TOO_MANY ? COPY.errors.busy : COPY.errors.failed);
+      }
       setBusy(false);
     }
   };
@@ -171,7 +185,7 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
       cents: cents.toString(),
       offerVersion: link.version ?? null,
     };
-    keepPurchase(next);
+    savePurchase(next);
     await startPurchase(next);
   };
 
