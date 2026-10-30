@@ -84,8 +84,7 @@ export function BusinessOverview() {
         {COPY.overview}
       </h1>
 
-      {/* The balance card keeps its own height: Pending payments grows with its rows. */}
-      <div className={`${ROW} xl:items-start`}>
+      <div className={ROW}>
         <BalanceCard
           profileId={profile.profileId}
           balances={balances}

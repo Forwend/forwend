@@ -4324,19 +4324,21 @@
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-30 Live run by hand, 2026-10-30, ports lent by the other session: 'node scripts/e2e.mjs --live e2e/privy/balances.spec.ts -g \"keeps its own height\"' passed with the fix; with personal-overview's first row back to plain ROW it failed (height difference 0, expected > 40). The same run passed navigation 'names the next step of every exception' (F394)."
+        "2026-10-30 Live run by hand, 2026-10-30, ports lent by the other session: 'node scripts/e2e.mjs --live e2e/privy/balances.spec.ts -g \"keeps its own height\"' passed with the fix; with personal-overview's first row back to plain ROW it failed (height difference 0, expected > 40). The same run passed navigation 'names the next step of every exception' (F394).",
+        "2026-10-30 review fail by independent-reviewer: Fails on layout. xl:items-start on the whole row stops the balance card following the other card (the ask), but it also stops the other card growing to the balance card. Measured in Chromium with the real cards and CSS (1280, 1440, 1920; business 0-3 rows x held, personal 0-7 tokens): in 38 of 99 cases the beside card is now shorter than the balance card; before it was always equal. Personal with 1 token: My assets ends 102 px short (150 px with no prices), 2 tokens 45 px, 0 tokens 19 px. Business empty Pending payments (new merchant, the most common state) ends 6.4 px short, a visible ragged edge; 18 cases are within 12 px. Fix: align only the balance card, e.g. replace xl:items-start with xl:*:first:self-start on both rows (compiles in Tailwind 4.3.3). With that, 0 cases have a shorter beside card, empty states stay equal at 288 px, and a taller Pending payments or My assets still leaves the balance card at its own height (identical to this commit there). Only 4 cases stay within 12 px (inherent). Below xl (390, 768, 1024, 1279) and the Received/Assets and Latest/Owed rows are unchanged (heights identical before and after in all 34 fixtures). Also: the live test covers only the personal overview (the business balance card has no region name, so getByRole misses it; loading.spec.ts finds it by #balance-title), so the owner's business case has no test; add one at 1440 with mockApi and 3 pending payments. The test's fixtures are valid, names match, and 40 px is sound (about 78 px measured for 5 unpriced tokens; 0 before). Docs: new bullets are under 25 words; update both to say only the balance card keeps its height after the fix. DESIGN.md line 210 (Row 3 'sizes to its rows') is stale against the code, which stretches; it predates this change.",
+        "2026-10-30 Live run by hand after review: both balance-height tests in balances.spec.ts pass with xl:self-start on the two balance cards; without it both fail (business: Pending payments taller by 0, expected > 10; personal: My assets taller by 0, expected > 40). The business test also checks a shorter Pending payments still matches the balance card."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-30T15:56:42Z",
+        "at": "2026-10-30T16:08:34Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.0,
+            "seconds": 3.4,
             "log": ""
           },
           {
@@ -4364,21 +4366,21 @@
             "id": "web-unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 4.0,
+            "seconds": 3.8,
             "log": ""
           },
           {
             "id": "web-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 31.7,
+            "seconds": 30.5,
             "log": ""
           }
         ],
         "taskHash": "5c91d4aabbf998f8",
-        "filesHash": "d56f3a94806cef3c",
+        "filesHash": "16a13da39d7ae6e0",
         "proof": {
-          "1": "web-unit: the dashboard units still pass; the layout itself is proven by the live balances test 'the balance card keeps its own height when My assets beside it is taller', run by hand (see note): it passes with the fix and fails with the old row (height difference 0)"
+          "1": "web-unit: the dashboard units still pass; the layout itself is proven by the live balances tests run by hand (see notes): the business and the personal balance card keep their height beside a taller card, and a shorter Pending payments still matches. Both fail without self-start"
         }
       },
       "branch": "fix/f396-the-overview-s-balance-card-keeps-its-ow",

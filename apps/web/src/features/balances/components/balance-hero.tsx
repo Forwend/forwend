@@ -50,7 +50,8 @@ export function BalanceHero({
   return (
     <section
       aria-labelledby="balance-title"
-      className="relative isolate -mx-4 -mt-4 flex min-h-80 flex-col overflow-hidden border-b border-line bg-surface sm:mx-0 sm:mt-0 sm:min-h-64 sm:rounded-lg sm:border"
+      // self-start: a taller My assets beside it doesn't stretch it; a shorter one still stretches to it.
+      className="relative isolate -mx-4 -mt-4 flex min-h-80 flex-col overflow-hidden border-b border-line bg-surface sm:mx-0 sm:mt-0 sm:min-h-64 sm:rounded-lg sm:border xl:self-start"
     >
       {/* One artwork in both themes; dark mode mutes it toward the near-black ground (D-113). */}
       <Image

@@ -196,7 +196,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The Balance chart card holds the range control; beside it Money in and out stacks In over Out.
 - Business overview (merchant, freelancer, R-63) follows the C comp, in three rows of cards (`Card`, unruled headers):
   - Row 1: the Balance card and Pending payments.
-    - Each keeps its own height: the Balance card never stretches to match Pending payments.
+    - The Balance card keeps its own height: a taller Pending payments doesn't stretch it.
+    - A shorter Pending payments still stretches to the Balance card's height.
     - Balance: the personal card's figure over the art with a surface veil: the total, USD and its hint, then
       its change over the past month. Its pending and held links stay off: Pending payments sits beside it.
     - Then round actions: New invoice (lime), Payment link, Checkout (merchants), Receive.
