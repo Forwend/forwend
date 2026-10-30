@@ -868,7 +868,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - A notice (`Notice`) is one short warning line across the view's full width.
   - At most one action sits at its end, such as Try again.
   - It is for what concerns the whole view: a refresh that failed, or a problem the view shows nowhere else.
-  - A failed refresh's notice stays while its retry runs, its button busy; only a read that works removes it.
+  - A failed refresh's notice stays while its retry runs, with its button busy.
+  - Only a read that works removes it.
   - Plain words, never blame: say what happened and what to do, not whose money it is.
 
 - Apply the saved theme, otherwise the system choice, before first paint using `data-theme` on `<html>`.

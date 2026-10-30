@@ -86,7 +86,7 @@ export function PaymentsScreen() {
         <ExportPayments
           profileId={profile.profileId}
           filters={filters}
-          disabled={unknownSource || unknownStore || (merchant && stores.isError)}
+          disabled={unknownSource || unknownStore || (merchant && stores.error !== undefined)}
         />
       </div>
       {view === PAYMENT_VIEWS.reconciliation ? null : (

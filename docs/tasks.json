@@ -2508,18 +2508,20 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-30 review pass by independent-reviewer: PASS. The error gate is right at all 8 sites. RTK keeps error while a retry is pending (reducers read; probe test: err true, isError false, fetching true) and only a fulfilled write or a new cache key clears it, so a strip cannot stick. The new unit test fails with the old isError gate at the same-node assertion; it passed 10/10 serial and 8/8 parallel. pay.spec passes (28/28; the R-194 test 6/6 repeated). In Chromium on :3001 against a failing mock: one alert insertion over 3 polls, page y fixed (only the first 48px), Try again keeps focus and aria-busy with no extra request, axe finds 0 violations idle and busy in light and dark. Copy is plain and blames no one. check-docs: 0 errors. Not blocking, name or fix: (1) Button loading swaps Try again's text node for svg plus span inside the alert on every poll; the alert node is inserted once, but I could not test whether a screen reader repeats it (before the fix it surely did). (2) Missed: invoice-detail.tsx:105 clientFailed={invoice.isError} swaps the Client panel for a LoadError on each failed poll and back during each retry, with no retrying. Same flip. (3) payments-screen.tsx:89 Export disabled still uses stores.isError, so it enables during the stores retry; use stores.error. (4) About 22 full-page LoadError gates stay on isError and pass retrying={isFetching}, which is never true there; a retry swaps in a skeleton and focus drops to BODY (seen on the pay first-load error). (5) Low: invoices-table and payment-list data falls back to list.data while fetching, so after a new filter's read fails, Try again shows the old filter's rows dimmed with the strip over them. (6) Low: invoices-screen.tsx:16 tokens note vanishes on retry. (7) Docs nit: the new DESIGN.md Notice bullet has two facts joined by a semicolon; split into sub-bullets. Words are under 25."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-30T03:04:28Z",
+        "at": "2026-10-30T03:17:37Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.4,
+            "seconds": 3.3,
             "log": ""
           },
           {
@@ -2533,21 +2535,21 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.4,
+            "seconds": 0.3,
             "log": ""
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.8,
+            "seconds": 1.4,
             "log": ""
           },
           {
             "id": "web-unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 4.2,
+            "seconds": 3.9,
             "log": ""
           },
           {
@@ -2559,9 +2561,9 @@
           }
         ],
         "taskHash": "26d0df52613a22bf",
-        "filesHash": "ec989dd61485f4b0",
+        "filesHash": "3e9ed95f9b61a33d",
         "proof": {
-          "1": "web-unit: activity strip test: the update strip stays the same node, Try again busy, while a retry hangs, and goes once a read works; fails with the isError gate. 2=web-e2e: pay.spec: the strip reads Can't reach the server. Retrying… as an alert, and stays with Try again busy and focused while the retry hangs"
+          "1": "web-unit: activity and invoice detail tests: the update strip and the client panel's error stay the same node, Try again busy, while a retry hangs, and go once a read works; both fail with the isError gate. 2=web-e2e: pay.spec: the strip reads Can't reach the server. Retrying… as an alert, and stays with Try again busy and focused while the retry hangs"
         }
       },
       "branch": "fix/f371-a-connection-strip-stays-in-place-while",

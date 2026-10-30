@@ -102,10 +102,11 @@ export function InvoiceDetail({
           retainer={mine?.retainer ?? null}
           history={mine?.history ?? []}
           views={mine?.views ?? null}
-          clientFailed={invoice.isError}
+          clientFailed={invoice.error !== undefined}
           tokens={tokens}
           request={request}
           onRetry={() => void invoice.refetch()}
+          retrying={invoice.isFetching}
         />
       ) : failure?.status === NOT_FOUND ? (
         <p className="text-muted">{COPY.notFound}</p>
@@ -131,6 +132,7 @@ function Loaded({
   tokens,
   request,
   onRetry,
+  retrying,
 }: {
   profileId: string;
   invoice: Invoice;
@@ -144,6 +146,7 @@ function Loaded({
   tokens: readonly InvoiceToken[] | null;
   request: boolean;
   onRetry: () => void;
+  retrying: boolean;
 }) {
   const token =
     tokens?.find((t) => tokenKey(t) === tokenKey(invoice)) ??
@@ -324,7 +327,7 @@ function Loaded({
                   {COPY.client}
                 </h2>
                 {clientFailed ? (
-                  <LoadError message={COPY.clientFailed} onRetry={onRetry} />
+                  <LoadError message={COPY.clientFailed} onRetry={onRetry} retrying={retrying} />
                 ) : !mine ? (
                   <Skeleton className="m-5 h-16" />
                 ) : client?.name ||
