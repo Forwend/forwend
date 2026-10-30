@@ -11,7 +11,7 @@ import {
   TONES,
   WalletStateLabel,
 } from "@forwend/ui-web";
-import { FileDown, FileText, UserRound } from "lucide-react";
+import { FileDown, FilePlus2, FileText, UserRound } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, type Ref, useEffect, useRef, useState } from "react";
 import { useGetProfileInvoiceQuery } from "@/features/invoices/api/invoices-api";
@@ -42,7 +42,6 @@ import {
 } from "@/features/invoices/lib/invoices";
 import type {
   Invoice,
-  InvoiceException,
   InvoiceHistoryEvent,
   InvoicePdf,
   InvoiceReminders,
@@ -165,6 +164,18 @@ function Loaded({
   const { blocksLeft, blocksTotal, secondsLeft } = invoiceProgress(invoice);
   const exception = invoiceException(invoice, status);
   const received = exception.received;
+  // R-77: a closed or canceled invoice's next step sits with its actions; its status and Details say what happened.
+  // Not while its records are in review or the final ones are still being read: money may still change the answer.
+  // A revised one already has its replacement, linked in Details.
+  const restart =
+    invoice.replacedBy ||
+    invoice.amounts?.unreconciled ||
+    invoice.amounts?.hasPolicyException ||
+    (invoice.closed && invoice.amounts && BigInt(invoice.amounts.payable) > 0n)
+      ? null
+      : exception.kind;
+  const reopen =
+    restart === INVOICE_EXCEPTIONS.closedPartial ? (invoice.reopenUntil ?? null) : null;
   const money = (units: bigint) =>
     token
       ? `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`
@@ -256,6 +267,26 @@ function Loaded({
         }}
         actions={
           <>
+            {reopen ? (
+              <ReopenInvoice
+                profileId={profileId}
+                invoiceId={invoice.invoiceId}
+                number={invoiceNumber(invoice.number)}
+                noun={request ? COPY.noun.request : COPY.noun.invoice}
+                until={reopen}
+                onReopened={() => setReopening(true)}
+              />
+            ) : null}
+            {restart ? (
+              // R-130: while it can reopen, reopening is the first way to collect the rest.
+              <Link
+                href={invoiceCopyHref(invoice.invoiceId, false)}
+                className={buttonClasses({ variant: reopen ? "secondary" : "primary" })}
+              >
+                <FilePlus2 aria-hidden className="size-[var(--fw-icon-sm)]" />
+                {request ? COPY.newRequest : COPY.newInvoice}
+              </Link>
+            ) : null}
             <Link
               href={`${APP_ROUTES.payments}/${invoice.invoiceId}`}
               className={buttonClasses({ variant: "secondary" })}
@@ -291,18 +322,6 @@ function Loaded({
             />
           </>
         }
-      />
-      <NextStep
-        profileId={profileId}
-        invoiceId={invoice.invoiceId}
-        number={invoiceNumber(invoice.number)}
-        exception={exception}
-        money={money}
-        request={request}
-        reopenUntil={invoice.reopenUntil ?? null}
-        closing={Boolean(invoice.closed && invoice.amounts && BigInt(invoice.amounts.payable) > 0n)}
-        needsReview={Boolean(invoice.amounts?.unreconciled || invoice.amounts?.hasPolicyException)}
-        onReopened={() => setReopening(true)}
       />
       <PaymentAmountsNotice
         options={invoice.options}
@@ -494,69 +513,6 @@ function Loaded({
         </div>
       </div>
     </>
-  );
-}
-
-/** Under the status (R-77): a new invoice after the close, or once, a partly paid one reopened (R-130, D-25). */
-const NEXT_BOX = "rounded-md bg-surface-2 px-4 py-3 text-sm text-ink";
-
-function NextStep({
-  profileId,
-  invoiceId,
-  number,
-  exception,
-  money,
-  request,
-  reopenUntil,
-  needsReview,
-  closing,
-  onReopened,
-}: {
-  profileId: string;
-  invoiceId: string;
-  number: string;
-  exception: InvoiceException;
-  money: (units: bigint) => string;
-  request: boolean;
-  reopenUntil: string | null;
-  needsReview: boolean;
-  closing: boolean;
-  onReopened: () => void;
-}) {
-  const noun = request ? COPY.noun.request : COPY.noun.invoice;
-  const { received, left, late } = exception;
-  // Canceled with nothing sent needs no line: Details says when it was canceled.
-  const kind =
-    exception.kind === INVOICE_EXCEPTIONS.canceled && received === 0n ? null : exception.kind;
-  if (needsReview || (!kind && late === 0n)) return null;
-  if (closing) return <p className={NEXT_BOX}>{COPY.checkingClosed}</p>;
-  const reopen = kind === INVOICE_EXCEPTIONS.closedPartial ? reopenUntil : null;
-  const values = { left: money(left), held: money(received), noun };
-  return (
-    <div className={`flex flex-col items-start gap-2 ${NEXT_BOX}`}>
-      {kind ? <p>{reopen ? COPY.nextReopen(values) : COPY.next[kind](values)}</p> : null}
-      {late > 0n ? <p>{COPY.lateHeld(money(late))}</p> : null}
-      {kind === INVOICE_EXCEPTIONS.closedUnpaid || kind === INVOICE_EXCEPTIONS.closedPartial ? (
-        <div className="flex flex-wrap gap-2">
-          {reopen ? (
-            <ReopenInvoice
-              profileId={profileId}
-              invoiceId={invoiceId}
-              number={number}
-              noun={noun}
-              until={reopen}
-              onReopened={onReopened}
-            />
-          ) : null}
-          <Link
-            href={invoiceCopyHref(invoiceId, false)}
-            className={buttonClasses({ variant: "secondary", size: "sm" })}
-          >
-            {request ? COPY.newRequest : COPY.newInvoice}
-          </Link>
-        </div>
-      ) : null}
-    </div>
   );
 }
 

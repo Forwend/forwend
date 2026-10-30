@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 394,
+  "nextId": 395,
   "tasks": [
     {
       "id": "F332",
@@ -4118,6 +4118,102 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f393-one-strip-says-the-server-can-t-be-reach",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F394",
+      "type": "fix",
+      "behavior": "A closed or canceled invoice offers New invoice beside View payment, with no next-step box",
+      "acceptance": [
+        "An expired or canceled invoice's page shows New invoice (and Reopen checkout while it can reopen) in its header actions beside View payment; the next-step box under the title is gone; records in review or still being checked show neither button"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "web-unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-77",
+        "R-130"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-30 review fail by independent-reviewer: Fail, three fixes needed. (1) apps/web/e2e/privy/navigation.spec.ts:581 still expects the removed sentence 'The checkout closed with nothing paid.' in main.locator('header') (test 'the owner's invoice page shows each state once', R-69 block). The live suite will fail; assert the New invoice link in the header instead. (2) invoice-detail.tsx:516 keeps the old JSDoc 'Under the status (R-77): a new invoice after the close...' and it now sits on Row. Delete it. (3) Reopen checkout is a size=sm Button (reopen-invoice.tsx:57, h-8) beside New invoice, View payment and More actions at h-10. I rendered InvoiceDetail in a scratch test outside the repo and read h-8 vs h-10 from the classes. Make the trigger the default size; the header is its only caller. Checked and fine: vitest src/features/invoices 58 passed. Held money is not lost: payment-detail.tsx:192 shows 'Extra, held for the customer' whenever held > 0 (canceled-after-money, closed partial, paid with late money), payment-problems.tsx shows a held_funds strip for other options, and the invoice page still marks late transfers (invoice-deposits.tsx:59). The guard is right: unreconciled 'pending' comes only from a confirmed unbooked deposit or an unbooked outflow (ledger/amounts.go UnreconciledSQL), so it means money is in motion and hiding the button matches the old box; the test fixture with pending and no money cannot happen in production. I rendered 8 states: expired+pending, policy exception, closed with payable > 0, paid+late show no New invoice; canceled+late, canceled replaced, closed partial with and without reopenUntil show it, with Reopen first. locator('+ a') is valid Playwright, checked on a setContent page: it returned 'View payment'. The other edits in 'names the next step of every exception' read correctly. Reopen focus is unchanged (same Dialog and trigger). Phones: both flex levels wrap, so four buttons go on two rows without overflow; unmeasured in a browser. Not blocking: no test pins the guard (nothing hides New invoice for review or closing); R-77's first sentence is 39 words, over D-84's 25, so split it; DESIGN says held money shows 'not on the invoice' but late transfers are still marked there; InvoiceException.late (lib/invoices.ts:301, types:76) is now read only by a test; a canceled invoice that was replaced (replacedBy set) also gets a lime New invoice, consider hiding it; Reopen is secondary while New invoice is lime, though R-130 made reopen the first way to collect the rest.",
+        "2026-10-30 review pass by independent-reviewer: Pass. Commit 0242afd6 fixes the three blockers. (1) navigation.spec.ts:581 now asserts the New invoice link in main.locator('header'); the live fixture OPEN_INVOICE has replacedBy null and no amounts, so the link shows for status expired. No other e2e line mentions the removed copy. (2) The orphaned JSDoc above Row is gone. (3) The Reopen checkout trigger is the default size and primary. I re-rendered InvoiceDetail in a scratch test outside the repo: Reopen and New invoice both read h-10. With reopenUntil set, Reopen is first and New invoice is secondary; without it New invoice is primary. Re-rendered states: expired+pending, policy exception, closed with payable money, paid+late and canceled+replaced show no New invoice; canceled+late and closed partial show it. The new replacedBy guard behaves as the coordinator describes. vitest src/features/invoices: 58 passed. biome check on the four changed files: clean. check-docs: 0 errors. R-77's first sentence is split; the only sentences over 25 words are the two older ones (28 and 36) that this change did not touch. DESIGN reads accurately: Reopen (lime) first with New invoice secondary, a revised invoice shows neither, held amounts on the payment page and the invoice marks a late transfer. Not blocking: no unit test pins the review half of the guard (unreconciled or hasPolicyException hides New invoice); the test covers open, revised and closed-with-payable. One more case in the loop would pin it. InvoiceException.late is read only by a test; the coordinator will name it to the owner. The live suite was not run; the live edits were read and match the fixtures."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T15:40:38Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.8,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.6,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.2,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 33.9,
+            "log": ""
+          }
+        ],
+        "taskHash": "8eae40dfc26b6964",
+        "filesHash": "42f02a702ee91663",
+        "proof": {
+          "1": "web-unit: invoice-detail tests: an expired and a canceled invoice show New invoice right before View payment in the header and no next-step text; an open, a revised or a still-booking one shows none; a partly paid closed one has Reopen checkout and New invoice in the header. They fail on the old page"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent-reviewer",
+          "summary": "Pass. Commit 0242afd6 fixes the three blockers. (1) navigation.spec.ts:581 now asserts the New invoice link in main.locator('header'); the live fixture OPEN_INVOICE has replacedBy null and no amounts, so the link shows for status expired. No other e2e line mentions the removed copy. (2) The orphaned JSDoc above Row is gone. (3) The Reopen checkout trigger is the default size and primary. I re-rendered InvoiceDetail in a scratch test outside the repo: Reopen and New invoice both read h-10. With reopenUntil set, Reopen is first and New invoice is secondary; without it New invoice is primary. Re-rendered states: expired+pending, policy exception, closed with payable money, paid+late and canceled+replaced show no New invoice; canceled+late and closed partial show it. The new replacedBy guard behaves as the coordinator describes. vitest src/features/invoices: 58 passed. biome check on the four changed files: clean. check-docs: 0 errors. R-77's first sentence is split; the only sentences over 25 words are the two older ones (28 and 36) that this change did not touch. DESIGN reads accurately: Reopen (lime) first with New invoice secondary, a revised invoice shows neither, held amounts on the payment page and the invoice marks a late transfer. Not blocking: no unit test pins the review half of the guard (unreconciled or hasPolicyException hides New invoice); the test covers open, revised and closed-with-payable. One more case in the loop would pin it. InvoiceException.late is read only by a test; the coordinator will name it to the owner. The live suite was not run; the live edits were read and match the fixtures.",
+          "at": "2026-10-30T15:42:30Z",
+          "filesHash": "42f02a702ee91663"
+        },
+        "commit": "703a2904",
+        "doneAt": "2026-10-30T15:42:40Z"
+      },
+      "branch": "fix/f394-a-closed-or-canceled-invoice-offers-new",
+      "baseCommit": "5cbbb58d6adbcbf20a3b5c4771d4f735c19c92c1",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f394-a-closed-or-canceled-invoice-offers-new",
         "base": "main"
       }
     }

@@ -578,7 +578,7 @@ test("the owner's invoice page shows each state once, with the waiting step movi
   body = { ...OPEN_INVOICE, paymentStatus: "expired", deposits: [] };
   await page.reload();
   await shown();
-  await expect(main.locator("header")).toContainText("The checkout closed with nothing paid.");
+  await expect(main.locator("header").getByRole("link", { name: "New invoice" })).toBeVisible();
   await expect(main.getByRole("button", { name: "Check status" })).toHaveCount(0);
   await context.close();
 });
@@ -636,10 +636,12 @@ test("the owner's invoice page names the next step of every exception", async ({
   body = { ...OPEN_INVOICE, expiresAt: closedAt, closesAt: closedAt, closed: true, deposits: [] };
   await open();
   await expect(main.getByRole("region", { name: "Details" })).toContainText("Checkout closed");
-  // The next step sits in its own box under the header.
-  await expect(main).toContainText(
-    "The checkout closed with nothing paid. A closed invoice can't take money again.",
+  // R-77: the next step sits with the header's actions, beside View payment, with no box under the title.
+  await expect(header.getByRole("link", { name: "New invoice" })).toBeVisible();
+  await expect(header.getByRole("link", { name: "New invoice" }).locator("+ a")).toHaveText(
+    "View payment",
   );
+  await expect(main).not.toContainText("can't take money again");
   await header.getByRole("button", { name: "More actions" }).click();
   await expect(page.getByRole("menuitem")).toHaveText(["Edit", "Duplicate"]);
   await page.keyboard.press("Escape");
@@ -658,17 +660,13 @@ test("the owner's invoice page names the next step of every exception", async ({
   };
   await open();
   await expect(main.getByRole("region", { name: "Details" })).toContainText("Checkout closed");
-  await expect(main).toContainText(
-    "0.50 USDC is held for the payer and does not transfer to a new invoice. A new invoice requests 2.00 USDC.",
-  );
+  await expect(header.getByRole("link", { name: "New invoice" })).toBeVisible();
   await expect(main.getByRole("button", { name: "Reopen checkout" })).toHaveCount(0);
 
   // R-130: while the API allows it, Reopen checkout comes first and asks to confirm.
   body = { ...body, reopenUntil: new Date(Date.now() + 5 * 86_400_000).toISOString() };
   await open();
-  await expect(main).toContainText(
-    "0.50 USDC is held for the payer. Reopen to count it toward this invoice, or send a new invoice for 2.00 USDC.",
-  );
+  await expect(header.getByRole("button", { name: "Reopen checkout" })).toBeVisible();
   await main.getByRole("button", { name: "Reopen checkout" }).click();
   const reopen = page.getByRole("dialog", { name: /^Reopen INV-\d{4}\?$/ });
   await expect(reopen).toContainText("It reopens only once.");
@@ -679,7 +677,7 @@ test("the owner's invoice page names the next step of every exception", async ({
   await expect(page).toHaveURL(`/app/invoices/new?from=${OPEN_INVOICE.invoiceId}`);
   await expect(main.getByLabel("Amount")).toHaveValue("2");
 
-  // Money after the checkout closed is held for the payer, whatever else happened.
+  // A paid invoice needs no next step, even with money held for the payer: its payment page shows that.
   body = {
     ...OPEN_INVOICE,
     paymentStatus: "paid",
@@ -688,9 +686,9 @@ test("the owner's invoice page names the next step of every exception", async ({
     deposits: [paid(OPEN_INVOICE.amount), { ...paid("500000", true), logIndex: 1 }],
   };
   await open();
-  await expect(main).toContainText(
-    "0.50 USDC arrived after the checkout closed and is held for the payer.",
-  );
+  await expect(header.getByRole("link", { name: "View payment" })).toBeVisible();
+  await expect(header.getByRole("link", { name: "New invoice" })).toHaveCount(0);
+  await expect(main).not.toContainText("is held for the payer");
   expect(await blockingViolations(page)).toEqual([]);
   await context.close();
 });

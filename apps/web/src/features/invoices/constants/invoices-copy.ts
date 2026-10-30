@@ -9,7 +9,6 @@ import {
   HISTORY_FIELDS,
   HISTORY_FILTERS,
   HISTORY_KINDS,
-  INVOICE_EXCEPTIONS,
   INVOICE_FIELDS,
   INVOICE_LIMITS,
   INVOICE_PDFS,
@@ -26,7 +25,6 @@ import type {
   HistoryField,
   HistoryFilter,
   HistoryKind,
-  InvoiceExceptionKind,
   InvoicePdf,
   InvoiceStep,
   OwedKind,
@@ -335,7 +333,6 @@ export const INVOICE_COPY = {
   allItems: (n: number) => `Show all ${n} items`,
   reconciliationNeeded: "We could not verify this payment. Contact support before sending more.",
   verificationPending: "Confirming payment.",
-  checkingClosed: "Checkout closed. Checking the final payment records.",
   recordedReturns: (amount: string, network: string) =>
     `Recorded returns: ${amount} on ${network}.`,
   latestReturn: "Latest return transaction",
@@ -407,24 +404,6 @@ export const INVOICE_COPY = {
   payment: "Payment",
   to: "To",
   late: "After the checkout closed",
-  // Under the status (R-77); amounts arrive formatted with their symbol.
-  next: {
-    // Only said when money came: with nothing sent, Details' Canceled on row says it.
-    [INVOICE_EXCEPTIONS.canceled]: ({ held, noun }) =>
-      `${held} arrived after the ${noun} was canceled and is held for the payer.`,
-    [INVOICE_EXCEPTIONS.closedUnpaid]: ({ noun }) =>
-      `The checkout closed with nothing paid. A closed ${noun} can't take money again.`,
-    [INVOICE_EXCEPTIONS.closedPartial]: ({ held, left, noun }) =>
-      `${held} is held for the payer and does not transfer to a new ${noun}. A new ${noun} requests ${left}.`,
-  } satisfies Record<
-    InvoiceExceptionKind,
-    (v: { left: string; held: string; noun: string }) => string
-  >,
-  // R-130: while it can reopen, that is the first way to collect the rest.
-  nextReopen: ({ held, left, noun }: { left: string; held: string; noun: string }) =>
-    `${held} is held for the payer. Reopen to count it toward this ${noun}, or send a new ${noun} for ${left}.`,
-  lateHeld: (late: string) =>
-    `${late} arrived after the checkout closed and is held for the payer.`,
   noun: { invoice: "invoice", request: "request" },
   testMode: "Test mode",
   newInvoice: "New invoice",
