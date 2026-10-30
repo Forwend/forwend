@@ -4129,7 +4129,7 @@
         "An expired or canceled invoice's page shows New invoice (and Reopen checkout while it can reopen) in its header actions beside View payment; the next-step box under the title is gone; records in review or still being checked show neither button"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "docs-check"
@@ -4204,11 +4204,18 @@
           "summary": "Pass. Commit 0242afd6 fixes the three blockers. (1) navigation.spec.ts:581 now asserts the New invoice link in main.locator('header'); the live fixture OPEN_INVOICE has replacedBy null and no amounts, so the link shows for status expired. No other e2e line mentions the removed copy. (2) The orphaned JSDoc above Row is gone. (3) The Reopen checkout trigger is the default size and primary. I re-rendered InvoiceDetail in a scratch test outside the repo: Reopen and New invoice both read h-10. With reopenUntil set, Reopen is first and New invoice is secondary; without it New invoice is primary. Re-rendered states: expired+pending, policy exception, closed with payable money, paid+late and canceled+replaced show no New invoice; canceled+late and closed partial show it. The new replacedBy guard behaves as the coordinator describes. vitest src/features/invoices: 58 passed. biome check on the four changed files: clean. check-docs: 0 errors. R-77's first sentence is split; the only sentences over 25 words are the two older ones (28 and 36) that this change did not touch. DESIGN reads accurately: Reopen (lime) first with New invoice secondary, a revised invoice shows neither, held amounts on the payment page and the invoice marks a late transfer. Not blocking: no unit test pins the review half of the guard (unreconciled or hasPolicyException hides New invoice); the test covers open, revised and closed-with-payable. One more case in the loop would pin it. InvoiceException.late is read only by a test; the coordinator will name it to the owner. The live suite was not run; the live edits were read and match the fixtures.",
           "at": "2026-10-30T15:42:30Z",
           "filesHash": "42f02a702ee91663"
-        }
+        },
+        "commit": "703a2904",
+        "doneAt": "2026-10-30T15:42:40Z"
       },
       "branch": "fix/f394-a-closed-or-canceled-invoice-offers-new",
       "baseCommit": "5cbbb58d6adbcbf20a3b5c4771d4f735c19c92c1",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f394-a-closed-or-canceled-invoice-offers-new",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
