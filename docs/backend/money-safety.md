@@ -40,7 +40,8 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 - The signer records its own settle from its finalized receipt, so `settled` never waits for the scan.
 - Recovery sweeps read every block again later, so a log one RPC answer missed is still found.
   - Some finalized blocks may be kept by no RPC any more (R-191).
-    - The reachable Arc nodes served logs 13 hours old but not 47 hours old (measured 2026-10-30).
+    - Arc's PublicNode and Blockdaemon nodes served logs 13 hours old but not 47 hours old (measured 2026-10-30).
+    - thirdweb on Arc (migration 94) served logs 170 hours old, so ranges skipped before it can be read again.
   - Only when every endpoint serving the chain answers that it lacks them does the sweep move on, to the oldest kept block.
     - It logs an `ALERT` with the skipped range. An endpoint that failed or rests may hold them, so the sweep waits then.
   - The fast scan read those blocks once. To read them again, add an endpoint with full history.

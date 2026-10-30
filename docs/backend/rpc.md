@@ -8,6 +8,9 @@
 - Migration 92 removes dRPC and adds public HTTPS and WSS endpoints measured on 2026-10-29.
   - They passed chain ID, finalized tag, log range, batch and block-hash `eth_call` checks.
   - Tenderly's WSS is left out: it never answers a batch.
+- Migration 94 adds thirdweb for Base, Arbitrum and Arc, in its own budget group, measured on 2026-10-30.
+  - Without a key it takes logs over up to 1000 blocks and batches of up to 25 calls; larger ones are refused.
+  - It turns off Tenderly, whose 100-call batches get a rate limit, and PublicNode's WSS, which answers part of a batch.
 - Private endpoints require `secret_ref` and prohibit `public_url`; public endpoints require `public_url` and prohibit `secret_ref`.
 - `RPC_ENDPOINT_SECRETS` maps references to complete URLs in the backend environment.
 - Example format: `RPC_ENDPOINT_SECRETS='{"BASE_PRIMARY":"https://provider.example/api/replace-with-secret"}'`.
