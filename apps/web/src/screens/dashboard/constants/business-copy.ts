@@ -9,7 +9,6 @@ export const BUSINESS_COPY = {
   legendMoving: "Moving to wallet",
   onHold: (amount: string) => `${amount} USD on hold`,
   heldNote: "Extra or late payments. Not part of your balance.",
-  open: "Open",
   waysFailed: "We could not load pending payments.",
   receivedTitle: "Received",
   sent: (amount: string) => `Sent ${amount} USD`,

@@ -57,6 +57,11 @@ export function PaymentsScreen() {
       `${pathname}${withParam(search, name, value === ALL ? "" : value)}${hash}`,
     );
   };
+  // Both filter lines say Show all payments, so either clears both.
+  const showAll = () => {
+    set("linkId", "");
+    set("settlementStatus", "");
+  };
   const clear = () => {
     list.clear();
     for (const name of ["source", "storeId", "linkId", "settlementStatus"]) set(name, "");
@@ -147,7 +152,7 @@ export function PaymentsScreen() {
           >
             {COPY.viewLink}
           </Link>
-          <Button variant="link" size="sm" onClick={() => set("linkId", "")}>
+          <Button variant="link" size="sm" onClick={showAll}>
             {COPY.clearLink}
           </Button>
         </p>
@@ -155,7 +160,7 @@ export function PaymentsScreen() {
       {moving ? (
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
           {COPY.movingFilter}
-          <Button variant="link" size="sm" onClick={() => set("settlementStatus", "")}>
+          <Button variant="link" size="sm" onClick={showAll}>
             {COPY.clearLink}
           </Button>
         </p>

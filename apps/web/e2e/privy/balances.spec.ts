@@ -302,6 +302,14 @@ test("the business balance card and Pending payments share one height, and each 
   await page.getByRole("button", { name: "Show all payments" }).click();
   await expect(page).toHaveURL("/app/payments");
   await expect(line).toHaveCount(0);
+  // With a payment link's purchases too, either line's Show all payments clears both.
+  await page.goto(
+    "/app/payments?linkId=33333333-3333-4333-8333-333333333333&settlementStatus=pending",
+  );
+  await expect(page.getByRole("button", { name: "Show all payments" })).toHaveCount(2);
+  await page.getByRole("button", { name: "Show all payments" }).first().click();
+  await expect(page).toHaveURL("/app/payments");
+  await expect(page.getByRole("button", { name: "Show all payments" })).toHaveCount(0);
   await context.close();
 });
 
