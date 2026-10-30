@@ -2085,7 +2085,7 @@
         "The payment page has no Needs attention panel; only problems no other part shows (unexplained records, unexpected transfer, webhook delivery) appear as warning strips under the header; Details and Timeline take two fifths of the width from xl; the list view is named Issues; no copy says money is owed"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "docs-check"
@@ -2174,11 +2174,18 @@
           "summary": "PASS. All four earlier findings are fixed. Web unit 206 tests, ui-web 15, typecheck, biome and docs-check pass. I also rendered the real PaymentDetail (fixture from payments.spec.ts, real CSS) at 390, 768, 1280, 1440 and 1536 px.\nChecked: (1) held money on another option shows \"Money held for the payer 2.00 USDC. It isn't part of your balance.\" and nothing repeats it when the Amount card shows that option's Extra, so invoices.spec.ts:612 still finds its text. (2) No \"owed\" text on the page; extraNote is \"Not part of your balance\". (3) Three failing webhook events give one strip. (4) Copy reads \"Payment status is unchanged.\" with the owner-or-Admin line for ask_admin. LoadError inline now renders Notice, so one strip style remains. Layout: side column 384px at 1280, 440px at 1440, 479px at 1536 (two fifths), single column below xl; no page scroll and no scroll inside the Transfers table at any width, also with a confirming deposit, a late deposit and a sending wallet transfer. axe on the rendered page: 0 violations, light and dark, 390 and 1440.\nNits, none blocking: a. In payment-problems.tsx, problem.optionId === extraShown is true when both are null, so a held_funds problem with no optionId would be hidden; the backend always sets it, but guard with extraShown != null. b. DESIGN.md line 309 still says record pages use a 2:1 grid; the payment page is now 3:2. c. DESIGN says the wallet transfer is never repeated, but settlement_delayed with review_settlement and outflow_unreconciled with review_funds still show a strip beside the row badge (kept as before, and they carry an action); name them in DESIGN. d. No unit test shows those two non-wait cases. e. LoadError inline looks different on every screen that uses it (lists, tables, activity, transactions); covered by DESIGN line 271 and tests, but I did not view each screen.",
           "at": "2026-10-30T02:15:24Z",
           "filesHash": "d0563bbd66abbf6d"
-        }
+        },
+        "commit": "a9b315a3",
+        "doneAt": "2026-10-30T02:15:38Z"
       },
       "branch": "fix/f367-a-payment-s-page-says-each-fact-once-in",
       "baseCommit": "56e325c403f7aded3f4cfd9810de0343a89b3470",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f367-a-payment-s-page-says-each-fact-once-in",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
