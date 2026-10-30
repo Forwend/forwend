@@ -417,6 +417,32 @@ describe("owner's invoice page", () => {
     ).toEqual(["Reopened", "You", `Until ${day}`]);
   });
 
+  // R-54, R-55
+  it("says under the header why paid money waits, and offers Check status only while it can take money", async () => {
+    serve(OPEN);
+    show();
+    await settle();
+    const header = within(screen.getByRole("banner"));
+    expect(header.getByRole("button", { name: "Check status" })).toBeTruthy();
+    cleanup();
+
+    serve({
+      ...OPEN,
+      paymentStatus: "paid",
+      settlementStatus: "pending",
+      paidAt: new Date().toISOString(),
+      settlementWait: { kind: "finalizing", until: null, secondsLeft: 720 },
+    });
+    show();
+    await settle();
+    const paid = within(screen.getByRole("banner"));
+    const why = paid.getByText(
+      "Sending to your wallet · waiting for Base Sepolia to finalize, about 12 min left",
+    );
+    expect(why.getAttribute("role")).toBe("status");
+    expect(paid.queryByRole("button", { name: "Check status" })).toBeNull();
+  });
+
   // R-77
   it("offers New invoice beside View payment once the checkout closed or the invoice was canceled", async () => {
     const past = new Date(Date.now() - 10 * 60_000).toISOString();

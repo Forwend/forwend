@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 397,
+  "nextId": 398,
   "tasks": [
     {
       "id": "F332",
@@ -332,6 +332,87 @@
         "branch": "fix/f396-the-overview-s-balance-card-keeps-its-ow",
         "base": "main"
       }
+    },
+    {
+      "id": "F397",
+      "type": "fix",
+      "behavior": "The invoice page says why its money waits and offers Check status again",
+      "acceptance": [
+        "An invoice that waits to settle says why under its header; an open one offers Check status there; its progress and transactions show once, on its payment page; the live invoice-page tests check that and pass"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "web-unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-54",
+        "R-55",
+        "R-69"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T16:49:49Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.6,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 30.7,
+            "log": ""
+          }
+        ],
+        "taskHash": "9ce43e612646a558",
+        "filesHash": "9c133bf68c480e82",
+        "proof": {
+          "1": "web-unit: invoice-detail test: an open invoice offers Check status under its header; a paid one waiting to settle says 'Sending to your wallet · waiting for Base Sepolia to finalize, about 12 min left' there, with no Check status. The live invoice-page tests, run by hand, check the rest (see note)"
+        }
+      },
+      "branch": "fix/f397-the-invoice-page-says-why-its-money-wait",
+      "baseCommit": "ef0457ced12e515bb03472332f3dc0a4b4d63d60",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
