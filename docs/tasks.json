@@ -843,7 +843,7 @@
         "Every placeholder's wait and pulse run on the compositor: Chromium reports no incompatible animations for them"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "kit-e2e",
         "web-e2e",
@@ -947,11 +947,18 @@
           "summary": "base.css comment above fw-pulse is now accurate: Chromium can't composite two animations of one property on one element; it gives reasons only, no history. It agrees with the commit message and DESIGN.md:942. loading.spec.ts:38 comment accurate. docs-check: 0 errors. No other changes.",
           "at": "2026-10-30T18:30:09Z",
           "filesHash": "6aa22faa07837970"
-        }
+        },
+        "commit": "0049025d",
+        "doneAt": "2026-10-30T18:30:18Z"
       },
       "branch": "perf/f404-placeholders-pulse-on-the-compositor-so",
       "baseCommit": "da1cc2011ea57c272daae1325edfa5834081ca2a",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "perf/f404-placeholders-pulse-on-the-compositor-so",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
