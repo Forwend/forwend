@@ -26,7 +26,7 @@ export const BALANCES_COPY = {
   noPrices: "Market prices are unavailable right now, so no USD value is shown.",
   moving: "moving to your wallet",
   notFinal: "not final yet",
-  held: "held for payers",
+  held: "on hold",
   lessThanCent: "<0.01",
   unavailable: "We could not read this balance just now. It updates on its own.",
   noTokens: "No networks are enabled yet.",
@@ -47,8 +47,8 @@ export const BALANCES_COPY = {
   notFinalLabel: "Not final",
   notFinalHint:
     "Still confirming, or part of a partial payment. Some may turn out to be the payer's.",
-  heldLabel: "Held for payers",
-  heldHint: "Sent late or over the amount. It belongs to the payer, not you.",
+  heldLabel: "On hold",
+  heldHint: "Sent late or over the amount. Not part of your balance.",
   readAt: "Read at block",
   receive: "Receive",
 } as const;

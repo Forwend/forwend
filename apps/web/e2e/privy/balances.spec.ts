@@ -260,7 +260,7 @@ test("pending and held summaries open the exact token balances", async ({ browse
   await expect(
     balance.getByRole("link", { name: "0.20 USD moving to your wallet" }),
   ).toHaveAttribute("href", "/app/balances");
-  await balance.getByRole("link", { name: "0.77 USD held for payers" }).click();
+  await balance.getByRole("link", { name: "0.77 USD on hold" }).click();
   await expect(page).toHaveURL("/app/balances");
   const usdc = page.getByRole("listitem").filter({ hasText: "USDC" });
   const ousd = page.getByRole("listitem").filter({ hasText: "OUSD" });

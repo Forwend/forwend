@@ -21,9 +21,9 @@ export function PersonalPanel() {
           note="Confirming"
         />
         <StatTile
-          label="Held for a refund"
+          label="On hold"
           value={<Money {...SAMPLE_BALANCES.held} />}
-          note="Not yours to spend"
+          note="Not part of your balance"
         />
       </div>
       <div className="mt-3 divide-y divide-line rounded-lg border border-line bg-surface px-4">
