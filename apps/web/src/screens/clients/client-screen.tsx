@@ -1,7 +1,7 @@
 "use client";
 
 import { buttonClasses, DetailList, DetailRow, Skeleton } from "@forwend/ui-web";
-import { FilePlus2, Pencil } from "lucide-react";
+import { FilePlus2, Pencil, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useListClientsQuery } from "@/features/clients/api/clients-api";
@@ -14,6 +14,7 @@ import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { can } from "@/features/profiles/lib/profile";
 import { ClientInvoices } from "@/screens/clients/client-invoices";
 import { DetailHeader, DetailHeaderSkeleton } from "@/shared/components/detail-header";
+import { initials } from "@/shared/components/initials-avatar";
 import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
 import { APP_ROUTES } from "@/shared/config/routes";
@@ -44,8 +45,11 @@ export function ClientScreen({ clientId }: ClientScreenProps) {
       />
     ) : (
       <div className="flex flex-col gap-6">
-        <DetailHeaderSkeleton back={{ href: APP_ROUTES.clients, label: COPY.title }} />
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+        <DetailHeaderSkeleton
+          back={{ href: APP_ROUTES.clients, label: COPY.title }}
+          icon={<UserRound aria-hidden />}
+        />
+        <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
           <Skeleton className="h-72" />
           <Skeleton className="h-56" />
         </div>
@@ -54,10 +58,21 @@ export function ClientScreen({ clientId }: ClientScreenProps) {
   }
 
   const none = <span className="text-subtle">{COPY.none}</span>;
+  const letters = initials(client.name);
   return (
     <div className="flex flex-col gap-6">
       <DetailHeader
         back={{ href: APP_ROUTES.clients, label: COPY.title }}
+        // The list's avatar, as a record tile: the name follows it, so it says nothing to a screen reader.
+        icon={
+          letters ? (
+            <span aria-hidden className="text-sm font-medium">
+              {letters}
+            </span>
+          ) : (
+            <UserRound aria-hidden />
+          )
+        }
         title={client.name}
         meta={[client.email, countryName(client.country)].filter(Boolean).join(" · ") || null}
         actions={
@@ -86,9 +101,9 @@ export function ClientScreen({ clientId }: ClientScreenProps) {
           </>
         }
       />
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] xl:items-start">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <ClientInvoices profileId={profile.profileId} client={client} />
-        <section aria-labelledby="client-details" className="fw-panel min-w-0">
+        <section aria-labelledby="client-details" className="fw-panel min-w-0 xl:sticky xl:top-20">
           <h2 id="client-details" className="fw-panel-head text-base font-semibold text-ink">
             {COPY.details}
           </h2>

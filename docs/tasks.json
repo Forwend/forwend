@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 395,
+  "nextId": 396,
   "tasks": [
     {
       "id": "F332",
@@ -4216,6 +4216,78 @@
         "branch": "fix/f394-a-closed-or-canceled-invoice-offers-new",
         "base": "main"
       }
+    },
+    {
+      "id": "F395",
+      "type": "fix",
+      "behavior": "Client and store pages open like the other record pages",
+      "acceptance": [
+        "The client page's header has the client's initials as its tile and the store page's the store icon; both bodies are a main column with a 22rem Details side column kept in view, as on the link page; the store's Open in Payments and Export sit at its payments list's head"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "web-unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-86",
+        "R-134"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T15:43:29Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.7,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 35.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "9059983e749b6518",
+        "filesHash": "f7d3fd234f8b3c44",
+        "proof": {
+          "1": "web-unit: client-screen and store-screen tests: the client's header holds its initials tile and Details follows its invoices; the store's header has only Edit, with Open in Payments and Export at its payments list's head. Both fail on the old pages"
+        }
+      },
+      "branch": "fix/f395-client-and-store-pages-open-like-the-oth",
+      "baseCommit": "b65650dc7a563fe15ef30eb47563df528dbbe3e2",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

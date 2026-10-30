@@ -2,7 +2,7 @@ import { STORE_LIMITS } from "@/features/stores/constants/stores";
 
 /** R-134. */
 export const STORES_COPY = {
-  payments: "View payments",
+  payments: "Open in Payments",
   detailTitle: "Store",
   edit: "Edit",
   details: "Details",
