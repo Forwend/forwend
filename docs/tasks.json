@@ -244,7 +244,7 @@
         "On the business and personal overviews the balance card keeps its own height; a taller Pending payments or My assets beside it no longer stretches it"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "docs-check"
@@ -320,11 +320,18 @@
           "summary": "Passes. Re-measured the real BusinessOverview and PersonalOverview in headless Chromium with the app CSS (33 fixtures x 390, 768, 1024, 1279, 1280, 1440, 1920). xl:self-start on the two balance cards gives the same heights as my aligned-first-card trial: 0 cases with a beside card shorter than the balance card (was 38 of 99 with xl:items-start); empty states stay equal (288 px business, hero height personal); a taller Pending payments or My assets leaves the balance card at its own height. Only 4 cases stay within 12 px, which is inherent. Below xl and the Received/Assets and Latest/Owed rows have heights identical to the original code in every fixture; no sideways scroll at 390. Business test: the card selector finds the real cards (section:has(#balance-title) and #on-its-way, last() is the innermost); the payment fixture parses with paymentsPageSchema; mirrored in Chromium it gives equal heights when empty, Pending payments 24.6 px taller with 3 testnet payments (threshold 10), balance height unchanged, and 0 difference without self-start. Personal test: about 78 px with 5 unpriced tokens against 40, 0 without the fix. Both tests were run live by hand per the notes, and fail without the fix. Docs: new DESIGN bullets are 14 and 11 words, one fact each; check-docs passes. Not changed and out of scope: DESIGN.md Row 3 'sizes to its rows' still disagrees with the stretching code (predates F396).",
           "at": "2026-10-30T16:11:07Z",
           "filesHash": "16a13da39d7ae6e0"
-        }
+        },
+        "commit": "8ffd5130",
+        "doneAt": "2026-10-30T16:11:26Z"
       },
       "branch": "fix/f396-the-overview-s-balance-card-keeps-its-ow",
       "baseCommit": "cc5f1fc5d858fa62d0e2aded76a6aa93ce9ca2b3",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f396-the-overview-s-balance-card-keeps-its-ow",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
