@@ -1049,7 +1049,7 @@
         "The card shows the USD total, a three-part bar, and fixed rows for moving to the wallet, confirming and partly paid. On hold sits at its foot. Each row with money opens Payments at its status. Moving to wallet opens exactly the payments it sums (settlementStatus=pending). The Balance card and Pending payments share one height, whatever is pending."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "web-e2e",
@@ -1135,11 +1135,18 @@
           "summary": "Since the passed version (ea380468), only wording changed: DESIGN.md line 211 now says 'a new on-time deposit', and the commit message says the same and moves the 'Making the parts follow' bullet out of 'Some examples'. tasks.json differs only by harness bookkeeping. 'On-time' is accurate: ConfirmingSQL in invoice/list.go needs block_time<=closes_at and the list's confirming state needs NOT ClosedSQL. The line is 20 words. check-docs: 0 errors.",
           "at": "2026-10-30T20:10:41Z",
           "filesHash": "43bbe1d2000f71f2"
-        }
+        },
+        "commit": "013399e9",
+        "doneAt": "2026-10-30T20:10:49Z"
       },
       "branch": "feat/f406-pending-payments-shows-how-much-is-movin",
       "baseCommit": "cccb004edc439fc4f255b1c19f6ae6062d5ee874",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f406-pending-payments-shows-how-much-is-movin",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
