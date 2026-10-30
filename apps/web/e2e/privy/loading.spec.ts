@@ -225,3 +225,28 @@ test("the sidebar's mark moves with the page, with no fade left behind", async (
   expect(frames.filter((f) => f.path === "/app/payments" && f.mark !== rest)).toEqual([]);
   await context.close();
 });
+
+test("a record page keeps its panels in place while it loads", async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 375, height: 812 },
+    isMobile: true,
+    hasTouch: true,
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await mockApi(page);
+  await page.route(/\/api\/v1\/profiles\/[^/]+\/stores$/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.fallback();
+  });
+  await page.goto("/app/stores/66666666-6666-4666-8666-666666666666");
+  const main = page.getByRole("main");
+  // The first panel under the header, the same element while the store loads and after.
+  const panels = page.locator("#app-content > div > :nth-child(2)");
+  await expect(main.locator("[data-skeleton]").first()).toBeAttached();
+  const loading = await panels.boundingBox();
+  await expect(main.getByRole("heading", { level: 1, name: "Sample shop" })).toBeVisible();
+  const loaded = await panels.boundingBox();
+  expect(Math.abs((loaded?.y ?? 0) - (loading?.y ?? 0))).toBeLessThanOrEqual(1);
+  await context.close();
+});

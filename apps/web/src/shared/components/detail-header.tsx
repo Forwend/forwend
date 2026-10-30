@@ -1,6 +1,8 @@
+import { Skeleton } from "@forwend/ui-web";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { LineSkeleton } from "@/shared/components/rows-skeleton";
 
 export interface DetailHeaderProps {
   /** Phones have no breadcrumb, so they get a way back to the list; a page that shows it while loading passes none. */
@@ -70,6 +72,44 @@ export function DetailHeader({
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">{summary}</div>
       ) : null}
     </header>
+  );
+}
+
+/** The header while its record loads, with each part where the header puts it, so the page below stays put. The back
+ * link already works. A record with a figure passes its label; the actions placeholder is as wide as the record's
+ * actions, so on a phone the row wraps as theirs does. */
+export function DetailHeaderSkeleton({
+  back,
+  icon,
+  meta = <LineSkeleton className="w-64 max-w-full" />,
+  figure,
+  actions = <Skeleton className="h-10 w-72 max-w-full" />,
+}: Pick<DetailHeaderProps, "back" | "icon" | "meta" | "actions"> & { figure?: string }) {
+  return (
+    <div className="flex flex-col gap-4">
+      {back ? <BackLink href={back.href} label={back.label} /> : null}
+      <div aria-hidden>
+        <DetailHeader
+          icon={icon}
+          title={<LineSkeleton className="w-48 max-w-full" />}
+          meta={meta}
+          figure={
+            figure
+              ? {
+                  label: figure,
+                  // Inline, so the figure's line keeps the text's baseline beside its label.
+                  value: (
+                    <span className="inline-block w-24 align-top">
+                      <LineSkeleton className="w-full" />
+                    </span>
+                  ),
+                }
+              : undefined
+          }
+          actions={actions}
+        />
+      </div>
+    </div>
   );
 }
 

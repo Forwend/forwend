@@ -268,6 +268,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - They sit where the content would, centered on both axes: an icon tile, a one-line title, then the action.
   - A card or panel keeps its loaded size: its body has one minimum height for every state.
   - A card's placeholders take the loaded parts' places: the figure's line box, the change line, the rows.
+  - A record page's header placeholder (`DetailHeaderSkeleton`) keeps the header's parts in place, so the panels stay put.
+    - Its back link already works; the title, line, figure and actions are placeholders.
+    - Status badges are left out: they depend on the record, so on a phone they can still wrap under the title.
   - Error and empty share one shape: `LoadError` (danger tile, Try again) and `EmptyState compact` (grey tile).
   - When the state is the page's whole content (a list with nothing yet, nothing matching, or a failed read), it has
     no frame and fills the workspace under the toolbar (`page`), so no shallow box sits above empty space.

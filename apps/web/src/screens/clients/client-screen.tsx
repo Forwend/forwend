@@ -13,7 +13,7 @@ import { PERMISSIONS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { can } from "@/features/profiles/lib/profile";
 import { ClientInvoices } from "@/screens/clients/client-invoices";
-import { DetailHeader } from "@/shared/components/detail-header";
+import { DetailHeader, DetailHeaderSkeleton } from "@/shared/components/detail-header";
 import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
 import { APP_ROUTES } from "@/shared/config/routes";
@@ -43,8 +43,8 @@ export function ClientScreen({ clientId }: ClientScreenProps) {
         retrying={list.isFetching}
       />
     ) : (
-      <div aria-hidden className="flex flex-col gap-6">
-        <Skeleton className="h-8 w-72 max-w-full" />
+      <div className="flex flex-col gap-6">
+        <DetailHeaderSkeleton back={{ href: APP_ROUTES.clients, label: COPY.title }} />
         <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
           <Skeleton className="h-72" />
           <Skeleton className="h-56" />

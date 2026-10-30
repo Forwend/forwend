@@ -1,12 +1,14 @@
 "use client";
 
 import { Skeleton } from "@forwend/ui-web";
+import { BriefcaseBusiness } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useGetJobQuery } from "@/features/jobs/api/jobs-api";
 import { JobActions } from "@/features/jobs/components/job-actions";
 import { JobDetail } from "@/features/jobs/components/job-detail";
 import { JOBS_COPY as COPY } from "@/features/jobs/constants/jobs-copy";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
+import { DetailHeaderSkeleton } from "@/shared/components/detail-header";
 import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
 import { LIVE_QUERY } from "@/shared/config/refresh";
@@ -64,12 +66,13 @@ export function JobScreen({ jobId }: JobScreenProps) {
   ) : job.isError && !deleted ? (
     <LoadError message={COPY.failed} onRetry={() => void job.refetch()} retrying={job.isFetching} />
   ) : (
-    <div aria-hidden className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3">
-        <Skeleton className="h-8 w-72 max-w-full" />
-        <Skeleton className="h-4 w-56 max-w-full" />
-        <Skeleton className="h-10 w-48" />
-      </div>
+    <div className="flex flex-col gap-6">
+      <DetailHeaderSkeleton
+        back={{ href: APP_ROUTES.jobs, label: COPY.title }}
+        icon={<BriefcaseBusiness aria-hidden />}
+        figure={COPY.detail.total}
+        actions={<Skeleton className="size-10" />}
+      />
       <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
         <Skeleton className="h-80" />
         <Skeleton className="h-64" />

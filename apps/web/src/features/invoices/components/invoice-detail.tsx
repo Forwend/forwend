@@ -53,7 +53,7 @@ import type {
   InvoiceViews,
   Revision,
 } from "@/features/invoices/types/invoices";
-import { BackLink, DetailHeader } from "@/shared/components/detail-header";
+import { BackLink, DetailHeader, DetailHeaderSkeleton } from "@/shared/components/detail-header";
 import { LoadError } from "@/shared/components/load-error";
 import { Party } from "@/shared/components/party";
 import { RecordLink } from "@/shared/components/record-link";
@@ -113,7 +113,10 @@ export function InvoiceDetail({
       ) : invoice.isError ? (
         <LoadError message={COPY.failed} onRetry={() => void invoice.refetch()} />
       ) : (
-        <Skeleton className="h-64" />
+        <>
+          <DetailHeaderSkeleton icon={<FileText aria-hidden />} figure={COPY.amount} />
+          <Skeleton className="h-64" />
+        </>
       )}
     </div>
   );

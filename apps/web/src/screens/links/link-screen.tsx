@@ -21,7 +21,7 @@ import { PERMISSIONS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { can } from "@/features/profiles/lib/profile";
 import { CopyValue } from "@/shared/components/copy-value";
-import { DetailHeader } from "@/shared/components/detail-header";
+import { DetailHeader, DetailHeaderSkeleton } from "@/shared/components/detail-header";
 import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
 import { APP_ROUTES } from "@/shared/config/routes";
@@ -48,7 +48,15 @@ export function LinkScreen({ linkId }: LinkScreenProps) {
         retrying={read.isFetching}
       />
     ) : (
-      <Skeleton className="h-64" />
+      <div className="flex flex-col gap-5 lg:gap-6">
+        <DetailHeaderSkeleton
+          back={{ href: APP_ROUTES.links, label: COPY.backToList }}
+          icon={<Link2 aria-hidden />}
+          figure={COPY.price}
+          actions={<Skeleton className="h-10 w-16" />}
+        />
+        <Skeleton className="h-64" />
+      </div>
     );
   }
   const state = linkState(link, Date.now());

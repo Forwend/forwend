@@ -16,7 +16,7 @@ import { STORES_COPY as COPY } from "@/features/stores/constants/stores-copy";
 import { storeLogoUrl } from "@/features/stores/lib/stores";
 import { closeLabel } from "@/screens/stores/lib/close-choices";
 import { assetKey } from "@/shared/components/chains/asset-selection";
-import { DetailHeader } from "@/shared/components/detail-header";
+import { DetailHeader, DetailHeaderSkeleton } from "@/shared/components/detail-header";
 import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
 import { APP_ROUTES } from "@/shared/config/routes";
@@ -47,8 +47,12 @@ export function StoreScreen({ storeId }: StoreScreenProps) {
         retrying={list.isFetching}
       />
     ) : (
-      <div aria-hidden className="flex flex-col gap-6">
-        <Skeleton className="h-8 w-72 max-w-full" />
+      <div className="flex flex-col gap-6">
+        <DetailHeaderSkeleton
+          back={{ href: APP_ROUTES.stores, label: COPY.title }}
+          // The Project ID line is as tall as its copy button.
+          meta={<Skeleton className="h-6 w-64 max-w-full" />}
+        />
         <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
           <Skeleton className="h-72" />
           <Skeleton className="h-56" />
