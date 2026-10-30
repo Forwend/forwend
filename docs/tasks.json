@@ -3782,7 +3782,7 @@
         "Once Check status finds a payment, the footer says so in one line with no Check status, and Change is gone"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-e2e"
       ],
@@ -3859,11 +3859,18 @@
           "summary": "Prior defect fixed: the found-focus effect calls sendHeading.current?.focus({ preventScroll: true }). R-55 test at 390x664 asserts the found line toBeInViewport({ ratio: 1 }); probe without preventScroll fails at ratio 0.377, restored code passes. The phone viewport is safe for the rest of the test (after reload Check status is disabled and 'Next check in 4 min' is visible). pnpm --filter @forwend/web e2e e2e/pay.spec.ts e2e/link-pay.spec.ts: 42 passed. Comments give reasons only. Non-blocking nit: the commit message says 'The heading is clipped off-screen, so the focus doesn't scroll'; clipping is why a scroll would hurt, preventScroll is what stops it. The test paragraph also omits the new phone viewport and in-viewport check.",
           "at": "2026-10-30T13:32:06Z",
           "filesHash": "47681354a2bab3a8"
-        }
+        },
+        "commit": "6226a789",
+        "doneAt": "2026-10-30T13:32:24Z"
       },
       "branch": "fix/f391-the-pay-panel-s-show-address-enters-with",
       "baseCommit": "336f13fc8b6963ea798358eaa75f5116042da500",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f391-the-pay-panel-s-show-address-enters-with",
+        "base": "main"
+      }
     },
     {
       "id": "F392",
