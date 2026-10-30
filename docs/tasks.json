@@ -2195,7 +2195,7 @@
         "Overview, My assets and the payments balance summary name held money On hold with Not part of your balance; no copy says theirs or owed; Pending payments rows share one type"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "docs-check"
@@ -2269,11 +2269,18 @@
           "summary": "All three earlier findings fixed in 42d72626. R-72 now quotes '0.77 USD on hold', matching the e2e (balances.spec.ts:263) and the code. R-193 and the acceptance line name the overview, My assets and the payments balance summary, which is where the wording changed; payment-level labels stay and already carry 'Not part of your balance'. BUSINESS_COPY.heldForPayers is now onHold, no leftover uses. Re-checked: vitest balances, screens and payments 24/24, check-docs 0 errors, tsc clean. R-95 and R-177 mention 'money held for payers' only as requirement text about what Owed to you counts, not as screen copy; fine. Card type, copy, DESIGN sentence length and PRODUCT.md separation of available and held money were already confirmed in the first review. Remaining wording elsewhere (activity, invoice exceptions, bell, email, PDFs, OpenAPI) is event or developer wording and out of scope; a later task can unify it if the owner wants.",
           "at": "2026-10-30T02:21:20Z",
           "filesHash": "51ac039e6bf8fc32"
-        }
+        },
+        "commit": "aef003a0",
+        "doneAt": "2026-10-30T02:21:36Z"
       },
       "branch": "fix/f368-money-on-hold-reads-as-a-plain-fact-neve",
       "baseCommit": "839a29eee3bea8954e93881e705ea8937012d15b",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f368-money-on-hold-reads-as-a-plain-fact-neve",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
