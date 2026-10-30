@@ -78,6 +78,7 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   another's data; a created profile joins the cached list without a refetch. A store belongs to one signed-in
   user: when the user changes or the session ends, the next render gets a fresh, empty store. Amounts stay
   strings in the cache and become `bigint` only for display.
+  - A request with no answer in 30 s (the api's write timeout) fails, so the page offers Try again.
 - The browser calls the backend same-origin at `/api/v1/…`; `next.config.ts` forwards it to `API_URL`, so the api needs
   no CORS. The rewrite is fixed at `next build`, so `API_URL` must be set when building; Turbo hashes `.env*` and
   these variables for the web build. Requests and responses are Zod schemas written from `apps/backend/api/openapi.yaml`
