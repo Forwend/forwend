@@ -634,8 +634,15 @@ func TestMissingBlockGoesToAnEndpointThatHasIt(t *testing.T) {
 	}
 	full.Close()
 	err := r.Client.CallContext(t.Context(), &out, "eth_call", map[string]string{}, "0x10")
-	if err == nil || !strings.Contains(err.Error(), missing) {
-		t.Fatalf("with no endpoint holding the state: %v, want the miss", err)
+	if err == nil || Missing(err) || !strings.Contains(err.Error(), "unavailable") {
+		t.Fatalf("one endpoint misses and the other is down: %v, want unavailable, since the down one may hold it", err)
+	}
+	lagging2, _ := rpcServer(t, func(w http.ResponseWriter, id json.RawMessage, _ string, _ []json.RawMessage) {
+		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"error":{"code":4444,"message":"pruned history unavailable"}}`, id)
+	})
+	both := newRPCs(t, lagging.URL, localhost(lagging2.URL))
+	if err := both.Client.CallContext(t.Context(), &out, "eth_call", map[string]string{}, "0x10"); !Missing(err) {
+		t.Fatalf("every endpoint misses: %v, want the miss", err)
 	}
 }
 

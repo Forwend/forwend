@@ -48,3 +48,27 @@ func TestRequestedRescanKeepsItsStartAndDefersFailedReads(t *testing.T) {
 		t.Fatalf("rescan unfinished: %v", err)
 	}
 }
+
+// A rescan of an invoice older than the history the RPCs keep moves past the pruned blocks instead of retrying (R-191).
+func TestRescanMovesPastHistoryNoRPCKeeps(t *testing.T) {
+	e := setup(t)
+	id := "0x" + strings.Repeat("01", 32)
+	e.anvil.Mine(200)
+	watch, proxy := proxiedChain(t, e)
+	if err := watch.ScanNew(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.pool.Exec(t.Context(), `INSERT INTO invoice_rechecks (invoice_id, rescan_requested_at, rescan_from_block)
+		VALUES ($1, now(), 1)`, id); err != nil {
+		t.Fatal(err)
+	}
+	proxy.Fail(prunedBelow(50))
+	if err := watch.Rescans(t.Context()); err != nil {
+		t.Fatalf("rescan over pruned history: %v", err)
+	}
+	var from *uint64
+	if err := e.pool.QueryRow(t.Context(), "SELECT rescan_from_block FROM invoice_rechecks WHERE invoice_id = $1", id).Scan(&from); err != nil ||
+		from == nil || *from != 50 {
+		t.Fatalf("rescan continues from %v (%v), want 50, the oldest block kept", from, err)
+	}
+}
