@@ -324,7 +324,7 @@ test("merchant separates payment, held funds, delivery and store records", async
   await expect(main.getByRole("link", { name: payment.reference, exact: true })).toHaveCount(0);
   expect(requests.some((url) => url.searchParams.get("storeId") === OTHER)).toBe(true);
   await pick(page, "Store", "All");
-  const attention = main.getByRole("radio", { name: "Needs attention", exact: true });
+  const attention = main.getByRole("radio", { name: "Issues", exact: true });
   await attention.click();
   await expect(attention).toBeChecked();
   await expect(page).toHaveURL(/view=attention/);
@@ -515,8 +515,8 @@ test("a partial payment awaiting evidence does not ask the merchant to collect a
   await page.goto(`/app/payments/${payment.paymentId}`);
   const main = page.getByRole("main");
   await expect(main.locator("header [data-status]")).toHaveText("Partially paid");
-  // The rest is still being checked: no Needs attention panel offers the checkout to collect it.
-  await expect(main.getByRole("heading", { name: "Needs attention" })).toHaveCount(0);
+  // The rest is still being checked: no strip offers the checkout to collect it.
+  await expect(main.getByRole("status").filter({ hasText: "Partially paid" })).toHaveCount(0);
   await context.close();
 });
 
@@ -988,7 +988,9 @@ test("payment detail tracks settlement finality and keeps its transaction link",
   await estimate.blur();
   await expect(page.getByText("Outgoing transfer not yet confirmed")).toHaveCount(0);
   await expect(page.getByText("Settlement delayed", { exact: true })).toHaveCount(0);
-  await expect(page.getByText("This money is owed to the payer.", { exact: false })).toBeVisible();
+  // Extra money shows once, in Amount; no strip repeats it.
+  await expect(page.getByText("Extra, held for the customer", { exact: true })).toBeVisible();
+  await expect(page.getByText("Money held for the payer", { exact: false })).toHaveCount(0);
   await expect(transfer.getByRole("link")).toHaveAttribute(
     "href",
     `https://sepolia.basescan.org/tx/${txHash}`,

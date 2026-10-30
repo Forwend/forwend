@@ -19,7 +19,7 @@ type Row = Payment & { problems?: PaymentProblem[] };
 
 export interface PaymentsTableProps {
   rows: readonly Row[];
-  /** Needs attention: the issue replaces the wallet column. */
+  /** Issues: the issue replaces the wallet column. */
   attention?: boolean;
   /** A merchant with two or more stores sees which store each payment is for. */
   showStore?: boolean;
@@ -101,7 +101,7 @@ export function PaymentsTable({ rows, attention, showStore, footer }: PaymentsTa
           className: "w-32",
           cell: (p) => <WalletStateLabel state={paymentWallet(p)} />,
         },
-    // The issue needs the room in Needs attention; the payment's page has its date.
+    // The issue needs the room in Issues; the payment's page has its date.
     ...(attention
       ? []
       : [

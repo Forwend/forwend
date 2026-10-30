@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
+import { PaymentProblems } from "@/features/payments/components/payment-problems";
 import { optionFigures, paymentState, paymentWallet } from "@/features/payments/lib/payments";
 
 describe("merchant payment money", () => {
@@ -55,5 +56,37 @@ describe("optionFigures", () => {
       extra: 0n,
       due: 100000n,
     });
+  });
+});
+
+describe("payment page problems", () => {
+  const problem = (code: string, action = "review_funds") => ({
+    amount: null,
+    asset: null,
+    code,
+    action,
+    optionId: null,
+    endpointId: null,
+    eventId: null,
+    reason: null,
+  });
+  it("shows only the problems the rest of the page doesn't say", () => {
+    const markup = renderToStaticMarkup(
+      <PaymentProblems
+        problems={[
+          problem("held_funds"),
+          problem("settlement_refused", "review_settlement"),
+          problem("webhook_delivery", "review_webhooks"),
+        ]}
+      />,
+    );
+    expect(markup).toContain("Webhook delivery failed");
+    expect(markup).toContain("Check webhooks");
+    expect(markup).not.toContain("held for the payer");
+    expect(markup).not.toContain("Wallet transfer refused");
+    expect(markup).not.toContain("owed");
+  });
+  it("renders nothing when the page already shows every problem", () => {
+    expect(renderToStaticMarkup(<PaymentProblems problems={[problem("held_funds")]} />)).toBe("");
   });
 });

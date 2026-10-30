@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 367,
+  "nextId": 368,
   "tasks": [
     {
       "id": "F332",
@@ -2076,6 +2076,98 @@
         "branch": "fix/f366-history-no-endpoint-keeps-any-more-doesn",
         "base": "main"
       }
+    },
+    {
+      "id": "F367",
+      "type": "fix",
+      "behavior": "A payment's page says each fact once, in plain words",
+      "acceptance": [
+        "The payment page has no Needs attention panel; only problems no other part shows (unexplained records, unexpected transfer, webhook delivery) appear as warning strips under the header; Details and Timeline take a third of the width from xl; the list view is named Issues; no copy says money is owed"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "web-unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-192"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T02:00:14Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.8,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": ""
+          },
+          {
+            "id": "tokens-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": ""
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.4,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 31.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "248803b5357f1925",
+        "filesHash": "08cd6159a481e7b8",
+        "proof": {
+          "1": "web-unit: payments tests: PaymentProblems shows only problems the page doesn't say elsewhere (webhook delivery) and nothing for extra money or a refused transfer"
+        }
+      },
+      "branch": "fix/f367-a-payment-s-page-says-each-fact-once-in",
+      "baseCommit": "56e325c403f7aded3f4cfd9810de0343a89b3470",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

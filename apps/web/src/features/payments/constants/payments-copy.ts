@@ -6,7 +6,7 @@ export const PAYMENTS_COPY = {
   views: {
     label: "Payment views",
     all: "All payments",
-    attention: "Needs attention",
+    attention: "Issues",
     reconciliation: "Reconciliation",
   },
   search: "Search payments",
@@ -38,7 +38,7 @@ export const PAYMENTS_COPY = {
   emptyTitle: "No payments yet",
   emptyText:
     "A payment appears when you send an invoice or a customer opens checkout or a payment link.",
-  attentionEmptyTitle: "Nothing needs attention",
+  attentionEmptyTitle: "No issues",
   attentionEmptyText:
     "Payments that are partly paid, overpaid or stuck on the way to your wallet show here.",
   storesFailed: "We could not load stores, so the store filter is unavailable.",
@@ -64,7 +64,6 @@ export const PAYMENT_DETAIL_COPY = {
   loading: "Loading payment",
   viewReceipt: "Open receipt",
   viewCheckout: "Open checkout",
-  problems: "Needs attention",
   requested: "Requested",
   amount: "Amount",
   timeline: "Timeline",

@@ -305,7 +305,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   tile before the title and their amount as the figure beside the actions:
   - A 44px back link on phones, the title with its badges, one quiet meta line and the actions at the row's end.
   - Then the figure with its statuses.
-  - The payment page has no next-step sentence: its badges, Amount figures and Needs attention say the state.
+  - The payment page has no next-step sentence: its badges, Amount figures and any notice say the state.
   - The body is the 2:1 grid with a Details panel on the side; phones stack it.
 - Checkout (`/app/checkout`, merchants with invoices.write) takes a payment in person:
   - A form page: Store (when more than one), Amount in USD, Order reference and What it's for, then Show QR code.
@@ -339,11 +339,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Picking a store sets the close to its default, unless a due date or the owner set one.
   - The return link's hint names the store's origins. The invoice list adds the store after the title.
 - Payments (R-166, R-177) is the merchant's list of every customer payment: invoices, checkouts and link purchases.
-  - All payments, Needs attention and Reconciliation use the segmented control; Export sits at the row's end.
+  - All payments, Issues and Reconciliation use the segmented control; Export sits at the row's end.
   - One toolbar row: the search (order, invoice, customer or amount), then Status, Source and, with two or more
     stores, Store as select menus. Every filter stays in the URL.
   - Columns: Payment (the order reference, else the invoice number, else the title), Customer, Source, Store, Amount,
-    Received, Status, Wallet, Created. Needs attention shows the issue in place of Wallet and Created: a warning
+    Received, Status, Wallet, Created. Issues shows the issue in place of Wallet and Created: a warning
     dot, the problem in ink with its full text as the title, and "+n" for more.
     - Source and Store show only on the widest tables; the phone row and the payment page still name them.
     - Testnet is a neutral badge on each row, so it never outshouts a status that needs action.
@@ -352,8 +352,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Unpaid attempts stay visible; requested amounts never imply received or settled money.
   - Payment details use `DetailHeader` with the source's icon tile, the status and wallet badges by the title, and
     the requested amount as the header's figure beside Open checkout or Open receipt and Export (both 40px).
-  - The body is two columns from extra-large screens: the main column and a 22rem side column.
-    - Main: Needs attention (only with a real problem), Amount (Received with "Confirming, not final" or "Final",
+  - A notice under the header names each problem no other part shows: payment records to review, an unexpected
+    transfer, a webhook that fails (R-192). Extra money, the wallet transfer and what is still due are never repeated.
+  - The body is two columns from extra-large screens: the main column takes two thirds, the side a third (at least 22rem).
+    - Main: Amount (Received with "Confirming, not final" or "Final",
       Returned to the payer once refunded, Extra held for the customer in the warning color or Still due while the
       checkout is open, and Paid with), Transfers, and the items.
     - Before money arrives the last figure is Accepts: an `AssetStack` and "4 options, the customer picks", or
@@ -364,7 +366,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
       "being verified", In wallet, or a warning such as Held for the customer. Amounts stay on one line.
     - Side: Details (reference, invoice, link, store, customer, checkout close, metadata, PDFs) and a Timeline:
       Created, Payment detected, Paid, In your wallet (or Checkout closed), done or current or next by the API's facts.
-  - No ledger table or contract panel: a webhook that fails shows as a problem whose action opens Developers.
+  - No ledger table or contract panel: a webhook that fails shows as a notice whose action opens Developers.
   - A list's Received amount over the request is in the warning color, with its reason as the cell's title.
   - Beside the money (a third of the width from extra-large screens) a Details panel links the order reference, the
     invoice, the payment link and the store, then the customer, the token, the checkout close, metadata and the PDFs.
@@ -857,6 +859,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   circle, a title ("No invoices yet", "Nothing matches"), a line or the next step under it ("Clear filter and
   search"), as wide as the list and at least about half the screen tall. Inside an overview card it drops its frame
   and most of its height.
+- A notice (`Notice`) is one short warning line across the view's full width, with at most one action at its end.
+  - It is for what concerns the whole view: a refresh that failed, or a problem the view shows nowhere else.
+  - Plain words, never blame: say what happened and what to do, not whose money it is.
 
 - Apply the saved theme, otherwise the system choice, before first paint using `data-theme` on `<html>`.
   Product sections can force dark with their own `data-theme="dark"`. Use the theme variant for theme-only differences.

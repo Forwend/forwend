@@ -57,9 +57,6 @@ export interface PaymentDetailProps {
 
 type Option = PaymentDetailType["options"][number];
 
-// The routine wait is the status itself; only real problems get their own panel.
-const ROUTINE = new Set(["verification_pending", "partial_payment"]);
-
 export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
   const read = useGetPaymentQuery({ profileId, paymentId }, LIVE_QUERY);
   const payment = read.currentData;
@@ -81,14 +78,6 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
   const used = funded.length
     ? funded
     : payment.options.filter((option) => option.optionId === payment.optionId);
-  const problems = payment.problems.filter(
-    (problem) =>
-      !ROUTINE.has(problem.code) &&
-      !(
-        problem.action === "wait" &&
-        (problem.code === "outflow_unreconciled" || problem.code === "settlement_delayed")
-      ),
-  );
   const status = paymentDisplayStatus(payment);
   const wallet = paymentWallet(payment);
   const payToken = payment.hostedUrl ? new URL(payment.hostedUrl).pathname.split("/").pop() : null;
@@ -161,15 +150,9 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
           retrying={read.isFetching}
         />
       ) : null}
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start">
+      <PaymentProblems problems={payment.problems} />
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(22rem,1fr)] xl:items-start">
         <div className="flex min-w-0 flex-col gap-6">
-          {problems.length ? (
-            <Panel title={COPY.problems}>
-              <div className="px-4 py-3 sm:px-5">
-                <PaymentProblems problems={problems} hostedUrl={payment.hostedUrl} />
-              </div>
-            </Panel>
-          ) : null}
           <Panel title={COPY.amount}>
             <dl className="grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] divide-line max-sm:divide-y sm:divide-x">
               <Figure
@@ -534,7 +517,7 @@ function DetailSkeleton() {
         </span>
       </div>
       <Skeleton className="h-11 w-full" />
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(22rem,1fr)]">
         <span className="flex flex-col gap-6">
           <Skeleton className="h-32" />
           <Skeleton className="h-48" />
