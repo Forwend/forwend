@@ -164,3 +164,36 @@ test("a dialog and a centered sheet fade in as they open, and at once with reduc
     await context.close();
   }
 });
+
+test("a placeholder's wait and pulse run on the compositor, so a busy page doesn't stall them", async ({
+  page,
+}) => {
+  const cdp = await page.context().newCDPSession(page);
+  const events: {
+    name: string;
+    id2?: { local?: string };
+    args?: { data?: Record<string, unknown> };
+  }[] = [];
+  cdp.on("Tracing.dataCollected", (d) => events.push(...(d.value as unknown as typeof events)));
+  const done = new Promise((resolve) => cdp.once("Tracing.tracingComplete", resolve));
+  await cdp.send("Tracing.start", { categories: "blink.animations", transferMode: "ReportEvents" });
+  await page.goto(`${KIT_URL}/kit`);
+  await expect(page.locator("[data-skeleton]").first()).toBeAttached();
+  await page.waitForTimeout(1000);
+  await cdp.send("Tracing.end");
+  await done;
+  // Chromium's reason "the target has incompatible animations": two animations of one property.
+  const INCOMPATIBLE = 64;
+  const byAnimation = new Map<string, { name?: unknown; failed?: unknown }>();
+  for (const e of events.filter((x) => x.name === "Animation")) {
+    const seen = byAnimation.get(e.id2?.local ?? "") ?? {};
+    seen.name ??= e.args?.data?.displayName;
+    seen.failed ??= e.args?.data?.compositeFailed;
+    byAnimation.set(e.id2?.local ?? "", seen);
+  }
+  const placeholders = [...byAnimation.values()].filter(
+    (a) => a.name === "fw-pulse" || a.name === "fw-fade-in",
+  );
+  expect(placeholders.length).toBeGreaterThan(0);
+  expect(placeholders.filter((a) => (Number(a.failed ?? 0) & INCOMPATIBLE) !== 0)).toEqual([]);
+});

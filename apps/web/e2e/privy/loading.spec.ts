@@ -35,7 +35,7 @@ test("switching to a list page keeps its rows in place while it loads, and a qui
   await sidebar.getByRole("link", { name: "Invoices", exact: true }).click();
   await expect(placeholder).toBeAttached();
   expect(await opacity()).toBe(0);
-  // Visible once the wait is over; its pulse keeps it between half and full.
+  // Visible once the wait is over (the pulse animates a filter, not this opacity).
   await expect.poll(opacity).toBeGreaterThan(0.4);
   const loading = await firstRow();
   await expect(main.getByRole("row").filter({ hasText: "INV-" }).first()).toBeVisible();

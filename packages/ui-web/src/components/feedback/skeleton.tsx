@@ -5,7 +5,7 @@ export interface SkeletonProps {
 }
 
 // A placeholder waits before it fades in, so an answer that comes quickly never flashes one; then it pulses while
-// the wait goes on. The fade is listed last so it governs opacity until it ends.
+// the wait goes on. The fade animates opacity and the pulse a filter (base.css), so both run on the compositor.
 export function Skeleton({ className }: SkeletonProps) {
   return (
     <span
