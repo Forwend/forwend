@@ -3312,7 +3312,7 @@
         "On /docs at 1440px the layout shift while fonts load is below 0.01"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-e2e",
         "lighthouse"
@@ -3404,11 +3404,18 @@
           "summary": "Pass. tasks.json changes only F386. Clean build: / and /docs carry <link rel=preload as=font> for the 23 KB Geist Mono latin woff2 (797e433...), and all 6 Geist Mono faces have font-display:optional; --fw-font-mono-loaded is \"Geist Mono\", ui-monospace. Fresh Chromium, CDP CSS.getPlatformFontsForNode on code and .font-mono: first /docs (425 glyphs), first / (86) and / then client nav to /docs (425) all draw Geist Mono only, at 0, 150 and 600 ms latency. docs.spec.ts 6/6 passed in 3 of 3 runs, with the 800 ms font delay test included. Lighthouse at HEAD: 98/100/LCP 1852 ms and 99/100/1789 ms; with preload: false (temporary, restored): 99/100/1740 and 99/100/1668. So the preload costs about 50-180 ms LCP here; the author's 96 and 2215 ms is the worse end, honestly reported and inside R-11 (>=90, >=95, <2.5 s). The fonts.ts comment, DESIGN.md line and commit message now match the behavior: face from the first paint, a late face waits for the next full load, no swap. R-206 sentences 11 and 21 words, DESIGN line 21; docs-check 0 errors. Nit only: the fonts.ts comment's first sentence is 33 words; D-84 covers docs, not code comments. Tree clean; my servers stopped; .next rebuilt from HEAD.",
           "at": "2026-10-30T06:39:18Z",
           "filesHash": "3bd21505dc9dcf66"
-        }
+        },
+        "commit": "53d82099",
+        "doneAt": "2026-10-30T06:39:35Z"
       },
       "branch": "fix/f386-code-and-addresses-keep-their-place-whil",
       "baseCommit": "c800fa850c85eac4c16d04ed706ffa551900322d",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f386-code-and-addresses-keep-their-place-whil",
+        "base": "main"
+      }
     },
     {
       "id": "F387",
