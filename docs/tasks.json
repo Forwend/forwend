@@ -44,7 +44,7 @@
         "Message origin/source checks, strict CSP, revocation, expiration and forged parent/redirect events are tested; browser hints never prove fulfillment."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend-affected",
         "backend-e2e",
@@ -154,9 +154,9 @@
         "taskHash": "16b0b8e8c47a823e",
         "filesHash": "9e3b8aac1cdd229f",
         "proof": {
-          "1": "web-e2e: embedded checkout tests: an element goes open, address, paid and a full embed shows paid with Back on the top page, both drawn by PayInvoice; the hosted pay page tests in pay.spec.ts pass unchanged and /pay needs no package",
-          "2": "backend-affected: TestEmbedAllowedOnlyForTheStoresExactOrigins allows only the store's exact origins in browser spelling, refuses no store, a stored wildcard, loopback when live and a removed origin; TestStores refuses wildcard and separator origins; return links stay https; web-e2e shows /pay and /EMBED keep frame-ancestors 'none' and DENY",
-          "3": "web-e2e: embedded checkout tests: messages carry source, v and the invoice id and reach only the framing origin; /embed/<token> has one strict CSP; a page under another origin's name is refused by the browser; a forged parent message changes nothing; an expired checkout reports expired; revocation in the backend test"
+          "1": "web-e2e",
+          "2": "backend-affected",
+          "3": "web-e2e"
         },
         "review": {
           "result": "pass",
@@ -164,11 +164,18 @@
           "summary": "PASS. Since my last pass only docs/PROJECT.md and docs/backend/api.md changed (01:04 local); every other changed file is 00:28 or older and was reviewed, and no code changed. R-125 and the api.md views bullet now say the pay page links on the owner's invoice and payment pages add ?preview=1 and count no view. This matches invoice-actions.tsx:129, payment-detail.tsx:132, pay/[token]/page.tsx:22 and pay-invoice.tsx:125. The overstated 'someone else opened it' claim is gone. All earlier findings stand; verify passed 2026-10-30T23:04:06Z.",
           "at": "2026-10-30T23:09:50Z",
           "filesHash": "9e3b8aac1cdd229f"
-        }
+        },
+        "commit": "8af1e998",
+        "doneAt": "2026-10-30T23:10:13Z"
       },
       "branch": "feat/f333-implement-hosted-and-origin-restricted-e",
       "baseCommit": "346e3bff383292e4c055a339e62c480ec508cf96",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f333-implement-hosted-and-origin-restricted-e",
+        "base": "main"
+      }
     },
     {
       "id": "F334",
