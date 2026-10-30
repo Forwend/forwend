@@ -604,6 +604,9 @@ test.describe("pay page", () => {
     await mockInvoice(page, mixed);
     await page.goto(`/pay/${PAY}?option=${ID}`);
     await expect(showAddress(page)).toHaveCount(0);
+    // Its option closed, but another can be picked: the pickers stay, with no closed state beside them.
+    await expect(page.getByRole("combobox", { name: "Network" })).toBeVisible();
+    await expect(page.getByText("Checkout closed", { exact: true })).toHaveCount(0);
     await page.getByRole("combobox", { name: "Network" }).click();
     await page.getByRole("option", { name: "Arbitrum Sepolia" }).click();
     await showAddress(page).click();
@@ -730,10 +733,41 @@ test.describe("pay page", () => {
     await expect(notice).toHaveCount(0);
   });
 
+  test("a canceled invoice with several tokens shows that it is closed, with no network or token to pick", async ({
+    page,
+  }) => {
+    await openPay(page, { ...CHOOSING, paymentStatus: "canceled" });
+    await expect(status(page)).toContainText("Payment closed");
+    await expect(status(page)).toContainText(
+      "Alice Design GmbH closed this payment. Do not send money.",
+    );
+    await expect(page.getByRole("combobox", { name: "Network" })).toHaveCount(0);
+    await expect(page.getByRole("combobox", { name: "Token" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Pay with" })).toHaveCount(0);
+    await page.locator("[data-money]").first().scrollIntoViewIfNeeded();
+    await page.screenshot({ path: "../../docs/runs/f401-canceled-choosing-1440.png" });
+  });
+
+  test("a payer watching hears the payment close: the status stays and says so", async ({
+    page,
+  }) => {
+    await openPay(page, OPEN, CANCELED);
+    await showAddress(page).click();
+    const region = await page
+      .getByRole("status")
+      .filter({ hasText: "Waiting for payment…" })
+      .elementHandle();
+    await page.clock.runFor(POLL_MS);
+    await expect(page.getByText("Payment closed", { exact: true })).toBeVisible();
+    expect(await region?.evaluate((el) => el.isConnected && el.textContent)).toContain(
+      "Alice Design GmbH closed this payment. Do not send money.",
+    );
+  });
+
   // R-79
   test("tells the payer a canceled invoice takes no money", async ({ page }) => {
     await openPay(page, CANCELED);
-    await expect(status(page)).toHaveText(
+    await expect(status(page)).toContainText(
       "Alice Design GmbH closed this payment. Do not send money.",
     );
     await expect(showAddress(page)).toHaveCount(0);
@@ -770,7 +804,7 @@ test.describe("pay page", () => {
       /^Partially paid/,
     ]);
     await page.clock.runFor(POLL_MS);
-    await expect(status(page)).toHaveText(
+    await expect(status(page)).toContainText(
       "This payment is closed. If you already sent money, it is not lost: contact Alice Design GmbH.",
     );
     await expect(showAddress(page)).toHaveCount(0);

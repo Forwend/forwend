@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 401,
+  "nextId": 402,
   "tasks": [
     {
       "id": "F332",
@@ -533,6 +533,95 @@
         "branch": "fix/f400-docs-and-code-text-keep-their-place-on-l",
         "base": "main"
       }
+    },
+    {
+      "id": "F401",
+      "type": "fix",
+      "behavior": "A closed or canceled pay link shows that it takes no money, without the network and token pickers",
+      "acceptance": [
+        "When the payee closed or canceled the payment, the pay panel shows one closed state with no Pay with pickers"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "web-e2e"
+      ],
+      "refs": [
+        "R-79",
+        "R-57"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-30 review fail by reviewer: Bug reproduced on main (canceled payer-chooses invoice: Network combobox count 1) and fixed; pay+link-pay e2e 44 passed; docs-check 0 errors; 1440/390 screenshots look right. Defect 1 (a11y, money safety): in-session change from waiting (address shown) to canceled or expired loses the live region. A MutationObserver probe shows the persistent <p role=status> 'Waiting for payment' is removed and the root div gains role=status together with its new content; on main the same <p> stays and its text changes. A polite region that appears with its content is not reliably announced, so 'Do not send money.' can go unheard. The file's own rule: 'Always rendered, so the live region exists before a check finds money.' Keep one live region mounted across the change. Defect 2: per-option close (?option= or a kept pick on a closed option while another option is open, as in 'a closed payment option leaves another option available') now shows the Network/Token pickers and the full 'Checkout closed' empty state together, against the new DESIGN rule (one closed state, no pickers). The closed branch keys on pay.state, the pickers on canChoose; gate it on !canChoose or say that option closed. Minor: DESIGN and commit say 'Canceled ... with nothing seen', but a canceled invoice with held money also shows this state. toHaveText->toContainText is fine; the new test is an allowed user-hit regression test.",
+        "2026-10-30 review fail by reviewer: Code fixes confirmed; e2e pay+link-pay 45 passed; docs-check 0 errors. Fix 1 OK: StatusLine keeps its fiber slot and the role=status div is the same DOM node; a probe with key={shut ?? \"row\"} (forced remount) fails \"a payer watching hears the payment close\". p->div breaks no test or grid. Fix 2 code OK: closed state shows only when !canChoose; a mixed-option screenshot shows the pickers with the one-line row. Defect: the new guard in \"a closed payment option leaves another option available\" passes with the bug. getByText(\"Checkout closed\") toHaveCount(0) runs right after goto, before the mocked invoice loads, so it passes at once. Probe: drop !choosable from shut; the test still passed. With await expect(Network combobox).toBeVisible() before it, it failed (Received: 1). With the real code it passed. Fix: move the assertion after the Network combobox is visible or clicked. The commit message says the test now expects no closed state; true, but it does not catch the defect.",
+        "2026-10-30 review pass by reviewer: Test-strength defect fixed: with '!choosable && ' removed from shut, 'a closed payment option leaves another option available' fails at pay.spec.ts:609 (Checkout closed count Expected 0, Received 1); restored (same sha1 de4f0a46), it passes. Diff re-read: canChoose excludes canceled; shut only when nothing can be picked; one persistent role=status region; PAY_STATES.closed is closed with nothing received, so 'expired with nothing seen' is right. Commit message matches the diff. Worktree clean."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T17:38:42Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.5,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.0,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 30.1,
+            "log": ""
+          }
+        ],
+        "taskHash": "c8125167d53ca2d6",
+        "filesHash": "468a57de10dacd31",
+        "proof": {
+          "1": "web-e2e: e2e/pay.spec.ts 'a canceled invoice with several tokens shows that it is closed, with no network or token to pick' expects one status with 'Payment closed' and the canceled sentence and no pickers (failed on main). 'a payer watching hears the payment close: the status stays and says so' expects the same connected status element to switch to the canceled sentence. 'a closed payment option leaves another option available' now waits for the Network picker, then expects no 'Checkout closed' state beside it; without the !choosable guard it failed ('Received: 1'). 45 pay and link-pay tests pass."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Test-strength defect fixed: with '!choosable && ' removed from shut, 'a closed payment option leaves another option available' fails at pay.spec.ts:609 (Checkout closed count Expected 0, Received 1); restored (same sha1 de4f0a46), it passes. Diff re-read: canChoose excludes canceled; shut only when nothing can be picked; one persistent role=status region; PAY_STATES.closed is closed with nothing received, so 'expired with nothing seen' is right. Commit message matches the diff. Worktree clean.",
+          "at": "2026-10-30T17:40:30Z",
+          "filesHash": "468a57de10dacd31"
+        }
+      },
+      "branch": "fix/f401-a-closed-or-canceled-pay-link-shows-that",
+      "baseCommit": "b3cb26321e66f8163abec17282a9fde72c807c66",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

@@ -90,6 +90,7 @@ export const PAY_COPY = {
     [PAY_STATES.closedPartial]: ({ received, payee }) =>
       `Closed before the full amount arrived. The ${received} you sent is held for you; ask ${payee} to get it back.`,
   } satisfies Record<PayState, (v: StateValues) => string>,
+  closedTitles: { [PAY_STATES.canceled]: "Payment closed", [PAY_STATES.closed]: "Checkout closed" },
   receiptRows: { amount: "Amount", to: "Paid to", date: "Date", transaction: "Transaction" },
   paid: "Paid",
   closeHint: "You can close this page.",
