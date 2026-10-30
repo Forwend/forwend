@@ -46,10 +46,10 @@ code; a wallet connects only to claim a refund (D-37).
 - 11.2 Team: email invites (single use, hashed, bound to the invited email); Admin, Developer and Finance roles with
   assigned stores; permissions in one map in code, and a test fails when a route has none; the last Admin cannot
   leave. Roles also decide which History rows a member reads (11.11). Only the owner moves money (D-61). After 11.1.
-- 11.3 Payment links `/l/<slug>` per store or freelancer, fixed or open amount (the owner's min and max, D-94). Opening the
-  link creates nothing; Pay creates the invoice, and the same browser reuses its open one (D-54). Its number comes at
-  the first deposit (D-50). Optional end date and use cap; rate limited; can be turned off; the owner sees visits and
-  paid counts. After 11.1.
+- 11.3 Payment links `/l/<slug>` per store or freelancer, fixed or open amount (the owner's min and max, D-94). After 11.1.
+  - Opening the link creates nothing; Pay starts an independent checkout without an invoice number or document (D-54, D-107).
+  - Refresh and Back preserve the current attempt; Start another purchase creates a new one (R-142).
+  - Optional end date and use cap; rate limited; can be turned off; the owner sees visits, paid purchases and reserved slots.
 - 11.4 Test mode and secret API keys (D-87). Test mode runs on the testnets, live mode on mainnets; test mode reads
   chains through public RPCs, and a developer can add their own. Keys `fw_test_…` and `fw_live_…` with a checksum:
   shown once, hashed, scoped to a store, no scope moves money, rolled with an overlap, last use shown. Creating one
@@ -76,11 +76,13 @@ code; a wallet connects only to claim a refund (D-37).
 - F329: actual receiver refund observation, balanced accounting and chain/token-exact settlement attribution.
 - F330: merchant payment, attention and reconciliation APIs with store filtering and exact CSV exports.
 - F331: Payments and link-result screens, customer invoice workflow, coherent navigation and explicit configuration failures.
-- F332: task-based merchant onboarding using actual setup state and D-64's not_required KYB status.
 - F333: hosted integration and secure full/element embedded checkout.
 - F334: minimal JavaScript/React packages and verified release artifacts.
 - F335: merchant example, fulfillment/delivery recovery, end-to-end reconciliation and complete integration documentation.
-- F326–F335 execute in order; F329 also supplies the financial evidence required by 11.7.
+- F332: merchant onboarding last, using actual setup state and D-64's not_required KYB status.
+- F326–F331 execute in order, followed by F333–F335; checkout integration does not wait for onboarding.
+- F332 depends on F335 and remains blocked until all other phase 11 work is complete, including 11.10 refunds and 11.11 history.
+- F329 also supplies the financial evidence required by 11.7.
 - Full refund claims, Safe execution and wrong-network recovery retain 11.10's scope and gates.
 - New package publication, deployments and provider accounts require separate approval.
 - Detailed local task rationale lives in `docs/research/merchant-payment-tasks.md`; the tracked task queue owns progress.
@@ -91,7 +93,8 @@ code; a wallet connects only to claim a refund (D-37).
   store filter, and a CSV with store, invoice, chain, transaction hash, settlement and USD value.
 - 11.8 Merchant onboarding: business name and website, first store, branding preview, team invites, developer steps
   (test key, allowed origin, webhook, test event, quickstart) and a KYB status row with a reason and a next step
-  (D-64); the developer choice shows the developer steps first. After 11.1.
+  (D-64); the developer choice shows the developer steps first.
+  - Build onboarding last, after all other phase 11 features and their checks, including checkout integration, held-money refunds and history.
 - 11.9 Checkout for merchant sites in three levels (D-88), `apps/example-merchant` and the quickstart. Review keys,
   scopes and webhook verification before the gate.
   - 11.9.1 Pay button: a link to `/pay/<token>` or `/l/<slug>` with a return link (`{INVOICE_ID}`) and the store's
@@ -109,6 +112,7 @@ code; a wallet connects only to claim a refund (D-37).
     origin off the list is blocked. After 11.9.3.
 - 11.10 Refunds of held money (D-78). A refund goes ahead whatever the merchant profile's status (D-89). Forwend pays
   the network fee, and the minimum refund is 1 USD (D-90). After 11.11.1.
+  - Payers claim held money, including overpayments, late payments and expired partial payments, through 11.10.2.
   - 11.10.1 Overpaid handling: the owner's invoice page shows money sent above the amount (held for the payer, D-26)
     with a way to return it. The pay page and the payment page already name the extra and that it is held.
     After 11.10.
