@@ -281,6 +281,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-205 | Sign-in and the app send no WalletConnect requests. | Given `/sign-in` or an `/app` page, then no request goes to WalletConnect. Given the email code, then sign-in still lands in the app shell. | auth-live-e2e | D-21 |
 
+| R-206 | Code and addresses keep their place while the mono font loads. | Given `/docs` at 1440 px, when the mono font arrives after the first paint, then the layout shift stays below 0.01. | e2e | R-155 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.

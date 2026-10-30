@@ -3312,18 +3312,103 @@
         "On /docs at 1440px the layout shift while fonts load is below 0.01"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
-        "web-e2e"
+        "web-e2e",
+        "lighthouse"
       ],
-      "refs": [],
+      "refs": [
+        "R-206"
+      ],
       "keep": [
         "apps/backend/*"
       ],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-30 review fail by reviewer: Fail. The fix only holds where the fallback is exactly 0.600 em, as Geist Mono is. /docs is very sensitive: long inline code chips (GET /v1/profiles/{profileId}/invoices/{invoiceId}) rewrap at any width change. Built CSS: --fw-font-mono-loaded is \"Geist Mono\", ui-monospace, so the full stack is Geist Mono, ui-monospace, SFMono-Regular, monospace. Chromium resolves neither ui-monospace nor SFMono-Regular. The local test passes only because Chrome on macOS maps monospace to Courier (0.6001 em). Measured shift on /docs, Geist Mono delayed 800 ms (old adjusted-Arial build: 0.069/0.087/0.103/0.136 at 1440/1280/1180/1024): (1) Linux Chromium in mcr.microsoft.com/playwright:v1.64.1-noble, which matches CI's install step: monospace is WenQuanYi Zen Hei Mono, 0.5 em. Shift is 0.152 at 1440 and 0.192 at 1280. With the e2e's own logic (no delay) it is 0.063 in 2 of 3 runs, so the new test will likely fail in the staging CI on ubuntu-latest. (2) Safari on macOS, iOS and iPadOS: ui-monospace is SF Mono, 0.618 em (SFNSMono.ttf hmtx 1266/2048). With the real SF Mono loaded as fallback: 0.058/0.073/0.086/0.114, little better than before. (3) Menlo and DejaVu Sans Mono, 0.602 em (Firefox on macOS, many Linux desktops): 0.032/0.040/0.063. (4) Consolas, Windows Chrome and Edge default, 0.55 em, simulated: 0.012-0.024. Only Courier and Courier New (0.6001 em) stay below 0.01 (0.0002-0.0026). The commit message, the fonts.ts comment and the DESIGN.md line say SF Mono and Menlo match Geist Mono's width; they don't. Test: passes 3/3 at HEAD; fails 4/4 with HEAD~1 fonts.ts (0.0686). It is allowed (a bug a user hit). But it relies on localhost timing for 'arrives after the first paint'; one Linux run read 0 because the font came first. Delay the woff2 with page.route and read the shift after a frame. Fix options: display: 'optional' on Geist_Mono (no swap after first paint, on any platform). Or an exactly width-matched fallback: 'Courier New', 'Courier', 'Liberation Mono' (all 0.600 em), optionally with size-adjusted local Menlo/DejaVu (99.66%) and Consolas (109.1%) faces. Then re-measure on Linux and Safari. Fine: tasks.json changes only F386's record. Hanken Grotesk and Noto Sans fallbacks are unchanged in the built CSS. All mono text goes through font-mono and --fw-font-mono, so the pay page, landing hero, command menu and tables get the same result. R-206 sentences are 11 and 21 words, the DESIGN.md line 18; the comment gives a reason. docs-check passes.",
+        "2026-10-30 review fail by subagent: Fail. preload: false plus display: optional means Chromium never shows Geist Mono on a first visit, on any network. The font request starts only at the first layout, so it can never be ready by the first paint. Measured on a clean HEAD build with CDP CSS.getPlatformFontsForNode, fresh context, no throttling, localhost: /docs code draws in Courier (133 glyphs), not Geist Mono. Same with 150 ms latency. Reload and a new tab draw Geist Mono. A cold load of / (hero mono also Courier), then a client navigation to /docs: still Courier, so the whole first session keeps the system face until a full reload. So every new visitor, and nearly every payer on /pay, sees addresses in Courier (macOS Chrome), Consolas (Windows) or WenQuanYi/DejaVu (Linux). That breaks DESIGN's 'Geist Mono only for addresses, hashes...' in the common case, while the docs present the fallback as the exception: the test comment says 'as on a slow network', and the DESIGN line says it shows 'when it is ready by the first paint', which never happens on a cold load without preload. Measured fix: preload: true with display optional (keep adjustFontFallback false and fallback ui-monospace). Chrome then holds the first render up to 100 ms for a preloaded optional face. First load, 150 ms latency and / -> /docs all draw Geist Mono, and docs.spec.ts passes 6/6 (the 800 ms delay still reads no shift). Cost: one 23 KB latin woff2 preload on every page. If the owner prefers no preload, say in DESIGN.md and the fonts.ts comment that first visits show the system monospace face until the next full load, and drop 'slow network' from the test comment. Fine: tasks.json changes only F386. The clean build has font-display:optional on all 6 Geist Mono faces. docs.spec.ts passes 3/3 at HEAD; with main's fonts.ts (rm -rf .next first) it fails at 0.0688. The test delays Hanken too, but its swap shift is 0.00019 in 8/8 runs, with all fonts or Hanken alone delayed, so no flake risk; delaying every font is the real slow-network case. The test is allowed (workflow.md: a bug a user hit). R-206 sentences are 11 and 21 words, the DESIGN line 19; docs-check 0 errors. The fonts.ts comment gives reasons. The commit message facts hold (0.069 reproduced), but it does not say first visits lose Geist Mono.",
+        "2026-10-30 review pass by reviewer: Pass. tasks.json changes only F386. Clean build: / and /docs carry <link rel=preload as=font> for the 23 KB Geist Mono latin woff2 (797e433...), and all 6 Geist Mono faces have font-display:optional; --fw-font-mono-loaded is \"Geist Mono\", ui-monospace. Fresh Chromium, CDP CSS.getPlatformFontsForNode on code and .font-mono: first /docs (425 glyphs), first / (86) and / then client nav to /docs (425) all draw Geist Mono only, at 0, 150 and 600 ms latency. docs.spec.ts 6/6 passed in 3 of 3 runs, with the 800 ms font delay test included. Lighthouse at HEAD: 98/100/LCP 1852 ms and 99/100/1789 ms; with preload: false (temporary, restored): 99/100/1740 and 99/100/1668. So the preload costs about 50-180 ms LCP here; the author's 96 and 2215 ms is the worse end, honestly reported and inside R-11 (>=90, >=95, <2.5 s). The fonts.ts comment, DESIGN.md line and commit message now match the behavior: face from the first paint, a late face waits for the next full load, no swap. R-206 sentences 11 and 21 words, DESIGN line 21; docs-check 0 errors. Nit only: the fonts.ts comment's first sentence is 33 words; D-84 covers docs, not code comments. Tree clean; my servers stopped; .next rebuilt from HEAD."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T06:32:33Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": ""
+          },
+          {
+            "id": "lighthouse",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 33.9,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.7,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 26.8,
+            "log": ""
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "43bdcc65bc862efc",
+        "filesHash": "3bd21505dc9dcf66",
+        "proof": {
+          "1": "web-e2e: e2e/docs.spec.ts 'the docs page doesn't shift when its code font arrives late' holds every woff2 800 ms, then reads the layout shift on /docs at 1440 px: below 0.01 (with main's fonts.ts: 0.069). Geist Mono is now preloaded with display optional, so it shows from the first paint on a first visit and a late face is never swapped in on any platform. lighthouse: '/' mobile preset still meets R-11 with the preload (performance 96, accessibility 100, LCP 2215 ms; without the preload 99 and 1756 ms)."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass. tasks.json changes only F386. Clean build: / and /docs carry <link rel=preload as=font> for the 23 KB Geist Mono latin woff2 (797e433...), and all 6 Geist Mono faces have font-display:optional; --fw-font-mono-loaded is \"Geist Mono\", ui-monospace. Fresh Chromium, CDP CSS.getPlatformFontsForNode on code and .font-mono: first /docs (425 glyphs), first / (86) and / then client nav to /docs (425) all draw Geist Mono only, at 0, 150 and 600 ms latency. docs.spec.ts 6/6 passed in 3 of 3 runs, with the 800 ms font delay test included. Lighthouse at HEAD: 98/100/LCP 1852 ms and 99/100/1789 ms; with preload: false (temporary, restored): 99/100/1740 and 99/100/1668. So the preload costs about 50-180 ms LCP here; the author's 96 and 2215 ms is the worse end, honestly reported and inside R-11 (>=90, >=95, <2.5 s). The fonts.ts comment, DESIGN.md line and commit message now match the behavior: face from the first paint, a late face waits for the next full load, no swap. R-206 sentences 11 and 21 words, DESIGN line 21; docs-check 0 errors. Nit only: the fonts.ts comment's first sentence is 33 words; D-84 covers docs, not code comments. Tree clean; my servers stopped; .next rebuilt from HEAD.",
+          "at": "2026-10-30T06:39:18Z",
+          "filesHash": "3bd21505dc9dcf66"
+        }
+      },
+      "branch": "fix/f386-code-and-addresses-keep-their-place-whil",
+      "baseCommit": "c800fa850c85eac4c16d04ed706ffa551900322d",
+      "failedVerifies": 0
     },
     {
       "id": "F387",
