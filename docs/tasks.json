@@ -1937,7 +1937,7 @@
         "An address-count refusal (PublicNode's 'A maximum of 10 addresses is allowed', HTTP 403 or a JSON-RPC error) sends the query to the next endpoint without resting the first, and is remembered like range and batch refusals; when every endpoint refuses, the receiver-event scan splits its address list"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend-affected",
         "docs-check"
@@ -1990,11 +1990,18 @@
           "summary": "Pass. All 3 earlier findings are fixed. (1) The flaky step is gone: 'go test -race -count=1 ./internal/chain/' passed 8 of 8 runs and the two address tests passed 50 of 50 with -race; the new assertion uses refuses() directly, not latency. (2) addressLimit now skips messages with 'rate' or that tooLarge matches. A 22-address getLogs answered 'Rate limit exceeded for your IP address' as HTTP 429 or as 200 with -32005 now rests the endpoint and sets no refusedAddresses; with the two exclusions removed, TestAddressLimitIsNotARateLimit fails on two cases. (3) Docs: no added sentence is over 25 words (longest 21); check-docs has 0 errors. Still true: removing the post classification fails the chain and watcher tests, and the original outflows.go fails the watcher test; the split loop ends; watcher tests pass. Residual risk, not blocking: the exclusions assume PublicNode's live text has no 'rate' or range/results words after 'A maximum of 10 addresses is allowed.' (the test text 'No limit on a dedicated node' has none). Re-run the real-endpoint local check once and look for the 'RPC refuses a request size ... addresses=22' log line.",
           "at": "2026-10-30T01:20:25Z",
           "filesHash": "5802702e8499cc02"
-        }
+        },
+        "commit": "10608989",
+        "doneAt": "2026-10-30T01:20:36Z"
       },
       "branch": "fix/f365-a-log-query-an-endpoint-refuses-for-its",
       "baseCommit": "05980307ab0471aa2da5e21a19408c1a7d7565c7",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f365-a-log-query-an-endpoint-refuses-for-its",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
