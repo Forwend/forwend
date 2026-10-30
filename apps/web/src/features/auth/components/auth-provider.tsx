@@ -27,7 +27,13 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <PrivyProvider
       appId={APP_ID}
-      config={{ loginMethods: [...LOGIN_METHODS], appearance: { theme } }}
+      // No wallet login, so no wallet list: Privy fetches WalletConnect's wallet registry for one, and starts
+      // WalletConnect, on every page it loads.
+      config={{
+        loginMethods: [...LOGIN_METHODS],
+        appearance: { theme, walletList: [] },
+        externalWallets: { walletConnect: { enabled: false } },
+      }}
     >
       {children}
     </PrivyProvider>

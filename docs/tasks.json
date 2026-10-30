@@ -3202,19 +3202,107 @@
         "Sign-in and app pages make no request to WalletConnect, and sign-in by email code still works"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
-        "web-e2e",
-        "live-e2e"
+        "auth-live-e2e",
+        "web-e2e"
       ],
-      "refs": [],
+      "refs": [
+        "R-205"
+      ],
       "keep": [
         "apps/backend/*"
       ],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-30 review pass by reviewer: Pass. Privy 3.51.0 code: the provider calls the listings hook as ir(sr(walletList ?? [])) (index-CaWn8tEz.mjs); sr is true only if the list names a WalletConnect-backed wallet, and the hook fetches explorer-api.walletconnect.com only when that is true (guards-DZc6JJJZ.mjs). The config merger keeps [] (an empty array is truthy, so the default list with metamask, rainbow and wallet_connect is not used). The Ethereum WalletConnect connector starts only if walletConnect.enabled and the list names a WalletConnect wallet (toViemAccount-BQS52mmk.mjs), and its code is a dynamic import, so neither runs now. enabled:false is read in only three places: the connector manager, the funding TransferFromWalletScreen (not used) and a config fingerprint. The app's hooks (usePrivy, useLoginWithEmail, useLoginWithOAuth, useLoginWithPasskey, useLinkWithPasskey, getAccessToken, logout) do not touch connectors. The app uses no useWallets or connectors; wallets come from the backend (D-21, R-31); future sends (D-46) use Privy's embedded wallet, not WalletConnect. CSP still allows walletconnect hosts: harmless, an allowlist sends nothing, and it is Privy's recommended CSP; tightening is optional and separate. check auth-live-e2e passed (23.4s). My own probe also logged requests and websockets on /sign-in, the email-code sign-in, /app, /app/transactions and /app/invoices: the only outside host was auth.privy.io, with no walletconnect, reown, web3modal or walletlink traffic. The test addition is 5 lines in a kept auth test and is minimal. A per-spec live check matches loading-live-e2e; the F381 note records the red live suite on main. tasks.json changes only F385. R-205 sentences are 8, 13 and 12 words; the architecture sentence is 24. The comment gives a reason. Notes, not defects: the test listens to page requests, not websockets (a relay socket would be missed; the registry fetch is caught). If 11.10.2 refund claims ever use Privy to connect a payer wallet, this config needs another look."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T05:54:25Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.1,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.2,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.9,
+            "log": ""
+          },
+          {
+            "id": "auth-live-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 29.9,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 21.0,
+            "log": ""
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "7bebb8d890907cff",
+        "filesHash": "24ec1ef648a8bdad",
+        "proof": {
+          "1": "auth-live-e2e: e2e/privy/auth.spec.ts 'the Privy test account signs in, with no WalletConnect request, and lands in the app shell…' records every request from /sign-in through the email-code sign-in to the personal overview: none goes to a walletconnect host. With the old Privy config it failed on https://explorer-api.walletconnect.com/v3/wallets. The rest of auth.spec.ts (axe, wrong email, wrong code, cancelled passkey, signed-out redirect) passes."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass. Privy 3.51.0 code: the provider calls the listings hook as ir(sr(walletList ?? [])) (index-CaWn8tEz.mjs); sr is true only if the list names a WalletConnect-backed wallet, and the hook fetches explorer-api.walletconnect.com only when that is true (guards-DZc6JJJZ.mjs). The config merger keeps [] (an empty array is truthy, so the default list with metamask, rainbow and wallet_connect is not used). The Ethereum WalletConnect connector starts only if walletConnect.enabled and the list names a WalletConnect wallet (toViemAccount-BQS52mmk.mjs), and its code is a dynamic import, so neither runs now. enabled:false is read in only three places: the connector manager, the funding TransferFromWalletScreen (not used) and a config fingerprint. The app's hooks (usePrivy, useLoginWithEmail, useLoginWithOAuth, useLoginWithPasskey, useLinkWithPasskey, getAccessToken, logout) do not touch connectors. The app uses no useWallets or connectors; wallets come from the backend (D-21, R-31); future sends (D-46) use Privy's embedded wallet, not WalletConnect. CSP still allows walletconnect hosts: harmless, an allowlist sends nothing, and it is Privy's recommended CSP; tightening is optional and separate. check auth-live-e2e passed (23.4s). My own probe also logged requests and websockets on /sign-in, the email-code sign-in, /app, /app/transactions and /app/invoices: the only outside host was auth.privy.io, with no walletconnect, reown, web3modal or walletlink traffic. The test addition is 5 lines in a kept auth test and is minimal. A per-spec live check matches loading-live-e2e; the F381 note records the red live suite on main. tasks.json changes only F385. R-205 sentences are 8, 13 and 12 words; the architecture sentence is 24. The comment gives a reason. Notes, not defects: the test listens to page requests, not websockets (a relay socket would be missed; the registry fetch is caught). If 11.10.2 refund claims ever use Privy to connect a payer wallet, this config needs another look.",
+          "at": "2026-10-30T06:01:43Z",
+          "filesHash": "24ec1ef648a8bdad"
+        },
+        "commit": "8099a100",
+        "doneAt": "2026-10-30T06:02:00Z"
+      },
+      "branch": "perf/f385-sign-in-and-the-app-send-no-walletconnec",
+      "baseCommit": "0a97adacd12d2b3d95487cf76ef14513168eaa7d",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "perf/f385-sign-in-and-the-app-send-no-walletconnec",
+        "base": "main"
+      }
     },
     {
       "id": "F386",

@@ -284,6 +284,12 @@
       "timeoutSeconds": 900
     },
     {
+      "id": "auth-live-e2e",
+      "argv": ["pnpm", "--filter", "@forwend/web", "e2e:live", "e2e/privy/auth.spec.ts"],
+      "cache": false,
+      "timeoutSeconds": 600
+    },
+    {
       "id": "loading-live-e2e",
       "argv": ["pnpm", "--filter", "@forwend/web", "e2e:live", "e2e/privy/loading.spec.ts"],
       "cache": false,

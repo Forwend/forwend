@@ -83,9 +83,13 @@ test("a signed-out visit to /app goes to sign-in", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Sign in to Forwend" })).toBeVisible();
 });
 
-test("the Privy test account signs in and lands in the app shell with its personal profile", async ({
+test("the Privy test account signs in, with no WalletConnect request, and lands in the app shell with its personal profile", async ({
   page,
 }) => {
+  const walletConnect: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).host.includes("walletconnect")) walletConnect.push(request.url());
+  });
   await page.goto("/sign-in");
   await expect(page.getByRole("button", { name: "Email me a code" })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
@@ -110,6 +114,7 @@ test("the Privy test account signs in and lands in the app shell with its person
   await expect(page.getByRole("heading", { level: 1, name: "Personal overview" })).toBeAttached();
   await expect(page.getByRole("region", { name: "Total balance" })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
+  expect(walletConnect).toEqual([]);
 
   const header = page.getByRole("banner");
   await expect(
