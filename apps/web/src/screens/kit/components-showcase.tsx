@@ -602,7 +602,7 @@ export function ComponentsShowcase() {
               </Button>
             }
           >
-            Connection lost. Retrying…
+            Can't reach the server. Retrying…
           </Notice>
           <Notice tone={NOTICE_TONES.danger}>
             Webhook delivery failed or paused. Payment status is unchanged.

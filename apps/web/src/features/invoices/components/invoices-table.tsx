@@ -289,7 +289,7 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
           />
         </div>
       )}
-      {list.isError && data ? (
+      {list.error && data ? (
         <LoadError
           inline
           message={COPY.updateFailed}

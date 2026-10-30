@@ -670,10 +670,12 @@ test.describe("pay page", () => {
     page,
   }) => {
     let fail = false;
+    let hold: Promise<void> | null = null;
     await page.clock.install({ time: NOW });
-    await page.route("**/api/v1/invoices/*", (route) =>
-      fail ? route.fulfill({ status: 500, json: {} }) : route.fulfill({ json: OPEN }),
-    );
+    await page.route("**/api/v1/invoices/*", async (route) => {
+      await hold;
+      return fail ? route.fulfill({ status: 500, json: {} }) : route.fulfill({ json: OPEN });
+    });
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`/pay/${PAY}`);
     const amount = page.locator("#pay-amount");
@@ -681,7 +683,7 @@ test.describe("pay page", () => {
     const before = await amount.boundingBox();
     fail = true;
     await page.clock.runFor(POLL_MS);
-    const notice = page.getByRole("status").filter({ hasText: "Connection lost. Retrying…" });
+    const notice = page.getByRole("alert").filter({ hasText: "Can't reach the server. Retrying…" });
     await expect(notice).toBeVisible();
     await expect(showAddress(page)).toBeVisible();
     const root = await page.evaluate(() => document.documentElement.getBoundingClientRect().width);
@@ -696,8 +698,15 @@ test.describe("pay page", () => {
     const narrow = await notice.boundingBox();
     const below = await amount.boundingBox();
     expect(narrow && below && narrow.y + narrow.height).toBeLessThan(below?.y ?? 0);
+    // While the next try is in flight the strip stays, its button busy, so the page doesn't jump.
+    let release = () => {};
+    hold = new Promise((resolve) => (release = resolve));
+    const retry = notice.getByRole("button", { name: "Try again" });
+    await retry.click();
+    await expect(retry).toHaveAttribute("aria-busy", "true");
+    await expect(retry).toBeFocused();
     fail = false;
-    await notice.getByRole("button", { name: "Try again" }).click();
+    release();
     await expect(notice).toHaveCount(0);
   });
 

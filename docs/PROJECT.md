@@ -266,7 +266,7 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-193 | Money on hold reads as a plain fact, never as a debt. | Given money sent late or over the amount, then the overview, My assets and the payments balance summary call it "on hold". It is "Not part of your balance", never "theirs" or "owed". Every row of Pending payments shares one type: a medium line and a small muted line. | web-unit | R-33, D-114 |
 
-| R-194 | A pay page that lost the connection says so in one short line across its top. | Given a pay page whose refresh fails, then it keeps the last read under a warning notice across its top: "Connection lost. Retrying…" with Try again. From large screens the notice spans both halves. | web-unit | R-68 |
+| R-194 | A pay page that lost the connection says so in one short line across its top. | Given a pay page whose refresh fails, then it keeps the last read under a notice: "Can't reach the server. Retrying…" with Try again. From large screens it spans both halves. It stays while a retry runs. | web-e2e | R-68 |
 | R-195 | An invoice or receipt PDF says each fact once. | Given an invoice or receipt PDF, then dates show only in the dates row. Besides Total, no totals row repeats the panel's figure, except Left to pay after Received. A receipt shows Applied and its totals only when a transfer wasn't applied whole. | backend | R-61, R-121 |
 
 | R-200 | Opening a select keeps the scrollbar and the page in place. | Given a page with a select, when its list opens and closes, then the scrollbar, the page width and the content's left edge stay. While it is open, keys and the wheel do not scroll the page; only its scrollbar does. | kit-e2e | R-66 |

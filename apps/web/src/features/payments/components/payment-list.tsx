@@ -71,7 +71,7 @@ export function PaymentList({
       aria-busy={stale || undefined}
       className={`flex flex-col gap-4 transition-opacity duration-[var(--fw-duration-fast)] ${stale ? "opacity-60" : ""}`}
     >
-      {list.isError ? (
+      {list.error ? (
         <LoadError
           inline
           message={COPY.stale}

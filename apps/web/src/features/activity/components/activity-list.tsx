@@ -218,7 +218,7 @@ function ProfileActivity({ profileId }: ActivityListProps) {
           />
         </div>
       )}
-      {list.isError && data ? (
+      {list.error && data ? (
         <LoadError
           inline
           message={ACTIVITY_COPY.updateFailed}

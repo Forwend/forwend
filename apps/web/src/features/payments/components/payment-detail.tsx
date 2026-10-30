@@ -142,7 +142,7 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
           </>
         }
       />
-      {read.isError ? (
+      {read.error ? (
         <LoadError
           inline
           message={COPY.stale}

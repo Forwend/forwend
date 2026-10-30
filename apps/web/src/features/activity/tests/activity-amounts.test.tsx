@@ -1,13 +1,15 @@
 // @vitest-environment jsdom
 import { ToastProvider } from "@forwend/ui-web";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ActivityList } from "@/features/activity/components/activity-list";
 import { PaymentToasts } from "@/features/activity/components/payment-toasts";
+import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
 import type { ActivityItem } from "@/features/activity/types/activity";
 import { invoicesApi } from "@/features/invoices/api/invoices-api";
 import type { InvoiceEvent } from "@/features/invoices/types/invoices";
+import { REFRESH_MS } from "@/shared/config/refresh";
 import { makeStore } from "@/store/store";
 
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams() }));
@@ -116,5 +118,39 @@ describe("Activity names held money", () => {
     expect(rows[0]).toContain("Held for the customer");
     expect(rows[0]).not.toContain("Payment");
     expect(rows[1]).toContain("Payment");
+  });
+});
+
+describe("Activity's update strip", () => {
+  it("stays in place, its button busy, while a retry runs, and goes once a read works", async () => {
+    vi.useFakeTimers();
+    const ok = async () => Response.json({ items: [invoice], nextCursor: null });
+    let answer: () => Promise<Response> = ok;
+    vi.mocked(fetch).mockImplementation(() => answer());
+    try {
+      render(
+        <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+          <ActivityList profileId="p" />
+        </Provider>,
+      );
+      await act(() => vi.advanceTimersByTimeAsync(30));
+      answer = async () => new Response("{}", { status: 500 });
+      await act(() => vi.advanceTimersByTimeAsync(REFRESH_MS));
+      const strip = screen.getByRole("alert");
+      expect(strip.textContent).toContain(ACTIVITY_COPY.updateFailed);
+      let release = () => {};
+      answer = () => new Promise((resolve) => (release = () => resolve(ok())));
+      await act(() => vi.advanceTimersByTimeAsync(REFRESH_MS));
+      expect(screen.getByRole("alert")).toBe(strip);
+      expect(
+        within(strip).getByRole("button", { name: "Try again" }).getAttribute("aria-busy"),
+      ).toBe("true");
+      release();
+      await act(() => vi.advanceTimersByTimeAsync(30));
+      expect(screen.queryByRole("alert")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+      vi.mocked(fetch).mockImplementation(async () => Response.json({ items, nextCursor: null }));
+    }
   });
 });
