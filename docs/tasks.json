@@ -2593,7 +2593,7 @@
         "Opening and closing a select list leaves the scrollbar, the page width and the content's left edge unchanged, and while it is open only the scrollbar scrolls the page"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "kit-e2e",
         "web-e2e"
@@ -2703,11 +2703,18 @@
           "summary": "PASS. Diff b2d0c53f..HEAD outside tasks.json has the same changed lines as reviewed commit 0856ecc4 (base.css, select-field.tsx, kit.spec.ts, PROJECT.md R-200, DESIGN.md one bullet); only context lines differ (F371's R-194 text, DESIGN.md hunk offset). tasks.json vs main: no task removed, changed or reordered; adds F380-F386 (F381-F386 equal pre-merge); nextId 372->387; F380 carries verified state, evidence and notes on base b2d0c53f. check-docs 0 errors; kit-e2e passed.",
           "at": "2026-10-30T03:32:33Z",
           "filesHash": "3eebf2f3c0a4f858"
-        }
+        },
+        "commit": "7d1417d8",
+        "doneAt": "2026-10-30T03:32:49Z"
       },
       "branch": "fix/f380-opening-a-select-keeps-the-scrollbar-and",
       "baseCommit": "b2d0c53fed3b7cf2a6682b75422680b327faadaa",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f380-opening-a-select-keeps-the-scrollbar-and",
+        "base": "main"
+      }
     },
     {
       "id": "F381",
