@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 371,
+  "nextId": 372,
   "tasks": [
     {
       "id": "F332",
@@ -2488,6 +2488,85 @@
         "branch": "fix/f370-an-invoice-or-receipt-pdf-says-each-fact",
         "base": "main"
       }
+    },
+    {
+      "id": "F371",
+      "type": "fix",
+      "behavior": "A connection strip stays in place while its retry runs",
+      "acceptance": [
+        "The pay page strip and every inline refresh strip (activity, invoices, transactions, payments list and detail, link, stores filter) stay while a retry is in flight, their button busy and focused, and go only when a read works; the pay strip says Can't reach the server. Retrying… as an alert"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "web-unit",
+        "web-e2e",
+        "docs-check"
+      ],
+      "refs": [
+        "R-194"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T03:04:28Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.4,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.8,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.2,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 27.6,
+            "log": ""
+          }
+        ],
+        "taskHash": "26d0df52613a22bf",
+        "filesHash": "ec989dd61485f4b0",
+        "proof": {
+          "1": "web-unit: activity strip test: the update strip stays the same node, Try again busy, while a retry hangs, and goes once a read works; fails with the isError gate. 2=web-e2e: pay.spec: the strip reads Can't reach the server. Retrying… as an alert, and stays with Try again busy and focused while the retry hangs"
+        }
+      },
+      "branch": "fix/f371-a-connection-strip-stays-in-place-while",
+      "baseCommit": "8f0d5b0008d46a1487046c0439f5c18b37c0f833",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

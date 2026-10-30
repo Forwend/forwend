@@ -143,8 +143,13 @@ export function PaymentsScreen() {
           </Button>
         </p>
       ) : null}
-      {merchant && stores.isError ? (
-        <LoadError inline message={COPY.storesFailed} onRetry={() => void stores.refetch()} />
+      {merchant && stores.error ? (
+        <LoadError
+          inline
+          message={COPY.storesFailed}
+          onRetry={() => void stores.refetch()}
+          retrying={stores.isFetching}
+        />
       ) : null}
       {unknownSource || unknownStore ? (
         <p role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">
