@@ -2,9 +2,11 @@
 
 import * as RadixSelect from "@radix-ui/react-select";
 import { Check, ChevronDown } from "lucide-react";
-import { type ReactNode, useCallback, useId, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useId, useState } from "react";
 import { cx } from "../../lib/cx";
 import { FIELD_CONTROL_CLASSES, OPTION_ROW_CLASSES } from "./field-classes";
+
+const PAGE_SCROLL_KEYS = [" ", "PageUp", "PageDown", "Home", "End", "ArrowUp", "ArrowDown"];
 
 export interface SelectOption {
   value: string;
@@ -55,6 +57,17 @@ export function SelectField({
     (el: HTMLButtonElement | null) => setDialog(el?.closest("dialog") ?? null),
     [],
   );
+  // The page keeps its scrollbar while the list is open (base.css), so it could still scroll by keys. The list has
+  // handled each key by the time it reaches window; what is left would only scroll the page behind it.
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const hold = (event: KeyboardEvent) => {
+      if (PAGE_SCROLL_KEYS.includes(event.key)) event.preventDefault();
+    };
+    window.addEventListener("keydown", hold);
+    return () => window.removeEventListener("keydown", hold);
+  }, [open]);
   return (
     <div className={cx("flex flex-col gap-1.5", className)}>
       {/* A <label for> does not name a button-based combobox, so link it with aria-labelledby. */}
@@ -70,6 +83,7 @@ export function SelectField({
         value={value}
         defaultValue={defaultValue}
         onValueChange={onValueChange}
+        onOpenChange={setOpen}
         disabled={disabled}
       >
         <RadixSelect.Trigger

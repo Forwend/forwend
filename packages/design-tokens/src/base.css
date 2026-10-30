@@ -51,6 +51,14 @@
     overflow: hidden;
   }
 
+  /* An open select list (Radix, react-remove-scroll) would hide the scrollbar and add its width as a body margin,
+     which the stable gutter already holds, so the page would shift sideways. The library's wheel and touch listeners
+     and SelectField's keys hold the page still. A layered !important beats the library's unlayered one. */
+  body[data-scroll-locked] {
+    overflow: visible !important;
+    margin-right: 0 !important;
+  }
+
   @media (pointer: coarse) {
     input,
     textarea,

@@ -1,6 +1,15 @@
 import { expect, test } from "@playwright/test";
 import { KIT_URL, PUBLIC_URL } from "./servers";
 
+// Headless Chromium hides scrollbars by default, which would hide any change in their room. Without smooth
+// scrolling a key that scrolls the page moves it before the next read.
+test.use({
+  launchOptions: {
+    ignoreDefaultArgs: ["--hide-scrollbars"],
+    args: ["--disable-smooth-scrolling"],
+  },
+});
+
 // The kit is internal: it must never be reachable or indexed on the public site.
 test.describe("kit privacy", () => {
   for (const path of ["/kit", "/kit/directions"]) {
@@ -13,6 +22,33 @@ test.describe("kit privacy", () => {
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
     });
   }
+});
+
+test("opening a select keeps the scrollbar and the page in place", async ({ page }) => {
+  await page.goto(`${KIT_URL}/kit`);
+  const select = page.getByRole("combobox", { name: "Network" });
+  await select.scrollIntoViewIfNeeded();
+  const frame = () =>
+    page.evaluate(() => ({
+      scrollbar: window.innerWidth - document.documentElement.clientWidth,
+      left: document.querySelector("main")?.getBoundingClientRect().left,
+      top: window.scrollY,
+    }));
+  const before = await frame();
+  expect(before.scrollbar).toBeGreaterThan(0);
+  await select.click();
+  const list = page.getByRole("listbox");
+  await expect(list).toBeVisible();
+  await page.mouse.wheel(0, 400);
+  // Off the options the list itself has focus, and Space would scroll the page.
+  await list.getByRole("option").first().hover();
+  await page.mouse.move(1, 1);
+  for (const key of ["Space", "PageDown", "End"]) await page.keyboard.press(key);
+  await expect(list).toBeVisible();
+  expect(await frame()).toEqual(before);
+  await page.keyboard.press("Escape");
+  await expect(list).toBeHidden();
+  expect(await frame()).toEqual(before);
 });
 
 test("a tap opens a tooltip on a touch screen, and a tap elsewhere closes it", async ({

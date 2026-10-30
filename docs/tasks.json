@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 371,
+  "nextId": 387,
   "tasks": [
     {
       "id": "F332",
@@ -2488,6 +2488,269 @@
         "branch": "fix/f370-an-invoice-or-receipt-pdf-says-each-fact",
         "base": "main"
       }
+    },
+    {
+      "id": "F380",
+      "type": "fix",
+      "behavior": "Opening a select keeps the scrollbar and the page in place",
+      "acceptance": [
+        "Opening and closing a select list leaves the scrollbar, the page width and the content's left edge unchanged, and while it is open only the scrollbar scrolls the page"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "kit-e2e",
+        "web-e2e"
+      ],
+      "refs": [
+        "R-200"
+      ],
+      "keep": [
+        "apps/backend/*"
+      ],
+      "review": false,
+      "notes": [
+        "2026-10-30 review fail by reviewer: Code fix works; the regression test does not guard its key half. Defect: kit.spec.ts 'opening a select keeps the scrollbar and the page in place' passes without SelectField's window keydown hold. Chromium scrolls by keys smoothly, and the test reads scrollY right after Space/PageDown/End, before the scroll starts. Repro: the verbatim test body in the Playwright runner with window keydown listeners dropped by an init script passed 3/3; after a 500 ms wait, scrollY had moved 9372 -> 10348. Adding args: ['--disable-smooth-scrolling'] to the same launchOptions makes it fail without the hold (top 9372 -> 10348, 3/3) and pass with it (3/3). Without the base.css rule it already fails (scrollbar 11 -> 0, main left 58.5 -> 53). Fix: add that arg next to ignoreDefaultArgs (it also makes the wheel step meaningful). Checked on a running /kit and found OK: Space with the list focused, Space during typeahead ('merchant ' keeps the list open, then Space selects), PageUp/PageDown/Home/End/arrows/Shift+Space, wheel on and beside the list, touch swipe on the list. A select inside a modal Dialog (rendered on /kit through the Turbopack module cache): the dialog and page do not scroll, the body margin stays 0, and Escape closes only the list. The listener count on window is 0 closed, 1 open, 0 after close and after unmount while open. After close, PageDown scrolls and typing in a textarea works. Nits: (1) a wheel over the page scrollbar strip itself scrolls the page while the list is open. Chromium sends a non-cancelable wheel there, so no script can stop it. The list stays anchored to its trigger, and a click closes it. R-200 and the DESIGN.md bullet say wheel never scrolls; name this exception or accept it. (2) A touch swipe outside the list dismisses the list, then scrolls the page; this is unchanged from main. Docs: R-200 sentences are 24 and 13 words, docs-check is clean, and the comments give reasons only. tasks.json only adds F380-F386 and moves nextId 370 -> 387; no existing task changed.",
+        "2026-10-30 review pass by reviewer: Both author claims hold. Reran kit-e2e 'opening a select': with the fix it passes (3/3 with --repeat-each 3; the whole kit.spec.ts passes, 18/18). With select-field.tsx from HEAD it fails 3/3 (top 9372 -> 10348). With base.css from HEAD it fails 2/2 (scrollbar 11 -> 0, main left 58.5 -> 53). Both files restored byte for byte (shasum). Root cause: react-remove-scroll-bar's unlayered body[data-scroll-locked] overflow:hidden plus margin-right gap fights scrollbar-gutter:stable. Radix Select offers no opt-out, so a layered !important override is the right place. SelectField is the only Radix Select. Menu is modal={false}, and ComboboxField has no lock, so nothing else gets the override. Test: one regression test, both launch options explained, setup comment justified. Docs: R-200 sentences are 24 and 17 words. The DESIGN.md bullet is short and now names the scrollbar exception. docs-check 0 errors. Comments give reasons only, no history. tasks.json: only nextId 370 -> 387 and new F380-F386; no existing task removed or changed. Nits: (1) PAGE_SCROLL_KEYS lists ArrowUp/ArrowDown/Home/End, which Radix content onKeyDown already prevents; only Space and PageUp/PageDown reach window unprevented. Harmless. (2) The accept line still says wheel or keys never scroll the page; it does not name the scrollbar exception that R-200 has. (3) The branch base d0cae9c2 is one commit behind origin/main (F370), so 'git diff origin/main' shows F370 reversed. Expect a tasks.json nextId conflict when rebasing before done.",
+        "2026-10-30 blocked: re-record the fork point after rebasing onto main (F370 merged)",
+        "2026-10-30 review pass by reviewer: PASS. Branch is one commit (729e377f) on 8f0d5b00; its code, test and docs are byte-identical to the pre-rebase commit the last review passed (range-diff shows only PROJECT.md context and tasks.json). Accept line now matches R-200. tasks.json vs 8f0d5b00: only nextId 371->387 and new F380-F386; no task changed, dropped or reordered; lastWrapup unchanged. kit-e2e passed (harness check). Own probe on a scratch kit server: with the fix Space/PageDown/End leave scrollY 9372 and scrollbar 11; with window keydown listeners dropped by an init script the page moves 9372->10348, so the hold is load-bearing and the test guards it. After the list closes, PageDown/Space scroll the page again (hold removed). Dragging the page scrollbar while open scrolls the page; the list closes, as a native select does. base.css: layered !important correctly beats react-remove-scroll-bar's unlayered rule; SelectField is the only Radix Select and Menu is modal={false}, so nothing else gets the override; no app code uses the library's gap classes. Test kept under the user-hit-bug rule; comments give reasons. docs-check 0 errors. Note for delivery: origin/main moved to b2d0c53f (F371, #363) at 05:20, after the 05:18 rebase. git diff origin/main now shows F371 removed. merge-tree shows a tasks.json conflict only (PROJECT.md and DESIGN.md auto-merge), so rebase again and keep F371 before done. Nit: PAGE_SCROLL_KEYS ArrowUp/ArrowDown/Home/End are already prevented by Radix; harmless."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T03:24:39Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "tokens-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "kit-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.4,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "acb6c91785d00d6a",
+        "filesHash": "66fb4e071d3aa31c",
+        "proof": {
+          "1": "kit-e2e: e2e/kit.spec.ts 'opening a select keeps the scrollbar and the page in place' opens the Network select on /kit with classic scrollbars and no smooth scrolling, wheels the page, moves the pointer off the options and presses Space, PageDown and End, then closes it; scrollbar width, main's left edge and scrollY stay. Without the base.css rule it fails (scrollbar 11 -> 0 px); without SelectField's window key hold it fails 3 of 3 runs (scrollY 9372 -> 10348); with both it passes 3 of 3."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS. Branch is one commit (729e377f) on 8f0d5b00; its code, test and docs are byte-identical to the pre-rebase commit the last review passed (range-diff shows only PROJECT.md context and tasks.json). Accept line now matches R-200. tasks.json vs 8f0d5b00: only nextId 371->387 and new F380-F386; no task changed, dropped or reordered; lastWrapup unchanged. kit-e2e passed (harness check). Own probe on a scratch kit server: with the fix Space/PageDown/End leave scrollY 9372 and scrollbar 11; with window keydown listeners dropped by an init script the page moves 9372->10348, so the hold is load-bearing and the test guards it. After the list closes, PageDown/Space scroll the page again (hold removed). Dragging the page scrollbar while open scrolls the page; the list closes, as a native select does. base.css: layered !important correctly beats react-remove-scroll-bar's unlayered rule; SelectField is the only Radix Select and Menu is modal={false}, so nothing else gets the override; no app code uses the library's gap classes. Test kept under the user-hit-bug rule; comments give reasons. docs-check 0 errors. Note for delivery: origin/main moved to b2d0c53f (F371, #363) at 05:20, after the 05:18 rebase. git diff origin/main now shows F371 removed. merge-tree shows a tasks.json conflict only (PROJECT.md and DESIGN.md auto-merge), so rebase again and keep F371 before done. Nit: PAGE_SCROLL_KEYS ArrowUp/ArrowDown/Home/End are already prevented by Radix; harmless.",
+          "at": "2026-10-30T03:29:44Z",
+          "filesHash": "66fb4e071d3aa31c"
+        }
+      },
+      "branch": "fix/f380-opening-a-select-keeps-the-scrollbar-and",
+      "baseCommit": "8f0d5b0008d46a1487046c0439f5c18b37c0f833",
+      "failedVerifies": 0
+    },
+    {
+      "id": "F381",
+      "type": "fix",
+      "behavior": "A list page loads without a flash or a jump",
+      "acceptance": [
+        "A list's loading rows have the table's header and row heights at table widths, and the phone rows' height below, so loaded rows replace them in place",
+        "Placeholders appear only after a wait long enough to notice, so a quick answer shows none"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "live-e2e",
+        "ui-unit"
+      ],
+      "refs": [],
+      "keep": [
+        "apps/backend/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F382",
+      "type": "perf",
+      "behavior": "App pages reuse fresh data, poll balances only where shown, and end a hung request",
+      "acceptance": [
+        "Returning to a page within five minutes shows its last data at once and reads it again when older than a minute, with no more requests than before",
+        "Pages that show no balance send no balance request every 15 seconds; Receive reads them while open",
+        "A request with no answer within 30 seconds fails with Try again instead of loading forever"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "web-e2e"
+      ],
+      "refs": [],
+      "keep": [
+        "apps/backend/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F383",
+      "type": "fix",
+      "behavior": "The overview's cards keep their size and show no wrong state while they load",
+      "acceptance": [
+        "Each overview card's body keeps one minimum height while loading, empty, failed and loaded, so the cards below do not move",
+        "A balance shows its placeholder until prices answer, never a no-prices line that the prices then replace"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "web-e2e"
+      ],
+      "refs": [],
+      "keep": [
+        "apps/backend/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F384",
+      "type": "fix",
+      "behavior": "Motion uses the motion tokens, and the current page mark moves with the page",
+      "acceptance": [
+        "Every transition in the app uses a motion token's easing and duration",
+        "The sidebar's, tab bar's and settings' current-page mark switches with the page, with no fade"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "web-build",
+        "web-e2e"
+      ],
+      "refs": [],
+      "keep": [
+        "apps/backend/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F385",
+      "type": "perf",
+      "behavior": "Sign-in and the app send no WalletConnect requests",
+      "acceptance": [
+        "Sign-in and app pages make no request to WalletConnect, and sign-in by email code still works"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "web-e2e",
+        "live-e2e"
+      ],
+      "refs": [],
+      "keep": [
+        "apps/backend/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F386",
+      "type": "fix",
+      "behavior": "Code and addresses keep their place while the mono font loads",
+      "acceptance": [
+        "On /docs at 1440px the layout shift while fonts load is below 0.01"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "web-e2e"
+      ],
+      "refs": [],
+      "keep": [
+        "apps/backend/*"
+      ],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {
