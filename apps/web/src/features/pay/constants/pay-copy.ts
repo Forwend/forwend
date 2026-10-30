@@ -33,7 +33,6 @@ export const PAY_COPY = {
         : "Due date removed",
   },
   closesIn: (left: string) => `Closes in ${left}`,
-  stale: "Can't reach the server. Retrying…",
   loading: "Loading payment",
   payWith: "Pay with",
   payingWith: "Paying with",

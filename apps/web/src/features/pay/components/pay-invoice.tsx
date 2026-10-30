@@ -10,7 +10,6 @@ import {
   formatTokenAmount,
   IconButton,
   Money,
-  Notice,
   QrCode,
   ReceiveAddress,
   Skeleton,
@@ -83,6 +82,7 @@ import { checkedReceiveAddress } from "@/features/pay/lib/receive-address";
 import type { PayToken } from "@/features/pay/types/pay";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { TokenMark } from "@/shared/components/chains/token-mark";
+import { ServerStrip } from "@/shared/components/server-strip";
 import { LIVE_QUERY, REFRESH_MS } from "@/shared/config/refresh";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { addressLink, chainName, lookalikeOf, txLink } from "@/shared/lib/chains";
@@ -126,26 +126,11 @@ export function PayInvoice({ linkToken, option, preview = false }: PayInvoicePro
   const failure = invoice.error as { status?: unknown } | undefined;
   if (invoice.data) {
     // A failed poll keeps the last read: say so above everything, or a payer may think nothing arrived and send again.
-    // From large screens it spans both halves, its text in line with theirs. data-stale: PayScreen gives it its own row.
+    // From large screens it spans both halves, its text centered. data-stale: PayScreen gives it its own row.
     // error, not isError: a retry in flight keeps the error, so the strip stays put until a read succeeds.
     const stale = invoice.error ? (
       <div data-stale className="lg:col-span-2">
-        <Notice
-          role="alert"
-          className="lg:rounded-none lg:pr-[max(2.5rem,calc(50vw-32rem))] lg:pl-[max(2.5rem,calc(50vw-30rem))]"
-          action={
-            <Button
-              size="sm"
-              variant="secondary"
-              loading={invoice.isFetching}
-              onClick={invoice.refetch}
-            >
-              {COPY.retry}
-            </Button>
-          }
-        >
-          {COPY.stale}
-        </Notice>
+        <ServerStrip className="lg:rounded-none" />
       </div>
     ) : null;
     return (

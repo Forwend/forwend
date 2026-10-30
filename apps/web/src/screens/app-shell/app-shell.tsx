@@ -27,6 +27,8 @@ import { AppSidebar } from "@/screens/app-shell/app-sidebar";
 import { CommandMenu } from "@/screens/app-shell/command-menu";
 import { firstPage, pageAllowed } from "@/screens/app-shell/lib/app-nav";
 import { PhoneTabBar } from "@/screens/app-shell/phone-tab-bar";
+import { useRetryUnreachable, useServerUnreachable } from "@/shared/api/server-reach";
+import { ServerStrip } from "@/shared/components/server-strip";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 
@@ -58,6 +60,9 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const active = profiles ? chosenProfile(profiles, activeId ?? savedId) : undefined;
   const money = active ? can(active, PERMISSIONS.moneyRead) : false;
   const balances = useGetBalancesQuery(active && money ? active.profileId : skipToken, LIVE_QUERY);
+  // One strip under the header says the server can't be reached, in place of each view's own refresh notice.
+  const down = useServerUnreachable();
+  useRetryUnreachable(down);
 
   const rememberProfile = useCallback(
     (profileId: string) => {
@@ -216,6 +221,9 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
               collapsed={collapsed}
               onToggleCollapsed={toggleCollapsed}
             />
+            {down ? (
+              <ServerStrip className="sticky top-[calc(4rem+env(safe-area-inset-top,0px))] z-[var(--fw-z-nav)] rounded-none" />
+            ) : null}
             <main
               id="app-content"
               tabIndex={-1}

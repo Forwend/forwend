@@ -32,6 +32,7 @@ import {
   MenuSeparator,
   MenuTrigger,
   NavPill,
+  NOTICE_ALIGNS,
   NOTICE_TONES,
   Notice,
   PANEL_TONES,
@@ -602,10 +603,13 @@ export function ComponentsShowcase() {
               </Button>
             }
           >
-            Can't reach the server. Retrying…
+            We could not refresh payments. The last loaded payments are shown.
           </Notice>
           <Notice tone={NOTICE_TONES.danger}>
             Webhook delivery failed or paused. Payment status is unchanged.
+          </Notice>
+          <Notice align={NOTICE_ALIGNS.center} role="alert">
+            Can't reach the server. Retrying…
           </Notice>
         </div>
       </KitGroup>

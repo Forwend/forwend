@@ -279,6 +279,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - A list with nothing yet hides its toolbar (search, filters, New, Export): the state's own action is the only one,
       and it centers on the whole workspace. Nothing matching keeps the toolbar, so the filter can be cleared.
   - Only when the last data still shows does a failed refresh become a one-line notice above it (`LoadError inline`).
+  - When the server can't be reached, one `ServerStrip` sits under the app's header instead (R-210).
+    - Each part's own refresh notice steps back meanwhile, so the same news never shows twice.
+    - It retries every read on the refresh's beat and goes once the server answers.
   - A new filter or search keeps the last rows in place, dimmed and busy, until its own answer arrives.
   - Show more sits in the table's footer. A list stays live (polled) only while it shows its first page.
 - Transactions table: a ruled table from 48rem of the list's own width, one line per transfer in 44px rows, with a
@@ -740,7 +743,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - No image and no glass; it follows the system theme. The invoice PDF link stays in every state; the receipt link
   appears once paid.
 - When a refresh fails the page keeps the last read under a notice across its top (R-194).
-  - It says "Can't reach the server. Retrying…", with Try again.
+  - It says "Can't reach the server. Retrying…", centered, with no button: the page retries on its own.
   - From large screens it spans both halves.
 - PDFs open through the same-origin `/api` path. The invoice detail lists them under Documents: the invoice PDF
   always, the receipt PDF once paid.
@@ -886,6 +889,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   and most of its height.
 - A notice (`Notice`) is one short warning line across the view's full width.
   - At most one action sits at its end, such as Try again.
+  - A notice with no way out can center its line (`align="center"`), as `ServerStrip` does.
   - It is for what concerns the whole view: a refresh that failed, or a problem the view shows nowhere else.
   - A failed refresh's notice stays while its retry runs, with its button busy.
   - Only a read that works removes it.

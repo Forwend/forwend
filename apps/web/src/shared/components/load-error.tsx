@@ -1,5 +1,6 @@
 import { Button, Notice } from "@forwend/ui-web";
 import { AlertCircle } from "lucide-react";
+import { useServerUnreachable } from "@/shared/api/server-reach";
 
 const RETRY = "Try again";
 
@@ -15,6 +16,9 @@ export interface LoadErrorProps {
 
 /** A read that failed, in the place of what it would show: centered like an empty state, with one way to try again. */
 export function LoadError({ message, onRetry, retrying, inline, page }: LoadErrorProps) {
+  // The app shell's one strip says the server can't be reached, so a refresh notice beside it would repeat it.
+  const down = useServerUnreachable();
+  if (inline && down) return null;
   if (inline) {
     return (
       <Notice
