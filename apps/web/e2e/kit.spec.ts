@@ -51,6 +51,40 @@ test("opening a select keeps the scrollbar and the page in place", async ({ page
   expect(await frame()).toEqual(before);
 });
 
+test("a long list's panel opens where it has room and stays in the window", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(`${KIT_URL}/kit`);
+  const field = page.getByRole("button", { name: /^Country\b/ }).first();
+  const list = page.getByRole("listbox", { name: "Country" });
+  // The field's foot `gap` px above the window's bottom, then its top `gap` px below the window's top.
+  for (const [gap, side] of [
+    [120, "top"],
+    [120, "bottom"],
+  ] as const) {
+    await field.evaluate(
+      (el, { gap, side }) => {
+        const box = el.getBoundingClientRect();
+        window.scrollBy(
+          0,
+          side === "top" ? box.bottom - (window.innerHeight - gap) : box.top - gap,
+        );
+      },
+      { gap, side },
+    );
+    await field.click();
+    await expect(list).toBeVisible();
+    const panel = list.locator("..");
+    await expect(panel).toHaveAttribute("data-side", side);
+    const box = await panel.boundingBox();
+    expect(box?.y).toBeGreaterThanOrEqual(0);
+    expect(box && box.y + box.height).toBeLessThanOrEqual(720);
+    // At least three and a half rows stay in view.
+    expect((await list.boundingBox())?.height).toBeGreaterThanOrEqual(120);
+    await page.keyboard.press("Escape");
+    await expect(list).toBeHidden();
+  }
+});
+
 test("a tap opens a tooltip on a touch screen, and a tap elsewhere closes it", async ({
   browser,
 }) => {

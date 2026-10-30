@@ -56,6 +56,30 @@ function matching(options: readonly ComboboxOption[], words: string): ComboboxOp
     .map((match) => match.option);
 }
 
+// The list's tallest (max-h-72) and shortest heights, in px: at least three and a half rows stay in view.
+const LIST_MAX = 288;
+const LIST_MIN = 126;
+// The search row and the list's padding, plus the gap to the field and a margin to whatever clips the panel.
+const PANEL_EXTRA = 64;
+
+/** Where the panel has room inside what clips it (a scrolling form or dialog body, or the window), and how tall its
+ *  list can be there: below the field unless above has more room. */
+function placement(field: HTMLElement): { up: boolean; list: number } {
+  const box = field.getBoundingClientRect();
+  let top = 0;
+  let bottom = window.innerHeight;
+  for (let el = field.parentElement; el; el = el.parentElement) {
+    if (getComputedStyle(el).overflowY === "visible") continue;
+    const clip = el.getBoundingClientRect();
+    top = Math.max(top, clip.top);
+    bottom = Math.min(bottom, clip.bottom);
+  }
+  const below = bottom - box.bottom;
+  const above = box.top - top;
+  const up = below < LIST_MAX + PANEL_EXTRA && above > below;
+  return { up, list: Math.max(LIST_MIN, Math.min(LIST_MAX, (up ? above : below) - PANEL_EXTRA)) };
+}
+
 /** For a long list (countries, saved clients); a short list stays a SelectField. */
 export function ComboboxField({
   label,
@@ -77,6 +101,7 @@ export function ComboboxField({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
+  const [place, setPlace] = useState({ up: false, list: LIST_MAX });
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const search = useRef<HTMLInputElement>(null);
@@ -88,6 +113,7 @@ export function ComboboxField({
   const show = () => {
     setQuery("");
     setActive(Math.max(0, options.indexOf(chosen as ComboboxOption)));
+    if (trigger.current) setPlace(placement(trigger.current));
     setOpen(true);
   };
   const close = (focus = true) => {
@@ -182,7 +208,13 @@ export function ComboboxField({
             onMouseDown={(event) => {
               if (event.target !== search.current) event.preventDefault();
             }}
-            className="absolute inset-x-0 top-full z-[var(--fw-z-overlay)] mt-1.5 overflow-hidden rounded-md border border-line bg-surface text-ink shadow-lg [--fw-pop-y:-4px] motion-safe:animate-[fw-pop-in_var(--fw-duration-base)_var(--fw-ease-out)]"
+            data-side={place.up ? "top" : "bottom"}
+            className={cx(
+              "absolute inset-x-0 z-[var(--fw-z-overlay)] overflow-hidden rounded-md border border-line bg-surface text-ink shadow-lg motion-safe:animate-[fw-pop-in_var(--fw-duration-base)_var(--fw-ease-out)]",
+              place.up
+                ? "bottom-full mb-1.5 [--fw-pop-y:4px]"
+                : "top-full mt-1.5 [--fw-pop-y:-4px]",
+            )}
           >
             <div className="flex items-center gap-2.5 border-b border-line px-3.5">
               <Search aria-hidden className="size-[var(--fw-icon-sm)] shrink-0 text-subtle" />
@@ -217,7 +249,8 @@ export function ComboboxField({
               id={listId}
               role="listbox"
               aria-label={label}
-              className="max-h-72 overflow-y-auto overscroll-contain p-1 empty:hidden"
+              style={{ maxHeight: place.list }}
+              className="overflow-y-auto overscroll-contain p-1 empty:hidden"
             >
               {shown.map((option, i) => (
                 // biome-ignore lint/a11y/useKeyWithClickEvents: the search box owns the keyboard (arrow keys and Enter)

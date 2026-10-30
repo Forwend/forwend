@@ -114,12 +114,20 @@ export const profilesApi = apiSlice.injectEndpoints({
       query: ({ profileId, off }) => ({ url: tokensUrl(profileId), method: "PUT", body: { off } }),
       transformResponse: (data: { tokens: TokenSwitch[] }) => data.tokens,
       responseSchema: profileTokensSchema.shape.tokens,
-      async onQueryStarted({ profileId }, { dispatch, queryFulfilled }) {
+      // The boxes move at once; the API's answer then replaces the guess, and a refusal puts the old ones back.
+      async onQueryStarted({ profileId, off }, { dispatch, queryFulfilled }) {
+        const guess = dispatch(
+          profilesApi.util.updateQueryData("getProfileTokens", profileId, (tokens) => {
+            for (const t of tokens)
+              t.on = !off.some((o) => o.chainId === t.chainId && o.token === t.token);
+          }),
+        );
         try {
           const { data } = await queryFulfilled;
           dispatch(profilesApi.util.upsertQueryData("getProfileTokens", profileId, data));
         } catch {
           // The page shows the error.
+          guess.undo();
         }
       },
     }),
