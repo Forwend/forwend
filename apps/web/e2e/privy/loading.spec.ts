@@ -250,3 +250,44 @@ test("a record page keeps its panels in place while it loads", async ({ browser 
   expect(Math.abs((loaded?.y ?? 0) - (loading?.y ?? 0))).toBeLessThanOrEqual(1);
   await context.close();
 });
+
+test("when the server can't be reached, one strip under the header says so, in place of each part's notice", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await mockApi(page);
+  let down = true;
+  let failPayments = false;
+  // The web server's own answer when its proxy can't reach the api: plain text, not the api's JSON.
+  const unreachable = { status: 500, contentType: "text/plain", body: "Internal Server Error" };
+  await page.route(/\/api\/v1\/profiles\/[^/]+\/stores$/, (route) =>
+    down ? route.fulfill(unreachable) : route.fallback(),
+  );
+  await page.route(/\/api\/v1\/profiles\/[^/]+\/payments\?/, (route) =>
+    down && failPayments ? route.fulfill(unreachable) : route.fallback(),
+  );
+  await page.goto("/app/payments");
+  const strip = page.getByRole("alert").filter({ hasText: "Can't reach the server. Retrying…" });
+  await expect(strip).toHaveCount(1);
+  await expect(page.getByText(/We could not load stores/)).toHaveCount(0);
+  // The list's refresh fails too: still the one strip, and no notice over the list.
+  failPayments = true;
+  const refetch = page.waitForResponse((r) => r.url().includes("/payments?") && r.status() === 500);
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await refetch;
+  await expect(page.getByText(/We could not refresh payments/)).toHaveCount(0);
+  await expect(strip).toHaveCount(1);
+  const header = await page.locator("header.sticky").boundingBox();
+  const line = await strip.boundingBox();
+  expect(Math.abs((line?.y ?? 0) - ((header?.y ?? 0) + (header?.height ?? 0)))).toBeLessThanOrEqual(
+    1,
+  );
+  // Back: the strip retries every read, also the stores, which don't poll, and goes.
+  down = false;
+  await expect(strip).toHaveCount(0, { timeout: 20_000 });
+  await context.close();
+});

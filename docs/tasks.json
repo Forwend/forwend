@@ -4002,16 +4002,117 @@
         "When the server can't be reached the app shows one strip under its header, and the inline refresh notices step back"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
-        "web-e2e"
+        "loading-live-e2e",
+        "kit-e2e"
       ],
-      "refs": [],
+      "refs": [
+        "R-194",
+        "R-210"
+      ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-30 review pass by reviewer: Pass. Pay strip: no button, centered, still gated on invoice.error, role=alert; PAY_COPY.stale had no other reader, COPY.retry still used by the load-failed state. unreachable(): Next's proxy answers res.statusCode=500 + 'Internal Server Error' with no content-type; fetchBaseQuery's json handler JSON.parse throws, so PARSING_ERROR originalStatus 500. JSON 4xx/500, PARSING_ERROR <500 and CUSTOM_ERROR (schema) stay inline. RTK 2.13 keeps error on pending and deletes it only on fulfilled. Each rejected retry resets the keepUnusedDataFor timer, so a left page's entry lives only while down and clears on the first good retry. initiate cast is safe: query entries are only query/infiniteQuery endpoints. LoadError inline: all 7 inline uses are under AppShell; public pages use non-inline or none; every render has a store. Ran: web unit 210/210 (F371 tests pass), ui-web 15/15, e2e pay+kit 37/37, check-docs 0 errors, no added sentence over 25 words. Minor, not blocking: (1) live test's payments step asserts toHaveCount(0) right after the synthetic focus, so it passes before the failed refetch lands; wait for the 500 response first. The stores half does prove the step-back. (2) The sticky top calc assumes header = 4rem+inset; with inset>0 the header is inset+45px, leaving a gap up to 19px when scrolled. Inset-top is 0 today (no black-translucent), and main already assumes the same. Moving the strip into a sticky wrapper with the header would remove it. (3) The kit's first Notice still pairs the server copy with Try again, which R-194 now rules out. (4) unreachable() counts the api's own JSON 502/503/504; today only mutations return those (network_not_ready, webhooks_not_configured), so no effect. (5) While down, LIVE entries get poll + retry per 15 s, also in unfocused tabs; bounded and cleaned up. (6) xl:top-20 asides and lg:top-24 settings nav slide partly under the strip while it shows.",
+        "2026-10-30 review pass by reviewer: Pass. Re-review after amend. git diff 12822c5e..1ed26694 (pre-amend commit from reflog) shows exactly the three changes, plus tasks.json bookkeeping. (1) loading.spec.ts now sets up waitForResponse for a 500 on /payments? before the synthetic focus and awaits it before asserting no 'We could not refresh payments' notice. (2) /kit's first Notice with Try again now reads 'We could not refresh payments. The last loaded payments are shown.'; the centered server line has no button; kit.spec.ts reads neither string. (3) Commit body says the api's own JSON 4xx and 500 errors and schema failures keep their notice, which matches unreachable(): numeric 500 is not in GATEWAY, CUSTOM_ERROR is false. It also mentions the kit change and the wait for the failed refetch. Nothing else changed. Ran: pnpm --filter @forwend/web e2e e2e/kit.spec.ts e2e/pay.spec.ts -> 37 passed. Cosmetic: the body's last paragraph has an early line break ('the strip gone once' / 'the api answers'). Open minor items (2), (4)-(6) from the first review are unchanged and not blocking."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T14:50:57Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.6,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": ""
+          },
+          {
+            "id": "tokens-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "kit-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 16.2,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.6,
+            "log": ""
+          },
+          {
+            "id": "loading-live-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 41.3,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 28.3,
+            "log": ""
+          }
+        ],
+        "taskHash": "452917b804f49423",
+        "filesHash": "7115be2f5d524215",
+        "proof": {
+          "1": "web-e2e: e2e/pay.spec.ts 'a failed refresh keeps the last read under one line across the page's top (R-194)' now expects the strip with no button; it stays while the next read is in flight and goes once a read works. kit-e2e: /kit shows the centered Notice (align='center') beside the start-aligned ones.",
+          "2": "loading-live-e2e: e2e/privy/loading.spec.ts 'when the server can't be reached, one strip under the header says so, in place of each part's notice' answers the stores read and then the payments refresh with the web server's plain-text 500 (its proxy's answer when the api is down), waiting for that failed refetch: one 'Can't reach the server. Retrying…' alert sits right under the header, and neither 'We could not load stores' nor 'We could not refresh payments' shows. When the api answers again the strip goes, also for the stores read, which doesn't poll (the strip's retry). On main's shell and LoadError it failed: no strip."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass. Re-review after amend. git diff 12822c5e..1ed26694 (pre-amend commit from reflog) shows exactly the three changes, plus tasks.json bookkeeping. (1) loading.spec.ts now sets up waitForResponse for a 500 on /payments? before the synthetic focus and awaits it before asserting no 'We could not refresh payments' notice. (2) /kit's first Notice with Try again now reads 'We could not refresh payments. The last loaded payments are shown.'; the centered server line has no button; kit.spec.ts reads neither string. (3) Commit body says the api's own JSON 4xx and 500 errors and schema failures keep their notice, which matches unreachable(): numeric 500 is not in GATEWAY, CUSTOM_ERROR is false. It also mentions the kit change and the wait for the failed refetch. Nothing else changed. Ran: pnpm --filter @forwend/web e2e e2e/kit.spec.ts e2e/pay.spec.ts -> 37 passed. Cosmetic: the body's last paragraph has an early line break ('the strip gone once' / 'the api answers'). Open minor items (2), (4)-(6) from the first review are unchanged and not blocking.",
+          "at": "2026-10-30T14:54:32Z",
+          "filesHash": "7115be2f5d524215"
+        }
+      },
+      "branch": "fix/f393-one-strip-says-the-server-can-t-be-reach",
+      "baseCommit": "bef78e547236b52de0f37c67ae27089ea1d2bd95",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

@@ -718,14 +718,14 @@ test.describe("pay page", () => {
     const narrow = await notice.boundingBox();
     const below = await amount.boundingBox();
     expect(narrow && below && narrow.y + narrow.height).toBeLessThan(below?.y ?? 0);
-    // While the next try is in flight the strip stays, its button busy, so the page doesn't jump.
+    // It retries on its own, so it offers no button. While the next read is in flight the strip stays, so the page
+    // doesn't jump; it goes once a read works.
+    await expect(notice.getByRole("button")).toHaveCount(0);
     let release = () => {};
     hold = new Promise((resolve) => (release = resolve));
-    const retry = notice.getByRole("button", { name: "Try again" });
-    await retry.click();
-    await expect(retry).toHaveAttribute("aria-busy", "true");
-    await expect(retry).toBeFocused();
     fail = false;
+    await page.clock.runFor(POLL_MS);
+    await expect(notice).toBeVisible();
     release();
     await expect(notice).toHaveCount(0);
   });
