@@ -3,6 +3,25 @@
 @import "@forwend/design-tokens/theme.css";
 @import "@forwend/design-tokens/base.css";
 
+/* The fallbacks of shared/config/fonts.ts: Arial, or where it is missing its metric twins Liberation Sans and Arimo,
+   sized to each face as next/font sizes Arial. */
+@font-face {
+  font-family: "Hanken Grotesk Fallback";
+  src: local("Arial"), local("Liberation Sans"), local("Arimo");
+  ascent-override: 99.07%;
+  descent-override: 30.02%;
+  line-gap-override: 0%;
+  size-adjust: 100.94%;
+}
+@font-face {
+  font-family: "Noto Sans Fallback";
+  src: local("Arial"), local("Liberation Sans"), local("Arimo");
+  ascent-override: 100.54%;
+  descent-override: 27.56%;
+  line-gap-override: 0%;
+  size-adjust: 106.33%;
+}
+
 @source "../../../../packages/ui-web/src";
 
 /* On phones a full-bleed section over the page's 1rem gutter, not a card inside a card; a card from sm up. */

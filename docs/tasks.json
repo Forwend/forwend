@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 398,
+  "nextId": 401,
   "tasks": [
     {
       "id": "F332",
@@ -430,6 +430,102 @@
         "branch": "fix/f397-the-invoice-page-says-why-its-money-wait",
         "base": "main"
       }
+    },
+    {
+      "id": "F400",
+      "type": "fix",
+      "behavior": "Docs and code text keep their place on Linux and Android while the fonts load",
+      "acceptance": [
+        "On Chromium for Linux, /docs at 1440 px with every font file arriving late shifts less than 0.01"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "lighthouse"
+      ],
+      "refs": [
+        "R-206"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-30 review fail by reviewer: Root cause confirmed in the Linux browser (pw-linux-fonts): main's fonts.ts and globals.css fail docs.spec.ts:85 at 0.0889, HEAD passes. Main's build has next/font's face 'Hanken Grotesk Fallback; src local(Arial); 99.07% / 30.02% / 0.0% / 100.94%', so the copied overrides are exact. HEAD resolves --fw-font-sans-loaded to '\"Hanken Grotesk\", Hanken Grotesk Fallback' and --fw-font-sans still ends in system-ui, sans-serif. Lighthouse: 98 / 100 / LCP 1862 ms. check-docs: 0 errors. Docs lines are within 25 words. The test rename names what it holds. The kit select test fails the same way on main's code in that browser (scrollbar 0), so it comes from connect mode. Defect: display optional with subsets ['latin'] preloads only the latin Hanken face. In Chromium, an optional face that starts loading after the first paint is never used in that document. Linux probe on HEAD: text added after load ('Łukasz Wiśniewski'), latin-ext face fetched in 9 ms, still 'Liberation Sans:2, Hanken Grotesk:15' for the document's life (client navigations included). Hanken only shows after a reload. On main (swap) the same probe renders all Hanken. So client-rendered names with Polish, Czech, Turkish, Romanian or Hungarian letters mix two fonts inside one word, even on a fast connection. fonts.ts, DESIGN.md and the commit say a face shows when it arrives in the short wait, which is not true for these faces. Fix tried: subsets ['latin', 'latin-ext'] makes the probe all Hanken, keeps the shift test at 3 of 3 on Linux, and Lighthouse reads 98 / 100 / LCP 1946 ms. Then say in the docs which subsets are preloaded. Note: Noto Sans (document previews) still uses next's Arial-only fallback with swap. That is the same Linux fallback bug, limited to previews. Fix it or name it.",
+        "2026-10-30 review pass by reviewer: Latin-ext fix confirmed. HTML on / and /docs preloads 3 fonts: Hanken latin, Hanken latin-ext (19.5 KB), Geist Mono. Probe: 'Łukasz Wiśniewski' inserted after load draws 17 glyphs in Hanken on Linux (pw-linux-fonts) and macOS. With 800 ms font delay on Linux it draws in Liberation Sans, not DejaVu. Fallback faces read 'loaded' on Linux at HEAD; main on 3700 reads 'error' for both. Noto overrides 100.54/27.56/0/106.33 and Hanken's 99.07/30.02/0/100.94 match main's next/font CSS. docs.spec.ts passed in the Linux browser (6/6), font test 3/3 with --repeat-each 3. Full non-live web e2e on macOS: 82 passed. Lighthouse '/': 98, 100, LCP 1938 ms. check-docs 0 errors; new doc sentences under 25 words; comments give reasons. Nits, not blocking: commit body says 'Two changes:' over four bullets, and one body line is unwrapped. Branch is one commit behind origin/main (F397); only docs/tasks.json conflicts. kit-directions next/font faces keep Arial-only fallbacks (kit page only).",
+        "2026-10-30 review pass by reviewer: Rebase check passed. HEAD d5d9d4a3 is one commit on origin/main 9be1095b (F397). git diff origin/main HEAD outside docs/tasks.json matches f377f2eb's reviewed diff line for line (index lines aside). docs/tasks.json vs main only adds the F400 record and moves nextId 398 to 401. F397's record, lastWrapup and the other tasks are unchanged. validate: only the pre-existing 'F332 depends on unknown task F331'. docs.spec.ts in the Linux browser (pw-linux-fonts): 6 of 6 passed, font test included. Commit body now says 'The changes:'. Note: baseCommit is still ef0457ce, the pre-rebase merge-base. changed_since then also counts F397's files, so check selection is wider, not narrower."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T17:14:07Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.6,
+            "log": ""
+          },
+          {
+            "id": "lighthouse",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 35.9,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.0,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 33.4,
+            "log": ""
+          }
+        ],
+        "taskHash": "34e3f918f3bbf84d",
+        "filesHash": "fcac69bcfb7d7cd4",
+        "proof": {
+          "1": "web-e2e: e2e/docs.spec.ts 'the docs page doesn't shift when its fonts arrive late' (it holds every woff2 800 ms) passes on macOS, and in Chromium on Linux (mcr.microsoft.com/playwright:v1.64.1-noble as a remote browser, as CI's Playwright) at 0.0000 in 3 of 3, where main's fonts read 0.0889 as CI read 0.071. Cause: next/font's fallbacks are local(Arial) only; Linux has none (face status 'error'), so text fell to DejaVu Sans and rewrapped. Fix: our own Hanken and Noto Sans fallback faces try Arial, Liberation Sans and Arimo (Linux: 'loaded'); Hanken is preloaded with display optional, latin and latin-ext, as the size-matched fallback alone still read 0.0409. A name inserted after load ('Łukasz Wiśniewski') draws all 17 glyphs in Hanken on Linux and macOS; a first visit without delay draws Hanken and Geist Mono from the first paint. Rebased onto F397 (#381). lighthouse: R-11 on '/'."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Rebase check passed. HEAD d5d9d4a3 is one commit on origin/main 9be1095b (F397). git diff origin/main HEAD outside docs/tasks.json matches f377f2eb's reviewed diff line for line (index lines aside). docs/tasks.json vs main only adds the F400 record and moves nextId 398 to 401. F397's record, lastWrapup and the other tasks are unchanged. validate: only the pre-existing 'F332 depends on unknown task F331'. docs.spec.ts in the Linux browser (pw-linux-fonts): 6 of 6 passed, font test included. Commit body now says 'The changes:'. Note: baseCommit is still ef0457ce, the pre-rebase merge-base. changed_since then also counts F397's files, so check selection is wider, not narrower.",
+          "at": "2026-10-30T17:16:21Z",
+          "filesHash": "fcac69bcfb7d7cd4"
+        }
+      },
+      "branch": "fix/f400-docs-and-code-text-keep-their-place-on-l",
+      "baseCommit": "ef0457ced12e515bb03472332f3dc0a4b4d63d60",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
