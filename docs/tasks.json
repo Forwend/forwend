@@ -2385,7 +2385,7 @@
         "Invoice and receipt PDFs: no date repeated in the status panel, no Amount due or Amount paid row repeating the panel, no Applied column or totals when every transfer was applied whole; the new invoice preview matches"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "web-unit",
@@ -2476,11 +2476,18 @@
           "summary": "Re-reviewed HEAD 2bb6d371. The three earlier blockers are fixed. (1) Expired, partially paid: the panel line no longer holds the amount and the totals are Total only; checked in a rendered PDF, Received 4.00 USDC now appears once. (2) Receipt totals show only with the Applied column: two whole transfers and two whole options print no Received row; over-payment with a return, held late money and Pending still show Received, Applied to this invoice, Held and Returned. Accept 1, R-195, R-121 and api.md now agree with the code. (3) Tests: TestStatusAsksForMoneyOnlyWhilePayable now checks every status for no amount or date in the panel line and no repeating totals row, and pins the partial-paid totals; TestReceiptOfOneWholeTransfer and TestReceiptPDF cover one and two whole transfers; TestPayerChoosesInvoice again proves Total is followed by Pay this invoice. Against the previous document.go, the status test and the one-transfer test fail; TestReceiptPDF guards the multi-transfer case. Go tests in document and httpapi/tests pass, gofmt and vet are clean, docs-check passes, the doc sentences are 25 words or fewer, and the ETag is still the hash of deterministic bytes. Notes, not blockers: api.md no longer says the heading is singular for one transfer (the test pins it); when held money is not among the listed transfers, as in a preview of a long list, Held for payer prints alone without Received, which still reads correctly; the new-invoice preview has no screenshot proof in the diff.",
           "at": "2026-10-30T03:03:39Z",
           "filesHash": "688d5bfda0f8b261"
-        }
+        },
+        "commit": "b4b6975e",
+        "doneAt": "2026-10-30T03:03:48Z"
       },
       "branch": "fix/f370-an-invoice-or-receipt-pdf-says-each-fact",
       "baseCommit": "d0cae9c2da7aa4e8dff7c9bad4050e2ea2a3b201",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f370-an-invoice-or-receipt-pdf-says-each-fact",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
