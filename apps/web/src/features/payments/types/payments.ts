@@ -23,6 +23,8 @@ export interface PaymentFilters {
   state?: string;
   /** The derived wallet transfer state (D-114). */
   wallet?: string;
+  /** pending: paid, and the money is not in the wallet yet. */
+  settlementStatus?: string;
   /** An exact order reference. */
   reference?: string;
 }

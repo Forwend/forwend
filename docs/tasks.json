@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 406,
+  "nextId": 407,
   "tasks": [
     {
       "id": "F332",
@@ -1038,6 +1038,113 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f405-base-arbitrum-and-arc-read-through-one-m",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F406",
+      "type": "feat",
+      "behavior": "Pending payments shows how much is moving, confirming and partly paid, each opening Payments at its status",
+      "acceptance": [
+        "The card shows the USD total, a three-part bar, and fixed rows for moving to the wallet, confirming and partly paid. On hold sits at its foot. Each row with money opens Payments at its status. Moving to wallet opens exactly the payments it sums (settlementStatus=pending). The Balance card and Pending payments share one height, whatever is pending."
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "web-unit",
+        "web-e2e",
+        "live-e2e"
+      ],
+      "refs": [
+        "R-193",
+        "R-203"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-10-30 review fail by subagent: Accept 1 fails: two of the three rows count money their link leaves out. A temporary balance test (since removed) showed it against a disposable DB. (1) Partially paid: a partly paid payment past its close reads state expired (ClosedSQL, R-77), but balance.go keeps it in partial (payment_status still partially_paid) until the ledger books the expiry, after the chain's finalized time passes closes_at. Test: partial +700000, list state expired. So ?state=partially_paid leaves it out, in a normal flow, for the finality lag, and that money is about to be on hold. (2) Confirming: balance.go adds every unbooked deposit, whatever the payment's state: an extra deposit on a paid payment, a late one after close, one on a non-chosen option, one on an expired or canceled payment. PaymentStateSQL reads those payments as paid, overpaid, expired or canceled, and ConfirmingSQL needs block_time <= closes_at on the shown option. Test: confirming +200000, list state paid. Moving is right: settlement_status=pending is set only when the option becomes paid, and the settle outflow that sets settled takes its payable; delayed and refused are included. Fix: in balance.go, sort pending into parts by the list's own predicates (no closed partials, no off-state unbooked deposits), update R-33 and TestPendingParts; or stop claiming each row opens exactly the payments it counts. Minor: with prices failed, a zero part reads '—' and is a link; link names have no 'USD'; DESIGN.md line 179 still lists only Moving to wallet and Not final; a Finance member limited to some stores sees the whole profile's totals but only their stores' list; when linkId and settlementStatus are both set there are two 'Show all payments' buttons; BUSINESS_COPY.open was already unused before this change. Checks run: web unit 217/217, tsc 0 errors, check-docs 0 errors. Live e2e not run (it needs ports 3000 and 8080).",
+        "2026-10-30 review fail by reviewer: The listed reasons why Confirming and Partially paid can differ from the list are incomplete. A temporary balance test (since removed) on a disposable DB shows a third, common case. A partly paid payment (700000 of 5000000 booked) gets its next deposit (4300000, detected, on time). balance.go: partial +700000 (payment_status stays partially_paid, booked < amount), confirming +4300000. PaymentStateSQL reads the payment as confirming (ConfirmingSQL on the on-time detected transfer). So Partially paid counts 0.70 USD that ?state=partially_paid leaves out, on the normal path of finishing any partial payment. The card comment, DESIGN.md (Pending payments sub-bullets) and the commit message each present two cases as the full list. Fix: name this case too, or say the parts follow ledger rules and give the cases as examples. Also D-84: the card comment's last sentence is 33 words; split it. The accept line's first sentence is 27 words. Verified fine: Moving to wallet = settlementStatus=pending; the two named cases match balance.go and payments.go/list.go; fieldUnits zero rule is right (a part reads 0.00 only with 0 base units, or under one cent once priced, which is the existing cut-to-cents rule); the new card test fails without the zero rule (no 0.00 found) and passes with it; prior minors (zero part link without prices, USD in link names, DESIGN.md market-price line) are fixed. Checks: web unit 218/218, tsc exit 0, check-docs 0 errors. Live e2e not run (owner's ports).",
+        "2026-10-30 review pass by reviewer: Wording is accurate against balance.go and the list's state SQL. Only Moving to wallet is called exact (settlement_status pending). Confirming and Partially paid are said to follow bookings and differ for a while, with cases given as examples. All three examples hold. Comment, DESIGN.md and accept sentences are at most 25 words (longest 21). check-docs: 0 errors. Nits, not blocking: 'a new deposit' is true only for an on-time one. A late one lists as expired. In the commit, the 'Making the parts follow' bullet sits under 'Some examples'.",
+        "2026-10-30 review pass by reviewer: Since the passed version (ea380468), only wording changed: DESIGN.md line 211 now says 'a new on-time deposit', and the commit message says the same and moves the 'Making the parts follow' bullet out of 'Some examples'. tasks.json differs only by harness bookkeeping. 'On-time' is accurate: ConfirmingSQL in invoice/list.go needs block_time<=closes_at and the list's confirming state needs NOT ClosedSQL. The line is 20 words. check-docs: 0 errors."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T20:02:42Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.9,
+            "log": ""
+          },
+          {
+            "id": "live-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 392.5,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 30.9,
+            "log": ""
+          }
+        ],
+        "taskHash": "713b92fdb46e159e",
+        "filesHash": "43bbe1d2000f71f2",
+        "proof": {
+          "1": "live-e2e: balances.spec 'the business balance card and Pending payments share one height, and each pending part opens Payments at its status': with nothing pending the card shows a 0.00 total, three '0.00 USD' parts and no link, at the Balance card's height. With 2.00 moving, 1.00 confirming, 0.50 partly paid and 0.89 held, it shows 3.50 and keeps the shared height. It links 'Confirming 1.00 USD' to /app/payments?state=confirming and 'Partially paid 0.50 USD' to ?state=partially_paid. 'Moving to wallet 2.00 USD' opens /app/payments?settlementStatus=pending, which asks the API for settlementStatus=pending, and shows the filter line until Show all payments clears it. loading.spec: both cards keep one height from first frame to loaded. web-unit: on-its-way-card.test, without prices a part with money reads '—' and one without reads 0.00 and is no link; it fails with the old no-tokens-only zero rule. balances.test: marketUsd splits pending into settling, confirming and partial; an older read without parts is all moving."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Since the passed version (ea380468), only wording changed: DESIGN.md line 211 now says 'a new on-time deposit', and the commit message says the same and moves the 'Making the parts follow' bullet out of 'Some examples'. tasks.json differs only by harness bookkeeping. 'On-time' is accurate: ConfirmingSQL in invoice/list.go needs block_time<=closes_at and the list's confirming state needs NOT ClosedSQL. The line is 20 words. check-docs: 0 errors.",
+          "at": "2026-10-30T20:10:41Z",
+          "filesHash": "43bbe1d2000f71f2"
+        },
+        "commit": "013399e9",
+        "doneAt": "2026-10-30T20:10:49Z"
+      },
+      "branch": "feat/f406-pending-payments-shows-how-much-is-movin",
+      "baseCommit": "cccb004edc439fc4f255b1c19f6ae6062d5ee874",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f406-pending-payments-shows-how-much-is-movin",
         "base": "main"
       }
     }

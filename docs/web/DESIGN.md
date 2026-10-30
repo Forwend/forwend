@@ -176,7 +176,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   Figure strips and tables use hairline rules between cells and rows, not separate cards. On phones a panel is a
   full-width section between top and bottom hairlines (no side border or corners, no box inside a box), its title
   unruled above the rows, as in banking apps; panels become cards from small screens up (`fw-panel`, `fw-panel-head`).
-- Holdings across tokens (the total balance, Moving to wallet, Not final, On hold) are USD at market prices
+- Holdings across tokens (the total balance, the pending parts, On hold) are USD at market prices
   (D-115). An info icon after "USD" says so in a tooltip. Pages name no price provider.
   - A value uses the latest known price, even an old one: stablecoins move little.
   - Without any price for a held token, the total is "—": never 1 USD.
@@ -199,17 +199,20 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Phones center the total with the actions under it (five equal columns, labels smaller below 360 px).
   - The Balance chart card holds the range control; beside it Money in and out stacks In over Out.
 - Business overview (merchant, freelancer, R-63) follows the C comp, in three rows of cards (`Card`, unruled headers):
-  - Row 1: the Balance card and Pending payments.
-    - The Balance card keeps its own height: a taller Pending payments doesn't stretch it.
-    - A shorter Pending payments still stretches to the Balance card's height.
+  - Row 1: the Balance card and Pending payments, both at the row's height.
     - Balance: the personal card's figure over the art with a surface veil: the total, USD and its hint, then
       its change over the past month. Its pending and held links stay off: Pending payments sits beside it.
     - Then round actions: New invoice (lime), Payment link, Checkout (merchants), Receive.
-    - Pending payments: payments still confirming (not final), then paid money moving to the wallet.
-      Up to three rows open their payment.
+    - Pending payments: the USD total not in the wallet yet, a three-part bar, then one row per part.
+      - Moving to wallet (paid, ink), Confirming (muted), then Partially paid (subtle): surest first.
+      - Each row shows its USD amount and opens Payments at its status.
+        - Moving to wallet opens `settlementStatus=pending`: exactly the payments it sums.
+        - Confirming and Partially paid follow the ledger's bookings, the list each payment's latest state.
+        - So they can differ for a while: a partly paid payment with a new on-time deposit lists as Confirming.
+      - A part with no money keeps its row, muted, with nothing to open, even without prices.
+      - The card never lists single payments.
     - Money on hold is a separate row at the card's foot, linking to My assets: "0.89 USD on hold".
       - Under it: "Extra or late payments. Not part of your balance." No wording says who owes whom.
-    - Every row in the card shares one type: a medium ink line, then a small muted line.
   - Row 2: the Received card (range control in its header, the range total, Sent, the running-total chart) beside
     My assets (a share bar, then each token's amount and market value).
   - Row 3: Unpaid beside Latest payments; each sizes to its rows instead of matching the other's height.
@@ -217,8 +220,6 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Phones stack the cards in that order. Filters, search and CSV export live on Transactions.
   - A range with nothing received draws a flat line at zero, as a real zero should.
   - A failed or missing history keeps the chart's frame and dates, faded, under a centered error or note.
-- Pending payments opens with the USD total not in the wallet yet, a two-part bar and its legend:
-  Moving to wallet (paid, ink) and Not final (confirming or partly paid, which may still be the payer's).
 - My assets' rows each carry their step's dot from the share bar and their share in percent ("<1%" for a sliver).
 - Unpaid (R-95, D-114) is a card on the overview's last row. It lists only what customers still owe.
   - The title, a one-line description and, when something is left, the USD total at its right.
@@ -366,6 +367,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - All payments, Issues and Reconciliation use the segmented control; Export sits at the row's end.
   - One toolbar row: the search (order, invoice, customer or amount), then Status, Source and, with two or more
     stores, Store as select menus. Every filter stays in the URL.
+  - `settlementStatus=pending` shows paid payments still moving to the wallet, under a line with Show all payments.
   - Columns: Payment (the order reference, else the invoice number, else the title), Customer, Source, Store, Amount,
     Received, Status, Wallet, Created. Issues shows the issue in place of Wallet and Created: a warning
     dot, the problem in ink with its full text as the title, and "+n" for more.

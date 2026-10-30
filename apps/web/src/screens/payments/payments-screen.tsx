@@ -21,7 +21,7 @@ import { ListToolbar } from "@/shared/components/list-toolbar";
 import { LoadError } from "@/shared/components/load-error";
 import { PaymentStateFilter } from "@/shared/components/payment-state-filter";
 import { APP_ROUTES } from "@/shared/config/routes";
-import { PAYMENT_STATE_FILTERS } from "@/shared/constants/payment-state";
+import { API_SETTLEMENT_STATUSES, PAYMENT_STATE_FILTERS } from "@/shared/constants/payment-state";
 import { useListFilters, withParam } from "@/shared/hooks/use-list-filters";
 
 const ALL = "all";
@@ -39,12 +39,15 @@ export function PaymentsScreen() {
   const source = PAYMENT_SOURCES.find((value) => value === params.get("source"));
   const storeId = params.get("storeId") || undefined;
   const linkId = params.get("linkId") || undefined;
+  // Pending payments on the overview opens this for the money it shows as moving to the wallet.
+  const moving = params.get("settlementStatus") === API_SETTLEMENT_STATUSES.pending;
   const filters: PaymentFilters = {
     q: list.apiQuery,
     state: list.apiFilter,
     source,
     storeId,
     linkId,
+    settlementStatus: moving ? API_SETTLEMENT_STATUSES.pending : undefined,
   };
   const set = (name: string, value: string) => {
     const { search, hash } = window.location;
@@ -56,9 +59,10 @@ export function PaymentsScreen() {
   };
   const clear = () => {
     list.clear();
-    for (const name of ["source", "storeId", "linkId"]) set(name, "");
+    for (const name of ["source", "storeId", "linkId", "settlementStatus"]) set(name, "");
   };
   const unknownSource = Boolean(params.get("source") && !source);
+  const unknownSettlement = Boolean(params.get("settlementStatus") && !moving);
   const storeList = stores.currentData ?? [];
   const unknownStore = Boolean(
     storeId && stores.currentData && !storeList.some((s) => s.storeId === storeId),
@@ -86,7 +90,12 @@ export function PaymentsScreen() {
         <ExportPayments
           profileId={profile.profileId}
           filters={filters}
-          disabled={unknownSource || unknownStore || (merchant && stores.error !== undefined)}
+          disabled={
+            unknownSource ||
+            unknownSettlement ||
+            unknownStore ||
+            (merchant && stores.error !== undefined)
+          }
         />
       </div>
       {view === PAYMENT_VIEWS.reconciliation ? null : (
@@ -143,6 +152,14 @@ export function PaymentsScreen() {
           </Button>
         </p>
       ) : null}
+      {moving ? (
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+          {COPY.movingFilter}
+          <Button variant="link" size="sm" onClick={() => set("settlementStatus", "")}>
+            {COPY.clearLink}
+          </Button>
+        </p>
+      ) : null}
       {merchant && stores.error ? (
         <LoadError
           inline
@@ -151,7 +168,7 @@ export function PaymentsScreen() {
           retrying={stores.isFetching}
         />
       ) : null}
-      {unknownSource || unknownStore ? (
+      {unknownSource || unknownSettlement || unknownStore ? (
         <p role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">
           {unknownStore ? COPY.storeGone : COPY.unknownFilter}
           <Button variant="link" size="sm" onClick={clear}>
@@ -170,7 +187,7 @@ export function PaymentsScreen() {
           filters={filters}
           attention={view === PAYMENT_VIEWS.attention}
           showStore={showStores}
-          filtered={list.filtered || Boolean(source || storeId || linkId)}
+          filtered={list.filtered || Boolean(source || storeId || linkId || moving)}
           onClear={clear}
         />
       )}

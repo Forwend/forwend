@@ -64,4 +64,16 @@ describe("marketUsd", () => {
     const old = { ...at(84532, usdc.token, "1"), fetchedAt: "2026-10-28T09:00:00Z" };
     expect(marketUsd(tokens, "wallet", [old])).toBe(250n);
   });
+
+  it("splits pending into moving, confirming and partly paid; an older read without parts is all moving", () => {
+    const parts = { ...usdc, settling: "600000", confirming: "300000", partial: "100000" };
+    const balances = { tokens: [parts], estimatedUsdTotal: null };
+    expect(marketUsd(balances, "settling", ONE)).toBe(60n);
+    expect(marketUsd(balances, "confirming", ONE)).toBe(30n);
+    expect(marketUsd(balances, "partial", ONE)).toBe(10n);
+    const older = { tokens: [usdc], estimatedUsdTotal: null };
+    expect(marketUsd(older, "settling", ONE)).toBe(100n);
+    expect(marketUsd(older, "confirming", ONE)).toBe(0n);
+    expect(marketUsd(older, "partial", ONE)).toBe(0n);
+  });
 });

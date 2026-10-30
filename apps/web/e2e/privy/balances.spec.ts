@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { sidewaysScroll } from "../sideways";
 import { blockingViolations } from "./axe";
-import { hash, mockApi } from "./sample-api";
+import { mockApi } from "./sample-api";
 import { session } from "./session";
 
 test("a profile shows its balance, networks, receive address and activity; a new profile gets its own wallet", async ({
@@ -202,7 +202,7 @@ test("on a phone the app is a banking-style home with a tab bar", async ({ brows
   await context.close();
 });
 
-test("the business balance card keeps its own height beside a taller Pending payments, and matches a shorter one", async ({
+test("the business balance card and Pending payments share one height, and each pending part opens Payments at its status", async ({
   browser,
 }) => {
   const context = await browser.newContext({
@@ -213,71 +213,95 @@ test("the business balance card keeps its own height beside a taller Pending pay
   await mockApi(page);
   // The innermost section holding the card's title: the card itself.
   const card = (id: string) => page.locator(`section:has(#${id})`).last();
+  const pending = card("on-its-way");
   const heights = async () => {
-    const [balance, pending] = await Promise.all(
+    const [balance, parts] = await Promise.all(
       ["balance-title", "on-its-way"].map((id) => card(id).boundingBox()),
     );
-    return { balance: balance?.height ?? 0, pending: pending?.height ?? 0 };
+    return { balance: balance?.height ?? 0, pending: parts?.height ?? 0 };
   };
+  // USDC at exactly 1 USD, so each part reads its token amount (D-115).
+  const fresh = new Date().toISOString();
+  await page.route("**/api/v1/prices", (route) =>
+    route.fulfill({
+      json: {
+        prices: [
+          {
+            chainId: 84532,
+            token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+            symbol: "USDC",
+            coinId: "usd-coin",
+            usd: "1",
+            sourceUpdatedAt: fresh,
+            fetchedAt: fresh,
+            stale: false,
+          },
+        ],
+      },
+    }),
+  );
   await page.goto("/app");
   await expect(page.getByRole("main").getByText("18,420", { exact: false }).first()).toBeVisible();
-  // Nothing pending: the shorter card stretches to the balance card.
-  await expect(card("on-its-way").locator("[data-skeleton]")).toHaveCount(0);
+  // Nothing pending: real zeros, with nothing to open.
+  await expect(pending.locator("[data-skeleton]")).toHaveCount(0);
+  await expect(pending.getByText("0.00", { exact: true })).toHaveCount(1);
+  await expect(pending.getByText("0.00 USD", { exact: true })).toHaveCount(3);
+  await expect(pending.getByRole("link")).toHaveCount(0);
   const empty = await heights();
   expect(Math.abs(empty.pending - empty.balance)).toBeLessThan(1);
 
-  // Three pending payments: Pending payments grows; the balance card keeps its height.
-  const moving = [1, 2, 3].map((i) => ({
-    chainId: 84532,
-    token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
-    symbol: "USDC",
-    decimals: 6,
-    paymentId: hash(String(i)),
-    optionId: hash(String(i)),
-    optionLocked: true,
-    optionCount: 1,
-    source: "checkout",
-    purpose: "checkout",
-    documentKind: "none",
-    number: null,
-    storeId: "66666666-6666-4666-8666-666666666666",
-    storeName: "Sample shop",
-    linkId: null,
-    livemode: false,
-    title: `Order ${i}`,
-    reference: `order-${i}`,
-    customerName: null,
-    customerEmail: null,
-    amount: "1000000",
-    paymentStatus: "paid",
-    settlementStatus: "pending",
-    refundStatus: "none",
-    confirming: false,
-    closed: false,
-    createdAt: "2026-10-27T06:00:00Z",
-    closesAt: "2026-10-28T06:00:00Z",
-    hostedUrl: null,
-    amounts: {
-      receiver: "1000000",
-      payable: "1000000",
-      held: "0",
-      settled: "0",
-      refunded: "0",
-      observedRefunded: "0",
-      lastReturnTxHash: null,
-      unreconciled: false,
-      hasPolicyException: false,
-    },
-    receipts: [],
-  }));
-  await page.route(/\/api\/v1\/profiles\/[^/]+\/payments\?/, (route) =>
-    route.fulfill({ json: { items: moving, nextCursor: null } }),
+  await page.route("**/api/v1/profiles/*/balances", (route) =>
+    route.fulfill({
+      json: {
+        tokens: [
+          {
+            chainId: 84532,
+            token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+            symbol: "USDC",
+            decimals: 6,
+            wallet: "18420350000",
+            finalizedBlock: 1000,
+            pending: "3500000",
+            settling: "2000000",
+            confirming: "1000000",
+            partial: "500000",
+            held: "890000",
+          },
+        ],
+        estimatedUsdTotal: "18420.35",
+      },
+    }),
   );
   await page.reload();
-  await expect(card("on-its-way").getByRole("link", { name: "order-3" })).toBeVisible();
+  await expect(pending.getByText("3.50", { exact: true })).toBeVisible();
+  await expect(pending.getByRole("link", { name: /0\.89 USD on hold/ })).toHaveAttribute(
+    "href",
+    "/app/balances",
+  );
   const full = await heights();
-  expect(full.pending - full.balance).toBeGreaterThan(10);
-  expect(Math.abs(full.balance - empty.balance)).toBeLessThan(1);
+  expect(Math.abs(full.pending - full.balance)).toBeLessThan(1);
+
+  await expect(pending.getByRole("link", { name: "Confirming 1.00 USD" })).toHaveAttribute(
+    "href",
+    "/app/payments?state=confirming",
+  );
+  await expect(pending.getByRole("link", { name: "Partially paid 0.50 USD" })).toHaveAttribute(
+    "href",
+    "/app/payments?state=partially_paid",
+  );
+  const listed = page.waitForRequest(
+    (r) =>
+      /\/payments\?/.test(r.url()) &&
+      new URL(r.url()).searchParams.get("settlementStatus") === "pending",
+  );
+  await pending.getByRole("link", { name: "Moving to wallet 2.00 USD" }).click();
+  await expect(page).toHaveURL("/app/payments?settlementStatus=pending");
+  await listed;
+  const line = page.getByText("Paid payments whose money is still moving to your wallet.");
+  await expect(line).toBeVisible();
+  await page.getByRole("button", { name: "Show all payments" }).click();
+  await expect(page).toHaveURL("/app/payments");
+  await expect(line).toHaveCount(0);
   await context.close();
 });
 
