@@ -33,7 +33,7 @@ export const PAY_COPY = {
         : "Due date removed",
   },
   closesIn: (left: string) => `Closes in ${left}`,
-  stale: "Can't reach Forwend right now. This page keeps retrying.",
+  stale: "Connection lost. Retrying…",
   loading: "Loading payment",
   payWith: "Pay with",
   payingWith: "Paying with",

@@ -718,8 +718,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - "Payments by" with the mark and Forwend, opening the site in a new tab.
     - "Need help?" opens a dialog with the rules (where you are, refunds, scams, the unverified name), so the pay box
       never grows.
-- No image and no glass; it follows the system theme. When a refresh fails the page keeps the last read and says it
-  may be out of date. The invoice PDF link stays in every state; the receipt link appears once paid.
+- No image and no glass; it follows the system theme. The invoice PDF link stays in every state; the receipt link
+  appears once paid.
+- When a refresh fails the page keeps the last read under a notice across its top (R-194).
+  - "Connection lost. Retrying…" with Try again; from large screens it spans both halves.
 - PDFs open through the same-origin `/api` path. The invoice detail lists them under Documents: the invoice PDF
   always, the receipt PDF once paid.
 - While a payment confirms, the step label stays "Confirming"; one full-width row below the steps shows "Confirming (4/12)"

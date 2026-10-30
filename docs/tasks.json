@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 369,
+  "nextId": 370,
   "tasks": [
     {
       "id": "F332",
@@ -2281,6 +2281,85 @@
         "branch": "fix/f368-money-on-hold-reads-as-a-plain-fact-neve",
         "base": "main"
       }
+    },
+    {
+      "id": "F369",
+      "type": "fix",
+      "behavior": "A pay page that lost the connection says so in one short line across its top",
+      "acceptance": [
+        "A failed pay page refresh keeps the last read under a Notice at the very top: Connection lost. Retrying… with Try again, spanning both halves from large screens and first on phones"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "web-unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-194"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T02:26:18Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.2,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 24.1,
+            "log": ""
+          }
+        ],
+        "taskHash": "972a82017df549cf",
+        "filesHash": "36a604461042ae3b",
+        "proof": {
+          "1": "web-e2e: pay.spec 'a failed refresh keeps the last read under one line across the page's top': Connection lost. Retrying… at x=0,y=0 across the page at 1440, content pushed down by its height only, above the amount at 390; Try again clears it. Fails on the old layout (x=240) and without the row fix (176px gap)"
+        }
+      },
+      "branch": "fix/f369-a-pay-page-that-lost-the-connection-says",
+      "baseCommit": "646627cb39ec78b37759017aa02bb70b6b9a834d",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
