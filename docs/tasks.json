@@ -4236,7 +4236,9 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-30 review pass by independent-reviewer: Rendered ClientScreen and StoreScreen in headless Chromium with the real CSS (fixtures, 11 states each at 390/768/1280/1440/1920, light and dark; 110 runs): no sideways scroll, axe 0 violations (wcag a/aa plus best-practice), h1 then h2 Invoices or Payments then h2 Details, 44px tile holds initials (CJK, one-letter, long names fit) or the UserRound/Store icon, both aria-hidden. Details is sticky top-80px under the 64px app header (16px clear) from xl, static below; phones stack list then Details. Matches the link page grid and header. 2 new tests pass; no e2e or doc uses View payments; STORES_COPY.payments is read only by store-screen; Export passes storeId and the backend export reads it. DESIGN sentences are all 25 words or fewer; docs-check clean. The three omissions are right: owed data is profile-wide and name-matched, the invoice page has no counts, a timeline repeats the table. Non-blocking notes: (1) store skeleton actions placeholder is still w-72 though the loaded header now has one Edit button, so at viewport 570-680px the skeleton header wraps 56px taller than loaded (client 610-680); no fixed width fits every width, 390 (what loading.spec checks) matches; (2) a store with 20 origins makes Details 747px tall, so at 800px viewport height its last row is cut off while pinned; optional xl:max-h plus overflow-y-auto; (3) tests assert layout (DOM sibling order, link position) which docs/workflow.md Which tests to keep discourages, though F394 set the precedent; the Export mock ignores filters, so the storeId filter is untested; (4) a store with a logo could show it in the header tile (R-135); (5) DESIGN: two bullets carry two facts, the no-letters fallback icon is not named, and the Payments and invoices figure bullet ignores link and job figures (older). Privy specs run only under e2e:live; their selectors (region Details, #app-content > div > :nth-child(2)) still hold."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
@@ -4283,6 +4285,13 @@
         "filesHash": "f7d3fd234f8b3c44",
         "proof": {
           "1": "web-unit: client-screen and store-screen tests: the client's header holds its initials tile and Details follows its invoices; the store's header has only Edit, with Open in Payments and Export at its payments list's head. Both fail on the old pages"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent-reviewer",
+          "summary": "Rendered ClientScreen and StoreScreen in headless Chromium with the real CSS (fixtures, 11 states each at 390/768/1280/1440/1920, light and dark; 110 runs): no sideways scroll, axe 0 violations (wcag a/aa plus best-practice), h1 then h2 Invoices or Payments then h2 Details, 44px tile holds initials (CJK, one-letter, long names fit) or the UserRound/Store icon, both aria-hidden. Details is sticky top-80px under the 64px app header (16px clear) from xl, static below; phones stack list then Details. Matches the link page grid and header. 2 new tests pass; no e2e or doc uses View payments; STORES_COPY.payments is read only by store-screen; Export passes storeId and the backend export reads it. DESIGN sentences are all 25 words or fewer; docs-check clean. The three omissions are right: owed data is profile-wide and name-matched, the invoice page has no counts, a timeline repeats the table. Non-blocking notes: (1) store skeleton actions placeholder is still w-72 though the loaded header now has one Edit button, so at viewport 570-680px the skeleton header wraps 56px taller than loaded (client 610-680); no fixed width fits every width, 390 (what loading.spec checks) matches; (2) a store with 20 origins makes Details 747px tall, so at 800px viewport height its last row is cut off while pinned; optional xl:max-h plus overflow-y-auto; (3) tests assert layout (DOM sibling order, link position) which docs/workflow.md Which tests to keep discourages, though F394 set the precedent; the Export mock ignores filters, so the storeId filter is untested; (4) a store with a logo could show it in the header tile (R-135); (5) DESIGN: two bullets carry two facts, the no-letters fallback icon is not named, and the Payments and invoices figure bullet ignores link and job figures (older). Privy specs run only under e2e:live; their selectors (region Details, #app-content > div > :nth-child(2)) still hold.",
+          "at": "2026-10-30T15:54:26Z",
+          "filesHash": "f7d3fd234f8b3c44"
         }
       },
       "branch": "fix/f395-client-and-store-pages-open-like-the-oth",
