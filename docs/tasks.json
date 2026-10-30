@@ -3679,7 +3679,7 @@
         "While a record page loads, its header placeholder has the header's parts in their places, so the panels below stay where they load"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-e2e",
         "loading-live-e2e"
@@ -3760,11 +3760,18 @@
           "summary": "Figure fix is sound. The placeholder value is an inline-block, align-top, with lh-based padding and height. Inside the text-2xl span (28px / 1.25) that gives a 35px box, the same as the strut, so the line box is 35px and the baseline sits where the real text's does. Money's inline-flex and the job's text-base USD suffix don't grow the real line either. Labels match the loaded headers: invoice COPY.amount (Total only when part paid), payment COPY.requested, job JOBS_COPY.detail.total = detail COPY.total, link COPY.price. Actions: job size-10 = IconButton md; link h-10 w-16 vs a secondary md Edit button (~60px); payment and invoice keep w-72. Leaving badges out is right: on one row a badge is shorter than the 30.8px title line, so a badge placeholder adds no height; it would only matter if it wrapped, and that depends on the title and badge count (a livemode invoice with one pill usually doesn't wrap). Small leftovers, not failing: on phones an accepted job (actions null) or a link viewer without invoices.write shifts about 5px (35 vs 40px row). For the link, profile is known while loading, so it could pass can(profile, PERMISSIONS.invoicesWrite) ? the skeleton : null. R-209's exception names only badges, but a long title or meta line (invoice: title · Billed to · Due) wrapping on a phone shifts the panels the same way; consider wording it as the record's own text wrapping. The commit's 'no longer inside an aria-hidden wrapper' describes the earlier draft; on main the placeholders had no back link at all. tasks.json changes only F390 and nextId. docs-check passes; R-209 sentences are 25 and 24 words. Comments give reasons. pnpm --filter @forwend/web e2e: 79 passed. The passed live log isn't kept (the harness deletes passed logs); the evidence records loading-live-e2e as passed, exit 0. The one F390 log left in docs/runs is an earlier failed web-e2e run (sign-in axe, unrelated, ignored by git).",
           "at": "2026-10-30T13:00:35Z",
           "filesHash": "76bac2748f510984"
-        }
+        },
+        "commit": "b6c2c1ab",
+        "doneAt": "2026-10-30T13:01:05Z"
       },
       "branch": "fix/f390-record-pages-keep-their-panels-in-place",
       "baseCommit": "153c70c905c72aa2ae5d421aa63d0a5baed81236",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f390-record-pages-keep-their-panels-in-place",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
