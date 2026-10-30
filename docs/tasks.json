@@ -1872,7 +1872,7 @@
         "with-env.sh no longer unsets INFURA_API_KEYS, which no backend process reads; every other secret it drops stays dropped"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend-affected"
       ],
@@ -1881,7 +1881,9 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-30 review pass by independent-reviewer: Claim holds. git grep -w INFURA_API_KEYS finds it only in packages/contracts (rpc.mjs, .env.example), docs/backend/rpc.md (says it no longer configures the backend) and tasks.json. No Go code reads it: config.go uses fixed os.Getenv names and nothing lists os.Environ. infra/ has no INFURA and no env_file; the webhooks service gets only DATABASE_URL and WEBHOOK_SECRET_KEY. The diff changes one line of with-env.sh: only INFURA_API_KEYS left the webhooks unset list. Worker, signer, api, canary and default cases are unchanged. Webhooks still unsets EXECUTOR_PRIVATE_KEY, PRIVY_APP_SECRET, RESEND_API_KEY, COINGECKO_API_KEY, RPC_ENDPOINT_SECRETS and CANARY_RPC_URLS, so R-148 (no signer, Privy or email key) and the comment above the case still hold. apps/backend/.env.example does not list the name."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
@@ -1907,11 +1909,25 @@
         "filesHash": "9415f0729aae64b8",
         "proof": {
           "1": "backend-affected: with-env.sh webhooks case drops the same secrets minus INFURA_API_KEYS, which no backend code reads (git grep finds none in apps/backend)"
-        }
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent-reviewer",
+          "summary": "Claim holds. git grep -w INFURA_API_KEYS finds it only in packages/contracts (rpc.mjs, .env.example), docs/backend/rpc.md (says it no longer configures the backend) and tasks.json. No Go code reads it: config.go uses fixed os.Getenv names and nothing lists os.Environ. infra/ has no INFURA and no env_file; the webhooks service gets only DATABASE_URL and WEBHOOK_SECRET_KEY. The diff changes one line of with-env.sh: only INFURA_API_KEYS left the webhooks unset list. Worker, signer, api, canary and default cases are unchanged. Webhooks still unsets EXECUTOR_PRIVATE_KEY, PRIVY_APP_SECRET, RESEND_API_KEY, COINGECKO_API_KEY, RPC_ENDPOINT_SECRETS and CANARY_RPC_URLS, so R-148 (no signer, Privy or email key) and the comment above the case still hold. apps/backend/.env.example does not list the name.",
+          "at": "2026-10-30T00:43:25Z",
+          "filesHash": "9415f0729aae64b8"
+        },
+        "commit": "e4497775",
+        "doneAt": "2026-10-30T00:43:33Z"
       },
       "branch": "chore/f364-the-webhooks-process-unsets-only-secrets",
       "baseCommit": "98f7b71fecd8ea9b7b6f03b6d5f951259f844865",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "chore/f364-the-webhooks-process-unsets-only-secrets",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
