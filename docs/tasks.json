@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 370,
+  "nextId": 371,
   "tasks": [
     {
       "id": "F332",
@@ -2376,6 +2376,99 @@
         "branch": "fix/f369-a-pay-page-that-lost-the-connection-says",
         "base": "main"
       }
+    },
+    {
+      "id": "F370",
+      "type": "fix",
+      "behavior": "An invoice or receipt PDF says each fact once",
+      "acceptance": [
+        "Invoice and receipt PDFs: no date repeated in the status panel, no Amount due or Amount paid row repeating the panel, no Applied column or totals when every transfer was applied whole; the new invoice preview matches"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "backend",
+        "web-unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-195"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T02:35:03Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": ""
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 254.1,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 260.0,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 35.9,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.3,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 29.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "8f3865a7d4ad6fc5",
+        "filesHash": "c401ad523335243e",
+        "proof": {
+          "1": "backend: invoices_pdf_test: the invoice's panel says no date and its totals no Amount due; the receipt's panel says Paid once, with no Applied column or totals when each transfer was applied whole; a held deposit still shows Applied"
+        }
+      },
+      "branch": "fix/f370-an-invoice-or-receipt-pdf-says-each-fact",
+      "baseCommit": "d0cae9c2da7aa4e8dff7c9bad4050e2ea2a3b201",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

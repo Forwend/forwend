@@ -580,7 +580,7 @@ export function NewInvoiceForm({
       testnet: true,
       status: {
         label: COPY.preview.waiting,
-        detail: dueDate ? COPY.preview.dueOn(documentDate(dueDate)) : COPY.preview.closesIn(closes),
+        detail: "",
         figure: COPY.preview.amountDue,
         amount: money(total),
       },
@@ -626,10 +626,7 @@ export function NewInvoiceForm({
           amount: typeof line === "string" ? "—" : money(line.units),
         };
       }),
-      totals: [
-        [COPY.preview.total, money(total)],
-        [COPY.preview.amountDue, money(total)],
-      ],
+      totals: [[COPY.preview.total, money(total)]],
       note: typed.note,
       pay: any
         ? [COPY.preview.payAny(money(total)), COPY.preview.payPick]

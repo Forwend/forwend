@@ -52,7 +52,7 @@ func TestPayerChoosesInvoice(t *testing.T) {
 	}
 
 	mustContain(t, pdfText(t, e.pdf(t, id, "invoice.pdf", "").body),
-		"Payment\n12.50 USD\nTotal\n12.50 USD\nAmount due\n12.50 USD",
+		"Payment\n12.50 USD\nTotal\n12.50 USD\n",
 		"Pay 12.50 USD in one of the available options.\n"+
 			"Scan the code or open the link, then pick the token and network.")
 

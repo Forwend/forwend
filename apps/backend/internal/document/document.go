@@ -137,45 +137,40 @@ func statusOf(inv invoice.Invoice, now time.Time) standing {
 	if left.Sign() < 0 {
 		left.SetInt64(0)
 	}
+	// Each fact once: the dates row has the dates, so the box never repeats them; the totals grow only once money arrived.
 	s := standing{figure: "Amount due", amount: total, totals: [][2]string{{"Total", total}}, left: left}
 	switch {
 	case inv.PaymentStatus == ledger.Paid:
-		s.label, s.detail = "Paid", "Paid "+stamp(inv.PaidAt)+" to "+payee(inv)+"."
-		s.figure, s.amount = "Amount paid", token(inv.Amount)
-		s.totals = append(s.totals, [2]string{"Amount paid", s.amount})
+		s.label, s.figure, s.amount = "Paid", "Amount paid", token(inv.Amount)
 	case inv.PaymentStatus == ledger.Canceled:
 		// A canceled invoice keeps its number and PDF as a record (D-79), and never asks for money again.
 		s.label, s.figure, s.closed = "Canceled", "Total", true
-		s.detail = payee(inv) + " canceled this invoice on " + stamp(inv.CanceledAt) + ". Do not send money."
+		s.detail = payee(inv) + " canceled this invoice. Do not send money."
 	case closed && received.Sign() > 0:
 		s.label, s.figure, s.amount, s.closed = "Expired, partially paid", "Received", token(received), true
-		s.detail = "The payment window closed " + stamp(inv.ClosesAt) + " before the full amount arrived. The " +
-			s.amount + " sent is held for the payer; ask " + payee(inv) + " to get it back."
+		s.detail = "The payment window closed before the full amount arrived. The " + s.amount +
+			" sent is held for the payer; ask " + payee(inv) + " to get it back."
 		s.totals = append(s.totals, [2]string{"Received", s.amount})
 	case closed:
 		s.label, s.figure, s.closed = "Expired", "Total", true
-		s.detail = "The payment window closed " + stamp(inv.ClosesAt) + " without payment. Do not pay this invoice."
+		s.detail = "The payment window closed without payment. Do not pay this invoice."
 	default:
-		s.label, s.detail = "Waiting for payment", "Pay before "+stamp(inv.ClosesAt)+"."
+		s.label = "Waiting for payment"
 		switch {
 		case inv.Confirming || inv.PaymentStatus == ledger.Detected:
 			s.label, s.detail = "Confirming", "A payment arrived and is waiting for network confirmation."
 		case inv.PaymentStatus == ledger.PartiallyPaid:
-			s.label, s.detail = "Partially paid", "Received "+token(received)+" of "+total+"."
+			s.label = "Partially paid"
 		case inv.DueDate != "" && inv.DueDate < now.UTC().Format(time.DateOnly):
-			s.label, s.detail = "Overdue", "Was due "+DateText(inv.DueDate)+"."
-		case inv.DueDate != "":
-			s.detail = "Due " + DateText(inv.DueDate) + "."
+			s.label = "Overdue"
 		}
 		if received.Sign() > 0 {
 			s.figure, s.amount = "Left to pay", token(left)
 			s.totals = append(s.totals, [2]string{"Received", token(received)}, [2]string{"Left to pay", s.amount})
-		} else {
-			s.totals = append(s.totals, [2]string{"Amount due", total})
 		}
 		s.payable = left.Sign() > 0 && records(inv) == ""
 		if note := records(inv); note != "" {
-			s.detail += " " + note + " Send nothing more until the pay page shows what is left."
+			s.detail = strings.TrimSpace(s.detail + " " + note + " Send nothing more until the pay page shows what is left.")
 		}
 	}
 	return s
@@ -294,7 +289,13 @@ func (d doc) payments(inv invoice.Invoice) {
 	}
 	slices.SortStableFunc(transfers, func(a, b transfer) int { return a.BlockTime.Compare(b.BlockTime) })
 
-	// What the ledger did with the money, per token and network: applied, held or returned add up to received.
+	// A transfer's Applied column only says something when it differs from what the transfer brought.
+	split := false
+	for _, tr := range transfers {
+		split = split || tr.Paid == nil || tr.Paid.Cmp(tr.Amount) != 0
+	}
+	// What the ledger did with the money, per token and network: applied, held or returned add up to received. One
+	// transfer applied whole needs none of it: its row says it all.
 	var totals [][2]string
 	var returns []invoice.Option
 	for _, o := range received {
@@ -303,8 +304,10 @@ func (d doc) payments(inv invoice.Invoice) {
 			suffix = " · " + o.Symbol + " on " + NetworkName(o.ChainID)
 		}
 		money := func(n *big.Int) string { return Amount(n, o.Decimals, o.Symbol) }
-		totals = append(totals, [2]string{"Received" + suffix, money(booked(o.Amounts))})
-		if o.ID == inv.OptionID {
+		if len(transfers) > 1 || len(received) > 1 || split {
+			totals = append(totals, [2]string{"Received" + suffix, money(booked(o.Amounts))})
+		}
+		if o.ID == inv.OptionID && split {
 			totals = append(totals, [2]string{"Applied to this invoice" + suffix, money(inv.Amount)})
 		}
 		if o.Amounts.Held.Sign() > 0 {
@@ -320,14 +323,21 @@ func (d doc) payments(inv invoice.Invoice) {
 
 	t := table{d: d, cols: []float64{34, 46, 45, 45}, heads: []string{"Date (UTC)", "Network", "Received", "Applied"},
 		right: 2}
+	if !split {
+		t.cols, t.heads = []float64{34, 91, 45}, []string{"Date (UTC)", "Network", "Amount"}
+	}
 	d.SetFont(font, "", 9.5)
 	cells := func(tr transfer) [][]string {
+		row := [][]string{{tr.BlockTime.UTC().Format("2 Jan 2006, 15:04")}, d.fit(NetworkName(tr.option.ChainID), t.w(1), 2),
+			d.fit(Amount(tr.Amount, tr.option.Decimals, tr.option.Symbol), t.w(2), 12)}
+		if !split {
+			return row
+		}
 		applied := "Pending"
 		if tr.Paid != nil {
 			applied = Amount(tr.Paid, tr.option.Decimals, tr.option.Symbol)
 		}
-		return [][]string{{tr.BlockTime.UTC().Format("2 Jan 2006, 15:04")}, d.fit(NetworkName(tr.option.ChainID), t.w(1), 2),
-			d.fit(Amount(tr.Amount, tr.option.Decimals, tr.option.Symbol), t.w(2), 12), d.fit(applied, t.w(3), 12)}
+		return append(row, d.fit(applied, t.w(3), 12))
 	}
 	// The totals and returns stay with the last transfer, like a line table's totals.
 	end := 2 + d.totalsHeight(totals) + float64(len(returns))*(2*rowLine+2)
@@ -339,7 +349,11 @@ func (d doc) payments(inv invoice.Invoice) {
 		first += end
 	}
 	d.pageFor(lineHeight + 1 + headerHeight + first)
-	d.heading("Payments received")
+	heading := "Payments"
+	if len(transfers) == 1 {
+		heading = "Payment"
+	}
+	d.heading(heading)
 	t.header()
 	for i, tr := range transfers {
 		row := cells(tr)
@@ -359,8 +373,10 @@ func (d doc) payments(inv invoice.Invoice) {
 		}
 	}
 	d.hairline(line)
-	d.Ln(2)
-	d.totals(totals, 90, false)
+	if len(totals) > 0 {
+		d.Ln(2)
+		d.totals(totals, 90, false)
+	}
 	for _, o := range returns {
 		d.Ln(2)
 		d.SetFont(font, "", 8.5)

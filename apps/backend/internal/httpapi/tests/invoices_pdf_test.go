@@ -205,12 +205,12 @@ func TestInvoicePDF(t *testing.T) {
 	text := pdfText(t, r.body)
 	link := webURL + "/pay/" + e.link(t, id)
 	mustContain(t, text, "Forwend\nInvoice\nINV-0002\nReference PO-4500012345\nTestnet\nTest mode: testnet tokens have no value\n"+
-		"Waiting for payment\nDue 1 Nov 2026.\nAmount due\n5.00 USDC",
+		"Waiting for payment\nAmount due\n5.00 USDC",
 		"From\nAlice Design GmbH\nHauptstr. 1\n10115 Berlin\nDE\nTax ID DE123456789\nbilling@alice.example",
 		"Billed to\nBob Ltd\nMain St 1\nBerlin\nDE\nTax ID DE999999999",
 		"Issued\n"+created.UTC().Format("2 Jan 2006")+"\nSupply date\n31 Oct 2026\nDue date\n1 Nov 2026\nPayment window closes\n"+
 			expires.UTC().Format("2 Jan 2006, 15:04")+" UTC",
-		"Description\nAmount\nLogo design\n5.00 USDC\nTotal\n5.00 USDC\nAmount due\n5.00 USDC\n"+
+		"Description\nAmount\nLogo design\n5.00 USDC\nTotal\n5.00 USDC\n"+
 			"Agreed value 1,000.50 EUR on 2026-10-01",
 		"Invoice INV-0002 · Test mode · Page 1 of 1",
 		"Note\nThanks!\nPay within 14 days.",
@@ -266,7 +266,7 @@ func TestInvoicePDFFitsLongTexts(t *testing.T) {
 	// An amount too wide for its column wraps inside it and is never cut.
 	full := "115,792,089,237,316,195,423,570,985,008,687,907,853,269,984,665,640,564,039,457,584,007,913,129.639935USDC"
 	// The first is the figure under the status, before the From block; the second the totals' last row.
-	mustContain(t, strings.NewReplacer("\n", "", " ", "").Replace(text), "Amountdue"+full+"From", "Total"+full+"Amountdue"+full)
+	mustContain(t, strings.NewReplacer("\n", "", " ", "").Replace(text), "Amountdue"+full+"From", "Total"+full+"Note")
 }
 
 func TestInvoicePDFNotFound(t *testing.T) {
@@ -341,11 +341,15 @@ func TestReceiptPDF(t *testing.T) {
 	text := pdfText(t, r.body)
 	row := func(at time.Time) string { return at.UTC().Format("2 Jan 2006, 15:04") }
 	mustContain(t, text, "Forwend\nReceipt\nINV-0001\nReference PO-7\nTestnet\nTest mode: testnet tokens have no value\n"+
-		"Paid\nPaid "+stamp(paidAt)+" to Alice Design GmbH.\nAmount paid\n2.00 USDC", "Supply date\n1 Oct 2026\nPaid\n"+stamp(paidAt),
-		"Payment\n2.00 USDC\nTotal\n2.00 USDC\nAmount paid\n2.00 USDC\nAgreed value 300 JPY on 2026-10-01",
-		"Payments received\nDate (UTC)\nNetwork\nReceived\nApplied\n"+row(paidAt.Add(-time.Minute))+"\nBase Sepolia\n1.50 USDC\n1.50 USDC\n"+
-			first+"\nView on Basescan\n"+row(paidAt)+"\nBase Sepolia\n0.50 USDC\n0.50 USDC\n"+second+"\nView on Basescan\n"+
-			"Received\n2.00 USDC\nApplied to this invoice\n2.00 USDC\n", "Check this receipt\nA PDF can be edited.")
+		"Paid\nAmount paid\n2.00 USDC", "Supply date\n1 Oct 2026\nPaid\n"+stamp(paidAt),
+		"Payment\n2.00 USDC\nTotal\n2.00 USDC\nAgreed value 300 JPY on 2026-10-01",
+		// Each transfer applied whole: no Applied column, and the two rows add up under them once.
+		"Payments\nDate (UTC)\nNetwork\nAmount\n"+row(paidAt.Add(-time.Minute))+"\nBase Sepolia\n1.50 USDC\n"+
+			first+"\nView on Basescan\n"+row(paidAt)+"\nBase Sepolia\n0.50 USDC\n"+second+"\nView on Basescan\n"+
+			"Received\n2.00 USDC\nCheck this receipt\nA PDF can be edited.")
+	if strings.Count(text, stamp(paidAt)) != 1 || strings.Contains(text, "Applied") {
+		t.Fatalf("the receipt repeats the paid date or applied amounts:\n%s", text)
+	}
 	mustContain(t, strings.ReplaceAll(text, "\n", ""), link)
 	if strings.Contains(strings.ToLower(text), "settle") {
 		t.Fatalf("the receipt mentions the settlement:\n%s", text)
@@ -393,7 +397,8 @@ func TestReceiptPDF(t *testing.T) {
 	}
 	// R-179: a paid invoice says so and asks for no more money.
 	paidInvoice := e.pdf(t, id, "invoice.pdf", "").body
-	if text := pdfText(t, paidInvoice); !strings.Contains(text, "Paid\nPaid "+stamp(paidAt)) || strings.Contains(text, "Pay this invoice") ||
+	if text := pdfText(t, paidInvoice); !strings.Contains(text, "Paid\nAmount paid") ||
+		!strings.Contains(text, "Paid\n"+stamp(paidAt)) || strings.Contains(text, "Pay this invoice") ||
 		strings.Contains(strings.ReplaceAll(text, "\n", ""), link) || qrDrawn(t, paidInvoice) {
 		t.Fatalf("the paid invoice still asks for payment:\n%s", text)
 	}
@@ -443,7 +448,7 @@ func TestInvoicePDFLines(t *testing.T) {
 		{"description": "Hosting", "quantity": "1", "unitPrice": "1250000"}]}`).body
 	r := e.pdf(t, made["invoiceId"].(string), "invoice.pdf", "")
 	mustContain(t, pdfText(t, r.body), "Website\nDescription\nQty\nUnit price\nAmount\nDesign\n7.5\n0.50 USDC\n3.75 USDC\n"+
-		"Hosting\n1\n1.25 USDC\n1.25 USDC\nTotal\n5.00 USDC\nAmount due\n5.00 USDC")
+		"Hosting\n1\n1.25 USDC\n1.25 USDC\nTotal\n5.00 USDC\n")
 
 	// The longest description the API takes prints whole, even in its widest letters.
 	long := strings.Repeat("WWWWWWWWWWWWW ", 15)[:200]
