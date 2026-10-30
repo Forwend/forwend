@@ -666,6 +666,41 @@ test.describe("pay page", () => {
     await expect(showAddress(page)).toBeVisible();
   });
 
+  test("a failed refresh keeps the last read under one line across the page's top (R-194)", async ({
+    page,
+  }) => {
+    let fail = false;
+    await page.clock.install({ time: NOW });
+    await page.route("**/api/v1/invoices/*", (route) =>
+      fail ? route.fulfill({ status: 500, json: {} }) : route.fulfill({ json: OPEN }),
+    );
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(`/pay/${PAY}`);
+    const amount = page.locator("#pay-amount");
+    await expect(amount).toBeVisible();
+    const before = await amount.boundingBox();
+    fail = true;
+    await page.clock.runFor(POLL_MS);
+    const notice = page.getByRole("status").filter({ hasText: "Connection lost. Retrying…" });
+    await expect(notice).toBeVisible();
+    await expect(showAddress(page)).toBeVisible();
+    const root = await page.evaluate(() => document.documentElement.getBoundingClientRect().width);
+    const wide = await notice.boundingBox();
+    expect(wide?.x).toBe(0);
+    expect(wide?.y).toBe(0);
+    expect(wide && Math.abs(wide.width - root)).toBeLessThan(2);
+    // It pushes the page down by its own height, with no gap under it.
+    const after = await amount.boundingBox();
+    expect(before && after && wide && Math.abs(after.y - before.y - wide.height)).toBeLessThan(2);
+    await page.setViewportSize({ width: 390, height: 900 });
+    const narrow = await notice.boundingBox();
+    const below = await amount.boundingBox();
+    expect(narrow && below && narrow.y + narrow.height).toBeLessThan(below?.y ?? 0);
+    fail = false;
+    await notice.getByRole("button", { name: "Try again" }).click();
+    await expect(notice).toHaveCount(0);
+  });
+
   // R-79
   test("tells the payer a canceled invoice takes no money", async ({ page }) => {
     await openPay(page, CANCELED);

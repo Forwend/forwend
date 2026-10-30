@@ -10,6 +10,7 @@ import {
   formatTokenAmount,
   IconButton,
   Money,
+  Notice,
   QrCode,
   ReceiveAddress,
   Skeleton,
@@ -118,17 +119,21 @@ export function PayInvoice({ linkToken, option, preview = false }: PayInvoicePro
   }, [countView, linkToken, preview]);
   const failure = invoice.error as { status?: unknown } | undefined;
   if (invoice.data) {
-    // A failed poll keeps the last read: say so first, or a payer may think nothing arrived and send again.
+    // A failed poll keeps the last read: say so above everything, or a payer may think nothing arrived and send again.
+    // From large screens it spans both halves, its text in line with theirs. data-stale: PayScreen gives it its own row.
     const stale = invoice.isError ? (
-      <p
-        role="status"
-        className="flex flex-wrap items-center gap-3 rounded-md bg-warning-soft px-4 py-3 text-sm text-warning"
-      >
-        {COPY.stale}
-        <Button size="sm" variant="secondary" onClick={invoice.refetch}>
-          {COPY.retry}
-        </Button>
-      </p>
+      <div data-stale className="lg:col-span-2">
+        <Notice
+          className="lg:rounded-none lg:pr-[max(2.5rem,calc(50vw-32rem))] lg:pl-[max(2.5rem,calc(50vw-30rem))]"
+          action={
+            <Button size="sm" variant="secondary" onClick={invoice.refetch}>
+              {COPY.retry}
+            </Button>
+          }
+        >
+          {COPY.stale}
+        </Notice>
+      </div>
     ) : null;
     return (
       <Loaded
@@ -244,10 +249,11 @@ function Loaded({
   return (
     <>
       <Backdrop color={invoice.brand?.color} />
+      {stale}
       {/* From large screens the summary is the left column; on phones it dissolves (contents) and order keeps the pay
           panel right under the amount. */}
       <div className={`contents lg:flex lg:flex-col lg:gap-6 lg:pt-8 ${LEFT_PAD}`}>
-        <Summary invoice={invoice} token={token} pay={pay} picking={picking} stale={stale} />
+        <Summary invoice={invoice} token={token} pay={pay} picking={picking} />
         <Terms invoice={invoice} linkToken={linkToken} />
       </div>
       {/* "Closes in" stays at the top right like a header; the pay panel stands in the middle of the screen's height. */}
@@ -281,13 +287,11 @@ function Summary({
   token,
   pay,
   picking,
-  stale,
 }: {
   invoice: Invoice;
   token: PayToken;
   pay: Pay;
   picking: boolean;
-  stale: ReactNode;
 }) {
   const payee = invoice.issuer?.name ?? invoice.senderName;
   const brand = invoice.brand;
@@ -298,8 +302,6 @@ function Summary({
   const shown = partial ? pay.remaining : amount;
   return (
     <section aria-labelledby="pay-amount" className="order-1 flex min-w-0 flex-col gap-5 lg:gap-6">
-      {/* Top of the first column: the first thing on the page at any width (the grid pins every block's row). */}
-      {stale}
       <div className="flex items-center justify-between gap-3">
         <Payee
           name={payee ?? COPY.noIssuer}
