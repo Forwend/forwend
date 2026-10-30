@@ -43,6 +43,8 @@ export function Sheet({ open, onOpenChange, title, closeLabel = "Close", childre
         // display/overlay transition, which only Chromium supports, so other browsers flash the closing sheet.
         "max-sm:transition-[translate] max-sm:duration-[var(--fw-duration-base)] max-sm:ease-out max-sm:starting:open:translate-y-full",
         "max-sm:backdrop:transition-opacity max-sm:backdrop:duration-[var(--fw-duration-base)] max-sm:backdrop:ease-out max-sm:starting:open:backdrop:opacity-0",
+        // From small screens up it is a centered panel, which enters as a dialog does.
+        "sm:transition-opacity sm:duration-[var(--fw-duration-base)] sm:ease-out sm:starting:open:opacity-0 sm:backdrop:transition-opacity sm:backdrop:duration-[var(--fw-duration-base)] sm:backdrop:ease-out sm:starting:open:backdrop:opacity-0",
       )}
     >
       <div className="flex items-center justify-between gap-4 px-5 pt-4 pb-2">

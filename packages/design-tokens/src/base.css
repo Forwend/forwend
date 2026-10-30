@@ -129,7 +129,8 @@
        (data-motion="essential") keep turning: they are the only sign that work is in progress. */
     *:not([data-motion="essential"]),
     *::before,
-    *::after {
+    *::after,
+    *::backdrop {
       animation-duration: 0.01ms !important;
       animation-delay: 0ms !important;
       animation-iteration-count: 1 !important;
