@@ -1,67 +1,72 @@
-import { buttonClasses } from "@forwend/ui-web";
+import { buttonClasses, Notice } from "@forwend/ui-web";
 import Link from "next/link";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
 import { problemLabel } from "@/features/payments/lib/payments";
 import type { PaymentProblem } from "@/features/payments/types/payments";
-import { NetworkName } from "@/shared/components/chains/network-name";
 import { APP_ROUTES } from "@/shared/config/routes";
+
+// The page already says these: Still due, the status, and the wallet transfer's badge in Transfers.
+const SHOWN_ELSEWHERE = new Set(["partial_payment", "verification_pending", "settlement_refused"]);
+
 export interface PaymentProblemsProps {
   problems: readonly PaymentProblem[];
-  hostedUrl?: string | null;
+  /** The option whose extra money the Amount card shows; money held on any other option needs its own strip. */
+  extraShown?: string | null;
 }
-export function PaymentProblems({ problems, hostedUrl }: PaymentProblemsProps) {
+
+/** The problems a payment's page shows nowhere else, each once, as a warning strip under its header. */
+export function PaymentProblems({ problems, extraShown }: PaymentProblemsProps) {
+  const seen = new Set<string>();
+  const shown = problems.filter((problem) => {
+    if (
+      SHOWN_ELSEWHERE.has(problem.code) ||
+      (problem.action === "wait" &&
+        (problem.code === "outflow_unreconciled" || problem.code === "settlement_delayed")) ||
+      (problem.code === "held_funds" && problem.optionId === extraShown)
+    )
+      return false;
+    // One failing webhook endpoint reports every event: one strip says it. Held money differs per option.
+    const key = `${problem.code}:${problem.action}:${problem.code === "held_funds" ? problem.optionId : ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  if (!shown.length) return null;
   return (
-    <ul className="flex flex-col gap-3">
-      {problems.map((problem) => (
-        <li
+    <div className="flex flex-col gap-2">
+      {shown.map((problem) => (
+        <Notice
           key={`${problem.code}:${problem.optionId}:${problem.eventId}:${problem.endpointId}`}
-          className="flex flex-wrap items-start justify-between gap-2 text-sm"
+          action={
+            problem.action === "review_webhooks" ? (
+              <Link
+                href={APP_ROUTES.developers}
+                className={buttonClasses({ variant: "link", size: "sm" })}
+              >
+                Check webhooks
+              </Link>
+            ) : null
+          }
         >
-          <div className="min-w-0">
-            <p className="font-medium text-ink">
-              {problemLabel(problem.code)}
-              {problem.amount && problem.asset ? (
-                <>
-                  {" "}
-                  · <PaymentAmount amount={problem.amount} {...problem.asset} />
-                </>
-              ) : null}
-            </p>
-            {problem.asset ? (
-              <p className="text-xs text-muted">
-                {problem.asset.symbol} · <NetworkName chainId={problem.asset.chainId} />
-              </p>
+          <span className="font-medium">
+            {problemLabel(problem.code)}
+            {problem.amount && problem.asset ? (
+              <>
+                {" "}
+                · <PaymentAmount amount={problem.amount} {...problem.asset} />
+              </>
             ) : null}
-            <p className="text-muted">
-              {problem.action === "wait"
-                ? "Confirmation pending."
-                : problem.action === "ask_admin"
-                  ? "Ask the account owner or an Admin to check delivery."
-                  : problem.code === "held_funds"
-                    ? "This money is owed to the payer. No refund has been started."
-                    : problem.action === "review_settlement"
-                      ? "Check the transfer to your wallet."
-                      : problem.code === "webhook_delivery"
-                        ? "Delivery failed or is paused. Payment status is unchanged."
-                        : problem.code === "partial_payment"
-                          ? "The customer can use the same open checkout for the remaining amount."
-                          : "Contact support with this payment reference."}
-            </p>
-          </div>
-          {problem.action === "review_webhooks" ? (
-            <Link
-              href={APP_ROUTES.developers}
-              className={buttonClasses({ variant: "link", size: "sm" })}
-            >
-              Check webhooks
-            </Link>
-          ) : problem.action === "share_checkout" && hostedUrl ? (
-            <a href={hostedUrl} className={buttonClasses({ variant: "link", size: "sm" })}>
-              Open checkout
-            </a>
-          ) : null}
-        </li>
+            .
+          </span>{" "}
+          {problem.code === "held_funds"
+            ? "It isn't part of your balance."
+            : problem.code === "webhook_delivery"
+              ? problem.action === "ask_admin"
+                ? "Payment status is unchanged. Ask the account owner or an Admin to check delivery."
+                : "Payment status is unchanged."
+              : "Contact support with this payment's reference."}
+        </Notice>
       ))}
-    </ul>
+    </div>
   );
 }

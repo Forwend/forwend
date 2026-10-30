@@ -1,4 +1,4 @@
-import { Button } from "@forwend/ui-web";
+import { Button, Notice } from "@forwend/ui-web";
 import { AlertCircle } from "lucide-react";
 
 const RETRY = "Try again";
@@ -17,16 +17,16 @@ export interface LoadErrorProps {
 export function LoadError({ message, onRetry, retrying, inline, page }: LoadErrorProps) {
   if (inline) {
     return (
-      <div
+      <Notice
         role="alert"
-        className="flex flex-wrap items-center gap-3 rounded-md border border-line bg-surface px-4 py-3 text-sm text-muted"
+        action={
+          <Button size="sm" variant="secondary" loading={retrying} onClick={onRetry}>
+            {RETRY}
+          </Button>
+        }
       >
-        <AlertCircle aria-hidden className="size-[var(--fw-icon-sm)] shrink-0 text-danger" />
-        <span className="min-w-0 flex-1">{message}</span>
-        <Button size="sm" variant="secondary" loading={retrying} onClick={onRetry}>
-          {RETRY}
-        </Button>
-      </div>
+        {message}
+      </Notice>
     );
   }
   return (

@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
+import { PaymentProblems } from "@/features/payments/components/payment-problems";
 import { optionFigures, paymentState, paymentWallet } from "@/features/payments/lib/payments";
 
 describe("merchant payment money", () => {
@@ -55,5 +56,62 @@ describe("optionFigures", () => {
       extra: 0n,
       due: 100000n,
     });
+  });
+});
+
+describe("payment page problems", () => {
+  const problem = (code: string, action = "review_funds", extra: Record<string, unknown> = {}) => ({
+    amount: null,
+    asset: null,
+    code,
+    action,
+    optionId: null,
+    endpointId: null,
+    eventId: null,
+    reason: null,
+    ...extra,
+  });
+  const asset = { chainId: 421614, token: `0x${"1".repeat(40)}`, symbol: "USDC", decimals: 6 };
+  it("shows only the problems the rest of the page doesn't say", () => {
+    const markup = renderToStaticMarkup(
+      <PaymentProblems
+        problems={[
+          problem("settlement_refused", "review_settlement"),
+          problem("partial_payment", "share_checkout"),
+          problem("settlement_delayed", "wait"),
+          problem("reconciliation_required"),
+          problem("funds_movement_exception"),
+          problem("webhook_delivery", "review_webhooks"),
+        ]}
+      />,
+    );
+    expect(markup).toContain("Payment records need review");
+    expect(markup).toContain("Unexpected transfer");
+    expect(markup).toContain("Webhook delivery failed or paused");
+    expect(markup).toContain("Check webhooks");
+    expect(markup).not.toContain("Wallet transfer refused");
+    expect(markup).not.toContain("Partially paid");
+    expect(markup).not.toContain("owed");
+  });
+  it("says one failing webhook endpoint once, however many events it failed", () => {
+    const markup = renderToStaticMarkup(
+      <PaymentProblems
+        problems={[
+          problem("webhook_delivery", "review_webhooks", { eventId: "a", endpointId: "1" }),
+          problem("webhook_delivery", "review_webhooks", { eventId: "b", endpointId: "1" }),
+        ]}
+      />,
+    );
+    expect(markup.match(/Webhook delivery failed/g)).toHaveLength(1);
+  });
+  it("leaves held money to Amount only for the option Amount shows", () => {
+    const held = (optionId: string) =>
+      problem("held_funds", "review_funds", { optionId, amount: "2000000", asset });
+    const a = `0x${"a".repeat(64)}`;
+    const b = `0x${"b".repeat(64)}`;
+    expect(renderToStaticMarkup(<PaymentProblems problems={[held(a)]} extraShown={a} />)).toBe("");
+    const other = renderToStaticMarkup(<PaymentProblems problems={[held(b)]} extraShown={a} />);
+    expect(other).toContain("Money held for the payer");
+    expect(other).toContain("2.00");
   });
 });

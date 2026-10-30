@@ -32,6 +32,8 @@ import {
   MenuSeparator,
   MenuTrigger,
   NavPill,
+  NOTICE_TONES,
+  Notice,
   PANEL_TONES,
   Panel,
   RowButton,
@@ -590,6 +592,22 @@ export function ComponentsShowcase() {
         <ToastProvider>
           <ToastDemo />
         </ToastProvider>
+      </KitGroup>
+      <KitGroup title="Notice: one line for the whole view">
+        <div className="flex w-full max-w-2xl flex-col gap-2">
+          <Notice
+            action={
+              <Button size={BUTTON_SIZES.sm} variant="secondary">
+                Try again
+              </Button>
+            }
+          >
+            Connection lost. Retrying…
+          </Notice>
+          <Notice tone={NOTICE_TONES.danger}>
+            Webhook delivery failed or paused. Payment status is unchanged.
+          </Notice>
+        </div>
       </KitGroup>
       <KitGroup title="Loading and empty">
         <div className="flex w-64 flex-col gap-2">

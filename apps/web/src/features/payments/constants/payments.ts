@@ -28,6 +28,6 @@ export const PAYMENT_PROBLEMS = {
   funds_movement_exception: "Unexpected transfer",
   settlement_delayed: "Wallet transfer delayed",
   settlement_refused: "Wallet transfer refused",
-  webhook_delivery: "Webhook delivery failed",
+  webhook_delivery: "Webhook delivery failed or paused",
 } as const;
 export const PAYMENT_PAGE_SIZE = 25;

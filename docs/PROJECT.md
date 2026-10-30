@@ -262,6 +262,8 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-191 | History no endpoint keeps any more doesn't stall the second look at newer blocks. | Given finalized blocks every endpoint has pruned, then the recovery sweep moves to the oldest block one still keeps. It logs an `ALERT` with the skipped range. A Check status rescan moves past them too. Near the head a miss still waits. | backend | R-55, R-181 |
 
+| R-192 | A payment's page says each fact once, in plain words. | Given a payment page, then no Needs attention panel repeats what Amount and Transfers show. A problem shown nowhere else is a warning strip under the header. Details and Timeline take two fifths of the width from extra-large screens. The list's problem view is called Issues. | web-unit | R-166, R-177 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.

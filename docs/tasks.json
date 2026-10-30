@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 367,
+  "nextId": 368,
   "tasks": [
     {
       "id": "F332",
@@ -2074,6 +2074,116 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f366-history-no-endpoint-keeps-any-more-doesn",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F367",
+      "type": "fix",
+      "behavior": "A payment's page says each fact once, in plain words",
+      "acceptance": [
+        "The payment page has no Needs attention panel; only problems no other part shows (unexplained records, unexpected transfer, webhook delivery) appear as warning strips under the header; Details and Timeline take two fifths of the width from xl; the list view is named Issues; no copy says money is owed"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "web-unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-192"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-10-30 review fail by independent-reviewer: FAIL. Unit tests pass (web payments 6, ui-web 15); docs-check 0 errors; axe on the kit Notice finds 0 violations at 390 and 1440, light and dark; contrast 5.8 and 5.75 light, 8.7 and 7.0 dark. Four things must change.\n1. Held money on another option now shows nowhere. payment-detail takes Extra only from lead = funded[0]; options sort by chain id, symbol, token (invoice/get.go:290). With a locked option that sorts first, money held on a second option (R-56, D-76, reason other_option) has no figure, and held_funds is in SHOWN_ELSEWHERE, so no strip. e2e/privy/invoices.spec.ts:612 still expects \"Money held for the payer\" with 2.00 on that payment page and will fail in the live suite; only payments.spec.ts was updated. Fix: show a strip for held_funds when the lead option's Extra does not cover it (or show Extra per funded option), and update invoices.spec.ts.\n2. Acceptance says no copy says money is owed, but payments-copy.ts:91 extraNote is still \"Owed back to them, not yours\" under the Extra figure. The unit test checks \"owed\" only inside the strip. Reword it and test the whole page copy.\n3. One strip per failed delivery. The backend adds one webhook_delivery problem per failed event and endpoint (up to 100). PaymentProblems does not dedupe, so a down endpoint stacks identical strips above the page. That repeats a fact, against R-192. Render one strip per code and action.\n4. Copy: \"The payment is fine.\" can contradict a strip next to it (\"Payment records need review\") and ignores the paused case. Use \"Payment status is unchanged.\" \"Ask an Admin\" drops the account owner the old text named.\nSmaller points. A. Notice repeats LoadError inline (icon, one line, one action, role alert). DESIGN says Notice covers a refresh that failed, but that case still uses LoadError, so two different strips can stack; reuse one. Danger tone and role alert are used only on /kit. B. SHOWN_ELSEWHERE comment says outflow_unreconciled is shown elsewhere; it is not. It is covered by reconciliation_required except one short window (review status plus a deposit awaiting booking). C. Layout: with the 22rem floor the side column is unchanged at 1280 (352px), +19px at 1440, +51px at 1536, +179px at 1920 (expanded sidebar); a third holds, but the owner may not see more width at 1440. No sideways scroll found in the kit; the payment page itself was not rendered (live suite needs port 3000 and Privy). D. The unit test shows a positive case only for webhook_delivery; add reconciliation_required and funds_movement_exception, and a duplicate case. E. DESIGN notice bullet holds two facts (24 and 13 words); split per D-84.\nChecked and fine: settlement_refused and settlement_delayed (unresolved) show as badges in the wallet transfer row and header; partial_payment, verification_pending and wait-action outflow and settlement were already hidden before; reconciliation_required and funds_movement_exception still show; no other Needs attention text remains in code or DESIGN (docs/research only); Issues rename covers list, empty state, e2e radio and DESIGN.",
+        "2026-10-30 review pass by independent-reviewer: PASS. All four earlier findings are fixed. Web unit 206 tests, ui-web 15, typecheck, biome and docs-check pass. I also rendered the real PaymentDetail (fixture from payments.spec.ts, real CSS) at 390, 768, 1280, 1440 and 1536 px.\nChecked: (1) held money on another option shows \"Money held for the payer 2.00 USDC. It isn't part of your balance.\" and nothing repeats it when the Amount card shows that option's Extra, so invoices.spec.ts:612 still finds its text. (2) No \"owed\" text on the page; extraNote is \"Not part of your balance\". (3) Three failing webhook events give one strip. (4) Copy reads \"Payment status is unchanged.\" with the owner-or-Admin line for ask_admin. LoadError inline now renders Notice, so one strip style remains. Layout: side column 384px at 1280, 440px at 1440, 479px at 1536 (two fifths), single column below xl; no page scroll and no scroll inside the Transfers table at any width, also with a confirming deposit, a late deposit and a sending wallet transfer. axe on the rendered page: 0 violations, light and dark, 390 and 1440.\nNits, none blocking: a. In payment-problems.tsx, problem.optionId === extraShown is true when both are null, so a held_funds problem with no optionId would be hidden; the backend always sets it, but guard with extraShown != null. b. DESIGN.md line 309 still says record pages use a 2:1 grid; the payment page is now 3:2. c. DESIGN says the wallet transfer is never repeated, but settlement_delayed with review_settlement and outflow_unreconciled with review_funds still show a strip beside the row badge (kept as before, and they carry an action); name them in DESIGN. d. No unit test shows those two non-wait cases. e. LoadError inline looks different on every screen that uses it (lists, tables, activity, transactions); covered by DESIGN line 271 and tests, but I did not view each screen."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T02:10:20Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.6,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.8,
+            "log": ""
+          },
+          {
+            "id": "tokens-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.3,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 27.8,
+            "log": ""
+          }
+        ],
+        "taskHash": "8b5115e00404b3cd",
+        "filesHash": "d0563bbd66abbf6d",
+        "proof": {
+          "1": "web-unit: payments tests: strips only for problems the page shows nowhere else, one per failing webhook endpoint, held money only off the option Amount shows; LoadError inline is the same Notice"
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent-reviewer",
+          "summary": "PASS. All four earlier findings are fixed. Web unit 206 tests, ui-web 15, typecheck, biome and docs-check pass. I also rendered the real PaymentDetail (fixture from payments.spec.ts, real CSS) at 390, 768, 1280, 1440 and 1536 px.\nChecked: (1) held money on another option shows \"Money held for the payer 2.00 USDC. It isn't part of your balance.\" and nothing repeats it when the Amount card shows that option's Extra, so invoices.spec.ts:612 still finds its text. (2) No \"owed\" text on the page; extraNote is \"Not part of your balance\". (3) Three failing webhook events give one strip. (4) Copy reads \"Payment status is unchanged.\" with the owner-or-Admin line for ask_admin. LoadError inline now renders Notice, so one strip style remains. Layout: side column 384px at 1280, 440px at 1440, 479px at 1536 (two fifths), single column below xl; no page scroll and no scroll inside the Transfers table at any width, also with a confirming deposit, a late deposit and a sending wallet transfer. axe on the rendered page: 0 violations, light and dark, 390 and 1440.\nNits, none blocking: a. In payment-problems.tsx, problem.optionId === extraShown is true when both are null, so a held_funds problem with no optionId would be hidden; the backend always sets it, but guard with extraShown != null. b. DESIGN.md line 309 still says record pages use a 2:1 grid; the payment page is now 3:2. c. DESIGN says the wallet transfer is never repeated, but settlement_delayed with review_settlement and outflow_unreconciled with review_funds still show a strip beside the row badge (kept as before, and they carry an action); name them in DESIGN. d. No unit test shows those two non-wait cases. e. LoadError inline looks different on every screen that uses it (lists, tables, activity, transactions); covered by DESIGN line 271 and tests, but I did not view each screen.",
+          "at": "2026-10-30T02:15:24Z",
+          "filesHash": "d0563bbd66abbf6d"
+        },
+        "commit": "a9b315a3",
+        "doneAt": "2026-10-30T02:15:38Z"
+      },
+      "branch": "fix/f367-a-payment-s-page-says-each-fact-once-in",
+      "baseCommit": "56e325c403f7aded3f4cfd9810de0343a89b3470",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f367-a-payment-s-page-says-each-fact-once-in",
         "base": "main"
       }
     }

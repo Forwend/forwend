@@ -36,6 +36,8 @@ export { TIMELINE_STATES, Timeline } from "./components/display/timeline";
 export { DotLoader } from "./components/feedback/dot-loader";
 export type { EmptyStateProps } from "./components/feedback/empty-state";
 export { EmptyState } from "./components/feedback/empty-state";
+export type { NoticeProps, NoticeTone } from "./components/feedback/notice";
+export { NOTICE_TONES, Notice } from "./components/feedback/notice";
 export type { ShimmerProps } from "./components/feedback/shimmer";
 export { Shimmer } from "./components/feedback/shimmer";
 export { Skeleton } from "./components/feedback/skeleton";
