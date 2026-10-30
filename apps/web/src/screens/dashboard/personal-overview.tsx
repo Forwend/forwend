@@ -20,7 +20,8 @@ export function PersonalOverview() {
   return (
     <div className="flex flex-col gap-4">
       <h1 className="sr-only">{profileLabel(profile)} overview</h1>
-      <div className={ROW}>
+      {/* The balance card keeps its own height: My assets grows with its rows. */}
+      <div className={`${ROW} xl:items-start`}>
         <BalanceHero
           profileId={profile.profileId}
           balances={balances}

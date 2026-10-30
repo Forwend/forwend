@@ -201,6 +201,39 @@ test("on a phone the app is a banking-style home with a tab bar", async ({ brows
   await context.close();
 });
 
+// The balance card keeps its own height beside a taller card.
+test("the balance card keeps its own height when My assets beside it is taller", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    storageState: session,
+    viewport: { width: 1440, height: 900 },
+  });
+  const page = await context.newPage();
+  // Five tokens: the most My assets lists, so it is taller than the balance card.
+  const tokens = ["USDC", "EURC", "PYUSD", "USDT", "DAI"].map((symbol, i) => ({
+    chainId: 84532,
+    token: `0x${String(i + 1).repeat(40)}`,
+    symbol,
+    decimals: 6,
+    wallet: `${(i + 1) * 1_000_000}`,
+    finalizedBlock: 100,
+    pending: "0",
+    held: "0",
+  }));
+  await page.route("**/api/v1/profiles/*/balances", (route) =>
+    route.fulfill({ json: { tokens, estimatedUsdTotal: "15.00" } }),
+  );
+  await page.goto("/app");
+  const balance = page.getByRole("region", { name: "Total balance" });
+  const assets = page.getByRole("region", { name: "My assets" });
+  await expect(assets.getByText("DAI", { exact: true })).toBeVisible();
+  const ownHeight = await balance.boundingBox();
+  const beside = await assets.boundingBox();
+  expect(ownHeight && beside && beside.height - ownHeight.height).toBeGreaterThan(40);
+  await context.close();
+});
+
 test("pending and held summaries open the exact token balances", async ({ browser }) => {
   const context = await browser.newContext({ storageState: session });
   const page = await context.newPage();
