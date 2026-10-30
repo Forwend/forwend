@@ -38,7 +38,6 @@ export function TokenSwitches({ profileId, saved }: TokenSwitchesProps) {
         options={saved}
         selected={selected}
         onChange={(keys, on) => void change(keys, on)}
-        disabled={isLoading}
         lockedReason={() => (selected.size === 1 ? COPY.lastOn : null)}
       />
       <p role="status" className="min-h-5 text-sm text-muted">

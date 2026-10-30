@@ -88,6 +88,8 @@ Every control comes from `@forwend/ui-web`; a link that looks like a button uses
   select and opens a panel under it with a search box over the options; typing narrows them, ignoring letter case and
   accents ("cote" finds Côte d'Ivoire), arrow keys move, Enter picks and Escape closes. A short list (a network, a
   token) stays a select.
+  - The panel opens below the field, or above it when there is more room there, inside any scrolling form or dialog.
+  - Its list shrinks to fit that room, but always shows at least three and a half rows.
 - Accepted assets (Settings and a store's form) use one selector (`AssetSelection`, `shared/components/chains`).
   - One row per asset with a tri-state checkbox, "n of m networks" and an expand control; each network below it is its
     own exact contract, shown shortened with the full address as its title.
@@ -439,6 +441,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Developers keeps the full content width: its tables need the room.
 - Accepted assets (R-136) uses the accepted-assets selector: one row per asset, its networks under it.
   - A change saves at once; one quiet status line says Saving or Changes saved, never a toast per box.
+  - A box changes the moment it is pressed, and every box stays usable while it saves. A refused save puts it back.
   - The last token on can't be turned off; a quiet line under it says one stays on.
   - New invoice offers only the tokens on for the profile and the picked store.
 - Developers (R-145) is in the sidebar's Build group for a freelancer's or merchant's owner and Admins. It is laid out like Team.
