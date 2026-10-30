@@ -459,7 +459,7 @@ func start(inv invoice.Invoice, kind string, logo []byte, s standing) doc {
 		bottom = max(bottom, d.party(x, top, "From", i.Name, i.Address, i.Country, tax, i.Email))
 		x += width / 2
 	} else if inv.SenderName != "" {
-		bottom = max(bottom, d.party(x, top, "From", inv.SenderName, "Name not checked by Forwend"))
+		bottom = max(bottom, d.party(x, top, "From", inv.SenderName))
 		x += width / 2
 	}
 	// Never the client's email: the PDF is public to anyone with the invoice id. A business client's tax ID belongs
