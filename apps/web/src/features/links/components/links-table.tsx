@@ -8,10 +8,9 @@ import { LINK_STATES } from "@/features/links/constants/links";
 import { LINKS_COPY as COPY } from "@/features/links/constants/links-copy";
 import { amountLabel, linkState } from "@/features/links/lib/links";
 import type { Link as PaymentLink } from "@/features/links/types/links";
-import { DataTable } from "@/shared/components/data-table";
+import { DataTable, DataTableSkeleton } from "@/shared/components/data-table";
 import { ListToolbar } from "@/shared/components/list-toolbar";
 import { LoadError } from "@/shared/components/load-error";
-import { RowsSkeleton } from "@/shared/components/rows-skeleton";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 const linkHref = (link: PaymentLink) => `${APP_ROUTES.links}/${link.linkId}`;
@@ -77,7 +76,7 @@ export function LinksTable({ profileId, canWrite }: LinksTableProps) {
           retrying={list.isFetching}
         />
       ) : !list.currentData ? (
-        <RowsSkeleton count={2} className="fw-panel" />
+        <DataTableSkeleton count={2} className="fw-panel" />
       ) : links.length === 0 ? (
         <EmptyState
           page

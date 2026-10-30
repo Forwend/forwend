@@ -136,6 +136,11 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+
+    /* A placeholder still waits before it shows, so a quick answer never flashes one; then it stays still. */
+    [data-skeleton] {
+      animation: fw-fade-in 0.01ms var(--fw-duration-slow) both !important;
+    }
   }
 }
 
@@ -242,6 +247,12 @@
 @keyframes fw-fade-in {
   from {
     opacity: 0;
+  }
+}
+
+@keyframes fw-pulse {
+  50% {
+    opacity: 0.5;
   }
 }
 

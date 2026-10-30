@@ -1,6 +1,7 @@
 import {
   cx,
   ROW_INTERACTIVE_CLASSES,
+  Skeleton,
   TABLE_HEAD_CLASSES,
   TABLE_ROW_CLASSES,
 } from "@forwend/ui-web";
@@ -51,6 +52,8 @@ export interface DataTableProps<T> {
   /** Rows stay in their two-line form at every width: a list with too little to fill columns. */
   stacked?: boolean;
 }
+
+const PHONE_ROW_CLASSES = "relative flex min-h-15 items-center gap-3 px-4 py-2.5 sm:px-5";
 
 const LINK_CLASSES =
   "absolute inset-0 outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus";
@@ -125,13 +128,7 @@ export function DataTable<T>({
           return (
             // The two text lines are the link and its overlay covers the row, so a tap anywhere opens it while the
             // link's name stays its visible text (WCAG 2.5.3).
-            <li
-              key={rowKey(row)}
-              className={cx(
-                "relative flex min-h-15 items-center gap-3 px-4 py-2.5 sm:px-5",
-                ROW_INTERACTIVE_CLASSES,
-              )}
-            >
+            <li key={rowKey(row)} className={cx(PHONE_ROW_CLASSES, ROW_INTERACTIVE_CLASSES)}>
               {line.leading}
               <Link
                 href={rowHref(row)}
@@ -155,6 +152,68 @@ export function DataTable<T>({
         })}
       </ul>
       {footer ? <div className="border-t border-line px-4 py-3 sm:px-5">{footer}</div> : null}
+    </div>
+  );
+}
+
+export interface DataTableSkeletonProps {
+  count: number;
+  className?: string;
+  /** The phone rows end in an amount over a status pill, as on the money lists. */
+  status?: boolean;
+  /** A list whose phone rows have their own shape draws them here; the table rows stay. */
+  phone?: ReactNode;
+}
+
+/** A table's loading form, so loaded rows take its place without moving: its header and rows, and the phone rows. */
+export function DataTableSkeleton({ count, className, status, phone }: DataTableSkeletonProps) {
+  const rows = Array.from({ length: count }, (_, i) => i);
+  return (
+    <div aria-hidden className={cx("@container overflow-hidden", className)}>
+      <table className="hidden w-full text-sm @3xl:table">
+        <thead>
+          <tr className={TABLE_HEAD_CLASSES}>
+            <th className="w-2/5">
+              <Skeleton className="h-3 w-16" />
+            </th>
+            <th />
+            <th />
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-line">
+          {rows.map((i) => (
+            <tr key={i} className={TABLE_ROW_CLASSES}>
+              <td>
+                <Skeleton className="h-4 w-3/5" />
+              </td>
+              <td>
+                <Skeleton className="h-4 w-2/5" />
+              </td>
+              <td>
+                <Skeleton className="ml-auto h-4 w-16" />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="@3xl:hidden">
+        {phone ?? (
+          <ul className="divide-y divide-line">
+            {rows.map((i) => (
+              <li key={i} className={PHONE_ROW_CLASSES}>
+                <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <Skeleton className="h-4 w-2/5" />
+                  <Skeleton className="h-3 w-1/4" />
+                </span>
+                <span className="flex shrink-0 flex-col items-end gap-1">
+                  <Skeleton className="h-5 w-16" />
+                  {status ? <Skeleton className="h-6 w-20" /> : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

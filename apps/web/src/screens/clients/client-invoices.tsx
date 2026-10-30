@@ -16,9 +16,8 @@ import {
 } from "@/features/invoices/lib/invoices";
 import type { InvoiceSummary } from "@/features/invoices/types/invoices";
 import { useGetProfileTokensQuery } from "@/features/profiles/api/profiles-api";
-import { DataTable } from "@/shared/components/data-table";
+import { DataTable, DataTableSkeleton } from "@/shared/components/data-table";
 import { LoadError } from "@/shared/components/load-error";
-import { RowsSkeleton } from "@/shared/components/rows-skeleton";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { apiSearch, SEARCH_PARAM, withParam } from "@/shared/hooks/use-list-filters";
 
@@ -58,7 +57,7 @@ export function ClientInvoices({ profileId, client }: ClientInvoicesProps) {
           retrying={list.isFetching}
         />
       ) : !list.currentData ? (
-        <RowsSkeleton count={3} className="fw-panel" />
+        <DataTableSkeleton status count={3} className="fw-panel" />
       ) : rows.length === 0 ? (
         <EmptyState icon={FileText} title={COPY.noInvoices} description={COPY.noInvoicesText} />
       ) : (
