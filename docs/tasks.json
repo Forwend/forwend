@@ -2497,7 +2497,7 @@
         "Opening and closing a select list leaves the scrollbar, the page width and the content's left edge unchanged, and while it is open only the scrollbar scrolls the page"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "kit-e2e",
         "web-e2e"
@@ -2610,11 +2610,18 @@
           "summary": "PASS. Branch is one commit (729e377f) on 8f0d5b00; its code, test and docs are byte-identical to the pre-rebase commit the last review passed (range-diff shows only PROJECT.md context and tasks.json). Accept line now matches R-200. tasks.json vs 8f0d5b00: only nextId 371->387 and new F380-F386; no task changed, dropped or reordered; lastWrapup unchanged. kit-e2e passed (harness check). Own probe on a scratch kit server: with the fix Space/PageDown/End leave scrollY 9372 and scrollbar 11; with window keydown listeners dropped by an init script the page moves 9372->10348, so the hold is load-bearing and the test guards it. After the list closes, PageDown/Space scroll the page again (hold removed). Dragging the page scrollbar while open scrolls the page; the list closes, as a native select does. base.css: layered !important correctly beats react-remove-scroll-bar's unlayered rule; SelectField is the only Radix Select and Menu is modal={false}, so nothing else gets the override; no app code uses the library's gap classes. Test kept under the user-hit-bug rule; comments give reasons. docs-check 0 errors. Note for delivery: origin/main moved to b2d0c53f (F371, #363) at 05:20, after the 05:18 rebase. git diff origin/main now shows F371 removed. merge-tree shows a tasks.json conflict only (PROJECT.md and DESIGN.md auto-merge), so rebase again and keep F371 before done. Nit: PAGE_SCROLL_KEYS ArrowUp/ArrowDown/Home/End are already prevented by Radix; harmless.",
           "at": "2026-10-30T03:29:44Z",
           "filesHash": "66fb4e071d3aa31c"
-        }
+        },
+        "commit": "0856ecc4",
+        "doneAt": "2026-10-30T03:29:54Z"
       },
       "branch": "fix/f380-opening-a-select-keeps-the-scrollbar-and",
       "baseCommit": "8f0d5b0008d46a1487046c0439f5c18b37c0f833",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f380-opening-a-select-keeps-the-scrollbar-and",
+        "base": "main"
+      }
     },
     {
       "id": "F381",
