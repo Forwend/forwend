@@ -118,6 +118,8 @@ texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the pro
   - links: the USD amount pattern.
   - stores: the stores a sale can belong to.
   - balances: the USD formatting of the amount shown to the customer.
+- `/l/<slug>` and `/pay/<token>` share the `(checkout)` group, whose layout mounts one public store.
+  - Pay on a link reads the new invoice into it, then opens the checkout, so it renders at once.
 - Checkout `/pay/<token>` (R-45) sits outside the `(app)` group: no Privy, no sign-in, `noindex`. A malformed token
   (an on-chain id too, D-86) is a 404; a token the API does not know shows the 404 page. It reads the public
   `GET /v1/invoices/{payToken}` every 15 s through a

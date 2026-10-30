@@ -4,12 +4,11 @@ import { Button, TextField } from "@forwend/ui-web";
 import { Check, Mail } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useSetPayerEmailMutation } from "@/features/invoices/api/invoices-api";
+import { ENTER } from "@/features/pay/constants/pay";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 
 const COPY = PAY_COPY.receipt;
 const ANSWERS = { 409: COPY.sent, 422: COPY.invalid, 429: COPY.tooMany } as const;
-const ENTER =
-  "transition-[opacity,transform] duration-[var(--fw-duration-base)] ease-[var(--fw-ease-out)] starting:translate-y-1 starting:opacity-0";
 
 export interface ReceiptEmailProps {
   /** The pay link's token (D-86). */
@@ -47,7 +46,7 @@ export function ReceiptEmail({ linkToken, paid }: ReceiptEmailProps) {
           tabIndex={-1}
           className={`flex items-start gap-3 py-1 outline-none ${ENTER}`}
         >
-          <span className="grid size-8 shrink-0 place-items-center rounded-pill bg-success-soft text-success transition-[opacity,transform] delay-[60ms] duration-[var(--fw-duration-base)] ease-[var(--fw-ease-out)] starting:scale-90 starting:opacity-0">
+          <span className="grid size-8 shrink-0 place-items-center rounded-pill bg-success-soft text-success transition-[opacity,scale] delay-[60ms] duration-[var(--fw-duration-base)] ease-[var(--fw-ease-out)] starting:scale-90 starting:opacity-0">
             <Check aria-hidden className="size-4" />
           </span>
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">

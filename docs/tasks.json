@@ -3426,18 +3426,101 @@
         "Each step of the pay panel brings its new part in with motion, and picking the network moves nothing below"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "web-e2e"
       ],
-      "refs": [],
+      "refs": [
+        "R-207"
+      ],
       "keep": [
         "apps/backend/*"
       ],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-30 review fail by reviewer: Fail: 2 real defects. (1) ENTER on the picker and pay-before sections makes pay.spec.ts's raw axe scans timing-dependent: 'lets the payer pick the network...' (pay.spec.ts:781) reads the Network combobox placeholder mid-fade and reports color-contrast. Failed in 2 of 2 full runs of link-pay+pay on HEAD (40 passed, 1 failed at 24.6s), and 1 of 8 in a repeat probe; a scan after 600 ms is always clean. The brand-logo test (pay.spec.ts:866) uses the same raw scan right after load. Fix: use e2e/privy/axe.ts blockingViolations, which waits for fades. (2) The shared (checkout) store changes /pay caching: after Back then Forward, /pay shows the cached invoice and reads nothing until the 15 s poll (probe: 1 read on HEAD, 2 on main). The cache entry lives 60 s, so a payer can see a read up to about 75 s old that says nothing arrived, the risk the stale notice exists for. Suggested fix: refetchOnMountOrArgChange on PayInvoice's read; it still renders the cached invoice at once. Checked OK: the key is saved to the URL before the request; closed and not-ready clear it; changed, 429 and other failures show the pending purchase with its heading focused and the same key (probe C); Continue path unchanged. Enter or a second click while busy sends one request (aria-disabled + preventDefault). A failed invoice read still navigates and /pay reads again. The new link-pay test is sound and fails on main (previous-payment frames). Reduced motion stops ENTER (base.css). The invisible line is visibility:hidden. /w and /reminders unchanged. Route group and layout placement follow structure.md. tasks.json changes only F387. Minor: on a fixed link, Pay now moves focus to the left Amount heading (open link: stays on Pay); a slow invoice read keeps Pay busy up to 30 s, or a 429 Retry-After; one DESIGN.md checkout bullet is 28 words (D-84).",
+        "2026-10-30 review pass by reviewer: Pass. Both earlier defects fixed. link-pay+pay e2e: 41 passed twice, 2nd run under 12-core CPU load. Probe: Pay makes 1 invoice read and the checkout opens on it; Back 16 s then Forward reads again on mount; Back 3 s then Forward reads 15 s after mount (data ~19 s old; worst case ~30 s, once, only after Back/Forward). RTK 2.13 source confirms number = seconds since last fulfilled read, and a skipped read leaves error alone, so the stale notice is unchanged. Owner preview opens /pay?preview=1 in a new tab with a fresh store: no change. Focus stays on the aria-busy, aria-disabled Pay (probe-checked), which keeps its name. Continue still focuses its heading, as on main. ease-out maps to --fw-ease-out, so ENTER keeps the token. No transform/translate mismatch left. Docs check 0 errors; bullets <= 24 words. tasks.json changes only F387. Notes: a smaller refetch age (2-5 s) would cap Forward staleness. Back to /l reuses its link read up to 60 s, but /l never polls and Pay's expectedVersion guards it. R-207 acceptance has no When clause."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-30T08:47:11Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.4,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 6.0,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 29.8,
+            "log": ""
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "1cee05e9b48270d7",
+        "filesHash": "d82a4b99fc736a5e",
+        "proof": {
+          "1": "web-e2e: e2e/link-pay.spec.ts 'Pay keeps the link page still and the checkout opens whole, with no empty page between' answers Pay and the invoice 600 ms late and samples every frame from Pay to the checkout: no frame shows 'Your previous payment', and no /pay frame lacks the checkout's own content. On main it failed both (38 previous-payment frames; 38 of 58 /pay frames empty). link-pay + pay specs: 41 passed in 3 of 3 runs. A probe (removed) counted invoice reads: Pay makes 1 read and the checkout opens without a second; Back, 16 s on the link, Forward reads again (2); without refetchOnMountOrArgChange it stayed at 1, a stale read.",
+          "2": "web-e2e: the pay panel's picker, chosen-option row, address and status sections enter with ENTER (opacity and translate on duration-base, ease-out, via @starting-style); the network line under the amount is kept (invisible) while picking. pay.spec.ts's two raw axe scans now use blockingViolations, which waits for fades, so they no longer read a section mid-fade. Recorded on a 4x CPU phone (scratchpad payflow.mjs, /l/7k32tce3ypnu): layout shift after picking the token 0.0506 -> 0.0044, after Pay 0.0475 -> none."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass. Both earlier defects fixed. link-pay+pay e2e: 41 passed twice, 2nd run under 12-core CPU load. Probe: Pay makes 1 invoice read and the checkout opens on it; Back 16 s then Forward reads again on mount; Back 3 s then Forward reads 15 s after mount (data ~19 s old; worst case ~30 s, once, only after Back/Forward). RTK 2.13 source confirms number = seconds since last fulfilled read, and a skipped read leaves error alone, so the stale notice is unchanged. Owner preview opens /pay?preview=1 in a new tab with a fresh store: no change. Focus stays on the aria-busy, aria-disabled Pay (probe-checked), which keeps its name. Continue still focuses its heading, as on main. ease-out maps to --fw-ease-out, so ENTER keeps the token. No transform/translate mismatch left. Docs check 0 errors; bullets <= 24 words. tasks.json changes only F387. Notes: a smaller refetch age (2-5 s) would cap Forward staleness. Back to /l reuses its link read up to 60 s, but /l never polls and Pay's expectedVersion guards it. R-207 acceptance has no When clause.",
+          "at": "2026-10-30T09:40:12Z",
+          "filesHash": "d82a4b99fc736a5e"
+        },
+        "commit": "aec2fdfe",
+        "doneAt": "2026-10-30T09:40:30Z"
+      },
+      "branch": "fix/f387-paying-from-a-payment-link-moves-smoothl",
+      "baseCommit": "91dfcede79417f87848c274106416767fb072a58",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f387-paying-from-a-payment-link-moves-smoothl",
+        "base": "main"
+      }
     },
     {
       "id": "F388",
