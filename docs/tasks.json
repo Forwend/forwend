@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 408,
+  "nextId": 413,
   "tasks": [
     {
       "id": "F332",
@@ -13,7 +13,8 @@
         "Onboarding starts only after all other phase 11 features and their checks are complete, including integration, held-money refunds and history."
       ],
       "dependsOn": [
-        "F335"
+        "F335",
+        "F412"
       ],
       "state": "blocked",
       "verification": [
@@ -120,30 +121,6 @@
       "evidence": null
     },
     {
-      "id": "F345",
-      "type": "feat",
-      "behavior": "Invoice forms preview the document, and invoice and receipt PDFs read like the app",
-      "acceptance": [
-        "New invoice shows a live preview with items at every width",
-        "Invoice and receipt PDFs state status, list every payment and paginate long item lists"
-      ],
-      "dependsOn": [],
-      "state": "not_started",
-      "verification": [
-        "backend",
-        "web-unit",
-        "docs-check"
-      ],
-      "refs": [
-        "R-179"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [],
-      "blockedReason": null,
-      "evidence": null
-    },
-    {
       "id": "F348",
       "type": "fix",
       "behavior": "The links list pages by cursor with bounded reads",
@@ -190,9 +167,8 @@
     {
       "id": "F350",
       "type": "fix",
-      "behavior": "The owner invoice page and the balance chart match their requirements",
+      "behavior": "The balance chart and its totals value tokens at the market prices the total uses",
       "acceptance": [
-        "The owner's invoice page again shows why paid money still waits (R-54), Check status (R-55), and the payment progress strip and transactions list (R-69), or the owner rewrites those rows to the current page; the live navigation tests for them pass",
         "The balance chart, its change figure and the received and sent totals value tokens at the same market prices as the total beside them, or R-178 records why they count each stablecoin as 1 USD"
       ],
       "dependsOn": [],
@@ -203,14 +179,13 @@
         "live-e2e"
       ],
       "refs": [
-        "R-54",
-        "R-55",
-        "R-69",
         "R-178"
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-10-30 Narrowed: the invoice page part (R-54, R-55, R-69) shipped in F397."
+      ],
       "blockedReason": null,
       "evidence": null
     },
@@ -236,983 +211,153 @@
       "evidence": null
     },
     {
-      "id": "F396",
-      "type": "fix",
-      "behavior": "The overview's balance card keeps its own height",
-      "acceptance": [
-        "On the business and personal overviews the balance card keeps its own height; a taller Pending payments or My assets beside it no longer stretches it"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "web-unit",
-        "docs-check"
-      ],
-      "refs": [
-        "R-63"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [
-        "2026-10-30 Live run by hand, 2026-10-30, ports lent by the other session: 'node scripts/e2e.mjs --live e2e/privy/balances.spec.ts -g \"keeps its own height\"' passed with the fix; with personal-overview's first row back to plain ROW it failed (height difference 0, expected > 40). The same run passed navigation 'names the next step of every exception' (F394).",
-        "2026-10-30 review fail by independent-reviewer: Fails on layout. xl:items-start on the whole row stops the balance card following the other card (the ask), but it also stops the other card growing to the balance card. Measured in Chromium with the real cards and CSS (1280, 1440, 1920; business 0-3 rows x held, personal 0-7 tokens): in 38 of 99 cases the beside card is now shorter than the balance card; before it was always equal. Personal with 1 token: My assets ends 102 px short (150 px with no prices), 2 tokens 45 px, 0 tokens 19 px. Business empty Pending payments (new merchant, the most common state) ends 6.4 px short, a visible ragged edge; 18 cases are within 12 px. Fix: align only the balance card, e.g. replace xl:items-start with xl:*:first:self-start on both rows (compiles in Tailwind 4.3.3). With that, 0 cases have a shorter beside card, empty states stay equal at 288 px, and a taller Pending payments or My assets still leaves the balance card at its own height (identical to this commit there). Only 4 cases stay within 12 px (inherent). Below xl (390, 768, 1024, 1279) and the Received/Assets and Latest/Owed rows are unchanged (heights identical before and after in all 34 fixtures). Also: the live test covers only the personal overview (the business balance card has no region name, so getByRole misses it; loading.spec.ts finds it by #balance-title), so the owner's business case has no test; add one at 1440 with mockApi and 3 pending payments. The test's fixtures are valid, names match, and 40 px is sound (about 78 px measured for 5 unpriced tokens; 0 before). Docs: new bullets are under 25 words; update both to say only the balance card keeps its height after the fix. DESIGN.md line 210 (Row 3 'sizes to its rows') is stale against the code, which stretches; it predates this change.",
-        "2026-10-30 Live run by hand after review: both balance-height tests in balances.spec.ts pass with xl:self-start on the two balance cards; without it both fail (business: Pending payments taller by 0, expected > 10; personal: My assets taller by 0, expected > 40). The business test also checks a shorter Pending payments still matches the balance card.",
-        "2026-10-30 review pass by independent-reviewer: Passes. Re-measured the real BusinessOverview and PersonalOverview in headless Chromium with the app CSS (33 fixtures x 390, 768, 1024, 1279, 1280, 1440, 1920). xl:self-start on the two balance cards gives the same heights as my aligned-first-card trial: 0 cases with a beside card shorter than the balance card (was 38 of 99 with xl:items-start); empty states stay equal (288 px business, hero height personal); a taller Pending payments or My assets leaves the balance card at its own height. Only 4 cases stay within 12 px, which is inherent. Below xl and the Received/Assets and Latest/Owed rows have heights identical to the original code in every fixture; no sideways scroll at 390. Business test: the card selector finds the real cards (section:has(#balance-title) and #on-its-way, last() is the innermost); the payment fixture parses with paymentsPageSchema; mirrored in Chromium it gives equal heights when empty, Pending payments 24.6 px taller with 3 testnet payments (threshold 10), balance height unchanged, and 0 difference without self-start. Personal test: about 78 px with 5 unpriced tokens against 40, 0 without the fix. Both tests were run live by hand per the notes, and fail without the fix. Docs: new DESIGN bullets are 14 and 11 words, one fact each; check-docs passes. Not changed and out of scope: DESIGN.md Row 3 'sizes to its rows' still disagrees with the stretching code (predates F396)."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-30T16:08:34Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 3.4,
-            "log": ""
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.4,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.3,
-            "log": ""
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 3.8,
-            "log": ""
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 30.5,
-            "log": ""
-          }
-        ],
-        "taskHash": "5c91d4aabbf998f8",
-        "filesHash": "16a13da39d7ae6e0",
-        "proof": {
-          "1": "web-unit: the dashboard units still pass; the layout itself is proven by the live balances tests run by hand (see notes): the business and the personal balance card keep their height beside a taller card, and a shorter Pending payments still matches. Both fail without self-start"
-        },
-        "review": {
-          "result": "pass",
-          "by": "independent-reviewer",
-          "summary": "Passes. Re-measured the real BusinessOverview and PersonalOverview in headless Chromium with the app CSS (33 fixtures x 390, 768, 1024, 1279, 1280, 1440, 1920). xl:self-start on the two balance cards gives the same heights as my aligned-first-card trial: 0 cases with a beside card shorter than the balance card (was 38 of 99 with xl:items-start); empty states stay equal (288 px business, hero height personal); a taller Pending payments or My assets leaves the balance card at its own height. Only 4 cases stay within 12 px, which is inherent. Below xl and the Received/Assets and Latest/Owed rows have heights identical to the original code in every fixture; no sideways scroll at 390. Business test: the card selector finds the real cards (section:has(#balance-title) and #on-its-way, last() is the innermost); the payment fixture parses with paymentsPageSchema; mirrored in Chromium it gives equal heights when empty, Pending payments 24.6 px taller with 3 testnet payments (threshold 10), balance height unchanged, and 0 difference without self-start. Personal test: about 78 px with 5 unpriced tokens against 40, 0 without the fix. Both tests were run live by hand per the notes, and fail without the fix. Docs: new DESIGN bullets are 14 and 11 words, one fact each; check-docs passes. Not changed and out of scope: DESIGN.md Row 3 'sizes to its rows' still disagrees with the stretching code (predates F396).",
-          "at": "2026-10-30T16:11:07Z",
-          "filesHash": "16a13da39d7ae6e0"
-        },
-        "commit": "8ffd5130",
-        "doneAt": "2026-10-30T16:11:26Z"
-      },
-      "branch": "fix/f396-the-overview-s-balance-card-keeps-its-ow",
-      "baseCommit": "cc5f1fc5d858fa62d0e2aded76a6aa93ce9ca2b3",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f396-the-overview-s-balance-card-keeps-its-ow",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F397",
-      "type": "fix",
-      "behavior": "The invoice page says why its money waits and offers Check status again",
-      "acceptance": [
-        "An invoice that waits to settle says why under its header; an open one offers Check status there; its progress and transactions show once, on its payment page; the live invoice-page tests check that and pass"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "web-unit",
-        "docs-check"
-      ],
-      "refs": [
-        "R-54",
-        "R-55",
-        "R-69"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [
-        "2026-10-30 review pass by independent-reviewer: Pass. Split is right: payment page shows Timeline and Transfers once, plus settlement hash, late flag and held money on other options (R-77, D-25). Header rendered at 390 and 1440, light and dark, for open, resting, confirming, partly paid, signing, finalizing, retrying, dailyLimit, refused, settled: no overflow, no duplicate with badges, axe clean, live-spec selectors match the real DOM. Web unit 216 pass. Docs sentences are 25 words or fewer. Follow-ups, none blocking: (1) show F397 has no note for the hand-run live suite, though the proof says see note; record it with note F397 before done. (2) R-60 still describes the removed amount timeline and payments list and now contradicts R-69. (3) With refused or dailyLimit the badge reads Pending beside Stopped or Paused, because the invoice read has no wallet field. (4) e2e settleTx getByText check is vacuous, since a hash shows short; use a Basescan link count of 0. (5) Commit message says payments.spec.ts covers the removed phone test; it only checks sideways scroll and axe. (6) invoice-deposits.tsx and its copy are dead code from #330. (7) Payer address no longer shows on either page.",
-        "2026-10-30 Live run by hand, 2026-10-30, ports lent by the other session: on F397's code, all of e2e/privy/navigation.spec.ts and e2e/privy/jobs.spec.ts passed (22 tests), including the five invoice-page tests that failed on main since #330 (breadcrumb, still settling, Check status, shows each state once; the invoice-transactions phone test is removed, as that list is now the payment page's Transfers)."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-30T16:49:49Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.4,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.5,
-            "log": ""
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 4.6,
-            "log": ""
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 30.7,
-            "log": ""
-          }
-        ],
-        "taskHash": "9ce43e612646a558",
-        "filesHash": "9c133bf68c480e82",
-        "proof": {
-          "1": "web-unit: invoice-detail test: an open invoice offers Check status under its header; a paid one waiting to settle says 'Sending to your wallet · waiting for Base Sepolia to finalize, about 12 min left' there, with no Check status. The live invoice-page tests, run by hand, check the rest (see note)"
-        },
-        "review": {
-          "result": "pass",
-          "by": "independent-reviewer",
-          "summary": "Pass. Split is right: payment page shows Timeline and Transfers once, plus settlement hash, late flag and held money on other options (R-77, D-25). Header rendered at 390 and 1440, light and dark, for open, resting, confirming, partly paid, signing, finalizing, retrying, dailyLimit, refused, settled: no overflow, no duplicate with badges, axe clean, live-spec selectors match the real DOM. Web unit 216 pass. Docs sentences are 25 words or fewer. Follow-ups, none blocking: (1) show F397 has no note for the hand-run live suite, though the proof says see note; record it with note F397 before done. (2) R-60 still describes the removed amount timeline and payments list and now contradicts R-69. (3) With refused or dailyLimit the badge reads Pending beside Stopped or Paused, because the invoice read has no wallet field. (4) e2e settleTx getByText check is vacuous, since a hash shows short; use a Basescan link count of 0. (5) Commit message says payments.spec.ts covers the removed phone test; it only checks sideways scroll and axe. (6) invoice-deposits.tsx and its copy are dead code from #330. (7) Payer address no longer shows on either page.",
-          "at": "2026-10-30T17:00:28Z",
-          "filesHash": "9c133bf68c480e82"
-        },
-        "commit": "34a11fcd",
-        "doneAt": "2026-10-30T17:00:58Z"
-      },
-      "branch": "fix/f397-the-invoice-page-says-why-its-money-wait",
-      "baseCommit": "ef0457ced12e515bb03472332f3dc0a4b4d63d60",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f397-the-invoice-page-says-why-its-money-wait",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F400",
-      "type": "fix",
-      "behavior": "Docs and code text keep their place on Linux and Android while the fonts load",
-      "acceptance": [
-        "On Chromium for Linux, /docs at 1440 px with every font file arriving late shifts less than 0.01"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "lighthouse"
-      ],
-      "refs": [
-        "R-206"
-      ],
-      "keep": [],
-      "review": true,
-      "notes": [
-        "2026-10-30 review fail by reviewer: Root cause confirmed in the Linux browser (pw-linux-fonts): main's fonts.ts and globals.css fail docs.spec.ts:85 at 0.0889, HEAD passes. Main's build has next/font's face 'Hanken Grotesk Fallback; src local(Arial); 99.07% / 30.02% / 0.0% / 100.94%', so the copied overrides are exact. HEAD resolves --fw-font-sans-loaded to '\"Hanken Grotesk\", Hanken Grotesk Fallback' and --fw-font-sans still ends in system-ui, sans-serif. Lighthouse: 98 / 100 / LCP 1862 ms. check-docs: 0 errors. Docs lines are within 25 words. The test rename names what it holds. The kit select test fails the same way on main's code in that browser (scrollbar 0), so it comes from connect mode. Defect: display optional with subsets ['latin'] preloads only the latin Hanken face. In Chromium, an optional face that starts loading after the first paint is never used in that document. Linux probe on HEAD: text added after load ('Łukasz Wiśniewski'), latin-ext face fetched in 9 ms, still 'Liberation Sans:2, Hanken Grotesk:15' for the document's life (client navigations included). Hanken only shows after a reload. On main (swap) the same probe renders all Hanken. So client-rendered names with Polish, Czech, Turkish, Romanian or Hungarian letters mix two fonts inside one word, even on a fast connection. fonts.ts, DESIGN.md and the commit say a face shows when it arrives in the short wait, which is not true for these faces. Fix tried: subsets ['latin', 'latin-ext'] makes the probe all Hanken, keeps the shift test at 3 of 3 on Linux, and Lighthouse reads 98 / 100 / LCP 1946 ms. Then say in the docs which subsets are preloaded. Note: Noto Sans (document previews) still uses next's Arial-only fallback with swap. That is the same Linux fallback bug, limited to previews. Fix it or name it.",
-        "2026-10-30 review pass by reviewer: Latin-ext fix confirmed. HTML on / and /docs preloads 3 fonts: Hanken latin, Hanken latin-ext (19.5 KB), Geist Mono. Probe: 'Łukasz Wiśniewski' inserted after load draws 17 glyphs in Hanken on Linux (pw-linux-fonts) and macOS. With 800 ms font delay on Linux it draws in Liberation Sans, not DejaVu. Fallback faces read 'loaded' on Linux at HEAD; main on 3700 reads 'error' for both. Noto overrides 100.54/27.56/0/106.33 and Hanken's 99.07/30.02/0/100.94 match main's next/font CSS. docs.spec.ts passed in the Linux browser (6/6), font test 3/3 with --repeat-each 3. Full non-live web e2e on macOS: 82 passed. Lighthouse '/': 98, 100, LCP 1938 ms. check-docs 0 errors; new doc sentences under 25 words; comments give reasons. Nits, not blocking: commit body says 'Two changes:' over four bullets, and one body line is unwrapped. Branch is one commit behind origin/main (F397); only docs/tasks.json conflicts. kit-directions next/font faces keep Arial-only fallbacks (kit page only).",
-        "2026-10-30 review pass by reviewer: Rebase check passed. HEAD d5d9d4a3 is one commit on origin/main 9be1095b (F397). git diff origin/main HEAD outside docs/tasks.json matches f377f2eb's reviewed diff line for line (index lines aside). docs/tasks.json vs main only adds the F400 record and moves nextId 398 to 401. F397's record, lastWrapup and the other tasks are unchanged. validate: only the pre-existing 'F332 depends on unknown task F331'. docs.spec.ts in the Linux browser (pw-linux-fonts): 6 of 6 passed, font test included. Commit body now says 'The changes:'. Note: baseCommit is still ef0457ce, the pre-rebase merge-base. changed_since then also counts F397's files, so check selection is wider, not narrower."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-30T17:14:07Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.6,
-            "log": ""
-          },
-          {
-            "id": "lighthouse",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 35.9,
-            "log": ""
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 4.0,
-            "log": ""
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 33.4,
-            "log": ""
-          }
-        ],
-        "taskHash": "34e3f918f3bbf84d",
-        "filesHash": "fcac69bcfb7d7cd4",
-        "proof": {
-          "1": "web-e2e: e2e/docs.spec.ts 'the docs page doesn't shift when its fonts arrive late' (it holds every woff2 800 ms) passes on macOS, and in Chromium on Linux (mcr.microsoft.com/playwright:v1.64.1-noble as a remote browser, as CI's Playwright) at 0.0000 in 3 of 3, where main's fonts read 0.0889 as CI read 0.071. Cause: next/font's fallbacks are local(Arial) only; Linux has none (face status 'error'), so text fell to DejaVu Sans and rewrapped. Fix: our own Hanken and Noto Sans fallback faces try Arial, Liberation Sans and Arimo (Linux: 'loaded'); Hanken is preloaded with display optional, latin and latin-ext, as the size-matched fallback alone still read 0.0409. A name inserted after load ('Łukasz Wiśniewski') draws all 17 glyphs in Hanken on Linux and macOS; a first visit without delay draws Hanken and Geist Mono from the first paint. Rebased onto F397 (#381). lighthouse: R-11 on '/'."
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Rebase check passed. HEAD d5d9d4a3 is one commit on origin/main 9be1095b (F397). git diff origin/main HEAD outside docs/tasks.json matches f377f2eb's reviewed diff line for line (index lines aside). docs/tasks.json vs main only adds the F400 record and moves nextId 398 to 401. F397's record, lastWrapup and the other tasks are unchanged. validate: only the pre-existing 'F332 depends on unknown task F331'. docs.spec.ts in the Linux browser (pw-linux-fonts): 6 of 6 passed, font test included. Commit body now says 'The changes:'. Note: baseCommit is still ef0457ce, the pre-rebase merge-base. changed_since then also counts F397's files, so check selection is wider, not narrower.",
-          "at": "2026-10-30T17:16:21Z",
-          "filesHash": "fcac69bcfb7d7cd4"
-        },
-        "commit": "86a1180c",
-        "doneAt": "2026-10-30T17:16:34Z"
-      },
-      "branch": "fix/f400-docs-and-code-text-keep-their-place-on-l",
-      "baseCommit": "ef0457ced12e515bb03472332f3dc0a4b4d63d60",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f400-docs-and-code-text-keep-their-place-on-l",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F401",
-      "type": "fix",
-      "behavior": "A closed or canceled pay link shows that it takes no money, without the network and token pickers",
-      "acceptance": [
-        "When the payee closed or canceled the payment, the pay panel shows one closed state with no Pay with pickers"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "web-e2e"
-      ],
-      "refs": [
-        "R-79",
-        "R-57"
-      ],
-      "keep": [],
-      "review": true,
-      "notes": [
-        "2026-10-30 review fail by reviewer: Bug reproduced on main (canceled payer-chooses invoice: Network combobox count 1) and fixed; pay+link-pay e2e 44 passed; docs-check 0 errors; 1440/390 screenshots look right. Defect 1 (a11y, money safety): in-session change from waiting (address shown) to canceled or expired loses the live region. A MutationObserver probe shows the persistent <p role=status> 'Waiting for payment' is removed and the root div gains role=status together with its new content; on main the same <p> stays and its text changes. A polite region that appears with its content is not reliably announced, so 'Do not send money.' can go unheard. The file's own rule: 'Always rendered, so the live region exists before a check finds money.' Keep one live region mounted across the change. Defect 2: per-option close (?option= or a kept pick on a closed option while another option is open, as in 'a closed payment option leaves another option available') now shows the Network/Token pickers and the full 'Checkout closed' empty state together, against the new DESIGN rule (one closed state, no pickers). The closed branch keys on pay.state, the pickers on canChoose; gate it on !canChoose or say that option closed. Minor: DESIGN and commit say 'Canceled ... with nothing seen', but a canceled invoice with held money also shows this state. toHaveText->toContainText is fine; the new test is an allowed user-hit regression test.",
-        "2026-10-30 review fail by reviewer: Code fixes confirmed; e2e pay+link-pay 45 passed; docs-check 0 errors. Fix 1 OK: StatusLine keeps its fiber slot and the role=status div is the same DOM node; a probe with key={shut ?? \"row\"} (forced remount) fails \"a payer watching hears the payment close\". p->div breaks no test or grid. Fix 2 code OK: closed state shows only when !canChoose; a mixed-option screenshot shows the pickers with the one-line row. Defect: the new guard in \"a closed payment option leaves another option available\" passes with the bug. getByText(\"Checkout closed\") toHaveCount(0) runs right after goto, before the mocked invoice loads, so it passes at once. Probe: drop !choosable from shut; the test still passed. With await expect(Network combobox).toBeVisible() before it, it failed (Received: 1). With the real code it passed. Fix: move the assertion after the Network combobox is visible or clicked. The commit message says the test now expects no closed state; true, but it does not catch the defect.",
-        "2026-10-30 review pass by reviewer: Test-strength defect fixed: with '!choosable && ' removed from shut, 'a closed payment option leaves another option available' fails at pay.spec.ts:609 (Checkout closed count Expected 0, Received 1); restored (same sha1 de4f0a46), it passes. Diff re-read: canChoose excludes canceled; shut only when nothing can be picked; one persistent role=status region; PAY_STATES.closed is closed with nothing received, so 'expired with nothing seen' is right. Commit message matches the diff. Worktree clean."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-30T17:38:42Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 3.5,
-            "log": ""
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.3,
-            "log": ""
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 4.0,
-            "log": ""
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 30.1,
-            "log": ""
-          }
-        ],
-        "taskHash": "c8125167d53ca2d6",
-        "filesHash": "468a57de10dacd31",
-        "proof": {
-          "1": "web-e2e: e2e/pay.spec.ts 'a canceled invoice with several tokens shows that it is closed, with no network or token to pick' expects one status with 'Payment closed' and the canceled sentence and no pickers (failed on main). 'a payer watching hears the payment close: the status stays and says so' expects the same connected status element to switch to the canceled sentence. 'a closed payment option leaves another option available' now waits for the Network picker, then expects no 'Checkout closed' state beside it; without the !choosable guard it failed ('Received: 1'). 45 pay and link-pay tests pass."
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Test-strength defect fixed: with '!choosable && ' removed from shut, 'a closed payment option leaves another option available' fails at pay.spec.ts:609 (Checkout closed count Expected 0, Received 1); restored (same sha1 de4f0a46), it passes. Diff re-read: canChoose excludes canceled; shut only when nothing can be picked; one persistent role=status region; PAY_STATES.closed is closed with nothing received, so 'expired with nothing seen' is right. Commit message matches the diff. Worktree clean.",
-          "at": "2026-10-30T17:40:30Z",
-          "filesHash": "468a57de10dacd31"
-        },
-        "commit": "ae414a5d",
-        "doneAt": "2026-10-30T17:40:43Z"
-      },
-      "branch": "fix/f401-a-closed-or-canceled-pay-link-shows-that",
-      "baseCommit": "b3cb26321e66f8163abec17282a9fde72c807c66",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f401-a-closed-or-canceled-pay-link-shows-that",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F402",
-      "type": "fix",
-      "behavior": "The pay page's loading placeholders sit where the payee, amount and pay panel arrive",
-      "acceptance": [
-        "While a pay page loads, the payee, amount and pay panel placeholders take the loaded parts' places, with the left half's backdrop"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "web-e2e"
-      ],
-      "refs": [
-        "R-68"
-      ],
-      "keep": [],
-      "review": true,
-      "notes": [
-        "2026-10-30 review pass by reviewer: Loading branch mirrors Loaded: Backdrop, the contents/lg:flex summary column with LEFT_PAD and lg:pt-8, the order-2 right column with RIGHT_PAD, lg:my-auto and PANEL. Phone order matches (summary order-1, panel order-2). A11y fine: status line now sits outside aria-busy, so it is no longer muted; panel placeholder is aria-hidden. The bg-line override builds as a (0,2,0) descendant rule from lg, scoped to the summary column; visible in both themes (light e8e9e6 on f6f7f5, dark 262826 on 141615). e2e link-pay + pay: 46 passed, F387 whole-checkout handoff holds. New test is allowed (owner-hit bug) and fails on main, but by a 30 s timeout waiting for main .fw-panel, not by the measurements. Nits, not blocking: (1) assert the placeholder panel is visible first, so a main-like regression fails fast; boundingBox ?? 0 lets two nulls pass. (2) The code comment and commit say the backdrop is surface-2; in dark it is surface, so the override is needed only in light. (3) Branded stores now see the lime wash switch to the brand color on load. docs-check 0 errors; DESIGN.md bullets 18 and 20 words."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-30T17:43:59Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 3.2,
-            "log": ""
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.2,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.3,
-            "log": ""
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 4.0,
-            "log": ""
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 34.3,
-            "log": ""
-          }
-        ],
-        "taskHash": "c86fbf0a7782c57e",
-        "filesHash": "6226d0919736db42",
-        "proof": {
-          "1": "web-e2e: e2e/pay.spec.ts 'the loading page puts its placeholders where the payee and the pay panel arrive' holds the invoice read at 1440 px and compares the placeholders with the loaded page: the payee row's top within 2 px (main's placeholder sat at y 0, cut by the page's top), and the pay panel's x and width within 2 px (main drew one 650 px block across the right column, its offsets set on the block itself). It failed on main. docs/runs/f402-pay-loading-after-{1440-light,1440-dark,390}.png show the placeholders in the loaded columns over the left half's backdrop; from large screens they take the line color, since the backdrop is their own surface-2. 46 pay and link-pay tests pass."
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Loading branch mirrors Loaded: Backdrop, the contents/lg:flex summary column with LEFT_PAD and lg:pt-8, the order-2 right column with RIGHT_PAD, lg:my-auto and PANEL. Phone order matches (summary order-1, panel order-2). A11y fine: status line now sits outside aria-busy, so it is no longer muted; panel placeholder is aria-hidden. The bg-line override builds as a (0,2,0) descendant rule from lg, scoped to the summary column; visible in both themes (light e8e9e6 on f6f7f5, dark 262826 on 141615). e2e link-pay + pay: 46 passed, F387 whole-checkout handoff holds. New test is allowed (owner-hit bug) and fails on main, but by a 30 s timeout waiting for main .fw-panel, not by the measurements. Nits, not blocking: (1) assert the placeholder panel is visible first, so a main-like regression fails fast; boundingBox ?? 0 lets two nulls pass. (2) The code comment and commit say the backdrop is surface-2; in dark it is surface, so the override is needed only in light. (3) Branded stores now see the lime wash switch to the brand color on load. docs-check 0 errors; DESIGN.md bullets 18 and 20 words.",
-          "at": "2026-10-30T17:48:54Z",
-          "filesHash": "6226d0919736db42"
-        },
-        "commit": "5dbb4453",
-        "doneAt": "2026-10-30T17:49:13Z"
-      },
-      "branch": "fix/f402-the-pay-page-s-loading-placeholders-sit",
-      "baseCommit": "b21cbcce976abe98d49dde5b5cc103704549f1bd",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f402-the-pay-page-s-loading-placeholders-sit",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F403",
-      "type": "fix",
-      "behavior": "A request's PDF and its preview show the sender's name without a note that Forwend did not check it",
-      "acceptance": [
-        "A personal request's PDF and the new-request preview show From with the sender's name only"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "backend",
-        "web-e2e"
-      ],
-      "refs": [
-        "R-122",
-        "R-47"
-      ],
-      "keep": [],
-      "review": true,
-      "notes": [
-        "2026-10-30 review fail by reviewer: PDF and preview fix is correct: document.go start() serves both invoice and receipt PDFs; preview's copy entry removed; owner detail shows name only; Need help unverifiedName and R-122 look-alike check unchanged; no PROJECT.md row required the PDF note. TestInvoicePDF passes at HEAD and fails with main's document.go (file restored, hash c07c0af2 unchanged); document tests pass; docs-check 0 errors. Defect: docs/backend/api.md:77 now says 'Emails and PDFs show names without that note', and the commit says the old email claim was already untrue. Both are false: notify.go:300/321/501 (receipt, sent, reminder emails) still add 'The name is what the invoice's creator gave; Forwend doesn't check it.' for a sender name without billing details, and notify_test.go:353 (TestDeliverSendsTheReceiptToThePayer, passing) asserts it. The same note shows in emails, unfixed and unnamed (AGENTS.md: a fix covers every reader). Fix: either drop the email notes too (notify.go 3 places, its 'Same wording as the pay page and PDF' comment at :299, notify_test.go:353 assertion) or keep them and make api.md:77 and the commit say emails still carry it; owner's call, since 'why we even have it there' reads as applying to emails too.",
-        "2026-10-30 review pass by reviewer: Doc defect fixed. api.md:77 now true: Need help (pay-copy.ts unverifiedName) and the receipt, sent and reminder emails (notify.go:301/322/502, sender name without issuer) carry the note; document.go draws From with the name only. notify.go:299 comment now matches the code. Only grep hits for the note are those emails, their test (notify_test.go:353), Need help and its e2e; nothing else claims the PDF note. Commit message matches the diff. docs-check 0 errors; document tests pass (notify tests need DATABASE_URL, not run; comment-only change there; verify passed after the commit). Nit, not blocking: the comment says 'Same wording as the pay page's Need help', but the pay page says 'the recipient gave' and the emails 'the invoice's creator gave'."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-30T18:03:16Z",
-        "checks": [
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.2,
-            "log": ""
-          },
-          {
-            "id": "backend",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 261.3,
-            "log": ""
-          },
-          {
-            "id": "backend-affected",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 258.3,
-            "log": ""
-          },
-          {
-            "id": "backend-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 39.1,
-            "log": ""
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          }
-        ],
-        "taskHash": "d16ec9673a89d112",
-        "filesHash": "eee9ff4916854a16",
-        "proof": {
-          "1": "backend: internal/httpapi/tests/invoices_pdf_test.go TestInvoicePDF now expects a request's PDF to show 'From' and 'Mara Ilić' with no 'not checked' line; with main's document.go it failed ('a request's PDF still says its name is not checked'). web-e2e: the new-request preview's From block shows the sender's name only; COPY.preview.unchecked is removed. The emails of a request without billing details keep their note (notify.go; TestDeliverSendsTheReceiptToThePayer still checks it), since they come from Forwend's address; api.md and notify.go's comment now say so. The pay page's Need help still says the typed name isn't checked, and R-122's look-alike check is unchanged."
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Doc defect fixed. api.md:77 now true: Need help (pay-copy.ts unverifiedName) and the receipt, sent and reminder emails (notify.go:301/322/502, sender name without issuer) carry the note; document.go draws From with the name only. notify.go:299 comment now matches the code. Only grep hits for the note are those emails, their test (notify_test.go:353), Need help and its e2e; nothing else claims the PDF note. Commit message matches the diff. docs-check 0 errors; document tests pass (notify tests need DATABASE_URL, not run; comment-only change there; verify passed after the commit). Nit, not blocking: the comment says 'Same wording as the pay page's Need help', but the pay page says 'the recipient gave' and the emails 'the invoice's creator gave'.",
-          "at": "2026-10-30T18:13:44Z",
-          "filesHash": "eee9ff4916854a16"
-        },
-        "commit": "5ada9537",
-        "doneAt": "2026-10-30T18:13:56Z"
-      },
-      "branch": "fix/f403-a-request-s-pdf-and-its-preview-show-the",
-      "baseCommit": "e42c6f77eecc5d27d4790110d185d8c4a616b12d",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f403-a-request-s-pdf-and-its-preview-show-the",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F404",
-      "type": "perf",
-      "behavior": "Placeholders pulse on the compositor, so a busy page doesn't stall them",
-      "acceptance": [
-        "Every placeholder's wait and pulse run on the compositor: Chromium reports no incompatible animations for them"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "kit-e2e",
-        "web-e2e",
-        "loading-live-e2e"
-      ],
-      "refs": [
-        "R-201"
-      ],
-      "keep": [],
-      "review": true,
-      "notes": [
-        "2026-10-30 review pass by reviewer: Cause confirmed. Bare page, Chromium 156 trace: two opacity animations both report compositeFailed=64; filter pulse plus opacity fade report 0; layer count unchanged (54 vs 54 for 50 spans). 64 is 1<<6 kTargetHasIncompatibleAnimations in compositor_animations.h. filter: opacity(0.5) differs from opacity by at most 2/255 per channel (rounding); Skeleton is an empty span, so its stacking context and containing block change nothing, and opacity already made one. The reduced-motion [data-skeleton] shorthand still keeps only the fade. No other element runs two opacity animations. Kit spec passed twice, and the new test passed 8 of 8 with --repeat-each. With main's base.css and a clean .next it fails (131136 = 64 + 1<<17 no-visible-change), and the restore is exact. docs-check: 0 errors. Nits, not blocking: (1) e2e/privy/loading.spec.ts:38 says the pulse keeps opacity between half and full, but computed opacity no longer pulses. (2) base.css comment 'so they stalled while a page loaded' tells history. (3) A renamed compositeFailed trace field would let the test pass silently.",
-        "2026-10-30 review fail by reviewer: Only the two comments and docs/tasks.json changed since the reviewed e596675d; the commit message is unchanged. The test comment in e2e/privy/loading.spec.ts:38 is accurate. docs-check: 0 errors. Fail: the new base.css comment above fw-pulse is wrong. It says 'Chromium composites only one animation of a property per element'. That implies one of two opacity animations still composites. In fact neither does: the first review's trace showed both report compositeFailed=64, and Chromium cancels the running one too. The commit message says 'runs both on the main thread'. DESIGN.md says 'two animations of one property can't run on the compositor'. The comment contradicts both. Also 'both run there' has no antecedent, because the sentence never names the compositor. Suggested text: 'filter, not opacity: a placeholder fades in on opacity, and Chromium can't composite two animations of one property on one element. With the pulse on filter, the wait and the pulse both run on the compositor, so a busy page can't stall them.' No code defect.",
-        "2026-10-30 review pass by reviewer: base.css comment above fw-pulse is now accurate: Chromium can't composite two animations of one property on one element; it gives reasons only, no history. It agrees with the commit message and DESIGN.md:942. loading.spec.ts:38 comment accurate. docs-check: 0 errors. No other changes."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-30T18:28:07Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 4.3,
-            "log": ""
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.9,
-            "log": ""
-          },
-          {
-            "id": "tokens-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.4,
-            "log": ""
-          },
-          {
-            "id": "ui-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.9,
-            "log": ""
-          },
-          {
-            "id": "kit-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 12.8,
-            "log": ""
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 3.9,
-            "log": ""
-          },
-          {
-            "id": "loading-live-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 41.9,
-            "log": ""
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 29.2,
-            "log": ""
-          }
-        ],
-        "taskHash": "6371fb3420624940",
-        "filesHash": "6aa22faa07837970",
-        "proof": {
-          "1": "kit-e2e: e2e/kit.spec.ts 'a placeholder's wait and pulse run on the compositor, so a busy page doesn't stall them' traces /kit and expects no fw-pulse or fw-fade-in animation to carry Chromium's 'target has incompatible animations' reason (64); with main's keyframes it failed. On the signed-in overview at 4x CPU the trace showed 124 placeholder animations failing to composite before, 0 after. loading-live-e2e: the list, overview and record placeholders still wait, show and keep their places."
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "base.css comment above fw-pulse is now accurate: Chromium can't composite two animations of one property on one element; it gives reasons only, no history. It agrees with the commit message and DESIGN.md:942. loading.spec.ts:38 comment accurate. docs-check: 0 errors. No other changes.",
-          "at": "2026-10-30T18:30:09Z",
-          "filesHash": "6aa22faa07837970"
-        },
-        "commit": "0049025d",
-        "doneAt": "2026-10-30T18:30:18Z"
-      },
-      "branch": "perf/f404-placeholders-pulse-on-the-compositor-so",
-      "baseCommit": "da1cc2011ea57c272daae1325edfa5834081ca2a",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "perf/f404-placeholders-pulse-on-the-compositor-so",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F405",
-      "type": "fix",
-      "behavior": "Base, Arbitrum and Arc read through one more public RPC provider, without the endpoints that rate-limit or drop batches",
-      "acceptance": [
-        "Migration 00094 adds thirdweb for Base, Arbitrum and Arc in its own budget group, and turns off the Tenderly and PublicNode WebSocket endpoints"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "backend"
-      ],
-      "refs": [
-        "R-185",
-        "R-191"
-      ],
-      "keep": [],
-      "review": true,
-      "notes": [
-        "2026-10-30 review fail by subagent: Code and migration are correct; docs were not updated, and one money-safety line is now false.\nOK: 1) Safety. No rule needs two providers or distinct budget groups: rpc.md:26 says one endpoint is enough; money-safety.md:173-174 accepts one provider. The canary has its own CANARY_RPC_URLS. R-187 echo still has 3+ hosts per chain. Base and Arbitrum keep 4 public endpoints, 4 groups, 4 hosts. Arc keeps blockdaemon x2, publicnode and thirdweb usable; official and quicknode answer 403 'error code: 1009' (rechecked once). thirdweb passed block-hash eth_call on all three chains, a third such endpoint on Arbitrum, where PublicNode lacks the state. 2) thirdweb refusals. Static trace of pool.post: the 413 batch body maps to BatchTooLarge/refusal{batch}. The 200 -32005 log answer: outage() skips it because tooLarge() wins over -32005, then safeResponse() and the r.blocks check give a refusal. A throwaway Go test with the exact bodies passed: both refused once, size remembered, 0 failures, alone they surface as BatchTooLarge/TooLarge, 1000 blocks pass (test file deleted). Live: chainId ok; 25-call batch 25/25; 26 calls give 413; 2000 blocks give 200 -32005 with the request id 42; 1000 blocks give 200. 3) Disabling matches rpc.md:42. Nothing re-enables rows; EnableTestnetTokens touches only chains/tokens. Down is the inverse, but it would also turn on a row an operator had turned off by hand before 00094 (same pattern as 00092, minor). 4) go test ./internal/chain/ ./internal/database/ passes, including the rollback test. The count 6->5 is fair (minus tenderly and publicnode-wss, plus thirdweb), and the check is still exact.\nFAIL, docs (AGENTS.md: update the owning doc when behavior changes): a) docs/backend/rpc.md:7-10 lists migrations 82 and 92 but not 94. It still reads as if Tenderly and PublicNode WSS are in the pool. Add a 94 bullet: thirdweb 1000 blocks/25 calls, Tenderly and PublicNode WSS turned off and why. Also consider rpc.md:63, and R-185 in PROJECT.md (cites only migration 92). b) docs/backend/money-safety.md:43 says the reachable Arc nodes lack logs 47 h old. Measured now, thirdweb on Arc served 1000-block USDC logs 60 h and 170 h old. Update the line, and say that ranges R-191 skipped can now be re-read (money-safety.md:46-47).\nNits: the commit names Blockdaemon non-JSON-RPC answers as a symptom but doesn't say why Blockdaemon stays (it passed every probe). Arc 1000-block unfiltered USDC logs took 4.6-5.6 s on thirdweb, near the 5 s exchange timeout; watcher filters are narrower. Optional: add the two thirdweb messages to TestBatchTooLarge/TestOutageIsToldFromAnAnswer; batchLimit depends on the text not containing 'rate'. Task has no refs (R-185).",
-        "2026-10-30 review pass by reviewer: Docs fixed and accurate. rpc.md:11-13 adds a migration 94 entry (thirdweb 1000 blocks / 25 calls, Tenderly and PublicNode WSS off); only base-tenderly and arbitrum-tenderly exist and both are off; Arc keeps blockdaemon-wss and official-wss, so 'PublicNode's WSS' is exact. R-185 cites 92 and 94. money-safety.md:43-44: PublicNode/Blockdaemon line plus thirdweb 170 h line sit under 'kept by no RPC any more' and before the manual next_block/target_block reset, so 'can be read again' points at that step; R-191 landed 2026-10-30 03:47, so every range skipped so far is inside 170 h. All new lines under 25 words; check-docs.py 0 errors. Tests: live probe of 84532.rpc.thirdweb.com today gave exactly the two test strings: 100-call batch -> HTTP 413 -32600 'batch of 100 exceeds the limit of 25 calls for keyless access. Upgrade your plan at https://thirdweb.com/pricing'; 2000-block getLogs -> HTTP 200 -32005 'Log response size exceeded. Maximum allowed number of requested blocks is 1000'. go test ./internal/chain/ -count=1 ok (11.9 s). Nit: 'so ranges skipped before it can be read again' can be misread as one clause; 'ranges skipped earlier can now be read again' would be clearer."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-30T18:48:31Z",
-        "checks": [
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "backend",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 241.6,
-            "log": ""
-          },
-          {
-            "id": "backend-affected",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 244.4,
-            "log": ""
-          },
-          {
-            "id": "backend-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 35.2,
-            "log": ""
-          }
-        ],
-        "taskHash": "5655ffb7a2fb2f7c",
-        "filesHash": "0c52b0d8f8180ff6",
-        "proof": {
-          "1": "backend: migration 00094 adds base-thirdweb, arbitrum-thirdweb and arc-thirdweb (https://<chainId>.rpc.thirdweb.com, budget group thirdweb-public) and turns off base-tenderly, arbitrum-tenderly and the PublicNode WebSocket rows on Base, Arbitrum and Arc. TestDatabaseEndpointConfiguration counts Base's enabled endpoints after all migrations: private plus official, PublicNode, Pocket and thirdweb. TestBatchTooLarge and TestOutageIsToldFromAnAnswer carry thirdweb's exact keyless refusals: a batch over 25 is a batch limit, a log range over 1000 blocks is not an outage. Measured 2026-10-30 (56 candidates): Tenderly answered a 100-call batch with HTTP 429 -32005; PublicNode WSS answered 2-3 of a 3-10 call batch then nothing for 15 s in 9 of 9 tries. thirdweb on Arc served logs 170 h old where PublicNode and Blockdaemon lacked 47 h."
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Docs fixed and accurate. rpc.md:11-13 adds a migration 94 entry (thirdweb 1000 blocks / 25 calls, Tenderly and PublicNode WSS off); only base-tenderly and arbitrum-tenderly exist and both are off; Arc keeps blockdaemon-wss and official-wss, so 'PublicNode's WSS' is exact. R-185 cites 92 and 94. money-safety.md:43-44: PublicNode/Blockdaemon line plus thirdweb 170 h line sit under 'kept by no RPC any more' and before the manual next_block/target_block reset, so 'can be read again' points at that step; R-191 landed 2026-10-30 03:47, so every range skipped so far is inside 170 h. All new lines under 25 words; check-docs.py 0 errors. Tests: live probe of 84532.rpc.thirdweb.com today gave exactly the two test strings: 100-call batch -> HTTP 413 -32600 'batch of 100 exceeds the limit of 25 calls for keyless access. Upgrade your plan at https://thirdweb.com/pricing'; 2000-block getLogs -> HTTP 200 -32005 'Log response size exceeded. Maximum allowed number of requested blocks is 1000'. go test ./internal/chain/ -count=1 ok (11.9 s). Nit: 'so ranges skipped before it can be read again' can be misread as one clause; 'ranges skipped earlier can now be read again' would be clearer.",
-          "at": "2026-10-30T18:58:51Z",
-          "filesHash": "0c52b0d8f8180ff6"
-        },
-        "commit": "7f990a27",
-        "doneAt": "2026-10-30T18:59:05Z"
-      },
-      "branch": "fix/f405-base-arbitrum-and-arc-read-through-one-m",
-      "baseCommit": "b3c9984fa0e64057eba6f16739d033cb711afc37",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f405-base-arbitrum-and-arc-read-through-one-m",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F406",
+      "id": "F408",
       "type": "feat",
-      "behavior": "Pending payments shows how much is moving, confirming and partly paid, each opening Payments at its status",
+      "behavior": "A payer claims held money from the pay page",
       "acceptance": [
-        "The card shows the USD total, a three-part bar, and fixed rows for moving to the wallet, confirming and partly paid. On hold sits at its foot. Each row with money opens Payments at its status. Moving to wallet opens exactly the payments it sums (settlementStatus=pending). The Balance card and Pending payments share one height, whatever is pending."
+        "A payer with held money presses Claim refund on /pay, connects the wallet that sent it and signs a claim naming the invoice and the destination; plain and smart-contract wallet signatures are both verified",
+        "An exchange deposit gives a destination and support evidence instead of a signature (Q-9)",
+        "Claims live in refund_claims with states the payer sees, and each state change reaches the payer receipt email once",
+        "From an embed, Claim refund opens the hosted page in a new tab"
       ],
-      "dependsOn": [],
-      "state": "passing",
+      "dependsOn": [
+        "F333"
+      ],
+      "state": "not_started",
       "verification": [
-        "web-unit",
-        "web-e2e",
-        "live-e2e"
+        "unit",
+        "backend-e2e",
+        "web-e2e"
       ],
       "refs": [
-        "R-193",
-        "R-203"
-      ],
-      "keep": [],
-      "review": true,
-      "notes": [
-        "2026-10-30 review fail by subagent: Accept 1 fails: two of the three rows count money their link leaves out. A temporary balance test (since removed) showed it against a disposable DB. (1) Partially paid: a partly paid payment past its close reads state expired (ClosedSQL, R-77), but balance.go keeps it in partial (payment_status still partially_paid) until the ledger books the expiry, after the chain's finalized time passes closes_at. Test: partial +700000, list state expired. So ?state=partially_paid leaves it out, in a normal flow, for the finality lag, and that money is about to be on hold. (2) Confirming: balance.go adds every unbooked deposit, whatever the payment's state: an extra deposit on a paid payment, a late one after close, one on a non-chosen option, one on an expired or canceled payment. PaymentStateSQL reads those payments as paid, overpaid, expired or canceled, and ConfirmingSQL needs block_time <= closes_at on the shown option. Test: confirming +200000, list state paid. Moving is right: settlement_status=pending is set only when the option becomes paid, and the settle outflow that sets settled takes its payable; delayed and refused are included. Fix: in balance.go, sort pending into parts by the list's own predicates (no closed partials, no off-state unbooked deposits), update R-33 and TestPendingParts; or stop claiming each row opens exactly the payments it counts. Minor: with prices failed, a zero part reads '—' and is a link; link names have no 'USD'; DESIGN.md line 179 still lists only Moving to wallet and Not final; a Finance member limited to some stores sees the whole profile's totals but only their stores' list; when linkId and settlementStatus are both set there are two 'Show all payments' buttons; BUSINESS_COPY.open was already unused before this change. Checks run: web unit 217/217, tsc 0 errors, check-docs 0 errors. Live e2e not run (it needs ports 3000 and 8080).",
-        "2026-10-30 review fail by reviewer: The listed reasons why Confirming and Partially paid can differ from the list are incomplete. A temporary balance test (since removed) on a disposable DB shows a third, common case. A partly paid payment (700000 of 5000000 booked) gets its next deposit (4300000, detected, on time). balance.go: partial +700000 (payment_status stays partially_paid, booked < amount), confirming +4300000. PaymentStateSQL reads the payment as confirming (ConfirmingSQL on the on-time detected transfer). So Partially paid counts 0.70 USD that ?state=partially_paid leaves out, on the normal path of finishing any partial payment. The card comment, DESIGN.md (Pending payments sub-bullets) and the commit message each present two cases as the full list. Fix: name this case too, or say the parts follow ledger rules and give the cases as examples. Also D-84: the card comment's last sentence is 33 words; split it. The accept line's first sentence is 27 words. Verified fine: Moving to wallet = settlementStatus=pending; the two named cases match balance.go and payments.go/list.go; fieldUnits zero rule is right (a part reads 0.00 only with 0 base units, or under one cent once priced, which is the existing cut-to-cents rule); the new card test fails without the zero rule (no 0.00 found) and passes with it; prior minors (zero part link without prices, USD in link names, DESIGN.md market-price line) are fixed. Checks: web unit 218/218, tsc exit 0, check-docs 0 errors. Live e2e not run (owner's ports).",
-        "2026-10-30 review pass by reviewer: Wording is accurate against balance.go and the list's state SQL. Only Moving to wallet is called exact (settlement_status pending). Confirming and Partially paid are said to follow bookings and differ for a while, with cases given as examples. All three examples hold. Comment, DESIGN.md and accept sentences are at most 25 words (longest 21). check-docs: 0 errors. Nits, not blocking: 'a new deposit' is true only for an on-time one. A late one lists as expired. In the commit, the 'Making the parts follow' bullet sits under 'Some examples'.",
-        "2026-10-30 review pass by reviewer: Since the passed version (ea380468), only wording changed: DESIGN.md line 211 now says 'a new on-time deposit', and the commit message says the same and moves the 'Making the parts follow' bullet out of 'Some examples'. tasks.json differs only by harness bookkeeping. 'On-time' is accurate: ConfirmingSQL in invoice/list.go needs block_time<=closes_at and the list's confirming state needs NOT ClosedSQL. The line is 20 words. check-docs: 0 errors."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-30T20:02:42Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.2,
-            "log": ""
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 3.9,
-            "log": ""
-          },
-          {
-            "id": "live-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 392.5,
-            "log": ""
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 30.9,
-            "log": ""
-          }
-        ],
-        "taskHash": "713b92fdb46e159e",
-        "filesHash": "43bbe1d2000f71f2",
-        "proof": {
-          "1": "live-e2e: balances.spec 'the business balance card and Pending payments share one height, and each pending part opens Payments at its status': with nothing pending the card shows a 0.00 total, three '0.00 USD' parts and no link, at the Balance card's height. With 2.00 moving, 1.00 confirming, 0.50 partly paid and 0.89 held, it shows 3.50 and keeps the shared height. It links 'Confirming 1.00 USD' to /app/payments?state=confirming and 'Partially paid 0.50 USD' to ?state=partially_paid. 'Moving to wallet 2.00 USD' opens /app/payments?settlementStatus=pending, which asks the API for settlementStatus=pending, and shows the filter line until Show all payments clears it. loading.spec: both cards keep one height from first frame to loaded. web-unit: on-its-way-card.test, without prices a part with money reads '—' and one without reads 0.00 and is no link; it fails with the old no-tokens-only zero rule. balances.test: marketUsd splits pending into settling, confirming and partial; an older read without parts is all moving."
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Since the passed version (ea380468), only wording changed: DESIGN.md line 211 now says 'a new on-time deposit', and the commit message says the same and moves the 'Making the parts follow' bullet out of 'Some examples'. tasks.json differs only by harness bookkeeping. 'On-time' is accurate: ConfirmingSQL in invoice/list.go needs block_time<=closes_at and the list's confirming state needs NOT ClosedSQL. The line is 20 words. check-docs: 0 errors.",
-          "at": "2026-10-30T20:10:41Z",
-          "filesHash": "43bbe1d2000f71f2"
-        },
-        "commit": "013399e9",
-        "doneAt": "2026-10-30T20:10:49Z"
-      },
-      "branch": "feat/f406-pending-payments-shows-how-much-is-movin",
-      "baseCommit": "cccb004edc439fc4f255b1c19f6ae6062d5ee874",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f406-pending-payments-shows-how-much-is-movin",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F407",
-      "type": "docs",
-      "behavior": "Phase 11 builds checkout and refund features before merchant onboarding",
-      "acceptance": [
-        "Payment-link wording matches document-free checkout; phase 11 refunds remain limited to held funds.",
-        "F333 no longer depends on onboarding; F332 follows integration and remains blocked until all other phase 11 features are complete."
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "docs-check"
-      ],
-      "refs": [
-        "R-142",
-        "R-167",
-        "R-168",
-        "D-107",
-        "D-112"
+        "D-78",
+        "D-37",
+        "D-57",
+        "D-68",
+        "D-89",
+        "D-90",
+        "Q-9"
       ],
       "keep": [
-        "apps/*",
-        "packages/*"
+        "packages/contracts/src/*"
       ],
-      "review": false,
-      "notes": [
-        "2026-10-30 Corrected payment-link wording and phase 11 order. Onboarding remains blocked until all other phase 11 features and checks finish. Documentation and dependency checks pass. No temporary processes or test fixtures created. Changes are uncommitted."
-      ],
+      "review": true,
+      "notes": [],
       "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-30T20:49:38Z",
-        "checks": [
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "keep",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          }
-        ],
-        "taskHash": "e5ede04af20a556b",
-        "filesHash": "62405b038c14b83b",
-        "proof": {
-          "1": "docs-check: PLAN 11.3 describes document-free checkout attempts; 11.10 keeps payer claims limited to held money.",
-          "2": "docs-check: PLAN and D-112 require onboarding last. Harness-state assertions passed: F333 is ready, F334 and F335 follow in order, F332 stays blocked after F335, and there is no cycle. F331 is already merged as ef494bab; F333 has no pending dependency on its stale local archive."
-        },
-        "commit": "aba7dafc",
-        "doneAt": "2026-10-30T20:51:08Z"
-      },
-      "branch": "docs/f407-phase-11-builds-checkout-and-refund-feat",
-      "baseCommit": "8ad15c9de54a01d8e6184d8a13e40755b9fe5e25",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "docs/f407-phase-11-builds-checkout-and-refund-feat",
-        "base": "main"
-      }
+      "evidence": null
+    },
+    {
+      "id": "F409",
+      "type": "feat",
+      "behavior": "The owner sees money sent above the amount and can return it",
+      "acceptance": [
+        "The owner's invoice page shows money sent above the amount as held for the payer, with a way to return it through the refund flow"
+      ],
+      "dependsOn": [
+        "F408"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "web-e2e"
+      ],
+      "refs": [
+        "D-24",
+        "D-26",
+        "D-57"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F410",
+      "type": "feat",
+      "behavior": "An ops command approves refund claims and prints the Safe refund call",
+      "acceptance": [
+        "cmd/ops lists claims and approves or rejects each with a reason; approval sets the invoice's refund status to refund_pending before the Safe call is queued",
+        "It prints the refund(to, amount) call for the refund-authority Safe, one refund of everything held by default, with no new hot key",
+        "The watcher books the refund once, and it shows on the payment page beside the payments and the settlement"
+      ],
+      "dependsOn": [
+        "F408"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "backend-e2e"
+      ],
+      "refs": [
+        "D-57",
+        "D-60",
+        "D-90",
+        "R-130",
+        "R-164"
+      ],
+      "keep": [
+        "packages/contracts/src/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F411",
+      "type": "feat",
+      "behavior": "A payer who sent on the wrong network can open a recovery claim",
+      "acceptance": [
+        "The payer gives a transaction hash; the API finds it on an enabled chain and opens a recovery claim; recover() is offered only where our factory exists, and no page promises recovery"
+      ],
+      "dependsOn": [
+        "F408"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "backend-e2e",
+        "web-e2e"
+      ],
+      "refs": [
+        "D-33",
+        "D-78"
+      ],
+      "keep": [
+        "packages/contracts/src/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F412",
+      "type": "test",
+      "behavior": "Held-money refunds pass end to end on Anvil",
+      "acceptance": [
+        "On Anvil: overpay, expired partial and late payments each go claim then refund, a smart-wallet claim passes, and the ledger matches the chain after each"
+      ],
+      "dependsOn": [
+        "F409",
+        "F410",
+        "F411"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend-e2e"
+      ],
+      "refs": [
+        "D-78",
+        "D-26",
+        "D-57"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {
