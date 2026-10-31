@@ -5,6 +5,7 @@ import {
   ChoiceCard,
   DatePicker,
   SelectField,
+  Switch,
   TextField,
   TONES,
   useToast,
@@ -64,6 +65,8 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
   const [store, setStore] = useState(link?.storeId ?? stores[0]?.storeId ?? "");
   const [endsAt, setEndsAt] = useState<string | null>(link?.endsAt ?? null);
   const [active, setActive] = useState(link?.active ?? true);
+  // Off, the link takes one payment: a cap of 1.
+  const [reusable, setReusable] = useState(link?.maxPayments !== 1);
   const [errors, setErrors] = useState<Partial<Record<LinkField, string>>>({});
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -73,7 +76,7 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
     amountUsd: link?.amountUsd ?? "",
     minUsd: link?.minUsd ?? "",
     maxUsd: link?.maxUsd ?? "",
-    maxPayments: link?.maxPayments ? String(link.maxPayments) : "",
+    maxPayments: link?.maxPayments && link.maxPayments !== 1 ? String(link.maxPayments) : "",
   }));
   const readTyped = (event: FormEvent<HTMLFormElement>) => {
     const data = new FormData(event.currentTarget);
@@ -104,7 +107,7 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
       minUsd: kind === AMOUNT_KINDS.open ? usd("minUsd") : null,
       maxUsd: kind === AMOUNT_KINDS.open ? usd("maxUsd") : null,
       endsAt,
-      maxPayments: cap ? Number(cap) : null,
+      maxPayments: !reusable ? 1 : cap ? Number(cap) : null,
       active,
     };
   };
@@ -174,7 +177,11 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
         });
   const limits = [
     endsAt ? COPY.preview.until(formatDueDate(endsAt.slice(0, 10))) : null,
-    /^\d+$/.test(typed.maxPayments) ? COPY.preview.cap(Number(typed.maxPayments)) : null,
+    !reusable
+      ? COPY.preview.once
+      : /^\d+$/.test(typed.maxPayments)
+        ? COPY.preview.cap(Number(typed.maxPayments))
+        : null,
   ].filter(Boolean);
   return (
     <StepForm
@@ -331,6 +338,10 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
       </div>
       <div data-step={STEPS.limits} className={flow.shows(STEPS.limits)}>
         <FieldGroup title={COPY.limitsGroup}>
+          <div className="flex flex-col gap-1">
+            <Switch label={COPY.reusable} checked={reusable} onCheckedChange={setReusable} />
+            <p className="text-sm text-muted">{COPY.reusableHint}</p>
+          </div>
           <div className="grid gap-5 sm:grid-cols-2">
             <DatePicker
               label={COPY.endsOn}
@@ -339,15 +350,17 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
               hint={COPY.endsOnHint}
               clearLabel={COPY.clearDate}
             />
-            <TextField
-              label={COPY.maxPayments}
-              name="maxPayments"
-              inputMode="numeric"
-              autoComplete="off"
-              defaultValue={link?.maxPayments ?? ""}
-              hint={COPY.maxPaymentsHint}
-              error={errors.maxPayments}
-            />
+            {reusable ? (
+              <TextField
+                label={COPY.maxPayments}
+                name="maxPayments"
+                inputMode="numeric"
+                autoComplete="off"
+                defaultValue={typed.maxPayments}
+                hint={COPY.maxPaymentsHint}
+                error={errors.maxPayments}
+              />
+            ) : null}
           </div>
           <div className="flex flex-col gap-1">
             <Checkbox

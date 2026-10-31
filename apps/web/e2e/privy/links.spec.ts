@@ -144,7 +144,8 @@ test("the owner lists payment links with their activity, makes an open one and t
   await expect(main.getByRole("button", { name: "Copy the link's address" })).toBeVisible();
 
   await page.goto(`/app/links/${FIXED}`);
-  await main.getByRole("link", { name: "Edit payment link" }).click();
+  await main.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Edit payment link" }).click();
   await main
     .getByRole("navigation", { name: "Payment link form steps" })
     .getByRole("button", { name: /Limits/ })

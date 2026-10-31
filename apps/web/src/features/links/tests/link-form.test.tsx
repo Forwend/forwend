@@ -21,24 +21,25 @@ vi.stubGlobal(
 
 afterEach(cleanup);
 
-it("preserves an exact payment-link expiry when only its title changes", async () => {
-  const link: Link = {
-    linkId: "aaaaaaaa-0000-4000-8000-000000000001",
-    slug: "k3f9q2m7x1ab",
-    livemode: false,
-    title: "Before",
-    storeId: null,
-    amountUsd: "50.00",
-    minUsd: null,
-    maxUsd: null,
-    endsAt: "2026-10-28T10:00:00Z",
-    maxPayments: null,
-    active: true,
-    visits: 0,
-    paid: 0,
-    createdAt: "2026-10-25T00:00:00Z",
-    updatedAt: "2026-10-25T00:00:00Z",
-  };
+const LINK: Link = {
+  linkId: "aaaaaaaa-0000-4000-8000-000000000001",
+  slug: "k3f9q2m7x1ab",
+  livemode: false,
+  title: "Before",
+  storeId: null,
+  amountUsd: "50.00",
+  minUsd: null,
+  maxUsd: null,
+  endsAt: "2026-10-28T10:00:00Z",
+  maxPayments: null,
+  active: true,
+  visits: 0,
+  paid: 0,
+  createdAt: "2026-10-25T00:00:00Z",
+  updatedAt: "2026-10-25T00:00:00Z",
+};
+
+function edit(link: Link) {
   const bodies: Record<string, unknown>[] = [];
   vi.stubGlobal(
     "fetch",
@@ -54,9 +55,37 @@ it("preserves an exact payment-link expiry when only its title changes", async (
       </ToastProvider>
     </Provider>,
   );
-  fireEvent.change(screen.getByLabelText("Title"), { target: { value: "After" } });
+  return bodies;
+}
+
+const save = async () => {
   fireEvent.click(screen.getByRole("button", { name: "Save link" }));
   await act(() => new Promise((resolve) => setTimeout(resolve, 30)));
+};
+
+it("preserves an exact payment-link expiry when only its title changes", async () => {
+  const bodies = edit(LINK);
+  fireEvent.change(screen.getByLabelText("Title"), { target: { value: "After" } });
+  await save();
   expect(bodies).toHaveLength(1);
-  expect(bodies[0]).toMatchObject({ title: "After", endsAt: link.endsAt });
+  expect(bodies[0]).toMatchObject({ title: "After", endsAt: LINK.endsAt });
+});
+
+it("saves a link that isn't reusable with a cap of one payment, and a reusable one with its own cap", async () => {
+  const bodies = edit({ ...LINK, maxPayments: 25 });
+  const reusable = screen.getByRole("switch", { name: "Reusable" });
+  expect(reusable.getAttribute("aria-checked")).toBe("true");
+  fireEvent.click(reusable);
+  expect(screen.queryByLabelText("Payment cap (optional)")).toBeNull();
+  await save();
+  fireEvent.click(reusable);
+  await save();
+  expect(bodies.map((body) => body.maxPayments)).toEqual([1, 25]);
+});
+
+it("opens a one-payment link with Reusable off", () => {
+  edit({ ...LINK, maxPayments: 1 });
+  expect(screen.getByRole("switch", { name: "Reusable" }).getAttribute("aria-checked")).toBe(
+    "false",
+  );
 });

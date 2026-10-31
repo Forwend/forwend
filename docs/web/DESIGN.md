@@ -334,10 +334,15 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Link, client and store pages give the side 22rem and keep it in view while the main column scrolls.
   - Their list's own actions (Open in Invoices or Payments, Export) sit at the list's head, not in the header.
 - Checkout (`/app/checkout`, merchants with invoices.write) takes a payment in person:
-  - A form page: Store (when more than one), Amount in USD, Order reference and What it's for, then Show QR code.
-  - Then the customer's side: the reference, `BigAmount` in USD and one QR code of the pay link.
-  - Beside it a Checkout card: the status pill, one sentence and the close time; it checks every 3 seconds until decided.
-  - Actions: Open payment, Copy payment link and Cancel checkout; once decided, New sale (lime) starts a fresh form.
+  - From large screens the sale is a 26rem column, with Recent checkouts beside it; phones stack them.
+  - Recent checkouts is the payments list of checkouts, newest first.
+  - The sale starts as a form: Store (when more than one), Amount in USD, Order reference and What it's for.
+  - Show QR code turns it into one card: the label, Test mode and More actions in its head.
+  - Then `BigAmount` in USD, one QR code of the pay link, the status pill, one sentence and the close time.
+  - It checks every 3 seconds until decided.
+  - At its foot Copy payment link; once decided, New sale (lime) starts a fresh form.
+  - More actions holds Open payment and, while nothing is paid, Cancel checkout behind a confirm.
+  - A checkout's payment page has the same Cancel checkout in its More actions.
   - A retried tap reuses the idempotency key; any change makes a new one.
 - Clients (R-86) is laid out like Invoices: the toolbar's search (name, email, tax ID) with Add client at its end
   (beside the title on phones), then a table of the client with its initials avatar, billing email, country and tax
@@ -435,7 +440,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The status is On, Off, Ended, Cap reached or Setup needed; only On is green.
   - Test links keep their mode label in lists and details; public checkout shows Testnet beside the payee.
   - The link page reads one link (`GET /links/{id}`) and opens with `DetailHeader`: a link icon tile, the title with
-    status and mode badges, "Payment link · Created …", the price as the figure and Edit payment link.
+    status and mode badges, "Payment link · Created …", the price as the figure and More actions.
+  - More actions holds Edit payment link and Turn off or Turn on, which saves at once with a toast.
   - Main column: Visits, Paid (with its share of visits) and Checkouts open, then the purchases.
   - Side column (first on narrower screens): Share, with the address on its own row, Copy and Open (a new tab) and a
     QR code; then Details with the store, last day, payment cap and last update.
@@ -580,6 +586,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - A new store can pick its logo in Brand; it previews at once and uploads right after the store saves.
     - The preview is the pay page header, an `AssetStack` of what a payer can use, and the checkout close.
   - Payment links: Link, Amount, Limits; the preview is the pay page with the amount or range and the limits.
+    - Limits starts with Reusable, on by default. Off, the link takes one payment and the cap field hides.
   - Jobs: Work, Client, Payments; the preview is the quote with its schedule and total.
   - Editing opens every step from the stepper (numbers, no checks) and puts Save on each step beside Continue.
   - Continue checks the step on screen; Save checks everything and opens the step of the first error.

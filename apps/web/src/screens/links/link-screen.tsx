@@ -12,6 +12,7 @@ import { Link2 } from "lucide-react";
 import Link from "next/link";
 import { formatDueDate } from "@/features/invoices/lib/invoices";
 import { useGetLinkQuery } from "@/features/links/api/links-api";
+import { LinkActions } from "@/features/links/components/link-actions";
 import { LINK_STATES } from "@/features/links/constants/links";
 import { LINKS_COPY as COPY } from "@/features/links/constants/links-copy";
 import { amountLabel, linkAddress, linkState } from "@/features/links/lib/links";
@@ -82,12 +83,7 @@ export function LinkScreen({ linkId }: LinkScreenProps) {
         figure={{ label: COPY.price, value: amountLabel(link) }}
         actions={
           can(profile, PERMISSIONS.invoicesWrite) ? (
-            <Link
-              href={`${APP_ROUTES.links}/${linkId}/edit`}
-              className={buttonClasses({ variant: "secondary" })}
-            >
-              {COPY.edit}
-            </Link>
+            <LinkActions profileId={profile.profileId} link={link} />
           ) : null
         }
       />

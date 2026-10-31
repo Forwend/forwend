@@ -54,11 +54,13 @@ import { dateTime } from "@/shared/lib/dates";
 export interface PaymentDetailProps {
   profileId: string;
   paymentId: string;
+  /** More header actions the screen composes from other features, such as a checkout's Cancel. */
+  actions?: (payment: PaymentDetailType) => ReactNode;
 }
 
 type Option = PaymentDetailType["options"][number];
 
-export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
+export function PaymentDetail({ profileId, paymentId, actions }: PaymentDetailProps) {
   const read = useGetPaymentQuery({ profileId, paymentId }, LIVE_QUERY);
   const payment = read.currentData;
   if (!payment)
@@ -140,6 +142,7 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
               </a>
             ) : null}
             <ExportPayments profileId={profileId} paymentId={paymentId} />
+            {actions?.(payment)}
           </>
         }
       />

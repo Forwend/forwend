@@ -4,8 +4,6 @@ import {
   Badge,
   BigAmount,
   Button,
-  buttonClasses,
-  Card,
   COPY_STATUS,
   PAYMENT_STATUS,
   QrCode,
@@ -14,15 +12,13 @@ import {
   useCopy,
 } from "@forwend/ui-web";
 import { Check, Copy } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { formatUsd } from "@/features/balances/lib/balances";
-import { useExpireCheckoutMutation } from "@/features/checkout/api/checkout-api";
+import { CheckoutActions } from "@/features/checkout/components/checkout-actions";
 import { CHECKOUT_COPY as COPY } from "@/features/checkout/constants/checkout-copy";
 import type { CheckoutSession } from "@/features/checkout/types/checkout";
 import { useGetPaymentQuery } from "@/features/payments/api/payments-api";
 import { paymentDisplayStatus, paymentLabel } from "@/features/payments/lib/payments";
-import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 
 // The customer is standing there: check often, and stop once the sale is decided.
@@ -55,8 +51,6 @@ export function CheckoutLive({ profileId, session, amountUsd, onNewSale }: Check
   const payment = read.currentData ?? session.payment;
   const status = paymentDisplayStatus(payment);
   if (DONE.has(status) !== done) setDone(DONE.has(status));
-  const [expire, expiring] = useExpireCheckoutMutation();
-  const [cancelError, setCancelError] = useState("");
   const url = payment.hostedUrl ?? "";
   const [copied, copy] = useCopy(url);
   const paid = status === PAYMENT_STATUS.paid || status === PAYMENT_STATUS.overpaid;
@@ -73,25 +67,25 @@ export function CheckoutLive({ profileId, session, amountUsd, onNewSale }: Check
             : COPY.status.waiting;
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      <section
-        aria-labelledby="checkout-scan"
-        className="flex flex-col items-center gap-4 rounded-lg border border-line bg-surface p-6 text-center sm:p-8"
-      >
+    <section aria-labelledby="checkout-scan" className="fw-panel min-w-0">
+      <div className="fw-panel-head">
         <h2
           id="checkout-scan"
           ref={heading}
           tabIndex={-1}
-          className="text-sm text-muted outline-none"
+          className="min-w-0 flex-1 truncate text-base font-semibold text-ink outline-none"
         >
           {paymentLabel(payment)}
-          {payment.livemode ? null : (
-            <>
-              {" "}
-              <Badge tone={TONES.warning}>{COPY.testMode}</Badge>
-            </>
-          )}
         </h2>
+        {payment.livemode ? null : <Badge tone={TONES.warning}>{COPY.testMode}</Badge>}
+        <CheckoutActions
+          profileId={profileId}
+          paymentId={payment.paymentId}
+          cancelable={status === PAYMENT_STATUS.open}
+          withPayment
+        />
+      </div>
+      <div className="flex flex-col items-center gap-4 px-4 py-6 text-center sm:px-5">
         <p className="text-ink">
           <BigAmount value={formatUsd(usdToCents(amountUsd))} className="text-5xl" />{" "}
           <span className="text-base text-subtle">{MONEY_COPY.usd}</span>
@@ -110,11 +104,9 @@ export function CheckoutLive({ profileId, session, amountUsd, onNewSale }: Check
             <Check aria-hidden className="size-10" />
           </span>
         ) : null}
-      </section>
-
-      <div className="flex flex-col gap-4">
-        <Card id="checkout-status" title={COPY.title} action={<StatusPill status={status} />}>
-          <p role="status" className="mt-1 text-ink">
+        <div className="flex flex-col items-center gap-1">
+          <StatusPill status={status} />
+          <p role="status" className="text-ink">
             {sentence}
           </p>
           {open ? (
@@ -127,17 +119,16 @@ export function CheckoutLive({ profileId, session, amountUsd, onNewSale }: Check
               )}
             </p>
           ) : null}
-        </Card>
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-          {done ? <Button onClick={onNewSale}>{COPY.newSale}</Button> : null}
-          <Link
-            href={`${APP_ROUTES.payments}/${payment.paymentId}`}
-            className={buttonClasses({ variant: "secondary" })}
-          >
-            {COPY.openPayment}
-          </Link>
-          {open && url ? (
-            <Button variant="secondary" onClick={() => void copy()}>
+        </div>
+      </div>
+      {done || (open && url) ? (
+        <div className="border-t border-line p-4 sm:p-5">
+          {done ? (
+            <Button className="w-full" onClick={onNewSale}>
+              {COPY.newSale}
+            </Button>
+          ) : (
+            <Button variant="secondary" className="w-full" onClick={() => void copy()}>
               {copied === COPY_STATUS.copied ? (
                 <Check aria-hidden className="size-[var(--fw-icon-sm)]" />
               ) : (
@@ -145,28 +136,10 @@ export function CheckoutLive({ profileId, session, amountUsd, onNewSale }: Check
               )}
               {copied === COPY_STATUS.copied ? COPY.copied : COPY.copyLink}
             </Button>
-          ) : null}
-          {open && status === PAYMENT_STATUS.open ? (
-            <Button
-              variant="ghost"
-              loading={expiring.isLoading}
-              onClick={() => {
-                setCancelError("");
-                expire({ profileId, sessionId: session.sessionId })
-                  .unwrap()
-                  .then(() => void read.refetch())
-                  .catch(() => setCancelError(COPY.cancelFailed));
-              }}
-            >
-              {COPY.cancel}
-            </Button>
-          ) : null}
+          )}
         </div>
-        <p role="alert" className="min-h-5 text-sm text-danger">
-          {cancelError}
-        </p>
-      </div>
-    </div>
+      ) : null}
+    </section>
   );
 }
 

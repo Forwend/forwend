@@ -7,7 +7,7 @@ export const LINKS_COPY = {
   add: "New link",
   newTitle: "New payment link",
   editTitle: "Edit payment link",
-  intro: "A reusable offer. Each purchase is its own payment.",
+  intro: "An offer to share. Each purchase is its own payment.",
   columns: {
     link: "Link",
     address: "Address",
@@ -37,6 +37,12 @@ export const LINKS_COPY = {
   retry: "Try again",
   gone: "This link is not in your list anymore.",
   edit: "Edit payment link",
+  moreActions: "More actions",
+  turnOff: "Turn off",
+  turnOn: "Turn on",
+  turnedOff: (title: string) => `${title} is off`,
+  turnedOn: (title: string) => `${title} is on`,
+  toggleFailed: "We could not change the link. Try again.",
   offer: "Link address",
   share: "Share",
   open: "Open",
@@ -80,6 +86,8 @@ export const LINKS_COPY = {
   max: "Maximum (USD, optional)",
   usdHint: "The payer picks a stablecoin and network; each stablecoin counts as 1 USD.",
   limitsGroup: "Limits",
+  reusable: "Reusable",
+  reusableHint: "Pay multiple times with this link. Off, it closes after one payment.",
   endsOn: "Last day (optional)",
   endsOnHint: "The link works through this day, UTC.",
   clearDate: "Clear the last day",
@@ -103,6 +111,7 @@ export const LINKS_COPY = {
     cap: (n: number) =>
       n === 1 ? "1 payment at most" : `${n.toLocaleString("en-US")} payments at most`,
     off: "The link is off: payers can't start a purchase.",
+    once: "One payment, then it closes",
   },
   saved: (title: string) => `${title} saved`,
   errors: {
