@@ -984,7 +984,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Progress: a bar fills once with `ease-out` on `duration-slower`; a spinner turns while work runs.
   - Placeholders wait `duration-slow`, then fade in on `duration-base` and pulse, so a quick answer shows none.
   - Reduced motion keeps that wait and drops the pulse.
-  - The fade animates opacity and the pulse a filter: two animations of one property can't run on the compositor.
+  - A placeholder is the line color, and pulses to half opacity on `ease-pulse`, as shadcn's does.
+    - On surface-2 the pulse spanned a few shades, and it stepped like a slow slideshow.
+  - The pulse animates opacity and the fade a filter: two animations of one property can't both apply.
   - Reduced motion removes movement and keeps every state change (color, text, the filled bar).
 - Touch targets are at least 44px on touch screens; small controls keep their look and grow only their hit area. A
   segmented track, the list search and the header search triggers grow to 44px themselves (a scrolling track would
