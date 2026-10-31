@@ -60,7 +60,7 @@ func TestSupportReturnsAnOverpaymentToItsSenderOnce(t *testing.T) {
 	if _, err := e.pool.Exec(ctx, "UPDATE invoices SET pay_token = $2 WHERE id = $1", id, payToken); err != nil {
 		t.Fatal(err)
 	}
-	for _, ref := range []string{receive, hash, "https://forwend.com/pay/" + payToken, "https://forwend.com/embed/" + payToken + "?layout=full", payToken} {
+	for _, ref := range []string{receive, hash, id, "https://forwend.com/pay/" + payToken, "https://forwend.com/embed/" + payToken + "?layout=full", payToken} {
 		want := []CaseOption{{ID: id, ChainID: e.chainID}}
 		if got, err := CaseOptions(ctx, e.pool, " "+ref+" "); err != nil || !slices.Equal(got, want) {
 			t.Fatalf("case %s: %v, %v", ref, got, err)

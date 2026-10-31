@@ -68,7 +68,7 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 
 Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no key and sends nothing.
 
-- `ops case <pay link | receive address | payment transaction>` prints each invoice option:
+- `ops case <pay link | receive address | payment transaction | invoice id>` prints each invoice option:
   - its held money and why it is held, from the ledger and its history;
   - each final payment: transaction, sender, amount and time;
   - the receiver from `factory.status`: deployed, balance, refundable now, and the deadline after which all of it is.

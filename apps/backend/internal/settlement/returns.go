@@ -95,8 +95,8 @@ type CaseOption struct {
 	ChainID uint64
 }
 
-// CaseOptions finds the invoice options a payer's message points to: a pay link or its token, a receive address,
-// or a payment's transaction hash.
+// CaseOptions finds the invoice options a support case points to: a pay link or its token, a receive address, a
+// payment's transaction hash, or an invoice id from the owner's dashboard.
 func CaseOptions(ctx context.Context, db *pgxpool.Pool, ref string) ([]CaseOption, error) {
 	ref = strings.ToLower(strings.TrimSpace(ref))
 	var query string
@@ -104,8 +104,10 @@ func CaseOptions(ctx context.Context, db *pgxpool.Pool, ref string) ([]CaseOptio
 	case addressRef.MatchString(ref):
 		query = "SELECT id, chain_id FROM invoices WHERE receive_address = $1 ORDER BY id"
 	case hashRef.MatchString(ref):
-		query = `SELECT DISTINCT i.id, i.chain_id FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id
-			WHERE t.tx_hash = $1 ORDER BY i.id`
+		query = `SELECT i.id, i.chain_id FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id WHERE t.tx_hash = $1
+			UNION SELECT o.id, o.chain_id FROM invoices o
+			WHERE coalesce(o.main_id, o.id) = (SELECT coalesce(main_id, id) FROM invoices WHERE id = $1)
+			ORDER BY 1`
 	default:
 		m := payTokenIn.FindStringSubmatch(ref)
 		if m == nil {

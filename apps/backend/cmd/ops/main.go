@@ -25,10 +25,10 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/settlement"
 )
 
-const usage = `usage:
-  ops case <pay link | receive address | payment transaction>
-  ops return -tx <payment transaction> [-to <address>] [-amount <tokens>] <pay link | receive address | payment transaction>
-  ops release <pay link | receive address | payment transaction>`
+const usage = `usage, where <case> is a pay link, a receive address, a payment's transaction or an invoice id:
+  ops case <case>
+  ops return -tx <payment transaction> [-to <address>] [-amount <tokens>] <case>
+  ops release <case>`
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -82,6 +82,7 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 
 	switch args[0] {
 	case "case":
+		quiet := 0
 		for _, o := range options {
 			c, err := client(o.ChainID)
 			if err != nil {
@@ -91,7 +92,14 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 			if err != nil {
 				return err
 			}
+			if len(h.Payments) == 0 && h.Held.Sign() == 0 && h.Balance.Sign() == 0 {
+				quiet++
+				continue
+			}
 			printHeld(out, h)
+		}
+		if quiet > 0 {
+			fmt.Fprintf(out, "%d other option(s) of this invoice have no payments and hold nothing.\n", quiet)
 		}
 		return nil
 	case "return":
