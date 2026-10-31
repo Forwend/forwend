@@ -1026,7 +1026,7 @@ function GetItBack() {
   return (
     <NeedHelp
       trigger={(open) => (
-        <Button variant={BUTTON_VARIANTS.link} onClick={open}>
+        <Button variant={BUTTON_VARIANTS.link} className="text-sm" onClick={open}>
           {COPY.howToGetBack}
         </Button>
       )}

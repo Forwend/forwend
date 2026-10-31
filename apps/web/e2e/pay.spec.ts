@@ -793,7 +793,10 @@ test.describe("pay page", () => {
       await expect(
         page.getByText(/ask (the recipient|Alice Design GmbH) to get it back/i),
       ).toHaveCount(0);
-      await page.getByRole("button", { name: "How to get it back" }).click();
+      const getBack = page.getByRole("button", { name: "How to get it back" });
+      // The same size as the line it follows, under a status line too.
+      await expect(getBack).toHaveCSS("font-size", "14px");
+      await getBack.click();
       await expect(
         page
           .getByRole("dialog", { name: "Need help?" })
