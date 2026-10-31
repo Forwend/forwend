@@ -137,11 +137,6 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
-
-    /* A placeholder still waits before it shows, so a quick answer never flashes one; then it stays still. */
-    [data-skeleton] {
-      animation: fw-reveal 0.01ms var(--fw-duration-slow) both !important;
-    }
   }
 }
 
@@ -251,17 +246,10 @@
   }
 }
 
-/* A placeholder pulses on opacity, which every browser animates off the main thread. Its one reveal is on filter
-   (fw-reveal): two animations of one property on one element can't both apply. */
+/* A placeholder pulses on opacity, which every browser animates off the main thread. */
 @keyframes fw-pulse {
   50% {
     opacity: 0.5;
-  }
-}
-
-@keyframes fw-reveal {
-  from {
-    filter: opacity(0);
   }
 }
 
