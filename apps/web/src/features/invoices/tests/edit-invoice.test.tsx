@@ -100,12 +100,13 @@ describe("Edit", () => {
     ]);
   });
 
-  // R-128: after money the locked fields go back as they are, whatever the form holds.
-  it("sends the saved reference, note and due date once they are locked", async () => {
+  // R-128: after money the locked fields don't show, and they go back as they are.
+  it("leaves out the reference, note and due date once they are locked, and sends them as saved", async () => {
     const bodies = serve(500, {});
     show(false, false);
-    expect(screen.getByLabelText("Reference").closest("fieldset")?.disabled).toBe(true);
-    fireEvent.change(screen.getByLabelText("Reference"), { target: { value: "PO-10" } });
+    expect(screen.queryByText("Before payment")).toBeNull();
+    expect(screen.queryByLabelText("Reference")).toBeNull();
+    expect(screen.queryByLabelText("Note")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await settle();
     expect(bodies).toEqual([

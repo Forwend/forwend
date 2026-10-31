@@ -841,7 +841,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Before payment: Reference, Note and Due date, with a line that the payer sees these under Updates.
   - A request shows only Note there, as its form has no reference or due date.
   - The due date picker runs from today to the day the checkout closes, which its hint names.
-  - Once money arrived or the checkout closed, the group is disabled and its line says why.
+  - Once money arrived or the checkout closed, the dialog leaves this group out.
   - A request has no Client email field.
   - Edit shows once the owner's read is in, so it never starts from another invoice's values.
   - Save changes saves every field and closes with a toast.

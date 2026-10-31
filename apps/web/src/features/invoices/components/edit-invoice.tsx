@@ -169,45 +169,42 @@ function EditForm({
           error={errors[INVOICE_FIELDS.returnUrl]}
         />
       </Group>
-      <Group
-        title={COPY.beforePayment}
-        hint={beforePayment ? COPY.beforePaymentHint : COPY.locked}
-        disabled={!beforePayment}
-      >
-        {/* A request has no reference or due date, as its form has none. */}
-        {request ? null : (
-          <TextField
-            label={COPY.reference}
-            name={INVOICE_FIELDS.reference}
-            defaultValue={reference ?? ""}
-            autoComplete="off"
-            maxLength={INVOICE_LIMITS.reference}
-            error={errors[INVOICE_FIELDS.reference]}
+      {/* Once money arrived or the checkout closed these can't change, so they don't show. */}
+      {beforePayment ? (
+        <Group title={COPY.beforePayment} hint={COPY.beforePaymentHint}>
+          {/* A request has no reference or due date, as its form has none. */}
+          {request ? null : (
+            <TextField
+              label={COPY.reference}
+              name={INVOICE_FIELDS.reference}
+              defaultValue={reference ?? ""}
+              autoComplete="off"
+              maxLength={INVOICE_LIMITS.reference}
+              error={errors[INVOICE_FIELDS.reference]}
+            />
+          )}
+          <TextAreaField
+            label={COPY.note}
+            name={INVOICE_FIELDS.note}
+            defaultValue={note ?? ""}
+            maxLength={INVOICE_LIMITS.note}
+            rows={3}
+            error={errors[INVOICE_FIELDS.note]}
           />
-        )}
-        <TextAreaField
-          label={COPY.note}
-          name={INVOICE_FIELDS.note}
-          defaultValue={note ?? ""}
-          maxLength={INVOICE_LIMITS.note}
-          rows={3}
-          error={errors[INVOICE_FIELDS.note]}
-        />
-        {request ? null : beforePayment ? (
-          <DatePicker
-            label={COPY.dueDate}
-            value={due}
-            onChange={setDue}
-            min={today}
-            max={closesOn}
-            clearLabel={COPY.clearDue}
-            hint={COPY.dueHint(formatDueDate(closesOn))}
-            error={errors[INVOICE_FIELDS.dueDate]}
-          />
-        ) : (
-          <TextField label={COPY.dueDate} value={dueDate ? formatDueDate(dueDate) : ""} readOnly />
-        )}
-      </Group>
+          {request ? null : (
+            <DatePicker
+              label={COPY.dueDate}
+              value={due}
+              onChange={setDue}
+              min={today}
+              max={closesOn}
+              clearLabel={COPY.clearDue}
+              hint={COPY.dueHint(formatDueDate(closesOn))}
+              error={errors[INVOICE_FIELDS.dueDate]}
+            />
+          )}
+        </Group>
+      ) : null}
       {failed ? (
         <p role="alert" className="text-sm text-danger">
           {failed}
@@ -229,22 +226,11 @@ function EditForm({
   );
 }
 
-function Group({
-  title,
-  hint,
-  disabled = false,
-  children,
-}: {
-  title: string;
-  hint?: string;
-  disabled?: boolean;
-  children: ReactNode;
-}) {
+function Group({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   const hintId = useId();
   // A legend is laid out apart from the fieldset's flex: as in FieldGroup, it is for screen readers only.
   return (
     <fieldset
-      disabled={disabled}
       aria-describedby={hint ? hintId : undefined}
       className="m-0 flex min-w-0 flex-col gap-4 border-0 p-0"
     >
