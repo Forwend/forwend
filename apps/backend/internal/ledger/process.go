@@ -98,18 +98,12 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 			return fmt.Errorf("read invoice %s chosen option: %w", group, err)
 		}
 		if chosen == nil {
-			// The first final payment counts only once every other enabled option chain is final past its time, so an
-			// earlier payment there would be confirmed too (R-119).
+			// The first payment final on its own chain makes its option the invoice's (R-119). No other network is
+			// waited for: each payment is confirmed on its own network, as hosted crypto checkouts do.
 			var first string
-			var ready bool
-			err := tx.QueryRow(ctx, `SELECT t.invoice_id, NOT EXISTS (SELECT 1 FROM invoices o
-				    JOIN chains c ON c.chain_id = o.chain_id AND c.enabled
-				    LEFT JOIN chain_cursors cur ON cur.chain_id = o.chain_id
-				    WHERE (o.id = $1 OR o.main_id = $1) AND o.chain_id <> t.chain_id
-				      AND coalesce(cur.last_finalized_time, 0) <= t.block_time)
-				FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id
+			err := tx.QueryRow(ctx, `SELECT t.invoice_id FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id
 				WHERE (i.id = $1 OR i.main_id = $1) AND t.status = 'confirmed' AND t.block_time <= i.closes_at
-				ORDER BY t.block_time, t.chain_id, t.block_number, t.log_index LIMIT 1`, group).Scan(&first, &ready)
+				ORDER BY t.block_time, t.chain_id, t.block_number, t.log_index LIMIT 1`, group).Scan(&first)
 			switch {
 			case errors.Is(err, pgx.ErrNoRows):
 				var seen bool
@@ -122,8 +116,6 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 				}
 			case err != nil:
 				return fmt.Errorf("read invoice %s first paid option: %w", group, err)
-			case !ready:
-				return recordAwaitingChoice(ctx, tx, invoiceID, group, current)
 			default:
 				if _, err := tx.Exec(ctx, "UPDATE invoices SET chosen_id = $2 WHERE id = $1", group, first); err != nil {
 					return fmt.Errorf("choose invoice %s option %s: %w", group, first, err)

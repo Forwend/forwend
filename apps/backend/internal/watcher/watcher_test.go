@@ -187,6 +187,17 @@ func TestOnlyTheInvoiceTokenToAReceiveAddressCounts(t *testing.T) {
 	}
 }
 
+// Zero-value transfers, as address-poisoning spam sends, are no payment: nothing is recorded, so nothing confirms.
+func TestZeroValueTransferIsNoPayment(t *testing.T) {
+	e := setup(t)
+	e.anvil.Transfer(e.token, receive, "0")
+	e.anvil.Mine(3)
+	e.scan(t)
+	if got, n := e.rows(t); n != 0 {
+		t.Fatalf("a zero-value transfer recorded: %v", got)
+	}
+}
+
 func TestReorgMarksTheDepositReorged(t *testing.T) {
 	e := setup(t)
 	tx := e.anvil.Transfer(e.token, receive, "5000000")

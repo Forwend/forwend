@@ -530,12 +530,13 @@ Refused intents (`status = 'refused'`) also carry their reason; waiting ones are
   owed up to the invoice amount goes to `recipient_payable`, the rest to `payer_held`. A late deposit (block time
   after the close, `expires_at` or the reopened one) and any deposit after the invoice is final go entirely to
   `payer_held` (D-24, D-26).
-- Payer chooses (D-76): an option's processing also locks its main row. When the first option gets a transfer, the option
-  whose transfer that is not reorged came first on chain (block time, then block and log) becomes `chosen_id`; deposits on any other option are booked entirely to `payer_held`, as late money
-  is, so that option is never paid or settled and expires like any invoice. A choice made on a detected transfer that
-  a reorg later drops stays.
-  - Choice waits until every enabled option chain was scanned past the first transfer (`chain_cursors.last_scanned_time`, R-119).
-  - Until then nothing is booked, and the invoice stays `open`.
+- Payer chooses (D-76): an option's processing also locks its main row.
+  - The choice is made once a transfer is final on its own chain; no other chain is waited for (R-119).
+  - Of the final transfers, the earliest on chain (block time, then block and log) makes its option `chosen_id`.
+  - A final transfer can't be reorged, so the choice never moves.
+  - Deposits on any other option are booked entirely to `payer_held`, as late money is.
+  - So that option is never paid or settled, and it expires like any invoice.
+  - Until a choice nothing is booked, and the invoice reads `detected`.
   - Concurrent ledger jobs lock the entire option group in cancel/reopen order: children by ID, then the main row.
   - Before a choice, no row of the invoice expires until every other enabled option chain was read past the close.
     A payment made before the close may still come on one of them, and it would be chosen.

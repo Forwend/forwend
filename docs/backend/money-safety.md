@@ -180,9 +180,9 @@ Limits:
   the recipient.
 - Testnet invoices are never shown to real payers: the testnet refund key could `recover` real money at the same
   address on mainnet.
-- A payer-chooses invoice picks its option only once every other enabled option chain was read past the payment
-  (R-119). Before a choice it closes only once they were read past its close. A chain whose scan stops (its RPCs
-  down) holds both, and the R-120 alert waits with them; disabling the chain lets them go on.
+- A payer-chooses invoice picks its option as soon as one payment is final on its own chain (R-119); no other chain
+  is waited for. Before a choice it closes only once every option chain was read past its close. A chain whose scan
+  stops (its RPCs down) holds that close, and the R-120 alert waits with it; disabling the chain lets it go on.
 
 ## Reusable-link capacity
 
