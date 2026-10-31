@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Form, SelectField, TextField } from "@forwend/ui-web";
+import { AmountField, Button, Form, SelectField, TextField } from "@forwend/ui-web";
 import { type FormEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useCreateCheckoutMutation } from "@/features/checkout/api/checkout-api";
@@ -89,38 +89,15 @@ export function CheckoutForm({ profileId, stores, onStarted }: CheckoutFormProps
               options={stores.map((s) => ({ value: s.storeId, label: s.name }))}
             />
           ) : null}
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="checkout-amount" className="text-sm font-medium text-ink">
-              {COPY.amount}
-            </label>
-            {/* The amount is what the customer checks, so it is large, with its currency inside. */}
-            <div
-              className={`flex h-14 items-center gap-2 rounded-md border bg-surface px-4 transition-[border-color,box-shadow] duration-[var(--fw-duration-fast)] focus-within:border-field-focus focus-within:ring-2 focus-within:ring-field-ring ${error ? "border-danger" : "border-field"}`}
-            >
-              <input
-                id="checkout-amount"
-                name="amountUsd"
-                inputMode="decimal"
-                autoComplete="off"
-                placeholder="0.00"
-                // biome-ignore lint/a11y/noAutofocus: the page does one thing: a sale starts with its amount, and New sale lands back here
-                autoFocus
-                aria-invalid={error ? true : undefined}
-                aria-describedby={
-                  error ? "checkout-amount-usd checkout-amount-error" : "checkout-amount-usd"
-                }
-                className="min-w-0 flex-1 bg-transparent text-3xl font-medium tracking-tight text-ink tabular-nums outline-none placeholder:text-subtle"
-              />
-              <span id="checkout-amount-usd" className="text-base text-muted">
-                {MONEY_COPY.usd}
-              </span>
-            </div>
-            {error ? (
-              <p id="checkout-amount-error" role="alert" className="text-sm text-danger">
-                {error}
-              </p>
-            ) : null}
-          </div>
+          <AmountField
+            label={COPY.amount}
+            name="amountUsd"
+            unit={MONEY_COPY.usd}
+            placeholder="0.00"
+            // The page does one thing: a sale starts with its amount, and New sale lands back here.
+            autoFocus
+            error={error}
+          />
           <TextField label={COPY.reference} name="reference" autoComplete="off" />
           <TextField label={COPY.what} name="title" autoComplete="off" />
         </div>

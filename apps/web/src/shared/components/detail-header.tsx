@@ -1,7 +1,7 @@
 import { Skeleton } from "@forwend/ui-web";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { LineSkeleton } from "@/shared/components/rows-skeleton";
 
 export interface DetailHeaderProps {
@@ -20,6 +20,8 @@ export interface DetailHeaderProps {
   actions?: ReactNode;
   /** The record's figure and states, such as the amount with its payment status. */
   summary?: ReactNode;
+  /** For a page that moves focus to its title, once an action that went away is done. */
+  titleRef?: Ref<HTMLHeadingElement>;
 }
 
 /** The top of every record page (payment, invoice, link, store, client, job): the same order everywhere. */
@@ -32,6 +34,7 @@ export function DetailHeader({
   figure,
   actions,
   summary,
+  titleRef,
 }: DetailHeaderProps) {
   return (
     <header className="flex flex-col gap-4">
@@ -45,7 +48,13 @@ export function DetailHeader({
           ) : null}
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="break-words text-xl font-semibold tracking-tight text-ink">{title}</h1>
+              <h1
+                ref={titleRef}
+                tabIndex={titleRef ? -1 : undefined}
+                className="break-words text-xl font-semibold tracking-tight text-ink outline-none"
+              >
+                {title}
+              </h1>
               {badges}
             </div>
             {meta ? <p className="mt-1 text-sm text-muted">{meta}</p> : null}

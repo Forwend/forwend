@@ -83,7 +83,7 @@ export function LinkScreen({ linkId }: LinkScreenProps) {
         figure={{ label: COPY.price, value: amountLabel(link) }}
         actions={
           can(profile, PERMISSIONS.invoicesWrite) ? (
-            <LinkActions profileId={profile.profileId} link={link} />
+            <LinkActions profileId={profile.profileId} link={link} refreshing={read.isFetching} />
           ) : null
         }
       />

@@ -15,10 +15,12 @@ import {
 } from "@forwend/ui-web";
 import { Ban, Ellipsis, ReceiptText } from "lucide-react";
 import Link from "next/link";
-import { useRef } from "react";
+import { type MouseEvent, useRef } from "react";
 import { useExpireCheckoutMutation } from "@/features/checkout/api/checkout-api";
 import { CHECKOUT_COPY as COPY } from "@/features/checkout/constants/checkout-copy";
 import { APP_ROUTES } from "@/shared/config/routes";
+
+const CONFLICT = 409;
 
 export interface CheckoutActionsProps {
   profileId: string;
@@ -28,6 +30,8 @@ export interface CheckoutActionsProps {
   cancelable: boolean;
   /** The live sale links its payment; the payment's own page does not. */
   withPayment?: boolean;
+  /** Once Cancel is done or comes too late, this menu may go: focus moves here. */
+  onDone: () => void;
 }
 
 export function CheckoutActions({
@@ -35,6 +39,7 @@ export function CheckoutActions({
   paymentId,
   cancelable,
   withPayment = false,
+  onDone,
 }: CheckoutActionsProps) {
   const [expire, { isLoading, isError }] = useExpireCheckoutMutation();
   const toast = useToast();
@@ -43,13 +48,20 @@ export function CheckoutActions({
   const trigger = useRef<HTMLButtonElement>(null);
   if (!cancelable && !withPayment) return null;
 
-  // A canceled checkout stops being cancelable, and the dialog goes with it.
-  const confirm = async () => {
+  // The refetch that follows ends the cancel and removes the dialog, so it closes first: focus can then leave it.
+  const confirm = async (event: MouseEvent<HTMLButtonElement>) => {
+    const dialog = event.currentTarget.closest("dialog");
     try {
       await expire({ profileId, sessionId: paymentId }).unwrap();
+      dialog?.close();
       toast({ tone: TONES.success, title: COPY.canceled });
-    } catch {
-      // The dialog shows the error.
+      onDone();
+    } catch (failure) {
+      // Too late: money arrived meanwhile. Otherwise the dialog says so and stays.
+      if ((failure as { status?: unknown }).status !== CONFLICT) return;
+      dialog?.close();
+      toast({ tone: TONES.warning, title: COPY.cancelFailed });
+      onDone();
     }
   };
 
@@ -102,7 +114,7 @@ export function CheckoutActions({
       <p>{COPY.cancelBody}</p>
       {isError ? (
         <p role="alert" className="mt-3 text-sm text-danger">
-          {COPY.cancelFailed}
+          {COPY.cancelError}
         </p>
       ) : null}
       <form method="dialog" className="mt-5 flex flex-wrap justify-end gap-2">

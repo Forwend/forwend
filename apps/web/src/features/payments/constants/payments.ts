@@ -1,8 +1,18 @@
 import { FileText, HandCoins, Link2, ShoppingCart } from "lucide-react";
 
-export const PAYMENT_SOURCES = ["invoice", "checkout", "request", "payment_link"] as const;
-/** A sale started on Checkout. */
-export const CHECKOUT_SOURCE = "checkout" satisfies (typeof PAYMENT_SOURCES)[number];
+/** What made a payment: an invoice, a sale on Checkout, a request or a payment link. */
+export const PAYMENT_SOURCE = {
+  invoice: "invoice",
+  checkout: "checkout",
+  request: "request",
+  paymentLink: "payment_link",
+} as const;
+export const PAYMENT_SOURCES = [
+  PAYMENT_SOURCE.invoice,
+  PAYMENT_SOURCE.checkout,
+  PAYMENT_SOURCE.request,
+  PAYMENT_SOURCE.paymentLink,
+] as const;
 export const PAYMENT_VIEWS = {
   all: "all",
   attention: "attention",

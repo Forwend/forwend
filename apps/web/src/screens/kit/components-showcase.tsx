@@ -3,6 +3,7 @@
 import {
   Accordion,
   ActionButton,
+  AmountField,
   Badge,
   BUTTON_SIZES,
   BUTTON_VARIANTS,
@@ -474,6 +475,24 @@ export function ComponentsShowcase() {
         <Checkbox label="USDC on every network (some on)" mixed />
         <Switch label="Email me when a payment settles" checked={on} onCheckedChange={setOn} />
         <Switch label="Email me a weekly summary" checked={weekly} onCheckedChange={setWeekly} />
+      </KitGroup>
+      <KitGroup title="Amount field: empty, typed, error; inline text field with an error">
+        <div className="grid w-full max-w-xl gap-4">
+          <AmountField label="Amount" unit="USD" placeholder="0.00" />
+          <AmountField label="Amount" unit="USD" defaultValue="12.50" />
+          <AmountField
+            label="Amount"
+            unit="USD"
+            defaultValue="12.505"
+            error="Enter an amount, such as 12.50."
+          />
+          <TextField
+            label="Payment limit"
+            defaultValue="0"
+            error="Enter a whole number from 1 to 1,000,000."
+            inline
+          />
+        </div>
       </KitGroup>
       <KitGroup title="Switch card: on with the field it opens, off, disabled">
         <div className="grid w-full max-w-xl gap-4">

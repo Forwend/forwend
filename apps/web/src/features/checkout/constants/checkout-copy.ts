@@ -34,6 +34,7 @@ export const CHECKOUT_COPY = {
   keep: "Keep it",
   canceled: "Checkout canceled",
   cancelFailed: "This checkout can't be canceled now. The customer may be paying.",
+  cancelError: "We could not cancel the checkout. Try again.",
   openPayment: "Open payment",
   copyLink: "Copy payment link",
   copied: "Payment link copied",

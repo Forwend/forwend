@@ -30,8 +30,12 @@ export function Switch({ label, checked, onCheckedChange, disabled, className }:
   );
 }
 
+export interface SwitchTrackProps {
+  checked: boolean;
+}
+
 /** The track and thumb, for a switch whose label sits elsewhere (SwitchCard). */
-export function SwitchTrack({ checked }: { checked: boolean }) {
+export function SwitchTrack({ checked }: SwitchTrackProps) {
   return (
     <span
       className={cx(

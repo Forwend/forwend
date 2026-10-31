@@ -9,13 +9,13 @@ import { CheckoutLive } from "@/features/checkout/components/checkout-live";
 import { CHECKOUT_COPY as COPY } from "@/features/checkout/constants/checkout-copy";
 import type { CheckoutSession } from "@/features/checkout/types/checkout";
 import { PaymentList } from "@/features/payments/components/payment-list";
-import { CHECKOUT_SOURCE } from "@/features/payments/constants/payments";
+import { PAYMENT_SOURCE } from "@/features/payments/constants/payments";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { useListStoresQuery } from "@/features/stores/api/stores-api";
 import { APP_ROUTES } from "@/shared/config/routes";
 
-const RECENT = { source: CHECKOUT_SOURCE } as const;
-const ALL = `${APP_ROUTES.payments}?source=${CHECKOUT_SOURCE}`;
+const RECENT = { source: PAYMENT_SOURCE.checkout } as const;
+const ALL = `${APP_ROUTES.payments}?source=${PAYMENT_SOURCE.checkout}`;
 
 export function CheckoutScreen() {
   const { profile } = useAppSession();

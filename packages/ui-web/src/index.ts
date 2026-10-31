@@ -50,6 +50,8 @@ export type {
   ToastProviderProps,
 } from "./components/feedback/toast";
 export { TOAST_MS, Toast, ToastProvider, useToast } from "./components/feedback/toast";
+export type { AmountFieldProps } from "./components/forms/amount-field";
+export { AmountField } from "./components/forms/amount-field";
 export type { CheckboxProps } from "./components/forms/checkbox";
 export { Checkbox } from "./components/forms/checkbox";
 export type { ChoiceCardProps } from "./components/forms/choice-card";

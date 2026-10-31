@@ -20,10 +20,12 @@ import { APP_ROUTES } from "@/shared/config/routes";
 export interface LinkActionsProps {
   profileId: string;
   link: Link;
+  /** The link is reloading: until the new read is in, Turn off or on would act on the old state. */
+  refreshing: boolean;
 }
 
 // R-140: Turn off or on saves the link as it is, with only `active` changed.
-export function LinkActions({ profileId, link }: LinkActionsProps) {
+export function LinkActions({ profileId, link, refreshing }: LinkActionsProps) {
   const [save, { isLoading }] = useSaveLinkMutation();
   const toast = useToast();
 
@@ -71,7 +73,7 @@ export function LinkActions({ profileId, link }: LinkActionsProps) {
             {COPY.edit}
           </NextLink>
         </MenuItem>
-        <MenuItem disabled={isLoading} onSelect={() => void toggle()}>
+        <MenuItem disabled={isLoading || refreshing} onSelect={() => void toggle()}>
           {link.active ? (
             <PowerOff aria-hidden className="size-[var(--fw-icon-sm)]" />
           ) : (

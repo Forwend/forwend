@@ -114,6 +114,7 @@ Every control comes from `@forwend/ui-web`; a link that looks like a button uses
   - While on, its field slides open inside the card under the title, on a surface-2 inset; off, it slides shut.
   - That field is an inline `TextField`: label and one line on the left, a narrow input at the row's end.
 - A read-only value to copy (`CopyValue`) sits in a field as tall as an input, with Copy and Open icons at its end.
+- An amount someone checks at a glance (`AmountField`) has large figures and its unit inside the field.
 
 ## App shell
 
@@ -341,12 +342,14 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - From large screens the sale is a 26rem column, with Recent checkouts beside it; phones stack them.
   - Recent checkouts is the payments list of checkouts, newest first.
   - Each column is a heading row (New sale or the checkout's label; Recent checkouts with View all), then one card.
-  - The form card: Store, a large Amount with USD inside the field, Order reference and What it's for, then Show QR code.
-  - Show QR code turns it into the sale card: the label, Test mode and More actions in its heading row.
+  - The form card: Store (with more than one), an `AmountField` in USD, Order reference and What it's for.
+  - Show QR code sits at the form card's foot.
+  - Then the sale card: the label, Test mode and More actions in its heading row.
   - Then `BigAmount` in USD, one QR code of the pay link, the status pill, one sentence and the close time.
   - It checks every 3 seconds until decided.
   - At its foot Copy payment link; once decided, New sale (lime) starts a fresh form.
   - More actions holds Open payment and, while nothing is paid, Cancel checkout behind a confirm.
+  - Once canceled, or too late because money arrived, the dialog closes with a toast and focus moves to the title.
   - A checkout's payment page has the same Cancel checkout in its More actions.
   - A retried tap reuses the idempotency key; any change makes a new one.
 - Clients (R-86) is laid out like Invoices: the toolbar's search (name, email, tax ID) with Add client at its end
@@ -364,7 +367,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The toolbar holds a one-line intro, with Add store at its end (beside the title on phones).
   - The table shows the store, its project ID, when its checkout closes and its allowed origins.
   - New store and Edit store are form pages laid out like New client, with Store and Checkout panels.
-  - Edit store shows the project ID with a Copy button. There is no delete yet.
+  - The store's page shows the project ID with a Copy button; the form does not. There is no delete yet.
   - An Accepted assets panel (R-136) uses the accepted-assets selector over the tokens the profile has on; one must
     stay chosen.
   - A Brand panel holds the logo and the accent color (R-135).
@@ -449,7 +452,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     status and mode badges, "Payment link · Created …", the price as the figure and More actions.
   - More actions holds Edit payment link and Turn off or Turn on, which saves at once with a toast.
   - Main column: Visits, Paid (with its share of visits) and Checkouts open, then the purchases.
-  - Side column (first on narrower screens): Share, with the address on its own row, Copy and Open (a new tab) and a
+  - Side column (first on narrower screens): Share, with the address in a `CopyValue` (Open in a new tab, Copy) and a
     QR code; then Details with the store, last day, payment limit and last update.
   - Open in Payments shows the same purchases on the Payments page with search and filters.
   - New and Edit use existing store-form panels; `/app/links/<id>/edit` edits the offer, while the existing detail URL remains valid.
@@ -527,7 +530,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Payments (left) list how each is invoiced and its due days, then its invoice number and status pill. Once
     accepted, its header says "n of m paid".
   - Scope follows Payments when there is one.
-  - Client's link (right) is the shared `CopyValue`: the quote address on its own row, Copy and Open (a new tab), and
+  - Client's link (right) is the shared `CopyValue`: the quote address with Open (a new tab) and Copy at its end, and
     who has to accept or who accepted as its note.
   - Record (R-104) follows Client's link as the kit `Timeline`, as on the payment and invoice pages: one done entry per
     event, oldest first, with its time.

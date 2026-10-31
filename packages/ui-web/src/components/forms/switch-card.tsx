@@ -41,7 +41,13 @@ export function SwitchCard({
           </span>
         ) : null}
         {/* The whole text flips the switch, as a label does. */}
-        <label htmlFor={id} className="min-w-0 flex-1 cursor-pointer">
+        <label
+          htmlFor={id}
+          className={cx(
+            "min-w-0 flex-1",
+            disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
+          )}
+        >
           <span id={`${id}-title`} className="block text-sm font-medium text-ink">
             {title}
           </span>

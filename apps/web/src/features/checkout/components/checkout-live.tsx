@@ -83,6 +83,7 @@ export function CheckoutLive({ profileId, session, amountUsd, onNewSale }: Check
           paymentId={payment.paymentId}
           cancelable={status === PAYMENT_STATUS.open}
           withPayment
+          onDone={() => heading.current?.focus()}
         />
       </div>
       <div className="fw-panel">
