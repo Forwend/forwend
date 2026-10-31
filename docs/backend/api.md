@@ -748,10 +748,11 @@ R-19 and R-42; the full schema is in openapi.yaml.
   Reads add `optionId` (the on-chain id in the shown terms), `optionLocked`, `optionCount` and, on a read alone, `options` (each
   `{optionId, chainId, network, token, symbol, decimals, amount, receiveAddress, deposits}`; deposits on an option
   other than the shown one are held for the payer). Until an option has money the
-  terms shown are the first option's; the first option whose payment is final on its own chain becomes the invoice's
-  for good (`chosen_id`, R-119), with no wait for other chains, and money on any other is booked to `payer_held`. The owner's GET with an option's id answers its
-  invoice; the public routes don't take ids.
-  Lists, activity and search show each invoice once, with the current option (`invoices_current` view).
+  terms shown are the first option's.
+  - The first option whose payment is final on its own chain becomes the invoice's for good (`chosen_id`, R-119).
+  - No other chain is waited for. Money on any other option is booked to `payer_held`.
+  - The owner's GET with an option's id answers its invoice; the public routes don't take ids.
+  - Lists, activity and search show each invoice once, with the current option (`invoices_current` view).
 - The pay link carries `payToken` (D-86, R-114): 32 random bytes in lowercase hex, kept on the main row
   (`invoices.pay_token`). The invoice's `invoiceId` is keccak256 of it.
   - The chain shows `invoiceId` and option ids (`ReceiverDeployed`, `Settled`, the deploy calldata), so no public route

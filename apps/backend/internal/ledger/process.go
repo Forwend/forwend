@@ -87,8 +87,8 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		invoiceID).Scan(&anyTransfer, &anyPending); err != nil {
 		return fmt.Errorf("read invoice %s transfers: %w", invoiceID, err)
 	}
-	// Payer chooses (R-56, D-76): the option whose money came first on chain becomes the invoice's, under the main
-	// row's lock so two options can't both win; money on any other option is held for the payer.
+	// Payer chooses (R-56, D-76): the first payment final on its own chain makes its option the invoice's, under the
+	// main row's lock so two options can't both win; money on any other option is held for the payer.
 	superseded := false
 	shown := true // the row invoices_current shows: the chosen option, or the main row until one is chosen
 	closedEverywhere := true

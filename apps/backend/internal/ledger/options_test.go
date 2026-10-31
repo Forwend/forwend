@@ -194,11 +194,11 @@ func (o optionSim) scanned(chainID, time int64) {
 	o.exec("UPDATE chain_cursors SET last_scanned_time = $2, last_finalized_time = $2 WHERE chain_id = $1", chainID, time)
 }
 
-func TestMainRowWaitsForTheChoiceBeforeExpiring(t *testing.T) {
+func TestOptionPaidJustBeforeTheCloseDoesNotExpireTheMainRow(t *testing.T) {
 	o := newOptionSim(t)
 	o.scanned(1, 4800)
 	o.pay(o.option, 2, o.full, 5000000, 4900) // just before the checkout closes at 5000
-	o.scanned(2, 5100)                        // past the close too: only the pending choice keeps the main row open
+	o.scanned(2, 5100)                        // past the close too
 	o.process(o.option)                       // chosen at once: chain 1's lag doesn't hold it back
 	o.scanned(1, 5100)                        // read past the close, and past the payment
 	o.process(o.main)
