@@ -45,7 +45,8 @@ export const PAY_COPY = {
   searchTokens: "Search tokens",
   noMatch: "No match",
   showAddress: "Show address",
-  sendOnly: (symbol: string, network: string) => `Send only ${symbol} on ${network}.`,
+  sendOnly: (symbol: string, network: string) =>
+    `Send only ${symbol} on ${network}. Other networks or tokens may not come back.`,
   // R-78: a bridged token with the same name is another contract, and does not pay this invoice.
   notLookalike: (symbol: string, lookalike: string) => `Native ${symbol}, not ${lookalike}.`,
   contract: (symbol: string) => `${symbol} contract`,
@@ -84,11 +85,11 @@ export const PAY_COPY = {
     [PAY_STATES.settled]: () => "Paid",
     [PAY_STATES.closing]: ({ received }) =>
       `Checkout closed. ${received} is recorded. We are checking the final payment records.`,
-    [PAY_STATES.closed]: ({ payee }) =>
-      `This payment is closed. If you already sent money, it is not lost: contact ${payee}.`,
+    [PAY_STATES.closed]: () =>
+      "This payment is closed. Do not send money. If you already did, Need help says what to do.",
     [PAY_STATES.canceled]: ({ payee }) => `${payee} closed this payment. Do not send money.`,
-    [PAY_STATES.closedPartial]: ({ received, payee }) =>
-      `Closed before the full amount arrived. The ${received} you sent is held for you; ask ${payee} to get it back.`,
+    [PAY_STATES.closedPartial]: ({ received }) =>
+      `Closed before the full amount arrived. ${received} is held for you.`,
   } satisfies Record<PayState, (v: StateValues) => string>,
   closedTitles: { [PAY_STATES.canceled]: "Payment closed", [PAY_STATES.closed]: "Checkout closed" },
   receiptRows: { amount: "Amount", to: "Paid to", date: "Date", transaction: "Transaction" },
@@ -102,16 +103,16 @@ export const PAY_COPY = {
   // Address poisoning: a look-alike address planted in the payer's wallet history after the first payment (R-77).
   copyFromHere:
     "Copy the address from this page for the rest, not from your wallet's history: scammers plant look-alike addresses there.",
-  overpaid: (extra: string) => `Overpaid by ${extra}. The extra is held for you.`,
-  late: (late: string, payee: string) =>
-    `${late} arrived after the checkout closed. It is held for you; ask ${payee} to get it back.`,
+  // Held money gets one short line; Need help, behind How to get it back, explains the rest.
+  overpaid: (extra: string) => `Overpaid by ${extra}`,
+  late: (late: string) => `${late} arrived after the checkout closed`,
   // R-129.
   replaced: (number: string) => `This invoice was replaced by ${number}. Pay that one instead.`,
   openReplacement: (number: string) => `Open ${number}`,
-  canceledHeld: (received: string, payee: string) =>
-    `The ${received} you sent is held for you; ask ${payee} to get it back.`,
-  otherOption: (amount: string, network: string, payee: string) =>
-    `${amount} sent on ${network} went to another payment option. It is held for you; ask ${payee} to get it back.`,
+  canceledHeld: (received: string) => `${received} held for you`,
+  otherOption: (amount: string, network: string) =>
+    `${amount} on ${network} went to another option`,
+  howToGetBack: "How to get it back",
   // R-82, D-68.
   receipt: {
     open: "Email me a receipt",
@@ -134,15 +135,36 @@ export const PAY_COPY = {
   changeLabel: "Change network and token",
   close: "Close",
   help: "Need help?",
+  helpSections: {
+    check: "Check this page",
+    held: "Sent too much, too late or after it closed?",
+    wrong: "Sent on the wrong network or token?",
+  },
   host: "You are on",
   hostHint: "Check that this is the site your link opened.",
   embeddedHost: "This checkout comes from",
   embeddedHostHint: "Open it in a new tab to see that address in your browser.",
   openInTab: "Open in a new tab",
-  unverifiedName: "The name is what the recipient gave; Forwend doesn't check it.",
-  refund:
-    "If you send more, or pay after the checkout closes, the extra is held for you and not paid out. Ask the recipient to get it back.",
+  unverifiedName: "The name at the top is what the recipient gave. Forwend doesn't check it.",
   scam: "Forwend never asks you to pay a different address or an extra fee.",
+  // PLAN 11.10: support returns held money by hand for now, and never promises it.
+  heldHelp: [
+    "That money is held for you. It isn't paid to the recipient.",
+    "Email support to get it back. We check each case and send it to the address it came from.",
+    "Paid from an exchange or an app? Say so: we'll ask for an address of yours and proof that you sent it.",
+    "Some returns have to wait days or weeks, and support tells you when. Amounts under 1 USD aren't sent.",
+  ],
+  wrongHelp:
+    "Email support with your transaction link and the network you used. We'll check whether it can be returned, but we can't promise it.",
+  emailSupport: "Email support",
+  supportAddress: (email: string) => `Or write to ${email}`,
+  copyEmail: "Copy email address",
+  emailCopied: "Email address copied",
+  copyEmailFailed: "Copy failed: type the address instead",
+  supportMail: {
+    subject: "Help with a payment",
+    body: (payLink: string) => `Pay link: ${payLink}\nTransaction link:\nWhat happened:\n`,
+  },
   testnet: "Testnet",
   testnetHint: "Test tokens have no monetary value.",
   paymentsBy: "Payments by",

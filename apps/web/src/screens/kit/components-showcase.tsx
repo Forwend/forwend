@@ -561,7 +561,7 @@ export function ComponentsShowcase() {
               {
                 question: "What if I send on the wrong network?",
                 answer:
-                  "Open a support request from the invoice page. Recovery is reviewed case by case and is not guaranteed.",
+                  "Email support with the transaction link. Recovery is reviewed case by case and is not guaranteed.",
               },
             ]}
           />

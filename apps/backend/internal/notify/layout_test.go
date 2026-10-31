@@ -86,6 +86,26 @@ func TestEmailEscapesTypedNames(t *testing.T) {
 	}
 }
 
+// The support address comes from config (SUPPORT_EMAIL); without one the footer leaves the line out.
+func TestFooterNamesTheConfiguredSupportAddress(t *testing.T) {
+	for _, v := range samples() {
+		m, err := message(Site{WebURL: "https://forwend.com", Support: "help@example.test"}, v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(m.HTML, `href="mailto:help@example.test"`) || !strings.Contains(m.Text, "Questions? help@example.test") {
+			t.Fatalf("%s: the footer lacks the configured support address", v.Subject)
+		}
+		m, err = message(Site{WebURL: "https://forwend.com"}, v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(m.HTML, "Questions?") || strings.Contains(m.Text, "Questions?") {
+			t.Fatalf("%s: a footer with no support address still asks for questions", v.Subject)
+		}
+	}
+}
+
 // With EMAIL_SAMPLES_DIR set, writes each email's HTML there for screenshots (docs/runs); otherwise skipped.
 func TestWriteEmailSamples(t *testing.T) {
 	dir := os.Getenv("EMAIL_SAMPLES_DIR")
@@ -93,7 +113,8 @@ func TestWriteEmailSamples(t *testing.T) {
 		t.Skip("EMAIL_SAMPLES_DIR not set")
 	}
 	for name, v := range samples() {
-		m, err := message(Site{WebURL: "https://forwend.com", PostalAddress: os.Getenv("EMAIL_POSTAL_ADDRESS")}, v)
+		m, err := message(Site{WebURL: "https://forwend.com", PostalAddress: os.Getenv("EMAIL_POSTAL_ADDRESS"),
+			Support: os.Getenv("SUPPORT_EMAIL")}, v)
 		if err != nil {
 			t.Fatal(err)
 		}

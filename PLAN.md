@@ -38,7 +38,7 @@ Phases 1–10 are done; their requirements are PROJECT R-1…R-122 and their rec
 Merchants after freelancers (D-55). Scope and evidence: local phase 11 research notes (`docs/research/phase-11-merchants.md`)
 (owner decisions 2026-10-22). Merchants lose most when a payment company holds or locks their money. Forwend pays the
 merchant's own wallet, so the phase builds merchant and developer tools around that. Payers pay only by address and QR
-code; a wallet connects only to claim a refund (D-37).
+code, and never connect a wallet (D-37).
 
 - 11.1 Stores: project ID, logo, color, default checkout expiry and allowed origins (return links and embeds); each
   invoice records its store; per-invoice override (D-30). A profile turns chains and tokens on or off, and a store can
@@ -83,13 +83,13 @@ code; a wallet connects only to claim a refund (D-37).
 - F326–F331 execute in order, followed by F333–F335; checkout integration does not wait for onboarding.
 - F332 depends on F335 and remains blocked until all other phase 11 work is complete, including 11.10 refunds and 11.11 history.
 - F329 also supplies the financial evidence required by 11.7.
-- Full refund claims, Safe execution and wrong-network recovery retain 11.10's scope and gates.
+- Returns through support, Safe execution and wrong-network recovery follow 11.10.
 - New package publication, deployments and provider accounts require separate approval.
 - Detailed local task rationale lives in `docs/research/merchant-payment-tasks.md`; the tracked task queue owns progress.
 
 ### Remaining phase 11 deliverables
 
-- 11.7 Merchant ops: attention list (exceptions, held money with its reason, refund claims waiting, failed webhooks),
+- 11.7 Merchant ops: attention list (exceptions, held money with its reason, returns in progress, failed webhooks),
   store filter, and a CSV with store, invoice, chain, transaction hash, settlement and USD value.
 - 11.8 Merchant onboarding: business name and website, first store, branding preview, team invites, developer steps
   (test key, allowed origin, webhook, test event, quickstart) and a KYB status row with a reason and a next step
@@ -116,28 +116,38 @@ code; a wallet connects only to claim a refund (D-37).
   - 11.9.5 `apps/example-merchant` uses the button and the components and verifies the webhook, with a browser test:
     merchant code cannot read the frame, a forged message never marks an order paid, a strict CSP works, and an
     origin off the list is blocked. After 11.9.3.
-- 11.10 Refunds of held money (D-78). A refund goes ahead whatever the merchant profile's status (D-89). Forwend pays
-  the network fee, and the minimum refund is 1 USD (D-90). After 11.11.1.
-  - Payers claim held money, including overpayments, late payments and expired partial payments, through 11.10.2.
-  - 11.10.1 Overpaid handling: the owner's invoice page shows money sent above the amount (held for the payer, D-26)
-    with a way to return it. The pay page and the payment page already name the extra and that it is held.
-    After 11.10.
-  - 11.10.2 Refund claims on `/pay`: the payer presses Claim refund, then connects the wallet that sent the money and
-    signs a claim naming the invoice and the destination (D-37); plain and smart-contract wallets are both checked.
-    Exchange deposits give a destination and support evidence instead (Q-9). From an embed the claim opens the hosted
-    page in a new tab. `refund_claims` with states the payer sees; claim updates reach the payer receipt email (D-68).
-    After 11.10.
-  - 11.10.3 Refund tool: an ops command (`cmd/ops`) lists claims, approves or rejects them with a reason
-    (D-60) and prints the `refund(to, amount)` call for the refund-authority Safe; one refund of everything held by
-    default (D-57). The watcher books the refund. No new hot key. A refund shows in the invoice's Transactions list on
-    the owner page, beside the payments and the settlement (R-69). After 11.10.2.
-    - Approving a claim sets the invoice's refund status to `refund_pending` before the Safe call is queued.
-    - Reopen (R-130) already refuses then, so money a queued refund returns can't settle to the creator first.
-  - 11.10.4 Wrong-network help: the payer gives the tx hash, the API finds it on an enabled chain and
-    opens a recovery claim; `recover()` works only where our factory exists, and recovery is never promised (D-33).
-    After 11.10.2.
-  - 11.10.5 Refund suite on Anvil: overpay → claim → refund; expired partial → claim → refund; late → claim → refund;
-    a smart-wallet claim; the ledger matches the chain after each. After 11.10.1–11.10.4.
+- 11.10 Returns of held money through support (D-26, D-78, D-118). Nothing is promised.
+  - A return goes ahead whatever the merchant profile's status (D-89).
+  - Forwend pays the network fee, and the minimum return is 1 USD (D-90).
+  - The payer emails support with the pay link and the transaction link. An operator checks the case.
+  - The refund-authority Safe sends the money to the address it came from.
+  - A payer who paid from an exchange or an app gives an address of theirs and proof that they sent it.
+  - 11.10.1 Pay page (F408): each held payment gets one short line with How to get it back, which opens Need help.
+    - Need help explains each case and opens an email to support with the pay link filled in.
+    - "Send only X on Y" adds that other networks or tokens may not come back.
+  - 11.10.2 Owner side (F409): the payment page and the held email give the reason and say the payer gets it back
+    through Forwend support.
+  - 11.10.3 Support tool (F410): `cmd/ops case` takes a pay link or receive address, and a transaction hash.
+    - It shows each held payment: sender, reason, amount and the date it can go back.
+    - It checks the transfer is final and reached this receiver, and caps the amount at what is both held and
+      refundable.
+    - It refuses a zero, receiver, token or factory destination, and flags a contract.
+    - It dry-runs the call as the Safe, which catches a blocklisted address or a paused token.
+    - It sets `refund_pending`, then prints the Safe batch: the receiver's deploy when needed, then `refund`.
+    - `Process` keeps `refund_pending` while money is held. Reopen refuses it, the watcher keeps watching it and the
+      attention list shows it.
+    - The watcher books the return, and it shows in the invoice's Transactions list (R-69).
+  - 11.10.4 Wrong token and wrong network (F411): the same tool prints `recover` for another token on the invoice's
+    chain.
+    - On another chain it works only where our factory and Safe exist at their addresses.
+    - Elsewhere support says the money can't be returned now.
+  - 11.10.5 Anvil suite (F412): overpaid, late, expired partial, canceled and wrong-token money each go through the
+    tool and the Safe call. The ledger matches the chain after each.
+  - Before the first mainnet, close the stuck-money gaps found on 2026-10-31:
+    - The factory gets a refund-authority `recover`: tokens sent to it have no way out today.
+    - The Safe exists at its address on every enabled chain, and on chains payers often mistake for them.
+    - Back up the invoice terms and test a restore: an undeployed receiver can't move money without them.
+    - Check that the Safe and its fee token work on Tempo, which has no native gas coin.
 - 11.11 History log and invoice changes (D-92). Build 11.11.1 before 11.5: webhook events and the events endpoint read
   it.
   - 11.11.1 History log: one append-only row per change, written in the same transaction, with the actor and typed
@@ -195,6 +205,11 @@ The owner moved these out of the MVP on 2026-10-31:
 - Paying from a connected wallet, as a second path beside the address and QR code.
   - Until then payers send a transfer (D-37).
 - Agent payments, such as x402. No merchant has asked for them yet.
+- Self-serve returns of held money, replacing support by hand (11.10):
+  - a Return to sender button on the pay page, with the exchange warning;
+  - a form for exchange and app payers with a destination and proof;
+  - a wrong-network lookup by transaction hash;
+  - status emails to the payer.
 
 Mobile; optional BNB and non-EVM networks; HD-wallet receive methods; cross-chain sends; automatic wallet billing;
 full accounting page and Koinly export; opt-in escrow; bank/card on-ramp; public developer sandbox; custom checkout

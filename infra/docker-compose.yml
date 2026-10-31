@@ -60,6 +60,7 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-Forwend <notifications@mail.forwend.com>}
       EMAIL_POSTAL_ADDRESS: ${EMAIL_POSTAL_ADDRESS:-}
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:?set SUPPORT_EMAIL}
       COINGECKO_API_KEY: ${COINGECKO_API_KEY:-}
     depends_on:
       api:
@@ -92,6 +93,7 @@ services:
       dockerfile: infra/web.Dockerfile
       args:
         NEXT_PUBLIC_PRIVY_APP_ID: ${NEXT_PUBLIC_PRIVY_APP_ID:?set NEXT_PUBLIC_PRIVY_APP_ID}
+        NEXT_PUBLIC_SUPPORT_EMAIL: ${SUPPORT_EMAIL:?set SUPPORT_EMAIL}
     restart: unless-stopped
     expose:
       - "3000"

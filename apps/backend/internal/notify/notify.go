@@ -562,7 +562,10 @@ func message(site Site, v view) (email.Message, error) {
 	if v.Stop != "" {
 		text += " Stop reminders: " + v.Stop
 	}
-	text += "\nQuestions? " + Support + "\nForwend: " + site.WebURL + "\n"
+	if site.Support != "" {
+		text += "\nQuestions? " + site.Support
+	}
+	text += "\nForwend: " + site.WebURL + "\n"
 	if site.PostalAddress != "" {
 		text += site.PostalAddress + "\n"
 	}

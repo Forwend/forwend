@@ -88,7 +88,7 @@ export const RULES = {
   ],
   wrongNetwork: {
     title: "Sent on the wrong network",
-    body: "Open a support request from the invoice page. Recovery is reviewed case by case and is never promised.",
+    body: "The payer emails support with the transaction link. Recovery is reviewed case by case and is never promised.",
   },
   footnote:
     "Refunds come only from held money, one per approved claim. Money already settled to you is never pulled back.",
@@ -149,7 +149,7 @@ export const FAQ = {
     {
       question: "What if someone sends on the wrong network?",
       answer:
-        "The checkout warns before anyone sends. If it still happens, open a support request from the invoice page. Recovery is reviewed case by case and cannot be guaranteed.",
+        "The checkout warns before anyone sends. If it still happens, the payer emails support with the transaction link. Recovery is reviewed case by case and cannot be guaranteed.",
     },
     {
       question: "Do I need to verify my identity?",

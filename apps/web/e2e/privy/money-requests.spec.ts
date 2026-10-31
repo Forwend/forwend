@@ -142,7 +142,7 @@ test("a personal profile requests money, sends the pay link and the payer sees w
     await expect(
       pay
         .getByRole("dialog", { name: "Need help?" })
-        .getByText("The name is what the recipient gave; Forwend doesn't check it."),
+        .getByText("The name at the top is what the recipient gave. Forwend doesn't check it."),
     ).toBeVisible();
     expect(await blockingViolations(pay)).toEqual([]);
     await payer.close();

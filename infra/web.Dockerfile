@@ -12,6 +12,8 @@ COPY packages/ui-web/ ./packages/ui-web/
 COPY packages/design-tokens/ ./packages/design-tokens/
 ARG NEXT_PUBLIC_PRIVY_APP_ID
 ENV NEXT_PUBLIC_PRIVY_APP_ID=$NEXT_PUBLIC_PRIVY_APP_ID
+ARG NEXT_PUBLIC_SUPPORT_EMAIL
+ENV NEXT_PUBLIC_SUPPORT_EMAIL=$NEXT_PUBLIC_SUPPORT_EMAIL
 ENV API_URL=http://api:8080
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm --filter @forwend/web build

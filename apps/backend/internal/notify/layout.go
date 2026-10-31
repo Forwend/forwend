@@ -7,11 +7,10 @@ import (
 	"regexp"
 )
 
-const Support = "support@forwend.com"
-
-// WebURL is the web app's origin (links and the hosted logo); an empty PostalAddress leaves it out of the footer.
+// WebURL is the web app's origin (links and the hosted logo); an empty PostalAddress or Support leaves it out of the
+// footer.
 type Site struct {
-	WebURL, PostalAddress string
+	WebURL, PostalAddress, Support string
 }
 
 //go:embed layout.html.tmpl
@@ -54,7 +53,7 @@ func render(site Site, v view) (string, error) {
 	data := struct {
 		view
 		Site, Logo, Support, Postal string
-	}{v, site.WebURL, site.WebURL + "/icon-192.png", Support, site.PostalAddress}
+	}{v, site.WebURL, site.WebURL + "/icon-192.png", site.Support, site.PostalAddress}
 	err := layout.Execute(&b, data)
 	return b.String(), err
 }
