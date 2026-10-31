@@ -22,6 +22,9 @@ import (
 
 var ErrNotPaid = errors.New("invoice not paid")
 
+// Support is where payers and owners write; the emails use it too.
+const Support = "support@forwend.com"
+
 // Noto Sans covers Latin with its accents, Greek and Cyrillic, and its digits share one width, so amounts line up;
 // the license is fonts/OFL.txt.
 var (
@@ -148,8 +151,8 @@ func statusOf(inv invoice.Invoice, now time.Time) standing {
 		s.detail = payee(inv) + " canceled this invoice. Do not send money."
 	case closed && received.Sign() > 0:
 		s.label, s.figure, s.amount, s.closed = "Expired, partially paid", "Received", token(received), true
-		s.detail = "The payment window closed before the full amount arrived. The money sent is held for the payer; ask " +
-			payee(inv) + " to get it back."
+		s.detail = "The payment window closed before the full amount arrived. The money sent is held for the payer, " +
+			"not paid out. Email " + Support + " to get it back."
 	case closed:
 		s.label, s.figure, s.closed = "Expired", "Total", true
 		s.detail = "The payment window closed without payment. Do not pay this invoice."

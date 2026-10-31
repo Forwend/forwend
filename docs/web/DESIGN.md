@@ -732,7 +732,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
       - Confirming stays current until the API books the money: final on chain but not booked is still Confirming.
       - A delay changes the line, never the steps: "Confirmation is taking longer than usual." No time is promised.
     - One line for what the steps can't say: the block count, "Awaiting confirmation.", or what is left to pay.
-    - Money over the amount: "You sent X more than asked. The extra is held for you; ask <payee> to get it back."
+    - Money over the amount: "Overpaid by X. The extra is held for you, not paid out." with How to get it back.
       It shows under the payments while confirming and on the receipt once paid (D-24).
     - Each payment with its amount, time, short hash and explorer link.
     - The address stays only while money is still due.

@@ -5,9 +5,11 @@ import (
 	_ "embed"
 	"html/template"
 	"regexp"
+
+	"github.com/forwend/forwend/apps/backend/internal/document"
 )
 
-const Support = "support@forwend.com"
+const Support = document.Support
 
 // WebURL is the web app's origin (links and the hosted logo); an empty PostalAddress leaves it out of the footer.
 type Site struct {

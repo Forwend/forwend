@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BUTTON_VARIANTS,
   Button,
   buttonClasses,
   COPY_STATUS,
@@ -1025,13 +1026,9 @@ function GetItBack() {
   return (
     <NeedHelp
       trigger={(open) => (
-        <button
-          type="button"
-          onClick={open}
-          className={`${buttonClasses({ variant: "link" })} h-auto text-sm`}
-        >
+        <Button variant={BUTTON_VARIANTS.link} onClick={open}>
           {COPY.howToGetBack}
-        </button>
+        </Button>
       )}
     />
   );

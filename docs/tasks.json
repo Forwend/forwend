@@ -276,18 +276,20 @@
         "packages/contracts/src/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-31 review fail by reviewer: Code, tests and most docs are right, but the old 'ask the payee' path still reaches payers and the owning docs. (1) apps/backend/internal/document/document.go:151-152: the invoice PDF of a closed, partly paid invoice says 'The money sent is held for the payer; ask <payee> to get it back.' The payer downloads that PDF from the pay page in every state (pay-invoice.tsx:455-462), so it contradicts the new pay page and D-118. F409 covers only the owner side, so nothing fixes or names it (AGENTS: a fix covers every place, PDFs included). (2) docs/PROJECT.md:117 R-68, a ref of F408, still says the payer 'asks the payee to get it back (owner request 2026-10-29)'. (3) docs/web/DESIGN.md:735 still quotes 'The extra is held for you; ask <payee> to get it back.', above the new rule at :757. Fine: every held line, the closed line and the dialog match the contracts (refundableAmount allows only money above the amount before the deadline; settle deadline is expiry + 7 days, D-18) and D-90; 'send it to the address it came from' sits next to the exchange line; wrong network says we can't promise (D-33). HeldNote is a div, no dialog sits in a <p> or a live region; focus goes to Close and back to the trigger; h2 then h3; button opens the dialog, Email support is a mailto link with encoded subject and body; window is read after mount; the embed sends the /pay/ link. PLAN 11.10, D-37, D-78, D-118, Q-9, F409-F412 and F417 agree. pnpm e2e -g '...' 6 passed, pnpm typecheck passed; light, dark, 1280 and 390 px screenshots look right with no sideways scroll. Non-blocking: GetItBack (pay-invoice.tsx:1024-1037) uses a raw <button> with buttonClasses where other triggers use the kit Button, and 'h-auto text-sm' change nothing there. Each HeldNote mounts its own dialog, so a page can hold three copies. No test catches an 'Ask the recipient' line returning inside the dialog: the /; ask .+/ guard needs a semicolon. 'days after the checkout closes' understates a canceled invoice with a long checkout: up to 30 days after an early deploy (MAX_HOLD). PROJECT.md:39 Refund claim glossary row and PLAN.md:86 and :92 still speak of refund claims."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-31T13:59:10Z",
+        "at": "2026-10-31T14:14:41Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.8,
+            "seconds": 3.5,
             "log": ""
           },
           {
@@ -308,28 +310,28 @@
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.4,
+            "seconds": 1.3,
             "log": ""
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 258.2,
+            "seconds": 265.4,
             "log": ""
           },
           {
             "id": "backend-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 37.6,
+            "seconds": 36.6,
             "log": ""
           },
           {
             "id": "web-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 37.7,
+            "seconds": 37.3,
             "log": ""
           },
           {
@@ -341,12 +343,12 @@
           }
         ],
         "taskHash": "09b76b83d92edfaf",
-        "filesHash": "ce55880c98059ead",
+        "filesHash": "9bd5f48322df9f4d",
         "proof": {
-          "1": "web-e2e: pay.spec 'every held payment says it isn't paid out, and How to get it back opens Need help' covers overpaid, late, closed with a partial payment, canceled and another option, and that no line says 'ask … to get it back'; 'says what is left when partly paid' checks the closed text drops 'it is not lost'",
+          "1": "web-e2e: pay.spec 'every held payment says it isn't paid out, and How to get it back opens Need help' covers overpaid, late, closed with a partial payment, canceled and another option, and fails if 'ask the recipient/Alice Design GmbH to get it back' returns anywhere on the page; unit: TestStatusAsksForMoneyOnlyWhilePayable checks the expired, partly paid invoice PDF names support@forwend.com and never asks the payee",
           "2": "web-e2e: pay.spec 'shows who asks and the amount' opens Need help and checks its three section headings, the can't-promise line, the Email support mailto to support@forwend.com whose body carries the pay link, and the visible address",
           "3": "web-e2e: the same test runs axe with the dialog open (0 blocking violations); 'an element tells its page' opens Need help in the embed: its own host note and the /pay/ link; light, dark and 390 px screenshots reviewed",
-          "4": "docs-check: PLAN 11.10 describes returns through support with F408–F412, the pre-mainnet stuck-money gaps and roadmap self-serve returns; D-118 added, D-37 and D-78 updated, Q-9 answered by D-118",
+          "4": "docs-check: PLAN 11.10 describes returns through support with F408-F412, the pre-mainnet stuck-money gaps and roadmap self-serve returns; D-118 added, D-37, D-78, R-68 and the Refund claim glossary row updated, Q-9 answered by D-118",
           "5": "web-e2e: the held-money and Need help tests above, plus the network warning text in 'shows who asks' and the Arbitrum option test"
         }
       },

@@ -83,13 +83,13 @@ code, and never connect a wallet (D-37).
 - F326–F331 execute in order, followed by F333–F335; checkout integration does not wait for onboarding.
 - F332 depends on F335 and remains blocked until all other phase 11 work is complete, including 11.10 refunds and 11.11 history.
 - F329 also supplies the financial evidence required by 11.7.
-- Full refund claims, Safe execution and wrong-network recovery retain 11.10's scope and gates.
+- Returns through support, Safe execution and wrong-network recovery follow 11.10.
 - New package publication, deployments and provider accounts require separate approval.
 - Detailed local task rationale lives in `docs/research/merchant-payment-tasks.md`; the tracked task queue owns progress.
 
 ### Remaining phase 11 deliverables
 
-- 11.7 Merchant ops: attention list (exceptions, held money with its reason, refund claims waiting, failed webhooks),
+- 11.7 Merchant ops: attention list (exceptions, held money with its reason, returns in progress, failed webhooks),
   store filter, and a CSV with store, invoice, chain, transaction hash, settlement and USD value.
 - 11.8 Merchant onboarding: business name and website, first store, branding preview, team invites, developer steps
   (test key, allowed origin, webhook, test event, quickstart) and a KYB status row with a reason and a next step

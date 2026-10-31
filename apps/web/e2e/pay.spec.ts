@@ -790,7 +790,9 @@ test.describe("pay page", () => {
       const page = await context.newPage();
       await openPay(page, invoice);
       await expect(page.getByText(line)).toBeVisible();
-      await expect(page.getByText(/; ask .+ to get it back/)).toHaveCount(0);
+      await expect(
+        page.getByText(/ask (the recipient|Alice Design GmbH) to get it back/i),
+      ).toHaveCount(0);
       await page.getByRole("button", { name: "How to get it back" }).click();
       await expect(
         page
