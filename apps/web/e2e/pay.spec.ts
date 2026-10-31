@@ -919,6 +919,27 @@ test.describe("pay page", () => {
     expect(kept).toBe(0);
   });
 
+  test("the owner's preview keeps no pick on the invoice, yet a reload in the tab still shows the picked address", async ({
+    page,
+  }) => {
+    await page.clock.install({ time: NOW });
+    await mockInvoice(page, CHOOSING);
+    let kept = 0;
+    await page.route(`**/api/v1/invoices/${PAY}/pick`, (route) => {
+      kept++;
+      return route.fulfill({ status: 204 });
+    });
+    await page.goto(`/pay/${PAY}?preview=1`);
+    await page.getByRole("combobox", { name: "Network" }).click();
+    await page.getByRole("option", { name: "Arbitrum Sepolia" }).click();
+    await showAddress(page).click();
+    await expect(page.getByText(OPTION_RECEIVE)).toBeVisible();
+    await page.reload();
+    await expect(page.getByText(OPTION_RECEIVE)).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Network" })).toHaveCount(0);
+    expect(kept).toBe(0);
+  });
+
   test("lets the payer pick the network and token with selects, keeps the pick on the invoice for the next visit, and locks it once money arrives", async ({
     page,
   }) => {

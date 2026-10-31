@@ -240,8 +240,18 @@ function Loaded({
   // Payer chooses (R-57): Show address keeps the pick on the invoice, so the pay link opens on it again. `?option=`
   // (the canary's) opens one option and keeps nothing; neither does the owner's preview.
   const choosing = !answer.optionLocked && answer.options.length > 1 && !firstPaymentOption(answer);
+  // Loaded mounts only once the client has the read, so storage can be read while rendering.
+  const [tabShown] = useState(() => {
+    try {
+      return sessionStorage.getItem(shownKey(answer.invoiceId));
+    } catch {
+      // Storage may be off: the payer asks again.
+      return null;
+    }
+  });
   // The kept pick counts only where the payer chooses, never on `?option=`: the canary always presses Show address.
-  const kept = choosing && !option ? (answer.pickedOptionId ?? null) : null;
+  // This tab's pick comes first: the owner's preview keeps none on the invoice, and a keep can fail.
+  const kept = choosing && !option ? (tabShown ?? answer.pickedOptionId ?? null) : null;
   const [picked, setPicked] = useState(option?.toLowerCase() ?? kept ?? undefined);
   const [pickOption] = usePickOptionMutation();
   const keep =
@@ -301,6 +311,7 @@ function Loaded({
             readAt={readAt}
             choice={choice}
             picking={picking}
+            tabShown={tabShown}
             kept={kept}
             keep={keep}
             embed={embed}
@@ -478,6 +489,7 @@ function PayBox({
   readAt,
   choice,
   picking,
+  tabShown,
   kept,
   keep,
   embed,
@@ -491,7 +503,9 @@ function PayBox({
   readAt: number | null;
   choice: Choice | null;
   picking: boolean;
-  /** The option kept on the invoice, whose address shows on the next visit (R-57). */
+  /** The option whose address this tab showed before a reload (R-68). */
+  tabShown: string | null;
+  /** The option this tab showed, else the one kept on the invoice: its address shows again (R-57, R-68). */
   kept: string | null;
   /** Keeps the shown option on the invoice for the payer's next visit (R-57). */
   keep?: (optionId: string) => void;
@@ -513,14 +527,7 @@ function PayBox({
   const optionId = invoice.optionId;
   // The address shows once the payer asked for it for this option: in this tab, or kept on the invoice (R-57). After
   // Change it is "" until the next Show address, so the kept pick doesn't bring the old address back.
-  const [shown, setShown] = useState<string | null>(null);
-  useEffect(() => {
-    try {
-      setShown(sessionStorage.getItem(shownKey(invoice.invoiceId)));
-    } catch {
-      // Storage may be off: the payer asks again.
-    }
-  }, [invoice.invoiceId]);
+  const [shown, setShown] = useState(tabShown);
   // The pressed button goes away: focus moves to the address it revealed.
   const sendHeading = useRef<HTMLHeadingElement>(null);
   const beforeHeading = useRef<HTMLHeadingElement>(null);
