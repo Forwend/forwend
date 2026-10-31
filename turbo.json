@@ -10,7 +10,7 @@
       "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "out/**", "dist/**"]
     },
     "typecheck": {
-      "dependsOn": ["^typecheck"]
+      "dependsOn": ["^typecheck", "^build"]
     },
     "test": {
       "passThroughEnv": ["DATABASE_URL", "BASE_SEPOLIA_RPC"],
