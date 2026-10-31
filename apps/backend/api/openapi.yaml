@@ -3430,7 +3430,7 @@ components:
             - type: "null"
     PaymentOption:
       type: "object"
-      required: ["optionId", "chainId", "token", "symbol", "decimals", "amount", "receiveAddress", "closesAt", "paymentStatus", "settlementStatus", "refundStatus", "amounts", "coverage", "settlement", "deposits", "depositsTruncated"]
+      required: ["optionId", "chainId", "token", "symbol", "decimals", "amount", "receiveAddress", "closesAt", "paymentStatus", "settlementStatus", "refundStatus", "amounts", "coverage", "settlement", "returns", "deposits", "depositsTruncated"]
       properties:
         optionId: { type: "string" }
         chainId: { type: "integer" }
@@ -3456,6 +3456,18 @@ components:
           type: "array"
           items: { $ref: "#/components/schemas/Deposit" }
         depositsTruncated: { type: "boolean" }
+        returns:
+          type: array
+          description: Held money the refund authority sent back to a payer, once booked, in chain order (PLAN 11.10.3).
+          items:
+            type: object
+            additionalProperties: false
+            required: ["txHash", "to", "amount", "blockTime"]
+            properties:
+              txHash: { type: string }
+              to: { type: string, description: The payer's address the money went to. }
+              amount: { type: string, description: Base units of the option's token. }
+              blockTime: { type: string, format: date-time }
     PaymentCoverage:
       type: "object"
       required: ["historyComplete", "verifiedBlock", "verifiedHash", "verifiedTime", "observedBalance", "balanceDifference", "reconciliationError", "bookingError", "retryAt", "updatedAt", "chainFinalizedBlock", "pendingDeposits", "unbookedDeposits", "unprovedDeposits", "unbookedOutflows"]

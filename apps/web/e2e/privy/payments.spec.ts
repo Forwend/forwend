@@ -142,6 +142,7 @@ const detail = {
         },
       ],
       depositsTruncated: false,
+      returns: [],
     },
   ],
   deliveries: [

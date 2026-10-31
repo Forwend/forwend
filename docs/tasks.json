@@ -422,14 +422,14 @@
       "type": "feat",
       "behavior": "Support returns held money with one ops command that can't overpay or race a settlement",
       "acceptance": [
-        "cmd/ops case takes a pay link, receive address or payment transaction and prints each held payment: sender, amount, why it is held, what is refundable now and when all of it is. Backend only, no UI.",
-        "ops return checks the payment is final and reached this receiver, caps the amount at what is both held and refundable and at least 0.10 USD (D-90), refuses a zero, receiver, token or factory destination, warns for a contract or an address that didn't pay, and dry-runs the transfer and the refund.",
-        "It sets refund_pending before it prints the calls (the receiver's deploy when needed, then refund), one return per option at a time. Process keeps refund_pending until a refund is booked; reopen refuses it; the watcher keeps reading the receiver past its window; the attention list keeps it. ops release unlocks a return that won't be sent.",
-        "The watcher books the return once, and refund_pending becomes held or refunded.",
-        "No new key: the command reads and prints; its only write is the refund status."
+        "cmd/ops case takes a pay link, receive address, payment transaction or invoice id and prints each held payment: sender, amount, why it is held, what is refundable now and when all of it is. Backend only, no UI.",
+        "ops return checks the payment is final and reached this receiver, caps the amount at what is both held and refundable and at least 0.10 USD (D-90), refuses a zero, receiver, token, factory or invoice-address destination, warns for a contract or an address that didn't pay, and dry-runs the transfer and the refund.",
+        "It sets refund_pending before it prints the calls (the receiver's deploy when needed, then refund), one return per option at a time, and not while any movement is unbooked. Process keeps refund_pending until a refund is booked; reopen refuses it; the watcher keeps reading the receiver past its window; the attention list keeps it. ops release unlocks a return that won't be sent.",
+        "The watcher books the return once, refund_pending becomes held or refunded, and the owner's payment page shows it: a Returned to the payer row in Transfers, the timeline's last step, and no extra held any more.",
+        "No new key: the command reads and prints; its only write is the refund status and its history row."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "active",
       "verification": [
         "unit",
         "backend-e2e"
@@ -457,8 +457,8 @@
       "blockedReason": null,
       "evidence": {
         "version": 3,
-        "status": "passed",
-        "at": "2026-10-31T16:31:35Z",
+        "status": "failed",
+        "at": "2026-10-31T16:52:46Z",
         "checks": [
           {
             "id": "harness",
@@ -491,30 +491,9 @@
           },
           {
             "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 286.7,
-            "log": ""
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.6,
-            "log": ""
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 50.5,
-            "log": ""
-          },
-          {
-            "id": "backend-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 33.3,
+            "outcome": "inputs-changed",
+            "exit": 1,
+            "seconds": 272.2,
             "log": ""
           },
           {
@@ -526,25 +505,27 @@
           }
         ],
         "taskHash": "fd1c5f70a102ea1e",
-        "filesHash": "c34caecd0685010c",
+        "filesHash": "1eaf3f98c2255213",
         "proof": {
-          "1": "unit: TestSupportReturnsAnOverpaymentToItsSenderOnce finds the case by receive address, transaction, pay link, embed link and token, and reads held 1 USDC (overpaid), the payment's sender and 1 USDC refundable; ops case on a real Tempo testnet invoice printed its 0.90 OUSD overpayment, sender and refundable amount",
-          "2": "unit: TestSupportReturnRefusesWhatTheMoneyCantDo refuses an unknown payment, the receiver, the zero address, the token, the factory, another invoice's receiver, more than held and 0.099999 USD; accepts 0.10 USD to another address and to a contract, each with its warning; locks nothing on a refusal; writes invoice.return_queued and invoice.return_released to history; ops return on the 0.90 OUSD Tempo testnet invoice passed both dry runs on the real chain, then ops release set it back to held; web-e2e: Need help warns held amounts under 0.10 USD may never come back",
+          "1": "unit: TestSupportReturnsAnOverpaymentToItsSenderOnce finds the case by receive address, transaction, invoice id, pay link, embed link and token, and reads held 1 USDC (overpaid), the payment's sender and 1 USDC refundable; ops case 0xc1087cbd… on the local stack printed the Tempo testnet option's 0.90 OUSD overpayment and hid its 3 empty options",
+          "2": "unit: TestSupportReturnRefusesWhatTheMoneyCantDo refuses an unknown payment, the receiver, the zero address, the token, the factory, another invoice's receiver, more than held and 0.099999 USD; accepts 0.10 USD to another address and to a contract, each with its warning; locks nothing on a refusal; writes invoice.return_queued and invoice.return_released to history; web-e2e: Need help warns held amounts under 0.10 USD may never come back",
           "3": "unit: the overpayment test keeps refund_pending through the signer's settlement (failed before the Process fix); TestSupportWaitsForASentRefundToBeBookedBeforeTheNextReturn and TestSupportWaitsForEveryPaymentToBeBooked refuse a return while a refund or a payment is unbooked (both accepted it before their fixes); TestReceiverWithAQueuedReturnStaysWatchedPastTheWindow (0 refunds before the watcher fix); TestPaymentAttentionShowsNetFunds keeps a canceled payment with a queued return listed (failed before the attention fix)",
-          "4": "unit: the overpayment, expired-partial and unbooked-refund tests run the printed cast calls as the authority on Anvil, then a watcher and ledger round books the refund once and refund_status is refunded; TestSupportReturnsAnExpiredPartialPaymentOnlyAfterItsDeadline refuses before the deadline",
+          "4": "unit: the Anvil tests run the printed cast calls as the authority and a round books each refund once; testnet: ops return queued 0.90 OUSD on Tempo Moderato, the printed cast send from the test refund authority mined in tx 0x8448abaef2f00b7277a3888e20039b2951f98af165d9b0a98298d39effc42144, and the local worker booked it in about 12 s: refund_status refunded, receiver 0 OUSD, history return_queued then refunded",
           "5": "unit: QueueReturn writes only refund_status and its history row; cmd/ops loads config.LoadOps (database and RPCs, no key) and with-env.sh strips the executor, Privy, Resend, CoinGecko, webhook and canary secrets from it"
         },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "PASS after c8484f0a. Docs only: git diff 31843372..HEAD changes just docs/backend/money-safety.md and the harness's docs/tasks.json. In money-safety.md:88-91, the two reasons (past the deadline the contract lets the whole balance out, so a second return would take the creator's money) are back under the balance-guard bullet. The unbooked-movements bullet follows them. That fixes my note 3. check-docs: 0 errors. My review of 31843372 still holds for the code. QueueReturn refuses while the chain balance is below the booked balance, or while a payment or receiver event of the option is unbooked. The tests fail without each check and pass as committed. Non-blocking notes from that review still apply: there is a short window before the watcher's first scan of a late deposit (the creator stays whole, the late payer's money could go to the first payer), and a refused outflow blocks returns for that option until it is reconciled. Accepted as before: ErrAmountNeeded has no test, and splitting among payers stays support's call (D-57).",
-          "at": "2026-10-31T16:38:12Z",
-          "filesHash": "c34caecd0685010c"
-        }
+        "changedDuringRun": [
+          "apps/backend/api/openapi.yaml",
+          "apps/backend/internal/httpapi/paymentapi/model.go",
+          "apps/backend/internal/httpapi/tests/payment_operations_test.go",
+          "apps/backend/internal/invoice/payment_details.go",
+          "apps/web/src/features/payments/lib/payments.ts",
+          "apps/web/src/features/payments/schemas/payments.ts",
+          "apps/web/src/features/payments/tests/payments.test.tsx"
+        ]
       },
       "branch": "feat/f410-support-returns-held-money-with-one-ops",
       "baseCommit": "89c7fdaabbf43d3767f41606704b70850b8c9e36",
-      "failedVerifies": 0
+      "failedVerifies": 1
     },
     {
       "id": "F411",

@@ -125,6 +125,10 @@ export const paymentDetailSchema = paymentSchema.extend({
           secondsLeft: count.nullable().optional(),
         })
         .nullable(),
+      // Held money sent back to a payer, once booked (PLAN 11.10.3).
+      returns: z.array(
+        z.object({ txHash: hash32, to: evmAddress, amount: baseUnits, blockTime: apiTime }),
+      ),
       deposits: z.array(depositSchema),
       depositsTruncated: z.boolean(),
     }),

@@ -91,6 +91,7 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
 - It also refuses while a payment or a receiver event of the option is not booked: it could hide that gap.
 - Queuing writes `invoice.return_queued` to the invoice's history with the amount and destination; release writes
   `invoice.return_released`. The owner sees them as Return queued and Return released.
+- The owner's payment page lists each booked return as a Transfers row and ends its timeline with it.
 - While a return is queued:
   - the ledger keeps `refund_pending` until a refund is booked, then shows `held` or `refunded`;
   - reopen is refused, and the owner's attention list keeps the payment;
