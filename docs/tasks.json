@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 415,
+  "nextId": 416,
   "tasks": [
     {
       "id": "F332",
@@ -44,10 +44,8 @@
         "Ledger/export totals reconcile against receiver and wallet chain balances; duplicate/reordered events cannot double-fulfill.",
         "Quickstart and integration docs match implemented packages; provider limitations, actual user testing and release approvals are reported truthfully."
       ],
-      "dependsOn": [
-        "F334"
-      ],
-      "state": "not_started",
+      "dependsOn": [],
+      "state": "verified",
       "verification": [
         "unit",
         "build",
@@ -60,9 +58,90 @@
         "packages/contracts/src/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-31 2026-10-31 dependsOn F334 cleared by hand: F334 is merged (#393), but the harness reads archived dependencies as unmerged because docs/archive is local only. F415 fixes the harness."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-31T01:45:46Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "c4a11bdcf72a1a49",
+        "filesHash": "d040cc5b6b84cce5",
+        "proof": {
+          "1": "e2e: example-merchant.spec.ts: the shop prices 2 beans and 1 mug at 60.50 on its server, creates the checkout with those items, shows Forwend's real pay panel it can't read under its strict CSP, and links the hosted page; webhook.test.ts and catalog.test.ts in unit",
+          "2": "e2e: backend e2e TestReusableLinkReservationsExpireAndPurchasesSettleIndependently (independent link customers), TestExceptionsCancelAndEmail (partial, expiry, late), TestMoneyLoop (an invoice paid end to end with its signed invoice.paid webhook); unit: TestCheckoutBoundariesIncludeStoreRoleTenantKeyAndMode (store isolation), TestWebhookDeliveriesAreSignedAndRetried (delivery recovery); example-merchant spec and webhook.test.ts (spoofed prices, forged messages and events)",
+          "3": "e2e: TestCheckoutPurchaseSettlesWithOneRPCWithoutIssuingAnInvoice reconciles ledger, receiver and wallet balances and the movements CSV to chain receipts; the example ships once across a repeated paid event and a later settled event (example-merchant.spec.ts, webhook.test.ts)",
+          "4": "docs-check: /docs Checkout on your site and changelog, apps/example-merchant README quickstart; they say npm forwend 0.1.0 lacks checkout methods, every network is a testnet, and publishing stays the owner's"
+        }
+      },
+      "branch": "feat/f335-prove-merchant-checkout-fulfillment-and",
+      "baseCommit": "6338697e1281927e28887ac64cd624eed8175440",
+      "failedVerifies": 0
     },
     {
       "id": "F348",
@@ -454,6 +533,28 @@
         "packages/contracts/src/*"
       ],
       "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F415",
+      "type": "fix",
+      "behavior": "A task that depends on an archived, merged task can start",
+      "acceptance": [
+        "start and ready treat a dependency found only in the local archive as satisfied when its record is passing, since archive takes only merged or dropped work and docs/archive is never on origin.",
+        "A harness regression test archives a merged dependency and starts its dependent."
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "harness"
+      ],
+      "refs": [
+        "R-25"
+      ],
+      "keep": [],
+      "review": false,
       "notes": [],
       "blockedReason": null,
       "evidence": null

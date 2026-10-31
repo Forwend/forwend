@@ -14,6 +14,7 @@ const SECTIONS = [
   "Webhooks",
   "Verifying webhooks",
   "The forwend package",
+  "Checkout on your site",
   "Versioning",
   "Changelog",
 ];

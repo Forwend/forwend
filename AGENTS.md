@@ -20,6 +20,7 @@ Read only the task's requirement rows and the relevant package instructions.
 | Contracts                      | [packages/contracts/AGENTS.md](packages/contracts/AGENTS.md)                                                                 |
 | Node package                   | [packages/node/AGENTS.md](packages/node/AGENTS.md)                                                                           |
 | Browser checkout packages      | [packages/js/AGENTS.md](packages/js/AGENTS.md), [packages/react/AGENTS.md](packages/react/AGENTS.md)                         |
+| Example merchant               | [apps/example-merchant/AGENTS.md](apps/example-merchant/AGENTS.md)                                                           |
 
 
 ## Shared rules

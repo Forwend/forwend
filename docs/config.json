@@ -366,6 +366,10 @@
         "checks": ["lint", "typecheck", "web-unit", "web-build", "web-e2e"]
       },
       {
+        "paths": ["apps/example-merchant/*"],
+        "checks": ["lint", "typecheck", "unit", "build", "web-e2e"]
+      },
+      {
         "paths": ["packages/js/*", "packages/react/*", "scripts/check-browser-packages.mjs"],
         "checks": ["lint", "typecheck", "unit", "build", "browser-packages"]
       },

@@ -1,86 +1,17 @@
-import { createServer, type Server } from "node:http";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
 import { readPayPage } from "../scripts/canary-pay-page";
+import { ID, MAIN_OPTION, mockInvoice, NOW, OPEN, PAY, RECEIVE } from "./pay-invoice";
 import { blockingViolations } from "./privy/axe";
-import { API_PORT, API_URL, PUBLIC_URL } from "./servers";
+import { API_PORT, PUBLIC_URL } from "./servers";
 import { sidewaysScroll } from "./sideways";
 
-// ID is keccak256(PAY) (D-86). RECEIVE is factory.predict of these terms (R-15), so the page shows it
-// only while every term is unchanged.
-const PAY = "7f3a9c1e5b2d4086a1c3e5f7092b4d6f8a0c2e4f6a8b0d2f4e6c8a0b2d4f6e81";
-const ID = "0x0bc3ec4e72d7b5f3cc8a059ea1a0f06cc9d24ea5e71a2acfd86fea75540e9a31";
-const RECEIVE = "0x25425f508790c1847090371590297cad428868f3";
 // A second option of a payer-chooses invoice (R-56): USDC on Arbitrum Sepolia, its id derived from ID as the API does
 // (keccak256(abi.encode(ID, 421614, token))) and the address predict gives for the same terms with that id.
 const OPTION_ID = "0x285391c5b8b001b41a459f4011b40661d4c83c871d3f0d7881682bbced83a1c1";
 const OPTION_RECEIVE = "0x66d0b871c6371d997f8bf34ea320927aff32dc6f";
-const NOW = new Date("2026-10-10T12:00:00Z");
 const POLL_MS = 15_000;
 
-const MAIN_OPTION = {
-  optionId: ID,
-  chainId: 84532,
-  network: "base-sepolia",
-  token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
-  symbol: "USDC",
-  decimals: 6,
-  amount: "1250000000",
-  receiveAddress: RECEIVE,
-  deposits: [] as object[],
-};
-
-const OPEN = {
-  invoiceId: ID,
-  payToken: PAY,
-  optionId: ID,
-  optionLocked: false,
-  optionCount: 1,
-  confirming: false,
-  closed: false,
-  senderName: null as string | null,
-  returnUrl: null as string | null,
-  nextCheckAt: null,
-  updates: [],
-  replacedBy: null,
-  lines: [],
-  options: [MAIN_OPTION],
-  number: 1,
-  title: "Logo design",
-  note: "Thanks for the work together.",
-  dueDate: "2026-11-01",
-  supplyDate: null,
-  reference: "PO-4500012345" as string | null,
-  agreedValue: { currency: "EUR", amount: "115000", decimals: 2, date: "2026-10-09" } as
-    | object
-    | null,
-  issuer: {
-    name: "Alice Design GmbH",
-    address: "Hauptstr. 1\n10115 Berlin",
-    country: "DE",
-    taxId: null,
-    email: "billing@alice.example",
-  },
-  chainId: 84532,
-  livemode: false,
-  token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
-  amount: "1250000000",
-  recipient: "0x1111111111111111111111111111111111111111",
-  factory: "0xece745390524e4d0b05d26f56af7f1d38fdb7546",
-  receiveAddress: RECEIVE,
-  expiresAt: "2026-10-17T15:00:00Z",
-  closesAt: "2026-10-17T15:00:00Z",
-  settleDeadline: "2026-10-18T15:00:00Z",
-  paymentStatus: "open",
-  settlementStatus: "none",
-  refundStatus: "none",
-  settlementTxHash: null,
-  createdAt: "2026-10-10T11:00:00Z",
-  paidAt: null as string | null,
-  settledAt: null as string | null,
-  canceledAt: null,
-  deposits: [] as object[],
-};
 const CHOOSING = {
   ...OPEN,
   optionCount: 2,
@@ -139,13 +70,6 @@ const SETTLED = {
   settlementTxHash: `0x${"4".repeat(64)}`,
   settledAt: "2026-10-10T12:20:00Z",
 };
-
-async function mockInvoice(page: Page, ...bodies: object[]) {
-  let call = 0;
-  await page.route("**/api/v1/invoices/*", (route) =>
-    route.fulfill({ json: bodies[Math.min(call++, bodies.length - 1)] }),
-  );
-}
 
 async function openPay(page: Page, ...bodies: object[]) {
   await page.clock.install({ time: NOW });
@@ -1131,36 +1055,11 @@ test.describe("pay page", () => {
 
 // R-168: the checkout inside a merchant's page.
 test.describe("embedded checkout", () => {
-  // Both origins are the one server below, so Chromium sees a local page framing a local one. PARENT is the store's
-  // allowed origin; OTHER is another site.
+  // Both origins are the shared stub (e2e/stub-api.mjs), so Chromium sees a local page framing a local one. PARENT is
+  // a store's allowed origin and its /shop frames ?src; OTHER is another site.
   const PARENT = `http://localhost:${API_PORT}`;
   const OTHER = `http://127.0.0.1:${API_PORT}`;
   const RETURN = "https://shop.example.com/done";
-
-  // The api the proxy asks before a page may frame /embed (only PARENT may frame PAY), and the merchant's page, which
-  // frames ?src and keeps what the frame posts to it.
-  let api: Server;
-  test.beforeAll(async () => {
-    api = createServer((req, res) => {
-      const url = new URL(req.url ?? "/", API_URL);
-      if (url.pathname === "/shop") {
-        res.setHeader("Content-Type", "text/html");
-        res.end(`<!doctype html><html lang="en"><title>Shop</title><script>
-          window.heard = [];
-          addEventListener("message", (e) => {
-            if (e.source === document.querySelector("iframe").contentWindow) heard.push({ origin: e.origin, data: e.data });
-          });
-        </script><iframe title="Checkout" src="${url.searchParams.get("src")}" style="width:400px;height:640px;border:0"></iframe></html>`);
-        return;
-      }
-      const allowed =
-        url.pathname === `/v1/invoices/${PAY}/embed` && url.searchParams.get("origin") === PARENT;
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify({ allowed }));
-    });
-    await new Promise<void>((resolve) => api.listen(API_PORT, "127.0.0.1", resolve));
-  });
-  test.afterAll(() => new Promise<void>((resolve) => api.close(() => resolve())));
 
   const embedUrl = (layout: string, origin = PARENT, theme = "") =>
     `${PUBLIC_URL}/embed/${PAY}?layout=${layout}&origin=${encodeURIComponent(origin)}${theme ? `&theme=${theme}` : ""}`;

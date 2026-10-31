@@ -11,13 +11,14 @@ function reserve() {
     server.listen(0, "127.0.0.1", () => resolve(server));
   });
 }
-const servers = await Promise.all([reserve(), reserve(), reserve()]);
-const [publicPort, kitPort, apiPort] = servers.map((server) => server.address().port);
+const servers = await Promise.all([reserve(), reserve(), reserve(), reserve()]);
+const [publicPort, kitPort, apiPort, examplePort] = servers.map((server) => server.address().port);
 const env = {
   ...process.env,
   E2E_PUBLIC_PORT: String(publicPort),
   E2E_KIT_PORT: String(kitPort),
   E2E_API_PORT: String(apiPort),
+  E2E_EXAMPLE_PORT: String(examplePort),
 };
 await Promise.all(servers.map((server) => new Promise((resolve) => server.close(resolve))));
 
