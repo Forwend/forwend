@@ -94,7 +94,7 @@ export const LINKS_COPY = {
   clearDate: "Clear the last day",
   maxPayments: "Payment limit",
   unlimited: "No limit",
-  maxPaymentsHint: "Open checkouts count toward it until they close.",
+  maxPaymentsHint: "Open checkouts count toward it.",
   active: "The link is on",
   activeHint: "Off, no one can start a new purchase.",
   save: "Save link",

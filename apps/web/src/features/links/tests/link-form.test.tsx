@@ -76,7 +76,8 @@ it("saves a link that isn't reusable with a cap of one payment, and a reusable o
   const reusable = screen.getByRole("switch", { name: "Reusable" });
   expect(reusable.getAttribute("aria-checked")).toBe("true");
   fireEvent.click(reusable);
-  expect(screen.queryByLabelText("Payment limit")).toBeNull();
+  // Off, the limit slides shut: still mounted for the motion, but inert.
+  expect(screen.getByLabelText("Payment limit").closest("[inert]")).not.toBeNull();
   await save();
   fireEvent.click(reusable);
   await save();

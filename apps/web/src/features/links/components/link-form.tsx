@@ -124,7 +124,12 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
     }
     if (body.minUsd && body.maxUsd && !shown.minUsd && Number(body.minUsd) > Number(body.maxUsd))
       shown.maxUsd = COPY.errors.range;
-    if (cap && (!/^\d+$/.test(cap) || Number(cap) < 1 || Number(cap) > LINK_LIMITS.maxPayments))
+    // Off, the limit field stays mounted (it slides shut), and its value doesn't count.
+    if (
+      reusable &&
+      cap &&
+      (!/^\d+$/.test(cap) || Number(cap) < 1 || Number(cap) > LINK_LIMITS.maxPayments)
+    )
       shown.maxPayments = COPY.errors.maxPayments;
     return shown;
   };
@@ -354,7 +359,7 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
               defaultValue={typed.maxPayments}
               hint={COPY.maxPaymentsHint}
               error={errors.maxPayments}
-              className="sm:max-w-80"
+              inline
             />
           </SwitchCard>
           <DatePicker

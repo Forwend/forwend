@@ -111,7 +111,8 @@ Every control comes from `@forwend/ui-web`; a link that looks like a button uses
   a quiet line under it. On, the switch's thumb is the lightest thing on it in both themes (white on the river
   blue, the ink in dark mode); off, it is the quiet gray.
 - A setting in a form is a `SwitchCard`: an icon tile, the title and one short line, the switch at the row's end.
-  - While on it can open its own field inside the card, under a rule, such as a payment link's Payment limit.
+  - While on, its field slides open inside the card under the title, on a surface-2 inset; off, it slides shut.
+  - That field is an inline `TextField`: label and one line on the left, a narrow input at the row's end.
 - A read-only value to copy (`CopyValue`) sits in a field as tall as an input, with Copy and Open icons at its end.
 
 ## App shell
@@ -443,6 +444,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The table shows the link with its `/l/<slug>`, the amount, a status badge and visits, paid purchases and reserved slots.
   - The status is On, Off, Ended, Limit reached or Setup needed; only On is green.
   - Test links keep their mode label in lists and details; public checkout shows Testnet beside the payee.
+  - The link form's intro and its Test mode badge share one line, so the form still fits the screen.
   - The link page reads one link (`GET /links/{id}`) and opens with `DetailHeader`: a link icon tile, the title with
     status and mode badges, "Payment link · Created …", the price as the figure and More actions.
   - More actions holds Edit payment link and Turn off or Turn on, which saves at once with a toast.

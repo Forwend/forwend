@@ -12,7 +12,7 @@ export interface SwitchCardProps {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
   disabled?: boolean;
-  /** What the switch opens: inside the card, under a rule, only while it is on. */
+  /** What the switch opens: inside the card under the title, sliding open while on and inert while off. */
   children?: ReactNode;
   className?: string;
 }
@@ -65,8 +65,21 @@ export function SwitchCard({
           <SwitchTrack checked={checked} />
         </button>
       </div>
-      {checked && children ? (
-        <div className="border-t border-line px-4 py-3">{children}</div>
+      {children ? (
+        // Grid rows animate the height to the content's own; the field stays mounted so closing slides too.
+        <div
+          inert={!checked}
+          className={cx(
+            "grid transition-[grid-template-rows,opacity] duration-[var(--fw-duration-base)] ease-out motion-reduce:transition-none",
+            checked ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+          )}
+        >
+          <div className="min-h-0 overflow-hidden">
+            <div className={cx("px-4 pb-4", icon ? "sm:pl-16" : "")}>
+              <div className="rounded-md bg-surface-2 px-3 py-3">{children}</div>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );

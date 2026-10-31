@@ -490,8 +490,8 @@ export function ComponentsShowcase() {
               label="Payment limit"
               placeholder="No limit"
               inputMode="numeric"
-              hint="Open checkouts count toward it until they close."
-              className="sm:max-w-80"
+              hint="Open checkouts count toward it."
+              inline
             />
           </SwitchCard>
           <SwitchCard
