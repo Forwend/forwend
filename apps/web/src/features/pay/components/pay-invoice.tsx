@@ -62,6 +62,7 @@ import {
 } from "@/features/invoices/lib/invoices";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import { Backdrop } from "@/features/pay/components/backdrop";
+import { NeedHelp } from "@/features/pay/components/need-help";
 import { type Choice, OptionPicker } from "@/features/pay/components/option-picker";
 import { Payee } from "@/features/pay/components/payee";
 import { ReceiptEmail } from "@/features/pay/components/receipt-email";
@@ -716,9 +717,7 @@ function PayBox({
         options={payerNoticeOptions(invoice.options)}
         showVerification={pay.state !== PAY_STATES.review}
       />
-      {pay.late > 0n ? (
-        <p className="text-sm text-warning">{COPY.late(money(pay.late), payeeOf(invoice))}</p>
-      ) : null}
+      {pay.late > 0n ? <HeldNote>{COPY.late(money(pay.late))}</HeldNote> : null}
       {/* R-129: a Revise canceled it for a new invoice, whose own pay link takes the payment. */}
       {invoice.replacedBy?.payToken ? (
         <p className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-ink">
@@ -735,9 +734,7 @@ function PayBox({
         </p>
       ) : null}
       {pay.state === PAY_STATES.canceled && pay.received > 0n ? (
-        <p className="text-sm text-warning">
-          {COPY.canceledHeld(money(pay.received), payeeOf(invoice))}
-        </p>
+        <HeldNote>{COPY.canceledHeld(money(pay.received))}</HeldNote>
       ) : null}
       {/* Held only once an option was chosen (R-119): until then money on another option may still be the one. */}
       {invoice.options
@@ -753,9 +750,7 @@ function PayBox({
             : depositAmount(o, false) + depositAmount(o, true);
           const amount = `${formatTokenAmount({ baseUnits: units, decimals: o.decimals, fractionDigits: exactDigits(units, o.decimals) })} ${o.symbol}`;
           return (
-            <p key={o.optionId} className="text-sm text-warning">
-              {COPY.otherOption(amount, chainName(o.chainId), payeeOf(invoice))}
-            </p>
+            <HeldNote key={o.optionId}>{COPY.otherOption(amount, chainName(o.chainId))}</HeldNote>
           );
         })}
     </div>
@@ -830,6 +825,11 @@ function StatusLine({
       >
         {found ? COPY.foundNote(money(missing)) : null}
       </p>
+      {pay.state === PAY_STATES.closedPartial ? (
+        <div className="col-start-1 -mt-1.5 pl-6.5">
+          <GetItBack />
+        </div>
+      ) : null}
       {/* Placed under the status, so the button keeps the first row and a check's answer the third. */}
       {pending ? (
         <p className="col-start-1 row-start-2 -mt-1.5 pl-4.5 text-xs text-muted">
@@ -1003,11 +1003,38 @@ function Received({
   );
 }
 
-/** Money over the amount stays held for the payer (D-24); with no refund flow yet, the payee returns it. */
+/** Money over the amount stays held for the payer (D-24). */
 function Overpaid({ invoice, money }: { invoice: Invoice; money: (units: bigint) => string }) {
   const extra = depositAmount(invoice, false) - BigInt(invoice.amount);
   if (extra <= 0n) return null;
-  return <p className="text-sm text-warning">{COPY.overpaid(money(extra))}</p>;
+  return <HeldNote>{COPY.overpaid(money(extra))}</HeldNote>;
+}
+
+/** Money held for the payer, with the way to get it back. A div: the dialog inside can't sit in a paragraph. */
+function HeldNote({ children }: { children: string }) {
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-2 text-sm text-warning">
+      <p>{children}</p>
+      <GetItBack />
+    </div>
+  );
+}
+
+/** Opens Need help, which says how held money comes back (PLAN 11.10). */
+function GetItBack() {
+  return (
+    <NeedHelp
+      trigger={(open) => (
+        <button
+          type="button"
+          onClick={open}
+          className={`${buttonClasses({ variant: "link" })} h-auto text-sm`}
+        >
+          {COPY.howToGetBack}
+        </button>
+      )}
+    />
+  );
 }
 
 // Paid is the end for the payer: settling is the sender's business (R-68).

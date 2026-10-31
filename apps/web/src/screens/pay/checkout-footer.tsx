@@ -13,7 +13,7 @@ export interface CheckoutFooterProps {
 }
 
 /** The public checkout pages' footer: who runs the payment, and help. A new tab keeps the checkout open. In an embed
- * it also opens the checkout in a tab, where the browser shows its address and a wallet can connect. */
+ * it also opens the checkout in a tab, where the browser shows its address. */
 export function CheckoutFooter({ className = "", embeddedToken }: CheckoutFooterProps) {
   return (
     <footer
@@ -31,7 +31,7 @@ export function CheckoutFooter({ className = "", embeddedToken }: CheckoutFooter
         <span className="sr-only">{PAY_COPY.newTab}</span>
       </a>
       <span aria-hidden>·</span>
-      <NeedHelp embedded={embeddedToken !== undefined} />
+      <NeedHelp />
       {embeddedToken ? (
         <>
           <span aria-hidden>·</span>

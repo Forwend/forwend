@@ -138,9 +138,21 @@ test.describe("pay page", () => {
     await expect(
       help.getByText("Forwend never asks you to pay a different address or an extra fee."),
     ).toBeVisible();
-    await expect(
-      help.locator("li", { hasText: `You are on ${new URL(PUBLIC_URL).host}.` }),
-    ).toBeVisible();
+    await expect(help.getByText(`You are on ${new URL(PUBLIC_URL).host}.`)).toBeVisible();
+    await expect(help.getByRole("heading", { level: 3 })).toHaveText([
+      "Check this page",
+      "Sent too much, too late or after it closed?",
+      "Sent on the wrong network or token?",
+    ]);
+    await expect(help.getByText(/we can't promise it/)).toBeVisible();
+    // PLAN 11.10: support returns held money, so the message carries the pay link it needs.
+    const mail = new URL(
+      (await help.getByRole("link", { name: "Email support" }).getAttribute("href")) ?? "",
+    );
+    expect(`${mail.protocol}${mail.pathname}`).toBe("mailto:support@forwend.com");
+    expect(mail.searchParams.get("body")).toContain(`Pay link: ${PUBLIC_URL}/pay/${PAY}`);
+    await expect(help.getByText("Or write to support@forwend.com")).toBeVisible();
+    expect(await blockingViolations(page)).toEqual([]);
     // Nobody is called "the sender": the payer could read it as themselves.
     await expect(page.getByText(/\bsender\b/)).toHaveCount(0);
     await page.keyboard.press("Escape");
@@ -152,7 +164,9 @@ test.describe("pay page", () => {
     await expect(page.getByRole("heading", { name: "Send USDC on Base Sepolia to" })).toBeFocused();
     await expect(page.getByText(RECEIVE)).toBeVisible();
     await expect(page.getByRole("img", { name: "QR code of the address to pay" })).toBeVisible();
-    await expect(page.getByRole("note")).toHaveText("Send only USDC on Base Sepolia.");
+    await expect(page.getByRole("note")).toHaveText(
+      "Send only USDC on Base Sepolia. Other networks or tokens may not come back.",
+    );
     // R-78
     const shown = page.locator("[data-address]");
     await expect(shown).toHaveText(RECEIVE);
@@ -727,11 +741,64 @@ test.describe("pay page", () => {
     await mockInvoice(page, { ...CANCELED, deposits: [{ ...DEPOSIT, amount: "250000000" }] });
     await page.reload();
     await expect(
-      page.getByText(
-        "The 250.00 USDC you sent is held for you; ask Alice Design GmbH to get it back.",
-      ),
+      page.getByText("The 250.00 USDC you sent is held for you, not paid out."),
     ).toBeVisible();
     await expect(showAddress(page)).toHaveCount(0);
+  });
+
+  // PLAN 11.10: held money comes back through support; the page never sends the payer to the payee for it.
+  test("every held payment says it isn't paid out, and How to get it back opens Need help", async ({
+    context,
+  }) => {
+    const confirmed = {
+      ...DEPOSIT,
+      status: "confirmed",
+      blocksLeft: 0,
+      blocksTotal: 0,
+      secondsLeft: 0,
+    };
+    const held: [object, string | RegExp][] = [
+      [
+        { ...PAID, deposits: [{ ...confirmed, amount: "1300000000", paid: "1250000000" }] },
+        "Overpaid by 50.00 USDC. The extra is held for you, not paid out.",
+      ],
+      [
+        { ...CLOSED, deposits: [{ ...confirmed, late: true, amount: "100000000" }] },
+        "100.00 USDC arrived after the checkout closed. It is held for you, not paid out.",
+      ],
+      [
+        { ...PARTIAL, paymentStatus: "expired_partially_paid" },
+        "Closed before the full amount arrived. The 250.00 USDC you sent is held for you, not paid out.",
+      ],
+      [
+        { ...CANCELED, deposits: [{ ...DEPOSIT, amount: "250000000" }] },
+        "The 250.00 USDC you sent is held for you, not paid out.",
+      ],
+      [
+        {
+          ...CHOOSING,
+          optionLocked: true,
+          options: [
+            MAIN_OPTION,
+            { ...CHOOSING.options[1], deposits: [{ ...confirmed, amount: "5000000" }] },
+          ],
+        },
+        /^5\.00 USDC sent on .+ went to another payment option\. It is held for you, not paid out\.$/,
+      ],
+    ];
+    for (const [invoice, line] of held) {
+      const page = await context.newPage();
+      await openPay(page, invoice);
+      await expect(page.getByText(line)).toBeVisible();
+      await expect(page.getByText(/; ask .+ to get it back/)).toHaveCount(0);
+      await page.getByRole("button", { name: "How to get it back" }).click();
+      await expect(
+        page
+          .getByRole("dialog", { name: "Need help?" })
+          .getByRole("heading", { name: "Sent too much, too late or after it closed?" }),
+      ).toBeVisible();
+      await page.close();
+    }
   });
 
   test("says what is left when partly paid, and that a closed invoice takes no more", async ({
@@ -755,7 +822,7 @@ test.describe("pay page", () => {
     ]);
     await page.clock.runFor(POLL_MS);
     await expect(status(page)).toContainText(
-      "This payment is closed. If you already sent money, it is not lost: contact Alice Design GmbH.",
+      "This payment is closed. Do not send money. If you already did, Need help says what to do.",
     );
     await expect(showAddress(page)).toHaveCount(0);
     await expect(page.getByText(/Copy the address from this page/)).toHaveCount(0);
@@ -843,7 +910,7 @@ test.describe("pay page", () => {
     expect(new URL(page.url()).search).toBe("");
     // R-78
     await expect(page.getByRole("note")).toHaveText(
-      "Send only USDC on Arbitrum Sepolia. Native USDC, not USDC.e.",
+      "Send only USDC on Arbitrum Sepolia. Other networks or tokens may not come back. Native USDC, not USDC.e.",
     );
     await expect(page.getByRole("link", { name: /0x75fa.*aa4d/ })).toHaveAttribute(
       "href",
@@ -1142,6 +1209,17 @@ test.describe("embedded checkout", () => {
       "target",
       "_blank",
     );
+    // Need help names the frame's own site, and support gets the hosted pay link, not the embed's.
+    await frame.getByRole("button", { name: "Need help?" }).click();
+    const help = frame.getByRole("dialog", { name: "Need help?" });
+    await expect(
+      help.getByText(`This checkout comes from ${new URL(PUBLIC_URL).host}.`),
+    ).toBeVisible();
+    const mail = new URL(
+      (await help.getByRole("link", { name: "Email support" }).getAttribute("href")) ?? "",
+    );
+    expect(mail.searchParams.get("body")).toContain(`Pay link: ${PUBLIC_URL}/pay/${PAY}\n`);
+    await help.getByRole("button", { name: "Close" }).click();
 
     // The frame takes no orders from its page: a forged message changes nothing.
     await page.evaluate(() =>

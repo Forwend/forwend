@@ -753,12 +753,16 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - Ruled label and value rows: Amount, Paid to, Date, and Transaction with a View transaction link to the explorer.
     - Download receipt, a full-width button. Primary; or secondary under a full-width primary Back to <host> when the
       invoice has a return link.
-  - The payer never sees the wallet transfer, status badges or an overpaid line (PLAN 11.10.1).
+  - The payer never sees the wallet transfer or status badges.
+  - Held money says it is held, not paid out, with How to get it back, which opens Need help (PLAN 11.10.1).
   - Copy names the payee, or "the invoice's creator". Never "the sender".
   - Footer: one quiet line.
     - "Payments by" with the mark and Forwend, opening the site in a new tab.
-    - "Need help?" opens a dialog with the rules (where you are, refunds, scams, the unverified name), so the pay box
-      never grows.
+    - "Need help?" opens a dialog, so the pay box never grows. Short sections with headings, split by hairlines:
+      - Check this page: where you are, scams and the unverified name.
+      - Sent too much, too late or after it closed: held for you, returned through support.
+      - Sent on the wrong network or token: support checks, and can't promise.
+      - Email support opens a message with the pay link; the address shows as text too.
 - No image and no glass; it follows the system theme. The invoice PDF link stays in every state; the receipt link
   appears once paid.
 - When a refresh fails the page keeps the last read under a notice across its top (R-194).

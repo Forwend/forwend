@@ -1,6 +1,7 @@
 export const SITE = {
   name: "Forwend",
   url: "https://forwend.com",
+  supportEmail: "support@forwend.com",
   title: "Forwend | Get paid in stablecoins, see every step",
   titleTemplate: "Forwend | %s",
   description:

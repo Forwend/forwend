@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 417,
+  "nextId": 418,
   "tasks": [
     {
       "id": "F332",
@@ -246,29 +246,30 @@
     {
       "id": "F408",
       "type": "feat",
-      "behavior": "A payer claims held money from the pay page",
+      "behavior": "The pay page tells a payer how to get held money back through support, and Need help explains every case without promising recovery",
       "acceptance": [
-        "A payer with held money presses Claim refund on /pay, connects the wallet that sent it and signs a claim naming the invoice and the destination; plain and smart-contract wallet signatures are both verified",
-        "An exchange deposit gives a destination and support evidence instead of a signature (Q-9)",
-        "Claims live in refund_claims with states the payer sees, and each state change reaches the payer receipt email once",
-        "From an embed, Claim refund opens the hosted page in a new tab"
+        "Every held-money line on the pay page (overpaid, late, closed with a partial payment, canceled, another option, closed) says the money is held for the payer and to email support to get it back. None tells the payer to ask the recipient, and none promises the money comes back.",
+        "Need help shows short sections with headings: check this page (host, scams, the unverified name); sent too much, too late or to a closed payment; sent on the wrong network or token, where we check but can't promise. An Email support action opens a message with the pay link filled in, and the address shows as text too.",
+        "The dialog follows the kit's type and spacing, works in light and dark and at 390 px wide, and the embedded checkout gets the same dialog with its own host note. Screenshots reviewed; axe finds 0 serious or critical violations.",
+        "PLAN 11.10 and D-37, D-78 and Q-9 describe returns through support for the MVP: no wallet connection or signature. Deferred beyond MVP holds the automation: self-serve claims and a wrong-network lookup.",
+        "Browser tests cover the dialog's sections and Email support link, and each held-money line on the pay page."
       ],
       "dependsOn": [
         "F333"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "backend-e2e",
         "web-e2e"
       ],
       "refs": [
-        "D-78",
+        "R-45",
+        "R-68",
+        "R-77",
+        "R-168",
         "D-37",
-        "D-57",
-        "D-68",
-        "D-89",
-        "D-90",
+        "D-78",
         "Q-9"
       ],
       "keep": [
@@ -277,14 +278,90 @@
       "review": true,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-31T13:59:10Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.8,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 258.2,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 37.6,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 37.7,
+            "log": ""
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "09b76b83d92edfaf",
+        "filesHash": "ce55880c98059ead",
+        "proof": {
+          "1": "web-e2e: pay.spec 'every held payment says it isn't paid out, and How to get it back opens Need help' covers overpaid, late, closed with a partial payment, canceled and another option, and that no line says 'ask … to get it back'; 'says what is left when partly paid' checks the closed text drops 'it is not lost'",
+          "2": "web-e2e: pay.spec 'shows who asks and the amount' opens Need help and checks its three section headings, the can't-promise line, the Email support mailto to support@forwend.com whose body carries the pay link, and the visible address",
+          "3": "web-e2e: the same test runs axe with the dialog open (0 blocking violations); 'an element tells its page' opens Need help in the embed: its own host note and the /pay/ link; light, dark and 390 px screenshots reviewed",
+          "4": "docs-check: PLAN 11.10 describes returns through support with F408–F412, the pre-mainnet stuck-money gaps and roadmap self-serve returns; D-118 added, D-37 and D-78 updated, Q-9 answered by D-118",
+          "5": "web-e2e: the held-money and Need help tests above, plus the network warning text in 'shows who asks' and the Arbitrum option test"
+        }
+      },
+      "branch": "feat/f408-the-pay-page-tells-a-payer-how-to-get-he",
+      "baseCommit": "dc1b7341af24a1da2cc285d79d6cabb7080e1433",
+      "failedVerifies": 0
     },
     {
       "id": "F409",
       "type": "feat",
-      "behavior": "The owner sees money sent above the amount and can return it",
+      "behavior": "The owner sees why money is held and that the payer gets it back through Forwend support",
       "acceptance": [
-        "The owner's invoice page shows money sent above the amount as held for the payer, with a way to return it through the refund flow"
+        "The payment page and the attention list name the reason for each held payment (overpaid, late, closed with a partial payment, canceled, another option), with one set of names in code and copy.",
+        "They and the held-money email say the payer gets it back through Forwend support; the owner gets no return button.",
+        "Tests cover each reason on the payment page and the email text."
       ],
       "dependsOn": [
         "F408"
@@ -295,9 +372,9 @@
         "web-e2e"
       ],
       "refs": [
-        "D-24",
         "D-26",
-        "D-57"
+        "D-118",
+        "R-77"
       ],
       "keep": [],
       "review": true,
@@ -308,26 +385,29 @@
     {
       "id": "F410",
       "type": "feat",
-      "behavior": "An ops command approves refund claims and prints the Safe refund call",
+      "behavior": "Support returns held money with one ops command that can't overpay or race a settlement",
       "acceptance": [
-        "cmd/ops lists claims and approves or rejects each with a reason; approval sets the invoice's refund status to refund_pending before the Safe call is queued",
-        "It prints the refund(to, amount) call for the refund-authority Safe, one refund of everything held by default, with no new hot key",
-        "The watcher books the refund once, and it shows on the payment page beside the payments and the settlement"
+        "cmd/ops case takes a pay link or receive address and a transaction hash, and prints each held payment: sender, reason, amount and the date it can go back.",
+        "It checks the transfer is final and reached this receiver, caps the amount at what is both held and refundable, refuses a zero, receiver, token or factory destination, flags a contract, and dry-runs the call as the refund authority.",
+        "It sets refund_pending before it prints the Safe batch (the receiver's deploy when needed, then refund). Process keeps refund_pending while money is held; reopen refuses it; the watcher keeps watching it; the attention list shows it.",
+        "The watcher books the return once, it shows in the invoice's Transactions list, and refund_pending clears when nothing is held.",
+        "No new hot key: the command reads and prints; its only write is refund_pending."
       ],
-      "dependsOn": [
-        "F408"
-      ],
+      "dependsOn": [],
       "state": "not_started",
       "verification": [
         "unit",
         "backend-e2e"
       ],
       "refs": [
+        "D-26",
         "D-57",
         "D-60",
+        "D-89",
         "D-90",
+        "D-118",
         "R-130",
-        "R-164"
+        "R-69"
       ],
       "keep": [
         "packages/contracts/src/*"
@@ -340,12 +420,14 @@
     {
       "id": "F411",
       "type": "feat",
-      "behavior": "A payer who sent on the wrong network can open a recovery claim",
+      "behavior": "Support returns wrong-token and wrong-network money where our factory and Safe exist, and says plainly when it can't",
       "acceptance": [
-        "The payer gives a transaction hash; the API finds it on an enabled chain and opens a recovery claim; recover() is offered only where our factory exists, and no page promises recovery"
+        "cmd/ops case finds a transfer by hash: another token on the invoice's chain, or the invoice token on another chain.",
+        "It prints the Safe batch (deploy when needed, then recover) only where the factory and Safe at their addresses are ours; otherwise it says the money can't be returned now.",
+        "Tests cover a wrong token on the invoice's chain, a chain with our factory, and a chain without it."
       ],
       "dependsOn": [
-        "F408"
+        "F410"
       ],
       "state": "not_started",
       "verification": [
@@ -355,7 +437,7 @@
       ],
       "refs": [
         "D-33",
-        "D-78"
+        "D-118"
       ],
       "keep": [
         "packages/contracts/src/*"
@@ -368,9 +450,10 @@
     {
       "id": "F412",
       "type": "test",
-      "behavior": "Held-money refunds pass end to end on Anvil",
+      "behavior": "Returns through support pass end to end on Anvil",
       "acceptance": [
-        "On Anvil: overpay, expired partial and late payments each go claim then refund, a smart-wallet claim passes, and the ledger matches the chain after each"
+        "On Anvil: overpaid, late, expired partial (after its deadline), canceled and wrong-token money each go through cmd/ops case and the printed Safe call, and the ledger matches the chain after each.",
+        "While refund_pending is set, reopen is refused and nothing settles to the creator."
       ],
       "dependsOn": [
         "F409",
@@ -382,9 +465,9 @@
         "backend-e2e"
       ],
       "refs": [
-        "D-78",
-        "D-26",
-        "D-57"
+        "D-118",
+        "R-130",
+        "R-83"
       ],
       "keep": [],
       "review": true,
@@ -656,6 +739,31 @@
         "R-144",
         "R-146",
         "Q-13"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F417",
+      "type": "feat",
+      "behavior": "Tokens sent to the invoice receiver factory can be returned by the refund authority",
+      "acceptance": [
+        "The factory gets a refund-authority recover(token, to, amount); nobody else can call it, and it can't touch a receiver's money.",
+        "Contract tests and the fuzz and invariant suites cover it; docs/contracts/rules.md and operations.md describe it; it ships before the first mainnet deploy."
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "harness",
+        "docs-check",
+        "contracts",
+        "symbolic"
+      ],
+      "refs": [
+        "D-118"
       ],
       "keep": [],
       "review": true,
