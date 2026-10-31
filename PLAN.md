@@ -105,8 +105,10 @@ code; a wallet connects only to claim a refund (D-37).
   - 11.9.3 `@forwend/js` and `@forwend/react` (`PayButton`, `Checkout`, `PaymentElement`): no remote script; a theme
     and a few variables mapped to the design tokens and checked for contrast; React 18 and 19. After 11.9.2.
   - 11.9.4 Publish `@forwend/js`, `@forwend/react` and `forwend` (D-103) once the owner approves, from the npm org.
-    `forwend` 0.1.0 is published on npm under MIT. CI publishes with provenance. The browser packages stay `0.x` until the message protocol is stable. Each package
+    `forwend` 0.1.0 is published on npm under MIT. `@forwend/js` and `@forwend/react` 0.1.0 followed on 2026-10-31. CI publishes with provenance. The browser packages stay `0.x` until the message protocol is stable. Each package
     has a changelog file, size and type checks. After 11.9.3.
+    - The 0.1.0 releases were published from a local machine, so they have no provenance.
+    - npm held each upload until the owner approved it on npmjs.com (`npm stage`).
     - `.github/workflows/publish.yml` publishes one package, started by hand from main. Before its first run the owner:
       - Makes the repository public: npm makes provenance only from a public repository.
       - Creates the `npm` environment with required reviewers and main-only deployments.
