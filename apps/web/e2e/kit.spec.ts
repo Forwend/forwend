@@ -165,7 +165,7 @@ test("a dialog and a centered sheet fade in as they open, and at once with reduc
   }
 });
 
-test("a placeholder's wait and pulse run on the compositor, so a busy page doesn't stall them", async ({
+test("a placeholder's pulse runs on the compositor, so a busy page doesn't stall it", async ({
   page,
 }) => {
   const cdp = await page.context().newCDPSession(page);
@@ -191,9 +191,7 @@ test("a placeholder's wait and pulse run on the compositor, so a busy page doesn
     seen.failed ??= e.args?.data?.compositeFailed;
     byAnimation.set(e.id2?.local ?? "", seen);
   }
-  const placeholders = [...byAnimation.values()].filter(
-    (a) => a.name === "fw-pulse" || a.name === "fw-fade-in",
-  );
+  const placeholders = [...byAnimation.values()].filter((a) => a.name === "fw-pulse");
   expect(placeholders.length).toBeGreaterThan(0);
   expect(placeholders.filter((a) => (Number(a.failed ?? 0) & INCOMPATIBLE) !== 0)).toEqual([]);
 });

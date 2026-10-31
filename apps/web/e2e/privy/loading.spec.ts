@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { mockApi } from "./sample-api";
 import { session } from "./session";
 
-test("switching to a list page keeps its rows in place while it loads, and a quick answer shows no placeholder", async ({
+test("switching to a list page shows its placeholder at once and keeps its rows in place while it loads", async ({
   browser,
 }) => {
   const context = await browser.newContext({
@@ -11,9 +11,8 @@ test("switching to a list page keeps its rows in place while it loads, and a qui
   });
   const page = await context.newPage();
   await mockApi(page);
-  let delay = 1500;
-  await page.route(/\/api\/v1\/profiles\/[^/]+\/(invoices|activity)\?/, async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, delay));
+  await page.route(/\/api\/v1\/profiles\/[^/]+\/invoices\?/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
     await route.fallback();
   });
   await page.goto("/app/payments");
@@ -34,9 +33,8 @@ test("switching to a list page keeps its rows in place while it loads, and a qui
 
   await sidebar.getByRole("link", { name: "Invoices", exact: true }).click();
   await expect(placeholder).toBeAttached();
-  expect(await opacity()).toBe(0);
-  // Visible once the wait is over (the pulse animates a filter, not this opacity).
-  await expect.poll(opacity).toBeGreaterThan(0.4);
+  // No wait before it: the pulse dims it to half at most.
+  expect(await opacity()).toBeGreaterThan(0.4);
   const loading = await firstRow();
   await expect(main.getByRole("row").filter({ hasText: "INV-" }).first()).toBeVisible();
   const loaded = await firstRow();
@@ -47,26 +45,10 @@ test("switching to a list page keeps its rows in place while it loads, and a qui
     0.01,
   );
 
-  // A quick answer on a list not read yet: the placeholder never becomes visible on any frame.
-  delay = 100;
-  await page.evaluate(() => {
-    const w = window as unknown as { seen: number };
-    w.seen = 0;
-    const sample = () => {
-      for (const el of document.querySelectorAll("main [data-skeleton]"))
-        w.seen = Math.max(w.seen, Number(getComputedStyle(el).opacity));
-      requestAnimationFrame(sample);
-    };
-    sample();
-  });
-  await sidebar.getByRole("link", { name: "Activity", exact: true }).click();
-  await expect(page).toHaveURL(/\/app\/activity/);
-  await expect(main.locator("[data-skeleton]")).toHaveCount(0);
-  expect(await page.evaluate(() => (window as unknown as { seen: number }).seen)).toBe(0);
   await context.close();
 
   // A phone with reduced motion: the money list's two-line rows (amount over status) keep their place, and the
-  // wait before a placeholder holds without motion.
+  // placeholder holds still.
   const phone = await browser.newContext({
     viewport: { width: 390, height: 844 },
     reducedMotion: "reduce",
@@ -74,20 +56,9 @@ test("switching to a list page keeps its rows in place while it loads, and a qui
   });
   const small = await phone.newPage();
   await mockApi(small);
-  let phoneDelay = 1500;
-  await small.route(/\/api\/v1\/profiles\/[^/]+\/(invoices|activity)\?/, async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, phoneDelay));
+  await small.route(/\/api\/v1\/profiles\/[^/]+\/invoices\?/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
     await route.fallback();
-  });
-  await small.addInitScript(() => {
-    const w = window as unknown as { seen: number };
-    w.seen = 0;
-    const sample = () => {
-      for (const el of document.querySelectorAll("main [data-skeleton]"))
-        w.seen = Math.max(w.seen, Number(getComputedStyle(el).opacity));
-      requestAnimationFrame(sample);
-    };
-    requestAnimationFrame(sample);
   });
   await small.goto("/app/invoices");
   const phoneMain = small.getByRole("main");
@@ -109,11 +80,6 @@ test("switching to a list page keeps its rows in place while it loads, and a qui
   expect(Math.abs((arrived?.y ?? 0) - (waiting?.y ?? 0))).toBeLessThanOrEqual(1);
   expect(Math.abs((arrived?.height ?? 0) - (waiting?.height ?? 0))).toBeLessThanOrEqual(1);
 
-  phoneDelay = 100;
-  await small.goto("/app/activity");
-  await expect(phoneMain.getByRole("heading", { level: 1 })).toBeVisible();
-  await expect(phoneMain.locator("[data-skeleton]")).toHaveCount(0);
-  expect(await small.evaluate(() => (window as unknown as { seen: number }).seen)).toBe(0);
   await phone.close();
 });
 
