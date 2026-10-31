@@ -134,6 +134,8 @@
   --fw-duration-marquee: 32s;
   --fw-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --fw-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  /* A loop that breathes: the change spreads over the whole cycle instead of jumping at its middle. */
+  --fw-ease-pulse: cubic-bezier(0.4, 0, 0.6, 1);
 
   --fw-z-nav: 40;
   --fw-z-overlay: 50;

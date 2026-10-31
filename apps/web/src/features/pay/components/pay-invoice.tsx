@@ -180,11 +180,7 @@ export function PayInvoice({ linkToken, option, preview = false, embed }: PayInv
       <span role="status" className="sr-only">
         {COPY.loading}
       </span>
-      {/* From large screens the backdrop is surface-2, the placeholders' own color: here they take the line color. */}
-      <div
-        aria-busy="true"
-        className={`contents lg:flex lg:flex-col lg:gap-6 lg:pt-8 lg:[&_[data-skeleton]]:bg-line ${LEFT_PAD}`}
-      >
+      <div aria-busy="true" className={`contents lg:flex lg:flex-col lg:gap-6 lg:pt-8 ${LEFT_PAD}`}>
         <div className="order-1 flex flex-col gap-5 lg:gap-6">
           <div className="flex items-center gap-3">
             <Skeleton className="size-10 rounded-md sm:size-11" />

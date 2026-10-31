@@ -140,7 +140,7 @@
 
     /* A placeholder still waits before it shows, so a quick answer never flashes one; then it stays still. */
     [data-skeleton] {
-      animation: fw-fade-in 0.01ms var(--fw-duration-slow) both !important;
+      animation: fw-reveal 0.01ms var(--fw-duration-slow) both !important;
     }
   }
 }
@@ -251,12 +251,17 @@
   }
 }
 
-/* filter, not opacity: a placeholder fades in on opacity, and Chromium can't composite two animations of one
-   property on one element. With the pulse on filter, the wait and the pulse both run on the compositor, so a busy
-   page can't stall them. */
+/* A placeholder pulses on opacity, which every browser animates off the main thread. Its one reveal is on filter
+   (fw-reveal): two animations of one property on one element can't both apply. */
 @keyframes fw-pulse {
   50% {
-    filter: opacity(0.5);
+    opacity: 0.5;
+  }
+}
+
+@keyframes fw-reveal {
+  from {
+    filter: opacity(0);
   }
 }
 
