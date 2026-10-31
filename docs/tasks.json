@@ -60,21 +60,21 @@
       "review": true,
       "notes": [
         "2026-10-31 2026-10-31 dependsOn F334 cleared by hand: F334 is merged (#393), but the harness reads archived dependencies as unmerged because docs/archive is local only. F415 fixes the harness.",
-        "2026-10-31 review pass by subagent: Pass. Read the whole diff, the new app, the stub, the specs, packages/node, js, react and the backend checkout, paymentio and webhook code. Ran: example-merchant test (8 passed), typecheck (clean), and 'pnpm e2e -g \"example merchant|embedded checkout\"' (8 passed; again with --repeat-each 4 --workers 4: 32 passed). Fine: the browser sends only ids and quantities, and priceCart refuses unknown, repeated, prototype and out-of-range lines (catalog.ts:20). The only thing that marks an order paid is fulfil (orders.ts:59). It runs only after verifyWebhook and a fresh API read with paymentStatus paid and reference equal to the order id (webhook.ts:22-34). The UPDATE ... WHERE fulfilled_at IS NULL check means duplicate, reordered or concurrent deliveries ship once, even across two SQLite connections. A failed read throws and the route answers 500, so Forwend retries. No key reaches the browser: client code imports only catalog.ts and @forwend/react. The logs carry no secrets. The real API matches what the shop reads: sessionId is inv.ID, which is the webhook's data.invoice.invoiceId (checkoutapi/model.go:36, cmd/webhooks/main.go:43). hostedUrl is webURL + /pay/ + PayToken (paymentio/model.go:71), so taking the last path part is right. The stub uses the same field names. The tests run the real /embed frame and the real built packages, find their session by order reference (safe for parallel workers), and pin the page clock. The embed tests still allow only PARENT and refuse OTHER; the token check stays in proxy.ts. I downloaded npm forwend 0.1.0: it has no checkoutSessions, as the README and /docs say. No new external dependency. Cited backend tests exist and cover their claims. Notes, not blocking: (1) Proof 4 says the docs say publishing stays the owner's, but no changed doc says that (only PLAN.md 11.9.4 does). No doc reports that no real user has tested the example and no live provider run was made. Put both in the PR body (acceptance 4, R-170 'reported separately'). (2) The TestMoneyLoop proof says 'with its signed invoice.paid webhook'. In that test the delivery is built, signed and refused as 'address not public' (gate_test.go:149-153). TestWebhookDeliveriesAreSignedAndRetried is the test where a delivery is received. (3) The full Checkout flow (order-checkout.tsx:66) is never rendered in example-merchant.spec.ts. Fulfilment does not depend on the flow, so this is low risk. (4) The README says 'strict CSP' but script-src has 'unsafe-inline' (next.config.ts:8). This matches apps/web's own policy, but the README could say so. (5) turbo.json:9 adds FORWEND_URL to every package's build hash. Each e2e run uses a random port, so it also rebuilds forwend, @forwend/js and @forwend/react. A package-level turbo.json would keep this to the example. (6) The app uses .env.local (forwend.ts:5, README.md:23). Root AGENTS.md says secrets go in each package's .env and lists only backend, web and contracts. (7) The 'local' script (package.json:7) is not in the README. (8) The changelog line about multi-network checkouts describes F413, not F335.'"
+        "2026-10-31 review pass by subagent: Pass. Read the whole diff, the new app, the stub, the specs, packages/node, js, react and the backend checkout, paymentio and webhook code. Ran: example-merchant test (8 passed), typecheck (clean), and 'pnpm e2e -g \"example merchant|embedded checkout\"' (8 passed; again with --repeat-each 4 --workers 4: 32 passed). Fine: the browser sends only ids and quantities, and priceCart refuses unknown, repeated, prototype and out-of-range lines (catalog.ts:20). The only thing that marks an order paid is fulfil (orders.ts:59). It runs only after verifyWebhook and a fresh API read with paymentStatus paid and reference equal to the order id (webhook.ts:22-34). The UPDATE ... WHERE fulfilled_at IS NULL check means duplicate, reordered or concurrent deliveries ship once, even across two SQLite connections. A failed read throws and the route answers 500, so Forwend retries. No key reaches the browser: client code imports only catalog.ts and @forwend/react. The logs carry no secrets. The real API matches what the shop reads: sessionId is inv.ID, which is the webhook's data.invoice.invoiceId (checkoutapi/model.go:36, cmd/webhooks/main.go:43). hostedUrl is webURL + /pay/ + PayToken (paymentio/model.go:71), so taking the last path part is right. The stub uses the same field names. The tests run the real /embed frame and the real built packages, find their session by order reference (safe for parallel workers), and pin the page clock. The embed tests still allow only PARENT and refuse OTHER; the token check stays in proxy.ts. I downloaded npm forwend 0.1.0: it has no checkoutSessions, as the README and /docs say. No new external dependency. Cited backend tests exist and cover their claims. Notes, not blocking: (1) Proof 4 says the docs say publishing stays the owner's, but no changed doc says that (only PLAN.md 11.9.4 does). No doc reports that no real user has tested the example and no live provider run was made. Put both in the PR body (acceptance 4, R-170 'reported separately'). (2) The TestMoneyLoop proof says 'with its signed invoice.paid webhook'. In that test the delivery is built, signed and refused as 'address not public' (gate_test.go:149-153). TestWebhookDeliveriesAreSignedAndRetried is the test where a delivery is received. (3) The full Checkout flow (order-checkout.tsx:66) is never rendered in example-merchant.spec.ts. Fulfilment does not depend on the flow, so this is low risk. (4) The README says 'strict CSP' but script-src has 'unsafe-inline' (next.config.ts:8). This matches apps/web's own policy, but the README could say so. (5) turbo.json:9 adds FORWEND_URL to every package's build hash. Each e2e run uses a random port, so it also rebuilds forwend, @forwend/js and @forwend/react. A package-level turbo.json would keep this to the example. (6) The app uses .env.local (forwend.ts:5, README.md:23). Root AGENTS.md says secrets go in each package's .env and lists only backend, web and contracts. (7) The 'local' script (package.json:7) is not in the README. (8) The changelog line about multi-network checkouts describes F413, not F335.'",
+        "2026-10-31 review pass by subagent: Pass (second review, after c704f1f0). The commit changes only the 8 files for notes 1-7. The commit message has no AI trace. Checked each note. (5) FORWEND_URL is gone from the root turbo.json. apps/example-merchant/turbo.json extends // and sets build env FORWEND_URL. In 'turbo run build --dry=json' with two FORWEND_URL values, only the example's hash changes; the forwend, @forwend/js and @forwend/react hashes stay the same. The example keeps the root build's dependsOn, outputs and inputs. Its env list replaces the root's API_URL and NEXT_PUBLIC_PRIVY_APP_ID, which it does not read. After this run, .next/routes-manifest.json has frame-src set to this run's PUBLIC_URL. (6) .env in forwend.ts:5, .env.example:1 and README.md:23; root .gitignore .env* ignores it; root AGENTS.md now lists apps/example-merchant. No .env.local is left. (4) The README says the policy allows inline scripts as Next needs; the test name and proof 1 no longer say strict. (3) Test 1 clicks Full checkout and expects 'Logo design' in the frame. That title is drawn only by Terms, and the element layout leaves Terms out (pay-invoice.tsx:283), so the check fails if the full flow does not load. (7) The README names the local script. (2) Proof 2 calls TestMoneyLoop 'paid and settled end to end', which the test does. TestWebhookDeliveriesAreSignedAndRetried stays cited for delivery recovery. (1) Proof 4 drops the publishing claim and says the PR body reports no live provider run and no real-user test. The PR body must state both, and that publishing stays with the owner (R-170, acceptance 4). (8) Leaving it is fine: the 2026-10-31 changelog lists that day's API-visible changes. Ran: example-merchant test (8 passed), typecheck (no errors), and pnpm e2e -g 'example merchant|embedded checkout' (8 passed). No processes or files left behind. The working tree holds only the harness's docs/tasks.json record."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-31T01:45:46Z",
+        "at": "2026-10-31T01:56:47Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
+            "seconds": 3.0,
+            "log": ""
           },
           {
             "id": "docs-check",
@@ -87,41 +87,36 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
+            "seconds": 0.3,
+            "log": ""
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
+            "seconds": 0.2,
+            "log": ""
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
+            "seconds": 245.2,
+            "log": ""
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
+            "seconds": 6.0,
+            "log": ""
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
+            "seconds": 36.9,
+            "log": ""
           },
           {
             "id": "keep",
@@ -132,19 +127,19 @@
           }
         ],
         "taskHash": "c4a11bdcf72a1a49",
-        "filesHash": "d040cc5b6b84cce5",
+        "filesHash": "ef0af92e89ca79aa",
         "proof": {
-          "1": "e2e: example-merchant.spec.ts: the shop prices 2 beans and 1 mug at 60.50 on its server, creates the checkout with those items, shows Forwend's real pay panel it can't read under its strict CSP, and links the hosted page; webhook.test.ts and catalog.test.ts in unit",
-          "2": "e2e: backend e2e TestReusableLinkReservationsExpireAndPurchasesSettleIndependently (independent link customers), TestExceptionsCancelAndEmail (partial, expiry, late), TestMoneyLoop (an invoice paid end to end with its signed invoice.paid webhook); unit: TestCheckoutBoundariesIncludeStoreRoleTenantKeyAndMode (store isolation), TestWebhookDeliveriesAreSignedAndRetried (delivery recovery); example-merchant spec and webhook.test.ts (spoofed prices, forged messages and events)",
+          "1": "e2e: example-merchant.spec.ts: the shop prices 2 beans and 1 mug at 60.50 on its server, creates the checkout with those items, shows Forwend's real pay panel and full checkout it can't read under its Content-Security-Policy, and links the hosted page; webhook.test.ts and catalog.test.ts in unit",
+          "2": "e2e: backend e2e TestReusableLinkReservationsExpireAndPurchasesSettleIndependently (independent link customers), TestExceptionsCancelAndEmail (partial, expiry, late), TestMoneyLoop (an invoice paid and settled end to end); unit: TestCheckoutBoundariesIncludeStoreRoleTenantKeyAndMode (store isolation), TestWebhookDeliveriesAreSignedAndRetried (delivery recovery); example-merchant spec and webhook.test.ts (spoofed prices, forged messages and events)",
           "3": "e2e: TestCheckoutPurchaseSettlesWithOneRPCWithoutIssuingAnInvoice reconciles ledger, receiver and wallet balances and the movements CSV to chain receipts; the example ships once across a repeated paid event and a later settled event (example-merchant.spec.ts, webhook.test.ts)",
-          "4": "docs-check: /docs Checkout on your site and changelog, apps/example-merchant README quickstart; they say npm forwend 0.1.0 lacks checkout methods, every network is a testnet, and publishing stays the owner's"
+          "4": "docs-check: /docs Checkout on your site and changelog, apps/example-merchant README quickstart; they say npm forwend 0.1.0 lacks checkout methods and every network is a testnet; the PR body reports that no live provider run or real-user test was made"
         },
         "review": {
           "result": "pass",
           "by": "subagent",
-          "summary": "Pass. Read the whole diff, the new app, the stub, the specs, packages/node, js, react and the backend checkout, paymentio and webhook code. Ran: example-merchant test (8 passed), typecheck (clean), and 'pnpm e2e -g \"example merchant|embedded checkout\"' (8 passed; again with --repeat-each 4 --workers 4: 32 passed). Fine: the browser sends only ids and quantities, and priceCart refuses unknown, repeated, prototype and out-of-range lines (catalog.ts:20). The only thing that marks an order paid is fulfil (orders.ts:59). It runs only after verifyWebhook and a fresh API read with paymentStatus paid and reference equal to the order id (webhook.ts:22-34). The UPDATE ... WHERE fulfilled_at IS NULL check means duplicate, reordered or concurrent deliveries ship once, even across two SQLite connections. A failed read throws and the route answers 500, so Forwend retries. No key reaches the browser: client code imports only catalog.ts and @forwend/react. The logs carry no secrets. The real API matches what the shop reads: sessionId is inv.ID, which is the webhook's data.invoice.invoiceId (checkoutapi/model.go:36, cmd/webhooks/main.go:43). hostedUrl is webURL + /pay/ + PayToken (paymentio/model.go:71), so taking the last path part is right. The stub uses the same field names. The tests run the real /embed frame and the real built packages, find their session by order reference (safe for parallel workers), and pin the page clock. The embed tests still allow only PARENT and refuse OTHER; the token check stays in proxy.ts. I downloaded npm forwend 0.1.0: it has no checkoutSessions, as the README and /docs say. No new external dependency. Cited backend tests exist and cover their claims. Notes, not blocking: (1) Proof 4 says the docs say publishing stays the owner's, but no changed doc says that (only PLAN.md 11.9.4 does). No doc reports that no real user has tested the example and no live provider run was made. Put both in the PR body (acceptance 4, R-170 'reported separately'). (2) The TestMoneyLoop proof says 'with its signed invoice.paid webhook'. In that test the delivery is built, signed and refused as 'address not public' (gate_test.go:149-153). TestWebhookDeliveriesAreSignedAndRetried is the test where a delivery is received. (3) The full Checkout flow (order-checkout.tsx:66) is never rendered in example-merchant.spec.ts. Fulfilment does not depend on the flow, so this is low risk. (4) The README says 'strict CSP' but script-src has 'unsafe-inline' (next.config.ts:8). This matches apps/web's own policy, but the README could say so. (5) turbo.json:9 adds FORWEND_URL to every package's build hash. Each e2e run uses a random port, so it also rebuilds forwend, @forwend/js and @forwend/react. A package-level turbo.json would keep this to the example. (6) The app uses .env.local (forwend.ts:5, README.md:23). Root AGENTS.md says secrets go in each package's .env and lists only backend, web and contracts. (7) The 'local' script (package.json:7) is not in the README. (8) The changelog line about multi-network checkouts describes F413, not F335.'",
-          "at": "2026-10-31T01:55:32Z",
-          "filesHash": "d040cc5b6b84cce5"
+          "summary": "Pass (second review, after c704f1f0). The commit changes only the 8 files for notes 1-7. The commit message has no AI trace. Checked each note. (5) FORWEND_URL is gone from the root turbo.json. apps/example-merchant/turbo.json extends // and sets build env FORWEND_URL. In 'turbo run build --dry=json' with two FORWEND_URL values, only the example's hash changes; the forwend, @forwend/js and @forwend/react hashes stay the same. The example keeps the root build's dependsOn, outputs and inputs. Its env list replaces the root's API_URL and NEXT_PUBLIC_PRIVY_APP_ID, which it does not read. After this run, .next/routes-manifest.json has frame-src set to this run's PUBLIC_URL. (6) .env in forwend.ts:5, .env.example:1 and README.md:23; root .gitignore .env* ignores it; root AGENTS.md now lists apps/example-merchant. No .env.local is left. (4) The README says the policy allows inline scripts as Next needs; the test name and proof 1 no longer say strict. (3) Test 1 clicks Full checkout and expects 'Logo design' in the frame. That title is drawn only by Terms, and the element layout leaves Terms out (pay-invoice.tsx:283), so the check fails if the full flow does not load. (7) The README names the local script. (2) Proof 2 calls TestMoneyLoop 'paid and settled end to end', which the test does. TestWebhookDeliveriesAreSignedAndRetried stays cited for delivery recovery. (1) Proof 4 drops the publishing claim and says the PR body reports no live provider run and no real-user test. The PR body must state both, and that publishing stays with the owner (R-170, acceptance 4). (8) Leaving it is fine: the 2026-10-31 changelog lists that day's API-visible changes. Ran: example-merchant test (8 passed), typecheck (no errors), and pnpm e2e -g 'example merchant|embedded checkout' (8 passed). No processes or files left behind. The working tree holds only the harness's docs/tasks.json record.",
+          "at": "2026-10-31T02:03:17Z",
+          "filesHash": "ef0af92e89ca79aa"
         }
       },
       "branch": "feat/f335-prove-merchant-checkout-fulfillment-and",
