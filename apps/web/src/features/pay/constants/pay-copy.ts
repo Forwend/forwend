@@ -45,8 +45,7 @@ export const PAY_COPY = {
   searchTokens: "Search tokens",
   noMatch: "No match",
   showAddress: "Show address",
-  sendOnly: (symbol: string, network: string) =>
-    `Send only ${symbol} on ${network}. Other networks or tokens may not come back.`,
+  sendOnly: (symbol: string, network: string) => `Send only ${symbol} on ${network}.`,
   // R-78: a bridged token with the same name is another contract, and does not pay this invoice.
   notLookalike: (symbol: string, lookalike: string) => `Native ${symbol}, not ${lookalike}.`,
   contract: (symbol: string) => `${symbol} contract`,

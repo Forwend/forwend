@@ -171,9 +171,7 @@ test.describe("pay page", () => {
     await expect(page.getByRole("heading", { name: "Send USDC on Base Sepolia to" })).toBeFocused();
     await expect(page.getByText(RECEIVE)).toBeVisible();
     await expect(page.getByRole("img", { name: "QR code of the address to pay" })).toBeVisible();
-    await expect(page.getByRole("note")).toHaveText(
-      "Send only USDC on Base Sepolia. Other networks or tokens may not come back.",
-    );
+    await expect(page.getByRole("note")).toHaveText("Send only USDC on Base Sepolia.");
     // R-78
     const shown = page.locator("[data-address]");
     await expect(shown).toHaveText(RECEIVE);
@@ -952,7 +950,7 @@ test.describe("pay page", () => {
     expect(new URL(page.url()).search).toBe("");
     // R-78
     await expect(page.getByRole("note")).toHaveText(
-      "Send only USDC on Arbitrum Sepolia. Other networks or tokens may not come back. Native USDC, not USDC.e.",
+      "Send only USDC on Arbitrum Sepolia. Native USDC, not USDC.e.",
     );
     await expect(page.getByRole("link", { name: /0x75fa.*aa4d/ })).toHaveAttribute(
       "href",
