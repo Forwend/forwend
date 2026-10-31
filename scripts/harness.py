@@ -288,12 +288,8 @@ class State:
         return sorted((task for task in self.tasks if task.get('state') in states), key=number)
 
     def satisfied(self, dependency):
-        task = next((task for task in self.tasks if task.get('id') == dependency), None)
-        if task is None:
-            # archive takes only merged or dropped work, and docs/archive may never reach origin
-            task = self.archived(dependency)
-            return bool(task and task.get('state') == 'passing' and not stale_reason(self, task))
-        return bool(task.get('state') == 'passing' and not stale_reason(self, task) and not unmerged(self, task))
+        task = next((task for task in self.tasks if task.get('id') == dependency), None) or self.archived(dependency)
+        return bool(task and task.get('state') == 'passing' and not stale_reason(self, task) and not unmerged(self, task))
 
     def ready(self):
         return [task for task in self.with_state('not_started')
@@ -581,6 +577,9 @@ def unmerged(state, task):
     """A passing task whose delivery has not reached origin's base branch yet (as of the last fetch)."""
     info = task.get('delivery') or {}
     if task.get('state') != 'passing' or info.get('mode') != 'pr':
+        return False
+    # archive takes only merged work, and docs/archive may never reach origin
+    if all(other.get('id') != task.get('id') for other in state.tasks):
         return False
     base = info.get('base') or 'main'
     merged = state.base_states(base)

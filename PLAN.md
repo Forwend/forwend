@@ -190,8 +190,10 @@ The owner moved these out of the MVP on 2026-10-31:
   - It checks country, currency, rail and account-holder name, and needs the verified tier (D-64).
   - A quote shows the stablecoin debit, expected fiat, rate, every fee and its expiry, and is confirmed once.
   - States: quoted, awaiting approval, processing, sent, paid, rejected and returned.
-  - Hold and review states, formerly 12.6: category, what is needed, case ID, last change, and next update or "no date yet".
-- Paying from a connected wallet, as a second path beside the address and QR code. Until then payers send a transfer (D-37).
+  - Hold and review states, formerly 12.6: category, what is needed, case ID, last change, and next update or
+    "no date yet".
+- Paying from a connected wallet, as a second path beside the address and QR code.
+  - Until then payers send a transfer (D-37).
 - Agent payments, such as x402. No merchant has asked for them yet.
 
 Mobile; optional BNB and non-EVM networks; HD-wallet receive methods; cross-chain sends; automatic wallet billing;

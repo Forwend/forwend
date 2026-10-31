@@ -176,8 +176,13 @@ class HarnessTests(unittest.TestCase):
         origin = lambda root, *args: json.dumps({'tasks': []}) if args[-1].endswith(h.TASKS) else ''
         with patch.object(h, 'git', side_effect=origin):
             state = h.State(self.root)
-            self.assertTrue(state.satisfied('F001'))
+            self.assertFalse(h.unmerged(state, state.task('F001', include_archived=True)))
             self.assertEqual([t['id'] for t in state.ready()], ['F002'])
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(h.main(['--root', str(self.root), 'show', 'F001']), 0)
+            self.assertNotIn('waiting for merge', output.getvalue())
+        self.assertEqual(self.run_cli('start', 'F002'), 0)
 
     def test_archived_dropped_task_does_not_satisfy_dependency(self):
         self.task['state'] = 'dropped'
