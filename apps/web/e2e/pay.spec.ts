@@ -845,14 +845,11 @@ test.describe("pay page", () => {
     page,
   }) => {
     await openPay(page, PARTIAL, CLOSED);
-    await expect(status(page)).toHaveText(
-      "250.00 USDC of 1,250.00 USDC received. Send the remaining 1,000.00 USDC.",
-    );
+    await expect(status(page)).toHaveText("250.00 USDC received. 1,000.00 USDC left to send.");
     await expect(page.locator("[data-money]").first()).toHaveText("1,000.00 USDC");
     await expect(showAddress(page)).toBeVisible();
     // R-77
     await expect(page.getByText(/^Closes in/)).toBeVisible();
-    await expect(page.getByText(/Copy the address from this page for the rest/)).toBeVisible();
     const partlySteps = page.getByRole("list", { name: "Payment progress" });
     await expect(partlySteps.getByText("Partially paid")).toHaveClass(/bg-warning-soft/);
     await expect(partlySteps.getByRole("listitem")).toHaveText([
@@ -865,7 +862,6 @@ test.describe("pay page", () => {
       "This payment is closed. Do not send money. If you already did, Need help says what to do.",
     );
     await expect(showAddress(page)).toHaveCount(0);
-    await expect(page.getByText(/Copy the address from this page/)).toHaveCount(0);
   });
 
   // R-130: past the terms' expiry, a reopened invoice takes money until its new close.
@@ -875,9 +871,7 @@ test.describe("pay page", () => {
     await page.clock.install({ time: new Date("2026-10-17T20:00:00Z") });
     await mockInvoice(page, { ...PARTIAL, closesAt: "2026-10-18T10:00:00Z" });
     await page.goto(`/pay/${PAY}`);
-    await expect(status(page)).toHaveText(
-      "250.00 USDC of 1,250.00 USDC received. Send the remaining 1,000.00 USDC.",
-    );
+    await expect(status(page)).toHaveText("250.00 USDC received. 1,000.00 USDC left to send.");
     await expect(page.getByText(/^Closes in/)).toBeVisible();
     await showAddress(page).click();
     await expect(page.getByText(RECEIVE)).toBeVisible();

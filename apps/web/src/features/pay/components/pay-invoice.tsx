@@ -953,9 +953,6 @@ function Received({
         ) : null}
       </div>
       {lead ? <p className="-mt-2 text-sm text-muted">{COPY.nothingToDo}</p> : null}
-      {pay.state === PAY_STATES.partial ? (
-        <p className="text-sm text-muted">{COPY.copyFromHere}</p>
-      ) : null}
       {invoice.depositSummary && invoice.depositSummary.count > invoice.deposits.length ? (
         <p className="text-xs text-muted">{INVOICE_COPY.depositPreview}</p>
       ) : null}

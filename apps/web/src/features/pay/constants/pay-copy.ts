@@ -78,8 +78,8 @@ export const PAY_COPY = {
       delayed ? "Confirmation is taking longer than usual." : "Awaiting confirmation.",
     [PAY_STATES.review]: () =>
       "Payment could not be verified. Contact the merchant before sending more.",
-    [PAY_STATES.partial]: ({ received, total, remaining }) =>
-      `${received} of ${total} received. Send the remaining ${remaining}.`,
+    [PAY_STATES.partial]: ({ received, remaining }) =>
+      `${received} received. ${remaining} left to send.`,
     [PAY_STATES.paid]: () => "Paid",
     [PAY_STATES.settled]: () => "Paid",
     [PAY_STATES.closing]: ({ received }) =>
@@ -99,9 +99,6 @@ export const PAY_COPY = {
   backTo: (host: string) => `Back to ${host}`,
   // Who asked for the money: the name on the invoice, never "the sender", who could be read as the payer.
   creator: "the recipient",
-  // Address poisoning: a look-alike address planted in the payer's wallet history after the first payment (R-77).
-  copyFromHere:
-    "Copy the address from this page for the rest, not from your wallet's history: scammers plant look-alike addresses there.",
   // Held money gets one short line; Need help, behind How to get it back, explains the rest.
   overpaid: (extra: string) => `Overpaid by ${extra}`,
   late: (late: string) => `${late} arrived after the checkout closed`,
