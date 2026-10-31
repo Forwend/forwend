@@ -186,6 +186,37 @@ importers:
 
   apps/backend: {}
 
+  apps/example-merchant:
+    dependencies:
+      '@forwend/react':
+        specifier: workspace:*
+        version: link:../../packages/react
+      forwend:
+        specifier: workspace:*
+        version: link:../../packages/node
+      next:
+        specifier: 16.4.2
+        version: 16.4.2(@opentelemetry/api@1.10.0)(@playwright/test@1.64.1)(@types/node@26.6.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      react:
+        specifier: 19.3.1
+        version: 19.3.1
+      react-dom:
+        specifier: 19.3.1
+        version: 19.3.1(react@19.3.1)
+    devDependencies:
+      '@types/node':
+        specifier: 26.6.5
+        version: 26.6.5
+      '@types/react':
+        specifier: 19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 19.3.0
+        version: 19.3.0(@types/react@19.3.0)
+      vitest:
+        specifier: 5.0.5
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@26.6.5)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@26.6.5)(jiti@2.7.0))
+
   apps/web:
     dependencies:
       '@forwend/design-tokens':

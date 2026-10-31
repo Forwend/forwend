@@ -178,6 +178,32 @@ for await (const event of forwend.webhookEvents.list({ type: "invoice.paid" })) 
       },
     },
     {
+      id: "checkout",
+      title: "Checkout on your site",
+      paragraphs: [
+        "Price the cart on your server, then create a checkout session for exactly that amount. Your page never sends a price.",
+        "Show it in one of three ways: a link to Forwend's hosted page, the whole checkout in your page, or only its pay panel beside your own order summary.",
+      ],
+      points: [
+        "`POST /v1/profiles/{profileId}/checkout-sessions` takes `storeId`, `amountUsd`, your order's `reference` and optional `items`.",
+        "Its `payment.hostedUrl` is the hosted page. The pay token the embeds take is the last part of that address.",
+        "A link needs no script. To show the checkout in your page, use `@forwend/react` or `@forwend/js`, 0.1.0 on npm.",
+        "Add your site's origin to the store's allowed origins first: no other site can show its checkout. In test mode `http://localhost:3000` works too.",
+        "The checkout's events in your page are hints. Ship the order from the `invoice.paid` webhook, after you read the session again from the API.",
+        "The `forwend` package's checkout methods come in its next release. Until then, call the route directly.",
+      ],
+      code: {
+        language: "TSX",
+        code: `import { PaymentElement, PayButton } from "@forwend/react";
+
+// payToken comes from your server, which created the checkout session.
+<PaymentElement payToken={payToken} onStatus={() => refreshOrder()} />
+
+// Or a plain link to Forwend's page:
+<PayButton payToken={payToken} className="button" />`,
+      },
+    },
+    {
       id: "versioning",
       title: "Versioning",
       points: [
@@ -191,6 +217,15 @@ for await (const event of forwend.webhookEvents.list({ type: "invoice.paid" })) 
     title: "Changelog",
     note: "Newest first.",
     entries: [
+      {
+        date: "2026-10-31",
+        changes: [
+          "Checkout in your page: `/embed/<token>`, shown only on your store's allowed origins.",
+          "`@forwend/js` and `@forwend/react` 0.1.0 on npm under the MIT license.",
+          "Checkout sessions are documented: create one for your order, then link to it or show it in your page.",
+          "A payment to a checkout with several networks counts once it is final on its own network.",
+        ],
+      },
       {
         date: "2026-10-26",
         changes: [
