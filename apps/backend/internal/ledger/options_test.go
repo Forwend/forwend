@@ -194,12 +194,12 @@ func (o optionSim) scanned(chainID, time int64) {
 	o.exec("UPDATE chain_cursors SET last_scanned_time = $2, last_finalized_time = $2 WHERE chain_id = $1", chainID, time)
 }
 
-func TestMainRowWaitsForTheChoiceBeforeExpiring(t *testing.T) {
+func TestOptionPaidJustBeforeTheCloseDoesNotExpireTheMainRow(t *testing.T) {
 	o := newOptionSim(t)
 	o.scanned(1, 4800)
 	o.pay(o.option, 2, o.full, 5000000, 4900) // just before the checkout closes at 5000
-	o.scanned(2, 5100)                        // past the close too: only the pending choice keeps the main row open
-	o.process(o.option)                       // chain 1 was read only to 4800: no choice yet
+	o.scanned(2, 5100)                        // past the close too
+	o.process(o.option)                       // chosen at once: chain 1's lag doesn't hold it back
 	o.scanned(1, 5100)                        // read past the close, and past the payment
 	o.process(o.main)
 	o.process(o.option)
@@ -235,30 +235,37 @@ func TestInvoiceClosesOnlyOnceEveryOptionChainIsReadPastIt(t *testing.T) {
 	}
 }
 
-func TestOptionWaitsForEveryChainBeforeChoosing(t *testing.T) {
+// F413: a payment final on its own chain is chosen, booked and queued to settle at once; a lagging chain of another
+// option doesn't hold it back. Money found there later is held for the payer.
+func TestPaymentFinalOnItsChainIsNotHeldBackByOtherChains(t *testing.T) {
 	o := newOptionSim(t)
-	s, main, dust, option, full := o.sim, o.main, o.dust, o.option, o.full
-	pay, scanned := o.pay, o.scanned
-
-	// Chain 1 is read first: it has the dust at 1500, and chain 2 was read only to 1000.
-	scanned(1, 2000)
-	scanned(2, 1000)
-	pay(main, 1, dust, 1, 1500)
-	s.process(main)
+	o.scanned(1, 1000) // the main row's chain lags far behind
+	o.pay(o.option, 2, o.full, 5000000, 1400)
+	o.scanned(2, 2000)
+	o.process(o.option)
 	var chosen *string
-	if err := s.pool.QueryRow(context.Background(), "SELECT chosen_id FROM invoices WHERE id = $1", main).Scan(&chosen); err != nil || chosen != nil {
-		t.Fatalf("chosen %v (%v) before chain 2 was read past the dust, want none", deref(chosen), err)
+	var queued bool
+	read := func() {
+		t.Helper()
+		if err := o.pool.QueryRow(context.Background(), `SELECT chosen_id,
+			EXISTS (SELECT 1 FROM settlement_intents WHERE invoice_id = $2) FROM invoices WHERE id = $1`, o.main, o.option).
+			Scan(&chosen, &queued); err != nil {
+			t.Fatal(err)
+		}
 	}
-	// Chain 2's read finds the full payment, made at 1400, before the dust.
-	pay(option, 2, full, 5000000, 1400)
-	scanned(2, 2000)
-	s.process(option)
-	s.process(main)
-	if got, _ := s.payment(option); got != Paid {
-		t.Fatalf("the option paid in full first: %s, want paid", got)
+	read()
+	if got, _ := o.payment(o.option); got != Paid || deref(chosen) != o.option || !queued {
+		t.Fatalf("the payment final on chain 2: %s, chosen %s, settling %v; want paid, chosen and settling", got,
+			deref(chosen), queued)
 	}
-	if got, refund := s.payment(main); refund != "held" {
-		t.Fatalf("the dust: %s, refund %s; want held for the payer", got, refund)
+
+	o.pay(o.main, 1, o.dust, 1, 1300) // earlier on chain time, found once chain 1 catches up
+	o.scanned(1, 2000)
+	o.process(o.main)
+	read()
+	if _, refund := o.payment(o.main); refund != "held" || deref(chosen) != o.option {
+		t.Fatalf("money on the other option: refund %s, chosen %s; want held for the payer and the choice kept", refund,
+			deref(chosen))
 	}
 }
 
