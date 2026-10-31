@@ -45,7 +45,7 @@
         "Quickstart and integration docs match implemented packages; provider limitations, actual user testing and release approvals are reported truthfully."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "build",
@@ -140,11 +140,18 @@
           "summary": "Pass (second review, after c704f1f0). The commit changes only the 8 files for notes 1-7. The commit message has no AI trace. Checked each note. (5) FORWEND_URL is gone from the root turbo.json. apps/example-merchant/turbo.json extends // and sets build env FORWEND_URL. In 'turbo run build --dry=json' with two FORWEND_URL values, only the example's hash changes; the forwend, @forwend/js and @forwend/react hashes stay the same. The example keeps the root build's dependsOn, outputs and inputs. Its env list replaces the root's API_URL and NEXT_PUBLIC_PRIVY_APP_ID, which it does not read. After this run, .next/routes-manifest.json has frame-src set to this run's PUBLIC_URL. (6) .env in forwend.ts:5, .env.example:1 and README.md:23; root .gitignore .env* ignores it; root AGENTS.md now lists apps/example-merchant. No .env.local is left. (4) The README says the policy allows inline scripts as Next needs; the test name and proof 1 no longer say strict. (3) Test 1 clicks Full checkout and expects 'Logo design' in the frame. That title is drawn only by Terms, and the element layout leaves Terms out (pay-invoice.tsx:283), so the check fails if the full flow does not load. (7) The README names the local script. (2) Proof 2 calls TestMoneyLoop 'paid and settled end to end', which the test does. TestWebhookDeliveriesAreSignedAndRetried stays cited for delivery recovery. (1) Proof 4 drops the publishing claim and says the PR body reports no live provider run and no real-user test. The PR body must state both, and that publishing stays with the owner (R-170, acceptance 4). (8) Leaving it is fine: the 2026-10-31 changelog lists that day's API-visible changes. Ran: example-merchant test (8 passed), typecheck (no errors), and pnpm e2e -g 'example merchant|embedded checkout' (8 passed). No processes or files left behind. The working tree holds only the harness's docs/tasks.json record.",
           "at": "2026-10-31T02:03:17Z",
           "filesHash": "ef0af92e89ca79aa"
-        }
+        },
+        "commit": "c48b1f1e",
+        "doneAt": "2026-10-31T12:50:20Z"
       },
       "branch": "feat/f335-prove-merchant-checkout-fulfillment-and",
       "baseCommit": "6338697e1281927e28887ac64cd624eed8175440",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f335-prove-merchant-checkout-fulfillment-and",
+        "base": "main"
+      }
     },
     {
       "id": "F348",
