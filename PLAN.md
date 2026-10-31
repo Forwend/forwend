@@ -107,6 +107,10 @@ code; a wallet connects only to claim a refund (D-37).
   - 11.9.4 Publish `@forwend/js`, `@forwend/react` and `forwend` (D-103) once the owner approves, from the npm org.
     `forwend` 0.1.0 is published on npm under MIT. CI publishes with provenance. The browser packages stay `0.x` until the message protocol is stable. Each package
     has a changelog file, size and type checks. After 11.9.3.
+    - `.github/workflows/publish.yml` publishes one package, started by hand from main. Before its first run the owner:
+      - Makes the repository public: npm makes provenance only from a public repository.
+      - Creates the `npm` environment with required reviewers and main-only deployments.
+      - Stores `NPM_TOKEN` only as that environment's secret. Until then no run can publish.
   - 11.9.5 `apps/example-merchant` uses the button and the components and verifies the webhook, with a browser test:
     merchant code cannot read the frame, a forged message never marks an order paid, a strict CSP works, and an
     origin off the list is blocked. After 11.9.3.

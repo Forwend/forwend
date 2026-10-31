@@ -23,5 +23,7 @@ __pycache__/
 # Impeccable design hook cache (local tool state)
 **/.impeccable/hook.cache.json
 
-# The forwend package's build output
+# The npm packages' build output
 packages/node/dist/
+packages/js/dist/
+packages/react/dist/

@@ -19,6 +19,7 @@ Read only the task's requirement rows and the relevant package instructions.
 | Backend                        | [apps/backend/AGENTS.md](apps/backend/AGENTS.md)                                                                             |
 | Contracts                      | [packages/contracts/AGENTS.md](packages/contracts/AGENTS.md)                                                                 |
 | Node package                   | [packages/node/AGENTS.md](packages/node/AGENTS.md)                                                                           |
+| Browser checkout packages      | [packages/js/AGENTS.md](packages/js/AGENTS.md), [packages/react/AGENTS.md](packages/react/AGENTS.md)                         |
 
 
 ## Shared rules
