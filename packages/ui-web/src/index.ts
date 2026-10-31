@@ -8,7 +8,7 @@ export type {
 } from "./components/buttons/button";
 export { BUTTON_SIZES, BUTTON_VARIANTS, Button, buttonClasses } from "./components/buttons/button";
 export type { IconButtonProps, IconButtonSize } from "./components/buttons/icon-button";
-export { ICON_BUTTON_SIZES, IconButton } from "./components/buttons/icon-button";
+export { ICON_BUTTON_SIZES, IconButton, iconButtonClasses } from "./components/buttons/icon-button";
 export type { RowButtonProps } from "./components/buttons/row-button";
 export { RowButton } from "./components/buttons/row-button";
 export type { AccordionItem, AccordionProps } from "./components/display/accordion";
@@ -81,6 +81,8 @@ export type { SelectFieldProps, SelectOption } from "./components/forms/select-f
 export { SelectField } from "./components/forms/select-field";
 export type { SwitchProps } from "./components/forms/switch";
 export { Switch } from "./components/forms/switch";
+export type { SwitchCardProps } from "./components/forms/switch-card";
+export { SwitchCard } from "./components/forms/switch-card";
 export type { TextAreaFieldProps } from "./components/forms/text-area-field";
 export { TextAreaField } from "./components/forms/text-area-field";
 export type { TextFieldProps } from "./components/forms/text-field";

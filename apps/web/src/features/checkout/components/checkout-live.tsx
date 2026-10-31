@@ -67,8 +67,8 @@ export function CheckoutLive({ profileId, session, amountUsd, onNewSale }: Check
             : COPY.status.waiting;
 
   return (
-    <section aria-labelledby="checkout-scan" className="fw-panel min-w-0">
-      <div className="fw-panel-head">
+    <section aria-labelledby="checkout-scan" className="flex min-w-0 flex-col gap-2">
+      <div className="flex min-h-10 items-center gap-2">
         <h2
           id="checkout-scan"
           ref={heading}
@@ -85,60 +85,62 @@ export function CheckoutLive({ profileId, session, amountUsd, onNewSale }: Check
           withPayment
         />
       </div>
-      <div className="flex flex-col items-center gap-4 px-4 py-6 text-center sm:px-5">
-        <p className="text-ink">
-          <BigAmount value={formatUsd(usdToCents(amountUsd))} className="text-5xl" />{" "}
-          <span className="text-base text-subtle">{MONEY_COPY.usd}</span>
-        </p>
-        {open && url ? (
-          <>
-            <QrCode
-              value={url}
-              label={COPY.scan}
-              className="w-full max-w-64 border border-line p-2"
-            />
-            <p className="max-w-xs text-sm text-muted">{COPY.scanHint}</p>
-          </>
-        ) : paid ? (
-          <span className="grid size-24 place-items-center rounded-pill bg-success-soft text-success">
-            <Check aria-hidden className="size-10" />
-          </span>
-        ) : null}
-        <div className="flex flex-col items-center gap-1">
-          <StatusPill status={status} />
-          <p role="status" className="text-ink">
-            {sentence}
+      <div className="fw-panel">
+        <div className="flex flex-col items-center gap-4 px-4 py-6 text-center sm:px-5">
+          <p className="text-ink">
+            <BigAmount value={formatUsd(usdToCents(amountUsd))} className="text-5xl" />{" "}
+            <span className="text-base text-subtle">{MONEY_COPY.usd}</span>
           </p>
-          {open ? (
-            <p className="text-sm text-muted">
-              {COPY.closes(
-                new Date(payment.closesAt).toLocaleTimeString(undefined, {
-                  hour: "numeric",
-                  minute: "2-digit",
-                }),
-              )}
-            </p>
+          {open && url ? (
+            <>
+              <QrCode
+                value={url}
+                label={COPY.scan}
+                className="w-full max-w-64 border border-line p-2"
+              />
+              <p className="max-w-xs text-sm text-muted">{COPY.scanHint}</p>
+            </>
+          ) : paid ? (
+            <span className="grid size-24 place-items-center rounded-pill bg-success-soft text-success">
+              <Check aria-hidden className="size-10" />
+            </span>
           ) : null}
+          <div className="flex flex-col items-center gap-1">
+            <StatusPill status={status} />
+            <p role="status" className="text-ink">
+              {sentence}
+            </p>
+            {open ? (
+              <p className="text-sm text-muted">
+                {COPY.closes(
+                  new Date(payment.closesAt).toLocaleTimeString(undefined, {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  }),
+                )}
+              </p>
+            ) : null}
+          </div>
         </div>
+        {done || (open && url) ? (
+          <div className="border-t border-line p-4 sm:p-5">
+            {done ? (
+              <Button className="w-full" onClick={onNewSale}>
+                {COPY.newSale}
+              </Button>
+            ) : (
+              <Button variant="secondary" className="w-full" onClick={() => void copy()}>
+                {copied === COPY_STATUS.copied ? (
+                  <Check aria-hidden className="size-[var(--fw-icon-sm)]" />
+                ) : (
+                  <Copy aria-hidden className="size-[var(--fw-icon-sm)]" />
+                )}
+                {copied === COPY_STATUS.copied ? COPY.copied : COPY.copyLink}
+              </Button>
+            )}
+          </div>
+        ) : null}
       </div>
-      {done || (open && url) ? (
-        <div className="border-t border-line p-4 sm:p-5">
-          {done ? (
-            <Button className="w-full" onClick={onNewSale}>
-              {COPY.newSale}
-            </Button>
-          ) : (
-            <Button variant="secondary" className="w-full" onClick={() => void copy()}>
-              {copied === COPY_STATUS.copied ? (
-                <Check aria-hidden className="size-[var(--fw-icon-sm)]" />
-              ) : (
-                <Copy aria-hidden className="size-[var(--fw-icon-sm)]" />
-              )}
-              {copied === COPY_STATUS.copied ? COPY.copied : COPY.copyLink}
-            </Button>
-          )}
-        </div>
-      ) : null}
     </section>
   );
 }

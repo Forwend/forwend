@@ -150,7 +150,7 @@ test("the owner lists payment links with their activity, makes an open one and t
     .getByRole("navigation", { name: "Payment link form steps" })
     .getByRole("button", { name: /Limits/ })
     .click();
-  await main.getByRole("checkbox", { name: "The link is on" }).uncheck();
+  await main.getByRole("switch", { name: "The link is on" }).click();
   await main.getByRole("button", { name: "Save link" }).click();
   await expect(page).toHaveURL(/\/app\/links$/);
   expect(saved.at(-1)).toEqual({

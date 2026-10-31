@@ -110,6 +110,9 @@ Every control comes from `@forwend/ui-web`; a link that looks like a button uses
 - A setting that applies when flipped is a row in a panel: what it does on the left, the switch at the row's end and
   a quiet line under it. On, the switch's thumb is the lightest thing on it in both themes (white on the river
   blue, the ink in dark mode); off, it is the quiet gray.
+- A setting in a form is a `SwitchCard`: an icon tile, the title and one short line, the switch at the row's end.
+  - While on it can open its own field inside the card, under a rule, such as a payment link's Payment limit.
+- A read-only value to copy (`CopyValue`) sits in a field as tall as an input, with Copy and Open icons at its end.
 
 ## App shell
 
@@ -336,8 +339,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Checkout (`/app/checkout`, merchants with invoices.write) takes a payment in person:
   - From large screens the sale is a 26rem column, with Recent checkouts beside it; phones stack them.
   - Recent checkouts is the payments list of checkouts, newest first.
-  - The sale starts as a form: Store (when more than one), Amount in USD, Order reference and What it's for.
-  - Show QR code turns it into one card: the label, Test mode and More actions in its head.
+  - Each column is a heading row (New sale or the checkout's label; Recent checkouts with View all), then one card.
+  - The form card: Store, a large Amount with USD inside the field, Order reference and What it's for, then Show QR code.
+  - Show QR code turns it into the sale card: the label, Test mode and More actions in its heading row.
   - Then `BigAmount` in USD, one QR code of the pay link, the status pill, one sentence and the close time.
   - It checks every 3 seconds until decided.
   - At its foot Copy payment link; once decided, New sale (lime) starts a fresh form.
@@ -437,14 +441,14 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Payment links (R-140) sits after Invoices in a merchant's Payments group and a freelancer's Get paid group.
   - It is laid out like Stores: a one-line intro with New link at its end (for roles that can make links), then a table.
   - The table shows the link with its `/l/<slug>`, the amount, a status badge and visits, paid purchases and reserved slots.
-  - The status is On, Off, Ended, Cap reached or Setup needed; only On is green.
+  - The status is On, Off, Ended, Limit reached or Setup needed; only On is green.
   - Test links keep their mode label in lists and details; public checkout shows Testnet beside the payee.
   - The link page reads one link (`GET /links/{id}`) and opens with `DetailHeader`: a link icon tile, the title with
     status and mode badges, "Payment link · Created …", the price as the figure and More actions.
   - More actions holds Edit payment link and Turn off or Turn on, which saves at once with a toast.
   - Main column: Visits, Paid (with its share of visits) and Checkouts open, then the purchases.
   - Side column (first on narrower screens): Share, with the address on its own row, Copy and Open (a new tab) and a
-    QR code; then Details with the store, last day, payment cap and last update.
+    QR code; then Details with the store, last day, payment limit and last update.
   - Open in Payments shows the same purchases on the Payments page with search and filters.
   - New and Edit use existing store-form panels; `/app/links/<id>/edit` edits the offer, while the existing detail URL remains valid.
   - Amount has two choice cards: A fixed amount, or The payer enters it with an optional min and max.
@@ -586,7 +590,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - A new store can pick its logo in Brand; it previews at once and uploads right after the store saves.
     - The preview is the pay page header, an `AssetStack` of what a payer can use, and the checkout close.
   - Payment links: Link, Amount, Limits; the preview is the pay page with the amount or range and the limits.
-    - Limits starts with Reusable, on by default. Off, the link takes one payment and the cap field hides.
+    - Limits holds two switch cards and the last day: Reusable, on by default, opens Payment limit inside its card.
+    - An empty Payment limit is no limit. Off, the link takes one payment.
+    - The link is on is the second card.
   - Jobs: Work, Client, Payments; the preview is the quote with its schedule and total.
   - Editing opens every step from the stepper (numbers, no checks) and puts Save on each step beside Continue.
   - Continue checks the step on screen; Save checks everything and opens the step of the first error.

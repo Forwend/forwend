@@ -1,16 +1,15 @@
 "use client";
 
 import {
-  Checkbox,
   ChoiceCard,
   DatePicker,
   SelectField,
-  Switch,
+  SwitchCard,
   TextField,
   TONES,
   useToast,
 } from "@forwend/ui-web";
-import { PencilLine, Tag } from "lucide-react";
+import { PencilLine, Power, Repeat, Tag } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -338,38 +337,41 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
       </div>
       <div data-step={STEPS.limits} className={flow.shows(STEPS.limits)}>
         <FieldGroup title={COPY.limitsGroup}>
-          <div className="flex flex-col gap-1">
-            <Switch label={COPY.reusable} checked={reusable} onCheckedChange={setReusable} />
-            <p className="text-sm text-muted">{COPY.reusableHint}</p>
-          </div>
-          <div className="grid gap-5 sm:grid-cols-2">
-            <DatePicker
-              label={COPY.endsOn}
-              value={endsAt?.slice(0, 10) ?? null}
-              onChange={(day) => setEndsAt(day ? endsAtOf(day) : null)}
-              hint={COPY.endsOnHint}
-              clearLabel={COPY.clearDate}
+          <SwitchCard
+            icon={<Repeat />}
+            title={COPY.reusable}
+            description={reusable ? COPY.reusableOn : COPY.reusableOff}
+            checked={reusable}
+            onCheckedChange={setReusable}
+          >
+            {/* Empty is no limit. */}
+            <TextField
+              label={COPY.maxPayments}
+              name="maxPayments"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder={COPY.unlimited}
+              defaultValue={typed.maxPayments}
+              hint={COPY.maxPaymentsHint}
+              error={errors.maxPayments}
+              className="sm:max-w-80"
             />
-            {reusable ? (
-              <TextField
-                label={COPY.maxPayments}
-                name="maxPayments"
-                inputMode="numeric"
-                autoComplete="off"
-                defaultValue={typed.maxPayments}
-                hint={COPY.maxPaymentsHint}
-                error={errors.maxPayments}
-              />
-            ) : null}
-          </div>
-          <div className="flex flex-col gap-1">
-            <Checkbox
-              label={COPY.active}
-              checked={active}
-              onChange={(e) => setActive(e.target.checked)}
-            />
-            <p className="text-sm text-muted">{COPY.activeHint}</p>
-          </div>
+          </SwitchCard>
+          <DatePicker
+            label={COPY.endsOn}
+            value={endsAt?.slice(0, 10) ?? null}
+            onChange={(day) => setEndsAt(day ? endsAtOf(day) : null)}
+            hint={COPY.endsOnHint}
+            clearLabel={COPY.clearDate}
+            className="sm:max-w-80"
+          />
+          <SwitchCard
+            icon={<Power />}
+            title={COPY.active}
+            description={COPY.activeHint}
+            checked={active}
+            onCheckedChange={setActive}
+          />
         </FieldGroup>
       </div>
     </StepForm>

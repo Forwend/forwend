@@ -1,12 +1,11 @@
 export const CHECKOUT_COPY = {
   title: "Checkout",
-  intro: "Enter the amount, then show the QR code.",
-  sale: "Sale",
   store: "Store",
   amount: "Amount",
-  amountHint: "In USD.",
   reference: "Order reference (optional)",
   what: "What it's for (optional)",
+  newSale: "New sale",
+  viewAll: "View all",
   start: "Show QR code",
   errors: {
     amount: "Enter an amount, such as 12.50.",
@@ -28,7 +27,6 @@ export const CHECKOUT_COPY = {
     closed: "This checkout closed without a full payment.",
   },
   closes: (time: string) => `Closes at ${time}`,
-  newSale: "New sale",
   moreActions: "More actions",
   cancel: "Cancel checkout",
   cancelTitle: "Cancel this checkout?",

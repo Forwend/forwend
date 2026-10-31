@@ -76,11 +76,18 @@ it("saves a link that isn't reusable with a cap of one payment, and a reusable o
   const reusable = screen.getByRole("switch", { name: "Reusable" });
   expect(reusable.getAttribute("aria-checked")).toBe("true");
   fireEvent.click(reusable);
-  expect(screen.queryByLabelText("Payment cap (optional)")).toBeNull();
+  expect(screen.queryByLabelText("Payment limit")).toBeNull();
   await save();
   fireEvent.click(reusable);
   await save();
   expect(bodies.map((body) => body.maxPayments)).toEqual([1, 25]);
+});
+
+it("saves a reusable link with an empty limit as no limit", async () => {
+  const bodies = edit(LINK);
+  expect(screen.getByLabelText("Payment limit")).toHaveProperty("value", "");
+  await save();
+  expect(bodies.map((body) => body.maxPayments)).toEqual([null]);
 });
 
 it("opens a one-payment link with Reusable off", () => {

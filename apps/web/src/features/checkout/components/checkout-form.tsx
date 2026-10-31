@@ -8,7 +8,7 @@ import { CHECKOUT_COPY as COPY } from "@/features/checkout/constants/checkout-co
 import type { CheckoutSession } from "@/features/checkout/types/checkout";
 import { USD_PATTERN } from "@/features/links/constants/links";
 import type { Store } from "@/features/stores/types/stores";
-import { FieldGroup } from "@/shared/components/field-group";
+import { MONEY_COPY } from "@/shared/constants/money-copy";
 
 export interface CheckoutFormProps {
   profileId: string;
@@ -63,40 +63,76 @@ export function CheckoutForm({ profileId, stores, onStarted }: CheckoutFormProps
 
   return (
     // Any change makes a different sale, so it gets its own key.
-    <Form onSubmit={submit} onChange={() => (key.current = crypto.randomUUID())} noValidate>
-      <FieldGroup title={COPY.sale}>
-        {stores.length > 1 ? (
-          <SelectField
-            label={COPY.store}
-            value={store}
-            onValueChange={(value) => {
-              setStore(value);
-              key.current = crypto.randomUUID();
-            }}
-            options={stores.map((s) => ({ value: s.storeId, label: s.name }))}
-          />
-        ) : null}
-        <TextField
-          label={COPY.amount}
-          name="amountUsd"
-          inputMode="decimal"
-          autoComplete="off"
-          // The page does one thing: a sale starts with its amount, and New sale lands back here.
-          autoFocus
-          hint={COPY.amountHint}
-          error={error}
-        />
-        <div className="grid gap-5 sm:grid-cols-2">
+    <Form
+      onSubmit={submit}
+      onChange={() => (key.current = crypto.randomUUID())}
+      noValidate
+      gap="sm"
+      aria-labelledby="checkout-sale"
+      className="min-w-0"
+    >
+      <div className="flex min-h-10 items-center">
+        <h2 id="checkout-sale" className="text-base font-semibold text-ink">
+          {COPY.newSale}
+        </h2>
+      </div>
+      <div className="fw-panel">
+        <div className="flex flex-col gap-5 p-4 sm:p-5">
+          {stores.length > 1 ? (
+            <SelectField
+              label={COPY.store}
+              value={store}
+              onValueChange={(value) => {
+                setStore(value);
+                key.current = crypto.randomUUID();
+              }}
+              options={stores.map((s) => ({ value: s.storeId, label: s.name }))}
+            />
+          ) : null}
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="checkout-amount" className="text-sm font-medium text-ink">
+              {COPY.amount}
+            </label>
+            {/* The amount is what the customer checks, so it is large, with its currency inside. */}
+            <div
+              className={`flex h-14 items-center gap-2 rounded-md border bg-surface px-4 transition-[border-color,box-shadow] duration-[var(--fw-duration-fast)] focus-within:border-field-focus focus-within:ring-2 focus-within:ring-field-ring ${error ? "border-danger" : "border-field"}`}
+            >
+              <input
+                id="checkout-amount"
+                name="amountUsd"
+                inputMode="decimal"
+                autoComplete="off"
+                placeholder="0.00"
+                // biome-ignore lint/a11y/noAutofocus: the page does one thing: a sale starts with its amount, and New sale lands back here
+                autoFocus
+                aria-invalid={error ? true : undefined}
+                aria-describedby={
+                  error ? "checkout-amount-usd checkout-amount-error" : "checkout-amount-usd"
+                }
+                className="min-w-0 flex-1 bg-transparent text-3xl font-medium tracking-tight text-ink tabular-nums outline-none placeholder:text-subtle"
+              />
+              <span id="checkout-amount-usd" className="text-base text-muted">
+                {MONEY_COPY.usd}
+              </span>
+            </div>
+            {error ? (
+              <p id="checkout-amount-error" role="alert" className="text-sm text-danger">
+                {error}
+              </p>
+            ) : null}
+          </div>
           <TextField label={COPY.reference} name="reference" autoComplete="off" />
           <TextField label={COPY.what} name="title" autoComplete="off" />
         </div>
-      </FieldGroup>
-      <Button type="submit" loading={busy} className="sm:self-start">
-        {COPY.start}
-      </Button>
-      <p role="alert" className="min-h-5 text-sm text-danger">
-        {formError}
-      </p>
+        <div className="flex flex-col gap-2 border-t border-line p-4 sm:p-5">
+          <Button type="submit" size="lg" loading={busy} className="w-full">
+            {COPY.start}
+          </Button>
+          <p role="alert" className="text-sm text-danger empty:hidden">
+            {formError}
+          </p>
+        </div>
+      </div>
     </Form>
   );
 }

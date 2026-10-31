@@ -15,6 +15,7 @@ import { useListStoresQuery } from "@/features/stores/api/stores-api";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 const RECENT = { source: CHECKOUT_SOURCE } as const;
+const ALL = `${APP_ROUTES.payments}?source=${CHECKOUT_SOURCE}`;
 
 export function CheckoutScreen() {
   const { profile } = useAppSession();
@@ -24,11 +25,8 @@ export function CheckoutScreen() {
   const [round, setRound] = useState(0);
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
-        <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">{COPY.title}</h1>
-        {sale ? null : <p className="text-sm text-muted">{COPY.intro}</p>}
-      </header>
+      {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
+      <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">{COPY.title}</h1>
       {sale || stores.currentData?.length ? (
         // The sale beside the recent ones, so the page's width shows what the merchant checks next.
         <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
@@ -50,10 +48,16 @@ export function CheckoutScreen() {
               onStarted={(session, amountUsd) => setSale({ session, amountUsd })}
             />
           )}
-          <section aria-labelledby="checkout-recent" className="flex min-w-0 flex-col gap-3">
-            <h2 id="checkout-recent" className="text-base font-semibold text-ink">
-              {COPY.recent}
-            </h2>
+          <section aria-labelledby="checkout-recent" className="flex min-w-0 flex-col gap-2">
+            {/* As tall as the sale's heading row, so both cards start on one line. */}
+            <div className="flex min-h-10 items-center justify-between gap-3">
+              <h2 id="checkout-recent" className="text-base font-semibold text-ink">
+                {COPY.recent}
+              </h2>
+              <Link href={ALL} className={buttonClasses({ variant: "ghost", size: "sm" })}>
+                {COPY.viewAll}
+              </Link>
+            </div>
             <PaymentList
               profileId={profile.profileId}
               filters={RECENT}

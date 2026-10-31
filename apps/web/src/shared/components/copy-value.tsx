@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, buttonClasses, COPY_STATUS, useCopy } from "@forwend/ui-web";
+import { COPY_STATUS, IconButton, iconButtonClasses, useCopy } from "@forwend/ui-web";
 import { Check, Copy, ExternalLink } from "lucide-react";
 import { COPY_VALUE_COPY as COPY } from "@/shared/constants/copy-value-copy";
 
@@ -14,7 +14,7 @@ export interface CopyValueProps {
   open?: { label: string; name: string };
 }
 
-/** A value shown as code on its own row, with a Copy button that says when it copied and, for an address, Open. */
+/** A read-only value in a field as tall as an input, with Copy (and Open, for an address) at its end. */
 export function CopyValue({ label, value, hint, copyLabel, open }: CopyValueProps) {
   const [status, copy] = useCopy(value);
   const said =
@@ -22,35 +22,29 @@ export function CopyValue({ label, value, hint, copyLabel, open }: CopyValueProp
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       <p className="text-sm font-medium text-ink">{label}</p>
-      {/* The value has its own row, so a long address is never squeezed beside the buttons. */}
-      <code
-        className="block min-w-0 truncate rounded-md bg-surface-2 px-3 py-2 font-mono text-sm text-ink"
-        title={value}
-      >
-        {value}
-      </code>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="secondary" onClick={() => void copy()}>
-          {status === COPY_STATUS.copied ? (
-            <Check aria-hidden className="size-[var(--fw-icon-sm)]" />
-          ) : (
-            <Copy aria-hidden className="size-[var(--fw-icon-sm)]" />
-          )}
-          <span aria-hidden>{said || COPY.copy}</span>
-          <span className="sr-only">{copyLabel}</span>
-        </Button>
+      <div className="flex h-10 min-w-0 items-center gap-0.5 rounded-md border border-line bg-surface-2 pr-1 pl-3 pointer-coarse:h-11">
+        <code className="min-w-0 flex-1 truncate font-mono text-sm text-ink" title={value}>
+          {value}
+        </code>
         {open ? (
           <a
             href={value}
             target="_blank"
             rel="noopener noreferrer"
-            className={buttonClasses({ variant: "secondary", size: "sm" })}
+            aria-label={open.name}
+            title={open.label}
+            className={iconButtonClasses()}
           >
             <ExternalLink aria-hidden className="size-[var(--fw-icon-sm)]" />
-            <span aria-hidden>{open.label}</span>
-            <span className="sr-only">{open.name}</span>
           </a>
         ) : null}
+        <IconButton label={copyLabel} title={said || COPY.copy} onClick={() => void copy()}>
+          {status === COPY_STATUS.copied ? (
+            <Check aria-hidden className="size-[var(--fw-icon-sm)] text-success" />
+          ) : (
+            <Copy aria-hidden className="size-[var(--fw-icon-sm)]" />
+          )}
+        </IconButton>
       </div>
       <p className="text-sm text-muted">{hint}</p>
       <p role="status" className="sr-only">
