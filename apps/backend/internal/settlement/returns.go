@@ -29,10 +29,7 @@ var (
 	authoritySelector = selector("refundAuthority()")
 )
 
-const (
-	deploySignature = "deploy((bytes32,address,address,uint256,uint64,uint64,uint256))"
-	refundSignature = "refund(address,uint256)"
-)
+const refundSignature = "refund(address,uint256)"
 
 var (
 	ErrNoCase         = errors.New("no invoice has that pay link, address or transaction")
@@ -45,6 +42,7 @@ var (
 	ErrAmountNeeded   = errors.New("several addresses paid: give the amount for this one")
 	ErrTooMuch        = errors.New("more than is both held and refundable")
 	ErrTooLittle      = errors.New("under 0.10 USD is not returned (D-90)")
+	ErrUnbooked       = errors.New("the receiver holds less than the ledger books: wait until a worker round books the refund or settlement that left it")
 )
 
 // Payment is a final payment to an invoice option.
@@ -59,7 +57,7 @@ type Held struct {
 	InvoiceID, Receive, Token, Symbol, PaymentStatus, RefundStatus string
 	ChainID                                                        uint64
 	Decimals                                                       int
-	Held                                                           *big.Int // the ledger's
+	Held, Booked                                                   *big.Int // the ledger's held and receiver balances
 	Reasons                                                        []string
 	Payments                                                       []Payment
 	Deployed, Settled                                              bool
@@ -160,7 +158,7 @@ func ReadHeld(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client, i
 	if err != nil {
 		return Held{}, fmt.Errorf("read invoice %s amounts: %w", invoiceID, err)
 	}
-	h.Held = amounts.Held
+	h.Held, h.Booked = amounts.Held, amounts.Receiver
 	rows, err := db.Query(ctx, `SELECT tx_hash, from_address, amount::text, block_time FROM chain_transfers
 		WHERE invoice_id = $1 AND status = 'confirmed' AND booked ORDER BY block_number, log_index`, invoiceID)
 	if err != nil {
@@ -192,8 +190,11 @@ func ReadHeld(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client, i
 	h.Deadline = time.Unix(int64(status.Deadline), 0).UTC()
 	factoryAddress := common.Address(address.Factory)
 	out, err := client.CallContract(ctx, ethereum.CallMsg{To: &factoryAddress, Data: authoritySelector}, nil)
-	if err != nil || len(out) != 32 {
-		return Held{}, fmt.Errorf("factory.refundAuthority: %v", err)
+	if err != nil {
+		return Held{}, fmt.Errorf("factory.refundAuthority: %w", err)
+	}
+	if len(out) != 32 {
+		return Held{}, fmt.Errorf("factory.refundAuthority: %d-byte answer", len(out))
 	}
 	h.Authority = common.BytesToAddress(out)
 	return h, nil
@@ -213,6 +214,10 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 		return Return{}, ErrReturnQueued
 	case h.Held.Sign() <= 0:
 		return Return{}, ErrNothingHeld
+	// Money left the receiver and the ledger hasn't booked it. Past the deadline of an invoice never settled the
+	// contract lets the whole balance out, so a second return would take the creator's money.
+	case h.Balance.Cmp(h.Booked) < 0:
+		return Return{}, ErrUnbooked
 	}
 	var paid *Payment
 	senders := map[string]bool{}
@@ -233,9 +238,20 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 	if r.To == (common.Address{}) || r.To == receive || r.To == token || r.To == common.Address(address.Factory) {
 		return Return{}, ErrDestination
 	}
+	var invoiceAddress bool
+	if err := db.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM invoices WHERE receive_address = $1)",
+		strings.ToLower(r.To.Hex())).Scan(&invoiceAddress); err != nil {
+		return Return{}, fmt.Errorf("check the destination: %w", err)
+	}
+	if invoiceAddress {
+		return Return{}, ErrDestination // another invoice's receiver: the money would be held there, not returned
+	}
 	limit := minInt(h.Held, h.Refundable)
 	if limit.Sign() <= 0 {
-		return Return{}, fmt.Errorf("%w: everything becomes refundable after %s", ErrNotYet, h.Deadline.Format(time.RFC3339))
+		if h.Settled || !time.Now().Before(h.Deadline) {
+			return Return{}, ErrNotYet
+		}
+		return Return{}, fmt.Errorf("%w: all of it becomes refundable after %s", ErrNotYet, h.Deadline.Format(time.RFC3339))
 	}
 	r.Amount = amount
 	if r.Amount == nil {
@@ -276,7 +292,7 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 			return Return{}, fmt.Errorf("the receiver refuses this refund: %w", err)
 		}
 	} else {
-		deploy, err := callData(selector(deploySignature), h.terms)
+		deploy, err := callData(deploySelector, h.terms)
 		if err != nil {
 			return Return{}, err
 		}

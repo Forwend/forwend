@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/forwend/forwend/apps/backend/internal/address"
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
@@ -108,6 +109,7 @@ func TestSupportReturnRefusesWhatTheMoneyCantDo(t *testing.T) {
 	e := setup(t)
 	ctx := t.Context()
 	id, receive := e.pay(t, 8)
+	_, otherReceive := e.create(t, 10)
 	hash := e.paymentHash(t, id)
 	other := common.HexToAddress("0x000000000000000000000000000000000000dead")
 	for _, c := range []struct {
@@ -120,6 +122,9 @@ func TestSupportReturnRefusesWhatTheMoneyCantDo(t *testing.T) {
 		{"an unknown payment", "0x" + strings.Repeat("ab", 32), nil, 0, ErrUnknownPayment},
 		{"the receiver itself", hash, ptr(common.HexToAddress(receive)), 0, ErrDestination},
 		{"the zero address", hash, &common.Address{}, 0, ErrDestination},
+		{"the token", hash, ptr(common.HexToAddress(e.token)), 0, ErrDestination},
+		{"the factory", hash, ptr(common.Address(address.Factory)), 0, ErrDestination},
+		{"another invoice's receiver", hash, ptr(common.HexToAddress(otherReceive)), 0, ErrDestination},
 		{"more than is held", hash, nil, 2000000, ErrTooMuch},
 		{"under 0.10 USD", hash, nil, 99999, ErrTooLittle},
 	} {
@@ -143,6 +148,15 @@ func TestSupportReturnRefusesWhatTheMoneyCantDo(t *testing.T) {
 	if err := ReleaseReturn(ctx, e.pool, id); err != nil {
 		t.Fatal(err)
 	}
+	// A contract destination, such as an exchange's or an app's, is allowed after a warning.
+	contract := common.HexToAddress(e.anvil.DeployToken())
+	if r, err := QueueReturn(ctx, e.pool, e.client, id, hash, &contract, big.NewInt(100000)); err != nil ||
+		!slices.ContainsFunc(r.Warnings, func(w string) bool { return strings.Contains(w, "contract") }) {
+		t.Fatalf("return to a contract: %+v, %v", r, err)
+	}
+	if err := ReleaseReturn(ctx, e.pool, id); err != nil {
+		t.Fatal(err)
+	}
 	if err := ReleaseReturn(ctx, e.pool, id); !errors.Is(err, ErrNoReturnQueued) {
 		t.Fatalf("a second release: %v", err)
 	}
@@ -156,7 +170,8 @@ func TestSupportReturnRefusesWhatTheMoneyCantDo(t *testing.T) {
 		id).Scan(&rows); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"invoice.return_queued system 100000 " + strings.ToLower(other.Hex()), "invoice.return_released system  "}
+	want := []string{"invoice.return_queued system 100000 " + strings.ToLower(other.Hex()), "invoice.return_released system  ",
+		"invoice.return_queued system 100000 " + strings.ToLower(contract.Hex()), "invoice.return_released system  "}
 	if !slices.Equal(rows, want) {
 		t.Fatalf("history %q; want %q", rows, want)
 	}
@@ -186,6 +201,33 @@ func TestSupportReturnsAnExpiredPartialPaymentOnlyAfterItsDeadline(t *testing.T)
 	e.round(t)
 	if got := e.refundStatus(t, id); got != "refunded" {
 		t.Fatalf("after the refund landed: %s", got)
+	}
+}
+
+// Past the deadline of an invoice never settled, the contract lets the whole balance out, so the ledger is the only
+// guard of the creator's money: a refund sent but not booked yet must stop the next return.
+func TestSupportWaitsForASentRefundToBeBookedBeforeTheNextReturn(t *testing.T) {
+	e := setup(t)
+	ctx := t.Context()
+	id, _ := e.paidInvoice(t)
+	hash := e.paymentHash(t, id)
+	e.anvil.Wait(3600 + 86400 + 60)
+	e.anvil.Mine(1)
+	r, err := QueueReturn(ctx, e.pool, e.client, id, hash, nil, nil)
+	if err != nil || r.Amount.Int64() != 1000000 {
+		t.Fatalf("first return: %+v, %v", r, err)
+	}
+	e.send(r)
+	// Released by mistake before the watcher booked the refund.
+	if err := ReleaseReturn(ctx, e.pool, id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := QueueReturn(ctx, e.pool, e.client, id, hash, nil, nil); !errors.Is(err, ErrUnbooked) {
+		t.Fatalf("a second return before the first was booked: %v", err)
+	}
+	e.round(t)
+	if got := e.refundStatus(t, id); got != "refunded" {
+		t.Fatalf("after the refund was booked: %s", got)
 	}
 }
 

@@ -98,9 +98,18 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		if *tx == "" {
 			return errors.New(usage)
 		}
-		// The option is the one the payment went to.
-		paid, err := settlement.CaseOptions(ctx, pool, *tx)
-		if err != nil || len(paid) != 1 || !contains(options, paid[0]) {
+		// The option is this case's one the payment went to; one transaction can pay several invoices.
+		touched, err := settlement.CaseOptions(ctx, pool, *tx)
+		if err != nil && !errors.Is(err, settlement.ErrNoCase) {
+			return err
+		}
+		var paid []settlement.CaseOption
+		for _, o := range touched {
+			if contains(options, o) {
+				paid = append(paid, o)
+			}
+		}
+		if len(paid) != 1 {
 			return settlement.ErrUnknownPayment
 		}
 		c, err := client(paid[0].ChainID)
