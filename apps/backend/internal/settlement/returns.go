@@ -42,7 +42,7 @@ var (
 	ErrAmountNeeded   = errors.New("several addresses paid: give the amount for this one")
 	ErrTooMuch        = errors.New("more than is both held and refundable")
 	ErrTooLittle      = errors.New("under 0.10 USD is not returned (D-90)")
-	ErrUnbooked       = errors.New("the receiver holds less than the ledger books: wait until a worker round books the refund or settlement that left it")
+	ErrUnbooked       = errors.New("money moved that the ledger hasn't booked yet: wait for a worker round, then try again")
 )
 
 // Payment is a final payment to an invoice option.
@@ -217,6 +217,17 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 	// Money left the receiver and the ledger hasn't booked it. Past the deadline of an invoice never settled the
 	// contract lets the whole balance out, so a second return would take the creator's money.
 	case h.Balance.Cmp(h.Booked) < 0:
+		return Return{}, ErrUnbooked
+	}
+	// A payment not booked yet could hide such a gap, and its money is another payer's.
+	var unbooked bool
+	if err := db.QueryRow(ctx, `SELECT
+		EXISTS (SELECT 1 FROM chain_transfers WHERE invoice_id = $1 AND status <> 'reorged' AND NOT booked) OR
+		EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = $1 AND kind <> 'recovery' AND ledger_transaction_id IS NULL)`,
+		invoiceID).Scan(&unbooked); err != nil {
+		return Return{}, fmt.Errorf("read invoice %s unbooked movements: %w", invoiceID, err)
+	}
+	if unbooked {
 		return Return{}, ErrUnbooked
 	}
 	var paid *Payment

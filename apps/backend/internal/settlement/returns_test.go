@@ -231,4 +231,23 @@ func TestSupportWaitsForASentRefundToBeBookedBeforeTheNextReturn(t *testing.T) {
 	}
 }
 
+// A payment not booked yet can hide a refund that isn't either, and its money is another payer's: support waits.
+func TestSupportWaitsForEveryPaymentToBeBooked(t *testing.T) {
+	e := setup(t)
+	ctx := t.Context()
+	id, receive := e.paidInvoice(t)
+	hash := e.paymentHash(t, id)
+	e.anvil.Transfer(e.token, receive, "1000000")
+	if err := e.watch.Scan(ctx); err != nil { // seen, not yet final
+		t.Fatal(err)
+	}
+	if _, err := QueueReturn(ctx, e.pool, e.client, id, hash, nil, nil); !errors.Is(err, ErrUnbooked) {
+		t.Fatalf("with a payment not booked: %v", err)
+	}
+	e.round(t)
+	if _, err := QueueReturn(ctx, e.pool, e.client, id, hash, nil, big.NewInt(1000000)); err != nil {
+		t.Fatalf("once it is booked: %v", err)
+	}
+}
+
 func ptr[T any](v T) *T { return &v }
