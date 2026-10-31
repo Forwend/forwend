@@ -18,10 +18,7 @@ import (
 func TestCheckEnabled(t *testing.T) {
 	ctx := context.Background()
 	a := chaintest.Start(t)
-	url := databasetest.New(t)
-	if err := database.Migrate(ctx, url); err != nil {
-		t.Fatal(err)
-	}
+	url := databasetest.Migrated(t, database.Migrate)
 	db, err := database.Open(ctx, url)
 	if err != nil {
 		t.Fatal(err)

@@ -10,17 +10,18 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rpc"
 )
-
-var deployedTo = regexp.MustCompile(`"deployedTo":\s*"(0x[0-9a-fA-F]{40})"`)
 
 // Anvil's first default account: public test key, never used outside a local chain.
 const (
@@ -105,19 +106,19 @@ func startChain(t *testing.T, chainID uint64, archive string) *Anvil {
 // DeployToken deploys a fresh MockToken (6 decimals, public mint) and returns its lowercase address.
 func (a *Anvil) DeployToken() string {
 	a.t.Helper()
-	out := a.run("forge", "create", "test/mocks/MockToken.sol:MockToken", "--root", contractsDir(),
-		"--rpc-url", a.URL, "--private-key", Key, "--broadcast", "--json")
-	m := deployedTo.FindStringSubmatch(out)
-	if m == nil {
-		a.t.Fatalf("forge create: no deployedTo in\n%s", out)
-	}
-	return strings.ToLower(m[1])
+	receipt := a.transact(Sender, "", bytecode(a.t, "MockToken"))
+	return strings.ToLower(receipt.ContractAddress)
 }
 
-var factoryLine = regexp.MustCompile(`factory (0x[0-9a-fA-F]{40})`)
+// The CREATE2 deployer Anvil and every testnet have, and script/Deploy.s.sol's salt (contracts test Deploy.t.sol).
+var (
+	create2Deployer = common.HexToAddress("0x4e59b44847b379578588920ca78fbf26c0b4956c")
+	factorySalt     = crypto.Keccak256([]byte("forwend.invoice-receiver-factory.v1"))
+)
 
-// DeployFactory deploys the v1 factory as on the testnets, so it lands at the address the Go code has compiled in,
-// and makes Sender the executor so tests sign with Anvil's key. It returns the factory address in lowercase.
+// DeployFactory deploys the v1 factory as script/Deploy.s.sol does on the testnets, through the CREATE2 deployer with
+// the testnet arguments, so it lands at the address the Go code has compiled in. It makes Sender the executor so tests
+// sign with Anvil's key, and returns the factory address in lowercase.
 func (a *Anvil) DeployFactory() string {
 	a.t.Helper()
 	raw, err := os.ReadFile(filepath.Join(contractsDir(), "deployments.json"))
@@ -131,29 +132,20 @@ func (a *Anvil) DeployFactory() string {
 		a.t.Fatal(err)
 	}
 	testnet := d.Chains["base-sepolia"]
-	// Foundry locks the script's broadcast recovery file, one per chain ID, so deploys from parallel test processes
-	// take turns.
-	cache := filepath.Join(contractsDir(), "cache")
-	if err := os.MkdirAll(cache, 0o755); err != nil {
-		a.t.Fatal(err)
+	args := make([]byte, 0, 64)
+	for _, arg := range []string{testnet.RefundAuthority, testnet.Executor} {
+		args = append(args, common.LeftPadBytes(common.HexToAddress(arg).Bytes(), 32)...)
 	}
-	lock, err := os.OpenFile(filepath.Join(cache, "chaintest-deploy.lock"), os.O_CREATE|os.O_RDWR, 0o600)
-	if err != nil {
-		a.t.Fatal(err)
+	init := append(bytecode(a.t, "InvoiceReceiverFactory"), args...)
+	at := crypto.CreateAddress2(create2Deployer, [32]byte(factorySalt), crypto.Keccak256(init))
+	// Already there: the script deploys nothing then either.
+	if a.code(at) == 0 {
+		a.transact(Sender, create2Deployer.Hex(), append(append([]byte{}, factorySalt...), init...))
+		if a.code(at) == 0 {
+			a.t.Fatalf("factory not deployed at %s", at)
+		}
 	}
-	defer lock.Close()
-	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX); err != nil {
-		a.t.Fatal(err)
-	}
-	out := a.runEnv([]string{"REFUND_AUTHORITY=" + testnet.RefundAuthority, "EXECUTOR=" + testnet.Executor,
-		"DEPLOYER_PRIVATE_KEY=" + Key}, "forge", "script", filepath.Join(contractsDir(), "script/Deploy.s.sol")+":Deploy",
-		"--root", contractsDir(),
-		"--rpc-url", a.URL, "--broadcast")
-	m := factoryLine.FindStringSubmatch(out)
-	if m == nil {
-		a.t.Fatalf("forge script Deploy: no factory in\n%s", out)
-	}
-	factory := strings.ToLower(m[1])
+	factory := strings.ToLower(at.Hex())
 	for _, call := range [][]any{{"anvil_setBalance", testnet.RefundAuthority, "0xde0b6b3a7640000"},
 		{"anvil_impersonateAccount", testnet.RefundAuthority}} {
 		if err := a.RPC.Call(nil, call[0].(string), call[1:]...); err != nil {
@@ -165,10 +157,20 @@ func (a *Anvil) DeployFactory() string {
 	return factory
 }
 
+// code is the size of the code at an address.
+func (a *Anvil) code(at common.Address) int {
+	a.t.Helper()
+	var code hexutil.Bytes
+	if err := a.RPC.Call(&code, "eth_getCode", at, "latest"); err != nil {
+		a.t.Fatal(err)
+	}
+	return len(code)
+}
+
 // AsAuthority sends a call from the factory's refund authority (after DeployFactory).
 func (a *Anvil) AsAuthority(to, sig string, args ...string) {
 	a.t.Helper()
-	a.run("cast", append([]string{"send", "--rpc-url", a.URL, "--unlocked", "--from", a.authority, to, sig}, args...)...)
+	a.call(a.authority, to, sig, args...)
 }
 
 func (a *Anvil) Mint(token string, amount string) {
@@ -184,14 +186,53 @@ func (a *Anvil) Transfer(token, to, amount string) string {
 // Send calls a contract from the sender, waits for the receipt and returns the transaction hash.
 func (a *Anvil) Send(to, sig string, args ...string) string {
 	a.t.Helper()
-	out := a.run("cast", append([]string{"send", "--rpc-url", a.URL, "--private-key", Key, "--json", to, sig}, args...)...)
-	var receipt struct {
-		TransactionHash string `json:"transactionHash"`
+	return a.call(Sender, to, sig, args...)
+}
+
+// call sends sig(args) from an account Anvil signs for (its own or an impersonated one), as cast send does.
+func (a *Anvil) call(from, to, sig string, args ...string) string {
+	a.t.Helper()
+	data, err := calldata(sig, args...)
+	if err != nil {
+		a.t.Fatal(err)
 	}
-	if err := json.Unmarshal([]byte(out), &receipt); err != nil {
-		a.t.Fatalf("cast send: %v\n%s", err, out)
+	return a.transact(from, to, data).TransactionHash
+}
+
+type receipt struct {
+	TransactionHash string `json:"transactionHash"`
+	ContractAddress string `json:"contractAddress"`
+	Status          string `json:"status"`
+}
+
+// transact sends a transaction from an account Anvil signs for and waits for its successful receipt; an empty to
+// creates a contract. A revert stops the test, as cast send and forge create did.
+func (a *Anvil) transact(from, to string, data []byte) receipt {
+	a.t.Helper()
+	tx := map[string]any{"from": from, "data": hexutil.Bytes(data)}
+	if to != "" {
+		tx["to"] = to
 	}
-	return receipt.TransactionHash
+	var hash string
+	if err := a.RPC.Call(&hash, "eth_sendTransaction", tx); err != nil {
+		a.t.Fatalf("send to %q: %v", to, err)
+	}
+	for i := 0; ; i++ {
+		var r *receipt
+		if err := a.RPC.Call(&r, "eth_getTransactionReceipt", hash); err != nil {
+			a.t.Fatal(err)
+		}
+		if r != nil {
+			if r.Status != "0x1" {
+				a.t.Fatalf("transaction %s to %q reverted", hash, to)
+			}
+			return *r
+		}
+		if i == 100 {
+			a.t.Fatalf("transaction %s not mined", hash)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 }
 
 func (a *Anvil) Mine(n int) {
@@ -263,28 +304,57 @@ func (a *Anvil) SendRaw(raw string) {
 	}
 }
 
-func (a *Anvil) run(name string, args ...string) string {
-	a.t.Helper()
-	return a.runEnv(nil, name, args...)
+var (
+	buildOnce sync.Once
+	buildErr  error
+)
+
+// bytecode is a contract's creation code from Foundry's build. The contracts build once per test process; the build
+// takes a lock, as test packages run as parallel processes that would otherwise write the same output.
+func bytecode(t *testing.T, contract string) []byte {
+	t.Helper()
+	buildOnce.Do(func() { buildErr = build() })
+	if buildErr != nil {
+		t.Fatal(buildErr)
+	}
+	matches, err := filepath.Glob(filepath.Join(contractsDir(), "out", "*", contract+".json"))
+	if err != nil || len(matches) != 1 {
+		t.Fatalf("artifact %s: %v %v", contract, matches, err)
+	}
+	raw, err := os.ReadFile(matches[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var artifact struct {
+		Bytecode struct {
+			Object hexutil.Bytes `json:"object"`
+		} `json:"bytecode"`
+	}
+	if err := json.Unmarshal(raw, &artifact); err != nil || len(artifact.Bytecode.Object) == 0 {
+		t.Fatalf("artifact %s: no bytecode: %v", contract, err)
+	}
+	return artifact.Bytecode.Object
 }
 
-func (a *Anvil) runEnv(env []string, name string, args ...string) string {
-	a.t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, name, args...)
-	if env != nil {
-		cmd.Env = append(os.Environ(), env...)
+func build() error {
+	cache := filepath.Join(contractsDir(), "cache")
+	if err := os.MkdirAll(cache, 0o755); err != nil {
+		return err
 	}
-	out, err := cmd.Output()
+	lock, err := os.OpenFile(filepath.Join(cache, "chaintest-build.lock"), os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
-		stderr := ""
-		if ee, ok := err.(*exec.ExitError); ok {
-			stderr = string(ee.Stderr)
-		}
-		a.t.Fatalf("%s %s: %v\n%s%s", name, args[0], err, out, stderr)
+		return err
 	}
-	return string(out)
+	defer lock.Close()
+	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX); err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	if out, err := exec.CommandContext(ctx, "forge", "build", "--root", contractsDir()).CombinedOutput(); err != nil {
+		return fmt.Errorf("forge build: %v\n%s", err, out)
+	}
+	return nil
 }
 
 func contractsDir() string {

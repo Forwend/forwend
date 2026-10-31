@@ -24,10 +24,7 @@ const (
 func open(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	ctx := context.Background()
-	url := databasetest.New(t)
-	if err := database.Migrate(ctx, url); err != nil {
-		t.Fatal(err)
-	}
+	url := databasetest.Migrated(t, database.Migrate)
 	pool, err := database.Open(ctx, url)
 	if err != nil {
 		t.Fatal(err)

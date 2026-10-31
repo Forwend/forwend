@@ -56,10 +56,7 @@ func setupChain(t *testing.T, a *chaintest.Anvil) env {
 	a.DeployFactory()
 	token := a.DeployToken()
 	a.Mint(token, "1000000000")
-	url := databasetest.New(t)
-	if err := database.Migrate(ctx, url); err != nil {
-		t.Fatal(err)
-	}
+	url := databasetest.Migrated(t, database.Migrate)
 	pool, err := database.Open(ctx, url)
 	if err != nil {
 		t.Fatal(err)
@@ -99,7 +96,10 @@ func (e env) signer(t *testing.T) *Signer {
 		t.Fatal(err)
 	}
 	clients := map[uint64]*ethclient.Client{e.chainID: e.client}
-	return NewSigner(e.pool, key, clients)
+	s := NewSigner(e.pool, key, clients)
+	// Anvil mines at once, so a test reads receipts and code again within milliseconds (the backoff has its own test).
+	s.receiptPoll, s.codePoll = 10*time.Millisecond, 10*time.Millisecond
+	return s
 }
 
 // paidInvoice is a 5 USDC invoice paid 6, booked until it has a settlement intent.

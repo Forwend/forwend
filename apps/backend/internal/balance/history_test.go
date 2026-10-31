@@ -29,10 +29,7 @@ func TestHistoryEndsAtTheCurrentBalance(t *testing.T) {
 	ctx := context.Background()
 	anvil := chaintest.Start(t)
 	token := anvil.DeployToken()
-	url := databasetest.New(t)
-	if err := database.Migrate(ctx, url); err != nil {
-		t.Fatal(err)
-	}
+	url := databasetest.Migrated(t, database.Migrate)
 	pool, err := database.Open(ctx, url)
 	if err != nil {
 		t.Fatal(err)

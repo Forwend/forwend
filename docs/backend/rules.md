@@ -120,7 +120,12 @@ Other packages under `internal/`: `auth`, `address`, `finality`, `search`, `docu
 
 ## Tests
 
-- Real Postgres (`databasetest.New(t)`) and real Anvil with the real contracts. No SQL or chain mocks (D-17).
+- Real Postgres and real Anvil with the real contracts. No SQL or chain mocks (D-17).
+  - `databasetest.Migrated(t, database.Migrate)` copies a template migrated once per migration set; it is fast.
+  - `databasetest.New(t)` is an empty database, for tests that migrate step by step.
+  - The template stays in the local Postgres as a cache (`test_template_<hash>`); a new migration set replaces it.
+  - `chaintest` deploys and sends over RPC, never through a forge or cast process per call.
+  - Code that waits on a chain takes its poll interval as a field, so a test on Anvil polls in milliseconds.
 - Tests follow [Which tests to keep](../workflow.md#which-tests-to-keep); table tests for rules.
 - `go test -race` runs in the backend check.
 

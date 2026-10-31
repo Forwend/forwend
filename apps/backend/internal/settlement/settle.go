@@ -27,6 +27,13 @@ const ReceiptWait = time.Minute
 // CodeWait is how long one run waits for the RPC to show a receiver's code before it estimates settle gas.
 const CodeWait = 10 * time.Second
 
+// ReceiptPoll is the first pause between receipt reads; it doubles up to 4 s, so an unmined transaction doesn't hammer
+// the provider. CodePoll is the pause between reads of a receiver's code.
+const (
+	ReceiptPoll = time.Second
+	CodePoll    = 500 * time.Millisecond
+)
+
 // A node that hasn't seen the receiver's deploy estimates settle at 21,064 gas, which runs out. Real USDC used up to
 // 135,632; the floor plus a fifth covers it. On Arbitrum the estimate at the deploy's block adds the L1 data cost.
 const SettleGasFloor = 125_000
@@ -389,7 +396,7 @@ func (s *Signer) awaitCode(ctx context.Context, client *ethclient.Client, receiv
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(500 * time.Millisecond):
+		case <-time.After(s.codePoll):
 		}
 	}
 }
@@ -397,7 +404,7 @@ func (s *Signer) awaitCode(ctx context.Context, client *ethclient.Client, receiv
 // await polls for a receipt up to ReceiptWait; nil means not mined yet.
 func (s *Signer) await(ctx context.Context, client *ethclient.Client, hash common.Hash) (*types.Receipt, error) {
 	deadline := time.Now().Add(ReceiptWait)
-	delay := time.Second
+	delay := s.receiptPoll
 	for {
 		r, err := client.TransactionReceipt(ctx, hash)
 		if err == nil {
