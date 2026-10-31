@@ -189,7 +189,7 @@
       "dependsOn": [
         "F333"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "build",
@@ -279,9 +279,9 @@
         "taskHash": "d6841889fbe827ec",
         "filesHash": "5636284f06928798",
         "proof": {
-          "1": "unit: @forwend/react tests render PayButton (payUrl or linkUrl), Checkout and PaymentElement (/embed/<token>, layout full or element); @forwend/js takes only a pay token or a link slug, holds no key and reports payment status only as onStatus hints",
-          "2": "unit: @forwend/js tests drop messages from another window, origin or shape and stop listening on destroy; the React tests keep one frame under StrictMode and none after unmount, on React 19 and again on React 18 (test/react-18 asserts the version); browser-packages type-checks, builds and sizes them",
-          "3": "browser-packages: the packed tarballs hold only dist, README, LICENSE and CHANGELOG, name the GitHub repository npm provenance needs, depend on no workspace: range and install offline; publish.yml publishes one chosen package by hand from main, and PLAN 11.9.4 lists the owner's setup (public repository, npm environment with reviewers, NPM_TOKEN) without which no run can publish"
+          "1": "unit",
+          "2": "unit",
+          "3": "browser-packages"
         },
         "review": {
           "result": "pass",
@@ -289,11 +289,18 @@
           "summary": "PASS. The earlier findings are fixed, and I checked each one in the current diff. (1) packages/js, packages/react and packages/node package.json now name repository git+https://github.com/Forwend/forwend.git with their own directory. check-browser-packages.mjs:52-54 compares the packed manifest. A copy that expects another repo URL failed for both browser packages with exit 1. (2) The claimed gate is gone. publish.yml:3-5, both packages' AGENTS.md:10, PLAN 11.9.4 and proof line 3 now say what is true: it runs by hand, the job runs only on main (publish.yml:25), and nothing can publish until the owner makes the repo public, creates the npm environment with reviewers and main-only deployments, and stores NPM_TOKEN only there. The main-only environment rule is what really enforces main, because a branch can edit the job's if; PLAN lists it. (3) linkUrl (checkout.ts:66-71) requires ^[a-z0-9]{12}$, as apps/backend/internal/link/checkout.go:35 does, and its test rejects '', '..', a slash and capitals. PayButton (pay-button.tsx:13) uses payToken !== undefined, so an empty token throws. The check script prints tsc errors: a copy with a type error showed 'use.tsx(9,15): error TS2322' and exited 1. It removes its temp folder on every exit: I sent SIGINT to its process group at 150 ms and at 400 ms, and no forwend-packages-* folder was left. The js README uses getElementById(...)!. publish.yml:43-45 runs @forwend/react-18-check before the package checks. (4) F413 stays in docs/tasks.json, and the PR will name it. Runs: pnpm --filter @forwend/react-18-check test passed 5 tests, including 'runs on React 18'. @forwend/react passed 5 and @forwend/js passed 6. Typecheck and biome are clean, and docs-check has 0 errors. node scripts/check-browser-packages.mjs exits 0 at 2279/3072 B and 1094/2048 B gzip, 10 files each. Everything from my first review still holds: message source, origin and shape checks; the 64-hex pay token before /embed and /pay; the origin param; no key and hint-only events; StrictMode, handler and unmount cleanup; 'use client' in dist; React 18 types and SSR from the tarballs; the lockfile and config. No blocking issues remain.",
           "at": "2026-10-31T00:16:02Z",
           "filesHash": "5636284f06928798"
-        }
+        },
+        "commit": "312bea2b",
+        "doneAt": "2026-10-31T00:16:31Z"
       },
       "branch": "feat/f334-build-minimal-javascript-and-react-check",
       "baseCommit": "6c66a014cfb5fd97205dde45736eee91c806ee4c",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f334-build-minimal-javascript-and-react-check",
+        "base": "main"
+      }
     },
     {
       "id": "F335",
