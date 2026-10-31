@@ -557,7 +557,7 @@
         "PLAN moves bank withdrawal (12.5 and its 12.6 review states), paying from a connected wallet and agent payments to Deferred beyond MVP, and PROJECT's pointers follow (owner, 2026-10-31)."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "harness"
       ],
@@ -611,11 +611,18 @@
           "summary": "Pass after 58fa716b. unmerged() (scripts/harness.py:581-583) now returns False for a passing PR record whose ID is not in the queue, before the origin lookup. satisfied() (290-292) is back to its original line, so every reader gets one answer. On the real queue, show, ready, status, reopen and done now agree. No archived passing record reads as unmerged (checked all of docs/archive). show F333 and show F001 print no 'waiting for merge'. reopen F333 would cut a fresh branch (fresh=True). done F333, with fetch stubbed, prints 'F333 is already merged into main' and exits 0. status lists F408 as ready. The only satisfied deps are F333, F335 and F413, all merged; queue passing F335 and F413 read as merged. Queue tasks still use the origin check: archive (1415), prepare_branch (661), next_step (726) and status (777). So archive still refuses unmerged work, and the remote-archive path stays for a queue task another clone archived (test_archived_remote_task_is_recognized_as_merged). Tests: python3 -m unittest discover -s tests ran 60, OK. In a temp copy with only the three unmerged() lines removed (identical to 2f7a9021's harness.py), the new test fails with 'True is not false'; the copy was removed. The test now covers unmerged, ready, show and start F002 (tests/test_harness.py:166-185). PLAN.md:193-196 are wrapped under 120 characters, and D-37 stays the MVP rule as its own sub-bullet; docs-check: 0 errors. Notes for the owner, not failures: AGENTS.md:3 and PROJECT.md:4 summaries and balances-copy.ts:42 still mention bank withdrawal. Only this worktree has docs/archive.",
           "at": "2026-10-31T13:09:03Z",
           "filesHash": "69d5b304ffa4ec9f"
-        }
+        },
+        "commit": "f838efb4",
+        "doneAt": "2026-10-31T13:09:20Z"
       },
       "branch": "fix/f415-a-task-that-depends-on-an-archived-merge",
       "baseCommit": "2f7a9021af1ac6424507c1f0f5bbbf9eddc46c25",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f415-a-task-that-depends-on-an-archived-merge",
+        "base": "main"
+      }
     },
     {
       "id": "F416",
