@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": ["src", "test"],
+  "compilerOptions": {
+    // The source, so checks need no build of @forwend/js first; the build reads its published types.
+    "paths": { "@forwend/js": ["../js/src/index.ts"] }
+  }
+}

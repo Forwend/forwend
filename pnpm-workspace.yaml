@@ -1,6 +1,8 @@
 packages:
   - apps/*
   - packages/*
+  # @forwend/react's tests on React 18 (R-169)
+  - packages/react/test/react-18
 allowBuilds:
   "@reown/appkit": false
   bufferutil: false

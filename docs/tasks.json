@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 413,
+  "nextId": 414,
   "tasks": [
     {
       "id": "F332",
@@ -189,7 +189,7 @@
       "dependsOn": [
         "F333"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "build",
@@ -202,9 +202,98 @@
         "packages/contracts/src/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-10-31 review fail by reviewer: FAIL on acceptance 3: the provenance publish workflow cannot work as written, and it claims an approval gate that does not exist. (1) None of the packages it offers has a repository field (packages/js/package.json, packages/react/package.json, packages/node/package.json). The npm registry rejects a provenance publish unless package.json repository.url matches the GitHub repo, so .github/workflows/publish.yml:42 fails for all three. Add repository {type git, url git+https://github.com/Forwend/forwend.git, directory packages/<name>} and make scripts/check-browser-packages.mjs assert it. (2) Forwend/forwend is PRIVATE and the org plan is free (checked with gh). npm makes provenance only from public repositories. GitHub offers environments and required reviewers on a free-plan private repo only with Enterprise, and the repo has no environments today. A job that names a missing environment gets one created with no rules. So publish.yml:3-4 ('the npm environment's required reviewers approve it first'), packages/js/AGENTS.md:10, packages/react/AGENTS.md:10 and proof line 3 state a gate and provenance that cannot exist yet. Today nothing can publish only because no NPM_TOKEN secret exists. State the real prerequisites: a public repo, an npm environment with required reviewers and main-only deployment, and NPM_TOKEN as an npm environment secret only. Or record them as an owner decision; do not claim the gate exists. Everything else is fine. Security: messages.ts:45-49 accepts only event.source === iframe.contentWindow, the exact baseUrl origin, source forwend, v 1 and typed fields. Removing the source check, or removeEventListener in destroy, made the js and React tests fail; I tried both on a scratch copy. payToken is checked against /^[0-9a-f]{64}$/ before any /embed or /pay URL, the same pattern as apps/web PAY_TOKEN_PATTERN. The origin param is window.location.origin, as proxy.ts and EMBED_PARAMS expect. The package holds no key, and events are hints only. React: StrictMode keeps one frame, and a new handler runs without a remount. Unmount clears the listener, timer and frame. dist/checkout.js keeps 'use client', and SSR renders an empty div. pnpm --filter @forwend/react-18-check test: 5 passed on React 18, including the version assert; dedupe makes the source and tests load react 18.3.1. In a scratch app, the packed tarballs with react 18.3.1 and @types/react 18.3.12 passed tsc and SSR. node scripts/check-browser-packages.mjs exits 0, at 2237/3072 B and 1084/2048 B gzip. The packed react manifest depends on @forwend/js ^0.1.0. A mutated copy exits 1 on an over-budget size and on a type error. The lockfile diff adds only the new importers and React 18. The config check and path rule are correct. Kept tests guard trust boundaries and cleanup, and none are timing-dependent. Non-blocking: (a) linkUrl (checkout.ts:65-67) takes any slug, and '..' resolves to https://forwend.com/. Real slugs match /^[a-z0-9]{12}$/ (apps/web/src/features/links/constants/links.ts:29). Validate slugs the same way and replace the never-valid 'spring-sale' in tests, smoke and README. It is a link only, never framed. (b) pay-button.tsx:11 turns payToken='' into href /l/ instead of throwing. (c) check-browser-packages.mjs:27-28,137 pipe stdout and keep only the first error line, so tsc errors are hidden. The temp dir is also not removed on SIGINT. (d) In js README:18, getElementById returns HTMLElement|null, so the example fails strict TS. (e) publish.yml:38 does not run the React 18 tests before publishing @forwend/react. (f) docs/tasks.json also carries the unrelated F413 entry; ship it separately or say so in the PR.",
+        "2026-10-31 review pass by reviewer: PASS. The earlier findings are fixed, and I checked each one in the current diff. (1) packages/js, packages/react and packages/node package.json now name repository git+https://github.com/Forwend/forwend.git with their own directory. check-browser-packages.mjs:52-54 compares the packed manifest. A copy that expects another repo URL failed for both browser packages with exit 1. (2) The claimed gate is gone. publish.yml:3-5, both packages' AGENTS.md:10, PLAN 11.9.4 and proof line 3 now say what is true: it runs by hand, the job runs only on main (publish.yml:25), and nothing can publish until the owner makes the repo public, creates the npm environment with reviewers and main-only deployments, and stores NPM_TOKEN only there. The main-only environment rule is what really enforces main, because a branch can edit the job's if; PLAN lists it. (3) linkUrl (checkout.ts:66-71) requires ^[a-z0-9]{12}$, as apps/backend/internal/link/checkout.go:35 does, and its test rejects '', '..', a slash and capitals. PayButton (pay-button.tsx:13) uses payToken !== undefined, so an empty token throws. The check script prints tsc errors: a copy with a type error showed 'use.tsx(9,15): error TS2322' and exited 1. It removes its temp folder on every exit: I sent SIGINT to its process group at 150 ms and at 400 ms, and no forwend-packages-* folder was left. The js README uses getElementById(...)!. publish.yml:43-45 runs @forwend/react-18-check before the package checks. (4) F413 stays in docs/tasks.json, and the PR will name it. Runs: pnpm --filter @forwend/react-18-check test passed 5 tests, including 'runs on React 18'. @forwend/react passed 5 and @forwend/js passed 6. Typecheck and biome are clean, and docs-check has 0 errors. node scripts/check-browser-packages.mjs exits 0 at 2279/3072 B and 1094/2048 B gzip, 10 files each. Everything from my first review still holds: message source, origin and shape checks; the 64-hex pay token before /embed and /pay; the origin param; no key and hint-only events; StrictMode, handler and unmount cleanup; 'use client' in dist; React 18 types and SSR from the tarballs; the lockfile and config. No blocking issues remain."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-31T00:09:36Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.4,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 249.4,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 39.0,
+            "log": ""
+          },
+          {
+            "id": "browser-packages",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.8,
+            "log": ""
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "d6841889fbe827ec",
+        "filesHash": "5636284f06928798",
+        "proof": {
+          "1": "unit: @forwend/react tests render PayButton (payUrl or linkUrl), Checkout and PaymentElement (/embed/<token>, layout full or element); @forwend/js takes only a pay token or a link slug, holds no key and reports payment status only as onStatus hints",
+          "2": "unit: @forwend/js tests drop messages from another window, origin or shape and stop listening on destroy; the React tests keep one frame under StrictMode and none after unmount, on React 19 and again on React 18 (test/react-18 asserts the version); browser-packages type-checks, builds and sizes them",
+          "3": "browser-packages: the packed tarballs hold only dist, README, LICENSE and CHANGELOG, name the GitHub repository npm provenance needs, depend on no workspace: range and install offline; publish.yml publishes one chosen package by hand from main, and PLAN 11.9.4 lists the owner's setup (public repository, npm environment with reviewers, NPM_TOKEN) without which no run can publish"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS. The earlier findings are fixed, and I checked each one in the current diff. (1) packages/js, packages/react and packages/node package.json now name repository git+https://github.com/Forwend/forwend.git with their own directory. check-browser-packages.mjs:52-54 compares the packed manifest. A copy that expects another repo URL failed for both browser packages with exit 1. (2) The claimed gate is gone. publish.yml:3-5, both packages' AGENTS.md:10, PLAN 11.9.4 and proof line 3 now say what is true: it runs by hand, the job runs only on main (publish.yml:25), and nothing can publish until the owner makes the repo public, creates the npm environment with reviewers and main-only deployments, and stores NPM_TOKEN only there. The main-only environment rule is what really enforces main, because a branch can edit the job's if; PLAN lists it. (3) linkUrl (checkout.ts:66-71) requires ^[a-z0-9]{12}$, as apps/backend/internal/link/checkout.go:35 does, and its test rejects '', '..', a slash and capitals. PayButton (pay-button.tsx:13) uses payToken !== undefined, so an empty token throws. The check script prints tsc errors: a copy with a type error showed 'use.tsx(9,15): error TS2322' and exited 1. It removes its temp folder on every exit: I sent SIGINT to its process group at 150 ms and at 400 ms, and no forwend-packages-* folder was left. The js README uses getElementById(...)!. publish.yml:43-45 runs @forwend/react-18-check before the package checks. (4) F413 stays in docs/tasks.json, and the PR will name it. Runs: pnpm --filter @forwend/react-18-check test passed 5 tests, including 'runs on React 18'. @forwend/react passed 5 and @forwend/js passed 6. Typecheck and biome are clean, and docs-check has 0 errors. node scripts/check-browser-packages.mjs exits 0 at 2279/3072 B and 1094/2048 B gzip, 10 files each. Everything from my first review still holds: message source, origin and shape checks; the 64-hex pay token before /embed and /pay; the origin param; no key and hint-only events; StrictMode, handler and unmount cleanup; 'use client' in dist; React 18 types and SSR from the tarballs; the lockfile and config. No blocking issues remain.",
+          "at": "2026-10-31T00:16:02Z",
+          "filesHash": "5636284f06928798"
+        }
+      },
+      "branch": "feat/f334-build-minimal-javascript-and-react-check",
+      "baseCommit": "6c66a014cfb5fd97205dde45736eee91c806ee4c",
+      "failedVerifies": 0
     },
     {
       "id": "F335",
@@ -472,6 +561,54 @@
       "keep": [],
       "review": true,
       "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F413",
+      "type": "fix",
+      "behavior": "Payments confirm and settle without waiting for unrelated offered networks",
+      "acceptance": [
+        "Reproduce the delay: a finalized Tempo or Arc deposit remains unbooked while an unused Base or Arbitrum option lags. Keep a regression test.",
+        "Bind a purchase attempt to its selected token and network server-side. Confirmation, booking and settlement use that network without waiting for unrelated networks.",
+        "Keep finalized-chain evidence, balance checks and atomic single-winner settlement. Browser selections, redirects and embed messages never prove payment. Concurrent requests cannot double-credit or double-fulfill.",
+        "Define safe switching and legacy behavior before implementation. Cover previously exposed addresses, in-flight deposits, partial top-ups, dust on other options, simultaneous payments and retries.",
+        "Continue tracking money on old or unselected addresses with explicit held/refund treatment. Preserve signed receiver terms and existing records; never silently lose or reassign funds.",
+        "Update payer, owner, hosted and embedded views to distinguish own-network confirmation from internal processing and wallet settlement. Show any remaining wait accurately.",
+        "Revise R-56, R-57, R-119 and D-76 with the implemented selection policy. Document legacy handling and verify finality, reorg, expiry and late-payment behavior.",
+        "Demonstrate prompt settlement on Tempo and Arc while other offered networks lag or are unavailable; include Base versus Arbitrum. Measure detection, own-chain finality, booking, signing and settlement separately."
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "backend-affected",
+        "backend-e2e",
+        "web-unit",
+        "web-e2e",
+        "docs-check"
+      ],
+      "refs": [
+        "R-56",
+        "R-57",
+        "R-119",
+        "R-171",
+        "D-76"
+      ],
+      "keep": [
+        "packages/contracts/src/*"
+      ],
+      "review": true,
+      "notes": [
+        "2026-10-30 Owner request: investigate and fix cross-network waiting, then let the implementing agent merge. This task records findings only; no implementation is started.",
+        "2026-10-30 Root cause: internal/ledger/process.go:100-126 refuses to choose an option until every other enabled option chain has last_finalized_time greater than the deposit block_time. It returns before booking; settlement_intents are created only after paid at lines 336-343. The slowest offered network therefore delays faster ones.",
+        "2026-10-30 Current policy deliberately chooses the earliest payment across chains (R-119/D-76), protecting an earlier full payment from later dust. This is a policy change, not permission to delete the guard or replace finalized evidence with latest blocks. Preserve the safety purpose through an explicit attempt-selection design.",
+        "2026-10-30 internal/invoice/pick.go:16-18 currently treats the payer pick as display preference, not binding payment selection. internal/invoice/payments.go:61 labels detected as Confirming even when the deposit itself is confirmed and only cross-network selection is waiting.",
+        "2026-10-30 Measured local database evidence, 2026-10-30 UTC: Tempo 0x5eaa56eea0b52674330f56160a4ee4021075291def5446ccb5e2c134bb4009df detected in 9.4s, waited 1080.7s until settlement queued, then signed in 9.2s and settled in 12.1s from queue. Tempo 0x4735a3cc5987f8d264af525219ac6bdc5a3447eabfbe03597692f785f79f9448 detected in 3.8s, waited 1351.6s, then signed in 7.2s and settled in 10.0s from queue. The dominant delay was before signing.",
+        "2026-10-30 Live Arc reproduction: payment option 0x0db52f3af21065f01e04d2f76b37a6f93aca52e9d6a7c8ea1fd8bbb5b5616121 deposited at 23:13:08 UTC, transfer confirmed but booked=false and chosen_id NULL. Tempo/Arc finalized through 23:15:17/23:15:16; Base/Arbitrum only through 22:56:50/22:54:44. Both unused rollups blocked selection. No settlement intent existed.",
+        "2026-10-30 Reproduction recipe: create a multi-network payment, keep Base or Arbitrum finalized cursor behind a fully finalized Tempo/Arc deposit, run ledger processing, and inspect booked, chosen_id and settlement_intents. Advance only the unrelated cursor and observe the current implementation finally queue settlement. Extend existing internal/ledger/options_test.go coverage; use disposable data.",
+        "2026-10-30 Scope and limits: user reports local and staging. Local SQL/history and running logs were inspected; origin/staging had the same guard, but staging runtime data was not accessed. Local worker/signer poll every 30s; Arc Blockdaemon also returned invalid responses. These are secondary observations, not the proven cause of the 18-22 minute selection waits.",
+        "2026-10-30 Acceptance must cover reloads, competing browser tabs, selection changes before detection, deposits discovered after switching, chain outages and legacy multi-option invoices. Do not trust a mutable browser pick to redirect or discard existing money. Existing receiver addresses and signed terms remain valid."
+      ],
       "blockedReason": null,
       "evidence": null
     }

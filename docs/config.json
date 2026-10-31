@@ -270,6 +270,14 @@
       "versions": [["node", "--version"], ["pnpm", "--version"]]
     },
     {
+      "id": "browser-packages",
+      "argv": ["node", "scripts/check-browser-packages.mjs"],
+      "ci": true,
+      "cache": true,
+      "inputs": ["packages/js/*", "packages/react/*", "scripts/check-browser-packages.mjs"],
+      "versions": [["node", "--version"], ["pnpm", "--version"]]
+    },
+    {
       "id": "web-build",
       "argv": ["pnpm", "--filter", "@forwend/web", "build"],
       "cache": true,
@@ -356,6 +364,10 @@
       {
         "paths": ["apps/web/*"],
         "checks": ["lint", "typecheck", "web-unit", "web-build", "web-e2e"]
+      },
+      {
+        "paths": ["packages/js/*", "packages/react/*", "scripts/check-browser-packages.mjs"],
+        "checks": ["lint", "typecheck", "unit", "build", "browser-packages"]
       },
       {
         "paths": ["packages/ui-web/*", "packages/design-tokens/*"],

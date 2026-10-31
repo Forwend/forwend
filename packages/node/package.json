@@ -4,6 +4,11 @@
   "description": "The Forwend API for Node: invoices, webhook events and webhook verification.",
   "license": "MIT",
   "homepage": "https://forwend.com/docs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Forwend/forwend.git",
+    "directory": "packages/node"
+  },
   "type": "module",
   "engines": {
     "node": ">=20"
