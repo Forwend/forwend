@@ -7,4 +7,4 @@
 - Its events are hints: nothing in it may decide that an order is paid.
 - Test: `pnpm --filter @forwend/js test`. Build: `pnpm --filter @forwend/js build` writes `dist/`.
 - `node scripts/check-browser-packages.mjs` packs it with `@forwend/react`: files, gzip budget, an offline install.
-- Publishing needs the owner's approval. `.github/workflows/publish.yml` runs by hand, after the setup in PLAN 11.9.4.
+- Version 0.1.0 is published on npm. Later releases need the owner's approval and use CI (PLAN 11.9.4).
