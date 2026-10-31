@@ -257,7 +257,7 @@
       "dependsOn": [
         "F333"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "backend-e2e",
@@ -376,11 +376,18 @@
           "summary": "Re-review of c16a73a4. The commit only moves EXAMPLE_WEBHOOK_SECRET back under its own comment in apps/web/e2e/servers.ts:17-18, with SUPPORT_EMAIL and its comment after it, plus harness bookkeeping in docs/tasks.json. Note (1) from the last round is fixed. Note (2): the dev server on :3000 does carry the address; its pay page HTML has mailto:support@forwend.com. My earlier reading came from apps/web/.env, not the process environment. The rule stands as designed: a build without NEXT_PUBLIC_SUPPORT_EMAIL hides Email support, and compose requires it. Everything from the d48b84f5 review holds: support address from config, short held lines with How to get it back, the PDF pointing to Need help, the copy button, docs and env lists in step, Go tests, typecheck, lint, the pay e2e tests and the light, dark, 1280 and 390 px screenshots.",
           "at": "2026-10-31T15:06:59Z",
           "filesHash": "745c5f42a05e03d9"
-        }
+        },
+        "commit": "5188e5a3",
+        "doneAt": "2026-10-31T15:08:22Z"
       },
       "branch": "feat/f408-the-pay-page-tells-a-payer-how-to-get-he",
       "baseCommit": "dc1b7341af24a1da2cc285d79d6cabb7080e1433",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f408-the-pay-page-tells-a-payer-how-to-get-he",
+        "base": "main"
+      }
     },
     {
       "id": "F409",
