@@ -37,12 +37,11 @@ export function LinkFormScreen({ linkId }: LinkFormScreenProps) {
         <h1 className="text-2xl font-semibold tracking-tight break-words text-ink lg:sr-only">
           {linkId ? (link?.title ?? COPY.editTitle) : COPY.newTitle}
         </h1>
-        <p className="text-muted">{COPY.intro}</p>
-        {link && !link.livemode ? (
-          <span>
-            <Badge tone={TONES.warning}>{COPY.testMode}</Badge>
-          </span>
-        ) : null}
+        {/* One line: the form below fills the rest of the screen's height. */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p className="text-muted">{COPY.intro}</p>
+          {link && !link.livemode ? <Badge tone={TONES.warning}>{COPY.testMode}</Badge> : null}
+        </div>
       </header>
       {failed ? (
         <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-muted">

@@ -17,7 +17,7 @@ import {
   WalletStateLabel,
 } from "@forwend/ui-web";
 import { ArrowDownLeft, ExternalLink, FileDown } from "lucide-react";
-import { type ReactNode, useId } from "react";
+import { type ReactNode, useId, useRef } from "react";
 import { InvoiceLines } from "@/features/invoices/components/invoice-lines";
 import { ConfirmingStatus } from "@/features/invoices/components/invoice-progress";
 import { invoiceNumber, invoicePdfUrl } from "@/features/invoices/lib/invoices";
@@ -54,12 +54,16 @@ import { dateTime } from "@/shared/lib/dates";
 export interface PaymentDetailProps {
   profileId: string;
   paymentId: string;
+  /** More header actions the screen composes from other features, such as a checkout's Cancel; focusTitle is where
+   * focus goes once one of them is done and gone. */
+  actions?: (payment: PaymentDetailType, focusTitle: () => void) => ReactNode;
 }
 
 type Option = PaymentDetailType["options"][number];
 
-export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
+export function PaymentDetail({ profileId, paymentId, actions }: PaymentDetailProps) {
   const read = useGetPaymentQuery({ profileId, paymentId }, LIVE_QUERY);
+  const title = useRef<HTMLHeadingElement>(null);
   const payment = read.currentData;
   if (!payment)
     return read.isError ? (
@@ -103,6 +107,7 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
         back={{ href: APP_ROUTES.payments, label: COPY.back }}
         icon={<SourceIcon aria-hidden />}
         title={paymentLabel(payment)}
+        titleRef={title}
         badges={
           <>
             {payment.livemode ? null : <Badge tone="warning">{COPY.testnet}</Badge>}
@@ -140,6 +145,7 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
               </a>
             ) : null}
             <ExportPayments profileId={profileId} paymentId={paymentId} />
+            {actions?.(payment, () => title.current?.focus())}
           </>
         }
       />

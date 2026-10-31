@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Form, SelectField, TextField } from "@forwend/ui-web";
+import { AmountField, Button, Form, SelectField, TextField } from "@forwend/ui-web";
 import { type FormEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useCreateCheckoutMutation } from "@/features/checkout/api/checkout-api";
@@ -8,7 +8,7 @@ import { CHECKOUT_COPY as COPY } from "@/features/checkout/constants/checkout-co
 import type { CheckoutSession } from "@/features/checkout/types/checkout";
 import { USD_PATTERN } from "@/features/links/constants/links";
 import type { Store } from "@/features/stores/types/stores";
-import { FieldGroup } from "@/shared/components/field-group";
+import { MONEY_COPY } from "@/shared/constants/money-copy";
 
 export interface CheckoutFormProps {
   profileId: string;
@@ -63,40 +63,53 @@ export function CheckoutForm({ profileId, stores, onStarted }: CheckoutFormProps
 
   return (
     // Any change makes a different sale, so it gets its own key.
-    <Form onSubmit={submit} onChange={() => (key.current = crypto.randomUUID())} noValidate>
-      <FieldGroup title={COPY.sale}>
-        {stores.length > 1 ? (
-          <SelectField
-            label={COPY.store}
-            value={store}
-            onValueChange={(value) => {
-              setStore(value);
-              key.current = crypto.randomUUID();
-            }}
-            options={stores.map((s) => ({ value: s.storeId, label: s.name }))}
+    <Form
+      onSubmit={submit}
+      onChange={() => (key.current = crypto.randomUUID())}
+      noValidate
+      gap="sm"
+      aria-labelledby="checkout-sale"
+      className="min-w-0"
+    >
+      <div className="flex min-h-10 items-center">
+        <h2 id="checkout-sale" className="text-base font-semibold text-ink">
+          {COPY.newSale}
+        </h2>
+      </div>
+      <div className="fw-panel">
+        <div className="flex flex-col gap-5 p-4 sm:p-5">
+          {stores.length > 1 ? (
+            <SelectField
+              label={COPY.store}
+              value={store}
+              onValueChange={(value) => {
+                setStore(value);
+                key.current = crypto.randomUUID();
+              }}
+              options={stores.map((s) => ({ value: s.storeId, label: s.name }))}
+            />
+          ) : null}
+          <AmountField
+            label={COPY.amount}
+            name="amountUsd"
+            unit={MONEY_COPY.usd}
+            placeholder="0.00"
+            // The page does one thing: a sale starts with its amount, and New sale lands back here.
+            autoFocus
+            error={error}
           />
-        ) : null}
-        <TextField
-          label={COPY.amount}
-          name="amountUsd"
-          inputMode="decimal"
-          autoComplete="off"
-          // The page does one thing: a sale starts with its amount, and New sale lands back here.
-          autoFocus
-          hint={COPY.amountHint}
-          error={error}
-        />
-        <div className="grid gap-5 sm:grid-cols-2">
           <TextField label={COPY.reference} name="reference" autoComplete="off" />
           <TextField label={COPY.what} name="title" autoComplete="off" />
         </div>
-      </FieldGroup>
-      <Button type="submit" loading={busy} className="sm:self-start">
-        {COPY.start}
-      </Button>
-      <p role="alert" className="min-h-5 text-sm text-danger">
-        {formError}
-      </p>
+        <div className="flex flex-col gap-2 border-t border-line p-4 sm:p-5">
+          <Button type="submit" size="lg" loading={busy} className="w-full">
+            {COPY.start}
+          </Button>
+          <p role="alert" className="text-sm text-danger empty:hidden">
+            {formError}
+          </p>
+        </div>
+      </div>
     </Form>
   );
 }

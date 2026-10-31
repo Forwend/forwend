@@ -1,15 +1,15 @@
 "use client";
 
 import {
-  Checkbox,
   ChoiceCard,
   DatePicker,
   SelectField,
+  SwitchCard,
   TextField,
   TONES,
   useToast,
 } from "@forwend/ui-web";
-import { PencilLine, Tag } from "lucide-react";
+import { PencilLine, Power, Repeat, Tag } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -64,6 +64,8 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
   const [store, setStore] = useState(link?.storeId ?? stores[0]?.storeId ?? "");
   const [endsAt, setEndsAt] = useState<string | null>(link?.endsAt ?? null);
   const [active, setActive] = useState(link?.active ?? true);
+  // Off, the link takes one payment: a cap of 1.
+  const [reusable, setReusable] = useState(link?.maxPayments !== 1);
   const [errors, setErrors] = useState<Partial<Record<LinkField, string>>>({});
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -73,7 +75,7 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
     amountUsd: link?.amountUsd ?? "",
     minUsd: link?.minUsd ?? "",
     maxUsd: link?.maxUsd ?? "",
-    maxPayments: link?.maxPayments ? String(link.maxPayments) : "",
+    maxPayments: link?.maxPayments && link.maxPayments !== 1 ? String(link.maxPayments) : "",
   }));
   const readTyped = (event: FormEvent<HTMLFormElement>) => {
     const data = new FormData(event.currentTarget);
@@ -104,7 +106,7 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
       minUsd: kind === AMOUNT_KINDS.open ? usd("minUsd") : null,
       maxUsd: kind === AMOUNT_KINDS.open ? usd("maxUsd") : null,
       endsAt,
-      maxPayments: cap ? Number(cap) : null,
+      maxPayments: !reusable ? 1 : cap ? Number(cap) : null,
       active,
     };
   };
@@ -122,7 +124,12 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
     }
     if (body.minUsd && body.maxUsd && !shown.minUsd && Number(body.minUsd) > Number(body.maxUsd))
       shown.maxUsd = COPY.errors.range;
-    if (cap && (!/^\d+$/.test(cap) || Number(cap) < 1 || Number(cap) > LINK_LIMITS.maxPayments))
+    // Off, the limit field stays mounted (it slides shut), and its value doesn't count.
+    if (
+      reusable &&
+      cap &&
+      (!/^\d+$/.test(cap) || Number(cap) < 1 || Number(cap) > LINK_LIMITS.maxPayments)
+    )
       shown.maxPayments = COPY.errors.maxPayments;
     return shown;
   };
@@ -174,7 +181,11 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
         });
   const limits = [
     endsAt ? COPY.preview.until(formatDueDate(endsAt.slice(0, 10))) : null,
-    /^\d+$/.test(typed.maxPayments) ? COPY.preview.cap(Number(typed.maxPayments)) : null,
+    !reusable
+      ? COPY.preview.once
+      : /^\d+$/.test(typed.maxPayments)
+        ? COPY.preview.cap(Number(typed.maxPayments))
+        : null,
   ].filter(Boolean);
   return (
     <StepForm
@@ -331,32 +342,41 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
       </div>
       <div data-step={STEPS.limits} className={flow.shows(STEPS.limits)}>
         <FieldGroup title={COPY.limitsGroup}>
-          <div className="grid gap-5 sm:grid-cols-2">
-            <DatePicker
-              label={COPY.endsOn}
-              value={endsAt?.slice(0, 10) ?? null}
-              onChange={(day) => setEndsAt(day ? endsAtOf(day) : null)}
-              hint={COPY.endsOnHint}
-              clearLabel={COPY.clearDate}
-            />
+          <SwitchCard
+            icon={<Repeat />}
+            title={COPY.reusable}
+            description={reusable ? COPY.reusableOn : COPY.reusableOff}
+            checked={reusable}
+            onCheckedChange={setReusable}
+          >
+            {/* Empty is no limit. */}
             <TextField
               label={COPY.maxPayments}
               name="maxPayments"
               inputMode="numeric"
               autoComplete="off"
-              defaultValue={link?.maxPayments ?? ""}
+              placeholder={COPY.unlimited}
+              defaultValue={typed.maxPayments}
               hint={COPY.maxPaymentsHint}
               error={errors.maxPayments}
+              inline
             />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Checkbox
-              label={COPY.active}
-              checked={active}
-              onChange={(e) => setActive(e.target.checked)}
-            />
-            <p className="text-sm text-muted">{COPY.activeHint}</p>
-          </div>
+          </SwitchCard>
+          <DatePicker
+            label={COPY.endsOn}
+            value={endsAt?.slice(0, 10) ?? null}
+            onChange={(day) => setEndsAt(day ? endsAtOf(day) : null)}
+            hint={COPY.endsOnHint}
+            clearLabel={COPY.clearDate}
+            className="sm:max-w-80"
+          />
+          <SwitchCard
+            icon={<Power />}
+            title={COPY.active}
+            description={COPY.activeHint}
+            checked={active}
+            onCheckedChange={setActive}
+          />
         </FieldGroup>
       </div>
     </StepForm>

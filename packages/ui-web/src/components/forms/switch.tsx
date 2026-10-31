@@ -24,20 +24,31 @@ export function Switch({ label, checked, onCheckedChange, disabled, className }:
         className,
       )}
     >
-      <span
-        className={cx(
-          "relative inline-flex h-6 w-11 shrink-0 rounded-pill border transition-colors duration-[var(--fw-duration-base)] ease-out",
-          checked ? "border-transparent bg-accent" : "border-line-strong bg-surface-2",
-        )}
-      >
-        <span
-          className={cx(
-            "absolute top-0.5 size-4.5 rounded-pill shadow-sm transition-[translate,background-color] duration-[var(--fw-duration-base)] ease-out",
-            checked ? "translate-x-5.5 bg-surface dark:bg-ink" : "translate-x-0.5 bg-subtle",
-          )}
-        />
-      </span>
+      <SwitchTrack checked={checked} />
       {label}
     </button>
+  );
+}
+
+export interface SwitchTrackProps {
+  checked: boolean;
+}
+
+/** The track and thumb, for a switch whose label sits elsewhere (SwitchCard). */
+export function SwitchTrack({ checked }: SwitchTrackProps) {
+  return (
+    <span
+      className={cx(
+        "relative inline-flex h-6 w-11 shrink-0 rounded-pill border transition-colors duration-[var(--fw-duration-base)] ease-out",
+        checked ? "border-transparent bg-accent" : "border-line-strong bg-surface-2",
+      )}
+    >
+      <span
+        className={cx(
+          "absolute top-0.5 size-4.5 rounded-pill shadow-sm transition-[translate,background-color] duration-[var(--fw-duration-base)] ease-out",
+          checked ? "translate-x-5.5 bg-surface dark:bg-ink" : "translate-x-0.5 bg-subtle",
+        )}
+      />
+    </span>
   );
 }

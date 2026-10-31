@@ -3,6 +3,7 @@
 import {
   Accordion,
   ActionButton,
+  AmountField,
   Badge,
   BUTTON_SIZES,
   BUTTON_VARIANTS,
@@ -46,6 +47,7 @@ import {
   Skeleton,
   Stepper,
   Switch,
+  SwitchCard,
   Tabs,
   TextAreaField,
   TextField,
@@ -67,6 +69,8 @@ import {
   ListFilter,
   Moon,
   Plus,
+  Power,
+  Repeat,
   Wallet,
   X,
 } from "lucide-react";
@@ -168,6 +172,8 @@ export function ComponentsShowcase() {
   const [step, setStep] = useState(2);
   const [on, setOn] = useState(true);
   const [weekly, setWeekly] = useState(false);
+  const [reusable, setReusable] = useState(true);
+  const [linkOn, setLinkOn] = useState(false);
   const [menuChoice, setMenuChoice] = useState("personal");
   const [cardChoice, setCardChoice] = useState("merchant");
   const [menuDark, setMenuDark] = useState(false);
@@ -469,6 +475,59 @@ export function ComponentsShowcase() {
         <Checkbox label="USDC on every network (some on)" mixed />
         <Switch label="Email me when a payment settles" checked={on} onCheckedChange={setOn} />
         <Switch label="Email me a weekly summary" checked={weekly} onCheckedChange={setWeekly} />
+      </KitGroup>
+      <KitGroup title="Amount field: empty, typed, error; inline text field with an error">
+        <div className="grid w-full max-w-xl gap-4">
+          <AmountField label="Amount" unit="USD" placeholder="0.00" />
+          <AmountField label="Amount" unit="USD" defaultValue="12.50" />
+          <AmountField
+            label="Amount"
+            unit="USD"
+            defaultValue="12.505"
+            error="Enter an amount, such as 12.50."
+          />
+          <TextField
+            label="Payment limit"
+            defaultValue="0"
+            error="Enter a whole number from 1 to 1,000,000."
+            inline
+          />
+        </div>
+      </KitGroup>
+      <KitGroup title="Switch card: on with the field it opens, off, disabled">
+        <div className="grid w-full max-w-xl gap-4">
+          <SwitchCard
+            icon={<Repeat />}
+            title="Reusable"
+            description={
+              reusable ? "Pay multiple times with this link." : "One payment, then the link closes."
+            }
+            checked={reusable}
+            onCheckedChange={setReusable}
+          >
+            <TextField
+              label="Payment limit"
+              placeholder="No limit"
+              inputMode="numeric"
+              hint="Open checkouts count toward it."
+              inline
+            />
+          </SwitchCard>
+          <SwitchCard
+            icon={<Power />}
+            title="The link is on"
+            description="Off, no one can start a new purchase."
+            checked={linkOn}
+            onCheckedChange={setLinkOn}
+          />
+          <SwitchCard
+            title="Send events"
+            description="Your role can't change this."
+            checked
+            onCheckedChange={noop}
+            disabled
+          />
+        </div>
       </KitGroup>
       <KitGroup title="Email capture: idle, submitting, success, error">
         <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2">

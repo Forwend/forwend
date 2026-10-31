@@ -23,4 +23,18 @@ describe("TextField", () => {
       "Enter a full email.",
     );
   });
+
+  it("inline, keeps its label and then its error on the input beside them", () => {
+    const { rerender } = render(<TextField label="Payment limit" hint="Optional." inline />);
+    const input = screen.getByRole("textbox", { name: "Payment limit" });
+    expect(document.getElementById(input.getAttribute("aria-describedby") ?? "")?.textContent).toBe(
+      "Optional.",
+    );
+
+    rerender(<TextField label="Payment limit" error="Enter a whole number." inline />);
+    expect(input.getAttribute("aria-invalid")).toBe("true");
+    expect(document.getElementById(input.getAttribute("aria-describedby") ?? "")?.textContent).toBe(
+      "Enter a whole number.",
+    );
+  });
 });

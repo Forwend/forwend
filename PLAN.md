@@ -208,6 +208,8 @@ The owner moved these out of the MVP on 2026-10-31:
 - Paying from a connected wallet, as a second path beside the address and QR code.
   - Until then payers send a transfer (D-37).
 - Agent payments, such as x402. No merchant has asked for them yet.
+- A payment link's own return link: off by default, the store's return link, or a custom one.
+  - The second choice needs an optional store return link, on one of the store's allowed origins.
 - Self-serve returns of held money, replacing support by hand (11.10):
   - a Return to sender button on the pay page, with the exchange warning;
   - a form for exchange and app payers with a destination and proof;

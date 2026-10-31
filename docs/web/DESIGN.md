@@ -110,6 +110,11 @@ Every control comes from `@forwend/ui-web`; a link that looks like a button uses
 - A setting that applies when flipped is a row in a panel: what it does on the left, the switch at the row's end and
   a quiet line under it. On, the switch's thumb is the lightest thing on it in both themes (white on the river
   blue, the ink in dark mode); off, it is the quiet gray.
+- A setting in a form is a `SwitchCard`: an icon tile, the title and one short line, the switch at the row's end.
+  - While on, its field slides open inside the card under the title, on a surface-2 inset; off, it slides shut.
+  - That field is an inline `TextField`: label and one line on the left, a narrow input at the row's end.
+- A read-only value to copy (`CopyValue`) sits in a field as tall as an input, with Copy and Open icons at its end.
+- An amount someone checks at a glance (`AmountField`) has large figures and its unit inside the field.
 
 ## App shell
 
@@ -334,10 +339,18 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Link, client and store pages give the side 22rem and keep it in view while the main column scrolls.
   - Their list's own actions (Open in Invoices or Payments, Export) sit at the list's head, not in the header.
 - Checkout (`/app/checkout`, merchants with invoices.write) takes a payment in person:
-  - A form page: Store (when more than one), Amount in USD, Order reference and What it's for, then Show QR code.
-  - Then the customer's side: the reference, `BigAmount` in USD and one QR code of the pay link.
-  - Beside it a Checkout card: the status pill, one sentence and the close time; it checks every 3 seconds until decided.
-  - Actions: Open payment, Copy payment link and Cancel checkout; once decided, New sale (lime) starts a fresh form.
+  - From large screens the sale is a 26rem column, with Recent checkouts beside it; phones stack them.
+  - Recent checkouts is the payments list of checkouts, newest first.
+  - Each column is a heading row (New sale or the checkout's label; Recent checkouts with View all), then one card.
+  - The form card: Store (with more than one), an `AmountField` in USD, Order reference and What it's for.
+  - Show QR code sits at the form card's foot.
+  - Then the sale card: the label, Test mode and More actions in its heading row.
+  - Then `BigAmount` in USD, one QR code of the pay link, the status pill, one sentence and the close time.
+  - It checks every 3 seconds until decided.
+  - At its foot Copy payment link; once decided, New sale (lime) starts a fresh form.
+  - More actions holds Open payment and, while nothing is paid, Cancel checkout behind a confirm.
+  - Once canceled, or too late because money arrived, the dialog closes with a toast and focus moves to the title.
+  - A checkout's payment page has the same Cancel checkout in its More actions.
   - A retried tap reuses the idempotency key; any change makes a new one.
 - Clients (R-86) is laid out like Invoices: the toolbar's search (name, email, tax ID) with Add client at its end
   (beside the title on phones), then a table of the client with its initials avatar, billing email, country and tax
@@ -354,7 +367,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The toolbar holds a one-line intro, with Add store at its end (beside the title on phones).
   - The table shows the store, its project ID, when its checkout closes and its allowed origins.
   - New store and Edit store are form pages laid out like New client, with Store and Checkout panels.
-  - Edit store shows the project ID with a Copy button. There is no delete yet.
+  - The store's page shows the project ID with a Copy button; the form does not. There is no delete yet.
   - An Accepted assets panel (R-136) uses the accepted-assets selector over the tokens the profile has on; one must
     stay chosen.
   - A Brand panel holds the logo and the accent color (R-135).
@@ -432,13 +445,15 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Payment links (R-140) sits after Invoices in a merchant's Payments group and a freelancer's Get paid group.
   - It is laid out like Stores: a one-line intro with New link at its end (for roles that can make links), then a table.
   - The table shows the link with its `/l/<slug>`, the amount, a status badge and visits, paid purchases and reserved slots.
-  - The status is On, Off, Ended, Cap reached or Setup needed; only On is green.
+  - The status is On, Off, Ended, Limit reached or Setup needed; only On is green.
   - Test links keep their mode label in lists and details; public checkout shows Testnet beside the payee.
+  - The link form's intro and its Test mode badge share one line, so the form still fits the screen.
   - The link page reads one link (`GET /links/{id}`) and opens with `DetailHeader`: a link icon tile, the title with
-    status and mode badges, "Payment link · Created …", the price as the figure and Edit payment link.
+    status and mode badges, "Payment link · Created …", the price as the figure and More actions.
+  - More actions holds Edit payment link and Turn off or Turn on, which saves at once with a toast.
   - Main column: Visits, Paid (with its share of visits) and Checkouts open, then the purchases.
-  - Side column (first on narrower screens): Share, with the address on its own row, Copy and Open (a new tab) and a
-    QR code; then Details with the store, last day, payment cap and last update.
+  - Side column (first on narrower screens): Share, with the address in a `CopyValue` (Open in a new tab, Copy) and a
+    QR code; then Details with the store, last day, payment limit and last update.
   - Open in Payments shows the same purchases on the Payments page with search and filters.
   - New and Edit use existing store-form panels; `/app/links/<id>/edit` edits the offer, while the existing detail URL remains valid.
   - Amount has two choice cards: A fixed amount, or The payer enters it with an optional min and max.
@@ -515,7 +530,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Payments (left) list how each is invoiced and its due days, then its invoice number and status pill. Once
     accepted, its header says "n of m paid".
   - Scope follows Payments when there is one.
-  - Client's link (right) is the shared `CopyValue`: the quote address on its own row, Copy and Open (a new tab), and
+  - Client's link (right) is the shared `CopyValue`: the quote address with Open (a new tab) and Copy at its end, and
     who has to accept or who accepted as its note.
   - Record (R-104) follows Client's link as the kit `Timeline`, as on the payment and invoice pages: one done entry per
     event, oldest first, with its time.
@@ -580,6 +595,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - A new store can pick its logo in Brand; it previews at once and uploads right after the store saves.
     - The preview is the pay page header, an `AssetStack` of what a payer can use, and the checkout close.
   - Payment links: Link, Amount, Limits; the preview is the pay page with the amount or range and the limits.
+    - Limits holds two switch cards and the last day: Reusable, on by default, opens Payment limit inside its card.
+    - An empty Payment limit is no limit. Off, the link takes one payment.
+    - The link is on is the second card.
   - Jobs: Work, Client, Payments; the preview is the quote with its schedule and total.
   - Editing opens every step from the stepper (numbers, no checks) and puts Save on each step beside Continue.
   - Continue checks the step on screen; Save checks everything and opens the step of the first error.
@@ -841,7 +859,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Before payment: Reference, Note and Due date, with a line that the payer sees these under Updates.
   - A request shows only Note there, as its form has no reference or due date.
   - The due date picker runs from today to the day the checkout closes, which its hint names.
-  - Once money arrived or the checkout closed, the group is disabled and its line says why.
+  - Once money arrived or the checkout closed, the dialog leaves this group out.
   - A request has no Client email field.
   - Edit shows once the owner's read is in, so it never starts from another invoice's values.
   - Save changes saves every field and closes with a toast.

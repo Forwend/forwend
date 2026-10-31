@@ -89,7 +89,7 @@ it("New key: the secret shows with Copy focused, is never in the store, and is g
   await settle();
   const dialog = secretDialog(container);
   expect(dialog?.hasAttribute("open")).toBe(true);
-  expect((document.activeElement as HTMLElement | null)?.textContent).toContain("Copy");
+  expect(document.activeElement?.getAttribute("aria-label")).toBe("Copy the secret key");
   expect(JSON.stringify(store.getState())).not.toContain(SECRET);
   dialog?.close();
   await settle();

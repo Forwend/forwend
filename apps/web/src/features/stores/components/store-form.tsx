@@ -26,7 +26,6 @@ import type { Store, StoreBody, StoreField } from "@/features/stores/types/store
 import { AssetSelection } from "@/shared/components/chains/asset-selection";
 import { AssetStack } from "@/shared/components/chains/asset-stack";
 import { TokenMark } from "@/shared/components/chains/token-mark";
-import { CopyValue } from "@/shared/components/copy-value";
 import { FieldGroup } from "@/shared/components/field-group";
 import { FormPreview, StepForm, useFormSteps } from "@/shared/components/step-form";
 import { APP_ROUTES } from "@/shared/config/routes";
@@ -212,7 +211,6 @@ export function StoreForm({
             value={closes}
             onValueChange={setCloses}
             options={closeChoices}
-            hint={COPY.closesAfterHint}
             error={errors.defaultExpiresIn}
           />
           <TextAreaField
@@ -225,14 +223,6 @@ export function StoreForm({
             hint={COPY.originsHint}
             error={errors.allowedOrigins}
           />
-          {store ? (
-            <CopyValue
-              label={COPY.projectId}
-              value={store.storeId}
-              hint={COPY.projectIdHint}
-              copyLabel={COPY.copyLabel}
-            />
-          ) : null}
         </FieldGroup>
       </div>
       <div data-step={STEPS.brand} className={flow.shows(STEPS.brand)}>
