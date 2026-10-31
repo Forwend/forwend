@@ -39,10 +39,7 @@ func authServer(t *testing.T) (srv *httptest.Server, privyKey *ecdsa.PrivateKey,
 	ctx := context.Background()
 	verifier, privyKey := testVerifier(t)
 
-	url := databasetest.New(t)
-	if err := database.Migrate(ctx, url); err != nil {
-		t.Fatal(err)
-	}
+	url := databasetest.Migrated(t, database.Migrate)
 	pool, err := database.Open(ctx, url)
 	if err != nil {
 		t.Fatal(err)

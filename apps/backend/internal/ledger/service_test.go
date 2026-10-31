@@ -34,10 +34,7 @@ func newChainEnv(t *testing.T) chainEnv {
 	a := chaintest.Start(t)
 	token := a.DeployToken()
 	a.Mint(token, "1000000000")
-	url := databasetest.New(t)
-	if err := database.Migrate(ctx, url); err != nil {
-		t.Fatal(err)
-	}
+	url := databasetest.Migrated(t, database.Migrate)
 	pool, err := database.Open(ctx, url)
 	if err != nil {
 		t.Fatal(err)

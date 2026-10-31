@@ -13,10 +13,7 @@ import (
 
 func TestDatabaseEndpointConfiguration(t *testing.T) {
 	ctx := t.Context()
-	dbURL := databasetest.New(t)
-	if err := database.Migrate(ctx, dbURL); err != nil {
-		t.Fatal(err)
-	}
+	dbURL := databasetest.Migrated(t, database.Migrate)
 	db, err := database.Open(ctx, dbURL)
 	if err != nil {
 		t.Fatal(err)

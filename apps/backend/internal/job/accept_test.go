@@ -20,10 +20,7 @@ import (
 func open(t *testing.T) (*pgxpool.Pool, string) {
 	t.Helper()
 	ctx := context.Background()
-	url := databasetest.New(t)
-	if err := database.Migrate(ctx, url); err != nil {
-		t.Fatal(err)
-	}
+	url := databasetest.Migrated(t, database.Migrate)
 	// The test holds up to 7 connections at once; the default pool, max(4, CPUs), deadlocks on a 2-CPU runner.
 	pool, err := database.Open(ctx, url+"&pool_max_conns=8")
 	if err != nil {

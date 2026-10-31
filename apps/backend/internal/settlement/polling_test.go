@@ -21,7 +21,7 @@ func TestUnminedReceiptDoesNotHammerTheProvider(t *testing.T) {
 	defer client.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 1300*time.Millisecond)
 	defer cancel()
-	_, err = (&Signer{}).await(ctx, client, common.HexToHash("0x1234"))
+	_, err = (&Signer{receiptPoll: ReceiptPoll}).await(ctx, client, common.HexToHash("0x1234"))
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("wait returned %v, want deadline", err)
 	}

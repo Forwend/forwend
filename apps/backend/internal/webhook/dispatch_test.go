@@ -17,10 +17,7 @@ import (
 
 func dispatchFixture(t *testing.T, count int) (*Service, []string, []string) {
 	t.Helper()
-	url := databasetest.New(t)
-	if err := database.Migrate(t.Context(), url); err != nil {
-		t.Fatal(err)
-	}
+	url := databasetest.Migrated(t, database.Migrate)
 	pool, err := database.Open(t.Context(), url+"&pool_max_conns=4")
 	if err != nil {
 		t.Fatal(err)

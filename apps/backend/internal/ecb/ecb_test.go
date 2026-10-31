@@ -41,10 +41,7 @@ func TestParse(t *testing.T) {
 // R-110.
 func TestKeeperReadsWhenDue(t *testing.T) {
 	ctx := context.Background()
-	url := databasetest.New(t)
-	if err := database.Migrate(ctx, url); err != nil {
-		t.Fatal(err)
-	}
+	url := databasetest.Migrated(t, database.Migrate)
 	pool, err := database.Open(ctx, url)
 	if err != nil {
 		t.Fatal(err)
