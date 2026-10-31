@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Deposit, Invoice } from "@/features/invoices/types/invoices";
 import { PAY_STATES } from "@/features/pay/constants/pay";
 import {
+  overpaid,
   payerNoticeOptions,
   payState,
   payToken,
@@ -429,4 +430,33 @@ it("formats public return notices with build-owned token metadata and rejects un
   const trusted = payerNoticeOptions([option]);
   expect(trusted[0]).toMatchObject({ symbol: "USDC", decimals: 6, amount: invoice.amount });
   expect(payerNoticeOptions([{ ...option, chainId: 999999 }])).toEqual([]);
+});
+
+describe("overpaid", () => {
+  const booked = {
+    reconciliationStatus: "verified",
+    receiver: "0",
+    payable: "1000",
+    held: "900",
+    settled: "0",
+    refunded: "0",
+    observedRefunded: "0",
+    lastReturnTxHash: null,
+    unreconciled: false,
+    hasPolicyException: false,
+  } as unknown as NonNullable<Invoice["amounts"]>;
+  const paid = { ...invoice, deposits: [deposit("1900")] };
+  it("is the extra on time, until the ledger books it", () => {
+    expect(overpaid(paid)).toBe(900n);
+    expect(overpaid({ ...paid, amounts: booked })).toBe(900n);
+  });
+  it("is nothing once the held money went back to the payer", () => {
+    expect(overpaid({ ...paid, amounts: { ...booked, held: "0", refunded: "900" } })).toBe(0n);
+  });
+  it("leaves late money to its own line", () => {
+    const late = { ...paid, deposits: [deposit("1900"), deposit("500", { late: true })] };
+    expect(overpaid({ ...late, amounts: { ...booked, held: "1400" } })).toBe(900n);
+    // A return of 1000 leaves 400: the late line takes it first, as payState caps late at held.
+    expect(overpaid({ ...late, amounts: { ...booked, held: "400" } })).toBe(0n);
+  });
 });

@@ -74,6 +74,7 @@ import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
 import {
   checkoutClosesAt,
   firstPaymentOption,
+  overpaid,
   payerNoticeOptions,
   payState,
   payToken,
@@ -1006,7 +1007,7 @@ function Received({
 
 /** Money over the amount stays held for the payer (D-24). */
 function Overpaid({ invoice, money }: { invoice: Invoice; money: (units: bigint) => string }) {
-  const extra = depositAmount(invoice, false) - BigInt(invoice.amount);
+  const extra = overpaid(invoice);
   if (extra <= 0n) return null;
   return <HeldNote>{COPY.overpaid(money(extra))}</HeldNote>;
 }

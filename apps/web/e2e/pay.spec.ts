@@ -808,6 +808,41 @@ test.describe("pay page", () => {
     }
   });
 
+  // PLAN 11.10.3: once support returned the extra, the payer sees the return and no held line.
+  test("an overpayment returned to the payer is no longer shown as held", async ({ page }) => {
+    const confirmed = {
+      ...DEPOSIT,
+      status: "confirmed",
+      blocksLeft: 0,
+      blocksTotal: 0,
+      secondsLeft: 0,
+    };
+    const amounts = {
+      reconciliationStatus: "verified",
+      receiver: "1250000000",
+      payable: "1250000000",
+      held: "0",
+      settled: "0",
+      refunded: "50000000",
+      observedRefunded: "50000000",
+      lastReturnTxHash: `0x${"8".repeat(64)}`,
+      unreconciled: false,
+      hasPolicyException: false,
+    };
+    const returned = {
+      ...PAID,
+      deposits: [{ ...confirmed, amount: "1300000000", paid: "1250000000" }],
+    };
+    await openPay(page, {
+      ...returned,
+      amounts,
+      options: [{ ...MAIN_OPTION, amounts, deposits: returned.deposits }],
+    });
+    await expect(page.getByText("Recorded returns: 50.00 USDC on Base Sepolia.")).toBeVisible();
+    await expect(page.getByText(/^Overpaid by/)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "How to get it back" })).toHaveCount(0);
+  });
+
   test("says what is left when partly paid, and that a closed invoice takes no more", async ({
     page,
   }) => {

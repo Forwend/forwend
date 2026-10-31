@@ -452,21 +452,21 @@
         "2026-10-31 review fail by reviewer: FAIL, one money defect. The tool can send the creator's money when the ledger is behind the chain. returns.go:236 caps a return at min(ledger held, on-chain refundable). Past an unsettled deadline (factory paused or signer down longer than the grace, a case operations.md expects), refundable is the whole balance, so the ledger is the only guard for the creator's share. That guard is stale while a sent refund is not booked yet. Reproduced on Anvil with a temporary overlay test (removed afterwards): 5 USDC invoice paid 6, never settled, past the deadline; ops return, Safe sends it, ops release before the watcher books it, ops return again. Both dry runs pass, a second 1 USDC goes out, the receiver keeps 4 of the 5 owed, and the outflow books as refund_consumed_payable. A refund sent outside the tool opens the same gap with no release at all. Under D-60 the person who releases is not the one who signed in the Safe, so this mix-up is plausible. Fix: QueueReturn refuses while the receiver's chain balance (h.Balance) is below the ledger's receiver balance (ledger.ReadAmounts already gives Receiver): money has left and isn't booked yet. Add a test like the one above. money-safety.md:93 should also say: reject the Safe transaction and check it was not executed before you release. Fine as written: two operators at once (the conditional UPDATE at returns.go:315 lets one win, and the other gets ErrReturnQueued before anything prints). Return during a settlement (refundable before the deadline is balance minus amount; Process keeps refund_pending). Reopen refuses refund_pending (invoice/reopen.go:66, get.go:185). The status decode of words 5 and 8 matches InvoiceStatus. The printed Data equals cast calldata of the printed signature and args (checked), the cast form runs in the tests, the arguments are only hex and digits so the quoting is safe, and the Transaction Builder custom data step is right. Lookup: pay_token is unique, lowercase and only on main rows. An invoice id is read as a tx hash and finds nothing, never the wrong invoice. No secret is printed: errors go through chain.Redact, and with-env.sh drops the keys. All three fixes fail without their change (Process, watcher holding, attention list: checked with go -overlay). The targeted tests, go test ./cmd/ops and go vet pass, and ops case ran read-only on a local Tempo invoice. Non-blocking: (1) main.go:103 needs -tx to touch exactly one invoice, so a 4337 bundle or a batch that pays two invoices can't be returned, and the error says not a final payment. (2) With several payers, -amount is capped only by the option's total held, so support works out each payer's share by hand. (3) Another invoice's receive address is not refused as a destination (returns.go:233). It only gets the warning that no payment came from it. (4) money-safety.md:77 says -to warns, but the warning is for a destination that made no payment. (5) No tests cover ErrAmountNeeded, a token or factory destination, the contract warning, or main.go picking the option. (6) returns.go:33 repeats the deploy signature from contract.go:19. returns.go:196 prints <nil> on a short reply. ErrNotYet names the deadline even after it has passed. (7) The pay copy warns only about under 0.10 USD, but D-90 says Need help also warns that unclaimed money may never come back. (8) operations.md:32 says check receiverOf(invoiceId), which can't pass before the deploy in a batch. (9) with-env.sh keeps CANARY_RPC_URLS for ops.",
         "2026-10-31 review pass by reviewer: PASS after 941492b6. The defect is fixed. QueueReturn now refuses with ErrUnbooked while the receiver's chain balance is below the ledger's receiver balance (returns.go:219). TestSupportWaitsForASentRefundToBeBookedBeforeTheNextReturn is the reproduced scenario. With the guard removed through go -overlay, it fails ('a second return before the first was booked: <nil>'). As committed, it passes. I tried to break the guard. (a) An unbooked late deposit can hide an unbooked refund. Reproduced: return, send, release, then a 1 USDC deposit from another address, not yet scanned; the second return is accepted. The creator stays whole: the receiver keeps 5 of 5, payable is 5, held is 0, no policy exception. The guard passes only when unbooked money in is at least unbooked money out, so the old held figure never exceeds what will be held once both are booked. The late payer's 1 USDC still went to the first payer. The creator could lose only if that deposit were later reorged away and the Safe's refund was mined again. Non-blocking: refusing while any deposit to the option is detected and not booked would close this too. (b) Arc: a native top-up to an undeployed receive address that no Transfer log records would hide it the same way. The creator's amount stays on chain, and the ledger flags it (refund_consumed_payable plus the balance alert). The 6-decimal balanceOf rounds down, so it never trips the guard by mistake. (c) A settlement on its way, a lagging RPC or an unreadable token make it refuse for now, which is safe; the error names the cause. The other fixes check out. main.go picks this case's option out of a transaction that pays several invoices. Any invoice's receive address is refused, with tests for the token, the factory, another receiver and the contract warning. There is one deploy signature constant, a short reply reports its length, and ErrNotYet names the deadline only while it is ahead. D-90 matches the pay copy, operations.md names factory.predict(terms), and with-env.sh drops CANARY_RPC_URLS. The money-safety.md bullets are accurate, including the step before release: reject the Safe transaction and check it never ran. Passed: the targeted backend tests, go test ./cmd/ops, go vet, check-docs (0 errors), and a read-only ops case on the local Tempo invoice. Still open, accepted: ErrAmountNeeded has no test (the Anvil helpers pay from one account), and splitting among payers stays support's call (D-57).",
         "2026-10-31 review pass by reviewer: PASS after 31843372. QueueReturn now also refuses with ErrUnbooked while the option has a chain_transfers row that is neither reorged nor booked, or a receiver_outflows row (not a recovery) with no ledger transaction (returns.go:222-232). TestSupportWaitsForEveryPaymentToBeBooked checks this. Remove that check through go -overlay and the test fails ('with a payment not booked: <nil>'); as committed it passes. My earlier probe was: return, send, release, then a late 1 USDC deposit from another address. Once the watcher has scanned that deposit, the second return is now refused. Before the first scan after the deposit, it is still accepted, because the deposit has no row yet and it raises the chain balance. As before, the creator stays whole in that window, since the balance guard passes only when unbooked money in is at least unbooked money out. Only the late payer's money could go to the first payer. Non-blocking notes: (1) Closing that window means refusing whenever the chain balance is not equal to the booked balance, at the cost of blocking returns while any unexplained balance exists. Not needed for the MVP. (2) An outflow the ledger refused (reconciliation_error), or a detected row that never resolves, blocks returns for that option until an operator reconciles it. That is the safe direction, and those options already show as unreconciled. (3) In docs/backend/money-safety.md:89-91 the new bullet sits between the balance-guard bullet and its two sub-bullets (past the deadline the contract lets the whole balance out, so a second return would take the creator's money). Those sub-bullets now read as explaining the new bullet. Move the new bullet below them. Passed: the targeted backend tests (settlement, watcher, httpapi tests, history), go test ./cmd/ops, go vet, and check-docs (0 errors). The earlier fixes and notes are unchanged. Still open, accepted: ErrAmountNeeded has no test, and splitting among payers stays support's call (D-57).",
-        "2026-10-31 review pass by reviewer: PASS after c8484f0a. Docs only: git diff 31843372..HEAD changes just docs/backend/money-safety.md and the harness's docs/tasks.json. In money-safety.md:88-91, the two reasons (past the deadline the contract lets the whole balance out, so a second return would take the creator's money) are back under the balance-guard bullet. The unbooked-movements bullet follows them. That fixes my note 3. check-docs: 0 errors. My review of 31843372 still holds for the code. QueueReturn refuses while the chain balance is below the booked balance, or while a payment or receiver event of the option is unbooked. The tests fail without each check and pass as committed. Non-blocking notes from that review still apply: there is a short window before the watcher's first scan of a late deposit (the creator stays whole, the late payer's money could go to the first payer), and a refused outflow blocks returns for that option until it is reconciled. Accepted as before: ErrAmountNeeded has no test, and splitting among payers stays support's call (D-57)."
+        "2026-10-31 review pass by reviewer: PASS after c8484f0a. Docs only: git diff 31843372..HEAD changes just docs/backend/money-safety.md and the harness's docs/tasks.json. In money-safety.md:88-91, the two reasons (past the deadline the contract lets the whole balance out, so a second return would take the creator's money) are back under the balance-guard bullet. The unbooked-movements bullet follows them. That fixes my note 3. check-docs: 0 errors. My review of 31843372 still holds for the code. QueueReturn refuses while the chain balance is below the booked balance, or while a payment or receiver event of the option is unbooked. The tests fail without each check and pass as committed. Non-blocking notes from that review still apply: there is a short window before the watcher's first scan of a late deposit (the creator stays whole, the late payer's money could go to the first payer), and a refused outflow blocks returns for that option until it is reconciled. Accepted as before: ErrAmountNeeded has no test, and splitting among payers stays support's call (D-57).",
+        "2026-10-31 review fail by reviewer: FAIL, one defect left. The payer's pay page still says the money is held after it was returned. 92b05c61 fixes the owner's page only. On the payer's page, apps/web/src/features/pay/components/pay-invoice.tsx:1008-1011 (Overpaid) computes extra as on-time deposits minus the amount and never reads amounts.held. The Paid view (pay-invoice.tsx:1098) and the progress section (:993) both render it. Checked on the local Tempo testnet invoice the run used (receive 0x9615ba81..., paid, settled, refunded), with a read-only GET of /v1/invoices/{payToken} on localhost. The API says amounts.held 0, refunded 900000, refundStatus refunded, onTimeAmount 1000000, amount 100000. So the payer who just got 0.90 OUSD back still sees 'Overpaid by 0.90 OUSD' in the warning color, with 'How to get it back', which tells them to email support. AGENTS.md asks a fix to cover every reader of the same data, owner and payer pages included, or to name them. Fix: Overpaid uses the ledger once amounts exist, the way pay.ts already caps late at amounts.held. Add a unit test with held 0 and refunded 900000. Optionally show that it was returned. Everything else in 2342dcd4 and 92b05c61 checks out. CaseOptions takes an invoice id through a UNION with the tx-hash lookup: a 0x+64 ref matching neither still gives ErrNoCase, and an id given as -tx matches no payment, so it can't pick the wrong option. ops case hides options with no payments, no held money and no balance. A detected payment raises the balance, so it stays visible. returns lists only booked refunds (ledger_transaction_id NOT NULL) in chain order, and the httpapi test asserts the unbooked one is left out. optionFigures shows held once nothing is pending: payments.test.tsx and the e2e fixture agree, and paymentStatusOf already reads Overpaid from held. The ReturnRow, timeline step, DESIGN.md and money-safety.md lines match the code. Minor: the timeline's last return is the last option's last return, not the latest by time across options. That only matters with returns on two options. Passed: the targeted backend tests, now including TestPaymentMovementExportReconcilesReturns, go test ./cmd/ops, and vitest on payments.test.tsx and features/pay (40 tests). Earlier notes and accepted items are unchanged."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
-        "status": "failed",
-        "at": "2026-10-31T16:52:46Z",
+        "status": "passed",
+        "at": "2026-10-31T16:59:02Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
+            "seconds": 3.4,
+            "log": ""
           },
           {
             "id": "docs-check",
@@ -479,7 +479,7 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.5,
+            "seconds": 0.3,
             "log": ""
           },
           {
@@ -491,9 +491,30 @@
           },
           {
             "id": "unit",
-            "outcome": "inputs-changed",
-            "exit": 1,
-            "seconds": 272.2,
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 270.3,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.7,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 45.7,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 33.7,
             "log": ""
           },
           {
@@ -504,28 +525,26 @@
             "log": ""
           }
         ],
-        "taskHash": "fd1c5f70a102ea1e",
-        "filesHash": "1eaf3f98c2255213",
+        "taskHash": "75158628719a1b8a",
+        "filesHash": "ecd0ba7991518725",
         "proof": {
-          "1": "unit: TestSupportReturnsAnOverpaymentToItsSenderOnce finds the case by receive address, transaction, invoice id, pay link, embed link and token, and reads held 1 USDC (overpaid), the payment's sender and 1 USDC refundable; ops case 0xc1087cbd… on the local stack printed the Tempo testnet option's 0.90 OUSD overpayment and hid its 3 empty options",
-          "2": "unit: TestSupportReturnRefusesWhatTheMoneyCantDo refuses an unknown payment, the receiver, the zero address, the token, the factory, another invoice's receiver, more than held and 0.099999 USD; accepts 0.10 USD to another address and to a contract, each with its warning; locks nothing on a refusal; writes invoice.return_queued and invoice.return_released to history; web-e2e: Need help warns held amounts under 0.10 USD may never come back",
-          "3": "unit: the overpayment test keeps refund_pending through the signer's settlement (failed before the Process fix); TestSupportWaitsForASentRefundToBeBookedBeforeTheNextReturn and TestSupportWaitsForEveryPaymentToBeBooked refuse a return while a refund or a payment is unbooked (both accepted it before their fixes); TestReceiverWithAQueuedReturnStaysWatchedPastTheWindow (0 refunds before the watcher fix); TestPaymentAttentionShowsNetFunds keeps a canceled payment with a queued return listed (failed before the attention fix)",
-          "4": "unit: the Anvil tests run the printed cast calls as the authority and a round books each refund once; testnet: ops return queued 0.90 OUSD on Tempo Moderato, the printed cast send from the test refund authority mined in tx 0x8448abaef2f00b7277a3888e20039b2951f98af165d9b0a98298d39effc42144, and the local worker booked it in about 12 s: refund_status refunded, receiver 0 OUSD, history return_queued then refunded",
+          "1": "unit: TestSupportReturnsAnOverpaymentToItsSenderOnce finds the case by receive address, transaction, invoice id, pay link, embed link and token; ops case 0xc1087cbd… printed the Tempo testnet option's 0.90 OUSD overpayment and hid its 3 empty options",
+          "2": "unit: TestSupportReturnRefusesWhatTheMoneyCantDo refuses an unknown payment, the receiver, the zero address, the token, the factory, another invoice's receiver, more than held and 0.099999 USD; accepts 0.10 USD to another address and to a contract, each with its warning; writes invoice.return_queued and invoice.return_released; web-e2e: Need help warns held amounts under 0.10 USD may never come back",
+          "3": "unit: the overpayment test keeps refund_pending through the signer's settlement (failed before the Process fix); TestSupportWaitsForASentRefundToBeBookedBeforeTheNextReturn and TestSupportWaitsForEveryPaymentToBeBooked refuse a return while a refund or a payment is unbooked (both accepted it before their fixes); TestReceiverWithAQueuedReturnStaysWatchedPastTheWindow (0 refunds before the watcher fix); TestPaymentAttentionShowsNetFunds keeps a queued return listed (failed before the attention fix)",
+          "4": "unit: Anvil tests run the printed cast calls and a round books each refund once; testnet: the Tempo Moderato return mined in tx 0x8448abaef2f00b7277a3888e20039b2951f98af165d9b0a98298d39effc42144 and was booked in about 12 s (refunded, receiver 0 OUSD); TestPaymentMovementExportReconcilesReturns lists only the booked refund in the payment detail's returns (empty before); web unit: optionFigures shows no extra once held is 0 after a return (900000 before), ReturnRow renders Returned to the payer with amount and transaction",
           "5": "unit: QueueReturn writes only refund_status and its history row; cmd/ops loads config.LoadOps (database and RPCs, no key) and with-env.sh strips the executor, Privy, Resend, CoinGecko, webhook and canary secrets from it"
         },
-        "changedDuringRun": [
-          "apps/backend/api/openapi.yaml",
-          "apps/backend/internal/httpapi/paymentapi/model.go",
-          "apps/backend/internal/httpapi/tests/payment_operations_test.go",
-          "apps/backend/internal/invoice/payment_details.go",
-          "apps/web/src/features/payments/lib/payments.ts",
-          "apps/web/src/features/payments/schemas/payments.ts",
-          "apps/web/src/features/payments/tests/payments.test.tsx"
-        ]
+        "review": {
+          "result": "fail",
+          "by": "reviewer",
+          "summary": "FAIL, one defect left. The payer's pay page still says the money is held after it was returned. 92b05c61 fixes the owner's page only. On the payer's page, apps/web/src/features/pay/components/pay-invoice.tsx:1008-1011 (Overpaid) computes extra as on-time deposits minus the amount and never reads amounts.held. The Paid view (pay-invoice.tsx:1098) and the progress section (:993) both render it. Checked on the local Tempo testnet invoice the run used (receive 0x9615ba81..., paid, settled, refunded), with a read-only GET of /v1/invoices/{payToken} on localhost. The API says amounts.held 0, refunded 900000, refundStatus refunded, onTimeAmount 1000000, amount 100000. So the payer who just got 0.90 OUSD back still sees 'Overpaid by 0.90 OUSD' in the warning color, with 'How to get it back', which tells them to email support. AGENTS.md asks a fix to cover every reader of the same data, owner and payer pages included, or to name them. Fix: Overpaid uses the ledger once amounts exist, the way pay.ts already caps late at amounts.held. Add a unit test with held 0 and refunded 900000. Optionally show that it was returned. Everything else in 2342dcd4 and 92b05c61 checks out. CaseOptions takes an invoice id through a UNION with the tx-hash lookup: a 0x+64 ref matching neither still gives ErrNoCase, and an id given as -tx matches no payment, so it can't pick the wrong option. ops case hides options with no payments, no held money and no balance. A detected payment raises the balance, so it stays visible. returns lists only booked refunds (ledger_transaction_id NOT NULL) in chain order, and the httpapi test asserts the unbooked one is left out. optionFigures shows held once nothing is pending: payments.test.tsx and the e2e fixture agree, and paymentStatusOf already reads Overpaid from held. The ReturnRow, timeline step, DESIGN.md and money-safety.md lines match the code. Minor: the timeline's last return is the last option's last return, not the latest by time across options. That only matters with returns on two options. Passed: the targeted backend tests, now including TestPaymentMovementExportReconcilesReturns, go test ./cmd/ops, and vitest on payments.test.tsx and features/pay (40 tests). Earlier notes and accepted items are unchanged.",
+          "at": "2026-10-31T17:08:13Z",
+          "filesHash": "ecd0ba7991518725"
+        }
       },
       "branch": "feat/f410-support-returns-held-money-with-one-ops",
       "baseCommit": "89c7fdaabbf43d3767f41606704b70850b8c9e36",
-      "failedVerifies": 1
+      "failedVerifies": 0
     },
     {
       "id": "F411",

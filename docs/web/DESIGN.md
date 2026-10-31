@@ -758,6 +758,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The payer never sees the wallet transfer or status badges.
   - Held money gets one short line, such as "Overpaid by X", with How to get it back on its right. It opens Need help
     (PLAN 11.10.1).
+  - Once the money went back the line is gone, and the payer reads Recorded returns with the return's transaction.
   - Copy names the payee, or "the invoice's creator". Never "the sender".
   - Footer: one quiet line.
     - "Payments by" with the mark and Forwend, opening the site in a new tab.

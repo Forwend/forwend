@@ -457,7 +457,12 @@ function timeline(
   ];
   const done = [true, Boolean(first), paid, ended || settled];
   // The last return to a payer, when support sent one (PLAN 11.10.3).
-  const returned = payment.options.flatMap((o) => o.returns).at(-1);
+  const returned = payment.options
+    .flatMap((o) => o.returns)
+    .reduce<PaymentDetailType["options"][number]["returns"][number] | undefined>(
+      (last, r) => (!last || r.blockTime > last.blockTime ? r : last),
+      undefined,
+    );
   if (returned) {
     steps.push({
       id: "returned",
