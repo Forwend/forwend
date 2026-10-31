@@ -281,21 +281,21 @@
         "2026-10-31 review fail by reviewer: Re-review of f6e224b6. All three earlier defects are fixed, but the fix adds one visual regression. Blocker: GetItBack now uses the kit Button with no text size (pay-invoice.tsx:1029). The link variant sets none, so the button inherits from its parent. In HeldNote that is text-sm (14px), but the closed-partly-paid status line's wrapper (pay-invoice.tsx:830) has no size. There 'How to get it back' renders at 16px under a 14px line (measured with getComputedStyle at 1280 and 390 px, and seen in a screenshot). My earlier note that text-sm changed nothing was wrong for this caller. Fix: className=\"text-sm\" on the Button, so both callers match. Fixed and fine: the invoice PDF line (document.go:154-155) says held, not paid out, and to email document.Support. notify.Support points at it. TestStatusAsksForMoneyOnlyWhilePayable checks the support address and no ' ask '. R-68 (PROJECT.md:117) and DESIGN.md:735 match the code. The Refund claim glossary row and PLAN.md:86 and :92 say returns through support. The wait line no longer gives a timing it can't keep. The e2e guard /ask (the recipient|Alice Design GmbH) to get it back/i also counts hidden dialog text. A fresh search of apps/web/src, packages/js, packages/react, apps/backend/internal and docs finds no payer-facing 'ask ... to get it back' or 'not lost'. One dialog per HeldNote is fine as argued. Ran: go vet and gofmt clean; with-env go test ./internal/document ./internal/notify ok; pnpm e2e -g '...' 6 passed.",
         "2026-10-31 review pass by reviewer: Re-review of 8c85e320. The last blocker is fixed: GetItBack's kit Button has className=\"text-sm\" (pay-invoice.tsx:1029). How to get it back is now 14px under the closed-partly-paid status line as well as under each HeldNote. The held-money test asserts 14px on all five cases (pay.spec.ts:796-798). pnpm e2e -g 'every held payment|partly paid' 2 passed. Earlier rounds stand: every pay-page held line, the Need help dialog and the invoice PDF send payers to support. None tells them to ask the payee or promises a return. The wording matches refundableAmount, D-18, D-33 and D-90. R-68, DESIGN.md, PLAN 11.10, D-37, D-78, D-118, Q-9 and F409-F412, F417 agree. go test document and notify, typecheck, and light, dark, 1280 and 390 px screenshots passed. Non-blocking: docs/web/rules.md says fonts are judged in screenshots, not tested, so the toHaveCSS font-size check bends that rule; keep it or drop it as you prefer.",
         "2026-10-31 review pass by reviewer: Re-review of 586c02fa. The commit only removes the toHaveCSS font-size check from the held-money test (pay.spec.ts:796), plus harness bookkeeping in docs/tasks.json. pay.spec.ts is back to the f6e224b6 blob (1e33ef30). This follows docs/web/rules.md: type is judged in screenshots. The fix stays: GetItBack's kit Button keeps className=\"text-sm\" (pay-invoice.tsx:1029). The previous round measured 14px under both the status line and HeldNote. Earlier rounds stand: every pay-page held line, the Need help dialog and the invoice PDF send payers to support. None tells them to ask the payee or promises a return. The wording matches refundableAmount, D-18, D-33 and D-90. R-68, DESIGN.md, PLAN 11.10, D-37, D-78, D-118, Q-9 and F409-F412, F417 agree.",
-        "2026-10-31 review pass by reviewer: Re-review of d48b84f5 (owner's changes). Support address from config: the worker reads SUPPORT_EMAIL into notify.Site.Support. The HTML and text footers drop the Questions line when it is empty (TestFooterNamesTheConfiguredSupportAddress). The web reads NEXT_PUBLIC_SUPPORT_EMAIL at build and hides Email support when it is empty. turbo env, web.Dockerfile ARG/ENV, compose (SUPPORT_EMAIL:? for the worker and the web build arg), staging.md, api.md and both .env.example files list it. No support@forwend.com or document/notify.Support remains. The PDF line (document.go:151-152) says held, not paid out, and points to Need help on the pay page. Held lines are short facts with How to get it back on the right. Closed-partial puts the link in the status grid's second column. None asks the payee or promises a return; a fresh search finds no 'ask ... to get it back' or 'not lost' for payers. The copy button reuses useCopy, IconButton and the sr-only status, as the amount copy does. The test grants clipboard permission and reads the address. Ran: gofmt and go vet clean; with-env go test config, notify and document ok; pnpm typecheck and biome clean; pnpm e2e -g '...' 6 passed. On the e2e build (help@example.test), light, dark, 1280 and 390 px screenshots of overpaid, late and closed-partial and the dialog look right: link 14px everywhere, no sideways scroll. Non-blocking: (1) apps/web/e2e/servers.ts:17 'The example's webhook signing secret' comment now sits above SUPPORT_EMAIL, away from EXAMPLE_WEBHOOK_SECRET. (2) A build without NEXT_PUBLIC_SUPPORT_EMAIL, such as local dev today, says 'Email support' twice in Need help but shows no address. Compose blocks that on staging; any other host must set it."
+        "2026-10-31 review pass by reviewer: Re-review of d48b84f5 (owner's changes). Support address from config: the worker reads SUPPORT_EMAIL into notify.Site.Support. The HTML and text footers drop the Questions line when it is empty (TestFooterNamesTheConfiguredSupportAddress). The web reads NEXT_PUBLIC_SUPPORT_EMAIL at build and hides Email support when it is empty. turbo env, web.Dockerfile ARG/ENV, compose (SUPPORT_EMAIL:? for the worker and the web build arg), staging.md, api.md and both .env.example files list it. No support@forwend.com or document/notify.Support remains. The PDF line (document.go:151-152) says held, not paid out, and points to Need help on the pay page. Held lines are short facts with How to get it back on the right. Closed-partial puts the link in the status grid's second column. None asks the payee or promises a return; a fresh search finds no 'ask ... to get it back' or 'not lost' for payers. The copy button reuses useCopy, IconButton and the sr-only status, as the amount copy does. The test grants clipboard permission and reads the address. Ran: gofmt and go vet clean; with-env go test config, notify and document ok; pnpm typecheck and biome clean; pnpm e2e -g '...' 6 passed. On the e2e build (help@example.test), light, dark, 1280 and 390 px screenshots of overpaid, late and closed-partial and the dialog look right: link 14px everywhere, no sideways scroll. Non-blocking: (1) apps/web/e2e/servers.ts:17 'The example's webhook signing secret' comment now sits above SUPPORT_EMAIL, away from EXAMPLE_WEBHOOK_SECRET. (2) A build without NEXT_PUBLIC_SUPPORT_EMAIL, such as local dev today, says 'Email support' twice in Need help but shows no address. Compose blocks that on staging; any other host must set it.",
+        "2026-10-31 review pass by reviewer: Re-review of c16a73a4. The commit only moves EXAMPLE_WEBHOOK_SECRET back under its own comment in apps/web/e2e/servers.ts:17-18, with SUPPORT_EMAIL and its comment after it, plus harness bookkeeping in docs/tasks.json. Note (1) from the last round is fixed. Note (2): the dev server on :3000 does carry the address; its pay page HTML has mailto:support@forwend.com. My earlier reading came from apps/web/.env, not the process environment. The rule stands as designed: a build without NEXT_PUBLIC_SUPPORT_EMAIL hides Email support, and compose requires it. Everything from the d48b84f5 review holds: support address from config, short held lines with How to get it back, the PDF pointing to Need help, the copy button, docs and env lists in step, Go tests, typecheck, lint, the pay e2e tests and the light, dark, 1280 and 390 px screenshots."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-31T14:49:12Z",
+        "at": "2026-10-31T14:59:50Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
+            "seconds": 3.7,
+            "log": ""
           },
           {
             "id": "docs-check",
@@ -308,49 +308,49 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
+            "seconds": 0.4,
             "log": ""
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.5,
+            "seconds": 0.2,
             "log": ""
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 268.1,
+            "seconds": 247.8,
             "log": ""
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 6.0,
+            "seconds": 5.7,
             "log": ""
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 40.2,
+            "seconds": 43.9,
             "log": ""
           },
           {
             "id": "backend-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 33.3,
+            "seconds": 36.5,
             "log": ""
           },
           {
             "id": "web-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 38.5,
+            "seconds": 37.1,
             "log": ""
           },
           {
@@ -362,7 +362,7 @@
           }
         ],
         "taskHash": "7c7f2be546529d95",
-        "filesHash": "6e0abcc54930e4f1",
+        "filesHash": "745c5f42a05e03d9",
         "proof": {
           "1": "web-e2e: pay.spec 'every held payment gets one short line, and How to get it back opens Need help' covers overpaid, late, closed with a partial payment, canceled and another option, and fails if 'ask the recipient/Alice Design GmbH to get it back' returns; unit: TestStatusAsksForMoneyOnlyWhilePayable checks the expired, partly paid invoice PDF points to Need help and never asks the payee; the right-hand link checked in screenshots",
           "2": "web-e2e: pay.spec 'shows who asks and the amount' opens Need help, checks its three section headings and the can't-promise line, that Email support mails the inbox the build was given (NEXT_PUBLIC_SUPPORT_EMAIL=help@example.test from e2e/servers.ts) with the pay link in the body, and that the copy button puts that address on the clipboard; unit: TestFooterNamesTheConfiguredSupportAddress checks emails name SUPPORT_EMAIL and leave the line out when empty; no support address is in code",
@@ -373,9 +373,9 @@
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "Re-review of d48b84f5 (owner's changes). Support address from config: the worker reads SUPPORT_EMAIL into notify.Site.Support. The HTML and text footers drop the Questions line when it is empty (TestFooterNamesTheConfiguredSupportAddress). The web reads NEXT_PUBLIC_SUPPORT_EMAIL at build and hides Email support when it is empty. turbo env, web.Dockerfile ARG/ENV, compose (SUPPORT_EMAIL:? for the worker and the web build arg), staging.md, api.md and both .env.example files list it. No support@forwend.com or document/notify.Support remains. The PDF line (document.go:151-152) says held, not paid out, and points to Need help on the pay page. Held lines are short facts with How to get it back on the right. Closed-partial puts the link in the status grid's second column. None asks the payee or promises a return; a fresh search finds no 'ask ... to get it back' or 'not lost' for payers. The copy button reuses useCopy, IconButton and the sr-only status, as the amount copy does. The test grants clipboard permission and reads the address. Ran: gofmt and go vet clean; with-env go test config, notify and document ok; pnpm typecheck and biome clean; pnpm e2e -g '...' 6 passed. On the e2e build (help@example.test), light, dark, 1280 and 390 px screenshots of overpaid, late and closed-partial and the dialog look right: link 14px everywhere, no sideways scroll. Non-blocking: (1) apps/web/e2e/servers.ts:17 'The example's webhook signing secret' comment now sits above SUPPORT_EMAIL, away from EXAMPLE_WEBHOOK_SECRET. (2) A build without NEXT_PUBLIC_SUPPORT_EMAIL, such as local dev today, says 'Email support' twice in Need help but shows no address. Compose blocks that on staging; any other host must set it.",
-          "at": "2026-10-31T14:58:57Z",
-          "filesHash": "6e0abcc54930e4f1"
+          "summary": "Re-review of c16a73a4. The commit only moves EXAMPLE_WEBHOOK_SECRET back under its own comment in apps/web/e2e/servers.ts:17-18, with SUPPORT_EMAIL and its comment after it, plus harness bookkeeping in docs/tasks.json. Note (1) from the last round is fixed. Note (2): the dev server on :3000 does carry the address; its pay page HTML has mailto:support@forwend.com. My earlier reading came from apps/web/.env, not the process environment. The rule stands as designed: a build without NEXT_PUBLIC_SUPPORT_EMAIL hides Email support, and compose requires it. Everything from the d48b84f5 review holds: support address from config, short held lines with How to get it back, the PDF pointing to Need help, the copy button, docs and env lists in step, Go tests, typecheck, lint, the pay e2e tests and the light, dark, 1280 and 390 px screenshots.",
+          "at": "2026-10-31T15:06:59Z",
+          "filesHash": "745c5f42a05e03d9"
         }
       },
       "branch": "feat/f408-the-pay-page-tells-a-payer-how-to-get-he",
