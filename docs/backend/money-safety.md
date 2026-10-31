@@ -86,9 +86,9 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
     `deploy` returns an already deployed receiver, so the batch still works if the signer deployed it first.
 - One return is queued per option at a time, so the same money is never sent twice.
 - It refuses while the receiver holds less on chain than the ledger books: a sent refund isn't booked yet.
-- It also refuses while a payment or a receiver event of the option is not booked: it could hide that gap.
   - Past the deadline of an invoice never settled, the contract lets the whole balance out.
   - Then a second return would take the creator's money.
+- It also refuses while a payment or a receiver event of the option is not booked: it could hide that gap.
 - Queuing writes `invoice.return_queued` to the invoice's history with the amount and destination; release writes
   `invoice.return_released`. The owner sees them as Return queued and Return released.
 - While a return is queued:
