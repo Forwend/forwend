@@ -23,7 +23,9 @@ const (
 	ReceiverSettled      = "receiver.settled"
 	CheckoutCloseChanged = "checkout.close_changed"
 	Refunded             = "invoice.refunded"
-	Settled              = "invoice.settled" // data has the settle transaction's hash
+	ReturnQueued         = "invoice.return_queued"   // support queued a return of held money; data has its amount and To
+	ReturnReleased       = "invoice.return_released" // support dropped a queued return the refund authority won't send
+	Settled              = "invoice.settled"         // data has the settle transaction's hash
 	RemindersOn          = "reminders.on"
 	RemindersOff         = "reminders.off"
 	RemindersStopped     = "reminders.stopped" // by the client's stop link (R-96)
@@ -60,7 +62,7 @@ type Data struct {
 	TxHash string `json:"txHash,omitempty"`
 	Step   string `json:"step,omitempty"` // a reminder's step (R-96)
 	Field  string `json:"field,omitempty"`
-	From   string `json:"from,omitempty"` // an edited due date's old and new value (R-128)
+	From   string `json:"from,omitempty"` // an edited due date's old and new value (R-128); To is also a return's destination
 	To     string `json:"to,omitempty"`
 	Until  string `json:"until,omitempty"` // a reopen's new close (R-130), RFC 3339 in UTC
 	// The other invoice of a Revise (R-129): on the old one the new, on the new one's created row the old.

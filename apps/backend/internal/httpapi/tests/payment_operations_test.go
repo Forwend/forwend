@@ -254,6 +254,19 @@ func TestPaymentAttentionShowsNetFundsAndDeliveryWithoutChangingPaymentTruth(t *
 	if found[paid]["refund_pending"] {
 		t.Fatal("invented a refund claim")
 	}
+	// A return support queued (PLAN 11.10.3) keeps a payment listed while held money is its only problem.
+	canceled := makePayment("canceled")
+	e.exec(t, "UPDATE invoices SET payment_status = 'canceled', canceled_at = now() WHERE id = $1", canceled)
+	e.deposit(t, canceled, "2500000")
+	e.exec(t, "UPDATE invoices SET refund_status = 'refund_pending' WHERE id = $1", canceled)
+	attention = e.call(t, "GET", base+"/payments/attention", alice, "", "")
+	listed := false
+	for _, item := range attention.body["items"].([]any) {
+		listed = listed || item.(map[string]any)["paymentId"] == canceled
+	}
+	if !listed {
+		t.Fatal("a payment with a return queued left the attention list")
+	}
 }
 
 func TestPaymentMovementExportReconcilesReturnsAndKeepsObservationsOutOfBookedTotals(t *testing.T) {

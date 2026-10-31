@@ -30,8 +30,10 @@ The refund-authority Safe and deploys. Design: [architecture.md](architecture.md
 
 - Check the transaction hash with an independent tool.
 - For a refund: `receiverOf(invoiceId)` equals the target, the terms match the claim, `refundable` covers the amount.
-- Refunds require a verified payer destination (PROJECT Q-9). Never assume an exchange sender belongs to the payer;
+- Refunds require a verified payer destination (D-118). Never assume an exchange sender belongs to the payer;
   a different destination needs written evidence.
+- `cmd/ops return` prints the calls and has already checked the amount, the destination and a dry run
+  ([returns through support](../backend/money-safety.md#returns-through-support)).
 - A pause longer than a few hours alerts every owner: paid invoices pushed past their effective deadline can then
   be settled only by the Safe.
 

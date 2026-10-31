@@ -67,6 +67,8 @@ Read only the sections your task touches:
 - `canary`: run on its own host by a scheduler, not beside the others. Checks open invoices' receive addresses
   against `factory.predict` on two RPCs, the api and the pay page drawn in Chromium (address text and QR code), with
   its own config and no shared address code ([money safety](money-safety.md#canary), R-51).
+- `ops`: support's command for held money, run by hand on a server with the database and RPCs (PLAN 11.10.3).
+  It reads cases and queues returns, and holds no key ([returns through support](money-safety.md#returns-through-support)).
 
 ## Startup
 

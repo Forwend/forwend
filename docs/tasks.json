@@ -422,14 +422,14 @@
       "type": "feat",
       "behavior": "Support returns held money with one ops command that can't overpay or race a settlement",
       "acceptance": [
-        "cmd/ops case takes a pay link or receive address and a transaction hash, and prints each held payment: sender, reason, amount and the date it can go back.",
-        "It checks the transfer is final and reached this receiver, caps the amount at what is both held and refundable, refuses a zero, receiver, token or factory destination, flags a contract, and dry-runs the call as the refund authority.",
-        "It sets refund_pending before it prints the Safe batch (the receiver's deploy when needed, then refund). Process keeps refund_pending while money is held; reopen refuses it; the watcher keeps watching it; the attention list shows it.",
-        "The watcher books the return once, it shows in the invoice's Transactions list, and refund_pending clears when nothing is held.",
-        "No new hot key: the command reads and prints; its only write is refund_pending."
+        "cmd/ops case takes a pay link, receive address or payment transaction and prints each held payment: sender, amount, why it is held, what is refundable now and when all of it is. Backend only, no UI.",
+        "ops return checks the payment is final and reached this receiver, caps the amount at what is both held and refundable and at least 0.10 USD (D-90), refuses a zero, receiver, token or factory destination, warns for a contract or an address that didn't pay, and dry-runs the transfer and the refund.",
+        "It sets refund_pending before it prints the calls (the receiver's deploy when needed, then refund), one return per option at a time. Process keeps refund_pending until a refund is booked; reopen refuses it; the watcher keeps reading the receiver past its window; the attention list keeps it. ops release unlocks a return that won't be sent.",
+        "The watcher books the return once, and refund_pending becomes held or refunded.",
+        "No new key: the command reads and prints; its only write is the refund status."
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "backend-e2e"
@@ -450,7 +450,89 @@
       "review": true,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-31T15:52:51Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 260.7,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 6.6,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 43.2,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 33.8,
+            "log": ""
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "fd1c5f70a102ea1e",
+        "filesHash": "64e7484e2433ccc3",
+        "proof": {
+          "1": "unit: TestSupportReturnsAnOverpaymentToItsSenderOnce finds the case by receive address, transaction, pay link, embed link and token, and reads held 1 USDC (overpaid), the payment's sender and 1 USDC refundable; ops case on a real Tempo testnet invoice printed its 0.90 OUSD overpayment, sender and refundable amount",
+          "2": "unit: TestSupportReturnRefusesWhatTheMoneyCantDo refuses an unknown payment, the receiver, the zero address, more than held and 0.099999 USD, accepts exactly 0.10 USD to another address with a warning, locks nothing on a refusal, and writes invoice.return_queued (amount, destination) and invoice.return_released to history; ops return on the 0.90 OUSD Tempo testnet invoice passed both dry runs on the real chain and printed one refund call, then ops release set it back to held; web-e2e: Need help warns held amounts under 0.10 USD aren't returned and may never come back",
+          "3": "unit: the overpayment test queues a return (deploy then refund), refuses a second, keeps refund_pending through the signer's settlement (it failed with 'refund held' before the Process fix); TestReceiverWithAQueuedReturnStaysWatchedPastTheWindow records the refund of an expired receiver past its window (0 before the watcher fix); TestPaymentAttentionShowsNetFunds keeps a canceled payment with a queued return listed (failed before the attention fix); TestInvoiceWritersKeepHistory passes with the new writers",
+          "4": "unit: the overpayment and expired-partial tests run the printed cast calls as the authority on Anvil, then a watcher and ledger round books the refund once and refund_status is refunded; TestSupportReturnsAnExpiredPartialPaymentOnlyAfterItsDeadline refuses before the deadline",
+          "5": "unit: QueueReturn writes only refund_status and its history row; cmd/ops loads config.LoadOps (database and RPCs, no key) and with-env.sh strips the executor, Privy, Resend, CoinGecko and webhook secrets from it"
+        }
+      },
+      "branch": "feat/f410-support-returns-held-money-with-one-ops",
+      "baseCommit": "89c7fdaabbf43d3767f41606704b70850b8c9e36",
+      "failedVerifies": 0
     },
     {
       "id": "F411",

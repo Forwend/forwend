@@ -145,6 +145,9 @@ test.describe("pay page", () => {
       "Sent on the wrong network or token?",
     ]);
     await expect(help.getByText(/we can't promise it/)).toBeVisible();
+    await expect(
+      help.getByText(/under 0\.10 USD aren't returned\. .+may never come back/),
+    ).toBeVisible();
     // PLAN 11.10: support returns held money, so the message carries the pay link it needs.
     const mail = new URL(
       (await help.getByRole("link", { name: "Email support" }).getAttribute("href")) ?? "",

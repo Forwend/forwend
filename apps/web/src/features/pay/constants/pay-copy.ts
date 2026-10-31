@@ -152,7 +152,8 @@ export const PAY_COPY = {
     "That money is held for you. It isn't paid to the recipient.",
     "Email support to get it back. We check each case and send it to the address it came from.",
     "Paid from an exchange or an app? Say so: we'll ask for an address of yours and proof that you sent it.",
-    "Some returns have to wait days or weeks, and support tells you when. Amounts under 1 USD aren't sent.",
+    "Some returns have to wait days or weeks, and support tells you when.",
+    "Held amounts under 0.10 USD aren't returned. They stay held and may never come back.",
   ],
   wrongHelp:
     "Email support with your transaction link and the network you used. We'll check whether it can be returned, but we can't promise it.",

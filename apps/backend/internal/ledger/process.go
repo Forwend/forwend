@@ -153,6 +153,8 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		return err
 	}
 	depositsBooked := 0
+	// A return support queued (PLAN 11.10.3) holds the money until a refund lands.
+	returnQueued, refundedNow := refund == "refund_pending", false
 	eventExpired := false
 	eventClosed := false
 	settledNow := false
@@ -192,6 +194,9 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 			}
 			if d.Kind == "settlement" {
 				final, settledNow = true, true
+			}
+			if d.Kind == "refund" {
+				refundedNow = true
 			}
 			owed, err = currentPayable(ctx, tx, invoiceID)
 			if err != nil {
@@ -268,6 +273,9 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	}
 	if held.Sign() != 0 {
 		refund = "held"
+		if returnQueued && !refundedNow {
+			refund = "refund_pending"
+		}
 	} else {
 		var returned bool
 		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = $1

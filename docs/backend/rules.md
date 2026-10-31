@@ -57,7 +57,7 @@ apps/backend/
 ```
 
 Other packages under `internal/`: `auth`, `address`, `finality`, `search`, `document`, `canary`, `chaintest`;
-`cmd/canary` is the canary binary. Keep the current Go backend; do not copy frontend folders or NestJS layers into it.
+`cmd/canary` is the canary binary and `cmd/ops` support's tool. Keep the current Go backend; do not copy frontend folders or NestJS layers into it.
 
 - Production application logic belongs in `internal/`. `cmd/` owns startup, wiring and process lifetime;
   balance reads, RPC selection/retry and other reusable behavior belong in a named internal package.

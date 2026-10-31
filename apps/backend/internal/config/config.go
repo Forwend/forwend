@@ -102,6 +102,12 @@ type Signer struct {
 	ExecutorKey *ecdsa.PrivateKey
 }
 
+// Ops is what cmd/ops needs to read a support case and queue a return: the database and the chains' RPCs, no key.
+type Ops struct {
+	DatabaseURL string
+	Chains      Chains
+}
+
 // Canary is what cmd/canary needs: its own factory, code hash and RPCs, never the api's (R-51).
 type Canary struct {
 	AllowLoopback   bool
@@ -167,6 +173,12 @@ func LoadDatabaseURL() (string, error) {
 func LoadSigner() (Signer, error) {
 	var r reader
 	c := Signer{DatabaseURL: r.get("DATABASE_URL"), Chains: r.chains(), ExecutorKey: r.key("EXECUTOR_PRIVATE_KEY")}
+	return c, r.err()
+}
+
+func LoadOps() (Ops, error) {
+	var r reader
+	c := Ops{DatabaseURL: r.get("DATABASE_URL"), Chains: r.chains()}
 	return c, r.err()
 }
 
