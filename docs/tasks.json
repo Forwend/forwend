@@ -429,7 +429,7 @@
         "No new key: the command reads and prints; its only write is the refund status and its history row."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "backend-e2e"
@@ -543,11 +543,18 @@
           "summary": "PASS after 0e290a07. It is a copy change on the payer's partly paid view, at the owner's request, and no money code changed. The diff from fc1b57a9 touches only pay.spec.ts, pay-invoice.tsx, pay-copy.ts and PROJECT.md. The partial status is now '${received} received. ${remaining} left to send.' (pay-copy.ts:81-82). The copyFromHere constant and its paragraph are gone, with no reader left: neither 'copyFromHere' nor 'Copy the address from this page' appears anywhere in the repo. Both partial assertions in pay.spec match the new line. The closed-case check that the old line is absent was removed with the line. The new R-77 text matches the page. DESIGN.md:792 'Received X of Y' describes the owner's invoice header (R-69), not the pay page, so it stays right. Note, the owner's choice: the pay page no longer warns about look-alike addresses planted in the wallet history. R-78's marked first 6 and last 4 characters, and the scam line 'Forwend never asks you to pay a different address', still help the payer check. Passed: vitest on features/pay (43 tests), tsc --noEmit for apps/web, and check-docs (0 errors). The e2e is in the coordinator's verify run. Earlier notes and accepted items are unchanged.",
           "at": "2026-10-31T17:58:33Z",
           "filesHash": "f8d0190ab9d7fb04"
-        }
+        },
+        "commit": "c992cf8d",
+        "doneAt": "2026-10-31T17:58:43Z"
       },
       "branch": "feat/f410-support-returns-held-money-with-one-ops",
       "baseCommit": "89c7fdaabbf43d3767f41606704b70850b8c9e36",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f410-support-returns-held-money-with-one-ops",
+        "base": "main"
+      }
     },
     {
       "id": "F411",
