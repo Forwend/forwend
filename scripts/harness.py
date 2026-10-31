@@ -578,6 +578,9 @@ def unmerged(state, task):
     info = task.get('delivery') or {}
     if task.get('state') != 'passing' or info.get('mode') != 'pr':
         return False
+    # archive takes only merged work, and docs/archive may never reach origin
+    if all(other.get('id') != task.get('id') for other in state.tasks):
+        return False
     base = info.get('base') or 'main'
     merged = state.base_states(base)
     task_id = task.get('id')

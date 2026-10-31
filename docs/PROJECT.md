@@ -426,15 +426,15 @@ All D- IDs are defined here. The roadmap refers to these decisions.
 | ID | Question, options, recommended | Who can answer | Blocks | Default in use |
 |---|---|---|---|---|
 | Q-1 | Which visual direction? | user | no | Answered by D-113 (2026-10-28) |
-| Q-2 | Where is the company based? | user | no (PLAN phase 12) | Global product; first withdrawal corridors EU/EEA (SEPA) and US (ACH) |
+| Q-2 | Where is the company based? | user | no (bank withdrawal, beyond MVP) | Global product; first withdrawal corridors EU/EEA (SEPA) and US (ACH) |
 | Q-3 | Preview deploys on Vercel free tier? | user | no | Local only until approved |
-| Q-5 | Bank withdrawal provider: Bridge, MoonPay Enterprise, BVNK or Fipto | user | phase 12 | Compare coverage after Q-2; one adapter first |
+| Q-5 | Bank withdrawal provider: Bridge, MoonPay Enterprise, BVNK or Fipto | user | bank withdrawal, beyond MVP | Compare coverage after Q-2; one adapter first |
 | Q-6 | Signer key storage before mainnet | user | phase 13 | KMS secp256k1 or Turnkey; local dev key only now |
 | Q-7 | Confirmation/finality rule per chain | S-4 spike | R-20…R-22 | Answered by D-45 (S-4, 2026-10-09) |
 | Q-8 | Hosting providers | user | deployment | Vercel web, Fly.io or Railway Go, Neon Postgres proposed; approval before publishing or spending |
 | Q-9 | Evidence for refund claims, especially exchange deposits | user | PLAN 11.10.2 (D-78) | Signature from the connected sending wallet; support evidence and a verified destination for exchange deposits |
 | Q-10 | Business model after the MVP. Options: a fee field in the invoice terms taken at settlement (a contract change: new R-15 vectors, and it must land before the external audit), a fee charged outside the contracts, or a monthly plan. Research idea to test: no monthly fee, about 1% shown when the invoice is created (interview question 5). | user | public launch; an on-chain fee blocks the phase 13 audit | No fee (D-56) |
 | Q-11 | Merchant wallet control for teams: Privy key quorums or a Safe as the merchant wallet, so a lost owner does not lock the money. Spike Privy key quorums first (owner 2026-10-22); a Safe only once Safe is confirmed on all four chains (D-40). | user, spike | outside merchants | Only the owner moves money (D-61) |
-| Q-12 | KYC tiers: limits, countries and KYB needs per tier, after Q-2 and the withdrawal provider (Q-5). | user | bank withdrawal (phase 12), outside users | D-64 |
+| Q-12 | KYC tiers: limits, countries and KYB needs per tier, after Q-2 and the withdrawal provider (Q-5). | user | bank withdrawal (beyond MVP), outside users | D-64 |
 | Q-13 | Should linking a new passkey or email need a fresh sign-in first? Someone holding a stolen session could link their own passkey, sign in with it, and pass D-49's check. | user | 12.2 login methods | D-49, D-63, R-137 |
 | Q-14 | Status page for D-91: a hosted provider on its own domain (Better Stack, Instatus or Atlassian Statuspage), or a page on forwend.com? Recommended: a hosted provider, so it stays up when Forwend is down. | user | D-91's status page | Answered by D-105 (owner, 2026-10-26) |

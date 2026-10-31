@@ -18,7 +18,7 @@ reason; it joins the plan once the owner agrees.
 | 9 | Done: payment exceptions, cancel and notifications | On Anvil: partial → top-up → paid; expired partial → held; late → held; cancel → later deposit held; each email sent once |
 | 10 | Done: freelancer work | One freelancer runs quote → accepted → deposit → milestone → final invoice paid on testnet; the final invoice shows the earlier payments and the records export matches the chain |
 | 11 | Merchant stores, developer tools, history log and refunds of held money | Sample merchant uses SDK, pays and verifies an invoice.settled webhook; on Anvil overpay → claim → refund and expired partial → claim → refund |
-| 12 | Account security, send, handles and bank withdrawal | Send works on a fork; withdrawal works in provider sandbox |
+| 12 | Account security, send and handles | Send works on a fork |
 | 13 | Security review and personal mainnet trials | Full testnet exception suite, then 20 tiny personal mainnet invoices with zero reconciliation difference |
 
 ## Open from phases 1–10
@@ -153,7 +153,7 @@ code; a wallet connects only to claim a refund (D-37).
     rest. The settle grace is 7 days (D-18). After 11.11.1.
 - Before outside merchants: Q-11. The Privy key-quorum spike comes first; D-61 holds for the first outside merchants.
 
-## Phase 12: account security, send and bank withdrawal
+## Phase 12: account security, send and handles
 
 - 12.1 Fresh sign-in for money actions (D-49, D-63): the API `reauth_required` check, the web email-code dialog,
   `sessions_revoked_at` and "Sign out everywhere". Actions built earlier, such as billing details, get the check here.
@@ -167,10 +167,6 @@ code; a wallet connects only to claim a refund (D-37).
 - 12.3 Same-chain send to your own profiles and outside addresses. Review recipient, profile, chain, token, debit,
   network fee and amount received; fresh sign-in; Privy client signing with sponsored gas (D-46). After 12.1.
 - 12.4 Handles (D-67) and saved contacts; new addresses are confirmed. After 12.3.
-- 12.5 Bank withdrawal after Q-2/Q-5: one provider adapter; check country, currency, rail and account-holder name;
-  verified tier required (D-64); a quote with stablecoin debit, expected fiat, rate, every fee and expiry, confirmed
-  once; states quoted, awaiting approval, processing, sent, paid, rejected, returned.
-- 12.6 Hold and review states: category, what is needed, case ID, last change, next update or "no date yet".
 
 ## Phase 13: release safety
 
@@ -187,6 +183,18 @@ code; a wallet connects only to claim a refund (D-37).
   pass once the MVP works end to end; until then the owner tests this path by hand and backend-e2e covers the money loop.
 
 ## Deferred beyond MVP
+
+The owner moved these out of the MVP on 2026-10-31:
+
+- Bank withdrawal, formerly 12.5, after Q-2 and Q-5. One provider adapter comes first.
+  - It checks country, currency, rail and account-holder name, and needs the verified tier (D-64).
+  - A quote shows the stablecoin debit, expected fiat, rate, every fee and its expiry, and is confirmed once.
+  - States: quoted, awaiting approval, processing, sent, paid, rejected and returned.
+  - Hold and review states, formerly 12.6: category, what is needed, case ID, last change, and next update or
+    "no date yet".
+- Paying from a connected wallet, as a second path beside the address and QR code.
+  - Until then payers send a transfer (D-37).
+- Agent payments, such as x402. No merchant has asked for them yet.
 
 Mobile; optional BNB and non-EVM networks; HD-wallet receive methods; cross-chain sends; automatic wallet billing;
 full accounting page and Koinly export; opt-in escrow; bank/card on-ramp; public developer sandbox; custom checkout
