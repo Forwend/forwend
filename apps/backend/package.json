@@ -11,6 +11,7 @@
     "signer": "sh scripts/with-env.sh go run ./cmd/signer",
     "webhooks": "sh scripts/with-env.sh go run ./cmd/webhooks",
     "canary": "sh scripts/with-env.sh go run ./cmd/canary",
+    "ops": "sh scripts/with-env.sh go run ./cmd/ops",
     "e2e": "sh scripts/with-env.sh go test -tags e2e -count=1 -v ./e2e/",
     "loadtest": "sh scripts/with-env.sh go test -tags e2e,loadtest -run TestLoad -count=1 -v -timeout 60m ./e2e/ -args"
   }

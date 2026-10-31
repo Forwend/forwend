@@ -254,6 +254,19 @@ func TestPaymentAttentionShowsNetFundsAndDeliveryWithoutChangingPaymentTruth(t *
 	if found[paid]["refund_pending"] {
 		t.Fatal("invented a refund claim")
 	}
+	// A return support queued (PLAN 11.10.3) keeps a payment listed while held money is its only problem.
+	canceled := makePayment("canceled")
+	e.exec(t, "UPDATE invoices SET payment_status = 'canceled', canceled_at = now() WHERE id = $1", canceled)
+	e.deposit(t, canceled, "2500000")
+	e.exec(t, "UPDATE invoices SET refund_status = 'refund_pending' WHERE id = $1", canceled)
+	attention = e.call(t, "GET", base+"/payments/attention", alice, "", "")
+	listed := false
+	for _, item := range attention.body["items"].([]any) {
+		listed = listed || item.(map[string]any)["paymentId"] == canceled
+	}
+	if !listed {
+		t.Fatal("a payment with a return queued left the attention list")
+	}
 }
 
 func TestPaymentMovementExportReconcilesReturnsAndKeepsObservationsOutOfBookedTotals(t *testing.T) {
@@ -281,6 +294,16 @@ func TestPaymentMovementExportReconcilesReturnsAndKeepsObservationsOutOfBookedTo
  SELECT i.id,i.chain_id,i.receive_address,i.token_contract,'refund',$2,500000,'0x'||repeat('a',64),1,0,i.id,91,extract(epoch FROM now())::bigint,100,j.id,'' FROM invoices i JOIN ledger_transactions j ON j.invoice_id = i.id AND j.kind = 'refund' WHERE i.id = $1`, id, aliceWallet)
 	e.exec(t, `INSERT INTO receiver_outflows (invoice_id,chain_id,receiver_address,token_contract,kind,destination,amount,tx_hash,log_index,transfer_log_index,block_hash,block_number,block_time,verified_block,reconciliation_error)
  SELECT id,chain_id,receive_address,token_contract,'refund',$2,200000,'0x'||repeat('b',64),1,0,'0x'||repeat('b',64),92,extract(epoch FROM now())::bigint,100,'awaiting_booking' FROM invoices WHERE id = $1`, id, aliceWallet)
+	// The payment page lists each booked return as a transfer (PLAN 11.10.3); one not booked yet waits for it.
+	detail := e.call(t, "GET", base+"/payments/"+id, alice, "", "")
+	returns, _ := detail.body["options"].([]any)[0].(map[string]any)["returns"].([]any)
+	if len(returns) != 1 {
+		t.Fatalf("returns: %v", returns)
+	}
+	if r := returns[0].(map[string]any); r["amount"] != "500000" || r["txHash"] != "0x"+strings.Repeat("a", 64) ||
+		r["to"] != aliceWallet || r["blockTime"] == nil {
+		t.Fatalf("return: %v", r)
+	}
 	exported := e.call(t, "GET", base+"/payments/"+id+"/movements.csv", alice, "", "")
 	if exported.status != http.StatusOK {
 		t.Fatalf("CSV: %d %v", exported.status, exported.body)

@@ -63,7 +63,42 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 - Payment reads calculate remaining blocks and estimated chain time against the saved finalized cursor.
 - The signer stores successful settlement receipts for progress display, including mined replacement hashes.
   - Missing or reverted receipts clear them; they never decide finality, booking or balances.
-- Refund claims and execution controls remain in PLAN 11.10.
+
+## Returns through support
+
+Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no key and sends nothing.
+
+- `ops case <pay link | receive address | payment transaction | invoice id>` prints each invoice option:
+  - its held money and why it is held, from the ledger and its history;
+  - each final payment: transaction, sender, amount and time;
+  - the receiver from `factory.status`: deployed, balance, refundable now, and the deadline after which all of it is.
+- `ops return -tx <payment> [-to <address>] [-amount <tokens>] <case>` checks a return, locks the money and prints
+  the calls.
+  - The destination is the payment's sender unless `-to` names another.
+  - A destination that made no payment warns: check the payer's proof that it is theirs.
+  - A contract destination warns: it may be an exchange, an app or a smart wallet.
+  - It refuses the zero address, the receiver, the token, the factory and any invoice's receive address.
+  - The amount is at most what is both held and refundable; at least 0.10 USD (D-90). Before the deadline that can be 0.
+  - When several addresses paid, the amount must be given.
+  - It dry-runs the token transfer from the receiver, and the refund when the receiver is deployed.
+    A blocklisted address, a paused token or a short balance fails here, not at the Safe.
+  - It sets `refund_status = 'refund_pending'`, then prints the calls: the receiver's deploy when needed, then `refund`.
+    `deploy` returns an already deployed receiver, so the batch still works if the signer deployed it first.
+- One return is queued per option at a time, so the same money is never sent twice.
+- It refuses while the receiver holds less on chain than the ledger books: a sent refund isn't booked yet.
+  - Past the deadline of an invoice never settled, the contract lets the whole balance out.
+  - Then a second return would take the creator's money.
+- It also refuses while a payment or a receiver event of the option is not booked: it could hide that gap.
+- Queuing writes `invoice.return_queued` to the invoice's history with the amount and destination; release writes
+  `invoice.return_released`. The owner sees them as Return queued and Return released.
+- The owner's payment page lists each booked return as a Transfers row and ends its timeline with it.
+- While a return is queued:
+  - the ledger keeps `refund_pending` until a refund is booked, then shows `held` or `refunded`;
+  - reopen is refused, and the owner's attention list keeps the payment;
+  - the watcher keeps reading the receiver's events past its window (R-183).
+- `ops release <case>` unlocks a queued return the refund authority will not send.
+  - Before releasing, reject the Safe transaction and check that it was never executed.
+- Held money under 0.10 USD, and money nobody claims, stay in the receiver for good (D-90). Nothing sweeps them.
 
 ## Deciding "paid"
 

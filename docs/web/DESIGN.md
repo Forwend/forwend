@@ -385,14 +385,16 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - Main: Amount (Received with "Confirming, not final" or "Final",
       Returned to the payer once refunded, Extra held for the customer in the warning color or Still due while the
       checkout is open, and Paid with), Transfers, and the items.
+    - Extra held is the ledger's held money once booked, so it is gone after the return.
     - Before money arrives the last figure is Accepts: an `AssetStack` and "4 options, the customer picks", or
       "Paying with" and the token once the customer locked one. "Paid with" only follows money.
-    - Transfers is one table: Transfer (From customer or To your wallet, its time under it), State, Amount and the
-      explorer link. Network shows from 2xl screens; on phones the state sits under the time.
+    - Transfers is one table: Transfer (From customer, To your wallet or Returned to the payer, its time under it),
+      State, Amount and the explorer link. Network shows from 2xl screens; on phones the state sits under the time.
     - State is a badge: Confirmed, "Confirming (n/m)" with the time left in an info tooltip, Confirming with
       "being verified", In wallet, or a warning such as Held for the customer. Amounts stay on one line.
     - Side: Details (reference, invoice, link, store, customer, checkout close, metadata, PDFs) and a Timeline:
       Created, Payment detected, Paid, In your wallet (or Checkout closed), done or current or next by the API's facts.
+      After a return it ends with Returned to the payer and the return's transaction.
   - No ledger table or contract panel: a webhook that fails shows as a notice whose action opens Developers.
   - A list's Received amount over the request is in the warning color, with its reason as the cell's title.
   - Beside the money (two fifths of the width from extra-large screens) a Details panel links the order reference, the
@@ -756,6 +758,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The payer never sees the wallet transfer or status badges.
   - Held money gets one short line, such as "Overpaid by X", with How to get it back on its right. It opens Need help
     (PLAN 11.10.1).
+  - Once the money went back the line is gone, and the payer reads Recorded returns with the return's transaction.
   - Copy names the payee, or "the invoice's creator". Never "the sender".
   - Footer: one quiet line.
     - "Payments by" with the mark and Forwend, opening the site in a new tab.

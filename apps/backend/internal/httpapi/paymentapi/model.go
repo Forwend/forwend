@@ -50,6 +50,7 @@ type optionJSON struct {
 	Amounts           *paymentio.Amounts  `json:"amounts"`
 	Coverage          coverageJSON        `json:"coverage"`
 	Settlement        *settlementJSON     `json:"settlement"`
+	Returns           []returnJSON        `json:"returns"`
 	Deposits          []paymentio.Deposit `json:"deposits"`
 	DepositsTruncated bool                `json:"depositsTruncated"`
 }
@@ -70,6 +71,13 @@ type coverageJSON struct {
 	UnbookedDeposits    int64   `json:"unbookedDeposits"`
 	UnprovedDeposits    int64   `json:"unprovedDeposits"`
 	UnbookedOutflows    int64   `json:"unbookedOutflows"`
+}
+
+type returnJSON struct {
+	TxHash    string `json:"txHash"`
+	To        string `json:"to"`
+	Amount    string `json:"amount"`
+	BlockTime string `json:"blockTime"`
 }
 
 type settlementJSON struct {
@@ -150,7 +158,11 @@ func toDetails(detail invoice.PaymentDetails, webURL string, access auth.Access)
 				ReconciliationError: httpio.OrNull(state.ReconciliationError), BookingError: httpio.OrNull(state.BookingError), RetryAt: optionalTime(state.RetryAt),
 				UpdatedAt: state.UpdatedAt.UTC().Format(time.RFC3339Nano), ChainFinalizedBlock: state.ChainFinalizedBlock, PendingDeposits: state.PendingDeposits,
 				UnbookedDeposits: state.UnbookedDeposits, UnprovedDeposits: state.UnprovedDeposits, UnbookedOutflows: state.UnbookedOutflows},
-			Deposits: paymentio.Deposits(option.Deposits), DepositsTruncated: option.DepositsTruncated}
+			Deposits: paymentio.Deposits(option.Deposits), DepositsTruncated: option.DepositsTruncated, Returns: []returnJSON{}}
+		for _, r := range option.Returns {
+			row.Returns = append(row.Returns, returnJSON{TxHash: r.TxHash, To: r.To, Amount: r.Amount.String(),
+				BlockTime: r.BlockTime.Format(time.RFC3339)})
+		}
 		if settlement := option.Settlement; settlement != nil {
 			row.Settlement = &settlementJSON{Status: settlement.Status, Wait: httpio.OrNull(settlement.Wait), Attempts: settlement.Attempts,
 				CreatedAt: settlement.CreatedAt.UTC().Format(time.RFC3339Nano), NextAttemptAt: settlement.NextAttemptAt.UTC().Format(time.RFC3339Nano),

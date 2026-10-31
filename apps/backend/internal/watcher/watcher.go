@@ -380,7 +380,7 @@ var watchedAfterDeadline = 30 * 24 * time.Hour
 func (c *Chain) holding(ctx context.Context, invoices map[common.Address]receiver) (map[common.Address]receiver, error) {
 	rows, err := c.pool.Query(ctx, `SELECT receive_address, id, token_contract FROM invoices i
 		WHERE chain_id = $1 AND settle_deadline <= extract(epoch FROM now())::bigint - $2
-		  AND (refund_status = 'held' OR settlement_status <> 'settled' AND payment_status <> 'expired')
+		  AND (refund_status IN ('held', 'refund_pending') OR settlement_status <> 'settled' AND payment_status <> 'expired')
 		  AND (SELECT coalesce(sum(e.amount), 0) FROM ledger_entries e JOIN ledger_transactions t ON t.id = e.transaction_id
 		       WHERE t.invoice_id = i.id AND e.account = 'receiver') > 0`,
 		c.chainID, int64(watchedAfterDeadline/time.Second))

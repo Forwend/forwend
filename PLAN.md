@@ -118,17 +118,18 @@ code, and never connect a wallet (D-37).
     origin off the list is blocked. After 11.9.3.
 - 11.10 Returns of held money through support (D-26, D-78, D-118). Nothing is promised.
   - A return goes ahead whatever the merchant profile's status (D-89).
-  - Forwend pays the network fee, and the minimum return is 1 USD (D-90).
+  - Forwend pays the network fee, and the minimum return is 0.10 USD (D-90).
   - The payer emails support with the pay link and the transaction link. An operator checks the case.
   - The refund-authority Safe sends the money to the address it came from.
   - A payer who paid from an exchange or an app gives an address of theirs and proof that they sent it.
   - 11.10.1 Pay page (F408): each held payment gets one short line with How to get it back, which opens Need help.
     - Need help explains each case and opens an email to support with the pay link filled in.
-    - "Send only X on Y" adds that other networks or tokens may not come back.
   - 11.10.2 Owner side (F409): the payment page and the held email give the reason and say the payer gets it back
     through Forwend support.
-  - 11.10.3 Support tool (F410): `cmd/ops case` takes a pay link or receive address, and a transaction hash.
+  - 11.10.3 Support tool (F410): `cmd/ops` on the server, with no UI. `case` takes a pay link, receive address or
+    transaction hash; `return` queues one; `release` drops one that won't be sent.
     - It shows each held payment: sender, reason, amount and the date it can go back.
+    - One return is queued per invoice option at a time, so the same money is never sent twice.
     - It checks the transfer is final and reached this receiver, and caps the amount at what is both held and
       refundable.
     - It refuses a zero, receiver, token or factory destination, and flags a contract.
@@ -189,6 +190,8 @@ code, and never connect a wallet (D-37).
   exception cases.
 - 13.5 Before outside users: jurisdiction, KYC/KYB policy (Q-12), terms, privacy, trademark filing (D-70), real
   waitlist (D-8) and merchant wallet control (Q-11).
+  - The terms say held money under 0.10 USD is not returned, and unclaimed held money stays held (D-90).
+  - Check which unclaimed-property rules apply where the company is registered (Q-2) before deciding on old held money.
 - 13.6 Anvil browser test in CI: create → pay → settled → receipt PDF 200 (409 before paid) (R-52). Part of the QA
   pass once the MVP works end to end; until then the owner tests this path by hand and backend-e2e covers the money loop.
 
@@ -209,7 +212,8 @@ The owner moved these out of the MVP on 2026-10-31:
   - a Return to sender button on the pay page, with the exchange warning;
   - a form for exchange and app payers with a destination and proof;
   - a wrong-network lookup by transaction hash;
-  - status emails to the payer.
+  - status emails to the payer;
+  - a private support console in place of `cmd/ops`, with roles and an audit log.
 
 Mobile; optional BNB and non-EVM networks; HD-wallet receive methods; cross-chain sends; automatic wallet billing;
 full accounting page and Koinly export; opt-in escrow; bank/card on-ramp; public developer sandbox; custom checkout

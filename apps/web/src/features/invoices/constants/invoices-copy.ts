@@ -587,6 +587,9 @@ export const INVOICE_COPY = {
       [HISTORY_KINDS.settlementQueued]: "Wallet transfer queued",
       [HISTORY_KINDS.settled]: "In wallet",
       [HISTORY_KINDS.refunded]: "Funds returned",
+      // Support returns held money by hand (PLAN 11.10.3); the refund itself is Funds returned.
+      [HISTORY_KINDS.returnQueued]: "Return queued",
+      [HISTORY_KINDS.returnReleased]: "Return released",
       [HISTORY_KINDS.receiverSettled]: "Funds moved to wallet",
       [HISTORY_KINDS.checkoutCloseChanged]: "Checkout close updated",
       [HISTORY_KINDS.remindersOn]: "Reminders on",

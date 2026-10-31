@@ -76,6 +76,8 @@ export const HISTORY_KINDS = {
   reopened: "invoice.reopened",
   numbered: "invoice.numbered",
   refunded: "invoice.refunded",
+  returnQueued: "invoice.return_queued",
+  returnReleased: "invoice.return_released",
   receiverSettled: "receiver.settled",
   checkoutCloseChanged: "checkout.close_changed",
 } as const;
@@ -125,6 +127,8 @@ export const HISTORY_CATEGORY_OF = {
   [HISTORY_KINDS.reopened]: HISTORY_CATEGORIES.change,
   [HISTORY_KINDS.numbered]: HISTORY_CATEGORIES.change,
   [HISTORY_KINDS.refunded]: HISTORY_CATEGORIES.payment,
+  [HISTORY_KINDS.returnQueued]: HISTORY_CATEGORIES.payment,
+  [HISTORY_KINDS.returnReleased]: HISTORY_CATEGORIES.payment,
   [HISTORY_KINDS.receiverSettled]: HISTORY_CATEGORIES.payment,
   [HISTORY_KINDS.checkoutCloseChanged]: HISTORY_CATEGORIES.change,
 } as const satisfies Record<HistoryKind, HistoryCategory>;

@@ -3430,7 +3430,7 @@ components:
             - type: "null"
     PaymentOption:
       type: "object"
-      required: ["optionId", "chainId", "token", "symbol", "decimals", "amount", "receiveAddress", "closesAt", "paymentStatus", "settlementStatus", "refundStatus", "amounts", "coverage", "settlement", "deposits", "depositsTruncated"]
+      required: ["optionId", "chainId", "token", "symbol", "decimals", "amount", "receiveAddress", "closesAt", "paymentStatus", "settlementStatus", "refundStatus", "amounts", "coverage", "settlement", "returns", "deposits", "depositsTruncated"]
       properties:
         optionId: { type: "string" }
         chainId: { type: "integer" }
@@ -3456,6 +3456,18 @@ components:
           type: "array"
           items: { $ref: "#/components/schemas/Deposit" }
         depositsTruncated: { type: "boolean" }
+        returns:
+          type: array
+          description: Held money the refund authority sent back to a payer, once booked, in chain order (PLAN 11.10.3).
+          items:
+            type: object
+            additionalProperties: false
+            required: ["txHash", "to", "amount", "blockTime"]
+            properties:
+              txHash: { type: string }
+              to: { type: string, description: The payer's address the money went to. }
+              amount: { type: string, description: Base units of the option's token. }
+              blockTime: { type: string, format: date-time }
     PaymentCoverage:
       type: "object"
       required: ["historyComplete", "verifiedBlock", "verifiedHash", "verifiedTime", "observedBalance", "balanceDifference", "reconciliationError", "bookingError", "retryAt", "updatedAt", "chainFinalizedBlock", "pendingDeposits", "unbookedDeposits", "unprovedDeposits", "unbookedOutflows"]
@@ -5208,12 +5220,14 @@ components:
                 invoice.held, invoice.settlement_queued, invoice.settled, "invoice." and the new payment status,
                 reminders.on, reminders.off, reminders.stopped, repeat.stopped, email.invoice_, email.reminder_ or
                 email.receipt_ and sent or failed (R-126), invoice.edited (R-127), invoice.replaced (R-129),
-                invoice.reopened (R-130), whose until is the new close, or invoice.numbered (R-141), when a payment-link
-                invoice took its number with its first deposit.
+                invoice.reopened (R-130), whose until is the new close, invoice.numbered (R-141), when a payment-link
+                invoice took its number with its first deposit, or invoice.return_queued and invoice.return_released,
+                when support queues or drops a return of held money (PLAN 11.10.3).
                 actor system is Forwend. optionId names the option chosen, or the one money is held on, when the payer
                 chooses; amount is the base units held, in that option's token, else the shown option's; txHash is the
                 settle transaction; step is a reminder email's step; field is the edited field, and from and to
-                an edited due date's old and new value. related is the other invoice of a Revise: on invoice.replaced
+                an edited due date's old and new value. On invoice.return_queued, amount is the return and to its
+                destination. related is the other invoice of a Revise: on invoice.replaced
                 the new one, on the new one's invoice.created the old one.
               items:
                 type: object

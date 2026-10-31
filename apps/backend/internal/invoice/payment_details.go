@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"strings"
 	"time"
 
@@ -19,7 +20,15 @@ type PaymentOption struct {
 	Option
 	State             *ledger.ReceiverState
 	Settlement        *PaymentSettlement
+	Returns           []PaymentReturn
 	DepositsTruncated bool
+}
+
+// PaymentReturn is held money the refund authority sent back to a payer, once the ledger booked it (PLAN 11.10.3).
+type PaymentReturn struct {
+	TxHash, To string
+	Amount     *big.Int
+	BlockTime  time.Time
 }
 
 type PaymentSettlement struct {
@@ -93,6 +102,9 @@ func (s *Service) PaymentDetails(ctx context.Context, profileID, id string, q Pa
 			return PaymentDetails{}, err
 		}
 		option.DepositsTruncated = option.State.TotalDeposits > int64(len(option.Deposits))
+		if option.Returns, err = readReturns(ctx, tx, option.ID); err != nil {
+			return PaymentDetails{}, err
+		}
 		if option.ID == result.Invoice.OptionID {
 			result.Invoice.Amounts = option.Amounts
 		}
@@ -118,6 +130,23 @@ func (s *Service) PaymentDetails(ctx context.Context, profileID, id string, q Pa
 		}
 	}
 	return result, tx.Commit(ctx)
+}
+
+func readReturns(ctx context.Context, tx pgx.Tx, optionID string) ([]PaymentReturn, error) {
+	rows, err := tx.Query(ctx, `SELECT tx_hash, destination, amount::text, block_time FROM receiver_outflows
+		WHERE invoice_id = $1 AND kind = 'refund' AND ledger_transaction_id IS NOT NULL ORDER BY block_number, log_index`, optionID)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (PaymentReturn, error) {
+		var r PaymentReturn
+		var amount string
+		var at int64
+		err := row.Scan(&r.TxHash, &r.To, &amount, &at)
+		r.Amount, _ = new(big.Int).SetString(amount, 10)
+		r.BlockTime = time.Unix(at, 0).UTC()
+		return r, err
+	})
 }
 
 func readPaymentSettlements(ctx context.Context, db paymentReader, ids []string) (map[string]*PaymentSettlement, error) {

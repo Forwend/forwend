@@ -25,6 +25,7 @@ import { useGetPaymentQuery } from "@/features/payments/api/payments-api";
 import { ExportPayments } from "@/features/payments/components/export-payments";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
 import { PaymentProblems } from "@/features/payments/components/payment-problems";
+import { ReturnRow } from "@/features/payments/components/return-row";
 import {
   TransferCell,
   WalletTransferRow,
@@ -282,6 +283,15 @@ export function PaymentDetail({ profileId, paymentId }: PaymentDetailProps) {
                     {used.map((option) => (
                       <WalletTransferRow key={option.optionId} option={option} />
                     ))}
+                    {payment.options.flatMap((option) =>
+                      option.returns.map((sent) => (
+                        <ReturnRow
+                          key={`${option.optionId}:${sent.txHash}:${sent.to}:${sent.amount}`}
+                          option={option}
+                          sent={sent}
+                        />
+                      )),
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -446,6 +456,27 @@ function timeline(
         ]),
   ];
   const done = [true, Boolean(first), paid, ended || settled];
+  // The last return to a payer, when support sent one (PLAN 11.10.3).
+  const returned = payment.options
+    .flatMap((o) => o.returns)
+    .reduce<PaymentDetailType["options"][number]["returns"][number] | undefined>(
+      (last, r) => (!last || r.blockTime > last.blockTime ? r : last),
+      undefined,
+    );
+  if (returned) {
+    steps.push({
+      id: "returned",
+      title: COPY.steps.returned,
+      time: dateTime(returned.blockTime),
+      chips: [
+        {
+          label: COPY.chips.tx,
+          value: <span className="font-mono">{shortAddress(returned.txHash)}</span>,
+        },
+      ],
+    });
+    done.push(true);
+  }
   const current = done.indexOf(false);
   return steps.map((step, i) => ({
     ...step,

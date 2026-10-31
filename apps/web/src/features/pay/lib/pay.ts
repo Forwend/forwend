@@ -42,6 +42,20 @@ export function payerNoticeOptions(options: Invoice["options"]): Invoice["option
   });
 }
 
+/** Money sent on time over the amount and still held for the payer. Once booked it is capped at the ledger's held
+ * money, so a return leaves nothing; late money has its own line and takes held money first, as in payState. */
+export function overpaid(inv: Invoice): bigint {
+  const extra = depositAmount(inv, false) - BigInt(inv.amount);
+  if (extra <= 0n) return 0n;
+  if (!inv.amounts || inv.amounts.unreconciled) return extra;
+  const held = BigInt(inv.amounts.held);
+  let late = depositAmount(inv, true);
+  if (late > held) late = held;
+  const rest = held - late;
+  if (extra > rest) return rest;
+  return extra;
+}
+
 // A last-moment transfer lands after the close and is held, not paid out; the browser clock may run behind.
 const CLOSE_EARLY_MS = 5 * 60_000;
 

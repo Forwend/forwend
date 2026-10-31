@@ -58,10 +58,12 @@ export function optionFigures(
   const asked = BigInt(amount);
   const received = BigInt(receipt?.received ?? "0");
   const held = BigInt(receipt?.held ?? "0");
+  const pending = BigInt(receipt?.pending ?? "0");
   return {
     received,
-    confirming: BigInt(receipt?.pending ?? "0"),
-    extra: held > 0n ? held : received > asked ? received - asked : 0n,
+    confirming: pending,
+    // Until the ledger books it, the arithmetic shows the extra; once booked, held is the truth: 0 after a return.
+    extra: held > 0n ? held : pending > 0n && received > asked ? received - asked : 0n,
     due: received < asked ? asked - received : 0n,
   };
 }

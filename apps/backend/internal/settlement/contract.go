@@ -16,13 +16,15 @@ import (
 
 // The only calls the signer makes (packages/contracts/src/InvoiceReceiverFactory.sol, InvoiceReceiver.sol).
 var (
-	deploySelector  = selector("deploy((bytes32,address,address,uint256,uint64,uint64,uint256))")
+	deploySelector  = selector(deploySignature)
 	statusSelector  = selector("status((bytes32,address,address,uint256,uint64,uint64,uint256))")
 	settleSelector  = selector("settle()")
 	settledSelector = selector("settled()")
 	// Logged only by a successful settle.
 	settledEvent = crypto.Keccak256Hash([]byte("Settled(bytes32,address,uint256)"))
 )
+
+const deploySignature = "deploy((bytes32,address,address,uint256,uint64,uint64,uint256))"
 
 func selector(signature string) []byte {
 	return crypto.Keccak256([]byte(signature))[:4]
@@ -35,8 +37,10 @@ type onChain struct {
 	OnIntendedChain bool
 	Balance         *big.Int
 	Settled         bool
+	Refundable      *big.Int
 	Settleable      bool
 	Settler         common.Address
+	Deadline        uint64
 }
 
 func factoryStatus(ctx context.Context, client *ethclient.Client, terms address.Terms) (onChain, error) {
@@ -55,8 +59,8 @@ func factoryStatus(ctx context.Context, client *ethclient.Client, terms address.
 	word := func(i int) []byte { return out[i*32 : (i+1)*32] }
 	return onChain{
 		Receiver: common.BytesToAddress(word(0)), Deployed: word(1)[31] == 1, OnIntendedChain: word(2)[31] == 1,
-		Balance: new(big.Int).SetBytes(word(3)), Settled: word(4)[31] == 1, Settleable: word(6)[31] == 1,
-		Settler: common.BytesToAddress(word(7)),
+		Balance: new(big.Int).SetBytes(word(3)), Settled: word(4)[31] == 1, Refundable: new(big.Int).SetBytes(word(5)),
+		Settleable: word(6)[31] == 1, Settler: common.BytesToAddress(word(7)), Deadline: new(big.Int).SetBytes(word(8)).Uint64(),
 	}, nil
 }
 

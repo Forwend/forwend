@@ -145,6 +145,9 @@ test.describe("pay page", () => {
       "Sent on the wrong network or token?",
     ]);
     await expect(help.getByText(/we can't promise it/)).toBeVisible();
+    await expect(
+      help.getByText(/under 0\.10 USD aren't returned\. .+may never come back/),
+    ).toBeVisible();
     // PLAN 11.10: support returns held money, so the message carries the pay link it needs.
     const mail = new URL(
       (await help.getByRole("link", { name: "Email support" }).getAttribute("href")) ?? "",
@@ -168,9 +171,7 @@ test.describe("pay page", () => {
     await expect(page.getByRole("heading", { name: "Send USDC on Base Sepolia to" })).toBeFocused();
     await expect(page.getByText(RECEIVE)).toBeVisible();
     await expect(page.getByRole("img", { name: "QR code of the address to pay" })).toBeVisible();
-    await expect(page.getByRole("note")).toHaveText(
-      "Send only USDC on Base Sepolia. Other networks or tokens may not come back.",
-    );
+    await expect(page.getByRole("note")).toHaveText("Send only USDC on Base Sepolia.");
     // R-78
     const shown = page.locator("[data-address]");
     await expect(shown).toHaveText(RECEIVE);
@@ -805,18 +806,50 @@ test.describe("pay page", () => {
     }
   });
 
+  // PLAN 11.10.3: once support returned the extra, the payer sees the return and no held line.
+  test("an overpayment returned to the payer is no longer shown as held", async ({ page }) => {
+    const confirmed = {
+      ...DEPOSIT,
+      status: "confirmed",
+      blocksLeft: 0,
+      blocksTotal: 0,
+      secondsLeft: 0,
+    };
+    const amounts = {
+      reconciliationStatus: "verified",
+      receiver: "1250000000",
+      payable: "1250000000",
+      held: "0",
+      settled: "0",
+      refunded: "50000000",
+      observedRefunded: "50000000",
+      lastReturnTxHash: `0x${"8".repeat(64)}`,
+      unreconciled: false,
+      hasPolicyException: false,
+    };
+    const returned = {
+      ...PAID,
+      deposits: [{ ...confirmed, amount: "1300000000", paid: "1250000000" }],
+    };
+    await openPay(page, {
+      ...returned,
+      amounts,
+      options: [{ ...MAIN_OPTION, amounts, deposits: returned.deposits }],
+    });
+    await expect(page.getByText("Recorded returns: 50.00 USDC on Base Sepolia.")).toBeVisible();
+    await expect(page.getByText(/^Overpaid by/)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "How to get it back" })).toHaveCount(0);
+  });
+
   test("says what is left when partly paid, and that a closed invoice takes no more", async ({
     page,
   }) => {
     await openPay(page, PARTIAL, CLOSED);
-    await expect(status(page)).toHaveText(
-      "250.00 USDC of 1,250.00 USDC received. Send the remaining 1,000.00 USDC.",
-    );
+    await expect(status(page)).toHaveText("250.00 USDC received. 1,000.00 USDC left to send.");
     await expect(page.locator("[data-money]").first()).toHaveText("1,000.00 USDC");
     await expect(showAddress(page)).toBeVisible();
     // R-77
     await expect(page.getByText(/^Closes in/)).toBeVisible();
-    await expect(page.getByText(/Copy the address from this page for the rest/)).toBeVisible();
     const partlySteps = page.getByRole("list", { name: "Payment progress" });
     await expect(partlySteps.getByText("Partially paid")).toHaveClass(/bg-warning-soft/);
     await expect(partlySteps.getByRole("listitem")).toHaveText([
@@ -829,7 +862,6 @@ test.describe("pay page", () => {
       "This payment is closed. Do not send money. If you already did, Need help says what to do.",
     );
     await expect(showAddress(page)).toHaveCount(0);
-    await expect(page.getByText(/Copy the address from this page/)).toHaveCount(0);
   });
 
   // R-130: past the terms' expiry, a reopened invoice takes money until its new close.
@@ -839,9 +871,7 @@ test.describe("pay page", () => {
     await page.clock.install({ time: new Date("2026-10-17T20:00:00Z") });
     await mockInvoice(page, { ...PARTIAL, closesAt: "2026-10-18T10:00:00Z" });
     await page.goto(`/pay/${PAY}`);
-    await expect(status(page)).toHaveText(
-      "250.00 USDC of 1,250.00 USDC received. Send the remaining 1,000.00 USDC.",
-    );
+    await expect(status(page)).toHaveText("250.00 USDC received. 1,000.00 USDC left to send.");
     await expect(page.getByText(/^Closes in/)).toBeVisible();
     await showAddress(page).click();
     await expect(page.getByText(RECEIVE)).toBeVisible();
@@ -914,7 +944,7 @@ test.describe("pay page", () => {
     expect(new URL(page.url()).search).toBe("");
     // R-78
     await expect(page.getByRole("note")).toHaveText(
-      "Send only USDC on Arbitrum Sepolia. Other networks or tokens may not come back. Native USDC, not USDC.e.",
+      "Send only USDC on Arbitrum Sepolia. Native USDC, not USDC.e.",
     );
     await expect(page.getByRole("link", { name: /0x75fa.*aa4d/ })).toHaveAttribute(
       "href",

@@ -2,7 +2,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
 import { PaymentProblems } from "@/features/payments/components/payment-problems";
+import { ReturnRow } from "@/features/payments/components/return-row";
 import { optionFigures, paymentState, paymentWallet } from "@/features/payments/lib/payments";
+import type { PaymentDetail } from "@/features/payments/types/payments";
 
 describe("merchant payment money", () => {
   it("keeps large base units, negative changes and subcent precision exact", () => {
@@ -44,6 +46,10 @@ describe("optionFigures", () => {
       extra: 100000n,
       due: 0n,
     });
+  });
+  it("shows no extra once the held money went back to the payer", () => {
+    // 1.00 for a 0.10 request, all booked, and 0.90 returned: nothing is held any more.
+    expect(optionFigures("100000", { ...receipt, received: "1000000" }).extra).toBe(0n);
   });
   it("leaves what is still due, and nothing when no receipt exists", () => {
     expect(optionFigures("100000", { ...receipt, received: "40000" })).toMatchObject({
@@ -113,5 +119,33 @@ describe("payment page problems", () => {
     const other = renderToStaticMarkup(<PaymentProblems problems={[held(b)]} extraShown={a} />);
     expect(other).toContain("Money held for the payer");
     expect(other).toContain("2.00");
+  });
+});
+
+describe("ReturnRow", () => {
+  it("shows a return to the payer as a transfer with its amount, network and transaction", () => {
+    const option = {
+      chainId: 42431,
+      decimals: 6,
+      symbol: "OUSD",
+    } as unknown as PaymentDetail["options"][number];
+    const markup = renderToStaticMarkup(
+      <table>
+        <tbody>
+          <ReturnRow
+            option={option}
+            sent={{
+              txHash: `0x${"84".repeat(32)}`,
+              to: `0x${"e1".repeat(20)}`,
+              amount: "900000",
+              blockTime: "2026-10-31T16:02:00Z",
+            }}
+          />
+        </tbody>
+      </table>,
+    );
+    expect(markup).toContain("Returned to the payer");
+    expect(markup).toContain("0.90");
+    expect(markup).toContain(`0x${"84".repeat(32)}`);
   });
 });

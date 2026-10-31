@@ -17,6 +17,8 @@ Go API, worker and signer. Requirements: the task's rows in `docs/PROJECT.md`.
 - `... | pnpm --silent --filter @forwend/backend canary`: checks the open invoices' terms on stdin against
   `factory.predict` on two RPCs, the api and the pay page in Chromium; exit 1 on any difference
   ([canary](../../docs/backend/money-safety.md#canary)).
+- `pnpm --silent --filter @forwend/backend ops case <pay link>`: support's tool for held money; `return` and
+  `release` queue and drop a return ([returns through support](../../docs/backend/money-safety.md#returns-through-support)).
 - `pnpm --filter @forwend/backend loadtest -users=1000 -duration=3m`: signed-in users polling the dashboard routes
   against the api on Anvil; not in any check ([load test](../../docs/backend/architecture.md#load-test)).
 

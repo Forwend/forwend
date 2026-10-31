@@ -45,8 +45,7 @@ export const PAY_COPY = {
   searchTokens: "Search tokens",
   noMatch: "No match",
   showAddress: "Show address",
-  sendOnly: (symbol: string, network: string) =>
-    `Send only ${symbol} on ${network}. Other networks or tokens may not come back.`,
+  sendOnly: (symbol: string, network: string) => `Send only ${symbol} on ${network}.`,
   // R-78: a bridged token with the same name is another contract, and does not pay this invoice.
   notLookalike: (symbol: string, lookalike: string) => `Native ${symbol}, not ${lookalike}.`,
   contract: (symbol: string) => `${symbol} contract`,
@@ -79,8 +78,8 @@ export const PAY_COPY = {
       delayed ? "Confirmation is taking longer than usual." : "Awaiting confirmation.",
     [PAY_STATES.review]: () =>
       "Payment could not be verified. Contact the merchant before sending more.",
-    [PAY_STATES.partial]: ({ received, total, remaining }) =>
-      `${received} of ${total} received. Send the remaining ${remaining}.`,
+    [PAY_STATES.partial]: ({ received, remaining }) =>
+      `${received} received. ${remaining} left to send.`,
     [PAY_STATES.paid]: () => "Paid",
     [PAY_STATES.settled]: () => "Paid",
     [PAY_STATES.closing]: ({ received }) =>
@@ -100,9 +99,6 @@ export const PAY_COPY = {
   backTo: (host: string) => `Back to ${host}`,
   // Who asked for the money: the name on the invoice, never "the sender", who could be read as the payer.
   creator: "the recipient",
-  // Address poisoning: a look-alike address planted in the payer's wallet history after the first payment (R-77).
-  copyFromHere:
-    "Copy the address from this page for the rest, not from your wallet's history: scammers plant look-alike addresses there.",
   // Held money gets one short line; Need help, behind How to get it back, explains the rest.
   overpaid: (extra: string) => `Overpaid by ${extra}`,
   late: (late: string) => `${late} arrived after the checkout closed`,
@@ -152,7 +148,8 @@ export const PAY_COPY = {
     "That money is held for you. It isn't paid to the recipient.",
     "Email support to get it back. We check each case and send it to the address it came from.",
     "Paid from an exchange or an app? Say so: we'll ask for an address of yours and proof that you sent it.",
-    "Some returns have to wait days or weeks, and support tells you when. Amounts under 1 USD aren't sent.",
+    "Some returns have to wait days or weeks, and support tells you when.",
+    "Held amounts under 0.10 USD aren't returned. They stay held and may never come back.",
   ],
   wrongHelp:
     "Email support with your transaction link and the network you used. We'll check whether it can be returned, but we can't promise it.",

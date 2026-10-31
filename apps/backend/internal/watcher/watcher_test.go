@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"slices"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/forwend/forwend/apps/backend/internal/address"
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
@@ -494,6 +496,62 @@ func TestInvoiceLeavingTheScanWithADetectedDepositStaysUntilItConfirms(t *testin
 	e.scan(t)
 	if got, _ := e.rows(t); got[late][0] != "confirmed" {
 		t.Fatalf("the deposit of an invoice that left the scan: %v, want confirmed", got[late])
+	}
+}
+
+// R-183, PLAN 11.10.3: an expired receiver past the watch window that holds late money stays watched while support's
+// return is queued, so the refund the Safe sends weeks later is still recorded.
+func TestReceiverWithAQueuedReturnStaysWatchedPastTheWindow(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	factory := e.anvil.DeployFactory()
+	now := e.anvil.Now()
+	terms := address.Terms{InvoiceID: [32]byte(common.FromHex("0x" + strings.Repeat("05", 32))),
+		Recipient: common.HexToAddress("0x1111111111111111111111111111111111111111"), Token: common.HexToAddress(e.token),
+		Amount: big.NewInt(5000000), ExpiresAt: uint64(now + 60), SettleDeadline: uint64(now + 120),
+		IntendedChainID: chaintest.ChainID}
+	addr, err := address.Receive(terms)
+	if err != nil {
+		t.Fatal(err)
+	}
+	held := strings.ToLower(common.Address(addr).Hex())
+	if _, err := e.pool.Exec(ctx, `INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount,
+		    expires_at, settle_deadline, recipient_address, receive_method, factory_address, receive_address,
+		    idempotency_key, request_hash)
+		SELECT '0x' || repeat('05', 32), profile_id, chain_id, chain_family, token_contract, amount, $1, $2,
+		    recipient_address, receive_method, $3, $4, 'key-held', request_hash FROM invoices`,
+		terms.ExpiresAt, terms.SettleDeadline, factory, held); err != nil {
+		t.Fatal(err)
+	}
+	paid := e.anvil.Transfer(e.token, held, "5000000")
+	e.scan(t)
+	e.anvil.Mine(2)
+	e.scan(t)
+	// Booked as late money, held for the payer; then support queues its return.
+	if _, err := e.pool.Exec(ctx, `WITH t AS (INSERT INTO ledger_transactions (invoice_id, kind, chain_transfer_id)
+		SELECT invoice_id, 'deposit', id FROM chain_transfers WHERE tx_hash = $1 RETURNING id)
+		INSERT INTO ledger_entries (transaction_id, account, amount)
+		SELECT id, a, v FROM t, (VALUES ('receiver', 5000000), ('payer_held', -5000000)) AS e(a, v)`, paid); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.pool.Exec(ctx, `UPDATE invoices SET payment_status = 'expired', refund_status = 'refund_pending'
+		WHERE receive_address = $1`, held); err != nil {
+		t.Fatal(err)
+	}
+	defer func(window time.Duration) { watchedAfterDeadline = window }(watchedAfterDeadline)
+	watchedAfterDeadline = time.Since(time.Unix(int64(terms.SettleDeadline), 0)) - time.Hour // past the window
+
+	e.anvil.AsAuthority(factory, "deploy((bytes32,address,address,uint256,uint64,uint64,uint256))",
+		fmt.Sprintf("(0x%s,0x1111111111111111111111111111111111111111,%s,5000000,%d,%d,%d)", strings.Repeat("05", 32),
+			e.token, terms.ExpiresAt, terms.SettleDeadline, chaintest.ChainID))
+	e.anvil.Wait(200)
+	e.anvil.AsAuthority(held, "refund(address,uint256)", chaintest.Sender, "5000000")
+	e.anvil.Mine(2)
+	e.scan(t)
+	var refunds int
+	if err := e.pool.QueryRow(ctx, "SELECT count(*) FROM receiver_outflows WHERE receiver_address = $1 AND kind = 'refund'",
+		held).Scan(&refunds); err != nil || refunds != 1 {
+		t.Fatalf("the queued return's refund: %d recorded, %v", refunds, err)
 	}
 }
 
