@@ -553,10 +553,11 @@
       "behavior": "A task that depends on an archived, merged task can start",
       "acceptance": [
         "start and ready treat a dependency found only in the local archive as satisfied when its record is passing, since archive takes only merged or dropped work and docs/archive is never on origin.",
-        "A harness regression test archives a merged dependency and starts its dependent."
+        "A harness regression test archives a merged dependency and starts its dependent.",
+        "PLAN moves bank withdrawal (12.5 and its 12.6 review states), paying from a connected wallet and agent payments to Deferred beyond MVP, and PROJECT's pointers follow (owner, 2026-10-31)."
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "harness"
       ],
@@ -567,7 +568,44 @@
       "review": false,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-10-31T12:59:35Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.0,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          }
+        ],
+        "taskHash": "c07d24b5253d0070",
+        "filesHash": "48e3c4d67fd827b2",
+        "proof": {
+          "1": "harness: State.satisfied reads an archived passing record as merged; on the real queue F333 (archived, merged in #392) now satisfies F408, which status lists as ready",
+          "2": "harness: test_archived_merged_dependency_lets_its_dependent_start archives a merged F001 while origin lists it, then with origin's queue lacking F001 and no archive on origin, F001 satisfies F002 and ready lists F002; it failed before the fix",
+          "3": "docs-check: PLAN Phase 12 row and heading drop bank withdrawal; 12.5 and 12.6 now under Deferred beyond MVP with connected-wallet payment and agent payments; PROJECT Q-2, Q-5 and Q-12 point to bank withdrawal beyond MVP"
+        }
+      },
+      "branch": "fix/f415-a-task-that-depends-on-an-archived-merge",
+      "baseCommit": "2f7a9021af1ac6424507c1f0f5bbbf9eddc46c25",
+      "failedVerifies": 0
     },
     {
       "id": "F416",

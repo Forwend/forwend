@@ -163,6 +163,22 @@ class HarnessTests(unittest.TestCase):
         self.assertEqual(self.run_cli('archive', 'F001'), 1)
         self.assertFalse((self.root / 'docs/archive/F001.json').exists())
 
+    def test_archived_merged_dependency_lets_its_dependent_start(self):
+        self.task.update(state='passing', delivery={'mode': 'pr', 'base': 'main'})
+        self.save()
+        state = h.State(self.root)
+        state.tasks.append(dict(self.task, id='F002', state='not_started', dependsOn=['F001']))
+        state.data['nextId'] = 3
+        state.save()
+        with patch.object(h.State, 'base_states', return_value={'F001': 'passing'}):
+            self.assertEqual(self.run_cli('archive', 'F001'), 0)
+        # Origin's queue no longer lists F001, and docs/archive is never on origin.
+        origin = lambda root, *args: json.dumps({'tasks': []}) if args[-1].endswith(h.TASKS) else ''
+        with patch.object(h, 'git', side_effect=origin):
+            state = h.State(self.root)
+            self.assertTrue(state.satisfied('F001'))
+            self.assertEqual([t['id'] for t in state.ready()], ['F002'])
+
     def test_archived_dropped_task_does_not_satisfy_dependency(self):
         self.task['state'] = 'dropped'
         self.save()
