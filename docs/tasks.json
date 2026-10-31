@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 416,
+  "nextId": 417,
   "tasks": [
     {
       "id": "F332",
@@ -558,6 +558,45 @@
       ],
       "keep": [],
       "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F416",
+      "type": "feat",
+      "behavior": "Protected changes, like making an API key, confirm the user in one clear step that fits the app, or not at all when research shows the check isn't needed",
+      "acceptance": [
+        "Research how Stripe, GitHub, Vercel, Coinbase, Cloudflare and Linear confirm sensitive actions: what they protect, what proof they ask for, how long it lasts, and how it looks. Notes in docs/research with sources.",
+        "Decide, for each action D-63 lists (API keys, webhook secrets, team roles, billing details, money actions), whether it needs a fresh sign-in and what proves it. Update D-63, R-144, R-146 and the code together, and say why.",
+        "No dialog opens on top of another dialog: the confirmation happens in place, and the user still sees what they confirm.",
+        "The proof is the easiest the user has (a passkey before an email code), and one confirmation covers the next protected changes for the whole window.",
+        "The code input in the confirmation looks and behaves like the kit's CodeInput on the sign-in page; find why it differs in the dialog and fix it there.",
+        "Every place that asks for a fresh sign-in (api-keys, team, webhooks, billing, money actions) uses the new flow, and browser tests cover it, including a wrong and an expired code."
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "harness",
+        "docs-check",
+        "lint",
+        "typecheck",
+        "unit",
+        "build",
+        "e2e",
+        "a11y-e2e"
+      ],
+      "refs": [
+        "D-49",
+        "D-63",
+        "R-36",
+        "R-137",
+        "R-144",
+        "R-146",
+        "Q-13"
+      ],
+      "keep": [],
+      "review": true,
       "notes": [],
       "blockedReason": null,
       "evidence": null
