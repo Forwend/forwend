@@ -120,10 +120,10 @@ func TestStatusAsksForMoneyOnlyWhilePayable(t *testing.T) {
 			}
 		}
 	}
-	// D-118: held money comes back through support; the payee can't return it.
+	// D-118: held money comes back through support, which the pay page's Need help names; the payee can't return it.
 	held := statusOf(with(ledger.ExpiredPartiallyPaid, func(i *invoice.Invoice) { i.Amounts.Held = big.NewInt(4_000000) }), now)
-	if !strings.Contains(held.detail, Support) || strings.Contains(held.detail, " ask ") {
-		t.Errorf("expired partially paid: %q; want the support address and no ask-the-payee", held.detail)
+	if !strings.Contains(held.detail, "Need help on the pay page") || strings.Contains(held.detail, " ask ") {
+		t.Errorf("expired partially paid: %q; want the way to Need help and no ask-the-payee", held.detail)
 	}
 	partial := statusOf(with(ledger.PartiallyPaid, func(i *invoice.Invoice) { i.Amounts.Payable = big.NewInt(4_000000) }), now)
 	if got := fmt.Sprint(partial.totals); got != "[[Total 10.00 USDC] [Received 4.00 USDC] [Left to pay 6.00 USDC]]" {

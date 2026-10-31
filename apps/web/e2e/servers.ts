@@ -15,4 +15,6 @@ export const API_URL = `http://127.0.0.1:${API_PORT}`;
 // localhost, not 127.0.0.1: the stub allows this origin to frame a checkout.
 export const EXAMPLE_URL = `http://localhost:${EXAMPLE_PORT}`;
 // The example's webhook signing secret: the tests sign deliveries with it.
+// The web build's support inbox, so a test sees the address came from config.
+export const SUPPORT_EMAIL = "help@example.test";
 export const EXAMPLE_WEBHOOK_SECRET = `whsec_${Buffer.alloc(32, 5).toString("base64")}`;

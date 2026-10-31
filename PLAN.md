@@ -122,7 +122,7 @@ code, and never connect a wallet (D-37).
   - The payer emails support with the pay link and the transaction link. An operator checks the case.
   - The refund-authority Safe sends the money to the address it came from.
   - A payer who paid from an exchange or an app gives an address of theirs and proof that they sent it.
-  - 11.10.1 Pay page (F408): each held payment says it is held, not paid out, and links to Need help.
+  - 11.10.1 Pay page (F408): each held payment gets one short line with How to get it back, which opens Need help.
     - Need help explains each case and opens an email to support with the pay link filled in.
     - "Send only X on Y" adds that other networks or tokens may not come back.
   - 11.10.2 Owner side (F409): the payment page and the held email give the reason and say the payer gets it back

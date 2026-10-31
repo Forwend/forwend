@@ -105,7 +105,8 @@ func run() error {
 			slog.Warn("keep CoinGecko prices", "err", err)
 		}
 		if sender != nil {
-			if err := notify.Deliver(ctx, pool, sender, notify.Site{WebURL: cfg.Email.PublicWebURL, PostalAddress: cfg.Email.PostalAddress}); err != nil {
+			if err := notify.Deliver(ctx, pool, sender, notify.Site{WebURL: cfg.Email.PublicWebURL, PostalAddress: cfg.Email.PostalAddress,
+				Support: cfg.Email.Support}); err != nil {
 				slog.Error("deliver email", "err", err)
 			}
 		}

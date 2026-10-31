@@ -154,7 +154,7 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
 - Every email (F200) has an HTML part from one layout (`internal/notify/layout.html.tmpl`, `html/template`, so typed names
   are escaped) and a plain text part built from the same content, with the same links: the logo
   (`PUBLIC_WEB_URL/icon-192.png`), a badge, the title, the amount, a details table, one button, and a footer with why
-  it was sent, the email settings link on owner emails, `support@forwend.com` and `EMAIL_POSTAL_ADDRESS` when set.
+  it was sent, the email settings link on owner emails, and `SUPPORT_EMAIL` and `EMAIL_POSTAL_ADDRESS` when set.
   Tables, inline styles and a dark-mode block; no scripts, tracking pixels or other remote assets.
 - `GET /v1/profiles/{profileId}/events?limit=` (R-81, at most 50): the same events for the bell, newest first, with the
   document number when present, the option's token and the amount (newly held for `invoice.held`).

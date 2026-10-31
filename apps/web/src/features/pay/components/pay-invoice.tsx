@@ -827,7 +827,7 @@ function StatusLine({
         {found ? COPY.foundNote(money(missing)) : null}
       </p>
       {pay.state === PAY_STATES.closedPartial ? (
-        <div className="col-start-1 -mt-1.5 pl-6.5">
+        <div className="col-start-2 row-start-1">
           <GetItBack />
         </div>
       ) : null}
@@ -1014,7 +1014,7 @@ function Overpaid({ invoice, money }: { invoice: Invoice; money: (units: bigint)
 /** Money held for the payer, with the way to get it back. A div: the dialog inside can't sit in a paragraph. */
 function HeldNote({ children }: { children: string }) {
   return (
-    <div className="flex flex-wrap items-baseline gap-x-2 text-sm text-warning">
+    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-sm text-warning">
       <p>{children}</p>
       <GetItBack />
     </div>

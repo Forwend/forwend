@@ -11,6 +11,7 @@ import {
   KIT_URL,
   PUBLIC_PORT,
   PUBLIC_URL,
+  SUPPORT_EMAIL,
 } from "./e2e/servers";
 
 export default defineConfig({
@@ -29,6 +30,7 @@ export default defineConfig({
   webServer: [
     {
       command: `pnpm --workspace-root exec turbo run build --filter=@forwend/web && API_URL=${API_URL} pnpm start -p ${PUBLIC_PORT}`,
+      env: { NEXT_PUBLIC_SUPPORT_EMAIL: SUPPORT_EMAIL },
       url: PUBLIC_URL,
       reuseExistingServer: false,
       timeout: 240_000,

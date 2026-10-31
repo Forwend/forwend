@@ -73,6 +73,8 @@ type Email struct {
 	PublicWebURL string
 	// PostalAddress is the sender's address for each email's footer; empty leaves it out (Q-13).
 	PostalAddress string
+	// Support is where readers write with questions, named in each footer; empty leaves the line out.
+	Support string
 }
 
 // DefaultRatesURL is the ECB's file of the last 90 days of euro reference rates: a wallet made after the worker's first
@@ -124,8 +126,8 @@ func LoadWorker() (Worker, error) {
 	var r reader
 	c := Worker{DatabaseURL: r.get("DATABASE_URL"), Chains: r.chains(),
 		Email: Email{ResendKey: os.Getenv("RESEND_API_KEY"), ResendURL: os.Getenv("RESEND_API_URL"),
-			PostalAddress: os.Getenv("EMAIL_POSTAL_ADDRESS"),
-			From:          os.Getenv("EMAIL_FROM")}}
+			PostalAddress: os.Getenv("EMAIL_POSTAL_ADDRESS"), Support: os.Getenv("SUPPORT_EMAIL"),
+			From: os.Getenv("EMAIL_FROM")}}
 	if c.Email.From == "" {
 		c.Email.From = DefaultEmailFrom
 	}

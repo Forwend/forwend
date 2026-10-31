@@ -55,7 +55,7 @@
 - [Isolated Deployments](https://docs.dokploy.com/docs/core/docker-compose/utilities) keeps service names separate from other projects.
 - Dokploy [environment variables](https://docs.dokploy.com/docs/core/docker-compose#environment) are passed explicitly to each service by this Compose file.
 - The web image uses Next.js [standalone output](https://nextjs.org/docs/app/api-reference/config/next-config-js/output).
-- Privy's app ID is embedded during the image build. Changing it requires rebuilding web.
+- Privy's app ID and the support inbox are embedded during the image build. Changing either requires rebuilding web.
 
 ## Environment
 
@@ -80,6 +80,7 @@
 | `RESEND_API_KEY` | Existing send-only Resend key; empty leaves emails queued without sending them. |
 | `EMAIL_FROM` | `Forwend <notifications@mail.forwend.com>` by default; use a sender verified by Resend. |
 | `EMAIL_POSTAL_ADDRESS` | Optional sender address for email footers; empty omits it. |
+| `SUPPORT_EMAIL` | The monitored support inbox. Email footers name it, and the web build puts it in the pay page's Need help. |
 | `COINGECKO_API_KEY` | Optional CoinGecko Demo plan key for display prices (R-178); empty calls without a key. |
 | `WEBHOOK_SECRET_KEY` | 32 random bytes in base64, from `openssl rand -base64 32`. Compose refuses to deploy without it. It opens the saved signing secrets; under another key, deliveries stop. |
 

@@ -732,7 +732,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
       - Confirming stays current until the API books the money: final on chain but not booked is still Confirming.
       - A delay changes the line, never the steps: "Confirmation is taking longer than usual." No time is promised.
     - One line for what the steps can't say: the block count, "Awaiting confirmation.", or what is left to pay.
-    - Money over the amount: "Overpaid by X. The extra is held for you, not paid out." with How to get it back.
+    - Money over the amount: "Overpaid by X", with How to get it back on its right.
       It shows under the payments while confirming and on the receipt once paid (D-24).
     - Each payment with its amount, time, short hash and explorer link.
     - The address stays only while money is still due.
@@ -754,7 +754,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - Download receipt, a full-width button. Primary; or secondary under a full-width primary Back to <host> when the
       invoice has a return link.
   - The payer never sees the wallet transfer or status badges.
-  - Held money says it is held, not paid out, with How to get it back, which opens Need help (PLAN 11.10.1).
+  - Held money gets one short line, such as "Overpaid by X", with How to get it back on its right. It opens Need help
+    (PLAN 11.10.1).
   - Copy names the payee, or "the invoice's creator". Never "the sender".
   - Footer: one quiet line.
     - "Payments by" with the mark and Forwend, opening the site in a new tab.
@@ -762,7 +763,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
       - Check this page: where you are, scams and the unverified name.
       - Sent too much, too late or after it closed: held for you, returned through support.
       - Sent on the wrong network or token: support checks, and can't promise.
-      - Email support opens a message with the pay link; the address shows as text too.
+      - Email support opens a message with the pay link. The address shows as text with a copy button.
 - No image and no glass; it follows the system theme. The invoice PDF link stays in every state; the receipt link
   appears once paid.
 - When a refresh fails the page keeps the last read under a notice across its top (R-194).

@@ -89,7 +89,7 @@ export const PAY_COPY = {
       "This payment is closed. Do not send money. If you already did, Need help says what to do.",
     [PAY_STATES.canceled]: ({ payee }) => `${payee} closed this payment. Do not send money.`,
     [PAY_STATES.closedPartial]: ({ received }) =>
-      `Closed before the full amount arrived. The ${received} you sent is held for you, not paid out.`,
+      `Closed before the full amount arrived. ${received} is held for you.`,
   } satisfies Record<PayState, (v: StateValues) => string>,
   closedTitles: { [PAY_STATES.canceled]: "Payment closed", [PAY_STATES.closed]: "Checkout closed" },
   receiptRows: { amount: "Amount", to: "Paid to", date: "Date", transaction: "Transaction" },
@@ -103,16 +103,15 @@ export const PAY_COPY = {
   // Address poisoning: a look-alike address planted in the payer's wallet history after the first payment (R-77).
   copyFromHere:
     "Copy the address from this page for the rest, not from your wallet's history: scammers plant look-alike addresses there.",
-  overpaid: (extra: string) => `Overpaid by ${extra}. The extra is held for you, not paid out.`,
-  late: (late: string) =>
-    `${late} arrived after the checkout closed. It is held for you, not paid out.`,
+  // Held money gets one short line; Need help, behind How to get it back, explains the rest.
+  overpaid: (extra: string) => `Overpaid by ${extra}`,
+  late: (late: string) => `${late} arrived after the checkout closed`,
   // R-129.
   replaced: (number: string) => `This invoice was replaced by ${number}. Pay that one instead.`,
   openReplacement: (number: string) => `Open ${number}`,
-  canceledHeld: (received: string) => `The ${received} you sent is held for you, not paid out.`,
+  canceledHeld: (received: string) => `${received} held for you`,
   otherOption: (amount: string, network: string) =>
-    `${amount} sent on ${network} went to another payment option. It is held for you, not paid out.`,
-  // Opens Need help, which says how held money comes back (PLAN 11.10).
+    `${amount} on ${network} went to another option`,
   howToGetBack: "How to get it back",
   // R-82, D-68.
   receipt: {
@@ -159,6 +158,9 @@ export const PAY_COPY = {
     "Email support with your transaction link and the network you used. We'll check whether it can be returned, but we can't promise it.",
   emailSupport: "Email support",
   supportAddress: (email: string) => `Or write to ${email}`,
+  copyEmail: "Copy email address",
+  emailCopied: "Email address copied",
+  copyEmailFailed: "Copy failed: type the address instead",
   supportMail: {
     subject: "Help with a payment",
     body: (payLink: string) => `Pay link: ${payLink}\nTransaction link:\nWhat happened:\n`,

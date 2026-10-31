@@ -248,11 +248,11 @@
       "type": "feat",
       "behavior": "The pay page tells a payer how to get held money back through support, and Need help explains every case without promising recovery",
       "acceptance": [
-        "Every held-money line on the pay page (overpaid, late, closed with a partial payment, canceled, another option, closed) says the money is held for the payer and to email support to get it back. None tells the payer to ask the recipient, and none promises the money comes back.",
-        "Need help shows short sections with headings: check this page (host, scams, the unverified name); sent too much, too late or to a closed payment; sent on the wrong network or token, where we check but can't promise. An Email support action opens a message with the pay link filled in, and the address shows as text too.",
+        "Every held-money line on the pay page (overpaid, late, closed with a partial payment, canceled, another option) is one short line, such as 'Overpaid by X', with How to get it back on its right, which opens Need help. None tells the payer to ask the recipient, and none promises the money comes back.",
+        "Need help shows short sections with headings: check this page (host, scams, the unverified name); sent too much, too late or after it closed; sent on the wrong network or token, where we check but can't promise. An Email support action opens a message with the pay link filled in, and the address shows as text with a copy button. The address comes from config, never from code.",
         "The dialog follows the kit's type and spacing, works in light and dark and at 390 px wide, and the embedded checkout gets the same dialog with its own host note. Screenshots reviewed; axe finds 0 serious or critical violations.",
         "PLAN 11.10 and D-37, D-78 and Q-9 describe returns through support for the MVP: no wallet connection or signature. Deferred beyond MVP holds the automation: self-serve claims and a wrong-network lookup.",
-        "Browser tests cover the dialog's sections and Email support link, and each held-money line on the pay page."
+        "Browser tests cover the dialog's sections, Email support link and copy button, and each held-money line on the pay page."
       ],
       "dependsOn": [
         "F333"
@@ -286,14 +286,15 @@
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-31T14:29:45Z",
+        "at": "2026-10-31T14:49:12Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.2,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "docs-check",
@@ -313,28 +314,42 @@
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
+            "seconds": 1.5,
             "log": ""
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 250.4,
+            "seconds": 268.1,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 6.0,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 40.2,
             "log": ""
           },
           {
             "id": "backend-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 37.3,
+            "seconds": 33.3,
             "log": ""
           },
           {
             "id": "web-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 42.8,
+            "seconds": 38.5,
             "log": ""
           },
           {
@@ -345,21 +360,14 @@
             "log": ""
           }
         ],
-        "taskHash": "09b76b83d92edfaf",
-        "filesHash": "e5d6bd7f4d99bf55",
+        "taskHash": "7c7f2be546529d95",
+        "filesHash": "6e0abcc54930e4f1",
         "proof": {
-          "1": "web-e2e: pay.spec 'every held payment says it isn't paid out, and How to get it back opens Need help' covers overpaid, late, closed with a partial payment, canceled and another option, and fails if 'ask the recipient/Alice Design GmbH to get it back' returns; the link's size under a status line was checked in screenshots; unit: TestStatusAsksForMoneyOnlyWhilePayable checks the expired, partly paid invoice PDF names support@forwend.com and never asks the payee",
-          "2": "web-e2e: pay.spec 'shows who asks and the amount' opens Need help and checks its three section headings, the can't-promise line, the Email support mailto to support@forwend.com whose body carries the pay link, and the visible address",
+          "1": "web-e2e: pay.spec 'every held payment gets one short line, and How to get it back opens Need help' covers overpaid, late, closed with a partial payment, canceled and another option, and fails if 'ask the recipient/Alice Design GmbH to get it back' returns; unit: TestStatusAsksForMoneyOnlyWhilePayable checks the expired, partly paid invoice PDF points to Need help and never asks the payee; the right-hand link checked in screenshots",
+          "2": "web-e2e: pay.spec 'shows who asks and the amount' opens Need help, checks its three section headings and the can't-promise line, that Email support mails the inbox the build was given (NEXT_PUBLIC_SUPPORT_EMAIL=help@example.test from e2e/servers.ts) with the pay link in the body, and that the copy button puts that address on the clipboard; unit: TestFooterNamesTheConfiguredSupportAddress checks emails name SUPPORT_EMAIL and leave the line out when empty; no support address is in code",
           "3": "web-e2e: the same test runs axe with the dialog open (0 blocking violations); 'an element tells its page' opens Need help in the embed: its own host note and the /pay/ link; light, dark and 390 px screenshots reviewed",
-          "4": "docs-check: PLAN 11.10 describes returns through support with F408-F412, the pre-mainnet stuck-money gaps and roadmap self-serve returns; D-118 added, D-37, D-78, R-68 and the Refund claim glossary row updated, Q-9 answered by D-118",
-          "5": "web-e2e: the held-money and Need help tests above, plus the network warning text in 'shows who asks' and the Arbitrum option test"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Re-review of 586c02fa. The commit only removes the toHaveCSS font-size check from the held-money test (pay.spec.ts:796), plus harness bookkeeping in docs/tasks.json. pay.spec.ts is back to the f6e224b6 blob (1e33ef30). This follows docs/web/rules.md: type is judged in screenshots. The fix stays: GetItBack's kit Button keeps className=\"text-sm\" (pay-invoice.tsx:1029). The previous round measured 14px under both the status line and HeldNote. Earlier rounds stand: every pay-page held line, the Need help dialog and the invoice PDF send payers to support. None tells them to ask the payee or promises a return. The wording matches refundableAmount, D-18, D-33 and D-90. R-68, DESIGN.md, PLAN 11.10, D-37, D-78, D-118, Q-9 and F409-F412, F417 agree.",
-          "at": "2026-10-31T14:35:52Z",
-          "filesHash": "e5d6bd7f4d99bf55"
+          "4": "docs-check: PLAN 11.10 describes returns through support with F408-F412, the pre-mainnet stuck-money gaps and roadmap self-serve returns; D-118 added, D-37, D-78, R-68 and the Refund claim glossary row updated, Q-9 answered by D-118; staging.md and both .env.example files list SUPPORT_EMAIL, and compose refuses to start without it",
+          "5": "web-e2e: the held-money and Need help tests above, including the email copy button"
         }
       },
       "branch": "feat/f408-the-pay-page-tells-a-payer-how-to-get-he",

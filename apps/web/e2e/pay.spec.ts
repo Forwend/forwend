@@ -3,7 +3,7 @@ import { expect, type Page, test } from "@playwright/test";
 import { readPayPage } from "../scripts/canary-pay-page";
 import { ID, MAIN_OPTION, mockInvoice, NOW, OPEN, PAY, RECEIVE } from "./pay-invoice";
 import { blockingViolations } from "./privy/axe";
-import { API_PORT, PUBLIC_URL } from "./servers";
+import { API_PORT, PUBLIC_URL, SUPPORT_EMAIL } from "./servers";
 import { sidewaysScroll } from "./sideways";
 
 // A second option of a payer-chooses invoice (R-56): USDC on Arbitrum Sepolia, its id derived from ID as the API does
@@ -149,9 +149,13 @@ test.describe("pay page", () => {
     const mail = new URL(
       (await help.getByRole("link", { name: "Email support" }).getAttribute("href")) ?? "",
     );
-    expect(`${mail.protocol}${mail.pathname}`).toBe("mailto:support@forwend.com");
+    expect(`${mail.protocol}${mail.pathname}`).toBe(`mailto:${SUPPORT_EMAIL}`);
     expect(mail.searchParams.get("body")).toContain(`Pay link: ${PUBLIC_URL}/pay/${PAY}`);
-    await expect(help.getByText("Or write to support@forwend.com")).toBeVisible();
+    await expect(help.getByText(`Or write to ${SUPPORT_EMAIL}`)).toBeVisible();
+    await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    await help.getByRole("button", { name: "Copy email address" }).click();
+    await expect(help.getByRole("button", { name: "Email address copied" })).toBeVisible();
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(SUPPORT_EMAIL);
     expect(await blockingViolations(page)).toEqual([]);
     // Nobody is called "the sender": the payer could read it as themselves.
     await expect(page.getByText(/\bsender\b/)).toHaveCount(0);
@@ -740,14 +744,12 @@ test.describe("pay page", () => {
     await page.unrouteAll({ behavior: "ignoreErrors" });
     await mockInvoice(page, { ...CANCELED, deposits: [{ ...DEPOSIT, amount: "250000000" }] });
     await page.reload();
-    await expect(
-      page.getByText("The 250.00 USDC you sent is held for you, not paid out."),
-    ).toBeVisible();
+    await expect(page.getByText("250.00 USDC held for you")).toBeVisible();
     await expect(showAddress(page)).toHaveCount(0);
   });
 
   // PLAN 11.10: held money comes back through support; the page never sends the payer to the payee for it.
-  test("every held payment says it isn't paid out, and How to get it back opens Need help", async ({
+  test("every held payment gets one short line, and How to get it back opens Need help", async ({
     context,
   }) => {
     const confirmed = {
@@ -760,19 +762,19 @@ test.describe("pay page", () => {
     const held: [object, string | RegExp][] = [
       [
         { ...PAID, deposits: [{ ...confirmed, amount: "1300000000", paid: "1250000000" }] },
-        "Overpaid by 50.00 USDC. The extra is held for you, not paid out.",
+        "Overpaid by 50.00 USDC",
       ],
       [
         { ...CLOSED, deposits: [{ ...confirmed, late: true, amount: "100000000" }] },
-        "100.00 USDC arrived after the checkout closed. It is held for you, not paid out.",
+        "100.00 USDC arrived after the checkout closed",
       ],
       [
         { ...PARTIAL, paymentStatus: "expired_partially_paid" },
-        "Closed before the full amount arrived. The 250.00 USDC you sent is held for you, not paid out.",
+        "Closed before the full amount arrived. 250.00 USDC is held for you.",
       ],
       [
         { ...CANCELED, deposits: [{ ...DEPOSIT, amount: "250000000" }] },
-        "The 250.00 USDC you sent is held for you, not paid out.",
+        "250.00 USDC held for you",
       ],
       [
         {
@@ -783,7 +785,7 @@ test.describe("pay page", () => {
             { ...CHOOSING.options[1], deposits: [{ ...confirmed, amount: "5000000" }] },
           ],
         },
-        /^5\.00 USDC sent on .+ went to another payment option\. It is held for you, not paid out\.$/,
+        /^5\.00 USDC on .+ went to another option$/,
       ],
     ];
     for (const [invoice, line] of held) {
