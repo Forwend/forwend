@@ -768,8 +768,9 @@ test("the owner turns email notifications off from Settings", async ({ browser }
   await page.goto("/app");
   await page
     .getByRole("complementary")
-    .getByRole("link", { name: "Settings" })
+    .getByRole("button", { name: /^Account: / })
     .click({ timeout: 15_000 });
+  await page.getByRole("menuitem", { name: "Settings" }).click();
   await page
     .getByRole("navigation", { name: "Settings" })
     .getByRole("link", { name: "Notifications" })

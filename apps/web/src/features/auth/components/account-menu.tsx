@@ -12,19 +12,29 @@ import {
   RowButton,
   useTheme,
 } from "@forwend/ui-web";
-import { ChevronsUpDown, LogOut, Moon } from "lucide-react";
+import { ChevronsUpDown, LogOut, Moon, Settings } from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
+import { APP_ROUTES } from "@/shared/config/routes";
 
 export interface AccountMenuProps {
   email: string;
   onSignOut: () => void;
+  /** The role may open Settings. Phones reach it from More instead. */
+  settings?: boolean;
   trigger?: ReactNode;
   side?: "top" | "bottom" | "right";
 }
 
-/** The person's own menu: theme and sign out; Settings has its own row in the sidebar. Signing out of every device lives in Settings (R-137). */
-export function AccountMenu({ email, onSignOut, trigger, side = "top" }: AccountMenuProps) {
+/** The person's own menu: theme, Settings and sign out. Signing out of every device lives in Settings (R-137). */
+export function AccountMenu({
+  email,
+  onSignOut,
+  settings = false,
+  trigger,
+  side = "top",
+}: AccountMenuProps) {
   const [theme, setTheme] = useTheme();
   return (
     <Menu>
@@ -50,6 +60,14 @@ export function AccountMenu({ email, onSignOut, trigger, side = "top" }: Account
           <Moon aria-hidden className="size-[var(--fw-icon-md)]" />
           {AUTH_COPY.darkMode}
         </MenuCheckboxItem>
+        {settings ? (
+          <MenuItem asChild>
+            <Link href={APP_ROUTES.settings}>
+              <Settings aria-hidden className="size-[var(--fw-icon-md)]" />
+              {AUTH_COPY.settings}
+            </Link>
+          </MenuItem>
+        ) : null}
         <MenuSeparator />
         <MenuItem onSelect={onSignOut}>
           <LogOut aria-hidden className="size-[var(--fw-icon-md)]" />

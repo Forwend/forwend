@@ -139,13 +139,14 @@ test("the Privy test account signs in, with no WalletConnect request, and lands 
 
   await expect(sidebar.getByRole("switch")).toHaveCount(0);
   const theme = await page.locator("html").getAttribute("data-theme");
-  // Settings is one row at the sidebar's foot, not also in the account menu.
-  await expect(sidebar.getByRole("link", { name: "Settings", exact: true })).toHaveAttribute(
+  // Settings is in the account menu, under Dark mode, not also a sidebar row.
+  await expect(sidebar.getByRole("link", { name: "Settings", exact: true })).toHaveCount(0);
+  await sidebar.getByRole("button", { name: /^Account: / }).click();
+  await expect(page.getByRole("menu").getByRole("menuitem")).toHaveText(["Settings", "Sign out"]);
+  await expect(page.getByRole("menuitem", { name: "Settings" })).toHaveAttribute(
     "href",
     "/app/settings",
   );
-  await sidebar.getByRole("button", { name: /^Account: / }).click();
-  await expect(page.getByRole("menuitem", { name: "Settings" })).toHaveCount(0);
   await page.getByRole("menuitemcheckbox", { name: "Dark mode" }).click();
   await expect(page.locator("html")).not.toHaveAttribute("data-theme", theme ?? "");
   await page.keyboard.press("Escape");

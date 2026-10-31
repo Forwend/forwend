@@ -145,7 +145,8 @@ test("a Developer sees only its pages, and lands on Payments", async ({ browser 
   await page.goto("/app/clients");
   await expect(page).toHaveURL(/\/app\/payments$/);
 
-  await sidebar.getByRole("link", { name: "Settings", exact: true }).click();
+  await sidebar.getByRole("button", { name: /^Account: / }).click();
+  await page.getByRole("menuitem", { name: "Settings" }).click();
   const settings = page.getByRole("navigation", { name: "Settings" });
   await settings.getByRole("link", { name: "Team" }).click();
   await expect(page).toHaveURL(/\/app\/team$/);

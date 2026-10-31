@@ -143,9 +143,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Money in that pays nothing reads Received with the sender, and opens it on Transactions.
   - A transfer still confirming says Confirming before its network and time.
   - View all opens Payments for a business and Transactions for a personal profile.
-- The account menu holds the email, the app's one theme control (a Dark mode switch item) and Sign out.
+- The account menu holds the email, the app's one theme control (a Dark mode switch item), Settings and Sign out.
+  - Settings shows only when the role may open it. Phones reach it from More.
   - Sign out of all devices (R-137) lives in Settings, Account and security, never in the menu.
-- The sidebar's foot, above the account row: the setup guide while steps remain, then a Settings row.
+- The sidebar's foot, above the account row: the setup guide while steps remain.
   - The setup guide is a small card that starts closed: "Get started", "n of m done" and one segment per step.
   - Its title row opens and closes it with a height transition (none under reduced motion); open, it shows the next
     step with its action and Skip. It has no close button.
@@ -443,7 +444,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Amount has two choice cards: A fixed amount, or The payer enters it with an optional min and max.
   - A new link opens on its page after saving, where the address shows with a Copy button.
   - Editing keeps the store selector disabled; failed store loading blocks the form with a retry action.
-- Settings opens from its row at the sidebar's foot (see App shell); its sections share one frame.
+- Settings opens from the account menu, and on phones from More (see App shell); its sections share one frame.
   - Developers keeps the full content width: its tables need the room.
 - Accepted assets (R-136) uses the accepted-assets selector: one row per asset, its networks under it.
   - A change saves at once; one quiet status line says Saving or Changes saved, never a toast per box.
