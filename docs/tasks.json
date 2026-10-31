@@ -314,7 +314,7 @@
         "R-56, R-119, D-76 and the backend docs describe the rule; no new screen text."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend-affected",
         "backend-e2e",
@@ -400,10 +400,10 @@
         "taskHash": "10fa0bcfa385b215",
         "filesHash": "07df62dbe7c010d0",
         "proof": {
-          "1": "backend-affected: TestPaymentFinalOnItsChainIsNotHeldBackByOtherChains fails on the old code (open, nothing chosen, nothing settling) and passes now",
-          "2": "backend-affected: TestPaymentFinalOnItsChainIsNotHeldBackByOtherChains: the payment final on chain 2 is chosen, paid and queued to settle while chain 1 is final only to 1000",
-          "3": "backend-affected: TestDepositIsDetectedThenConfirmed (final only), TestOnlyTheInvoiceTokenToAReceiveAddressCounts, TestZeroValueTransferIsNoPayment, TestLaggingSecondRPCNeverExpiresAPaidInvoice (paid only when the finalized balance agrees), TestFirstOptionPaidWinsAndOthersAreHeld; money found later on the other option is held",
-          "4": "docs-check: R-56, R-119, D-76, api.md, money-safety.md (with the accepted pay-link limit) and architecture.md state the rule; no web file changed"
+          "1": "backend-affected",
+          "2": "backend-affected",
+          "3": "backend-affected",
+          "4": "docs-check"
         },
         "review": {
           "result": "pass",
@@ -411,11 +411,18 @@
           "summary": "PASS (re-review of f537ca0d on top of 79329495 and f19d44a6). The commit changes only the three notes plus the harness record in docs/tasks.json. No logic changed. money-safety.md:183-189 is back to one fact per sub-bullet. The close rule, the stopped-scan rule and the disable rule each have their own sub-bullet. The limit now says \"a small payment to another option that is final first\". R-119 (PROJECT.md:168) ends with \"a payment to another option that is final first decides\", which matches the choice query (process.go:103-105, earliest confirmed in-time transfer). The repeated comment at process.go:101 is one line now. process.go:90-91 still states the rule once. Ran: python3 scripts/check-docs.py (0 errors). The harness shows verify passed at 2026-10-31T01:23:44Z. Earlier rounds stand: the new rule is money-safe, the regression test fails on the old code and passes now, and notes 6-7 were left by choice.",
           "at": "2026-10-31T01:28:42Z",
           "filesHash": "07df62dbe7c010d0"
-        }
+        },
+        "commit": "691e5aef",
+        "doneAt": "2026-10-31T01:28:52Z"
       },
       "branch": "fix/f413-payments-confirm-and-settle-without-wait",
       "baseCommit": "6ce0214ea9383af46a7ad41201b08dde331119b9",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f413-payments-confirm-and-settle-without-wait",
+        "base": "main"
+      }
     },
     {
       "id": "F414",
