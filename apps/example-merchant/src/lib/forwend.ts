@@ -2,7 +2,7 @@ import { Forwend } from "forwend";
 
 function env(name: string): string {
   const value = process.env[name];
-  if (!value) throw new Error(`${name} is not set: copy .env.example to .env.local`);
+  if (!value) throw new Error(`${name} is not set: copy .env.example to .env`);
   return value;
 }
 

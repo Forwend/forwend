@@ -54,7 +54,7 @@ async function order(page: Page) {
 }
 
 test.describe("example merchant", () => {
-  test("prices the cart on its server and shows Forwend's pay panel it can't read, under a strict CSP", async ({
+  test("prices the cart on its server and shows Forwend's pay panel it can't read, under its Content-Security-Policy", async ({
     page,
   }) => {
     const { session } = await order(page);
@@ -74,6 +74,8 @@ test.describe("example merchant", () => {
     expect(policy).toContain("default-src 'self'");
     expect(policy).toContain(`frame-src ${PUBLIC_URL}`);
 
+    await page.getByRole("button", { name: "Full checkout" }).click();
+    await expect(page.frameLocator("iframe").getByText("Logo design")).toBeVisible();
     await page.getByRole("button", { name: "Pay on Forwend" }).click();
     await expect(
       page.getByRole("link", { name: "Pay with stablecoins on Forwend" }),

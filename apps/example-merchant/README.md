@@ -12,7 +12,7 @@ A small shop that takes stablecoin payments through Forwend, end to end. Use it 
   - a webhook must carry a valid signature;
   - the shop then reads the session from the API, and ships only when the API says it is paid;
   - an order ships once, so a repeated, late or reordered event changes nothing.
-- The pages send a strict Content-Security-Policy: scripts only from the shop, frames only from Forwend.
+- The pages send a Content-Security-Policy: scripts only from the shop, inline ones included as Next needs, and frames only from Forwend.
 
 ## Run it
 
@@ -20,9 +20,9 @@ A small shop that takes stablecoin payments through Forwend, end to end. Use it 
    - make a secret key with `invoices.read` and `invoices.write`;
    - add this shop's origin, `http://localhost:3100`, to the store's allowed origins;
    - add a webhook endpoint for `invoice.paid` at a public address that reaches `/api/webhooks/forwend`.
-2. Copy `.env.example` to `.env.local` and fill it in.
+2. Copy `.env.example` to `.env` and fill it in.
 3. `pnpm --filter @forwend/example-merchant build`, then `pnpm --filter @forwend/example-merchant start`.
-4. Open http://localhost:3100.
+4. Open http://localhost:3100. For development, `pnpm --filter @forwend/example-merchant local` runs `next dev`.
 
 `FORWEND_URL` is read when the shop is built, for its frame policy: build again after you change it.
 

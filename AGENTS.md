@@ -37,7 +37,7 @@ Derive unions from finite domain constants; use type-only imports and do not rep
   - A test's name says what it checks. Comment a test only for setup a reader can't follow.
   - Don't restate what a function, prop or line does, and don't add a comment with every change.
 - Money is integer base units plus decimals (`bigint`, `*big.Int`, `NUMERIC(78,0)`). Identify tokens by chain + contract.
-- Secrets only in the ignored `.env` of the package that reads them (`apps/backend`, `apps/web`, `packages/contracts`); no root `.env`.
+- Secrets only in the ignored `.env` of the package that reads them (`apps/backend`, `apps/web`, `apps/example-merchant`, `packages/contracts`); no root `.env`.
 Each package lists its names in `.env.example`. Never print, log or commit keys, tokens or request bodies.
   - The npm publish token is the one root secret: the ignored `.npmrc`, made from `.npmrc.example`.
 - Every change uses a task branch and PR. No direct base-branch commits or pushes; no skipped hooks.
