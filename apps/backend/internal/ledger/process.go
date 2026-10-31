@@ -98,8 +98,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 			return fmt.Errorf("read invoice %s chosen option: %w", group, err)
 		}
 		if chosen == nil {
-			// The first payment final on its own chain makes its option the invoice's (R-119). No other network is
-			// waited for: each payment is confirmed on its own network, as hosted crypto checkouts do.
+			// No other network is waited for: each payment is confirmed on its own network, as hosted crypto checkouts do.
 			var first string
 			err := tx.QueryRow(ctx, `SELECT t.invoice_id FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id
 				WHERE (i.id = $1 OR i.main_id = $1) AND t.status = 'confirmed' AND t.block_time <= i.closes_at

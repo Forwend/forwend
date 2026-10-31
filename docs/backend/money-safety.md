@@ -182,9 +182,11 @@ Limits:
   address on mainnet.
 - A payer-chooses invoice picks its option as soon as one payment is final on its own chain (R-119); no other chain
   is waited for.
-  - So anyone with the pay link can decide the option by paying a small amount to another option first.
-  - The payer's payment is then held for them, not lost. A minimum deposit to decide is still open (PLAN). Before a choice it closes only once every option chain was read past its close. A chain whose scan
-  stops (its RPCs down) holds that close, and the R-120 alert waits with it; disabling the chain lets it go on.
+  - So anyone with the pay link can decide the option with a small payment to another option that is final first.
+  - The payer's payment is then held for them, not lost. A minimum deposit to decide is still open (PLAN).
+  - Before a choice the invoice closes only once every option chain was read past its close.
+  - A chain whose scan stops (its RPCs down) holds that close, and the R-120 alert waits with it.
+  - Disabling that chain lets the close go on.
 
 ## Reusable-link capacity
 

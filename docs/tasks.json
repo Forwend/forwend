@@ -610,13 +610,14 @@
         "2026-10-30 Scope and limits: user reports local and staging. Local SQL/history and running logs were inspected; origin/staging had the same guard, but staging runtime data was not accessed. Local worker/signer poll every 30s; Arc Blockdaemon also returned invalid responses. These are secondary observations, not the proven cause of the 18-22 minute selection waits.",
         "2026-10-30 Acceptance must cover reloads, competing browser tabs, selection changes before detection, deposits discovered after switching, chain outages and legacy multi-option invoices. Do not trust a mutable browser pick to redirect or discard existing money. Existing receiver addresses and signed terms remain valid.",
         "2026-10-31 2026-10-31 Owner direction: confirm each payment on its own network only, as Stripe, BTCPay, NOWPayments and Coinbase Commerce do; no cross-network wait and no new screen text. An earlier draft that narrowed the wait to shown options was reverted.",
-        "2026-10-31 review pass by reviewer: PASS. The new rule is correct and money-safe. Choice (ledger/process.go:104-106) takes only confirmed transfers made by the row's close, earliest on chain first. One option wins: the group lock (process.go:60-64), the main-row lock (:97), one UPDATE (:120), and the trigger that refuses a changed chosen_id (migrations/00022_invoice_options_before_money.sql:26-27). Zero-value and foreign-token logs never reach chain_transfers (watcher.go:495, :499-500; amount > 0 CHECK and token FK in 00002_money.sql:96, :103-104). Non-chosen options book everything to payer_held (process.go:139, :205) and can't reach Paid, so they never get an intent (:328-332). Paid still needs the finalized balance check (:222-224, :356-368, :421-424). Expiry before a choice still waits on closedEverywhere (:129-138, :226). No new stuck path. The old cross-chain hold is gone.\nTests: against origin/main process.go in a scratch copy, TestPaymentFinalOnItsChainIsNotHeldBackByOtherChains FAILS (\"open, chosen <nil>, settling false\", options_test.go:258). On HEAD, go test -count=1 ./internal/ledger/ ./internal/watcher/ passes (46.8s, 49.1s). Mutation: removing the seen early return (process.go:114-116) fails only the history check in TestFirstOptionPaidWinsAndOthersAreHeld (options_test.go:104). The expiry guard stays covered by closedEverywhere. TestZeroValueTransferIsNoPayment overlaps the amount > 0 CHECK. It still guards that the scan skips zero-value logs instead of failing, so it is fine to keep.\nDocs and commit: neither claims the accepted dust limit is prevented. The old \"full payment wins over later dust\" claim was removed, and the commit names F414.\nNon-blocking:\n(1) process.go:90-91 still says \"the option whose money came first on chain\". It is now the earliest final payment.\n(2) TestMainRowWaitsForTheChoiceBeforeExpiring (options_test.go:197-213) has no pending choice now, because the option is chosen at :202. Its name and the :201 comment (\"only the pending choice keeps the main row open\") are stale. It overlaps the new test.\n(3) In R-119 (PROJECT.md:168), \"only the payer or owner can send there\" really means anyone with the pay link: the pay read lists every option's receiveAddress (invoiceapi/model.go:149, :206). \"Queued to settle\" holds only for a full payment that passes the balance check. \"(F413)\" is the only task ID in an R row.\n(4) money-safety.md:183-185 (Accepted risks) does not name the limit. A small final payment on a faster chain can take the choice from an earlier full payment on a slower chain, and that full payment is held. Add one line until F414 lands.\n(5) The rewritten api.md:750-753 sentence is about 45 words.\n(6) docs/runs/f336-validation.md:108,215 still describe the old wait. It is a dated run record.\n(7) Pre-existing: chain_cursors.last_scanned_time has no production reader, on main too."
+        "2026-10-31 review pass by reviewer: PASS. The new rule is correct and money-safe. Choice (ledger/process.go:104-106) takes only confirmed transfers made by the row's close, earliest on chain first. One option wins: the group lock (process.go:60-64), the main-row lock (:97), one UPDATE (:120), and the trigger that refuses a changed chosen_id (migrations/00022_invoice_options_before_money.sql:26-27). Zero-value and foreign-token logs never reach chain_transfers (watcher.go:495, :499-500; amount > 0 CHECK and token FK in 00002_money.sql:96, :103-104). Non-chosen options book everything to payer_held (process.go:139, :205) and can't reach Paid, so they never get an intent (:328-332). Paid still needs the finalized balance check (:222-224, :356-368, :421-424). Expiry before a choice still waits on closedEverywhere (:129-138, :226). No new stuck path. The old cross-chain hold is gone.\nTests: against origin/main process.go in a scratch copy, TestPaymentFinalOnItsChainIsNotHeldBackByOtherChains FAILS (\"open, chosen <nil>, settling false\", options_test.go:258). On HEAD, go test -count=1 ./internal/ledger/ ./internal/watcher/ passes (46.8s, 49.1s). Mutation: removing the seen early return (process.go:114-116) fails only the history check in TestFirstOptionPaidWinsAndOthersAreHeld (options_test.go:104). The expiry guard stays covered by closedEverywhere. TestZeroValueTransferIsNoPayment overlaps the amount > 0 CHECK. It still guards that the scan skips zero-value logs instead of failing, so it is fine to keep.\nDocs and commit: neither claims the accepted dust limit is prevented. The old \"full payment wins over later dust\" claim was removed, and the commit names F414.\nNon-blocking:\n(1) process.go:90-91 still says \"the option whose money came first on chain\". It is now the earliest final payment.\n(2) TestMainRowWaitsForTheChoiceBeforeExpiring (options_test.go:197-213) has no pending choice now, because the option is chosen at :202. Its name and the :201 comment (\"only the pending choice keeps the main row open\") are stale. It overlaps the new test.\n(3) In R-119 (PROJECT.md:168), \"only the payer or owner can send there\" really means anyone with the pay link: the pay read lists every option's receiveAddress (invoiceapi/model.go:149, :206). \"Queued to settle\" holds only for a full payment that passes the balance check. \"(F413)\" is the only task ID in an R row.\n(4) money-safety.md:183-185 (Accepted risks) does not name the limit. A small final payment on a faster chain can take the choice from an earlier full payment on a slower chain, and that full payment is held. Add one line until F414 lands.\n(5) The rewritten api.md:750-753 sentence is about 45 words.\n(6) docs/runs/f336-validation.md:108,215 still describe the old wait. It is a dated run record.\n(7) Pre-existing: chain_cursors.last_scanned_time has no production reader, on main too.",
+        "2026-10-31 review pass by reviewer: PASS (re-review of 79329495 on top of f19d44a6). The commit changes only notes 1-5 plus the harness record in docs/tasks.json. No logic changed. (1) process.go:90-91 now says the first payment final on its own chain decides. (2) The test is renamed TestOptionPaidJustBeforeTheCloseDoesNotExpireTheMainRow (options_test.go:197), and the stale comment is trimmed. It still covers a payment at 4900, just before the 5000 close, while chain 1 is final only to 4800. (3) R-119 (PROJECT.md:168) is true. The option is chosen and its payment booked. A full payment settles after the finalized balance check (process.go:222-224, :328-332). The pay read lists every option's receiveAddress (invoiceapi/model.go:149, :206). \"(F413)\" is gone. (4) money-safety.md:183-187 names the limit and points to the open minimum (PLAN.md:29). (5) api.md:751-755 splits the long sentence into bullets under 25 words. Ran: python3 scripts/check-docs.py (0 errors). The renamed test, TestPaymentFinalOnItsChainIsNotHeldBackByOtherChains and TestInvoiceClosesOnlyOnceEveryOptionChainIsReadPastIt pass.\nNon-blocking: (a) In money-safety.md:186 the second sub-bullet now holds four sentences. The close rule (\"Before a choice it closes only...\") and the stopped-scan rule were merged into the held-payment point. Move those two back to their own sub-bullets (D-84, one fact per bullet). (b) process.go:90-91 and :101-102 now say the same thing; one of them can go. (c) \"Pay another option first\" in R-119 and money-safety.md means final first. A small payment on a slower chain doesn't win over a faster final payment."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-10-31T00:57:12Z",
+        "at": "2026-10-31T01:17:38Z",
         "checks": [
           {
             "id": "docs-check",
@@ -629,29 +630,31 @@
             "id": "backend-affected",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 238.4,
+            "seconds": 233.3,
             "log": ""
           },
           {
             "id": "backend-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 36.2,
+            "seconds": 37.1,
             "log": ""
           },
           {
             "id": "web-unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.9,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "web-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 32.5,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "keep",
@@ -662,19 +665,19 @@
           }
         ],
         "taskHash": "10fa0bcfa385b215",
-        "filesHash": "18aa0413045acd94",
+        "filesHash": "29cac0b980a07b82",
         "proof": {
           "1": "backend-affected: TestPaymentFinalOnItsChainIsNotHeldBackByOtherChains fails on the old code (open, nothing chosen, nothing settling) and passes now",
           "2": "backend-affected: TestPaymentFinalOnItsChainIsNotHeldBackByOtherChains: the payment final on chain 2 is chosen, paid and queued to settle while chain 1 is final only to 1000",
           "3": "backend-affected: TestDepositIsDetectedThenConfirmed (final only), TestOnlyTheInvoiceTokenToAReceiveAddressCounts, TestZeroValueTransferIsNoPayment, TestLaggingSecondRPCNeverExpiresAPaidInvoice (paid only when the finalized balance agrees), TestFirstOptionPaidWinsAndOthersAreHeld; money found later on the other option is held",
-          "4": "docs-check: R-56, R-119, D-76, api.md, money-safety.md and architecture.md state the rule; no web file changed"
+          "4": "docs-check: R-56, R-119, D-76, api.md, money-safety.md (with the accepted pay-link limit) and architecture.md state the rule; no web file changed"
         },
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "PASS. The new rule is correct and money-safe. Choice (ledger/process.go:104-106) takes only confirmed transfers made by the row's close, earliest on chain first. One option wins: the group lock (process.go:60-64), the main-row lock (:97), one UPDATE (:120), and the trigger that refuses a changed chosen_id (migrations/00022_invoice_options_before_money.sql:26-27). Zero-value and foreign-token logs never reach chain_transfers (watcher.go:495, :499-500; amount > 0 CHECK and token FK in 00002_money.sql:96, :103-104). Non-chosen options book everything to payer_held (process.go:139, :205) and can't reach Paid, so they never get an intent (:328-332). Paid still needs the finalized balance check (:222-224, :356-368, :421-424). Expiry before a choice still waits on closedEverywhere (:129-138, :226). No new stuck path. The old cross-chain hold is gone.\nTests: against origin/main process.go in a scratch copy, TestPaymentFinalOnItsChainIsNotHeldBackByOtherChains FAILS (\"open, chosen <nil>, settling false\", options_test.go:258). On HEAD, go test -count=1 ./internal/ledger/ ./internal/watcher/ passes (46.8s, 49.1s). Mutation: removing the seen early return (process.go:114-116) fails only the history check in TestFirstOptionPaidWinsAndOthersAreHeld (options_test.go:104). The expiry guard stays covered by closedEverywhere. TestZeroValueTransferIsNoPayment overlaps the amount > 0 CHECK. It still guards that the scan skips zero-value logs instead of failing, so it is fine to keep.\nDocs and commit: neither claims the accepted dust limit is prevented. The old \"full payment wins over later dust\" claim was removed, and the commit names F414.\nNon-blocking:\n(1) process.go:90-91 still says \"the option whose money came first on chain\". It is now the earliest final payment.\n(2) TestMainRowWaitsForTheChoiceBeforeExpiring (options_test.go:197-213) has no pending choice now, because the option is chosen at :202. Its name and the :201 comment (\"only the pending choice keeps the main row open\") are stale. It overlaps the new test.\n(3) In R-119 (PROJECT.md:168), \"only the payer or owner can send there\" really means anyone with the pay link: the pay read lists every option's receiveAddress (invoiceapi/model.go:149, :206). \"Queued to settle\" holds only for a full payment that passes the balance check. \"(F413)\" is the only task ID in an R row.\n(4) money-safety.md:183-185 (Accepted risks) does not name the limit. A small final payment on a faster chain can take the choice from an earlier full payment on a slower chain, and that full payment is held. Add one line until F414 lands.\n(5) The rewritten api.md:750-753 sentence is about 45 words.\n(6) docs/runs/f336-validation.md:108,215 still describe the old wait. It is a dated run record.\n(7) Pre-existing: chain_cursors.last_scanned_time has no production reader, on main too.",
-          "at": "2026-10-31T01:16:39Z",
-          "filesHash": "18aa0413045acd94"
+          "summary": "PASS (re-review of 79329495 on top of f19d44a6). The commit changes only notes 1-5 plus the harness record in docs/tasks.json. No logic changed. (1) process.go:90-91 now says the first payment final on its own chain decides. (2) The test is renamed TestOptionPaidJustBeforeTheCloseDoesNotExpireTheMainRow (options_test.go:197), and the stale comment is trimmed. It still covers a payment at 4900, just before the 5000 close, while chain 1 is final only to 4800. (3) R-119 (PROJECT.md:168) is true. The option is chosen and its payment booked. A full payment settles after the finalized balance check (process.go:222-224, :328-332). The pay read lists every option's receiveAddress (invoiceapi/model.go:149, :206). \"(F413)\" is gone. (4) money-safety.md:183-187 names the limit and points to the open minimum (PLAN.md:29). (5) api.md:751-755 splits the long sentence into bullets under 25 words. Ran: python3 scripts/check-docs.py (0 errors). The renamed test, TestPaymentFinalOnItsChainIsNotHeldBackByOtherChains and TestInvoiceClosesOnlyOnceEveryOptionChainIsReadPastIt pass.\nNon-blocking: (a) In money-safety.md:186 the second sub-bullet now holds four sentences. The close rule (\"Before a choice it closes only...\") and the stopped-scan rule were merged into the held-payment point. Move those two back to their own sub-bullets (D-84, one fact per bullet). (b) process.go:90-91 and :101-102 now say the same thing; one of them can go. (c) \"Pay another option first\" in R-119 and money-safety.md means final first. A small payment on a slower chain doesn't win over a faster final payment.",
+          "at": "2026-10-31T01:23:15Z",
+          "filesHash": "29cac0b980a07b82"
         }
       },
       "branch": "fix/f413-payments-confirm-and-settle-without-wait",
