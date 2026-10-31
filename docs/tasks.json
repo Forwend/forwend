@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 418,
+  "nextId": 419,
   "tasks": [
     {
       "id": "F332",
@@ -906,6 +906,21 @@
       ],
       "keep": [],
       "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F418",
+      "type": "fix",
+      "behavior": "Fix IDs on payments, checkouts, invoices and payment links",
+      "acceptance": [],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [],
+      "refs": [],
+      "keep": [],
+      "review": false,
       "notes": [],
       "blockedReason": null,
       "evidence": null
