@@ -1,6 +1,6 @@
 // R-169: @forwend/js and @forwend/react as npm would ship them. Each tarball holds only its build, readme, license and
-// changelog; the browser code stays within its gzip budget; and a new project installs both tarballs offline, imports
-// them in Node, renders them on the server and type-checks a use of every export.
+// changelog; the browser code stays within its gzip budget; and a new project installs both tarballs, imports them in
+// Node, renders them on the server and type-checks a use of every export.
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -86,7 +86,9 @@ try {
     join(app, "pnpm-workspace.yaml"),
     `overrides:\n  "@forwend/js": "file:${tarballs["@forwend/js"]}"\n`,
   );
-  run("pnpm", ["install", "--offline", "--silent"], app);
+  // From the store where it can: CI's frozen install fills the store but not the registry metadata a project without
+  // a lockfile resolves from, so --offline fails there. @forwend/js still comes only from its tarball, not npm.
+  run("pnpm", ["install", "--prefer-offline", "--silent"], app);
 
   writeFileSync(
     join(app, "smoke.mjs"),
@@ -143,7 +145,7 @@ export const both = <PayButton payToken={token} linkSlug="a1b2c3d4e5f6" />;
     stdio: "inherit",
   });
   console.log(
-    "browser-packages: both tarballs install offline, import, render on the server and type-check",
+    "browser-packages: both tarballs install, import, render on the server and type-check",
   );
 } catch (error) {
   problems.push(error.message.split("\n")[0]);
