@@ -74,24 +74,19 @@ features/invoices/
 ```text
 screens/landing/
   landing-screen.tsx
-  constants/landing-content.ts       remaining page-level copy
-  types/landing-content.ts
-  layout/                            site-nav.tsx, site-footer.tsx, section.tsx
+  landing.module.css                 page layout and section styles
+  layout/                            editorial-nav.tsx, garden-footer.tsx and their CSS modules
   sections/
-    hero/                            hero.tsx, hero-journey.tsx, hero-payment.tsx
-      constants/                     hero-content.ts, hero-motion.ts, river.ts
-    profile-preview/                 profile-preview.tsx and one panel per profile
-      constants/                     profile-preview-content.ts, profile-preview-samples.ts
-      types/
-    checkout-preview/                checkout-preview.tsx
-      constants/checkout-preview-content.ts
-    faq.tsx, fees.tsx, networks.tsx  simple sections stay single files
+    hero/                            open-path-hero.tsx
+      constants/                     hero-content.ts, also used by the share image
+    payment-workspace.tsx            payment previews and the three-step journey
+    next-chapter.tsx                 roadmap and questions
+    next-chapter.module.css
 ```
 
-Group the hero's rendering, animation and supporting data together. Keep independent profile demos in named
-files; a tiny private rendering helper may stay with its component. A folder is useful when a section has
-supporting files, not merely because it appears on the page. Waitlist behavior belongs in `features/waitlist/`;
-the landing screen uses it in the hero and closing section. The current mock needs no request service.
+Group the hero's rendering and supporting copy together. Keep section-only styles beside their component.
+A folder is useful when a section has supporting files, not merely because it appears on the page.
+The landing uses sign-in links instead of a waitlist form.
 An image also used by sign-in is shared branding, not landing-only data.
 
 ## Requests, services and hooks

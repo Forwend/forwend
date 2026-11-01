@@ -9,7 +9,7 @@ reason; it joins the plan once the owner agrees.
 | Phase | Outcome | Gate |
 |---|---|---|
 | 1–2 | Done: product definition, workspace, checks and task workflow | A fresh checkout installs, builds, tests and serves the web app |
-| 3 | Done: design tokens, shared components, private `/kit`, responsive landing | R-1…R-13 checks; Q-1 review still open; real waitlist before launch (13.5) |
+| 3 | Done: design tokens, shared components, private `/kit`, responsive landing | R-1…R-13 checks; Q-1 review still open |
 | 4 | Done: integration risks resolved with testnet spikes | Q-7 answered, Base USDC contract verified, spike results recorded |
 | 5 | Done: receiver contracts and authority operations | Unit, fork, fuzz, invariant and symbolic checks; no open high/medium findings; same factory and matching real receiver on four testnets |
 | 6 | Done: Go API, watcher, ledger and signer | R-14…R-24; local create → pay → confirmed → settled twice with one invoice and matching ledger |
@@ -188,8 +188,7 @@ code, and never connect a wallet (D-37).
   people's money.
 - 13.4 Only with explicit approval: Base mainnet deployment and Sasha-only $1–$5 trials; 20 invoices across
   exception cases.
-- 13.5 Before outside users: jurisdiction, KYC/KYB policy (Q-12), terms, privacy, trademark filing (D-70), real
-  waitlist (D-8) and merchant wallet control (Q-11).
+- 13.5 Before outside users: jurisdiction, KYC/KYB policy (Q-12), terms, privacy, trademark filing (D-70) and merchant wallet control (Q-11).
   - The terms say held money under 0.10 USD is not returned, and unclaimed held money stays held (D-90).
   - Check which unclaimed-property rules apply where the company is registered (Q-2) before deciding on old held money.
 - 13.6 Anvil browser test in CI: create → pay → settled → receipt PDF 200 (409 before paid) (R-52). Part of the QA

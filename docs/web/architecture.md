@@ -19,13 +19,12 @@ features own product behavior, and shared UI components are grouped by purpose. 
 
 ## Visual direction
 
-A Dawn Path for marketing, B Dusk Ledger's dark framed product sections, C Halftone Horizon's dots as a secondary
-texture (D-13). The design system as built is in [DESIGN.md](DESIGN.md), the product brief in [PRODUCT.md](PRODUCT.md)
-(edit them with the change they describe). Mood images and their prompts: [images.md](images.md).
+- The current design system is in [DESIGN.md](DESIGN.md); the product brief is in [PRODUCT.md](PRODUCT.md).
+- Mood images and their prompts are in [images.md](images.md).
 
 ## Data and trust
 
-- The landing waitlist is a mock that sends and stores nothing (D-8).
+- The landing sends visitors to `/sign-in` and collects no email addresses (R-8).
 - Every page sends Privy's recommended CSP, `frame-ancestors 'none'` and `X-Frame-Options: DENY` (no page, checkout
   included, can be framed), `nosniff`, a referrer and a permissions policy, and HSTS (`next.config.ts`). Scripts allow
   `'unsafe-inline'` because Next inlines its own; nonces would make every page dynamic.

@@ -22,23 +22,20 @@ Read only the sections your change touches. Any new control also needs
 
 ## Composition
 
-- The landing is white with near-black ink. One container, `max-w-7xl` with the page gutter, sets every section's edges.
-- The app icon and favicons are the mark in brand lime on an ink tile (`icon.svg`, `/brand/forwend-icon.svg`); the
-  PNG sizes are drawn from that SVG. The plain mark (`LogoMark`) takes the text color.
-- Navigation is a fixed bar across the top: the logo, section links, the theme switch and Join waitlist.
-  - A hairline under it and a translucent ground keep it readable over the page.
-  - On phones the section links sit behind a menu button (a native popover).
-- Hero: a left-aligned two-tone headline (ink, then the subtle color), the waitlist form, and the pitch on the right.
-- Under the hero sits the product canvas: the Signal artwork, a sample invoice confirming, and the payer's phone checkout.
-  - It is a figure with a label; everything on it is marked Sample.
-  - Its one motion: the confirmation bar fills once on load. Reduced motion shows it filled.
-- Regular section headings align left; the final call to action centers. Fees and FAQ split at desktop widths.
-- Step sequences form one connected path, horizontal on wide screens and vertical on phones.
-- The checkout showcase is a dark band on the near-black ground, with no photo.
-- Footer ridges and halftone dots use the art tokens.
-- Planned networks and stablecoins: one row on wide screens, an equal share each with a line between neighbours;
-  narrower, one row that drifts sideways in a loop with fading ends (paused under a pointer; reduced motion leaves a
-  still row to swipe). Network and token names share the UI face.
+- Landing navigation, content and footer share page gutters and follow the selected theme.
+- The app icon and favicons are the mark in brand lime on an ink tile (`icon.svg`, `/brand/forwend-icon.svg`).
+  - PNG sizes use that SVG. The plain mark (`LogoMark`) takes the text color.
+- The sticky navigation holds the logo, section links, theme switch and Open Forwend.
+- On phones, navigation expands beneath the header and closes after selection, Escape or an outside click.
+- The split hero places the headline beside supporting copy and sign-in actions.
+- An engraved landscape carries a sample payment receipt beneath the hero.
+- Invoices, Payment links and Checkout tabs share one preview area.
+- How it works shows three connected steps and links to developer docs.
+- The roadmap shows completed payments, approaching agent payments and planned bank withdrawals.
+- FAQ answers expand beside the section heading.
+- The closing action sits over matching light and dark garden artwork.
+- The footer contains the logo, navigation and copyright.
+- Sign-in uses the engraved landscape below the form, fading into the theme background.
 
 ## Type and color
 
@@ -59,7 +56,7 @@ Read only the sections your change touches. Any new control also needs
 - Success, warning, error and information use their matching text/background token pairs. Art never becomes a UI color.
 - Detected and confirming are pending: a neutral badge with a turning icon, never a success color.
   Only paid and In wallet look done.
-- Panels and fields are flat with hairlines. Menus, toasts and the hero canvas float with soft shadows.
+- Panels and fields are flat with hairlines. Menus, toasts and the sample receipt float with soft shadows.
 - Fields share one edge (the `field` tokens): quiet at rest, a gray step toward the ink with a faint ring on focus,
   no hover change. A field's action button takes the field's height.
 - A disabled field keeps the surface background, with a lighter border and text.
@@ -688,7 +685,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - `/pay/<token>` (R-68) is the payee's page, laid out as hosted checkouts split it. It has no Forwend header: Forwend
   shows only in the footer.
   - From large screens the page is two halves that fit one screen, with no page scroll for a usual invoice.
-    - Left half: the summary on surface-2 (the pay card's surface in the dark theme). The landing footer's ridges
+    - Left half: the summary on surface-2 (the pay card's surface in the dark theme). Decorative ridges
       run along its foot at 70%, under one soft wash in the store's color or brand lime. Its content is at most 26rem
       and ends 4rem left of the center.
     - The payee row leads it, with the Testnet badge at its right; then the amount, the items as plain rows, the
@@ -964,9 +961,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Use motion tokens; respect reduced motion. No scroll hijacking or layout jumps during state changes. Loading
   spinners (`data-motion="essential"`) keep turning under reduced motion; everything else stops. A pressed button
   scales to 0.98 on a fast ease-out (a round money action to 0.95), like a physical key; reduced motion keeps only the
-  color change. Landing sections rise into place as they scroll in, driven by the scroll itself (no script); without
-  scroll timelines or with reduced motion everything is simply in place. The ⌘K dialog opens with no animation: it is
-  opened by keyboard many times a day.
+  color change.
+- The hero artwork drifts with scrolling on supported desktop browsers.
+- Receipt and product-preview transitions use motion tokens. Reduced motion keeps them still.
+- The ⌘K dialog opens with no animation; it is opened by keyboard many times a day.
 - Motion rules (the motion tokens; the only ones the app uses):
   - Press: a button scales to 0.98 (a round action to 0.95) on `duration-fast`; color changes use the same.
   - A transition that names no duration or easing takes `duration-fast` and `ease-out`.

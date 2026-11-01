@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { sidewaysScroll } from "./sideways";
 
 test.describe("theme", () => {
   test("the theme script runs in <head>, before any page content", async ({ request }) => {
@@ -30,4 +31,130 @@ test.describe("theme", () => {
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await context.close();
   });
+});
+
+test("the phone menu works by keyboard and closes after a destination is chosen", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto("/");
+  const nav = page.locator('[data-section="nav"]');
+  const toggle = nav.getByRole("button", { name: /^(Open|Close) menu$/ });
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await toggle.focus();
+  await page.keyboard.press("Enter");
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+  for (const [name, href] of [
+    ["Product", "#product"],
+    ["How it works", "#how-it-works"],
+    ["Roadmap", "#roadmap"],
+    ["Questions", "#questions"],
+  ] as const) {
+    const link = nav.getByRole("link", { name, exact: true });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute("href", href);
+  }
+
+  await page.keyboard.press("Escape");
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(toggle).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await nav.getByRole("link", { name: "Roadmap", exact: true }).click();
+  await expect(page).toHaveURL(/\/#roadmap$/);
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator("#roadmap")).toBeInViewport();
+});
+
+test("the phone menu expands below the header and dismisses on an outside click", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto("/");
+  const hero = page.locator('[data-section="hero"]');
+  const heroTop = await hero.evaluate((element) => element.getBoundingClientRect().top);
+  const toggle = page.getByRole("button", { name: /^(Open|Close) menu$/ });
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  const menu = page.getByRole("navigation", { name: "Mobile navigation" });
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole("link", { name: "Questions", exact: true })).toBeVisible();
+  await expect
+    .poll(() => hero.evaluate((element) => element.getBoundingClientRect().top))
+    .toBeGreaterThan(heroTop);
+  const headerBounds = await page.locator('[data-section="nav"]').boundingBox();
+  const menuBounds = await menu.boundingBox();
+  expect(menuBounds?.x).toBe(headerBounds?.x);
+  expect(menuBounds?.width).toBe(headerBounds?.width);
+
+  await hero.getByRole("heading", { level: 1 }).click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("navigation", { name: "Mobile navigation" })).toHaveCount(0);
+  await expect
+    .poll(() => hero.evaluate((element) => element.getBoundingClientRect().top))
+    .toBe(heroTop);
+});
+
+test("closed phone navigation stays out of keyboard and screen reader navigation", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto("/");
+  const header = page.locator('[data-section="nav"]');
+  const toggle = header.getByRole("button", { name: /^(Open|Close) menu$/ });
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await page.keyboard.press("Escape");
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("navigation", { name: "Mobile navigation" })).toHaveCount(0);
+  await expect(header.getByRole("link", { name: "Product", exact: true })).toHaveCount(0);
+
+  await page
+    .locator("#landing-mobile-menu a")
+    .first()
+    .evaluate((link: HTMLAnchorElement) => link.focus());
+  await expect(toggle).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(
+    page.locator('[data-section="hero"]').getByRole("link", { name: "Open Forwend", exact: true }),
+  ).toBeFocused();
+});
+
+for (const width of [360, 640, 768, 960, 1280, 1536]) {
+  test(`the landing page fits a ${width}px viewport`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+    await page.evaluate(() => document.fonts.ready);
+    expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
+    const roadmap = page.locator("#roadmap");
+    await roadmap.scrollIntoViewIfNeeded();
+    expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
+    await page.getByRole("contentinfo").scrollIntoViewIfNeeded();
+    expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
+  });
+}
+
+test("reduced motion leaves content visible without animated movement", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await page.getByRole("contentinfo").scrollIntoViewIfNeeded();
+  const motion = await page.evaluate(() => {
+    function isLong(duration: string) {
+      const seconds = Number.parseFloat(duration) / (duration.endsWith("ms") ? 1000 : 1);
+      return seconds > 0.01;
+    }
+    return [...document.querySelectorAll("body *")]
+      .filter((element) => {
+        const style = getComputedStyle(element);
+        return (
+          (style.animationName !== "none" && style.animationDuration.split(",").some(isLong)) ||
+          style.transitionDuration.split(",").some(isLong)
+        );
+      })
+      .map((element) => `${element.tagName.toLowerCase()}.${element.getAttribute("class") ?? ""}`);
+  });
+  expect(motion).toEqual([]);
+  await expect(page.locator("#roadmap")).toBeVisible();
 });
