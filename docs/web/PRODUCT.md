@@ -17,7 +17,9 @@ Product requirements and money policy live in [PROJECT](../PROJECT.md); future s
   steps only. A passkey added there signs in from `/sign-in`.
 - Bank withdrawal is user-started: quote, fees, net amount and confirmation. Do not imply it is available before implemented.
 - Current public-facing material is pre-launch. No invented customers, testimonials, funding, insurance, regulation or volumes.
-- The waitlist is a local mock until real storage is built. Label demonstration invoices, addresses and amounts as Sample.
+- Landing actions open `/sign-in`; the landing page does not collect email addresses.
+- Label demonstration invoices, addresses and amounts as Sample.
+- The roadmap marks Payments as Done, Agent payments as Coming next, and Withdraw to your bank as Planned.
 - Say the exact network and token; planned support is not live support. First payment slice is Base + USDC.
 - Plain words, short instructions, no crypto knowledge assumed beyond choosing the specified network.
 

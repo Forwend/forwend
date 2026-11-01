@@ -1,0 +1,41 @@
+.page {
+  position: relative;
+  isolation: isolate;
+}
+
+.landscape {
+  position: absolute;
+  z-index: -1;
+  inset-inline: 0;
+  bottom: 0;
+  height: clamp(20rem, 52vh, 34rem);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.art {
+  object-fit: cover;
+  object-position: center 62%;
+}
+
+.fade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    var(--fw-bg),
+    color-mix(in oklab, var(--fw-bg) 94%, transparent) 22%,
+    color-mix(in oklab, var(--fw-bg) 45%, transparent) 55%,
+    transparent
+  );
+}
+
+[data-theme="dark"] .art {
+  filter: brightness(0.45) saturate(0.7);
+}
+
+@media (max-width: 40rem) {
+  .art {
+    object-position: 36% center;
+  }
+}

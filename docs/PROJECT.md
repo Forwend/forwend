@@ -9,13 +9,13 @@ Use harness `status` for progress.
 
 ## Users and jobs
 
-- Visitor: when I land on forwend.com, I want to understand what Forwend does and trust it, so I can join the waitlist. (R-6, R-8)
+- Visitor: understand Forwend and open the app from the landing page. (R-6, R-8)
 - Freelancer or merchant (through the dashboard, later the API): when I create an invoice, I want a receive address that only pays the invoice amount to my profile wallet, so I get paid without trusting anyone with my money. (R-19…R-23)
 - Sasha and agents building Forwend: when we build any screen, I want one shared set of tokens and components, visible on one private page, so I can keep the whole app consistent. (R-2…R-5)
 
 ## Scope
 
-- Later, before the site is public: the waitlist stores signups for real (D-8).
+- Landing actions open sign-in without collecting waitlist emails. (R-8)
 - Out: customer logos, funding badges, or any claim of being regulated, insured or live (D-7); mobile app; custom checkout domains.
 
 ## Domain
@@ -53,9 +53,9 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 | R-3 | The theme can switch between light and dark. | Given `/kit`, when the theme switch is clicked, then `<html>` gets `data-theme="dark"` and the computed body background changes; clicking again restores light. | landing-e2e (theme toggle and persistence) | D-4 |
 | R-4 | `/kit` shows the whole system and stays private. | Given `KIT_ENABLED=1`, when `/kit` loads, then headings Colors, Typography, Spacing, Radius, Shadows, Motion, Icons, Components and Payment components are visible and the page has `<meta name="robots" content="noindex">`. Given a production build without `KIT_ENABLED`, when `/kit` is requested, then the response is 404. | kit-e2e | D-5 |
 | R-5 | Payment components display money exactly. | Given amount `1234560000n` with 6 decimals and token USDC, when Money renders, then text is "1,234.56 USDC" using tabular figures. Given address `0x1234567890abcdef1234567890abcdef12345678`, when Address renders, then it shows "0x1234…5678" and the copy button copies the full address. Given each of the 10 payment statuses, when the status pill renders, then each shows its own label. | ui-unit | D-6 |
-| R-6 | The landing page explains the product in sections. | Given `/`, when it loads, then these are visible in order: nav with "Join waitlist", hero `h1`, network strip (Base, Arbitrum, Arc, Tempo, USDC, USDT), how it works, profile tabs (Personal, Freelancer, Merchant, Developers; clicking each shows its panel), checkout preview, money rules, developer code sample, fees, FAQ (an item expands on click), final call to action, footer. The text "trusted by" does not appear. | manual: review screenshots | D-7 |
+| R-6 | The landing page explains the product in sections. | Given `/`, then navigation, hero, product tabs, how it works, roadmap, FAQ, closing action and footer appear. Invoices, Payment links and Checkout switch previews. FAQ answers expand. Examples are marked Sample; no customer endorsements appear. | manual: review screenshots | D-7 |
 | R-7 | The landing page works on every common width. | Given widths 360, 768, 1280 and 1536 px, when `/` loads, then `document.documentElement.scrollWidth` ≤ the viewport width (no horizontal scroll). Given `prefers-reduced-motion: reduce`, when `/` loads, then no element has a running CSS animation or transition longer than 0.01 s. | manual: review screenshots | D-7 |
-| R-8 | The mock waitlist confirms without sending data. | Given the hero form, when `name@example.com` is submitted, then "You're on the list" appears and no network request starts after the click. Given `abc`, when submitted, then an error message appears and the success text does not. | waitlist-e2e | D-8 |
+| R-8 | The landing opens sign-in without collecting waitlist emails. | Given `/`, when Open Forwend is selected, then `/sign-in` opens. No email capture form or waitlist confirmation appears. | waitlist-e2e | R-34 |
 | R-9 | Every image is reproducible and optimized. | Given every file in `apps/web/public/images/`, when the images check runs, then each has an entry in `docs/web/images.md` with slot, prompt and date, and the page serves it through `next/image` as AVIF or WebP. | images-check | D-9 |
 | R-10 | Pages have no serious accessibility problems. | Given `/` and `/kit`, when axe runs, then there are 0 violations with impact serious or critical. | a11y-e2e | D-4 |
 | R-11 | The landing page is fast. | Given a production build, when Lighthouse runs on `/` (mobile preset), then Performance ≥ 90, Accessibility ≥ 95 and LCP < 2.5 s. | lighthouse | D-9 |
@@ -304,7 +304,7 @@ All D- IDs are defined here. The roadmap refers to these decisions.
 | D-5 | `/kit` lives in the web app behind `KIT_ENABLED` (always on in `next dev`), `noindex`, outside the sitemap | Same code and tokens as the real pages, no extra tool |
 | D-6 | Money uses bigint base units plus token decimals in TypeScript; formatting never converts money to float. | Exact amounts. |
 | D-7 | Landing shows real product UI built in code, no generated screenshots, no fake social proof | Trust for a payments brand; image models garble numbers and text |
-| D-8 | The waitlist is a front-end mock until the site is public | Start fast; making it real is queued before launch |
+| D-8 | Landing actions open sign-in; the site collects no waitlist emails | Direct entry replaces the mock waitlist |
 | D-9 | Generate landscape images with image_gen; store WebP and record prompts in docs/web/images.md. Product UI stays code. | Reproducible assets. |
 | D-10 | Biome for lint and format; Vitest for unit; Playwright + axe for browser tests | One fast tool; browser tests prove visible behavior |
 | D-11 | TypeScript types and constants live with their owning feature, component or shared capability; finite domain values have one definition and derived unions. Web screens, features, shared UI groups and state naming follow [web/structure.md](web/structure.md). Existing paths move only in scoped refactors. | Keep related code together and make ownership clear as the app grows. |

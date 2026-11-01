@@ -24,7 +24,7 @@ export default function OpengraphImage() {
         padding: 72,
         background: `linear-gradient(180deg, ${C.skyTop} 0%, ${C.skyMid} 55%, ${C.horizon} 100%)`,
         color: BRAND_COLORS.ink,
-        fontFamily: "serif",
+        fontFamily: "sans-serif",
         position: "relative",
       }}
     >
@@ -32,7 +32,7 @@ export default function OpengraphImage() {
         {SITE.name}
       </div>
       <div style={{ display: "flex", fontSize: 76, lineHeight: 1.04, maxWidth: 900 }}>
-        {HERO.title}
+        {HERO.title} {HERO.titleSub}
       </div>
       <div
         style={{

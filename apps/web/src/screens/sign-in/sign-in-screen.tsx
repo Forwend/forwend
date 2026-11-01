@@ -9,8 +9,9 @@ import { useEffect } from "react";
 import { SignInForm } from "@/features/auth/components/sign-in-form";
 import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 import { SIGN_IN_COPY } from "@/features/auth/constants/sign-in";
-import { HERO_IMAGE } from "@/shared/assets/images";
+import { OPEN_PATH_IMAGE } from "@/shared/assets/images";
 import { APP_ROUTES } from "@/shared/config/routes";
+import styles from "./sign-in.module.css";
 
 export function SignInScreen() {
   const { ready, authenticated } = usePrivy();
@@ -21,27 +22,27 @@ export function SignInScreen() {
   }, [ready, authenticated, router]);
 
   return (
-    <div className="flex min-h-dvh flex-col bg-bg lg:block">
-      <div className="relative h-44 overflow-hidden sm:h-64 lg:h-72">
-        {/* One artwork in both themes; dark mode mutes it toward the near-black ground (D-113). */}
+    <div className={`flex min-h-dvh flex-col bg-bg lg:block ${styles.page}`}>
+      <div className={styles.landscape} aria-hidden="true">
         <Image
-          src={HERO_IMAGE.src}
+          src={OPEN_PATH_IMAGE.src}
           alt=""
           fill
           priority
           sizes="100vw"
-          className="object-cover object-[50%_70%] saturate-[.65] dark:brightness-[.45] dark:grayscale-[.7]"
+          className={styles.art}
         />
-        <div className="absolute inset-x-0 bottom-0 h-3/4 bg-[linear-gradient(to_bottom,transparent,var(--fw-bg)_85%)]" />
+        <div className={styles.fade} />
+      </div>
+      <div className="relative h-44 sm:h-64 lg:h-72">
         <Link
           href={APP_ROUTES.site}
           aria-label={SIGN_IN_COPY.homeLabel}
-          className="absolute top-[max(1.5rem,env(safe-area-inset-top))] left-[max(1.5rem,env(safe-area-inset-left))] rounded-md lg:top-8 lg:left-10"
+          className="absolute top-[max(1.5rem,env(safe-area-inset-top))] left-[max(1.5rem,env(safe-area-inset-left))] inline-flex min-h-11 items-center rounded-md lg:top-8 lg:left-10"
         >
           <Logo />
         </Link>
       </div>
-      {/* Phones and tablets: the form starts just under the band, overlapping its fade. */}
       <main className="relative -mt-10 flex flex-1 items-start pr-[max(1.5rem,env(safe-area-inset-right))] pl-[max(1.5rem,env(safe-area-inset-left))] pb-[calc(4rem+env(safe-area-inset-bottom))] sm:-mt-16 lg:block">
         <div className="mx-auto w-full max-w-sm">
           {ready && !authenticated ? (

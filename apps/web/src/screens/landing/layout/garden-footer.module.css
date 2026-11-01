@@ -1,0 +1,141 @@
+.footer {
+  --footer-gutter: var(--landing-gutter);
+  background: var(--fw-bg);
+  color: var(--fw-ink);
+}
+
+.garden {
+  position: relative;
+  display: flex;
+  min-height: clamp(31rem, 46vw, 42rem);
+  justify-content: center;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.art {
+  z-index: -2;
+  object-fit: cover;
+  object-position: center 60%;
+}
+
+.nightArt {
+  opacity: 0;
+}
+
+[data-theme="dark"] .dayArt {
+  opacity: 0;
+}
+
+[data-theme="dark"] .nightArt {
+  opacity: 1;
+}
+
+.veil {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: color-mix(in oklab, var(--fw-bg) 18%, transparent);
+}
+
+.invitation {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  width: 100%;
+  padding: clamp(4rem, 7vw, 6rem) var(--footer-gutter) 7rem;
+  text-align: center;
+}
+
+.invitation h2 {
+  max-width: 20ch;
+  margin: 0;
+  font-family: var(--fw-font-sans);
+  font-size: clamp(2.25rem, 4.5vw, 4rem);
+  font-weight: 500;
+  line-height: 1.04;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.invitation p {
+  margin-block: 1.25rem 1.75rem;
+  color: var(--fw-ink);
+  font-size: var(--text-lg);
+}
+
+.bottom {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 2.5rem 3rem;
+  width: min(calc(100% - var(--footer-gutter) * 2), 76rem);
+  margin-inline: auto;
+  padding-block: 2.5rem 1.75rem;
+}
+
+.home {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+}
+
+.logo {
+  font-size: var(--text-2xl);
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+}
+
+.links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  color: var(--fw-muted);
+  font-size: var(--text-sm);
+  text-underline-offset: 0.25em;
+  transition: color var(--fw-duration-fast) var(--fw-ease-out);
+}
+
+.links a:hover {
+  color: var(--fw-ink);
+  text-decoration: underline;
+}
+
+.copyright {
+  grid-column: 1 / -1;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--fw-line);
+  color: var(--fw-muted);
+  font-size: var(--text-xs);
+}
+
+@media (max-width: 47.99rem) {
+  .garden {
+    min-height: 33rem;
+  }
+
+  .art {
+    object-position: 55% center;
+  }
+
+  .veil {
+    background: color-mix(in oklab, var(--fw-bg) 35%, transparent);
+  }
+
+  .invitation {
+    padding-block: 4.5rem 7rem;
+  }
+
+  .bottom {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+
+  .links {
+    gap: 0.5rem 1.5rem;
+  }
+}
