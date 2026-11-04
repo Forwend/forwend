@@ -248,7 +248,7 @@ export const NEW_INVOICE_COPY = {
   create: "Create invoice",
   cancel: "Cancel",
   fieldErrors: {
-    [INVOICE_FIELDS.amount]: "Enter an amount above 0 that the token can hold.",
+    [INVOICE_FIELDS.amount]: "Enter at least 1.00 in an amount the token can hold.",
     [INVOICE_FIELDS.title]: atMost(INVOICE_LIMITS.title),
     [INVOICE_FIELDS.agreedCurrency]: "Choose a currency from the list.",
     [INVOICE_FIELDS.agreedAmount]: "Enter an amount above 0 that this currency can hold.",
@@ -263,7 +263,7 @@ export const NEW_INVOICE_COPY = {
     [INVOICE_FIELDS.clientCountry]: "Choose a country.",
     [INVOICE_FIELDS.clientTaxId]: atMost(INVOICE_LIMITS.clientTaxId),
     [INVOICE_FIELDS.senderName]: `${atMost(INVOICE_LIMITS.senderName)} The name can't be Forwend.`,
-    [INVOICE_FIELDS.amountUsd]: "Enter an amount above 0 that every accepted token can hold.",
+    [INVOICE_FIELDS.amountUsd]: "Enter at least 1.00 in an amount every accepted token can hold.",
     [INVOICE_FIELDS.expiresIn]: "Pick a time from 15 minutes to 365 days from now.",
     [INVOICE_FIELDS.returnUrl]: "Enter an https link, like https://example.com/thanks.",
     [INVOICE_FIELDS.memo]: atMost(INVOICE_LIMITS.memo),

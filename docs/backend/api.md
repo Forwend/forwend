@@ -759,7 +759,8 @@ R-19 and R-42; the full schema is in openapi.yaml.
   terms shown are the first option's.
   - The first option whose final payments add up to 1.00 USD becomes the invoice's for good (`chosen_id`, R-119).
   - A smaller deposit before the choice is held for the payer, and on the chosen option a payment before the one
-    that brought it to 1.00 USD is held too. Held dust sends no email or webhook.
+    that brought it to 1.00 USD is held too. On-time dust on an open invoice sends no email or webhook.
+  - Dust doesn't stop cancel or the edits the payer sees: only a payment that can choose an option does.
   - An older invoice under 1.00 USD needs its whole amount to choose.
   - No other chain is waited for. Money on any other option is booked to `payer_held`.
   - The owner's GET with an option's id answers its invoice; the public routes don't take ids.
