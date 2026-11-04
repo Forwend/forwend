@@ -159,7 +159,7 @@
         "The client and store pages read their record by id and never load the whole list to show it"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "web-unit"
@@ -254,11 +254,18 @@
           "summary": "Pass. The client and store pages read their record by id. Access is right: another profile's, unknown and malformed ids give 404, another user gets 403, and a scoped Developer gets 404 outside their stores. The RequireAccess guard handles the store scope. Loading, gone, error with retry and the deleted-client flow behave as before. Save, logo and delete invalidate the tag the reads provide. OpenAPI, api.md and e2e mocks match, and profiles_test lists both new routes. Checks run: go test httpapi Client, Store, Profile, ReadByID and OpenAPI pass; web tsc passes; client, store and link screen unit tests pass; check-docs has 0 errors. Minor: job-screen.tsx:33 still checks 404 inline; it could use notFound. Out of scope: link-form-screen.tsx:31 shows the failed message with retry for a deleted link, not the gone message.",
           "at": "2026-11-04T23:16:19Z",
           "filesHash": "9d78ad7b9f59e521"
-        }
+        },
+        "commit": "2d6e56e0",
+        "doneAt": "2026-11-04T23:16:58Z"
       },
       "branch": "fix/f349-client-and-store-pages-read-only-their-o",
       "baseCommit": "11a1e3418bb21e5221133ca4c3c10ab243cb3be7",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f349-client-and-store-pages-read-only-their-o",
+        "base": "main"
+      }
     },
     {
       "id": "F350",
