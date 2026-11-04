@@ -5,10 +5,13 @@ import type {
   linkPayArgSchema,
   linkPaySchema,
   linkSchema,
+  linksPageSchema,
   publicLinkSchema,
 } from "@/features/links/schemas/links";
 
 export type Link = z.infer<typeof linkSchema>;
+
+export type LinksPage = z.infer<typeof linksPageSchema>;
 
 export type LinkBody = z.infer<typeof linkBodySchema>;
 

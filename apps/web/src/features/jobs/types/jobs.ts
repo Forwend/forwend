@@ -12,6 +12,7 @@ import type {
   jobPaymentSchema,
   jobSchema,
   jobSummarySchema,
+  jobsPageSchema,
   publicJobSchema,
 } from "@/features/jobs/schemas/jobs";
 
@@ -19,6 +20,7 @@ export type Job = z.infer<typeof jobSchema>;
 export type PublicJob = z.infer<typeof publicJobSchema>;
 export type JobPayment = z.infer<typeof jobPaymentSchema>;
 export type JobSummary = z.infer<typeof jobSummarySchema>;
+export type JobsPage = z.infer<typeof jobsPageSchema>;
 export type CreateJobBody = z.infer<typeof createJobBodySchema>;
 
 /** The API's invoice status filter values. */

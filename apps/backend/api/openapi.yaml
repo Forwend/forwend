@@ -1657,23 +1657,40 @@ paths:
     get:
       operationId: listJobs
       summary: The profile's jobs, newest first
-      description: At most 1000 per profile, so the list comes whole.
+      description: It lists one page, and nextCursor continues it.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
+        - name: limit
+          in: query
+          description: Jobs per page; default 50.
+          schema: { type: integer, minimum: 1, maximum: 100 }
+        - name: cursor
+          in: query
+          description: nextCursor from the previous page.
+          schema: { type: string }
+        - name: q
+          in: query
+          description: |
+            Search text: 1 to 100 characters after trimming spaces; absent means no search, blank or longer is 422. A job
+            matches when its title or client name contains the text in any letter case.
+          schema: { type: string, minLength: 1, maxLength: 100 }
       responses:
         "200":
-          description: The jobs
+          description: One page; an empty list for a new profile
           content:
             application/json:
               schema:
                 type: object
-                required: [items]
+                required: [items, nextCursor]
                 properties:
                   items:
                     type: array
                     items: { $ref: "#/components/schemas/JobSummary" }
+                  nextCursor: { type: [string, "null"], description: Null on the last page. }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/jobs/{jobId}:
@@ -2644,13 +2661,13 @@ paths:
       operationId: listPaymentLinks
       summary: The profile's payment links, newest first (R-140)
       description: |
-        A Developer or Finance member sees only the links of their stores (D-93). Without limit it lists every link,
-        as before pages; with limit it lists a page, and nextCursor continues it. Read one link with getPaymentLink.
+        A Developer or Finance member sees only the links of their stores (D-93). It lists one page, and nextCursor
+        continues it. Read one link with getPaymentLink.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - name: limit
           in: query
-          description: Links per page; without it, every link.
+          description: Links per page; default 50.
           schema: { type: integer, minimum: 1, maximum: 100 }
         - name: cursor
           in: query
@@ -2668,7 +2685,7 @@ paths:
                   links:
                     type: array
                     items: { $ref: "#/components/schemas/PaymentLink" }
-                  nextCursor: { type: [string, "null"], description: Null on the last page and without limit. }
+                  nextCursor: { type: [string, "null"], description: Null on the last page. }
         "400": { $ref: "#/components/responses/MalformedRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }

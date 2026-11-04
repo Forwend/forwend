@@ -17,10 +17,7 @@ import (
 
 func listLinks(links *link.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		limit, err := httpio.IntQuery(r, "limit", 0)
-		if err == nil && r.URL.Query().Has("limit") && limit == 0 {
-			err = fmt.Errorf("%w: limit must be 1 to %d", link.ErrInvalid, link.MaxLimit)
-		}
+		limit, err := httpio.IntQuery(r, "limit", link.DefaultLimit)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

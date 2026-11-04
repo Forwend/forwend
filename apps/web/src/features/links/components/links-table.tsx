@@ -1,9 +1,9 @@
 "use client";
 
-import { Badge, type ButtonSize, buttonClasses, EmptyState, TONES } from "@forwend/ui-web";
+import { Badge, Button, type ButtonSize, buttonClasses, EmptyState, TONES } from "@forwend/ui-web";
 import { Link2, Plus } from "lucide-react";
 import Link from "next/link";
-import { useListLinksQuery } from "@/features/links/api/links-api";
+import { useListLinksInfiniteQuery } from "@/features/links/api/links-api";
 import { LINK_STATES } from "@/features/links/constants/links";
 import { LINKS_COPY as COPY } from "@/features/links/constants/links-copy";
 import { amountLabel, linkState } from "@/features/links/lib/links";
@@ -44,8 +44,8 @@ export interface LinksTableProps {
 
 // R-140: the owner sees each link's visits and paid count, not every unpaid invoice it made.
 export function LinksTable({ profileId, canWrite }: LinksTableProps) {
-  const list = useListLinksQuery(profileId);
-  const links = list.currentData ?? [];
+  const list = useListLinksInfiniteQuery(profileId);
+  const links = list.currentData?.pages.flatMap((page) => page.links) ?? [];
   // An empty list offers New link in its own block, so the toolbar would only repeat it.
   const noLinks = Boolean(list.currentData) && links.length === 0;
   return (
@@ -127,8 +127,28 @@ export function LinksTable({ profileId, canWrite }: LinksTableProps) {
             detail: `${amountLabel(link)} · ${COPY.activity(link.visits, link.paid, link.reserved)}`,
             meta: <StateBadge link={link} />,
           })}
+          footer={
+            list.hasNextPage ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={list.isFetchingNextPage}
+                onClick={() => void list.fetchNextPage()}
+              >
+                {COPY.loadMore}
+              </Button>
+            ) : undefined
+          }
         />
       )}
+      {list.error && list.currentData ? (
+        <LoadError
+          inline
+          message={COPY.updateFailed}
+          onRetry={() => void list.refetch()}
+          retrying={list.isFetching}
+        />
+      ) : null}
     </section>
   );
 }

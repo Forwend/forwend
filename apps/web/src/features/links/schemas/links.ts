@@ -31,7 +31,10 @@ export const linkSchema = linkBodySchema.extend({
 });
 
 /** GET /v1/profiles/{profileId}/links: newest first. */
-export const linksSchema = z.object({ links: z.array(linkSchema) });
+export const linksPageSchema = z.object({
+  links: z.array(linkSchema),
+  nextCursor: z.string().nullable(),
+});
 
 /** GET /v1/links/{slug}: the link as its payer sees it (R-142). payee is the billing name, null before it is saved. */
 export const publicLinkSchema = z.object({

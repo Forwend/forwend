@@ -1,11 +1,12 @@
 import { z } from "zod";
+import { JOBS_PAGE_SIZE } from "@/features/jobs/constants/jobs";
 import {
   createJobBodySchema,
   jobSchema,
-  jobsSchema,
+  jobsPageSchema,
   publicJobSchema,
 } from "@/features/jobs/schemas/jobs";
-import type { CreateJobBody, Job, JobSummary, PublicJob } from "@/features/jobs/types/jobs";
+import type { CreateJobBody, Job, JobsPage, PublicJob } from "@/features/jobs/types/jobs";
 import { apiSlice } from "@/shared/api/api-slice";
 
 const JOBS_TAG = "Jobs";
@@ -19,11 +20,21 @@ export const jobsApi = apiSlice
   .enhanceEndpoints({ addTagTypes: [JOBS_TAG, PUBLIC_JOB_TAG] })
   .injectEndpoints({
     endpoints: (build) => ({
-      /** At most 1000, so one request holds them all. */
-      listJobs: build.query<JobSummary[], string>({
-        query: (profileId) => jobsUrl(profileId),
-        rawResponseSchema: jobsSchema,
-        transformResponse: (data: { items: JobSummary[] }) => data.items,
+      /** q matches the title or the client's name. */
+      listJobs: build.infiniteQuery<JobsPage, { profileId: string; q?: string }, string | null>({
+        infiniteQueryOptions: {
+          initialPageParam: null,
+          getNextPageParam: (last) => last.nextCursor,
+        },
+        query: ({ queryArg: { profileId, q }, pageParam }) => ({
+          url: jobsUrl(profileId),
+          params: {
+            limit: JOBS_PAGE_SIZE,
+            ...(q ? { q } : {}),
+            ...(pageParam ? { cursor: pageParam } : {}),
+          },
+        }),
+        responseSchema: jobsPageSchema,
         providesTags: [JOBS_TAG],
       }),
       /** The owner's read: the client, the link token and each payment's invoice; 404 for another profile's. */
@@ -129,7 +140,7 @@ export const jobsApi = apiSlice
   });
 
 export const {
-  useListJobsQuery,
+  useListJobsInfiniteQuery,
   useGetJobQuery,
   useCreateJobMutation,
   useDeleteJobMutation,

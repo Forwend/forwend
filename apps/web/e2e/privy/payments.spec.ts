@@ -787,12 +787,12 @@ for (const width of [1440, 390]) {
         createdAt: AT,
         updatedAt: AT,
       };
-      // The list reads every link; the link page reads its own one.
+      // The list reads a page of links; the link page reads its own one.
       await page.route(`**/v1/profiles/${PROFILE}/links**`, (route) =>
         route.fulfill({
           json: new URL(route.request().url()).pathname.endsWith(linkId)
             ? offer
-            : { links: [offer] },
+            : { links: [offer], nextCursor: null },
         }),
       );
       for (const path of ["/app/payments", `/app/links/${linkId}`]) {

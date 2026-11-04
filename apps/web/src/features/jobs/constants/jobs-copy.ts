@@ -23,6 +23,8 @@ export const JOBS_COPY = {
   empty: "No jobs yet",
   emptyText: "Write a quote with a deposit and milestones, then send the client its link.",
   failed: "We could not load your jobs.",
+  loadMore: "Show more",
+  updateFailed: "We could not update the jobs.",
   gone: "This job is not in your list anymore.",
   backToList: "Back to jobs",
   billingNeeded: {

@@ -25,6 +25,8 @@ export const AMOUNT_KINDS = { fixed: "fixed", open: "open" } as const;
 /** The API's limits (apps/backend/api/openapi.yaml, PaymentLinkRequest). */
 export const LINK_LIMITS = { title: 200, maxPayments: 1_000_000 } as const;
 
+export const LINKS_PAGE_SIZE = 20;
+
 /** A link's address (D-94): 12 random lowercase letters and digits. */
 export const LINK_SLUG_PATTERN = /^[a-z0-9]{12}$/;
 

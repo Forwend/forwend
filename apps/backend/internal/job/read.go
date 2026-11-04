@@ -2,13 +2,17 @@ package job
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/outbox"
+	"github.com/forwend/forwend/apps/backend/internal/search"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -97,18 +101,47 @@ func (s *Service) read(ctx context.Context, where string, args ...any) (Job, err
 	return j, nil
 }
 
-func (s *Service) List(ctx context.Context, profileID string) ([]Summary, error) {
-	// A change counts once the client accepted it (R-105).
+// DefaultLimit and MaxLimit bound a page of jobs.
+const (
+	DefaultLimit = 50
+	MaxLimit     = 100
+)
+
+// Page is one page of jobs; NextCursor is "" on the last one.
+type Page struct {
+	Jobs       []Summary
+	NextCursor string
+}
+
+// List is the profile's jobs, newest first, limit after cursor; q matches the title or the client's name.
+func (s *Service) List(ctx context.Context, profileID, cursor string, limit int, q search.Query) (Page, error) {
+	if limit < 1 || limit > MaxLimit {
+		return Page{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxLimit)
+	}
+	args := []any{profileID, limit + 1, q.Like}
+	after := ""
+	if cursor != "" {
+		at, id, err := decodeCursor(cursor)
+		if err != nil {
+			return Page{}, err
+		}
+		args = append(args, at, id)
+		after = " AND (created_at < $4 OR created_at = $4 AND id > $5)"
+	}
+	// The page is cut before the join, so a read sums only its own jobs' payments. A change counts once the client
+	// accepted it (R-105).
 	rows, err := s.pool.Query(ctx, `SELECT j.id::text, j.title, j.client_name, sum(p.amount_cents)::bigint, count(*),
 		    count(*) FILTER (WHERE invoices.id IS NOT NULL AND `+invoice.StatusFilterSQL+` IN ('paid', 'settled')),
 		    j.accepted_at, j.created_at
-		FROM jobs j JOIN job_payments p ON p.job_id = j.id AND (p.proposed_at IS NULL OR p.accepted_at IS NOT NULL)
+		FROM (SELECT * FROM jobs WHERE profile_id = $1 AND ($3::text IS NULL OR title ILIKE $3 OR client_name ILIKE $3)`+
+		after+` ORDER BY created_at DESC, id LIMIT $2) j
+		JOIN job_payments p ON p.job_id = j.id AND (p.proposed_at IS NULL OR p.accepted_at IS NOT NULL)
 		LEFT JOIN invoices_current invoices ON invoices.id = p.invoice_id
-		WHERE j.profile_id = $1 GROUP BY j.id ORDER BY j.created_at DESC, j.id`, profileID)
+		GROUP BY j.id, j.title, j.client_name, j.accepted_at, j.created_at ORDER BY j.created_at DESC, j.id`, args...)
 	if err != nil {
-		return nil, fmt.Errorf("list jobs: %w", err)
+		return Page{}, fmt.Errorf("list jobs: %w", err)
 	}
-	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Summary, error) {
+	jobs, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (Summary, error) {
 		var s Summary
 		var accepted *time.Time
 		err := row.Scan(&s.ID, &s.Title, &s.ClientName, &s.TotalCents, &s.Payments, &s.Paid, &accepted, &s.CreatedAt)
@@ -118,6 +151,27 @@ func (s *Service) List(ctx context.Context, profileID string) ([]Summary, error)
 		s.CreatedAt = s.CreatedAt.UTC()
 		return s, err
 	})
+	if err != nil {
+		return Page{}, fmt.Errorf("list jobs: %w", err)
+	}
+	var next string
+	if len(jobs) > limit {
+		jobs = jobs[:limit]
+		last := jobs[limit-1]
+		next = base64.RawURLEncoding.EncodeToString([]byte(fmt.Sprintf("%d|%s", last.CreatedAt.UnixMicro(), last.ID)))
+	}
+	return Page{Jobs: jobs, NextCursor: next}, nil
+}
+
+// A cursor is the last job's creation time (Unix microseconds, Postgres' precision) and id.
+func decodeCursor(cursor string) (time.Time, string, error) {
+	raw, err := base64.RawURLEncoding.DecodeString(cursor)
+	at, id, ok := strings.Cut(string(raw), "|")
+	micros, parseErr := strconv.ParseInt(at, 10, 64)
+	if err != nil || !ok || parseErr != nil || !jobID.MatchString(id) {
+		return time.Time{}, "", fmt.Errorf("%w: cursor is not one this API returned", ErrInvalid)
+	}
+	return time.UnixMicro(micros), id, nil
 }
 
 // Delete withdraws a quote the client has not accepted; the row lock orders it with an accept.
