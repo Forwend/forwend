@@ -6,7 +6,6 @@ import styles from "./landing-footer.module.css";
 export function FooterSocials() {
   return (
     <div className={styles.socials}>
-      <span>Social channels coming soon</span>
       <div className={styles.socialButtons}>
         <Tooltip content="Soon...">
           <IconButton label="X" size="md" aria-disabled="true" className={styles.unavailable}>

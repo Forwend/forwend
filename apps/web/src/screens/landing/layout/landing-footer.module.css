@@ -58,7 +58,7 @@
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
-  gap: 2rem;
+  gap: 1.5rem 2rem;
   width: min(calc(100% - var(--landing-gutter) * 2), var(--landing-width));
   margin-inline: auto;
   padding-block: 2.5rem 2rem;
@@ -90,14 +90,12 @@
   color: var(--fw-muted);
   justify-self: end;
 }
+/* The icons' hit areas reach past their glyphs; the negative margin lines the first glyph up with the logo. */
 .socials {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  margin-inline-start: -0.75rem;
   color: var(--fw-muted);
-}
-.socials > span {
-  font-size: 0.8125rem;
 }
 .socialButtons {
   display: flex;
@@ -129,16 +127,18 @@
     object-position: center bottom;
   }
   .bottom {
-    grid-template-columns: 1fr;
-    gap: 1.25rem;
-    padding-top: 1.5rem;
+    gap: 1rem;
+    padding-block: 2rem 1.5rem;
   }
-  .socials {
-    flex-wrap: wrap;
-    gap: 0.5rem;
+  .home,
+  .links {
+    grid-column: 1 / -1;
   }
-  .copyright {
-    justify-self: start;
+  .links {
+    gap: 0 1.75rem;
+  }
+  .links a {
+    font-size: 0.9375rem;
   }
 }
 
