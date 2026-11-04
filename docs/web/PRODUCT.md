@@ -1,7 +1,7 @@
 # Product copy
 
-Users: freelancers requesting payment, merchants integrating checkout, individuals receiving/sending stablecoins,
-and payers using a wallet or exchange. Payers do not need a Forwend account.
+Public audiences: businesses, freelancers, and builders. Stores and marketplaces are examples of businesses.
+Payers use a wallet or exchange and do not need a Forwend account.
 Product requirements and money policy live in [PROJECT](../PROJECT.md); future scope is in [PLAN](../../PLAN.md).
 
 - Explain the path: invoice → detected → confirmed → settled into the profile wallet. Show fees, network and who can move money.
@@ -18,9 +18,9 @@ Product requirements and money policy live in [PROJECT](../PROJECT.md); future s
 - Bank withdrawal is user-started: quote, fees, net amount and confirmation. Do not imply it is available before implemented.
 - Current public-facing material is pre-launch. No invented customers, testimonials, funding, insurance, regulation or volumes.
 - Landing actions open `/sign-in`; the landing page does not collect email addresses.
-- Label demonstration invoices, addresses and amounts as Sample.
-- The roadmap marks Payments as Done, Agent payments as Coming next, and Withdraw to your bank as Planned.
-- Say the exact network and token; planned support is not live support. First payment slice is Base + USDC.
+- The hero dashboard and product drawings are examples, named so to screen readers. Nothing in them is a control or accepts money.
+- The roadmap marks Payments as Done, Agentic payments as Coming next, and Bank withdrawals and Card and wallet payments as Planned.
+- Say the exact network and token; planned support is not live support. Current verified configuration uses testnets.
 - Plain words, short instructions, no crypto knowledge assumed beyond choosing the specified network.
 
 Visual direction and accessibility: [DESIGN.md](DESIGN.md).

@@ -1,20 +1,21 @@
 "use client";
 
-import { buttonClasses, IconButton, Logo, ThemeSwitch } from "@forwend/ui-web";
+import { buttonClasses, IconButton, ThemeSwitch } from "@forwend/ui-web";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { SIGN_IN_COPY } from "@/features/auth/constants/sign-in";
+import { SiteBar, SiteBarRow, SiteBrand } from "@/shared/components/site-bar/site-bar";
 import { APP_ROUTES } from "@/shared/config/routes";
-import styles from "./editorial-nav.module.css";
+import styles from "./landing-header.module.css";
 
 const links = [
   { label: "Product", href: "#product" },
-  { label: "How it works", href: "#how-it-works" },
   { label: "Roadmap", href: "#roadmap" },
-  { label: "Questions", href: "#questions" },
+  { label: "Docs", href: APP_ROUTES.docs },
 ] as const;
 
-export function EditorialNav() {
+export function LandingHeader() {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const header = useRef<HTMLElement>(null);
@@ -47,16 +48,9 @@ export function EditorialNav() {
   }, [open]);
 
   return (
-    <header ref={header} className={styles.header} data-section="nav">
-      <div className={styles.navInner}>
-        <Link
-          prefetch={false}
-          href={APP_ROUTES.site}
-          aria-label="Forwend home"
-          className={styles.brand}
-        >
-          <Logo />
-        </Link>
+    <SiteBar ref={header} data-section="nav">
+      <SiteBarRow>
+        <SiteBrand label={SIGN_IN_COPY.homeLabel} />
         <nav aria-label="Main navigation" className={styles.desktopLinks}>
           {links.map((link) => (
             <a key={link.href} href={link.href}>
@@ -65,13 +59,16 @@ export function EditorialNav() {
           ))}
         </nav>
         <div className={styles.navActions}>
-          <ThemeSwitch />
+          <ThemeSwitch className={styles.theme} />
+          <Link prefetch={false} href={APP_ROUTES.signIn} className={styles.signIn}>
+            Sign in
+          </Link>
           <Link
             prefetch={false}
             href={APP_ROUTES.signIn}
-            className={`${buttonClasses({ variant: "secondary" })} ${styles.navCta}`}
+            className={`${buttonClasses({ variant: "primary" })} ${styles.cta}`}
           >
-            Open Forwend
+            Create account
           </Link>
           <IconButton
             ref={trigger}
@@ -85,7 +82,7 @@ export function EditorialNav() {
             {open ? <X aria-hidden className="size-5" /> : <Menu aria-hidden className="size-5" />}
           </IconButton>
         </div>
-      </div>
+      </SiteBarRow>
       <nav
         id="landing-mobile-menu"
         aria-label="Mobile navigation"
@@ -101,9 +98,16 @@ export function EditorialNav() {
                 {link.label}
               </a>
             ))}
+            <Link prefetch={false} href={APP_ROUTES.signIn} onClick={() => setOpen(false)}>
+              Sign in
+            </Link>
+            <div className={styles.mobileTheme}>
+              <span>Appearance</span>
+              <ThemeSwitch />
+            </div>
           </div>
         </div>
       </nav>
-    </header>
+    </SiteBar>
   );
 }

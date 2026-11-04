@@ -207,6 +207,9 @@ The owner moved these out of the MVP on 2026-10-31:
 - Paying from a connected wallet, as a second path beside the address and QR code.
   - Until then payers send a transfer (D-37).
 - Agent payments, such as x402. No merchant has asked for them yet.
+- Card and wallet payments (owner request 2026-11-02): the payer uses a card, Apple Pay or Google Pay.
+  - The payer needs no crypto knowledge; the merchant still receives stablecoins.
+  - It needs an on-ramp or card acquirer that settles in stablecoins; pick one after Q-2.
 - A payment link's own return link: off by default, the store's return link, or a custom one.
   - The second choice needs an optional store return link, on one of the store's allowed origins.
 - Self-serve returns of held money, replacing support by hand (11.10):

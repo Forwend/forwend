@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 419,
+  "nextId": 420,
   "tasks": [
     {
       "id": "F332",
@@ -924,12 +924,159 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
+    },
+    {
+      "id": "F419",
+      "type": "feat",
+      "behavior": "Redesign public payments pages and navigable documentation",
+      "acceptance": [
+        "Landing explains verified testnet payments with accessible demonstration, compatibility, roadmap and footer.",
+        "Public documentation has verified nested guides, API references, search and compatible old anchors.",
+        "Sign-in keeps its authentication controls; its artwork, centered form and landing-matched logo change at the owner's request.",
+        "Responsive layouts, themes, keyboard behavior and public routes pass browser and accessibility checks."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "web-unit",
+        "typecheck",
+        "lint",
+        "build",
+        "web-e2e",
+        "docs-check"
+      ],
+      "refs": [
+        "R-6",
+        "R-7",
+        "R-8",
+        "R-85",
+        "R-155"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-11-02 review pass by reviewer: Reviewed public routes, verified API claims and examples, documentation navigation and search, legacy links, server-rendered article content, sign-in background-only changes, shared tooltip focus behavior, and responsive evidence. Invoice list query documentation was corrected during review. All nine required verification checks passed; no unresolved blocking findings.",
+        "2026-11-02 review pass by reviewer: Reviewed public routes, verified API claims and examples, documentation search and legacy links, server-rendered article content, unchanged sign-in controls, shared tooltip focus behavior, responsive evidence, and final mobile heading accessibility fix. Invoice query documentation was corrected during review. Final verification passed all nine checks at 00:29:32Z; no unresolved blocking findings.",
+        "2026-11-02 review pass by reviewer: Fresh review of the revised landscape hero, central payment example, testnet documentation entry, collection methods, roadmap, desktop/mobile screenshots in both themes, narrow zoom layout, responsive preload hints, and image decode test synchronization found no blocking issues. Earlier documentation, sign-in, and shared tooltip findings remain resolved. Final verification passed all nine checks at 01:01:55Z. Reported Lighthouse lab results: performance 98, accessibility 100, LCP 2192 ms.",
+        "2026-11-02 Local public-page redesign and revised landscape hero verified and independently reviewed. Nine checks pass; Lighthouse reports performance 98, accessibility 100, LCP 2192 ms. Temporary test files removed. Review captures and development servers preserved. No commit, push or deployment authorized.",
+        "2026-11-04 review fail by reviewer: Blocking: apps/web/e2e/landing.spec.ts:125 changed the landing width loop from 360, 640, 768, 960, 1280 and 1536 to 320, 390, 768, 1024 and 1440. R-7 still names 360, 768, 1280 and 1536, and docs/web/rules.md:21 says the R-7 widths are tested, so 360, 1280 and 1536 lost their sideways-scroll check. The 640 and 960 edge widths also went, and the new hero dashboard and header still switch layout at 40rem and 60rem. Add those widths back next to the new ones. Non-blocking: DESIGN.md lines 27-28 say the header shows Get started, but line 33 and the code say Create account. .gitignore adds .claude/ with a comment that names the tool; it is outside this task. hero-dashboard.tsx imports APP_NAV from screens/app-shell; settings already does the same, so this is acceptable. In types/docs.ts, group is a plain string, not derived from DOCS_GROUPS. The landing preload chooses the hero image by system color scheme, not by the chosen theme. images.md points to docs/runs/f419, which git ignores. Landing claims (reminders, saved clients, hosted and embedded checkout, signed retried webhooks, idempotency, link limits, testnets), API paths, scopes, field names, retry timings and package exports match the code. Decorative drawings are inert or aria-hidden, and reduced motion is respected. No stale references to removed files or images remain. Old colors are gone from the emails. package.json, the lockfile and the Playwright configs are unchanged.",
+        "2026-11-04 review pass by reviewer: The blocking finding is fixed. The landing width test now covers the R-7 widths 360, 768, 1280 and 1536, plus 320, 390, 1024 and 1440 and the 640 and 960 layout edges. Fresh verification passed, web-e2e included. DESIGN.md now names Create account for the header action, which matches the code. The .gitignore comment no longer names a tool. Acceptance line 3 now describes the sign-in changes. Landing claims, docs API paths, scopes, fields and examples match the code. Decorative drawings are inert or hidden, and reduced motion is respected. Minor notes left for later: the docs group type is a plain string, the hero preload follows the system color scheme, images.md points to an ignored folder, and two masks use raw #000."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-04T17:45:26Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.1,
+            "log": ""
+          },
+          {
+            "id": "tokens-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 27.7,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.9,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 44.5,
+            "log": ""
+          }
+        ],
+        "taskHash": "3fbc207db16a22fc",
+        "filesHash": "61c314cf05b8f044",
+        "proof": {
+          "1": "web-e2e: landing.spec checks the hero overview picture, the four product sections with testnet networks and docs links, the roadmap, reduced motion and sideways scroll at 320, 360, 390, 640, 768, 960, 1024, 1280, 1440 and 1536 px",
+          "2": "web-e2e: docs.spec checks nested guides, API references, search and old anchors; field tables and disclosures render in those pages",
+          "3": "web-e2e: sign-in authentication controls are unchanged; waitlist.spec and a11y.spec open and scan sign-in, whose logo matches the landing",
+          "4": "web-e2e: a11y.spec and landing.spec pass in both themes with keyboard navigation, the phone menu and reduced motion"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "The blocking finding is fixed. The landing width test now covers the R-7 widths 360, 768, 1280 and 1536, plus 320, 390, 1024 and 1440 and the 640 and 960 layout edges. Fresh verification passed, web-e2e included. DESIGN.md now names Create account for the header action, which matches the code. The .gitignore comment no longer names a tool. Acceptance line 3 now describes the sign-in changes. Landing claims, docs API paths, scopes, fields and examples match the code. Decorative drawings are inert or hidden, and reduced motion is respected. Minor notes left for later: the docs group type is a plain string, the hero preload follows the system color scheme, images.md points to an ignored folder, and two masks use raw #000.",
+          "at": "2026-11-04T17:47:14Z",
+          "filesHash": "61c314cf05b8f044"
+        }
+      },
+      "branch": "feat/f419-redesign-public-payments-pages-and-navig",
+      "baseCommit": "30642d22fc7da7751609ca70c8d16c83b812fdc4",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
-    "at": "2026-10-30T22:41:40Z",
-    "clean": true,
-    "problems": [],
-    "note": "F333 verified (11 checks) and review passed; uncommitted, waiting for the owner's commit, push and merge go-ahead; then done F333"
+    "at": "2026-11-02T01:03:42Z",
+    "clean": false,
+    "problems": [
+      "debug leftover apps/web/src/screens/docs/constants/docs-guides.ts:98: code: `${CHECKOUT_REQUEST}\\nconsole.log(JSON.stringify({ sessionId:..."
+    ],
+    "note": "Local public-page redesign and revised landscape hero verified and independently reviewed. Nine checks pass; Lighthouse reports performance 98, accessibility 100, LCP 2192 ms. Temporary test files removed. Review captures and development servers preserved. No commit, push or deployment authorized."
   }
 }

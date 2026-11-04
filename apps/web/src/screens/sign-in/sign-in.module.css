@@ -2,40 +2,54 @@
   position: relative;
   isolation: isolate;
 }
-
 .landscape {
   position: absolute;
   z-index: -1;
   inset-inline: 0;
   bottom: 0;
-  height: clamp(20rem, 52vh, 34rem);
+  height: clamp(16rem, 38vh, 28rem);
   overflow: hidden;
   pointer-events: none;
 }
-
 .art {
   object-fit: cover;
-  object-position: center 62%;
+  object-position: center bottom;
 }
-
+.nightArt {
+  display: none;
+}
+[data-theme="dark"] .dayArt {
+  display: none;
+}
+[data-theme="dark"] .nightArt {
+  display: block;
+}
 .fade {
   position: absolute;
   inset: 0;
   background: linear-gradient(
     to bottom,
     var(--fw-bg),
-    color-mix(in oklab, var(--fw-bg) 94%, transparent) 22%,
-    color-mix(in oklab, var(--fw-bg) 45%, transparent) 55%,
-    transparent
+    color-mix(in oklab, var(--fw-bg) 90%, transparent) 25%,
+    color-mix(in oklab, var(--fw-bg) 20%, transparent)
   );
 }
-
-[data-theme="dark"] .art {
-  filter: brightness(0.45) saturate(0.7);
+/* The form sits in the middle of the space under the bar; on large screens it stays clear of the terrain. */
+.main {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  padding: 2rem max(1.5rem, env(safe-area-inset-right)) calc(2rem + env(safe-area-inset-bottom))
+    max(1.5rem, env(safe-area-inset-left));
 }
-
+@media (min-width: 40.0625rem) {
+  .main {
+    padding-bottom: clamp(8rem, 24vh, 14rem);
+  }
+}
 @media (max-width: 40rem) {
-  .art {
-    object-position: 36% center;
+  .landscape {
+    display: none;
   }
 }

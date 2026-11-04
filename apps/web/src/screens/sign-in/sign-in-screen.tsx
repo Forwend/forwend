@@ -1,15 +1,14 @@
 "use client";
 
-import { Logo, Spinner } from "@forwend/ui-web";
+import { Spinner } from "@forwend/ui-web";
 import { usePrivy } from "@privy-io/react-auth";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { SignInForm } from "@/features/auth/components/sign-in-form";
 import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 import { SIGN_IN_COPY } from "@/features/auth/constants/sign-in";
-import { OPEN_PATH_IMAGE } from "@/shared/assets/images";
+import { SiteBar, SiteBarRow, SiteBrand } from "@/shared/components/site-bar/site-bar";
 import { APP_ROUTES } from "@/shared/config/routes";
 import styles from "./sign-in.module.css";
 
@@ -22,28 +21,31 @@ export function SignInScreen() {
   }, [ready, authenticated, router]);
 
   return (
-    <div className={`flex min-h-dvh flex-col bg-bg lg:block ${styles.page}`}>
+    <div className={`flex min-h-dvh flex-col bg-bg ${styles.page}`}>
       <div className={styles.landscape} aria-hidden="true">
         <Image
-          src={OPEN_PATH_IMAGE.src}
+          src="/images/sign-in-day.webp"
           alt=""
           fill
-          priority
           sizes="100vw"
-          className={styles.art}
+          className={`${styles.art} ${styles.dayArt}`}
+        />
+        <Image
+          src="/images/sign-in-night.webp"
+          alt=""
+          fill
+          sizes="100vw"
+          className={`${styles.art} ${styles.nightArt}`}
         />
         <div className={styles.fade} />
       </div>
-      <div className="relative h-44 sm:h-64 lg:h-72">
-        <Link
-          href={APP_ROUTES.site}
-          aria-label={SIGN_IN_COPY.homeLabel}
-          className="absolute top-[max(1.5rem,env(safe-area-inset-top))] left-[max(1.5rem,env(safe-area-inset-left))] inline-flex min-h-11 items-center rounded-md lg:top-8 lg:left-10"
-        >
-          <Logo />
-        </Link>
-      </div>
-      <main className="relative -mt-10 flex flex-1 items-start pr-[max(1.5rem,env(safe-area-inset-right))] pl-[max(1.5rem,env(safe-area-inset-left))] pb-[calc(4rem+env(safe-area-inset-bottom))] sm:-mt-16 lg:block">
+      {/* Only the logo, placed and sized as in the landing's bar, so it does not move between the two pages. */}
+      <SiteBar plain>
+        <SiteBarRow>
+          <SiteBrand label={SIGN_IN_COPY.homeLabel} />
+        </SiteBarRow>
+      </SiteBar>
+      <main className={styles.main}>
         <div className="mx-auto w-full max-w-sm">
           {ready && !authenticated ? (
             <SignInForm />

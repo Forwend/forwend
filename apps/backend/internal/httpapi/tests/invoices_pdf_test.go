@@ -208,7 +208,7 @@ func TestInvoicePDF(t *testing.T) {
 		"Waiting for payment\nAmount due\n5.00 USDC",
 		"From\nAlice Design GmbH\nHauptstr. 1\n10115 Berlin\nDE\nTax ID DE123456789\nbilling@alice.example",
 		"Billed to\nBob Ltd\nMain St 1\nBerlin\nDE\nTax ID DE999999999",
-		"Issued\n"+created.UTC().Format("2 Jan 2006")+"\nSupply date\n31 Oct 2026\nDue date\n1 Nov 2026\nPayment window closes\n"+
+		"Issued\n"+created.UTC().Format("2 Jan 2006")+"\nSupply date\n31 Oct 2026\nDue date\n1 Nov 2099\nPayment window closes\n"+
 			expires.UTC().Format("2 Jan 2006, 15:04")+" UTC",
 		"Description\nAmount\nLogo design\n5.00 USDC\nTotal\n5.00 USDC\n"+
 			"Agreed value 1,000.50 EUR on 2026-10-01",

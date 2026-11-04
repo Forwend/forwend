@@ -6,5 +6,5 @@ export const SITE = {
   title: "Forwend | Get paid in stablecoins, see every step",
   titleTemplate: "Forwend | %s",
   description:
-    "Invoices, checkout and an API for USDC and USDT. Every payment shows when it is detected, confirmed and settled to your own wallet.",
+    "Get paid in stablecoins through invoices, payment links, and checkout. Follow payments to your profile wallet. Explore testnet integrations.",
 } as const;

@@ -27,3 +27,6 @@ __pycache__/
 packages/node/dist/
 packages/js/dist/
 packages/react/dist/
+
+# Local editor settings and launch configs
+.claude/

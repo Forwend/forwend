@@ -4,7 +4,10 @@ test.describe("search metadata", () => {
   test("the home page has a title, a description and an og:image", async ({ page }) => {
     await page.goto("/");
     await expect(page).toHaveTitle(/Forwend/);
-    await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /USDC/);
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+      "content",
+      /stablecoins.*testnet/i,
+    );
     await expect(page.locator('meta[property="og:image"]')).toHaveCount(1);
   });
 

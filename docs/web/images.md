@@ -21,9 +21,25 @@ muted greens and sky blues, wide cinematic composition, no text, no people in fo
 | Direction F Aurora Night (1916x821) | `images/candidates/f-aurora-night.webp` | A quiet northern night over a frozen lake surrounded by low pine hills, soft green and violet aurora ribbons across a deep navy sky, the lake reflecting the aurora, a thin path of footprints crossing the ice toward the horizon, the upper half mostly sky. Painterly digital illustration, calm, cinematic, no text, no people, no buildings, no logos. | 2026-10-08 |
 | Direction G Terracotta Mesa (2172x724) | `images/candidates/g-terracotta-mesa.webp` | A wide desert mesa landscape at midday, layered terracotta and sand-colored rock formations, a single straight road running from the bottom center toward the horizon, clear pale sky in the upper half with no objects, crisp shadows. Warm but restrained palette, painterly digital illustration with clean shapes, no text, no people, no cars, no buildings, no logos. | 2026-10-08 |
 | Direction H Glass Garden (2048x768) | `images/candidates/h-glass-garden.webp` | An abstract composition of soft frosted glass shapes and gentle gradients in mint, lilac and pale blue, floating panels and rounded forms catching soft light on a near-white background, one thin glowing line flowing through the shapes from left to right, the upper half calm and mostly empty. Clean modern 3D render look, soft shadows, no text, no numbers, no logos. | 2026-10-08 |
-| Local landing hero and sign-in background | `images/landing-open-path.webp` | Panoramic copperplate engraving of a limestone footbridge over a calm river. Olive hills and cypress trees, ivory sky, restrained lime highlights. No text. Built-in image_gen. | 2026-11-02 |
-| Local landing experiment, garden footer | `images/landing-evening-garden.webp` | Engraved olive trees frame a winding garden path and low sun. Charcoal ground with ivory and olive-lime lines. Quiet central sky, no text. Built-in image_gen. | 2026-11-02 |
-| Local landing experiment, light garden footer | `images/landing-day-garden.webp` | Edit the evening garden into daylight on ivory-white paper. Preserve trees, path, hills, low sun and quiet sky. Muted olive engraving, pale lime highlights. Built-in image_gen. | 2026-11-02 |
+
+## Open grassland
+
+Built-in image generation produced separate hero, footer and sign-in compositions with theme variations.
+Original PNGs and exact prompts remain in `docs/runs/f419/art-originals/` for local review.
+Delivery files use WebP quality 82; footer mobile crops retain the central horizon and quiet sky.
+
+| Slot | File | Prompt | Date |
+|---|---|---|---|
+| Hero daylight valley, 1536 × 1024 | `images/landing-hero-day.webp` | Original open grassland valley, irregular olive ridges framing a quiet pale sky, rich foreground grasses and restrained painted texture. No objects or text. | 2026-11-02 |
+| Hero daylight mobile, 780 × 960 | `images/landing-hero-day-mobile.webp` | Slightly left-of-center crop preserving the valley opening, visible side terrain and clear upper reading area. | 2026-11-02 |
+| Hero evening valley, 1536 × 1024 | `images/landing-hero-night.webp` | Relight the open valley in olive-gray twilight, with dark quiet central sky and distinctly separated terrain. Preserve the original landforms. | 2026-11-02 |
+| Hero evening mobile, 780 × 960 | `images/landing-hero-night-mobile.webp` | Match the daylight mobile crop with dark central sky and subdued side terrain. | 2026-11-02 |
+| Landing footer daylight, 1774 × 887 | `images/landing-footer-day.webp` | Original irregular olive grassland, distant horizon, quiet warm-white upper sky, restrained painted texture. No text, logos, buildings or financial symbols. | 2026-11-02 |
+| Landing footer daylight mobile, 780 × 976 | `images/landing-footer-day-mobile.webp` | Central crop of the daylight grassland, preserving the distant horizon, trail and open sky. | 2026-11-02 |
+| Landing footer evening, 1774 × 887 | `images/landing-footer-night.webp` | Relight the grassland in subdued olive twilight with near-black green sky. Preserve terrain separation without a dark filter. | 2026-11-02 |
+| Landing footer evening mobile, 780 × 976 | `images/landing-footer-night-mobile.webp` | Central crop of the evening grassland, preserving the distant horizon, trail and dark open sky. | 2026-11-02 |
+| Sign-in daylight horizon, 1774 × 887 | `images/sign-in-day.webp` | Original low olive terrain along the bottom edge. Keep the upper eighty percent and broad center white, clear and quiet. | 2026-11-02 |
+| Sign-in evening horizon, 1774 × 887 | `images/sign-in-night.webp` | Relight the low horizon with dark olive-gray ridges and near-black green open sky. Keep all detail below the form. | 2026-11-02 |
 
 ## Logo
 

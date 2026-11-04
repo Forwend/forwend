@@ -29,16 +29,26 @@ export function Tooltip({ content, children, side = "top" }: TooltipProps) {
   // and the click sets the opposite of the state the tap began with.
   const tapped = useRef(false);
   const openAtTap = useRef(false);
+  const focused = useRef(false);
   return (
     <RadixTooltip.Root
       open={open}
       onOpenChange={(next) => {
-        if (next || !tapped.current) setOpen(next);
+        // Bringing a keyboard-focused trigger into view must not dismiss its hint.
+        if (next || (!tapped.current && !focused.current)) setOpen(next);
       }}
     >
       <RadixTooltip.Trigger
         asChild
+        onFocus={() => {
+          focused.current = !tapped.current;
+        }}
+        onBlur={() => {
+          focused.current = false;
+          setOpen(false);
+        }}
         onPointerDown={(event) => {
+          focused.current = false;
           tapped.current = event.pointerType === "touch";
           openAtTap.current = open;
         }}
@@ -58,6 +68,13 @@ export function Tooltip({ content, children, side = "top" }: TooltipProps) {
       </RadixTooltip.Trigger>
       <RadixTooltip.Portal>
         <RadixTooltip.Content
+          onEscapeKeyDown={() => {
+            focused.current = false;
+            setOpen(false);
+          }}
+          onPointerDownOutside={() => {
+            focused.current = false;
+          }}
           side={side}
           sideOffset={6}
           className="z-[var(--fw-z-overlay)] max-w-xs rounded-md bg-primary px-3 py-1.5 text-xs text-on-primary shadow-md"

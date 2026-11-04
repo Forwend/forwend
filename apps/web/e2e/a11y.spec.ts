@@ -23,6 +23,9 @@ test.describe("accessibility", () => {
       const page = await context.newPage();
       await page.goto(`${PUBLIC_URL}/`);
       expect(await blockingViolations(page)).toEqual([]);
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.getByRole("button", { name: "Open menu", exact: true }).click();
+      expect(await blockingViolations(page)).toEqual([]);
       await context.close();
     });
   }

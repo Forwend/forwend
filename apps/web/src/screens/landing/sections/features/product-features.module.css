@@ -1,0 +1,327 @@
+.features {
+  display: flex;
+  flex-direction: column;
+  gap: var(--landing-section-space);
+  width: min(calc(100% - var(--landing-gutter) * 2), var(--landing-width));
+  margin-inline: auto;
+  padding-block: var(--landing-section-space);
+}
+.feature {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  align-items: center;
+  gap: clamp(2rem, 6vw, 6rem);
+}
+
+.copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.number {
+  font-family: var(--fw-font-mono);
+  font-size: 0.875rem;
+  color: var(--fw-muted);
+}
+.copy h2 {
+  margin-top: 1rem;
+  max-width: 16ch;
+  font-size: clamp(2rem, 3.4vw, 3rem);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  font-weight: 500;
+  text-wrap: balance;
+}
+.copy p {
+  max-width: 38ch;
+  margin-top: 1.25rem;
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: var(--fw-muted);
+  text-wrap: pretty;
+}
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  margin-top: 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
+}
+.link svg {
+  transition: translate var(--fw-duration-base) var(--fw-ease-out);
+}
+.link:hover svg {
+  translate: 0.25rem 0;
+}
+.copy ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+}
+.copy li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1rem;
+}
+.check {
+  flex-shrink: 0;
+  color: var(--fw-accent);
+}
+
+.feature:nth-child(even) .copy {
+  order: 2;
+}
+
+/* The drawn product fragments: decoration beside text that already says what each one does. */
+.visual {
+  display: grid;
+  place-items: center;
+  min-height: 28rem;
+  padding: clamp(2rem, 5vw, 4rem);
+  border-radius: var(--fw-radius-xl);
+  background:
+    radial-gradient(
+      circle at 30% 20%,
+      color-mix(in oklab, var(--fw-brand) 18%, transparent),
+      transparent 55%
+    ),
+    var(--fw-surface-2);
+  overflow: hidden;
+}
+.stack {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  max-width: 24rem;
+}
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1.5rem;
+  border: 1px solid var(--fw-line);
+  border-radius: var(--fw-radius-lg);
+  background: var(--fw-surface);
+  box-shadow: var(--fw-shadow-md);
+  font-size: 0.875rem;
+}
+.sheetTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.sheetTop strong,
+.sheetTitle {
+  font-weight: 500;
+}
+.sheetTop > span {
+  color: var(--fw-muted);
+}
+.sheetTitle {
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+}
+.kicker {
+  color: var(--fw-muted);
+  font-size: 0.8125rem;
+}
+.parties {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding-block: 0.25rem 0.5rem;
+}
+.parties dt {
+  color: var(--fw-muted);
+  margin-bottom: 0.125rem;
+}
+.line,
+.total {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--fw-line);
+}
+.line > :first-child {
+  color: var(--fw-muted);
+}
+.total strong {
+  font-size: 1.5rem;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+.total [data-money] > :last-child,
+.checkoutAmount [data-money] > :last-child {
+  font-size: 0.8125rem;
+  color: var(--fw-muted);
+}
+.sheetFoot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--fw-muted);
+  font-size: 0.8125rem;
+}
+.sheetFoot span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+.url {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--fw-line);
+  border-radius: var(--fw-radius-md);
+  color: var(--fw-muted);
+}
+.url span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fw-ink);
+}
+.checkoutAmount {
+  font-size: 1.5rem;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+.float {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 1rem 1.125rem;
+  border: 1px solid var(--fw-line);
+  border-radius: var(--fw-radius-lg);
+  background: var(--fw-surface);
+  box-shadow: var(--fw-shadow-lg);
+  font-size: 0.8125rem;
+}
+.floatTop {
+  top: -1.5rem;
+  right: -2rem;
+  flex-direction: row;
+  align-items: center;
+}
+.floatCheckout {
+  right: -2.5rem;
+  bottom: -3rem;
+  width: 13rem;
+}
+.floatBottom {
+  right: -1.5rem;
+  bottom: -2.5rem;
+  width: 13rem;
+}
+.payButton {
+  display: grid;
+  place-items: center;
+  min-height: 2.25rem;
+  border-radius: var(--fw-radius-md);
+  background: var(--fw-primary);
+  color: var(--fw-on-primary);
+  font-weight: 500;
+}
+
+.code {
+  margin: 0;
+  padding: 1.5rem;
+  border-radius: var(--fw-radius-lg);
+  border: 1px solid var(--fw-line);
+  background: var(--fw-sunken);
+  color: var(--fw-ink);
+  box-shadow: var(--fw-shadow-md);
+  font-family: var(--fw-font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.codeMuted {
+  color: var(--fw-muted);
+}
+.codeString {
+  color: var(--fw-brand);
+}
+.webhook {
+  margin-top: 1rem;
+}
+.timeline {
+  padding-top: 0.5rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .float {
+      animation: float-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 80%;
+    }
+    .webhook {
+      animation: float-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 80%;
+    }
+  }
+}
+@keyframes float-in {
+  from {
+    opacity: 0;
+    translate: 0 1.5rem;
+    scale: 0.94;
+  }
+}
+
+@media (max-width: 60rem) {
+  .feature {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2.5rem;
+  }
+  .feature:nth-child(even) .copy {
+    order: 0;
+  }
+  .visual {
+    min-height: 0;
+  }
+}
+@media (max-width: 40rem) {
+  .copy h2 {
+    font-size: 2rem;
+  }
+  .copy p {
+    font-size: 1.0625rem;
+  }
+  .visual {
+    padding: 3.75rem 1.25rem 3.5rem;
+    border-radius: var(--fw-radius-lg);
+  }
+  .sheet {
+    padding: 1.125rem;
+  }
+  .floatTop {
+    top: -2.75rem;
+    right: -0.5rem;
+  }
+  .floatCheckout,
+  .floatBottom {
+    right: -0.5rem;
+    bottom: -2.5rem;
+    width: 11.5rem;
+  }
+}

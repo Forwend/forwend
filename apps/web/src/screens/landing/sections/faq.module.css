@@ -1,0 +1,17 @@
+.questions {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 4rem;
+  padding-block: var(--landing-section-space);
+}
+.intro {
+  color: var(--fw-muted);
+  font-size: 1rem;
+  margin-top: 1rem;
+}
+@media (max-width: 48rem) {
+  .questions {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
