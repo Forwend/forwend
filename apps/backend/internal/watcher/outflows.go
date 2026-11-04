@@ -96,6 +96,12 @@ func (c *Chain) outflows(ctx context.Context, logs []types.Log, headers map[uint
 		}
 	}
 	var out []Outflow
+	// A transaction with several events of one receiver, such as a batch of refunds, needs its transfers read once.
+	type transfersOf struct {
+		block           uint64
+		token, receiver common.Address
+	}
+	read := map[transfersOf][]types.Log{}
 	for _, l := range logs {
 		h, ok := headers[l.BlockNumber]
 		inv, watched := invoices[l.Address]
@@ -103,12 +109,17 @@ func (c *Chain) outflows(ctx context.Context, logs []types.Log, headers map[uint
 			recorded[logKey{hexutil.Encode(l.BlockHash[:]), uint64(l.Index)}] {
 			continue
 		}
-		block := new(big.Int).SetUint64(l.BlockNumber)
-		transfers, err := c.filterLogs(ctx, ethereum.FilterQuery{FromBlock: block, ToBlock: block,
-			Addresses: []common.Address{common.HexToAddress(inv.token)},
-			Topics:    [][]common.Hash{{transferTopic}, {common.BytesToHash(l.Address.Bytes())}}})
-		if err != nil {
-			return nil, fmt.Errorf("read chain %d receiver %s transfers: %w", c.chainID, l.Address.Hex(), err)
+		key := transfersOf{l.BlockNumber, common.HexToAddress(inv.token), l.Address}
+		transfers, done := read[key]
+		if !done {
+			block := new(big.Int).SetUint64(l.BlockNumber)
+			var err error
+			transfers, err = c.filterLogs(ctx, ethereum.FilterQuery{FromBlock: block, ToBlock: block,
+				Addresses: []common.Address{key.token}, Topics: [][]common.Hash{{transferTopic}, {common.BytesToHash(l.Address.Bytes())}}})
+			if err != nil {
+				return nil, fmt.Errorf("read chain %d receiver %s transfers: %w", c.chainID, l.Address.Hex(), err)
+			}
+			read[key] = transfers
 		}
 		out = append(out, Outflow{InvoiceID: inv.invoiceID, Log: l, Transfers: transfers, Time: uint64(h.Timestamp), Verified: finalized})
 	}

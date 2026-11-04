@@ -347,13 +347,36 @@ func (s *stack) waitScanned(t *testing.T) {
 	})
 }
 
-func build(t *testing.T) string {
-	t.Helper()
-	dir := t.TempDir()
+// binaries are built once per run, for every test, into binDir; TestMain removes it.
+var binDir string
+
+var binaries = sync.OnceValues(func() (string, error) {
+	dir, err := os.MkdirTemp("", "forwend-e2e-bin-")
+	if err != nil {
+		return "", err
+	}
+	binDir = dir
 	out, err := exec.Command("go", "build", "-o", dir+"/", "../cmd/api", "../cmd/worker", "../cmd/signer",
 		"../cmd/webhooks").CombinedOutput()
 	if err != nil {
-		t.Fatalf("go build: %v\n%s", err, out)
+		return dir, fmt.Errorf("go build: %w\n%s", err, out)
+	}
+	return dir, nil
+})
+
+func TestMain(m *testing.M) {
+	code := m.Run()
+	if binDir != "" {
+		os.RemoveAll(binDir)
+	}
+	os.Exit(code)
+}
+
+func build(t *testing.T) string {
+	t.Helper()
+	dir, err := binaries()
+	if err != nil {
+		t.Fatal(err)
 	}
 	return dir
 }

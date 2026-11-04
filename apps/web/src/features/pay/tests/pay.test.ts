@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Deposit, Invoice } from "@/features/invoices/types/invoices";
 import { PAY_STATES } from "@/features/pay/constants/pay";
 import {
+  clockRuns,
   overpaid,
   payerNoticeOptions,
   payState,
@@ -109,6 +110,13 @@ describe("payState", () => {
     expect(
       payState({ ...invoice, deposits: [{ ...paid, blockTime: "2026-10-12T09:59:00Z" }] }, before),
     ).toMatchObject({ state: PAY_STATES.checking, delayed: false, canSend: false });
+  });
+  it("keeps the clock while money is checked, even after the close, and stops it once the payment is final", () => {
+    const checked = deposit("1000", { paid: null, blockTime: "2026-10-12T09:58:00Z" });
+    expect(clockRuns({ ...invoice, closed: true, deposits: [checked] })).toBe(true);
+    expect(clockRuns(invoice)).toBe(true);
+    expect(clockRuns({ ...invoice, closed: true })).toBe(false);
+    expect(clockRuns({ ...invoice, paymentStatus: "paid" })).toBe(false);
   });
   it("keeps an unpaid checkout usable while historical evidence is pending, without accepting an unverified payment", () => {
     const amounts = {

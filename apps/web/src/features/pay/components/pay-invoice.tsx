@@ -73,6 +73,7 @@ import { ENTER, LEFT_PAD, PAY_STATES, RIGHT_PAD } from "@/features/pay/constants
 import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
 import {
   checkoutClosesAt,
+  clockRuns,
   firstPaymentOption,
   overpaid,
   payerNoticeOptions,
@@ -232,7 +233,6 @@ function Loaded({
   readAt: number | null;
   embed?: EmbedLayout;
 }) {
-  const now = useNow();
   // Payer chooses (R-57): Show address keeps the pick on the invoice, so the pay link opens on it again. `?option=`
   // (the canary's) opens one option and keeps nothing; neither does the owner's preview.
   const choosing = !answer.optionLocked && answer.options.length > 1 && !firstPaymentOption(answer);
@@ -255,6 +255,8 @@ function Loaded({
       ? (optionId: string) => void pickOption({ payToken: linkToken, optionId })
       : undefined;
   const invoice = useMemo(() => withOption(answer, picked), [answer, picked]);
+  // The shown option's clock: late money on a picked option is checked though the invoice itself has closed.
+  const now = useNow(clockRuns(invoice));
   const address = useMemo(() => checkedReceiveAddress(invoice, linkToken), [invoice, linkToken]);
   const token = payToken(invoice);
   const pickedOption = choosing ? answer.options.find((o) => o.optionId === picked) : undefined;
@@ -1165,12 +1167,14 @@ function ExactAmount({ amount, token }: { amount: bigint; token: PayToken }) {
   );
 }
 
-function useNow(): number {
+function useNow(running: boolean): number {
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
+    if (!running) return;
+    setNow(Date.now());
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [running]);
   return now;
 }
 

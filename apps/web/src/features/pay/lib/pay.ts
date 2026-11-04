@@ -154,6 +154,16 @@ export function payState(inv: Invoice, now: number) {
   };
 }
 
+/** Whether the page still changes with the clock: not once the payment is final or the API says its checkout closed,
+ * except while money is being checked, whose delay note counts from the deposit's block time. */
+export function clockRuns(inv: Invoice): boolean {
+  const { state, closed } = payState(inv, 0);
+  return (
+    state === PAY_STATES.checking ||
+    (!closed && state !== PAY_STATES.paid && state !== PAY_STATES.settled)
+  );
+}
+
 /** Only payments that paid the creator (R-121); late money and money over the amount are held. */
 export function receiptDeposits(inv: Invoice) {
   return inv.deposits.filter((d) => d.paid !== null && BigInt(d.paid) > 0n);

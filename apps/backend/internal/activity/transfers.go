@@ -147,12 +147,20 @@ func (s *Service) Transfers(ctx context.Context, profileID, cursor string, limit
 		}
 		afterTime, afterID = &at, &id
 	}
-	// The row id breaks ties within one block time, so pages never skip or repeat a transfer.
-	rows, err := s.pool.Query(ctx, transferSQL+`
-		  AND ($2::bigint IS NULL OR (t.block_time, t.id) < ($2, $3)) AND ($5::text IS NULL OR t.direction = $5)
-		  AND ($6::text IS NULL OR t.counterparty ILIKE $6 OR t.tx_hash ILIKE $6 OR tk.symbol ILIKE $6
-		       OR t.amount = $7::numeric * 10::numeric ^ tk.decimals)
-		ORDER BY t.block_time DESC, t.id DESC LIMIT $4`, profileID, afterTime, afterID, limit+1, only, q.Like, q.Amount)
+	// The row id breaks ties within one block time, so pages never skip or repeat a transfer. The page is chosen first,
+	// wallet by wallet along the wallet_transfers_wallet index; the invoice, label and rate joins then run for those rows
+	// alone, fetched by id.
+	rows, err := s.pool.Query(ctx, `WITH page AS (
+		SELECT p.id, p.block_time FROM profile_wallets w CROSS JOIN LATERAL (
+		    SELECT t.id, t.block_time FROM wallet_transfers t
+		    JOIN tokens tk ON tk.chain_id = t.chain_id AND tk.contract = t.token_contract
+		    WHERE t.chain_family = w.chain_family AND t.wallet_address = w.address AND t.status <> 'reorged'
+		      AND ($2::bigint IS NULL OR (t.block_time, t.id) < ($2, $3)) AND ($5::text IS NULL OR t.direction = $5)
+		      AND ($6::text IS NULL OR t.counterparty ILIKE $6 OR t.tx_hash ILIKE $6 OR tk.symbol ILIKE $6
+		           OR t.amount = $7::numeric * 10::numeric ^ tk.decimals)
+		    ORDER BY t.block_time DESC, t.id DESC LIMIT $4) p
+		WHERE w.profile_id = $1 ORDER BY p.block_time DESC, p.id DESC LIMIT $4)`+transferSQL+`
+		  AND t.id = ANY(ARRAY(SELECT id FROM page)) ORDER BY t.block_time DESC, t.id DESC`, profileID, afterTime, afterID, limit+1, only, q.Like, q.Amount)
 	if err != nil {
 		return TransferPage{}, fmt.Errorf("read wallet transfers: %w", err)
 	}

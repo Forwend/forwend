@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { memo, useId } from "react";
 import { USD_DECIMALS } from "@/features/balances/constants/balances";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { useChart } from "@/features/balances/hooks/use-chart";
@@ -214,9 +214,10 @@ function ChartReadout({
   left,
   top = 0,
   width,
-  dateLabel = (i) => dayLabel(series, i),
+  dateLabel: dateLabelProp,
   note,
 }: ChartReadoutProps) {
+  const dateLabel = dateLabelProp ?? ((i: number) => dayLabel(series, i));
   return (
     <>
       {active === null ? null : (
@@ -240,23 +241,35 @@ function ChartReadout({
           ? ""
           : `${dateLabel(active)}: ${amountLabel(series, active)}${note ? `, ${note(active)}` : ""}`}
       </p>
-      {/* A wrapper, because sr-only on a table doesn't clip it: a table grows to its rows. */}
-      <div className="sr-only">
-        <table>
-          <caption>{label}</caption>
-          <tbody>
-            {series.values.map((_, i) => (
-              <tr key={series.dates[i]?.toISOString() ?? i}>
-                <th scope="row">{dateLabel(i)}</th>
-                <td>
-                  {amountLabel(series, i)}
-                  {note ? `, ${note(i)}` : null}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ChartTable series={series} label={label} dateLabel={dateLabelProp} note={note} />
     </>
   );
 }
+
+// Every day of the series, for screen readers. Memoized: a pointer move changes the readout, not these rows.
+const ChartTable = memo(function ChartTable({
+  series,
+  label,
+  dateLabel = (i) => dayLabel(series, i),
+  note,
+}: Pick<ChartReadoutProps, "series" | "label" | "dateLabel" | "note">) {
+  return (
+    // A wrapper, because sr-only on a table doesn't clip it: a table grows to its rows.
+    <div className="sr-only">
+      <table>
+        <caption>{label}</caption>
+        <tbody>
+          {series.values.map((_, i) => (
+            <tr key={series.dates[i]?.toISOString() ?? i}>
+              <th scope="row">{dateLabel(i)}</th>
+              <td>
+                {amountLabel(series, i)}
+                {note ? `, ${note(i)}` : null}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+});

@@ -6,6 +6,7 @@ import {
   type ReactNode,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -107,7 +108,8 @@ export function ComboboxField({
   const search = useRef<HTMLInputElement>(null);
   const chosen = options.find((option) => option.value === value);
   const words = fold(query.trim());
-  const shown = words ? matching(options, words) : options;
+  // Hovering a row changes only the active row: the list is ranked again only for new options or a new search.
+  const shown = useMemo(() => (words ? matching(options, words) : options), [options, words]);
   const current = Math.min(active, shown.length - 1);
 
   const show = () => {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 421,
+  "nextId": 422,
   "tasks": [
     {
       "id": "F332",
@@ -33,125 +33,6 @@
       ],
       "blockedReason": "Deferred by owner until the rest of Phase 11 is complete. Merchant onboarding should follow the completed MVP workflows.",
       "evidence": null
-    },
-    {
-      "id": "F335",
-      "type": "feat",
-      "behavior": "Prove merchant checkout fulfillment and reconciliation end to end",
-      "acceptance": [
-        "The example merchant prices a cart on its server, creates real checkouts, verifies events and fulfills an order once across hosted and embedded flows.",
-        "Independent shared-link customers, client invoicing, multi-store isolation, expiration, partial payment, delivery recovery and spoofed prices/messages have automated workflow coverage.",
-        "Ledger/export totals reconcile against receiver and wallet chain balances; duplicate/reordered events cannot double-fulfill.",
-        "Quickstart and integration docs match implemented packages; provider limitations, actual user testing and release approvals are reported truthfully."
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "unit",
-        "build",
-        "e2e"
-      ],
-      "refs": [
-        "R-170"
-      ],
-      "keep": [
-        "packages/contracts/src/*"
-      ],
-      "review": true,
-      "notes": [
-        "2026-10-31 2026-10-31 dependsOn F334 cleared by hand: F334 is merged (#393), but the harness reads archived dependencies as unmerged because docs/archive is local only. F415 fixes the harness.",
-        "2026-10-31 review pass by subagent: Pass. Read the whole diff, the new app, the stub, the specs, packages/node, js, react and the backend checkout, paymentio and webhook code. Ran: example-merchant test (8 passed), typecheck (clean), and 'pnpm e2e -g \"example merchant|embedded checkout\"' (8 passed; again with --repeat-each 4 --workers 4: 32 passed). Fine: the browser sends only ids and quantities, and priceCart refuses unknown, repeated, prototype and out-of-range lines (catalog.ts:20). The only thing that marks an order paid is fulfil (orders.ts:59). It runs only after verifyWebhook and a fresh API read with paymentStatus paid and reference equal to the order id (webhook.ts:22-34). The UPDATE ... WHERE fulfilled_at IS NULL check means duplicate, reordered or concurrent deliveries ship once, even across two SQLite connections. A failed read throws and the route answers 500, so Forwend retries. No key reaches the browser: client code imports only catalog.ts and @forwend/react. The logs carry no secrets. The real API matches what the shop reads: sessionId is inv.ID, which is the webhook's data.invoice.invoiceId (checkoutapi/model.go:36, cmd/webhooks/main.go:43). hostedUrl is webURL + /pay/ + PayToken (paymentio/model.go:71), so taking the last path part is right. The stub uses the same field names. The tests run the real /embed frame and the real built packages, find their session by order reference (safe for parallel workers), and pin the page clock. The embed tests still allow only PARENT and refuse OTHER; the token check stays in proxy.ts. I downloaded npm forwend 0.1.0: it has no checkoutSessions, as the README and /docs say. No new external dependency. Cited backend tests exist and cover their claims. Notes, not blocking: (1) Proof 4 says the docs say publishing stays the owner's, but no changed doc says that (only PLAN.md 11.9.4 does). No doc reports that no real user has tested the example and no live provider run was made. Put both in the PR body (acceptance 4, R-170 'reported separately'). (2) The TestMoneyLoop proof says 'with its signed invoice.paid webhook'. In that test the delivery is built, signed and refused as 'address not public' (gate_test.go:149-153). TestWebhookDeliveriesAreSignedAndRetried is the test where a delivery is received. (3) The full Checkout flow (order-checkout.tsx:66) is never rendered in example-merchant.spec.ts. Fulfilment does not depend on the flow, so this is low risk. (4) The README says 'strict CSP' but script-src has 'unsafe-inline' (next.config.ts:8). This matches apps/web's own policy, but the README could say so. (5) turbo.json:9 adds FORWEND_URL to every package's build hash. Each e2e run uses a random port, so it also rebuilds forwend, @forwend/js and @forwend/react. A package-level turbo.json would keep this to the example. (6) The app uses .env.local (forwend.ts:5, README.md:23). Root AGENTS.md says secrets go in each package's .env and lists only backend, web and contracts. (7) The 'local' script (package.json:7) is not in the README. (8) The changelog line about multi-network checkouts describes F413, not F335.'",
-        "2026-10-31 review pass by subagent: Pass (second review, after c704f1f0). The commit changes only the 8 files for notes 1-7. The commit message has no AI trace. Checked each note. (5) FORWEND_URL is gone from the root turbo.json. apps/example-merchant/turbo.json extends // and sets build env FORWEND_URL. In 'turbo run build --dry=json' with two FORWEND_URL values, only the example's hash changes; the forwend, @forwend/js and @forwend/react hashes stay the same. The example keeps the root build's dependsOn, outputs and inputs. Its env list replaces the root's API_URL and NEXT_PUBLIC_PRIVY_APP_ID, which it does not read. After this run, .next/routes-manifest.json has frame-src set to this run's PUBLIC_URL. (6) .env in forwend.ts:5, .env.example:1 and README.md:23; root .gitignore .env* ignores it; root AGENTS.md now lists apps/example-merchant. No .env.local is left. (4) The README says the policy allows inline scripts as Next needs; the test name and proof 1 no longer say strict. (3) Test 1 clicks Full checkout and expects 'Logo design' in the frame. That title is drawn only by Terms, and the element layout leaves Terms out (pay-invoice.tsx:283), so the check fails if the full flow does not load. (7) The README names the local script. (2) Proof 2 calls TestMoneyLoop 'paid and settled end to end', which the test does. TestWebhookDeliveriesAreSignedAndRetried stays cited for delivery recovery. (1) Proof 4 drops the publishing claim and says the PR body reports no live provider run and no real-user test. The PR body must state both, and that publishing stays with the owner (R-170, acceptance 4). (8) Leaving it is fine: the 2026-10-31 changelog lists that day's API-visible changes. Ran: example-merchant test (8 passed), typecheck (no errors), and pnpm e2e -g 'example merchant|embedded checkout' (8 passed). No processes or files left behind. The working tree holds only the harness's docs/tasks.json record."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-31T01:56:47Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 3.0,
-            "log": ""
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.2,
-            "log": ""
-          },
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 245.2,
-            "log": ""
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 6.0,
-            "log": ""
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 36.9,
-            "log": ""
-          },
-          {
-            "id": "keep",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          }
-        ],
-        "taskHash": "c4a11bdcf72a1a49",
-        "filesHash": "ef0af92e89ca79aa",
-        "proof": {
-          "1": "e2e: example-merchant.spec.ts: the shop prices 2 beans and 1 mug at 60.50 on its server, creates the checkout with those items, shows Forwend's real pay panel and full checkout it can't read under its Content-Security-Policy, and links the hosted page; webhook.test.ts and catalog.test.ts in unit",
-          "2": "e2e: backend e2e TestReusableLinkReservationsExpireAndPurchasesSettleIndependently (independent link customers), TestExceptionsCancelAndEmail (partial, expiry, late), TestMoneyLoop (an invoice paid and settled end to end); unit: TestCheckoutBoundariesIncludeStoreRoleTenantKeyAndMode (store isolation), TestWebhookDeliveriesAreSignedAndRetried (delivery recovery); example-merchant spec and webhook.test.ts (spoofed prices, forged messages and events)",
-          "3": "e2e: TestCheckoutPurchaseSettlesWithOneRPCWithoutIssuingAnInvoice reconciles ledger, receiver and wallet balances and the movements CSV to chain receipts; the example ships once across a repeated paid event and a later settled event (example-merchant.spec.ts, webhook.test.ts)",
-          "4": "docs-check: /docs Checkout on your site and changelog, apps/example-merchant README quickstart; they say npm forwend 0.1.0 lacks checkout methods and every network is a testnet; the PR body reports that no live provider run or real-user test was made"
-        },
-        "review": {
-          "result": "pass",
-          "by": "subagent",
-          "summary": "Pass (second review, after c704f1f0). The commit changes only the 8 files for notes 1-7. The commit message has no AI trace. Checked each note. (5) FORWEND_URL is gone from the root turbo.json. apps/example-merchant/turbo.json extends // and sets build env FORWEND_URL. In 'turbo run build --dry=json' with two FORWEND_URL values, only the example's hash changes; the forwend, @forwend/js and @forwend/react hashes stay the same. The example keeps the root build's dependsOn, outputs and inputs. Its env list replaces the root's API_URL and NEXT_PUBLIC_PRIVY_APP_ID, which it does not read. After this run, .next/routes-manifest.json has frame-src set to this run's PUBLIC_URL. (6) .env in forwend.ts:5, .env.example:1 and README.md:23; root .gitignore .env* ignores it; root AGENTS.md now lists apps/example-merchant. No .env.local is left. (4) The README says the policy allows inline scripts as Next needs; the test name and proof 1 no longer say strict. (3) Test 1 clicks Full checkout and expects 'Logo design' in the frame. That title is drawn only by Terms, and the element layout leaves Terms out (pay-invoice.tsx:283), so the check fails if the full flow does not load. (7) The README names the local script. (2) Proof 2 calls TestMoneyLoop 'paid and settled end to end', which the test does. TestWebhookDeliveriesAreSignedAndRetried stays cited for delivery recovery. (1) Proof 4 drops the publishing claim and says the PR body reports no live provider run and no real-user test. The PR body must state both, and that publishing stays with the owner (R-170, acceptance 4). (8) Leaving it is fine: the 2026-10-31 changelog lists that day's API-visible changes. Ran: example-merchant test (8 passed), typecheck (no errors), and pnpm e2e -g 'example merchant|embedded checkout' (8 passed). No processes or files left behind. The working tree holds only the harness's docs/tasks.json record.",
-          "at": "2026-10-31T02:03:17Z",
-          "filesHash": "ef0af92e89ca79aa"
-        },
-        "commit": "c48b1f1e",
-        "doneAt": "2026-10-31T12:50:20Z"
-      },
-      "branch": "feat/f335-prove-merchant-checkout-fulfillment-and",
-      "baseCommit": "6338697e1281927e28887ac64cd624eed8175440",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f335-prove-merchant-checkout-fulfillment-and",
-        "base": "main"
-      }
     },
     {
       "id": "F348",
@@ -244,152 +125,6 @@
       "evidence": null
     },
     {
-      "id": "F408",
-      "type": "feat",
-      "behavior": "The pay page tells a payer how to get held money back through support, and Need help explains every case without promising recovery",
-      "acceptance": [
-        "Every held-money line on the pay page (overpaid, late, closed with a partial payment, canceled, another option) is one short line, such as 'Overpaid by X', with How to get it back on its right, which opens Need help. None tells the payer to ask the recipient, and none promises the money comes back.",
-        "Need help shows short sections with headings: check this page (host, scams, the unverified name); sent too much, too late or after it closed; sent on the wrong network or token, where we check but can't promise. An Email support action opens a message with the pay link filled in, and the address shows as text with a copy button. The address comes from config, never from code.",
-        "The dialog follows the kit's type and spacing, works in light and dark and at 390 px wide, and the embedded checkout gets the same dialog with its own host note. Screenshots reviewed; axe finds 0 serious or critical violations.",
-        "PLAN 11.10 and D-37, D-78 and Q-9 describe returns through support for the MVP: no wallet connection or signature. Deferred beyond MVP holds the automation: self-serve claims and a wrong-network lookup.",
-        "Browser tests cover the dialog's sections, Email support link and copy button, and each held-money line on the pay page."
-      ],
-      "dependsOn": [
-        "F333"
-      ],
-      "state": "passing",
-      "verification": [
-        "unit",
-        "backend-e2e",
-        "web-e2e"
-      ],
-      "refs": [
-        "R-45",
-        "R-68",
-        "R-77",
-        "R-168",
-        "D-37",
-        "D-78",
-        "Q-9"
-      ],
-      "keep": [
-        "packages/contracts/src/*"
-      ],
-      "review": true,
-      "notes": [
-        "2026-10-31 review fail by reviewer: Code, tests and most docs are right, but the old 'ask the payee' path still reaches payers and the owning docs. (1) apps/backend/internal/document/document.go:151-152: the invoice PDF of a closed, partly paid invoice says 'The money sent is held for the payer; ask <payee> to get it back.' The payer downloads that PDF from the pay page in every state (pay-invoice.tsx:455-462), so it contradicts the new pay page and D-118. F409 covers only the owner side, so nothing fixes or names it (AGENTS: a fix covers every place, PDFs included). (2) docs/PROJECT.md:117 R-68, a ref of F408, still says the payer 'asks the payee to get it back (owner request 2026-10-29)'. (3) docs/web/DESIGN.md:735 still quotes 'The extra is held for you; ask <payee> to get it back.', above the new rule at :757. Fine: every held line, the closed line and the dialog match the contracts (refundableAmount allows only money above the amount before the deadline; settle deadline is expiry + 7 days, D-18) and D-90; 'send it to the address it came from' sits next to the exchange line; wrong network says we can't promise (D-33). HeldNote is a div, no dialog sits in a <p> or a live region; focus goes to Close and back to the trigger; h2 then h3; button opens the dialog, Email support is a mailto link with encoded subject and body; window is read after mount; the embed sends the /pay/ link. PLAN 11.10, D-37, D-78, D-118, Q-9, F409-F412 and F417 agree. pnpm e2e -g '...' 6 passed, pnpm typecheck passed; light, dark, 1280 and 390 px screenshots look right with no sideways scroll. Non-blocking: GetItBack (pay-invoice.tsx:1024-1037) uses a raw <button> with buttonClasses where other triggers use the kit Button, and 'h-auto text-sm' change nothing there. Each HeldNote mounts its own dialog, so a page can hold three copies. No test catches an 'Ask the recipient' line returning inside the dialog: the /; ask .+/ guard needs a semicolon. 'days after the checkout closes' understates a canceled invoice with a long checkout: up to 30 days after an early deploy (MAX_HOLD). PROJECT.md:39 Refund claim glossary row and PLAN.md:86 and :92 still speak of refund claims.",
-        "2026-10-31 review fail by reviewer: Re-review of f6e224b6. All three earlier defects are fixed, but the fix adds one visual regression. Blocker: GetItBack now uses the kit Button with no text size (pay-invoice.tsx:1029). The link variant sets none, so the button inherits from its parent. In HeldNote that is text-sm (14px), but the closed-partly-paid status line's wrapper (pay-invoice.tsx:830) has no size. There 'How to get it back' renders at 16px under a 14px line (measured with getComputedStyle at 1280 and 390 px, and seen in a screenshot). My earlier note that text-sm changed nothing was wrong for this caller. Fix: className=\"text-sm\" on the Button, so both callers match. Fixed and fine: the invoice PDF line (document.go:154-155) says held, not paid out, and to email document.Support. notify.Support points at it. TestStatusAsksForMoneyOnlyWhilePayable checks the support address and no ' ask '. R-68 (PROJECT.md:117) and DESIGN.md:735 match the code. The Refund claim glossary row and PLAN.md:86 and :92 say returns through support. The wait line no longer gives a timing it can't keep. The e2e guard /ask (the recipient|Alice Design GmbH) to get it back/i also counts hidden dialog text. A fresh search of apps/web/src, packages/js, packages/react, apps/backend/internal and docs finds no payer-facing 'ask ... to get it back' or 'not lost'. One dialog per HeldNote is fine as argued. Ran: go vet and gofmt clean; with-env go test ./internal/document ./internal/notify ok; pnpm e2e -g '...' 6 passed.",
-        "2026-10-31 review pass by reviewer: Re-review of 8c85e320. The last blocker is fixed: GetItBack's kit Button has className=\"text-sm\" (pay-invoice.tsx:1029). How to get it back is now 14px under the closed-partly-paid status line as well as under each HeldNote. The held-money test asserts 14px on all five cases (pay.spec.ts:796-798). pnpm e2e -g 'every held payment|partly paid' 2 passed. Earlier rounds stand: every pay-page held line, the Need help dialog and the invoice PDF send payers to support. None tells them to ask the payee or promises a return. The wording matches refundableAmount, D-18, D-33 and D-90. R-68, DESIGN.md, PLAN 11.10, D-37, D-78, D-118, Q-9 and F409-F412, F417 agree. go test document and notify, typecheck, and light, dark, 1280 and 390 px screenshots passed. Non-blocking: docs/web/rules.md says fonts are judged in screenshots, not tested, so the toHaveCSS font-size check bends that rule; keep it or drop it as you prefer.",
-        "2026-10-31 review pass by reviewer: Re-review of 586c02fa. The commit only removes the toHaveCSS font-size check from the held-money test (pay.spec.ts:796), plus harness bookkeeping in docs/tasks.json. pay.spec.ts is back to the f6e224b6 blob (1e33ef30). This follows docs/web/rules.md: type is judged in screenshots. The fix stays: GetItBack's kit Button keeps className=\"text-sm\" (pay-invoice.tsx:1029). The previous round measured 14px under both the status line and HeldNote. Earlier rounds stand: every pay-page held line, the Need help dialog and the invoice PDF send payers to support. None tells them to ask the payee or promises a return. The wording matches refundableAmount, D-18, D-33 and D-90. R-68, DESIGN.md, PLAN 11.10, D-37, D-78, D-118, Q-9 and F409-F412, F417 agree.",
-        "2026-10-31 review pass by reviewer: Re-review of d48b84f5 (owner's changes). Support address from config: the worker reads SUPPORT_EMAIL into notify.Site.Support. The HTML and text footers drop the Questions line when it is empty (TestFooterNamesTheConfiguredSupportAddress). The web reads NEXT_PUBLIC_SUPPORT_EMAIL at build and hides Email support when it is empty. turbo env, web.Dockerfile ARG/ENV, compose (SUPPORT_EMAIL:? for the worker and the web build arg), staging.md, api.md and both .env.example files list it. No support@forwend.com or document/notify.Support remains. The PDF line (document.go:151-152) says held, not paid out, and points to Need help on the pay page. Held lines are short facts with How to get it back on the right. Closed-partial puts the link in the status grid's second column. None asks the payee or promises a return; a fresh search finds no 'ask ... to get it back' or 'not lost' for payers. The copy button reuses useCopy, IconButton and the sr-only status, as the amount copy does. The test grants clipboard permission and reads the address. Ran: gofmt and go vet clean; with-env go test config, notify and document ok; pnpm typecheck and biome clean; pnpm e2e -g '...' 6 passed. On the e2e build (help@example.test), light, dark, 1280 and 390 px screenshots of overpaid, late and closed-partial and the dialog look right: link 14px everywhere, no sideways scroll. Non-blocking: (1) apps/web/e2e/servers.ts:17 'The example's webhook signing secret' comment now sits above SUPPORT_EMAIL, away from EXAMPLE_WEBHOOK_SECRET. (2) A build without NEXT_PUBLIC_SUPPORT_EMAIL, such as local dev today, says 'Email support' twice in Need help but shows no address. Compose blocks that on staging; any other host must set it.",
-        "2026-10-31 review pass by reviewer: Re-review of c16a73a4. The commit only moves EXAMPLE_WEBHOOK_SECRET back under its own comment in apps/web/e2e/servers.ts:17-18, with SUPPORT_EMAIL and its comment after it, plus harness bookkeeping in docs/tasks.json. Note (1) from the last round is fixed. Note (2): the dev server on :3000 does carry the address; its pay page HTML has mailto:support@forwend.com. My earlier reading came from apps/web/.env, not the process environment. The rule stands as designed: a build without NEXT_PUBLIC_SUPPORT_EMAIL hides Email support, and compose requires it. Everything from the d48b84f5 review holds: support address from config, short held lines with How to get it back, the PDF pointing to Need help, the copy button, docs and env lists in step, Go tests, typecheck, lint, the pay e2e tests and the light, dark, 1280 and 390 px screenshots."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-31T14:59:50Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 3.7,
-            "log": ""
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.4,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.2,
-            "log": ""
-          },
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 247.8,
-            "log": ""
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 5.7,
-            "log": ""
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 43.9,
-            "log": ""
-          },
-          {
-            "id": "backend-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 36.5,
-            "log": ""
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 37.1,
-            "log": ""
-          },
-          {
-            "id": "keep",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          }
-        ],
-        "taskHash": "7c7f2be546529d95",
-        "filesHash": "745c5f42a05e03d9",
-        "proof": {
-          "1": "web-e2e: pay.spec 'every held payment gets one short line, and How to get it back opens Need help' covers overpaid, late, closed with a partial payment, canceled and another option, and fails if 'ask the recipient/Alice Design GmbH to get it back' returns; unit: TestStatusAsksForMoneyOnlyWhilePayable checks the expired, partly paid invoice PDF points to Need help and never asks the payee; the right-hand link checked in screenshots",
-          "2": "web-e2e: pay.spec 'shows who asks and the amount' opens Need help, checks its three section headings and the can't-promise line, that Email support mails the inbox the build was given (NEXT_PUBLIC_SUPPORT_EMAIL=help@example.test from e2e/servers.ts) with the pay link in the body, and that the copy button puts that address on the clipboard; unit: TestFooterNamesTheConfiguredSupportAddress checks emails name SUPPORT_EMAIL and leave the line out when empty; no support address is in code",
-          "3": "web-e2e: the same test runs axe with the dialog open (0 blocking violations); 'an element tells its page' opens Need help in the embed: its own host note and the /pay/ link; light, dark and 390 px screenshots reviewed",
-          "4": "docs-check: PLAN 11.10 describes returns through support with F408-F412, the pre-mainnet stuck-money gaps and roadmap self-serve returns; D-118 added, D-37, D-78, R-68 and the Refund claim glossary row updated, Q-9 answered by D-118; staging.md and both .env.example files list SUPPORT_EMAIL, and compose refuses to start without it",
-          "5": "web-e2e: the held-money and Need help tests above, including the email copy button"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Re-review of c16a73a4. The commit only moves EXAMPLE_WEBHOOK_SECRET back under its own comment in apps/web/e2e/servers.ts:17-18, with SUPPORT_EMAIL and its comment after it, plus harness bookkeeping in docs/tasks.json. Note (1) from the last round is fixed. Note (2): the dev server on :3000 does carry the address; its pay page HTML has mailto:support@forwend.com. My earlier reading came from apps/web/.env, not the process environment. The rule stands as designed: a build without NEXT_PUBLIC_SUPPORT_EMAIL hides Email support, and compose requires it. Everything from the d48b84f5 review holds: support address from config, short held lines with How to get it back, the PDF pointing to Need help, the copy button, docs and env lists in step, Go tests, typecheck, lint, the pay e2e tests and the light, dark, 1280 and 390 px screenshots.",
-          "at": "2026-10-31T15:06:59Z",
-          "filesHash": "745c5f42a05e03d9"
-        },
-        "commit": "5188e5a3",
-        "doneAt": "2026-10-31T15:08:22Z"
-      },
-      "branch": "feat/f408-the-pay-page-tells-a-payer-how-to-get-he",
-      "baseCommit": "dc1b7341af24a1da2cc285d79d6cabb7080e1433",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f408-the-pay-page-tells-a-payer-how-to-get-he",
-        "base": "main"
-      }
-    },
-    {
       "id": "F409",
       "type": "feat",
       "behavior": "The owner sees why money is held and that the payer gets it back through Forwend support",
@@ -416,145 +151,6 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
-    },
-    {
-      "id": "F410",
-      "type": "feat",
-      "behavior": "Support returns held money with one ops command that can't overpay or race a settlement",
-      "acceptance": [
-        "cmd/ops case takes a pay link, receive address, payment transaction or invoice id and prints each held payment: sender, amount, why it is held, what is refundable now and when all of it is. Backend only, no UI.",
-        "ops return checks the payment is final and reached this receiver, caps the amount at what is both held and refundable and at least 0.10 USD (D-90), refuses a zero, receiver, token, factory or invoice-address destination, warns for a contract or an address that didn't pay, and dry-runs the transfer and the refund.",
-        "It sets refund_pending before it prints the calls (the receiver's deploy when needed, then refund), one return per option at a time, and not while any movement is unbooked. Process keeps refund_pending until a refund is booked; reopen refuses it; the watcher keeps reading the receiver past its window; the attention list keeps it. ops release unlocks a return that won't be sent.",
-        "The watcher books the return once, refund_pending becomes held or refunded, and the owner's payment page shows it: a Returned to the payer row in Transfers, the timeline's last step, and no extra held any more.",
-        "No new key: the command reads and prints; its only write is the refund status and its history row."
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "unit",
-        "backend-e2e"
-      ],
-      "refs": [
-        "D-26",
-        "D-57",
-        "D-60",
-        "D-89",
-        "D-90",
-        "D-118",
-        "R-130",
-        "R-69"
-      ],
-      "keep": [
-        "packages/contracts/src/*"
-      ],
-      "review": true,
-      "notes": [
-        "2026-10-31 review fail by reviewer: FAIL, one money defect. The tool can send the creator's money when the ledger is behind the chain. returns.go:236 caps a return at min(ledger held, on-chain refundable). Past an unsettled deadline (factory paused or signer down longer than the grace, a case operations.md expects), refundable is the whole balance, so the ledger is the only guard for the creator's share. That guard is stale while a sent refund is not booked yet. Reproduced on Anvil with a temporary overlay test (removed afterwards): 5 USDC invoice paid 6, never settled, past the deadline; ops return, Safe sends it, ops release before the watcher books it, ops return again. Both dry runs pass, a second 1 USDC goes out, the receiver keeps 4 of the 5 owed, and the outflow books as refund_consumed_payable. A refund sent outside the tool opens the same gap with no release at all. Under D-60 the person who releases is not the one who signed in the Safe, so this mix-up is plausible. Fix: QueueReturn refuses while the receiver's chain balance (h.Balance) is below the ledger's receiver balance (ledger.ReadAmounts already gives Receiver): money has left and isn't booked yet. Add a test like the one above. money-safety.md:93 should also say: reject the Safe transaction and check it was not executed before you release. Fine as written: two operators at once (the conditional UPDATE at returns.go:315 lets one win, and the other gets ErrReturnQueued before anything prints). Return during a settlement (refundable before the deadline is balance minus amount; Process keeps refund_pending). Reopen refuses refund_pending (invoice/reopen.go:66, get.go:185). The status decode of words 5 and 8 matches InvoiceStatus. The printed Data equals cast calldata of the printed signature and args (checked), the cast form runs in the tests, the arguments are only hex and digits so the quoting is safe, and the Transaction Builder custom data step is right. Lookup: pay_token is unique, lowercase and only on main rows. An invoice id is read as a tx hash and finds nothing, never the wrong invoice. No secret is printed: errors go through chain.Redact, and with-env.sh drops the keys. All three fixes fail without their change (Process, watcher holding, attention list: checked with go -overlay). The targeted tests, go test ./cmd/ops and go vet pass, and ops case ran read-only on a local Tempo invoice. Non-blocking: (1) main.go:103 needs -tx to touch exactly one invoice, so a 4337 bundle or a batch that pays two invoices can't be returned, and the error says not a final payment. (2) With several payers, -amount is capped only by the option's total held, so support works out each payer's share by hand. (3) Another invoice's receive address is not refused as a destination (returns.go:233). It only gets the warning that no payment came from it. (4) money-safety.md:77 says -to warns, but the warning is for a destination that made no payment. (5) No tests cover ErrAmountNeeded, a token or factory destination, the contract warning, or main.go picking the option. (6) returns.go:33 repeats the deploy signature from contract.go:19. returns.go:196 prints <nil> on a short reply. ErrNotYet names the deadline even after it has passed. (7) The pay copy warns only about under 0.10 USD, but D-90 says Need help also warns that unclaimed money may never come back. (8) operations.md:32 says check receiverOf(invoiceId), which can't pass before the deploy in a batch. (9) with-env.sh keeps CANARY_RPC_URLS for ops.",
-        "2026-10-31 review pass by reviewer: PASS after 941492b6. The defect is fixed. QueueReturn now refuses with ErrUnbooked while the receiver's chain balance is below the ledger's receiver balance (returns.go:219). TestSupportWaitsForASentRefundToBeBookedBeforeTheNextReturn is the reproduced scenario. With the guard removed through go -overlay, it fails ('a second return before the first was booked: <nil>'). As committed, it passes. I tried to break the guard. (a) An unbooked late deposit can hide an unbooked refund. Reproduced: return, send, release, then a 1 USDC deposit from another address, not yet scanned; the second return is accepted. The creator stays whole: the receiver keeps 5 of 5, payable is 5, held is 0, no policy exception. The guard passes only when unbooked money in is at least unbooked money out, so the old held figure never exceeds what will be held once both are booked. The late payer's 1 USDC still went to the first payer. The creator could lose only if that deposit were later reorged away and the Safe's refund was mined again. Non-blocking: refusing while any deposit to the option is detected and not booked would close this too. (b) Arc: a native top-up to an undeployed receive address that no Transfer log records would hide it the same way. The creator's amount stays on chain, and the ledger flags it (refund_consumed_payable plus the balance alert). The 6-decimal balanceOf rounds down, so it never trips the guard by mistake. (c) A settlement on its way, a lagging RPC or an unreadable token make it refuse for now, which is safe; the error names the cause. The other fixes check out. main.go picks this case's option out of a transaction that pays several invoices. Any invoice's receive address is refused, with tests for the token, the factory, another receiver and the contract warning. There is one deploy signature constant, a short reply reports its length, and ErrNotYet names the deadline only while it is ahead. D-90 matches the pay copy, operations.md names factory.predict(terms), and with-env.sh drops CANARY_RPC_URLS. The money-safety.md bullets are accurate, including the step before release: reject the Safe transaction and check it never ran. Passed: the targeted backend tests, go test ./cmd/ops, go vet, check-docs (0 errors), and a read-only ops case on the local Tempo invoice. Still open, accepted: ErrAmountNeeded has no test (the Anvil helpers pay from one account), and splitting among payers stays support's call (D-57).",
-        "2026-10-31 review pass by reviewer: PASS after 31843372. QueueReturn now also refuses with ErrUnbooked while the option has a chain_transfers row that is neither reorged nor booked, or a receiver_outflows row (not a recovery) with no ledger transaction (returns.go:222-232). TestSupportWaitsForEveryPaymentToBeBooked checks this. Remove that check through go -overlay and the test fails ('with a payment not booked: <nil>'); as committed it passes. My earlier probe was: return, send, release, then a late 1 USDC deposit from another address. Once the watcher has scanned that deposit, the second return is now refused. Before the first scan after the deposit, it is still accepted, because the deposit has no row yet and it raises the chain balance. As before, the creator stays whole in that window, since the balance guard passes only when unbooked money in is at least unbooked money out. Only the late payer's money could go to the first payer. Non-blocking notes: (1) Closing that window means refusing whenever the chain balance is not equal to the booked balance, at the cost of blocking returns while any unexplained balance exists. Not needed for the MVP. (2) An outflow the ledger refused (reconciliation_error), or a detected row that never resolves, blocks returns for that option until an operator reconciles it. That is the safe direction, and those options already show as unreconciled. (3) In docs/backend/money-safety.md:89-91 the new bullet sits between the balance-guard bullet and its two sub-bullets (past the deadline the contract lets the whole balance out, so a second return would take the creator's money). Those sub-bullets now read as explaining the new bullet. Move the new bullet below them. Passed: the targeted backend tests (settlement, watcher, httpapi tests, history), go test ./cmd/ops, go vet, and check-docs (0 errors). The earlier fixes and notes are unchanged. Still open, accepted: ErrAmountNeeded has no test, and splitting among payers stays support's call (D-57).",
-        "2026-10-31 review pass by reviewer: PASS after c8484f0a. Docs only: git diff 31843372..HEAD changes just docs/backend/money-safety.md and the harness's docs/tasks.json. In money-safety.md:88-91, the two reasons (past the deadline the contract lets the whole balance out, so a second return would take the creator's money) are back under the balance-guard bullet. The unbooked-movements bullet follows them. That fixes my note 3. check-docs: 0 errors. My review of 31843372 still holds for the code. QueueReturn refuses while the chain balance is below the booked balance, or while a payment or receiver event of the option is unbooked. The tests fail without each check and pass as committed. Non-blocking notes from that review still apply: there is a short window before the watcher's first scan of a late deposit (the creator stays whole, the late payer's money could go to the first payer), and a refused outflow blocks returns for that option until it is reconciled. Accepted as before: ErrAmountNeeded has no test, and splitting among payers stays support's call (D-57).",
-        "2026-10-31 review fail by reviewer: FAIL, one defect left. The payer's pay page still says the money is held after it was returned. 92b05c61 fixes the owner's page only. On the payer's page, apps/web/src/features/pay/components/pay-invoice.tsx:1008-1011 (Overpaid) computes extra as on-time deposits minus the amount and never reads amounts.held. The Paid view (pay-invoice.tsx:1098) and the progress section (:993) both render it. Checked on the local Tempo testnet invoice the run used (receive 0x9615ba81..., paid, settled, refunded), with a read-only GET of /v1/invoices/{payToken} on localhost. The API says amounts.held 0, refunded 900000, refundStatus refunded, onTimeAmount 1000000, amount 100000. So the payer who just got 0.90 OUSD back still sees 'Overpaid by 0.90 OUSD' in the warning color, with 'How to get it back', which tells them to email support. AGENTS.md asks a fix to cover every reader of the same data, owner and payer pages included, or to name them. Fix: Overpaid uses the ledger once amounts exist, the way pay.ts already caps late at amounts.held. Add a unit test with held 0 and refunded 900000. Optionally show that it was returned. Everything else in 2342dcd4 and 92b05c61 checks out. CaseOptions takes an invoice id through a UNION with the tx-hash lookup: a 0x+64 ref matching neither still gives ErrNoCase, and an id given as -tx matches no payment, so it can't pick the wrong option. ops case hides options with no payments, no held money and no balance. A detected payment raises the balance, so it stays visible. returns lists only booked refunds (ledger_transaction_id NOT NULL) in chain order, and the httpapi test asserts the unbooked one is left out. optionFigures shows held once nothing is pending: payments.test.tsx and the e2e fixture agree, and paymentStatusOf already reads Overpaid from held. The ReturnRow, timeline step, DESIGN.md and money-safety.md lines match the code. Minor: the timeline's last return is the last option's last return, not the latest by time across options. That only matters with returns on two options. Passed: the targeted backend tests, now including TestPaymentMovementExportReconcilesReturns, go test ./cmd/ops, and vitest on payments.test.tsx and features/pay (40 tests). Earlier notes and accepted items are unchanged.",
-        "2026-10-31 review pass by reviewer: PASS after 0c6a2ee8. The payer-page defect is fixed. pay.ts:47-57 overpaid(inv) takes the on-time extra over the amount. Once amounts are present and reconciled, it is capped at held minus late, with late capped at held first, as payState does. Overpaid in pay-invoice.tsx:1008-1012 uses it, so both the Paid view and the progress section drop the line after a return. Checked on the local stack, read-only. GET /v1/invoices/{payToken} for the Tempo invoice (receive 0x9615ba81...) gives held 0 and refunded 900000. Loaded /pay/{payToken} in headless Chromium with every non-GET request aborted (only POST /views, blocked). The page shows 'Recorded returns: 0.90 OUSD on Tempo Moderato.', no Overpaid line and no How to get it back button. pay.test.ts covers 900 before booking and with held 900, 0 after the return, and the two late-money cases. The e2e 'an overpayment returned to the payer is no longer shown as held' is in verify (I did not run the e2e build myself: it would rebuild .next under the running dev server). The owner timeline now takes the latest return by blockTime across options; RFC 3339 UTC strings compare correctly. DESIGN.md matches. The receipt PDF already reads the ledger's held and returned amounts. Passed: vitest on features/pay and features/payments (43 tests). Non-blocking note: a not-yet-final overpayment is a detected deposit, which UnreconciledSQL does not count. So while it confirms, the cap reads the old held amount (0) and the Overpaid line appears only once the deposit is booked. That costs a few minutes and the page shows Confirming meanwhile. Earlier notes and accepted items (ErrAmountNeeded untested, D-57 split by hand) are unchanged.",
-        "2026-10-31 review pass by reviewer: PASS after 4ab7ac58. It is a copy change at the owner's request, and no money code changed. The diff from cda0bcf5 touches only PLAN.md, apps/web/e2e/pay.spec.ts and pay-copy.ts. sendOnly is now 'Send only ${symbol} on ${network}.' (pay-copy.ts:48). Both pay.spec assertions match: the Base Sepolia note, and the Arbitrum Sepolia note that keeps 'Native USDC, not USDC.e.'. PLAN 11.10.1 drops the bullet that described the removed sentence. No other reader is left: 'may not come back' and 'Other networks or tokens' now appear nowhere in the repo, docs, tasks.json, Go or web code. DESIGN.md:680 and :701 already say 'Send only <token> on <network>.' Need help still says wrong-network money can't be promised (pay-copy.ts:157-158, wrongHelp). The D-90 line about held amounts under 0.10 USD is unchanged. Passed: vitest on features/pay (43 tests) and check-docs (0 errors). The e2e is in the coordinator's verify run. Earlier notes and accepted items are unchanged.",
-        "2026-10-31 review pass by reviewer: PASS after 0e290a07. It is a copy change on the payer's partly paid view, at the owner's request, and no money code changed. The diff from fc1b57a9 touches only pay.spec.ts, pay-invoice.tsx, pay-copy.ts and PROJECT.md. The partial status is now '${received} received. ${remaining} left to send.' (pay-copy.ts:81-82). The copyFromHere constant and its paragraph are gone, with no reader left: neither 'copyFromHere' nor 'Copy the address from this page' appears anywhere in the repo. Both partial assertions in pay.spec match the new line. The closed-case check that the old line is absent was removed with the line. The new R-77 text matches the page. DESIGN.md:792 'Received X of Y' describes the owner's invoice header (R-69), not the pay page, so it stays right. Note, the owner's choice: the pay page no longer warns about look-alike addresses planted in the wallet history. R-78's marked first 6 and last 4 characters, and the scam line 'Forwend never asks you to pay a different address', still help the payer check. Passed: vitest on features/pay (43 tests), tsc --noEmit for apps/web, and check-docs (0 errors). The e2e is in the coordinator's verify run. Earlier notes and accepted items are unchanged."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-31T17:51:53Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 3.2,
-            "log": ""
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.2,
-            "log": ""
-          },
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 265.0,
-            "log": ""
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 5.6,
-            "log": ""
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 39.2,
-            "log": ""
-          },
-          {
-            "id": "backend-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 33.3,
-            "log": ""
-          },
-          {
-            "id": "keep",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          }
-        ],
-        "taskHash": "75158628719a1b8a",
-        "filesHash": "f8d0190ab9d7fb04",
-        "proof": {
-          "1": "unit: TestSupportReturnsAnOverpaymentToItsSenderOnce finds the case by receive address, transaction, invoice id, pay link, embed link and token; ops case 0xc1087cbd… printed the Tempo testnet option's 0.90 OUSD overpayment and hid its 3 empty options",
-          "2": "unit: TestSupportReturnRefusesWhatTheMoneyCantDo refuses an unknown payment, the receiver, the zero address, the token, the factory, another invoice's receiver, more than held and 0.099999 USD; accepts 0.10 USD to another address and to a contract, each with its warning; writes invoice.return_queued and invoice.return_released; web-e2e: Need help warns held amounts under 0.10 USD may never come back",
-          "3": "unit: the overpayment test keeps refund_pending through the signer's settlement (failed before the Process fix); TestSupportWaitsForASentRefundToBeBookedBeforeTheNextReturn and TestSupportWaitsForEveryPaymentToBeBooked refuse a return while a refund or a payment is unbooked (both accepted it before their fixes); TestReceiverWithAQueuedReturnStaysWatchedPastTheWindow (0 refunds before the watcher fix); TestPaymentAttentionShowsNetFunds keeps a queued return listed (failed before the attention fix)",
-          "4": "e2e: 'an overpayment returned to the payer is no longer shown as held' shows Recorded returns and no Overpaid line (Overpaid shown before the fix); the partly paid tests read '250.00 USDC received. 1,000.00 USDC left to send.'; unit: the payment detail's returns lists only booked refunds, optionFigures shows no extra after a return, ReturnRow renders it, overpaid() is capped at held minus late; testnet: the Tempo Moderato return mined in tx 0x8448abaef2f00b7277a3888e20039b2951f98af165d9b0a98298d39effc42144 and was booked in about 12 s",
-          "5": "unit: QueueReturn writes only refund_status and its history row; cmd/ops loads config.LoadOps (database and RPCs, no key) and with-env.sh strips the executor, Privy, Resend, CoinGecko, webhook and canary secrets from it"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "PASS after 0e290a07. It is a copy change on the payer's partly paid view, at the owner's request, and no money code changed. The diff from fc1b57a9 touches only pay.spec.ts, pay-invoice.tsx, pay-copy.ts and PROJECT.md. The partial status is now '${received} received. ${remaining} left to send.' (pay-copy.ts:81-82). The copyFromHere constant and its paragraph are gone, with no reader left: neither 'copyFromHere' nor 'Copy the address from this page' appears anywhere in the repo. Both partial assertions in pay.spec match the new line. The closed-case check that the old line is absent was removed with the line. The new R-77 text matches the page. DESIGN.md:792 'Received X of Y' describes the owner's invoice header (R-69), not the pay page, so it stays right. Note, the owner's choice: the pay page no longer warns about look-alike addresses planted in the wallet history. R-78's marked first 6 and last 4 characters, and the scam line 'Forwend never asks you to pay a different address', still help the payer check. Passed: vitest on features/pay (43 tests), tsc --noEmit for apps/web, and check-docs (0 errors). The e2e is in the coordinator's verify run. Earlier notes and accepted items are unchanged.",
-          "at": "2026-10-31T17:58:33Z",
-          "filesHash": "f8d0190ab9d7fb04"
-        },
-        "commit": "c992cf8d",
-        "doneAt": "2026-10-31T17:58:43Z"
-      },
-      "branch": "feat/f410-support-returns-held-money-with-one-ops",
-      "baseCommit": "89c7fdaabbf43d3767f41606704b70850b8c9e36",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f410-support-returns-held-money-with-one-ops",
-        "base": "main"
-      }
     },
     {
       "id": "F411",
@@ -615,127 +211,6 @@
       "evidence": null
     },
     {
-      "id": "F413",
-      "type": "fix",
-      "behavior": "Payments confirm and settle without waiting for unrelated offered networks",
-      "acceptance": [
-        "Reproduce: a payment final on its own network stays unbooked while another offered network lags. Keep a regression test.",
-        "The first payment final on its own network chooses its option, is booked and queued to settle at once; no other offered network is waited for.",
-        "Safety holds: only final deposits of the invoice's own token count, zero-value transfers are ignored, the paid balance is checked at the finalized block before settling, one option wins under the invoice lock, and money on any other option is held for the payer.",
-        "R-56, R-119, D-76 and the backend docs describe the rule; no new screen text."
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "backend-affected",
-        "backend-e2e",
-        "web-unit",
-        "web-e2e",
-        "docs-check"
-      ],
-      "refs": [
-        "R-56",
-        "R-119",
-        "D-76"
-      ],
-      "keep": [
-        "packages/contracts/src/*"
-      ],
-      "review": true,
-      "notes": [
-        "2026-10-30 Owner request: investigate and fix cross-network waiting, then let the implementing agent merge. This task records findings only; no implementation is started.",
-        "2026-10-30 Root cause: internal/ledger/process.go:100-126 refuses to choose an option until every other enabled option chain has last_finalized_time greater than the deposit block_time. It returns before booking; settlement_intents are created only after paid at lines 336-343. The slowest offered network therefore delays faster ones.",
-        "2026-10-30 Current policy deliberately chooses the earliest payment across chains (R-119/D-76), protecting an earlier full payment from later dust. This is a policy change, not permission to delete the guard or replace finalized evidence with latest blocks. Preserve the safety purpose through an explicit attempt-selection design.",
-        "2026-10-30 internal/invoice/pick.go:16-18 currently treats the payer pick as display preference, not binding payment selection. internal/invoice/payments.go:61 labels detected as Confirming even when the deposit itself is confirmed and only cross-network selection is waiting.",
-        "2026-10-30 Measured local database evidence, 2026-10-30 UTC: Tempo 0x5eaa56eea0b52674330f56160a4ee4021075291def5446ccb5e2c134bb4009df detected in 9.4s, waited 1080.7s until settlement queued, then signed in 9.2s and settled in 12.1s from queue. Tempo 0x4735a3cc5987f8d264af525219ac6bdc5a3447eabfbe03597692f785f79f9448 detected in 3.8s, waited 1351.6s, then signed in 7.2s and settled in 10.0s from queue. The dominant delay was before signing.",
-        "2026-10-30 Live Arc reproduction: payment option 0x0db52f3af21065f01e04d2f76b37a6f93aca52e9d6a7c8ea1fd8bbb5b5616121 deposited at 23:13:08 UTC, transfer confirmed but booked=false and chosen_id NULL. Tempo/Arc finalized through 23:15:17/23:15:16; Base/Arbitrum only through 22:56:50/22:54:44. Both unused rollups blocked selection. No settlement intent existed.",
-        "2026-10-30 Reproduction recipe: create a multi-network payment, keep Base or Arbitrum finalized cursor behind a fully finalized Tempo/Arc deposit, run ledger processing, and inspect booked, chosen_id and settlement_intents. Advance only the unrelated cursor and observe the current implementation finally queue settlement. Extend existing internal/ledger/options_test.go coverage; use disposable data.",
-        "2026-10-30 Scope and limits: user reports local and staging. Local SQL/history and running logs were inspected; origin/staging had the same guard, but staging runtime data was not accessed. Local worker/signer poll every 30s; Arc Blockdaemon also returned invalid responses. These are secondary observations, not the proven cause of the 18-22 minute selection waits.",
-        "2026-10-30 Acceptance must cover reloads, competing browser tabs, selection changes before detection, deposits discovered after switching, chain outages and legacy multi-option invoices. Do not trust a mutable browser pick to redirect or discard existing money. Existing receiver addresses and signed terms remain valid.",
-        "2026-10-31 2026-10-31 Owner direction: confirm each payment on its own network only, as Stripe, BTCPay, NOWPayments and Coinbase Commerce do; no cross-network wait and no new screen text. An earlier draft that narrowed the wait to shown options was reverted.",
-        "2026-10-31 review pass by reviewer: PASS. The new rule is correct and money-safe. Choice (ledger/process.go:104-106) takes only confirmed transfers made by the row's close, earliest on chain first. One option wins: the group lock (process.go:60-64), the main-row lock (:97), one UPDATE (:120), and the trigger that refuses a changed chosen_id (migrations/00022_invoice_options_before_money.sql:26-27). Zero-value and foreign-token logs never reach chain_transfers (watcher.go:495, :499-500; amount > 0 CHECK and token FK in 00002_money.sql:96, :103-104). Non-chosen options book everything to payer_held (process.go:139, :205) and can't reach Paid, so they never get an intent (:328-332). Paid still needs the finalized balance check (:222-224, :356-368, :421-424). Expiry before a choice still waits on closedEverywhere (:129-138, :226). No new stuck path. The old cross-chain hold is gone.\nTests: against origin/main process.go in a scratch copy, TestPaymentFinalOnItsChainIsNotHeldBackByOtherChains FAILS (\"open, chosen <nil>, settling false\", options_test.go:258). On HEAD, go test -count=1 ./internal/ledger/ ./internal/watcher/ passes (46.8s, 49.1s). Mutation: removing the seen early return (process.go:114-116) fails only the history check in TestFirstOptionPaidWinsAndOthersAreHeld (options_test.go:104). The expiry guard stays covered by closedEverywhere. TestZeroValueTransferIsNoPayment overlaps the amount > 0 CHECK. It still guards that the scan skips zero-value logs instead of failing, so it is fine to keep.\nDocs and commit: neither claims the accepted dust limit is prevented. The old \"full payment wins over later dust\" claim was removed, and the commit names F414.\nNon-blocking:\n(1) process.go:90-91 still says \"the option whose money came first on chain\". It is now the earliest final payment.\n(2) TestMainRowWaitsForTheChoiceBeforeExpiring (options_test.go:197-213) has no pending choice now, because the option is chosen at :202. Its name and the :201 comment (\"only the pending choice keeps the main row open\") are stale. It overlaps the new test.\n(3) In R-119 (PROJECT.md:168), \"only the payer or owner can send there\" really means anyone with the pay link: the pay read lists every option's receiveAddress (invoiceapi/model.go:149, :206). \"Queued to settle\" holds only for a full payment that passes the balance check. \"(F413)\" is the only task ID in an R row.\n(4) money-safety.md:183-185 (Accepted risks) does not name the limit. A small final payment on a faster chain can take the choice from an earlier full payment on a slower chain, and that full payment is held. Add one line until F414 lands.\n(5) The rewritten api.md:750-753 sentence is about 45 words.\n(6) docs/runs/f336-validation.md:108,215 still describe the old wait. It is a dated run record.\n(7) Pre-existing: chain_cursors.last_scanned_time has no production reader, on main too.",
-        "2026-10-31 review pass by reviewer: PASS (re-review of 79329495 on top of f19d44a6). The commit changes only notes 1-5 plus the harness record in docs/tasks.json. No logic changed. (1) process.go:90-91 now says the first payment final on its own chain decides. (2) The test is renamed TestOptionPaidJustBeforeTheCloseDoesNotExpireTheMainRow (options_test.go:197), and the stale comment is trimmed. It still covers a payment at 4900, just before the 5000 close, while chain 1 is final only to 4800. (3) R-119 (PROJECT.md:168) is true. The option is chosen and its payment booked. A full payment settles after the finalized balance check (process.go:222-224, :328-332). The pay read lists every option's receiveAddress (invoiceapi/model.go:149, :206). \"(F413)\" is gone. (4) money-safety.md:183-187 names the limit and points to the open minimum (PLAN.md:29). (5) api.md:751-755 splits the long sentence into bullets under 25 words. Ran: python3 scripts/check-docs.py (0 errors). The renamed test, TestPaymentFinalOnItsChainIsNotHeldBackByOtherChains and TestInvoiceClosesOnlyOnceEveryOptionChainIsReadPastIt pass.\nNon-blocking: (a) In money-safety.md:186 the second sub-bullet now holds four sentences. The close rule (\"Before a choice it closes only...\") and the stopped-scan rule were merged into the held-payment point. Move those two back to their own sub-bullets (D-84, one fact per bullet). (b) process.go:90-91 and :101-102 now say the same thing; one of them can go. (c) \"Pay another option first\" in R-119 and money-safety.md means final first. A small payment on a slower chain doesn't win over a faster final payment.",
-        "2026-10-31 review pass by reviewer: PASS (re-review of f537ca0d on top of 79329495 and f19d44a6). The commit changes only the three notes plus the harness record in docs/tasks.json. No logic changed. money-safety.md:183-189 is back to one fact per sub-bullet. The close rule, the stopped-scan rule and the disable rule each have their own sub-bullet. The limit now says \"a small payment to another option that is final first\". R-119 (PROJECT.md:168) ends with \"a payment to another option that is final first decides\", which matches the choice query (process.go:103-105, earliest confirmed in-time transfer). The repeated comment at process.go:101 is one line now. process.go:90-91 still states the rule once. Ran: python3 scripts/check-docs.py (0 errors). The harness shows verify passed at 2026-10-31T01:23:44Z. Earlier rounds stand: the new rule is money-safe, the regression test fails on the old code and passes now, and notes 6-7 were left by choice."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-31T01:23:44Z",
-        "checks": [
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "backend-affected",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 237.1,
-            "log": ""
-          },
-          {
-            "id": "backend-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 35.9,
-            "log": ""
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "keep",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          }
-        ],
-        "taskHash": "10fa0bcfa385b215",
-        "filesHash": "07df62dbe7c010d0",
-        "proof": {
-          "1": "backend-affected",
-          "2": "backend-affected",
-          "3": "backend-affected",
-          "4": "docs-check"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "PASS (re-review of f537ca0d on top of 79329495 and f19d44a6). The commit changes only the three notes plus the harness record in docs/tasks.json. No logic changed. money-safety.md:183-189 is back to one fact per sub-bullet. The close rule, the stopped-scan rule and the disable rule each have their own sub-bullet. The limit now says \"a small payment to another option that is final first\". R-119 (PROJECT.md:168) ends with \"a payment to another option that is final first decides\", which matches the choice query (process.go:103-105, earliest confirmed in-time transfer). The repeated comment at process.go:101 is one line now. process.go:90-91 still states the rule once. Ran: python3 scripts/check-docs.py (0 errors). The harness shows verify passed at 2026-10-31T01:23:44Z. Earlier rounds stand: the new rule is money-safe, the regression test fails on the old code and passes now, and notes 6-7 were left by choice.",
-          "at": "2026-10-31T01:28:42Z",
-          "filesHash": "07df62dbe7c010d0"
-        },
-        "commit": "691e5aef",
-        "doneAt": "2026-10-31T01:28:52Z"
-      },
-      "branch": "fix/f413-payments-confirm-and-settle-without-wait",
-      "baseCommit": "6ce0214ea9383af46a7ad41201b08dde331119b9",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f413-payments-confirm-and-settle-without-wait",
-        "base": "main"
-      }
-    },
-    {
       "id": "F414",
       "type": "fix",
       "behavior": "A deposit below 1 USD never decides which option a payer-chooses invoice takes",
@@ -768,83 +243,6 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
-    },
-    {
-      "id": "F415",
-      "type": "fix",
-      "behavior": "A task that depends on an archived, merged task can start",
-      "acceptance": [
-        "start and ready treat a dependency found only in the local archive as satisfied when its record is passing, since archive takes only merged or dropped work and docs/archive is never on origin.",
-        "A harness regression test archives a merged dependency and starts its dependent.",
-        "PLAN moves bank withdrawal (12.5 and its 12.6 review states), paying from a connected wallet and agent payments to Deferred beyond MVP, and PROJECT's pointers follow (owner, 2026-10-31)."
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "harness"
-      ],
-      "refs": [
-        "R-25"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [
-        "2026-10-31 review fail by subagent: Fail: the fix routes around the root cause in one caller, and other readers of the same merge state are still wrong. The commit names the cause: unmerged() looks for the archived record on origin, where docs/archive never is. satisfied() (scripts/harness.py:290-296) now skips unmerged() for archived records, but unmerged() (580-594) still returns True for every archived passing record (checked: F333, F330, F001). So show (885) prints 'delivery: waiting for merge of feat/f333-...' for F333, merged in #392, and for every archived PR task. reopen (1037) passes fresh=False for an archived merged task and reuses its old branch if it still exists. done ID on an archived task (1177) treats it as unmerged. AGENTS.md asks a fix to cover or name every reader; none are named. Smaller fix: in unmerged(), return False for an archived record (one not in state.tasks); put satisfied() back to its one line; add a test that show on an archived merged task has no 'waiting for merge'. What is fine: cmd_archive (1414-1419) archives a passing PR task only when origin's queue lists it passing; all 383 archived passing PR records appear in origin/main's log. Dropped archived tasks are not satisfied, stale ones are refused, and the queue record wins over the archive. start, ready, status, list use satisfied(); add, edit and validate accept archived IDs. The remote-archive path in unmerged() is still right for repos that track docs/archive (test_archived_remote_task_is_recognized_as_merged). Tests: python3 -m unittest discover -s tests ran 60, OK. In a temp copy with only satisfied() reverted to 2f7a9021, the new test fails (False is not true); the copy was removed. The test checks satisfied() and ready() but never runs start, which accept 2 names. Real queue: status lists F408 as ready; F333, F335 and F413 are the only satisfied deps, all merged. Plan move is accurate to the old 12.5/12.6, and Phase 12's row and heading drop withdrawal. Q-2, Q-5 and Q-12 say beyond MVP; docs-check: 0 errors. Notes, not failures: connected-wallet payment and x402 were never in PLAN before, so they are new deferred items. D-37 says payers never connect a wallet. AGENTS.md:3 and PROJECT.md:4 still list bank withdrawal in the summary. The web copy says 'Coming soon: withdraw to your bank account' (apps/web/src/features/balances/constants/balances-copy.ts:42). PLAN.md:193-194 are 124 chars wide. Only this worktree has docs/archive, so other worktrees still see F333 as an unknown dependency; that limit was there before this change.",
-        "2026-10-31 review pass by subagent: Pass after 58fa716b. unmerged() (scripts/harness.py:581-583) now returns False for a passing PR record whose ID is not in the queue, before the origin lookup. satisfied() (290-292) is back to its original line, so every reader gets one answer. On the real queue, show, ready, status, reopen and done now agree. No archived passing record reads as unmerged (checked all of docs/archive). show F333 and show F001 print no 'waiting for merge'. reopen F333 would cut a fresh branch (fresh=True). done F333, with fetch stubbed, prints 'F333 is already merged into main' and exits 0. status lists F408 as ready. The only satisfied deps are F333, F335 and F413, all merged; queue passing F335 and F413 read as merged. Queue tasks still use the origin check: archive (1415), prepare_branch (661), next_step (726) and status (777). So archive still refuses unmerged work, and the remote-archive path stays for a queue task another clone archived (test_archived_remote_task_is_recognized_as_merged). Tests: python3 -m unittest discover -s tests ran 60, OK. In a temp copy with only the three unmerged() lines removed (identical to 2f7a9021's harness.py), the new test fails with 'True is not false'; the copy was removed. The test now covers unmerged, ready, show and start F002 (tests/test_harness.py:166-185). PLAN.md:193-196 are wrapped under 120 characters, and D-37 stays the MVP rule as its own sub-bullet; docs-check: 0 errors. Notes for the owner, not failures: AGENTS.md:3 and PROJECT.md:4 summaries and balances-copy.ts:42 still mention bank withdrawal. Only this worktree has docs/archive."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-10-31T13:07:31Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 3.4,
-            "log": ""
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.5,
-            "log": ""
-          }
-        ],
-        "taskHash": "c07d24b5253d0070",
-        "filesHash": "69d5b304ffa4ec9f",
-        "proof": {
-          "1": "harness: unmerged() returns False for a record found only in the archive, so start, ready, status, show, reopen and done read F333 (archived, merged in #392) as merged; F408 is ready and show F333 has no waiting-for-merge line",
-          "2": "harness: test_archived_merged_dependency_lets_its_dependent_start archives a merged F001, then with origin's queue lacking F001 and no archive on origin: unmerged is False, ready lists F002, show F001 has no waiting-for-merge line, and start F002 succeeds; it fails on main (2f7a9021)",
-          "3": "docs-check: PLAN Phase 12 row and heading drop bank withdrawal; 12.5 and 12.6 now under Deferred beyond MVP, with paying from a connected wallet and agent payments added there; PROJECT Q-2, Q-5 and Q-12 point to bank withdrawal beyond MVP"
-        },
-        "review": {
-          "result": "pass",
-          "by": "subagent",
-          "summary": "Pass after 58fa716b. unmerged() (scripts/harness.py:581-583) now returns False for a passing PR record whose ID is not in the queue, before the origin lookup. satisfied() (290-292) is back to its original line, so every reader gets one answer. On the real queue, show, ready, status, reopen and done now agree. No archived passing record reads as unmerged (checked all of docs/archive). show F333 and show F001 print no 'waiting for merge'. reopen F333 would cut a fresh branch (fresh=True). done F333, with fetch stubbed, prints 'F333 is already merged into main' and exits 0. status lists F408 as ready. The only satisfied deps are F333, F335 and F413, all merged; queue passing F335 and F413 read as merged. Queue tasks still use the origin check: archive (1415), prepare_branch (661), next_step (726) and status (777). So archive still refuses unmerged work, and the remote-archive path stays for a queue task another clone archived (test_archived_remote_task_is_recognized_as_merged). Tests: python3 -m unittest discover -s tests ran 60, OK. In a temp copy with only the three unmerged() lines removed (identical to 2f7a9021's harness.py), the new test fails with 'True is not false'; the copy was removed. The test now covers unmerged, ready, show and start F002 (tests/test_harness.py:166-185). PLAN.md:193-196 are wrapped under 120 characters, and D-37 stays the MVP rule as its own sub-bullet; docs-check: 0 errors. Notes for the owner, not failures: AGENTS.md:3 and PROJECT.md:4 summaries and balances-copy.ts:42 still mention bank withdrawal. Only this worktree has docs/archive.",
-          "at": "2026-10-31T13:09:03Z",
-          "filesHash": "69d5b304ffa4ec9f"
-        },
-        "commit": "f838efb4",
-        "doneAt": "2026-10-31T13:09:20Z"
-      },
-      "branch": "fix/f415-a-task-that-depends-on-an-archived-merge",
-      "baseCommit": "2f7a9021af1ac6424507c1f0f5bbbf9eddc46c25",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f415-a-task-that-depends-on-an-archived-merge",
-        "base": "main"
-      }
     },
     {
       "id": "F416",
@@ -929,213 +327,44 @@
       "evidence": null
     },
     {
-      "id": "F419",
-      "type": "feat",
-      "behavior": "Redesign public payments pages and navigable documentation",
+      "id": "F421",
+      "type": "perf",
+      "behavior": "Faster pages, scans and worker rounds from the two audits, with the same results",
       "acceptance": [
-        "Landing explains verified testnet payments with accessible demonstration, compatibility, roadmap and footer.",
-        "Public documentation has verified nested guides, API references, search and compatible old anchors.",
-        "Sign-in keeps its authentication controls; its artwork, centered form and landing-matched logo change at the owner's request.",
-        "Responsive layouts, themes, keyboard behavior and public routes pass browser and accessibility checks."
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "web-unit",
-        "typecheck",
-        "lint",
-        "build",
-        "web-e2e",
-        "docs-check"
-      ],
-      "refs": [
-        "R-6",
-        "R-7",
-        "R-8",
-        "R-85",
-        "R-155"
-      ],
-      "keep": [],
-      "review": true,
-      "notes": [
-        "2026-11-02 review pass by reviewer: Reviewed public routes, verified API claims and examples, documentation navigation and search, legacy links, server-rendered article content, sign-in background-only changes, shared tooltip focus behavior, and responsive evidence. Invoice list query documentation was corrected during review. All nine required verification checks passed; no unresolved blocking findings.",
-        "2026-11-02 review pass by reviewer: Reviewed public routes, verified API claims and examples, documentation search and legacy links, server-rendered article content, unchanged sign-in controls, shared tooltip focus behavior, responsive evidence, and final mobile heading accessibility fix. Invoice query documentation was corrected during review. Final verification passed all nine checks at 00:29:32Z; no unresolved blocking findings.",
-        "2026-11-02 review pass by reviewer: Fresh review of the revised landscape hero, central payment example, testnet documentation entry, collection methods, roadmap, desktop/mobile screenshots in both themes, narrow zoom layout, responsive preload hints, and image decode test synchronization found no blocking issues. Earlier documentation, sign-in, and shared tooltip findings remain resolved. Final verification passed all nine checks at 01:01:55Z. Reported Lighthouse lab results: performance 98, accessibility 100, LCP 2192 ms.",
-        "2026-11-02 Local public-page redesign and revised landscape hero verified and independently reviewed. Nine checks pass; Lighthouse reports performance 98, accessibility 100, LCP 2192 ms. Temporary test files removed. Review captures and development servers preserved. No commit, push or deployment authorized.",
-        "2026-11-04 review fail by reviewer: Blocking: apps/web/e2e/landing.spec.ts:125 changed the landing width loop from 360, 640, 768, 960, 1280 and 1536 to 320, 390, 768, 1024 and 1440. R-7 still names 360, 768, 1280 and 1536, and docs/web/rules.md:21 says the R-7 widths are tested, so 360, 1280 and 1536 lost their sideways-scroll check. The 640 and 960 edge widths also went, and the new hero dashboard and header still switch layout at 40rem and 60rem. Add those widths back next to the new ones. Non-blocking: DESIGN.md lines 27-28 say the header shows Get started, but line 33 and the code say Create account. .gitignore adds .claude/ with a comment that names the tool; it is outside this task. hero-dashboard.tsx imports APP_NAV from screens/app-shell; settings already does the same, so this is acceptable. In types/docs.ts, group is a plain string, not derived from DOCS_GROUPS. The landing preload chooses the hero image by system color scheme, not by the chosen theme. images.md points to docs/runs/f419, which git ignores. Landing claims (reminders, saved clients, hosted and embedded checkout, signed retried webhooks, idempotency, link limits, testnets), API paths, scopes, field names, retry timings and package exports match the code. Decorative drawings are inert or aria-hidden, and reduced motion is respected. No stale references to removed files or images remain. Old colors are gone from the emails. package.json, the lockfile and the Playwright configs are unchanged.",
-        "2026-11-04 review pass by reviewer: The blocking finding is fixed. The landing width test now covers the R-7 widths 360, 768, 1280 and 1536, plus 320, 390, 1024 and 1440 and the 640 and 960 layout edges. Fresh verification passed, web-e2e included. DESIGN.md now names Create account for the header action, which matches the code. The .gitignore comment no longer names a tool. Acceptance line 3 now describes the sign-in changes. Landing claims, docs API paths, scopes, fields and examples match the code. Decorative drawings are inert or hidden, and reduced motion is respected. Minor notes left for later: the docs group type is a plain string, the hero preload follows the system color scheme, images.md points to an ignored folder, and two masks use raw #000."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-11-04T17:45:26Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.5,
-            "log": ""
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 5.1,
-            "log": ""
-          },
-          {
-            "id": "tokens-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "ui-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "backend-affected",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "backend-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 27.7,
-            "log": ""
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 3.9,
-            "log": ""
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 44.5,
-            "log": ""
-          }
-        ],
-        "taskHash": "3fbc207db16a22fc",
-        "filesHash": "61c314cf05b8f044",
-        "proof": {
-          "1": "web-e2e: landing.spec checks the hero overview, the four product sections, roadmap, reduced motion and every R-7 width",
-          "2": "web-e2e: docs.spec checks nested guides, API references, search and old anchors",
-          "3": "web-e2e: sign-in controls are unchanged; waitlist.spec and a11y.spec open and scan sign-in",
-          "4": "web-e2e: a11y.spec and landing.spec pass in both themes with keyboard navigation and reduced motion"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "The blocking finding is fixed. The landing width test now covers the R-7 widths 360, 768, 1280 and 1536, plus 320, 390, 1024 and 1440 and the 640 and 960 layout edges. Fresh verification passed, web-e2e included. DESIGN.md now names Create account for the header action, which matches the code. The .gitignore comment no longer names a tool. Acceptance line 3 now describes the sign-in changes. Landing claims, docs API paths, scopes, fields and examples match the code. Decorative drawings are inert or hidden, and reduced motion is respected. Minor notes left for later: the docs group type is a plain string, the hero preload follows the system color scheme, images.md points to an ignored folder, and two masks use raw #000.",
-          "at": "2026-11-04T17:47:14Z",
-          "filesHash": "61c314cf05b8f044"
-        },
-        "commit": "298897a3",
-        "doneAt": "2026-11-04T17:48:01Z"
-      },
-      "branch": "feat/f419-redesign-public-payments-pages-and-navig",
-      "baseCommit": "30642d22fc7da7751609ca70c8d16c83b812fdc4",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f419-redesign-public-payments-pages-and-navig",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F420",
-      "type": "fix",
-      "behavior": "Fix the confirmed bugs from the two code audits",
-      "acceptance": [
-        "A payer's email change while the receipt is sending waits for the send and never deadlocks",
-        "Arc USDC sent as the native coin between wallets shows in wallet activity once",
-        "An overdue invoice whose checkout is open keeps its pay link, Check status, edits and cancel",
-        "The harness lock admits one writer, also before the holder has written its pid",
-        "The testnet deploy keeps the factory's first executor after signing moves to another key",
-        "Browser tests build against the stub api and fail on any api call no test or stub answers",
-        "Overlapping support returns never queue more than is still held",
-        "A key or webhook endpoint request checked before its member was removed grants nothing after it",
-        "A receiver event recorded without its transfer is read again and completed once the transfer is found",
-        "A payment's details read on one database connection",
-        "A payment's figures follow the option it is recorded on",
-        "An email retried after its invoice changed gets a new idempotency key"
+        "The transactions page selects its rows before it joins invoices, labels and rates, and answers the same rows",
+        "The worker reads one transaction's receiver transfer logs once per scan, however many events it has",
+        "Email, reminders, retainers, ECB rates and prices run apart from chain rounds, so a slow provider never delays payment detection",
+        "Idle webhook senders share one poll of the queue instead of each polling it",
+        "The backend e2e tests build the binaries once per run",
+        "The app reads balances for the Receive sheet only while it is open",
+        "Typing in the clients search and moving over the balance chart or a combobox do no per-row work they already did",
+        "The pay page's clock stops once the checkout can take no more money"
       ],
       "dependsOn": [],
       "state": "passing",
       "verification": [
         "unit",
-        "e2e",
-        "harness"
+        "e2e"
       ],
       "refs": [
-        "R-82",
-        "D-116",
-        "R-77",
-        "D-118",
-        "D-93",
-        "R-144",
-        "R-146",
         "R-177",
-        "R-80"
+        "R-80",
+        "R-38",
+        "R-146"
       ],
       "keep": [],
       "review": true,
       "notes": [
-        "2026-11-04 review fail by reviewer: Checked every diff hunk, migration 00095 (Up and Down match 00078), lock order of payer email vs ledger and worker, StillCan vs team lockMerchant and Roll, the returns recheck, outflow completion and trigger, Arc wallet nativeSends, the notify key hash, readLines in the tx, web lead option, overdue gating, the e2e stub and teardown, harness flock and deploy.sh. Backend packages pass with -race; harness and web unit tests pass. Blocking: docs/backend/architecture.md:414 still says Arc native-coin sends to a wallet are not read or recorded, the opposite of the new wallet scan; update it with the behavior. Minor: webhook Rotate does not recheck the role via StillCan; QueueReturn rechecks ledger Held under the lock but not unbooked outflows recorded after its pre-check; the lock-wait loops in keys_test and returns_test have no timeout; the KIT web server gets no API_URL at run time; tasks.json also edits F332's acceptance and notes.",
-        "2026-11-04 review pass by reviewer: Read the full diff, migration 00095 and unmatched.ts. Prior blocking item fixed: architecture.md:414 now says the wallet scan reads Arc system logs. Prior minors fixed: Rotate calls StillCan; QueueReturn rechecks Held and unbooked movements under the row lock; the lock-wait loops time out after 10s; KIT server gets API_URL; money-safety.md names the rescan window; the tasks.json side edit is F417's refundable line. Checked lock order: payer email NO KEY UPDATE vs worker FK KEY SHARE and ledger NO KEY UPDATE; StillCan KEY SHARE vs team lockMerchant FOR UPDATE, and Roll locking api_keys first. Checked the outflow completion against the trigger, the unique transfer index and the ledger retry; notify key hash has no time or random parts; overdue only maps from open; leadOption callers; turbo build env has API_URL; flock lock. Backend packages pass with -race; harness 61 tests and web unit tests pass. Minor: keys_test.go:209 calls e.call(t) in a goroutine, whose t.Fatal would hang the test on <-made instead of failing it. Not covered by StillCan, acceptable: secret reveal, endpoint delete and key revoke, which grant nothing lasting."
+        "2026-11-04 review fail by reviewer: Two blocking findings. 1) Pay page: clockRuns (apps/web/src/features/pay/lib/pay.ts:158) stops the clock when the API says closed, but payState still needs it in the checking state: the delayed flag compares now with the deposit block time. A confirmed but unbooked deposit on a checkout the API has closed now never shows the delay note; a scratch test gave clockRuns false, delayed false at close and true 10 minutes later. Keep the clock running while the state is checking (or while any time-based field can still change). 2) Clients search (apps/web/src/features/clients/components/clients-table.tsx:40): useDeferredValue without a memoized table. Each keystroke's urgent render still re-renders every DataTable row with the old rows, then the deferred render renders them again, so acceptance 7 is not met for clients and no measurement backs it. Memoize the table on rows or drop the deferral. Minor: transfers.go:156 hardcodes chain_family 'evm' where the old join was family-agnostic; e2e TestMain leaks the shared bin dir when a test panics (t.TempDir cleaned it before); balance-chart.tsx writes the dateLabel default twice. Transfers page, outflow cache, housekeeping loop and shutdown order, webhook wake poller, e2e build, Receive balances, chart memo and combobox memo look correct; activity, watcher and webhook tests pass with -race; pay, clients, receive and balances vitest pass.",
+        "2026-11-04 review fail by reviewer: One blocking finding. Pay page (apps/web/src/features/pay/components/pay-invoice.tsx:236): useNow(clockRuns(answer)) reads the top-level invoice, but the page shows payState(withOption(answer, picked)) from line 258. On an unlocked multi-option invoice the API has closed, late money to the picked option B does not lock it (ledger/process.go chooses only on-time money). Option A has no deposits, so clockRuns(answer) is false while option B is in checking. Its delay note then never appears if the page was open before the 5-minute mark. A scratch test gave clockRuns(answer) false, clockRuns(shown) true, delayed false at mount and true 10 minutes later. Fix: call useNow(clockRuns(invoice)) after the useMemo, with a test on a picked option. Minor: docs/backend/architecture.md:62 still says the 16 webhook workers each poll idle queues every second; now one shared poll wakes them. e2e TestMain (gate_test.go:367) leaks the bin dir when a test panics. balance-chart.tsx writes the dateLabel default twice (220, 253). Checked and correct: transfers.go per-wallet LATERAL page gives the same rows, order, ties, cursor pages and filters (profile_wallets is unique per family and address; outer join re-applies profile and reorged filters); outflows cache keys on block, token and receiver, the same inputs as the old read; housekeeping loop stops before the lock and pool close; webhook wake poller is a superset of claimable work; single e2e build; Receive balances only while open; chart, combobox and clients memo. activity, watcher, webhook and httpapi search tests pass with -race; pay, clients, balances, receive and app-shell vitest pass.",
+        "2026-11-04 review pass by reviewer: Nothing blocks. The pay page now runs the clock from the shown option (pay-invoice.tsx:259), and the clock stops only when no shown value depends on time: closed by the API and not checking, or paid or settled. Confirming counts from readAt, not now. The architecture.md webhook line is fixed. Transfers page gives the same rows, order, ties, cursor and filters (one wallet per profile and family). The outflow cache keys on the same block, token and receiver inputs. Housekeeping stops before the lock and pool close. The webhook poll never does more work than the old per-sender poll. Receive balances, chart table, combobox and clients memo are correct. Minor: api.md:116 and :133 still say reminders and retainers run each worker round. Housekeeping no longer waits for the lock ping, which architecture.md:119 describes; each task is safe to run twice. matchesClient (clients.ts:53) still folds every client and the query on each keystroke. No test covers clockRuns on a picked option. The two minors left on purpose remain. activity, watcher and webhook pass with -race; pay, clients, balances, receive, app-shell and ui-web forms vitest pass."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-04T19:17:04Z",
+        "at": "2026-11-04T20:03:44Z",
         "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
           {
             "id": "docs-check",
             "outcome": "passed",
@@ -1147,73 +376,69 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.5,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 64.1,
+            "seconds": 58.5,
             "log": ""
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 53.8,
+            "seconds": 46.6,
             "log": ""
           }
         ],
-        "taskHash": "939b08963ab92454",
-        "filesHash": "999c5ab10e33dc01",
+        "taskHash": "77d0f7bf3b6150da",
+        "filesHash": "8f6614939799d95d",
         "proof": {
-          "1": "unit: notify TestPayerEmailChangeWaitsForTheReceiptBeingSent: 40P01 deadlock before the NO KEY lock, passes after",
-          "2": "unit: watcher TestArcWalletScanReadsNativeSends: the native send was missing before, recorded once after",
-          "3": "unit: web invoice-detail test keeps Check status, Copy link, Edit, Revise and Cancel on an overdue open invoice; failed before",
-          "4": "harness: test_lock_admits_one_writer_until_it_ends refuses a second writer while the pid is not yet written; failed before",
-          "5": "unit: contracts Deploy.t.sol test_scriptKeepsFactoryAfterExecutorRotation covers Deploy.s.sol's EXECUTOR rule; deploy.sh now takes it from FIRST_EXECUTOR (stubbed run: forge saw FIRST_EXECUTOR; unset stops the script)",
-          "6": "e2e: the build gets the stub API_URL; e2e/unmatched.ts failed the run on 4 unmocked calls before the mocks were fixed, 121 passed after",
-          "7": "unit: settlement TestSupportReturnRechecksTheHeldMoneyOnceItLocks: queued 1 USDC with 0.5 held before, ErrTooMuch after; the unbooked check also runs under the lock",
-          "8": "unit: httpapi TestRequestsCheckedBeforeARemovalGrantNothing: 201 for the key and the webhook endpoint before, 403 after; Rotate uses the same auth.StillCan",
-          "9": "unit: watcher TestOnlyNewFinalCanonicalEventsOfWatchedReceiversAreRecorded: incomplete event read again and completed; fails without the code change and without migration 00095",
-          "10": "unit: invoice package passes with readLines reading through PaymentDetails' transaction; a one-off test on a 1-connection pool timed out before and passed after, then was dropped (not a kept-test category)",
-          "11": "unit: web payments test leadOption follows the recorded option over a smaller deposit listed first",
-          "12": "unit: notify TestRetryOfAChangedEmailTakesANewKey: same key before, new key after the due date changed"
+          "1": "unit: activity and API tests pass unchanged; a temporary benchmark on 30,000 transfers measured 12.4 ms per page before, 2.3 ms after with the per-wallet page (removed after measuring)",
+          "2": "unit: watcher tests pass; a temporary RPC counter measured 20 eth_getLogs calls for 20 events of one transaction before, 1 after",
+          "3": "e2e: the backend money-loop gate, including emails, passes with reminders, retainers, ECB, prices and email on their own loop beside chain rounds",
+          "4": "unit: webhook tests pass with -race; an empty queue measured 16.4 database transactions per second before, 1.4 after",
+          "5": "e2e: backend e2e ran 25.7 s before and 20.7 s after with one build; its temp folder is removed at the end",
+          "6": "e2e: the shell's balances query is skipped while Receive is closed; browser tests pass",
+          "7": "unit: temporary counters measured 60 chart pointer moves rendering 21,960 table rows before, 0 after, and 30 combobox hovers doing 30,030 normalizations before, 30 after; client rows filter once per search and country names are cached",
+          "8": "unit: pay test 'keeps the clock while money is checked, even after the close, and stops it once the payment is final' covers clockRuns; the page now runs it on the shown option (withOption)"
         },
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "Read the full diff, migration 00095 and unmatched.ts. Prior blocking item fixed: architecture.md:414 now says the wallet scan reads Arc system logs. Prior minors fixed: Rotate calls StillCan; QueueReturn rechecks Held and unbooked movements under the row lock; the lock-wait loops time out after 10s; KIT server gets API_URL; money-safety.md names the rescan window; the tasks.json side edit is F417's refundable line. Checked lock order: payer email NO KEY UPDATE vs worker FK KEY SHARE and ledger NO KEY UPDATE; StillCan KEY SHARE vs team lockMerchant FOR UPDATE, and Roll locking api_keys first. Checked the outflow completion against the trigger, the unique transfer index and the ledger retry; notify key hash has no time or random parts; overdue only maps from open; leadOption callers; turbo build env has API_URL; flock lock. Backend packages pass with -race; harness 61 tests and web unit tests pass. Minor: keys_test.go:209 calls e.call(t) in a goroutine, whose t.Fatal would hang the test on <-made instead of failing it. Not covered by StillCan, acceptable: secret reveal, endpoint delete and key revoke, which grant nothing lasting.",
-          "at": "2026-11-04T19:29:17Z",
-          "filesHash": "999c5ab10e33dc01"
+          "summary": "Nothing blocks. The pay page now runs the clock from the shown option (pay-invoice.tsx:259), and the clock stops only when no shown value depends on time: closed by the API and not checking, or paid or settled. Confirming counts from readAt, not now. The architecture.md webhook line is fixed. Transfers page gives the same rows, order, ties, cursor and filters (one wallet per profile and family). The outflow cache keys on the same block, token and receiver inputs. Housekeeping stops before the lock and pool close. The webhook poll never does more work than the old per-sender poll. Receive balances, chart table, combobox and clients memo are correct. Minor: api.md:116 and :133 still say reminders and retainers run each worker round. Housekeeping no longer waits for the lock ping, which architecture.md:119 describes; each task is safe to run twice. matchesClient (clients.ts:53) still folds every client and the query on each keystroke. No test covers clockRuns on a picked option. The two minors left on purpose remain. activity, watcher and webhook pass with -race; pay, clients, balances, receive, app-shell and ui-web forms vitest pass.",
+          "at": "2026-11-04T20:09:47Z",
+          "filesHash": "8f6614939799d95d"
         },
-        "commit": "552945ce",
-        "doneAt": "2026-11-04T19:30:29Z"
+        "commit": "5c896f98",
+        "doneAt": "2026-11-04T20:10:12Z"
       },
-      "branch": "fix/f420-fix-the-confirmed-bugs-from-the-two-code",
-      "baseCommit": "49f0a8615c4836274f616cbb7b2f9a9b62bce707",
+      "branch": "perf/f421-faster-pages-scans-and-worker-rounds-fro",
+      "baseCommit": "bae32647c4211e0a135e7e82332e01946f87c8d0",
       "failedVerifies": 0,
       "delivery": {
         "mode": "pr",
-        "branch": "fix/f420-fix-the-confirmed-bugs-from-the-two-code",
+        "branch": "perf/f421-faster-pages-scans-and-worker-rounds-fro",
         "base": "main"
       }
     }
   ],
   "lastWrapup": {
-    "at": "2026-11-02T01:03:42Z",
-    "clean": false,
-    "problems": [
-      "debug leftover apps/web/src/screens/docs/constants/docs-guides.ts:98: code: `${CHECKOUT_REQUEST}\\nconsole.log(JSON.stringify({ sessionId:..."
-    ],
-    "note": "Local public-page redesign and revised landscape hero verified and independently reviewed. Nine checks pass; Lighthouse reports performance 98, accessibility 100, LCP 2192 ms. Temporary test files removed. Review captures and development servers preserved. No commit, push or deployment authorized."
+    "at": "2026-11-04T19:31:01Z",
+    "clean": true,
+    "problems": [],
+    "note": "F420 merged in #412; next: F421 optimizations from the same audits"
   }
 }

@@ -10,9 +10,17 @@ import { foldText } from "@/shared/lib/search";
 
 const FIELDS: ClientTextField[] = ["name", "email", "address", "country", "taxId", "reference"];
 const COUNTRY = new Intl.DisplayNames(undefined, { type: "region" });
+// A long client list asks for the same few countries on every render.
+const COUNTRY_NAMES = new Map<string, string>();
 
 export function countryName(code: string | null): string | null {
-  return code ? (COUNTRY.of(code) ?? code) : null;
+  if (!code) return null;
+  let name = COUNTRY_NAMES.get(code);
+  if (name === undefined) {
+    name = COUNTRY.of(code) ?? code;
+    COUNTRY_NAMES.set(code, name);
+  }
+  return name;
 }
 
 /** The API keeps no kind, so a saved client with only a name and email reads as a person; the form can switch. */
