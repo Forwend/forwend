@@ -52,6 +52,7 @@ func TestJobs(t *testing.T) {
 		{`"email": "ap@bob.example"`, `"email": ""`},
 		{`"amountUsd": "300"`, `"amountUsd": "300.001"`},
 		{`"amountUsd": "300"`, `"amountUsd": "0"`},
+		{`"amountUsd": "300"`, `"amountUsd": "0.99"`},
 		{`"dueDays": 7`, `"dueDays": 91`},
 		{`"dueDays": 14}`, `"dueDays": 14, "onAccept": true}`},
 		{jobBody, `{"title": "Logo design", "client": {"name": "Bob Ltd", "email": "ap@bob.example"}, "payments": []}`},

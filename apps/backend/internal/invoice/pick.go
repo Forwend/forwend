@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/forwend/forwend/apps/backend/internal/history"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -39,8 +40,8 @@ func (s *Service) PickOption(ctx context.Context, payToken, optionID string) err
 			return fmt.Errorf("%w: optionId: not one of this invoice's options to pick", ErrInvalid)
 		}
 		var chosen, seen bool
-		if err := tx.QueryRow(ctx, `SELECT chosen_id IS NOT NULL, EXISTS (SELECT 1 FROM chain_transfers t
-			JOIN invoices i ON i.id = t.invoice_id WHERE coalesce(i.main_id, i.id) = $1 AND t.status <> 'reorged')
+		// Dust chooses nothing (R-119), so it doesn't stop the pick being kept either.
+		if err := tx.QueryRow(ctx, `SELECT chosen_id IS NOT NULL, `+ledger.ChoosingSeenSQL+`
 			FROM invoices WHERE id = $1`, id).Scan(&chosen, &seen); err != nil {
 			return fmt.Errorf("read invoice %s money: %w", id, err)
 		}

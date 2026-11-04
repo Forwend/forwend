@@ -21,7 +21,7 @@ func TestEmbedAllowedOnlyForTheStoresExactOrigins(t *testing.T) {
 		}
 	}
 	store(`["https://shop.example.com", "http://localhost:3000"]`)
-	fixed := `"chainId": 84532, "token": "` + usdc + `", "amount": "1"`
+	fixed := `"chainId": 84532, "token": "` + usdc + `", "amount": "1000000"`
 	made := e.post(t, alice, shop, "key-1", `{`+fixed+`, "storeId": "`+storeB+`"}`)
 	if made.status != http.StatusCreated {
 		t.Fatalf("create: %d %v", made.status, made.body)

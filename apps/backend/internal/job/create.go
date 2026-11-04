@@ -59,8 +59,8 @@ func checkPayments(payments []PaymentRequest) ([]int64, error) {
 		if m != nil {
 			cents[i], _ = strconv.ParseInt(m[1]+m[2]+strings.Repeat("0", 2-len(m[2])), 10, 64)
 		}
-		if cents[i] == 0 {
-			return nil, fmt.Errorf("%w: payments need an amountUsd like 300.00, above 0, with at most 2 decimals",
+		if cents[i] < invoice.MinUSDCents {
+			return nil, fmt.Errorf("%w: payments need an amountUsd like 300.00, at least 1.00, with at most 2 decimals",
 				ErrInvalid)
 		}
 		if p.DueDays < 0 || p.DueDays > MaxDueDays {

@@ -15,9 +15,20 @@ describe("job amounts", () => {
   it("reads typed USD as exact cents, refusing what the API refuses", () => {
     expect(usdCents("300")).toBe(30000n);
     expect(usdCents(" 700.5 ")).toBe(70050n);
-    expect(usdCents("0.01")).toBe(1n);
+    expect(usdCents("1")).toBe(100n);
     expect(usdCents("9999999999.99")).toBe(999999999999n);
-    for (const bad of ["", "0", "0.00", "1.234", "1,50", "-5", "12345678901", ".5", "1e3"]) {
+    for (const bad of [
+      "",
+      "0",
+      "0.00",
+      "0.99",
+      "1.234",
+      "1,50",
+      "-5",
+      "12345678901",
+      ".5",
+      "1e3",
+    ]) {
       expect(usdCents(bad)).toBeNull();
     }
     expect(centsText(30005n)).toBe("300.05");

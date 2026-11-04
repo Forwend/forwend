@@ -50,6 +50,7 @@ import {
 import { documentDate } from "@/features/invoices/lib/invoice-document";
 import {
   agreedDigits,
+  atLeastMinimum,
   customExpiresIn,
   decimalText,
   dueCheckoutDate,
@@ -251,7 +252,7 @@ export function NewInvoiceForm({
   const network = chainName(token.chainId);
   const today = localDate(Date.now());
   const amountError = (value: string) => {
-    const units = parseTokenAmount(value, decimals);
+    const units = atLeastMinimum(parseTokenAmount(value, decimals), decimals);
     if (typeof units !== "string") return undefined;
     const error = COPY.amountErrors[units];
     return typeof error === "function" ? error(unit, decimals) : error;
@@ -302,12 +303,14 @@ export function NewInvoiceForm({
         problems[item.id] = { [lineErrorField(line)]: lineMessage(line) };
       return line;
     });
-    const units =
+    const units = atLeastMinimum(
       items.length > 0
         ? itemsTotal > 0n
           ? itemsTotal
           : AMOUNT_ERRORS.zero
-        : parseTokenAmount(amount, decimals);
+        : parseTokenAmount(amount, decimals),
+      decimals,
+    );
     const missingName = request && !text("senderName");
     const missingClient = !request && !text("clientName") && !text("clientEmail");
     const expiresIn =

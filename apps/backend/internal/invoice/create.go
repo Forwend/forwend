@@ -358,13 +358,15 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 
 func (s *Service) accepted(ctx context.Context, tx pgx.Tx, chainID uint64, token string, amount *big.Int, usd *big.Rat) ([]accepted, error) {
 	if usd == nil {
-		var family string
+		var family, symbol string
+		var decimals int
 		var live, watched bool
 		err := tx.QueryRow(ctx, `
-			SELECT c.chain_family, c.livemode, EXISTS (SELECT 1 FROM chain_cursors cur WHERE cur.chain_id = c.chain_id)
+			SELECT c.chain_family, c.livemode, t.symbol, t.decimals,
+			    EXISTS (SELECT 1 FROM chain_cursors cur WHERE cur.chain_id = c.chain_id)
 			FROM chains c JOIN tokens t ON t.chain_id = c.chain_id
 			WHERE c.chain_id = $1 AND c.enabled AND t.contract = $2 AND t.enabled`, chainID, token).Scan(&family, &live,
-			&watched)
+			&symbol, &decimals, &watched)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("%w: token is not enabled on this chain", ErrInvalid)
 		}
@@ -373,6 +375,10 @@ func (s *Service) accepted(ctx context.Context, tx pgx.Tx, chainID uint64, token
 		}
 		if !watched {
 			return nil, ErrNotWatched
+		}
+		// Every enabled token is a stablecoin worth 1 USD (D-75), so 1.00 USD is one whole token.
+		if least := usdUnits(minUSD, decimals); least == nil || amount.Cmp(least) < 0 {
+			return nil, fmt.Errorf("%w: amount must be at least 1.00 %s", ErrInvalid, symbol)
 		}
 		return []accepted{{chainID: chainID, family: family, token: token, live: live, amount: amount}}, nil
 	}

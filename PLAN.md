@@ -26,7 +26,6 @@ reason; it joins the plan once the owner agrees.
 Phases 1–10 are done; their requirements are PROJECT R-1…R-122 and their records are in `docs/archive/`. Still open:
 
 - Q-1: the owner reviews the visual direction on `/kit/directions`.
-- Before ignoring tiny deposits, define a dust threshold; they stay refundable.
 - S-7 RPC spike (log ranges, rate limits, finality tags, polling cost of the independent confirmation provider) before
   any paid RPC plan; approval before paid usage.
 - Owner track, no code: interviews, a free USPTO, EUIPO and WIPO search in finance and software classes, social

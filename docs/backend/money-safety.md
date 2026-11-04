@@ -218,10 +218,11 @@ Limits:
   the recipient.
 - Testnet invoices are never shown to real payers: the testnet refund key could `recover` real money at the same
   address on mainnet.
-- A payer-chooses invoice picks its option as soon as one payment is final on its own chain (R-119); no other chain
-  is waited for.
-  - So anyone with the pay link can decide the option with a small payment to another option that is final first.
-  - The payer's payment is then held for them, not lost. A minimum deposit to decide is still open (PLAN).
+- A payer-chooses invoice picks its option as soon as that option's final payments add up to 1.00 USD (R-119); no
+  other chain is waited for.
+  - A smaller deposit chooses nothing, so a stranger with the pay link can't decide the option with dust.
+  - It is held for the payer; on the chosen option, so is a payment before the one that brought it to 1.00 USD.
+  - Held dust is not announced to the owner, and it never makes the invoice confirming or partly paid.
   - Before a choice the invoice closes only once every option chain was read past its close.
   - A chain whose scan stops (its RPCs down) holds that close, and the R-120 alert waits with it.
   - Disabling that chain lets the close go on.

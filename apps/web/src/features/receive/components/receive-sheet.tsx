@@ -11,8 +11,9 @@ import {
   SearchField,
   Sheet,
   Skeleton,
+  Tooltip,
 } from "@forwend/ui-web";
-import { ChevronRight, WalletMinimal } from "lucide-react";
+import { ChevronRight, Info, WalletMinimal } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import type { Balances } from "@/features/balances/types/balances";
 import { CHAIN_FAMILIES } from "@/features/receive/constants/receive-choice";
@@ -174,7 +175,23 @@ export function ReceiveSheet({
             network={chainName(chosen.chainId)}
             lookalike={lookalikeOf(chosen.chainId, chosen.symbol)}
           />
-          <p className="text-xs text-muted">{RECEIVE_COPY.receiveNote}</p>
+          {/* R-38: smaller deposits aren't listed in activity; the balance, read from the chain, still has them. */}
+          <div className="flex items-center justify-between gap-3 text-xs text-muted">
+            <span>{RECEIVE_COPY.minimum}</span>
+            <span className="flex items-center gap-1.5 text-ink tabular-nums">
+              {RECEIVE_COPY.minimumAmount}
+              <Tooltip content={RECEIVE_COPY.minimumTip}>
+                <button
+                  type="button"
+                  aria-label={RECEIVE_COPY.minimumLabel}
+                  // On a touch screen a 44px band takes the tap; the icon keeps its size.
+                  className="relative grid place-items-center rounded-full text-muted outline-none before:absolute hover:text-ink focus-visible:outline-2 focus-visible:outline-focus pointer-coarse:before:top-1/2 pointer-coarse:before:left-1/2 pointer-coarse:before:size-11 pointer-coarse:before:-translate-x-1/2 pointer-coarse:before:-translate-y-1/2"
+                >
+                  <Info aria-hidden className="size-[var(--fw-icon-sm)]" />
+                </button>
+              </Tooltip>
+            </span>
+          </div>
         </div>
       )}
     </Sheet>

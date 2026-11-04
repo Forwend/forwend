@@ -20,7 +20,8 @@ export function usdCents(text: string): bigint | null {
   const match = /^(\d{1,10})(?:\.(\d{1,2}))?$/.exec(text.trim());
   if (!match) return null;
   const cents = BigInt((match[1] ?? "") + (match[2] ?? "").padEnd(2, "0"));
-  return cents === 0n ? null : cents;
+  // R-56: each payment's invoice asks for at least 1.00 USD.
+  return cents < 100n ? null : cents;
 }
 
 export function dueDays(text: string): number | null {

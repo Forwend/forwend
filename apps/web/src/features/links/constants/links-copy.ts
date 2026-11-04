@@ -24,9 +24,9 @@ export const LINKS_COPY = {
   },
   activity: (visits: number, paid: number, reserved = 0) =>
     `${visits === 1 ? "1 visit" : `${visits} visits`}, ${paid} paid, ${reserved} reserved`,
-  anyAmount: "Any amount",
+  anyAmount: "From 1.00 USD",
   from: (min: string) => `From ${min} USD`,
-  upTo: (max: string) => `Up to ${max} USD`,
+  upTo: (max: string) => `1.00–${max} USD`,
   range: (min: string, max: string) => `${min}–${max} USD`,
   fixed: (amount: string) => `${amount} USD`,
   empty: "No payment links yet",
@@ -117,7 +117,7 @@ export const LINKS_COPY = {
   saved: (title: string) => `${title} saved`,
   errors: {
     required: "Enter a title.",
-    amount: "Enter an amount like 12.50, above 0.",
+    amount: "Enter an amount like 12.50, at least 1.00.",
     range: "The minimum must be at most the maximum.",
     maxPayments: `Enter a whole number from 1 to ${LINK_LIMITS.maxPayments.toLocaleString("en-US")}.`,
     failed: "We could not save the link. Try again.",
@@ -126,9 +126,9 @@ export const LINKS_COPY = {
     // What the API refused, by the field it names.
     invalid: {
       title: `Use 1 to ${LINK_LIMITS.title} characters of plain text on one line.`,
-      amountUsd: "Enter an amount like 12.50, above 0.",
+      amountUsd: "Enter an amount like 12.50, at least 1.00.",
       minUsd: "Enter an amount at most the maximum, like 12.50.",
-      maxUsd: "Enter an amount like 12.50, above 0.",
+      maxUsd: "Enter an amount like 12.50, at least 1.00.",
       maxPayments: `Enter a whole number from 1 to ${LINK_LIMITS.maxPayments.toLocaleString("en-US")}.`,
     },
   },

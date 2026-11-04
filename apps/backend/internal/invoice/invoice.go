@@ -191,6 +191,12 @@ type Line struct {
 	Amount      *big.Int
 }
 
+// MinUSDCents is the least a new payment asks for (R-56): below it, a deposit that chooses an option or a small
+// transfer to a wallet can't be told apart from dust.
+const MinUSDCents = 100
+
+var minUSD = big.NewRat(MinUSDCents, 100)
+
 // R-88.
 const (
 	MaxLines           = 100
@@ -365,8 +371,8 @@ func (r Request) normalize() (token string, amount *big.Int, usd *big.Rat, lines
 		if usdAmount.MatchString(r.AmountUSD) {
 			usd, _ = new(big.Rat).SetString(r.AmountUSD)
 		}
-		if usd == nil || usd.Sign() == 0 {
-			return "", nil, nil, nil, 0, fmt.Errorf("%w: amountUsd must be a decimal like 12.50, above 0", ErrInvalid)
+		if usd == nil || usd.Cmp(minUSD) < 0 {
+			return "", nil, nil, nil, 0, fmt.Errorf("%w: amountUsd must be a decimal like 12.50, at least 1.00", ErrInvalid)
 		}
 	} else {
 		if r.ChainID == 0 || r.ChainID > math.MaxInt64 { // stored as bigint

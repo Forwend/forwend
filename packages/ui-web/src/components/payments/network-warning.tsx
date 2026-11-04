@@ -22,7 +22,7 @@ export function NetworkWarning({ network, token, lookalike }: NetworkWarningProp
             Native {token}, not {lookalike}.
           </>
         ) : null}{" "}
-        Sending another token or using another network may make the funds unrecoverable.
+        Anything else sent here may be lost.
       </p>
     </div>
   );

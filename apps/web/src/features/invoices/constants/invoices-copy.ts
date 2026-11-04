@@ -118,19 +118,20 @@ export const NEW_INVOICE_COPY = {
   payWithLabel: "How the client pays",
   payWith: { any: "Client chooses", fixed: "One token" } satisfies Record<PayWith, string>,
   payWithAnyHint: (symbols: string, networks: number) =>
-    `The client pays it in ${symbols}, on any of ${networks} networks, 1 USD each.`,
+    `At least 1.00 USD. The client pays in ${symbols}, on any of ${networks} networks, 1 USD each.`,
   tokenLabel: "Network and token",
   searchTokens: "Search tokens",
   noTokenMatch: "No token matches",
   amountLabel: "Amount",
   amountUsdLabel: "Amount in USD",
   amountHint: (symbol: string, network: string, decimals: number) =>
-    `In ${symbol} on ${network}, up to ${decimals} decimals.`,
+    `At least 1.00 ${symbol} on ${network}, up to ${decimals} decimals.`,
   amountErrors: {
     [AMOUNT_ERRORS.format]: "Enter an amount with digits and a point, like 1250.50.",
     [AMOUNT_ERRORS.decimals]: (symbol: string, decimals: number) =>
       `${symbol} has ${decimals} decimals: use at most ${decimals} digits after the point.`,
     [AMOUNT_ERRORS.zero]: "Enter an amount above 0.",
+    [AMOUNT_ERRORS.min]: (symbol: string) => `Enter at least 1.00 ${symbol}.`,
   },
   titleLabel: "Title (optional)",
   titlePlaceholder: "Website, October",

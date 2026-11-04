@@ -58,7 +58,8 @@ func readDepositPreview(ctx context.Context, db paymentReader, id string, head f
 	if count <= DepositPreviewLimit {
 		return readDeposits(ctx, db, id, head, DepositPreviewLimit)
 	}
-	// Older representatives keep first-payment choice, receipts and confirmation progress correct when history is truncated.
+	// Older representatives keep receipts and confirmation progress correct when history is truncated. Before an option
+	// is chosen the pay page reads the choice from these 100 (R-119), so past them it may wait for the API's choice.
 	rows, err := db.Query(ctx, `WITH selected AS (
  (SELECT id FROM chain_transfers WHERE invoice_id=$1 AND status<>'reorged'
   ORDER BY block_number DESC,log_index DESC LIMIT $2)

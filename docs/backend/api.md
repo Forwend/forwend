@@ -107,7 +107,8 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   - A bad body or an unknown link answers before it, so junk can't block Send to client, which shares it.
 - `PUT /v1/invoices/{payToken}/pick` (R-57, public like the checkout): the option the payer showed the address for,
   kept on the main row's `picked_id`, so the pay link opens on it again. The read returns it as `pickedOptionId`.
-  - It decides nothing: the first money still makes an option the invoice's (R-56).
+  - It decides nothing: payments that add up to 1.00 USD still make an option the invoice's (R-56, R-119).
+  - It is refused once an option is chosen, or a payment that can choose one is seen; dust doesn't stop it.
   - A changed pick adds one `payer.option_picked` row to the history; the same pick again adds none.
   - An id that isn't one of the invoice's options is 422, and so is any pick on a Fixed invoice.
   - Once money is seen on any option it is 409 `pick_locked`.
@@ -392,7 +393,7 @@ R-140, R-163, D-54, D-94; openapi.yaml owns the schema. Members use `invoices.re
 - `GET /v1/profiles/{profileId}/links/{linkId}` reads one; another profile's or inaccessible store's link returns 404 `link_not_found`.
 - `PUT /v1/profiles/{profileId}/links/{linkId}` saves a caller-chosen lowercase UUID: 201 on creation, otherwise 200.
   - `title` is 1–200 characters of plain text on one line.
-  - Fixed links send `amountUsd`; open links omit it and may send `minUsd` and `maxUsd`.
+  - Fixed links send `amountUsd`; open links omit it and may send `minUsd` and `maxUsd`. Each is at least 1.00.
   - USD amounts have at most two decimals, above zero; minimum cannot exceed maximum.
   - Optional `endsAt` stops new purchases; `maxPayments`, from 1–1000000, limits paid plus reserved purchases.
   - `active` defaults true; activation requires readiness, otherwise 409 `link_not_ready`.
@@ -555,6 +556,9 @@ R-149, D-99. These need the `webhooks` permission and no fresh sign-in: they sen
 - Existing invoice creation and retry hashes remain compatible. Checkout purpose has a separate request fingerprint.
 
 R-19 and R-42; the full schema is in openapi.yaml.
+
+- A new invoice or request asks for at least 1.00 USD (R-56): `amountUsd` at least `1.00`, or `amount` at least one
+  whole token. Less is 422 `invalid_value`. Links, checkouts and job payments follow the same minimum.
 
 - `livemode` is the invoice's chain's mode (D-87, R-143): false on a testnet, whose tokens have no value.
   - Both PDFs of a test-mode invoice say "Test mode: testnet tokens have no value" under the header; every footer says Test mode.
@@ -753,7 +757,10 @@ R-19 and R-42; the full schema is in openapi.yaml.
   `{optionId, chainId, network, token, symbol, decimals, amount, receiveAddress, deposits}`; deposits on an option
   other than the shown one are held for the payer). Until an option has money the
   terms shown are the first option's.
-  - The first option whose payment is final on its own chain becomes the invoice's for good (`chosen_id`, R-119).
+  - The first option whose final payments add up to 1.00 USD becomes the invoice's for good (`chosen_id`, R-119).
+  - A smaller deposit before the choice is held for the payer, and on the chosen option a payment before the one
+    that brought it to 1.00 USD is held too. Held dust sends no email or webhook.
+  - An older invoice under 1.00 USD needs its whole amount to choose.
   - No other chain is waited for. Money on any other option is booked to `payer_held`.
   - The owner's GET with an option's id answers its invoice; the public routes don't take ids.
   - Lists, activity and search show each invoice once, with the current option (`invoices_current` view).
@@ -840,7 +847,7 @@ R-100, D-81; the full schema is in openapi.yaml. A job is a quote with a payment
 - `POST /v1/profiles/{profileId}/jobs` needs an Idempotency-Key, like invoice create.
   - Body: `title` (≤ 200), optional `scope` (≤ 5000, with line breaks), `client` and 1 to 10 `payments`.
   - `client` follows a saved client's rules (R-86), and needs `name` and `email`: payments are billed there.
-  - Each payment has a `title` (≤ 100), `amountUsd` (above 0, at most 2 decimals) and `dueDays` (0 to 90).
+  - Each payment has a `title` (≤ 100), `amountUsd` (at least 1.00, at most 2 decimals) and `dueDays` (0 to 90).
   - Only the first may have `onAccept: true`: the deposit. The total is the sum.
   - The same body again replays (200); amounts compare in cents. Other values under the key are 409.
   - It copies the billing details as `issuer`, so no billing details is 409 `billing_details_required`.
@@ -898,6 +905,8 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   time first, reorged transfers left out. An item: `chainId`, `token`, `symbol`, `decimals`, `direction` (`in` | `out`), `amount`,
   `counterparty` (sender for in, receiver for out), `txHash`, `logIndex`, `blockNumber`, `at` (block time), `status`
   (`detected` | `confirmed`, as for deposits).
+  - An incoming transfer under 0.10 USD is left out, unless it is a settlement or comes from another of the user's
+    profiles (R-38). The CSV export keeps every transfer.
 - Records (R-108): each transaction adds `usdValue` and `classification`, and `invoice` for an invoice payment.
   - `usdValue` is the amount at 1 USD per USD stablecoin (D-75, D-82), with every decimal of the token.
   - `invoice` and document-free `payment` require exact booked settlement evidence, including chain, token, transaction and transfer log.

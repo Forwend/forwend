@@ -80,7 +80,7 @@ export const JOBS_COPY = {
     errors: {
       required: "Fill in this field.",
       email: "Enter an email like name@example.com.",
-      amount: "Enter an amount above 0 with at most 2 decimals, like 300.00.",
+      amount: "Enter at least 1.00 with at most 2 decimals, like 300.00.",
       dueDays: `Enter whole days from 0 to ${JOB_LIMITS.dueDays}.`,
       failed: "We could not create the job. Try again.",
       invalid: "We could not create the job with these values. Check them and try again.",

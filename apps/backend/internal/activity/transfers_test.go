@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -100,5 +101,47 @@ func TestTransfersNewestFirstInPages(t *testing.T) {
 		if _, err := s.Transfers(ctx, profile, c.cursor, c.limit, "", search.Query{}); !errors.Is(err, ErrInvalid) {
 			t.Fatalf("cursor %q limit %d: %v, want ErrInvalid", c.cursor, c.limit, err)
 		}
+	}
+}
+
+// R-38: an incoming transfer under 0.10 USD is mostly spam planting a look-alike address, so it isn't listed; what
+// the user sent, and money from their other profile, always is.
+func TestSmallIncomingTransfersAreNotListed(t *testing.T) {
+	pool := open(t)
+	ctx := context.Background()
+	const mine, sibling = "0x000000000000000000000000000000000000000a", "0x000000000000000000000000000000000000000b"
+	var profile string
+	if err := pool.QueryRow(ctx, `
+		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true) ON CONFLICT (chain_id) DO UPDATE SET enabled = true),
+		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
+		            VALUES (84532, 'evm', $1, 'USDC', 6, true)),
+		     u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:alice') RETURNING id),
+		     p AS (INSERT INTO profiles (user_id, kind) SELECT id, 'personal' FROM u RETURNING id),
+		     o AS (INSERT INTO profiles (user_id, kind) SELECT id, 'merchant' FROM u RETURNING id),
+		     w AS (INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)
+		           SELECT id, 'privy', 'w1', 'evm', $2 FROM p UNION ALL SELECT id, 'privy', 'w2', 'evm', $3 FROM o)
+		SELECT id::text FROM p`, usdc, mine, sibling).Scan(&profile); err != nil {
+		t.Fatal(err)
+	}
+	add := func(n int, direction, from string, amount int64) {
+		exec(t, pool, `INSERT INTO wallet_transfers (chain_id, chain_family, token_contract, wallet_address, direction,
+			    counterparty, tx_hash, log_index, block_hash, block_number, block_time, amount, status)
+			VALUES (84532, 'evm', $1, $2, $3, $4, $5, 0, $5, $6, $6, $7, 'confirmed')`,
+			usdc, mine, direction, from, fmt.Sprintf("0x%064x", n), n, amount)
+	}
+	add(1, "in", payer, 99999)  // 0.099999 USDC from outside: not listed
+	add(2, "in", payer, 100000) // 0.10 USDC: listed
+	add(3, "out", payer, 1)     // what the user sent: listed
+	add(4, "in", sibling, 1)    // from the user's other profile: listed
+	page, err := NewService(pool).Transfers(ctx, profile, "", DefaultLimit, "", search.Query{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, tr := range page.Items {
+		got = append(got, fmt.Sprintf("%s %s", tr.Direction, tr.Amount))
+	}
+	if want := []string{"in 1", "out 1", "in 100000"}; !slices.Equal(got, want) {
+		t.Fatalf("listed %q, want %q", got, want)
 	}
 }
