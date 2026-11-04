@@ -3,7 +3,7 @@ import { clientBodySchema } from "@/features/clients/schemas/clients";
 import { PAY_TOKEN_PATTERN } from "@/features/invoices/constants/invoices";
 import { JOB_TOKEN_PATTERN } from "@/features/jobs/constants/jobs";
 import type { JobPaymentStatus } from "@/features/jobs/types/jobs";
-import { apiTime, hash32, openEnum } from "@/shared/schemas/api";
+import { apiTime, hash32, openEnum, pageOf } from "@/shared/schemas/api";
 
 const usdCents = z.string().regex(/^\d+\.\d{2}$/);
 
@@ -76,7 +76,7 @@ export const jobSummarySchema = z.object({
 });
 
 /** GET /v1/profiles/{profileId}/jobs. */
-export const jobsSchema = z.object({ items: z.array(jobSummarySchema) });
+export const jobsPageSchema = pageOf(jobSummarySchema);
 
 /** POST /v1/profiles/{profileId}/jobs. */
 export const createJobBodySchema = z.object({

@@ -26,15 +26,10 @@ function setParam(name: string, value: string) {
   window.history.replaceState(null, "", `${pathname}${withParam(search, name, value)}${hash}`);
 }
 
-/** A list's filter and search, kept in the URL so reload and Back keep them; the search reaches ?q SEARCH_DELAY_MS
- * after the last change. `apiFilter` and `apiQuery` are undefined for all and no search. */
-export function useListFilters<F extends string, All extends F>(
-  filterParam: string,
-  filters: readonly F[],
-  all: All,
-) {
+/** A list's search, kept in ?q so reload and Back keep it; it reaches ?q SEARCH_DELAY_MS after the last change.
+ * `apiQuery` is undefined for no search. */
+export function useListSearch() {
   const params = useSearchParams();
-  const filter = filters.find((f) => f === params.get(filterParam)) ?? all;
   const query = params.get(SEARCH_PARAM) ?? "";
   const [search, setSearch] = useState(query);
   const [written, setWritten] = useState(query);
@@ -57,8 +52,29 @@ export function useListFilters<F extends string, All extends F>(
     return () => clearTimeout(timer);
   }, [search, query]);
 
+  return {
+    apiQuery: apiSearch(query),
+    search,
+    setSearch,
+    clear: () => {
+      setSearch("");
+      setWritten("");
+      setParam(SEARCH_PARAM, "");
+    },
+  };
+}
+
+/** A list's filter and search, kept in the URL so reload and Back keep them. `apiFilter` and `apiQuery` are undefined
+ * for all and no search. */
+export function useListFilters<F extends string, All extends F>(
+  filterParam: string,
+  filters: readonly F[],
+  all: All,
+) {
+  const params = useSearchParams();
+  const filter = filters.find((f) => f === params.get(filterParam)) ?? all;
+  const { apiQuery, search, setSearch, clear } = useListSearch();
   const apiFilter = filter === all ? undefined : (filter as Exclude<F, All>);
-  const apiQuery = apiSearch(query);
   return {
     filter,
     apiFilter,
@@ -69,9 +85,7 @@ export function useListFilters<F extends string, All extends F>(
     search,
     setSearch,
     clear: () => {
-      setSearch("");
-      setWritten("");
-      setParam(SEARCH_PARAM, "");
+      clear();
       setParam(filterParam, "");
     },
   };

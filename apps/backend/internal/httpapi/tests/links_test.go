@@ -153,7 +153,7 @@ func TestPaymentLinkPages(t *testing.T) {
 	whole := e.call(t, "GET", base, alice, "", "")
 	all, _ := whole.body["links"].([]any)
 	if whole.status != http.StatusOK || len(all) != 5 || whole.body["nextCursor"] != nil {
-		t.Fatalf("every link without a limit: %d %v", whole.status, whole.body)
+		t.Fatalf("the default page holds all 5: %d %v", whole.status, whole.body)
 	}
 	var want []any
 	for _, l := range all {

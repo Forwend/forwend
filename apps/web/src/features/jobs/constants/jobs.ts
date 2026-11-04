@@ -8,6 +8,8 @@ export const JOB_LIMITS = {
   deliveryLink: 2000,
 } as const;
 
+export const JOBS_PAGE_SIZE = 20;
+
 /** Fields the API names in a 422, as its messages start (R-100). */
 export const JOB_FIELDS = {
   title: "title",

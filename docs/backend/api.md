@@ -386,7 +386,7 @@ R-140, R-163, D-54, D-94; openapi.yaml owns the schema. Members use `invoices.re
 - Keys create and read links only in their mode; owner creates choose live mode when enabled live tokens exist.
 - Owner edits preserve mode; missing `storeId` preserves the original store.
 - `GET /v1/profiles/{profileId}/links` lists newest first; scoped members see only their stores.
-  - Without `limit` it lists every link. `limit` (1–100) and `cursor` read a page, and `nextCursor` continues it.
+  - It reads one page: `limit` (1–100, default 50) and `cursor`, and `nextCursor` continues it.
   - `paid` counts canonically paid purchases, including settled purchases.
   - `reserved` counts canonical open, detected and partly paid purchases.
   - `ready` requires billing details, a wallet and an accepted watched token in the link's mode.
@@ -854,6 +854,8 @@ R-100, D-81; the full schema is in openapi.yaml. A job is a quote with a payment
   - It copies the billing details as `issuer`, so no billing details is 409 `billing_details_required`.
   - The job gets a random 32-byte link token. A profile has at most 1000 jobs.
 - `GET /v1/profiles/{profileId}/jobs` lists them newest first, with the total and how many payments are paid.
+  - It reads one page: `limit` (1–100, default 50) and `cursor`, and `nextCursor` continues it.
+  - `q` matches the title or the client's name in any letter case.
 - `GET /v1/profiles/{profileId}/jobs/{jobId}` reads one: the client, the token, and each payment's invoice.
   - A payment's `invoiceId`, `number` and `status` (the invoice's status filter) are null until it is made.
   - For the job's record (R-104), `invoicedAt` is when its invoice was made.

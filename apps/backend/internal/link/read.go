@@ -30,8 +30,11 @@ func scanLink(row pgx.CollectableRow) (Link, error) {
 	return l, err
 }
 
-// MaxLimit is the largest page; List without a limit reads every link, as before pages.
-const MaxLimit = 100
+// DefaultLimit and MaxLimit bound a page of links.
+const (
+	DefaultLimit = 50
+	MaxLimit     = 100
+)
 
 // Page is one page of links; NextCursor is "" on the last one.
 type Page struct {
@@ -39,10 +42,10 @@ type Page struct {
 	NextCursor string
 }
 
-// List is the profile's links, newest first. stores, when not nil, keeps only those stores' links (R-138). limit 0
-// reads every link after cursor.
+// List is the profile's links, newest first, limit after cursor. stores, when not nil, keeps only those stores' links
+// (R-138).
 func (s *Service) List(ctx context.Context, profileID string, stores []string, live *bool, cursor string, limit int) (Page, error) {
-	if limit < 0 || limit > MaxLimit {
+	if limit < 1 || limit > MaxLimit {
 		return Page{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxLimit)
 	}
 	args := []any{profileID, stores, live}
@@ -55,13 +58,9 @@ func (s *Service) List(ctx context.Context, profileID string, stores []string, l
 		args = append(args, at, id)
 		where += " AND (l.created_at < $4 OR l.created_at = $4 AND l.id > $5)"
 	}
-	page := ""
-	if limit > 0 {
-		args = append(args, limit+1)
-		page = fmt.Sprintf(" LIMIT $%d", len(args))
-	}
+	args = append(args, limit+1)
 	rows, err := s.pool.Query(ctx, `SELECT `+linkColumns+` FROM payment_links l WHERE `+where+`
-		ORDER BY l.created_at DESC, l.id`+page, args...)
+		ORDER BY l.created_at DESC, l.id LIMIT $`+strconv.Itoa(len(args)), args...)
 	if err != nil {
 		return Page{}, fmt.Errorf("list payment links: %w", err)
 	}
@@ -70,7 +69,7 @@ func (s *Service) List(ctx context.Context, profileID string, stores []string, l
 		return Page{}, fmt.Errorf("list payment links: %w", err)
 	}
 	var next string
-	if limit > 0 && len(links) > limit {
+	if len(links) > limit {
 		links = links[:limit]
 		last := links[limit-1]
 		next = base64.RawURLEncoding.EncodeToString([]byte(fmt.Sprintf("%d|%s", last.CreatedAt.UnixMicro(), last.ID)))

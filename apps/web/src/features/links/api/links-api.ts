@@ -1,13 +1,21 @@
 import { z } from "zod";
+import { LINKS_PAGE_SIZE } from "@/features/links/constants/links";
 import {
   linkBodySchema,
   linkPayArgSchema,
   linkPaySchema,
   linkSchema,
-  linksSchema,
+  linksPageSchema,
   publicLinkSchema,
 } from "@/features/links/schemas/links";
-import type { Link, LinkBody, LinkPay, LinkPayArg, PublicLink } from "@/features/links/types/links";
+import type {
+  Link,
+  LinkBody,
+  LinkPay,
+  LinkPayArg,
+  LinksPage,
+  PublicLink,
+} from "@/features/links/types/links";
 import { apiSlice } from "@/shared/api/api-slice";
 
 const LINKS_TAG = "Links";
@@ -16,10 +24,16 @@ const linksUrl = (profileId: string) => `/v1/profiles/${encodeURIComponent(profi
 
 export const linksApi = apiSlice.enhanceEndpoints({ addTagTypes: [LINKS_TAG] }).injectEndpoints({
   endpoints: (build) => ({
-    listLinks: build.query<Link[], string>({
-      query: (profileId) => linksUrl(profileId),
-      rawResponseSchema: linksSchema,
-      transformResponse: (data: { links: Link[] }) => data.links,
+    listLinks: build.infiniteQuery<LinksPage, string, string | null>({
+      infiniteQueryOptions: {
+        initialPageParam: null,
+        getNextPageParam: (last) => last.nextCursor,
+      },
+      query: ({ queryArg: profileId, pageParam }) => ({
+        url: linksUrl(profileId),
+        params: { limit: LINKS_PAGE_SIZE, ...(pageParam ? { cursor: pageParam } : {}) },
+      }),
+      responseSchema: linksPageSchema,
       providesTags: [LINKS_TAG],
     }),
     getLink: build.query<Link, { profileId: string; linkId: string }>({
@@ -64,7 +78,7 @@ export const linksApi = apiSlice.enhanceEndpoints({ addTagTypes: [LINKS_TAG] }).
 });
 
 export const {
-  useListLinksQuery,
+  useListLinksInfiniteQuery,
   useGetLinkQuery,
   useSaveLinkMutation,
   useGetPublicLinkQuery,

@@ -18,7 +18,7 @@ const (
 	MaxPaymentTitle = 100
 	// MaxDueDays keeps a payment's checkout, open 60 days past its due date (D-80), within a year (D-18).
 	MaxDueDays = 90
-	// MaxJobs is per profile; the list is read whole.
+	// MaxJobs is per profile.
 	MaxJobs = 1000
 )
 

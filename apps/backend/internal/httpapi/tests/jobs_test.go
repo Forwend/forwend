@@ -13,6 +13,74 @@ const jobBody = `{"title": "Logo design", "scope": "Three logo ideas, two rounds
 	"payments": [{"title": "Deposit", "amountUsd": "300", "dueDays": 7, "onAccept": true},
 	             {"title": "Final delivery", "amountUsd": "700.50", "dueDays": 14}]}`
 
+// R-177: the jobs list pages by its newest-first order and searches the title and client name; each item still sums all
+// its own payments.
+func TestJobPages(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	base := "/v1/profiles/" + e.aliceProfile + "/jobs"
+	var ids []string
+	for i := 1; i <= 5; i++ {
+		body := strings.Replace(jobBody, `"Logo design"`, fmt.Sprintf(`"Logo design %d"`, i), 1)
+		r := e.call(t, "POST", base, alice, fmt.Sprintf("job-page-%d", i), body)
+		if r.status != http.StatusCreated {
+			t.Fatalf("create job %d: %d %v", i, r.status, r.body)
+		}
+		ids = append(ids, r.body["jobId"].(string))
+	}
+	// Two made at the same moment: the id breaks the tie.
+	e.exec(t, "UPDATE jobs SET created_at = (SELECT created_at FROM jobs WHERE id = $1) WHERE id = $2", ids[1], ids[3])
+	whole := e.call(t, "GET", base, alice, "", "")
+	all, _ := whole.body["items"].([]any)
+	if whole.status != http.StatusOK || len(all) != 5 || whole.body["nextCursor"] != nil {
+		t.Fatalf("the default page holds all 5: %d %v", whole.status, whole.body)
+	}
+	var want []any
+	for _, j := range all {
+		if j.(map[string]any)["payments"] != float64(2) || j.(map[string]any)["totalUsd"] != "1000.50" {
+			t.Fatalf("job item %v, want its 2 payments summed", j)
+		}
+		want = append(want, j.(map[string]any)["jobId"])
+	}
+	for limit := 1; limit <= 5; limit++ {
+		var got []any
+		cursor := ""
+		for {
+			url := fmt.Sprintf("%s?limit=%d", base, limit)
+			if cursor != "" {
+				url += "&cursor=" + cursor
+			}
+			r := e.call(t, "GET", url, alice, "", "")
+			items, _ := r.body["items"].([]any)
+			if r.status != http.StatusOK || len(items) > limit {
+				t.Fatalf("limit %d: %d %v", limit, r.status, r.body)
+			}
+			for _, j := range items {
+				got = append(got, j.(map[string]any)["jobId"])
+			}
+			next, _ := r.body["nextCursor"].(string)
+			if cursor = next; cursor == "" {
+				break
+			}
+		}
+		if fmt.Sprint(got) != fmt.Sprint(want) {
+			t.Fatalf("limit %d: %v, want %v", limit, got, want)
+		}
+	}
+	for q, want := range map[string]int{"design%203": 1, "BOB%20ltd": 5, "100%25": 0} {
+		if items, _ := e.call(t, "GET", base+"?q="+q, alice, "", "").body["items"].([]any); len(items) != want {
+			t.Errorf("q=%s: %d jobs, want %d", q, len(items), want)
+		}
+	}
+	for query, status := range map[string]int{"limit=0": http.StatusUnprocessableEntity,
+		"limit=101": http.StatusUnprocessableEntity, "limit=x": http.StatusBadRequest,
+		"cursor=bm90LWEtY3Vyc29y": http.StatusUnprocessableEntity, "q=%20": http.StatusUnprocessableEntity} {
+		if r := e.call(t, "GET", base+"?"+query, alice, "", ""); r.status != status {
+			t.Errorf("%s: %d %v, want %d", query, r.status, r.body, status)
+		}
+	}
+}
+
 // R-100, R-101.
 func TestJobs(t *testing.T) {
 	e := invoiceAPI(t)

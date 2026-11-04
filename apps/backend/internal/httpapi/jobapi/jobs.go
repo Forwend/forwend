@@ -49,16 +49,26 @@ func createJob(jobs *job.Service) http.HandlerFunc {
 
 func listJobs(jobs *job.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		list, err := jobs.List(r.Context(), r.PathValue("profileId"))
+		limit, err := httpio.IntQuery(r, "limit", job.DefaultLimit)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		q, err := httpio.SearchQuery(r)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		page, err := jobs.List(r.Context(), r.PathValue("profileId"), r.URL.Query().Get("cursor"), limit, q)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
 		}
 		items := []jobSummaryJSON{}
-		for _, s := range list {
+		for _, s := range page.Jobs {
 			items = append(items, toJobSummaryJSON(s))
 		}
-		httpio.WriteJSON(w, http.StatusOK, map[string]any{"items": items})
+		httpio.WriteJSON(w, http.StatusOK, map[string]any{"items": items, "nextCursor": httpio.OrNull(page.NextCursor)})
 	}
 }
 

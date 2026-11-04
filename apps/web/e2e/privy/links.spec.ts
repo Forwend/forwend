@@ -62,7 +62,7 @@ async function mockLinks(page: Page) {
         },
       });
     }
-    if (path === "links") return route.fulfill({ json: { links } });
+    if (path === "links") return route.fulfill({ json: { links, nextCursor: null } });
     const id = path.startsWith("links/") ? path.slice("links/".length) : null;
     if (id && request.method() === "PUT") {
       const body = request.postDataJSON();

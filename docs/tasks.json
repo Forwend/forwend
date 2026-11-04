@@ -37,12 +37,13 @@
     {
       "id": "F348",
       "type": "fix",
-      "behavior": "The links list pages by cursor with bounded reads",
+      "behavior": "The links and jobs lists page by cursor with bounded reads",
       "acceptance": [
-        "GET links reads one page at a time with a limit and a cursor, and the links list loads the next page on demand"
+        "GET links reads one page at a time with a limit and a cursor, and the links list loads the next page on demand",
+        "GET jobs reads one page at a time with a limit and a cursor, and the jobs list loads the next page on demand"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend",
         "web-unit"
@@ -52,9 +53,96 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-11-04 review pass by reviewer: No blockers. Jobs and links list one page by cursor; order and tie-break match the cursor; parameters, GROUP BY and search escaping are right; totals still sum all of a job's payments. Every reader of both lists is updated, and openapi and api.md describe the default page. useListFilters keeps its old behavior and clear(). Ran go build, go vet, the job, link, member and profile API tests, web tsc, vitest, biome and docs-check: all pass. Minor: search.go:1 package comment does not name jobs. job decodeCursor copies link decodeCursor. Job search no longer ignores accents, like the other API searches. No web test clicks Show more on links or jobs. The page is cut before the payments join, so it relies on every job keeping an original payment. Clients still loads whole, outside this task."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-04T22:50:14Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.2,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.6,
+            "log": ""
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 73.4,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 72.2,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 22.1,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.1,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 48.2,
+            "log": ""
+          }
+        ],
+        "taskHash": "03a49b76161eab8c",
+        "filesHash": "b39c69461ebfa008",
+        "proof": {
+          "1": "backend: TestPaymentLinkPages walks every limit 1-5 by cursor to the same newest-first order, the default page is bounded (50), and limit 0/101/x and a bad cursor are refused; the web links list asks limit=20 and shows Show more while nextCursor is set",
+          "2": "backend: TestJobPages walks every limit 1-5 by cursor to the same order with each job's 2 payments summed, q matches title and client name case-insensitively with % escaped, and bad limit/cursor/q are refused; checked live that the jobs list shows Show more, loads the next page and searches through the API"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "No blockers. Jobs and links list one page by cursor; order and tie-break match the cursor; parameters, GROUP BY and search escaping are right; totals still sum all of a job's payments. Every reader of both lists is updated, and openapi and api.md describe the default page. useListFilters keeps its old behavior and clear(). Ran go build, go vet, the job, link, member and profile API tests, web tsc, vitest, biome and docs-check: all pass. Minor: search.go:1 package comment does not name jobs. job decodeCursor copies link decodeCursor. Job search no longer ignores accents, like the other API searches. No web test clicks Show more on links or jobs. The page is cut before the payments join, so it relies on every job keeping an original payment. Clients still loads whole, outside this task.",
+          "at": "2026-11-04T22:54:42Z",
+          "filesHash": "b39c69461ebfa008"
+        }
+      },
+      "branch": "fix/f348-the-links-list-pages-by-cursor-with-boun",
+      "baseCommit": "ff6f6a5b901923cf34f940a75570696cbb8ed99a",
+      "failedVerifies": 0
     },
     {
       "id": "F349",

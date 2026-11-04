@@ -32,6 +32,8 @@ export const LINKS_COPY = {
   empty: "No payment links yet",
   emptyBody: "Make one for a product, a service or a top-up, and share it anywhere.",
   failed: "We could not load your payment links.",
+  loadMore: "Show more",
+  updateFailed: "We could not update the payment links.",
   noStores:
     "You need an available store before creating a payment link. Ask the account owner to check your store access.",
   retry: "Try again",

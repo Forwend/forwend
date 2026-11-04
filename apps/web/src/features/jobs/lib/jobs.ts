@@ -8,12 +8,10 @@ import {
 import type {
   JobField,
   JobPayment,
-  JobSummary,
   PaymentStep,
   PublicJob,
   RecordEvent,
 } from "@/features/jobs/types/jobs";
-import { foldText } from "@/shared/lib/search";
 
 /** Exact, as the API takes it (R-100); null when it isn't one or is 0. */
 export function usdCents(text: string): bigint | null {
@@ -46,10 +44,6 @@ export function namedField<F extends string>(message: string, fields: readonly F
 
 export function invalidJobField(message: string): JobField | null {
   return namedField(message, Object.values(JOB_FIELDS));
-}
-
-export function matchesJob(job: JobSummary, search: string): boolean {
-  return foldText(`${job.title} ${job.clientName}`).includes(foldText(search.trim()));
 }
 
 const RECORD_ORDER = Object.values(RECORD_EVENTS);
