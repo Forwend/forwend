@@ -241,8 +241,10 @@ func TestCreateInvoice(t *testing.T) {
 	}
 }
 
+// The due date sits far ahead so the invoice is never overdue on the day the tests run; the PDF prints Overdue
+// for a due date before today.
 const detailsBody = `{"chainId": 84532, "token": "` + usdc + `", "amount": "5000000", "title": "Logo design",
-	"note": "Thanks!\nPay within 14 days.", "dueDate": "2026-11-01", "supplyDate": "2026-10-31",
+	"note": "Thanks!\nPay within 14 days.", "dueDate": "2099-11-01", "supplyDate": "2026-10-31",
 	"reference": "PO-4500012345", "agreedValue": {"currency": "EUR", "amount": "1000.5", "date": "2026-10-01"},
 	"senderName": "Alice Design", "client": {"name": "Bob Ltd", "email": "bob@example.com", "address": "Main St 1\nBerlin", "country": "DE",
 	"taxId": "DE999999999"}}`
@@ -254,7 +256,7 @@ func TestCreateInvoiceStoresDetails(t *testing.T) {
 		t.Fatalf("got %d %v", r.status, r.body)
 	}
 	want := map[string]any{"number": float64(1), "title": "Logo design", "note": "Thanks!\nPay within 14 days.",
-		"dueDate": "2026-11-01", "supplyDate": "2026-10-31", "reference": "PO-4500012345", "senderName": "Alice Design",
+		"dueDate": "2099-11-01", "supplyDate": "2026-10-31", "reference": "PO-4500012345", "senderName": "Alice Design",
 		"agreedValue": map[string]any{"currency": "EUR", "amount": "100050", "decimals": float64(2), "date": "2026-10-01"},
 		"client": map[string]any{"name": "Bob Ltd", "email": "bob@example.com", "address": "Main St 1\nBerlin",
 			"country": "DE", "taxId": "DE999999999"}}

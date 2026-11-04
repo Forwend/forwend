@@ -22,20 +22,39 @@ Read only the sections your change touches. Any new control also needs
 
 ## Composition
 
-- Landing navigation, content and footer share page gutters and follow the selected theme.
-- The app icon and favicons are the mark in brand lime on an ink tile (`icon.svg`, `/brand/forwend-icon.svg`).
-  - PNG sizes use that SVG. The plain mark (`LogoMark`) takes the text color.
-- The sticky navigation holds the logo, section links, theme switch and Open Forwend.
-- On phones, navigation expands beneath the header and closes after selection, Escape or an outside click.
-- The split hero places the headline beside supporting copy and sign-in actions.
-- An engraved landscape carries a sample payment receipt beneath the hero.
-- Invoices, Payment links and Checkout tabs share one preview area.
-- How it works shows three connected steps and links to developer docs.
-- The roadmap shows completed payments, approaching agent payments and planned bank withdrawals.
-- FAQ answers expand beside the section heading.
-- The closing action sits over matching light and dark garden artwork.
-- The footer contains the logo, navigation and copyright.
-- Sign-in uses the engraved landscape below the form, fading into the theme background.
+- Landing navigation, content and footer share page gutters and the app theme.
+- The app icon and favicons retain the brand mark on an ink tile.
+- Navigation exposes Product, Roadmap, Docs, Sign in, Create account and the theme switch.
+- Mobile keeps Create account visible; secondary destinations open below the header and dismiss with Escape or an outside click.
+- The header is a floating glass bar with rounded corners, inset from the window edge, over the art and the page alike.
+  - Landing and sign-in share it (`SiteBar`). Sign-in shows only the logo, without the glass, in the same place and size.
+  - Its offset and height, the page gutter and the content width are the `--fw-page-*` and `--fw-site-bar-*` tokens.
+  - The theme switch sits in it as a plain icon. The phone menu opens inside the bar.
+- The header's action says Create account; the hero's says Get started. Both open sign-in.
+- An original valley landscape frames the centered headline, with a clear sky behind text.
+  - The hero holds the headline, one sentence and two actions, then a still picture of the merchant overview.
+  - It is built from the app's own parts: the merchant sidebar groups, the header controls, `Card` and `ActionButton`.
+  - It shows the overview's first two rows: Total balance with its actions, Pending payments, Received and My assets.
+  - It is shrunk as one picture with CSS zoom, inert, and one image to assistive technology.
+  - Tablets drop the sidebar; phones stack the cards, as the phone app does.
+- A logo strip under the hero names the enabled test tokens and networks, without a heading.
+  - It loops slowly and pauses on hover. With reduced motion it is a still, wrapped row.
+- Four numbered sections follow: invoices, payment links, checkout, payment status.
+  - Each has a heading, one paragraph, three checked points, a docs link and a drawn product fragment.
+  - Text and drawing alternate sides on desktop and stack on phones, text first.
+  - The status section links to exact token and network pairings.
+- The roadmap is a vertical timeline beside a sticky heading, as product changelogs show it.
+  - The rail is solid ink from the done step to the current one, then dashed.
+  - The current step has the olive node, which pulses; planned titles are muted.
+- Landing sections share one vertical spacing.
+- Motion runs only without reduced motion: the hero rises in, the dashboard tilts up and draws its chart,
+  sections rise as they scroll in, floating cards settle, and anchor links scroll smoothly.
+- Payments is Done, Agentic payments is Coming next, and Bank withdrawals and Card and wallet payments are Planned.
+- The footer places its final action above original rolling grassland artwork, with distinct light and dark compositions.
+- Social buttons remain visibly unavailable and expose Soon... on hover, keyboard focus and touch.
+- Sign-in keeps all authentication behavior. Its form is centered in the space under the site bar, on every screen.
+  - Large screens keep quiet terrain below the form, with room so the two never meet.
+- On phones, sign-in uses an almost plain token surface. Decorative backgrounds do not receive pointer input.
 
 ## Type and color
 
@@ -62,6 +81,8 @@ Read only the sections your change touches. Any new control also needs
 - A disabled field keeps the surface background, with a lighter border and text.
 
 ## Controls
+
+- Tooltips opened by keyboard focus stay visible while their trigger scrolls into view. Blur, Escape and outside taps dismiss them.
 
 Every control comes from `@forwend/ui-web`; a link that looks like a button uses `buttonClasses`.
 
@@ -918,12 +939,18 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 
 ## API docs
 
-- The public API docs at `/docs` (R-155) need no sign-in. A slim header holds the logo, linked home, and the theme switch.
-  - One column of reading width: the heading, an intro, then an On this page panel of links to each section.
-  - From large screens the On this page links sit in a sticky column beside the text instead.
-  - Each section is a heading, short text and bullets, with `code` set in mono, and a code block where it helps.
-  - Links use the shared link style: accent and underlined, as `buttonClasses({ variant: "link" })` gives.
-  - The changelog closes the page, newest date first. The landing page's developer section links here.
+- Public documentation uses `/docs` and nested routes in the existing application.
+- A restrained header provides branding, search, theme control and an application entry link.
+- Desktop keeps page navigation left, readable prose center and a local heading outline right when space permits.
+- Mobile uses labeled navigation and a collapsible local outline without squeezing the article.
+- Search indexes titles, headings and article text; results show context and link directly to a page or heading.
+- Guides teach complete tasks. API pages state methods, scopes, fields, responses and errors.
+- Field tables align every cell to the start. A table without its own label keeps its caption for screen readers only.
+- Code blocks fade at the side that still has more to scroll, since some systems hide the scrollbar.
+- Disclosures use the chevron the FAQ uses, turning when open, instead of the browser's triangle.
+- All examples distinguish test mode, server secrets, base-unit amounts and verified completion.
+- The route helper keeps documentation paths separate from application destinations and API origins.
+- Old anchors map to replacement topics; canonical metadata and sitemap entries follow actual routes.
 
 ## Emails
 
@@ -962,7 +989,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   spinners (`data-motion="essential"`) keep turning under reduced motion; everything else stops. A pressed button
   scales to 0.98 on a fast ease-out (a round money action to 0.95), like a physical key; reduced motion keeps only the
   color change.
-- The hero artwork drifts with scrolling on supported desktop browsers.
+- Hero and footer artwork remain static in both themes.
 - Receipt and product-preview transitions use motion tokens. Reduced motion keeps them still.
 - The ⌘K dialog opens with no animation; it is opened by keyboard many times a day.
 - Motion rules (the motion tokens; the only ones the app uses):

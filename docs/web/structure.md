@@ -75,19 +75,25 @@ features/invoices/
 screens/landing/
   landing-screen.tsx
   landing.module.css                 page layout and section styles
-  layout/                            editorial-nav.tsx, garden-footer.tsx and their CSS modules
+  layout/                            landing-header.tsx, landing-footer.tsx, footer-socials.tsx and the CSS modules
   sections/
-    hero/                            open-path-hero.tsx
-      constants/                     hero-content.ts, also used by the share image
-    payment-workspace.tsx            payment previews and the three-step journey
-    next-chapter.tsx                 roadmap and questions
-    next-chapter.module.css
+    hero/                            landing-hero.tsx, hero-dashboard.tsx and its CSS module
+      constants/                     hero-content.ts (also used by the share image), hero-dashboard.ts
+    example-payment/                 the sample transaction and its amount, shared by the product drawings
+    supported-networks.tsx           the token and network logo strip
+    supported-networks.module.css
+    features/                        product-features.tsx, feature-visuals.tsx and their CSS module
+    roadmap.tsx                      the roadmap timeline
+    roadmap.module.css
+    faq.tsx                          questions and answers
+    faq.module.css
 ```
 
 Group the hero's rendering and supporting copy together. Keep section-only styles beside their component.
 A folder is useful when a section has supporting files, not merely because it appears on the page.
 The landing uses sign-in links instead of a waitlist form.
 An image also used by sign-in is shared branding, not landing-only data.
+The site bar that landing and sign-in share lives in `shared/components/site-bar/`.
 
 ## Requests, services and hooks
 

@@ -62,7 +62,7 @@ export function CodeBlock({
         // biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users scroll long lines sideways
         tabIndex={0}
         aria-label={`${language} code`}
-        className="overflow-x-auto focus-visible:-outline-offset-2"
+        className="fw-scroll-fade overflow-x-auto focus-visible:-outline-offset-2"
       >
         <pre className="fw-code p-4 font-mono text-sm leading-relaxed">
           {/* biome-ignore lint/security/noDangerouslySetInnerHtml: sugar-high escapes the code text and only adds its own span markup */}

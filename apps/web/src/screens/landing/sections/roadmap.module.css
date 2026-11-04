@@ -1,0 +1,164 @@
+.roadmap {
+  padding-block: var(--landing-section-space);
+  background: var(--fw-surface-2);
+}
+.roadmapGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  align-items: start;
+  gap: 4rem;
+}
+.roadmapIntro {
+  position: sticky;
+  top: calc(var(--landing-nav-height) + 2rem);
+}
+.roadmapIntro p {
+  margin-top: 1.25rem;
+  font-size: 1.125rem;
+  color: var(--fw-muted);
+}
+
+/* A Now / Next / Later timeline: one rail, solid ink up to the current step, which pulses, then dashed. */
+.timeline {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3.5rem;
+  padding-left: 3rem;
+}
+.timeline::before {
+  position: absolute;
+  content: "";
+  top: 0.75rem;
+  bottom: 0.75rem;
+  left: calc(0.75rem - 0.5px);
+  border-left: 1px dashed var(--fw-line-strong);
+}
+.timeline > li {
+  position: relative;
+  --roadmap-gap: 3.5rem;
+}
+/* The solid part of the rail: from the done step's dot down to the next step's dot. */
+.done::before {
+  position: absolute;
+  content: "";
+  top: 0.75rem;
+  bottom: calc(var(--roadmap-gap) * -1);
+  left: calc(-2.25rem - 1.5px);
+  width: 3px;
+  border-radius: var(--fw-radius-pill);
+  background: var(--fw-ink);
+  transform-origin: top;
+}
+.dot {
+  position: absolute;
+  top: 0;
+  left: -3rem;
+  display: grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  place-items: center;
+  border-radius: var(--fw-radius-pill);
+  border: 1px solid var(--fw-line-strong);
+  background: var(--fw-surface-2);
+}
+.done .dot {
+  border-color: var(--fw-ink);
+  background: var(--fw-ink);
+  color: var(--fw-bg);
+}
+.next .dot {
+  border: 2px solid var(--fw-accent);
+  background: var(--fw-surface-2);
+}
+.next .dot::after {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--fw-radius-pill);
+  background: var(--fw-accent);
+}
+.status {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--fw-muted);
+}
+.next .status {
+  color: var(--fw-accent);
+  font-weight: 500;
+}
+.timeline h3 {
+  margin-top: 0.5rem;
+  font-size: 2rem;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  font-weight: 500;
+}
+.planned h3 {
+  color: var(--fw-muted);
+}
+.timeline p {
+  max-width: 42ch;
+  margin-top: 0.75rem;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  color: var(--fw-muted);
+}
+.shipped {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+.shipped li {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--fw-line);
+  border-radius: var(--fw-radius-pill);
+  background: var(--fw-surface);
+  font-size: 0.875rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .next .dot {
+    animation: roadmap-pulse 2.4s var(--fw-ease-out) infinite;
+  }
+  @supports (animation-timeline: view()) {
+    .done::before {
+      animation: roadmap-fill linear both;
+      animation-timeline: view();
+      animation-range: entry 20% cover 50%;
+    }
+  }
+}
+@keyframes roadmap-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--fw-accent) 40%, transparent);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 0.625rem transparent;
+  }
+}
+@keyframes roadmap-fill {
+  from {
+    transform: scaleY(0);
+  }
+}
+@media (max-width: 48rem) {
+  .roadmapGrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2.5rem;
+  }
+  .roadmapIntro {
+    position: static;
+  }
+  .timeline {
+    gap: 2.5rem;
+  }
+  .timeline > li {
+    --roadmap-gap: 2.5rem;
+  }
+  .timeline h3 {
+    font-size: 1.625rem;
+  }
+}

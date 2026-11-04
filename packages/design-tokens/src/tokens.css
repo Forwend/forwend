@@ -7,29 +7,29 @@
 
   --fw-bg: #ffffff;
   --fw-surface: #ffffff;
-  --fw-surface-2: #f6f7f5;
-  --fw-sunken: #eff0ed;
+  --fw-surface-2: #f6f6f6;
+  --fw-sunken: #efefef;
   --fw-glass: rgb(255 255 255 / 0.78);
 
-  --fw-ink: #0e0f0e;
-  --fw-muted: #5b5e5a;
-  --fw-subtle: #676a66;
+  --fw-ink: #0e0e0e;
+  --fw-muted: #5c5c5c;
+  --fw-subtle: #686868;
 
-  --fw-line: #e8e9e6;
-  --fw-line-strong: #cbcdc8;
+  --fw-line: #e8e8e8;
+  --fw-line-strong: #cbcbcb;
   /* Fields: a quiet edge at rest, a gray-ink edge and a faint ring on focus (derived, so no new colors). */
   --fw-field: color-mix(in oklab, var(--fw-line-strong) 55%, var(--fw-line));
   --fw-field-focus: color-mix(in oklab, var(--fw-ink) 40%, var(--fw-line-strong));
   --fw-field-ring: color-mix(in oklab, var(--fw-ink) 7%, transparent);
 
   /* Ink fills: tooltips, a chosen day, avatars, meters. */
-  --fw-primary: #0e0f0e;
+  --fw-primary: #0e0e0e;
   --fw-on-primary: #ffffff;
   /* The lime fill is reserved for a view's main action; its edge keeps it from bleeding into white. */
   --fw-brand: #c9ef5f;
   --fw-brand-hover: #bde34f;
   --fw-brand-edge: #a9cf3c;
-  --fw-on-brand: #0e0f0e;
+  --fw-on-brand: #0e0e0e;
   /* Olive marks: focus, a switch that is on, the current step, a chosen option's check. */
   --fw-accent: #4f6a07;
   --fw-on-accent: #ffffff;
@@ -61,30 +61,30 @@
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --fw-bg: #0c0d0c;
-  --fw-surface: #141615;
-  --fw-surface-2: #1c1e1d;
-  --fw-sunken: #080908;
-  --fw-glass: rgb(20 22 21 / 0.78);
+  --fw-bg: #0c0c0c;
+  --fw-surface: #151515;
+  --fw-surface-2: #1d1d1d;
+  --fw-sunken: #080808;
+  --fw-glass: rgb(21 21 21 / 0.78);
 
-  --fw-ink: #eeefec;
-  --fw-muted: #a7aaa5;
-  --fw-subtle: #8f928d;
+  --fw-ink: #eeeeee;
+  --fw-muted: #a8a8a8;
+  --fw-subtle: #909090;
 
-  --fw-line: #262826;
-  --fw-line-strong: #3b3e3b;
+  --fw-line: #272727;
+  --fw-line-strong: #3c3c3c;
   --fw-field: var(--fw-line-strong);
   --fw-field-focus: color-mix(in oklab, var(--fw-ink) 40%, var(--fw-line-strong));
   --fw-field-ring: color-mix(in oklab, var(--fw-ink) 8%, transparent);
 
-  --fw-primary: #eeefec;
-  --fw-on-primary: #0e0f0e;
+  --fw-primary: #eeeeee;
+  --fw-on-primary: #0e0e0e;
   --fw-brand: #c9ef5f;
   --fw-brand-hover: #d6f57d;
   --fw-brand-edge: #c9ef5f;
-  --fw-on-brand: #0e0f0e;
+  --fw-on-brand: #0e0e0e;
   --fw-accent: #c9ef5f;
-  --fw-on-accent: #0e0f0e;
+  --fw-on-accent: #0e0e0e;
   --fw-focus: #c9ef5f;
 
   --fw-success: #4cc08a;
@@ -140,4 +140,17 @@
   --fw-z-nav: 40;
   --fw-z-overlay: 50;
   --fw-z-toast: 60;
+
+  /* Public pages (landing, sign-in): one gutter, one content width, and where the floating site bar sits. */
+  --fw-page-gutter: clamp(1.25rem, 4vw, 3rem);
+  --fw-page-width: 75rem;
+  --fw-site-bar-offset: 0.75rem;
+  --fw-site-bar-height: 4rem;
+}
+
+@media (max-width: 40rem) {
+  :root {
+    --fw-site-bar-offset: 0.5rem;
+    --fw-site-bar-height: 3.5rem;
+  }
 }

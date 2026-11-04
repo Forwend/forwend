@@ -1,0 +1,73 @@
+.networks {
+  padding-block: clamp(2.5rem, 5vw, 4rem) 0;
+}
+.marquee {
+  width: 100%;
+  overflow: clip;
+  mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+}
+.track {
+  display: flex;
+  width: max-content;
+}
+.row {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4rem;
+  padding-inline-end: 4rem;
+}
+.row li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  white-space: nowrap;
+  font-size: 1.125rem;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  color: var(--fw-muted);
+}
+.icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--fw-radius-sm);
+}
+
+/* The loop runs from the shared fw-marquee keyframes (a Tailwind class, since a module would rename them). */
+.marquee:hover .track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    mask-image: none;
+  }
+  .track {
+    width: auto;
+    justify-content: center;
+    padding-inline: var(--landing-gutter);
+  }
+  .row {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem 2.5rem;
+    padding-inline-end: 0;
+  }
+  .row[data-copy] {
+    display: none;
+  }
+}
+
+@media (max-width: 40rem) {
+  .row {
+    gap: 2.5rem;
+    padding-inline-end: 2.5rem;
+  }
+  .row li {
+    font-size: 1.0625rem;
+  }
+  .icon {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+}

@@ -1035,6 +1035,7 @@ test.describe("pay page", () => {
     await openPay(page, { ...OPEN, brand });
     const logo = page.locator(`img[src^="/api/v1/stores/${store}/logo.png?v="]`);
     await expect(logo).toBeVisible();
+    await logo.evaluate((img) => (img as HTMLImageElement).decode());
     expect(await logo.evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBe(40);
     await expect(page.getByRole("heading", { level: 1, name: "Alice Design GmbH" })).toBeVisible();
     expect(await blockingViolations(page)).toEqual([]);

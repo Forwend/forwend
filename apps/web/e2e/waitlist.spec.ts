@@ -6,7 +6,7 @@ test.describe("landing entry", () => {
     await expect(page.locator('input[type="email"]')).toHaveCount(0);
 
     const hero = page.locator('[data-section="hero"]');
-    await hero.getByRole("link", { name: "Open Forwend", exact: true }).click();
+    await hero.getByRole("link", { name: "Get started", exact: true }).click();
     await expect(page).toHaveURL(/\/sign-in$/);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   });

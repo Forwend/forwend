@@ -1,0 +1,52 @@
+/* A floating glass bar: it reads on hero art and on page content alike, so it needs no scroll state. Landing and
+   sign-in share it, so the logo stays in one place between them. */
+.bar {
+  position: sticky;
+  top: var(--fw-site-bar-offset);
+  z-index: var(--fw-z-nav);
+  width: min(calc(100% - var(--fw-page-gutter) * 2 + 1.5rem), calc(var(--fw-page-width) + 1.5rem));
+  margin: var(--fw-site-bar-offset) auto 0;
+  border: 1px solid color-mix(in oklab, var(--fw-line) 80%, transparent);
+  border-radius: var(--fw-radius-xl);
+  background: color-mix(in oklab, var(--fw-bg) 72%, transparent);
+  backdrop-filter: blur(var(--fw-blur-glass)) saturate(1.4);
+  box-shadow: var(--fw-shadow-sm);
+}
+.plain {
+  position: relative;
+  top: auto;
+  border-color: transparent;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+/* Brand, middle and end columns: the middle stays centered on the bar whatever the ends hold. */
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  column-gap: clamp(0.5rem, 2vw, 1.5rem);
+  min-height: var(--fw-site-bar-height);
+  padding-inline: 0.75rem 0.5rem;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  min-height: 2.75rem;
+  padding-inline: 0.5rem;
+  font-size: var(--text-xl);
+}
+@media (max-width: 40rem) {
+  .row {
+    padding-inline: 0.25rem 0.375rem;
+  }
+  .brand {
+    font-size: var(--text-lg);
+  }
+}
+@media (max-width: 22.5rem) {
+  .brand {
+    padding-inline: 0.25rem;
+  }
+}

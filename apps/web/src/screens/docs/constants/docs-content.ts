@@ -1,248 +1,41 @@
-import type { DocsSection } from "@/screens/docs/types/docs";
-import { SITE } from "@/shared/config/site";
+import type { DocsArticle } from "../types/docs";
+import { API_PAGES } from "./docs-api";
+import { GUIDE_PAGES } from "./docs-guides";
+import { REFERENCE_PAGES } from "./docs-reference";
 
-/** Where a server calls the API: the site's /api, then each route's /v1/… path. */
-export const API_ADDRESS = `${SITE.url}/api`;
-
-/** R-155: the public developer docs. Every fact here is in docs/backend/api.md; keep the two in step. */
 export const DOCS = {
-  title: "API docs",
+  title: "Documentation",
+  heading: "Build your payment flow.",
   description:
-    "Create invoices from your server, read them, and hear about every payment through signed webhooks.",
-  heading: "The Forwend API",
-  intro:
-    "Create invoices from your server, read them, and hear about every payment through signed webhooks. Every network is a testnet for now, so every key and invoice is in test mode.",
-  contents: "On this page",
-  home: "Forwend home",
-  sections: [
-    {
-      id: "start",
-      title: "Getting started",
-      paragraphs: [
-        `The API is at \`${API_ADDRESS}\`. Each route's path goes after it, such as \`/v1/profiles/{profileId}/invoices\`.`,
-        "Make a secret key on the Developers page of a freelancer or merchant profile. The profile ID is on the same page. Send the key as `Authorization: Bearer fw_test_…` on every request.",
-      ],
-      points: [
-        "`POST /v1/profiles/{profileId}/invoices` creates an invoice for `amountUsd`, which the payer pays in any accepted stablecoin. Or send `chainId`, the token's contract as `token`, and `amount` in the token's base units.",
-        "`GET /v1/profiles/{profileId}/invoices/{invoiceId}` reads one, and `GET /v1/profiles/{profileId}/invoices` lists them.",
-        "A create needs the profile's billing details, saved in the app first; without them it is `409 billing_details_required`.",
-        "`expiresIn` is how many seconds the checkout stays open: 900 to 31536000. Without it, a `dueDate` keeps the checkout open to the end of the 60th day after it. With neither, it closes after an hour, or after your store's default.",
-      ],
-      code: {
-        language: "Shell",
-        code: `curl ${API_ADDRESS}/v1/profiles/$PROFILE_ID/invoices \\
-  -H "Authorization: Bearer $FORWEND_KEY" \\
-  -H "Idempotency-Key: order-1042" \\
-  -H "Content-Type: application/json" \\
-  -d '{"amountUsd": "1250.00", "metadata": {"order_id": "1042"}}'`,
-      },
-    },
-    {
-      id: "keys",
-      title: "API keys",
-      points: [
-        "A key starts with `fw_test_` and works in test mode only. Keep it on your server, never in a web page or an app.",
-        "Its scopes are any of `invoices.read`, `invoices.write`, `stores.read` and `tokens.read`. No key can move money, or change the team or billing details.",
-        "A merchant's key works for one store: it sees only that store's invoices and events.",
-        "Roll a key to replace it: the old one can keep working for up to 7 days while you swap it. Revoke a key to stop it at once.",
-      ],
-    },
-    {
-      id: "test-mode",
-      title: "Test mode",
-      paragraphs: [
-        "An invoice on a testnet is in test mode: its `livemode` is `false`, and its tokens have no value. Every invoice, webhook and event says which mode it is in.",
-        "Live mode comes with mainnet networks. Objects of one mode never reach the other: a key works only with invoices of its own mode.",
-      ],
-    },
-    {
-      id: "idempotency",
-      title: "Idempotency",
-      points: [
-        "A create must send an `Idempotency-Key` header of 1 to 255 bytes. Your own order ID works well.",
-        "The same key and body return the same invoice, so a retry after a timeout never makes a second one.",
-        "The same key with a different body is `409 idempotency_conflict`.",
-      ],
-    },
-    {
-      id: "pages",
-      title: "Lists and pages",
-      points: [
-        "Lists come newest first, 50 at a time; `limit` takes 1 to 100.",
-        "Each page has `nextCursor`. Send it as `cursor` for the next page; it is `null` on the last one.",
-        "The invoice list also takes `status` and `q`, a search.",
-      ],
-    },
-    {
-      id: "errors",
-      title: "Errors",
-      paragraphs: [
-        'An error answer has a status and a body like `{"error": {"code": "invalid_value", "message": "…"}}`. Act on the code: it stays the same. The message is for people and may change.',
-      ],
-      points: [
-        "`400 malformed_request`: the JSON or a header is broken. The invoice list also answers 400 to a `limit` that is not a number.",
-        "`401 unauthorized`: no key, or a header that is not `Bearer fw_…`. `401 invalid_api_key`: the key is wrong, past the end of a roll, or revoked.",
-        "`403 forbidden`: the key lacks the scope, or the route names another profile.",
-        "`404`: no such object for this key, such as `invoice_not_found`. Another store's invoice is 404 too.",
-        "`409`: a conflict the code names, such as `idempotency_conflict` or `billing_details_required`.",
-        "`422 invalid_value`: a value breaks a rule, such as a store the key doesn't work for. The message names it.",
-        "`429 rate_limited`: wait the seconds in the `Retry-After` header.",
-        "`500 internal`: try again later.",
-        "`503 network_not_ready`: the network is starting; try again in a minute.",
-      ],
-    },
-    {
-      id: "metadata",
-      title: "Metadata",
-      points: [
-        "A create takes `metadata`: up to 20 keys of 1 to 40 letters, digits, `_` or `-`.",
-        "Each value is plain text on one line, up to 500 characters. Metadata is set once, at create.",
-        "Your reads, lists and webhooks return it, as `{}` when you sent none. The pay page and the PDFs never show it.",
-      ],
-    },
-    {
-      id: "webhooks",
-      title: "Webhooks",
-      paragraphs: [
-        "Add an endpoint on the Developers page: an `https` address on your server and the events it takes. A merchant's endpoint takes one store or all of them.",
-      ],
-      points: [
-        "Events: `invoice.detected`, `invoice.partially_paid`, `invoice.paid`, `invoice.settled`, `invoice.expired`, `invoice.canceled`, `invoice.held`, `invoice.open` and `invoice.reopened`.",
-        "`invoice.open`: a chain reorganization took away the payment an invoice was detected with, so it waits for payment again. `invoice.reopened`: you reopened an expired, partly paid invoice.",
-        "A body is `{id, type, livemode, sequence, timestamp, data: {invoice, held}}`. `data.invoice` is the invoice as you read it when the webhook is sent.",
-        "`sequence` counts an invoice's events from 1. Webhooks can arrive out of order: skip one older than the newest you have.",
-        "Answer with a 2xx within 15 seconds. Anything else, a redirect too, is tried again after 5 s, 5 min, 30 min, 2 h and 5 h, then every 10 h: 12 tries in about 3 days.",
-        "A `410`, or a delivery's last failure, turns the endpoint off and emails you. Turn it on again on the Developers page.",
-        "The Developers page shows each delivery and its tries. It resends one, sends a `webhook.test` event, and resends what failed in a window.",
-        "`GET /v1/profiles/{profileId}/webhook-events` lists the last 30 days of events. Each body holds the invoice as it is when you list it.",
-      ],
-    },
-    {
-      id: "verify",
-      title: "Verifying webhooks",
-      points: [
-        "Each webhook carries `webhook-id`, `webhook-timestamp` and `webhook-signature`, as Standard Webhooks defines them.",
-        "The signature is `v1,` and the base64 HMAC-SHA256 of `id.timestamp.body`, keyed by your secret's bytes after `whsec_`.",
-        "Check it against the raw body, before any JSON parsing. Refuse a timestamp more than 5 minutes from now.",
-        "Reveal or rotate the secret on the Developers page. After a rotation the old secret also signs for 24 hours, so both signatures come.",
-      ],
-      code: {
-        language: "TypeScript",
-        code: `import express from "express";
-import { verifyWebhook } from "forwend";
-
-const app = express();
-
-// The raw body: a body parsed and written again won't match its signature.
-app.post("/forwend/webhooks", express.raw({ type: "application/json" }), (req, res) => {
-  try {
-    const event = verifyWebhook({
-      payload: req.body,
-      headers: req.headers,
-      secrets: [process.env.FORWEND_WEBHOOK_SECRET ?? ""],
-    });
-    if (event.type === "invoice.paid") {
-      markOrderPaid(event.data.invoice.metadata.order_id);
-    }
-    res.sendStatus(204);
-  } catch {
-    res.sendStatus(400);
-  }
-});`,
-      },
-    },
-    {
-      id: "node",
-      title: "The forwend package",
-      paragraphs: [
-        "`forwend` is a client for Node 20 or later, with no dependencies. It creates, reads and lists invoices, lists events page by page, and verifies webhooks. Install it with `npm install forwend`.",
-      ],
-      code: {
-        language: "TypeScript",
-        code: `import { Forwend } from "forwend";
-
-const forwend = new Forwend({
-  apiKey: process.env.FORWEND_KEY ?? "",
-  profileId: process.env.FORWEND_PROFILE_ID ?? "",
-  baseUrl: "${API_ADDRESS}",
-});
-
-const invoice = await forwend.invoices.create(
-  { amountUsd: "1250.00", metadata: { order_id: "1042" } },
-  { idempotencyKey: "order-1042" },
-);
-
-for await (const event of forwend.webhookEvents.list({ type: "invoice.paid" })) {
-  console.log(event.id, event.data.invoice.number);
-}`,
-      },
-    },
-    {
-      id: "checkout",
-      title: "Checkout on your site",
-      paragraphs: [
-        "Price the cart on your server, then create a checkout session for exactly that amount. Your page never sends a price.",
-        "Show it in one of three ways: a link to Forwend's hosted page, the whole checkout in your page, or only its pay panel beside your own order summary.",
-      ],
-      points: [
-        "`POST /v1/profiles/{profileId}/checkout-sessions` takes `storeId`, `amountUsd`, your order's `reference` and optional `items`.",
-        "Its `payment.hostedUrl` is the hosted page. The pay token the embeds take is the last part of that address.",
-        "A link needs no script. To show the checkout in your page, use `@forwend/react` or `@forwend/js`, 0.1.0 on npm.",
-        "Add your site's origin to the store's allowed origins first: no other site can show its checkout. In test mode `http://localhost:3000` works too.",
-        "The checkout's events in your page are hints. Ship the order from the `invoice.paid` webhook, after you read the session again from the API.",
-        "The `forwend` package's checkout methods come in its next release. Until then, call the route directly.",
-      ],
-      code: {
-        language: "TSX",
-        code: `import { PaymentElement, PayButton } from "@forwend/react";
-
-// payToken comes from your server, which created the checkout session.
-<PaymentElement payToken={payToken} onStatus={() => refreshOrder()} />
-
-// Or a plain link to Forwend's page:
-<PayButton payToken={payToken} className="button" />`,
-      },
-    },
-    {
-      id: "versioning",
-      title: "Versioning",
-      points: [
-        "`/v1` stays compatible. New fields, optional parameters, event types and error codes can come at any time: ignore what you don't know.",
-        "Removing or renaming a field, or changing its type or meaning, is a breaking change. The changelog announces it at least 90 days before.",
-      ],
-    },
-  ] satisfies readonly DocsSection[],
-  changelog: {
-    id: "changelog",
-    title: "Changelog",
-    note: "Newest first.",
-    entries: [
-      {
-        date: "2026-10-31",
-        changes: [
-          "Checkout in your page: `/embed/<token>`, shown only on your store's allowed origins.",
-          "`@forwend/js` and `@forwend/react` 0.1.0 on npm under the MIT license.",
-          "Checkout sessions are documented: create one for your order, then link to it or show it in your page.",
-          "A payment to a checkout with several networks counts once it is final on its own network.",
-        ],
-      },
-      {
-        date: "2026-10-26",
-        changes: [
-          "`GET /v1/profiles/{profileId}/webhook-events` lists the last 30 days of events.",
-          "Invoice create takes `metadata`.",
-          "A `dueDate` with no `expiresIn` keeps the checkout open 60 days past it.",
-          "Webhook events `invoice.open` and `invoice.reopened`. An endpoint gets them once you choose them on it.",
-          "The `forwend` package for Node, 0.1.0 on npm under the MIT license.",
-        ],
-      },
-      {
-        date: "2026-10-25",
-        changes: [
-          "Webhooks: endpoints with signing secrets, invoice events, and signed delivery with retries.",
-          "Secret API keys for test mode, on the Developers page.",
-        ],
-      },
-    ],
-  },
+    "Guides and API references for stablecoin invoices, payment links and checkout. Start with a test payment.",
 } as const;
+
+export const DOCS_GROUPS = [
+  "Start here",
+  "Collect payments",
+  "Integrate",
+  "API reference",
+  "Reference",
+  "Updates",
+] as const;
+export const DOCS_PAGES: readonly DocsArticle[] = [
+  ...GUIDE_PAGES,
+  ...API_PAGES,
+  ...REFERENCE_PAGES,
+];
+
+export const LEGACY_DOCS_ANCHORS: Readonly<Record<string, { slug: string; heading?: string }>> = {
+  start: { slug: "start/first-test-payment" },
+  keys: { slug: "integrate/authentication" },
+  "test-mode": { slug: "start/test-mode" },
+  idempotency: { slug: "reference/request-rules", heading: "idempotency" },
+  pages: { slug: "reference/request-rules", heading: "pagination" },
+  errors: { slug: "reference/errors" },
+  metadata: { slug: "reference/request-rules", heading: "metadata" },
+  webhooks: { slug: "integrate/webhooks" },
+  verify: { slug: "integrate/webhooks", heading: "verify" },
+  node: { slug: "integrate/server-setup" },
+  checkout: { slug: "collect/embedded-checkout" },
+  versioning: { slug: "updates/versions", heading: "policy" },
+  changelog: { slug: "updates/changelog" },
+};
