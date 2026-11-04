@@ -108,7 +108,7 @@ func TestTokensOff(t *testing.T) {
 		!reflect.DeepEqual(options(r), []string{usdc}) {
 		t.Fatalf("payer chooses leaves Arbitrum out: %d %v", r.status, options(r))
 	}
-	if r := e.post(t, alice, e.aliceProfile, "key-2", `{"chainId": 421614, "token": "`+arbUSDC+`", "amount": "1"}`); r.status !=
+	if r := e.post(t, alice, e.aliceProfile, "key-2", `{"chainId": 421614, "token": "`+arbUSDC+`", "amount": "1000000"}`); r.status !=
 		http.StatusUnprocessableEntity {
 		t.Fatalf("a fixed token that is off: %d %v", r.status, r.body)
 	}
@@ -238,7 +238,7 @@ func TestTempoAppearsOffAndCanBeEnabled(t *testing.T) {
 	startup()
 	check(false)
 	e.exec(t, `INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block) VALUES (42431, 0, 0)`)
-	fixed := `{"chainId":42431,"token":"` + tempo + `","amount":"1"}`
+	fixed := `{"chainId":42431,"token":"` + tempo + `","amount": "1000000"}`
 	if r := e.post(t, "did:privy:alice", e.aliceProfile, "tempo-off", fixed); r.status != http.StatusUnprocessableEntity {
 		t.Fatalf("invoice while Tempo off: %d %v", r.status, r.body)
 	}

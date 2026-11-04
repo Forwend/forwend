@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -14,6 +15,22 @@ import (
 )
 
 const BalanceTimeout = 10 * time.Second
+
+// leastAmount is the least an option's payments must add up to before they choose it: 1.00 USD, one whole token of
+// a stablecoin (D-75, invoice.MinUSDCents), or the whole amount of an older, smaller invoice.
+const leastAmount = `least(i.amount, (10::numeric ^ tk.decimals)::numeric(78, 0))`
+
+// optionTotals are the on-time payments of the options of invoice $1, each with its option's running total; the caller
+// adds the status it counts.
+const optionTotals = `SELECT t.invoice_id, t.block_time, t.chain_id, t.block_number, t.log_index,
+	    sum(t.amount) OVER (PARTITION BY t.invoice_id ORDER BY t.block_time, t.block_number, t.log_index) AS total,
+	    ` + leastAmount + ` AS least
+	FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id
+	JOIN tokens tk ON tk.chain_id = i.chain_id AND tk.contract = i.token_contract
+	WHERE coalesce(i.main_id, i.id) = $1 AND t.block_time <= i.closes_at`
+
+// ChoosingSeenSQL is true while a payment that can choose an option of invoice $1 is seen, final or not.
+const ChoosingSeenSQL = `EXISTS (SELECT 1 FROM (` + optionTotals + ` AND t.status <> 'reorged') s WHERE total >= least)`
 
 // Invoices with a deposit to book go first, so new money is booked even when the round runs out of time (R-120).
 // One owed in full but not yet paid waits for the finalized balance check, so it is checked every round.
@@ -87,9 +104,10 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		invoiceID).Scan(&anyTransfer, &anyPending); err != nil {
 		return fmt.Errorf("read invoice %s transfers: %w", invoiceID, err)
 	}
-	// Payer chooses (R-56, D-76): the first payment final on its own chain makes its option the invoice's, under the
-	// main row's lock so two options can't both win; money on any other option is held for the payer.
-	superseded := false
+	// Payer chooses (R-56, D-76): the first option whose final payments add up to its least amount is the invoice's,
+	// under the main row's lock so two options can't both win; money on any other option is held for the payer.
+	superseded, noneChosen := false, false
+	var crossing *movement
 	shown := true // the row invoices_current shows: the chosen option, or the main row until one is chosen
 	closedEverywhere := true
 	if options {
@@ -100,14 +118,13 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		if chosen == nil {
 			// No other network is waited for: each payment is confirmed on its own network, as hosted crypto checkouts do.
 			var first string
-			err := tx.QueryRow(ctx, `SELECT t.invoice_id FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id
-				WHERE (i.id = $1 OR i.main_id = $1) AND t.status = 'confirmed' AND t.block_time <= i.closes_at
-				ORDER BY t.block_time, t.chain_id, t.block_number, t.log_index LIMIT 1`, group).Scan(&first)
+			err := tx.QueryRow(ctx, `SELECT invoice_id FROM (`+optionTotals+` AND t.status = 'confirmed') s
+				WHERE total >= least ORDER BY block_time, chain_id, block_number, log_index LIMIT 1`, group).Scan(&first)
 			switch {
 			case errors.Is(err, pgx.ErrNoRows):
+				// Waits for the choice only while a payment that can choose confirms: dust never holds the page.
 				var seen bool
-				if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id
-     WHERE coalesce(i.main_id,i.id) = $1 AND t.status <> 'reorged' AND t.block_time <= i.closes_at)`, group).Scan(&seen); err != nil {
+				if err := tx.QueryRow(ctx, `SELECT `+ChoosingSeenSQL, group).Scan(&seen); err != nil {
 					return err
 				}
 				if seen {
@@ -123,6 +140,20 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 					return err
 				}
 				chosen = &first
+			}
+		}
+		noneChosen = chosen == nil
+		if chosen != nil && *chosen == invoiceID {
+			// The deposit that brought this option to its least amount: the parts before it are held, in every round.
+			var at, block, index uint64
+			err := tx.QueryRow(ctx, `SELECT block_time, block_number, log_index FROM (`+optionTotals+`
+				AND t.status = 'confirmed') s WHERE invoice_id = $2 AND total >= least
+				ORDER BY block_time, block_number, log_index LIMIT 1`, group, invoiceID).Scan(&at, &block, &index)
+			switch {
+			case err == nil:
+				crossing = &movement{BlockTime: int64(at), BlockNumber: block, LogIndex: index}
+			case !errors.Is(err, pgx.ErrNoRows): // none: an option chosen by its first payment, before this rule
+				return fmt.Errorf("read invoice %s choosing payment: %w", invoiceID, err)
 			}
 		}
 		if chosen == nil && finalizedTime > closesAt {
@@ -171,6 +202,20 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		heldFor[reason].Add(heldFor[reason], value)
 		newlyHeld.Add(newlyHeld, value)
 	}
+	// Dust is what a stranger can send: on-time money that leaves its option under the least amount is held without a
+	// word to the owner, however the worker's rounds fall. Late money and money after a close or a cancel is told.
+	least, onTime := new(big.Int), new(big.Int)
+	if options {
+		var leastText, bookedText string
+		if err := tx.QueryRow(ctx, `SELECT `+leastAmount+`::text, coalesce((SELECT sum(t.amount) FROM chain_transfers t
+			    WHERE t.invoice_id = i.id AND t.booked AND t.status = 'confirmed' AND t.block_time <= i.closes_at), 0)::text
+			FROM invoices i JOIN tokens tk ON tk.chain_id = i.chain_id AND tk.contract = i.token_contract WHERE i.id = $1`,
+			invoiceID).Scan(&leastText, &bookedText); err != nil {
+			return fmt.Errorf("read invoice %s least amount: %w", invoiceID, err)
+		}
+		least.SetString(leastText, 10)
+		onTime.SetString(bookedText, 10)
+	}
 	for _, d := range movements {
 		if d.Kind != "deposit" {
 			// A movement out after the close settles the close first, so it takes money from the right account.
@@ -206,13 +251,22 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		}
 		value, _ := new(big.Int).SetString(d.Amount, 10)
 		late := d.BlockTime > closesAt
-		toCreator, toHeld := split(amount, owed, value, late, final || superseded)
+		// A payment before the one that brought its option to the least amount chose nothing: it is the payer's,
+		// whichever round books it.
+		early := noneChosen || crossing != nil && cmp.Or(cmp.Compare(d.BlockTime, crossing.BlockTime),
+			cmp.Compare(d.BlockNumber, crossing.BlockNumber), cmp.Compare(d.LogIndex, crossing.LogIndex)) < 0
+		toCreator, toHeld := split(amount, owed, value, late, final || superseded || early)
 		if err := book(ctx, tx, invoiceID, "deposit", &d.ID, value, toCreator, toHeld); err != nil {
 			return err
 		}
 		depositsBooked++
 		owed.Add(owed, toCreator)
-		hold(heldReason(current, late, superseded), toHeld)
+		if !late {
+			onTime.Add(onTime, value)
+		}
+		if dust := options && !late && !final && onTime.Cmp(least) < 0; !dust {
+			hold(heldReason(current, late, superseded), toHeld)
+		}
 	}
 	if depositsBooked > 0 { // new money: an unexplained balance may be explained now
 		if _, err := tx.Exec(ctx, "DELETE FROM invoice_balance_alerts WHERE invoice_id = $1", invoiceID); err != nil {
@@ -246,6 +300,10 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	}
 	if current == PartiallyPaid && next == Detected {
 		next = PartiallyPaid
+	}
+	// Money that chose no option is held, so it never makes the invoice confirming or partly paid.
+	if noneChosen && next == Detected {
+		next = Open
 	}
 	if next == ExpiredPartiallyPaid && current != ExpiredPartiallyPaid {
 		// Held for the payer (D-26): what was owed to the creator is theirs again only if the owner reopens (R-130).

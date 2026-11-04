@@ -190,16 +190,29 @@ export function shortDuration(ms: number): string {
   return parts.join(" ") || "0 s";
 }
 
+/** The option a payer-chooses invoice takes (R-56, R-119): the first whose on-time deposits add up to 1.00 USD, one
+ * whole stablecoin (D-75), or an older invoice's whole amount when that is smaller. A smaller deposit chooses nothing. */
 export function firstPaymentOption(inv: Invoice): Invoice["options"][number] | undefined {
-  return inv.options
-    .flatMap((option) =>
-      option.deposits.filter((deposit) => !deposit.late).map((deposit) => ({ option, deposit })),
-    )
-    .sort(
-      (a, b) =>
-        Date.parse(a.deposit.blockTime) - Date.parse(b.deposit.blockTime) ||
-        a.option.chainId - b.option.chainId ||
-        a.deposit.blockNumber - b.deposit.blockNumber ||
-        a.deposit.logIndex - b.deposit.logIndex,
-    )[0]?.option;
+  type Crossing = { option: Invoice["options"][number]; deposit: Invoice["deposits"][number] };
+  const earlier = (a: Crossing, b: Crossing) =>
+    Date.parse(a.deposit.blockTime) - Date.parse(b.deposit.blockTime) ||
+    a.option.chainId - b.option.chainId ||
+    a.deposit.blockNumber - b.deposit.blockNumber ||
+    a.deposit.logIndex - b.deposit.logIndex;
+  let first: Crossing | undefined;
+  for (const option of inv.options) {
+    const whole = 10n ** BigInt(option.decimals);
+    const least = BigInt(option.amount) < whole ? BigInt(option.amount) : whole;
+    let total = 0n;
+    for (const deposit of option.deposits
+      .filter((d) => !d.late)
+      .sort((a, b) => earlier({ option, deposit: a }, { option, deposit: b }))) {
+      total += BigInt(deposit.amount);
+      if (total >= least) {
+        if (!first || earlier({ option, deposit }, first) < 0) first = { option, deposit };
+        break;
+      }
+    }
+  }
+  return first?.option;
 }

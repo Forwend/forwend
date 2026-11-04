@@ -44,7 +44,7 @@ func TestPaymentLinks(t *testing.T) {
 		t.Fatalf("an open link: %d %v", open.status, open.body)
 	}
 	// Amounts are base 10 whatever their zeros: never octal.
-	for sent, saved := range map[string]string{"12.08": "12.08", "19.09": "19.09", "010": "10.00", "0.08": "0.08",
+	for sent, saved := range map[string]string{"12.08": "12.08", "19.09": "19.09", "010": "10.00", "01.08": "1.08",
 		"000000000012": "12.00", "7.5": "7.50"} {
 		if r := e.call(t, "PUT", path(shop, openID), alice, "", `{"title": "Top up", "maxUsd": "`+sent+`"}`); r.status !=
 			http.StatusOK || r.body["maxUsd"] != saved {
@@ -63,6 +63,8 @@ func TestPaymentLinks(t *testing.T) {
 		`{"title": "A", "minUsd": "50", "maxUsd": "10"}`:   "invalid_value",
 		`{"title": "A", "amountUsd": "1.234"}`:             "invalid_value",
 		`{"title": "A", "amountUsd": "0"}`:                 "invalid_value",
+		`{"title": "A", "amountUsd": "0.99"}`:              "invalid_value",
+		`{"title": "A", "minUsd": "0.50"}`:                 "invalid_value",
 		`{"title": "A", "amountUsd": "-5"}`:                "invalid_value",
 		`{"title": "A", "maxPayments": -1}`:                "invalid_value",
 		`{"title": "A", "maxPayments": 0}`:                 "invalid_value",
@@ -112,7 +114,7 @@ func TestPaymentLinks(t *testing.T) {
 	// The paid count is the link's paid and settled invoices.
 	for i, status := range []string{"paid", "open", "paid"} {
 		made := e.post(t, alice, shop, "link-"+status+string(rune('a'+i)), `{"chainId": 84532, "token": "`+usdc+`",
-			"amount": "1"}`)
+			"amount": "1000000"}`)
 		e.exec(t, `ALTER TABLE invoices DISABLE TRIGGER invoices_guard`)
 		e.exec(t, `UPDATE invoices SET link_id = $2, payment_status = $3 WHERE id = $1`, made.body["invoiceId"], fixedID,
 			status)
@@ -122,7 +124,7 @@ func TestPaymentLinks(t *testing.T) {
 		t.Errorf("the paid count: %v", r.body["paid"])
 	}
 	// Another profile's invoice can't name the link, so it never counts.
-	other := e.post(t, alice, e.aliceProfile, "link-other", `{"chainId": 84532, "token": "`+usdc+`", "amount": "1"}`)
+	other := e.post(t, alice, e.aliceProfile, "link-other", `{"chainId": 84532, "token": "`+usdc+`", "amount": "1000000"}`)
 	e.exec(t, `ALTER TABLE invoices DISABLE TRIGGER invoices_guard`)
 	_, err := e.pool.Exec(context.Background(), `UPDATE invoices SET link_id = $2 WHERE id = $1`,
 		other.body["invoiceId"], fixedID)
@@ -296,7 +298,7 @@ func TestLinkInvoiceNumbers(t *testing.T) {
 				t.Errorf("%s: GET %s: %d %v", when, path, r.status, r.body)
 			}
 		}
-		revise := `{"chainId": 84532, "token": "` + usdc + `", "amount": "1", "replaces": "` + linked + `"}`
+		revise := `{"chainId": 84532, "token": "` + usdc + `", "amount": "1000000", "replaces": "` + linked + `"}`
 		if r := e.post(t, alice, e.aliceProfile, "revise-"+when, revise); errorCode(r) != "invoice_not_found" {
 			t.Errorf("%s: revise it: %d %v", when, r.status, r.body)
 		}

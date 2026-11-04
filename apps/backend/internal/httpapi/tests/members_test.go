@@ -36,7 +36,7 @@ func TestMembersReachOnlyWhatTheirRoleAllows(t *testing.T) {
 		SELECT $1, id, $2 FROM u WHERE privy_user_id IN ('did:privy:erin', 'did:privy:fran')`, shop, storeB); err != nil {
 		t.Fatal(err)
 	}
-	fixed := `"chainId": 84532, "token": "` + usdc + `", "amount": "1"`
+	fixed := `"chainId": 84532, "token": "` + usdc + `", "amount": "1000000"`
 	// Both are overdue, for Owed, and have a paid event, for the bell.
 	inFirst := e.post(t, alice, shop, "key-1", `{`+fixed+`, "dueDate": "2026-01-05"}`)
 	inPro := e.post(t, alice, shop, "key-2", `{`+fixed+`, "dueDate": "2026-01-05", "storeId": "`+storeB+`"}`)

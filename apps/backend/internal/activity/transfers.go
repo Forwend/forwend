@@ -80,6 +80,17 @@ var transferSQL = `
 	                   ORDER BY u.day DESC LIMIT 1) fx ON true
 	WHERE w.profile_id = $1 AND t.status <> 'reorged'`
 
+// listed leaves out an incoming transfer under 0.10 USD (R-38): such transfers are mostly spam that plants a
+// look-alike address in the history. A settlement from one of the profile's invoices and a transfer from another of
+// the user's profiles always show. The balance still counts every transfer; it is read from the chain.
+const listed = `(t.direction = 'out' OR t.amount >= (10::numeric ^ (tk.decimals - 1))
+	OR EXISTS (SELECT 1 FROM receiver_outflows o WHERE o.kind = 'settlement' AND o.chain_id = t.chain_id
+	    AND o.tx_hash = t.tx_hash AND o.block_hash = t.block_hash AND o.transfer_log_index = t.log_index
+	    AND o.destination = t.wallet_address)
+	OR EXISTS (SELECT 1 FROM profiles p JOIN profiles op ON op.user_id = p.user_id AND op.id <> p.id
+	    JOIN profile_wallets ow ON ow.profile_id = op.id
+	    WHERE p.id = w.profile_id AND ow.chain_family = t.chain_family AND ow.address = t.counterparty))`
+
 func scanTransfer(row pgx.CollectableRow) (Transfer, error) {
 	var (
 		t                                      Transfer
@@ -154,7 +165,7 @@ func (s *Service) Transfers(ctx context.Context, profileID, cursor string, limit
 		SELECT p.id, p.block_time FROM profile_wallets w CROSS JOIN LATERAL (
 		    SELECT t.id, t.block_time FROM wallet_transfers t
 		    JOIN tokens tk ON tk.chain_id = t.chain_id AND tk.contract = t.token_contract
-		    WHERE t.chain_family = w.chain_family AND t.wallet_address = w.address AND t.status <> 'reorged'
+		    WHERE t.chain_family = w.chain_family AND t.wallet_address = w.address AND t.status <> 'reorged' AND `+listed+`
 		      AND ($2::bigint IS NULL OR (t.block_time, t.id) < ($2, $3)) AND ($5::text IS NULL OR t.direction = $5)
 		      AND ($6::text IS NULL OR t.counterparty ILIKE $6 OR t.tx_hash ILIKE $6 OR tk.symbol ILIKE $6
 		           OR t.amount = $7::numeric * 10::numeric ^ tk.decimals)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
@@ -298,6 +299,148 @@ func TestEarlyOptionClosePreservesOtherCheckoutOptions(t *testing.T) {
 			var chosen *string
 			if err := e.pool.QueryRow(t.Context(), "SELECT chosen_id FROM invoices WHERE id = $1", main).Scan(&chosen); err != nil || chosen == nil || *chosen != long {
 				t.Fatalf("chosen=%v err=%v", chosen, err)
+			}
+		})
+	}
+}
+
+// A deposit under 1 USD never chooses its option: the payer's real payment on another option does, and the small
+// deposit is held for the payer.
+func TestDustNeverChoosesItsOption(t *testing.T) {
+	o := newOptionSim(t)
+	o.pay(o.main, 1, o.dust, 10000, 1300) // 0.01 USDC, first on chain
+	o.scanned(1, 2000)
+	o.process(o.main)
+	var chosen *string
+	if err := o.pool.QueryRow(context.Background(), "SELECT chosen_id FROM invoices WHERE id = $1", o.main).Scan(&chosen); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := o.payment(o.main); chosen != nil || got != Open {
+		t.Fatalf("after 0.01 USDC: chosen %s, invoice %s; want nothing chosen and the invoice open", deref(chosen), got)
+	}
+	o.pay(o.option, 2, o.full, 5000000, 1400)
+	o.scanned(2, 2000)
+	o.process(o.option)
+	o.process(o.main)
+	if got, _ := o.payment(o.option); got != Paid {
+		t.Fatalf("the full payment: %s, want paid", got)
+	}
+	if _, refund := o.payment(o.main); refund != "held" {
+		t.Fatalf("the 0.01 USDC: refund %s, want held for the payer", refund)
+	}
+	if err := o.pool.QueryRow(context.Background(), "SELECT chosen_id FROM invoices WHERE id = $1", o.main).Scan(&chosen); err != nil ||
+		deref(chosen) != o.option {
+		t.Fatalf("chosen %s, want %s", deref(chosen), o.option)
+	}
+}
+
+// A payment sent in parts chooses its option once they add up to 1 USD; a part before the one that got there is the
+// payer's. Whether the parts were final in one worker round or in several, the ledger is the same.
+func TestPaymentInSmallPartsChoosesItsOption(t *testing.T) {
+	for _, rounds := range []string{"one round", "rounds apart"} {
+		t.Run(rounds, func(t *testing.T) {
+			o := newOptionSim(t)
+			o.scanned(1, 2000)
+			o.scanned(2, 2000)
+			o.pay(o.option, 2, o.full, 600000, 1300)
+			if rounds == "rounds apart" {
+				o.process(o.option)
+			}
+			o.pay(o.option, 2, o.full, 600000, 1310) // 1.20 USDC: this one chooses the option
+			if rounds == "rounds apart" {
+				o.process(o.option)
+			}
+			o.pay(o.option, 2, o.full, 4400000, 1320)
+			o.process(o.option)
+			if got, refund := o.payment(o.option); got != Paid || refund != "held" {
+				t.Fatalf("after 0.60 + 0.60 + 4.40 USDC: %s, refund %s; want paid with the first 0.60 held", got, refund)
+			}
+			var held int64
+			if err := o.pool.QueryRow(context.Background(), `SELECT -sum(e.amount)::bigint FROM ledger_entries e
+				JOIN ledger_transactions x ON x.id = e.transaction_id WHERE x.invoice_id = $1 AND e.account = 'payer_held'`,
+				o.option).Scan(&held); err != nil || held != 600000 {
+				t.Fatalf("held %d (%v), want the first 0.60 USDC", held, err)
+			}
+		})
+	}
+}
+
+// The watcher first sees a deposit, then confirms it: 0.01 USDC never makes the invoice confirming or partly paid.
+func TestDustSeenThenConfirmedKeepsTheInvoiceOpen(t *testing.T) {
+	o := newOptionSim(t)
+	o.pay(o.main, 1, o.dust, 10000, 1300)
+	o.exec("UPDATE chain_transfers SET status = 'detected'")
+	o.scanned(1, 2000)
+	o.process(o.main)
+	if got, _ := o.payment(o.main); got != Open {
+		t.Fatalf("while 0.01 USDC confirms: %s, want open", got)
+	}
+	o.exec("UPDATE chain_transfers SET status = 'confirmed'")
+	o.process(o.main)
+	if got, refund := o.payment(o.main); got != Open || refund != "held" {
+		t.Fatalf("once 0.01 USDC is final: %s, refund %s; want open with it held", got, refund)
+	}
+}
+
+// Only a deposit under 1 USD came: the invoice still expires, as unpaid, and the deposit is held for the payer.
+func TestDustOnlyExpiresAndIsHeld(t *testing.T) {
+	o := newOptionSim(t)
+	o.pay(o.main, 1, o.dust, 10000, 1300)
+	o.scanned(1, 5100)
+	o.scanned(2, 5100)
+	o.process(o.main)
+	o.process(o.option)
+	if got, refund := o.payment(o.main); got != Expired || refund != "held" {
+		t.Fatalf("the invoice: %s, refund %s; want expired with the 0.01 USDC held", got, refund)
+	}
+	// Dust a stranger may send never emails the owner: no held event for it.
+	want := []string{"invoice.expired by system"}
+	if got := historytest.Events(t, o.pool, o.main); !slices.Equal(got, want) {
+		t.Fatalf("history\n got %q\nwant %q", got, want)
+	}
+}
+
+// R-80: money that comes after a payer-chooses invoice expired unchosen is held, and the owner is told.
+func TestLateMoneyAfterAnUnchosenExpiryIsAnnounced(t *testing.T) {
+	o := newOptionSim(t)
+	o.scanned(1, 5100)
+	o.scanned(2, 5100)
+	o.process(o.main)
+	o.process(o.option)
+	o.pay(o.option, 2, o.full, 5000000, 5050)
+	o.scanned(2, 5200)
+	o.process(o.option)
+	if _, refund := o.payment(o.option); refund != "held" {
+		t.Fatalf("the late 5.00 USDC: refund %s, want held", refund)
+	}
+	want := fmt.Sprintf(`invoice.held by system {"amount": "5000000", "option": "%s", "reason": "late"}`, o.option)
+	if got := historytest.Events(t, o.pool, o.main); !slices.Contains(got, want) {
+		t.Fatalf("history %q lacks %q", got, want)
+	}
+}
+
+// Dust on an option the payer didn't pay is held without a word to the owner, whether it was booked before or after
+// the choice.
+func TestDustIsHeldSilentlyInEveryTiming(t *testing.T) {
+	for _, order := range []string{"dust booked first", "choice made first"} {
+		t.Run(order, func(t *testing.T) {
+			o := newOptionSim(t)
+			o.scanned(1, 2000)
+			o.scanned(2, 2000)
+			o.pay(o.main, 1, o.dust, 10000, 1300)
+			if order == "dust booked first" {
+				o.process(o.main)
+			}
+			o.pay(o.option, 2, o.full, 5000000, 1400)
+			o.process(o.option)
+			o.process(o.main)
+			if _, refund := o.payment(o.main); refund != "held" {
+				t.Fatalf("the 0.01 USDC: refund %s, want held", refund)
+			}
+			for _, e := range historytest.Events(t, o.pool, o.main) {
+				if strings.HasPrefix(e, "invoice.held") {
+					t.Fatalf("the owner was told about dust: %q", e)
+				}
 			}
 		})
 	}

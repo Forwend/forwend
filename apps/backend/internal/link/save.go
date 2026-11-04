@@ -30,10 +30,10 @@ func cents(field, s string) (int64, error) {
 	if m == nil {
 		return 0, fmt.Errorf("%w: %s must be a USD amount like 12.50", ErrInvalid, field)
 	}
-	if c, _ := strconv.ParseInt(m[1]+m[2]+strings.Repeat("0", 2-len(m[2])), 10, 64); c > 0 {
+	if c, _ := strconv.ParseInt(m[1]+m[2]+strings.Repeat("0", 2-len(m[2])), 10, 64); c >= invoice.MinUSDCents {
 		return c, nil
 	}
-	return 0, fmt.Errorf("%w: %s must be above 0", ErrInvalid, field)
+	return 0, fmt.Errorf("%w: %s must be at least 1.00", ErrInvalid, field)
 }
 
 // newSlug is 12 random lowercase letters and digits (D-94): 60 bits of base32, so a link can't be guessed.

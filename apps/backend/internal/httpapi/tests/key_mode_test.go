@@ -54,7 +54,7 @@ func TestKeyMode(t *testing.T) {
 	if test.status != http.StatusCreated || test.body["livemode"] != false || !slices.Equal(chains(test), []float64{84532}) {
 		t.Fatalf("the key's USD invoice: %d %v", test.status, test.body)
 	}
-	if r := byKey("key-live", `{"chainId": 421614, "token": "`+arbUSDC+`", "amount": "1"}`); errorCode(r) !=
+	if r := byKey("key-live", `{"chainId": 421614, "token": "`+arbUSDC+`", "amount": "1000000"}`); errorCode(r) !=
 		"invalid_value" || !strings.Contains(r.body["error"].(map[string]any)["message"].(string), "must be test mode") {
 		t.Errorf("a test key's live-mode token: %d %v", r.status, r.body)
 	}

@@ -167,10 +167,12 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
     const shown =
       cents === 0n
         ? COPY.errors.amount
-        : (link.minUsd && cents < usdCents(link.minUsd)) ||
-            (link.maxUsd && cents > usdCents(link.maxUsd))
+        : cents < 100n // R-56: at least 1.00 USD
           ? COPY.errors.limits(limits)
-          : "";
+          : (link.minUsd && cents < usdCents(link.minUsd)) ||
+              (link.maxUsd && cents > usdCents(link.maxUsd))
+            ? COPY.errors.limits(limits)
+            : "";
     flushSync(() => {
       setError(shown);
       setFormError("");

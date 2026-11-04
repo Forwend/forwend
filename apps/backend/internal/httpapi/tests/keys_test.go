@@ -79,10 +79,10 @@ func TestAPIKeys(t *testing.T) {
 
 	// The key reaches its profile's routes that its scopes allow, for its store.
 	invoices := "/v1/profiles/" + shop + "/invoices"
-	other := e.call(t, "POST", invoices, alice, "other-store", `{"chainId": 84532, "token": "`+usdc+`", "amount": "1",
+	other := e.call(t, "POST", invoices, alice, "other-store", `{"chainId": 84532, "token": "`+usdc+`", "amount": "1000000",
 		"storeId": "`+storeB+`"}`)
 	req, _ := http.NewRequest("POST", e.srv.URL+invoices, strings.NewReader(`{"chainId": 84532, "token": "`+usdc+
-		`", "amount": "1"}`))
+		`", "amount": "1000000"}`))
 	req.Header.Set("Authorization", "Bearer "+secret)
 	req.Header.Set("Idempotency-Key", "by-key")
 	if r := e.do(t, req); r.status != http.StatusCreated || r.body["store"].(map[string]any)["storeId"] != first {

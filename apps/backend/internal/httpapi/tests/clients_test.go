@@ -50,7 +50,7 @@ func TestClients(t *testing.T) {
 		t.Fatalf("list by name: %v", got)
 	}
 
-	invoice := e.post(t, alice, e.aliceProfile, "key-1", `{"chainId": 84532, "token": "`+usdc+`", "amount": "1",
+	invoice := e.post(t, alice, e.aliceProfile, "key-1", `{"chainId": 84532, "token": "`+usdc+`", "amount": "1000000",
 		"client": `+strings.Replace(full, `, "reference": "PO-4500012345"`, "", 1)+`}`)
 	if invoice.status != http.StatusCreated {
 		t.Fatalf("invoice: %d %v", invoice.status, invoice.body)

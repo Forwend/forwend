@@ -253,6 +253,7 @@ export const AMOUNT_ERRORS = {
   format: "format",
   decimals: "decimals",
   zero: "zero",
+  min: "min",
 } as const;
 
 /** R-88: the API's line item limits. */

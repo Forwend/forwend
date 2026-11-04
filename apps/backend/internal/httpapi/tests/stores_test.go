@@ -187,7 +187,7 @@ func TestMerchantInvoicesRecordTheirStore(t *testing.T) {
 		"defaultExpiresIn": 3600, "allowedOrigins": ["https://shop.example.com"]}`); r.status != http.StatusCreated {
 		t.Fatalf("PUT store: %d %v", r.status, r.body)
 	}
-	fixed := `"chainId": 84532, "token": "` + usdc + `", "amount": "1"`
+	fixed := `"chainId": 84532, "token": "` + usdc + `", "amount": "1000000"`
 	closesIn := func(r reply) time.Duration {
 		t.Helper()
 		expires, _ := time.Parse(time.RFC3339, r.body["expiresAt"].(string))
@@ -415,7 +415,7 @@ func TestStoreBranding(t *testing.T) {
 		}
 	}
 
-	inv := e.post(t, alice, shop, "key-1", `{"chainId": 84532, "token": "`+usdc+`", "amount": "1"}`)
+	inv := e.post(t, alice, shop, "key-1", `{"chainId": 84532, "token": "`+usdc+`", "amount": "1000000"}`)
 	if inv.status != http.StatusCreated {
 		t.Fatalf("invoice: %d %v", inv.status, inv.body)
 	}
@@ -444,7 +444,7 @@ func TestStoreBranding(t *testing.T) {
 	if r := e.call(t, "GET", public, "", "", ""); r.status != http.StatusNotFound {
 		t.Fatalf("GET a deleted logo: %d", r.status)
 	}
-	free := e.post(t, alice, e.aliceProfile, "key-2", `{"chainId": 84532, "token": "`+usdc+`", "amount": "1"}`)
+	free := e.post(t, alice, e.aliceProfile, "key-2", `{"chainId": 84532, "token": "`+usdc+`", "amount": "1000000"}`)
 	if free.status != http.StatusCreated || free.body["brand"] != nil {
 		t.Fatalf("a freelancer's invoice has a brand: %v", free.body["brand"])
 	}

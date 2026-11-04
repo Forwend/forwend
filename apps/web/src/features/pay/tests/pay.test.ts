@@ -3,6 +3,7 @@ import type { Deposit, Invoice } from "@/features/invoices/types/invoices";
 import { PAY_STATES } from "@/features/pay/constants/pay";
 import {
   clockRuns,
+  firstPaymentOption,
   overpaid,
   payerNoticeOptions,
   payState,
@@ -321,6 +322,26 @@ describe("withOption", () => {
     ],
   };
 
+  it("lets no deposit under 1 USD choose an option, and the first to add up to it does", () => {
+    const [main, other] = choosing.options;
+    if (!main || !other) throw new Error("Missing fixture option");
+    const big = { ...choosing, amount: "5000000" };
+    const options = (mainDeposits: Deposit[], otherDeposits: Deposit[]) => ({
+      ...big,
+      options: [
+        { ...main, amount: "5000000", deposits: mainDeposits },
+        { ...other, amount: "5000000", deposits: otherDeposits },
+      ],
+    });
+    const dust = deposit("10000", { blockTime: "2026-10-10T11:00:00Z" });
+    expect(firstPaymentOption(options([dust], []))).toBeUndefined();
+    expect(firstPaymentOption(options([dust], [deposit("5000000")]))?.optionId).toBe(
+      other.optionId,
+    );
+    const parts = [deposit("600000"), deposit("600000", { logIndex: 1 })];
+    expect(firstPaymentOption(options(parts, []))?.optionId).toBe(main.optionId);
+  });
+
   it("uses the selected option's totals instead of the main option's preview", () => {
     const main = choosing.options[0];
     const option = choosing.options[1];
@@ -386,7 +407,7 @@ describe("withOption", () => {
       optionCount: 2,
       options: choosing.options.map((option, i) => ({
         ...option,
-        deposits: i === 1 ? [deposit("1", { status: "detected", paid: null })] : [],
+        deposits: i === 1 ? [deposit("1000", { status: "detected", paid: null })] : [],
       })),
     };
     const shown = withOption(provisional, choosing.options[0]?.optionId);

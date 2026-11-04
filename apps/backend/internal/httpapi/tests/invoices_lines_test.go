@@ -68,9 +68,9 @@ func TestInvoiceLines(t *testing.T) {
 		{"a decimal unit price with amount", fixed(`{"description": "Design", "quantity": "1", "unitPrice": "5.00"}`)},
 		{"half a base unit", fixed(`{"description": "Design", "quantity": "0.5", "unitPrice": "3"},
 			{"description": "Rest", "quantity": "1", "unitPrice": "4999998.5"}`)},
-		{"a line USDC can't hold", `{"amountUsd": "0.000001", "lines": [
-			{"description": "a", "quantity": "1", "unitPrice": "0.0000005"},
-			{"description": "b", "quantity": "1", "unitPrice": "0.0000005"}]}`},
+		{"a line USDC can't hold", `{"amountUsd": "1.000001", "lines": [
+			{"description": "a", "quantity": "1", "unitPrice": "0.5000005"},
+			{"description": "b", "quantity": "1", "unitPrice": "0.5000005"}]}`},
 	} {
 		if r := e.post(t, alice, e.aliceProfile, "bad-"+string(rune('a'+i)), c.body); r.status != http.StatusUnprocessableEntity ||
 			errorCode(r) != "invalid_value" {

@@ -119,7 +119,8 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
     if (kind === AMOUNT_KINDS.fixed && !body.amountUsd) shown.amountUsd = COPY.errors.amount;
     for (const field of ["amountUsd", "minUsd", "maxUsd"] as const) {
       const value = body[field];
-      if (value !== null && (!USD_PATTERN.test(value) || Number(value) === 0))
+      // R-56: every payment through the link asks for at least 1.00 USD.
+      if (value !== null && (!USD_PATTERN.test(value) || Number(value) < 1))
         shown[field] = COPY.errors.amount;
     }
     if (body.minUsd && body.maxUsd && !shown.minUsd && Number(body.minUsd) > Number(body.maxUsd))

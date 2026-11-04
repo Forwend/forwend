@@ -78,6 +78,14 @@ export function parseTokenAmount(text: string, decimals: number): bigint | Amoun
   return units === 0n ? AMOUNT_ERRORS.zero : units;
 }
 
+/** R-56: a new payment asks for at least 1.00 USD, one whole stablecoin (D-75). */
+export function atLeastMinimum(
+  units: bigint | AmountError,
+  decimals: number,
+): bigint | AmountError {
+  return typeof units === "bigint" && units < 10n ** BigInt(decimals) ? AMOUNT_ERRORS.min : units;
+}
+
 /** R-88: quantity has 2 decimals, so the total must come out in whole base units; a price of 0 is free. */
 export function lineUnits(
   line: Pick<LineDraft, "description" | "quantity" | "price">,

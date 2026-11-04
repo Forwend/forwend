@@ -1787,7 +1787,7 @@ paths:
               required: [title, amountUsd, dueDays]
               properties:
                 title: { type: string, minLength: 1, maxLength: 100 }
-                amountUsd: { type: string, pattern: "^[0-9]{1,10}(\\.[0-9]{1,2})?$", description: "Above 0" }
+                amountUsd: { type: string, pattern: "^[0-9]{1,10}(\\.[0-9]{1,2})?$", description: "At least 1.00" }
                 dueDays: { type: integer, minimum: 0, maximum: 90 }
       responses:
         "200":
@@ -2287,8 +2287,9 @@ paths:
       summary: Keep the payer's pick of an option (public, like the checkout)
       description: |
         R-57. The pay page sends it when the payer presses Show address, so the pay link opens on that option again.
-        It only shows the pick: the first money still decides the invoice's option (R-56). A Fixed invoice has
-        nothing to pick (422). Refused once money is seen on any option. Limited per invoice; per IP at the edge (Q-8).
+        It only shows the pick: payments that add up to 1.00 USD still decide the invoice's option (R-56). A Fixed
+        invoice has nothing to pick (422). Refused once a payment that can choose an option is seen. Limited per
+        invoice; per IP at the edge (Q-8).
       security: []
       parameters:
         - name: payToken
@@ -3278,7 +3279,7 @@ components:
       required: [storeId, amountUsd]
       properties:
         storeId: { type: string, format: uuid }
-        amountUsd: { type: string, description: Exact USD decimal, above zero. }
+        amountUsd: { type: string, description: Exact USD decimal, at least 1.00. }
         reference: { type: string, maxLength: 100, description: Immutable external order reference. }
         title: { type: string, maxLength: 200 }
         expiresIn: { type: integer, minimum: 900, maximum: 31536000 }
@@ -3851,11 +3852,11 @@ components:
         amountUsd:
           type: [string, "null"]
           pattern: "^[0-9]{1,12}(\\.[0-9]{1,2})?$"
-          description: A fixed amount in USD, above 0. Left out, the payer enters the amount.
+          description: A fixed amount in USD, at least 1.00. Left out, the payer enters the amount.
         minUsd:
           type: [string, "null"]
           pattern: "^[0-9]{1,12}(\\.[0-9]{1,2})?$"
-          description: An open amount's lowest, at most maxUsd. No default (D-94).
+          description: An open amount's lowest, at least 1.00 and at most maxUsd. No default (D-94).
         maxUsd:
           type: [string, "null"]
           pattern: "^[0-9]{1,12}(\\.[0-9]{1,2})?$"
@@ -4773,7 +4774,7 @@ components:
           type: string
           pattern: "^[0-9]{1,60}(\\.[0-9]{1,18})?$"
           description: |
-            Payer chooses: the amount in USD, above 0, such as "12.50". 422 when an accepted token's decimals can't
+            Payer chooses: the amount in USD, at least 1.00, such as "12.50". 422 when an accepted token's decimals can't
             hold it exactly. The tokens the profile or its store has off are left out; none left is 422 (R-136).
         chainId: { type: integer, minimum: 1, maximum: 9223372036854775807 }
         token:
@@ -4782,7 +4783,9 @@ components:
             Contract of an enabled token on chainId; any letter case. A token the profile or its store has off is
             422 (R-136).
           pattern: "^0x[0-9a-fA-F]{40}$"
-        amount: { $ref: "#/components/schemas/Uint256" }
+        amount:
+          allOf: [{ $ref: "#/components/schemas/Uint256" }]
+          description: Base units of the token, at least one whole token (1.00 USD).
         expiresIn:
           type: integer
           description: |
@@ -5330,13 +5333,13 @@ components:
         optionLocked:
           type: boolean
           description: |
-            An option received money, so it is the invoice's for good; money sent to any other option is held for the
-            payer (D-76).
+            An option's final payments added up to 1.00 USD, so it is the invoice's for good; money sent to any other
+            option, or less than that before the choice, is held for the payer (D-76).
         pickedOptionId:
           oneOf: [{ type: "null" }, { $ref: "#/components/schemas/InvoiceId" }]
           description: |
-            The option the payer last picked with Show address (R-57), null before a pick. It only shows the pick; the
-            first money decides the option (R-56).
+            The option the payer last picked with Show address (R-57), null before a pick. It only shows the pick;
+            payments that add up to 1.00 USD decide the option (R-56).
         number:
           type: [integer, "null"]
           minimum: 1

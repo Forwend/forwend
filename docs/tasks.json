@@ -213,24 +213,26 @@
     {
       "id": "F414",
       "type": "fix",
-      "behavior": "A deposit below 1 USD never decides which option a payer-chooses invoice takes",
+      "behavior": "Small amounts don't count: new payments start at 1 USD, a deposit never chooses an option until the option holds 1 USD, and wallet deposits under 0.10 USD aren't listed",
       "acceptance": [
-        "A final deposit below the minimum (1 USD, or the invoice amount if smaller) never chooses an option; the first payment at or above it, on any option, is chosen.",
-        "Money below the minimum stays held for the payer and stays refundable; it never blocks the invoice from expiring or from settling the chosen option.",
-        "Payer and owner pages show it as money held for the payer, never as a partial payment of an option nobody chose.",
-        "Tests: dust on one network before a full payment on another; a real partial payment then a top-up; dust only, then expiry.",
-        "R-56, R-119 and D-90 state the minimum, and PLAN's open dust-threshold item is closed."
+        "Creating an invoice, request, job payment, payment link (fixed amount or minUsd) or checkout under 1.00 USD is refused with invalid_value; existing ones still pay and settle",
+        "On a payer-chooses invoice, on the backend and on the pay page, an option is chosen once its final on-time deposits add up to 1 USD; the first option to get there wins",
+        "Money that chose no option, and on the chosen option a payment before the one that brought it to 1 USD, is held for the payer, the same in every worker timing; it never makes the invoice confirming or partly paid, emails no one, and never blocks expiry or settling",
+        "An incoming wallet transfer under 0.10 USD is recorded but not listed in wallet activity or search, unless it is a settlement or comes from another of the user's profiles; the balance, its history and the CSV export still count it",
+        "Amount fields say At least 1.00 USD and refuse less; the Receive sheet shows Minimum deposit 0.10 USD with a short tooltip, shown above the sheet, and shorter text",
+        "Tests: dust before a full payment on another option; a payment split into small parts, in one round and rounds apart; dust seen then confirmed; dust only, then expiry; a small wallet transfer hidden; a sub-dollar create refused; the pay page's choice",
+        "PROJECT rows, api.md, openapi.yaml and money-safety.md state the minimums, the small-payment limit is gone, and PLAN's open dust-threshold item is closed"
       ],
       "dependsOn": [
         "F413"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "unit",
-        "backend-e2e",
-        "web-e2e"
+        "e2e"
       ],
       "refs": [
+        "R-38",
         "R-56",
         "R-119",
         "D-90",
@@ -240,9 +242,90 @@
         "packages/contracts/src/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-04 review fail by reviewer: Blocking: (1) Web pay page still treats any deposit as the choice: pay.ts firstPaymentOption (used at :16, :96, pay-invoice.tsx:238). After 0.01 on option A the page locks to A and shows Awaiting confirmation until close; anyone with the pay link can do this. (2) Main row with dust stays detected until close in the real watcher flow (detected, then confirmed): process.go:283-286 keeps current=detected. Owner list shows Confirming (list.go:47) and ProcessChain picks it every round. Tests insert confirmed transfers directly, so they miss it. (3) Dust is booked to recipient_payable, then moved by an expiry row on a row that is not expired_partially_paid. activity.go:89-101 heldSQL/merchantSQL then show it as the owner's money, for superseded options and dust-only expired invoices; deposits.go:49 paid and balance.go:77-80 confirming read it the same way. Minor: outflow after close on a dust-only option ends expired_partially_paid (process.go:212 then 283 skipped); stored sub-dollar retainers, jobs and links now fail (retainers.go:161 every round); tooltip.tsx:72 reads a ref in render, reuse select-field.tsx:55 callback-ref pattern; D-76 and openapi optionLocked text still say first payment decides; NetworkWarning text unclear.",
+        "2026-11-04 review fail by reviewer: Blocking: (1) process.go:113-141,225: a deposit under 1 USD sent before the choice is held only if a worker run books it before the run that makes the choice. If it confirms in the same run as the crossing deposit, the choice is made first, noneChosen is false, and split books it to the creator. Example: 5 USDC invoice, 0.60 then 4.40 on option A. Finalized together: paid. Finalized in two batches: 0.60 held, 4.40 owed, partly paid, then expired partly paid. Same chain history, two ledgers; D-76, R-119, api.md and money-safety.md say it is held. Fix: hold deposits of the chosen option that come before its crossing deposit (block_time, block_number, log_index) in every run, or credit them in every run; test both timings. Minor: process.go:267 keeps a stale detected (main row with dust, awaited full payment reorged) until close, set Open instead; list.go ConfirmingSQL, activity heldSQL and balance unbooked show detected dust as Confirming or owner money until it is booked; pick.go:42 refuses keeping the pick after any transfer, dust included; stale 'first money decides' text in api.md:110, openapi.yaml:2290 and :5341, web schemas/invoices.ts:92; held dust on the chosen option gets reason other_option and is not shown on the pay page while partly paid; deposits.go:61 preview comment no longer guarantees the choice past 100 deposits.",
+        "2026-11-04 review fail by reviewer: Blocking: process.go:250 skips hold() for every deposit while no option is chosen, not only dust. A payer-chooses invoice expires unchosen, then 5.00 USDC arrives late on an option: held, but no invoice.held email or bell and no held history (base sent both; R-80 lists late and after-cancel held money). Probed on Postgres. Fix: stay silent only for on-time money before the choice; keep the late and canceled reasons; add a test. Minor: dust on a not-chosen option is announced or not by worker timing. 0.01 on A at t1, 5.00 on B at t2: booked before the choice it is silent, after it it sends invoice.held reason other_option (process.go:169,251). This contradicts api.md and money-safety.md (held dust sends no email) and accept 3. Minor: an option chosen under the old rule has no crossing until its total reaches the least amount; parts booked before that go to the creator and later ones are held, so the ledger depends on timing; fine only if no such invoices exist. Minor: the pay page does not show held early parts; after 0.60 then 4.40 the payer sees 0.60 left with no reason given. Minor: the Tooltip dialog lookup copies select-field.tsx:55; the Receive info button repeats the tip in aria-label and aria-describedby. Checked and fine: crossing order and comparison, same ledger in one round or rounds apart, reopen of held early parts, detected to open is allowed, superseded rows, dust-only expiry, readers (heldSQL, DepositPaidSQL), creation minimums, the listed filter, firstPaymentOption matches the backend, no competitor names. Tests: ledger, activity, invoice and job with -race, and web pay and jobs tests, all pass.",
+        "2026-11-04 review pass by reviewer: Pass. No blockers. The last blocker is fixed: process.go:267 now announces late, canceled and paid-row money and is silent only for on-time dust; TestLateMoneyAfterAnUnchosenExpiryIsAnnounced covers it. Dust on a not-chosen option is silent in both timings now. Checked: crossing hold gives one ledger in any round split, dust-only expiry, detected dust goes back to open, creation minimums (invoice amount and amountUsd, job, link amount, minUsd, maxUsd, checkout), the listed filter (bell and search read the same endpoint, CSV and balance keep all), firstPaymentOption matches the backend order and least amount, Tooltip portal falls back to body, no competitor names. Tests: ledger, activity, invoice, job with -race; web pay, jobs, invoices; ui-web: all pass. Minor: (1) process.go:267: on a superseded option, 0.60 then 0.60 holds 1.20 but tells the owner 0.60; the first part stays silent. (2) cancel.go:53 and edit.go:98 still refuse once any transfer is seen, so 0.01 from a stranger stops the owner canceling an unchosen invoice; pick.go already ignores dust. (3) api.md and money-safety say held dust sends no email, but on-time dust on a canceled invoice still emails (reason canceled); R-80 and R-119 rows don't state the dust exception. (4) invoices-copy.ts:251 and :266 API field errors still say above 0. Left on purpose and confirmed: old-rule options, no reason for held early parts on the pay page, detected dust reads as confirming until booked, the Tooltip dialog lookup repeats SelectField."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-04T22:15:31Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 58.5,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 46.0,
+            "log": ""
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "09376ac8980efbb7",
+        "filesHash": "0682cec5e60a426c",
+        "proof": {
+          "1": "unit: httpapi TestCreateInvoiceErrors refuses 999999 base units and amountUsd 0.99; jobs and links tests refuse 0.99 and minUsd 0.50; API test bodies now use 1 USDC",
+          "2": "unit: ledger TestDustNeverChoosesItsOption and TestPaymentInSmallPartsChoosesItsOption fail on the old rule and pass now; web pay test 'lets no deposit under 1 USD choose an option' covers firstPaymentOption; keeping the pick uses the same check",
+          "3": "unit: TestPaymentInSmallPartsChoosesItsOption gives the same ledger in one round and rounds apart; TestDustIsHeldSilentlyInEveryTiming: no owner notice for dust in either order; TestLateMoneyAfterAnUnchosenExpiryIsAnnounced keeps the late notice; TestDustSeenThenConfirmedKeepsTheInvoiceOpen; TestDustOnlyExpiresAndIsHeld",
+          "4": "unit: activity TestSmallIncomingTransfersAreNotListed: 0.099999 in from outside hidden; 0.10 in, an outgoing transfer and one from the user's other profile listed",
+          "5": "unit: web invoice, links and jobs tests pass with the 1.00 minimum; the Receive sheet row and its tooltip above the sheet are in docs/runs/f414-receive-*.jpg; the shared Tooltip renders inside an open dialog",
+          "6": "unit: the tests named above, each failing before its change",
+          "7": "docs-check: R-38, R-56, R-119, D-76, D-90, api.md, money-safety.md and openapi.yaml state the minimums; PLAN's dust item removed"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass. No blockers. The last blocker is fixed: process.go:267 now announces late, canceled and paid-row money and is silent only for on-time dust; TestLateMoneyAfterAnUnchosenExpiryIsAnnounced covers it. Dust on a not-chosen option is silent in both timings now. Checked: crossing hold gives one ledger in any round split, dust-only expiry, detected dust goes back to open, creation minimums (invoice amount and amountUsd, job, link amount, minUsd, maxUsd, checkout), the listed filter (bell and search read the same endpoint, CSV and balance keep all), firstPaymentOption matches the backend order and least amount, Tooltip portal falls back to body, no competitor names. Tests: ledger, activity, invoice, job with -race; web pay, jobs, invoices; ui-web: all pass. Minor: (1) process.go:267: on a superseded option, 0.60 then 0.60 holds 1.20 but tells the owner 0.60; the first part stays silent. (2) cancel.go:53 and edit.go:98 still refuse once any transfer is seen, so 0.01 from a stranger stops the owner canceling an unchosen invoice; pick.go already ignores dust. (3) api.md and money-safety say held dust sends no email, but on-time dust on a canceled invoice still emails (reason canceled); R-80 and R-119 rows don't state the dust exception. (4) invoices-copy.ts:251 and :266 API field errors still say above 0. Left on purpose and confirmed: old-rule options, no reason for held early parts on the pay page, detected dust reads as confirming until booked, the Tooltip dialog lookup repeats SelectField.",
+          "at": "2026-11-04T22:22:45Z",
+          "filesHash": "0682cec5e60a426c"
+        },
+        "commit": "3eb92863",
+        "doneAt": "2026-11-04T22:23:07Z"
+      },
+      "branch": "fix/f414-small-amounts-don-t-count-new-payments-s",
+      "baseCommit": "85f809e82148e783d846db392c197d383269a8f3",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f414-small-amounts-don-t-count-new-payments-s",
+        "base": "main"
+      }
     },
     {
       "id": "F416",

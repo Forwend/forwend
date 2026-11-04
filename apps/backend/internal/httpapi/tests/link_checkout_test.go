@@ -120,7 +120,7 @@ func TestLinkCheckout(t *testing.T) {
 	}
 
 	// A payer's Idempotency-Key never replays the owner's invoice with the same key.
-	owners := e.post(t, alice, shop, "shared-key", `{"chainId": 84532, "token": "`+usdc+`", "amount": "1"}`)
+	owners := e.post(t, alice, shop, "shared-key", `{"chainId": 84532, "token": "`+usdc+`", "amount": "1000000"}`)
 	donations := save("dddddddd-0000-4000-8000-000000000003", `{"title": "Donations", "storeId": "`+store+`"}`)
 	if r := pay(donations, "shared-key", `{"amountUsd": "3"}`); r.status != http.StatusCreated ||
 		r.body["payToken"] == owners.body["payToken"] {
