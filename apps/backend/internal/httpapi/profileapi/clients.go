@@ -25,6 +25,17 @@ func listClients(profiles *profile.Service) http.HandlerFunc {
 	}
 }
 
+func getClient(profiles *profile.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		c, err := profiles.Client(r.Context(), r.PathValue("profileId"), r.PathValue("clientId"))
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusOK, toClientJSON(c))
+	}
+}
+
 func putClient(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body clientBody

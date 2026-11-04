@@ -11,11 +11,12 @@ import { useGetProfileTokensQuery } from "@/features/profiles/api/profiles-api";
 import { PERMISSIONS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { can } from "@/features/profiles/lib/profile";
-import { useListStoresQuery } from "@/features/stores/api/stores-api";
+import { useGetStoreQuery } from "@/features/stores/api/stores-api";
 import { ProjectId } from "@/features/stores/components/project-id";
 import { STORES_COPY as COPY } from "@/features/stores/constants/stores-copy";
 import { storeLogoUrl } from "@/features/stores/lib/stores";
 import { closeLabel } from "@/screens/stores/lib/close-choices";
+import { notFound } from "@/shared/api/server-reach";
 import { AssetStack } from "@/shared/components/chains/asset-stack";
 import { DetailHeader, DetailHeaderSkeleton } from "@/shared/components/detail-header";
 import { LoadError } from "@/shared/components/load-error";
@@ -27,24 +28,23 @@ export interface StoreScreenProps {
   storeId: string;
 }
 
-// R-134. The store comes from the list the page above loaded (one request for all). Every role that reads stores sees
-// this page; only one that changes them gets Edit (D-93).
+// R-134. Every role that reads stores sees this page; only one that changes them gets Edit (D-93).
 export function StoreScreen({ storeId }: StoreScreenProps) {
   const { profile } = useAppSession();
-  const list = useListStoresQuery(profile.profileId);
+  const read = useGetStoreQuery({ profileId: profile.profileId, storeId });
   const tokens = useGetProfileTokensQuery(profile.profileId);
-  const store = list.currentData?.find((s) => s.storeId === storeId);
+  const store = read.currentData;
 
   if (!store) {
-    return list.currentData ? (
+    return notFound(read.error) ? (
       <p className="text-muted">
         {COPY.gone} <RecordLink href={APP_ROUTES.stores}>{COPY.backToList}</RecordLink>
       </p>
-    ) : list.isError ? (
+    ) : read.isError ? (
       <LoadError
         message={COPY.failed}
-        onRetry={() => void list.refetch()}
-        retrying={list.isFetching}
+        onRetry={() => void read.refetch()}
+        retrying={read.isFetching}
       />
     ) : (
       <div className="flex flex-col gap-6">

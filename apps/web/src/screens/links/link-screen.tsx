@@ -21,6 +21,7 @@ import { PaymentList } from "@/features/payments/components/payment-list";
 import { PERMISSIONS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { can } from "@/features/profiles/lib/profile";
+import { notFound } from "@/shared/api/server-reach";
 import { CopyValue } from "@/shared/components/copy-value";
 import { DetailHeader, DetailHeaderSkeleton } from "@/shared/components/detail-header";
 import { LoadError } from "@/shared/components/load-error";
@@ -37,8 +38,7 @@ export function LinkScreen({ linkId }: LinkScreenProps) {
   const read = useGetLinkQuery({ profileId: profile.profileId, linkId });
   const link = read.currentData;
   if (!link) {
-    const gone = (read.error as { status?: unknown } | undefined)?.status === 404;
-    return gone ? (
+    return notFound(read.error) ? (
       <p className="text-muted">
         {COPY.gone} <RecordLink href={APP_ROUTES.links}>{COPY.backToList}</RecordLink>
       </p>

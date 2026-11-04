@@ -1107,6 +1107,23 @@ paths:
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/clients/{clientId}:
+    get:
+      operationId: getClient
+      summary: One saved client, as listClients lists it (R-177)
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/ClientId"
+      responses:
+        "200":
+          description: The client
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Client" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/ClientNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
     put:
       operationId: putClient
       summary: Create or replace a saved client
@@ -1218,6 +1235,24 @@ paths:
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/stores/{storeId}:
+    get:
+      operationId: getStore
+      summary: One store, as listStores lists it (R-177)
+      description: A Developer or Finance member reads only their stores (D-93); another store is not found.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/StoreId"
+      responses:
+        "200":
+          description: The store
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Store" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/StoreNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
     put:
       operationId: putStore
       summary: Create or replace a store of a merchant profile (R-134)

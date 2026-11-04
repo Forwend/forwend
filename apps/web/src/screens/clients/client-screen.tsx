@@ -4,7 +4,7 @@ import { buttonClasses, DetailList, DetailRow, Skeleton } from "@forwend/ui-web"
 import { FilePlus2, Pencil, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { useListClientsQuery } from "@/features/clients/api/clients-api";
+import { useGetClientQuery } from "@/features/clients/api/clients-api";
 import { ClientActions } from "@/features/clients/components/client-actions";
 import { CLIENTS_COPY as COPY } from "@/features/clients/constants/clients-copy";
 import { countryName } from "@/features/clients/lib/clients";
@@ -13,6 +13,7 @@ import { PERMISSIONS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { can } from "@/features/profiles/lib/profile";
 import { ClientInvoices } from "@/screens/clients/client-invoices";
+import { notFound } from "@/shared/api/server-reach";
 import { DetailHeader, DetailHeaderSkeleton } from "@/shared/components/detail-header";
 import { initials } from "@/shared/components/initials-avatar";
 import { LoadError } from "@/shared/components/load-error";
@@ -24,24 +25,23 @@ export interface ClientScreenProps {
   clientId: string;
 }
 
-// The client comes from the list the page above loaded (one request for all).
 export function ClientScreen({ clientId }: ClientScreenProps) {
   const { profile } = useAppSession();
-  const list = useListClientsQuery(profile.profileId);
+  const read = useGetClientQuery({ profileId: profile.profileId, clientId });
   // Once deleted, the page waits to leave instead of saying the client is gone.
   const [deleted, setDeleted] = useState(false);
-  const client = list.currentData?.find((c) => c.clientId === clientId);
+  const client = read.currentData;
 
   if (!client || deleted) {
-    return list.currentData && !deleted ? (
+    return notFound(read.error) && !deleted ? (
       <p className="text-muted">
         {COPY.gone} <RecordLink href={APP_ROUTES.clients}>{COPY.backToList}</RecordLink>
       </p>
-    ) : list.isError && !deleted ? (
+    ) : read.isError && !deleted ? (
       <LoadError
         message={COPY.failed}
-        onRetry={() => void list.refetch()}
-        retrying={list.isFetching}
+        onRetry={() => void read.refetch()}
+        retrying={read.isFetching}
       />
     ) : (
       <div className="flex flex-col gap-6">

@@ -6,10 +6,11 @@ import { useGetProfileTokensQuery } from "@/features/profiles/api/profiles-api";
 import { PERMISSIONS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { can } from "@/features/profiles/lib/profile";
-import { useListStoresQuery } from "@/features/stores/api/stores-api";
+import { useGetStoreQuery } from "@/features/stores/api/stores-api";
 import { StoreForm } from "@/features/stores/components/store-form";
 import { STORES_COPY as COPY } from "@/features/stores/constants/stores-copy";
 import { CLOSE_CHOICES, DEFAULT_CLOSE } from "@/screens/stores/lib/close-choices";
+import { notFound } from "@/shared/api/server-reach";
 import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
 import { APP_ROUTES } from "@/shared/config/routes";
@@ -19,11 +20,13 @@ export interface StoreFormScreenProps {
   storeId?: string;
 }
 
-// The store comes from the list the page above loaded (one request for all).
 export function StoreFormScreen({ storeId }: StoreFormScreenProps) {
   const { profile } = useAppSession();
-  const list = useListStoresQuery(profile.profileId, { skip: !storeId });
-  const store = list.currentData?.find((s) => s.storeId === storeId);
+  const read = useGetStoreQuery(
+    { profileId: profile.profileId, storeId: storeId ?? "" },
+    { skip: !storeId },
+  );
+  const store = read.currentData;
   // Token configuration must load before editing acceptance.
   const tokens = useGetProfileTokensQuery(profile.profileId);
   const form = {
@@ -55,13 +58,13 @@ export function StoreFormScreen({ storeId }: StoreFormScreenProps) {
         <Skeleton className="h-64" />
       ) : !storeId ? (
         <StoreForm key={profile.profileId} {...form} />
-      ) : list.isError && !list.currentData ? (
-        <LoadError message={COPY.failed} onRetry={() => void list.refetch()} />
-      ) : !list.currentData ? (
-        <Skeleton className="h-96" />
       ) : store ? (
         // A new form per store, so it never keeps another store's values.
         <StoreForm key={store.storeId} {...form} store={store} />
+      ) : read.isError && !notFound(read.error) ? (
+        <LoadError message={COPY.failed} onRetry={() => void read.refetch()} />
+      ) : !read.isError ? (
+        <Skeleton className="h-96" />
       ) : (
         <div className="flex flex-col items-start gap-3 text-sm text-muted">
           {COPY.gone}

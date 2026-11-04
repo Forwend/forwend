@@ -16,6 +16,12 @@ export const storesApi = apiSlice.enhanceEndpoints({ addTagTypes: [STORES_TAG] }
       transformResponse: (data: { stores: Store[] }) => data.stores,
       providesTags: [STORES_TAG],
     }),
+    /** 404 for another profile's store, or one outside a scoped member's stores (D-93). */
+    getStore: build.query<Store, { profileId: string; storeId: string }>({
+      query: ({ profileId, storeId }) => `${storesUrl(profileId)}/${encodeURIComponent(storeId)}`,
+      responseSchema: storeSchema,
+      providesTags: [STORES_TAG],
+    }),
     /** PUT to an id the browser picks, so a retried save makes one store (R-134). */
     saveStore: build.mutation<Store, { profileId: string; storeId: string; body: StoreBody }>({
       query: ({ profileId, storeId, body }) => ({
@@ -51,6 +57,7 @@ export const storesApi = apiSlice.enhanceEndpoints({ addTagTypes: [STORES_TAG] }
 
 export const {
   useListStoresQuery,
+  useGetStoreQuery,
   useSaveStoreMutation,
   useSaveStoreLogoMutation,
   useDeleteStoreLogoMutation,
