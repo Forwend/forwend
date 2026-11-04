@@ -31,8 +31,10 @@ Read only the sections your task touches:
 - `worker`: chain watcher (block cursor per chain, `eth_getLogs` for allowlisted tokens filtered
   to active receiver addresses), confirmation/finality tracking, reorg handling, invoice state
   machine and ledger booking, Check status rescans, payment reminders and retainer invoices (R-96, R-98), and the
-  email from `outbox_events` after each round
+  email from `outbox_events`
   (`internal/notify`, R-80, R-82, R-84; only the worker holds `RESEND_API_KEY`, and without it nothing is sent).
+  - Reminders, retainers, email, ECB rates and prices run on a loop beside the chain rounds, at the same interval.
+    A slow Resend, ECB or CoinGecko answer never delays a round.
   - Every 5 minutes it logs an `ALERT` for symptoms that hold money (R-180):
     - a chain whose finalized cursor is over 45 minutes behind the clock;
     - a deposit still detected below the finalized block after 45 minutes;
@@ -57,7 +59,8 @@ Read only the sections your task touches:
   itself before signing, and settles at most `SponsoredPerDay` (50) invoices per user a day on the executor's gas.
   Writes settlement intents, the settlement ledger transaction and `settlement_status`. Every process uses one
   `DATABASE_URL` today; a separate signer database role is planned for deployment (Q-8).
-- `webhooks`: runs 16 independent delivery workers, polling idle queues every second (R-148, R-175).
+- `webhooks`: runs 16 independent delivery workers (R-148, R-175).
+  - Idle workers wait for one shared poll, which checks every second for a due delivery and wakes them.
   - It holds only `DATABASE_URL` and `WEBHOOK_SECRET_KEY`.
   - Owners choose endpoint URLs, so the sender gets no signer, Privy, email or RPC key.
   - Its client checks the address after DNS (`webhook.Client`); without the key it sends nothing.

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/notify"
 	"github.com/forwend/forwend/apps/backend/internal/price"
 	"github.com/forwend/forwend/apps/backend/internal/worker"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
@@ -84,36 +86,56 @@ func run() error {
 		Client: &http.Client{Timeout: 10 * time.Second,
 			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
 	slog.Info("worker ready", "every", cfg.Chains.PollInterval, "email", sender != nil)
+	// Housekeeping calls Resend, the ECB and CoinGecko: on its own loop, a slow answer never delays a chain round. It
+	// stops with the chain loop, before the pool closes.
+	ctx, stopHousekeeping := context.WithCancel(ctx)
+	var housekeeping sync.WaitGroup
+	defer housekeeping.Wait()
+	defer stopHousekeeping()
+	housekeeping.Go(func() {
+		for {
+			keepHouse(ctx, cfg, invoices, rates, prices, sender, pool)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(cfg.Chains.PollInterval):
+			}
+		}
+	})
 	for {
 		if err := lock.Held(ctx); err != nil {
 			return err
 		}
 		w.Tick(ctx)
-		// Payment reminders (R-96) wait in the outbox like the other emails when there is no key.
-		if err := invoices.QueueReminders(ctx); err != nil {
-			slog.Error("queue reminders", "err", err)
-		}
-		if err := invoices.MakeRetainerInvoices(ctx); err != nil {
-			slog.Error("make retainer invoices", "err", err)
-		}
-		// Records in another currency (R-110) wait for the rates when the ECB can't be read.
-		if err := rates.Tick(ctx, time.Now()); err != nil {
-			slog.Warn("keep ECB rates", "err", err)
-		}
-		// Prices are for display only (R-178): when CoinGecko can't be read, the app shows the last ones as stale.
-		if err := prices.Tick(ctx, time.Now()); err != nil {
-			slog.Warn("keep CoinGecko prices", "err", err)
-		}
-		if sender != nil {
-			if err := notify.Deliver(ctx, pool, sender, notify.Site{WebURL: cfg.Email.PublicWebURL, PostalAddress: cfg.Email.PostalAddress,
-				Support: cfg.Email.Support}); err != nil {
-				slog.Error("deliver email", "err", err)
-			}
-		}
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-time.After(cfg.Chains.PollInterval):
+		}
+	}
+}
+
+func keepHouse(ctx context.Context, cfg config.Worker, invoices *invoice.Service, rates *ecb.Keeper, prices *price.Keeper,
+	sender email.Sender, pool *pgxpool.Pool) {
+	// Payment reminders (R-96) wait in the outbox like the other emails when there is no key.
+	if err := invoices.QueueReminders(ctx); err != nil {
+		slog.Error("queue reminders", "err", err)
+	}
+	if err := invoices.MakeRetainerInvoices(ctx); err != nil {
+		slog.Error("make retainer invoices", "err", err)
+	}
+	// Records in another currency (R-110) wait for the rates when the ECB can't be read.
+	if err := rates.Tick(ctx, time.Now()); err != nil {
+		slog.Warn("keep ECB rates", "err", err)
+	}
+	// Prices are for display only (R-178): when CoinGecko can't be read, the app shows the last ones as stale.
+	if err := prices.Tick(ctx, time.Now()); err != nil {
+		slog.Warn("keep CoinGecko prices", "err", err)
+	}
+	if sender != nil {
+		if err := notify.Deliver(ctx, pool, sender, notify.Site{WebURL: cfg.Email.PublicWebURL, PostalAddress: cfg.Email.PostalAddress,
+			Support: cfg.Email.Support}); err != nil {
+			slog.Error("deliver email", "err", err)
 		}
 	}
 }

@@ -59,7 +59,11 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const [collapsed, setCollapsed] = useState(false);
   const active = profiles ? chosenProfile(profiles, activeId ?? savedId) : undefined;
   const money = active ? can(active, PERMISSIONS.moneyRead) : false;
-  const balances = useGetBalancesQuery(active && money ? active.profileId : skipToken, LIVE_QUERY);
+  // Receive's token list, read only while it is open: a closed sheet polls nothing.
+  const balances = useGetBalancesQuery(
+    active && money && receiving ? active.profileId : skipToken,
+    LIVE_QUERY,
+  );
   // One strip under the header says the server can't be reached, in place of each view's own refresh notice.
   const down = useServerUnreachable();
   useRetryUnreachable(down);

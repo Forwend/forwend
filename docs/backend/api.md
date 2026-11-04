@@ -90,7 +90,7 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   can never set it, so nobody can point another person's notifications at an inbox.
 - The ledger and the signer queue `invoice.paid`, `invoice.held` (with the amount newly held) and `invoice.settled` in
   `outbox_events`, in the transaction that makes the change (`internal/outbox`). The worker sends them through Resend
-  (`internal/notify`) with `forwend-<invoiceId>-<eventId>-<address hash>` as the Idempotency-Key, one at a time with `FOR UPDATE SKIP
+  (`internal/notify`) with `forwend-<invoiceId>-<eventId>-<hash of the address and the message>` as the Idempotency-Key, one at a time with `FOR UPDATE SKIP
   LOCKED`; a failed send is retried after 1 min doubling to 1 h, given up after 10 tries.
   - A failed send ends that round, except when Resend refused the message as sent (400 or 422, such as a bad
     address). Then the round goes on, so one bad address can't hold up the other emails (R-115).

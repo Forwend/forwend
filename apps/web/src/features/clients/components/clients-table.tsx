@@ -3,7 +3,7 @@
 import { type ButtonSize, buttonClasses, EmptyState, SearchField } from "@forwend/ui-web";
 import { Plus, UserRound, Users } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useListClientsQuery } from "@/features/clients/api/clients-api";
 import { CLIENTS_COPY as COPY } from "@/features/clients/constants/clients-copy";
 import { countryName, matchesClient } from "@/features/clients/lib/clients";
@@ -35,9 +35,12 @@ export interface ClientsTableProps {
 export function ClientsTable({ profileId }: ClientsTableProps) {
   const list = useListClientsQuery(profileId);
   const [search, setSearch] = useState("");
-  const clients = list.currentData ?? [];
-  const rows = clients.filter((client) => matchesClient(client, search));
-  const noClients = list.currentData && clients.length === 0;
+  const clients = list.currentData;
+  const rows = useMemo(
+    () => (clients ?? []).filter((client) => matchesClient(client, search)),
+    [clients, search],
+  );
+  const noClients = clients && clients.length === 0;
 
   return (
     <section

@@ -70,13 +70,34 @@ func (s *Service) claim(ctx context.Context) (*delivery, error) {
 	return d, nil
 }
 
-// Run keeps free sender slots available while another profile's endpoint waits.
+// Run keeps free sender slots available while another profile's endpoint waits. A sender that finds nothing waits
+// until the one shared poll sees a due delivery, so an empty queue costs one query a second, not one per sender.
 func (s *Service) Run(ctx context.Context, client *http.Client, body Body) {
 	if s.key == nil {
 		<-ctx.Done()
 		return
 	}
+	wake := make(chan struct{}, Batch)
 	var workers sync.WaitGroup
+	workers.Go(func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(time.Second):
+			}
+			var due bool
+			if err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM webhook_deliveries d
+ JOIN webhook_endpoints e ON e.id=d.endpoint_id WHERE d.status='pending' AND d.next_attempt_at<=now() AND e.enabled
+   AND (d.leased_until IS NULL OR d.leased_until<=now()))`).Scan(&due); err != nil && ctx.Err() == nil {
+				slog.Error("poll webhook deliveries", "err", err)
+				due = true // the senders' own claims report what is wrong
+			}
+			for due && len(wake) < cap(wake) {
+				wake <- struct{}{}
+			}
+		}
+	})
 	for range Batch {
 		workers.Go(func() {
 			for ctx.Err() == nil {
@@ -93,7 +114,7 @@ func (s *Service) Run(ctx context.Context, client *http.Client, body Body) {
 				select {
 				case <-ctx.Done():
 					return
-				case <-time.After(time.Second):
+				case <-wake:
 				}
 			}
 		})
