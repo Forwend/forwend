@@ -341,7 +341,7 @@
         "The pay page's clock stops once the checkout can take no more money"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -421,11 +421,18 @@
           "summary": "Nothing blocks. The pay page now runs the clock from the shown option (pay-invoice.tsx:259), and the clock stops only when no shown value depends on time: closed by the API and not checking, or paid or settled. Confirming counts from readAt, not now. The architecture.md webhook line is fixed. Transfers page gives the same rows, order, ties, cursor and filters (one wallet per profile and family). The outflow cache keys on the same block, token and receiver inputs. Housekeeping stops before the lock and pool close. The webhook poll never does more work than the old per-sender poll. Receive balances, chart table, combobox and clients memo are correct. Minor: api.md:116 and :133 still say reminders and retainers run each worker round. Housekeeping no longer waits for the lock ping, which architecture.md:119 describes; each task is safe to run twice. matchesClient (clients.ts:53) still folds every client and the query on each keystroke. No test covers clockRuns on a picked option. The two minors left on purpose remain. activity, watcher and webhook pass with -race; pay, clients, balances, receive, app-shell and ui-web forms vitest pass.",
           "at": "2026-11-04T20:09:47Z",
           "filesHash": "8f6614939799d95d"
-        }
+        },
+        "commit": "5c896f98",
+        "doneAt": "2026-11-04T20:10:12Z"
       },
       "branch": "perf/f421-faster-pages-scans-and-worker-rounds-fro",
       "baseCommit": "bae32647c4211e0a135e7e82332e01946f87c8d0",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "perf/f421-faster-pages-scans-and-worker-rounds-fro",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
