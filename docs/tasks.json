@@ -226,7 +226,7 @@
       "dependsOn": [
         "F413"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e"
@@ -314,11 +314,18 @@
           "summary": "Pass. No blockers. The last blocker is fixed: process.go:267 now announces late, canceled and paid-row money and is silent only for on-time dust; TestLateMoneyAfterAnUnchosenExpiryIsAnnounced covers it. Dust on a not-chosen option is silent in both timings now. Checked: crossing hold gives one ledger in any round split, dust-only expiry, detected dust goes back to open, creation minimums (invoice amount and amountUsd, job, link amount, minUsd, maxUsd, checkout), the listed filter (bell and search read the same endpoint, CSV and balance keep all), firstPaymentOption matches the backend order and least amount, Tooltip portal falls back to body, no competitor names. Tests: ledger, activity, invoice, job with -race; web pay, jobs, invoices; ui-web: all pass. Minor: (1) process.go:267: on a superseded option, 0.60 then 0.60 holds 1.20 but tells the owner 0.60; the first part stays silent. (2) cancel.go:53 and edit.go:98 still refuse once any transfer is seen, so 0.01 from a stranger stops the owner canceling an unchosen invoice; pick.go already ignores dust. (3) api.md and money-safety say held dust sends no email, but on-time dust on a canceled invoice still emails (reason canceled); R-80 and R-119 rows don't state the dust exception. (4) invoices-copy.ts:251 and :266 API field errors still say above 0. Left on purpose and confirmed: old-rule options, no reason for held early parts on the pay page, detected dust reads as confirming until booked, the Tooltip dialog lookup repeats SelectField.",
           "at": "2026-11-04T22:22:45Z",
           "filesHash": "0682cec5e60a426c"
-        }
+        },
+        "commit": "3eb92863",
+        "doneAt": "2026-11-04T22:23:07Z"
       },
       "branch": "fix/f414-small-amounts-don-t-count-new-payments-s",
       "baseCommit": "85f809e82148e783d846db392c197d383269a8f3",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f414-small-amounts-don-t-count-new-payments-s",
+        "base": "main"
+      }
     },
     {
       "id": "F416",
