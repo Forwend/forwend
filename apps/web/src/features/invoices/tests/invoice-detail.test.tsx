@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { ToastProvider, TooltipProvider } from "@forwend/ui-web";
-import { act, cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { InvoiceDetail } from "@/features/invoices/components/invoice-detail";
@@ -230,6 +230,20 @@ describe("owner's invoice page", () => {
 
     expect(screen.queryByRole("button", { name: "Copy link" })).toBeNull();
     expect(screen.queryByText("Waiting for payment")).toBeNull();
+  });
+
+  it("keeps the pay link, Check status, edits and cancel on an overdue invoice whose checkout is open", async () => {
+    serve({ ...OPEN, dueDate: "2026-01-01" });
+    show();
+    await settle();
+    const header = within(screen.getByRole("banner"));
+    expect(header.getByText("Overdue")).toBeTruthy();
+    expect(header.getByRole("button", { name: "Check status" })).toBeTruthy();
+    fireEvent.keyDown(screen.getByRole("button", { name: "More actions" }), { key: "Enter" });
+    await settle();
+    for (const item of ["Copy link", "Edit", "Revise", "Cancel invoice"]) {
+      expect(screen.getByRole("menuitem", { name: item })).toBeTruthy();
+    }
   });
 
   it("counts a paid invoice's money as received once it has moved to the wallet", async () => {

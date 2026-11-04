@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/forwend/forwend/apps/backend/internal/address"
@@ -251,3 +252,49 @@ func TestSupportWaitsForEveryPaymentToBeBooked(t *testing.T) {
 }
 
 func ptr[T any](v T) *T { return &v }
+
+// Two support returns overlap: one read 1 USDC held, and another return was booked before it locked the money. It
+// must not queue more than is still held, or the refund takes the creator's money.
+func TestSupportReturnRechecksTheHeldMoneyOnceItLocks(t *testing.T) {
+	e := setup(t)
+	ctx := t.Context()
+	id, _ := e.paidInvoice(t)
+	hash := e.paymentHash(t, id)
+	hold, err := e.pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer hold.Rollback(ctx)
+	if _, err := hold.Exec(ctx, "SELECT 1 FROM invoices WHERE id = $1 FOR NO KEY UPDATE", id); err != nil {
+		t.Fatal(err)
+	}
+	queued := make(chan error, 1)
+	go func() {
+		_, err := QueueReturn(ctx, e.pool, e.client, id, hash, nil, nil)
+		queued <- err
+	}()
+	for waiting, start := 0, time.Now(); waiting == 0; {
+		if time.Since(start) > 10*time.Second {
+			t.Fatal("the request never waited for the lock")
+		}
+		if err := e.pool.QueryRow(ctx, `SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock'
+			AND datname = current_database()`).Scan(&waiting); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The other return's 0.5 USDC, booked as the ledger books a refund.
+	if _, err := hold.Exec(ctx, `WITH x AS (INSERT INTO ledger_transactions (invoice_id, kind) VALUES ($1, 'refund') RETURNING id)
+		INSERT INTO ledger_entries (transaction_id, account, amount)
+		SELECT id, 'payer_held', 500000 FROM x UNION ALL SELECT id, 'receiver', -500000 FROM x`, id); err != nil {
+		t.Fatal(err)
+	}
+	if err := hold.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-queued; !errors.Is(err, ErrTooMuch) {
+		t.Fatalf("queued 1 USDC with 0.5 held: %v", err)
+	}
+	if got := e.refundStatus(t, id); got != "held" {
+		t.Fatalf("a refused return locked the money: %s", got)
+	}
+}

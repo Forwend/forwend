@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/mid"
 	"github.com/forwend/forwend/apps/backend/internal/webhook"
 )
 
@@ -34,7 +35,7 @@ func putEndpoint(webhooks *webhook.Service) http.HandlerFunc {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		e, created, err := webhooks.Save(r.Context(), r.PathValue("profileId"), r.PathValue("endpointId"),
+		e, created, err := webhooks.Save(r.Context(), r.PathValue("profileId"), mid.SignedInUser(r), r.PathValue("endpointId"),
 			webhook.Details{URL: body.URL, Description: body.Description, StoreID: body.StoreID, Events: body.Events,
 				Enabled: body.Enabled == nil || *body.Enabled})
 		if err != nil {
@@ -72,7 +73,7 @@ func revealSecrets(webhooks *webhook.Service) http.HandlerFunc {
 
 func rotateSecret(webhooks *webhook.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		list, err := webhooks.Rotate(r.Context(), r.PathValue("profileId"), r.PathValue("endpointId"))
+		list, err := webhooks.Rotate(r.Context(), r.PathValue("profileId"), mid.SignedInUser(r), r.PathValue("endpointId"))
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

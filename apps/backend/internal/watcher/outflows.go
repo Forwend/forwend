@@ -65,7 +65,8 @@ func (c *Chain) outflowLogs(ctx context.Context, lo, hi uint64, invoices map[com
 }
 
 // outflows keeps new events of canonical blocks at or below finalized and reads their transactions' token transfers.
-// Events already recorded cost no reads, so the scan's overlap stays cheap.
+// Events already recorded cost no reads, so the scan's overlap stays cheap; one recorded without its transfer, as when
+// a node answered part of the logs, is read again until the transfer is found.
 func (c *Chain) outflows(ctx context.Context, logs []types.Log, headers map[uint64]header,
 	invoices map[common.Address]receiver, finalized uint64) ([]Outflow, error) {
 	var hashes []string
@@ -75,7 +76,9 @@ func (c *Chain) outflows(ctx context.Context, logs []types.Log, headers map[uint
 	recorded := map[logKey]bool{}
 	if len(hashes) > 0 {
 		rows, err := c.pool.Query(ctx, `SELECT block_hash, log_index FROM receiver_outflows
-			WHERE chain_id = $1 AND block_hash = ANY($2::text[])`, c.chainID, hashes)
+			WHERE chain_id = $1 AND block_hash = ANY($2::text[])
+			  AND (transfer_log_index IS NOT NULL OR kind = 'recovery' OR ledger_transaction_id IS NOT NULL)`,
+			c.chainID, hashes)
 		if err != nil {
 			return nil, fmt.Errorf("read chain %d recorded receiver events: %w", c.chainID, err)
 		}
@@ -218,12 +221,27 @@ func recordOutflow(ctx context.Context, tx pgx.Tx, chainID uint64, o Outflow, pr
 			reason = "transfer_evidence_missing"
 		}
 	}
-	_, err := tx.Exec(ctx, `INSERT INTO receiver_outflows (invoice_id, chain_id, receiver_address, token_contract,
+	tag, err := tx.Exec(ctx, `INSERT INTO receiver_outflows (invoice_id, chain_id, receiver_address, token_contract,
   kind, destination, amount, tx_hash, log_index, block_hash, block_number, block_time, verified_block, reconciliation_error, transfer_log_index)
   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) ON CONFLICT DO NOTHING`,
 		o.InvoiceID, chainID, receive, token, kind, strings.ToLower(destination.Hex()), amount.String(),
 		hexutil.Encode(l.TxHash[:]), l.Index, hexutil.Encode(l.BlockHash[:]), l.BlockNumber, o.Time, o.Verified, reason, transferIndex)
-	return err
+	if err != nil || tag.RowsAffected() == 1 || transferIndex == nil {
+		return err
+	}
+	// Recorded before without its transfer and not booked: the transfer found now completes it, and the ledger books
+	// it as any other. Only the same event of the same block, and only a transfer no other event claims.
+	_, err = tx.Exec(ctx, `UPDATE receiver_outflows o SET transfer_log_index = $4, reconciliation_error = $5
+  WHERE o.chain_id = $1 AND o.block_hash = $2 AND o.log_index = $3 AND o.transfer_log_index IS NULL
+    AND o.ledger_transaction_id IS NULL AND o.kind = $6 AND o.amount = $7 AND o.destination = $8
+    AND NOT EXISTS (SELECT 1 FROM receiver_outflows c WHERE c.chain_id = $1 AND c.block_hash = $2
+      AND c.transfer_log_index = $4)`,
+		chainID, hexutil.Encode(l.BlockHash[:]), l.Index, *transferIndex, reason, kind, amount.String(),
+		strings.ToLower(destination.Hex()))
+	if err != nil {
+		return fmt.Errorf("complete receiver %s event evidence: %w", o.InvoiceID, err)
+	}
+	return nil
 }
 
 // deployTimes reads factory.deployedAt for receivers with events and no deploy time yet. A receiver deployed early by

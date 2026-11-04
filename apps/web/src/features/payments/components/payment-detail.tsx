@@ -33,6 +33,7 @@ import {
 import { SOURCE_ICONS, SOURCE_LABELS } from "@/features/payments/constants/payments";
 import { PAYMENT_DETAIL_COPY as COPY } from "@/features/payments/constants/payments-copy";
 import {
+  leadOption,
   optionFigures,
   paymentDisplayStatus,
   paymentLabel,
@@ -91,8 +92,8 @@ export function PaymentDetail({ profileId, paymentId, actions }: PaymentDetailPr
   const main = payment.options.find((option) => option.optionId === payment.paymentId);
   const receiptOf = (option: Option) =>
     (payment.receipts ?? []).find((receipt) => receipt.optionId === option.optionId);
-  // The figures follow the option the money went to; a payment paid on two options lists both transfers below.
-  const lead = funded[0];
+  // A payment with money on other options lists those transfers below.
+  const lead = leadOption(payment, payment.options, (option) => option.deposits.length > 0);
   const figures = lead ? optionFigures(lead.amount, receiptOf(lead)) : null;
   const SourceIcon = SOURCE_ICONS[payment.source];
   // The token money arrived in, else the one the payment is fixed to; before either, it lists what it accepts.
@@ -421,6 +422,8 @@ function timeline(
     .at(-1);
   const paid = payment.paymentStatus === "paid";
   const settled = payment.settlementStatus === "settled";
+  // The option the payment is recorded on is the one settled.
+  const settledBy = payment.options.find((option) => option.optionId === payment.optionId);
   const ended = !paid && (payment.closed || payment.paymentStatus === "canceled");
   const steps: Omit<TimelineEntry, "state">[] = [
     {
@@ -455,8 +458,8 @@ function timeline(
             id: "wallet",
             title: COPY.steps.wallet,
             time:
-              settled && payment.options[0]?.settlement?.signedAt
-                ? dateTime(payment.options[0].settlement.signedAt)
+              settled && settledBy?.settlement?.signedAt
+                ? dateTime(settledBy.settlement.signedAt)
                 : undefined,
           },
         ]),

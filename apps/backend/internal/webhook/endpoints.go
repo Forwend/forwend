@@ -9,6 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/forwend/forwend/apps/backend/internal/auth"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 	"github.com/jackc/pgx/v5"
 )
@@ -30,8 +31,9 @@ func scanEndpoint(row pgx.CollectableRow) (Endpoint, error) {
 
 // Save creates the endpoint with the id the caller picks, with its first secret, or replaces every field of the
 // profile's endpoint with that id. created is true for a new one. The caller has checked the user's access to the
-// profile and the fresh sign-in (D-63).
-func (s *Service) Save(ctx context.Context, profileID, id string, d Details) (e Endpoint, created bool, err error) {
+// profile and the fresh sign-in (D-63); Save checks the access again as it writes.
+func (s *Service) Save(ctx context.Context, profileID, user, id string, d Details) (e Endpoint, created bool,
+	err error) {
 	if s.key == nil {
 		return Endpoint{}, false, ErrNotConfigured
 	}
@@ -59,6 +61,9 @@ func (s *Service) Save(ctx context.Context, profileID, id string, d Details) (e 
 	d.StoreID = strings.ToLower(d.StoreID)
 
 	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		if err := auth.StillCan(ctx, tx, profileID, user, auth.Webhooks); err != nil {
+			return err
+		}
 		var kind string
 		var stored bool
 		if err := tx.QueryRow(ctx, `SELECT kind, EXISTS (SELECT 1 FROM stores WHERE profile_id = p.id AND id::text = $2)
@@ -199,8 +204,8 @@ func (s *Service) secrets(ctx context.Context, q queryer, profileID, id string) 
 
 // Rotate gives the endpoint a new secret; the one it replaces keeps signing for Overlap, so a receiver can switch
 // without missing an event. The answer is read in the same transaction: a key that can't open the secrets rotates
-// nothing. The caller has checked the fresh sign-in (D-63).
-func (s *Service) Rotate(ctx context.Context, profileID, id string) ([]Secret, error) {
+// nothing. The caller has checked the fresh sign-in (D-63); Rotate checks the access again as it writes.
+func (s *Service) Rotate(ctx context.Context, profileID, user, id string) ([]Secret, error) {
 	if s.key == nil {
 		return nil, ErrNotConfigured
 	}
@@ -209,6 +214,9 @@ func (s *Service) Rotate(ctx context.Context, profileID, id string) ([]Secret, e
 	}
 	var out []Secret
 	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		if err := auth.StillCan(ctx, tx, profileID, user, auth.Webhooks); err != nil {
+			return err
+		}
 		tag, err := tx.Exec(ctx, "SELECT 1 FROM webhook_endpoints WHERE id = $1 AND profile_id = $2 FOR UPDATE", id,
 			profileID)
 		if err != nil {

@@ -118,7 +118,7 @@ func TestWebhookEndpoints(t *testing.T) {
 		t.Errorf("the old secret signs %s more, want 24 hours", left)
 	}
 	// Under another WEBHOOK_SECRET_KEY the secrets don't open, and a rotation saves nothing.
-	if _, err := webhook.NewService(e.pool, bytes.Repeat([]byte{8}, 32)).Rotate(context.Background(), shop, id); err == nil {
+	if _, err := webhook.NewService(e.pool, bytes.Repeat([]byte{8}, 32)).Rotate(context.Background(), shop, alice, id); err == nil {
 		t.Error("a rotation under another key worked")
 	}
 	var count int

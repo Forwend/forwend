@@ -1,5 +1,5 @@
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
-import { receivedAmount } from "@/features/payments/lib/payments";
+import { leadOption, receivedAmount } from "@/features/payments/lib/payments";
 import type { Payment } from "@/features/payments/types/payments";
 import { chainName } from "@/shared/lib/chains";
 
@@ -8,7 +8,14 @@ const OVER = "More than requested; the extra is held for the customer";
 export interface PaymentReceivedProps {
   payment: Pick<
     Payment,
-    "receipts" | "amounts" | "decimals" | "symbol" | "paymentStatus" | "amount"
+    | "receipts"
+    | "amounts"
+    | "decimals"
+    | "symbol"
+    | "paymentStatus"
+    | "amount"
+    | "optionId"
+    | "optionLocked"
   >;
   /** One line for a table row: the received total, or a dash when nothing arrived. */
   compact?: boolean;
@@ -18,7 +25,7 @@ export function PaymentReceived({ payment, compact }: PaymentReceivedProps) {
   const receipts = payment.receipts ?? [];
   if (compact) {
     const received = receipts.length
-      ? receipts.find((r) => BigInt(r.received) > 0n)
+      ? leadOption(payment, receipts, (r) => BigInt(r.received) > 0n)
       : {
           received: receivedAmount(payment.amounts),
           decimals: payment.decimals,

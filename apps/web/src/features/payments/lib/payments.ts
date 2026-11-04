@@ -49,6 +49,18 @@ export function receivedAmount(amounts: Payment["amounts"]): string {
   ).toString();
 }
 
+/** The option a payment's figures follow: the one it is recorded on once money decided it, else the first with money.
+ * Money on another option, even a smaller deposit listed first, shows apart from those figures. */
+export function leadOption<T extends { optionId: string }>(
+  payment: Pick<Payment, "optionId" | "optionLocked">,
+  options: readonly T[],
+  funded: (option: T) => boolean,
+): T | undefined {
+  return payment.optionLocked
+    ? options.find((option) => option.optionId === payment.optionId)
+    : options.find(funded);
+}
+
 /** One option's money against what it asked: received includes money still confirming. Extra is money held for the
  * payer once booked, else what arrived over the amount, which the ledger will hold for them (D-24). */
 export function optionFigures(

@@ -3,7 +3,12 @@ import { describe, expect, it } from "vitest";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
 import { PaymentProblems } from "@/features/payments/components/payment-problems";
 import { ReturnRow } from "@/features/payments/components/return-row";
-import { optionFigures, paymentState, paymentWallet } from "@/features/payments/lib/payments";
+import {
+  leadOption,
+  optionFigures,
+  paymentState,
+  paymentWallet,
+} from "@/features/payments/lib/payments";
 import type { PaymentDetail } from "@/features/payments/types/payments";
 
 describe("merchant payment money", () => {
@@ -62,6 +67,22 @@ describe("optionFigures", () => {
       extra: 0n,
       due: 100000n,
     });
+  });
+});
+
+describe("leadOption", () => {
+  const usdc = { optionId: `0x${"a".repeat(64)}`, received: "5000000" };
+  const ousd = { optionId: `0x${"b".repeat(64)}`, received: "10000" };
+  const funded = (o: { received: string }) => BigInt(o.received) > 0n;
+
+  it("follows the option the payment is recorded on, not a smaller deposit on another listed first", () => {
+    const payment = { optionId: usdc.optionId, optionLocked: true };
+    expect(leadOption(payment, [ousd, usdc], funded)).toBe(usdc);
+  });
+
+  it("takes the first option with money while none is decided", () => {
+    const payment = { optionId: usdc.optionId, optionLocked: false };
+    expect(leadOption(payment, [{ ...usdc, received: "0" }, ousd], funded)).toBe(ousd);
   });
 });
 

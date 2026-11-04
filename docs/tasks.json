@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 420,
+  "nextId": 421,
   "tasks": [
     {
       "id": "F332",
@@ -891,7 +891,8 @@
       "behavior": "Tokens sent to the invoice receiver factory can be returned by the refund authority",
       "acceptance": [
         "The factory gets a refund-authority recover(token, to, amount); nobody else can call it, and it can't touch a receiver's money.",
-        "Contract tests and the fuzz and invariant suites cover it; docs/contracts/rules.md and operations.md describe it; it ships before the first mainnet deploy."
+        "Contract tests and the fuzz and invariant suites cover it; docs/contracts/rules.md and operations.md describe it; it ships before the first mainnet deploy.",
+        "A receiver's refundable() reads 0 off its intended chain, as factory.status does and refund() allows (audit 2026-11-04); a test covers it."
       ],
       "dependsOn": [],
       "state": "not_started",
@@ -906,7 +907,9 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-04 Audit 2026-11-04: InvoiceReceiver.refundable() returns the balance on a wrong chain where refund() reverts. Fix: return 0 when block.chainid != intendedChainId. Any receiver change moves the factory's CREATE2 address (vectors test fails), so it ships with this task's redeploy."
+      ],
       "blockedReason": null,
       "evidence": null
     },
@@ -1076,6 +1079,126 @@
         "branch": "feat/f419-redesign-public-payments-pages-and-navig",
         "base": "main"
       }
+    },
+    {
+      "id": "F420",
+      "type": "fix",
+      "behavior": "Fix the confirmed bugs from the two code audits",
+      "acceptance": [
+        "A payer's email change while the receipt is sending waits for the send and never deadlocks",
+        "Arc USDC sent as the native coin between wallets shows in wallet activity once",
+        "An overdue invoice whose checkout is open keeps its pay link, Check status, edits and cancel",
+        "The harness lock admits one writer, also before the holder has written its pid",
+        "The testnet deploy keeps the factory's first executor after signing moves to another key",
+        "Browser tests build against the stub api and fail on any api call no test or stub answers",
+        "Overlapping support returns never queue more than is still held",
+        "A key or webhook endpoint request checked before its member was removed grants nothing after it",
+        "A receiver event recorded without its transfer is read again and completed once the transfer is found",
+        "A payment's details read on one database connection",
+        "A payment's figures follow the option it is recorded on",
+        "An email retried after its invoice changed gets a new idempotency key"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "unit",
+        "e2e",
+        "harness"
+      ],
+      "refs": [
+        "R-82",
+        "D-116",
+        "R-77",
+        "D-118",
+        "D-93",
+        "R-144",
+        "R-146",
+        "R-177",
+        "R-80"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-11-04 review fail by reviewer: Checked every diff hunk, migration 00095 (Up and Down match 00078), lock order of payer email vs ledger and worker, StillCan vs team lockMerchant and Roll, the returns recheck, outflow completion and trigger, Arc wallet nativeSends, the notify key hash, readLines in the tx, web lead option, overdue gating, the e2e stub and teardown, harness flock and deploy.sh. Backend packages pass with -race; harness and web unit tests pass. Blocking: docs/backend/architecture.md:414 still says Arc native-coin sends to a wallet are not read or recorded, the opposite of the new wallet scan; update it with the behavior. Minor: webhook Rotate does not recheck the role via StillCan; QueueReturn rechecks ledger Held under the lock but not unbooked outflows recorded after its pre-check; the lock-wait loops in keys_test and returns_test have no timeout; the KIT web server gets no API_URL at run time; tasks.json also edits F332's acceptance and notes.",
+        "2026-11-04 review pass by reviewer: Read the full diff, migration 00095 and unmatched.ts. Prior blocking item fixed: architecture.md:414 now says the wallet scan reads Arc system logs. Prior minors fixed: Rotate calls StillCan; QueueReturn rechecks Held and unbooked movements under the row lock; the lock-wait loops time out after 10s; KIT server gets API_URL; money-safety.md names the rescan window; the tasks.json side edit is F417's refundable line. Checked lock order: payer email NO KEY UPDATE vs worker FK KEY SHARE and ledger NO KEY UPDATE; StillCan KEY SHARE vs team lockMerchant FOR UPDATE, and Roll locking api_keys first. Checked the outflow completion against the trigger, the unique transfer index and the ledger retry; notify key hash has no time or random parts; overdue only maps from open; leadOption callers; turbo build env has API_URL; flock lock. Backend packages pass with -race; harness 61 tests and web unit tests pass. Minor: keys_test.go:209 calls e.call(t) in a goroutine, whose t.Fatal would hang the test on <-made instead of failing it. Not covered by StillCan, acceptable: secret reveal, endpoint delete and key revoke, which grant nothing lasting."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-04T19:17:04Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 64.1,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 53.8,
+            "log": ""
+          }
+        ],
+        "taskHash": "939b08963ab92454",
+        "filesHash": "999c5ab10e33dc01",
+        "proof": {
+          "1": "unit: notify TestPayerEmailChangeWaitsForTheReceiptBeingSent: 40P01 deadlock before the NO KEY lock, passes after",
+          "2": "unit: watcher TestArcWalletScanReadsNativeSends: the native send was missing before, recorded once after",
+          "3": "unit: web invoice-detail test keeps Check status, Copy link, Edit, Revise and Cancel on an overdue open invoice; failed before",
+          "4": "harness: test_lock_admits_one_writer_until_it_ends refuses a second writer while the pid is not yet written; failed before",
+          "5": "unit: contracts Deploy.t.sol test_scriptKeepsFactoryAfterExecutorRotation covers Deploy.s.sol's EXECUTOR rule; deploy.sh now takes it from FIRST_EXECUTOR (stubbed run: forge saw FIRST_EXECUTOR; unset stops the script)",
+          "6": "e2e: the build gets the stub API_URL; e2e/unmatched.ts failed the run on 4 unmocked calls before the mocks were fixed, 121 passed after",
+          "7": "unit: settlement TestSupportReturnRechecksTheHeldMoneyOnceItLocks: queued 1 USDC with 0.5 held before, ErrTooMuch after; the unbooked check also runs under the lock",
+          "8": "unit: httpapi TestRequestsCheckedBeforeARemovalGrantNothing: 201 for the key and the webhook endpoint before, 403 after; Rotate uses the same auth.StillCan",
+          "9": "unit: watcher TestOnlyNewFinalCanonicalEventsOfWatchedReceiversAreRecorded: incomplete event read again and completed; fails without the code change and without migration 00095",
+          "10": "unit: invoice package passes with readLines reading through PaymentDetails' transaction; a one-off test on a 1-connection pool timed out before and passed after, then was dropped (not a kept-test category)",
+          "11": "unit: web payments test leadOption follows the recorded option over a smaller deposit listed first",
+          "12": "unit: notify TestRetryOfAChangedEmailTakesANewKey: same key before, new key after the due date changed"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Read the full diff, migration 00095 and unmatched.ts. Prior blocking item fixed: architecture.md:414 now says the wallet scan reads Arc system logs. Prior minors fixed: Rotate calls StillCan; QueueReturn rechecks Held and unbooked movements under the row lock; the lock-wait loops time out after 10s; KIT server gets API_URL; money-safety.md names the rescan window; the tasks.json side edit is F417's refundable line. Checked lock order: payer email NO KEY UPDATE vs worker FK KEY SHARE and ledger NO KEY UPDATE; StillCan KEY SHARE vs team lockMerchant FOR UPDATE, and Roll locking api_keys first. Checked the outflow completion against the trigger, the unique transfer index and the ledger retry; notify key hash has no time or random parts; overdue only maps from open; leadOption callers; turbo build env has API_URL; flock lock. Backend packages pass with -race; harness 61 tests and web unit tests pass. Minor: keys_test.go:209 calls e.call(t) in a goroutine, whose t.Fatal would hang the test on <-made instead of failing it. Not covered by StillCan, acceptable: secret reveal, endpoint delete and key revoke, which grant nothing lasting.",
+          "at": "2026-11-04T19:29:17Z",
+          "filesHash": "999c5ab10e33dc01"
+        }
+      },
+      "branch": "fix/f420-fix-the-confirmed-bugs-from-the-two-code",
+      "baseCommit": "49f0a8615c4836274f616cbb7b2f9a9b62bce707",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

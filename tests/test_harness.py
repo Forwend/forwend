@@ -57,6 +57,16 @@ class HarnessTests(unittest.TestCase):
         self.assertEqual(state.task('F001')['state'], 'verified')
         self.assertIsNone(h.stale_reason(state, state.task('F001')))
 
+    def test_lock_admits_one_writer_until_it_ends(self):
+        with h.Lock(self.root):
+            # The holder has made the file but not yet written its pid: still not an abandoned lock.
+            (self.root / h.LOCK).write_text('')
+            with self.assertRaises(h.Refused):
+                with h.Lock(self.root):
+                    pass
+        with h.Lock(self.root):
+            pass
+
     def test_running_verify_has_a_wait_next_step(self):
         self.task['evidence'] = {'status': 'running', 'pid': 123}
         self.save()

@@ -3,10 +3,12 @@ package tests
 import (
 	"context"
 	"crypto/sha256"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 var keyText = regexp.MustCompile(`^fw_test_[0-9A-Za-z]{36}$`)
@@ -177,6 +179,54 @@ func TestAPIKeysNeedTheKeysPermission(t *testing.T) {
 	}
 	if r := e.call(t, "GET", keys, "did:privy:erin", "", ""); errorCode(r) != "forbidden" {
 		t.Errorf("a Developer lists keys: %d %v", r.status, r.body)
+	}
+}
+
+// D-93: a request checked before its Admin was removed makes no key or webhook endpoint after the removal.
+func TestRequestsCheckedBeforeARemovalGrantNothing(t *testing.T) {
+	for name, c := range map[string]struct{ method, path, body string }{
+		"key": {"POST", "/keys", `{"name": "Late", "storeId": "%s", "scopes": ["invoices.read"]}`},
+		"webhook endpoint": {"PUT", "/webhooks/6f9619ff-8b86-4011-b42d-00c04fc964ff",
+			`{"url": "https://late.example.com/hooks", "events": ["invoice.paid"], "storeId": "%s"}`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			e := invoiceAPI(t)
+			ctx := context.Background()
+			shop := e.merchant(t)
+			body := fmt.Sprintf(c.body, storeIDs(t, e, shop)[0])
+			e.exec(t, `WITH u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:dave') RETURNING id)
+				INSERT INTO profile_members (profile_id, user_id, role) SELECT $1, id, 'admin' FROM u`, shop)
+			// The removal, as team.RemoveMember: the profile row first, then the member.
+			remove, err := e.pool.Begin(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer remove.Rollback(ctx)
+			if _, err := remove.Exec(ctx, "SELECT 1 FROM profiles WHERE id = $1 FOR UPDATE", shop); err != nil {
+				t.Fatal(err)
+			}
+			made := make(chan reply, 1)
+			go func() { made <- e.call(t, c.method, "/v1/profiles/"+shop+c.path, "did:privy:dave", "", body) }()
+			for waiting, start := 0, time.Now(); waiting == 0; {
+				if time.Since(start) > 10*time.Second {
+					t.Fatal("the request never waited for the lock")
+				}
+				if err := e.pool.QueryRow(ctx, `SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock'
+					AND datname = current_database()`).Scan(&waiting); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if _, err := remove.Exec(ctx, `DELETE FROM profile_members WHERE profile_id = $1 AND user_id =
+				(SELECT id FROM users WHERE privy_user_id = 'did:privy:dave')`, shop); err != nil {
+				t.Fatal(err)
+			}
+			if err := remove.Commit(ctx); err != nil {
+				t.Fatal(err)
+			}
+			if r := <-made; errorCode(r) != "forbidden" {
+				t.Fatalf("a removed Admin's %s: %d %v", name, r.status, r.body)
+			}
+		})
 	}
 }
 

@@ -6,6 +6,7 @@ Start every session with `python3 scripts/harness.py status`; `-h` lists command
 Agents do not need to read this file: `status`, `show ID` and `COMMAND -h` print what the loop needs.
 """
 import argparse
+import fcntl
 import fnmatch
 import hashlib
 import json
@@ -196,31 +197,25 @@ def pid_alive(pid):
 
 
 class Lock:
-    """Single writer for docs/tasks.json. A lock left by a dead process is taken over."""
+    """Single writer for docs/tasks.json. The OS holds the lock until the command ends, even if it dies."""
 
     def __init__(self, root):
         self.path = root / LOCK
 
     def __enter__(self):
-        for _ in range(2):
-            try:
-                handle = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-            except FileExistsError:
-                try:
-                    owner = int(self.path.read_text().strip() or 0)
-                except (OSError, ValueError):
-                    owner = 0
-                if pid_alive(owner):
-                    raise Refused(f'another harness command (pid {owner}) is writing; retry when it ends')
-                self.path.unlink(missing_ok=True)
-                continue
-            os.write(handle, str(os.getpid()).encode())
-            os.close(handle)
-            return self
-        raise Refused(f'could not take {LOCK}')
+        self.handle = os.open(self.path, os.O_CREAT | os.O_RDWR)
+        try:
+            fcntl.flock(self.handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            owner = os.read(self.handle, 32).decode(errors='replace').strip() or 'unknown'
+            os.close(self.handle)
+            raise Refused(f'another harness command (pid {owner}) is writing; retry when it ends')
+        os.ftruncate(self.handle, 0)
+        os.write(self.handle, str(os.getpid()).encode())
+        return self
 
     def __exit__(self, *exc):
-        self.path.unlink(missing_ok=True)
+        os.close(self.handle)
 
 
 class State:
