@@ -1099,7 +1099,7 @@
         "An email retried after its invoice changed gets a new idempotency key"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e",
@@ -1194,11 +1194,18 @@
           "summary": "Read the full diff, migration 00095 and unmatched.ts. Prior blocking item fixed: architecture.md:414 now says the wallet scan reads Arc system logs. Prior minors fixed: Rotate calls StillCan; QueueReturn rechecks Held and unbooked movements under the row lock; the lock-wait loops time out after 10s; KIT server gets API_URL; money-safety.md names the rescan window; the tasks.json side edit is F417's refundable line. Checked lock order: payer email NO KEY UPDATE vs worker FK KEY SHARE and ledger NO KEY UPDATE; StillCan KEY SHARE vs team lockMerchant FOR UPDATE, and Roll locking api_keys first. Checked the outflow completion against the trigger, the unique transfer index and the ledger retry; notify key hash has no time or random parts; overdue only maps from open; leadOption callers; turbo build env has API_URL; flock lock. Backend packages pass with -race; harness 61 tests and web unit tests pass. Minor: keys_test.go:209 calls e.call(t) in a goroutine, whose t.Fatal would hang the test on <-made instead of failing it. Not covered by StillCan, acceptable: secret reveal, endpoint delete and key revoke, which grant nothing lasting.",
           "at": "2026-11-04T19:29:17Z",
           "filesHash": "999c5ab10e33dc01"
-        }
+        },
+        "commit": "552945ce",
+        "doneAt": "2026-11-04T19:30:29Z"
       },
       "branch": "fix/f420-fix-the-confirmed-bugs-from-the-two-code",
       "baseCommit": "49f0a8615c4836274f616cbb7b2f9a9b62bce707",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f420-fix-the-confirmed-bugs-from-the-two-code",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
