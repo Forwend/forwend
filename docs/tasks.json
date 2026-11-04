@@ -43,7 +43,7 @@
         "GET jobs reads one page at a time with a limit and a cursor, and the jobs list loads the next page on demand"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "web-unit"
@@ -138,11 +138,18 @@
           "summary": "No blockers. Jobs and links list one page by cursor; order and tie-break match the cursor; parameters, GROUP BY and search escaping are right; totals still sum all of a job's payments. Every reader of both lists is updated, and openapi and api.md describe the default page. useListFilters keeps its old behavior and clear(). Ran go build, go vet, the job, link, member and profile API tests, web tsc, vitest, biome and docs-check: all pass. Minor: search.go:1 package comment does not name jobs. job decodeCursor copies link decodeCursor. Job search no longer ignores accents, like the other API searches. No web test clicks Show more on links or jobs. The page is cut before the payments join, so it relies on every job keeping an original payment. Clients still loads whole, outside this task.",
           "at": "2026-11-04T22:54:42Z",
           "filesHash": "b39c69461ebfa008"
-        }
+        },
+        "commit": "784ee969",
+        "doneAt": "2026-11-04T23:01:21Z"
       },
       "branch": "fix/f348-the-links-list-pages-by-cursor-with-boun",
       "baseCommit": "ff6f6a5b901923cf34f940a75570696cbb8ed99a",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f348-the-links-list-pages-by-cursor-with-boun",
+        "base": "main"
+      }
     },
     {
       "id": "F349",
