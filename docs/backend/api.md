@@ -113,7 +113,8 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   - Once money is seen on any option it is 409 `pick_locked`.
   - It locks the options, then the main row, as cancel and the ledger do.
   - Limited per invoice (10, then one per 5 s); per IP belongs to the edge (Q-8).
-- Payment reminders (R-96): each worker round (`invoice.QueueReminders`) queues `invoice.reminder` rows.
+- Payment reminders (R-96): `invoice.QueueReminders` queues `invoice.reminder` rows.
+  - It runs on the worker's loop beside the chain rounds, at the same interval.
   - Steps: `before` 3 days before the due date, `due` on it, `after` 7 days after, in UTC days.
   - Only the latest step whose day has come is queued, once per invoice and step (a unique index on the step).
   - They fit in what is left of the client email cap (R-116), earliest due first; the rest wait for room.
@@ -130,7 +131,8 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   - At delivery a change withdrawn or accepted sends nothing.
   - In any 24 hours a job queues at most 5 (withdrawn changes count too), within the client email cap (R-116).
   - Past a cap the change is still added, and the owner's read has `clientEmailed: false` for it.
-- Retainers (R-98): each worker round (`invoice.MakeRetainerInvoices`) makes a running retainer's next invoice.
+- Retainers (R-98): `invoice.MakeRetainerInvoices` makes a running retainer's next invoice.
+  - It runs on the worker's loop beside the chain rounds, at the same interval.
   - Each later month is due on the first due date's day, or the month's last day when it is shorter.
   - A retainer started from Revise replaces the old invoice only once; later months never repeat that action.
   - It is made 7 UTC days before that due date, from the stored request, with its own number and receive address.
