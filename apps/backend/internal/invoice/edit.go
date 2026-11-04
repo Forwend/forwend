@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/forwend/forwend/apps/backend/internal/history"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 	"github.com/jackc/pgx/v5"
 )
@@ -94,8 +95,8 @@ func (s *Service) Edit(ctx context.Context, profileID, id string, e Editable) (I
 				}
 			}
 			var seen bool
-			if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id
-				WHERE coalesce(i.main_id, i.id) = $1 AND t.status <> 'reorged')`, main.ID).Scan(&seen); err != nil {
+			// Dust chooses nothing and is the payer's (R-119), so a stranger's 0.01 can't stop the owner editing.
+			if err := tx.QueryRow(ctx, "SELECT "+ledger.ChoosingSeenSQL, main.ID).Scan(&seen); err != nil {
 				return fmt.Errorf("read invoice %s transfers: %w", main.ID, err)
 			}
 			if seen {

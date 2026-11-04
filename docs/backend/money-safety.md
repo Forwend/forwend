@@ -222,7 +222,8 @@ Limits:
   other chain is waited for.
   - A smaller deposit chooses nothing, so a stranger with the pay link can't decide the option with dust.
   - It is held for the payer; on the chosen option, so is a payment before the one that brought it to 1.00 USD.
-  - Held dust is not announced to the owner, and it never makes the invoice confirming or partly paid.
+  - On-time dust on an open invoice is not announced to the owner; late money and money after a cancel always is.
+  - Dust never makes the invoice confirming or partly paid, and never stops the owner canceling or editing it.
   - Before a choice the invoice closes only once every option chain was read past its close.
   - A chain whose scan stops (its RPCs down) holds that close, and the R-120 alert waits with it.
   - Disabling that chain lets the close go on.

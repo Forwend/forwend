@@ -263,7 +263,7 @@ describe("new invoice form", () => {
     create();
     await settle();
     expect(screen.getAllByRole("alert").map((a) => a.textContent)).toContain(
-      "Enter an amount above 0 that every accepted token can hold.",
+      "Enter at least 1.00 in an amount every accepted token can hold.",
     );
   });
 

@@ -213,12 +213,9 @@ function Loaded({
           PAYMENT_STATUS.confirming,
         ] as string[]
       ).includes(status));
-  // Only before any money, on any option: cancel (R-79) and the edits the payer sees (R-128).
-  const beforePayment =
-    payable &&
-    waiting &&
-    invoice.deposits.length === 0 &&
-    invoice.options.every((o) => o.deposits.length === 0);
+  // Only before any money, on any option: cancel (R-79) and the edits the payer sees (R-128). The status says it:
+  // money changes it, while dust under 1 USD on a payer-chooses invoice chooses nothing and leaves it open (R-119).
+  const beforePayment = payable && waiting;
   return (
     <>
       {/* R-60: the number names the invoice; the line under it carries the title, client, due date and money. */}

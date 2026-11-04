@@ -79,10 +79,20 @@ func TestCancelPayerChoosesInvoice(t *testing.T) {
 	paid := e.post(t, "did:privy:alice", e.aliceProfile, "key-2", `{"amountUsd": "12.5"}`).body["invoiceId"].(string)
 	e.exec(t, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
 		    block_hash, block_number, block_time, from_address, to_address, amount, status)
-		SELECT chain_id, 'evm', token_contract, id, $2, 0, $2, 1, 1, $3, receive_address, 100, 'detected'
+		SELECT chain_id, 'evm', token_contract, id, $2, 0, $2, 1, 1, $3, receive_address, 1000000, 'detected'
 		FROM invoices WHERE main_id = $1`, paid, "0x"+strings.Repeat("cd", 32), aliceWallet)
 	if r := e.call(t, "POST", "/v1/profiles/"+e.aliceProfile+"/invoices/"+paid+"/cancel", "did:privy:alice", "", ""); r.status != http.StatusConflict {
 		t.Fatalf("money on a second option: %d %v, want 409", r.status, r.body)
+	}
+
+	// R-119: 0.01 USDC from anyone with the pay link chooses nothing, so it doesn't stop the owner canceling.
+	dusted := e.post(t, "did:privy:alice", e.aliceProfile, "key-3", `{"amountUsd": "12.5"}`).body["invoiceId"].(string)
+	e.exec(t, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
+		    block_hash, block_number, block_time, from_address, to_address, amount, status)
+		SELECT chain_id, 'evm', token_contract, id, $2, 0, $2, 1, 1, $3, receive_address, 10000, 'confirmed'
+		FROM invoices WHERE main_id = $1`, dusted, "0x"+strings.Repeat("ce", 32), aliceWallet)
+	if r := e.call(t, "POST", "/v1/profiles/"+e.aliceProfile+"/invoices/"+dusted+"/cancel", "did:privy:alice", "", ""); r.status != http.StatusOK {
+		t.Fatalf("0.01 USDC on an option: %d %v, want 200", r.status, r.body)
 	}
 }
 
