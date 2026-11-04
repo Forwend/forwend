@@ -115,7 +115,7 @@ func (s *Service) PaymentDetails(ctx context.Context, profileID, id string, q Pa
 		return PaymentDetails{}, err
 	}
 	result.Invoice.Receipts = receipts[id]
-	if result.Invoice.Lines, err = s.lines(ctx, id); err != nil {
+	if result.Invoice.Lines, err = readLines(ctx, tx, id); err != nil {
 		return PaymentDetails{}, err
 	}
 

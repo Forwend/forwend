@@ -73,7 +73,7 @@ func (s *Service) get(ctx context.Context, profileID, id string, summary bool) (
 		return Invoice{}, err
 	}
 	inv.Options = options[inv.ID]
-	if inv.Lines, err = s.lines(ctx, inv.ID); err != nil {
+	if inv.Lines, err = readLines(ctx, s.pool, inv.ID); err != nil {
 		return Invoice{}, err
 	}
 	if inv.Updates, err = s.updates(ctx, inv.ID); err != nil {
@@ -308,8 +308,8 @@ func readPaymentOptionsFor(ctx context.Context, db paymentReader, ids []string, 
 }
 
 // R-88.
-func (s *Service) lines(ctx context.Context, id string) ([]Line, error) {
-	rows, err := s.pool.Query(ctx, `SELECT description, quantity::text, unit_price::text, amount::text
+func readLines(ctx context.Context, q paymentReader, id string) ([]Line, error) {
+	rows, err := q.Query(ctx, `SELECT description, quantity::text, unit_price::text, amount::text
 		FROM invoice_lines WHERE invoice_id = $1 ORDER BY position`, id)
 	if err != nil {
 		return nil, fmt.Errorf("read invoice %s lines: %w", id, err)

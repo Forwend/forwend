@@ -125,6 +125,27 @@ func (s *Service) CheckAccess(ctx context.Context, privyUserID, profileID string
 	return a, nil
 }
 
+// StillCan checks again, holding the profile row a team change locks, that the user holds p: a request checked before
+// its user was removed, or lost the role, grants nothing lasting after it. The role is read after the lock, in a
+// statement of its own, so it sees a change the lock waited for.
+func StillCan(ctx context.Context, tx pgx.Tx, profileID, privyUserID string, p Permission) error {
+	if _, err := tx.Exec(ctx, "SELECT 1 FROM profiles WHERE id = $1 FOR KEY SHARE", profileID); err != nil {
+		return fmt.Errorf("lock profile: %w", err)
+	}
+	var role Role
+	err := tx.QueryRow(ctx, `SELECT CASE WHEN p.user_id = u.id THEN 'owner' ELSE m.role END
+		FROM profiles p JOIN users u ON u.privy_user_id = $2
+		LEFT JOIN profile_members m ON m.profile_id = p.id AND m.user_id = u.id
+		WHERE p.id = $1 AND (p.user_id = u.id OR m.user_id IS NOT NULL)`, profileID, privyUserID).Scan(&role)
+	if errors.Is(err, pgx.ErrNoRows) || err == nil && !(Access{Role: role}).Can(p) {
+		return ErrForbidden
+	}
+	if err != nil {
+		return fmt.Errorf("check profile access: %w", err)
+	}
+	return nil
+}
+
 // LinkStore is the store of the profile's payment link; found is false for an unknown or malformed link id.
 func (s *Service) LinkStore(ctx context.Context, profileID, linkID string) (store string, live, found bool, err error) {
 	var id pgtype.UUID

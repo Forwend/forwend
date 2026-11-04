@@ -69,7 +69,7 @@ func TestMoneyLoop(t *testing.T) {
 	}
 	defer pool.Close()
 	key, _ := base64.StdEncoding.DecodeString(webhookKey)
-	if _, _, err := webhook.NewService(pool, key).Save(ctx, profile, "eeeeeeee-0000-4000-8000-000000000001",
+	if _, _, err := webhook.NewService(pool, key).Save(ctx, profile, "did:privy:gate", "eeeeeeee-0000-4000-8000-000000000001",
 		webhook.Details{URL: "https://hooks.example.com/", Events: []string{webhook.InvoicePaid}, Enabled: true}); err != nil {
 		t.Fatal(err)
 	}

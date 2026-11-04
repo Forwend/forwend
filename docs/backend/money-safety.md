@@ -35,6 +35,9 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 - A deposit or a receiver event counts only at or below the finalized block, with the block hash the RPC returned.
 - Each receiver event is recorded once in `receiver_outflows`, with its block, transaction and log.
   - The token `Transfer` before it in the same transaction names the transfer that moved the money.
+  - An event recorded without that transfer stays unbooked and is read again while its block is in the rescan window.
+    - A later scan or the signer's receipt that finds the transfer completes the record; nothing else on it changes.
+    - Past that window it waits for an operator, as any unbooked outflow does.
   - Activity uses that transfer to link a settlement to the profile wallet's incoming transfer.
   - A receiver event first records the receiver's deploy time; an early deploy can shorten the checkout close (R-130).
 - The signer records its own settle from its finalized receipt, so `settled` never waits for the scan.

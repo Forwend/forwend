@@ -200,21 +200,23 @@ function Loaded({
   useEffect(() => {
     if (reopening && reopened) closesRow.current?.focus();
   }, [reopening, reopened]);
+  // Overdue is only open past its due date: its checkout still takes money and nothing has arrived.
+  const waiting = status === PAYMENT_STATUS.open || status === PAYMENT_STATUS.overdue;
   // The pay link takes money only while these last; sharing it later only creates money held for a refund.
   const payable =
     !closed &&
-    (
-      [
-        PAYMENT_STATUS.open,
-        PAYMENT_STATUS.partiallyPaid,
-        PAYMENT_STATUS.detected,
-        PAYMENT_STATUS.confirming,
-      ] as string[]
-    ).includes(status);
+    (waiting ||
+      (
+        [
+          PAYMENT_STATUS.partiallyPaid,
+          PAYMENT_STATUS.detected,
+          PAYMENT_STATUS.confirming,
+        ] as string[]
+      ).includes(status));
   // Only before any money, on any option: cancel (R-79) and the edits the payer sees (R-128).
   const beforePayment =
     payable &&
-    status === PAYMENT_STATUS.open &&
+    waiting &&
     invoice.deposits.length === 0 &&
     invoice.options.every((o) => o.deposits.length === 0);
   return (

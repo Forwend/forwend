@@ -1,8 +1,10 @@
 // The api the browser tests' servers ask in place of the backend; playwright.config.ts starts it once.
 // - The embed check (R-168): only the two local test origins below may frame a checkout.
+// - The pay page's view and pick, answered as the api does.
 // - /shop: a merchant page that frames ?src and keeps what the frame posts to it.
 // - Checkout sessions for the example merchant (R-170), each paying through the pay page fixture's token.
 // - /__test/sessions: what the merchant sent, and a switch that makes a session paid.
+// - /__test/unmatched: every request no route answered, so a test that leaves an api call unmocked fails the run.
 import { randomBytes } from "node:crypto";
 import { createServer } from "node:http";
 
@@ -10,6 +12,7 @@ const port = Number(process.env.E2E_API_PORT);
 const allowed = [`http://localhost:${port}`, `http://localhost:${process.env.E2E_EXAMPLE_PORT}`];
 const sessions = new Map(); // sessionId -> { body, paid }
 const keys = new Map(); // Idempotency-Key -> sessionId
+const unmatched = [];
 
 const json = (res, status, body) => {
   res.writeHead(status, { "Content-Type": "application/json" });
@@ -57,9 +60,12 @@ createServer(async (req, res) => {
       });
     </script><iframe title="Checkout" src="${url.searchParams.get("src")}" style="width:400px;height:640px;border:0"></iframe></html>`);
   }
+  // The pay page's view and pick: a test that checks them routes them in the browser.
+  if (/^\/v1\/invoices\/[0-9a-f]{64}\/(views|pick)$/.test(path)) return json(res, 204);
   if (/^\/v1\/invoices\/[0-9a-f]{64}\/embed$/.test(path)) {
     return json(res, 200, { allowed: allowed.includes(url.searchParams.get("origin")) });
   }
+  if (path === "/__test/unmatched") return json(res, 200, unmatched);
   if (path === "/__test/sessions") {
     return json(
       res,
@@ -84,5 +90,6 @@ createServer(async (req, res) => {
     return json(res, 201, session(id));
   }
   if (sessionId && sessions.has(sessionId)) return json(res, 200, session(sessionId));
+  unmatched.push(`${req.method} ${path}`);
   json(res, 404, { error: { code: "not_found", message: "not in the stub" } });
 }).listen(port, "127.0.0.1");

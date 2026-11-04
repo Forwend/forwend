@@ -32,7 +32,7 @@ func dispatchFixture(t *testing.T, count int) (*Service, []string, []string) {
 			t.Fatal(err)
 		}
 		endpoint := fmt.Sprintf("00000000-0000-0000-0000-%012x", n+1)
-		if _, _, err := s.Save(t.Context(), profile, endpoint, Details{URL: fmt.Sprintf("https://endpoint%d.example.com/hook", n), Events: []string{InvoicePaid}, Enabled: true}); err != nil {
+		if _, _, err := s.Save(t.Context(), profile, fmt.Sprint("did:privy:dispatch-", n), endpoint, Details{URL: fmt.Sprintf("https://endpoint%d.example.com/hook", n), Events: []string{InvoicePaid}, Enabled: true}); err != nil {
 			t.Fatal(err)
 		}
 		profiles = append(profiles, profile)
@@ -155,7 +155,7 @@ func TestWebhookClaimsRespectSharedConcurrency(t *testing.T) {
 	ctx := t.Context()
 	second, third := "00000000-0000-0000-0000-000000000002", "00000000-0000-0000-0000-000000000003"
 	for _, id := range []string{second, third} {
-		if _, _, err := s.Save(ctx, profiles[0], id, Details{URL: "https://" + id[len(id)-1:] + ".example.com/hook", Events: []string{InvoicePaid}, Enabled: true}); err != nil {
+		if _, _, err := s.Save(ctx, profiles[0], "did:privy:dispatch-0", id, Details{URL: "https://" + id[len(id)-1:] + ".example.com/hook", Events: []string{InvoicePaid}, Enabled: true}); err != nil {
 			t.Fatal(err)
 		}
 	}

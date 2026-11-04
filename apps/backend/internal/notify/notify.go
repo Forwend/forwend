@@ -116,13 +116,15 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 		return true, tx.Commit(ctx)
 	}
 	// The key holds the invoice, user or job id because event ids restart in another database sharing the Resend team,
-	// and the address because Resend refuses a key it already saw with another body.
+	// and a hash of the address and the message because Resend refuses a key it already saw with another body: an
+	// invoice edited between two tries changes it.
 	m, err := message(site, v)
 	if err != nil {
 		return false, fmt.Errorf("render email event %d: %w", id, err)
 	}
-	sum := sha256.Sum256([]byte(*to))
-	m.To, m.Key = *to, fmt.Sprintf("forwend-%s-%d-%x", scope, id, sum[:8])
+	m.To = *to
+	sum := sha256.Sum256(fmt.Appendf(nil, "%q|%q|%q|%q|%q|%q", m.To, m.Subject, m.Text, m.HTML, m.ReplyTo, m.Unsubscribe))
+	m.Key = fmt.Sprintf("forwend-%s-%d-%x", scope, id, sum[:8])
 	if sent := sender.Send(ctx, m); sent != nil {
 		attempts++
 		if attempts >= MaxAttempts {

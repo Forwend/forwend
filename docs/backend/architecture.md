@@ -411,7 +411,7 @@ re-mined copy gets a new row). A token disabled while one of its
 transfers is still detected stays in the scan until those rows confirm or are reorged, so their pending state can still resolve;
 its new transfers are not recorded. New wallet subscriptions trigger recovery through the previous checkpoint's 2,000-block overlap.
 Transfers older than that window are not looked for: those of wallets made before this table existed, or before a
-chain's first scan. Arc native-coin sends to a wallet log only the system emitter's `Transfer`, which this scan doesn't read, so they are not recorded.
+chain's first scan. Arc native-coin sends to a wallet log only the system emitter's `Transfer`; this scan reads it as the deposit scan does, so each counts once as Arc USDC.
 Only the invoice's own
 token counts. The row stores the emitting contract (`0x3600…` for an Arc native send), so the foreign key also rejects a look-alike. Block hashes and
 times come from the RPC, never computed in Go. On Arc, native USDC sends to a receive address count from the system emitter's logs (R-186, money-safety).

@@ -135,6 +135,45 @@ func TestArcDepositScanReadsNativeSends(t *testing.T) {
 	}
 }
 
+// The wallet scan reads Arc's system logs too, so a native send shows in activity once, as the ERC-20 transfer does.
+func TestArcWalletScanReadsNativeSends(t *testing.T) {
+	var asked []common.Address
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			ID     json.RawMessage
+			Params []struct{ Address []common.Address }
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		asked = req.Params[0].Address
+		var logs []types.Log
+		for _, l := range []types.Log{
+			arcLog(arcPayer, arcEmitter, 1, 0, micro(4000000)),
+			arcLog(arcPayer, arcEmitter, 2, 0, micro(1000000)), arcLog(arcPayer, arcUSDC, 2, 1, big.NewInt(1000000)),
+		} {
+			if slices.Contains(asked, l.Address) {
+				logs = append(logs, l)
+			}
+		}
+		out, _ := json.Marshal(logs)
+		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":%s}`, req.ID, out)
+	}))
+	t.Cleanup(server.Close)
+	client, err := rpc.Dial(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(client.Close)
+	c := NewChain(nil, 5042002, client)
+	logs, err := c.walletLogs(t.Context(), 1, 10, wallets{addresses: map[common.Address]bool{arcReceiver: true},
+		tokens: map[common.Address]bool{arcUSDC: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := credited(logs); !slices.Equal(got, []string{"0x3600:0:4000000", "0x3600:1:1000000"}) {
+		t.Fatalf("recorded %v; want the native send and the ERC-20 transfer once each", got)
+	}
+}
+
 // When every endpoint refuses the receivers' list for its length, the scan reads it in smaller parts.
 func TestReceiverEventsAreReadInPartsWhenEveryEndpointRefusesTheList(t *testing.T) {
 	var asked []int

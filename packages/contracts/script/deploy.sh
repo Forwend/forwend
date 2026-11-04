@@ -10,8 +10,10 @@ chain=$1
 ETH_RPC_URL=$(node script/rpc.mjs "$chain")
 export ETH_RPC_URL
 REFUND_AUTHORITY=$(cast wallet address --private-key "$REFUND_AUTHORITY_PRIVATE_KEY")
-EXECUTOR=$(cast wallet address --private-key "$DEPLOYER_PRIVATE_KEY")
+# The first executor is part of the factory address, so it stays fixed when setExecutor moves signing to another key.
+EXECUTOR=${FIRST_EXECUTOR:?set FIRST_EXECUTOR in .env}
 export REFUND_AUTHORITY EXECUTOR
+deployer=$(cast wallet address --private-key "$DEPLOYER_PRIVATE_KEY")
 
 # Gas comes from the chain's own estimate: Tempo prices contract and storage creation differently from Ethereum.
 out=$(forge script script/Smoke.s.sol --rpc-url deploy --broadcast --slow --skip-simulation)
@@ -41,7 +43,7 @@ before=$(balance "$recipient")
 pay=$(tx "$token" "transfer(address,uint256)" "$at" $((amount + extra)) --private-key "$DEPLOYER_PRIVATE_KEY")
 deploy=$(tx "$factory" "deploy($T)" "$terms" --private-key "$DEPLOYER_PRIVATE_KEY")
 settle=$(tx "$at" "settle()" --private-key "$DEPLOYER_PRIVATE_KEY")
-refund=$(tx "$at" "refund(address,uint256)" "$EXECUTOR" "$extra" --private-key "$REFUND_AUTHORITY_PRIVATE_KEY")
+refund=$(tx "$at" "refund(address,uint256)" "$deployer" "$extra" --private-key "$REFUND_AUTHORITY_PRIVATE_KEY")
 
 [ $(($(balance "$recipient") - before)) -eq "$amount" ] || { echo "recipient not paid exactly $amount" >&2; exit 1; }
 [ "$(balance "$at")" -eq 0 ] || { echo "receiver not empty" >&2; exit 1; }

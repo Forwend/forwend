@@ -71,17 +71,23 @@ func (s *Service) Create(ctx context.Context, profileID, user, name, storeID str
 	case kind != profile.Merchant && storeID != "":
 		return Key{}, "", fmt.Errorf("%w: storeId: only a merchant profile has stores", ErrInvalid)
 	}
-	return s.insert(ctx, s.pool, profileID, user, Key{StoreID: storeID, Name: name, Scopes: scopes})
+	var k Key
+	var text string
+	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		k, text, err = s.insert(ctx, tx, profileID, user, Key{StoreID: storeID, Name: name, Scopes: scopes})
+		return err
+	})
+	return k, text, err
 }
 
-type querier interface {
-	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
-}
-
-func (s *Service) insert(ctx context.Context, q querier, profileID, user string, k Key) (Key, string, error) {
+func (s *Service) insert(ctx context.Context, tx pgx.Tx, profileID, user string, k Key) (Key, string, error) {
+	if err := auth.StillCan(ctx, tx, profileID, user, auth.Keys); err != nil {
+		return Key{}, "", err
+	}
 	text, hash := newText(k.Livemode)
 	k.Last4 = text[len(text)-4:]
-	err := q.QueryRow(ctx, `INSERT INTO api_keys (profile_id, store_id, name, livemode, secret_hash, last4, scopes,
+	err := tx.QueryRow(ctx, `INSERT INTO api_keys (profile_id, store_id, name, livemode, secret_hash, last4, scopes,
 		    created_by)
 		SELECT $1, NULLIF($2, '')::uuid, $3, $4, $5, $6, $7, id FROM users WHERE privy_user_id = $8
 		RETURNING id::text, created_at`, profileID, k.StoreID, k.Name, k.Livemode, hash, k.Last4, k.Scopes, user).

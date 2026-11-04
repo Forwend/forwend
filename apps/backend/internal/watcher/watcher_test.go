@@ -639,7 +639,24 @@ func TestOnlyNewFinalCanonicalEventsOfWatchedReceiversAreRecorded(t *testing.T) 
 	if err := pgx.BeginFunc(ctx, e.pool, func(tx pgx.Tx) error { return RecordOutflows(ctx, tx, chaintest.ChainID, got) }); err != nil {
 		t.Fatal(err)
 	}
+	// No node showed its transfer, so it stays unbooked and is read again, until a read finds the transfer.
+	again, err := e.chain.outflows(ctx, logs, headers, invoices, 10)
+	if err != nil || len(again) != 1 {
+		t.Fatalf("an event recorded without its transfer was not read again: %+v (%v)", again, err)
+	}
+	again[0].Transfers = []types.Log{{Address: common.HexToAddress(invoices[watched].token), BlockNumber: 5,
+		BlockHash: final, TxHash: common.HexToHash("0xfeed"), Index: 0, Data: amount,
+		Topics: []common.Hash{transferTopic, common.BytesToHash(watched.Bytes()), again[0].Log.Topics[2]}}}
+	if err := pgx.BeginFunc(ctx, e.pool, func(tx pgx.Tx) error { return RecordOutflows(ctx, tx, chaintest.ChainID, again) }); err != nil {
+		t.Fatal(err)
+	}
+	var index *int64
+	var reason string
+	if err := e.pool.QueryRow(ctx, "SELECT transfer_log_index, reconciliation_error FROM receiver_outflows").
+		Scan(&index, &reason); err != nil || index == nil || *index != 0 || reason == "transfer_evidence_missing" {
+		t.Fatalf("after the transfer was found: index %v, reason %q (%v)", index, reason, err)
+	}
 	if again, err := e.chain.outflows(ctx, logs, headers, invoices, 10); err != nil || len(again) != 0 {
-		t.Fatalf("a recorded event was read again: %+v (%v)", again, err)
+		t.Fatalf("a complete event was read again: %+v (%v)", again, err)
 	}
 }

@@ -152,6 +152,8 @@ features own product behavior, and shared UI components are grouped by purpose. 
 Vitest for logic, Playwright for flows, axe for accessibility, Lighthouse for performance (D-10, R-10, R-11).
 - `pnpm e2e` runs deterministic browser tests without contacting Privy.
   - It also starts a stub api (`e2e/stub-api.mjs`) for the embed check and checkout sessions.
+  - The build and the server both get the stub's `API_URL`, so no request reaches another api.
+  - A request neither a test route nor the stub answers fails the run (`e2e/unmatched.ts`).
   - And the example merchant (`apps/example-merchant`), at an origin the stub lets frame a checkout (R-170).
 - `pnpm --filter @forwend/web e2e:live` explicitly runs live sign-in tests using the configured test account.
 - Live checks use `http://localhost:3000` and `API_URL`; stop existing servers first so verification runs the current source.

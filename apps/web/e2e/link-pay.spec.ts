@@ -45,7 +45,7 @@ async function mockLink(
     );
   });
   // The pay page the new invoice opens; null answers 500.
-  await page.route("**/api/v1/invoices/*", (route) =>
+  await page.route("**/api/v1/invoices/**", (route) =>
     route.request().method() !== "GET"
       ? route.fulfill({ status: 204 })
       : route.fulfill({ json: INVOICE }),
@@ -292,7 +292,7 @@ test.describe("payment link page", () => {
     page,
   }) => {
     expect((await page.goto("/l/Not-A-Link"))?.status()).toBe(404);
-    await page.route("**/api/v1/links/*", (route) =>
+    await page.route("**/api/v1/links/**", (route) =>
       route.fulfill({
         status: 404,
         json: { error: { code: "link_not_found", message: "payment link not found" } },

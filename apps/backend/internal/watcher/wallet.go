@@ -61,6 +61,10 @@ func (c *Chain) walletLogs(ctx context.Context, lo, hi uint64, w wallets) ([]typ
 	for t := range w.tokens {
 		tokens = append(tokens, t)
 	}
+	_, arc := w.tokens[arcUSDC]
+	if arc {
+		tokens = append(tokens, arcEmitter) // as the deposit scan: Arc USDC sent as the native coin logs only there
+	}
 	var out []types.Log
 	seen := map[logKey]bool{}
 	// One filter can't match a wallet as sender or receiver, so: sent, then received.
@@ -78,7 +82,9 @@ func (c *Chain) walletLogs(ctx context.Context, lo, hi uint64, w wallets) ([]typ
 		for _, l := range logs {
 			key := logKey{hexutil.Encode(l.BlockHash[:]), uint64(l.Index)}
 			// Only a listed token counts: anyone can emit Transfer from a look-alike contract.
-			if _, listed := w.tokens[l.Address]; l.Removed || len(l.Topics) != 3 || len(l.Data) != 32 ||
+			_, listed := w.tokens[l.Address]
+			listed = listed || arc && l.Address == arcEmitter
+			if l.Removed || len(l.Topics) != 3 || len(l.Data) != 32 ||
 				new(big.Int).SetBytes(l.Data).Sign() == 0 || !listed || seen[key] {
 				continue
 			}
@@ -86,7 +92,7 @@ func (c *Chain) walletLogs(ctx context.Context, lo, hi uint64, w wallets) ([]typ
 			out = append(out, l)
 		}
 	}
-	return out, nil
+	return nativeSends(out), nil
 }
 
 // transfers marks each kept log in seen; a disabled token's log counts only when it is a detected row in open.

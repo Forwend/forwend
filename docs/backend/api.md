@@ -428,6 +428,7 @@ R-144, D-95; the full schema is in openapi.yaml. Owners and Admins manage keys w
   - `lastUsedAt` is kept to the minute; `expiresAt` is set once the key was rolled.
 - `POST /v1/profiles/{profileId}/keys` makes a key and needs a fresh sign-in (D-63). It answers 201 with its `secret`.
   - The `secret` is in that answer alone; only its SHA-256 is kept.
+  - The role is checked again as the key is written: a request checked before a removal or a role change is 403.
   - It is `fw_test_`, 30 random base62 characters and a 6-character CRC32 of the rest. Live keys wait for a live chain.
   - `name` is 1–100 characters of plain text; `scopes` are one or more of the four D-95 names.
   - A merchant key needs `storeId`, one of the profile's stores. A freelancer's key has none; a personal profile is 409.
@@ -452,6 +453,7 @@ R-146, D-96; the full schema is in openapi.yaml. Owners and Admins manage them w
 - `GET /v1/profiles/{profileId}/webhooks` lists the endpoints, newest first.
 - `PUT /v1/profiles/{profileId}/webhooks/{endpointId}` creates or replaces one by a lowercase UUID, with a fresh sign-in.
   - 201 the first time, when it gets its first secret, which only the secret route shows; 200 after.
+  - The role is checked again as it is written, as for keys.
   - Another profile's id is 404 `endpoint_not_found`.
   - `url` is https, at most 2048 characters, with no credentials and no fragment.
   - Its host must be public: no localhost, `.local` or `.internal` name, and no private, loopback, link-local or CGNAT address.

@@ -17,6 +17,7 @@ import {
 export default defineConfig({
   testDir: "./e2e",
   testIgnore: "privy/**", // playwright.privy.config.ts
+  globalTeardown: "./e2e/unmatched.ts",
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",
@@ -25,12 +26,12 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  // Playwright starts these in order: the first builds, the second reuses that build. The public server's proxy reads
-  // API_URL at run time (src/proxy.ts); the build keeps its own for the rewrite.
+  // Playwright starts these in order: the first builds, the second reuses that build. Both the build, which fixes the
+  // /api/v1 rewrite, and the proxy at run time (src/proxy.ts) read API_URL: each must point at the stub, not .env.
   webServer: [
     {
-      command: `pnpm --workspace-root exec turbo run build --filter=@forwend/web && API_URL=${API_URL} pnpm start -p ${PUBLIC_PORT}`,
-      env: { NEXT_PUBLIC_SUPPORT_EMAIL: SUPPORT_EMAIL },
+      command: `pnpm --workspace-root exec turbo run build --filter=@forwend/web && pnpm start -p ${PUBLIC_PORT}`,
+      env: { NEXT_PUBLIC_SUPPORT_EMAIL: SUPPORT_EMAIL, API_URL },
       url: PUBLIC_URL,
       reuseExistingServer: false,
       timeout: 240_000,
@@ -38,7 +39,7 @@ export default defineConfig({
     {
       command: `pnpm start -p ${KIT_PORT}`,
       url: KIT_URL,
-      env: { KIT_ENABLED: "1" },
+      env: { KIT_ENABLED: "1", API_URL },
       reuseExistingServer: false,
       timeout: 60_000,
     },

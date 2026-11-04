@@ -9,12 +9,16 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/forwend/forwend/apps/backend/internal/address"
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
 	"github.com/forwend/forwend/apps/backend/internal/email"
 	"github.com/forwend/forwend/apps/backend/internal/history"
 	"github.com/forwend/forwend/apps/backend/internal/history/historytest"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -59,7 +63,7 @@ func setup(t *testing.T, login string) (*pgxpool.Pool, string) {
 		t.Fatal(err)
 	}
 	t.Cleanup(pool.Close)
-	id := "0x" + strings.Repeat("ab", 32)
+	id := fmt.Sprintf("0x%x", address.InvoiceID([32]byte(common.FromHex(payToken)))) // as a real invoice's
 	exec(t, pool, `
 		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true) ON CONFLICT (chain_id) DO UPDATE SET enabled = true),
 		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
@@ -258,6 +262,32 @@ func TestRetryKeepsTheIdempotencyKey(t *testing.T) {
 	}
 	if len(f.keys) != 2 || len(f.sent) != 1 || f.keys[0] != f.keys[1] {
 		t.Fatalf("keys of the failed try and the retry %v: want one key twice", f.keys)
+	}
+}
+
+// Resend answers 409 to a key it saw with another body: an invoice edited between two tries gets a new key.
+func TestRetryOfAChangedEmailTakesANewKey(t *testing.T) {
+	pool, id := setup(t, "owner@example.com")
+	exec(t, pool, "UPDATE invoices SET client_email = 'ap@client.example' WHERE id = $1", id)
+	if err := pgx.BeginFunc(context.Background(), pool, func(tx pgx.Tx) error {
+		return outbox.QueueSend(context.Background(), tx, id, "k1", history.Owner)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	f := &fake{fail: true}
+	if err := Deliver(context.Background(), pool, f, site); err != nil {
+		t.Fatal(err)
+	}
+	exec(t, pool, "ALTER TABLE invoices DISABLE TRIGGER invoices_guard")
+	exec(t, pool, "UPDATE invoices SET due_date = '2099-12-31' WHERE id = $1", id)
+	exec(t, pool, "ALTER TABLE invoices ENABLE TRIGGER invoices_guard")
+	exec(t, pool, "UPDATE outbox_events SET next_attempt_at = now()")
+	f.fail = false
+	if err := Deliver(context.Background(), pool, f, site); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.keys) != 2 || len(f.sent) != 1 || f.keys[0] == f.keys[1] || !strings.Contains(f.sent[0].Text, "31 Dec 2099") {
+		t.Fatalf("keys %v, sent %d: want a new key for the changed email", f.keys, len(f.sent))
 	}
 }
 
@@ -728,5 +758,43 @@ func TestDeliverSendsTheTurnedOffEndpoint(t *testing.T) {
 		!strings.Contains(m.Text, "shop.example.com answered 410 Gone") || !strings.Contains(m.Text, web+"/app/developers") ||
 		strings.Contains(m.Text+m.HTML, "receiver-secret") || !strings.HasPrefix(m.Key, "forwend-endpoint-"+endpoint+"-") {
 		t.Fatalf("email %+v", m)
+	}
+}
+
+// during runs fn inside Send, while the worker holds the event's row.
+type during func()
+
+func (fn during) Send(context.Context, email.Message) error { fn(); return nil }
+
+// The receipt goes out while the payer changes the address: the change waits for the send and sees it sent, and the
+// worker's history row doesn't deadlock with the change's lock on the invoice.
+func TestPayerEmailChangeWaitsForTheReceiptBeingSent(t *testing.T) {
+	ctx := context.Background()
+	pool, id := setup(t, "owner@example.com")
+	exec(t, pool, "UPDATE invoices SET payer_email = 'payer@example.com' WHERE id = $1", id)
+	queue(t, pool, outbox.Receipt, id, nil)
+	changed := make(chan error, 1)
+	send := during(func() {
+		go func() {
+			_, err := invoice.NewService(pool).SetPayerEmail(ctx, payToken, "new@example.com",
+				func() time.Duration { return 0 })
+			changed <- err
+		}()
+		for waiting, start := 0, time.Now(); waiting == 0 && time.Since(start) < 10*time.Second; {
+			if err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock'
+				AND datname = current_database()`).Scan(&waiting); err != nil {
+				t.Error(err)
+				return
+			}
+		}
+	})
+	if err := Deliver(ctx, pool, send, site); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-changed; !errors.Is(err, invoice.ErrReceiptSent) {
+		t.Fatalf("change: %v, want ErrReceiptSent", err)
+	}
+	if count(t, pool, "kind = 'invoice.receipt' AND published_at IS NOT NULL") != 1 {
+		t.Fatalf("the receipt is not marked sent")
 	}
 }

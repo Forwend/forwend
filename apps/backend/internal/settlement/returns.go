@@ -222,15 +222,8 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 		return Return{}, ErrUnbooked
 	}
 	// A payment not booked yet could hide such a gap, and its money is another payer's.
-	var unbooked bool
-	if err := db.QueryRow(ctx, `SELECT
-		EXISTS (SELECT 1 FROM chain_transfers WHERE invoice_id = $1 AND status <> 'reorged' AND NOT booked) OR
-		EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = $1 AND kind <> 'recovery' AND ledger_transaction_id IS NULL)`,
-		invoiceID).Scan(&unbooked); err != nil {
-		return Return{}, fmt.Errorf("read invoice %s unbooked movements: %w", invoiceID, err)
-	}
-	if unbooked {
-		return Return{}, ErrUnbooked
+	if err := checkBooked(ctx, db, invoiceID); err != nil {
+		return Return{}, err
 	}
 	var paid *Payment
 	senders := map[string]bool{}
@@ -316,8 +309,18 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 	r.Calls = append(r.Calls, Call{To: receive, Data: refund, Signature: refundSignature,
 		Args: []string{strings.ToLower(r.To.Hex()), r.Amount.String()}})
 	// The lock: until the refund lands, nothing settles this money to the creator and the owner can't reopen it.
+	// Another return may have been booked since the reads above: the amount must still be held once the row is ours.
 	err = setRefundStatus(ctx, db, invoiceID, "held", "refund_pending", history.ReturnQueued,
-		history.Data{Amount: r.Amount.String(), To: strings.ToLower(r.To.Hex())})
+		history.Data{Amount: r.Amount.String(), To: strings.ToLower(r.To.Hex())}, func(tx pgx.Tx) error {
+			now, err := ledger.ReadAmounts(ctx, tx, invoiceID)
+			if err != nil {
+				return fmt.Errorf("read invoice %s amounts: %w", invoiceID, err)
+			}
+			if r.Amount.Cmp(now.Held) > 0 {
+				return ErrTooMuch
+			}
+			return checkBooked(ctx, tx, invoiceID)
+		})
 	if errors.Is(err, errUnchanged) {
 		return Return{}, ErrReturnQueued
 	}
@@ -329,17 +332,36 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 
 // ReleaseReturn unlocks a queued return the refund authority will not send.
 func ReleaseReturn(ctx context.Context, db *pgxpool.Pool, invoiceID string) error {
-	err := setRefundStatus(ctx, db, invoiceID, "refund_pending", "held", history.ReturnReleased, history.Data{})
+	err := setRefundStatus(ctx, db, invoiceID, "refund_pending", "held", history.ReturnReleased, history.Data{}, nil)
 	if errors.Is(err, errUnchanged) {
 		return ErrNoReturnQueued
 	}
 	return err
 }
 
+// checkBooked is ErrUnbooked while a payment or a receiver outflow of the invoice waits for the ledger.
+func checkBooked(ctx context.Context, db interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, invoiceID string) error {
+	var unbooked bool
+	if err := db.QueryRow(ctx, `SELECT
+		EXISTS (SELECT 1 FROM chain_transfers WHERE invoice_id = $1 AND status <> 'reorged' AND NOT booked) OR
+		EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = $1 AND kind <> 'recovery' AND ledger_transaction_id IS NULL)`,
+		invoiceID).Scan(&unbooked); err != nil {
+		return fmt.Errorf("read invoice %s unbooked movements: %w", invoiceID, err)
+	}
+	if unbooked {
+		return ErrUnbooked
+	}
+	return nil
+}
+
 var errUnchanged = errors.New("refund status changed meanwhile")
 
-// setRefundStatus moves the status from one value to another, with its history row in the same transaction.
-func setRefundStatus(ctx context.Context, db *pgxpool.Pool, invoiceID, from, to, kind string, data history.Data) error {
+// setRefundStatus moves the status from one value to another, with its history row in the same transaction. check,
+// when given, runs holding the row, which the ledger also locks to book.
+func setRefundStatus(ctx context.Context, db *pgxpool.Pool, invoiceID, from, to, kind string, data history.Data,
+	check func(pgx.Tx) error) error {
 	return pgx.BeginFunc(ctx, db, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx, "UPDATE invoices SET refund_status = $3 WHERE id = $1 AND refund_status = $2",
 			invoiceID, from, to)
@@ -348,6 +370,11 @@ func setRefundStatus(ctx context.Context, db *pgxpool.Pool, invoiceID, from, to,
 		}
 		if tag.RowsAffected() == 0 {
 			return errUnchanged
+		}
+		if check != nil {
+			if err := check(tx); err != nil {
+				return err
+			}
 		}
 		return history.Add(ctx, tx, invoiceID, kind, history.System, data)
 	})
