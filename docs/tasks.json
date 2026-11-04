@@ -936,7 +936,7 @@
         "Responsive layouts, themes, keyboard behavior and public routes pass browser and accessibility checks."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "typecheck",
@@ -1053,10 +1053,10 @@
         "taskHash": "3fbc207db16a22fc",
         "filesHash": "61c314cf05b8f044",
         "proof": {
-          "1": "web-e2e: landing.spec checks the hero overview picture, the four product sections with testnet networks and docs links, the roadmap, reduced motion and sideways scroll at 320, 360, 390, 640, 768, 960, 1024, 1280, 1440 and 1536 px",
-          "2": "web-e2e: docs.spec checks nested guides, API references, search and old anchors; field tables and disclosures render in those pages",
-          "3": "web-e2e: sign-in authentication controls are unchanged; waitlist.spec and a11y.spec open and scan sign-in, whose logo matches the landing",
-          "4": "web-e2e: a11y.spec and landing.spec pass in both themes with keyboard navigation, the phone menu and reduced motion"
+          "1": "web-e2e: landing.spec checks the hero overview, the four product sections, roadmap, reduced motion and every R-7 width",
+          "2": "web-e2e: docs.spec checks nested guides, API references, search and old anchors",
+          "3": "web-e2e: sign-in controls are unchanged; waitlist.spec and a11y.spec open and scan sign-in",
+          "4": "web-e2e: a11y.spec and landing.spec pass in both themes with keyboard navigation and reduced motion"
         },
         "review": {
           "result": "pass",
@@ -1064,11 +1064,18 @@
           "summary": "The blocking finding is fixed. The landing width test now covers the R-7 widths 360, 768, 1280 and 1536, plus 320, 390, 1024 and 1440 and the 640 and 960 layout edges. Fresh verification passed, web-e2e included. DESIGN.md now names Create account for the header action, which matches the code. The .gitignore comment no longer names a tool. Acceptance line 3 now describes the sign-in changes. Landing claims, docs API paths, scopes, fields and examples match the code. Decorative drawings are inert or hidden, and reduced motion is respected. Minor notes left for later: the docs group type is a plain string, the hero preload follows the system color scheme, images.md points to an ignored folder, and two masks use raw #000.",
           "at": "2026-11-04T17:47:14Z",
           "filesHash": "61c314cf05b8f044"
-        }
+        },
+        "commit": "298897a3",
+        "doneAt": "2026-11-04T17:48:01Z"
       },
       "branch": "feat/f419-redesign-public-payments-pages-and-navig",
       "baseCommit": "30642d22fc7da7751609ca70c8d16c83b812fdc4",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f419-redesign-public-payments-pages-and-navig",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
