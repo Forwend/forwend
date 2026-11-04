@@ -201,7 +201,7 @@ test("a record page keeps its panels in place while it loads", async ({ browser 
   });
   const page = await context.newPage();
   await mockApi(page);
-  await page.route(/\/api\/v1\/profiles\/[^/]+\/stores$/, async (route) => {
+  await page.route(/\/api\/v1\/profiles\/[^/]+\/stores\/[^/]+$/, async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 1500));
     await route.fallback();
   });

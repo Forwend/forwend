@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 422,
+  "nextId": 423,
   "tasks": [
     {
       "id": "F332",
@@ -159,7 +159,7 @@
         "The client and store pages read their record by id and never load the whole list to show it"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend",
         "web-unit"
@@ -169,9 +169,103 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-11-04 review pass by reviewer: Pass. The client and store pages read their record by id. Access is right: another profile's, unknown and malformed ids give 404, another user gets 403, and a scoped Developer gets 404 outside their stores. The RequireAccess guard handles the store scope. Loading, gone, error with retry and the deleted-client flow behave as before. Save, logo and delete invalidate the tag the reads provide. OpenAPI, api.md and e2e mocks match, and profiles_test lists both new routes. Checks run: go test httpapi Client, Store, Profile, ReadByID and OpenAPI pass; web tsc passes; client, store and link screen unit tests pass; check-docs has 0 errors. Minor: job-screen.tsx:33 still checks 404 inline; it could use notFound. Out of scope: link-form-screen.tsx:31 shows the failed message with retry for a deleted link, not the gone message."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-04T23:12:27Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.6,
+            "log": ""
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 54.6,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 55.0,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 20.7,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.9,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 45.4,
+            "log": ""
+          }
+        ],
+        "taskHash": "7081dc710196fdaa",
+        "filesHash": "9d78ad7b9f59e521",
+        "proof": {
+          "1": "backend: TestClientReadByID and TestStoreReadByID read one record equal to its list item, 404 for an unknown, malformed or other profile's id, and a scoped member gets 404 outside their stores; TestProfileRoutesAreAllListed covers both new routes; the client, client edit, store and store edit screens read GET .../clients/{id} and .../stores/{id} (checked live: no list request, and another profile's store or an unknown client shows the not-in-your-list message)"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass. The client and store pages read their record by id. Access is right: another profile's, unknown and malformed ids give 404, another user gets 403, and a scoped Developer gets 404 outside their stores. The RequireAccess guard handles the store scope. Loading, gone, error with retry and the deleted-client flow behave as before. Save, logo and delete invalidate the tag the reads provide. OpenAPI, api.md and e2e mocks match, and profiles_test lists both new routes. Checks run: go test httpapi Client, Store, Profile, ReadByID and OpenAPI pass; web tsc passes; client, store and link screen unit tests pass; check-docs has 0 errors. Minor: job-screen.tsx:33 still checks 404 inline; it could use notFound. Out of scope: link-form-screen.tsx:31 shows the failed message with retry for a deleted link, not the gone message.",
+          "at": "2026-11-04T23:16:19Z",
+          "filesHash": "9d78ad7b9f59e521"
+        },
+        "commit": "2d6e56e0",
+        "doneAt": "2026-11-04T23:16:58Z"
+      },
+      "branch": "fix/f349-client-and-store-pages-read-only-their-o",
+      "baseCommit": "11a1e3418bb21e5221133ca4c3c10ab243cb3be7",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f349-client-and-store-pages-read-only-their-o",
+        "base": "main"
+      }
     },
     {
       "id": "F350",
@@ -611,6 +705,29 @@
         "branch": "perf/f421-faster-pages-scans-and-worker-rounds-fro",
         "base": "main"
       }
+    },
+    {
+      "id": "F422",
+      "type": "fix",
+      "behavior": "The clients list and client pickers page and search through the API",
+      "acceptance": [
+        "GET clients reads one page at a time with a limit, a cursor and a q search, the clients list loads the next page on demand, and the invoice and job client pickers search through the API instead of loading every client"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "web-unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-177"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

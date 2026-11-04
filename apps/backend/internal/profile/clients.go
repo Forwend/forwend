@@ -113,6 +113,24 @@ func (s *Service) Clients(ctx context.Context, profileID string) ([]Client, erro
 	return clients, nil
 }
 
+func (s *Service) Client(ctx context.Context, profileID, id string) (Client, error) {
+	if !lowercaseUUID.MatchString(id) {
+		return Client{}, ErrClientNotFound
+	}
+	rows, err := s.pool.Query(ctx, `SELECT `+clientColumns+` FROM clients WHERE profile_id = $1 AND id = $2`, profileID, id)
+	if err != nil {
+		return Client{}, fmt.Errorf("read client: %w", err)
+	}
+	c, err := pgx.CollectExactlyOneRow(rows, scanClient)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Client{}, ErrClientNotFound
+	}
+	if err != nil {
+		return Client{}, fmt.Errorf("read client: %w", err)
+	}
+	return c, nil
+}
+
 // SaveClient upserts by the id the caller chose, so sending the same request twice saves one client. Invoices
 // made earlier keep their own copy.
 func (s *Service) SaveClient(ctx context.Context, profileID, id string, d ClientDetails) (Client, bool, error) {

@@ -19,7 +19,7 @@ const CLIENT = {
 };
 
 vi.mock("@/features/clients/api/clients-api", () => ({
-  useListClientsQuery: () => ({ currentData: [CLIENT] }),
+  useGetClientQuery: () => ({ currentData: CLIENT }),
 }));
 vi.mock("@/features/clients/components/client-actions", () => ({ ClientActions: () => null }));
 vi.mock("@/screens/clients/client-invoices", () => ({

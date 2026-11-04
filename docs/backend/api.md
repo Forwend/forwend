@@ -185,6 +185,7 @@ R-43; the full schema is in openapi.yaml. Members reach it with `billing.read` a
 R-86; the full schema is in openapi.yaml. Members reach it with `clients.read` and `clients.write` (D-93).
 
 - `GET /v1/profiles/{profileId}/clients` lists the saved clients by name; at most 1000 per profile, so it comes whole.
+- `GET /v1/profiles/{profileId}/clients/{clientId}` reads one client; another profile's or an unknown id is 404 `client_not_found`.
 - `PUT /v1/profiles/{profileId}/clients/{clientId}` creates or replaces one. The caller picks the id (a lowercase UUID),
   so no Idempotency-Key is needed: the same body sent twice saves one client, 201 the first time and 200 after. Body:
   `name` (required, ≤ 200 characters) and optional `email` (≤ 254, the billing email), `address` (≤ 500), `country` (an
@@ -236,6 +237,7 @@ R-134; the full schema is in openapi.yaml. Members reach it with `stores.read` a
 
 - A merchant profile's stores (D-30). The first is made with the profile, named after it (a database trigger).
 - `GET /v1/profiles/{profileId}/stores` lists them, the first first; a personal or freelancer profile has none.
+- `GET /v1/profiles/{profileId}/stores/{storeId}` reads one store; an unknown id or one outside a scoped member's stores is 404 `store_not_found`.
 - `PUT /v1/profiles/{profileId}/stores/{storeId}` creates or replaces one by a lowercase UUID the caller picks.
   - 201 the first time, 200 after; the 21st store is 422.
   - `name` (1–64 characters on one line, not naming Forwend) and `defaultExpiresIn` (900–31536000 seconds) are required.

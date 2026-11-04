@@ -2,6 +2,18 @@ import type { Page } from "@playwright/test";
 
 const MERCHANT_ID = "22222222-2222-2222-2222-222222222222";
 const USDC = "0x036cbd53842c5426634e7929541ec2318f3dcf7e";
+
+const SAMPLE_STORE = {
+  storeId: "66666666-6666-4666-8666-666666666666",
+  name: "Sample shop",
+  defaultExpiresIn: 3600,
+  allowedOrigins: [],
+  brandColor: null,
+  logoAt: null,
+  tokensOff: [],
+  updatedAt: "2026-09-02T00:00:00Z",
+};
+
 export const hash = (c: string) => `0x${c.repeat(64)}`;
 // GET /v1/me lists every permission for the owner (R-138).
 export const OWNER = {
@@ -354,23 +366,8 @@ export async function mockApi(
       return route.fulfill({ contentType: "application/pdf", body: "%PDF-1.4" });
     if (what?.startsWith("events")) return route.fulfill({ json: { items: lists.events ?? [] } });
     if (what === "webhooks") return route.fulfill({ json: { endpoints: [] } });
-    if (what === "stores")
-      return route.fulfill({
-        json: {
-          stores: [
-            {
-              storeId: "66666666-6666-4666-8666-666666666666",
-              name: "Sample shop",
-              defaultExpiresIn: 3600,
-              allowedOrigins: [],
-              brandColor: null,
-              logoAt: null,
-              tokensOff: [],
-              updatedAt: "2026-09-02T00:00:00Z",
-            },
-          ],
-        },
-      });
+    if (what === "stores") return route.fulfill({ json: { stores: [SAMPLE_STORE] } });
+    if (what === `stores/${SAMPLE_STORE.storeId}`) return route.fulfill({ json: SAMPLE_STORE });
     if (what === "payments") return route.fulfill({ json: { items: [], nextCursor: null } });
     if (what === "billing-details") {
       if (route.request().method() === "PUT")

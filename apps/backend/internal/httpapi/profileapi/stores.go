@@ -34,6 +34,17 @@ func listStores(profiles *profile.Service) http.HandlerFunc {
 	}
 }
 
+func getStore(profiles *profile.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		s, err := profiles.Store(r.Context(), r.PathValue("profileId"), r.PathValue("storeId"))
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusOK, toStoreJSON(s))
+	}
+}
+
 func putStore(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body storeBody

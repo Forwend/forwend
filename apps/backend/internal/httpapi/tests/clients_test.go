@@ -135,3 +135,29 @@ func TestClients(t *testing.T) {
 		t.Fatalf("PUT an existing client when full: %d %v", r.status, r.body)
 	}
 }
+
+// R-177: the client page reads one client by id; another profile's, an unknown or a malformed id is not found.
+func TestClientReadByID(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice, bob = "did:privy:alice", "did:privy:bob"
+	path := "/v1/profiles/" + e.aliceProfile + "/clients/"
+	if r := e.call(t, "PUT", path+clientA, alice, "", `{"name": "Bob Ltd", "email": "ap@bob.example"}`); r.status !=
+		http.StatusCreated {
+		t.Fatalf("PUT client: %d %v", r.status, r.body)
+	}
+	listed := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/clients", alice, "", "").body["clients"].([]any)[0]
+	if r := e.call(t, "GET", path+clientA, alice, "", ""); r.status != http.StatusOK || !reflect.DeepEqual(r.body, listed) {
+		t.Fatalf("GET one client: %d %v, want its list item %v", r.status, r.body, listed)
+	}
+	for _, id := range []string{clientB, "not-a-uuid"} {
+		if r := e.call(t, "GET", path+id, alice, "", ""); r.status != http.StatusNotFound || errorCode(r) != "client_not_found" {
+			t.Errorf("GET %s: %d %v, want 404", id, r.status, r.body)
+		}
+	}
+	if r := e.call(t, "GET", "/v1/profiles/"+e.bobProfile+"/clients/"+clientA, bob, "", ""); r.status != http.StatusNotFound {
+		t.Errorf("Bob reads Alice's client on his profile: %d %v, want 404", r.status, r.body)
+	}
+	if r := e.call(t, "GET", path+clientA, bob, "", ""); r.status != http.StatusForbidden {
+		t.Errorf("Bob reads Alice's profile: %d, want 403", r.status)
+	}
+}

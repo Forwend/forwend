@@ -18,7 +18,7 @@ const STORE = {
 };
 
 vi.mock("@/features/stores/api/stores-api", () => ({
-  useListStoresQuery: () => ({ currentData: [STORE] }),
+  useGetStoreQuery: () => ({ currentData: STORE }),
 }));
 vi.mock("@/features/profiles/api/profiles-api", () => ({
   useGetProfileTokensQuery: () => ({ currentData: [] }),

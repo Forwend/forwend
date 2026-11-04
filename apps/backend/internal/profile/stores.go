@@ -171,6 +171,24 @@ func (s *Service) Stores(ctx context.Context, profileID string) ([]Store, error)
 	return stores, nil
 }
 
+func (s *Service) Store(ctx context.Context, profileID, id string) (Store, error) {
+	if !lowercaseUUID.MatchString(id) {
+		return Store{}, ErrStoreNotFound
+	}
+	rows, err := s.pool.Query(ctx, `SELECT `+storeColumns+` FROM stores WHERE profile_id = $1 AND id = $2`, profileID, id)
+	if err != nil {
+		return Store{}, fmt.Errorf("read store: %w", err)
+	}
+	st, err := pgx.CollectExactlyOneRow(rows, scanStore)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Store{}, ErrStoreNotFound
+	}
+	if err != nil {
+		return Store{}, fmt.Errorf("read store: %w", err)
+	}
+	return st, nil
+}
+
 // SaveStore upserts by the id the caller chose, so sending the same request twice saves one store. Invoices made
 // earlier keep their close; a changed list of origins applies to return links set from now on.
 func (s *Service) SaveStore(ctx context.Context, profileID, id string, d StoreDetails) (Store, bool, error) {

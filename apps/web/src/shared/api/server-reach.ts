@@ -17,6 +17,11 @@ export function unreachable(error: unknown): boolean {
   return typeof e.status === "number" && GATEWAY.includes(e.status);
 }
 
+/** The api answered that the record is not there: another profile's, deleted, or out of the member's reach. */
+export function notFound(error: unknown): boolean {
+  return (error as FetchBaseQueryError | undefined)?.status === 404;
+}
+
 /** Any read whose last answer was unreachable. error, not isError: a retry keeps it, so the strip doesn't blink. */
 export function useServerUnreachable(): boolean {
   return useSelector((state: RootState) =>

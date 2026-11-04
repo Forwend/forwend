@@ -24,6 +24,12 @@ export const clientsApi = apiSlice
         transformResponse: (data: { clients: Client[] }) => data.clients,
         providesTags: [CLIENTS_TAG],
       }),
+      /** 404 for another profile's client or one that was deleted. */
+      getClient: build.query<Client, { profileId: string; clientId: string }>({
+        query: ({ profileId, clientId }) => clientUrl(profileId, clientId),
+        responseSchema: clientSchema,
+        providesTags: [CLIENTS_TAG],
+      }),
       /** PUT to an id the browser picks, so a retried save makes one client (R-86). */
       saveClient: build.mutation<
         Client,
@@ -52,4 +58,9 @@ export const clientsApi = apiSlice
     }),
   });
 
-export const { useListClientsQuery, useSaveClientMutation, useDeleteClientMutation } = clientsApi;
+export const {
+  useListClientsQuery,
+  useGetClientQuery,
+  useSaveClientMutation,
+  useDeleteClientMutation,
+} = clientsApi;

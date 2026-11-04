@@ -449,3 +449,31 @@ func TestStoreBranding(t *testing.T) {
 		t.Fatalf("a freelancer's invoice has a brand: %v", free.body["brand"])
 	}
 }
+
+// R-177, D-93: the store page reads one store by id; a scoped member reads only their stores.
+func TestStoreReadByID(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice, dev = "did:privy:alice", "did:privy:erin"
+	shop := e.merchant(t)
+	first := storeIDs(t, e, shop)[0]
+	path := "/v1/profiles/" + shop + "/stores/"
+	if r := e.call(t, "PUT", path+storeB, alice, "", `{"name": "Pro shop", "defaultExpiresIn": 3600}`); r.status !=
+		http.StatusCreated {
+		t.Fatalf("PUT store: %d %v", r.status, r.body)
+	}
+	e.exec(t, `WITH u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:erin') RETURNING id),
+		     m AS (INSERT INTO profile_members (profile_id, user_id, role) SELECT $1, id, 'developer' FROM u RETURNING user_id)
+		INSERT INTO member_stores (profile_id, user_id, store_id) SELECT $1, user_id, $2 FROM m`, shop, storeB)
+	listed := e.call(t, "GET", "/v1/profiles/"+shop+"/stores", alice, "", "").body["stores"].([]any)[1]
+	if r := e.call(t, "GET", path+storeB, alice, "", ""); r.status != http.StatusOK || !reflect.DeepEqual(r.body, listed) {
+		t.Fatalf("GET one store: %d %v, want its list item %v", r.status, r.body, listed)
+	}
+	if r := e.call(t, "GET", path+storeB, dev, "", ""); r.status != http.StatusOK {
+		t.Errorf("a Developer reads their store: %d %v", r.status, r.body)
+	}
+	for _, c := range []struct{ user, id string }{{dev, first}, {alice, storeA}, {alice, "not-a-uuid"}} {
+		if r := e.call(t, "GET", path+c.id, c.user, "", ""); r.status != http.StatusNotFound || errorCode(r) != "store_not_found" {
+			t.Errorf("%s reads %s: %d %v, want 404", c.user, c.id, r.status, r.body)
+		}
+	}
+}
