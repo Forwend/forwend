@@ -20,14 +20,24 @@ export function useSignSend(from: string | null) {
       if (!wallet) throw new Error("The wallet is not ready to sign");
       if (!PRIVY_CHAINS.some((c) => c.id === send.chainId))
         throw new Error("Privy can't sign on this network");
+      // A wallet-paid send (R-216) signs with the server's caps, so it never costs more than the review showed.
+      const gas = send.gas;
       const { hash } = await sendTransaction(
         {
           to: send.token as `0x${string}`,
           chainId: send.chainId,
           data: transferCalldata(send.to, BigInt(send.amount)),
           value: 0,
+          ...(gas
+            ? {
+                type: 2,
+                gasLimit: BigInt(gas.limit),
+                maxFeePerGas: BigInt(gas.maxFeePerGas),
+                maxPriorityFeePerGas: BigInt(gas.maxPriorityFeePerGas),
+              }
+            : {}),
         },
-        { sponsor: true, address: wallet.address, uiOptions: { showWalletUIs: false } },
+        { sponsor: gas === null, address: wallet.address, uiOptions: { showWalletUIs: false } },
       );
       return hash;
     },

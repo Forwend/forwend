@@ -23,7 +23,7 @@ var ReadTimeout = 10 * time.Second
 type Token struct {
 	chain.Asset
 	Livemode bool
-	// Sendable: Forwend pays the gas on this chain, so Send offers it (D-119).
+	// Sendable: Send offers it: Forwend pays the gas, or the token is the gas coin the wallet pays with (D-119, R-216).
 	Sendable bool
 	// Wallet is the wallet's balance at Block, the selected RPC's finalized block; nil when it could not be read or the
 	// profile has no wallet yet.
@@ -98,7 +98,7 @@ func (s *Service) of(ctx context.Context, profileID string, records bool) (Balan
 		    WHERE i.profile_id = $1 AND (ct.status = 'detected' AND NOT ct.booked OR ct.status = 'confirmed' AND NOT ct.booked)
 		    GROUP BY ct.chain_id, ct.token_contract
 		)
-		SELECT t.chain_id, t.contract, t.symbol, t.decimals, c.livemode, c.gas_sponsored, coalesce(b.settling, 0)::text,
+		SELECT t.chain_id, t.contract, t.symbol, t.decimals, c.livemode, c.gas_sponsored OR t.native_gas, coalesce(b.settling, 0)::text,
 		    (coalesce(u.amount, 0) + coalesce(b.confirming, 0))::text, coalesce(b.partial, 0)::text,
 		    coalesce(b.held, 0)::text
 		FROM tokens t JOIN chains c ON c.chain_id = t.chain_id
@@ -107,7 +107,7 @@ func (s *Service) of(ctx context.Context, profileID string, records bool) (Balan
 		WHERE c.enabled AND t.enabled AND c.chain_family = 'evm'
 		ORDER BY t.chain_id, t.contract`, []any{profileID}
 	if !records {
-		query, args = `SELECT t.chain_id, t.contract, t.symbol, t.decimals, c.livemode, c.gas_sponsored, '0', '0', '0', '0'
+		query, args = `SELECT t.chain_id, t.contract, t.symbol, t.decimals, c.livemode, c.gas_sponsored OR t.native_gas, '0', '0', '0', '0'
 			FROM tokens t JOIN chains c ON c.chain_id = t.chain_id
 			WHERE c.enabled AND t.enabled AND c.chain_family = 'evm'
 			ORDER BY t.chain_id, t.contract`, nil

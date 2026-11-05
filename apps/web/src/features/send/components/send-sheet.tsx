@@ -13,6 +13,7 @@ import {
   StepTransition,
   TextField,
 } from "@forwend/ui-web";
+import { skipToken } from "@reduxjs/toolkit/query";
 import { ChevronRight, Users, WalletMinimal } from "lucide-react";
 import { type FormEvent, type ReactNode, useState } from "react";
 import { useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
@@ -21,7 +22,11 @@ import { AMOUNT_ERRORS } from "@/features/invoices/constants/invoices";
 import { parseTokenAmount } from "@/features/invoices/lib/invoices";
 import { profileLabel } from "@/features/profiles/lib/profile";
 import type { Profile } from "@/features/profiles/types/profile";
-import { useCancelSendMutation, usePrepareSendMutation } from "@/features/send/api/send-api";
+import {
+  useCancelSendMutation,
+  useGetSendFeeQuery,
+  usePrepareSendMutation,
+} from "@/features/send/api/send-api";
 import { SendProgress } from "@/features/send/components/send-progress";
 import { SendReview } from "@/features/send/components/send-review";
 import { SEND_MODES, SEND_STEPS } from "@/features/send/constants/send";
@@ -150,6 +155,14 @@ export function SendSheet({
   };
 
   const units = option ? parseTokenAmount(amount, option.decimals) : null;
+  // R-216: where the wallet pays its gas, the fee comes out of the same balance, so Max and the check keep room for it.
+  const feeRead = useGetSendFeeQuery(
+    step === SEND_STEPS.amount && option
+      ? { profileId: profile.profileId, chainId: option.chainId, token: option.token }
+      : skipToken,
+  );
+  const fee = feeRead.currentData ? BigInt(feeRead.currentData.amount) : null;
+  const room = option ? (option.balance > (fee ?? 0n) ? option.balance - (fee ?? 0n) : 0n) : 0n;
   const shownAmount = (value: bigint, o: SendOption) =>
     `${formatTokenAmount({ baseUnits: value, decimals: o.decimals, fractionDigits: exactDigits(value, o.decimals) })} ${o.symbol}`;
 
@@ -175,8 +188,8 @@ export function SendSheet({
       );
       return;
     }
-    if (units > option.balance) {
-      setAmountError(SEND_COPY.moreThanBalance);
+    if (units > room) {
+      setAmountError(fee ? SEND_COPY.moreThanBalanceWithFee : SEND_COPY.moreThanBalance);
       return;
     }
     setAmountError(null);
@@ -328,7 +341,7 @@ export function SendSheet({
         </Choices>
       );
   } else if (step === SEND_STEPS.amount && option) {
-    const theyGet = typeof units === "bigint" && units <= option.balance ? units : 0n;
+    const theyGet = typeof units === "bigint" && units <= room ? units : 0n;
     body = (
       <form noValidate onSubmit={submitAmount} className="flex flex-col gap-5">
         <div className="flex flex-col gap-2">
@@ -352,7 +365,7 @@ export function SendSheet({
               size="sm"
               variant="ghost"
               onClick={() => {
-                setAmount(maxAmount(option.balance, option.decimals));
+                setAmount(maxAmount(room, option.decimals));
                 setAmountError(null);
               }}
             >
@@ -363,12 +376,32 @@ export function SendSheet({
         <dl className="flex flex-col gap-2 rounded-md bg-surface-2 px-4 py-3 text-sm">
           <div className="flex items-baseline justify-between gap-3">
             <dt className="text-muted">{SEND_COPY.networkFee}</dt>
-            <dd className="text-right text-ink">{SEND_COPY.free}</dd>
+            <dd className="text-right text-ink tabular-nums">
+              {fee === null ? (
+                feeRead.isError ? (
+                  SEND_COPY.feeAtReview
+                ) : (
+                  <Skeleton className="inline-block h-4 w-16 align-middle" />
+                )
+              ) : fee === 0n ? (
+                SEND_COPY.free
+              ) : (
+                SEND_COPY.upTo(shownAmount(fee, option))
+              )}
+            </dd>
           </div>
           <div className="flex items-baseline justify-between gap-3">
             <dt className="text-muted">{SEND_COPY.theyGet}</dt>
             <dd className="font-medium text-ink tabular-nums">{shownAmount(theyGet, option)}</dd>
           </div>
+          {fee ? (
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-muted">{SEND_COPY.total}</dt>
+              <dd className="text-ink tabular-nums">
+                {SEND_COPY.upTo(shownAmount(theyGet + fee, option))}
+              </dd>
+            </div>
+          ) : null}
         </dl>
         {fresh.step ?? (
           <Button type="submit" className="w-full" loading={preparing.isLoading}>
@@ -467,7 +500,10 @@ function Choice({
 
 function Initial({ text }: { text: string }) {
   return (
-    <span className="grid size-9 place-items-center rounded-pill bg-surface-2 text-sm font-medium text-ink">
+    <span
+      aria-hidden
+      className="grid size-9 place-items-center rounded-pill bg-surface-2 text-sm font-medium text-ink"
+    >
       {text.slice(0, 1)}
     </span>
   );

@@ -70,7 +70,9 @@ export function matchesRequest(
  * always 0. Name the gas token here once a chain without sponsorship offers Send. */
 export function feeText(send: Send, option: SendOption): string {
   const fee = BigInt(send.networkFee.amount);
-  return fee === 0n ? SEND_COPY.free : `${maxAmount(fee, option.decimals)} ${option.symbol}`;
+  return fee === 0n
+    ? SEND_COPY.free
+    : SEND_COPY.upTo(`${maxAmount(fee, option.decimals)} ${option.symbol}`);
 }
 
 /** The owner's other profiles with a wallet: where a Transfer can go. */

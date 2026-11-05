@@ -1090,6 +1090,8 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
   - The title names the step; a Back button sits before it from the second step on.
   - Amount: the large amount field with the unit inside, the available balance with Max, then Network fee (Free) and
     They receive on a surface-2 box.
+  - Where the wallet pays its own gas (Arc, R-216), the fee reads "Up to 0.0036 USDC", a Total row follows, and Max
+    leaves room for the fee. The review shows the same two rows.
   - Review: the amount large and centered, then a ruled box: From, To, Network, Network fee, They receive.
   - An address reads as plain text, shortened (`0x4edd…81fc`), as everywhere in the app.
     - Its tooltip shows the full address on hover, focus or tap (`TruncatedAddress`, `mono={false}`).

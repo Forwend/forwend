@@ -365,3 +365,46 @@ func TestPendingListsSignedSendsUntilTheWatcherRecordsThem(t *testing.T) {
 		t.Errorf("recorded by the watcher, still pending: %v", list)
 	}
 }
+
+// R-216: where nobody sponsors gas and the token is the chain's gas coin (here Anvil's ether stands in for Arc's
+// USDC), the wallet pays: the send carries the fee and the gas caps it was estimated at.
+func TestAWalletPaysItsOwnGasWhereNotSponsored(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	if fee, err := e.sends.Fee(ctx, e.profile, chaintest.ChainID, e.token); err != nil || fee.Sign() != 0 {
+		t.Fatalf("sponsored fee = %v, %v, want 0", fee, err)
+	}
+	if _, err := e.pool.Exec(ctx, "UPDATE chains SET gas_sponsored = false"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.prepare(t, outsider, "", 1_000_000); !errors.Is(err, ErrInvalid) {
+		t.Errorf("gas in another coin: err = %v, want ErrInvalid", err)
+	}
+	if _, err := e.pool.Exec(ctx, "UPDATE tokens SET native_gas = true"); err != nil {
+		t.Fatal(err)
+	}
+	fee, err := e.sends.Fee(ctx, e.profile, chaintest.ChainID, e.token)
+	if err != nil || fee.Sign() <= 0 {
+		t.Fatalf("self-paid fee = %v, %v", fee, err)
+	}
+	s, err := e.prepare(t, outsider, "", 1_000_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Gas == nil || s.Gas.Limit < 21_000 || s.NetworkFee.Sign() <= 0 ||
+		new(big.Int).Mul(new(big.Int).SetUint64(s.Gas.Limit), s.Gas.MaxFeePerGas).Cmp(
+			new(big.Int).Mul(s.NetworkFee, big.NewInt(1e12))) > 0 {
+		t.Fatalf("gas %+v fee %v: the caps must cost at most the fee", s.Gas, s.NetworkFee)
+	}
+	if got, _ := e.sends.Get(ctx, e.profile, s.ID); got.Gas == nil || got.Gas.Limit != s.Gas.Limit ||
+		got.NetworkFee.Cmp(s.NetworkFee) != 0 {
+		t.Errorf("kept gas %+v fee %v, want %+v %v", got.Gas, got.NetworkFee, s.Gas, s.NetworkFee)
+	}
+	// The amount alone fits the gas coin, but not with the fee.
+	if err := e.anvil.RPC.Call(nil, "anvil_setBalance", chaintest.Sender, "0xDE0B6B3A7640000"); err != nil { // 1 ether
+		t.Fatal(err)
+	}
+	if _, err := e.prepare(t, outsider, "", 1_000_000); !errors.Is(err, ErrInvalid) {
+		t.Errorf("amount plus fee above the balance: err = %v, want ErrInvalid", err)
+	}
+}

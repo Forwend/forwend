@@ -20,16 +20,26 @@ var hashPattern = regexp.MustCompile(`^0x[0-9a-f]{64}$`)
 const columns = `id::text, profile_id::text, chain_id, token_contract, from_address, to_address, to_profile_id::text,
 	amount::text, status, tx_hash, failure, created_at, submitted_at, finished_at,
 	(SELECT tk.symbol FROM tokens tk WHERE tk.chain_id = sends.chain_id AND tk.contract = sends.token_contract),
-	(SELECT tk.decimals FROM tokens tk WHERE tk.chain_id = sends.chain_id AND tk.contract = sends.token_contract)`
+	(SELECT tk.decimals FROM tokens tk WHERE tk.chain_id = sends.chain_id AND tk.contract = sends.token_contract),
+	network_fee::text, gas_limit, max_fee_per_gas::text, max_priority_fee_per_gas::text`
 
 func scan(row pgx.Row) (Send, error) {
 	var s Send
 	var chainID int64
-	var amount string
+	var amount, fee string
+	var limit *int64
+	var maxFee, tip *string
 	err := row.Scan(&s.ID, &s.ProfileID, &chainID, &s.Token, &s.From, &s.To, &s.ToProfileID, &amount, &s.Status,
-		&s.TxHash, &s.Failure, &s.CreatedAt, &s.SubmittedAt, &s.FinishedAt, &s.Symbol, &s.Decimals)
+		&s.TxHash, &s.Failure, &s.CreatedAt, &s.SubmittedAt, &s.FinishedAt, &s.Symbol, &s.Decimals, &fee, &limit, &maxFee,
+		&tip)
 	s.ChainID = uint64(chainID)
 	s.Amount, _ = new(big.Int).SetString(amount, 10)
+	s.NetworkFee, _ = new(big.Int).SetString(fee, 10)
+	if limit != nil && maxFee != nil && tip != nil {
+		s.Gas = &Gas{Limit: uint64(*limit)}
+		s.Gas.MaxFeePerGas, _ = new(big.Int).SetString(*maxFee, 10)
+		s.Gas.MaxPriorityFeePerGas, _ = new(big.Int).SetString(*tip, 10)
+	}
 	return s, err
 }
 

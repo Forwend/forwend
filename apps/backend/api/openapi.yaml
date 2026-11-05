@@ -2955,6 +2955,31 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/sends/fee:
+    get:
+      operationId: getSendFee
+      summary: The most a send of the token on the chain costs the wallet now (R-216)
+      description: 0, paid by Forwend, where it sponsors gas. Elsewhere the wallet pays in the token, its chain's gas coin.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - { name: chainId, in: query, required: true, schema: { type: integer } }
+        - { name: token, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The fee
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SendFee" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503":
+          description: The chain's RPC could not be read (network_unavailable); try again shortly.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/sends/{sendId}:
     get:
       operationId: getSend
@@ -4713,7 +4738,9 @@ components:
         symbol: { type: string }
         decimals: { type: integer, minimum: 0 }
         livemode: { type: boolean, description: The chain's mode (D-87). }
-        sendable: { type: boolean, description: "Forwend pays the gas on this chain, so Send offers it (D-119)." }
+        sendable:
+          type: boolean
+          description: "Send offers it: Forwend pays the gas, or the token is the gas coin the wallet pays with (D-119, R-216)."
         wallet:
           description: The profile wallet's balance at finalizedBlock; null when the profile has no wallet yet or the
             chain could not be read.
@@ -5726,7 +5753,7 @@ components:
     Send:
       type: object
       required: [sendId, chainId, token, symbol, decimals, from, to, toProfileId, amount, status, final, txHash, failure,
-        networkFee, warnings, createdAt]
+        networkFee, gas, warnings, createdAt]
       properties:
         sendId: { type: string, format: uuid }
         chainId: { type: integer }
@@ -5749,17 +5776,28 @@ components:
           type: [string, "null"]
           enum: [reverted, dropped, null]
           description: "reverted: mined without the transfer. dropped: not on the chain 30 minutes after it was signed."
-        networkFee:
-          type: object
-          required: [amount, paidBy]
-          properties:
-            amount: { type: string, description: What the wallet pays, in base units of the token }
-            paidBy: { type: string, enum: [forwend] }
+        networkFee: { $ref: "#/components/schemas/SendFee" }
+        gas:
+          description: What the browser signs a wallet-paid send with, so it costs at most networkFee; null when Forwend pays.
+          oneOf:
+            - type: object
+              required: [limit, maxFeePerGas, maxPriorityFeePerGas]
+              properties:
+                limit: { type: string }
+                maxFeePerGas: { type: string, description: In the gas coin's wei }
+                maxPriorityFeePerGas: { type: string }
+            - type: "null"
         warnings:
           type: array
           description: Set when prepared. contract, the recipient has code; newRecipient, this wallet never sent there.
           items: { type: string, enum: [contract, newRecipient] }
         createdAt: { type: string, format: date-time }
+    SendFee:
+      type: object
+      required: [amount, paidBy]
+      properties:
+        amount: { type: string, description: "The most the wallet pays, in the token's base units; 0 when Forwend pays" }
+        paidBy: { type: string, enum: [forwend, wallet] }
     Error:
       type: object
       required: [error]

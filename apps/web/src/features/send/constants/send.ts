@@ -24,5 +24,8 @@ export const SEND_WARNINGS = { contract: "contract", newRecipient: "newRecipient
 
 export const SEND_FAILURES = { reverted: "reverted", dropped: "dropped" } as const;
 
+/** Who pays the network fee (D-119): Forwend where it sponsors gas, else the wallet, from the token itself (R-216). */
+export const FEE_PAYERS = { forwend: "forwend", wallet: "wallet" } as const;
+
 /** How often an open sheet asks for the send's progress: about one block. */
 export const SEND_POLL_MS = 1500;

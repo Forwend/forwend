@@ -23,7 +23,7 @@ func TestCheckGas(t *testing.T) {
 	a := chaintest.Start(t)
 	client := ethclient.NewClient(a.RPC)
 	executor := common.HexToAddress("0x2222222222222222222222222222222222222222")
-	_, feeCap, err := fees(ctx, client, chaintest.ChainID)
+	_, feeCap, err := Fees(ctx, client, chaintest.ChainID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func TestCheckGasInFeeToken(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			_, feeCap, err := fees(ctx, client, chaintest.ChainID)
+			_, feeCap, err := Fees(ctx, client, chaintest.ChainID)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -162,12 +162,12 @@ func TestFeesNeverExceedTheChainCeiling(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer client.Close()
-	tip, feeCap, err := fees(ctx, client, chaintest.ChainID)
+	tip, feeCap, err := Fees(ctx, client, chaintest.ChainID)
 	ceiling := maxFeePerGas[chaintest.ChainID]
 	if err != nil || feeCap.Cmp(ceiling) != 0 || tip.Cmp(feeCap) > 0 {
 		t.Fatalf("tip %v, fee cap %v (%v); want both at most the %v ceiling", tip, feeCap, err, ceiling)
 	}
-	if _, _, err := fees(ctx, ethclient.NewClient(a.RPC), 999); err == nil || !strings.Contains(err.Error(), "no fee ceiling") {
+	if _, _, err := Fees(ctx, ethclient.NewClient(a.RPC), 999); err == nil || !strings.Contains(err.Error(), "no fee ceiling") {
 		t.Fatalf("a chain without a ceiling: %v, want refused", err)
 	}
 }
@@ -176,7 +176,7 @@ func TestFeesNeverExceedTheChainCeiling(t *testing.T) {
 func TestSignerAlertsWhenExecutorGasRunsLow(t *testing.T) {
 	e := setup(t)
 	s := e.signer(t)
-	_, feeCap, err := fees(t.Context(), e.client, e.chainID)
+	_, feeCap, err := Fees(t.Context(), e.client, e.chainID)
 	if err != nil {
 		t.Fatal(err)
 	}

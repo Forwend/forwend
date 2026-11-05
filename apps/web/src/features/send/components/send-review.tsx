@@ -111,6 +111,22 @@ export function SendReview({
             {amount} {option.symbol}
           </span>
         </Row>
+        {send.networkFee.amount === "0" ? null : (
+          <Row term={SEND_COPY.total}>
+            <span className="tabular-nums">
+              {SEND_COPY.upTo(
+                `${formatTokenAmount({
+                  baseUnits: units + BigInt(send.networkFee.amount),
+                  decimals: option.decimals,
+                  fractionDigits: exactDigits(
+                    units + BigInt(send.networkFee.amount),
+                    option.decimals,
+                  ),
+                })} ${option.symbol}`,
+              )}
+            </span>
+          </Row>
+        )}
       </dl>
       {send.warnings.includes(SEND_WARNINGS.contract) ? (
         <Notice tone={NOTICE_TONES.danger}>{SEND_COPY.contract}</Notice>

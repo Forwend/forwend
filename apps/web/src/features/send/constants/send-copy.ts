@@ -22,6 +22,11 @@ export const SEND_COPY = {
   amount: "Amount",
   max: "Max",
   moreThanBalance: "That is more than this wallet holds.",
+  moreThanBalanceWithFee: "That plus the network fee is more than this wallet holds.",
+  feeAtReview: "Shown at review",
+  total: "Total",
+  // A wallet-paid fee is a ceiling: the network usually takes less (R-216).
+  upTo: (amount: string) => `Up to ${amount}`,
   amountFormat: "Enter an amount such as 25 or 25.50.",
   amountDecimals: (symbol: string, decimals: number) =>
     `${symbol} has at most ${decimals} decimals.`,
