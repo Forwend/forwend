@@ -729,7 +729,7 @@
         "F410",
         "F411"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend-e2e"
       ],
@@ -783,11 +783,18 @@
           "summary": "Fresh review found the test ran but proved less than claimed; all fixed and rerun green: it now sends the printed Safe To/Data bytes (checked equal to the cast line encoding) instead of cast lines; runs ops case for every held invoice and checks held amount, reason and refundable now; checks the payer's balance rises by each returned amount; compares ledger and chain at A's settle; holds B in refund_pending across 10 signer rounds with no settlement intent; shows D refused before its deadline; R-83 now says none of the held money settles (the contract settles only the amount). Reopen 409 proven to be the queued return's (reopenUntil set just before). Stable in 5 runs; no Anvil or temp dirs left.",
           "at": "2026-11-05T08:03:40Z",
           "filesHash": "17e4971f27b255c7"
-        }
+        },
+        "commit": "9b9e4bf5",
+        "doneAt": "2026-11-05T08:04:30Z"
       },
       "branch": "test/f412-returns-through-support-pass-end-to-end",
       "baseCommit": "c05dd0f478f4d4e40b3998cf4b5cfbba4e6e5110",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "test/f412-returns-through-support-pass-end-to-end",
+        "base": "main"
+      }
     },
     {
       "id": "F414",
