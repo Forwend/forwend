@@ -12,12 +12,11 @@ import { type ReactNode, useState } from "react";
 import { profileLabel } from "@/features/profiles/lib/profile";
 import type { Profile } from "@/features/profiles/types/profile";
 import { useSubmitSendMutation } from "@/features/send/api/send-api";
-import type { Recipient } from "@/features/send/components/send-sheet";
 import { SEND_MODES, SEND_STATUSES, SEND_WARNINGS } from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
 import { useSignSend } from "@/features/send/hooks/use-sign-send";
-import { addressGroups, type SendOption } from "@/features/send/lib/send";
-import type { Send, SendMode } from "@/features/send/types/send";
+import { addressGroups, feeText } from "@/features/send/lib/send";
+import type { Recipient, Send, SendMode, SendOption } from "@/features/send/types/send";
 import { chainName } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 
@@ -27,12 +26,24 @@ export interface SendReviewProps {
   option: SendOption;
   from: Profile;
   recipient: Recipient;
+  /** True while Privy signs: the sheet can't close then. */
+  onSigning: (signing: boolean) => void;
   onSubmitted: (send: Send) => void;
 }
 
 // The one screen the owner reads before signing: Privy shows none of its own (R-213). A first send to an address,
 // or one to a contract, asks the owner to tick that they checked it, so a warning can't be passed by habit.
-export function SendReview({ mode, send, option, from, recipient, onSubmitted }: SendReviewProps) {
+// Every value shown is the server's send, which is what Privy signs; the sheet refused it if it differs from the
+// request.
+export function SendReview({
+  mode,
+  send,
+  option,
+  from,
+  recipient,
+  onSigning,
+  onSubmitted,
+}: SendReviewProps) {
   const { sign, canSign } = useSignSend(send.from);
   const [submit] = useSubmitSendMutation();
   const [checked, setChecked] = useState(false);
@@ -52,6 +63,7 @@ export function SendReview({ mode, send, option, from, recipient, onSubmitted }:
 
   const confirm = async () => {
     setWorking(true);
+    onSigning(true);
     setError(null);
     let hash: string;
     try {
@@ -59,8 +71,10 @@ export function SendReview({ mode, send, option, from, recipient, onSubmitted }:
     } catch {
       setError(SEND_COPY.signFailed);
       setWorking(false);
+      onSigning(false);
       return;
     }
+    onSigning(false);
     // The money is moving now: the progress step reports the hash again if this report is lost.
     const reported = await submit({ profileId: from.profileId, sendId: send.sendId, txHash: hash })
       .unwrap()
@@ -74,7 +88,6 @@ export function SendReview({ mode, send, option, from, recipient, onSubmitted }:
         <p className="text-4xl font-medium tracking-tight text-ink tabular-nums">
           {amount} <span className="text-2xl text-muted">{option.symbol}</span>
         </p>
-        <p className="text-sm text-muted">{chainName(option.chainId)}</p>
       </div>
       <dl className="divide-y divide-line rounded-md border border-line text-sm">
         <Row term={SEND_COPY.from}>
@@ -88,13 +101,17 @@ export function SendReview({ mode, send, option, from, recipient, onSubmitted }:
               <span className="block font-mono text-xs text-muted">{shortAddress(send.to)}</span>
             </>
           ) : (
-            <Groups address={recipient.address} />
+            <Groups
+              address={recipient.address.toLowerCase() === send.to ? recipient.address : send.to}
+            />
           )}
         </Row>
-        <Row term={SEND_COPY.network}>{chainName(option.chainId)}</Row>
+        <Row term={SEND_COPY.network}>{chainName(send.chainId)}</Row>
         <Row term={SEND_COPY.networkFee}>
-          {SEND_COPY.free}
-          <span className="text-muted"> · {SEND_COPY.feeNote}</span>
+          {feeText(send, option)}
+          {send.networkFee.amount === "0" ? (
+            <span className="text-muted"> · {SEND_COPY.feeNote}</span>
+          ) : null}
         </Row>
         <Row term={SEND_COPY.theyGet}>
           <span className="font-medium tabular-nums">
@@ -128,6 +145,9 @@ export function SendReview({ mode, send, option, from, recipient, onSubmitted }:
       >
         {label}
       </Button>
+      {canSign ? null : (
+        <p className="-mt-3 text-center text-xs text-muted">{SEND_COPY.walletLoading}</p>
+      )}
     </div>
   );
 }

@@ -1,17 +1,8 @@
 import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import type { Balances } from "@/features/balances/types/balances";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
+import type { Send, SendOption, SendRequest } from "@/features/send/types/send";
 import { evmAddress } from "@/shared/schemas/api";
-
-/** A token on one network that the wallet holds. */
-export interface SendOption {
-  chainId: number;
-  token: string;
-  symbol: string;
-  decimals: number;
-  balance: bigint;
-  sendable: boolean;
-}
 
 export function isWalletAddress(text: string): boolean {
   return evmAddress.safeParse(text.trim()).success;
@@ -53,4 +44,32 @@ export function sendError(error: unknown): string {
 export function transferCalldata(to: string, amount: bigint): `0x${string}` {
   const word = (hex: string) => hex.padStart(64, "0");
   return `0xa9059cbb${word(to.slice(2).toLowerCase())}${word(amount.toString(16))}`;
+}
+
+/** The whole balance as the amount field takes it: every decimal it has, no grouping, no trailing zeros. */
+export function maxAmount(balance: bigint, decimals: number): string {
+  const scale = 10n ** BigInt(decimals);
+  const fraction = (balance % scale).toString().padStart(decimals, "0").replace(/0+$/, "");
+  return fraction ? `${balance / scale}.${fraction}` : `${balance / scale}`;
+}
+
+/** The server's send is the one the owner asked for: what Privy signs comes from it, so a different answer is
+ * refused before the review shows. */
+export function matchesRequest(
+  send: Send,
+  request: Omit<SendRequest, "profileId">,
+  to: string,
+): boolean {
+  return (
+    send.chainId === request.chainId &&
+    send.token.toLowerCase() === request.token.toLowerCase() &&
+    send.amount === request.amount &&
+    send.to.toLowerCase() === to.toLowerCase()
+  );
+}
+
+/** The network fee the wallet pays (D-119): Free where Forwend pays it, else the amount in the token. */
+export function feeText(send: Send, option: SendOption): string {
+  const fee = BigInt(send.networkFee.amount);
+  return fee === 0n ? SEND_COPY.free : `${maxAmount(fee, option.decimals)} ${option.symbol}`;
 }

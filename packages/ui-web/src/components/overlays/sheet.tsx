@@ -13,6 +13,8 @@ export interface SheetProps {
   /** A step after the first: a Back button sits before the title. */
   onBack?: () => void;
   backLabel?: string;
+  /** Work that closing would not stop is running, such as a signature: Escape, the backdrop and Close do nothing. */
+  locked?: boolean;
   children: ReactNode;
 }
 
@@ -23,6 +25,7 @@ export function Sheet({
   closeLabel = "Close",
   onBack,
   backLabel = "Back",
+  locked = false,
   children,
 }: SheetProps) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -44,9 +47,12 @@ export function Sheet({
       ref={ref}
       aria-label={title}
       tabIndex={-1}
+      onCancel={(event) => {
+        if (locked) event.preventDefault(); // Escape
+      }}
       onClose={() => onOpenChange(false)}
       onClick={(event) => {
-        if (event.target === ref.current) onOpenChange(false); // a click on the backdrop
+        if (event.target === ref.current && !locked) onOpenChange(false); // a click on the backdrop
       }}
       className={cx(
         "mx-0 mt-auto mb-0 max-h-[92dvh] outline-none w-full max-w-none rounded-t-lg border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[var(--fw-scrim)] sm:m-auto sm:max-w-md sm:rounded-lg",
@@ -67,7 +73,12 @@ export function Sheet({
           ) : null}
           <h2 className="truncate text-lg font-medium">{title}</h2>
         </div>
-        <IconButton label={closeLabel} size="md" onClick={() => onOpenChange(false)}>
+        <IconButton
+          label={closeLabel}
+          size="md"
+          disabled={locked}
+          onClick={() => onOpenChange(false)}
+        >
           <X aria-hidden className="size-[var(--fw-icon-md)]" />
         </IconButton>
       </div>

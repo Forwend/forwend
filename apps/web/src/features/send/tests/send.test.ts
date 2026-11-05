@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   addressGroups,
   isWalletAddress,
+  matchesRequest,
+  maxAmount,
   sendOptions,
   transferCalldata,
 } from "@/features/send/lib/send";
@@ -52,5 +54,29 @@ describe("send", () => {
       [421614, 7n, true],
       [5042002, 5n, false],
     ]);
+  });
+});
+
+describe("max and the server's answer", () => {
+  it("fills Max with the exact balance, whatever the decimals", () => {
+    expect(maxAmount(26_250_000n, 6)).toBe("26.25");
+    expect(maxAmount(100n, 0)).toBe("100");
+    expect(maxAmount(1n, 18)).toBe(`0.${"0".repeat(17)}1`);
+    expect(maxAmount(5_000_000n, 6)).toBe("5");
+  });
+
+  it("refuses a prepared send that isn't the one asked for", () => {
+    const asked = { chainId: 84532, token: "0xAA", amount: "100", to: "0xBb" };
+    const send = {
+      chainId: 84532,
+      token: "0xaa",
+      amount: "100",
+      to: "0xbb",
+    } as Parameters<typeof matchesRequest>[0];
+    expect(matchesRequest(send, asked, asked.to)).toBe(true);
+    expect(matchesRequest({ ...send, amount: "1000" }, asked, asked.to)).toBe(false);
+    expect(matchesRequest({ ...send, to: "0xcc" }, asked, asked.to)).toBe(false);
+    expect(matchesRequest({ ...send, chainId: 421614 }, asked, asked.to)).toBe(false);
+    expect(matchesRequest({ ...send, token: "0xdd" }, asked, asked.to)).toBe(false);
   });
 });

@@ -33,14 +33,14 @@ export const SEND_COPY = {
   review: "Review",
   from: "From",
   network: "Network",
-  wallet: "Wallet",
   newRecipient:
     "You haven't sent to this address before. Compare every character with the address you were given.",
   contract: "This address is a contract, not a wallet. Money sent to it may not come out again.",
   checked: "I checked the whole address",
   sendAmount: (amount: string) => `Send ${amount}`,
   transferAmount: (amount: string) => `Transfer ${amount}`,
-  signFailed: "We couldn't sign this send. Nothing left your wallet. Try again.",
+  signFailed: "We couldn't sign this send. Check Transactions before you try again.",
+  walletLoading: "Getting your wallet ready…",
   busy: "A send from this wallet is still on its way. Try again once it arrives.",
   failedToPrepare: "We couldn't check this send. Try again.",
   sending: "Sending",
@@ -53,5 +53,4 @@ export const SEND_COPY = {
   dropped: "This send never reached the network. Nothing left your wallet.",
   viewOn: (explorer: string) => `View on ${explorer}`,
   done: "Done",
-  tryAgain: "Try again",
 } as const;

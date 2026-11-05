@@ -13,7 +13,7 @@ import { PRIVY_PASSKEY } from "@/features/onboarding/constants/onboarding";
 import { rememberReturnPage, takeReturnPage } from "@/features/onboarding/lib/onboarding";
 import { useSignUpQuery } from "@/features/profiles/api/profiles-api";
 import { ProfileSheet } from "@/features/profiles/components/profile-sheet";
-import { PERMISSIONS } from "@/features/profiles/constants/profile";
+import { PERMISSIONS, ROLES } from "@/features/profiles/constants/profile";
 import { AppSessionContext } from "@/features/profiles/hooks/use-app-session";
 import {
   chosenProfile,
@@ -65,6 +65,12 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const active = profiles ? chosenProfile(profiles, activeId ?? savedId) : undefined;
   const money = active ? can(active, PERMISSIONS.moneyRead) : false;
   const moves = active ? can(active, PERMISSIONS.moneyMove) : false;
+  // Transfer needs another profile of the owner's with a wallet to move money to.
+  const transfers =
+    moves &&
+    (profiles ?? []).some(
+      (p) => p.profileId !== active?.profileId && p.role === ROLES.owner && p.walletAddress,
+    );
   // Receive's and Send's token lists, read only while one is open: a closed sheet polls nothing.
   const balances = useGetBalancesQuery(
     active && money && (receiving || sending) ? active.profileId : skipToken,
@@ -152,13 +158,13 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
             chooseProfile: switchProfile,
             openReceive: () => setReceiving(true),
             openSend: moves ? () => setSending(SEND_MODES.send) : null,
-            openTransfer: moves ? () => setSending(SEND_MODES.transfer) : null,
+            openTransfer: transfers ? () => setSending(SEND_MODES.transfer) : null,
             // A request is a form of its own, on a page (R-71).
             openRequest: () => router.push(APP_ROUTES.newInvoice),
             signOut,
           }
         : null,
-    [profiles, active, moves, switchProfile, router, signOut],
+    [profiles, active, moves, transfers, switchProfile, router, signOut],
   );
 
   // Signed up users always have a personal profile; none means the answer is wrong, not that it is loading.
@@ -289,7 +295,9 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
             balances={balances.currentData ?? null}
             failed={balances.isError}
             onRetry={balances.refetch}
-            onSent={balances.refetch}
+            onSent={() => {
+              if (!balances.isUninitialized) balances.refetch();
+            }}
           />
           <CommandMenu
             open={searching}
@@ -298,7 +306,8 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
             active={active}
             onSwitch={switchProfile}
             onReceive={() => setReceiving(true)}
-            onSend={moves ? setSending : null}
+            onSend={moves ? () => setSending(SEND_MODES.send) : null}
+            onTransfer={transfers ? () => setSending(SEND_MODES.transfer) : null}
             onRequest={() => router.push(APP_ROUTES.newInvoice)}
           />
         </div>

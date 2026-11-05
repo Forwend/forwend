@@ -11,14 +11,23 @@ export interface StepTransitionProps {
   step: string;
   /** next enters from the right, back from the left, so the way through the steps has a place. */
   direction: StepDirection;
+  /** The step's name, read out when the step takes the focus. */
+  label: string;
   children: ReactNode;
   className?: string;
 }
 
 /** The steps of a sheet or dialog: the new step slides in from its direction, and the box's height follows it, so
- * the frame grows and shrinks around each step instead of jumping. Reduced motion shows each step at once. The new
- * step takes the focus, unless a field in it took it first: the control that led there is gone. */
-export function StepTransition({ step, direction, children, className }: StepTransitionProps) {
+ * the frame grows and shrinks around each step instead of jumping. Reduced motion shows each step at once. When the
+ * control that led to the step is gone, the step takes the focus and is read out by its name; a field that took the
+ * focus, or a Back button that is still there, keeps it. */
+export function StepTransition({
+  step,
+  direction,
+  label,
+  children,
+  className,
+}: StepTransitionProps) {
   const inner = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState<number | null>(null);
   useLayoutEffect(() => {
@@ -33,7 +42,9 @@ export function StepTransition({ step, direction, children, className }: StepTra
     if (shown.current === step) return;
     shown.current = step;
     const el = inner.current;
-    if (el && !el.contains(document.activeElement)) el.focus({ preventScroll: true });
+    const active = document.activeElement;
+    if (el && (!active || active === document.body || !active.isConnected))
+      el.focus({ preventScroll: true });
   }, [step]);
   return (
     // The 4px band keeps focus rings and the step's offset inside the clip.
@@ -44,7 +55,8 @@ export function StepTransition({ step, direction, children, className }: StepTra
         className,
       )}
     >
-      <div ref={inner} tabIndex={-1} className="outline-none">
+      {/* biome-ignore lint/a11y/useSemanticElements: a step holds lists and text, not only a form's fields, so a fieldset doesn't fit */}
+      <div ref={inner} role="group" aria-label={label} tabIndex={-1} className="outline-none">
         <div
           key={step}
           className={cx(

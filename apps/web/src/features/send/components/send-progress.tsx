@@ -5,11 +5,10 @@ import { CircleAlert, ExternalLink } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { profileLabel } from "@/features/profiles/lib/profile";
 import { useGetSendQuery, useSubmitSendMutation } from "@/features/send/api/send-api";
-import type { Recipient } from "@/features/send/components/send-sheet";
 import { SEND_FAILURES, SEND_POLL_MS, SEND_STATUSES } from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
-import { addressGroups, type SendOption } from "@/features/send/lib/send";
-import type { Send } from "@/features/send/types/send";
+import { addressGroups } from "@/features/send/lib/send";
+import type { Recipient, Send, SendOption } from "@/features/send/types/send";
 import { txLink } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 
@@ -22,11 +21,7 @@ export interface SendProgressProps {
   onDone: () => void;
 }
 
-const SETTLED: readonly string[] = [
-  SEND_STATUSES.sent,
-  SEND_STATUSES.failed,
-  SEND_STATUSES.canceled,
-];
+const SETTLED: readonly string[] = [SEND_STATUSES.sent, SEND_STATUSES.failed];
 
 // R-214: the chain, read through the server, says Sent; the browser's own answer only says it was signed.
 export function SendProgress({
@@ -46,13 +41,15 @@ export function SendProgress({
     const timer = setInterval(refetch, SEND_POLL_MS);
     return () => clearInterval(timer);
   }, [settled, refetch]);
-  // A hash whose first report was lost is reported again: the server must know it to follow the money.
+  // A hash the server doesn't have yet is reported again on every read: the server must know it to follow the money.
+  // It takes the hash for a send that expired or was replaced meanwhile too.
   const [submit] = useSubmitSendMutation();
   const hash = initial.txHash;
   const lost = read.currentData !== undefined && read.currentData.txHash === null;
+  const readAt = read.fulfilledTimeStamp;
   useEffect(() => {
-    if (lost && hash) submit({ profileId, sendId: initial.sendId, txHash: hash });
-  }, [lost, hash, submit, profileId, initial.sendId]);
+    if (lost && hash && readAt) submit({ profileId, sendId: initial.sendId, txHash: hash });
+  }, [lost, hash, readAt, submit, profileId, initial.sendId]);
   const told = useRef(false);
   useEffect(() => {
     if (send.status === SEND_STATUSES.sent && !told.current) {
@@ -68,7 +65,7 @@ export function SendProgress({
       ? profileLabel(recipient.profile)
       : `${addressGroups(recipient.address).slice(0, 2).join("")}…${recipient.address.slice(-4)}`;
   const link = send.txHash ? txLink(send.chainId, send.txHash) : null;
-  const failed = send.status === SEND_STATUSES.failed || send.status === SEND_STATUSES.canceled;
+  const failed = send.status === SEND_STATUSES.failed;
   const sent = send.status === SEND_STATUSES.sent;
 
   return (

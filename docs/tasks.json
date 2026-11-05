@@ -191,7 +191,8 @@
       "verification": [
         "web-unit",
         "web-e2e",
-        "auth-live-e2e"
+        "auth-live-e2e",
+        "send-live-e2e"
       ],
       "refs": [
         "R-213",

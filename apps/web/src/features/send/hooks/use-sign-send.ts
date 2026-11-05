@@ -2,6 +2,7 @@
 
 import { useSendTransaction, useWallets } from "@privy-io/react-auth";
 import { useCallback } from "react";
+import { PRIVY_CHAINS } from "@/features/auth/constants/privy-chains";
 import { transferCalldata } from "@/features/send/lib/send";
 import type { Send } from "@/features/send/types/send";
 
@@ -17,6 +18,8 @@ export function useSignSend(from: string | null) {
   const sign = useCallback(
     async (send: Send): Promise<string> => {
       if (!wallet) throw new Error("The wallet is not ready to sign");
+      if (!PRIVY_CHAINS.some((c) => c.id === send.chainId))
+        throw new Error("Privy can't sign on this network");
       const { hash } = await sendTransaction(
         {
           to: send.token as `0x${string}`,

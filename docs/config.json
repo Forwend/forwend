@@ -304,6 +304,12 @@
       "timeoutSeconds": 600
     },
     {
+      "id": "send-live-e2e",
+      "argv": ["pnpm", "--filter", "@forwend/web", "e2e:live", "e2e/privy/send.spec.ts"],
+      "cache": false,
+      "timeoutSeconds": 600
+    },
+    {
       "id": "web-e2e",
       "argv": ["pnpm", "--filter", "@forwend/web", "e2e"],
       "cache": true,

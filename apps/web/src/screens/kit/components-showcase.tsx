@@ -752,7 +752,7 @@ function StepsDemo() {
         title={DEMO_STEPS[index] ?? ""}
         onBack={index > 0 ? () => move(-1) : undefined}
       >
-        <StepTransition step={String(index)} direction={direction}>
+        <StepTransition step={String(index)} direction={direction} label={DEMO_STEPS[index] ?? ""}>
           <div className="flex flex-col gap-3">
             {Array.from({ length: index === 1 ? 6 : index === 0 ? 3 : 1 }, (_, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: placeholder rows, one per position

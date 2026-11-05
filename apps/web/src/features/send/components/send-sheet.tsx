@@ -27,8 +27,14 @@ import { SendProgress } from "@/features/send/components/send-progress";
 import { SendReview } from "@/features/send/components/send-review";
 import { SEND_MODES, SEND_STEPS } from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
-import { isWalletAddress, type SendOption, sendError, sendOptions } from "@/features/send/lib/send";
-import type { Send, SendMode, SendStep } from "@/features/send/types/send";
+import {
+  isWalletAddress,
+  matchesRequest,
+  maxAmount,
+  sendError,
+  sendOptions,
+} from "@/features/send/lib/send";
+import type { Recipient, Send, SendMode, SendOption, SendStep } from "@/features/send/types/send";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { LoadError } from "@/shared/components/load-error";
 import { exactDigits } from "@/shared/lib/money";
@@ -46,8 +52,6 @@ export interface SendSheetProps {
   /** The send reached the chain: balances and lists can read again. */
   onSent: () => void;
 }
-
-export type Recipient = { profile: Profile } | { address: string };
 
 const TITLES: Record<SendStep, string> = {
   [SEND_STEPS.to]: SEND_COPY.to,
@@ -87,6 +91,10 @@ export function SendSheet({
   const [amountError, setAmountError] = useState<string | null>(null);
   const [prepared, setPrepared] = useState<Send | null>(null);
   const [submitted, setSubmitted] = useState<Send | null>(null);
+  // While Privy signs, the sheet stays open: closing it would not stop the money.
+  const [signing, setSigning] = useState(false);
+  // Every send checked this time; the unsigned ones are given up when the sheet closes.
+  const [checked, setChecked] = useState<string[]>([]);
   const [prepare, preparing] = usePrepareSendMutation();
   const [cancel] = useCancelSendMutation();
   const fresh = useFreshSignIn();
@@ -107,6 +115,8 @@ export function SendSheet({
       setAmountError(null);
       setPrepared(null);
       setSubmitted(null);
+      setSigning(false);
+      setChecked([]);
       preparing.reset();
     }
   }
@@ -132,9 +142,10 @@ export function SendSheet({
   };
   const close = (next: boolean) => {
     if (!next) {
+      if (signing) return;
       if (fresh.pending) fresh.cancel();
-      if (prepared && !submitted) {
-        cancel({ profileId: profile.profileId, sendId: prepared.sendId });
+      for (const sendId of checked) {
+        if (sendId !== submitted?.sendId) cancel({ profileId: profile.profileId, sendId });
       }
     }
     onOpenChange(next);
@@ -171,28 +182,31 @@ export function SendSheet({
       return;
     }
     setAmountError(null);
-    const to =
-      "profile" in recipient
+    const request = {
+      chainId: option.chainId,
+      token: option.token,
+      amount: units.toString(),
+      ...("profile" in recipient
         ? { toProfileId: recipient.profile.profileId }
-        : { to: recipient.address };
+        : { to: recipient.address }),
+    };
     const result = await fresh
-      .run(() =>
-        prepare({
-          profileId: profile.profileId,
-          chainId: option.chainId,
-          token: option.token,
-          amount: units.toString(),
-          ...to,
-        }).unwrap(),
-      )
+      .run(() => prepare({ profileId: profile.profileId, ...request }).unwrap())
       .catch((error: unknown) => {
         if (!fresh.cancelled(error)) setAmountError(sendError(error));
         return null;
       });
-    if (result) {
-      setPrepared(result);
-      go(SEND_STEPS.review);
+    if (!result) return;
+    setChecked((c) => [...c, result.sendId]);
+    const expected =
+      "profile" in recipient ? (recipient.profile.walletAddress ?? "") : recipient.address;
+    if (!matchesRequest(result, request, expected)) {
+      cancel({ profileId: profile.profileId, sendId: result.sendId });
+      setAmountError(SEND_COPY.failedToPrepare);
+      return;
     }
+    setPrepared(result);
+    go(SEND_STEPS.review);
   };
 
   const title =
@@ -340,15 +354,7 @@ export function SendSheet({
               size="sm"
               variant="ghost"
               onClick={() => {
-                setAmount(
-                  formatTokenAmount({
-                    baseUnits: option.balance,
-                    decimals: option.decimals,
-                    fractionDigits: option.decimals,
-                  })
-                    .replaceAll(",", "")
-                    .replace(/\.?0+$/, ""),
-                );
+                setAmount(maxAmount(option.balance, option.decimals));
                 setAmountError(null);
               }}
             >
@@ -384,6 +390,7 @@ export function SendSheet({
         option={option}
         from={profile}
         recipient={recipient}
+        onSigning={setSigning}
         onSubmitted={(s) => {
           setSubmitted(s);
           go(SEND_STEPS.progress);
@@ -408,12 +415,16 @@ export function SendSheet({
       open={open}
       onOpenChange={close}
       title={title}
-      onBack={canGoBack ? back : undefined}
+      onBack={canGoBack && !signing ? back : undefined}
       backLabel={SEND_COPY.back}
+      locked={signing}
     >
-      <StepTransition step={step} direction={direction}>
-        {body}
-      </StepTransition>
+      {/* A closed sheet holds no step, so nothing in it polls or signs. */}
+      {open ? (
+        <StepTransition step={step} direction={direction} label={title}>
+          {body}
+        </StepTransition>
+      ) : null}
     </Sheet>
   );
 }
