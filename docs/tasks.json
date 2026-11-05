@@ -520,7 +520,7 @@
       "dependsOn": [
         "F408"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "web-e2e"
@@ -605,11 +605,18 @@
           "summary": "Pass after three fresh reviews. Fixed from them: the reason now comes from the ledger's invoice.held history (was guessed from the status), only since the last reopen, and only when one reason's holds add up to what is held (dust plus late, mixed, part return give none); payer-chooses keys by option tested; rows.Close; the status badge trigger has the hint in aria-label, a 44px touch band and rounded-sm focus ring; Issues leads with a real problem and its title reads cleanly; held money has no warning color in the Issues dot or the late-deposit note; copy promises no return (D-118, D-90); one word, customer, on owner screens; dead confirming field and note copy removed. Left: the Overpaid badge's shared warning tone (owner's call); invoice history and the bell still show held money without a reason; settlement/returns.go reads held reasons by invoice_id only.",
           "at": "2026-11-05T06:27:41Z",
           "filesHash": "1dfa439f62d1abf9"
-        }
+        },
+        "commit": "df7cc30c",
+        "doneAt": "2026-11-05T06:29:28Z"
       },
       "branch": "feat/f409-the-owner-sees-why-money-is-held-and-tha",
       "baseCommit": "b2bc12428c33cbdfb7d43d031456d4379acb599e",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f409-the-owner-sees-why-money-is-held-and-tha",
+        "base": "main"
+      }
     },
     {
       "id": "F411",
