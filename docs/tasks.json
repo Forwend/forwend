@@ -1054,7 +1054,7 @@
         "A receiver's refundable() reads 0 off its intended chain, as factory.status does and refund() allows (audit 2026-11-04); a test covers it."
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "blocked",
       "verification": [
         "harness",
         "docs-check",
@@ -1067,9 +1067,10 @@
       "keep": [],
       "review": true,
       "notes": [
-        "2026-11-04 Audit 2026-11-04: InvoiceReceiver.refundable() returns the balance on a wrong chain where refund() reverts. Fix: return 0 when block.chainid != intendedChainId. Any receiver change moves the factory's CREATE2 address (vectors test fails), so it ships with this task's redeploy."
+        "2026-11-04 Audit 2026-11-04: InvoiceReceiver.refundable() returns the balance on a wrong chain where refund() reverts. Fix: return 0 when block.chainid != intendedChainId. Any receiver change moves the factory's CREATE2 address (vectors test fails), so it ships with this task's redeploy.",
+        "2026-11-05 blocked: Deferred by owner (2026-11-05) to the first mainnet deploy: the refundable() fix moves the factory address, so it ships with that redeploy, with the factory recover."
       ],
-      "blockedReason": null,
+      "blockedReason": "Deferred by owner (2026-11-05) to the first mainnet deploy: the refundable() fix moves the factory address, so it ships with that redeploy, with the factory recover.",
       "evidence": null
     },
     {
@@ -1078,13 +1079,15 @@
       "behavior": "Fix IDs on payments, checkouts, invoices and payment links",
       "acceptance": [],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "blocked",
       "verification": [],
       "refs": [],
       "keep": [],
       "review": false,
-      "notes": [],
-      "blockedReason": null,
+      "notes": [
+        "2026-11-05 blocked: Deferred by owner (2026-11-05): low priority for now."
+      ],
+      "blockedReason": "Deferred by owner (2026-11-05): low priority for now.",
       "evidence": null
     },
     {
