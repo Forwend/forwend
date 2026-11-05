@@ -1206,7 +1206,7 @@
         "GET clients reads one page at a time with a limit, a cursor and a q search, the clients list loads the next page on demand, and the invoice and job client pickers search through the API instead of loading every client"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "web-unit",
@@ -1302,11 +1302,18 @@
           "summary": "Review found the backend and list correct and two picker keyboard bugs, now fixed: the picked client was injected as the top row of every search (Enter picked a client the form couldn't find, and a no-match search still listed it) - it is now only the field's label (ComboboxField valueLabel); Enter could pick from the last search's rows before the new answer came - ComboboxField loading makes Enter wait, says Searching and sets aria-busy, from useClientSearch pending. Also fixed: an emptied search resets at once; a failed search says so; a cursor with non-UTF-8 or NUL in the name is 422, not 500; the tax ID search is tested; DESIGN.md nesting and the accents wording; stale comment and aria-busy=false. Kept: the API search ignores case but not accents, as on Jobs (documented).",
           "at": "2026-11-05T09:29:23Z",
           "filesHash": "16100e22bb2db8ef"
-        }
+        },
+        "commit": "94148945",
+        "doneAt": "2026-11-05T09:29:25Z"
       },
       "branch": "fix/f422-the-clients-list-and-client-pickers-page",
       "baseCommit": "7f1c3bd5e2ddae4e234f944d64f32ee593d3e0b6",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f422-the-clients-list-and-client-pickers-page",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
