@@ -123,6 +123,8 @@ export {
 } from "./components/overlays/menu";
 export type { SheetProps } from "./components/overlays/sheet";
 export { Sheet } from "./components/overlays/sheet";
+export type { StepDirection, StepTransitionProps } from "./components/overlays/step-transition";
+export { STEP_DIRECTIONS, StepTransition } from "./components/overlays/step-transition";
 export type { TooltipProps, TooltipProviderProps } from "./components/overlays/tooltip";
 export { Tooltip, TooltipProvider } from "./components/overlays/tooltip";
 export type { ActivityDirection, ActivityRowProps } from "./components/payments/activity-row";

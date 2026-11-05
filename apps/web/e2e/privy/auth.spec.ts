@@ -120,10 +120,10 @@ test("the Privy test account signs in, with no WalletConnect request, and lands 
   await expect(
     header.getByRole("navigation", { name: "Breadcrumb" }).getByText("Overview"),
   ).toBeVisible();
-  await expect(header.getByRole("button", { name: /^Send/ })).toHaveAttribute(
-    "aria-disabled",
-    "true",
-  );
+  // The owner's Send opens the Send sheet (R-213).
+  await header.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(page.locator("dialog[open]")).toHaveAccessibleName(/^(Send|Wallet address)$/);
+  await page.keyboard.press("Escape");
   await header.getByRole("button", { name: /^Notifications/ }).click();
   await expect(page.getByRole("menu").getByText("Notifications")).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);

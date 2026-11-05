@@ -158,7 +158,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   up with the header.
   - The bar is the page ground at 88% with a blur, over a hairline.
   - The search field reads "Search or jump to"; the bell's unread dot is the olive mark.
-  - Send is the dashed Soon button with a send icon; Receive is the lime button with a QR icon.
+  - Send is a secondary button with a send icon, only for the profile's owner; Receive is the lime button with a QR
+    icon.
 - On desktop a page does not repeat the breadcrumb's last step as a visible heading; its h1 is for screen readers
   only, except an invoice with no title, whose number is its heading since nothing else names it. Phones have no
   breadcrumb, so they show the h1 (and a back link on an invoice). Page actions, status filters
@@ -708,9 +709,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Narrower screens switch between Edit and Preview with a segmented control; the form stays mounted.
 - Money actions are round icon buttons with the label underneath, on desktop and phones. Only the view's main
   action is filled with the lime; other working actions are surface circles, and coming ones are subtle.
-  In the header, Send is a dashed outline button in the subtle color until it is built.
 - Personal overview actions: Receive (lime, the QR icon), Request, Send, Transfer, Withdraw, in one row with a narrow
-  gap on phones.
+  gap on phones. Send and Transfer open the Send sheet; Withdraw is coming.
   Request (also in ⌘K) opens the Request money page (R-71) with amount, note, checkout expiry and the name the payer
   sees, then opens the new request with its pay link. A personal profile's invoices are Requests in the sidebar, list
   and breadcrumb.
@@ -1049,6 +1049,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A modal dialog and the centered sheet fade in on `duration-base`, and close at once.
     - No scale or translate: either would misplace a date picker opened inside while it runs.
     - The ⌘K dialog is the exception: no motion, as above.
+  - Steps of a sheet (Send): the next step slides in 12px from the right with a fade, Back from the left, on
+    `duration-base` and `ease-out` (`StepTransition`). The sheet's height follows each step on the same timing.
+    Reduced motion shows each step at once.
   - Disclosure: the chevron turns on `duration-fast`; the content appears without a height animation, since
     tables inside can be long.
   - Data: typing, filtering, polling and new rows never animate. A list waiting for a new filter dims its last rows
@@ -1079,6 +1082,18 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
 - Receive uses one token/network summary, a centered QR on a surface-2 tile that follows the theme (the code alone stays
   dark on light), the full address with a copy icon, the network warning and
   a short note. Avoid nested cards around the QR.
+- Send (R-213) is one sheet for Send and Transfer, a sibling of Receive. Transfer starts on the owner's other profiles;
+  Send also offers Wallet address.
+  - Steps: To, Wallet address, What to send, Amount, Review, then the progress. A step with one choice is skipped.
+  - The title names the step; a Back button sits before it from the second step on.
+  - Amount: the large amount field with the unit inside, the available balance with Max, then Network fee (Free, Forwend
+    pays it) and They receive on a surface-2 box.
+  - Review: the amount large and centered over its network, then a ruled box: From, To, Network, Network fee, They
+    receive. An outside address shows in full, in groups of four, never shortened.
+  - A first send to an address, or one to a contract, shows its warning and a checkbox; Send stays off until it is ticked.
+  - The main button names the amount ("Send 25.00 USDC"); "A send can't be undone" sits under it.
+  - Progress: a spinner and Sending, then the drawn check and Sent, or the alert icon and why it failed; then the
+    explorer link and Done.
 - Fixed navigation and page edges respect safe-area insets; zoom stays enabled and touch text inputs use the base
   font size. Amounts and addresses remain selectable.
 - A keyboard skip link moves directly to app content. Focused content clears sticky navigation. Native modal

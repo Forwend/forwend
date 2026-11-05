@@ -23,6 +23,9 @@ import {
 import { can } from "@/features/profiles/lib/profile";
 import type { AppSession } from "@/features/profiles/types/app-session";
 import { ReceiveSheet } from "@/features/receive/components/receive-sheet";
+import { SendSheet } from "@/features/send/components/send-sheet";
+import { SEND_MODES } from "@/features/send/constants/send";
+import type { SendMode } from "@/features/send/types/send";
 import { AppHeader } from "@/screens/app-shell/app-header";
 import { AppSidebar } from "@/screens/app-shell/app-sidebar";
 import { CommandMenu } from "@/screens/app-shell/command-menu";
@@ -55,14 +58,16 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const savedId = useMemo(() => (userId ? readChosenProfileId(userId) : null), [userId]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [receiving, setReceiving] = useState(false);
+  const [sending, setSending] = useState<SendMode | null>(null);
   const [searching, setSearching] = useState(false);
   const [choosing, setChoosing] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const active = profiles ? chosenProfile(profiles, activeId ?? savedId) : undefined;
   const money = active ? can(active, PERMISSIONS.moneyRead) : false;
-  // Receive's token list, read only while it is open: a closed sheet polls nothing.
+  const moves = active ? can(active, PERMISSIONS.moneyMove) : false;
+  // Receive's and Send's token lists, read only while one is open: a closed sheet polls nothing.
   const balances = useGetBalancesQuery(
-    active && money && receiving ? active.profileId : skipToken,
+    active && money && (receiving || sending) ? active.profileId : skipToken,
     LIVE_QUERY,
   );
   // One strip under the header says the server can't be reached, in place of each view's own refresh notice.
@@ -146,12 +151,14 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
             profiles,
             chooseProfile: switchProfile,
             openReceive: () => setReceiving(true),
+            openSend: moves ? () => setSending(SEND_MODES.send) : null,
+            openTransfer: moves ? () => setSending(SEND_MODES.transfer) : null,
             // A request is a form of its own, on a page (R-71).
             openRequest: () => router.push(APP_ROUTES.newInvoice),
             signOut,
           }
         : null,
-    [profiles, active, switchProfile, router, signOut],
+    [profiles, active, moves, switchProfile, router, signOut],
   );
 
   // Signed up users always have a personal profile; none means the answer is wrong, not that it is loading.
@@ -238,6 +245,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
               onSignOut={signOut}
               onSearch={() => setSearching(true)}
               onReceive={() => setReceiving(true)}
+              onSend={moves ? () => setSending(SEND_MODES.send) : null}
               collapsed={collapsed}
               onToggleCollapsed={toggleCollapsed}
             />
@@ -270,6 +278,19 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
             failed={balances.isError}
             onRetry={balances.refetch}
           />
+          <SendSheet
+            open={sending !== null}
+            mode={sending ?? SEND_MODES.send}
+            onOpenChange={(next) => {
+              if (!next) setSending(null);
+            }}
+            profile={active}
+            profiles={profiles}
+            balances={balances.currentData ?? null}
+            failed={balances.isError}
+            onRetry={balances.refetch}
+            onSent={balances.refetch}
+          />
           <CommandMenu
             open={searching}
             onOpenChange={setSearching}
@@ -277,6 +298,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
             active={active}
             onSwitch={switchProfile}
             onReceive={() => setReceiving(true)}
+            onSend={moves ? setSending : null}
             onRequest={() => router.push(APP_ROUTES.newInvoice)}
           />
         </div>

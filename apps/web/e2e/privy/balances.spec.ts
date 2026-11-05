@@ -18,12 +18,10 @@ test("a profile shows its balance, networks, receive address and activity; a new
     name: /^Market value in USD/,
   });
   await expect(inWallet.or(balance.getByText("No networks are enabled yet."))).toBeVisible();
-  for (const action of ["Send", "Transfer", "Withdraw"]) {
-    await expect(balance.getByRole("button", { name: new RegExp(`^${action}`) })).toHaveAttribute(
-      "aria-disabled",
-      "true",
-    );
-  }
+  await expect(balance.getByRole("button", { name: /^Withdraw/ })).toHaveAttribute(
+    "aria-disabled",
+    "true",
+  );
   // The balance's history is its own card, with its range.
   const history = page.getByRole("region", { name: "Balance", exact: true });
   await expect(

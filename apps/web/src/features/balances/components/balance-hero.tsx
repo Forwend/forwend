@@ -23,6 +23,8 @@ export interface BalanceHeroProps {
   onRetry: () => void;
   onReceive: () => void;
   onRequest: () => void;
+  onSend: (() => void) | null;
+  onTransfer: (() => void) | null;
 }
 
 /** The personal balance card: the total and its change over the past month, then the round money actions. */
@@ -33,6 +35,8 @@ export function BalanceHero({
   onRetry,
   onReceive,
   onRequest,
+  onSend,
+  onTransfer,
 }: BalanceHeroProps) {
   // The same read as the chart card's default range, so it comes from the cache.
   const history = usePricedHistory(profileId, HISTORY_RANGES[DEFAULT_RANGE]);
@@ -84,7 +88,12 @@ export function BalanceHero({
           </div>
         </div>
         <div className="mt-auto w-full">
-          <MoneyActions onReceive={onReceive} onRequest={onRequest} />
+          <MoneyActions
+            onReceive={onReceive}
+            onRequest={onRequest}
+            onSend={onSend}
+            onTransfer={onTransfer}
+          />
         </div>
       </div>
     </section>

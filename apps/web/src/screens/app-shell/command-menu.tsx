@@ -4,6 +4,7 @@ import { THEMES } from "@forwend/design-tokens";
 import { formatTokenAmount, shortAddress, useTheme } from "@forwend/ui-web";
 import {
   ArrowDownLeft,
+  ArrowLeftRight,
   ArrowUpRight,
   CornerDownLeft,
   FilePlus2,
@@ -14,6 +15,7 @@ import {
   Plus,
   QrCode,
   Search,
+  Send,
   Settings,
   UserPlus,
   UserRound,
@@ -36,6 +38,8 @@ import { PERMISSIONS, PROFILE_KINDS } from "@/features/profiles/constants/profil
 import { PROFILES_COPY } from "@/features/profiles/constants/profiles-copy";
 import { can, profileLabel } from "@/features/profiles/lib/profile";
 import type { Profile } from "@/features/profiles/types/profile";
+import { SEND_MODES } from "@/features/send/constants/send";
+import type { SendMode } from "@/features/send/types/send";
 import { useGetTransactionsQuery } from "@/features/transactions/api/transactions-api";
 import { TRANSACTION_DIRECTIONS } from "@/features/transactions/constants/transactions";
 import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transactions-copy";
@@ -77,6 +81,8 @@ export interface CommandMenuProps {
   active: Profile;
   onSwitch: (profileId: string) => void;
   onReceive: () => void;
+  /** Null where the user can't move this profile's money. */
+  onSend: ((mode: SendMode) => void) | null;
   onRequest: () => void;
 }
 
@@ -87,6 +93,7 @@ export function CommandMenu({
   active,
   onSwitch,
   onReceive,
+  onSend,
   onRequest,
 }: CommandMenuProps) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -166,6 +173,30 @@ export function CommandMenu({
             run: () => {
               close();
               onReceive();
+            },
+          },
+        ]
+      : []),
+    ...(onSend
+      ? [
+          {
+            id: "send",
+            group: COMMAND_COPY.actions,
+            label: BALANCES_COPY.send,
+            icon: Send,
+            run: () => {
+              close();
+              onSend(SEND_MODES.send);
+            },
+          },
+          {
+            id: "transfer",
+            group: COMMAND_COPY.actions,
+            label: BALANCES_COPY.transfer,
+            icon: ArrowLeftRight,
+            run: () => {
+              close();
+              onSend(SEND_MODES.transfer);
             },
           },
         ]

@@ -45,7 +45,10 @@ import {
   SelectMenu,
   Sheet,
   Skeleton,
+  STEP_DIRECTIONS,
+  type StepDirection,
   Stepper,
+  StepTransition,
   Switch,
   SwitchCard,
   Tabs,
@@ -349,6 +352,7 @@ export function ComponentsShowcase() {
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen} title="Receive">
           <p className="text-muted">A bottom sheet on phones, a centered panel from sm up.</p>
         </Sheet>
+        <StepsDemo />
       </KitGroup>
       <KitGroup title="Dates">
         <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-3">
@@ -717,5 +721,53 @@ export function ComponentsShowcase() {
         </div>
       </KitGroup>
     </div>
+  );
+}
+
+// A stepped sheet: each step slides in from its direction and the height follows it (Send's steps).
+const DEMO_STEPS = ["Short step", "Taller step", "Shortest"] as const;
+
+function StepsDemo() {
+  const [open, setOpen] = useState(false);
+  const [index, setIndex] = useState(0);
+  const [direction, setDirection] = useState<StepDirection>(STEP_DIRECTIONS.next);
+  const move = (by: 1 | -1) => {
+    setDirection(by === 1 ? STEP_DIRECTIONS.next : STEP_DIRECTIONS.back);
+    setIndex((i) => i + by);
+  };
+  return (
+    <>
+      <Button
+        variant={BUTTON_VARIANTS.secondary}
+        onClick={() => {
+          setIndex(0);
+          setOpen(true);
+        }}
+      >
+        Open stepped sheet
+      </Button>
+      <Sheet
+        open={open}
+        onOpenChange={setOpen}
+        title={DEMO_STEPS[index] ?? ""}
+        onBack={index > 0 ? () => move(-1) : undefined}
+      >
+        <StepTransition step={String(index)} direction={direction}>
+          <div className="flex flex-col gap-3">
+            {Array.from({ length: index === 1 ? 6 : index === 0 ? 3 : 1 }, (_, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: placeholder rows, one per position
+              <Skeleton key={i} className="h-10" />
+            ))}
+            <Button
+              className="w-full"
+              disabled={index === DEMO_STEPS.length - 1}
+              onClick={() => move(1)}
+            >
+              Continue
+            </Button>
+          </div>
+        </StepTransition>
+      </Sheet>
+    </>
   );
 }
