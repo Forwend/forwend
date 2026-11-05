@@ -630,7 +630,7 @@
       "dependsOn": [
         "F410"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "backend-e2e",
@@ -703,11 +703,18 @@
           "summary": "Six fresh reviews; the last found no way to pay out more than came in without an operator mistake, and its fix for the mistaken-release case is in. Fixed across rounds: a per-transfer lock (stray_recoveries) so a recover prints once; released rows kept and counted from the first lock ever, per (chain, invoice, token, amount), recovers to anyone counted; release one lock at a time under an advisory lock, refused when a recover to the lock's own destination is on chain; finality plus block hash before printing; RPC errors never read as can't be returned (code 3 or execution reverted only); ours() compares factory, implementation and authority code, and a Safe's singleton, owners, threshold and modules; Arc system emitter logs skipped; zero amounts skipped; stray search only for an unbooked hash; logs paged 2000 blocks. Left: native coin strays are not found; the operator must clear the Safe queue for the address before a release (doc and CLI say so); release rescans from the first lock, slow on fast chains after months.",
           "at": "2026-11-05T07:39:35Z",
           "filesHash": "6e9c3464ce316940"
-        }
+        },
+        "commit": "30417884",
+        "doneAt": "2026-11-05T07:47:36Z"
       },
       "branch": "feat/f411-support-returns-wrong-token-and-wrong-ne",
       "baseCommit": "f27e4c918cb6263ee11666026f78447eda5d0277",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f411-support-returns-wrong-token-and-wrong-ne",
+        "base": "main"
+      }
     },
     {
       "id": "F412",
