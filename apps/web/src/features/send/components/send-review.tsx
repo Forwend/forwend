@@ -120,17 +120,14 @@ export function SendReview({ mode, send, option, from, recipient, onSubmitted }:
           {error}
         </p>
       ) : null}
-      <div className="flex flex-col gap-2">
-        <Button
-          className="w-full"
-          disabled={!canSign || (needsCheck && !checked)}
-          loading={working || !canSign}
-          onClick={confirm}
-        >
-          {label}
-        </Button>
-        <p className="text-center text-xs text-muted">{SEND_COPY.irreversible}</p>
-      </div>
+      <Button
+        className="w-full"
+        disabled={!canSign || (needsCheck && !checked)}
+        loading={working || !canSign}
+        onClick={confirm}
+      >
+        {label}
+      </Button>
     </div>
   );
 }

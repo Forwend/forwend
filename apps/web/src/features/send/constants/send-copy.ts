@@ -38,7 +38,6 @@ export const SEND_COPY = {
     "You haven't sent to this address before. Compare every character with the address you were given.",
   contract: "This address is a contract, not a wallet. Money sent to it may not come out again.",
   checked: "I checked the whole address",
-  irreversible: "A send can't be undone.",
   sendAmount: (amount: string) => `Send ${amount}`,
   transferAmount: (amount: string) => `Transfer ${amount}`,
   signFailed: "We couldn't sign this send. Nothing left your wallet. Try again.",

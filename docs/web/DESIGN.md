@@ -1091,7 +1091,7 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
   - Review: the amount large and centered over its network, then a ruled box: From, To, Network, Network fee, They
     receive. An outside address shows in full, in groups of four, never shortened.
   - A first send to an address, or one to a contract, shows its warning and a checkbox; Send stays off until it is ticked.
-  - The main button names the amount ("Send 25.00 USDC"); "A send can't be undone" sits under it.
+  - The main button names the amount ("Send 25.00 USDC").
   - Progress: a spinner and Sending, then the drawn check and Sent, or the alert icon and why it failed; then the
     explorer link and Done.
 - Fixed navigation and page edges respect safe-area insets; zoom stays enabled and touch text inputs use the base
