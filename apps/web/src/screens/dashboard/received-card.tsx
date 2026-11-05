@@ -58,6 +58,7 @@ export function ReceivedCard({
           size="sm"
         />
       }
+      actionBelow
       className="flex flex-col"
     >
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">

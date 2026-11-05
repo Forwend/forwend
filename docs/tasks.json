@@ -390,18 +390,116 @@
         "On a phone the Received card's range control keeps its line when the transfer count arrives, and My assets keeps its height from loading to loaded"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "loading-live-e2e"
       ],
-      "refs": [],
+      "refs": [
+        "R-203"
+      ],
       "keep": [
         "apps/backend/*"
       ],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-11-05 review pass by subagent: Pass. Layout reasoning, placeholder sizes and the live test checked; biome and tsc clean. Fixed: DESIGN.md wording on My assets' body height. Unpaid header wrap was flagged but measured at 390 px: its description wraps in its own block and the total stays beside it (header 44 px both ways), so no change. LoadError is taller than the 160 px minimum; outside this task."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-05T05:20:36Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "tokens-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.1,
+            "log": ""
+          },
+          {
+            "id": "loading-live-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 44.2,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 44.0,
+            "log": ""
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "33c4b268436c9a05",
+        "filesHash": "72b4d5d9de7a32a6",
+        "proof": {
+          "1": "loading-live-e2e: the new live test at 390 px failed before the fix (range control 17 -> 73 px, My assets height changed to 153 px) and passes after; checked in the dev app at 390 and 1440 px"
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "Pass. Layout reasoning, placeholder sizes and the live test checked; biome and tsc clean. Fixed: DESIGN.md wording on My assets' body height. Unpaid header wrap was flagged but measured at 390 px: its description wraps in its own block and the total stays beside it (header 44 px both ways), so no change. LoadError is taller than the 160 px minimum; outside this task.",
+          "at": "2026-11-05T05:22:22Z",
+          "filesHash": "72b4d5d9de7a32a6"
+        }
+      },
+      "branch": "fix/f389-the-overview-s-received-and-my-assets-ca",
+      "baseCommit": "2b96a170f8d37eccd03a4623e2cba3b2be86596e",
+      "failedVerifies": 0
     },
     {
       "id": "F409",
