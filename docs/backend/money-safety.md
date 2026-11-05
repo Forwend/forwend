@@ -99,6 +99,37 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
   - the ledger keeps `refund_pending` until a refund is booked, then shows `held` or `refunded`;
   - reopen is refused, and the owner's attention list keeps the payment;
   - the watcher keeps reading the receiver's events past its window (R-183).
+- `ops case <transaction>` also finds money the invoice doesn't take (D-33):
+  - another token sent to a receive address on its chain;
+  - any token sent to that address on another enabled chain: the address is the same on every chain.
+  - It looks only for a transaction no invoice booked, and reads its ERC-20 transfers on every enabled chain.
+  - The ledger never books this money. Native coin sent there, Arc's native USDC included, isn't found yet.
+  - It skips Arc's system `Transfer` logs from `0xffff…fffe`: they repeat a USDC transfer or stand for a native send.
+  - It prints no calls until the transfer's block is finalized, with the same block hash.
+    - A reorg could undo the transfer after its recover is printed.
+  - It prints the calls only where that chain has our factory and receiver code, and our refund authority.
+    - Ours means the same code as on the invoice's chain.
+    - A Safe also needs the same singleton, owners, threshold and modules.
+  - The calls are the receiver's deploy when needed, then `recover(token, to, amount)` of that transfer's amount.
+  - The destination is the transfer's sender unless `-to` names another; the same addresses are refused as for a return.
+  - It dry-runs the recover, or the token transfer before deploy, and checks the address still holds the amount.
+  - A deploy on the invoice's chain while it can still be paid warns: it starts the hold limit, and Arc then refuses native USDC.
+  - Otherwise it says plainly that the money can't be returned now, and why. Support promises nothing.
+  - An RPC error, such as a rate limit, stops the command; it never reads as "can't be returned".
+  - Printing locks that transfer (`stray_recoveries`), so its recover is printed once.
+    - Another transfer's money still there can't be returned to the first sender twice.
+    - A rerun says the recover was printed, even after it was sent and the address is empty.
+  - `ops release <transaction>` unlocks it once the Safe transaction is rejected and was never executed.
+    - First reject or execute every recover queued in the Safe for that receive address: the chain can't see them.
+    - The ledger books none of this, so release counts the receiver's `Recovered` logs of that token and amount.
+    - Locks of one chain, invoice, token and amount are alike; a recover to any destination counts for them.
+    - It counts from the first such transfer ever locked: a released lock stays as a row, so that start never moves.
+    - It releases one lock at a time, one release at a time, while fewer recovers are on chain than locks still held.
+    - It keeps the rest and says so: their recovers may have been sent.
+    - A recover to the lock's own destination since its transfer also keeps it: that one was likely sent.
+    - So when the same payer sent the same amount twice, the second lock can stay; support then decides by hand.
+    - It reads the logs 2000 blocks at a time, as the watcher does.
+  - The balance check sees all of the token at the address, other payers' too: the lock is what stops a second return.
 - `ops release <case>` unlocks a queued return the refund authority will not send.
   - Before releasing, reject the Safe transaction and check that it was never executed.
 - Held money under 0.10 USD, and money nobody claims, stay in the receiver for good (D-90). Nothing sweeps them.

@@ -148,13 +148,8 @@ func ReadHeld(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client, i
 	if !strings.EqualFold(factory, hexutil.Encode(address.Factory[:])) {
 		return Held{}, fmt.Errorf("invoice %s: its factory is not the compiled factory", invoiceID)
 	}
-	value, _ := new(big.Int).SetString(amount, 10)
-	h.terms = address.Terms{InvoiceID: [32]byte(common.FromHex(invoiceID)), Recipient: common.HexToAddress(recipient),
-		Token: common.HexToAddress(h.Token), Amount: value, ExpiresAt: uint64(expires),
-		SettleDeadline: uint64(deadline), IntendedChainID: h.ChainID}
-	// Money moves only by terms that compute the stored address.
-	if receive, err := address.Receive(h.terms); err != nil || !strings.EqualFold(common.Address(receive).Hex(), h.Receive) {
-		return Held{}, fmt.Errorf("invoice %s: its terms do not compute its receive address", invoiceID)
+	if h.terms, err = termsOf(invoiceID, recipient, h.Token, amount, expires, deadline, h.ChainID, h.Receive); err != nil {
+		return Held{}, err
 	}
 	amounts, err := ledger.ReadAmounts(ctx, db, invoiceID)
 	if err != nil {
@@ -200,6 +195,18 @@ func ReadHeld(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client, i
 	}
 	h.Authority = common.BytesToAddress(out)
 	return h, nil
+}
+
+// termsOf builds an option's terms and checks they compute its stored receive address: money moves only by those.
+func termsOf(invoiceID, recipient, token, amount string, expires, deadline int64, chainID uint64, receive string) (address.Terms, error) {
+	value, _ := new(big.Int).SetString(amount, 10)
+	t := address.Terms{InvoiceID: [32]byte(common.FromHex(invoiceID)), Recipient: common.HexToAddress(recipient),
+		Token: common.HexToAddress(token), Amount: value, ExpiresAt: uint64(expires), SettleDeadline: uint64(deadline),
+		IntendedChainID: chainID}
+	if at, err := address.Receive(t); err != nil || !strings.EqualFold(common.Address(at).Hex(), receive) {
+		return address.Terms{}, fmt.Errorf("invoice %s: its terms do not compute its receive address", invoiceID)
+	}
+	return t, nil
 }
 
 // QueueReturn checks a return of held money against the ledger and the chain, locks the money and gives the calls

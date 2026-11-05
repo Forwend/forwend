@@ -1,6 +1,14 @@
 package main
 
-import "testing"
+import (
+	"fmt"
+	"math/big"
+	"strings"
+	"testing"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/forwend/forwend/apps/backend/internal/settlement"
+)
 
 func TestBaseUnitsReadsTokensExactly(t *testing.T) {
 	for text, want := range map[string]string{"1": "1000000", "1.5": "1500000", "0.000001": "1", "12.345678": "12345678"} {
@@ -12,5 +20,17 @@ func TestBaseUnitsReadsTokensExactly(t *testing.T) {
 		if got, err := baseUnits(text, 6); err == nil {
 			t.Errorf("%q read as %s", text, got)
 		}
+	}
+}
+
+func TestStrayWithoutOurContractsSaysPlainlyItCantComeBack(t *testing.T) {
+	var out strings.Builder
+	s := settlement.Stray{TxHash: "0xab", ChainID: 31339, Option: settlement.CaseOption{ID: "0x07", ChainID: 31337},
+		Token: common.HexToAddress("0x01"), From: common.HexToAddress("0x02"), Amount: big.NewInt(2000000)}
+	printStray(&out, s, settlement.Recovery{}, fmt.Errorf("%w: that chain has no Forwend factory", settlement.ErrCantReturn))
+	text := out.String()
+	if !strings.Contains(text, "this money can't be returned now: that chain has no Forwend factory") ||
+		!strings.Contains(text, "promise nothing") || strings.Contains(text, "cast send") {
+		t.Fatalf("printed %q", text)
 	}
 }

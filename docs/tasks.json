@@ -630,7 +630,7 @@
       "dependsOn": [
         "F410"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "backend-e2e",
@@ -644,9 +644,70 @@
         "packages/contracts/src/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-05 review pass by subagent: Six fresh reviews; the last found no way to pay out more than came in without an operator mistake, and its fix for the mistaken-release case is in. Fixed across rounds: a per-transfer lock (stray_recoveries) so a recover prints once; released rows kept and counted from the first lock ever, per (chain, invoice, token, amount), recovers to anyone counted; release one lock at a time under an advisory lock, refused when a recover to the lock's own destination is on chain; finality plus block hash before printing; RPC errors never read as can't be returned (code 3 or execution reverted only); ours() compares factory, implementation and authority code, and a Safe's singleton, owners, threshold and modules; Arc system emitter logs skipped; zero amounts skipped; stray search only for an unbooked hash; logs paged 2000 blocks. Left: native coin strays are not found; the operator must clear the Safe queue for the address before a release (doc and CLI say so); release rescans from the first lock, slow on fast chains after months."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-05T07:38:08Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 57.5,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 20.5,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "e858b5cc97923e79",
+        "filesHash": "6e9c3464ce316940",
+        "proof": {
+          "1": "unit: TestSupportRecoversWrongTokenAndWrongChainMoney finds a second token on the invoice's Anvil chain and the invoice's own token on a second chain by transaction hash; a payment is not a stray",
+          "2": "unit: the same test runs the printed deploy and recover until the address is empty; it refuses an unfinal transfer, a second print, every release of a sent recover (one sent before a later transfer, two same-key locks in one transaction, a mistaken release, a release after one), a chain with no factory or other code there, and reads a rate-limited RPC as an error",
+          "3": "unit: cmd/ops TestStrayWithoutOurContractsSaysPlainlyItCantComeBack checks the plain refusal and no cast send"
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "Six fresh reviews; the last found no way to pay out more than came in without an operator mistake, and its fix for the mistaken-release case is in. Fixed across rounds: a per-transfer lock (stray_recoveries) so a recover prints once; released rows kept and counted from the first lock ever, per (chain, invoice, token, amount), recovers to anyone counted; release one lock at a time under an advisory lock, refused when a recover to the lock's own destination is on chain; finality plus block hash before printing; RPC errors never read as can't be returned (code 3 or execution reverted only); ours() compares factory, implementation and authority code, and a Safe's singleton, owners, threshold and modules; Arc system emitter logs skipped; zero amounts skipped; stray search only for an unbooked hash; logs paged 2000 blocks. Left: native coin strays are not found; the operator must clear the Safe queue for the address before a release (doc and CLI say so); release rescans from the first lock, slow on fast chains after months.",
+          "at": "2026-11-05T07:39:35Z",
+          "filesHash": "6e9c3464ce316940"
+        }
+      },
+      "branch": "feat/f411-support-returns-wrong-token-and-wrong-ne",
+      "baseCommit": "f27e4c918cb6263ee11666026f78447eda5d0277",
+      "failedVerifies": 0
     },
     {
       "id": "F412",
