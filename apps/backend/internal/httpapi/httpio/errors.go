@@ -11,6 +11,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/apikey"
 	"github.com/forwend/forwend/apps/backend/internal/auth"
 	"github.com/forwend/forwend/apps/backend/internal/balance"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/document"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/job"
@@ -92,7 +93,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, send.ErrRefused):
 		status, code, message = http.StatusUnprocessableEntity, "transfer_refused", err.Error()
 	case errors.Is(err, send.ErrUnavailable):
-		slog.Warn("send could not read the chain", "err", err)
+		slog.Warn("send could not read the chain", "err", chain.Redact(err))
 		status, code, message = http.StatusServiceUnavailable, "network_unavailable", "could not read the network: try again shortly"
 	case errors.Is(err, link.ErrNotFound):
 		status, code, message = http.StatusNotFound, "link_not_found", "payment link not found"

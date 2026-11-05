@@ -93,11 +93,11 @@ func (s *Service) recipient(ctx context.Context, out *Send, req Request) error {
 		if req.To != "" {
 			return fmt.Errorf("%w: give either to or toProfileId", ErrInvalid)
 		}
-		id := req.ToProfileID
+		id := strings.ToLower(req.ToProfileID)
 		err := s.pool.QueryRow(ctx, `
 			SELECT w.address FROM profiles p JOIN profile_wallets w ON w.profile_id = p.id AND w.chain_family = 'evm'
 			WHERE p.id::text = $1 AND p.id <> $2 AND p.user_id = (SELECT user_id FROM profiles WHERE id = $2)`,
-			strings.ToLower(id), out.ProfileID).Scan(&out.To)
+			id, out.ProfileID).Scan(&out.To)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("%w: toProfileId is not another of your profiles with a wallet", ErrInvalid)
 		} else if err != nil {
@@ -181,14 +181,17 @@ func checkOnChain(ctx context.Context, client *ethclient.Client, out *Send) erro
 	return nil
 }
 
-// refused tells a token's revert, a node's JSON-RPC error, from a failed connection.
+// refused tells a token's revert from any other failed read, such as a rate limit or a node behind.
 func refused(err error) error {
-	if rpcErr := rpc.Error(nil); errors.As(err, &rpcErr) {
-		return fmt.Errorf("%w: %s", ErrRefused, rpcErr.Error())
-	} else if err != nil {
-		return errors.Join(ErrUnavailable, err)
+	if err == nil {
+		return nil
 	}
-	return nil
+	// Every JSON-RPC error has ErrorData; a revert's carries the revert data.
+	if dataErr := rpc.DataError(nil); errors.As(err, &dataErr) && dataErr.ErrorData() != nil ||
+		strings.Contains(strings.ToLower(err.Error()), "revert") {
+		return fmt.Errorf("%w: %s", ErrRefused, err.Error())
+	}
+	return errors.Join(ErrUnavailable, err)
 }
 
 // keep cancels the wallet's unsigned send on the chain and saves this one in its place.
@@ -198,6 +201,17 @@ func (s *Service) keep(ctx context.Context, out Send) (Send, error) {
 		return Send{}, fmt.Errorf("begin: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	// The wallet's row lock makes the check and the insert one step for concurrent prepares.
+	var busy bool
+	err = tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM sends WHERE from_address = $1 AND chain_id = $2
+		AND status = 'submitted') FROM profile_wallets WHERE address = $1 FOR UPDATE`, out.From, int64(out.ChainID)).
+		Scan(&busy)
+	if err != nil {
+		return Send{}, fmt.Errorf("lock wallet: %w", err)
+	}
+	if busy {
+		return Send{}, ErrBusy
+	}
 	if _, err = tx.Exec(ctx, `UPDATE sends SET status = 'canceled', finished_at = now()
 		WHERE from_address = $1 AND chain_id = $2 AND status = 'prepared'`, out.From, int64(out.ChainID)); err != nil {
 		return Send{}, fmt.Errorf("cancel unsigned send: %w", err)
@@ -208,7 +222,7 @@ func (s *Service) keep(ctx context.Context, out Send) (Send, error) {
 		VALUES ($1, $2, 'evm', $3, $4, $5, $6, $7::numeric) RETURNING id::text, status, created_at`,
 		out.ProfileID, int64(out.ChainID), out.Token, out.From, out.To, out.ToProfileID, out.Amount.String()).
 		Scan(&out.ID, &out.Status, &out.CreatedAt)
-	if pgErr := (*pgconn.PgError)(nil); errors.As(err, &pgErr) && pgErr.ConstraintName == "sends_one_open" {
+	if pgErr := (*pgconn.PgError)(nil); errors.As(err, &pgErr) && pgErr.ConstraintName == "sends_one_unsigned" {
 		return Send{}, ErrBusy
 	} else if err != nil {
 		return Send{}, fmt.Errorf("save send: %w", err)

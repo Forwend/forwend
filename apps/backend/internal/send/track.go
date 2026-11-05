@@ -32,7 +32,7 @@ func scan(row pgx.Row) (Send, error) {
 }
 
 // Submit records the hash the browser got from signing the send (R-212). The same hash again is a no-op. A send
-// given up while the browser was signing takes its hash too: the money may be moving.
+// given up or replaced while the browser was signing takes its hash too: the money is moving.
 func (s *Service) Submit(ctx context.Context, profileID, sendID, txHash string) (Send, error) {
 	txHash = strings.ToLower(txHash)
 	if !hashPattern.MatchString(txHash) {
@@ -40,7 +40,7 @@ func (s *Service) Submit(ctx context.Context, profileID, sendID, txHash string) 
 	}
 	out, err := scan(s.pool.QueryRow(ctx, `
 		UPDATE sends SET status = 'submitted', tx_hash = $3, submitted_at = now(), finished_at = NULL
-		WHERE id::text = $1 AND profile_id = $2 AND status IN ('prepared', 'expired') RETURNING `+columns,
+		WHERE id::text = $1 AND profile_id = $2 AND status IN ('prepared', 'expired', 'canceled') RETURNING `+columns,
 		strings.ToLower(sendID), profileID, txHash))
 	if errors.Is(err, pgx.ErrNoRows) {
 		out, err = s.Get(ctx, profileID, sendID)
@@ -51,15 +51,15 @@ func (s *Service) Submit(ctx context.Context, profileID, sendID, txHash string) 
 			return Send{}, fmt.Errorf("%w: this send can't take a hash now", ErrInvalid)
 		}
 		return out, nil
-	} else if pgErr := (*pgconn.PgError)(nil); errors.As(err, &pgErr) && pgErr.ConstraintName == "sends_one_open" {
-		return Send{}, ErrBusy
+	} else if pgErr := (*pgconn.PgError)(nil); errors.As(err, &pgErr) && pgErr.ConstraintName == "sends_tx" {
+		return Send{}, fmt.Errorf("%w: this hash belongs to another send", ErrInvalid)
 	} else if err != nil {
 		return Send{}, fmt.Errorf("submit send: %w", err)
 	}
 	return out, nil
 }
 
-// Cancel gives up an unsigned send, as when the owner closes the signing step.
+// Cancel gives up an unsigned send, as when the owner closes the review.
 func (s *Service) Cancel(ctx context.Context, profileID, sendID string) error {
 	tag, err := s.pool.Exec(ctx, `UPDATE sends SET status = 'canceled', finished_at = now()
 		WHERE id::text = $1 AND profile_id = $2 AND status = 'prepared'`, strings.ToLower(sendID), profileID)
@@ -157,8 +157,7 @@ func (s *Service) refresh(ctx context.Context, out Send) (Send, error) {
 		reverted := "reverted"
 		return s.finish(ctx, out, Failed, &reverted)
 	}
-	out.OnChain = true // the watcher books it on its next round
-	return out, nil
+	return out, nil // mined with the transfer: sent once the watcher records it
 }
 
 var transferTopic = common.HexToHash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")

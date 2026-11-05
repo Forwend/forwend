@@ -4371,7 +4371,7 @@ components:
           items:
             type: string
             enum: [invoices.read, invoices.write, stores.read, stores.write, clients.read, clients.write, money.read,
-              money.write, billing.read, billing.write, tokens.read, tokens.write, jobs, notifications, team, team.leave,
+              money.write, money.move, billing.read, billing.write, tokens.read, tokens.write, jobs, notifications, team, team.leave,
               keys, webhooks]
         name:
           type: [string, "null"]

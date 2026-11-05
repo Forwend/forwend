@@ -203,7 +203,12 @@ func TestOneOpenSendPerWalletAndChain(t *testing.T) {
 		t.Errorf("while one is on its way: err = %v, want ErrBusy", err)
 	}
 	if _, err := e.sends.Submit(ctx, e.profile, first.ID, hash); !errors.Is(err, ErrInvalid) {
-		t.Errorf("a canceled send takes a hash: err = %v", err)
+		t.Errorf("a second send takes the same hash: err = %v", err)
+	}
+	// The replaced send was signed in another tab after all: it still takes its own hash, so its money is followed.
+	other := e.anvil.Transfer(e.token, outsider, "1000000")
+	if got, err := e.sends.Submit(ctx, e.profile, first.ID, other); err != nil || got.Status != Submitted {
+		t.Errorf("the replaced send's own hash = %v, %v", got.Status, err)
 	}
 	if again, err := e.sends.Submit(ctx, e.profile, second.ID, hash); err != nil || again.Status != Submitted {
 		t.Errorf("the same hash again = %v, %v", again.Status, err)
@@ -229,6 +234,11 @@ func TestASendIsSentOnlyWhenTheChainShowsIt(t *testing.T) {
 	if s, err = e.sends.Submit(ctx, e.profile, s.ID, hash); err != nil || s.Status != Submitted || s.OnChain {
 		t.Fatalf("submitted = %s on chain %v, %v", s.Status, s.OnChain, err)
 	}
+	// A receipt alone isn't the watcher's record.
+	e.sends.now = func() time.Time { return time.Now().Add(receiptAfter) }
+	if s, _ = e.sends.Get(ctx, e.profile, s.ID); s.Status != Submitted || s.OnChain {
+		t.Errorf("mined, not recorded = %s on chain %v, want submitted", s.Status, s.OnChain)
+	}
 	if err := e.watch.Scan(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -241,6 +251,37 @@ func TestASendIsSentOnlyWhenTheChainShowsIt(t *testing.T) {
 	}
 	if s, _ = e.sends.Get(ctx, e.profile, s.ID); s.Status != Sent {
 		t.Errorf("final = %s, want sent", s.Status)
+	}
+}
+
+func TestAReorgedSendWaitsAndIsDroppedIfNeverMinedAgain(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	s, err := e.prepare(t, outsider, "", 3_000_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash := e.anvil.Transfer(e.token, outsider, "3000000")
+	if _, err = e.sends.Submit(ctx, e.profile, s.ID, hash); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if s, _ = e.sends.Get(ctx, e.profile, s.ID); !s.OnChain {
+		t.Fatalf("before the reorg = %s on chain %v", s.Status, s.OnChain)
+	}
+	e.anvil.Reorg(1) // its block is replaced and its transaction dropped
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	e.sends.now = func() time.Time { return time.Now().Add(receiptAfter) }
+	if s, _ = e.sends.Get(ctx, e.profile, s.ID); s.Status != Submitted || s.OnChain {
+		t.Errorf("after the reorg = %s on chain %v, want submitted, waiting", s.Status, s.OnChain)
+	}
+	e.sends.now = func() time.Time { return time.Now().Add(DropAfter) }
+	if s, _ = e.sends.Get(ctx, e.profile, s.ID); s.Status != Failed || *s.Failure != "dropped" {
+		t.Errorf("never mined again = %s, want failed dropped", s.Status)
 	}
 }
 

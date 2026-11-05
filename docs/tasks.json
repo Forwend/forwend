@@ -87,7 +87,7 @@
       "acceptance": [
         "An owner with a fresh sign-in prepares a send or transfer; members, keys and stale sign-ins are refused (R-211)",
         "Invalid, zero, token-contract and own-wallet recipients, too-large amounts and failed dry runs are refused; contract and first-send warnings and the network fee are returned (R-211, D-119)",
-        "A reported hash moves a send to Sending, the matching final wallet transfer to Sent, a revert or reorg to Failed, and an unreported send drops after 10 minutes (R-212)",
+        "A reported hash moves a send to Sending and the watcher's matching transfer to Sent, then final; a reorg returns it to Sending; a revert or a hash with no transaction for 30 minutes fails it; an unreported send expires after 10 minutes; a signed hash is never lost (R-212)",
         "openapi.yaml and api.md describe the send routes"
       ],
       "dependsOn": [],
@@ -112,7 +112,7 @@
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-05T17:12:04Z",
+        "at": "2026-11-05T17:24:33Z",
         "checks": [
           {
             "id": "docs-check",
@@ -125,14 +125,14 @@
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 62.0,
+            "seconds": 64.0,
             "log": ""
           },
           {
             "id": "backend-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 28.4,
+            "seconds": 28.7,
             "log": ""
           },
           {
@@ -143,13 +143,13 @@
             "log": ""
           }
         ],
-        "taskHash": "ec67acb14a76be3a",
-        "filesHash": "8b36821ca7729669",
+        "taskHash": "57838acb490d69f0",
+        "filesHash": "82a4c1c8646342a5",
         "proof": {
-          "1": "unit: TestOnlyTheOwnerWithAFreshSignInPreparesASend: owner 201; refreshed token 401 reauth_required; Admin member and another user 403; money.move is in no role and no key scope",
-          "2": "unit: TestPrepareRefusesWhatWouldLoseMoney, TestPrepareRefusesWhenTheTokenRefuses and TestPrepareWarnsOfANewRecipientAndAContract on Anvil: invalid, zero, token, own and checksum refusals, balance cap, unsponsored chain, reverting token, contract and new-recipient warnings, fee 0 paid by forwend",
-          "3": "unit: TestASendIsSentOnlyWhenTheChainShowsIt, TestASendFailsWhenItsTransactionMovesSomethingElse, TestUnreportedAndDroppedSendsAreGivenUp and TestOneOpenSendPerWalletAndChain run real transfers through the watcher on Anvil",
-          "4": "unit: TestProfileRoutesAreAllListed and the openapi route test pass with the four send routes; docs-check passes with api.md Sends and transfers"
+          "1": "unit: TestOnlyTheOwnerWithAFreshSignInPreparesASend: owner 201; refreshed token 401 reauth_required; Admin member and another user 403; a secret key refused, and a key with money.move can't be made",
+          "2": "unit: TestPrepareRefusesWhatWouldLoseMoney, TestPrepareRefusesWhenTheTokenRefuses and TestPrepareWarnsOfANewRecipientAndAContract on Anvil: invalid, zero, token, own and checksum refusals, balance cap, unsponsored chain, reverting token, contract and new-recipient warnings; networkFee 0 paid by forwend in the API test",
+          "3": "unit: TestASendIsSentOnlyWhenTheChainShowsIt (receipt alone stays sending), TestAReorgedSendWaitsAndIsDroppedIfNeverMinedAgain, TestASendFailsWhenItsTransactionMovesSomethingElse, TestUnreportedAndDroppedSendsAreGivenUp and TestOneOpenSendPerWalletAndChain (a replaced send keeps its hash) on Anvil",
+          "4": "unit: TestProfileRoutesAreAllListed and the openapi route test pass; docs-check passes with api.md Sends and transfers and the Idempotency exception"
         }
       },
       "branch": "feat/f424-the-server-prepares-checks-and-tracks-se",

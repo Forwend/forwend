@@ -59,6 +59,21 @@ func TestOnlyTheOwnerWithAFreshSignInPreparesASend(t *testing.T) {
 	if r := e.call(t, "POST", path, "did:privy:bob", "", body); r.status != http.StatusForbidden {
 		t.Errorf("another user: %d %v", r.status, r.body)
 	}
+	// A key never moves money: no scope has money.move, and a key can't give a fresh sign-in.
+	made := e.call(t, "POST", "/v1/profiles/"+e.aliceProfile+"/keys", "did:privy:alice", "",
+		`{"name": "Server", "scopes": ["invoices.read"]}`)
+	secret, _ := made.body["secret"].(string)
+	if made.status != http.StatusCreated {
+		t.Fatalf("make a key: %d %v", made.status, made.body)
+	}
+	if r := e.withKey(t, "POST", path, secret, body); r.status != http.StatusUnauthorized &&
+		r.status != http.StatusForbidden {
+		t.Errorf("a secret key: %d %v", r.status, r.body)
+	}
+	if r := e.call(t, "POST", "/v1/profiles/"+e.aliceProfile+"/keys", "did:privy:alice", "",
+		`{"name": "Mover", "scopes": ["money.move"]}`); r.status != http.StatusUnprocessableEntity {
+		t.Errorf("a key with money.move: %d %v", r.status, r.body)
+	}
 	transfer := `{"chainId": 31337, "token": "` + token + `", "toProfileId": "` + e.walletless + `", "amount": "1"}`
 	if r := e.call(t, "POST", path, "did:privy:alice", "", transfer); r.status != http.StatusCreated ||
 		r.body["toProfileId"] != e.walletless || r.body["to"] != "0x00000000000000000000000000000000000000aa" {

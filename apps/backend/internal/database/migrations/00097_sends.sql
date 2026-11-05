@@ -32,8 +32,10 @@ CREATE TABLE sends (
     CHECK (status NOT IN ('submitted', 'sent') OR tx_hash IS NOT NULL),
     CHECK ((status = 'failed') = (failure IS NOT NULL))
 );
--- One open send per wallet and chain (R-211): a second one waits until the first is on the chain or given up.
-CREATE UNIQUE INDEX sends_one_open ON sends (from_address, chain_id) WHERE status IN ('prepared', 'submitted');
+-- One unsigned send per wallet and chain (R-211). Signed ones are never refused here: a hash is never lost.
+CREATE UNIQUE INDEX sends_one_unsigned ON sends (from_address, chain_id) WHERE status = 'prepared';
+-- A hash belongs to one send, so one transfer can't mark two sends sent.
+CREATE UNIQUE INDEX sends_tx ON sends (chain_id, tx_hash) WHERE tx_hash IS NOT NULL;
 CREATE INDEX sends_profile ON sends (profile_id, created_at);
 
 -- +goose Down
