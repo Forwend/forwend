@@ -78,7 +78,7 @@ const held = {
   optionId: payment.optionId,
   endpointId: null,
   eventId: null,
-  reason: "payment_completed",
+  reason: "overpaid",
 };
 const detail = {
   ...payment,
@@ -330,6 +330,15 @@ test("merchant separates payment, held funds, delivery and store records", async
   await expect(attention).toBeChecked();
   await expect(page).toHaveURL(/view=attention/);
   await expect(main.getByRole("link", { name: payment.reference, exact: true })).toBeVisible();
+  // D-118: the list names why the money is held and that support returns it, not the owner.
+  await expect(
+    main.getByText("Money held for the customer: over the amount", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    main.getByTitle(
+      "0.50 USDC over the amount is held for the customer, and Forwend support handles any return.",
+    ),
+  ).toBeVisible();
   await main.getByRole("link", { name: payment.reference, exact: true }).click();
   await expect(main.getByRole("heading", { name: payment.reference, exact: true })).toBeVisible();
   // Paid with 0.50 held for the payer reads Overpaid (D-114); the held part is never the merchant's.
@@ -810,10 +819,6 @@ for (const width of [1440, 390]) {
       }
       await page.goto(`/app/payments/${payment.paymentId}`);
       await expect(page.getByRole("main").locator("header [data-status]")).toHaveText(state.label);
-      if (state.pending !== "0")
-        await expect(
-          page.getByRole("main").getByText("Confirming, not final", { exact: true }),
-        ).toBeVisible();
       if (state.refund === "refunded")
         await expect(
           page
@@ -989,9 +994,15 @@ test("payment detail tracks settlement finality and keeps its transaction link",
   await estimate.blur();
   await expect(page.getByText("Outgoing transfer not yet confirmed")).toHaveCount(0);
   await expect(page.getByText("Settlement delayed", { exact: true })).toHaveCount(0);
-  // Extra money shows once, in Amount; no strip repeats it.
-  await expect(page.getByText("Extra, held for the customer", { exact: true })).toBeVisible();
-  await expect(page.getByText("Money held for the payer", { exact: false })).toHaveCount(0);
+  // Held money is the customer's: a quiet figure and a hint on the status badge, no warning strip or notes (D-118).
+  await expect(page.getByText("Held for the customer", { exact: true })).toBeVisible();
+  await expect(page.getByText("Money held for the customer", { exact: false })).toHaveCount(0);
+  await expect(page.getByText(/^Final$|Not part of your balance/)).toHaveCount(0);
+  await page.getByRole("main").locator("header [data-status]").hover();
+  await expect(page.getByRole("tooltip")).toContainText(
+    "0.50 USDC over the amount is held for the customer, and Forwend support handles any return.",
+  );
+  await page.mouse.move(0, 0);
   await expect(transfer.getByRole("link")).toHaveAttribute(
     "href",
     `https://sepolia.basescan.org/tx/${txHash}`,

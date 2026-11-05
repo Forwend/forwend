@@ -520,7 +520,7 @@
       "dependsOn": [
         "F408"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "unit",
         "web-e2e"
@@ -532,9 +532,84 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-05 review pass by subagent: Pass after three fresh reviews. Fixed from them: the reason now comes from the ledger's invoice.held history (was guessed from the status), only since the last reopen, and only when one reason's holds add up to what is held (dust plus late, mixed, part return give none); payer-chooses keys by option tested; rows.Close; the status badge trigger has the hint in aria-label, a 44px touch band and rounded-sm focus ring; Issues leads with a real problem and its title reads cleanly; held money has no warning color in the Issues dot or the late-deposit note; copy promises no return (D-118, D-90); one word, customer, on owner screens; dead confirming field and note copy removed. Left: the Overpaid badge's shared warning tone (owner's call); invoice history and the bell still show held money without a reason; settlement/returns.go reads held reasons by invoice_id only."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-05T06:25:29Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.3,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 57.6,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 19.4,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 44.3,
+            "log": ""
+          }
+        ],
+        "taskHash": "c87855cd290f5f8a",
+        "filesHash": "1dfa439f62d1abf9",
+        "proof": {
+          "1": "unit: TestHeldMoneyNamesTheLedgerReason reads the ledger's one reason since the last reopen and drops it when the holds don't add up (dust plus late, mixed); web unit test names all five reasons in the status hint and Issues label",
+          "2": "unit: TestDeliverSendsOneEmailPerEvent checks the held email's support line; live payments.spec hovers the status badge and checks the Issues title",
+          "3": "web-e2e: live payments.spec and invoices.spec pass 16 of 16 with the status-badge hover; no strip, notes or warning color for held money"
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "Pass after three fresh reviews. Fixed from them: the reason now comes from the ledger's invoice.held history (was guessed from the status), only since the last reopen, and only when one reason's holds add up to what is held (dust plus late, mixed, part return give none); payer-chooses keys by option tested; rows.Close; the status badge trigger has the hint in aria-label, a 44px touch band and rounded-sm focus ring; Issues leads with a real problem and its title reads cleanly; held money has no warning color in the Issues dot or the late-deposit note; copy promises no return (D-118, D-90); one word, customer, on owner screens; dead confirming field and note copy removed. Left: the Overpaid badge's shared warning tone (owner's call); invoice history and the bell still show held money without a reason; settlement/returns.go reads held reasons by invoice_id only.",
+          "at": "2026-11-05T06:27:41Z",
+          "filesHash": "1dfa439f62d1abf9"
+        }
+      },
+      "branch": "feat/f409-the-owner-sees-why-money-is-held-and-tha",
+      "baseCommit": "b2bc12428c33cbdfb7d43d031456d4379acb599e",
+      "failedVerifies": 0
     },
     {
       "id": "F411",

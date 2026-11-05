@@ -608,9 +608,12 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
       });
     });
     await page.getByRole("link", { name: "View payment", exact: true }).click();
-    await expect(
-      page.getByRole("main").getByText("Money held for the payer", { exact: false }),
-    ).toContainText("2.00");
+    // Money on another option is a hint on the status badge, not a warning strip (D-118).
+    await page.getByRole("main").locator("header [data-status]").hover();
+    await expect(page.getByRole("tooltip")).toContainText(
+      "2.00 USDC paid with an option the customer didn't choose is held for the customer",
+    );
+    await page.mouse.move(0, 0);
     await expect(page.getByRole("link", { name: "View transaction on Arbiscan" })).toHaveAttribute(
       "href",
       `https://sepolia.arbiscan.io/tx/${heldTx}`,

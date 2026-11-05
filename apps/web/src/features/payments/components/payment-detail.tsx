@@ -5,6 +5,7 @@ import {
   DetailList,
   DetailRow,
   PAYMENT_STATUS,
+  PAYMENT_STATUSES,
   Skeleton,
   StatusPill,
   shortAddress,
@@ -14,6 +15,7 @@ import {
   Timeline,
   type TimelineEntry,
   TONES,
+  Tooltip,
   WalletStateLabel,
 } from "@forwend/ui-web";
 import { ArrowDownLeft, ExternalLink, FileDown } from "lucide-react";
@@ -33,6 +35,7 @@ import {
 import { SOURCE_ICONS, SOURCE_LABELS } from "@/features/payments/constants/payments";
 import { PAYMENT_DETAIL_COPY as COPY } from "@/features/payments/constants/payments-copy";
 import {
+  heldHint,
   leadOption,
   optionFigures,
   paymentDisplayStatus,
@@ -85,6 +88,7 @@ export function PaymentDetail({ profileId, paymentId, actions }: PaymentDetailPr
     ? funded
     : payment.options.filter((option) => option.optionId === payment.optionId);
   const status = paymentDisplayStatus(payment);
+  const held = heldHint(payment.problems);
   const wallet = paymentWallet(payment);
   const payToken = payment.hostedUrl ? new URL(payment.hostedUrl).pathname.split("/").pop() : null;
   const chosen = payment.options.find((option) => option.optionId === payment.optionId);
@@ -112,7 +116,21 @@ export function PaymentDetail({ profileId, paymentId, actions }: PaymentDetailPr
         badges={
           <>
             {payment.livemode ? null : <Badge tone="warning">{COPY.testnet}</Badge>}
-            <StatusPill status={status} />
+            {held ? (
+              // Held money is the customer's and support handles it: a hint on the status, not a warning.
+              <Tooltip content={held}>
+                <button
+                  type="button"
+                  aria-label={`${PAYMENT_STATUSES[status].label}. ${held}`}
+                  // On a touch screen a 44px band takes the tap; the badge keeps its size.
+                  className="relative cursor-default rounded-sm outline-none before:absolute focus-visible:outline-2 focus-visible:outline-focus pointer-coarse:before:top-1/2 pointer-coarse:before:left-1/2 pointer-coarse:before:h-11 pointer-coarse:before:w-[max(100%,2.75rem)] pointer-coarse:before:-translate-x-1/2 pointer-coarse:before:-translate-y-1/2"
+                >
+                  <StatusPill status={status} />
+                </button>
+              </Tooltip>
+            ) : (
+              <StatusPill status={status} />
+            )}
             {wallet === "none" ? null : <WalletStateLabel state={wallet} />}
           </>
         }
@@ -158,26 +176,12 @@ export function PaymentDetail({ profileId, paymentId, actions }: PaymentDetailPr
           retrying={read.isFetching}
         />
       ) : null}
-      <PaymentProblems
-        problems={payment.problems}
-        extraShown={lead && figures && figures.extra > 0n ? lead.optionId : null}
-      />
+      <PaymentProblems problems={payment.problems} />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(24rem,2fr)] xl:items-start">
         <div className="flex min-w-0 flex-col gap-6">
           <Panel title={COPY.amount}>
             <dl className="grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] divide-line max-sm:divide-y sm:divide-x">
-              <Figure
-                term={COPY.receivedOf}
-                note={
-                  figures && figures.confirming > 0n
-                    ? figures.confirming === figures.received
-                      ? COPY.allConfirming
-                      : COPY.partConfirming
-                    : figures && figures.received > 0n
-                      ? COPY.final
-                      : null
-                }
-              >
+              <Figure term={COPY.receivedOf}>
                 {lead && figures && figures.received > 0n ? (
                   <PaymentAmount
                     amount={figures.received.toString()}
@@ -198,7 +202,7 @@ export function PaymentDetail({ profileId, paymentId, actions }: PaymentDetailPr
                 </Figure>
               ) : null}
               {lead && figures && figures.extra > 0n ? (
-                <Figure term={COPY.extra} note={COPY.extraNote} tone="warning">
+                <Figure term={COPY.extra}>
                   <PaymentAmount
                     amount={figures.extra.toString()}
                     decimals={lead.decimals}
@@ -390,7 +394,7 @@ type Deposit = Option["deposits"][number];
 
 // Confirmed only once booked: a deposit final on chain but not yet booked still reads as confirming (D-24).
 function DepositState({ deposit }: { deposit: Deposit }) {
-  if (deposit.late) return <Badge tone={TONES.warning}>{COPY.late}</Badge>;
+  if (deposit.late) return <Badge tone={TONES.neutral}>{COPY.late}</Badge>;
   if (deposit.status === "detected" || deposit.paid === null)
     return (
       <span className="flex flex-col items-start gap-1 text-xs text-muted">
@@ -498,26 +502,11 @@ function timeline(
 }
 
 /** A labelled figure in the Amount card. */
-function Figure({
-  term,
-  note,
-  tone,
-  children,
-}: {
-  term: string;
-  note?: ReactNode;
-  tone?: "warning";
-  children: ReactNode;
-}) {
+function Figure({ term, children }: { term: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1 px-4 py-4 sm:px-5">
       <dt className="text-sm text-muted">{term}</dt>
-      <dd
-        className={`text-2xl font-medium tracking-tight tabular-nums ${tone ? "text-warning" : "text-ink"}`}
-      >
-        {children}
-      </dd>
-      {note ? <dd className="text-xs text-muted">{note}</dd> : null}
+      <dd className="text-2xl font-medium tracking-tight text-ink tabular-nums">{children}</dd>
     </div>
   );
 }

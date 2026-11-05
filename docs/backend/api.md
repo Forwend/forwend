@@ -343,6 +343,10 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
 - `GET /v1/profiles/{profileId}/payments/attention` returns payment problems separately from financial truth.
 - Ordinary confirmation and historical verification suggest waiting; conflicting evidence requires review.
 - Partial payments suggest sharing checkout only while open and reconciled; held funds never imply an initiated refund.
+- A `held_funds` problem's `reason` uses the `invoice.held` names: `overpaid`, `late`, `expired`, `canceled`, `other_option`.
+  - It is the ledger's reason for the money held since the last reopen.
+  - It is null when those holds have several reasons, or don't add up to what is held now.
+  - That covers on-time dust, holds from before held history, and a part return.
 - A partial-payment problem appears only while part of the amount is still owed.
 - Settlement intent appears delayed after 15 minutes; explicit waits and refusals remain visible immediately.
 - Delivery problems preserve payment status and expose safe attempt metadata without endpoint secrets, URLs, payloads or raw errors.

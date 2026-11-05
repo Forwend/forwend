@@ -68,8 +68,6 @@ export const PAYMENT_DETAIL_COPY = {
   requested: "Requested",
   amount: "Amount",
   timeline: "Timeline",
-  final: "Final",
-  partConfirming: "Part still confirming",
   columns: {
     transfer: "Transfer",
     network: "Network",
@@ -88,9 +86,10 @@ export const PAYMENT_DETAIL_COPY = {
   chips: { source: "From", network: "Network", tx: "Tx" },
   receivedOf: "Received",
   nothing: "Nothing yet",
-  allConfirming: "Confirming, not final",
-  extra: "Extra, held for the customer",
-  extraNote: "Not part of your balance",
+  extra: "Held for the customer",
+  // D-118: support returns held money by hand, so the owner has nothing to do.
+  held: (money: string, why: string | undefined) =>
+    `${money}${why ? ` ${why}` : ""} is held for the customer, and Forwend support handles any return.`,
   due: "Still due",
   transfers: "Transfers",
   nothingYet: "Nothing received yet",

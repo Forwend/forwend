@@ -133,6 +133,9 @@ func TestDeliverSendsOneEmailPerEvent(t *testing.T) {
 			t.Fatalf("email %d: %+v", i, m)
 		}
 	}
+	if !strings.Contains(f.sent[2].Text, "Forwend support handles any return to the payer") {
+		t.Fatalf("held email doesn't say who handles the return: %s", f.sent[2].Text)
+	}
 }
 
 func TestDeliverSendsCheckoutNotificationsWithoutInvoiceNumbers(t *testing.T) {

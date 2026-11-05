@@ -413,24 +413,28 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Payment details use `DetailHeader` with the source's icon tile, the status and wallet badges by the title, and
     the requested amount as the header's figure beside Open checkout or Open receipt and Export (both 40px).
   - A notice under the header names each problem no other part shows, once (R-192).
-    - Payment records to review, an unexpected transfer, a webhook that fails, money held on another option.
-    - Extra money in Amount, the wallet transfer and what is still due are never repeated.
+    - Payment records to review, an unexpected transfer, a webhook that fails.
+    - The wallet transfer and what is still due are never repeated.
+  - Held money is the customer's, not the owner's problem: no notice, no warning color (D-118).
+    - Hovering or tapping the status badge shows one sentence per held amount: how much, why, and who handles any return.
+    - Example: "0.50 USDC over the amount is held for the customer, and Forwend support handles any return."
+    - The owner has no return button.
   - The body is two columns from extra-large screens: three fifths for the main column, two fifths (at least 24rem) beside it.
-    - Main: Amount (Received with "Confirming, not final" or "Final",
-      Returned to the payer once refunded, Extra held for the customer in the warning color or Still due while the
-      checkout is open, and Paid with), Transfers, and the items.
-    - Extra held is the ledger's held money once booked, so it is gone after the return.
+    - Main: Amount (Received, Returned to the payer once refunded, Held for the customer or Still due while the
+      checkout is open, and Paid with), Transfers, and the items. Figures carry no note under them.
+    - Held is the ledger's held money once booked, so it is gone after the return.
     - Before money arrives the last figure is Accepts: an `AssetStack` and "4 options, the customer picks", or
       "Paying with" and the token once the customer locked one. "Paid with" only follows money.
     - Transfers is one table: Transfer (From customer, To your wallet or Returned to the payer, its time under it),
       State, Amount and the explorer link. Network shows from 2xl screens; on phones the state sits under the time.
     - State is a badge: Confirmed, "Confirming (n/m)" with the time left in an info tooltip, Confirming with
-      "being verified", In wallet, or a warning such as Held for the customer. Amounts stay on one line.
+      "being verified", In wallet, or a neutral Held for the customer. Amounts stay on one line.
     - Side: Details (reference, invoice, link, store, customer, checkout close, metadata, PDFs) and a Timeline:
       Created, Payment detected, Paid, In your wallet (or Checkout closed), done or current or next by the API's facts.
       After a return it ends with Returned to the payer and the return's transaction.
   - No ledger table or contract panel: a webhook that fails shows as a notice whose action opens Developers.
-  - A list's Received amount over the request is in the warning color, with its reason as the cell's title.
+  - Issues names held money with its reason; the cell's title is the status badge's sentence.
+  - A list's Received amount over the request keeps the ink color; its title says the extra is held for the customer.
   - Beside the money (two fifths of the width from extra-large screens) a Details panel links the order reference, the
     invoice, the payment link and the store, then the customer, the token, the checkout close, metadata and the PDFs.
   - Open checkout or Open receipt opens the pay page in a new tab, marked as the owner's preview.

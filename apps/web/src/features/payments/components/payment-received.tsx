@@ -3,7 +3,8 @@ import { leadOption, receivedAmount } from "@/features/payments/lib/payments";
 import type { Payment } from "@/features/payments/types/payments";
 import { chainName } from "@/shared/lib/chains";
 
-const OVER = "More than requested; the extra is held for the customer";
+const OVER =
+  "More than requested; the extra is held for the customer, and Forwend support handles any return";
 
 export interface PaymentReceivedProps {
   payment: Pick<
@@ -38,7 +39,7 @@ export function PaymentReceived({ payment, compact }: PaymentReceivedProps) {
     const over =
       received.decimals === payment.decimals && BigInt(received.received) > BigInt(payment.amount);
     return (
-      <span className={over ? "text-warning" : undefined} title={over ? OVER : undefined}>
+      <span title={over ? OVER : undefined}>
         <PaymentAmount
           amount={received.received}
           decimals={received.decimals}
