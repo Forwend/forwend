@@ -15,6 +15,8 @@ export const CLIENTS_COPY = {
   empty: "No clients yet",
   emptyText: "Save a client once, then pick it on each new invoice.",
   failed: "We could not load your clients.",
+  loadMore: "Show more",
+  updateFailed: "We could not update the clients.",
   gone: "This client is not in your list anymore.",
   backToList: "Back to clients",
   detailTitle: "Client",

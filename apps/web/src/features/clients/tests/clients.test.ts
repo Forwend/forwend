@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clientKind } from "@/features/clients/lib/clients";
+import { clientKind, clientOptions } from "@/features/clients/lib/clients";
 import type { Client } from "@/features/clients/types/clients";
 
 const client = (more: Partial<Client>): Client => ({
@@ -22,5 +22,14 @@ describe("client kind", () => {
     expect(clientKind(client({ taxId: "DE123456789" }))).toBe("business");
     expect(clientKind(client({ country: "DE" }))).toBe("business");
     expect(clientKind(client({ address: "Torstraße 1" }))).toBe("business");
+  });
+});
+
+describe("clientOptions", () => {
+  it("lists the matches with their email under the name", () => {
+    const mara = client({});
+    expect(clientOptions([mara])).toEqual([
+      { value: mara.clientId, label: "Mara Ilić", detail: "mara@ilic.example" },
+    ]);
   });
 });

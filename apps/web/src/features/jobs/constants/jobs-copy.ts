@@ -42,6 +42,7 @@ export const JOBS_COPY = {
     savedClient: "Saved client (optional)",
     savedClientPlaceholder: "Choose a saved client",
     searchClients: "Search clients",
+    clientsFailed: "We could not search your clients. Type again to retry.",
     clientName: "Name",
     clientEmail: "Billing email",
     clientEmailHint: "Each payment's invoice is billed here.",

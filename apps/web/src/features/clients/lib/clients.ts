@@ -1,3 +1,4 @@
+import type { ComboboxOption } from "@forwend/ui-web";
 import { CLIENT_KINDS } from "@/features/clients/constants/clients";
 import type {
   Client,
@@ -6,7 +7,6 @@ import type {
   ClientTextField,
 } from "@/features/clients/types/clients";
 import { countryOptions } from "@/features/profiles/lib/billing-details";
-import { foldText } from "@/shared/lib/search";
 
 const FIELDS: ClientTextField[] = ["name", "email", "address", "country", "taxId", "reference"];
 const COUNTRY = new Intl.DisplayNames(undefined, { type: "region" });
@@ -50,8 +50,7 @@ export function clientCountryOptions(noCountry: string): { value: string; label:
   return [{ value: "", label: noCountry }, ...countryOptions()];
 }
 
-export function matchesClient(client: Client, search: string): boolean {
-  return foldText(`${client.name} ${client.email ?? ""} ${client.taxId ?? ""}`).includes(
-    foldText(search.trim()),
-  );
+/** A client picker's options: the matches, each with its email under the name. */
+export function clientOptions(clients: readonly Client[]): ComboboxOption[] {
+  return clients.map((c) => ({ value: c.clientId, label: c.name, detail: c.email ?? undefined }));
 }

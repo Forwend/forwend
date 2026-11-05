@@ -1,9 +1,21 @@
 // @vitest-environment jsdom
+
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ClientSearch } from "@/features/clients/hooks/use-client-search";
+import type { Client } from "@/features/clients/types/clients";
 import { NewInvoiceForm } from "@/features/invoices/components/new-invoice-form";
 import { makeStore } from "@/store/store";
+
+// The picker's API search as the form sees it: every saved client already found.
+const found = (clients: Client[]): ClientSearch => ({
+  any: true,
+  clients,
+  pending: false,
+  failed: false,
+  search: () => {},
+});
 
 // The preview beside the form repeats its values, so value checks look inside the form itself.
 const form = () => within(document.querySelector("form") as HTMLElement);
@@ -119,7 +131,7 @@ describe("new invoice form", () => {
     Element.prototype.scrollIntoView = vi.fn();
     render(
       <Provider store={makeStore({ getAccessToken: async () => "token" })}>
-        <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} clients={[client]} />
+        <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} clientSearch={found([client])} />
       </Provider>,
     );
     fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "100" } });
@@ -355,7 +367,7 @@ describe("new invoice form", () => {
     Element.prototype.scrollIntoView = vi.fn();
     render(
       <Provider store={makeStore({ getAccessToken: async () => "token" })}>
-        <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} clients={[acme, bob]} />
+        <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} clientSearch={found([acme, bob])} />
       </Provider>,
     );
     const reference = () => (screen.getByLabelText(/^PO or reference/) as HTMLInputElement).value;

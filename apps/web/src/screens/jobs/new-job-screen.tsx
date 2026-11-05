@@ -3,7 +3,7 @@
 import { buttonClasses, EmptyState, Skeleton } from "@forwend/ui-web";
 import { IdCard } from "lucide-react";
 import Link from "next/link";
-import { useListClientsQuery } from "@/features/clients/api/clients-api";
+import { useClientSearch } from "@/features/clients/hooks/use-client-search";
 import { JobForm } from "@/features/jobs/components/job-form";
 import { JOBS_COPY as COPY } from "@/features/jobs/constants/jobs-copy";
 import { useGetBillingDetailsQuery } from "@/features/profiles/api/profiles-api";
@@ -15,8 +15,8 @@ import { APP_ROUTES } from "@/shared/config/routes";
 export function NewJobScreen() {
   const { profile } = useAppSession();
   const billing = useGetBillingDetailsQuery(profile.profileId);
-  // Without the list the form still works: the picker just doesn't show.
-  const clients = useListClientsQuery(profile.profileId);
+  // Without the search the form still works: the picker just doesn't show.
+  const clientSearch = useClientSearch(profile.profileId);
   return (
     <div className="flex max-w-6xl flex-col gap-6">
       <div className="flex flex-col gap-2">
@@ -47,7 +47,7 @@ export function NewJobScreen() {
         <JobForm
           key={profile.profileId}
           profileId={profile.profileId}
-          clients={clients.currentData}
+          clientSearch={clientSearch}
         />
       )}
     </div>

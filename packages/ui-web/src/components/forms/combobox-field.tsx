@@ -34,6 +34,13 @@ export interface ComboboxFieldProps {
   error?: string;
   id?: string;
   className?: string;
+  /** For a list searched elsewhere, such as an API: gets what is typed, and options are then shown as given. */
+  onSearchChange?: (text: string) => void;
+  /** The chosen option's label when options (one search's answer) leave it out. */
+  valueLabel?: string;
+  /** The answer for what is typed is on its way: the list says so, and Enter waits for it. */
+  loading?: boolean;
+  loadingText?: string;
 }
 
 const fold = (text: string) =>
@@ -94,6 +101,10 @@ export function ComboboxField({
   error,
   id,
   className,
+  onSearchChange,
+  valueLabel,
+  loading = false,
+  loadingText = "Searching…",
 }: ComboboxFieldProps) {
   const autoId = useId();
   const fieldId = id ?? autoId;
@@ -106,14 +117,20 @@ export function ComboboxField({
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const search = useRef<HTMLInputElement>(null);
-  const chosen = options.find((option) => option.value === value);
+  const chosen =
+    options.find((option) => option.value === value) ??
+    (value && valueLabel ? { value, label: valueLabel } : undefined);
   const words = fold(query.trim());
   // Hovering a row changes only the active row: the list is ranked again only for new options or a new search.
-  const shown = useMemo(() => (words ? matching(options, words) : options), [options, words]);
+  const shown = useMemo(
+    () => (words && !onSearchChange ? matching(options, words) : options),
+    [options, words, onSearchChange],
+  );
   const current = Math.min(active, shown.length - 1);
 
   const show = () => {
     setQuery("");
+    onSearchChange?.("");
     setActive(Math.max(0, options.indexOf(chosen as ComboboxOption)));
     if (trigger.current) setPlace(placement(trigger.current));
     setOpen(true);
@@ -155,7 +172,8 @@ export function ComboboxField({
       setActive((current + step + shown.length) % Math.max(shown.length, 1));
     } else if (event.key === "Enter") {
       event.preventDefault();
-      pick(shown[current]);
+      // The rows may still be the last search's: picking one could choose what wasn't asked for.
+      if (!loading) pick(shown[current]);
     } else if (event.key === "Escape") {
       // Only the panel closes, not a dialog around the field.
       event.preventDefault();
@@ -234,6 +252,7 @@ export function ComboboxField({
                 value={query}
                 onChange={(event) => {
                   setQuery(event.target.value);
+                  onSearchChange?.(event.target.value);
                   setActive(0);
                 }}
                 onKeyDown={onSearchKeyDown}
@@ -243,14 +262,17 @@ export function ComboboxField({
             {/* Always mounted: a live region added together with its text is often not read. */}
             <p
               role="status"
-              className={shown.length ? "sr-only" : "px-3.5 py-6 text-center text-sm text-muted"}
+              className={
+                shown.length && !loading ? "sr-only" : "px-3.5 py-6 text-center text-sm text-muted"
+              }
             >
-              {shown.length ? "" : noResults}
+              {loading ? loadingText : shown.length ? "" : noResults}
             </p>
             <div
               id={listId}
               role="listbox"
               aria-label={label}
+              aria-busy={loading || undefined}
               style={{ maxHeight: place.list }}
               className="overflow-y-auto overscroll-contain p-1 empty:hidden"
             >

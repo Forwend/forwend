@@ -4,7 +4,8 @@ import { Button, buttonClasses, EmptyState, Skeleton } from "@forwend/ui-web";
 import { IdCard } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useListClientsQuery } from "@/features/clients/api/clients-api";
+import { useGetClientQuery } from "@/features/clients/api/clients-api";
+import { useClientSearch } from "@/features/clients/hooks/use-client-search";
 import { useGetProfileInvoiceQuery } from "@/features/invoices/api/invoices-api";
 import { NewInvoiceForm } from "@/features/invoices/components/new-invoice-form";
 import { RESTART_PARAMS } from "@/features/invoices/constants/invoices";
@@ -65,16 +66,17 @@ export function NewInvoiceScreen() {
   const billing = useGetBillingDetailsQuery(profile.profileId, { skip: !readsBilling });
   const billingNeeded = readsBilling && billing.currentData === null;
   const loadingBilling = readsBilling && billing.currentData === undefined && !billing.isError;
-  // A request has no client. Without the list the form still works: the picker just doesn't show.
-  const clients = useListClientsQuery(profile.profileId, {
-    skip: request || !can(profile, PERMISSIONS.clientsRead),
-  });
-  // An unknown client id, or a list that failed, starts an empty client.
-  const startClient = clientId
-    ? clients.currentData?.find((c) => c.clientId === clientId)
-    : undefined;
+  // A request has no client. Without the search the form still works: the picker just doesn't show.
+  const noClients = request || !can(profile, PERMISSIONS.clientsRead);
+  const clientSearch = useClientSearch(profile.profileId, noClients);
+  // The client a link names is read alone (R-177); an unknown id, or a read that failed, starts an empty client.
+  const started = useGetClientQuery(
+    { profileId: profile.profileId, clientId: clientId ?? "" },
+    { skip: noClients || !clientId },
+  );
+  const startClient = clientId ? started.currentData : undefined;
   const loadingStart =
-    (Boolean(from) && owned.isLoading) || (Boolean(clientId) && clients.isLoading);
+    (Boolean(from) && owned.isLoading) || (Boolean(clientId) && started.isLoading);
   // Store defaults and acceptance must be known before composing a merchant invoice.
   const merchant = profile.kind === PROFILE_KINDS.merchant;
   const stores = useListStoresQuery(profile.profileId, { skip: !merchant });
@@ -149,7 +151,7 @@ export function NewInvoiceScreen() {
             tokens={tokens}
             start={start}
             startClient={startClient}
-            clients={clients.currentData}
+            clientSearch={clientSearch}
             stores={stores.currentData}
             replaces={
               replaced

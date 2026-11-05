@@ -2,7 +2,9 @@ package tests
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -20,7 +22,7 @@ func TestClients(t *testing.T) {
 	const alice, bob = "did:privy:alice", "did:privy:bob"
 	path := "/v1/profiles/" + e.aliceProfile + "/clients"
 	list := func(user string) reply { return e.call(t, "GET", path, user, "", "") }
-	clients := func(r reply) []any { c, _ := r.body["clients"].([]any); return c }
+	clients := func(r reply) []any { c, _ := r.body["items"].([]any); return c }
 
 	if r := list(alice); r.status != http.StatusOK || len(clients(r)) != 0 {
 		t.Fatalf("empty list: %d %v", r.status, r.body)
@@ -145,7 +147,7 @@ func TestClientReadByID(t *testing.T) {
 		http.StatusCreated {
 		t.Fatalf("PUT client: %d %v", r.status, r.body)
 	}
-	listed := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/clients", alice, "", "").body["clients"].([]any)[0]
+	listed := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/clients", alice, "", "").body["items"].([]any)[0]
 	if r := e.call(t, "GET", path+clientA, alice, "", ""); r.status != http.StatusOK || !reflect.DeepEqual(r.body, listed) {
 		t.Fatalf("GET one client: %d %v, want its list item %v", r.status, r.body, listed)
 	}
@@ -159,5 +161,68 @@ func TestClientReadByID(t *testing.T) {
 	}
 	if r := e.call(t, "GET", path+clientA, bob, "", ""); r.status != http.StatusForbidden {
 		t.Errorf("Bob reads Alice's profile: %d, want 403", r.status)
+	}
+}
+
+// R-177: the clients list reads one page at a time by name, and q searches the name, the email and the tax ID.
+func TestClientPages(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	path := "/v1/profiles/" + e.aliceProfile + "/clients"
+	// Names that sort by letter case and accents, and two with the same name: the id breaks the tie.
+	for i, name := range []string{"bob", "Alice", "Émile", "alice", "Zoë", "Bob"} {
+		id := fmt.Sprintf("aaaaaaaa-0000-4000-8000-%012d", i+1)
+		body := fmt.Sprintf(`{"name": %q, "email": "client%d@example.com", "taxId": "DE00%d"}`, name, i+1, i+1)
+		if r := e.call(t, "PUT", path+"/"+id, alice, "", body); r.status != http.StatusCreated {
+			t.Fatalf("PUT %s: %d %v", name, r.status, r.body)
+		}
+	}
+	whole := e.call(t, "GET", path, alice, "", "")
+	all, _ := whole.body["items"].([]any)
+	if whole.status != http.StatusOK || len(all) != 6 || whole.body["nextCursor"] != nil {
+		t.Fatalf("the default page holds all 6: %d %v", whole.status, whole.body)
+	}
+	var want []any
+	for _, c := range all {
+		want = append(want, c.(map[string]any)["clientId"])
+	}
+	for limit := 1; limit <= 6; limit++ {
+		var got []any
+		cursor := ""
+		for {
+			url := fmt.Sprintf("%s?limit=%d", path, limit)
+			if cursor != "" {
+				url += "&cursor=" + cursor
+			}
+			r := e.call(t, "GET", url, alice, "", "")
+			items, _ := r.body["items"].([]any)
+			if r.status != http.StatusOK || len(items) > limit {
+				t.Fatalf("limit %d: %d %v", limit, r.status, r.body)
+			}
+			for _, c := range items {
+				got = append(got, c.(map[string]any)["clientId"])
+			}
+			next, _ := r.body["nextCursor"].(string)
+			if cursor = next; cursor == "" {
+				break
+			}
+		}
+		if fmt.Sprint(got) != fmt.Sprint(want) {
+			t.Fatalf("limit %d: %v, want %v", limit, got, want)
+		}
+	}
+	for q, want := range map[string]int{"ALICE": 2, "client5%40": 1, "zo": 1, "de003": 1, "nobody": 0} {
+		if items, _ := e.call(t, "GET", path+"?q="+q, alice, "", "").body["items"].([]any); len(items) != want {
+			t.Errorf("q=%s: %d clients, want %d", q, len(items), want)
+		}
+	}
+	for query, status := range map[string]int{"limit=0": http.StatusUnprocessableEntity,
+		"limit=101": http.StatusUnprocessableEntity, "limit=x": http.StatusBadRequest,
+		"cursor=bm90LWEtY3Vyc29y": http.StatusUnprocessableEntity, "q=%20": http.StatusUnprocessableEntity,
+		// An id, then a name that isn't UTF-8: refused, never handed to Postgres.
+		"cursor=" + base64.RawURLEncoding.EncodeToString([]byte("aaaaaaaa-0000-4000-8000-000000000001|\xff")): http.StatusUnprocessableEntity} {
+		if r := e.call(t, "GET", path+"?"+query, alice, "", ""); r.status != status {
+			t.Errorf("%s: %d %v, want %d", query, r.status, r.body, status)
+		}
 	}
 }

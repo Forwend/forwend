@@ -110,6 +110,12 @@ Every control comes from `@forwend/ui-web`; a link that looks like a button uses
   token) stays a select.
   - The panel opens below the field, or above it when there is more room there, inside any scrolling form or dialog.
   - Its list shrinks to fit that room, but always shows at least three and a half rows.
+  - The saved client picker searches through the API (R-177): the first 20 by name, then the first 20 matches.
+  - Its search reaches the API 300 ms after the last key; there it ignores letter case but not accents.
+  - Until the answer comes, the list says Searching… and Enter waits. A failed search says so.
+  - The picked client's name stays on the field; it is never a row of a search that didn't find it.
+- The Clients list loads 20 at a time with Show more, and its search, kept in `?q`, goes to the API.
+  - The API's search ignores letter case but not accents, as on Jobs.
 - Accepted assets (Settings and a store's form) use one selector (`AssetSelection`, `shared/components/chains`).
   - One row per asset with a tri-state checkbox, "n of m networks" and an expand control; each network below it is its
     own exact contract, shown shortened with the full address as its title.

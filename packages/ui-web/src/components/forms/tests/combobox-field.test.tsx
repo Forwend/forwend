@@ -35,4 +35,55 @@ describe("ComboboxField", () => {
     });
     expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(["Côte d'Ivoire"]);
   });
+
+  // R-177: a list searched elsewhere (an API) gets what is typed and shows its answer as given.
+  it("reports what is typed and leaves the matching to whoever searches", () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    const searched = vi.fn();
+    render(
+      <ComboboxField
+        label="Saved client"
+        options={COUNTRIES}
+        value=""
+        onValueChange={() => {}}
+        onSearchChange={searched}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^Saved client/ }));
+    expect(searched).toHaveBeenLastCalledWith("");
+    fireEvent.change(screen.getByRole("combobox", { name: /Saved client/ }), {
+      target: { value: "zzz" },
+    });
+    expect(searched).toHaveBeenLastCalledWith("zzz");
+    expect(screen.getAllByRole("option")).toHaveLength(COUNTRIES.length);
+  });
+
+  it("names the chosen option when the answer leaves it out, and Enter waits while the answer loads", () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    const pick = vi.fn();
+    const field = (loading: boolean) => (
+      <ComboboxField
+        label="Saved client"
+        options={COUNTRIES}
+        value="XX"
+        valueLabel="Bob Ltd"
+        onValueChange={pick}
+        onSearchChange={() => {}}
+        loading={loading}
+      />
+    );
+    const { rerender } = render(field(true));
+    // The picked client isn't a row of this answer, only the field's label.
+    const trigger = screen.getByRole("button", { name: /^Saved client/ });
+    expect(trigger.textContent).toContain("Bob Ltd");
+    fireEvent.click(trigger);
+    expect(screen.getAllByRole("option").map((o) => o.textContent)).not.toContain("Bob Ltd");
+    expect(screen.getByRole("status").textContent).toBe("Searching…");
+    const search = screen.getByRole("combobox", { name: /Saved client/ });
+    fireEvent.keyDown(search, { key: "Enter" });
+    expect(pick).not.toHaveBeenCalled();
+    rerender(field(false));
+    fireEvent.keyDown(search, { key: "Enter" });
+    expect(pick).toHaveBeenCalledWith("BQ");
+  });
 });

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { apiTime } from "@/shared/schemas/api";
+import { apiTime, pageOf } from "@/shared/schemas/api";
 
 /** R-86: "" means none. A saved client needs a name; an invoice's client block may be all empty. */
 export const clientBodySchema = z.object({
@@ -31,4 +31,4 @@ export const clientSchema = z.object({
 });
 
 /** GET /v1/profiles/{profileId}/clients. */
-export const clientsSchema = z.object({ clients: z.array(clientSchema) });
+export const clientsPageSchema = pageOf(clientSchema);
