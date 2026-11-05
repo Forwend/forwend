@@ -16,7 +16,6 @@ export const SEND_COPY = {
   paste: "Paste",
   continue: "Continue",
   what: "What to send",
-  available: (amount: string) => `${amount} available`,
   notSendable: "Not on this network yet",
   nothingToSend: "This wallet holds nothing to send yet.",
   amount: "Amount",
@@ -25,15 +24,15 @@ export const SEND_COPY = {
   moreThanBalanceWithFee: "That plus the network fee is more than this wallet holds.",
   feeAtReview: "Shown at review",
   total: "Total",
-  // A wallet-paid fee is a ceiling: the network usually takes less (R-216).
-  upTo: (amount: string) => `Up to ${amount}`,
+  // An estimate: the wallet pays at most this, usually less (R-216).
+  approx: (amount: string) => `≈ ${amount}`,
+  available: (amount: string) => `${amount} available`,
   amountFormat: "Enter an amount such as 25 or 25.50.",
   amountDecimals: (symbol: string, decimals: number) =>
     `${symbol} has at most ${decimals} decimals.`,
   amountZero: "Enter more than 0.",
   networkFee: "Network fee",
   free: "Free",
-  theyGet: "They receive",
   review: "Review",
   from: "From",
   network: "Network",

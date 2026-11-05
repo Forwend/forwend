@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  feeLabel,
+  feeShown,
   isWalletAddress,
   matchesRequest,
   maxAmount,
@@ -97,5 +99,19 @@ describe("a wallet-paid send", () => {
     expect(
       matchesRequest({ ...send, networkFee: { amount: "0", paidBy: "wallet" } }, asked, asked.to),
     ).toBe(false);
+  });
+});
+
+describe("the fee shown", () => {
+  it("rounds an estimate up to 4 decimals, never below what the wallet can pay", () => {
+    expect(feeShown(2_067n, 6)).toBe(2_100n);
+    expect(feeShown(2_100n, 6)).toBe(2_100n);
+    expect(feeShown(1n, 6)).toBe(100n);
+  });
+
+  it("reads Free where Forwend pays, else ≈ the estimate", () => {
+    const usdc = { decimals: 6, symbol: "USDC" };
+    expect(feeLabel(0n, usdc)).toBe("Free");
+    expect(feeLabel(2_067n, usdc)).toBe("≈ 0.0021 USDC");
   });
 });

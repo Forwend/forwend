@@ -2,6 +2,7 @@
 
 import {
   AmountField,
+  BrandIcon,
   Button,
   EmptyState,
   formatTokenAmount,
@@ -29,9 +30,10 @@ import {
 } from "@/features/send/api/send-api";
 import { SendProgress } from "@/features/send/components/send-progress";
 import { SendReview } from "@/features/send/components/send-review";
-import { SEND_MODES, SEND_STEPS } from "@/features/send/constants/send";
+import { FEE_DECIMALS, SEND_MODES, SEND_STEPS } from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
 import {
+  feeLabel,
   isWalletAddress,
   matchesRequest,
   maxAmount,
@@ -42,6 +44,8 @@ import {
 import type { Recipient, Send, SendMode, SendOption, SendStep } from "@/features/send/types/send";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { LoadError } from "@/shared/components/load-error";
+import { TOKEN_ICONS } from "@/shared/constants/chains";
+import { chainName } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 
 export interface SendSheetProps {
@@ -355,14 +359,15 @@ export function SendSheet({
         </Choices>
       );
   } else if (step === SEND_STEPS.amount && option) {
-    const theyGet = typeof units === "bigint" && units <= room ? units : 0n;
     body = (
-      <form noValidate onSubmit={submitAmount} className="flex flex-col gap-5">
-        <div className="flex flex-col gap-2">
+      <form noValidate onSubmit={submitAmount} className="flex flex-col gap-6">
+        <div className="flex flex-col items-center gap-4 pt-2">
+          <MoneyChip chainId={option.chainId} symbol={option.symbol} />
           <AmountField
+            bare
             label={SEND_COPY.amount}
             unit={option.symbol}
-            placeholder="0.00"
+            placeholder="0"
             value={amount}
             autoFocus
             onChange={(e) => {
@@ -371,13 +376,23 @@ export function SendSheet({
             }}
             error={amountError ?? undefined}
           />
-          <div className="flex items-center justify-between gap-3 text-sm text-muted">
-            <span className="tabular-nums">
-              {SEND_COPY.available(shownAmount(option.balance, option))}
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted tabular-nums">
+              {/* Cut, never rounded up: the wallet never seems to hold more than it does. */}
+              {SEND_COPY.available(
+                `${formatTokenAmount({
+                  baseUnits: option.balance,
+                  decimals: option.decimals,
+                  fractionDigits: Math.min(
+                    exactDigits(option.balance, option.decimals),
+                    FEE_DECIMALS,
+                  ),
+                })} ${option.symbol}`,
+              )}
             </span>
             <Button
               size="sm"
-              variant="ghost"
+              variant="secondary"
               onClick={() => {
                 setAmount(maxAmount(room, option.decimals));
                 setAmountError(null);
@@ -387,36 +402,20 @@ export function SendSheet({
             </Button>
           </div>
         </div>
-        <dl className="flex flex-col gap-2 rounded-md bg-surface-2 px-4 py-3 text-sm">
-          <div className="flex items-baseline justify-between gap-3">
-            <dt className="text-muted">{SEND_COPY.networkFee}</dt>
-            <dd className="text-right text-ink tabular-nums">
-              {fee === null ? (
-                feeRead.isError ? (
-                  SEND_COPY.feeAtReview
-                ) : (
-                  <Skeleton className="inline-block h-4 w-16 align-middle" />
-                )
-              ) : fee === 0n ? (
-                SEND_COPY.free
+        <div className="flex items-center justify-between gap-3 border-t border-line pt-4 text-sm">
+          <span className="text-muted">{SEND_COPY.networkFee}</span>
+          <span className="font-medium text-ink tabular-nums">
+            {fee === null ? (
+              feeRead.isError ? (
+                SEND_COPY.feeAtReview
               ) : (
-                SEND_COPY.upTo(shownAmount(fee, option))
-              )}
-            </dd>
-          </div>
-          <div className="flex items-baseline justify-between gap-3">
-            <dt className="text-muted">{SEND_COPY.theyGet}</dt>
-            <dd className="font-medium text-ink tabular-nums">{shownAmount(theyGet, option)}</dd>
-          </div>
-          {fee ? (
-            <div className="flex items-baseline justify-between gap-3">
-              <dt className="text-muted">{SEND_COPY.total}</dt>
-              <dd className="text-ink tabular-nums">
-                {SEND_COPY.upTo(shownAmount(theyGet + fee, option))}
-              </dd>
-            </div>
-          ) : null}
-        </dl>
+                <Skeleton className="inline-block h-4 w-20 align-middle" />
+              )
+            ) : (
+              feeLabel(fee, option)
+            )}
+          </span>
+        </div>
         {fresh.step ?? (
           <Button type="submit" className="w-full" loading={preparing.isLoading}>
             {SEND_COPY.continue}
@@ -519,6 +518,22 @@ function Initial({ text }: { text: string }) {
       className="grid size-9 place-items-center rounded-pill bg-surface-2 text-sm font-medium text-ink"
     >
       {text.slice(0, 1)}
+    </span>
+  );
+}
+
+/** What is sent, in one line over the amount: the token's mark, its symbol and its network. */
+function MoneyChip({ chainId, symbol }: { chainId: number; symbol: string }) {
+  const icon = TOKEN_ICONS[symbol];
+  return (
+    <span className="inline-flex items-center gap-2 rounded-pill border border-line py-1 pr-3 pl-1 text-sm">
+      {icon ? (
+        <BrandIcon name={icon} className="size-6" />
+      ) : (
+        <span aria-hidden className="size-6 rounded-pill bg-surface-2" />
+      )}
+      <span className="font-medium text-ink">{symbol}</span>
+      <span className="text-muted">{chainName(chainId)}</span>
     </span>
   );
 }

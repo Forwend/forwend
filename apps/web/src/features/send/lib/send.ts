@@ -1,8 +1,9 @@
+import { formatTokenAmount } from "@forwend/ui-web";
 import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import type { Balances } from "@/features/balances/types/balances";
 import { ROLES } from "@/features/profiles/constants/profile";
 import type { Profile } from "@/features/profiles/types/profile";
-import { NATIVE_DECIMALS } from "@/features/send/constants/send";
+import { FEE_DECIMALS, NATIVE_DECIMALS } from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
 import type { Send, SendOption, SendRequest } from "@/features/send/types/send";
 import { evmAddress } from "@/shared/schemas/api";
@@ -77,14 +78,23 @@ function gasWithinFee(send: Send): boolean {
   return BigInt(gas.limit) * BigInt(gas.maxFeePerGas) <= fee * scale;
 }
 
-/** The network fee the wallet pays (D-119): Free where Forwend pays it.
- * ponytail: a non-zero fee is shown in the sent token's units; only sponsored chains offer Send today, so it is
- * always 0. Name the gas token here once a chain without sponsorship offers Send. */
-export function feeText(send: Send, option: SendOption): string {
-  const fee = BigInt(send.networkFee.amount);
-  return fee === 0n
-    ? SEND_COPY.free
-    : SEND_COPY.upTo(`${maxAmount(fee, option.decimals)} ${option.symbol}`);
+/** An estimated fee rounded up to 4 decimals, so the figure shown is never below what the wallet can pay (R-216). */
+export function feeShown(fee: bigint, decimals: number): bigint {
+  if (decimals <= FEE_DECIMALS) return fee;
+  const step = 10n ** BigInt(decimals - FEE_DECIMALS);
+  return ((fee + step - 1n) / step) * step;
+}
+
+/** The network fee as a wallet writes it (D-119): Free where Forwend pays, else ≈ the estimate in the token. */
+export function feeLabel(fee: bigint, option: Pick<SendOption, "decimals" | "symbol">): string {
+  if (fee === 0n) return SEND_COPY.free;
+  const shown = feeShown(fee, option.decimals);
+  const text = formatTokenAmount({
+    baseUnits: shown,
+    decimals: option.decimals,
+    fractionDigits: Math.min(option.decimals, FEE_DECIMALS),
+  });
+  return SEND_COPY.approx(`${text} ${option.symbol}`);
 }
 
 /** The owner's other profiles with a wallet: where a Transfer can go. */

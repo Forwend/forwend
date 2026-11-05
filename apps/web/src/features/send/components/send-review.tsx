@@ -15,7 +15,7 @@ import { useSubmitSendMutation } from "@/features/send/api/send-api";
 import { SEND_MODES, SEND_STATUSES, SEND_WARNINGS } from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
 import { useSignSend } from "@/features/send/hooks/use-sign-send";
-import { feeText } from "@/features/send/lib/send";
+import { feeLabel, feeShown } from "@/features/send/lib/send";
 import type { Recipient, Send, SendMode, SendOption } from "@/features/send/types/send";
 import { chainName } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
@@ -56,6 +56,7 @@ export function SendReview({
     fractionDigits: exactDigits(units, option.decimals),
   });
   const needsCheck = send.warnings.length > 0;
+  const fee = BigInt(send.networkFee.amount);
   const label =
     mode === SEND_MODES.transfer
       ? SEND_COPY.transferAmount(`${amount} ${option.symbol}`)
@@ -105,21 +106,19 @@ export function SendReview({
           )}
         </Row>
         <Row term={SEND_COPY.network}>{chainName(send.chainId)}</Row>
-        <Row term={SEND_COPY.networkFee}>{feeText(send, option)}</Row>
-        <Row term={SEND_COPY.theyGet}>
-          <span className="font-medium tabular-nums">
-            {amount} {option.symbol}
-          </span>
+        <Row term={SEND_COPY.networkFee}>
+          <span className="tabular-nums">{feeLabel(fee, option)}</span>
         </Row>
-        {send.networkFee.amount === "0" ? null : (
+        {fee === 0n ? null : (
+          // The amount and the fee come from one balance: the total is what leaves the wallet, at most.
           <Row term={SEND_COPY.total}>
-            <span className="tabular-nums">
-              {SEND_COPY.upTo(
+            <span className="font-medium tabular-nums">
+              {SEND_COPY.approx(
                 `${formatTokenAmount({
-                  baseUnits: units + BigInt(send.networkFee.amount),
+                  baseUnits: units + feeShown(fee, option.decimals),
                   decimals: option.decimals,
                   fractionDigits: exactDigits(
-                    units + BigInt(send.networkFee.amount),
+                    units + feeShown(fee, option.decimals),
                     option.decimals,
                   ),
                 })} ${option.symbol}`,

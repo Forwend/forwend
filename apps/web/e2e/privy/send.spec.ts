@@ -92,7 +92,7 @@ test("Transfer moves testnet money to the owner's other profile and follows it t
   await pickMoney(page, "../../docs/runs/f425-transfer-asset-1440.png");
   await sheet(page).getByRole("textbox", { name: "Amount" }).fill("0.01");
   await expect(sheet(page).getByText("Free")).toBeVisible();
-  await expect(sheet(page).getByText(/^0\.01 [A-Z]+$/)).toBeVisible();
+  await expect(sheet(page).getByText(/ available$/)).toBeVisible();
   await shot(page, "../../docs/runs/f425-transfer-amount-1440.png");
   expect(await blockingViolations(page)).toEqual([]);
   await sheet(page).getByRole("button", { name: "Continue" }).click();
@@ -231,14 +231,9 @@ test("On Arc the wallet pays its own fee in USDC, shown before the send, and the
     .getByRole("button", { name: /Arc Testnet/ })
     .click();
   await expect(sheet(page)).toHaveAccessibleName("Amount");
-  // The fee is the wallet's own, in USDC, with the total it takes from the balance.
-  const fee = sheet(page)
-    .getByRole("definition")
-    .filter({ hasText: /^Up to \d+(\.\d+)? USDC$/ })
-    .first();
-  await expect(fee).toBeVisible({ timeout: 20_000 });
+  // The fee is the wallet's own, an estimate in USDC; the review adds the total.
+  await expect(sheet(page).getByText(/^≈ \d+\.\d{4} USDC$/)).toBeVisible({ timeout: 20_000 });
   await sheet(page).getByRole("textbox", { name: "Amount" }).fill("0.01");
-  await expect(sheet(page).getByText("Total", { exact: true })).toBeVisible();
   await shot(page, "../../docs/runs/f427-arc-amount-1440.png");
   await sheet(page).getByRole("button", { name: "Continue" }).click();
   await confirmIfAsked(page);

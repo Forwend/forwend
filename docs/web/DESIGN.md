@@ -1088,11 +1088,13 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
   Send also offers Wallet address.
   - Steps: To, Wallet address, What to send, Amount, Review, then the progress. A step with one choice is skipped.
   - The title names the step; a Back button sits before it from the second step on.
-  - Amount: the large amount field with the unit inside, the available balance with Max, then Network fee (Free) and
-    They receive on a surface-2 box.
-  - Where the wallet pays its own gas (Arc, R-216), the fee reads "Up to 0.0036 USDC", a Total row follows, and Max
-    leaves room for the fee. The review shows the same two rows.
-  - Review: the amount large and centered, then a ruled box: From, To, Network, Network fee, They receive.
+  - Amount: a one-line chip with the token's mark, symbol and network, then the amount large and centered, no box,
+    with the symbol as a muted suffix (`AmountField bare`).
+    - Under it "1.2665 USDC available" (cut to 4 decimals, never rounded up) and a Max button.
+    - Then one ruled line: Network fee, "Free" where Forwend pays, else "≈ 0.0025 USDC". Max leaves room for that fee.
+  - Review: the amount large and centered, then a ruled box: From, To, Network, Network fee.
+    - Total (≈ amount plus fee) follows only when the wallet pays the fee from the same token (R-216).
+  - An estimated fee rounds up to 4 decimals and leads with ≈. No "Up to", no "They receive": the amount says it.
   - An address reads as plain text, shortened (`0x4edd…81fc`), as everywhere in the app.
     - Its tooltip shows the full address on hover, focus or tap (`TruncatedAddress`, `mono={false}`).
   - A first send to an address, or one to a contract, shows a one-line warning and a checkbox; Send stays off until it
