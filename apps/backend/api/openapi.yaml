@@ -2964,6 +2964,7 @@ paths:
         - $ref: "#/components/parameters/ProfileId"
         - { name: chainId, in: query, required: true, schema: { type: integer } }
         - { name: token, in: query, required: true, schema: { type: string } }
+        - { name: to, in: query, description: The recipient; none estimates a send to the wallet itself, schema: { type: string } }
       responses:
         "200":
           description: The fee

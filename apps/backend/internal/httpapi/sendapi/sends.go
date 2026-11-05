@@ -62,7 +62,8 @@ func getSendFee(sends *send.Service) http.HandlerFunc {
 			httpio.WriteError(w, r, fmt.Errorf("%w: chainId must be a chain id", send.ErrInvalid))
 			return
 		}
-		fee, err := sends.Fee(r.Context(), r.PathValue("profileId"), chainID, r.URL.Query().Get("token"))
+		fee, err := sends.Fee(r.Context(), r.PathValue("profileId"), chainID, r.URL.Query().Get("token"),
+			r.URL.Query().Get("to"))
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

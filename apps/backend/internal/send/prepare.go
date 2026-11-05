@@ -287,12 +287,16 @@ func feeFor(ctx context.Context, client *ethclient.Client, chainID uint64, from,
 	wei := new(big.Int).Mul(feeCap, new(big.Int).SetUint64(gas))
 	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(nativeDecimals-decimals)), nil)
 	fee := new(big.Int).Div(new(big.Int).Add(wei, new(big.Int).Sub(scale, big.NewInt(1))), scale)
+	if fee.Sign() == 0 { // a chain quoting no fee at all: a wallet-paid send still shows one unit, never Free
+		fee.SetInt64(1)
+	}
 	return Gas{Limit: gas, MaxFeePerGas: feeCap, MaxPriorityFeePerGas: tip}, fee, wei, nil
 }
 
-// Fee is the most a send of the token on the chain costs the profile's wallet now, in the token's base units (R-216):
-// 0 where Forwend pays. The amount step shows it and keeps room for it in Max; Prepare checks it again.
-func (s *Service) Fee(ctx context.Context, profileID string, chainID uint64, token string) (*big.Int, error) {
+// Fee is the most a send of the token on the chain to the address costs the profile's wallet now, in the token's
+// base units (R-216): 0 where Forwend pays. The amount step shows it and keeps room for it in Max; Prepare checks it
+// again. An empty to estimates a send to the wallet itself.
+func (s *Service) Fee(ctx context.Context, profileID string, chainID uint64, token, to string) (*big.Int, error) {
 	var sponsored, nativeGas bool
 	var decimals int
 	var wallet string
@@ -316,8 +320,13 @@ func (s *Service) Fee(ctx context.Context, profileID string, chainID uint64, tok
 	if err != nil {
 		return nil, err
 	}
-	// A one-unit transfer to the wallet itself costs what any transfer of the token does.
-	_, fee, _, err := feeFor(ctx, client, chainID, wallet, token, wallet, big.NewInt(1), decimals)
+	if to == "" {
+		to = wallet
+	} else if to, err = parseAddress(to); err != nil {
+		return nil, err
+	}
+	// A one-unit transfer to the recipient costs what the send will, give or take the amount's own bytes.
+	_, fee, _, err := feeFor(ctx, client, chainID, wallet, token, to, big.NewInt(1), decimals)
 	return fee, err
 }
 

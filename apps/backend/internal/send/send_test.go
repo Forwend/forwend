@@ -371,7 +371,7 @@ func TestPendingListsSignedSendsUntilTheWatcherRecordsThem(t *testing.T) {
 func TestAWalletPaysItsOwnGasWhereNotSponsored(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
-	if fee, err := e.sends.Fee(ctx, e.profile, chaintest.ChainID, e.token); err != nil || fee.Sign() != 0 {
+	if fee, err := e.sends.Fee(ctx, e.profile, chaintest.ChainID, e.token, ""); err != nil || fee.Sign() != 0 {
 		t.Fatalf("sponsored fee = %v, %v, want 0", fee, err)
 	}
 	if _, err := e.pool.Exec(ctx, "UPDATE chains SET gas_sponsored = false"); err != nil {
@@ -383,7 +383,7 @@ func TestAWalletPaysItsOwnGasWhereNotSponsored(t *testing.T) {
 	if _, err := e.pool.Exec(ctx, "UPDATE tokens SET native_gas = true"); err != nil {
 		t.Fatal(err)
 	}
-	fee, err := e.sends.Fee(ctx, e.profile, chaintest.ChainID, e.token)
+	fee, err := e.sends.Fee(ctx, e.profile, chaintest.ChainID, e.token, outsider)
 	if err != nil || fee.Sign() <= 0 {
 		t.Fatalf("self-paid fee = %v, %v", fee, err)
 	}

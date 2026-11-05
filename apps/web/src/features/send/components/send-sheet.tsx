@@ -156,10 +156,22 @@ export function SendSheet({
 
   const units = option ? parseTokenAmount(amount, option.decimals) : null;
   // R-216: where the wallet pays its gas, the fee comes out of the same balance, so Max and the check keep room for it.
+  const recipientAddress = recipient
+    ? "profile" in recipient
+      ? (recipient.profile.walletAddress ?? "")
+      : recipient.address
+    : "";
+  // Read anew on each visit to the amount step: gas prices move.
   const feeRead = useGetSendFeeQuery(
     step === SEND_STEPS.amount && option
-      ? { profileId: profile.profileId, chainId: option.chainId, token: option.token }
+      ? {
+          profileId: profile.profileId,
+          chainId: option.chainId,
+          token: option.token,
+          to: recipientAddress,
+        }
       : skipToken,
+    { refetchOnMountOrArgChange: true },
   );
   const fee = feeRead.currentData ? BigInt(feeRead.currentData.amount) : null;
   const room = option ? (option.balance > (fee ?? 0n) ? option.balance - (fee ?? 0n) : 0n) : 0n;
@@ -205,6 +217,8 @@ export function SendSheet({
       .run(() => prepare({ profileId: profile.profileId, ...request }).unwrap())
       .catch((error: unknown) => {
         if (!fresh.cancelled(error)) setAmountError(sendError(error));
+        // The fee may have risen since it was read: Max then uses the new one.
+        if (fee) void feeRead.refetch();
         return null;
       });
     if (!result) return;

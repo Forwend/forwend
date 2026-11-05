@@ -2,6 +2,7 @@ import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import type { Balances } from "@/features/balances/types/balances";
 import { ROLES } from "@/features/profiles/constants/profile";
 import type { Profile } from "@/features/profiles/types/profile";
+import { NATIVE_DECIMALS } from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
 import type { Send, SendOption, SendRequest } from "@/features/send/types/send";
 import { evmAddress } from "@/shared/schemas/api";
@@ -61,8 +62,19 @@ export function matchesRequest(
     send.chainId === request.chainId &&
     send.token.toLowerCase() === request.token.toLowerCase() &&
     send.amount === request.amount &&
-    send.to.toLowerCase() === to.toLowerCase()
+    send.to.toLowerCase() === to.toLowerCase() &&
+    gasWithinFee(send)
   );
+}
+
+/** The gas caps Privy signs with can cost at most the fee the review shows (R-216); a sponsored send has none. */
+function gasWithinFee(send: Send): boolean {
+  const fee = BigInt(send.networkFee.amount);
+  const gas = send.gas;
+  if (!gas) return fee === 0n;
+  if (fee === 0n || BigInt(gas.maxPriorityFeePerGas) > BigInt(gas.maxFeePerGas)) return false;
+  const scale = 10n ** BigInt(NATIVE_DECIMALS - send.decimals);
+  return BigInt(gas.limit) * BigInt(gas.maxFeePerGas) <= fee * scale;
 }
 
 /** The network fee the wallet pays (D-119): Free where Forwend pays it.

@@ -34,11 +34,11 @@ export const sendApi = apiSlice.injectEndpoints({
     }),
     getSendFee: build.query<
       { amount: string; paidBy: string },
-      { profileId: string; chainId: number; token: string }
+      { profileId: string; chainId: number; token: string; to: string }
     >({
-      query: ({ profileId, chainId, token }) => ({
+      query: ({ profileId, chainId, token, to }) => ({
         url: `${sends(profileId)}/fee`,
-        params: { chainId, token },
+        params: { chainId, token, to },
       }),
       responseSchema: sendFeeSchema,
     }),

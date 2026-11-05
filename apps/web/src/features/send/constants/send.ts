@@ -24,6 +24,9 @@ export const SEND_WARNINGS = { contract: "contract", newRecipient: "newRecipient
 
 export const SEND_FAILURES = { reverted: "reverted", dropped: "dropped" } as const;
 
+/** An EVM chain's gas coin counts in 18 decimals (Arc's USDC too), whatever its token interface uses. */
+export const NATIVE_DECIMALS = 18;
+
 /** Who pays the network fee (D-119): Forwend where it sponsors gas, else the wallet, from the token itself (R-216). */
 export const FEE_PAYERS = { forwend: "forwend", wallet: "wallet" } as const;
 

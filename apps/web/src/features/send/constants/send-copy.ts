@@ -47,6 +47,8 @@ export const SEND_COPY = {
   busy: "A send from this wallet is still on its way. Try again once it arrives.",
   failedToPrepare: "We couldn't check this send. Try again.",
   sending: "Sending",
+  unreachable:
+    "We can't reach Forwend right now. The send still goes through; it shows in Transactions.",
   sendingNote: "This takes a few seconds.",
   sent: "Sent",
   sentNote: (amount: string, to: string) => `${amount} is on its way to ${to}.`,
