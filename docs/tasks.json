@@ -1326,7 +1326,7 @@
         "Each step shows its number and progress, Back on the left and the main action on the right, full width on top on phones, in both themes."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "backend-affected",
@@ -1430,10 +1430,10 @@
         "taskHash": "9d29575bc4ca5847",
         "filesHash": "f8aecf0158e88a38",
         "proof": {
-          "1": "web-unit: first-run.test.tsx, fed from the cached /v1/me as the shell feeds it, walks use, details, tokens, passkey and ready, checks one first action per goal, Go to overview landing on the new profile, Skip for now on details and tokens, Back after a skip with the details still editable and saved, no Back to the uses once their profiles exist, and the passkey step left out when linked",
-          "2": "backend-affected: onboard_test.go and profiles_test.go check named profiles, a merchant store taking the name, refused names and a second call changing nothing; first-run.test.tsx checks billing, tokens and website saves, websites the store API refuses, skipped steps saving nothing, and a retry or Back that makes no profiles twice",
-          "3": "web-unit: onboarding.test.ts checks the return page kept in the tab and never off the app; the shell sends to /app/onboarding with no query",
-          "4": "web-unit: first-run.test.tsx checks the step count, Back keeping typed values and errors focused; screenshots at 1386x887, 1440x900, 1680x680, 390x844 and 375x812 show the footer, the centered passkey and ready steps fitting the phone, the boxed token list and the example invoice with its mark"
+          "1": "web-unit: first-run.test.tsx walks use, details, tokens, passkey and ready, with Skip, Back after the save, no Back to the uses, and the landing profile from the live /v1/me",
+          "2": "backend-affected: onboard_test.go and profiles_test.go check named profiles once; first-run.test.tsx checks billing, tokens and website saves and retries",
+          "3": "web-unit: onboarding.test.ts checks the return page kept in the tab; the shell sends to /app/onboarding with no query",
+          "4": "web-unit: first-run.test.tsx checks the step count and Back; screenshots at desktop and phone sizes in both themes show the layout"
         },
         "review": {
           "result": "pass",
@@ -1441,11 +1441,18 @@
           "summary": "The round 3 blocking finding is fixed. Once the save made the profiles, Back stops at the step after Use (first-run.tsx:359), so the uses and the profiles they made can't drift apart; this also covers a run with no details step, where tokens comes right after Use. The freelancer test asserts no Back there after the save, and DESIGN.md says the same. The kit shows ChoiceCard's tag on the merchant card. The raw --fw-pop-y pixel value is gone. Onboarding unit tests pass (13). The live Privy specs were read, not run.",
           "at": "2026-11-05T11:39:19Z",
           "filesHash": "f8aecf0158e88a38"
-        }
+        },
+        "commit": "b090d1fd",
+        "doneAt": "2026-11-05T11:40:06Z"
       },
       "branch": "feat/f423-new-users-set-up-their-profile-in-short",
       "baseCommit": "5de79a64bafbba93962bdf8b56859d80d4c36108",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f423-new-users-set-up-their-profile-in-short",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
