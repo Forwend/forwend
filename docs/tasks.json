@@ -926,7 +926,7 @@
         "Every place that asks for a fresh sign-in (api-keys, team, webhooks, billing, money actions) uses the new flow, and browser tests cover it, including a wrong and an expired code."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "harness",
         "docs-check",
@@ -1031,11 +1031,18 @@
           "summary": "Three fresh reviews; all findings fixed or made moot. Fixed: closing a form dialog mid-confirm now cancels (each of the five dialogs calls fresh.cancel); a retry refused after a sign-in shows its error (fresh.cancelled is true only on give-up); Radix selects lock with the fieldset; Enter while a code is checked doesn't retry; a failed send offers Send a code instead of a dead end; resend keeps its link and focus; Cancel hands focus to the form's action or the dialog's last action; long emails wrap; the fallback dialog doesn't name the step twice; CodeInput boxes capped at the sign-in width in the kit. The passkey option was removed at the owner's request (2026-11-05), so its findings are moot; the email code is the one proof. Left: focus after a successful confirm falls to the page until the retry answers.",
           "at": "2026-11-05T09:00:49Z",
           "filesHash": "77b51fe975fc3832"
-        }
+        },
+        "commit": "b526e20e",
+        "doneAt": "2026-11-05T09:01:44Z"
       },
       "branch": "feat/f416-protected-changes-like-making-an-api-key",
       "baseCommit": "76805981ceae2fbfbb3d77c77f2037ab33abcee7",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f416-protected-changes-like-making-an-api-key",
+        "base": "main"
+      }
     },
     {
       "id": "F417",
