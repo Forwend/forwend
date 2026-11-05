@@ -24,6 +24,8 @@ export interface SendProgressProps {
   option: SendOption;
   recipient: Recipient;
   onSent: () => void;
+  /** True until the server holds the hash: the sheet can't close then. */
+  onHolding: (holding: boolean) => void;
   onDone: () => void;
 }
 
@@ -36,6 +38,7 @@ export function SendProgress({
   option,
   recipient,
   onSent,
+  onHolding,
   onDone,
 }: SendProgressProps) {
   const read = useGetSendQuery({ profileId, sendId: initial.sendId });
@@ -56,6 +59,8 @@ export function SendProgress({
   useEffect(() => {
     if (lost && hash && readAt) submit({ profileId, sendId: initial.sendId, txHash: hash });
   }, [lost, hash, readAt, submit, profileId, initial.sendId]);
+  const holding = read.currentData?.txHash == null;
+  useEffect(() => onHolding(holding), [holding, onHolding]);
   const told = useRef(false);
   useEffect(() => {
     if (send.status === SEND_STATUSES.sent && !told.current) {
@@ -111,7 +116,12 @@ export function SendProgress({
             <ExternalLink aria-hidden className="size-[var(--fw-icon-sm)]" />
           </a>
         ) : null}
-        <Button variant={sent || failed ? "primary" : "ghost"} className="w-full" onClick={onDone}>
+        <Button
+          variant={sent || failed ? "primary" : "ghost"}
+          className="w-full"
+          disabled={holding}
+          onClick={onDone}
+        >
           {SEND_COPY.done}
         </Button>
       </div>

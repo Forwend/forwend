@@ -400,6 +400,7 @@ export function SendSheet({
         option={option}
         recipient={recipient}
         onSent={onSent}
+        onHolding={setSigning}
         onDone={() => close(false)}
       />
     );
