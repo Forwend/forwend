@@ -29,7 +29,8 @@ export function AmountField({
   const fieldId = id ?? autoId;
   const line = error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : null;
   if (bare) {
-    const length = String(props.value ?? props.defaultValue ?? "").length;
+    const shown = String(props.value || props.defaultValue || props.placeholder || "0");
+    const length = shown.length;
     const size = length > 14 ? "text-3xl" : length > 9 ? "text-4xl" : "text-6xl";
     return (
       <div className={cx("flex flex-col items-center gap-2", className)}>
@@ -43,8 +44,10 @@ export function AmountField({
             autoComplete="off"
             aria-invalid={error ? true : undefined}
             aria-describedby={[`${fieldId}-unit`, line].filter(Boolean).join(" ")}
+            // As wide as its figures (tabular, so a ch each, the point narrower), in every browser.
+            style={{ width: `${Math.max(length, 1) + 0.5}ch` }}
             className={cx(
-              "field-sizing-content min-w-[1ch] max-w-full bg-transparent text-center font-medium tracking-tight tabular-nums outline-none transition-[font-size] duration-[var(--fw-duration-fast)] ease-out placeholder:text-subtle",
+              "max-w-full bg-transparent text-center font-medium tracking-tight tabular-nums outline-none transition-[font-size] duration-[var(--fw-duration-fast)] ease-out placeholder:text-subtle motion-reduce:transition-none",
               size,
               error ? "text-danger" : "text-ink",
             )}

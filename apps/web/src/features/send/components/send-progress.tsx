@@ -69,7 +69,9 @@ export function SendProgress({
   }, [lost, hash, readAt, submit, profileId, initial.sendId]);
   // Locked until the server holds the hash, unless the server can't be reached: then the owner may leave, and the
   // transfer still shows in Transactions once the watcher records it.
-  const holding = read.currentData?.txHash == null && !read.isError && !refused;
+  // read.error stays until a read succeeds, so a retry in flight doesn't lock the sheet again.
+  const unreachable = read.error !== undefined;
+  const holding = read.currentData?.txHash == null && !unreachable && !refused;
   useEffect(() => onHolding(holding), [holding, onHolding]);
   const told = useRef(false);
   useEffect(() => {
@@ -114,7 +116,7 @@ export function SendProgress({
               : SEND_COPY.sendingNote}
         </p>
       </div>
-      {read.isError && !sent && !failed ? (
+      {unreachable && !sent && !failed ? (
         <p role="status" className="text-sm text-muted">
           {SEND_COPY.unreachable}
         </p>
