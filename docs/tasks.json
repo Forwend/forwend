@@ -729,7 +729,7 @@
         "F410",
         "F411"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend-e2e"
       ],
@@ -740,9 +740,54 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-05 review pass by subagent: Fresh review found the test ran but proved less than claimed; all fixed and rerun green: it now sends the printed Safe To/Data bytes (checked equal to the cast line encoding) instead of cast lines; runs ops case for every held invoice and checks held amount, reason and refundable now; checks the payer's balance rises by each returned amount; compares ledger and chain at A's settle; holds B in refund_pending across 10 signer rounds with no settlement intent; shows D refused before its deadline; R-83 now says none of the held money settles (the contract settles only the amount). Reopen 409 proven to be the queued return's (reopenUntil set just before). Stable in 5 runs; no Anvil or temp dirs left."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-05T08:02:03Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 59.9,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 27.9,
+            "log": ""
+          }
+        ],
+        "taskHash": "fcdb7ee7d914a935",
+        "filesHash": "17e4971f27b255c7",
+        "proof": {
+          "1": "backend-e2e: TestReturnsThroughSupport runs ops case and ops return for overpaid, late, expired partial (refused before its deadline, returned after), canceled and another token on Anvil, sends the printed Safe To/Data bytes (checked against the cast line), and after each the ledger equals the chain and the payer's balance rises by that amount",
+          "2": "backend-e2e: A's return is queued before the signer settles: the ledger keeps refund_pending and 1.00 held through the 5.00 settlement; B is reopenable, then 409 while queued, and gets no settlement intent across 10 rounds"
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "Fresh review found the test ran but proved less than claimed; all fixed and rerun green: it now sends the printed Safe To/Data bytes (checked equal to the cast line encoding) instead of cast lines; runs ops case for every held invoice and checks held amount, reason and refundable now; checks the payer's balance rises by each returned amount; compares ledger and chain at A's settle; holds B in refund_pending across 10 signer rounds with no settlement intent; shows D refused before its deadline; R-83 now says none of the held money settles (the contract settles only the amount). Reopen 409 proven to be the queued return's (reopenUntil set just before). Stable in 5 runs; no Anvil or temp dirs left.",
+          "at": "2026-11-05T08:03:40Z",
+          "filesHash": "17e4971f27b255c7"
+        }
+      },
+      "branch": "test/f412-returns-through-support-pass-end-to-end",
+      "baseCommit": "c05dd0f478f4d4e40b3998cf4b5cfbba4e6e5110",
+      "failedVerifies": 0
     },
     {
       "id": "F414",

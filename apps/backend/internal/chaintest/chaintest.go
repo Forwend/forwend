@@ -173,6 +173,17 @@ func (a *Anvil) AsAuthority(to, sig string, args ...string) {
 	a.call(a.authority, to, sig, args...)
 }
 
+// AsAuthorityData sends raw calldata from the refund authority, as a Safe sends a Transaction Builder entry.
+func (a *Anvil) AsAuthorityData(to string, data []byte) {
+	a.t.Helper()
+	a.transact(a.authority, to, data)
+}
+
+// Calldata is sig(args) encoded as cast send encodes it.
+func Calldata(sig string, args ...string) ([]byte, error) {
+	return calldata(sig, args...)
+}
+
 func (a *Anvil) Mint(token string, amount string) {
 	a.t.Helper()
 	a.Send(token, "mint(address,uint256)", Sender, amount)
