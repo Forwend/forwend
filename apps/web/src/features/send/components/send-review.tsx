@@ -6,7 +6,7 @@ import {
   formatTokenAmount,
   NOTICE_TONES,
   Notice,
-  shortAddress,
+  TruncatedAddress,
 } from "@forwend/ui-web";
 import { type ReactNode, useState } from "react";
 import { profileLabel } from "@/features/profiles/lib/profile";
@@ -93,18 +93,16 @@ export function SendReview({
       <dl className="divide-y divide-line rounded-md border border-line text-sm">
         <Row term={SEND_COPY.from}>
           <span className="block text-ink">{profileLabel(from)}</span>
-          <span className="block text-xs text-muted">{shortAddress(send.from)}</span>
+          <TruncatedAddress address={send.from} mono={false} className="text-xs text-muted" />
         </Row>
         <Row term={SEND_COPY.to}>
           {"profile" in recipient ? (
             <>
               <span className="block text-ink">{profileLabel(recipient.profile)}</span>
-              <span className="block text-xs text-muted">{shortAddress(send.to)}</span>
+              <TruncatedAddress address={send.to} mono={false} className="text-xs text-muted" />
             </>
           ) : (
-            <span className="text-ink" title={send.to}>
-              {shortAddress(send.to)}
-            </span>
+            <TruncatedAddress address={send.to} mono={false} className="text-ink" />
           )}
         </Row>
         <Row term={SEND_COPY.network}>{chainName(send.chainId)}</Row>

@@ -148,7 +148,11 @@ test("Send to a new address warns and asks to check the address before it can be
   const send = sheet(page).getByRole("button", { name: /^Send 0\.01 [A-Z]+$/ });
   await expect(sheet(page).getByText("You haven't sent to this address before.")).toBeVisible();
   await expect(send).toBeDisabled();
-  await expect(sheet(page).getByText("0x0000…dead", { exact: true })).toBeVisible();
+  // Short in the review; the tooltip has every character.
+  await sheet(page).getByRole("button", { name: "0x0000…dead", exact: true }).hover();
+  await expect(page.getByRole("tooltip")).toContainText(
+    "0x000000000000000000000000000000000000dead",
+  );
   await shot(page, "../../docs/runs/f425-send-review-390.png", true);
   expect(await blockingViolations(page)).toEqual([]);
   await sheet(page).getByRole("checkbox", { name: "I checked the address" }).check();

@@ -20,6 +20,7 @@ import {
   TIMELINE_STATES,
   Timeline,
   TokenChip,
+  TruncatedAddress,
   WALLET_STATES,
   type WalletState,
   WalletStateLabel,
@@ -87,6 +88,9 @@ export function PaymentsShowcase() {
           explorerHref={`https://basescan.org/address/${SAMPLE_ADDRESS}`}
         />
         <Address address={SAMPLE_ADDRESS} />
+        {/* Short, with the full address in a tooltip on hover, focus or tap; plain text among other text. */}
+        <TruncatedAddress address={SAMPLE_ADDRESS} />
+        <TruncatedAddress address={SAMPLE_ADDRESS} mono={false} />
       </KitGroup>
       <KitGroup title="Receive address: full, start and end marked, with copy">
         <div className="w-full max-w-xs">

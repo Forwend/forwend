@@ -1090,7 +1090,8 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
   - Amount: the large amount field with the unit inside, the available balance with Max, then Network fee (Free) and
     They receive on a surface-2 box.
   - Review: the amount large and centered, then a ruled box: From, To, Network, Network fee, They receive.
-  - An address reads as plain text, shortened (`0x4edd…81fc`), as everywhere in the app; its full form is its title.
+  - An address reads as plain text, shortened (`0x4edd…81fc`), as everywhere in the app.
+    - Its tooltip shows the full address on hover, focus or tap (`TruncatedAddress`, `mono={false}`).
   - A first send to an address, or one to a contract, shows a one-line warning and a checkbox; Send stays off until it
     is ticked.
   - The main button names the amount ("Send 25.00 USDC").
