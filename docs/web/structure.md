@@ -67,6 +67,7 @@ features/invoices/
   - `screens/app-shell/phone-tab-bar.tsx`: the More tab is a button styled exactly like its sibling tab links.
   - `features/stores/components/store-form.tsx`: the browser's color picker, as the Accent color field's action.
   - `features/stores/components/store-logo.tsx`: a hidden file input that the Upload logo button opens.
+  - `features/onboarding/components/ready-step.tsx`: the finish screen's action cards, buttons styled as its link cards.
   Add a kit component instead the second time any of these is needed.
 
 ## Landing sections

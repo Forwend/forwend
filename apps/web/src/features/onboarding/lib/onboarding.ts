@@ -1,8 +1,14 @@
-import { CHECKLIST_STEPS } from "@/features/onboarding/constants/onboarding";
+import {
+  CHECKLIST_STEPS,
+  ONBOARDING_CHOICES,
+  ONBOARDING_STEPS,
+} from "@/features/onboarding/constants/onboarding";
 import type {
   ChecklistDismissal,
   ChecklistFacts,
   ChecklistStep,
+  OnboardingChoice,
+  OnboardingStep,
 } from "@/features/onboarding/types/onboarding";
 import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import type { Profile, ProfileKind } from "@/features/profiles/types/profile";
@@ -12,6 +18,60 @@ import {
 } from "@/features/transactions/constants/transactions";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
+
+// As the API maps them (profile/onboard.go): receive and send is the personal profile every user has (D-73).
+const CHOICE_KINDS: Readonly<Record<OnboardingChoice, ProfileKind>> = {
+  [ONBOARDING_CHOICES.receiveAndSend]: PROFILE_KINDS.personal,
+  [ONBOARDING_CHOICES.getPaidByClients]: PROFILE_KINDS.freelancer,
+  [ONBOARDING_CHOICES.acceptBusinessPayments]: PROFILE_KINDS.merchant,
+  [ONBOARDING_CHOICES.buildIntegration]: PROFILE_KINDS.merchant,
+};
+
+/** The profiles the choices add, freelancer first: two business choices share one merchant profile. */
+export function newKinds(choices: readonly OnboardingChoice[]): ProfileKind[] {
+  const kinds = new Set(choices.map((choice) => CHOICE_KINDS[choice]));
+  return [PROFILE_KINDS.freelancer, PROFILE_KINDS.merchant].filter((kind) => kinds.has(kind));
+}
+
+/** The steps a first run shows for these choices (R-50): a details step per new profile, the passkey only when none
+ * is linked. */
+export function onboardingSteps(
+  choices: readonly OnboardingChoice[],
+  passkeyLinked: boolean,
+): OnboardingStep[] {
+  const kinds = newKinds(choices);
+  return [
+    ONBOARDING_STEPS.use,
+    ...(kinds.includes(PROFILE_KINDS.freelancer) ? [ONBOARDING_STEPS.freelancerDetails] : []),
+    ...(kinds.includes(PROFILE_KINDS.merchant) ? [ONBOARDING_STEPS.merchantDetails] : []),
+    ONBOARDING_STEPS.tokens,
+    ...(passkeyLinked ? [] : [ONBOARDING_STEPS.passkey]),
+    ONBOARDING_STEPS.ready,
+  ];
+}
+
+// The page asked for before the first run waits in the tab, so the address stays /app/onboarding (R-50).
+const RETURN_KEY = "forwend:onboarding:return";
+
+export function rememberReturnPage(path: string) {
+  try {
+    sessionStorage.setItem(RETURN_KEY, path);
+  } catch {
+    // Storage blocked: the first run ends on the overview.
+  }
+}
+
+/** The page to open once the first run is done, read once: never another site (see afterOnboarding). */
+export function takeReturnPage(): string {
+  let path: string | null = null;
+  try {
+    path = sessionStorage.getItem(RETURN_KEY);
+    sessionStorage.removeItem(RETURN_KEY);
+  } catch {
+    // Storage blocked: the overview.
+  }
+  return afterOnboarding(path);
+}
 
 const LANDING_ORDER: readonly ProfileKind[] = [
   PROFILE_KINDS.freelancer,

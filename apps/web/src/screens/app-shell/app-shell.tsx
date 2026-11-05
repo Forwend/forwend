@@ -9,7 +9,8 @@ import { PaymentToasts } from "@/features/activity/components/payment-toasts";
 import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 import { useGetBalancesQuery } from "@/features/balances/api/balances-api";
 import { FirstRun } from "@/features/onboarding/components/first-run";
-import { afterOnboarding } from "@/features/onboarding/lib/onboarding";
+import { PRIVY_PASSKEY } from "@/features/onboarding/constants/onboarding";
+import { rememberReturnPage, takeReturnPage } from "@/features/onboarding/lib/onboarding";
 import { useSignUpQuery } from "@/features/profiles/api/profiles-api";
 import { ProfileSheet } from "@/features/profiles/components/profile-sheet";
 import { PERMISSIONS } from "@/features/profiles/constants/profile";
@@ -84,16 +85,22 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     [rememberProfile, router],
   );
 
-  // R-50: the first run has its own address. Until it is done every app page sends there, keeping the page asked for;
-  // once done (also the moment it is finished) the address returns to that page, else the overview.
-  const firstRun = me.currentData ? me.currentData.onboardedAt === null : null;
+  // R-50: the first run has its own address. Until it is done every app page sends there, keeping the page asked for
+  // in the tab; once done the address returns to that page, else the overview. A run that saves its profiles midway
+  // stays open (setupOpen) until its finish step is left, though onboardedAt is set by then.
+  const onboarded = me.currentData ? me.currentData.onboardedAt !== null : null;
+  const [setupOpen, setSetupOpen] = useState(false);
+  const firstRun = onboarded === null ? null : !onboarded || setupOpen;
   const onOnboarding = pathname === APP_ROUTES.onboarding;
   useEffect(() => {
+    if (onboarded === false && onOnboarding) setSetupOpen(true);
+  }, [onboarded, onOnboarding]);
+  useEffect(() => {
     if (firstRun && !onOnboarding) {
-      const next = encodeURIComponent(pathname + window.location.search);
-      router.replace(`${APP_ROUTES.onboarding}?next=${next}`);
+      rememberReturnPage(pathname + window.location.search);
+      router.replace(APP_ROUTES.onboarding);
     } else if (firstRun === false && onOnboarding) {
-      router.replace(afterOnboarding(new URLSearchParams(window.location.search).get("next")));
+      router.replace(takeReturnPage());
     }
   }, [firstRun, onOnboarding, pathname, router]);
 
@@ -186,8 +193,17 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     return (
       <FirstRun
         profiles={profiles}
-        // The finished first run updates onboardedAt, and the address check above returns to the page.
-        onDone={(profile) => rememberProfile(profile.profileId)}
+        email={user?.email?.address ?? user?.google?.email ?? ""}
+        passkeyLinked={
+          user?.linkedAccounts.some((account) => account.type === PRIVY_PASSKEY) ?? false
+        }
+        onSignOut={() => void signOut()}
+        // The address check above then leaves for href.
+        onFinish={(profile, href) => {
+          rememberProfile(profile.profileId);
+          rememberReturnPage(href);
+          setSetupOpen(false);
+        }}
       />
     );
   }

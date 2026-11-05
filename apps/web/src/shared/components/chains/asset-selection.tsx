@@ -48,6 +48,8 @@ export interface AssetSelectionProps {
   disabled?: boolean;
   /** Why this option can't be turned off right now (the last one on), shown under it. */
   lockedReason?: (key: string) => string | null;
+  /** Keeps its border and corners on phones, for a page that keeps its own side margins. */
+  boxed?: boolean;
 }
 
 /** Which assets and networks are accepted: grouped by asset, each network its own exact contract, so USDC on Base
@@ -59,6 +61,7 @@ export function AssetSelection({
   onChange,
   disabled,
   lockedReason,
+  boxed,
 }: AssetSelectionProps) {
   const [query, setQuery] = useState("");
   const [onlySelected, setOnlySelected] = useState(false);
@@ -68,7 +71,9 @@ export function AssetSelection({
   const searching = query.trim() !== "";
   const summaryId = useId();
   return (
-    <div className="fw-panel flex flex-col">
+    <div
+      className={`flex flex-col ${boxed ? "rounded-lg border border-line bg-surface" : "fw-panel"}`}
+    >
       <div className="flex flex-col gap-3 border-b border-line px-4 py-3 sm:px-5">
         <p id={summaryId} className="text-sm text-muted">
           {selectionSummary(options, selected)}
@@ -154,15 +159,21 @@ export function AssetSelection({
                     </IconButton>
                   ) : null}
                 </div>
-                {expanded ? (
-                  <NetworkRows
-                    options={group.options}
-                    selected={selected}
-                    onChange={onChange}
-                    disabled={disabled}
-                    lockedReason={lockedReason}
-                  />
-                ) : null}
+                {/* Kept mounted so it opens and closes by height; inert while closed. */}
+                <div
+                  inert={!expanded}
+                  className={`grid transition-[grid-template-rows] duration-[var(--fw-duration-base)] ease-[var(--fw-ease-out)] motion-reduce:transition-none ${expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+                >
+                  <div className="min-h-0 overflow-hidden">
+                    <NetworkRows
+                      options={group.options}
+                      selected={selected}
+                      onChange={onChange}
+                      disabled={disabled}
+                      lockedReason={lockedReason}
+                    />
+                  </div>
+                </div>
               </li>
             );
           })}

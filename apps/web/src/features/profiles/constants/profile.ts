@@ -57,3 +57,6 @@ export const NEW_PROFILE_KINDS = [PROFILE_KINDS.freelancer, PROFILE_KINDS.mercha
 
 /** The API's name limit (apps/backend/api/openapi.yaml, CreateProfileRequest.name). */
 export const PROFILE_NAME_MAX = 64;
+
+/** The most profiles one user can own (profile.MaxProfiles). */
+export const PROFILES_MAX = 10;

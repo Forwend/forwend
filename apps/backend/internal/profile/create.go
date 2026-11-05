@@ -16,11 +16,8 @@ func (s *Service) Create(ctx context.Context, privyUserID, idempotencyKey, kind,
 	if kind != Freelancer && kind != Merchant {
 		return Profile{}, false, fmt.Errorf("%w: kind must be %s or %s", ErrInvalid, Freelancer, Merchant)
 	}
-	if !utf8.ValidString(name) || utf8.RuneCountInString(name) > MaxNameLength || !PlainText(name, false) {
-		return Profile{}, false, fmt.Errorf("%w: name must be at most %d characters of plain text", ErrInvalid, MaxNameLength)
-	}
-	if Impersonates(name) {
-		return Profile{}, false, fmt.Errorf("%w: name can't name Forwend", ErrInvalid)
+	if err := checkName(name); err != nil {
+		return Profile{}, false, err
 	}
 	hash := sha256.Sum256([]byte(kind + "\x00" + name))
 	id, created, err := s.insert(ctx, privyUserID, idempotencyKey, kind, name, hash[:])
@@ -42,6 +39,17 @@ func (s *Service) Create(ctx context.Context, privyUserID, idempotencyKey, kind,
 		}
 	}
 	return Profile{}, false, fmt.Errorf("profile %s is not listed", id)
+}
+
+// checkName holds a profile name to what New profile and the first run both accept; empty means no name.
+func checkName(name string) error {
+	if !utf8.ValidString(name) || utf8.RuneCountInString(name) > MaxNameLength || !PlainText(name, false) {
+		return fmt.Errorf("%w: name must be at most %d characters of plain text", ErrInvalid, MaxNameLength)
+	}
+	if Impersonates(name) {
+		return fmt.Errorf("%w: name can't name Forwend", ErrInvalid)
+	}
+	return nil
 }
 
 // The user row lock makes the cap hold against concurrent requests: each profile's wallet is scanned forever.

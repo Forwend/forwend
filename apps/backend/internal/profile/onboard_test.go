@@ -29,7 +29,7 @@ func TestOnboardOnce(t *testing.T) {
 		t.Fatalf("before onboarding: %v, %v; want nil", at, err)
 	}
 	first, at, onboarded, err := s.Onboard(ctx, alice,
-		[]string{ReceiveAndSend, GetPaidByClients, AcceptBusinessPayments, BuildIntegration, GetPaidByClients})
+		[]string{ReceiveAndSend, GetPaidByClients, AcceptBusinessPayments, BuildIntegration, GetPaidByClients}, nil)
 	if err != nil || !onboarded || at.IsZero() {
 		t.Fatalf("onboard: %v, %v, %v", at, onboarded, err)
 	}
@@ -41,7 +41,7 @@ func TestOnboardOnce(t *testing.T) {
 			t.Fatalf("%s profile has no wallet", p.Kind)
 		}
 	}
-	again, againAt, onboarded, err := s.Onboard(ctx, alice, []string{AcceptBusinessPayments})
+	again, againAt, onboarded, err := s.Onboard(ctx, alice, []string{AcceptBusinessPayments}, nil)
 	if err != nil || onboarded || !againAt.Equal(at) || len(again) != 3 {
 		t.Fatalf("again: %v profiles, %v, %v, %v; want the same state", kinds(again), againAt, onboarded, err)
 	}
@@ -59,11 +59,11 @@ func TestOnboardSkip(t *testing.T) {
 	if _, _, err := s.SignUp(ctx, alice); err != nil {
 		t.Fatal(err)
 	}
-	list, at, onboarded, err := s.Onboard(ctx, alice, []string{})
+	list, at, onboarded, err := s.Onboard(ctx, alice, []string{}, nil)
 	if err != nil || !onboarded || at.IsZero() || len(list) != 1 {
 		t.Fatalf("skip: %v, %v, %v, %v; want onboarded with only the personal profile", kinds(list), at, onboarded, err)
 	}
-	if _, _, onboarded, _ := s.Onboard(ctx, alice, []string{GetPaidByClients}); onboarded ||
+	if _, _, onboarded, _ := s.Onboard(ctx, alice, []string{GetPaidByClients}, nil); onboarded ||
 		count(t, pool, "profiles") != 1 || f.Wallets() != 1 {
 		t.Fatal("choosing after a skip made a profile")
 	}
@@ -82,7 +82,7 @@ func TestOnboardConcurrently(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, _, onboarded, err := s.Onboard(ctx, alice, []string{GetPaidByClients, BuildIntegration})
+			_, _, onboarded, err := s.Onboard(ctx, alice, []string{GetPaidByClients, BuildIntegration}, nil)
 			if err != nil {
 				t.Error(err)
 			}
@@ -103,7 +103,7 @@ func TestOnboardConcurrently(t *testing.T) {
 func TestOnboardErrors(t *testing.T) {
 	s, _, pool := newService(t)
 	ctx := context.Background()
-	if _, _, _, err := s.Onboard(ctx, alice, []string{}); !errors.Is(err, ErrNotSignedUp) {
+	if _, _, _, err := s.Onboard(ctx, alice, []string{}, nil); !errors.Is(err, ErrNotSignedUp) {
 		t.Fatalf("before signup: %v, want ErrNotSignedUp", err)
 	}
 	if _, err := s.OnboardedAt(ctx, alice); !errors.Is(err, ErrNotSignedUp) {
@@ -113,7 +113,7 @@ func TestOnboardErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, choices := range [][]string{nil, {"freelancer"}, {GetPaidByClients, ""}} {
-		if _, _, _, err := s.Onboard(ctx, alice, choices); !errors.Is(err, ErrInvalid) {
+		if _, _, _, err := s.Onboard(ctx, alice, choices, nil); !errors.Is(err, ErrInvalid) {
 			t.Fatalf("choices %q: %v, want ErrInvalid", choices, err)
 		}
 	}
@@ -133,7 +133,7 @@ func TestOnboardKeepsTheProfileCap(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if _, _, _, err := s.Onboard(ctx, alice, []string{GetPaidByClients, AcceptBusinessPayments}); !errors.Is(err, ErrInvalid) {
+	if _, _, _, err := s.Onboard(ctx, alice, []string{GetPaidByClients, AcceptBusinessPayments}, nil); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("onboarding past the cap: %v, want ErrInvalid", err)
 	}
 	if n := count(t, pool, "profiles"); n != MaxProfiles-1 {
@@ -152,7 +152,66 @@ func TestOnboardAtTheCapWithoutNewProfilesIsAllowed(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if _, _, _, err := s.Onboard(ctx, alice, []string{ReceiveAndSend}); err != nil {
+	if _, _, _, err := s.Onboard(ctx, alice, []string{ReceiveAndSend}, nil); err != nil {
 		t.Fatalf("onboarding that adds no profile at the cap: %v", err)
+	}
+}
+
+func TestOnboardNamesTheProfilesItMakes(t *testing.T) {
+	s, _, pool := newService(t)
+	ctx := context.Background()
+	if _, _, err := s.SignUp(ctx, alice); err != nil {
+		t.Fatal(err)
+	}
+	names := map[string]string{Freelancer: "Mara Ilić Design", Merchant: "North & Co."}
+	list, _, _, err := s.Onboard(ctx, alice, []string{GetPaidByClients, AcceptBusinessPayments}, names)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var merchantID string
+	for _, p := range list {
+		if want := names[p.Kind]; p.Name != want {
+			t.Fatalf("%s profile named %q, want %q", p.Kind, p.Name, want)
+		}
+		if p.Kind == Merchant {
+			merchantID = p.ID
+		}
+	}
+	var store string
+	if err := pool.QueryRow(ctx, "SELECT name FROM stores WHERE profile_id = $1", merchantID).Scan(&store); err != nil {
+		t.Fatal(err)
+	}
+	if store != "North & Co." {
+		t.Fatalf("first store named %q, want the business name", store)
+	}
+	again, _, _, err := s.Onboard(ctx, alice, []string{GetPaidByClients}, map[string]string{Freelancer: "Other"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range again {
+		if p.Kind == Freelancer && p.Name != "Mara Ilić Design" {
+			t.Fatalf("a second call renamed the freelancer profile to %q", p.Name)
+		}
+	}
+}
+
+func TestOnboardRefusesNamesItCannotUse(t *testing.T) {
+	s, _, pool := newService(t)
+	ctx := context.Background()
+	if _, _, err := s.SignUp(ctx, alice); err != nil {
+		t.Fatal(err)
+	}
+	for _, names := range []map[string]string{
+		{Merchant: "North & Co."}, // no choice makes a merchant profile
+		{Personal: "Me"},          // the personal profile already exists
+		{Freelancer: "Forwend"},   // impersonation
+		{Freelancer: "Mara‮"},     // not plain text
+	} {
+		if _, _, _, err := s.Onboard(ctx, alice, []string{GetPaidByClients}, names); !errors.Is(err, ErrInvalid) {
+			t.Fatalf("names %q: %v, want ErrInvalid", names, err)
+		}
+	}
+	if at, _ := s.OnboardedAt(ctx, alice); at != nil || count(t, pool, "profiles") != 1 {
+		t.Fatal("a refused request onboarded the user or made a profile")
 	}
 }

@@ -17,7 +17,11 @@ import { flushSync } from "react-dom";
 import { useSaveBillingDetailsMutation } from "@/features/profiles/api/profiles-api";
 import { BILLING_LIMITS } from "@/features/profiles/constants/billing-details";
 import { BILLING_DETAILS_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
-import { countryOptions, invalidBillingField } from "@/features/profiles/lib/billing-details";
+import {
+  billingErrors,
+  countryOptions,
+  invalidBillingField,
+} from "@/features/profiles/lib/billing-details";
 import type { BillingDetails, BillingDetailsBody } from "@/features/profiles/types/billing-details";
 import { FieldGroup } from "@/shared/components/field-group";
 
@@ -55,13 +59,7 @@ export function BillingDetailsForm({ profileId, saved, next, business }: Billing
       taxId: value("taxId") || null,
       email: value("email"),
     };
-    const shown: Partial<Record<Field, string>> = {};
-    for (const field of ["name", "address", "email"] as const) {
-      if (!body[field]) shown[field] = COPY.errors.required;
-    }
-    if (body.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email))
-      shown.email = COPY.errors.email;
-    if (!country) shown.country = COPY.errors.country;
+    const shown = billingErrors(body);
     flushSync(() => {
       setErrors(shown);
       setFormError("");

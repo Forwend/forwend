@@ -30,7 +30,8 @@ type meJSON struct {
 }
 
 type onboardingBody struct {
-	Choices []string `json:"choices"`
+	Choices []string          `json:"choices"`
+	Names   map[string]string `json:"names"`
 }
 
 type billingDetailsBody struct {

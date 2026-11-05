@@ -13,8 +13,9 @@ Product requirements and money policy live in [PROJECT](../PROJECT.md); future s
   (R-45, R-68), never in the pay box. An attached invoice PDF is linked at any time; once paid the page is the payer's receipt
   (R-48), with the receipt PDF, and it never mentions the settlement, which is the creator's business (R-68).
 - Personal profiles can request money: amount, note, expiry and a private link. Call it a request, not an invoice.
-- First run asks once what the user wants to do and says which profile each choice adds; the checklist names real next
-  steps only. A passkey added there signs in from `/sign-in`.
+- First run asks once what the user wants to do and says which profile each choice adds. It asks only what those
+  profiles use now (name, contact, country, address, accepted test tokens), then names one real first action each;
+  the checklist names real next steps only. A passkey added there signs in from `/sign-in`.
 - Bank withdrawal is user-started: quote, fees, net amount and confirmation. Do not imply it is available before implemented.
 - Current public-facing material is pre-launch. No invented customers, testimonials, funding, insurance, regulation or volumes.
 - Landing actions open `/sign-in`; the landing page does not collect email addresses.

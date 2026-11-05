@@ -12,7 +12,7 @@ async function chooseFreelancer(page: Page, open: () => Promise<void>) {
     .or(page.getByRole("dialog", { name: "Profiles" }).getByRole("button", { name: /E2E studio/ }));
   if (await existing.count()) return existing.click();
   await page.getByRole("menuitem", { name: "New profile" }).click();
-  await page.getByText("Freelancer", { exact: true }).click();
+  await page.getByRole("radio", { name: "Freelancer" }).check({ force: true });
   await page.getByRole("textbox", { name: "Name (optional)" }).fill("E2E studio");
   await page.getByRole("button", { name: "Create profile" }).click();
   await expect(page).toHaveURL("/app");

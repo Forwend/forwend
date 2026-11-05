@@ -54,7 +54,7 @@ func onboard(profiles *profile.Service) http.HandlerFunc {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		list, at, onboarded, err := profiles.Onboard(r.Context(), mid.SignedInUser(r), body.Choices)
+		list, at, onboarded, err := profiles.Onboard(r.Context(), mid.SignedInUser(r), body.Choices, body.Names)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

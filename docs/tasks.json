@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 423,
+  "nextId": 424,
   "tasks": [
     {
       "id": "F332",
@@ -1312,6 +1312,145 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f422-the-clients-list-and-client-pickers-page",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F423",
+      "type": "feat",
+      "behavior": "New users set up their profile in short onboarding steps instead of one choice screen",
+      "acceptance": [
+        "Onboarding asks the use, one details step per new freelancer or business profile, accepted test tokens, an optional passkey, then shows one first action per goal.",
+        "POST /v1/me/onboarding takes optional profile names and still creates profiles only once; details, tokens and website save through their own APIs.",
+        "The address is /app/onboarding with no ?next, the page asked for still opens after setup, and the logo sits where landing and sign-in put it.",
+        "Each step shows its number and progress, Back on the left and the main action on the right, full width on top on phones, in both themes."
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "web-unit",
+        "backend-affected",
+        "typecheck",
+        "lint"
+      ],
+      "refs": [
+        "R-50",
+        "D-53",
+        "D-73"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-11-05 review fail by reviewer: Blocking: (1) first-run.tsx:271 picks the landing profile with landingProfile(profiles, after), but the app shell passes live profiles that already hold the new ones after POST onboarding, so the finish screen says 'Your account is ready' and Go to overview opens the personal profile instead of the new freelancer or business profile (D-73). Reproduced with FirstRun fed from useSignUpQuery; first-run.test.tsx passes a fixed profiles prop, so it misses this. Keep the profiles from the start of the run. (2) first-run.tsx:52 websiteOrigin accepts http://[::1], underscores and a leading hyphen, which profile/stores.go origin() refuses. The store PUT then fails after the profiles exist, Back is hidden (line 320), so every retry fails with the generic error. Match the backend rule. Notes: ready-step.tsx:34 and :50 use raw buttons where the kit rule asks for a kit control; ready-step.tsx:63 faucet link opens a new tab without saying so; settings-screen.tsx:50 still repeats the passkey string now in PRIVY_PASSKEY; PROJECT.md D-53 still quotes the old question and choice names; openapi.yaml:4273 says names are ignored once onboarded, but a bad name still gets 422; a failed token load lets Continue save without tokens.",
+        "2026-11-05 review pass by reviewer: Both blocking findings are fixed. FirstRun freezes the start profiles, so the finish screen and Go to overview land on the new freelancer or business profile (D-73); the test now feeds FirstRun from useSignUpQuery as the shell does. websiteOrigin follows the origin() rule in profile/stores.go: lowercase, the same host pattern, http only on localhost and 127.0.0.1, default ports dropped, nothing after the host; tests cover the refused and normalized cases. The notes are fixed too: faucet card says it opens a new tab, settings uses PRIVY_PASSKEY, D-53 and the openapi names text match behavior, tokens Continue waits for the list, ready-step raw buttons are a listed structure exception. Onboarding unit tests pass (12). The live Privy spec was read, not run.",
+        "2026-11-05 review fail by reviewer: Blocking: first-run.tsx:357 shows Back on every step after the first, also after the save, so a user can go back to the Use step once the profiles exist and change the uses. UseStep (first-run.tsx:504) still toggles and changes steps and ready actions, but made is set, so no new profile is created. Reproduced: pick Invoice clients, save, go back to Use, switch to Take payments for my business, fill the business details. Onboarding is posted once, the business details are dropped (billing PUTs go only to the freelancer profile), the finish screen says the freelancer profile is ready, and Create a payment link opens /app/links/new on the freelancer profile. Lock the uses once the profiles exist (no Back to Use, or a read-only Use step), and add a test. The rest of round 3 looks right: Skip on details and tokens, billing re-PUT after Back, frozen start profiles, website rule, frame layout and phone footer order, reduced motion through the global rule, PROFILES_MAX counting owned profiles like MaxProfiles, docs for Skip and Back. Notes: ChoiceCard's new tag prop is not on /kit (web rules ask for every state there); onboarding-frame.tsx:104 sets --fw-pop-y to a raw 8px instead of a token.",
+        "2026-11-05 review pass by reviewer: The round 3 blocking finding is fixed. Once the save made the profiles, Back stops at the step after Use (first-run.tsx:359), so the uses and the profiles they made can't drift apart; this also covers a run with no details step, where tokens comes right after Use. The freelancer test asserts no Back there after the save, and DESIGN.md says the same. The kit shows ChoiceCard's tag on the merchant card. The raw --fw-pop-y pixel value is gone. Onboarding unit tests pass (13). The live Privy specs were read, not run."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-05T11:37:28Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "tokens-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 29.2,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.3,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 44.8,
+            "log": ""
+          }
+        ],
+        "taskHash": "9d29575bc4ca5847",
+        "filesHash": "f8aecf0158e88a38",
+        "proof": {
+          "1": "web-unit: first-run.test.tsx walks use, details, tokens, passkey and ready, with Skip, Back after the save, no Back to the uses, and the landing profile from the live /v1/me",
+          "2": "backend-affected: onboard_test.go and profiles_test.go check named profiles once; first-run.test.tsx checks billing, tokens and website saves and retries",
+          "3": "web-unit: onboarding.test.ts checks the return page kept in the tab; the shell sends to /app/onboarding with no query",
+          "4": "web-unit: first-run.test.tsx checks the step count and Back; screenshots at desktop and phone sizes in both themes show the layout"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "The round 3 blocking finding is fixed. Once the save made the profiles, Back stops at the step after Use (first-run.tsx:359), so the uses and the profiles they made can't drift apart; this also covers a run with no details step, where tokens comes right after Use. The freelancer test asserts no Back there after the save, and DESIGN.md says the same. The kit shows ChoiceCard's tag on the merchant card. The raw --fw-pop-y pixel value is gone. Onboarding unit tests pass (13). The live Privy specs were read, not run.",
+          "at": "2026-11-05T11:39:19Z",
+          "filesHash": "f8aecf0158e88a38"
+        },
+        "commit": "b090d1fd",
+        "doneAt": "2026-11-05T11:40:06Z"
+      },
+      "branch": "feat/f423-new-users-set-up-their-profile-in-short",
+      "baseCommit": "5de79a64bafbba93962bdf8b56859d80d4c36108",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f423-new-users-set-up-their-profile-in-short",
         "base": "main"
       }
     }

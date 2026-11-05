@@ -15,6 +15,7 @@ import { Laptop } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSignOutEverywhereMutation } from "@/features/auth/api/auth-api";
 import { SIGN_OUT_EVERYWHERE_COPY } from "@/features/auth/constants/auth-copy";
+import { PRIVY_PASSKEY } from "@/features/onboarding/constants/onboarding";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { SETTINGS_COPY } from "@/screens/settings/constants/settings-copy";
 import { deviceName } from "@/screens/settings/lib/device";
@@ -47,7 +48,7 @@ export function SettingsScreen() {
       return [{ key: account.address, name: COPY.methods.email, detail: account.address }];
     if (account.type === "google_oauth")
       return [{ key: `google:${account.email}`, name: COPY.methods.google, detail: account.email }];
-    if (account.type === "passkey") {
+    if (account.type === PRIVY_PASSKEY) {
       const where = [account.createdWithBrowser, account.createdWithOs].filter(Boolean).join(", ");
       return [
         {

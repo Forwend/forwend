@@ -53,7 +53,8 @@ Read only the sections your change touches. Any new control also needs
 - The footer places its final action above original rolling grassland artwork, with distinct light and dark compositions.
 - Social buttons remain visibly unavailable and expose Soon... on hover, keyboard focus and touch.
 - Sign-in keeps all authentication behavior. Its form is centered in the space under the site bar, on every screen.
-  - Large screens keep quiet terrain below the form, with room so the two never meet.
+  - The form sits in the middle of the screen: the bottom padding matches the bar.
+  - Large screens keep quiet terrain below the form; only its faded top may sit behind the last button.
 - On phones, sign-in uses an almost plain token surface. Decorative backgrounds do not receive pointer input.
 
 ## Type and color
@@ -595,17 +596,44 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   (see the invoice page under Checkout). Details are statement rows, the term on the left and its value on the right;
   a note stacks under its term.
 - Email notifications: one settings row in a panel (see Controls).
-- First run: while `/v1/me` has no `onboardedAt`, `/app` shows one standalone screen instead of the shell: the logo,
-  "What do you want to do?" in the UI heading face, four choice cards (checkboxes, any number; two columns from small
-  screens up) with an icon, a hint and the profile each one adds, then Continue and Skip for now. Continue with nothing
-  picked is Skip. Afterwards the app opens on the overview of the new freelancer profile, else the new merchant, else
-  the personal one (D-73).
+- First run (R-50): while `/v1/me` has no `onboardedAt`, `/app/onboarding` shows standalone steps instead of the shell.
+  - Every step: the logo where landing and sign-in put it (`SiteBar`, plain), "Step 2 of 5" and Sign out at the right,
+    then a bar with one segment per step, the question and its fields in one column.
+  - Motion: each step rises in (`fw-pop-in`, slow); the bar's segments fill from the left.
+  - The step sits in the middle of the space below the bar from sm up; the heading is one line at 36px.
+  - The footer: Back on the left, the main action on the right; Skip for now or Not now sits left of the main action.
+  - Phones: the main action spans the foot; Back and Skip share one row under it, in two equal outlined buttons.
+  - Back shows on every step after the first. After the save, the details stay editable and save again as billing details.
+  - Once the save made the profiles, Back stops at the first details step: the uses can't change.
+  - Passkey and Ready are centered; on phones their content sits in the middle of the space above the footer.
+  - Getting paid boxes `AssetSelection` (`boxed`), so the list keeps the page's side margins on phones.
+  - Use: four choice cards (any number) in two columns, the profile each sets up as a badge by its mark.
+    Phones drop the hints so all four fit. Skip setup sits at the footer's left.
+  - Details, once per new freelancer or business profile: name, contact email (the sign-in email first), country and
+    address, with no hints under them, beside the invoice they make (`InvoiceDocument`).
+    The preview's client, items and total are an example, said under it.
+    Building with the API also asks an optional website.
+    Skip makes the profile unnamed; its billing details wait for the setup guide.
+  - Getting paid: one "Test money only" notice with Circle's faucet, then `AssetSelection` with the profile's defaults.
+    Skip keeps each profile's own defaults.
+  - Passkey: a large mark, the question and the points centered; Back, Not now and Add a passkey.
+    Left out when one is linked.
+  - Ready: the kit `SuccessCheck` drawn large on a soft green circle, centered with the question and summary.
+  - Ready: one main action per goal (first invoice, payment link, test API key or the wallet), the faucet and the docs'
+    first test payment, then Go to overview. Each action opens its own profile; Go to overview opens the new
+    freelancer profile, else the new merchant, else the personal one (D-73).
 - Onboarding checklist: the setup guide at the sidebar's foot (see App shell), never a card on the overview.
   Steps come from data: passkey linked, billing details (freelancer), first invoice or request, first paid in full,
   first final money in. Skipped steps are remembered per profile in the browser.
 - Form pages stop at 56rem (`max-w-4xl`), so a field never runs across a wide screen; step forms use 72rem for the
   preview beside them, and settings pages sit in the settings frame.
-  - The 56rem pages are Billing details, New profile and Email notifications.
+  - The 56rem pages are Billing details and Email notifications.
+- New profile: "Add a profile" over the form (37.5rem), beside a preview (22.5rem) from lg up, centered in the page.
+  - The heading shows at every width; the header's breadcrumb still names the page.
+  - Two type cards side by side, each with what it includes (hidden on phones), then the optional name.
+  - The preview lists the user's profiles with the new one marked New; phones show only the new row.
+  - The footer: Cancel on the left; the owned count ("5 of 10 profiles") and Create profile on the right.
+  - At the cap Create is off and the cap message shows before any try.
   - Each field group is a full-width panel with its title ruled off. Billing details has Contact, then Address and tax.
   - Inside a panel, short fields pair up in two columns from small screens up.
   - The pairs: network and amount, title and reference, the dates, name and email, country and tax ID.

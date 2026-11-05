@@ -12,6 +12,8 @@ export interface ChoiceCardProps {
   icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
   title: string;
   hint?: ReactNode;
+  /** A short label in the icon's row, such as what the choice sets up. */
+  tag?: ReactNode;
 }
 
 /** The mark fills when chosen, so the choice is never shown by border color alone. */
@@ -24,6 +26,7 @@ export function ChoiceCard({
   icon: Icon,
   title,
   hint,
+  tag,
 }: ChoiceCardProps) {
   const id = useId();
   return (
@@ -45,9 +48,12 @@ export function ChoiceCard({
           type === "radio" ? "rounded-pill" : "rounded-sm",
         )}
       >
-        <Check className="size-3.5 opacity-0 group-has-checked:opacity-100" />
+        <Check className="size-3.5 scale-50 opacity-0 transition-[opacity,scale] duration-[var(--fw-duration-fast)] ease-[var(--fw-ease-out)] group-has-checked:scale-100 group-has-checked:opacity-100" />
       </span>
-      <Icon aria-hidden className="mb-2 size-[var(--fw-icon-lg)] text-accent" />
+      <span className="mb-2 flex w-full items-center gap-2 pr-8">
+        <Icon aria-hidden className="size-[var(--fw-icon-lg)] shrink-0 text-accent" />
+        {tag ? <span className="ml-auto min-w-0">{tag}</span> : null}
+      </span>
       <span id={`${id}-title`} className="pr-8 font-medium">
         {title}
       </span>

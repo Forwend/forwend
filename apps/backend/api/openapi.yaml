@@ -4265,6 +4265,15 @@ components:
           items:
             type: string
             enum: [receive_and_send, get_paid_by_clients, accept_business_payments, build_integration]
+        names:
+          type: object
+          additionalProperties: false
+          description: >-
+            Names for the profiles this call makes, by kind. A name for a kind no choice makes is 422 invalid_value;
+            an empty name is no name. A merchant's first store takes its name. Once the user is onboarded, valid names change nothing.
+          properties:
+            freelancer: { type: string, maxLength: 64 }
+            merchant: { type: string, maxLength: 64 }
     CreateProfileRequest:
       type: object
       additionalProperties: false

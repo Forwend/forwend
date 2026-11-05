@@ -26,8 +26,9 @@ var choiceKinds = map[string]string{
 }
 
 // Onboard runs the first-run choice once, in one transaction; later calls change nothing. No choices (skip) only
-// sets onboarded_at; nil choices are refused. onboarded reports that this call did it.
-func (s *Service) Onboard(ctx context.Context, privyUserID string, choices []string) (
+// sets onboarded_at; nil choices are refused. names, by profile kind, names the profiles this call makes (R-50); a
+// name for a kind no choice makes is refused. onboarded reports that this call did it.
+func (s *Service) Onboard(ctx context.Context, privyUserID string, choices []string, names map[string]string) (
 	profiles []Profile, onboardedAt time.Time, onboarded bool, err error) {
 	if choices == nil {
 		return nil, time.Time{}, false, fmt.Errorf("%w: choices is required", ErrInvalid)
@@ -39,6 +40,14 @@ func (s *Service) Onboard(ctx context.Context, privyUserID string, choices []str
 			return nil, time.Time{}, false, fmt.Errorf("%w: unknown choice %q", ErrInvalid, c)
 		}
 		kinds[kind] = true
+	}
+	for kind, name := range names {
+		if (kind != Freelancer && kind != Merchant) || !kinds[kind] {
+			return nil, time.Time{}, false, fmt.Errorf("%w: names has %q, which no choice makes", ErrInvalid, kind)
+		}
+		if err := checkName(name); err != nil {
+			return nil, time.Time{}, false, err
+		}
 	}
 	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		var userID string
@@ -72,7 +81,9 @@ func (s *Service) Onboard(ctx context.Context, privyUserID string, choices []str
 			if !kinds[kind] {
 				continue
 			}
-			if _, err := tx.Exec(ctx, "INSERT INTO profiles (user_id, kind) VALUES ($1, $2)", userID, kind); err != nil {
+			// An empty name is no name; a merchant's first store takes the profile's name (migration 00058).
+			if _, err := tx.Exec(ctx, "INSERT INTO profiles (user_id, kind, name) VALUES ($1, $2, NULLIF($3, ''))",
+				userID, kind, names[kind]); err != nil {
 				return fmt.Errorf("insert %s profile: %w", kind, err)
 			}
 		}
