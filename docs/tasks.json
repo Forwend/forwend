@@ -275,7 +275,7 @@
         "The balance chart, its change figure and the received and sent totals value tokens at the same market prices as the total beside them, or R-178 records why they count each stablecoin as 1 USD"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "backend",
@@ -369,11 +369,18 @@
           "summary": "The chart, its change and the money in and out totals use the latest prices; the balance chart's last point matches the total. Money in and out are cut to cents once over the range. Loading waits for prices and does not hang. The unavailable text names missing prices. The held fixture fix is right.",
           "at": "2026-11-04T23:53:46Z",
           "filesHash": "8c68b33ec60e2c53"
-        }
+        },
+        "commit": "0a35fe10",
+        "doneAt": "2026-11-05T05:08:10Z"
       },
       "branch": "fix/f350-the-balance-chart-and-its-totals-value-t",
       "baseCommit": "6b0d1a91a6941aad1131f751cc4fe60eb410e490",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f350-the-balance-chart-and-its-totals-value-t",
+        "base": "main"
+      }
     },
     {
       "id": "F389",
