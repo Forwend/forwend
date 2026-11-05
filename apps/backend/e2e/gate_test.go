@@ -357,7 +357,7 @@ var binaries = sync.OnceValues(func() (string, error) {
 	}
 	binDir = dir
 	out, err := exec.Command("go", "build", "-o", dir+"/", "../cmd/api", "../cmd/worker", "../cmd/signer",
-		"../cmd/webhooks").CombinedOutput()
+		"../cmd/webhooks", "../cmd/ops").CombinedOutput()
 	if err != nil {
 		return dir, fmt.Errorf("go build: %w\n%s", err, out)
 	}
