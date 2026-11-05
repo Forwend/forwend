@@ -184,7 +184,10 @@ R-43; the full schema is in openapi.yaml. Members reach it with `billing.read` a
 
 R-86; the full schema is in openapi.yaml. Members reach it with `clients.read` and `clients.write` (D-93).
 
-- `GET /v1/profiles/{profileId}/clients` lists the saved clients by name; at most 1000 per profile, so it comes whole.
+- `GET /v1/profiles/{profileId}/clients` lists one page of the saved clients by name, then id (R-177).
+  - `limit` is 1 to 100, 50 by default; `cursor` is the last page's `nextCursor`, null on the last page.
+  - `q` searches the name, the email and the tax ID in any letter case, as the jobs search does.
+  - A profile still holds at most 1000 clients.
 - `GET /v1/profiles/{profileId}/clients/{clientId}` reads one client; another profile's or an unknown id is 404 `client_not_found`.
 - `PUT /v1/profiles/{profileId}/clients/{clientId}` creates or replaces one. The caller picks the id (a lowercase UUID),
   so no Idempotency-Key is needed: the same body sent twice saves one client, 201 the first time and 200 after. Body:

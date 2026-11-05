@@ -1086,24 +1086,41 @@ paths:
   /v1/profiles/{profileId}/clients:
     get:
       operationId: listClients
-      summary: The profile's saved clients, by name (R-86)
-      description: At most 1000 per profile, so the list comes whole.
+      summary: The profile's saved clients, by name (R-86, R-177)
+      description: It lists one page, by name then id, and nextCursor continues it.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
+        - name: limit
+          in: query
+          description: Clients per page; default 50.
+          schema: { type: integer, minimum: 1, maximum: 100 }
+        - name: cursor
+          in: query
+          description: nextCursor from the previous page.
+          schema: { type: string }
+        - name: q
+          in: query
+          description: |
+            Search text: 1 to 100 characters after trimming spaces; absent means no search, blank or longer is 422. A
+            client matches when its name, email or tax ID contains the text in any letter case.
+          schema: { type: string, minLength: 1, maxLength: 100 }
       responses:
         "200":
-          description: The saved clients
+          description: One page; an empty list for a profile with no saved clients
           content:
             application/json:
               schema:
                 type: object
-                required: [clients]
+                required: [items, nextCursor]
                 properties:
-                  clients:
+                  items:
                     type: array
                     items: { $ref: "#/components/schemas/Client" }
+                  nextCursor: { type: [string, "null"], description: Null on the last page. }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/clients/{clientId}:

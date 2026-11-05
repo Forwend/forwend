@@ -22,7 +22,13 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { CLIENT_KINDS } from "@/features/clients/constants/clients";
-import { clientBody, clientCountryOptions, clientKind } from "@/features/clients/lib/clients";
+import type { ClientSearch } from "@/features/clients/hooks/use-client-search";
+import {
+  clientBody,
+  clientCountryOptions,
+  clientKind,
+  clientOptions,
+} from "@/features/clients/lib/clients";
 import type { Client, ClientBody, ClientKind } from "@/features/clients/types/clients";
 import { useCreateInvoiceMutation } from "@/features/invoices/api/invoices-api";
 import { AgreedValueFields } from "@/features/invoices/components/agreed-value";
@@ -109,8 +115,8 @@ export interface NewInvoiceFormProps {
   request?: { senderName: string; onCreated: (invoice: Invoice) => void };
   // Filled from another invoice (R-91), or with what is left of a closed one (R-77).
   start?: InvoiceStart;
-  /** Saved clients (R-86): picking one fills the client fields with a copy. */
-  clients?: readonly Client[];
+  /** Saved clients, searched through the API (R-86, R-177): picking one fills the client fields with a copy. */
+  clientSearch?: ClientSearch;
   /** R-129: the invoice this one replaces, canceled when it is created. */
   replaces?: { invoiceId: string; number: string };
   /** A merchant profile's stores (R-134), the first one first; the invoice records one. */
@@ -137,7 +143,7 @@ export function NewInvoiceForm({
   request,
   start,
   startClient,
-  clients,
+  clientSearch,
   replaces,
   stores,
   issuer,
@@ -742,19 +748,19 @@ export function NewInvoiceForm({
                   className={stepId === STEP_IDS.customer ? "contents" : "hidden"}
                 >
                   <FieldGroup title={COPY.client}>
-                    {clients?.length ? (
+                    {clientSearch?.any ? (
                       <ComboboxField
                         label={COPY.savedClient}
                         placeholder={COPY.savedClientPlaceholder}
                         searchLabel={COPY.searchClients}
-                        options={clients.map((c) => ({
-                          value: c.clientId,
-                          label: c.name,
-                          detail: c.email ?? undefined,
-                        }))}
+                        options={clientOptions(clientSearch.clients)}
+                        valueLabel={fill.client.name}
+                        loading={clientSearch.pending}
+                        noResults={clientSearch.failed ? COPY.clientsFailed : undefined}
+                        onSearchChange={clientSearch.search}
                         value={fill.key}
                         onValueChange={(clientId) => {
-                          const picked = clients.find((c) => c.clientId === clientId);
+                          const picked = clientSearch.clients.find((c) => c.clientId === clientId);
                           if (!picked) return;
                           const values = clientBody(picked);
                           setFill({ key: clientId, client: values });

@@ -2,13 +2,17 @@ package profile
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/mail"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 	"unicode/utf8"
 
+	"github.com/forwend/forwend/apps/backend/internal/search"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -22,7 +26,7 @@ const (
 	MaxClientReference = 100
 )
 
-// MaxClients is per profile; the list is read whole.
+// MaxClients is per profile; the list reads one page at a time (R-177).
 const MaxClients = 1000
 
 var ErrClientNotFound = errors.New("client not found")
@@ -100,17 +104,61 @@ var lowercaseUUID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-
 // The callers below have checked the user's access to the profile; every query also names the profile, so a client id
 // from another profile is not found.
 
-func (s *Service) Clients(ctx context.Context, profileID string) ([]Client, error) {
-	rows, err := s.pool.Query(ctx, `SELECT `+clientColumns+` FROM clients WHERE profile_id = $1
-		ORDER BY lower(name), id`, profileID)
+// A page of the clients list (R-177): DefaultClientLimit when the caller names none, at most MaxClientLimit.
+const (
+	DefaultClientLimit = 50
+	MaxClientLimit     = 100
+)
+
+type ClientPage struct {
+	Clients    []Client
+	NextCursor string // "" on the last page
+}
+
+// Clients lists one page by name, then id, so a page boundary never repeats or skips a client. q matches the name,
+// the email or the tax ID in any letter case; the zero Query matches every client.
+func (s *Service) Clients(ctx context.Context, profileID, cursor string, limit int, q search.Query) (ClientPage, error) {
+	if limit < 1 || limit > MaxClientLimit {
+		return ClientPage{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxClientLimit)
+	}
+	args := []any{profileID, q.Like}
+	where := "profile_id = $1 AND ($2::text IS NULL OR name ILIKE $2 OR email ILIKE $2 OR tax_id ILIKE $2)"
+	if cursor != "" {
+		name, id, err := decodeClientCursor(cursor)
+		if err != nil {
+			return ClientPage{}, err
+		}
+		args = append(args, name, id)
+		where += " AND (lower(name), id) > (lower($3), $4::uuid)"
+	}
+	args = append(args, limit+1)
+	rows, err := s.pool.Query(ctx, `SELECT `+clientColumns+` FROM clients WHERE `+where+`
+		ORDER BY lower(name), id LIMIT $`+strconv.Itoa(len(args)), args...)
 	if err != nil {
-		return nil, fmt.Errorf("list clients: %w", err)
+		return ClientPage{}, fmt.Errorf("list clients: %w", err)
 	}
 	clients, err := pgx.CollectRows(rows, scanClient)
 	if err != nil {
-		return nil, fmt.Errorf("list clients: %w", err)
+		return ClientPage{}, fmt.Errorf("list clients: %w", err)
 	}
-	return clients, nil
+	var next string
+	if len(clients) > limit {
+		clients = clients[:limit]
+		last := clients[limit-1]
+		next = base64.RawURLEncoding.EncodeToString([]byte(last.ID + "|" + last.Name))
+	}
+	return ClientPage{Clients: clients, NextCursor: next}, nil
+}
+
+// A cursor is the last client's id and name; Postgres lowers the name as it sorts, so Go never has to. The id has no "|".
+func decodeClientCursor(cursor string) (name, id string, err error) {
+	raw, decodeErr := base64.RawURLEncoding.DecodeString(cursor)
+	id, name, ok := strings.Cut(string(raw), "|")
+	// Postgres text holds no invalid UTF-8 or NUL, so a cursor this API didn't return can't reach it as one.
+	if decodeErr != nil || !ok || !lowercaseUUID.MatchString(id) || !utf8.ValidString(name) || strings.ContainsRune(name, 0) {
+		return "", "", fmt.Errorf("%w: cursor is not one this API returned", ErrInvalid)
+	}
+	return name, id, nil
 }
 
 func (s *Service) Client(ctx context.Context, profileID, id string) (Client, error) {

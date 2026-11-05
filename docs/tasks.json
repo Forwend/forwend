@@ -1206,7 +1206,7 @@
         "GET clients reads one page at a time with a limit, a cursor and a q search, the clients list loads the next page on demand, and the invoice and job client pickers search through the API instead of loading every client"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "backend",
         "web-unit",
@@ -1217,9 +1217,96 @@
       ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-11-05 review pass by subagent: Review found the backend and list correct and two picker keyboard bugs, now fixed: the picked client was injected as the top row of every search (Enter picked a client the form couldn't find, and a no-match search still listed it) - it is now only the field's label (ComboboxField valueLabel); Enter could pick from the last search's rows before the new answer came - ComboboxField loading makes Enter wait, says Searching and sets aria-busy, from useClientSearch pending. Also fixed: an emptied search resets at once; a failed search says so; a cursor with non-UTF-8 or NUL in the name is 422, not 500; the tax ID search is tested; DESIGN.md nesting and the accents wording; stale comment and aria-busy=false. Kept: the API search ignores case but not accents, as on Jobs (documented)."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-05T09:26:21Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.8,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 44.9,
+            "log": ""
+          },
+          {
+            "id": "tokens-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": ""
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 56.2,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 57.2,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.6,
+            "log": ""
+          }
+        ],
+        "taskHash": "477edcf3a5d01d23",
+        "filesHash": "16100e22bb2db8ef",
+        "proof": {
+          "1": "backend: TestClientPages pages 6 clients by name then id at every limit 1-6 with no repeat or gap (case, accent and same-name ties); q searches name, email and tax ID; bad limit, cursor (also a non-UTF-8 name) and q refused. The web clients list loads 20 a page with Show more and searches ?q through the API; both pickers search through useClientSearch, Enter waits while an answer loads and the picked client is only the field's label (kit test); live invoices.spec types a saved client's name and picks it; the new-invoice ?clientId reads that client alone"
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "Review found the backend and list correct and two picker keyboard bugs, now fixed: the picked client was injected as the top row of every search (Enter picked a client the form couldn't find, and a no-match search still listed it) - it is now only the field's label (ComboboxField valueLabel); Enter could pick from the last search's rows before the new answer came - ComboboxField loading makes Enter wait, says Searching and sets aria-busy, from useClientSearch pending. Also fixed: an emptied search resets at once; a failed search says so; a cursor with non-UTF-8 or NUL in the name is 422, not 500; the tax ID search is tested; DESIGN.md nesting and the accents wording; stale comment and aria-busy=false. Kept: the API search ignores case but not accents, as on Jobs (documented).",
+          "at": "2026-11-05T09:29:23Z",
+          "filesHash": "16100e22bb2db8ef"
+        }
+      },
+      "branch": "fix/f422-the-clients-list-and-client-pickers-page",
+      "baseCommit": "7f1c3bd5e2ddae4e234f944d64f32ee593d3e0b6",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

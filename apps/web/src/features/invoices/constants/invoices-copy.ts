@@ -223,6 +223,7 @@ export const NEW_INVOICE_COPY = {
   savedClient: "Saved client",
   savedClientPlaceholder: "Fill in from a saved client",
   searchClients: "Search clients",
+  clientsFailed: "We could not search your clients. Type again to retry.",
   searchCountries: "Search countries",
   items: {
     add: "Add item",

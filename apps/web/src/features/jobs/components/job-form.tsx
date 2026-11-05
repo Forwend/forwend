@@ -14,8 +14,9 @@ import { type FormEvent, useId, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { formatUsd } from "@/features/balances/lib/balances";
 import { CLIENT_LIMITS } from "@/features/clients/constants/clients";
-import { clientBody, clientCountryOptions } from "@/features/clients/lib/clients";
-import type { Client, ClientBody } from "@/features/clients/types/clients";
+import type { ClientSearch } from "@/features/clients/hooks/use-client-search";
+import { clientBody, clientCountryOptions, clientOptions } from "@/features/clients/lib/clients";
+import type { ClientBody } from "@/features/clients/types/clients";
 import { useCreateJobMutation } from "@/features/jobs/api/jobs-api";
 import {
   EMAIL_PATTERN,
@@ -59,12 +60,12 @@ const draft = (title: string, days: string): PaymentDraft => ({
 
 export interface JobFormProps {
   profileId: string;
-  /** Saved clients (R-86): picking one fills the client fields with a copy. */
-  clients?: readonly Client[];
+  /** Saved clients, searched through the API (R-86, R-177): picking one fills the client fields with a copy. */
+  clientSearch?: ClientSearch;
 }
 
 // R-101. One idempotency key per filled-in form: a double click or a retry makes one job.
-export function JobForm({ profileId, clients }: JobFormProps) {
+export function JobForm({ profileId, clientSearch }: JobFormProps) {
   const [createJob] = useCreateJobMutation();
   const router = useRouter();
   const keys = useRef(new Map<string, string>());
@@ -273,19 +274,19 @@ export function JobForm({ profileId, clients }: JobFormProps) {
 
       <div data-step={STEPS.client} className={flow.shows(STEPS.client)}>
         <FieldGroup title={COPY.clientGroup}>
-          {clients?.length ? (
+          {clientSearch?.any ? (
             <ComboboxField
               label={COPY.savedClient}
               placeholder={COPY.savedClientPlaceholder}
               searchLabel={COPY.searchClients}
-              options={clients.map((c) => ({
-                value: c.clientId,
-                label: c.name,
-                detail: c.email ?? undefined,
-              }))}
+              options={clientOptions(clientSearch.clients)}
+              valueLabel={fill.client.name}
+              loading={clientSearch.pending}
+              noResults={clientSearch.failed ? COPY.clientsFailed : undefined}
+              onSearchChange={clientSearch.search}
               value={fill.key}
               onValueChange={(clientId) => {
-                const picked = clients.find((c) => c.clientId === clientId);
+                const picked = clientSearch.clients.find((c) => c.clientId === clientId);
                 if (!picked) return;
                 const values = clientBody(picked);
                 setFill({ key: clientId, client: values });

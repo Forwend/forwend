@@ -10,18 +10,26 @@ import (
 // R-86.
 func listClients(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		list, err := profiles.Clients(r.Context(), r.PathValue("profileId"))
+		limit, err := httpio.IntQuery(r, "limit", profile.DefaultClientLimit)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		out := struct {
-			Clients []clientJSON `json:"clients"`
-		}{Clients: []clientJSON{}}
-		for _, c := range list {
-			out.Clients = append(out.Clients, toClientJSON(c))
+		q, err := httpio.SearchQuery(r)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
 		}
-		httpio.WriteJSON(w, http.StatusOK, out)
+		page, err := profiles.Clients(r.Context(), r.PathValue("profileId"), r.URL.Query().Get("cursor"), limit, q)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		items := []clientJSON{}
+		for _, c := range page.Clients {
+			items = append(items, toClientJSON(c))
+		}
+		httpio.WriteJSON(w, http.StatusOK, map[string]any{"items": items, "nextCursor": httpio.OrNull(page.NextCursor)})
 	}
 }
 
