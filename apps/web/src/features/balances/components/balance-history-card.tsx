@@ -2,7 +2,6 @@
 
 import { Card, SegmentedControl, Skeleton } from "@forwend/ui-web";
 import { useState } from "react";
-import { useGetBalanceHistoryQuery } from "@/features/balances/api/balances-api";
 import { BalanceChart } from "@/features/balances/components/charts/balance-chart";
 import { EmptyChart } from "@/features/balances/components/charts/empty-chart";
 import {
@@ -12,10 +11,10 @@ import {
   RANGE_OPTIONS,
 } from "@/features/balances/constants/balance-history";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
+import { usePricedHistory } from "@/features/balances/hooks/use-priced-balances";
 import { historySeries } from "@/features/balances/lib/balance-history";
 import type { HistoryRange } from "@/features/balances/types/balance-history";
 import { LoadError } from "@/shared/components/load-error";
-import { LIVE_QUERY } from "@/shared/config/refresh";
 
 export interface BalanceHistoryCardProps {
   profileId: string;
@@ -24,9 +23,11 @@ export interface BalanceHistoryCardProps {
 /** The personal balance over a chosen range. */
 export function BalanceHistoryCard({ profileId }: BalanceHistoryCardProps) {
   const [range, setRange] = useState<HistoryRange>(DEFAULT_RANGE);
-  const history = useGetBalanceHistoryQuery({ profileId, days: HISTORY_RANGES[range] }, LIVE_QUERY);
+  const history = usePricedHistory(profileId, HISTORY_RANGES[range]);
   // The chart keeps the last range's line, dimmed, while the next loads.
-  const series = history.data ? historySeries(history.data, HISTORY_FIELDS.balances) : null;
+  const series = history.data
+    ? historySeries(history.data, HISTORY_FIELDS.balances, history.prices)
+    : null;
   const label = BALANCES_COPY.balanceOver(BALANCES_COPY.rangeNames[range]);
 
   return (

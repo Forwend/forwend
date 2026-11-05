@@ -16,7 +16,7 @@ export const BALANCES_COPY = {
   rangeNames: { "1W": "past week", "1M": "past month", "3M": "past 3 months", "1Y": "past year" },
   noChange: "No change",
   historyFailed: "We could not load the balance history.",
-  historyUnavailable: "The history shows once every balance can be read.",
+  historyUnavailable: "The history shows once every balance and market price can be read.",
   balanceTitle: "Balance",
   moneyFlow: "Money in and out",
   moneyIn: "In",

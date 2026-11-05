@@ -2,13 +2,12 @@
 
 import { Card, Skeleton } from "@forwend/ui-web";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
-import { useGetBalanceHistoryQuery } from "@/features/balances/api/balances-api";
 import { HISTORY_FIELDS } from "@/features/balances/constants/balance-history";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
+import { usePricedHistory } from "@/features/balances/hooks/use-priced-balances";
 import { historySeries, seriesTotal } from "@/features/balances/lib/balance-history";
 import { formatUsd } from "@/features/balances/lib/balances";
 import { LoadError } from "@/shared/components/load-error";
-import { LIVE_QUERY } from "@/shared/config/refresh";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 
 const DAYS = 30;
@@ -18,15 +17,19 @@ export interface MoneyFlowCardProps {
 }
 
 export function MoneyFlowCard({ profileId }: MoneyFlowCardProps) {
-  const history = useGetBalanceHistoryQuery({ profileId, days: DAYS }, LIVE_QUERY);
+  const history = usePricedHistory(profileId, DAYS);
   const flows = history.data
     ? ([
         [
           BALANCES_COPY.moneyIn,
-          historySeries(history.data, HISTORY_FIELDS.received),
+          historySeries(history.data, HISTORY_FIELDS.received, history.prices),
           ArrowDownLeft,
         ],
-        [BALANCES_COPY.moneyOut, historySeries(history.data, HISTORY_FIELDS.sent), ArrowUpRight],
+        [
+          BALANCES_COPY.moneyOut,
+          historySeries(history.data, HISTORY_FIELDS.sent, history.prices),
+          ArrowUpRight,
+        ],
       ] as const)
     : null;
   return (

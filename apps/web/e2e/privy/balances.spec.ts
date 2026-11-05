@@ -29,7 +29,7 @@ test("a profile shows its balance, networks, receive address and activity; a new
   await expect(
     history
       .getByRole("img", { name: /^Balance over the past month/ })
-      .or(history.getByText("The history shows once every balance can be read.")),
+      .or(history.getByText("The history shows once every balance and market price can be read.")),
   ).toBeVisible();
   await history.getByText("1W", { exact: true }).click();
   await expect(history.getByRole("radio", { name: "1W" })).toBeChecked();

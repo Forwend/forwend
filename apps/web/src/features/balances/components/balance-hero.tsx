@@ -2,7 +2,6 @@
 
 import { Skeleton } from "@forwend/ui-web";
 import Image from "next/image";
-import { useGetBalanceHistoryQuery } from "@/features/balances/api/balances-api";
 import { BalanceChange } from "@/features/balances/components/balance-change";
 import { BalanceFigure } from "@/features/balances/components/balance-figure";
 import { MoneyActions } from "@/features/balances/components/money-actions";
@@ -12,12 +11,10 @@ import {
   HISTORY_RANGES,
 } from "@/features/balances/constants/balance-history";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
+import { usePricedHistory } from "@/features/balances/hooks/use-priced-balances";
 import { historySeries } from "@/features/balances/lib/balance-history";
 import type { Balances } from "@/features/balances/types/balances";
-import { useGetPricesQuery } from "@/features/prices/api/prices-api";
-import { PRICES_QUERY } from "@/features/prices/constants/prices";
 import { HERO_IMAGE } from "@/shared/assets/images";
-import { LIVE_QUERY } from "@/shared/config/refresh";
 
 export interface BalanceHeroProps {
   profileId: string;
@@ -37,14 +34,10 @@ export function BalanceHero({
   onReceive,
   onRequest,
 }: BalanceHeroProps) {
-  const priced = useGetPricesQuery(undefined, PRICES_QUERY);
   // The same read as the chart card's default range, so it comes from the cache.
-  const history = useGetBalanceHistoryQuery(
-    { profileId, days: HISTORY_RANGES[DEFAULT_RANGE] },
-    LIVE_QUERY,
-  );
+  const history = usePricedHistory(profileId, HISTORY_RANGES[DEFAULT_RANGE]);
   const series = history.currentData
-    ? historySeries(history.currentData, HISTORY_FIELDS.balances)
+    ? historySeries(history.currentData, HISTORY_FIELDS.balances, history.prices)
     : null;
 
   return (
@@ -77,7 +70,7 @@ export function BalanceHero({
           >
             <BalanceFigure
               balances={balances}
-              prices={priced.currentData?.prices}
+              prices={history.prices}
               failed={failed}
               onRetry={onRetry}
               change={

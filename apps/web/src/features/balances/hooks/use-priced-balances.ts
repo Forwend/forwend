@@ -1,4 +1,7 @@
-import { useGetBalancesQuery } from "@/features/balances/api/balances-api";
+import {
+  useGetBalanceHistoryQuery,
+  useGetBalancesQuery,
+} from "@/features/balances/api/balances-api";
 import { useGetPricesQuery } from "@/features/prices/api/prices-api";
 import { PRICES_QUERY } from "@/features/prices/constants/prices";
 import { LIVE_QUERY } from "@/shared/config/refresh";
@@ -13,5 +16,19 @@ export function usePricedBalances(profileId: string) {
     prices: priced.currentData?.prices,
     failed: balances.isError,
     retry: () => void balances.refetch(),
+  };
+}
+
+/** The balance history with the prices that value it (historySeries). Until the prices answer or fail, the history
+ * counts as still loading, as the balances do. */
+export function usePricedHistory(profileId: string, days: number) {
+  const history = useGetBalanceHistoryQuery({ profileId, days }, LIVE_QUERY);
+  const priced = useGetPricesQuery(undefined, PRICES_QUERY);
+  const waiting = priced.isLoading;
+  return {
+    ...history,
+    data: waiting ? undefined : history.data,
+    currentData: waiting ? undefined : history.currentData,
+    prices: priced.currentData?.prices,
   };
 }

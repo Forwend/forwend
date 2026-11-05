@@ -4,7 +4,6 @@ import { ActionButton, Card, Skeleton } from "@forwend/ui-web";
 import { ArrowDownLeft, FilePlus2, Link2, ShoppingCart } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useGetBalanceHistoryQuery } from "@/features/balances/api/balances-api";
 import { BalanceChange } from "@/features/balances/components/balance-change";
 import { BalanceFigure } from "@/features/balances/components/balance-figure";
 import {
@@ -13,12 +12,12 @@ import {
   HISTORY_RANGES,
 } from "@/features/balances/constants/balance-history";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
+import { usePricedHistory } from "@/features/balances/hooks/use-priced-balances";
 import { historySeries } from "@/features/balances/lib/balance-history";
 import type { Balances } from "@/features/balances/types/balances";
 import type { TokenPrice } from "@/features/prices/types/prices";
 import { BUSINESS_COPY as COPY } from "@/screens/dashboard/constants/business-copy";
 import { HERO_IMAGE } from "@/shared/assets/images";
-import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 export interface BalanceCardProps {
@@ -46,12 +45,9 @@ export function BalanceCard({
 }: BalanceCardProps) {
   const router = useRouter();
   // The Received card's default range, so the read comes from its cache.
-  const history = useGetBalanceHistoryQuery(
-    { profileId, days: HISTORY_RANGES[DEFAULT_RANGE] },
-    LIVE_QUERY,
-  );
+  const history = usePricedHistory(profileId, HISTORY_RANGES[DEFAULT_RANGE]);
   const series = history.currentData
-    ? historySeries(history.currentData, HISTORY_FIELDS.balances)
+    ? historySeries(history.currentData, HISTORY_FIELDS.balances, prices)
     : null;
   const actions = [
     ...(canBill
