@@ -3,13 +3,14 @@
 import { BrandIcon, Button, CodeInput, Form, TextField } from "@forwend/ui-web";
 import { useLoginWithEmail, useLoginWithOAuth, useLoginWithPasskey } from "@privy-io/react-auth";
 import { Fingerprint } from "lucide-react";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
 import {
   CODE_LENGTH,
   GOOGLE_PROVIDER,
   SIGN_IN_COPY,
   SIGN_IN_STEPS,
 } from "@/features/auth/constants/sign-in";
+import { useFullCode } from "@/features/auth/hooks/use-full-code";
 import type { SignInStep } from "@/features/auth/types/sign-in";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -32,20 +33,18 @@ export function SignInForm() {
   }, [google.status]);
 
   // A full code signs in once however it arrived; the Sign in button retries the same code.
-  const tried = useRef("");
-  const [attempt, setAttempt] = useState(0);
-  useEffect(() => {
-    const key = `${attempt}:${code}`;
-    if (step !== SIGN_IN_STEPS.code || code.length !== CODE_LENGTH || busy || tried.current === key)
-      return;
-    tried.current = key;
-    setBusy("code");
-    setFieldError("");
-    setNotice("");
-    loginWithCode({ code })
-      .catch(() => setFieldError(SIGN_IN_COPY.errors.codeFailed))
-      .finally(() => setBusy(""));
-  }, [step, code, busy, attempt, loginWithCode]);
+  const tryCode = useCallback(
+    (full: string) => {
+      setBusy("code");
+      setFieldError("");
+      setNotice("");
+      loginWithCode({ code: full })
+        .catch(() => setFieldError(SIGN_IN_COPY.errors.codeFailed))
+        .finally(() => setBusy(""));
+    },
+    [loginWithCode],
+  );
+  const retry = useFullCode(code, step === SIGN_IN_STEPS.code && !busy, tryCode);
 
   const send = async (resend: boolean) => {
     setBusy(resend ? "resend" : "send");
@@ -57,7 +56,6 @@ export function SignInForm() {
         setNotice(SIGN_IN_COPY.resent);
       } else {
         setCode("");
-        tried.current = "";
         setStep(SIGN_IN_STEPS.code);
       }
     } catch {
@@ -81,7 +79,7 @@ export function SignInForm() {
         onSubmit={(event) => {
           event.preventDefault();
           if (code.length !== CODE_LENGTH) return setFieldError(SIGN_IN_COPY.errors.code);
-          setAttempt((n) => n + 1);
+          retry();
         }}
       >
         <div className="flex flex-col gap-2 text-center">

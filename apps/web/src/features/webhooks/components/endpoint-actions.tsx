@@ -15,6 +15,7 @@ import {
 } from "@forwend/ui-web";
 import { Ellipsis, KeyRound, ListChecks, Pencil, Power, RefreshCw, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
+import { useFreshSignIn, useOpenWhilePending } from "@/features/auth/components/fresh-sign-in";
 import type { Store } from "@/features/stores/types/stores";
 import {
   useDeleteEndpointMutation,
@@ -49,7 +50,16 @@ export function EndpointActions({ profileId, stores, endpoint }: EndpointActions
   // What opens once the menu has closed and handed focus back (as on API keys).
   const chosen = useRef<Chosen | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
-  const open = useRef<Partial<Record<"edit" | "secret" | "rotate" | "delete", () => void>>>({});
+  const open = useRef<
+    Partial<Record<"edit" | "secret" | "rotate" | "delete" | "toggle", () => void>>
+  >({});
+  // Each protected action confirms it's you in its own dialog, so the user sees what they confirm (R-137).
+  const secretFresh = useFreshSignIn();
+  const rotateFresh = useFreshSignIn();
+  const toggleFresh = useFreshSignIn();
+  useOpenWhilePending(secretFresh.pending, open.current.secret);
+  useOpenWhilePending(toggleFresh.pending, open.current.toggle);
+  const toggleBody = useRef<HTMLDivElement>(null);
   const [sheet, setSheet] = useState(false);
   const [secrets, setSecrets] = useState<WebhookSecret[] | null>(null);
   const secretBody = useRef<HTMLDivElement>(null);
@@ -58,28 +68,34 @@ export function EndpointActions({ profileId, stores, endpoint }: EndpointActions
 
   const showSecrets = (list: WebhookSecret[]) => {
     setSecrets(list);
-    open.current.secret?.();
+    // Already open when it asked for a fresh sign-in first; opening an open dialog throws.
+    if (!secretBody.current?.closest("dialog")?.open) open.current.secret?.();
   };
   const revealSecrets = async () => {
     try {
       const pending = reveal(arg);
-      showSecrets(await pending.unwrap());
+      showSecrets(await secretFresh.run(() => pending.unwrap()));
       // The answer held the secrets: drop them from the store too.
       pending.reset();
-    } catch {
-      failedToast();
+    } catch (error) {
+      secretBody.current?.closest("dialog")?.close();
+      if (!secretFresh.cancelled(error)) failedToast();
     }
   };
   const toggle = async () => {
     const { url, description, storeId, events, enabled } = endpoint;
     try {
-      await save({
-        ...arg,
-        body: { url, description, ...(storeId ? { storeId } : {}), events, enabled: !enabled },
-      }).unwrap();
+      await toggleFresh.run(() =>
+        save({
+          ...arg,
+          body: { url, description, ...(storeId ? { storeId } : {}), events, enabled: !enabled },
+        }).unwrap(),
+      );
       toast({ tone: TONES.success, title: enabled ? COPY.turnedOff(where) : COPY.turnedOn(where) });
-    } catch {
-      failedToast();
+    } catch (error) {
+      if (!toggleFresh.cancelled(error)) failedToast();
+    } finally {
+      toggleBody.current?.closest("dialog")?.close();
     }
   };
   const confirmRotate = async (event: { currentTarget: HTMLElement }) => {
@@ -87,12 +103,12 @@ export function EndpointActions({ profileId, stores, endpoint }: EndpointActions
     setFailed(false);
     try {
       const pending = rotate(arg);
-      const list = await pending.unwrap();
+      const list = await rotateFresh.run(() => pending.unwrap());
       pending.reset();
       dialog?.close();
       showSecrets(list);
-    } catch {
-      setFailed(true);
+    } catch (error) {
+      setFailed(!rotateFresh.cancelled(error));
     }
   };
   const confirmDelete = async () => {
@@ -162,22 +178,37 @@ export function EndpointActions({ profileId, stores, endpoint }: EndpointActions
       <Dialog
         triggerLabel={COPY.secretTitle}
         title={COPY.secretTitle}
-        onClose={() => setSecrets(null)}
+        onClose={() => {
+          setSecrets(null);
+          secretFresh.cancel();
+        }}
         trigger={keepTrigger("secret")}
       >
         <div ref={secretBody}>
-          {secrets ? (
-            <EndpointSecrets
-              secrets={secrets}
-              onDone={() => secretBody.current?.closest("dialog")?.close()}
-            />
-          ) : null}
+          {secretFresh.step ??
+            (secrets ? (
+              <EndpointSecrets
+                secrets={secrets}
+                onDone={() => secretBody.current?.closest("dialog")?.close()}
+              />
+            ) : null)}
         </div>
+      </Dialog>
+      <Dialog
+        triggerLabel={endpoint.enabled ? COPY.turnOff : COPY.turnOn}
+        title={endpoint.enabled ? COPY.turnOffTitle(where) : COPY.turnOnTitle(where)}
+        onClose={toggleFresh.cancel}
+        trigger={keepTrigger("toggle")}
+      >
+        <div ref={toggleBody}>{toggleFresh.step}</div>
       </Dialog>
       <Dialog
         triggerLabel={COPY.rotate}
         title={COPY.rotateTitle(where)}
-        onClose={() => setFailed(false)}
+        onClose={() => {
+          setFailed(false);
+          rotateFresh.cancel();
+        }}
         trigger={keepTrigger("rotate")}
       >
         <p>{COPY.rotateBody}</p>
@@ -186,17 +217,25 @@ export function EndpointActions({ profileId, stores, endpoint }: EndpointActions
             {COPY.errors.action}
           </p>
         ) : null}
-        <form
-          method="dialog"
-          className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"
-        >
-          <Button type="submit" variant={BUTTON_VARIANTS.secondary}>
-            {COPY.keep}
-          </Button>
-          <Button type="button" loading={rotating.isLoading} onClick={(e) => void confirmRotate(e)}>
-            {COPY.rotateSubmit}
-          </Button>
-        </form>
+        {rotateFresh.step ? (
+          <div className="mt-5">{rotateFresh.step}</div>
+        ) : (
+          <form
+            method="dialog"
+            className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"
+          >
+            <Button type="submit" variant={BUTTON_VARIANTS.secondary}>
+              {COPY.keep}
+            </Button>
+            <Button
+              type="button"
+              loading={rotating.isLoading}
+              onClick={(e) => void confirmRotate(e)}
+            >
+              {COPY.rotateSubmit}
+            </Button>
+          </form>
+        )}
       </Dialog>
       <Dialog
         triggerLabel={COPY.delete}

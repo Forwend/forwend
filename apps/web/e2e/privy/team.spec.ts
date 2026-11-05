@@ -276,3 +276,54 @@ test("the invite link accepts for the invited address, fits a phone and says whe
   ).toBeVisible();
   await context.close();
 });
+
+// R-137: inviting and changing a role confirm it's you in place, in their own dialog.
+test("inviting and changing a role ask to confirm it's you in their own dialog", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  const { sent } = await mockTeam(page, shop("owner", OWNER.permissions));
+  await page.route(`/api/v1/profiles/${SHOP}/{invites,members/*}`, (route) =>
+    route.request().method() === "GET"
+      ? route.fallback()
+      : route.fulfill({
+          status: 401,
+          json: { error: { code: "reauth_required", message: "sign in again" } },
+        }),
+  );
+  await page.goto("/app/team");
+  const main = page.getByRole("main");
+  const asked = async (dialog: ReturnType<typeof page.getByRole>) => {
+    const confirm = dialog.getByRole("group", { name: "Confirm it's you" });
+    await expect(confirm).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(1);
+    await confirm.getByRole("button", { name: "Cancel" }).click();
+    await expect(confirm).toHaveCount(0);
+    await expect(dialog.getByRole("alert")).toHaveCount(0);
+  };
+
+  await main.getByRole("button", { name: "Invite" }).click();
+  const invite = page.getByRole("dialog", { name: "Invite to the team" });
+  await invite.getByRole("textbox", { name: "Email" }).fill("new@example.com");
+  await invite.getByRole("checkbox", { name: "Pro shop" }).check();
+  await invite.getByRole("button", { name: "Send invite" }).click();
+  await expect(invite.getByRole("textbox", { name: "Email" })).toBeDisabled();
+  await asked(invite);
+  await invite.getByRole("button", { name: "Cancel" }).click();
+
+  await main.getByRole("button", { name: "Actions for dev@example.com" }).click();
+  await page.getByRole("menuitem", { name: "Change role" }).click();
+  const change = page.getByRole("dialog", { name: "Change the role of dev@example.com" });
+  await change.getByRole("combobox", { name: "Role" }).click();
+  await page.getByRole("option", { name: "Admin" }).click();
+  await change.getByRole("button", { name: "Save" }).click();
+  await asked(change);
+  await expect(change.getByRole("button", { name: "Save" })).toBeVisible();
+  expect(sent).toEqual([]);
+  expect(await blockingViolations(page)).toEqual([]);
+  await context.close();
+});

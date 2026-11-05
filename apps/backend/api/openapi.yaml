@@ -1062,8 +1062,8 @@ paths:
       summary: Create or replace the profile's billing details
       description: |
         Replaces every field; only taxId is optional (left out or empty means none). Each new invoice keeps a copy as its issuer
-        (R-43); invoices made earlier keep the copy they took. Needs a fresh sign-in (R-137, D-63): otherwise 401
-        reauth_required and nothing is saved.
+        (R-43); invoices made earlier keep the copy they took. Needs no fresh sign-in: they print on documents and move
+        no money (D-63).
       parameters:
         - $ref: "#/components/parameters/ProfileId"
       requestBody:
@@ -1078,7 +1078,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/BillingDetails" }
         "400": { $ref: "#/components/responses/MalformedRequest" }
-        "401": { $ref: "#/components/responses/ReauthRequired" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
@@ -5574,7 +5574,7 @@ components:
     ReauthRequired:
       description: |
         Missing or invalid access token, or one issued before Sign out everywhere (unauthorized). Or the token is not
-        from a sign-in in the last 5 minutes: a refresh doesn't count (reauth_required, R-137).
+        from a sign-in in the last 15 minutes: a refresh doesn't count (reauth_required, R-137).
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

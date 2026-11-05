@@ -4,7 +4,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { setupListeners } from "@reduxjs/toolkit/query";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Provider } from "react-redux";
-import { FreshSignIn } from "@/features/auth/components/fresh-sign-in";
+import { FreshSignInProvider } from "@/features/auth/components/fresh-sign-in";
 import type { AskFreshSignIn } from "@/shared/api/fresh-sign-in";
 import { makeStore } from "@/store/store";
 
@@ -17,7 +17,7 @@ export function StoreProvider({ children }: Readonly<{ children: ReactNode }>) {
   useEffect(() => {
     token.current = getAccessToken;
   }, [getAccessToken]);
-  // R-137: the dialog below opens when a request needs a fresh sign-in.
+  // R-137: a request that needs a fresh sign-in asks through the provider below.
   const ask = useRef<AskFreshSignIn>(async () => false);
   const register = useCallback((fn: AskFreshSignIn) => {
     ask.current = fn;
@@ -33,8 +33,7 @@ export function StoreProvider({ children }: Readonly<{ children: ReactNode }>) {
   useEffect(() => setupListeners(store.dispatch), [store]);
   return (
     <Provider store={store}>
-      {children}
-      <FreshSignIn register={register} />
+      <FreshSignInProvider register={register}>{children}</FreshSignInProvider>
     </Provider>
   );
 }

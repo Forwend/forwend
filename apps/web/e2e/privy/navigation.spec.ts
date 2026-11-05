@@ -11,7 +11,7 @@ import {
   sampleInvoice,
   sampleTransfer,
 } from "./sample-api";
-import { code, email, session } from "./session";
+import { session } from "./session";
 
 async function pickStatus(page: Page, name: string) {
   await page
@@ -847,51 +847,6 @@ test("Settings opens Accepted assets, where a box turns a token off", async ({ b
   await expect(base).toBeDisabled();
   await expect(main).toContainText("One stays on");
   expect(await blockingViolations(page)).toEqual([]);
-  await context.close();
-});
-
-// R-137: the real Privy test account signs in again in the dialog; the API's answers are mocked.
-test("saving billing details asks for a fresh sign-in, then saves with the new token", async ({
-  browser,
-}) => {
-  const context = await browser.newContext({
-    viewport: { width: 1440, height: 900 },
-    storageState: session,
-  });
-  const page = await context.newPage();
-  await mockApi(page);
-  const tokens: (string | null)[] = [];
-  await page.route("/api/v1/profiles/*/billing-details", async (route) => {
-    if (route.request().method() !== "PUT") return route.fallback();
-    tokens.push(await route.request().headerValue("authorization"));
-    if (tokens.length === 1)
-      return route.fulfill({
-        status: 401,
-        json: { error: { code: "reauth_required", message: "sign in again" } },
-      });
-    return route.fallback();
-  });
-  await page.goto("/app/billing-details");
-  const save = page.getByRole("button", { name: "Save details" });
-  const dialog = page.getByRole("dialog", { name: "Confirm it's you" });
-  // Cancel leaves the details unsaved and sends nothing more.
-  await save.click();
-  await expect(dialog).toContainText(`We sent a code to ${email}`);
-  await dialog.getByRole("button", { name: "Cancel" }).click();
-  await expect(dialog).toBeHidden();
-  expect(tokens).toHaveLength(1);
-  tokens.length = 0;
-  await save.click();
-  await expect(dialog).toContainText(`We sent a code to ${email}`);
-  expect(await blockingViolations(page)).toEqual([]);
-  await dialog.getByRole("textbox", { name: "Code" }).fill(code);
-  await dialog.getByRole("button", { name: "Confirm" }).click();
-  await expect(dialog).toBeHidden({ timeout: 15_000 });
-  // Signing in again replaces this browser's Privy session, so the tests after this one share the new session.
-  await context.storageState({ path: session });
-  await expect(page.getByText("Billing details saved")).toBeVisible();
-  expect(tokens).toHaveLength(2);
-  expect(tokens[1]).not.toEqual(tokens[0]);
   await context.close();
 });
 

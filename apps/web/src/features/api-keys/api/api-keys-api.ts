@@ -11,7 +11,7 @@ const KEYS_TAG = "ApiKeys";
 
 const keysUrl = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/keys`;
 
-// R-144: making or rolling a key asks for a fresh sign-in first when the last one is older than 5 minutes (D-63).
+// R-144: making or rolling a key asks for a fresh sign-in first when the last one is older than 15 minutes (D-63).
 export const apiKeysApi = apiSlice.enhanceEndpoints({ addTagTypes: [KEYS_TAG] }).injectEndpoints({
   endpoints: (build) => ({
     listKeys: build.query<ApiKey[], string>({

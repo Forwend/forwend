@@ -15,8 +15,8 @@ func Routes(mux *http.ServeMux, g mid.Guards, profiles *profile.Service) {
 	mux.Handle("POST /v1/me/onboarding", g.SignedIn(onboard(profiles)))
 	mux.Handle("POST /v1/me/sign-out-everywhere", g.SignedIn(signOutEverywhere(profiles)))
 	mux.Handle("POST /v1/profiles", g.SignedIn(createProfile(profiles)))
-	// D-63: the issuer every invoice copies, so changing it needs a fresh sign-in.
-	mux.Handle("PUT /v1/profiles/{profileId}/billing-details", g.FreshSignIn(auth.BillingWrite)(putBillingDetails(profiles)))
+	// D-63: the issuer printed on documents moves no money, so no fresh sign-in.
+	mux.Handle("PUT /v1/profiles/{profileId}/billing-details", g.Can(auth.BillingWrite)(putBillingDetails(profiles)))
 	mux.Handle("GET /v1/profiles/{profileId}/billing-details", g.Can(auth.BillingRead)(getBillingDetails(profiles)))
 	mux.Handle("GET /v1/profiles/{profileId}/clients", g.Can(auth.ClientsRead)(listClients(profiles)))
 	mux.Handle("GET /v1/profiles/{profileId}/clients/{clientId}", g.Can(auth.ClientsRead)(getClient(profiles)))

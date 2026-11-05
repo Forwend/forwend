@@ -53,6 +53,8 @@ export const WEBHOOKS_COPY = {
   edit: "Edit",
   turnOn: "Turn on",
   turnOff: "Turn off",
+  turnOffTitle: (where: string) => `Turn off ${where}?`,
+  turnOnTitle: (where: string) => `Turn on ${where}?`,
   turnedOn: (where: string) => `${where} is on`,
   turnedOff: (where: string) => `${where} is off`,
   secret: "Signing secret",

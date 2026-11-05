@@ -3,6 +3,7 @@
 import { BUTTON_VARIANTS, Button, Dialog, TextField, TONES, useToast } from "@forwend/ui-web";
 import { Plus } from "lucide-react";
 import { type FormEvent, useRef, useState } from "react";
+import { useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
 import { ROLES } from "@/features/profiles/constants/profile";
 import type { Store } from "@/features/stores/types/stores";
 import { useInviteMutation } from "@/features/team/api/team-api";
@@ -16,9 +17,10 @@ export interface InviteDialogProps {
   stores: readonly Store[];
 }
 
-// R-139: the API asks for a fresh sign-in first when the last one is older than 5 minutes (D-63).
+// R-139: the API asks for a fresh sign-in first when the last one is older than 15 minutes (D-63).
 export function InviteDialog({ profileId, stores }: InviteDialogProps) {
   const [invite, { isLoading }] = useInviteMutation();
+  const fresh = useFreshSignIn();
   const toast = useToast();
   const form = useRef<HTMLFormElement>(null);
   const [email, setEmail] = useState("");
@@ -38,21 +40,26 @@ export function InviteDialog({ profileId, stores }: InviteDialogProps) {
       return setErrors({ stores: COPY.errors.stores });
     setErrors({});
     try {
-      const made = await invite({
-        profileId,
-        body: { email, role, stores: role === ROLES.admin ? [] : chosen },
-      }).unwrap();
+      const made = await fresh.run(() =>
+        invite({
+          profileId,
+          body: { email, role, stores: role === ROLES.admin ? [] : chosen },
+        }).unwrap(),
+      );
       toast({ tone: TONES.success, title: COPY.sent(made.email) });
       form.current?.closest("dialog")?.close();
     } catch (failure) {
-      setErrors(grantError(failure));
+      if (!fresh.cancelled(failure)) setErrors(grantError(failure));
     }
   };
   return (
     <Dialog
       triggerLabel={COPY.invite}
       title={COPY.inviteTitle}
-      onClose={reset}
+      onClose={() => {
+        fresh.cancel();
+        reset();
+      }}
       trigger={(open) => (
         <Button size="sm" onClick={open}>
           <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />
@@ -62,40 +69,45 @@ export function InviteDialog({ profileId, stores }: InviteDialogProps) {
     >
       <form ref={form} onSubmit={submit} noValidate className="flex flex-col gap-4">
         <p className="text-sm text-muted">{COPY.inviteIntro}</p>
-        <TextField
-          label={COPY.email}
-          type="email"
-          autoComplete="off"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          error={errors.email}
-          required
-        />
-        <GrantFields
-          role={role}
-          onRole={setRole}
-          stores={stores}
-          chosen={chosen}
-          onChosen={setChosen}
-          storesError={errors.stores}
-        />
+        <fieldset disabled={fresh.pending} className="flex min-w-0 flex-col gap-4">
+          <TextField
+            label={COPY.email}
+            type="email"
+            autoComplete="off"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            error={errors.email}
+            required
+          />
+          <GrantFields
+            role={role}
+            onRole={setRole}
+            stores={stores}
+            chosen={chosen}
+            onChosen={setChosen}
+            storesError={errors.stores}
+            disabled={fresh.pending}
+          />
+        </fieldset>
         {errors.form ? (
           <p role="alert" className="text-sm text-danger">
             {errors.form}
           </p>
         ) : null}
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button
-            type="button"
-            variant={BUTTON_VARIANTS.secondary}
-            onClick={() => form.current?.closest("dialog")?.close()}
-          >
-            {COPY.cancel}
-          </Button>
-          <Button type="submit" loading={isLoading}>
-            {COPY.send}
-          </Button>
-        </div>
+        {fresh.step ?? (
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant={BUTTON_VARIANTS.secondary}
+              onClick={() => form.current?.closest("dialog")?.close()}
+            >
+              {COPY.cancel}
+            </Button>
+            <Button type="submit" loading={isLoading}>
+              {COPY.send}
+            </Button>
+          </div>
+        )}
       </form>
     </Dialog>
   );
