@@ -107,7 +107,9 @@
         "packages/contracts/src/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-05 review pass by reviewer: Re-reviewed 6bf76643..fb99e8cc. All four must-fix items are fixed: openapi lists money.move; only the watcher's transfer makes a send sent, and R-212, api.md and acceptance 3 match; a new test covers a reorg going back to sending and then dropped; api.md lists POST /sends as an Idempotency-Key exception with the reason. The notes are fixed too: a hash is kept in prepared, expired and canceled; sends_tx makes a hash belong to one send; refused() counts only reverts; the log is redacted; toProfileId is lowercased; an API test refuses a key and money.move as a key scope. go test -race on internal/send and httpapi/tests passes. Minor, not blocking: openapi.yaml:2981 still lists 409 send_in_progress for submit, which Submit no longer returns. docs/backend/architecture.md:252 still says one open send per wallet and chain; it is now one unsigned send. The FOR UPDATE wallet lock in keep() (prepare.go:206) does not cover Submit, so a prepare racing a submit can leave two signed sends in flight. Each was signed by the user, so this is harmless."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
@@ -150,6 +152,13 @@
           "2": "unit: TestPrepareRefusesWhatWouldLoseMoney, TestPrepareRefusesWhenTheTokenRefuses and TestPrepareWarnsOfANewRecipientAndAContract on Anvil: invalid, zero, token, own and checksum refusals, balance cap, unsponsored chain, reverting token, contract and new-recipient warnings; networkFee 0 paid by forwend in the API test",
           "3": "unit: TestASendIsSentOnlyWhenTheChainShowsIt (receipt alone stays sending), TestAReorgedSendWaitsAndIsDroppedIfNeverMinedAgain, TestASendFailsWhenItsTransactionMovesSomethingElse, TestUnreportedAndDroppedSendsAreGivenUp and TestOneOpenSendPerWalletAndChain (a replaced send keeps its hash) on Anvil",
           "4": "unit: TestProfileRoutesAreAllListed and the openapi route test pass; docs-check passes with api.md Sends and transfers and the Idempotency exception"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-reviewed 6bf76643..fb99e8cc. All four must-fix items are fixed: openapi lists money.move; only the watcher's transfer makes a send sent, and R-212, api.md and acceptance 3 match; a new test covers a reorg going back to sending and then dropped; api.md lists POST /sends as an Idempotency-Key exception with the reason. The notes are fixed too: a hash is kept in prepared, expired and canceled; sends_tx makes a hash belong to one send; refused() counts only reverts; the log is redacted; toProfileId is lowercased; an API test refuses a key and money.move as a key scope. go test -race on internal/send and httpapi/tests passes. Minor, not blocking: openapi.yaml:2981 still lists 409 send_in_progress for submit, which Submit no longer returns. docs/backend/architecture.md:252 still says one open send per wallet and chain; it is now one unsigned send. The FOR UPDATE wallet lock in keep() (prepare.go:206) does not cover Submit, so a prepare racing a submit can leave two signed sends in flight. Each was signed by the user, so this is harmless.",
+          "at": "2026-11-05T17:27:48Z",
+          "filesHash": "82a4c1c8646342a5"
         }
       },
       "branch": "feat/f424-the-server-prepares-checks-and-tracks-se",

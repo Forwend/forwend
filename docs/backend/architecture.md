@@ -249,8 +249,8 @@ with a test.
 - `wallet_transfers` (R-38): enabled-token `Transfer` logs from or to a profile wallet, one row per wallet and direction
   (`in`|`out`) with the counterparty, so a transfer between two profile wallets is out for one and in for the other.
   Block fields, statuses and identity rules as in `chain_transfers`, with the wallet and direction in each key.
-- `sends` (R-211, R-212): a send out of a profile wallet, from prepared to sent, failed, canceled or expired. One open
-  send per wallet and chain. `wallet_transfers` decides sent; the browser's hash only links the two.
+- `sends` (R-211, R-212): a send out of a profile wallet, from prepared to sent, failed, canceled or expired. One
+  unsigned send per wallet and chain, and one send per hash. `wallet_transfers` decides sent; the hash only links them.
 - `chains.gas_sponsored`: Privy pays the gas there, so the chain offers Send (D-119). Set to match the Privy dashboard.
 - `transfer_labels` (R-108): the user's label for money in that Forwend can't classify, one per profile and transfer
   log (chain, transaction, log index).

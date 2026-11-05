@@ -2953,7 +2953,9 @@ paths:
     post:
       operationId: submitSend
       summary: Report the hash the browser got from signing the send (R-212)
-      description: The same hash again is a no-op. A send given up while it was being signed takes its hash too.
+      description: |
+        The same hash again is a no-op. A send replaced, canceled or expired while it was being signed takes its hash
+        too. A hash belongs to one send.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - $ref: "#/components/parameters/SendId"
@@ -2977,11 +2979,6 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/SendNotFound" }
-        "409":
-          description: Another send from this wallet is on its way on this network (send_in_progress)
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
