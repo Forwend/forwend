@@ -18,8 +18,8 @@ func TestGetBalances(t *testing.T) {
 	want := map[string]any{
 		"estimatedUsdTotal": "2.50",
 		"tokens": []any{map[string]any{"chainId": float64(84532), "token": usdc, "symbol": "USDC", "decimals": float64(6),
-			"livemode": false, "wallet": "2500000", "finalizedBlock": float64(100), "pending": "0", "settling": "0",
-			"confirming": "0", "partial": "0", "held": "0"}},
+			"livemode": false, "sendable": true, "wallet": "2500000", "finalizedBlock": float64(100), "pending": "0",
+			"settling": "0", "confirming": "0", "partial": "0", "held": "0"}},
 	}
 	if r.status != http.StatusOK || !reflect.DeepEqual(r.body, want) {
 		t.Fatalf("got %d %v\nwant %v", r.status, r.body, want)

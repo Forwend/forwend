@@ -18,6 +18,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/link"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 	"github.com/forwend/forwend/apps/backend/internal/search"
+	"github.com/forwend/forwend/apps/backend/internal/send"
 	"github.com/forwend/forwend/apps/backend/internal/team"
 	"github.com/forwend/forwend/apps/backend/internal/webhook"
 )
@@ -83,6 +84,16 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusNotFound, "logo_not_found", "the store has no logo"
 	case errors.Is(err, profile.ErrNotMerchant):
 		status, code, message = http.StatusConflict, "not_merchant", "only a merchant profile has stores"
+	case errors.Is(err, send.ErrNotFound):
+		status, code, message = http.StatusNotFound, "send_not_found", "send not found"
+	case errors.Is(err, send.ErrBusy):
+		status, code, message = http.StatusConflict, "send_in_progress",
+			"a send from this wallet is on its way on this network: wait until it is sent"
+	case errors.Is(err, send.ErrRefused):
+		status, code, message = http.StatusUnprocessableEntity, "transfer_refused", err.Error()
+	case errors.Is(err, send.ErrUnavailable):
+		slog.Warn("send could not read the chain", "err", err)
+		status, code, message = http.StatusServiceUnavailable, "network_unavailable", "could not read the network: try again shortly"
 	case errors.Is(err, link.ErrNotFound):
 		status, code, message = http.StatusNotFound, "link_not_found", "payment link not found"
 	case errors.Is(err, webhook.ErrNotConfigured):
@@ -160,7 +171,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, invoice.ErrInvalid), errors.Is(err, profile.ErrInvalid), errors.Is(err, job.ErrInvalid),
 		errors.Is(err, activity.ErrInvalid), errors.Is(err, team.ErrInvalid), errors.Is(err, link.ErrInvalid),
 		errors.Is(err, apikey.ErrInvalid), errors.Is(err, webhook.ErrInvalid),
-		errors.Is(err, balance.ErrInvalid), errors.Is(err, search.ErrInvalid):
+		errors.Is(err, balance.ErrInvalid), errors.Is(err, search.ErrInvalid), errors.Is(err, send.ErrInvalid):
 		status, code, message = http.StatusUnprocessableEntity, "invalid_value", err.Error()
 	case errors.Is(err, activity.ErrTooMany):
 		status, code, message = http.StatusUnprocessableEntity, "too_many_transactions",

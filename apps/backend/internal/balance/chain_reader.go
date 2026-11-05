@@ -43,6 +43,18 @@ func NewChainReader(specs map[uint64]chain.Spec, rate float64, budgets ...*chain
 	return c
 }
 
+// Client is the chain's RPC client, for reads at the latest block such as a send's checks.
+func (c *ChainReader) Client(chainID uint64) (*ethclient.Client, error) {
+	if err := c.errs[chainID]; err != nil {
+		return nil, err
+	}
+	client, ok := c.clients[chainID]
+	if !ok {
+		return nil, fmt.Errorf("no RPC for chain %d", chainID)
+	}
+	return client, nil
+}
+
 // Read is a ledger.BalanceOf at the selected RPC's finalized block. Requests share one finalized read per chain per
 // finalizedTTL and one balanceOf per block, so a balance is always the one at the block it is returned with.
 func (c *ChainReader) Read(ctx context.Context, chainID uint64, token, holder string) (*big.Int, uint64, error) {

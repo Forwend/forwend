@@ -976,6 +976,28 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   - `held` stays apart: it is the payer's money.
   - Each token has its chain's `livemode`; so does each balance-history token.
 
+## Sends and transfers
+
+A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema is in openapi.yaml.
+
+- Only the owner sends: `money.move` belongs to no role and no key (D-61).
+- The browser signs with Privy; the server never signs for a user wallet (D-46).
+- `POST /v1/profiles/{profileId}/sends` checks a send before signing. It needs a fresh sign-in (D-49).
+  - `to` is an outside address; `toProfileId` is another of the owner's profiles. The server finds that wallet itself.
+  - A pasted address of another of the owner's profiles counts as a transfer.
+  - It refuses an invalid checksum, the zero address, any token contract and the sender's own wallet.
+  - It reads the wallet's balance and dry-runs the token transfer from the wallet at the latest block.
+  - A token revert is `transfer_refused`; a chain that can't be read is 503 `network_unavailable`.
+  - Warnings: `contract` (the recipient has code that isn't an EIP-7702 delegation) and `newRecipient`.
+  - `networkFee` is what the wallet pays. Only chains with `gas_sponsored` offer Send, so it is 0, paid by Forwend.
+- One open send per wallet and chain. A new prepare cancels the unsigned one; a signed one gives 409 `send_in_progress`.
+- `POST .../sends/{sendId}/submit` takes the hash Privy returned. `POST .../cancel` gives up an unsigned send.
+- `GET .../sends/{sendId}` brings the status up to date on each read:
+  - `sending` until the watcher's wallet transfer matches hash, wallet, token, recipient and amount; then `sent`.
+  - `final` once that transfer is confirmed.
+  - `failed` `reverted`: the receipt has no such transfer. `failed` `dropped`: no receipt 30 minutes after submit.
+  - `expired`: never submitted within 10 minutes. Nothing is ever sent again on its own.
+
 ## Idempotency
 
 - Every `POST` that creates something or moves money needs an `Idempotency-Key` header. Exceptions: `POST /v1/me`

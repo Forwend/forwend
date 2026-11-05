@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 424,
+  "nextId": 426,
   "tasks": [
     {
       "id": "F332",
@@ -78,6 +78,115 @@
         "2026-11-05 blocked: Deferred by owner (2026-11-05): low priority for now."
       ],
       "blockedReason": "Deferred by owner (2026-11-05): low priority for now.",
+      "evidence": null
+    },
+    {
+      "id": "F424",
+      "type": "feat",
+      "behavior": "The server prepares, checks and tracks sends and transfers from profile wallets",
+      "acceptance": [
+        "An owner with a fresh sign-in prepares a send or transfer; members, keys and stale sign-ins are refused (R-211)",
+        "Invalid, zero, token-contract and own-wallet recipients, too-large amounts and failed dry runs are refused; contract and first-send warnings and the network fee are returned (R-211, D-119)",
+        "A reported hash moves a send to Sending, the matching final wallet transfer to Sent, a revert or reorg to Failed, and an unreported send drops after 10 minutes (R-212)",
+        "openapi.yaml and api.md describe the send routes"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "unit",
+        "backend-e2e"
+      ],
+      "refs": [
+        "R-211",
+        "R-212",
+        "D-119",
+        "D-46",
+        "D-61"
+      ],
+      "keep": [
+        "packages/contracts/src/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-05T17:12:04Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 62.0,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 28.4,
+            "log": ""
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "ec67acb14a76be3a",
+        "filesHash": "8b36821ca7729669",
+        "proof": {
+          "1": "unit: TestOnlyTheOwnerWithAFreshSignInPreparesASend: owner 201; refreshed token 401 reauth_required; Admin member and another user 403; money.move is in no role and no key scope",
+          "2": "unit: TestPrepareRefusesWhatWouldLoseMoney, TestPrepareRefusesWhenTheTokenRefuses and TestPrepareWarnsOfANewRecipientAndAContract on Anvil: invalid, zero, token, own and checksum refusals, balance cap, unsponsored chain, reverting token, contract and new-recipient warnings, fee 0 paid by forwend",
+          "3": "unit: TestASendIsSentOnlyWhenTheChainShowsIt, TestASendFailsWhenItsTransactionMovesSomethingElse, TestUnreportedAndDroppedSendsAreGivenUp and TestOneOpenSendPerWalletAndChain run real transfers through the watcher on Anvil",
+          "4": "unit: TestProfileRoutesAreAllListed and the openapi route test pass with the four send routes; docs-check passes with api.md Sends and transfers"
+        }
+      },
+      "branch": "feat/f424-the-server-prepares-checks-and-tracks-se",
+      "baseCommit": "19c49d8fb88c18a9bd72405483e21bbb1a703de2",
+      "failedVerifies": 0
+    },
+    {
+      "id": "F425",
+      "type": "feat",
+      "behavior": "Send and Transfer open one smooth sheet that signs with Privy and follows the send to the chain",
+      "acceptance": [
+        "Send and Transfer in the header, overview and command menu open one sheet; Transfer starts on My profiles (R-213)",
+        "Steps slide by direction, the sheet height follows each step, reduced motion shows steps at once, and DESIGN.md describes the pattern (R-213, R-204)",
+        "The review shows from, to with a grouped full address, network, token, amount, network fee and what the recipient gets; the button reads Send (R-213, D-119)",
+        "On a testnet, a live run signs a sponsored transfer from a profile wallet through Privy without its screens and shows Sending then Sent (R-214)"
+      ],
+      "dependsOn": [
+        "F424"
+      ],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "web-e2e",
+        "auth-live-e2e"
+      ],
+      "refs": [
+        "R-213",
+        "R-214",
+        "D-119",
+        "D-46"
+      ],
+      "keep": [
+        "packages/contracts/src/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
       "evidence": null
     }
   ],

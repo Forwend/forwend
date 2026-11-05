@@ -249,6 +249,9 @@ with a test.
 - `wallet_transfers` (R-38): enabled-token `Transfer` logs from or to a profile wallet, one row per wallet and direction
   (`in`|`out`) with the counterparty, so a transfer between two profile wallets is out for one and in for the other.
   Block fields, statuses and identity rules as in `chain_transfers`, with the wallet and direction in each key.
+- `sends` (R-211, R-212): a send out of a profile wallet, from prepared to sent, failed, canceled or expired. One open
+  send per wallet and chain. `wallet_transfers` decides sent; the browser's hash only links the two.
+- `chains.gas_sponsored`: Privy pays the gas there, so the chain offers Send (D-119). Set to match the Privy dashboard.
 - `transfer_labels` (R-108): the user's label for money in that Forwend can't classify, one per profile and transfer
   log (chain, transaction, log index).
 - `ecb_rates` (R-110, D-82): the ECB's daily euro reference rates, units per 1 EUR, one per currency and day.
