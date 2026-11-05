@@ -19,7 +19,6 @@ import { useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
 import type { Balances } from "@/features/balances/types/balances";
 import { AMOUNT_ERRORS } from "@/features/invoices/constants/invoices";
 import { parseTokenAmount } from "@/features/invoices/lib/invoices";
-import { ROLES } from "@/features/profiles/constants/profile";
 import { profileLabel } from "@/features/profiles/lib/profile";
 import type { Profile } from "@/features/profiles/types/profile";
 import { useCancelSendMutation, usePrepareSendMutation } from "@/features/send/api/send-api";
@@ -33,6 +32,7 @@ import {
   maxAmount,
   sendError,
   sendOptions,
+  transferTargets,
 } from "@/features/send/lib/send";
 import type { Recipient, Send, SendMode, SendOption, SendStep } from "@/features/send/types/send";
 import { TokenMark } from "@/shared/components/chains/token-mark";
@@ -76,9 +76,7 @@ export function SendSheet({
   onRetry,
   onSent,
 }: SendSheetProps) {
-  const own = profiles.filter(
-    (p) => p.profileId !== profile.profileId && p.role === ROLES.owner && p.walletAddress,
-  );
+  const own = transferTargets(profiles, profile);
   const first: SendStep =
     mode === SEND_MODES.send && own.length === 0 ? SEND_STEPS.address : SEND_STEPS.to;
   const [path, setPath] = useState<SendStep[]>([first]);
@@ -365,10 +363,7 @@ export function SendSheet({
         <dl className="flex flex-col gap-2 rounded-md bg-surface-2 px-4 py-3 text-sm">
           <div className="flex items-baseline justify-between gap-3">
             <dt className="text-muted">{SEND_COPY.networkFee}</dt>
-            <dd className="text-right text-ink">
-              {SEND_COPY.free}
-              <span className="text-muted"> · {SEND_COPY.feeNote}</span>
-            </dd>
+            <dd className="text-right text-ink">{SEND_COPY.free}</dd>
           </div>
           <div className="flex items-baseline justify-between gap-3">
             <dt className="text-muted">{SEND_COPY.theyGet}</dt>

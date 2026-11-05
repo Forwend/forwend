@@ -15,7 +15,7 @@ import { useSubmitSendMutation } from "@/features/send/api/send-api";
 import { SEND_MODES, SEND_STATUSES, SEND_WARNINGS } from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
 import { useSignSend } from "@/features/send/hooks/use-sign-send";
-import { addressGroups, feeText } from "@/features/send/lib/send";
+import { feeText } from "@/features/send/lib/send";
 import type { Recipient, Send, SendMode, SendOption } from "@/features/send/types/send";
 import { chainName } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
@@ -74,12 +74,13 @@ export function SendReview({
       onSigning(false);
       return;
     }
-    onSigning(false);
-    // The money is moving now: the progress step reports the hash again if this report is lost.
+    // The money is moving now. The sheet stays locked until the progress step holds the hash, which it reports
+    // again if this report is lost.
     const reported = await submit({ profileId: from.profileId, sendId: send.sendId, txHash: hash })
       .unwrap()
       .catch(() => null);
     onSubmitted(reported ?? { ...send, status: SEND_STATUSES.sending, txHash: hash });
+    onSigning(false);
   };
 
   return (
@@ -92,27 +93,22 @@ export function SendReview({
       <dl className="divide-y divide-line rounded-md border border-line text-sm">
         <Row term={SEND_COPY.from}>
           <span className="block text-ink">{profileLabel(from)}</span>
-          <span className="block font-mono text-xs text-muted">{shortAddress(send.from)}</span>
+          <span className="block text-xs text-muted">{shortAddress(send.from)}</span>
         </Row>
         <Row term={SEND_COPY.to}>
           {"profile" in recipient ? (
             <>
               <span className="block text-ink">{profileLabel(recipient.profile)}</span>
-              <span className="block font-mono text-xs text-muted">{shortAddress(send.to)}</span>
+              <span className="block text-xs text-muted">{shortAddress(send.to)}</span>
             </>
           ) : (
-            <Groups
-              address={recipient.address.toLowerCase() === send.to ? recipient.address : send.to}
-            />
+            <span className="text-ink" title={send.to}>
+              {shortAddress(send.to)}
+            </span>
           )}
         </Row>
         <Row term={SEND_COPY.network}>{chainName(send.chainId)}</Row>
-        <Row term={SEND_COPY.networkFee}>
-          {feeText(send, option)}
-          {send.networkFee.amount === "0" ? (
-            <span className="text-muted"> · {SEND_COPY.feeNote}</span>
-          ) : null}
-        </Row>
+        <Row term={SEND_COPY.networkFee}>{feeText(send, option)}</Row>
         <Row term={SEND_COPY.theyGet}>
           <span className="font-medium tabular-nums">
             {amount} {option.symbol}
@@ -158,18 +154,5 @@ function Row({ term, children }: { term: string; children: ReactNode }) {
       <dt className="shrink-0 text-muted">{term}</dt>
       <dd className="min-w-0 text-right text-ink">{children}</dd>
     </div>
-  );
-}
-
-// Every character of an outside address, in groups of four that wrap as whole groups: a look-alike that shares
-// only the first and last characters still shows (R-213).
-function Groups({ address }: { address: string }) {
-  return (
-    <span className="flex max-w-56 flex-wrap justify-end gap-x-1.5 font-mono text-sm text-ink select-all">
-      {addressGroups(address).map((g, i) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: groups repeat, and their order never changes
-        <span key={i}>{g}</span>
-      ))}
-    </span>
   );
 }

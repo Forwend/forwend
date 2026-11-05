@@ -710,7 +710,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Money actions are round icon buttons with the label underneath, on desktop and phones. Only the view's main
   action is filled with the lime; other working actions are surface circles, and coming ones are subtle.
 - Personal overview actions: Receive (lime, the QR icon), Request, Send, Transfer, Withdraw, in one row with a narrow
-  gap on phones. Send and Transfer open the Send sheet; Withdraw is coming.
+  gap on phones. Send and Transfer open the Send sheet; Withdraw is coming. Transfer shows only when the owner has
+  another profile with a wallet.
   Request (also in ⌘K) opens the Request money page (R-71) with amount, note, checkout expiry and the name the payer
   sees, then opens the new request with its pay link. A personal profile's invoices are Requests in the sidebar, list
   and breadcrumb.
@@ -1086,12 +1087,15 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
   Send also offers Wallet address.
   - Steps: To, Wallet address, What to send, Amount, Review, then the progress. A step with one choice is skipped.
   - The title names the step; a Back button sits before it from the second step on.
-  - Amount: the large amount field with the unit inside, the available balance with Max, then Network fee (Free, Forwend
-    pays it) and They receive on a surface-2 box.
-  - Review: the amount large and centered over its network, then a ruled box: From, To, Network, Network fee, They
-    receive. An outside address shows in full, in groups of four, never shortened.
-  - A first send to an address, or one to a contract, shows its warning and a checkbox; Send stays off until it is ticked.
+  - Amount: the large amount field with the unit inside, the available balance with Max, then Network fee (Free) and
+    They receive on a surface-2 box.
+  - Review: the amount large and centered, then a ruled box: From, To, Network, Network fee, They receive.
+  - An address reads as plain text, shortened (`0x4edd…81fc`), as everywhere in the app; its full form is its title.
+  - A first send to an address, or one to a contract, shows a one-line warning and a checkbox; Send stays off until it
+    is ticked.
   - The main button names the amount ("Send 25.00 USDC").
+  - While Privy signs, the sheet is locked: Escape, the backdrop, Close and Back do nothing, since closing would not
+    stop the money.
   - Progress: a spinner and Sending, then the drawn check and Sent, or the alert icon and why it failed; then the
     explorer link and Done.
 - Fixed navigation and page edges respect safe-area insets; zoom stays enabled and touch text inputs use the base

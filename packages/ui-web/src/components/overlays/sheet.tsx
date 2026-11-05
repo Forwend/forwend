@@ -50,7 +50,11 @@ export function Sheet({
       onCancel={(event) => {
         if (locked) event.preventDefault(); // Escape
       }}
-      onClose={() => onOpenChange(false)}
+      onClose={() => {
+        // A second Escape can't be prevented: a locked sheet opens again at once.
+        if (locked) ref.current?.showModal();
+        else onOpenChange(false);
+      }}
       onClick={(event) => {
         if (event.target === ref.current && !locked) onOpenChange(false); // a click on the backdrop
       }}

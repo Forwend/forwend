@@ -1,5 +1,5 @@
 import { type ChildProcess, spawn } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, rmSync } from "node:fs";
 import { parseEnv } from "node:util";
 import { expect, type Page, test } from "@playwright/test";
 import { blockingViolations } from "./axe";
@@ -32,6 +32,7 @@ test.beforeAll(async ({ browser }) => {
   });
 });
 test.afterAll(() => {
+  rmSync(fresh, { force: true });
   // go run starts the worker as its child: end the whole group.
   if (worker?.pid) process.kill(-worker.pid, "SIGTERM");
 });
@@ -145,13 +146,12 @@ test("Send to a new address warns and asks to check the address before it can be
   await confirmIfAsked(page);
 
   const send = sheet(page).getByRole("button", { name: /^Send 0\.01 [A-Z]+$/ });
-  await expect(sheet(page).getByText(/haven't sent to this address before/)).toBeVisible();
+  await expect(sheet(page).getByText("You haven't sent to this address before.")).toBeVisible();
   await expect(send).toBeDisabled();
-  // Every character shows, in groups of four.
-  await expect(sheet(page).getByText("dEaD", { exact: true })).toBeVisible();
+  await expect(sheet(page).getByText("0x0000…dead", { exact: true })).toBeVisible();
   await shot(page, "../../docs/runs/f425-send-review-390.png", true);
   expect(await blockingViolations(page)).toEqual([]);
-  await sheet(page).getByRole("checkbox", { name: "I checked the whole address" }).check();
+  await sheet(page).getByRole("checkbox", { name: "I checked the address" }).check();
   await expect(send).toBeEnabled();
   // Closing gives the unsigned send up; nothing is signed.
   await page.keyboard.press("Escape");

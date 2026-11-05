@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  addressGroups,
   isWalletAddress,
   matchesRequest,
   maxAmount,
@@ -25,13 +24,6 @@ describe("send", () => {
     expect(transferCalldata("0x00000000000000000000000000000000000000CC", 2_500_000n)).toBe(
       `0xa9059cbb${"0".repeat(62)}cc${"0".repeat(58)}2625a0`,
     );
-  });
-
-  it("groups the full address in fours, leaving out nothing", () => {
-    const address = "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed";
-    const groups = addressGroups(address);
-    expect(groups.join("")).toBe(address);
-    expect(groups.slice(1).every((g) => g.length === 4)).toBe(true);
   });
 
   it("takes only a whole 0x address", () => {

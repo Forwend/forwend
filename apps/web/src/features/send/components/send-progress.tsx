@@ -1,13 +1,19 @@
 "use client";
 
-import { Button, buttonClasses, formatTokenAmount, Spinner, SuccessCheck } from "@forwend/ui-web";
+import {
+  Button,
+  buttonClasses,
+  formatTokenAmount,
+  Spinner,
+  SuccessCheck,
+  shortAddress,
+} from "@forwend/ui-web";
 import { CircleAlert, ExternalLink } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { profileLabel } from "@/features/profiles/lib/profile";
 import { useGetSendQuery, useSubmitSendMutation } from "@/features/send/api/send-api";
 import { SEND_FAILURES, SEND_POLL_MS, SEND_STATUSES } from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
-import { addressGroups } from "@/features/send/lib/send";
 import type { Recipient, Send, SendOption } from "@/features/send/types/send";
 import { txLink } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
@@ -61,9 +67,7 @@ export function SendProgress({
   const units = BigInt(send.amount);
   const amount = `${formatTokenAmount({ baseUnits: units, decimals: option.decimals, fractionDigits: exactDigits(units, option.decimals) })} ${option.symbol}`;
   const to =
-    "profile" in recipient
-      ? profileLabel(recipient.profile)
-      : `${addressGroups(recipient.address).slice(0, 2).join("")}…${recipient.address.slice(-4)}`;
+    "profile" in recipient ? profileLabel(recipient.profile) : shortAddress(recipient.address);
   const link = send.txHash ? txLink(send.chainId, send.txHash) : null;
   const failed = send.status === SEND_STATUSES.failed;
   const sent = send.status === SEND_STATUSES.sent;

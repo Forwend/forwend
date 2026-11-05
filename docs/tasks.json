@@ -181,7 +181,7 @@
       "acceptance": [
         "Send and Transfer in the header, overview and command menu open one sheet; Transfer starts on My profiles (R-213)",
         "Steps slide by direction, the sheet height follows each step, reduced motion shows steps at once, and DESIGN.md describes the pattern (R-213, R-204)",
-        "The review shows from, to with a grouped full address, network, token, amount, network fee and what the recipient gets; the button reads Send (R-213, D-119)",
+        "The review shows the server-checked send: from, to (short address), network, token, amount, network fee and what the recipient gets; the button names the amount (R-213, D-119)",
         "On a testnet, a live run signs a sponsored transfer from a profile wallet through Privy without its screens and shows Sending then Sent (R-214)"
       ],
       "dependsOn": [

@@ -13,7 +13,7 @@ import { PRIVY_PASSKEY } from "@/features/onboarding/constants/onboarding";
 import { rememberReturnPage, takeReturnPage } from "@/features/onboarding/lib/onboarding";
 import { useSignUpQuery } from "@/features/profiles/api/profiles-api";
 import { ProfileSheet } from "@/features/profiles/components/profile-sheet";
-import { PERMISSIONS, ROLES } from "@/features/profiles/constants/profile";
+import { PERMISSIONS } from "@/features/profiles/constants/profile";
 import { AppSessionContext } from "@/features/profiles/hooks/use-app-session";
 import {
   chosenProfile,
@@ -25,6 +25,7 @@ import type { AppSession } from "@/features/profiles/types/app-session";
 import { ReceiveSheet } from "@/features/receive/components/receive-sheet";
 import { SendSheet } from "@/features/send/components/send-sheet";
 import { SEND_MODES } from "@/features/send/constants/send";
+import { transferTargets } from "@/features/send/lib/send";
 import type { SendMode } from "@/features/send/types/send";
 import { AppHeader } from "@/screens/app-shell/app-header";
 import { AppSidebar } from "@/screens/app-shell/app-sidebar";
@@ -67,10 +68,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const moves = active ? can(active, PERMISSIONS.moneyMove) : false;
   // Transfer needs another profile of the owner's with a wallet to move money to.
   const transfers =
-    moves &&
-    (profiles ?? []).some(
-      (p) => p.profileId !== active?.profileId && p.role === ROLES.owner && p.walletAddress,
-    );
+    moves && active && profiles ? transferTargets(profiles, active).length > 0 : false;
   // Receive's and Send's token lists, read only while one is open: a closed sheet polls nothing.
   const balances = useGetBalancesQuery(
     active && money && (receiving || sending) ? active.profileId : skipToken,

@@ -731,6 +731,8 @@ function StepsDemo() {
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState<StepDirection>(STEP_DIRECTIONS.next);
+  // Locked: work that closing would not stop, such as a signature.
+  const [locked, setLocked] = useState(false);
   const move = (by: 1 | -1) => {
     setDirection(by === 1 ? STEP_DIRECTIONS.next : STEP_DIRECTIONS.back);
     setIndex((i) => i + by);
@@ -750,7 +752,8 @@ function StepsDemo() {
         open={open}
         onOpenChange={setOpen}
         title={DEMO_STEPS[index] ?? ""}
-        onBack={index > 0 ? () => move(-1) : undefined}
+        onBack={index > 0 && !locked ? () => move(-1) : undefined}
+        locked={locked}
       >
         <StepTransition step={String(index)} direction={direction} label={DEMO_STEPS[index] ?? ""}>
           <div className="flex flex-col gap-3">
@@ -758,13 +761,22 @@ function StepsDemo() {
               // biome-ignore lint/suspicious/noArrayIndexKey: placeholder rows, one per position
               <Skeleton key={i} className="h-10" />
             ))}
-            <Button
-              className="w-full"
-              disabled={index === DEMO_STEPS.length - 1}
-              onClick={() => move(1)}
-            >
-              Continue
-            </Button>
+            {index === DEMO_STEPS.length - 1 ? (
+              <Button
+                className="w-full"
+                loading={locked}
+                onClick={() => {
+                  setLocked(true);
+                  setTimeout(() => setLocked(false), 3000);
+                }}
+              >
+                Lock for 3 s
+              </Button>
+            ) : (
+              <Button className="w-full" onClick={() => move(1)}>
+                Continue
+              </Button>
+            )}
           </div>
         </StepTransition>
       </Sheet>

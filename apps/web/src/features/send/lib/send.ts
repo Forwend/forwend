@@ -1,16 +1,13 @@
 import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import type { Balances } from "@/features/balances/types/balances";
+import { ROLES } from "@/features/profiles/constants/profile";
+import type { Profile } from "@/features/profiles/types/profile";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
 import type { Send, SendOption, SendRequest } from "@/features/send/types/send";
 import { evmAddress } from "@/shared/schemas/api";
 
 export function isWalletAddress(text: string): boolean {
   return evmAddress.safeParse(text.trim()).success;
-}
-
-/** The address in groups of four after 0x, so the owner can compare it group by group (R-213). */
-export function addressGroups(address: string): string[] {
-  return ["0x", ...(address.slice(2).match(/.{1,4}/g) ?? [])];
 }
 
 /** What the wallet holds, the networks Send offers first; empty balances and unread ones are left out. */
@@ -68,8 +65,17 @@ export function matchesRequest(
   );
 }
 
-/** The network fee the wallet pays (D-119): Free where Forwend pays it, else the amount in the token. */
+/** The network fee the wallet pays (D-119): Free where Forwend pays it.
+ * ponytail: a non-zero fee is shown in the sent token's units; only sponsored chains offer Send today, so it is
+ * always 0. Name the gas token here once a chain without sponsorship offers Send. */
 export function feeText(send: Send, option: SendOption): string {
   const fee = BigInt(send.networkFee.amount);
   return fee === 0n ? SEND_COPY.free : `${maxAmount(fee, option.decimals)} ${option.symbol}`;
+}
+
+/** The owner's other profiles with a wallet: where a Transfer can go. */
+export function transferTargets(profiles: Profile[], from: Profile): Profile[] {
+  return profiles.filter(
+    (p) => p.profileId !== from.profileId && p.role === ROLES.owner && p.walletAddress,
+  );
 }
