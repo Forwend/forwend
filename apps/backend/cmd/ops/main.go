@@ -26,9 +26,9 @@ import (
 )
 
 const usage = `usage, where <case> is a pay link, a receive address, a payment's transaction or an invoice id:
-  ops case <case>
+  ops case [-to <address>] <case>      (a transaction also finds another token or chain)
   ops return -tx <payment transaction> [-to <address>] [-amount <tokens>] <case>
-  ops release <case>`
+  ops release <case>                    (a stray's transaction: only once no recover for its address waits in the Safe)`
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -61,8 +61,25 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	}
 	defer pool.Close()
 	options, err := settlement.CaseOptions(ctx, pool, flags.Arg(0))
-	if err != nil {
+	// A transaction no invoice booked may be a stray transfer: case looks for it on every chain, release unlocks it.
+	stray := errors.Is(err, settlement.ErrNoCase) && hashShape.MatchString(strings.TrimSpace(flags.Arg(0))) &&
+		(args[0] == "case" || args[0] == "release")
+	if err != nil && !stray {
 		return err
+	}
+	var dest *common.Address
+	if *to != "" && args[0] == "release" {
+		return errors.New(usage)
+	}
+	if *to != "" && args[0] == "case" {
+		if !stray {
+			return errors.New("-to names a stray transfer's destination; for held money use ops return")
+		}
+		if !addressShape.MatchString(*to) {
+			return fmt.Errorf("-to %q is not an address", *to)
+		}
+		a := common.HexToAddress(*to)
+		dest = &a
 	}
 	specs, err := chain.Specs(ctx, pool, cfg.Chains.RPCSecrets, cfg.Chains.AllowLoopback)
 	if err != nil {
@@ -78,6 +95,15 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 			return nil, err
 		}
 		return ethclient.NewClient(rpcs.Client), nil
+	}
+	every := func() (map[uint64]*ethclient.Client, error) {
+		clients := map[uint64]*ethclient.Client{}
+		for id := range specs {
+			if clients[id], err = client(id); err != nil {
+				return nil, err
+			}
+		}
+		return clients, nil
 	}
 
 	switch args[0] {
@@ -100,6 +126,35 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		}
 		if quiet > 0 {
 			fmt.Fprintf(out, "%d other option(s) of this invoice have no payments and hold nothing.\n", quiet)
+		}
+		if !stray {
+			return nil
+		}
+		clients, err := every()
+		if err != nil {
+			return err
+		}
+		strays, err := settlement.FindStrays(ctx, pool, clients, strings.TrimSpace(flags.Arg(0)))
+		if err != nil {
+			return err
+		}
+		if len(strays) == 0 {
+			return settlement.ErrNoCase
+		}
+		if dest != nil && len(strays) > 1 {
+			return errors.New("-to: this transaction made several stray transfers; run without -to")
+		}
+		for _, st := range strays {
+			home, ok := clients[st.Option.ChainID]
+			if !ok {
+				return fmt.Errorf("chain %d is not enabled", st.Option.ChainID)
+			}
+			r, err := settlement.PlanRecovery(ctx, pool, home, clients[st.ChainID], st, dest)
+			if err != nil && !errors.Is(err, settlement.ErrCantReturn) && !errors.Is(err, settlement.ErrRecoveryQueued) &&
+				!errors.Is(err, settlement.ErrDestination) && !errors.Is(err, settlement.ErrNotFinal) {
+				return err
+			}
+			printStray(out, st, r, err)
 		}
 		return nil
 	case "return":
@@ -149,6 +204,17 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		printReturn(out, h, r, flags.Arg(0))
 		return nil
 	case "release":
+		if stray {
+			clients, err := every()
+			if err != nil {
+				return err
+			}
+			n, err := settlement.ReleaseRecovery(ctx, pool, clients, flags.Arg(0))
+			if n > 0 {
+				fmt.Fprintf(out, "Released %d printed recover(s) of that transaction.\n", n)
+			}
+			return err
+		}
 		released := 0
 		for _, o := range options {
 			switch err := settlement.ReleaseReturn(ctx, pool, o.ID); {
@@ -169,6 +235,7 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 
 var (
 	addressShape = regexp.MustCompile(`^0x[0-9a-fA-F]{40}$`)
+	hashShape    = regexp.MustCompile(`^0x[0-9a-fA-F]{64}$`)
 	decimalShape = regexp.MustCompile(`^[0-9]+(\.[0-9]+)?$`)
 )
 
@@ -218,6 +285,45 @@ func printHeld(out io.Writer, h settlement.Held) {
 		fmt.Fprintf(out, "  All of it is refundable after %s.\n", h.Deadline.Format("2 Jan 2006, 15:04 UTC"))
 	}
 	fmt.Fprintf(out, "  Refund authority: %s\n\n", h.Authority.Hex())
+}
+
+func printStray(out io.Writer, s settlement.Stray, r settlement.Recovery, cant error) {
+	money := s.Amount.String() + " base units of token " + s.Token.Hex()
+	if s.Symbol != "" {
+		money = document.Amount(s.Amount, s.Decimals, s.Symbol) + " (" + s.Token.Hex() + ")"
+	}
+	fmt.Fprintf(out, "Transfer %s on chain %d: %s from %s\n", s.TxHash, s.ChainID, money, s.From.Hex())
+	fmt.Fprintf(out, "  It went to invoice option %s on chain %d, which doesn't take it.\n", s.Option.ID, s.Option.ChainID)
+	if errors.Is(cant, settlement.ErrRecoveryQueued) {
+		fmt.Fprintf(out, "  %s: send it if it isn't yet. If it never will be, reject or execute every recover "+
+			"queued for this address in the Safe, then ops release %s.\n\n", cant, s.TxHash)
+		return
+	}
+	if errors.Is(cant, settlement.ErrNotFinal) {
+		fmt.Fprintf(out, "  %s.\n\n", cant)
+		return
+	}
+	if errors.Is(cant, settlement.ErrDestination) {
+		fmt.Fprintf(out, "  %s: give another with -to.\n\n", cant)
+		return
+	}
+	if cant != nil {
+		fmt.Fprintf(out, "  %s. Tell the payer plainly; promise nothing (D-33).\n\n", cant)
+		return
+	}
+	for _, w := range r.Warnings {
+		fmt.Fprintln(out, "  Warning:", w)
+	}
+	fmt.Fprintf(out, "  Send from the refund authority %s on chain %d, in this order (in a Safe: Transaction Builder, custom data):\n",
+		r.Authority.Hex(), s.ChainID)
+	for i, c := range r.Calls {
+		fmt.Fprintf(out, "    %d. To   %s\n       Data 0x%x\n", i+1, c.To.Hex(), c.Data)
+	}
+	fmt.Fprintln(out, "  Or from a testnet authority's own wallet with Foundry (add --rpc-url and the signer):")
+	for _, c := range r.Calls {
+		fmt.Fprintf(out, "    cast send %s '%s' '%s'\n", c.To.Hex(), c.Signature, strings.Join(c.Args, "' '"))
+	}
+	fmt.Fprintln(out)
 }
 
 func printReturn(out io.Writer, h settlement.Held, r settlement.Return, ref string) {
