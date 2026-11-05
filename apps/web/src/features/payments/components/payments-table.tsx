@@ -5,6 +5,7 @@ import { PaymentReceived } from "@/features/payments/components/payment-received
 import { SOURCE_ICONS, SOURCE_LABELS } from "@/features/payments/constants/payments";
 import { PAYMENTS_COPY as COPY } from "@/features/payments/constants/payments-copy";
 import {
+  heldHint,
   paymentDisplayStatus,
   paymentLabel,
   paymentWallet,
@@ -164,21 +165,32 @@ function Requested({ payment }: { payment: Payment }) {
   );
 }
 
+// A real problem leads; held money is the customer's and needs nothing from the owner (D-118).
+function byConcern(problems?: PaymentProblem[]): PaymentProblem[] {
+  return [...(problems ?? [])].sort(
+    (a, b) => Number(a.code === "held_funds") - Number(b.code === "held_funds"),
+  );
+}
+
 function issueText(problems?: PaymentProblem[]): string | null {
-  const [first, ...rest] = problems ?? [];
+  const sorted = byConcern(problems);
+  const [first, ...rest] = sorted;
   if (!first) return null;
-  return rest.length
-    ? `${problemLabel(first.code)} and ${rest.length} more`
-    : problemLabel(first.code);
+  // Only held money: its hover is the status badge's sentences.
+  if (first.code === "held_funds") return heldHint(sorted) ?? problemLabel(first);
+  return rest.length ? `${problemLabel(first)} and ${rest.length} more` : problemLabel(first);
 }
 
 function Issue({ problems }: { problems?: PaymentProblem[] }) {
-  const [first, ...rest] = problems ?? [];
+  const [first, ...rest] = byConcern(problems);
   if (!first) return <span className="text-subtle">—</span>;
   return (
     <span className="flex min-w-0 items-center gap-2 text-ink">
-      <span aria-hidden className="size-2 shrink-0 rounded-pill bg-warning" />
-      <span className="truncate">{problemLabel(first.code)}</span>
+      <span
+        aria-hidden
+        className={`size-2 shrink-0 rounded-pill ${first.code === "held_funds" ? "bg-subtle" : "bg-warning"}`}
+      />
+      <span className="truncate">{problemLabel(first)}</span>
       {rest.length ? <span className="shrink-0 text-muted">+{rest.length}</span> : null}
     </span>
   );

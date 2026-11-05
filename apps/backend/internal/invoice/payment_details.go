@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/finality"
+	"github.com/forwend/forwend/apps/backend/internal/history"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/forwend/forwend/apps/backend/internal/webhook"
 	"github.com/jackc/pgx/v5"
@@ -22,6 +23,7 @@ type PaymentOption struct {
 	Settlement        *PaymentSettlement
 	Returns           []PaymentReturn
 	DepositsTruncated bool
+	HeldHistory       heldHistory
 }
 
 // PaymentReturn is held money the refund authority sent back to a payer, once the ledger booked it (PLAN 11.10.3).
@@ -168,6 +170,37 @@ func readPaymentSettlements(ctx context.Context, db paymentReader, ids []string)
 	return result, rows.Err()
 }
 
+// heldHistory is what the ledger wrote to the history about an option's held money since the last reopen (R-130).
+type heldHistory struct {
+	Reason string   // its one reason; "" when the holds have several
+	Amount *big.Int // the sum of those holds
+}
+
+// readHeldReasons reads each option's heldHistory (D-26), by option id.
+func readHeldReasons(ctx context.Context, db paymentReader, mains []string) (map[string]heldHistory, error) {
+	rows, err := db.Query(ctx, `SELECT coalesce(nullif(h.data->>'option', ''), h.invoice_id) AS option,
+		       CASE WHEN count(DISTINCT h.data->>'reason') = 1 THEN min(h.data->>'reason') ELSE '' END,
+		       sum((h.data->>'amount')::numeric)::text
+		FROM history_events h
+		WHERE h.invoice_id = ANY($1) AND h.kind = $2 AND h.id > coalesce(
+		    (SELECT max(r.id) FROM history_events r WHERE r.invoice_id = h.invoice_id AND r.kind = $3), 0)
+		GROUP BY 1`, mains, history.Held, history.Reopened)
+	if err != nil {
+		return nil, fmt.Errorf("read held reasons: %w", err)
+	}
+	defer rows.Close()
+	result := map[string]heldHistory{}
+	for rows.Next() {
+		var option, reason, sum string
+		if err := rows.Scan(&option, &reason, &sum); err != nil {
+			return nil, err
+		}
+		amount, _ := new(big.Int).SetString(sum, 10) // a sum of base-unit integers
+		result[option] = heldHistory{Reason: reason, Amount: amount}
+	}
+	return result, rows.Err()
+}
+
 func readOperationOptions(ctx context.Context, db paymentReader, invoices []Invoice, activeOnly bool) (map[string][]PaymentOption, error) {
 	mains := make([]string, len(invoices))
 	for i := range invoices {
@@ -195,11 +228,15 @@ func readOperationOptions(ctx context.Context, db paymentReader, invoices []Invo
 	if err != nil {
 		return nil, err
 	}
+	held, err := readHeldReasons(ctx, db, mains)
+	if err != nil {
+		return nil, err
+	}
 	result := make(map[string][]PaymentOption, len(invoices))
 	for main, options := range grouped {
 		for _, option := range options {
 			option.Amounts = amounts[option.ID]
-			result[main] = append(result[main], PaymentOption{Option: option, State: states[option.ID], Settlement: settlements[option.ID]})
+			result[main] = append(result[main], PaymentOption{Option: option, State: states[option.ID], Settlement: settlements[option.ID], HeldHistory: held[option.ID]})
 		}
 	}
 	return result, nil

@@ -106,7 +106,7 @@ function Transaction({
       <span className="flex flex-col [grid-area:what]">
         <span className="text-xs text-muted">
           {kind}
-          {note ? <span className="text-warning"> · {note}</span> : null}
+          {note ? <span> · {note}</span> : null}
         </span>
         {amount}
       </span>

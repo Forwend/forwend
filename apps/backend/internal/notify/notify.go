@@ -272,7 +272,8 @@ func compose(kind, number, amount, symbol, network, link, settings string) view 
 			"Money held for the payer"
 		v.Lead = []string{amount + " for " + number + " on " + network + " does not pay it: more than the amount, a " +
 			"partial payment when the checkout closed, money after it closed or after you canceled it, or money on " +
-			"another payment option. It is held for the payer, not paid to you."}
+			"another payment option. It is held for the payer, not paid to you.",
+			"Forwend support handles any return to the payer, so you don't need to do anything."}
 	}
 	v.Preheader = v.Lead[0]
 	return v

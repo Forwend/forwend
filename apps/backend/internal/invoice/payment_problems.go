@@ -79,16 +79,11 @@ func optionProblems(inv Invoice, option PaymentOption, at time.Time) []PaymentPr
 		result[len(result)-1].Amount = new(big.Int).Sub(option.Amount, amounts.Payable)
 	}
 	if amounts.Held.Sign() > 0 {
-		reason := "after_checkout_close"
-		switch {
-		case inv.OptionLocked && inv.OptionID != option.ID:
-			reason = ledger.HeldOtherOption
-		case state.PaymentStatus == ledger.Canceled:
-			reason = ledger.HeldCanceled
-		case state.PaymentStatus == ledger.ExpiredPartiallyPaid || state.PaymentStatus == ledger.Expired:
-			reason = ledger.HeldExpired
-		case state.PaymentStatus == ledger.Paid:
-			reason = "payment_completed"
+		// A reason only when the ledger's one reason covers all of it: on-time dust, older holds and a part
+		// return write none, or don't add up, so no sentence names a reason for money it doesn't describe.
+		var reason string
+		if h := option.HeldHistory; h.Amount != nil && h.Amount.Cmp(amounts.Held) == 0 {
+			reason = h.Reason
 		}
 		add(ProblemHeldFunds, ActionReviewFunds, reason)
 		result[len(result)-1].Amount = amounts.Held

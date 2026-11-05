@@ -4,10 +4,12 @@ import { PaymentAmount } from "@/features/payments/components/payment-amount";
 import { PaymentProblems } from "@/features/payments/components/payment-problems";
 import { ReturnRow } from "@/features/payments/components/return-row";
 import {
+  heldHint,
   leadOption,
   optionFigures,
   paymentState,
   paymentWallet,
+  problemLabel,
 } from "@/features/payments/lib/payments";
 import type { PaymentDetail } from "@/features/payments/types/payments";
 
@@ -43,11 +45,10 @@ describe("optionFigures", () => {
     // 1.00 sent for a 0.10 request, still confirming: 0.90 over, nothing booked yet.
     expect(
       optionFigures("100000", { ...receipt, received: "1000000", pending: "1000000" }),
-    ).toEqual({ received: 1000000n, confirming: 1000000n, extra: 900000n, due: 0n });
+    ).toEqual({ received: 1000000n, extra: 900000n, due: 0n });
     // Booked: the held amount is the extra, even when late money makes it differ from the arithmetic.
     expect(optionFigures("100000", { ...receipt, received: "100000", held: "100000" })).toEqual({
       received: 100000n,
-      confirming: 0n,
       extra: 100000n,
       due: 0n,
     });
@@ -63,7 +64,6 @@ describe("optionFigures", () => {
     });
     expect(optionFigures("100000", undefined)).toEqual({
       received: 0n,
-      confirming: 0n,
       extra: 0n,
       due: 100000n,
     });
@@ -131,15 +131,32 @@ describe("payment page problems", () => {
     );
     expect(markup.match(/Webhook delivery failed/g)).toHaveLength(1);
   });
-  it("leaves held money to Amount only for the option Amount shows", () => {
-    const held = (optionId: string) =>
-      problem("held_funds", "review_funds", { optionId, amount: "2000000", asset });
-    const a = `0x${"a".repeat(64)}`;
-    const b = `0x${"b".repeat(64)}`;
-    expect(renderToStaticMarkup(<PaymentProblems problems={[held(a)]} extraShown={a} />)).toBe("");
-    const other = renderToStaticMarkup(<PaymentProblems problems={[held(b)]} extraShown={a} />);
-    expect(other).toContain("Money held for the payer");
-    expect(other).toContain("2.00");
+  it("names why each held payment is held, in one sentence that says support returns it", () => {
+    const reasons = {
+      overpaid: "over the amount",
+      late: "paid after the checkout closed",
+      expired: "from a partial payment",
+      canceled: "paid after you canceled",
+      other_option: "paid with an option the customer didn't choose",
+    };
+    for (const [reason, why] of Object.entries(reasons)) {
+      const held = problem("held_funds", "review_funds", { amount: "500000", asset, reason });
+      expect(heldHint([held])).toBe(
+        `0.50 USDC ${why} is held for the customer, and Forwend support handles any return.`,
+      );
+      expect(problemLabel(held)).toBe(`Money held for the customer: ${why}`);
+    }
+    // An on-time part that chose no option has no reason to name.
+    const plain = problem("held_funds", "review_funds", { amount: "500000", asset });
+    expect(heldHint([plain])).toBe(
+      "0.50 USDC is held for the customer, and Forwend support handles any return.",
+    );
+    expect(problemLabel(plain)).toBe("Money held for the customer");
+    expect(heldHint([problem("webhook_delivery", "review_webhooks")])).toBeNull();
+  });
+  it("leaves held money to the status hint: no warning strip", () => {
+    const held = problem("held_funds", "review_funds", { amount: "2000000", asset });
+    expect(renderToStaticMarkup(<PaymentProblems problems={[held]} />)).toBe("");
   });
 });
 
