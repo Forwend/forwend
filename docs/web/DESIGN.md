@@ -205,8 +205,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A value uses the latest known price, even an old one: stablecoins move little.
   - Without any price for a held token, the total is "—": never 1 USD.
   - While the prices load, the total keeps its placeholder; it never shows the no-prices line meanwhile.
-  - Payment flows and history (Received, Sent, money in and out, the charts) stay at face value, one USD per
-    stablecoin: they are payment amounts, and there is no price history.
+  - Payment flows and history (Received, Sent, money in and out, the charts) value each day's tokens at the same
+    latest prices: there is no price history (R-178).
   - On the personal overview the icon hangs after USD and takes no width, so the total sits on the center line on
     phones. A row for one token keeps its symbol.
 - Personal overview follows the C comp's balance card, in rows of cards like the business overview:
@@ -239,6 +239,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
       - Under it: "Extra or late payments. Not part of your balance." No wording says who owes whom.
   - Row 2: the Received card (range control in its header, the range total, Sent, the running-total chart) beside
     My assets (a share bar, then each token's amount and market value).
+    - On phones the range control has its own line under the title, so the transfer count never moves it (R-203).
+    - My assets' placeholder is the share bar and two rows, in a body with its empty state's minimum height.
   - Row 3: Unpaid beside Latest payments; each sizes to its rows instead of matching the other's height.
   - Latest payments: six rows from the Payments list's first page, with a source icon (the payment always comes in).
   - Phones stack the cards in that order. Filters, search and CSV export live on Transactions.

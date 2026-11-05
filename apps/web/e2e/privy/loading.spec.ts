@@ -151,6 +151,57 @@ test("the overview's balance and pending cards keep their size while they load, 
   await context.close();
 });
 
+test("the overview's Received and My assets cards keep their size while they load", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await mockApi(page);
+  const late = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  // The transfer count and the balances answer after the history, as they can.
+  await page.route(/\/api\/v1\/profiles\/[^/]+\/(transactions|balances)(\?|$)/, async (route) => {
+    await late(1200);
+    await route.fallback();
+  });
+  await page.addInitScript(() => {
+    const w = window as unknown as { seen: Record<string, number[]> };
+    w.seen = {};
+    const note = (key: string, value: number | undefined) => {
+      if (value === undefined) return;
+      w.seen[key] ??= [];
+      if (w.seen[key].at(-1) !== Math.round(value)) w.seen[key].push(Math.round(value));
+    };
+    const sample = () => {
+      const received = document.getElementById("received-title")?.closest("section");
+      const range = received?.querySelector("fieldset");
+      if (received && range)
+        note("range", range.getBoundingClientRect().top - received.getBoundingClientRect().top);
+      note(
+        "assets",
+        document.getElementById("assets-title")?.closest("section")?.getBoundingClientRect().height,
+      );
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+  await page.goto("/app");
+  const main = page.getByRole("main");
+  await expect(main.getByText(/transfers in/)).toBeVisible();
+  await expect(
+    main.locator("section", { has: page.locator("#assets-title") }).getByText("USDC"),
+  ).toBeVisible();
+  await expect(main.locator("[data-skeleton]")).toHaveCount(0);
+  const seen = await page.evaluate(
+    () => (window as unknown as { seen: Record<string, number[]> }).seen,
+  );
+  // One place for the range control and one height for My assets, from the first frame to the loaded one.
+  expect(seen).toEqual({ range: [expect.any(Number)], assets: [expect.any(Number)] });
+  await context.close();
+});
+
 test("the sidebar's mark moves with the page, with no fade left behind", async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },

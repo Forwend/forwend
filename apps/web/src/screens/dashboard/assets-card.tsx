@@ -10,6 +10,7 @@ import type { TokenPrice } from "@/features/prices/types/prices";
 import { BUSINESS_COPY as COPY } from "@/screens/dashboard/constants/business-copy";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { LoadError } from "@/shared/components/load-error";
+import { LineSkeleton } from "@/shared/components/rows-skeleton";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 
@@ -63,71 +64,94 @@ export function AssetsCard({ balances, failed, onRetry, prices }: AssetsCardProp
       }
       className="flex flex-col"
     >
-      {!balances && failed ? (
-        <LoadError message={BALANCES_COPY.balancesFailed} onRetry={onRetry} />
-      ) : !balances ? (
-        <Skeleton className="h-28" />
-      ) : rows.length === 0 ? (
-        <EmptyState compact icon={Wallet} title={BALANCES_COPY.noTokens} />
-      ) : held.length === 0 ? (
-        <EmptyState compact icon={Wallet} title={COPY.nothingHeld} />
-      ) : (
-        <>
-          {total > 0n ? (
-            <div aria-hidden className="mb-3 flex h-2 gap-0.5 overflow-hidden rounded-sm">
-              {bar
-                .filter((cents) => cents > 0n)
-                .map((cents, i) => (
-                  <span
-                    // biome-ignore lint/suspicious/noArrayIndexKey: the steps are positions, largest first.
-                    key={i}
-                    className={SHARES[i]}
-                    style={{ flexGrow: Number((cents * 1000n) / total) }}
-                  />
-                ))}
-            </div>
-          ) : null}
-          <ul className="divide-y divide-line border-t border-line">
-            {held.slice(0, SHOWN).map(({ t, cents }, i) => (
-              <li
-                key={`${t.chainId}:${t.token}`}
-                className="flex items-center justify-between gap-4 py-2.5"
-              >
-                <span className="flex min-w-0 items-center gap-3">
-                  {/* Its step in the bar above: the same shade, largest first. */}
-                  <span
-                    aria-hidden
-                    className={`size-2 shrink-0 rounded-pill ${SHARES[Math.min(i, SHARES.length - 1)]}`}
-                  />
-                  <TokenMark chainId={t.chainId} symbol={t.symbol} />
-                </span>
-                <span className="flex flex-col items-end text-sm">
-                  {t.wallet === null ? (
-                    <span className="text-subtle">—</span>
-                  ) : (
-                    <Money
-                      baseUnits={BigInt(t.wallet)}
-                      decimals={t.decimals}
-                      className="text-ink"
-                    />
-                  )}
-                  {cents !== null ? (
-                    <span className="text-xs text-muted tabular-nums">
-                      {formatUsdCents(cents)} {MONEY_COPY.usd}
-                      {total > 0n ? ` · ${share(cents, total)}` : null}
+      {/* One minimum for every state, so the card keeps its size from loading to loaded. */}
+      <div className="flex min-h-40 flex-1 flex-col">
+        {!balances && failed ? (
+          <LoadError message={BALANCES_COPY.balancesFailed} onRetry={onRetry} />
+        ) : !balances ? (
+          <div aria-hidden>
+            <Skeleton className="mb-3 h-2" />
+            <ul className="divide-y divide-line border-t border-line">
+              {[0, 1].map((i) => (
+                <li key={i} className="flex items-center justify-between gap-4 py-2.5">
+                  <span className="flex items-center gap-3">
+                    <Skeleton className="size-2 shrink-0 rounded-pill" />
+                    <Skeleton className="size-9 shrink-0 rounded-pill" />
+                    <span>
+                      <LineSkeleton size="text-sm" className="w-12" />
+                      <LineSkeleton size="text-xs" className="w-20" />
                     </span>
-                  ) : null}
-                </span>
-              </li>
-            ))}
-          </ul>
-          {held.length > SHOWN ? (
-            <p className="border-t border-line pt-2.5 text-xs text-muted">
-              {COPY.moreAssets(held.length - SHOWN)}
-            </p>
-          ) : null}
-        </>
-      )}
+                  </span>
+                  <span className="flex flex-col items-end">
+                    <LineSkeleton size="text-sm" className="w-20" />
+                    <LineSkeleton size="text-xs" className="w-24" />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : rows.length === 0 ? (
+          <EmptyState compact icon={Wallet} title={BALANCES_COPY.noTokens} />
+        ) : held.length === 0 ? (
+          <EmptyState compact icon={Wallet} title={COPY.nothingHeld} />
+        ) : (
+          <>
+            {total > 0n ? (
+              <div aria-hidden className="mb-3 flex h-2 gap-0.5 overflow-hidden rounded-sm">
+                {bar
+                  .filter((cents) => cents > 0n)
+                  .map((cents, i) => (
+                    <span
+                      // biome-ignore lint/suspicious/noArrayIndexKey: the steps are positions, largest first.
+                      key={i}
+                      className={SHARES[i]}
+                      style={{ flexGrow: Number((cents * 1000n) / total) }}
+                    />
+                  ))}
+              </div>
+            ) : null}
+            <ul className="divide-y divide-line border-t border-line">
+              {held.slice(0, SHOWN).map(({ t, cents }, i) => (
+                <li
+                  key={`${t.chainId}:${t.token}`}
+                  className="flex items-center justify-between gap-4 py-2.5"
+                >
+                  <span className="flex min-w-0 items-center gap-3">
+                    {/* Its step in the bar above: the same shade, largest first. */}
+                    <span
+                      aria-hidden
+                      className={`size-2 shrink-0 rounded-pill ${SHARES[Math.min(i, SHARES.length - 1)]}`}
+                    />
+                    <TokenMark chainId={t.chainId} symbol={t.symbol} />
+                  </span>
+                  <span className="flex flex-col items-end text-sm">
+                    {t.wallet === null ? (
+                      <span className="text-subtle">—</span>
+                    ) : (
+                      <Money
+                        baseUnits={BigInt(t.wallet)}
+                        decimals={t.decimals}
+                        className="text-ink"
+                      />
+                    )}
+                    {cents !== null ? (
+                      <span className="text-xs text-muted tabular-nums">
+                        {formatUsdCents(cents)} {MONEY_COPY.usd}
+                        {total > 0n ? ` · ${share(cents, total)}` : null}
+                      </span>
+                    ) : null}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {held.length > SHOWN ? (
+              <p className="border-t border-line pt-2.5 text-xs text-muted">
+                {COPY.moreAssets(held.length - SHOWN)}
+              </p>
+            ) : null}
+          </>
+        )}
+      </div>
     </Card>
   );
 }

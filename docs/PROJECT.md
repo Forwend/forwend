@@ -275,7 +275,7 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-202 | A request with no answer never loads forever. | Given a request with no answer in 30 s, then it fails and the page offers Try again. | web-unit | D-47 |
 
-| R-203 | The overview's cards keep their size and show no wrong state while they load. | Given the balance and pending cards loading, then each keeps the height it has once loaded. Given balances before prices, then the total keeps its placeholder until the prices answer. | loading-live-e2e, web-unit | R-178, R-201 |
+| R-203 | The overview's cards keep their size and show no wrong state while they load. | Given the balance, pending and My assets cards loading, then each keeps the height it has once loaded; My assets grows only past two tokens. Given a phone, then the Received card's range control keeps its line when the transfer count arrives. Given balances before prices, then the total keeps its placeholder until the prices answer. | loading-live-e2e, web-unit | R-178, R-201 |
 
 | R-204 | Motion uses the motion tokens, and the current page's mark moves with the page. | Given any transition, then its duration and easing are motion tokens. Given a page switch, then the sidebar's, tab bar's and settings' mark moves at once; only hover fades. | loading-live-e2e | R-66, R-201 |
 

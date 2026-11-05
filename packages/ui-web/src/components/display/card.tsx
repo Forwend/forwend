@@ -9,12 +9,22 @@ export interface CardProps {
   description?: ReactNode;
   /** A link or control at the header's end, such as View all. */
   action?: ReactNode;
+  /** Below sm the action takes its own line, so a description that changes length never moves it. */
+  actionBelow?: boolean;
   children: ReactNode;
   className?: string;
 }
 
 /** A summary card: the title sits inside the padding without a rule, as on the overview. Tables use `fw-panel`. */
-export function Card({ id, title, description, action, children, className }: CardProps) {
+export function Card({
+  id,
+  title,
+  description,
+  action,
+  actionBelow,
+  children,
+  className,
+}: CardProps) {
   return (
     <section
       aria-labelledby={title && id ? id : undefined}
@@ -33,7 +43,9 @@ export function Card({ id, title, description, action, children, className }: Ca
             ) : null}
             {description ? <p className="mt-0.5 text-xs text-muted">{description}</p> : null}
           </div>
-          {action ? <div className="shrink-0">{action}</div> : null}
+          {action ? (
+            <div className={cx("shrink-0", actionBelow && "max-sm:basis-full")}>{action}</div>
+          ) : null}
         </div>
       ) : null}
       {children}
