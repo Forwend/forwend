@@ -992,9 +992,9 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   - Privy goes first: when the freeze fails, the cutoff is not set and the answer is 500.
   - The unfreeze is always sent, as a failed freeze may still have landed and a frozen user can't sign in.
   - Once the freeze worked, the cutoff is set even if the unfreeze failed. A disconnect stops neither.
-- `mid.RequireFreshSignIn` (the `FreshSignIn` guard) protects the changes D-63 names: billing details, giving a role,
-  and making or rolling an API key.
-  - The token must be at most 5 minutes old (`auth.FreshWindow`).
+- `mid.RequireFreshSignIn` (the `FreshSignIn` guard) protects the changes D-63 names.
+  - They are giving a role, making or rolling an API key, saving a webhook endpoint, and revealing or rotating its secret.
+  - The token must be at most 15 minutes old (`auth.FreshWindow`).
   - Its `iat` must equal the `latest_verified_at` of the user's email or passkey account, read from Privy each time.
   - Otherwise 401 `reauth_required`; when Privy can't answer, 500, and nothing runs.
 - A secret API key (R-144) goes in the same header: `Authorization: Bearer fw_test_…`.

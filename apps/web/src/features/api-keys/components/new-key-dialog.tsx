@@ -8,6 +8,7 @@ import { useCreateKeyMutation } from "@/features/api-keys/api/api-keys-api";
 import { KEY_NAME_MAX, KEY_SCOPES } from "@/features/api-keys/constants/api-keys";
 import { API_KEYS_COPY as COPY } from "@/features/api-keys/constants/api-keys-copy";
 import type { KeyScope } from "@/features/api-keys/types/api-keys";
+import { useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
 import { PERMISSIONS } from "@/features/profiles/constants/profile";
 import type { Store } from "@/features/stores/types/stores";
 
@@ -22,9 +23,10 @@ export interface NewKeyDialogProps {
 // Most keys make and read invoices; anything more is a choice.
 const DEFAULT_SCOPES: KeyScope[] = [PERMISSIONS.invoicesRead, PERMISSIONS.invoicesWrite];
 
-// R-144: the API asks for a fresh sign-in first when the last one is older than 5 minutes (D-63).
+// R-144: the API asks for a fresh sign-in first when the last one is older than 15 minutes (D-63).
 export function NewKeyDialog({ profileId, stores, onMade }: NewKeyDialogProps) {
   const [create, creating] = useCreateKeyMutation();
+  const fresh = useFreshSignIn();
   const form = useRef<HTMLFormElement>(null);
   const [name, setName] = useState("");
   const [store, setStore] = useState(stores?.[0]?.storeId ?? "");
@@ -55,20 +57,23 @@ export function NewKeyDialog({ profileId, stores, onMade }: NewKeyDialogProps) {
         profileId,
         body: { name: name.trim(), ...(stores ? { storeId: store } : {}), scopes },
       });
-      const made = await pending.unwrap();
+      const made = await fresh.run(() => pending.unwrap());
       onMade(made.secret);
       // The answer held the secret: drop it from the store too. The hook's reset would be this render's, a no-op.
       pending.reset();
       close();
-    } catch {
-      setErrors({ form: COPY.errors.failed });
+    } catch (error) {
+      if (!fresh.cancelled(error)) setErrors({ form: COPY.errors.failed });
     }
   };
   return (
     <Dialog
       triggerLabel={COPY.add}
       title={COPY.newTitle}
-      onClose={reset}
+      onClose={() => {
+        fresh.cancel();
+        reset();
+      }}
       trigger={(open) => (
         <Button size="sm" onClick={open}>
           <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />
@@ -77,64 +82,72 @@ export function NewKeyDialog({ profileId, stores, onMade }: NewKeyDialogProps) {
       )}
     >
       <form ref={form} onSubmit={submit} noValidate className="flex flex-col gap-4">
-        <TextField
-          label={COPY.name}
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          autoComplete="off"
-          maxLength={KEY_NAME_MAX}
-          hint={COPY.nameHint}
-          error={errors.name}
-        />
-        {stores && stores.length > 1 ? (
-          <SelectField
-            label={COPY.store}
-            value={store}
-            onValueChange={setStore}
-            options={stores.map((s) => ({ value: s.storeId, label: s.name }))}
+        {/* While the user confirms it's them, the key they confirm stays shown as it is. */}
+        <fieldset disabled={fresh.pending} className="flex min-w-0 flex-col gap-4">
+          <TextField
+            label={COPY.name}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            autoComplete="off"
+            maxLength={KEY_NAME_MAX}
+            hint={COPY.nameHint}
+            error={errors.name}
           />
-        ) : null}
-        <fieldset
-          className="flex flex-col gap-1"
-          aria-describedby={errors.scopes ? "key-scopes-hint key-scopes-error" : "key-scopes-hint"}
-        >
-          <legend className="text-sm font-medium text-ink">{COPY.scopes}</legend>
-          <p id="key-scopes-hint" className="text-sm text-muted">
-            {COPY.scopesHint}
-          </p>
-          {KEY_SCOPES.map((scope) => (
-            <Checkbox
-              key={scope}
-              label={COPY.scopeLabels[scope]}
-              checked={scopes.includes(scope)}
-              onChange={(event) =>
-                setScopes(
-                  event.target.checked
-                    ? KEY_SCOPES.filter((s) => s === scope || scopes.includes(s))
-                    : scopes.filter((s) => s !== scope),
-                )
-              }
+          {stores && stores.length > 1 ? (
+            <SelectField
+              disabled={fresh.pending}
+              label={COPY.store}
+              value={store}
+              onValueChange={setStore}
+              options={stores.map((s) => ({ value: s.storeId, label: s.name }))}
             />
-          ))}
-          {errors.scopes ? (
-            <p id="key-scopes-error" role="alert" className="text-sm text-danger">
-              {errors.scopes}
-            </p>
           ) : null}
+          <fieldset
+            className="flex flex-col gap-1"
+            aria-describedby={
+              errors.scopes ? "key-scopes-hint key-scopes-error" : "key-scopes-hint"
+            }
+          >
+            <legend className="text-sm font-medium text-ink">{COPY.scopes}</legend>
+            <p id="key-scopes-hint" className="text-sm text-muted">
+              {COPY.scopesHint}
+            </p>
+            {KEY_SCOPES.map((scope) => (
+              <Checkbox
+                key={scope}
+                label={COPY.scopeLabels[scope]}
+                checked={scopes.includes(scope)}
+                onChange={(event) =>
+                  setScopes(
+                    event.target.checked
+                      ? KEY_SCOPES.filter((s) => s === scope || scopes.includes(s))
+                      : scopes.filter((s) => s !== scope),
+                  )
+                }
+              />
+            ))}
+            {errors.scopes ? (
+              <p id="key-scopes-error" role="alert" className="text-sm text-danger">
+                {errors.scopes}
+              </p>
+            ) : null}
+          </fieldset>
         </fieldset>
         {errors.form ? (
           <p role="alert" className="text-sm text-danger">
             {errors.form}
           </p>
         ) : null}
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button type="button" variant={BUTTON_VARIANTS.secondary} onClick={close}>
-            {COPY.cancel}
-          </Button>
-          <Button type="submit" loading={creating.isLoading}>
-            {COPY.make}
-          </Button>
-        </div>
+        {fresh.step ?? (
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button type="button" variant={BUTTON_VARIANTS.secondary} onClick={close}>
+              {COPY.cancel}
+            </Button>
+            <Button type="submit" loading={creating.isLoading}>
+              {COPY.make}
+            </Button>
+          </div>
+        )}
       </form>
     </Dialog>
   );

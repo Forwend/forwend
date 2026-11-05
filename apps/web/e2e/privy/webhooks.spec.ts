@@ -269,3 +269,74 @@ test("the webhooks list and its deliveries fit a phone", async ({ browser }) => 
   expect(await blockingViolations(page)).toEqual([]);
   await context.close();
 });
+
+// R-137: each protected webhook action confirms it's you in its own dialog, never on top of another.
+test("each protected webhook action asks to confirm it's you in its own dialog", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  await mockWebhooks(page);
+  // Reads pass, except the secret's, which needs a fresh sign-in too.
+  await page.route(`/api/v1/profiles/${SHOP}/webhooks**`, (route) =>
+    route.request().method() === "GET" && !route.request().url().endsWith("/secret")
+      ? route.fallback()
+      : route.fulfill({
+          status: 401,
+          json: { error: { code: "reauth_required", message: "sign in again" } },
+        }),
+  );
+  await page.goto("/app/developers");
+  const section = page.getByRole("region", { name: "Webhooks" });
+  const row = section.getByRole("row").filter({ hasText: "Orders" });
+  const asked = async (dialog: ReturnType<typeof page.getByRole>) => {
+    const confirm = dialog.getByRole("group", { name: "Confirm it's you" });
+    await expect(confirm).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(1);
+    await confirm.getByRole("button", { name: "Cancel" }).click();
+    await expect(confirm).toHaveCount(0);
+  };
+
+  await section.getByRole("button", { name: "New endpoint" }).click();
+  const adding = page.getByRole("dialog", { name: "New webhook endpoint" });
+  await adding
+    .getByRole("textbox", { name: "Endpoint URL" })
+    .fill("https://hooks.example.com/forwend");
+  await adding.getByRole("button", { name: "Save endpoint" }).click();
+  await expect(adding.getByRole("textbox", { name: "Endpoint URL" })).toBeDisabled();
+  await asked(adding);
+  // Cancelled, the form is as it was, with no error.
+  await expect(adding.getByRole("button", { name: "Save endpoint" })).toBeVisible();
+  await expect(adding.getByRole("alert")).toHaveCount(0);
+  await adding.getByRole("button", { name: "Cancel" }).click();
+
+  const actions = () =>
+    row.getByRole("button", { name: "Actions for shop.example.com/hooks" }).click();
+  await actions();
+  await page.getByRole("menuitem", { name: "Turn off" }).click();
+  const turning = page.getByRole("dialog", { name: "Turn off shop.example.com/hooks?" });
+  await asked(turning);
+  await expect(turning).toBeHidden();
+  await expect(row.getByRole("cell", { name: "On", exact: true })).toBeVisible();
+
+  await actions();
+  await page.getByRole("menuitem", { name: "Signing secret" }).click();
+  const secret = page.getByRole("dialog", { name: "Signing secret" });
+  await asked(secret);
+  await expect(secret).toBeHidden();
+
+  await actions();
+  await page.getByRole("menuitem", { name: "Rotate secret" }).click();
+  const rotating = page.getByRole("dialog", {
+    name: "Rotate the secret of shop.example.com/hooks?",
+  });
+  await rotating.getByRole("button", { name: "Rotate secret" }).click();
+  await asked(rotating);
+  await expect(rotating.getByRole("button", { name: "Rotate secret" })).toBeVisible();
+  await expect(rotating.getByRole("alert")).toHaveCount(0);
+  expect(await blockingViolations(page)).toEqual([]);
+  await context.close();
+});

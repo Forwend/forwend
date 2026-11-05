@@ -180,10 +180,17 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Account and security lists the sign-in methods (email, Google, passkeys with the device they were made on),
     this device (browser and system from its user agent), Sign out, and Sign out of all devices with its dialog.
   - Privy can't list sessions or end one alone ([freezing users](https://docs.privy.io/user-management/users/managing-users/freezing-users.md)), so no session list is shown.
-- Confirm it's you (R-137) opens over any page when a change needs a fresh sign-in.
-  - It sends the code to the login email at once and says where; the code boxes are the sign-in page's.
-  - Send a new code, Cancel and Confirm sit at its foot. Confirm repeats the change; Cancel leaves it unsaved.
-  - A user with no email login reads that they need one, with Close.
+- Confirm it's you (R-137) shows in place of the buttons of the form whose change needs a fresh sign-in.
+  - The form stays shown and locked, so the user sees what they confirm; no dialog opens on top of another.
+  - An action with no form of its own (Turn off, Signing secret) confirms in its own small dialog, titled with it.
+  - It sends a code to the login email at once and says where. The code boxes behave as on the sign-in page.
+  - A full code confirms with no click; the same code typed again is tried again.
+  - Send a new one sits inline after where the code went; Send a code, when the first send failed.
+  - Cancel and Confirm end the foot's one row.
+  - Cancel gives the form its buttons back, with no error, and the focus returns to the form's action.
+  - A wrong or expired code reads "Wrong or expired code", and the step stays open.
+  - A user with no email login reads that they need one.
+  - A request no form claimed asks in a dialog of its own.
 - Phones: the header becomes a top bar with the account initial, a search pill and notifications. A bottom tab bar has Home, Transactions, My assets and More;
   large icons over labels, with the whole current tab on the second surface. More opens a sheet: first a profile card
   (avatar, name, Switch profile and an up/down selector icon), then the setup guide while steps remain, then the remaining

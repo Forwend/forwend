@@ -42,7 +42,8 @@ export function CodeInput({
       <label htmlFor={fieldId} className="text-sm font-medium text-ink">
         {label}
       </label>
-      <div className="relative flex gap-2">
+      {/* At most the sign-in page's width, so the boxes keep one shape in a wide dialog too. */}
+      <div className="relative flex w-full max-w-sm gap-2">
         {Array.from({ length }, (_, i) => {
           const digit = value[i];
           const current = focused && i === active && !disabled;

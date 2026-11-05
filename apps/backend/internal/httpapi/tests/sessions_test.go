@@ -22,23 +22,23 @@ func (e invoiceEnv) signedAt(t *testing.T, method, path, user string, iat time.T
 	return e.do(t, req)
 }
 
-// R-137, D-49, D-63.
-func TestBillingDetailsNeedAFreshSignIn(t *testing.T) {
+// D-49, D-63: making an API key needs a sign-in from the last 15 minutes; a refreshed token isn't one.
+func TestProtectedChangesNeedAFreshSignIn(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
-	path := "/v1/profiles/" + e.aliceProfile + "/billing-details"
-	put := func(iat time.Time, name string) reply {
+	path := "/v1/profiles/" + e.aliceProfile + "/keys"
+	makeKey := func(iat time.Time) reply {
 		t.Helper()
-		return e.signedAt(t, "PUT", path, alice, iat, strings.Replace(billingBody, "Alice Design GmbH", name, 1))
+		return e.signedAt(t, "POST", path, alice, iat, `{"name": "Server", "scopes": ["invoices.read"]}`)
 	}
-	saved := func() string {
+	keys := func() int {
 		t.Helper()
-		var name string
-		if err := e.pool.QueryRow(context.Background(), "SELECT name FROM profile_billing_details WHERE profile_id = $1",
-			e.aliceProfile).Scan(&name); err != nil {
+		var n int
+		if err := e.pool.QueryRow(context.Background(), "SELECT count(*) FROM api_keys WHERE profile_id = $1",
+			e.aliceProfile).Scan(&n); err != nil {
 			t.Fatal(err)
 		}
-		return name
+		return n
 	}
 	setPasskey := func(at int64) {
 		e.wallets.Lock()
@@ -46,44 +46,53 @@ func TestBillingDetailsNeedAFreshSignIn(t *testing.T) {
 		e.wallets.Unlock()
 	}
 
-	if r := put(signedInAt, "Fresh GmbH"); r.status != http.StatusOK || saved() != "Fresh GmbH" {
+	if r := makeKey(signedInAt); r.status != http.StatusCreated || keys() != 1 {
 		t.Fatalf("a token from a passkey sign-in: %d %v", r.status, r.body)
 	}
 	// A refresh issues a new token, but the sign-in time stays the old one.
 	refreshed := signedInAt.Add(2 * time.Second)
-	if r := put(refreshed, "Refreshed GmbH"); r.status != http.StatusUnauthorized || errorCode(r) != "reauth_required" ||
-		saved() != "Fresh GmbH" {
-		t.Fatalf("a refreshed token: %d %v, saved %q", r.status, r.body, saved())
+	if r := makeKey(refreshed); r.status != http.StatusUnauthorized || errorCode(r) != "reauth_required" || keys() != 1 {
+		t.Fatalf("a refreshed token: %d %v, %d keys", r.status, r.body, keys())
 	}
-	old := time.Now().Add(-6 * time.Minute)
+	// One sign-in covers the next changes for the whole window.
+	recent := time.Now().Add(-14 * time.Minute)
+	setPasskey(recent.Unix())
+	if r := makeKey(recent); r.status != http.StatusCreated || keys() != 2 {
+		t.Fatalf("a sign-in 14 minutes ago: %d %v", r.status, r.body)
+	}
+	old := time.Now().Add(-16 * time.Minute)
 	setPasskey(old.Unix())
-	if r := put(old, "Old GmbH"); r.status != http.StatusUnauthorized || errorCode(r) != "reauth_required" {
-		t.Fatalf("a sign-in 6 minutes ago: %d %v", r.status, r.body)
+	if r := makeKey(old); r.status != http.StatusUnauthorized || errorCode(r) != "reauth_required" {
+		t.Fatalf("a sign-in 16 minutes ago: %d %v", r.status, r.body)
 	}
 	// A Google sign-in can't be asked for again (S-8), so it never counts.
 	setPasskey(0)
 	e.wallets.Lock()
 	e.wallets.GoogleSignIn = refreshed.Unix()
 	e.wallets.Unlock()
-	if r := put(refreshed, "Google GmbH"); r.status != http.StatusUnauthorized || errorCode(r) != "reauth_required" {
+	if r := makeKey(refreshed); r.status != http.StatusUnauthorized || errorCode(r) != "reauth_required" {
 		t.Fatalf("a token from a Google sign-in: %d %v", r.status, r.body)
 	}
 	// The email account's sign-in time counts too.
 	e.wallets.Lock()
 	e.wallets.Emails[alice], e.wallets.SignedInAt[alice] = "alice@example.com", refreshed.Unix()
 	e.wallets.Unlock()
-	if r := put(refreshed, "Email GmbH"); r.status != http.StatusOK || saved() != "Email GmbH" {
+	if r := makeKey(refreshed); r.status != http.StatusCreated || keys() != 3 {
 		t.Fatalf("a token from an email sign-in: %d %v", r.status, r.body)
 	}
 	e.wallets.Lock()
 	e.wallets.FailUserReads = 10 // more than the SDK's retries
 	e.wallets.Unlock()
-	if r := put(refreshed, "Unchecked GmbH"); r.status != http.StatusInternalServerError || saved() != "Email GmbH" {
-		t.Fatalf("Privy can't answer: %d %v, saved %q", r.status, r.body, saved())
+	if r := makeKey(refreshed); r.status != http.StatusInternalServerError || keys() != 3 {
+		t.Fatalf("Privy can't answer: %d %v, %d keys", r.status, r.body, keys())
 	}
-	// Reads and other changes need no fresh sign-in.
-	if r := e.signedAt(t, "GET", path, alice, old, ""); r.status != http.StatusOK {
-		t.Fatalf("GET billing details with an older sign-in: %d %v", r.status, r.body)
+	e.wallets.Lock()
+	e.wallets.FailUserReads = 0
+	e.wallets.Unlock()
+	// Billing details print on documents and move no money: an older sign-in saves them.
+	billing := "/v1/profiles/" + e.aliceProfile + "/billing-details"
+	if r := e.signedAt(t, "PUT", billing, alice, old, billingBody); r.status != http.StatusOK {
+		t.Fatalf("billing details with an older sign-in: %d %v", r.status, r.body)
 	}
 }
 

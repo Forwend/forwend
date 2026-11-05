@@ -27,8 +27,9 @@ var ErrForbidden = errors.New("not allowed for this profile")
 // ErrReauthRequired means the action needs a token from a sign-in within FreshWindow, not from a refresh (D-49).
 var ErrReauthRequired = errors.New("fresh sign-in required")
 
-// FreshWindow is how old a token may be for a money action or another change D-63 names.
-const FreshWindow = 5 * time.Minute
+// FreshWindow is how old a token may be for a money action or another change D-63 names. Privy keeps a sign-in's token
+// about 55 minutes before a refresh changes its iat, so this can stay that long at most.
+const FreshWindow = 15 * time.Minute
 
 // Token is a verified access token: the user's Privy DID and when Privy issued it.
 type Token struct {

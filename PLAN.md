@@ -165,8 +165,8 @@ code, and never connect a wallet (D-37).
 
 ## Phase 12: account security, send and handles
 
-- 12.1 Fresh sign-in for money actions (D-49, D-63): the API `reauth_required` check, the web email-code dialog,
-  `sessions_revoked_at` and "Sign out everywhere". Actions built earlier, such as billing details, get the check here.
+- 12.1 Fresh sign-in for money actions (D-49, D-63): the API `reauth_required` check, the in-place passkey or email-code
+  confirm (R-137), `sessions_revoked_at` and "Sign out everywhere". Money actions built later get the check then.
 - 12.2 Security settings: login methods; email and passkey before the first money action (recovery); a recovery
   explainer.
 - 12.2a Settings pages: account settings (security from 12.2, passkey sign-in) apart from each profile's settings.

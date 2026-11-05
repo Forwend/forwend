@@ -2,7 +2,7 @@ import { expect, type Page, test } from "@playwright/test";
 import { sidewaysScroll } from "../sideways";
 import { blockingViolations } from "./axe";
 import { mockApi } from "./sample-api";
-import { session } from "./session";
+import { code, email, session } from "./session";
 
 // R-145: the API answers are mocked; the Go API test covers the real ones.
 const SHOP = "22222222-2222-2222-2222-222222222222";
@@ -217,5 +217,109 @@ test("the API keys list fits a phone", async ({ browser }) => {
   ).toHaveCount(1);
   expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
   expect(await blockingViolations(page)).toEqual([]);
+  await context.close();
+});
+
+// R-137, D-63: the real Privy test account confirms it's them in place, in the key's own dialog; the API is mocked.
+test("making a key asks to confirm it's you in place, then one sign-in covers the next change", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: session,
+  });
+  const page = await context.newPage();
+  const calls = await mockKeys(page);
+  // The token from before the confirm is too old; any later one is the fresh sign-in's.
+  const tokens: (string | null)[] = [];
+  await page.route(`/api/v1/profiles/${SHOP}/keys**`, async (route) => {
+    if (route.request().method() !== "POST") return route.fallback();
+    const token = await route.request().headerValue("authorization");
+    tokens.push(token);
+    if (token === tokens[0])
+      return route.fulfill({
+        status: 401,
+        json: { error: { code: "reauth_required", message: "sign in again" } },
+      });
+    return route.fallback();
+  });
+  await page.goto("/app/developers");
+  const main = page.getByRole("main");
+  await main.getByRole("button", { name: "New key" }).click();
+  const dialog = page.getByRole("dialog", { name: "New API key" });
+  await dialog.getByRole("textbox", { name: "Name" }).fill("Staging");
+  await dialog.getByRole("button", { name: "Make key" }).click();
+  // The confirm takes the place of the dialog's buttons: no dialog on top, and the key stays in view, locked.
+  const confirm = dialog.getByRole("group", { name: "Confirm it's you" });
+  await expect(confirm).toContainText(`We sent a code to ${email}`);
+  await expect(page.getByRole("dialog")).toHaveCount(1);
+  await expect(dialog.getByRole("textbox", { name: "Name" })).toHaveValue("Staging");
+  await expect(dialog.getByRole("textbox", { name: "Name" })).toBeDisabled();
+  await expect(dialog.getByRole("button", { name: "Make key" })).toHaveCount(0);
+  // The code input has the focus, as on the sign-in page.
+  await expect(confirm.getByRole("textbox", { name: "Code" })).toBeFocused();
+  await page.screenshot({ path: "../../docs/runs/f416-confirm-in-place-1440.png" });
+  expect(await blockingViolations(page)).toEqual([]);
+
+  // Closing the dialog mid-confirm gives up too: opened again, the form is fresh and the next try asks again.
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await main.getByRole("button", { name: "New key" }).click();
+  await expect(confirm).toHaveCount(0);
+  await expect(dialog.getByRole("textbox", { name: "Name" })).toHaveValue("");
+  await dialog.getByRole("textbox", { name: "Name" }).fill("Staging");
+  await dialog.getByRole("button", { name: "Make key" }).click();
+  await expect(confirm).toContainText(`We sent a code to ${email}`);
+  // Cancel gives the dialog its buttons back and sends nothing more.
+  await confirm.getByRole("button", { name: "Cancel" }).click();
+  await expect(confirm).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "Make key" })).toBeVisible();
+  await expect(dialog.getByRole("alert")).toHaveCount(0);
+  expect(tokens).toHaveLength(2);
+
+  await dialog.getByRole("button", { name: "Make key" }).click();
+  await expect(confirm).toContainText(`We sent a code to ${email}`);
+  // A wrong code: Privy refuses it, and the step stays open for another.
+  const codeBox = confirm.getByRole("textbox", { name: "Code" });
+  await codeBox.fill(code === "000000" ? "111111" : "000000");
+  await expect(confirm.getByRole("alert")).toHaveText(
+    "Wrong or expired code. Check it or send a new one.",
+  );
+  // An expired code: Privy's answer for it is stood in for here, as a real one takes ten minutes.
+  await page.route("**/passwordless/authenticate", (route) =>
+    route.fulfill({ status: 401, json: { error: "Expired code", code: "invalid_credentials" } }),
+  );
+  await codeBox.fill(code);
+  await expect(confirm.getByRole("alert")).toHaveText(
+    "Wrong or expired code. Check it or send a new one.",
+  );
+  await page.unroute("**/passwordless/authenticate");
+  // The right code: a full one confirms with no click, and the key is made with the new token.
+  await codeBox.fill("");
+  await codeBox.fill(code);
+  const secret = page.getByRole("dialog", { name: "Copy your key now" });
+  await expect(secret.getByText(SECRET)).toBeVisible({ timeout: 15_000 });
+  // Signing in again replaces this browser's Privy session, so the tests after this one share the new session.
+  await context.storageState({ path: session });
+  expect(tokens).toHaveLength(4);
+  expect(tokens[3]).not.toEqual(tokens[0]);
+  await secret.getByRole("button", { name: "Done" }).click();
+
+  // The next protected change in the window asks nothing: it goes with the fresh sign-in's token.
+  const row = main
+    .getByRole("region", { name: "API keys" })
+    .getByRole("row")
+    .filter({ hasText: "q7Rt" });
+  await row.getByRole("button", { name: "Actions for Production server" }).click();
+  await page.getByRole("menuitem", { name: "Roll" }).click();
+  const rolling = page.getByRole("dialog", { name: "Roll Production server, fw_test_…q7Rt" });
+  await rolling.getByRole("button", { name: "Roll key" }).click();
+  await expect(secret.getByText(SECRET)).toBeVisible();
+  await expect(rolling.getByRole("group", { name: "Confirm it's you" })).toHaveCount(0);
+  expect(tokens).toHaveLength(5);
+  expect(tokens[4]).toEqual(tokens[3]);
+  expect(calls.filter((c) => c.method === "POST").at(-1)?.path).toBe(
+    "keys/aaaaaaaa-0000-4000-8000-000000000001/roll",
+  );
   await context.close();
 });
