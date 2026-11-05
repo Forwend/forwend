@@ -6,6 +6,16 @@ export const ONBOARDING_CHOICES = {
   buildIntegration: "build_integration",
 } as const;
 
+/** First-run steps, in the order they show; a run holds only the ones its choices need (R-50). */
+export const ONBOARDING_STEPS = {
+  use: "use",
+  freelancerDetails: "freelancer_details",
+  merchantDetails: "merchant_details",
+  tokens: "tokens",
+  passkey: "passkey",
+  ready: "ready",
+} as const;
+
 /** Checklist steps, in the order the card lists them. */
 export const CHECKLIST_STEPS = {
   passkey: "passkey",
@@ -14,3 +24,9 @@ export const CHECKLIST_STEPS = {
   firstPaid: "first_paid",
   firstMoney: "first_money",
 } as const;
+
+/** Circle's faucet hands out test USDC on the testnets Forwend accepts (Base Sepolia, Arbitrum Sepolia, Arc). */
+export const TEST_USDC_FAUCET = "https://faucet.circle.com";
+
+/** Privy's linked-account type for a passkey. */
+export const PRIVY_PASSKEY = "passkey";

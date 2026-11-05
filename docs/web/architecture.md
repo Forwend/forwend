@@ -67,8 +67,10 @@ features own product behavior, and shared UI components are grouped by purpose. 
       value, never 1 USD.
     - Pages name no price provider while the provider is temporary (D-115).
   - `/app/profiles/new` sends one idempotency key per visit (R-35) and the invoice form one per filled-in form (R-44).
-    While `onboardedAt` is empty, every `/app` page sends to `/app/onboarding?next=<page>`, the first-run choice screen
-    (R-50, D-73); once done that address returns to `next` (an `/app` path only, `afterOnboarding`), else `/app`.
+    While `onboardedAt` is empty, every `/app` page sends to `/app/onboarding`, keeping the page asked for in the tab's
+    session storage (R-50, D-73). The run's tokens step makes the named profiles (`POST /v1/me/onboarding`), then saves
+    billing details, tokens and the website. The shell keeps the run open until its last step is left, then returns to
+    the kept page (an `/app` path only, `afterOnboarding`), else `/app`.
   - The invoice form turns the typed amount into exact base units without float; a custom checkout close is sent as
     seconds from now (15 minutes to 365 days).
   - `/app/invoices/<id>` reads only `GET /v1/profiles/{id}/invoices/{invoiceId}`: it has the client, and the public

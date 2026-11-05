@@ -1,3 +1,4 @@
+import { LogoMark } from "@forwend/ui-web";
 import type { CSSProperties, ReactNode } from "react";
 import {
   documentPages,
@@ -102,7 +103,11 @@ function Head({ kind, number, reference, testnet, status, from, to, facts }: Inv
   return (
     <>
       <div className="flex items-start justify-between">
-        <span className="font-bold" style={{ fontSize: pt(13), marginTop: mm(0.5) }}>
+        {/* As the PDF draws it: the 7.5mm mark, then the name 10mm from the margin. */}
+        <span className="flex items-center font-bold" style={{ fontSize: pt(13), gap: mm(2.5) }}>
+          <span style={{ width: mm(7.5), height: mm(7.5), marginTop: mm(0.5) }}>
+            <LogoMark className="size-full" />
+          </span>
           Forwend
         </span>
         <span className="flex flex-col items-end text-right">

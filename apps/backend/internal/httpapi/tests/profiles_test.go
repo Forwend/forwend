@@ -89,6 +89,8 @@ func TestOnboardingRoute(t *testing.T) {
 		{`{"choices": ["freelancer"]}`, "invalid_value", http.StatusUnprocessableEntity},
 		{`{"choices": "get_paid_by_clients"}`, "malformed_request", http.StatusBadRequest},
 		{`{"choices": [], "kind": "merchant"}`, "malformed_request", http.StatusBadRequest},
+		{`{"choices": ["get_paid_by_clients"], "names": {"merchant": "North"}}`, "invalid_value", http.StatusUnprocessableEntity},
+		{`{"choices": ["get_paid_by_clients"], "names": "Mara"}`, "malformed_request", http.StatusBadRequest},
 	} {
 		if r := e.call(t, "POST", path, carol, "", c.body); r.status != c.status || errorCode(r) != c.code {
 			t.Fatalf("body %s: %d %v, want %d %s", c.body, r.status, r.body, c.status, c.code)
@@ -112,6 +114,14 @@ func TestOnboardingRoute(t *testing.T) {
 	}
 	if _, err := time.Parse(time.RFC3339, fmt.Sprint(first.body["onboardedAt"])); err != nil {
 		t.Fatalf("onboardedAt %v", first.body["onboardedAt"])
+	}
+	const erin = "did:privy:erin"
+	e.call(t, "POST", "/v1/me", erin, "", "")
+	named := e.call(t, "POST", path, erin, "", `{"choices": ["get_paid_by_clients"], "names": {"freelancer": "Mara Ilić Design"}}`)
+	for _, p := range profilesOf(named) {
+		if p["kind"] == "freelancer" && p["name"] != "Mara Ilić Design" {
+			t.Fatalf("named onboarding: %d %v; want the freelancer profile named", named.status, named.body)
+		}
 	}
 	again := e.call(t, "POST", path, carol, "", `{"choices": ["accept_business_payments"]}`)
 	if again.status != http.StatusOK || !reflect.DeepEqual(again.body, first.body) {

@@ -82,9 +82,9 @@ test("a profile shows its balance, networks, receive address and activity; a new
       await existing.click();
     } else {
       await page.getByRole("menuitem", { name: "New profile" }).click();
-      await expect(page.getByRole("heading", { level: 1, name: "New profile" })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "Add a profile" })).toBeVisible();
       expect(await blockingViolations(page)).toEqual([]);
-      await page.getByText("Merchant", { exact: true }).click();
+      await page.getByRole("radio", { name: "Merchant" }).check({ force: true });
       await page.getByRole("textbox", { name: "Name (optional)" }).fill("E2E shop");
       await page.getByRole("button", { name: "Create profile" }).click();
       await expect(page).toHaveURL("/app");

@@ -1,3 +1,4 @@
+import { BILLING_DETAILS_COPY } from "@/features/profiles/constants/profiles-copy";
 import type { BillingDetailsBody } from "@/features/profiles/types/billing-details";
 
 // The assigned ISO 3166-1 alpha-2 codes the API accepts (internal/profile/billing.go).
@@ -24,4 +25,19 @@ export function countryOptions(): { value: string; label: string }[] {
   return COUNTRY_CODES.map((code) => ({ value: code, label: names.of(code) ?? code })).sort(
     (a, b) => a.label.localeCompare(b.label),
   );
+}
+
+/** The fields a body leaves empty or malformed, with the message each shows; the API checks the rest (R-50, the
+ * billing details page and the first run share it). */
+export function billingErrors(
+  body: BillingDetailsBody,
+): Partial<Record<keyof BillingDetailsBody, string>> {
+  const shown: Partial<Record<keyof BillingDetailsBody, string>> = {};
+  for (const field of ["name", "address", "email"] as const) {
+    if (!body[field]) shown[field] = BILLING_DETAILS_COPY.errors.required;
+  }
+  if (body.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email))
+    shown.email = BILLING_DETAILS_COPY.errors.email;
+  if (!body.country) shown.country = BILLING_DETAILS_COPY.errors.country;
+  return shown;
 }

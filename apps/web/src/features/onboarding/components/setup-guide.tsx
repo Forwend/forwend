@@ -7,7 +7,7 @@ import { ChevronUp } from "lucide-react";
 import Link from "next/link";
 import { useId, useState } from "react";
 import { useGetInvoicesInfiniteQuery } from "@/features/invoices/api/invoices-api";
-import { CHECKLIST_STEPS } from "@/features/onboarding/constants/onboarding";
+import { CHECKLIST_STEPS, PRIVY_PASSKEY } from "@/features/onboarding/constants/onboarding";
 import { CHECKLIST_COPY as COPY } from "@/features/onboarding/constants/onboarding-copy";
 import {
   checklistSteps,
@@ -24,8 +24,6 @@ import { useGetTransactionsQuery } from "@/features/transactions/api/transaction
 import { TRANSACTIONS_PAGE_SIZE } from "@/features/transactions/constants/transactions";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
-
-const PASSKEY = "passkey";
 
 type StepAction = { href: string } | { onClick: () => void; busy?: boolean };
 
@@ -62,7 +60,7 @@ export function SetupGuide() {
   if (!invoices.data || !transactions.data || (freelancer && billing.data === undefined))
     return null;
   const steps = checklistSteps(kind, {
-    passkeyLinked: user.linkedAccounts.some((account) => account.type === PASSKEY),
+    passkeyLinked: user.linkedAccounts.some((account) => account.type === PRIVY_PASSKEY),
     hasBillingDetails: Boolean(billing.data),
     invoices: invoices.data.pages[0]?.items ?? [],
     transactions: transactions.data.items,

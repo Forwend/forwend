@@ -57,6 +57,7 @@ export const storesApi = apiSlice.enhanceEndpoints({ addTagTypes: [STORES_TAG] }
 
 export const {
   useListStoresQuery,
+  useLazyListStoresQuery,
   useGetStoreQuery,
   useSaveStoreMutation,
   useSaveStoreLogoMutation,

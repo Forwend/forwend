@@ -261,6 +261,7 @@ export function ComponentsShowcase() {
                 icon={value === "merchant" ? Landmark : Moon}
                 title={value === "merchant" ? "Merchant" : "Freelancer"}
                 hint="Shown on invoices and receipts."
+                tag={value === "merchant" ? <Badge>Business profile</Badge> : undefined}
               />
             ))}
           </div>

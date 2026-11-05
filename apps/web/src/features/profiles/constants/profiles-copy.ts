@@ -9,18 +9,33 @@ export const PROFILES_COPY = {
 } as const;
 
 export const NEW_PROFILE_COPY = {
-  title: "New profile",
-  intro: "Each profile has its own wallet, balances and activity.",
-  kindLegend: "Profile type",
-  kindHints: {
-    [PROFILE_KINDS.freelancer]: "Get paid by clients.",
-    [PROFILE_KINDS.merchant]: "Take payments from customers.",
+  title: "Add a profile",
+  intro: "Its own wallet, balances, activity and team. Switch profiles from the sidebar.",
+  kindLegend: "What is it for?",
+  kinds: {
+    [PROFILE_KINDS.freelancer]: {
+      hint: "Invoice clients for your work.",
+      includes: ["Invoices and quotes", "Clients and reminders", "Your details on every invoice"],
+      placeholder: "Mara Ilić Design",
+    },
+    [PROFILE_KINDS.merchant]: {
+      hint: "Take payments from customers.",
+      includes: ["Payment links and checkout", "Stores and API keys", "A team with roles"],
+      placeholder: "Studio North",
+    },
   },
-  group: "Profile",
   nameLabel: "Name (optional)",
-  nameHint: "Tells your profiles apart in the profile switcher.",
   create: "Create profile",
   cancel: "Cancel",
+  count: (owned: number, max: number) => `${owned} of ${max} profiles`,
+  listTitle: "In your profile list",
+  newBadge: "New",
+  newWallet: (kind: string) => `${kind} · new wallet`,
+  gets: [
+    { title: "Its own wallet.", text: "A new address, apart from your other profiles." },
+    { title: "Its own books.", text: "Balances, activity and clients stay in this profile." },
+    { title: "Billing details next.", text: "The setup guide asks for what its invoices print." },
+  ],
   errors: {
     name: `Use at most ${PROFILE_NAME_MAX} characters, with no hidden characters. The name can't be Forwend.`,
     cap: "You have the most profiles an account can have.",

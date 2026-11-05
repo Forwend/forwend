@@ -8,10 +8,10 @@ import { session } from "./session";
 const PERSONAL_ID = "33333333-3333-3333-3333-333333333333";
 const FREELANCER_ID = "44444444-4444-4444-4444-444444444444";
 const MERCHANT_NEW_ID = "55555555-5555-5555-5555-555555555555";
-const newProfile = (profileId: string, kind: string) => ({
+const newProfile = (profileId: string, kind: string, name: string | null = null) => ({
   profileId,
   kind,
-  name: null,
+  name,
   walletAddress: `0x${profileId.slice(0, 1).repeat(40)}`,
   createdAt: "2026-10-11T00:00:00Z",
   ...OWNER,
@@ -22,7 +22,9 @@ interface NewUser {
   choices: string[][];
   invoices: object[];
   transfers: object[];
-  billing: object | null;
+  /** Billing details by profile ID. */
+  billing: Record<string, object>;
+  tokensOff: Record<string, object[]>;
 }
 const newUser = (): NewUser => ({
   onboardedAt: null,
@@ -30,8 +32,25 @@ const newUser = (): NewUser => ({
   choices: [],
   invoices: [],
   transfers: [],
-  billing: null,
+  billing: {},
+  tokensOff: {},
 });
+const TOKENS = [
+  {
+    chainId: 84532,
+    token: `0x${"1".repeat(40)}`,
+    symbol: "USDC",
+    decimals: 6,
+    network: "Base Sepolia",
+  },
+  {
+    chainId: 42431,
+    token: `0x${"2".repeat(40)}`,
+    symbol: "OUSD",
+    decimals: 6,
+    network: "Tempo Moderato",
+  },
+];
 
 async function mockNewUser(page: Page, user: NewUser) {
   await page.route("/api/v1/**", async (route) => {
@@ -40,30 +59,47 @@ async function mockNewUser(page: Page, user: NewUser) {
     const me = () => ({ onboardedAt: user.onboardedAt, profiles: user.profiles });
     if (path === "/v1/me") return route.fulfill({ json: me() });
     if (path === "/v1/me/onboarding") {
-      const { choices } = request.postDataJSON() as { choices: string[] };
+      const { choices, names } = request.postDataJSON() as {
+        choices: string[];
+        names: Record<string, string>;
+      };
       user.choices.push(choices);
       if (user.onboardedAt === null) {
         user.onboardedAt = new Date().toISOString();
         if (choices.includes("get_paid_by_clients")) {
-          user.profiles.push(newProfile(FREELANCER_ID, "freelancer"));
+          user.profiles.push(newProfile(FREELANCER_ID, "freelancer", names.freelancer || null));
         }
         if (choices.some((c) => c === "accept_business_payments" || c === "build_integration")) {
-          user.profiles.push(newProfile(MERCHANT_NEW_ID, "merchant"));
+          user.profiles.push(newProfile(MERCHANT_NEW_ID, "merchant", names.merchant || null));
         }
       }
       return route.fulfill({ status: 201, json: me() });
     }
+    const profileId = path.split("/")[3] ?? "";
     const what = path.split("/").slice(4).join("/");
     if (what === "billing-details") {
       if (request.method() === "PUT") {
-        user.billing = { ...request.postDataJSON(), updatedAt: new Date().toISOString() };
+        user.billing[profileId] = {
+          ...request.postDataJSON(),
+          updatedAt: new Date().toISOString(),
+        };
       }
-      return user.billing
-        ? route.fulfill({ json: user.billing })
+      const saved = user.billing[profileId];
+      return saved
+        ? route.fulfill({ json: saved })
         : route.fulfill({
             status: 404,
             json: { error: { code: "billing_details_not_found", message: "none" } },
           });
+    }
+    if (what === "tokens") {
+      if (request.method() === "PUT") user.tokensOff[profileId] = request.postDataJSON().off;
+      const off = (user.tokensOff[profileId] ?? [{ token: TOKENS[1]?.token }]) as {
+        token: string;
+      }[];
+      return route.fulfill({
+        json: { tokens: TOKENS.map((t) => ({ ...t, on: !off.some((o) => o.token === t.token) })) },
+      });
     }
     const list = (items: object[]) => route.fulfill({ json: { items, nextCursor: null } });
     if (what === "invoices") return list(user.invoices);
@@ -102,10 +138,10 @@ test("a new user picks what they want to do once and lands on the new profile wi
   await mockNewUser(page, user);
   await page.goto("/app");
 
-  await expect(page).toHaveURL("/app/onboarding?next=%2Fapp");
+  await expect(page).toHaveURL("/app/onboarding");
   await expect(page).toHaveTitle("Forwend | Get started");
   await expect(
-    page.getByRole("heading", { level: 1, name: "What do you want to do?" }),
+    page.getByRole("heading", { level: 1, name: "What will you use Forwend for?" }),
   ).toBeVisible();
   await expect(page.locator("aside")).toHaveCount(0);
   const choices = page.getByRole("group", { name: "Uses" });
@@ -113,57 +149,74 @@ test("a new user picks what they want to do once and lands on the new profile wi
   expect(await blockingViolations(page)).toEqual([]);
   const pick = (title: string) => choices.getByText(title, { exact: true }).click();
   const box = (title: string) => choices.getByRole("checkbox", { name: new RegExp(`^${title}`) });
-  await pick("Get paid by clients");
-  await pick("Build a payment integration");
-  await pick("Build a payment integration");
-  await pick("Accept payments for my business");
-  await expect(box("Get paid by clients")).toBeChecked();
-  await expect(box("Build a payment integration")).not.toBeChecked();
-  expect(await blockingViolations(page)).toEqual([]);
+  await pick("Invoice clients");
+  await pick("Build with the API");
+  await pick("Build with the API");
+  await pick("Take payments for my business");
+  await expect(box("Invoice clients")).toBeChecked();
+  await expect(box("Build with the API")).not.toBeChecked();
   await page.getByRole("button", { name: "Continue" }).click();
 
-  const sidebar = page.locator("aside");
+  // One details step per new profile; the second starts from the first one's contact details.
   await expect(
-    sidebar.getByRole("button", { name: /^Switch profile: (.+ )?Freelancer$/ }),
+    page.getByRole("heading", { level: 1, name: "How should clients see you?" }),
   ).toBeVisible();
-  await expect(page).toHaveURL("/app");
-  expect(user.choices).toEqual([["get_paid_by_clients", "accept_business_payments"]]);
-  await sidebar.getByRole("button", { name: /^Switch profile/ }).click();
-  await expect(page.getByRole("menuitemradio")).toHaveCount(3);
-  await page.keyboard.press("Escape");
-  // Closed, it shows only the progress over a freelancer's five steps.
-  await expect(checklist(page)).toContainText(/[01] of 5 done/);
-  await expect(checklist(page).getByRole("button", { name: /^Get started/ })).toHaveAttribute(
-    "aria-expanded",
-    "false",
-  );
-  await expect(checklist(page).getByRole("button", { name: /Close/ })).toHaveCount(0);
-  await openGuide(page);
-  await skipPasskey(page);
-  const addDetails = checklist(page).getByRole("link", { name: "Add details" });
-  await expect(addDetails).toHaveAttribute("href", "/app/billing-details");
-  expect(await blockingViolations(page)).toEqual([]);
-
-  await addDetails.click();
-  await expect(page).toHaveURL("/app/billing-details");
-  await page.getByRole("button", { name: "Save details" }).click();
-  await expect(page.getByRole("textbox", { name: "Name or business name" })).toHaveAttribute(
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.getByRole("textbox", { name: /^Name on invoices/ })).toHaveAttribute(
     "aria-invalid",
     "true",
   );
-  await expect(page.getByRole("alert").filter({ hasText: "Choose a country." })).toBeVisible();
-  await page.getByRole("textbox", { name: "Name or business name" }).fill("Ada Design");
-  await page.getByRole("textbox", { name: "Address" }).fill("Hauptstr. 1, Berlin");
+  await page.getByRole("textbox", { name: /^Name on invoices/ }).fill("Ada Design");
+  await page.getByRole("textbox", { name: /^Contact email/ }).fill("ada@example.com");
+  await page.getByRole("textbox", { name: /^Address/ }).fill("Hauptstr. 1, Berlin");
   await page.getByRole("button", { name: /^Country/ }).click();
-  await page.getByRole("combobox", { name: /Country/ }).fill("germany");
+  await page.getByRole("combobox", { name: /Search countries/ }).fill("germany");
   await page.getByRole("option", { name: "Germany" }).click();
-  await page.getByRole("textbox", { name: "Contact email" }).fill("ada@example.com");
   expect(await blockingViolations(page)).toEqual([]);
-  await page.getByRole("button", { name: "Save details" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Tell customers who you are" }),
+  ).toBeVisible();
+  await expect(page.getByRole("textbox", { name: /^Contact email/ })).toHaveValue(
+    "ada@example.com",
+  );
+  await page.getByRole("textbox", { name: /^Business name/ }).fill("Ada Shop");
+  await page.getByRole("button", { name: "Continue" }).click();
+
+  await expect(page.getByRole("heading", { level: 1, name: "Where you get paid" })).toBeVisible();
+  expect(await blockingViolations(page)).toEqual([]);
+  await page.getByRole("button", { name: "Continue" }).click();
+  const notNow = page.getByRole("button", { name: "Not now" });
+  await expect(notNow.or(page.getByRole("heading", { level: 1, name: /is ready$/ }))).toBeVisible();
+  if (await notNow.isVisible()) await notNow.click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Your freelancer profile is ready" }),
+  ).toBeVisible();
+  expect(user.choices).toEqual([["get_paid_by_clients", "accept_business_payments"]]);
+  expect(user.profiles.map((p) => p.name)).toEqual([null, "Ada Design", "Ada Shop"]);
+  expect(user.billing[FREELANCER_ID]).toMatchObject({
+    name: "Ada Design",
+    country: "DE",
+    taxId: null,
+  });
+  expect(user.billing[MERCHANT_NEW_ID]).toMatchObject({
+    name: "Ada Shop",
+    email: "ada@example.com",
+  });
+  expect(await blockingViolations(page)).toEqual([]);
+  await page.getByRole("button", { name: "Go to overview" }).click();
+
+  const sidebar = page.locator("aside");
+  await expect(
+    sidebar.getByRole("button", { name: /^Switch profile: (.+ )?Freelancer/ }),
+  ).toBeVisible();
   await expect(page).toHaveURL("/app");
-  expect(user.billing).toMatchObject({ name: "Ada Design", country: "DE", taxId: null });
-  // With billing details saved, the next step is the first invoice.
+  await sidebar.getByRole("button", { name: /^Switch profile/ }).click();
+  await expect(page.getByRole("menuitemradio")).toHaveCount(3);
+  await page.keyboard.press("Escape");
+  // Billing details came from the first run, so the freelancer's guide starts past them.
   await openGuide(page);
+  await skipPasskey(page);
   await expect(checklist(page).getByRole("link", { name: "New invoice" })).toHaveAttribute(
     "href",
     "/app/invoices/new",
@@ -171,7 +224,9 @@ test("a new user picks what they want to do once and lands on the new profile wi
 
   await page.reload();
   await expect(sidebar.getByRole("button", { name: /^Switch profile/ })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "What do you want to do?" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "What will you use Forwend for?" })).toHaveCount(
+    0,
+  );
   await context.close();
 });
 
@@ -189,11 +244,11 @@ test("on a phone a new user skips the first run and finds the personal setup gui
   await mockNewUser(page, user);
   await page.goto("/app");
   await expect(
-    page.getByRole("heading", { level: 1, name: "What do you want to do?" }),
+    page.getByRole("heading", { level: 1, name: "What will you use Forwend for?" }),
   ).toBeVisible();
   expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
   expect(await blockingViolations(page)).toEqual([]);
-  await page.getByRole("button", { name: "Skip for now" }).click();
+  await page.getByRole("button", { name: "Skip setup" }).click();
 
   await page.getByRole("button", { name: "More", exact: true }).click();
   await expect(checklist(page)).toBeVisible();
@@ -219,12 +274,13 @@ test("the first run keeps the page a new user asked for, and is closed once done
   const user = newUser();
   await mockNewUser(page, user);
   await page.goto("/app/invoices");
-  await expect(page).toHaveURL("/app/onboarding?next=%2Fapp%2Finvoices");
+  // The address stays clean: the page asked for waits in the tab, through a reload too.
+  await expect(page).toHaveURL("/app/onboarding");
   await page.reload();
   await expect(
-    page.getByRole("heading", { level: 1, name: "What do you want to do?" }),
+    page.getByRole("heading", { level: 1, name: "What will you use Forwend for?" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Skip for now" }).click();
+  await page.getByRole("button", { name: "Skip setup" }).click();
   await expect(page).toHaveURL("/app/invoices");
   await expect(page.locator("aside")).toBeVisible();
 

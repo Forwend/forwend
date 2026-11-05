@@ -7,7 +7,7 @@
   z-index: -1;
   inset-inline: 0;
   bottom: 0;
-  height: clamp(16rem, 38vh, 28rem);
+  height: clamp(14rem, 32vh, 24rem);
   overflow: hidden;
   pointer-events: none;
 }
@@ -34,19 +34,15 @@
     color-mix(in oklab, var(--fw-bg) 20%, transparent)
   );
 }
-/* The form sits in the middle of the space under the bar; on large screens it stays clear of the terrain. */
+/* The bottom padding matches the bar above, so the form sits in the middle of the screen, not of the space under the bar. */
 .main {
   position: relative;
   display: flex;
   flex: 1;
   align-items: center;
-  padding: 2rem max(1.5rem, env(safe-area-inset-right)) calc(2rem + env(safe-area-inset-bottom))
+  padding: 2rem max(1.5rem, env(safe-area-inset-right))
+    calc(var(--fw-site-bar-height) + 2rem + env(safe-area-inset-bottom))
     max(1.5rem, env(safe-area-inset-left));
-}
-@media (min-width: 40.0625rem) {
-  .main {
-    padding-bottom: clamp(8rem, 24vh, 14rem);
-  }
 }
 @media (max-width: 40rem) {
   .landscape {
