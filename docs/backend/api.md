@@ -958,7 +958,8 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   base-unit string per point. `at` is the end of the day (00:00 UTC of the next day); the last point is now, and its
   balance is the wallet balance `/balances` reads at the selected RPC's finalized block. An earlier balance undoes the
   final transfers after it (not reorged, at or below that block); `received` and `sent` sum them per day, today's
-  without an end. The database sums them per token and day, so dust doesn't make the read grow (R-118). A missing wallet balance makes that token's arrays and every USD total null. Money moved without a
+  without an end. The database sums them per token and day, so dust doesn't make the read grow (R-118).
+  The USD fields count 1 USD per token; the app values the token arrays at market prices instead (R-178). A missing wallet balance makes that token's arrays and every USD total null. Money moved without a
   token `Transfer` log (Arc native-coin sends, fees paid in the token) is not undone; a balance below 0 shows 0.
 
 - `GET /v1/profiles/{profileId}/balances` splits each token's `pending` into exact parts (D-114).

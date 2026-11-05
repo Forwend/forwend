@@ -5,7 +5,9 @@ import {
   seriesChange,
   seriesTotal,
 } from "@/features/balances/lib/balance-history";
+import { marketUsd } from "@/features/balances/lib/balances";
 import type { TokenHistory } from "@/features/balances/types/balance-history";
+import type { TokenPrice } from "@/features/prices/types/prices";
 
 const usdc: TokenHistory = {
   chainId: 84532,
@@ -26,25 +28,62 @@ const points = ["2026-10-09T00:00:00Z", "2026-10-10T00:00:00Z", "2026-10-10T09:3
   }),
 );
 
+const price = (chainId: number, usd: string | null): TokenPrice => ({
+  chainId,
+  token: usdc.token,
+  symbol: "USDC",
+  coinId: "usd-coin",
+  usd,
+  sourceUpdatedAt: null,
+  fetchedAt: null,
+  stale: false,
+});
+const prices = [price(84532, "1"), price(421614, "1")];
+
 describe("historySeries", () => {
   it("shows every token together in USD cents, one per point, ending now", () => {
     const series = historySeries(
       { points, tokens: [usdc, { ...usdc, chainId: 421614 }] },
       "received",
+      prices,
     );
-    expect(series?.values).toEqual([0n, 10000n, 5n]);
+    expect(series?.values).toEqual([0n, 20000n, 10n]);
     expect(series?.dates.at(-1)?.toISOString()).toBe("2026-10-10T09:30:00.000Z");
   });
 
-  it("draws nothing rather than a made-up 0 when a balance is missing", () => {
-    const missing = points.map((p) => ({ ...p, estimatedUsd: null }));
-    expect(historySeries({ points: missing, tokens: [usdc] }, "balances")).toBeNull();
-    expect(historySeries({ points: [], tokens: [usdc] }, "balances")).toBeNull();
+  it("values each day at the market price the total uses, so its last point is the total", () => {
+    const market = [price(84532, "0.9992")];
+    const series = historySeries({ points, tokens: [usdc] }, "balances", market);
+    expect(series?.values).toEqual([0n, 9992n, 6999n]);
+    const wallet = { chainId: 84532, token: usdc.token, decimals: 6, wallet: "70050000" };
+    const total = marketUsd({ tokens: [wallet] } as never, "wallet", market);
+    expect(series?.values.at(-1)).toBe(total);
+  });
+
+  it("cuts money in to cents once over the range, so no day drops a part of a cent", () => {
+    const days = points.map((p, i) => ({ ...p, at: `2026-10-1${i}T00:00:00Z` }));
+    const daily = { ...usdc, received: ["1000000", "1000000", "1000000"] };
+    const series = historySeries({ points: days, tokens: [daily] }, "received", [
+      price(84532, "0.9992"),
+    ]);
+    if (!series) throw new Error("no series");
+    // 3 × 0.9992 = 2.9976 USD: 299 cents, where three days cut apart would give 3 × 99 = 297.
+    expect(seriesTotal(series)).toBe(299n);
+    expect(series.values).toEqual([99n, 100n, 100n]);
+    expect(runningTotal(series).values.at(-1)).toBe(299n);
+  });
+
+  it("draws nothing rather than a made-up value when a balance or a price is missing", () => {
+    const missing = { ...usdc, balances: null };
+    expect(historySeries({ points, tokens: [missing] }, "balances", prices)).toBeNull();
+    expect(historySeries({ points: [], tokens: [usdc] }, "balances", prices)).toBeNull();
+    expect(historySeries({ points, tokens: [usdc] }, "balances", [price(84532, null)])).toBeNull();
+    expect(historySeries({ points, tokens: [usdc] }, "balances", undefined)).toBeNull();
   });
 
   it("sums and compares exactly", () => {
-    const received = historySeries({ points, tokens: [usdc] }, "received");
-    const balances = historySeries({ points, tokens: [usdc] }, "balances");
+    const received = historySeries({ points, tokens: [usdc] }, "received", prices);
+    const balances = historySeries({ points, tokens: [usdc] }, "balances", prices);
     if (!received || !balances) throw new Error("no series");
     expect(seriesTotal(received)).toBe(10005n);
     expect(seriesChange(balances)).toBe(7005n);

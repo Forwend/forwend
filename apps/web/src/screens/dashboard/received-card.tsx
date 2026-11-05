@@ -29,7 +29,7 @@ export interface ReceivedCardProps {
   onRetry: () => void;
 }
 
-/** Money in over time at face value: the running total climbs to the range's figure. */
+/** Money in over time at market prices: the running total climbs to the range's figure. */
 export function ReceivedCard({
   range,
   days,

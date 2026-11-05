@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useGetBalanceHistoryQuery } from "@/features/balances/api/balances-api";
 import {
   DEFAULT_RANGE,
   HISTORY_FIELDS,
   HISTORY_RANGES,
 } from "@/features/balances/constants/balance-history";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
-import { usePricedBalances } from "@/features/balances/hooks/use-priced-balances";
+import { usePricedBalances, usePricedHistory } from "@/features/balances/hooks/use-priced-balances";
 import { historySeries } from "@/features/balances/lib/balance-history";
 import type { HistoryRange } from "@/features/balances/types/balance-history";
 import { OwedToYou } from "@/features/invoices/components/owed-to-you";
@@ -39,7 +38,7 @@ export function BusinessOverview() {
   const days = HISTORY_RANGES[range];
   const rangeName = BALANCES_COPY.rangeNames[range];
   const { balances, prices, failed, retry } = usePricedBalances(profile.profileId);
-  const history = useGetBalanceHistoryQuery({ profileId: profile.profileId, days }, LIVE_QUERY);
+  const history = usePricedHistory(profile.profileId, days);
   const latest = useGetTransactionsQuery(
     { profileId: profile.profileId, limit: TRANSACTIONS_MAX },
     LIVE_QUERY,
@@ -47,12 +46,14 @@ export function BusinessOverview() {
   const now = Date.now();
 
   // The chart keeps the last range's line, dimmed, while the next loads; the figures wait for their own range.
-  const received = history.data ? historySeries(history.data, HISTORY_FIELDS.received) : null;
+  const received = history.data
+    ? historySeries(history.data, HISTORY_FIELDS.received, prices)
+    : null;
   const receivedNow = history.currentData
-    ? historySeries(history.currentData, HISTORY_FIELDS.received)
+    ? historySeries(history.currentData, HISTORY_FIELDS.received, prices)
     : null;
   const sentNow = history.currentData
-    ? historySeries(history.currentData, HISTORY_FIELDS.sent)
+    ? historySeries(history.currentData, HISTORY_FIELDS.sent, prices)
     : null;
 
   // Counted from the latest 100 transfers, so "100+" when they don't reach the range's start. The range starts

@@ -1,29 +1,44 @@
 import { HISTORY_FIELDS } from "@/features/balances/constants/balance-history";
-import { USD_DECIMALS } from "@/features/balances/constants/balances";
 import type {
   BalanceHistory,
   HistoryField,
   HistorySeries,
 } from "@/features/balances/types/balance-history";
+import { totalUsdCents } from "@/features/prices/lib/prices";
+import type { TokenPrice } from "@/features/prices/types/prices";
 
-const USD_FIELDS = {
-  [HISTORY_FIELDS.balances]: "estimatedUsd",
-  [HISTORY_FIELDS.received]: "receivedUsd",
-  [HISTORY_FIELDS.sent]: "sentUsd",
-} as const;
-
-function cents(text: string): bigint {
-  const [whole = "0", fraction = ""] = text.split(".");
-  return BigInt(whole + fraction.padEnd(USD_DECIMALS, "0").slice(0, USD_DECIMALS));
-}
-
-export function historySeries(history: BalanceHistory, field: HistoryField): HistorySeries | null {
-  const usd = history.points.map((p) => p[USD_FIELDS[field]]);
-  if (usd.length === 0 || usd.some((v) => v === null)) return null;
-  return {
-    dates: history.points.map((p) => new Date(p.at)),
-    values: usd.map((v) => cents(v ?? "0")),
-  };
+/** Each point's tokens together in USD cents at the latest market price, as the total beside the chart (R-178). null
+ * without prices, with a missing balance, or when an amount has no price: never a made-up value. Money in and out
+ * value their running sum and give each day its difference, so a range's total is cut to cents once. */
+export function historySeries(
+  history: BalanceHistory,
+  field: HistoryField,
+  prices: readonly TokenPrice[] | undefined,
+): HistorySeries | null {
+  if (!prices || history.points.length === 0) return null;
+  const flow = field !== HISTORY_FIELDS.balances;
+  const sums = history.tokens.map(() => 0n);
+  const values: bigint[] = [];
+  let before = 0n;
+  for (let i = 0; i < history.points.length; i++) {
+    const amounts = [];
+    for (const [j, t] of history.tokens.entries()) {
+      const units = t[field]?.[i];
+      if (units === undefined) return null;
+      sums[j] = flow ? (sums[j] ?? 0n) + BigInt(units) : BigInt(units);
+      amounts.push({
+        chainId: t.chainId,
+        token: t.token,
+        decimals: t.decimals,
+        baseUnits: sums[j] ?? 0n,
+      });
+    }
+    const cents = totalUsdCents(prices, amounts);
+    if (cents === null) return null;
+    values.push(flow ? cents - before : cents);
+    before = cents;
+  }
+  return { dates: history.points.map((p) => new Date(p.at)), values };
 }
 
 export function seriesTotal(series: HistorySeries): bigint {

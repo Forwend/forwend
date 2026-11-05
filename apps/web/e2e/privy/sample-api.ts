@@ -286,6 +286,25 @@ export async function mockApi(
   await page.route("/api/v1/**", (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname.replace(/^\/api/, "");
+    // USDC at exactly 1 USD, so the overview's figures read their token amounts (R-178).
+    if (path === "/v1/prices") {
+      return route.fulfill({
+        json: {
+          prices: [
+            {
+              chainId: 84532,
+              token: USDC,
+              symbol: "USDC",
+              coinId: "usd-coin",
+              usd: "1",
+              sourceUpdatedAt: new Date(NOW).toISOString(),
+              fetchedAt: new Date(NOW).toISOString(),
+              stale: false,
+            },
+          ],
+        },
+      });
+    }
     if (path === "/v1/me") {
       return route.fulfill({
         json: {

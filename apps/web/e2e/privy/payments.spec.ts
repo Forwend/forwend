@@ -59,7 +59,7 @@ const payment = {
   closesAt: "2026-10-28T06:00:00Z",
   hostedUrl: `http://localhost:3000/pay/${"d".repeat(64)}`,
   amounts,
-  receipts: [{ ...ASSET, optionId: hash("a"), received: "2500000", pending: "0" }],
+  receipts: [{ ...ASSET, optionId: hash("a"), received: "2500000", pending: "0", held: "500000" }],
 };
 const other = {
   ...payment,
@@ -508,7 +508,7 @@ test("a partial payment awaiting evidence does not ask the merchant to collect a
       json: {
         ...detail,
         paymentStatus: "partially_paid",
-        receipts: [{ ...payment.receipts[0], received: "1000000" }],
+        receipts: [{ ...payment.receipts[0], received: "1000000", held: "0" }],
         problems: [{ ...held, code: "partial_payment", action: "wait" }],
       },
     }),

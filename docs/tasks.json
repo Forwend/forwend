@@ -275,7 +275,7 @@
         "The balance chart, its change figure and the received and sent totals value tokens at the same market prices as the total beside them, or R-178 records why they count each stablecoin as 1 USD"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "web-unit",
         "backend",
@@ -287,10 +287,93 @@
       "keep": [],
       "review": false,
       "notes": [
-        "2026-10-30 Narrowed: the invoice page part (R-54, R-55, R-69) shipped in F397."
+        "2026-10-30 Narrowed: the invoice page part (R-54, R-55, R-69) shipped in F397.",
+        "2026-11-04 review pass by reviewer: The chart, its change and the money in and out totals use the latest prices; the balance chart's last point matches the total. Money in and out are cut to cents once over the range. Loading waits for prices and does not hang. The unavailable text names missing prices. The held fixture fix is right."
       ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-04T23:46:20Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "live-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 386.3,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 44.2,
+            "log": ""
+          }
+        ],
+        "taskHash": "7a7c50ac09a60807",
+        "filesHash": "8c68b33ec60e2c53",
+        "proof": {
+          "1": "web-unit: balance-history.test.ts values each history point's tokens at the latest market price (0.9992 gives 99.92 and 69.99), its last point equals the wallet total marketUsd shows, money in over a range is cut to cents once (299, not 3 x 99), and a missing balance or price gives no series instead of 1 USD; live-e2e: the overview charts draw with the sample prices; checked live: the overview total, its change and Received all read 1,049.70 USD for 1,050.50 OUSD (before: change +1,050.50)"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "The chart, its change and the money in and out totals use the latest prices; the balance chart's last point matches the total. Money in and out are cut to cents once over the range. Loading waits for prices and does not hang. The unavailable text names missing prices. The held fixture fix is right.",
+          "at": "2026-11-04T23:53:46Z",
+          "filesHash": "8c68b33ec60e2c53"
+        }
+      },
+      "branch": "fix/f350-the-balance-chart-and-its-totals-value-t",
+      "baseCommit": "6b0d1a91a6941aad1131f751cc4fe60eb410e490",
+      "failedVerifies": 0
     },
     {
       "id": "F389",
