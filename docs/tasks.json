@@ -91,7 +91,7 @@
         "A live run adds a passkey with a virtual authenticator, removes it, and axe finds no serious or critical violations (R-217)"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "active",
       "verification": [
         "web-unit",
         "web-e2e",
@@ -107,7 +107,9 @@
       "review": true,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": null,
+      "branch": "feat/f429-the-user-lists-adds-and-removes-passkeys",
+      "baseCommit": "a4eb09126fae92f8b80d6e011dd14acb7a79a256"
     },
     {
       "id": "F430",

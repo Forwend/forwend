@@ -1,24 +1,15 @@
 "use client";
 
-import {
-  Badge,
-  BUTTON_VARIANTS,
-  Button,
-  DetailList,
-  DetailRow,
-  Dialog,
-  TONES,
-  useToast,
-} from "@forwend/ui-web";
-import { useLinkWithPasskey, usePrivy } from "@privy-io/react-auth";
+import { Badge, BUTTON_VARIANTS, Button, DetailList, DetailRow, Dialog } from "@forwend/ui-web";
+import { usePrivy } from "@privy-io/react-auth";
 import { Laptop } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSignOutEverywhereMutation } from "@/features/auth/api/auth-api";
 import { SIGN_OUT_EVERYWHERE_COPY } from "@/features/auth/constants/auth-copy";
-import { PRIVY_PASSKEY } from "@/features/onboarding/constants/onboarding";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { SETTINGS_COPY } from "@/screens/settings/constants/settings-copy";
 import { deviceName } from "@/screens/settings/lib/device";
+import { Passkeys } from "@/screens/settings/passkeys";
 import { SplitSection } from "@/shared/components/split-section";
 
 const COPY = SETTINGS_COPY.account;
@@ -34,11 +25,7 @@ interface SignInMethod {
 export function SettingsScreen() {
   const { signOut } = useAppSession();
   const { user } = usePrivy();
-  const { linkWithPasskey } = useLinkWithPasskey();
-  const toast = useToast();
   const [device, setDevice] = useState<string | null>(null);
-  const [linking, setLinking] = useState(false);
-  const [passkeyError, setPasskeyError] = useState("");
   const [everywhere, { isLoading, isError, reset }] = useSignOutEverywhereMutation();
   // The browser's description exists only in the browser, after the first render.
   useEffect(() => setDevice(deviceName(navigator.userAgent)), []);
@@ -48,32 +35,8 @@ export function SettingsScreen() {
       return [{ key: account.address, name: COPY.methods.email, detail: account.address }];
     if (account.type === "google_oauth")
       return [{ key: `google:${account.email}`, name: COPY.methods.google, detail: account.email }];
-    if (account.type === PRIVY_PASSKEY) {
-      const where = [account.createdWithBrowser, account.createdWithOs].filter(Boolean).join(", ");
-      return [
-        {
-          key: `passkey:${account.credentialId}`,
-          name: COPY.methods.passkey,
-          detail: where ? COPY.passkeyMade(where) : null,
-        },
-      ];
-    }
     return [];
   });
-  const hasPasskey = methods.some((method) => method.name === COPY.methods.passkey);
-
-  const addPasskey = async () => {
-    setPasskeyError("");
-    setLinking(true);
-    try {
-      await linkWithPasskey();
-      toast({ tone: TONES.success, title: COPY.passkeyAdded });
-    } catch {
-      setPasskeyError(COPY.passkeyFailed);
-    } finally {
-      setLinking(false);
-    }
-  };
   const endAll = async () => {
     try {
       await everywhere().unwrap();
@@ -99,24 +62,8 @@ export function SettingsScreen() {
               </DetailRow>
             ))}
           </DetailList>
-          {hasPasskey ? null : (
-            <div className="flex flex-col gap-3 border-t border-line px-4 py-4 sm:flex-row sm:items-center sm:px-5">
-              <p className="min-w-0 flex-1 text-sm text-muted">{COPY.passkeyHint}</p>
-              <Button
-                size="sm"
-                variant={BUTTON_VARIANTS.secondary}
-                loading={linking}
-                onClick={() => void addPasskey()}
-              >
-                {COPY.addPasskey}
-              </Button>
-            </div>
-          )}
-          {passkeyError ? (
-            <p role="alert" className="px-4 pb-4 text-sm text-danger sm:px-5">
-              {passkeyError}
-            </p>
-          ) : null}
+          {/* Passkeys have rows of their own: where each was made, when it was used, and Remove (R-217). */}
+          <Passkeys />
         </div>
       </SplitSection>
 

@@ -18,6 +18,8 @@ type Guards struct {
 	Can func(auth.Permission) func(http.Handler) http.Handler
 	// FreshSignIn is Can for money actions and the other changes D-63 names (R-137); a key never passes it.
 	FreshSignIn func(auth.Permission) func(http.Handler) http.Handler
+	// FreshSignedIn is SignedIn with a fresh sign-in, for a change to the account rather than a profile (R-217).
+	FreshSignedIn func(http.Handler) http.Handler
 }
 
 func NewGuards(verifier *auth.Verifier, owners *auth.Service, keys *apikey.Service, users *privy.Client,
@@ -52,5 +54,6 @@ func NewGuards(verifier *auth.Verifier, owners *auth.Service, keys *apikey.Servi
 		FreshSignIn: func(p auth.Permission) func(http.Handler) http.Handler {
 			return func(h http.Handler) http.Handler { return can(p)(RequireFreshSignIn(users, codes, h)) }
 		},
+		FreshSignedIn: func(h http.Handler) http.Handler { return signedIn(RequireFreshSignIn(users, codes, h)) },
 	}
 }

@@ -784,6 +784,17 @@ paths:
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
   /v1/me/fresh-sign-in:
+    get:
+      operationId: checkFreshSignIn
+      summary: Whether this session counts as freshly signed in, before an account change Privy makes (R-217)
+      description: |
+        Privy adds and removes a passkey in the browser, so the web asks here first (Q-13). A stale session gets
+        reauth_required and confirms it's you.
+      responses:
+        "204": { description: Fresh }
+        "401": { $ref: "#/components/responses/ReauthRequired" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
     post:
       operationId: sendFreshSignInCode
       summary: Email a 6-digit code that confirms it's you for this session (R-137)
