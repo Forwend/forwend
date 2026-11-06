@@ -578,7 +578,7 @@
         "A live run confirms in place after the session went stale and the send goes through (R-137)"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "web-unit",
@@ -694,11 +694,18 @@
           "summary": "Pass. Read show F428 and git diff 46e23458..HEAD. Security: 6-digit code from crypto/rand, stored as sha256(row id:code), compared with subtle.ConstantTimeCompare; 5 tries and 10 minutes per code, newest code per session only, locked FOR UPDATE so tries count under concurrency; lookups filter on both user and sid, so another user or session can't use it; Fresh counts only confirmed_at within auth.FreshWindow. Send reads the Privy login email before taking the user row lock, checks 30 s per session and the hourly cap per user under that lock, commits, then emails outside the lock; a failed email deletes the row so it counts toward neither limit. Keys and missing tokens get 401 on both routes (RequireUser). Errors map to wrong_code 422, code_sent_recently and too_many_codes 429 with Retry-After, no_login_email 409, code_unavailable 503; no code or secret reaches a log or error string. Web: code_sent_recently counts as sent, no_login_email hides the code box, other failures offer a resend; verify failures say wrong or expired. Tests would fail if session binding, tries, expiry, window, lock or failed-email cleanup broke. Docs, openapi and .env.example match the code. Ran: go test ./internal/reauth/... ./internal/httpapi/tests/ ./internal/notify/ ./internal/config/ -count=1 (ok); vitest run src/features/auth (9 passed); harness check typecheck lint docs-check (passed). Non-blocking: too_many_codes shows the generic could-not-send line, and its Send a code button will get 429 again until Retry-After; fresh_sign_ins rows are never pruned; accept 4's live test stops at Review after the guarded prepare passes, the full send is covered by the other send.spec tests; an unknown users row in Send gives 500, not 404.",
           "at": "2026-11-06T15:12:42Z",
           "filesHash": "5db67571e2097a6e"
-        }
+        },
+        "commit": "5c72a731",
+        "doneAt": "2026-11-06T15:14:17Z"
       },
       "branch": "fix/f428-confirm-it-s-you-works-forwend-emails-it",
       "baseCommit": "46e23458b01e60131fbf96c985ab65560e408861",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f428-confirm-it-s-you-works-forwend-emails-it",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
