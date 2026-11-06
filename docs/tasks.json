@@ -126,6 +126,7 @@
       "verification": [
         "unit",
         "web-unit",
+        "ui-unit",
         "web-e2e",
         "live-e2e"
       ],
