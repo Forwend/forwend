@@ -453,7 +453,7 @@
       "dependsOn": [
         "F425"
       ],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "unit",
         "web-unit",
@@ -465,11 +465,100 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-06 review fail by reviewer: Money path is sound: fee rounds up, gas limit x maxFeePerGas <= fee x 1e12 on server and browser, 6->18 decimal scaling right, the browser signs only the server's checked send, Max fits on the server (TestMaxFitsTheFeeShown fails without the zero-byte padding). Fails on tests and one Max gap. Must fix: (1) send-progress.tsx:73-74 has no test that a read error lifts the lock; the lock test mocks no read.error, so removing !unreachable passes every test. (2) send-sheet.tsx:181,403: Max uses the full balance while the fee is loading or failed, so on Arc Max then gets refused; and no web test covers the room for the fee. Should fix: openapi.yaml:2976 fee 422 omits transfer_refused from the estimate; send-api.ts:36 inline fee type instead of a SendFee type from sendFeeSchema; send-sheet.tsx:230 repeats recipientAddress. Ran: go test ./internal/send/ ./internal/httpapi/tests/ ok; vitest send/transactions/balances 37 passed; harness check typecheck lint docs-check passed.",
+        "2026-11-06 review fail by reviewer: Re-review of 4962e8a7. The earlier findings are fixed: a read error now lifts the lock and its test fails if !unreachable is removed; Max stays off until the fee is read (roomForFee, unit tested); openapi names transfer_refused; SendFee comes from sendFeeSchema; the sheet reuses recipientAddress. One must-fix left: lib/send.ts:48-49 put roomForFee between maxAmount's doc comment and maxAmount, so maxAmount lost its doc and roomForFee carries two stacked docs; move line 48 back above maxAmount. Ran: vitest send/transactions/balances 38 passed; harness check typecheck lint docs-check passed.",
+        "2026-11-06 review pass by reviewer: Re-review of d32cdf36: maxAmount's doc comment is back on maxAmount, and roomForFee keeps only its own. Every earlier finding is fixed. The money path holds: the fee rounds up; gas limit x maxFeePerGas <= fee x 1e12, checked on the server and in the browser; the browser signs only the server's checked send; Max fits the fee and waits until the fee is read. Lock tests cover a refused hash, a failed hash report and a server that can't be read. Ran: vitest src/features/send passed; harness check lint passed; earlier: go test send and httpapi ok, typecheck and docs-check passed."
+      ],
       "blockedReason": null,
-      "evidence": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-06T14:40:46Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 58.9,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 29.6,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.1,
+            "log": ""
+          },
+          {
+            "id": "send-live-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 86.3,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 42.5,
+            "log": ""
+          }
+        ],
+        "taskHash": "2f3e7f2a40e49d7d",
+        "filesHash": "f80074477681962a",
+        "proof": {
+          "1": "unit: TestAWalletPaysItsOwnGasWhereNotSponsored on Anvil: a sponsored chain's fee is 0; unsponsored gas in another coin is refused; for a native-gas token the send carries a gas limit and fee caps costing at most the fee, kept on read, and amount plus fee above the gas-coin balance is refused. TestMaxFitsTheFeeShown: at a 200 gwei base fee, the balance less Fee() prepares",
+          "2": "web-unit: send.test.ts keeps room for the fee in Max (none until the fee is known), signs only gas caps that cost at most the fee shown, rounds the estimate up to 4 decimals, reads Free or ≈ the estimate, and refuses a send whose wallet, decimals, chain, token, amount or recipient differ; send-review.test.tsx signs only a send still prepared. send-live-e2e: the Arc test shows the fee before the send and signs unsponsored",
+          "3": "send-live-e2e: On Arc the wallet pays its own fee in USDC, shown before the send, and the send reaches Sent"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review of d32cdf36: maxAmount's doc comment is back on maxAmount, and roomForFee keeps only its own. Every earlier finding is fixed. The money path holds: the fee rounds up; gas limit x maxFeePerGas <= fee x 1e12, checked on the server and in the browser; the browser signs only the server's checked send; Max fits the fee and waits until the fee is read. Lock tests cover a refused hash, a failed hash report and a server that can't be read. Ran: vitest src/features/send passed; harness check lint passed; earlier: go test send and httpapi ok, typecheck and docs-check passed.",
+          "at": "2026-11-06T14:44:59Z",
+          "filesHash": "f80074477681962a"
+        }
+      },
       "branch": "feat/f427-on-arc-the-wallet-pays-its-own-gas-in-us",
-      "baseCommit": "af3c9b6896565838955f02f03e8834e1a6dace4e"
+      "baseCommit": "af3c9b6896565838955f02f03e8834e1a6dace4e",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
