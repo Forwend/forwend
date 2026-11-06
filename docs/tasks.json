@@ -69,14 +69,15 @@
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-06T22:42:22Z",
+        "at": "2026-11-06T23:46:07Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 5.0,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "docs-check",
@@ -89,67 +90,65 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.4,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 60.8,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.4,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 45.5,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "contracts",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.5,
+            "seconds": 1.9,
             "log": ""
           },
           {
             "id": "symbolic",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 6.1,
+            "seconds": 6.2,
             "log": ""
           }
         ],
         "taskHash": "411102e09e2d4b9d",
-        "filesHash": "46a536a1d88a21fa",
+        "filesHash": "3b1345979842ebfa",
         "proof": {
           "1": "contracts: FactoryRecoverTest: only the authority recovers, bad destinations and our own contracts as tokens revert, receiver money stays; symbolic check_factoryRecoverNeverTakesReceiverMoney",
-          "2": "contracts: testFuzz_factoryReturnsOnlyItsOwnBalance, testFuzz_strangersCannotMoveMoney and invariant_factoryReturnsOnlyItsOwnBalance; docs-check covers rules.md and operations.md",
+          "2": "contracts: testFuzz_factoryReturnsOnlyItsOwnBalance, testFuzz_strangersCannotMoveMoney and invariant_factoryReturnsOnlyItsOwnBalance; docs-check covers rules.md and operations.md; deployed on the four testnets 2026-11-07 (deployments.json)",
           "3": "contracts: test_refundableIsZeroOffIntendedChain, test_refundableOffIntendedChainNeedsNoToken, test_refundableReadsBrokenTokenAsZero and testFuzz_refundableIsZeroOffIntendedChain",
           "4": "symbolic: check_implementationRecoverOnlyByAuthority with a symbolic receiver deposit; contracts test_implementationReturnsMoneySentToIt and test_cloneMadeOutsideFactoryReverts",
-          "5": "unit: backend internal/address and web features/pay receive-address tests pass against the regenerated vectors; e2e pay.spec fixtures use factory.predict of the new factory"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Pass. All five points of the last review are fixed. (a) operations.md:16-20 'Goes through the delay' is split into sub-bullets. (b) rules.md:70-75 Invariants are sub-bullets. (c) test_refundableReadsBrokenTokenAsZero runs on the intended chain with BrokenToken, whose balanceOf reverts, so going back to IERC20.balanceOf fails it. (d) money-safety.md:118-119 says ops case doesn't find factory or implementation money; FindStrays matches only invoices.receive_address, so this is accurate. (e) The contracts-workflow.json recover description reads clearly. Every sentence in touched doc bullets is at most 25 words (scripted count). Security, fresh look: the implementation branch runs only where address(this) == self; clones, outside clones and delegatecall contexts still hit _onlyClone, terms and the invoice-token guard. Factory recover is authority-only, moves only its own balance, has no state to reenter; receivers have no transfer selector or fallback (tested). The watcher and ops filter Recovered logs by receiver address, so the implementation's invoiceId-0 event is never read. No new stuck-funds path; deploy then recover works on chains where the factory or implementation address got money first. Addresses checked offline: vectors test passes against predict; implementation = factory nonce 1 (0x26b7DB22...630f); factory runtime codehash with filled immutables = 0xdca35aa3...9cd1, as in .env.example; e2e RECEIVE 0x9404a075... and OPTION_RECEIVE 0x1109f4fa... equal predict. Old factory and implementation addresses (case-insensitive, with and without 0x) appear only in deployments.json and config_test.go; old receive addresses and old codehash appear nowhere. forge fmt --check ok; forge test 80 pass, 1 skipped; pay vitest 48 pass; Go address/config ok; docs-check 0 errors. Commits have no AI attribution. tasks.json drops F429-F431: harness archive of merged tasks, same as #434. Non-blocking nits (one fact per bullet, D-84): rules.md:71 keeps two invariants in one sub-bullet ('settled <= amount; settled + refunded <= received'); operations.md:35-36 'For a refund' bullet now holds three facts. Halmos not rerun here (needs pipx download); recorded verify passed it.",
-          "at": "2026-11-06T22:49:33Z",
-          "filesHash": "46a536a1d88a21fa"
+          "5": "unit: backend internal/address and config and web features/pay tests pass against the regenerated vectors; e2e pay.spec fixtures use factory.predict; live-e2e passed against the deployed factory"
         }
       },
       "branch": "feat/f417-tokens-sent-to-the-invoice-receiver-fact",

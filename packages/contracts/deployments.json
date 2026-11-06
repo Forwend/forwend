@@ -1,67 +1,119 @@
 {
-  "_note": "Testnet v1 deployment, 2026-10-09 (F040, code from F039 + F041). The refund authority is a test EOA standing in for the Safe; the executor is the burner deployer. Not for real money.",
-  "version": "v1",
+  "_note": "Testnet deployment, 2026-11-07 (F417): adds the factory and implementation recover and refundable() 0 off the intended chain. The refund authority is a test EOA standing in for the Safe; the executor is the burner deployer. Not for real money.",
+  "version": "v1.1",
   "chains": {
     "base-sepolia": {
       "chainId": 84532,
       "explorer": "https://sepolia.basescan.org",
-      "factory": "0xECe745390524e4d0B05D26F56AF7F1D38FDb7546",
-      "implementation": "0x322F6c8dAf0a8bd7cF16eb62D0a04700eEA4b639",
+      "factory": "0xf93da73F1308A9B34aAB78bF6D84F0BAcc600dd2",
+      "implementation": "0x26b7DB220aF2Da25B960E7e5bCcf80a708aE630f",
       "refundAuthority": "0x3E202009C02aBc635eE83fb5c9D1eE3F10FEEa00",
       "executor": "0xe15800B2007EaC6Fe3f3eac3BE38207ce32d2755",
-      "probeReceiver": "0xed50aEC668Eba01Bc1735845c99E987714a94555",
-      "flow": null
+      "probeReceiver": "0x0D25B44a9F41825f70186276e23532734D1DDfBE",
+      "flow": {
+        "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+        "amount": "100000",
+        "receiver": "0x021C27Ba89C55eEdafBa215BED2bc499B610BeBd",
+        "deploy": "0xfd3997ac02ef484d6e5ffec6d39613d4afaa1f7d3c9974dbaedc43663a3a3eb7",
+        "settle": null,
+        "refund": null,
+        "note": "Paid, deployed and settled exactly amount. The refund of the 10000 extra waits: the refund authority has no Base Sepolia gas."
+      }
     },
     "arbitrum-sepolia": {
       "chainId": 421614,
       "explorer": "https://sepolia.arbiscan.io",
-      "factory": "0xECe745390524e4d0B05D26F56AF7F1D38FDb7546",
-      "implementation": "0x322F6c8dAf0a8bd7cF16eb62D0a04700eEA4b639",
+      "factory": "0xf93da73F1308A9B34aAB78bF6D84F0BAcc600dd2",
+      "implementation": "0x26b7DB220aF2Da25B960E7e5bCcf80a708aE630f",
       "refundAuthority": "0x3E202009C02aBc635eE83fb5c9D1eE3F10FEEa00",
       "executor": "0xe15800B2007EaC6Fe3f3eac3BE38207ce32d2755",
-      "probeReceiver": "0xed50aEC668Eba01Bc1735845c99E987714a94555",
+      "probeReceiver": "0x0D25B44a9F41825f70186276e23532734D1DDfBE",
       "flow": null
     },
     "arc-testnet": {
       "chainId": 5042002,
       "explorer": "https://testnet.arcscan.app",
-      "factory": "0xECe745390524e4d0B05D26F56AF7F1D38FDb7546",
-      "implementation": "0x322F6c8dAf0a8bd7cF16eb62D0a04700eEA4b639",
+      "factory": "0xf93da73F1308A9B34aAB78bF6D84F0BAcc600dd2",
+      "implementation": "0x26b7DB220aF2Da25B960E7e5bCcf80a708aE630f",
       "refundAuthority": "0x3E202009C02aBc635eE83fb5c9D1eE3F10FEEa00",
       "executor": "0xe15800B2007EaC6Fe3f3eac3BE38207ce32d2755",
-      "probeReceiver": "0xed50aEC668Eba01Bc1735845c99E987714a94555",
+      "probeReceiver": "0x0D25B44a9F41825f70186276e23532734D1DDfBE",
       "flow": {
         "token": "0x3600000000000000000000000000000000000000",
         "amount": "100000",
-        "invoiceId": "0x6a2d3980d161e67f5ab940f1b7cf888d2108e35e2b83278a3739514a7a0a68df",
-        "receiver": "0x8420a9300d78a69dbea50d00430d13C0dB90dc6e",
-        "pay": "0x921d8fec37c033c6c212b249e7de48567a62243263d70c5caf6b719a64221cb9",
-        "deploy": "0x235695bb964e6f01208f5ae3f9be11b43c9e433e17dbc79a0224c1c7c890e454",
-        "settle": "0x7774a5b67c90102f67153efe96b405057b9fb2fbbf8ecc7b3db6a1931c8c6fb9",
-        "refund": "0x6394ce4244baa5ea8fd4c5656194b600e8331b835c04b81627d01b61996d40e4"
+        "invoiceId": "0x9e3953b100c66177ac3dbc22d1346ffd24924c84703599b566a4445059961388",
+        "receiver": "0x3Fef87AebfF99250E02A2d234F503B69406350Bc",
+        "pay": "0x2bd999dafdd2dc64a596bd7ef296b46e372798a9dff35344f9dc4e3f821b2877",
+        "deploy": "0xf99502f691375c32bfe3badf9aa0f4797903745e09d0bb7d12924da3fc920c0f",
+        "settle": "0x3a26921708a9e39c32864ac30055145d4469b67b855015c0cf097110e74c3556",
+        "refund": "0xf2dd022f9206e941957f353d0b0ef62a37c257d493f54be3c775633a6ae7aa3f"
       }
     },
     "tempo-moderato": {
       "chainId": 42431,
       "explorer": "https://explore.tempo.xyz",
-      "factory": "0xECe745390524e4d0B05D26F56AF7F1D38FDb7546",
-      "implementation": "0x322F6c8dAf0a8bd7cF16eb62D0a04700eEA4b639",
+      "factory": "0xf93da73F1308A9B34aAB78bF6D84F0BAcc600dd2",
+      "implementation": "0x26b7DB220aF2Da25B960E7e5bCcf80a708aE630f",
       "refundAuthority": "0x3E202009C02aBc635eE83fb5c9D1eE3F10FEEa00",
       "executor": "0xe15800B2007EaC6Fe3f3eac3BE38207ce32d2755",
-      "probeReceiver": "0xed50aEC668Eba01Bc1735845c99E987714a94555",
+      "probeReceiver": "0x0D25B44a9F41825f70186276e23532734D1DDfBE",
       "flow": {
         "token": "0x20c0000000000000000000000000000000000001",
-        "amount": "1000000",
-        "invoiceId": "0x4edfe17bc362c6daa80f22728aee06d4932fe6f80a58b28cf4cffaf45ae4eae2",
-        "receiver": "0x74A3b4669B437337499D9F929A86803c459f8d51",
-        "pay": "0x356a9dd55d01e088035158ff114b283cda0139e20aa86660badb67c1c9132ed0",
-        "deploy": "0x84b7ba2b3101b60626e4845210333337f1593fd56bf85318f109fa4ece7c3e4f",
-        "settle": "0x4501fe1dce2b55551f2dcdc364f6a52521484214936fcc824115171bc85eed92",
-        "refund": "0xca1a5a4553870cb8697e15a4adf6201be268f98634588a6c26b8981ef19e23c1"
+        "amount": "100000",
+        "invoiceId": "0x6700c3af5a580fa7faa4dadb84e62bb08a4ac605f65602735f43e3ff1071da3f",
+        "receiver": "0xa0E5555b8D05626793Fe441B02C7aDed5456ed51",
+        "pay": "0x7b6c80a548ac59cf7c2b7edf80b965e9204f811d805f9e0520943f553e5e13d3",
+        "deploy": "0xb9f75ae5dbbc308f31627db2d0fbb788fe088437ace0def7ad7032043bd1f29b",
+        "settle": "0x158de7ae813d969bac14dcc9abbe3a89e17d64e76840044cd2e56fad4697c922",
+        "refund": "0x475db3f98b23856df72c1745c9beb8d13e5dc30aedb034031affb21bbd60f6ae"
       }
     }
   },
   "superseded": [
+    {
+      "version": "v1",
+      "task": "F040",
+      "note": "Replaced by F417: no factory or implementation recover, and refundable() read the balance off the intended chain. Kept for recovery of anything sent to it.",
+      "factory": "0xECe745390524e4d0B05D26F56AF7F1D38FDb7546",
+      "implementation": "0x322F6c8dAf0a8bd7cF16eb62D0a04700eEA4b639",
+      "probeReceiver": "0xed50aEC668Eba01Bc1735845c99E987714a94555",
+      "chains": {
+        "base-sepolia": {
+          "chainId": 84532,
+          "flow": null
+        },
+        "arbitrum-sepolia": {
+          "chainId": 421614,
+          "flow": null
+        },
+        "arc-testnet": {
+          "chainId": 5042002,
+          "flow": {
+            "token": "0x3600000000000000000000000000000000000000",
+            "amount": "100000",
+            "invoiceId": "0x6a2d3980d161e67f5ab940f1b7cf888d2108e35e2b83278a3739514a7a0a68df",
+            "receiver": "0x8420a9300d78a69dbea50d00430d13C0dB90dc6e",
+            "pay": "0x921d8fec37c033c6c212b249e7de48567a62243263d70c5caf6b719a64221cb9",
+            "deploy": "0x235695bb964e6f01208f5ae3f9be11b43c9e433e17dbc79a0224c1c7c890e454",
+            "settle": "0x7774a5b67c90102f67153efe96b405057b9fb2fbbf8ecc7b3db6a1931c8c6fb9",
+            "refund": "0x6394ce4244baa5ea8fd4c5656194b600e8331b835c04b81627d01b61996d40e4"
+          }
+        },
+        "tempo-moderato": {
+          "chainId": 42431,
+          "flow": {
+            "token": "0x20c0000000000000000000000000000000000001",
+            "amount": "1000000",
+            "invoiceId": "0x4edfe17bc362c6daa80f22728aee06d4932fe6f80a58b28cf4cffaf45ae4eae2",
+            "receiver": "0x74A3b4669B437337499D9F929A86803c459f8d51",
+            "pay": "0x356a9dd55d01e088035158ff114b283cda0139e20aa86660badb67c1c9132ed0",
+            "deploy": "0x84b7ba2b3101b60626e4845210333337f1593fd56bf85318f109fa4ece7c3e4f",
+            "settle": "0x4501fe1dce2b55551f2dcdc364f6a52521484214936fcc824115171bc85eed92",
+            "refund": "0xca1a5a4553870cb8697e15a4adf6201be268f98634588a6c26b8981ef19e23c1"
+          }
+        }
+      }
+    },
     {
       "version": "v1-preview",
       "task": "F037",
