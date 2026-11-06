@@ -1,6 +1,14 @@
 "use client";
 
-import { BUTTON_VARIANTS, Button, Dialog, EmptyState, ReceiveAddress } from "@forwend/ui-web";
+import {
+  BUTTON_VARIANTS,
+  Button,
+  Dialog,
+  EmptyState,
+  ReceiveAddress,
+  TONES,
+  useToast,
+} from "@forwend/ui-web";
 import { useExportWallet } from "@privy-io/react-auth";
 import { KeyRound, WalletMinimal } from "lucide-react";
 import { useRef, useState } from "react";
@@ -14,13 +22,15 @@ const COPY = SETTINGS_COPY.wallet;
 
 // R-218: the owner exports this profile's wallet key. A short warning comes first, then Confirm it's you for a stale
 // session, then Privy's own export page for this wallet: the key loads on Privy's domain, so Forwend never sees it.
-// Privy asks for its own confirmation only for MFA, which Forwend doesn't use, hence the check here.
+// Privy asks for its own confirmation only for MFA, which Forwend doesn't use, hence the check here. It binds this page
+// only: a stolen session could still call Privy's export itself (Q-13).
 export function WalletScreen() {
   const { profile } = useAppSession();
   const address = profile.walletAddress;
   const { exportWallet } = useExportWallet();
   const [check] = useCheckFreshSignInMutation();
   const fresh = useFreshSignIn();
+  const toast = useToast();
   const [opening, setOpening] = useState(false);
   const [error, setError] = useState("");
   const body = useRef<HTMLDivElement>(null);
@@ -31,11 +41,18 @@ export function WalletScreen() {
     setOpening(true);
     try {
       await fresh.run(() => check().unwrap());
-      // Privy's page opens over the app: the warning closes first, so no dialog sits under it.
-      body.current?.closest("dialog")?.close();
-      await exportWallet({ address });
     } catch (e) {
       if (!fresh.cancelled(e)) setError(COPY.failed);
+      setOpening(false);
+      return;
+    }
+    // Privy's window opens over the app: the warning closes first, so no dialog sits under it, and an error from
+    // Privy shows as a toast, where it can be seen.
+    body.current?.closest("dialog")?.close();
+    try {
+      await exportWallet({ address });
+    } catch {
+      toast({ tone: TONES.danger, title: COPY.failed });
     } finally {
       setOpening(false);
     }

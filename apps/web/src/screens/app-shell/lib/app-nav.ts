@@ -16,6 +16,7 @@ import { STORES_COPY } from "@/features/stores/constants/stores-copy";
 import { TEAM_COPY } from "@/features/team/constants/team-copy";
 import { APP_NAV, MENU_PAGES, NAV } from "@/screens/app-shell/constants/app-nav";
 import type { Crumb, NavGroup, NavItem } from "@/screens/app-shell/types/app-nav";
+import { SETTINGS_COPY } from "@/screens/settings/constants/settings-copy";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 /** Every settings page, for marking Settings as the current place. */
@@ -25,6 +26,7 @@ export const SETTINGS_PATHS: readonly string[] = [
   APP_ROUTES.billingDetails,
   APP_ROUTES.networks,
   APP_ROUTES.team,
+  APP_ROUTES.wallet,
 ];
 
 export function isCurrentPage(pathname: string, href: string): boolean {
@@ -98,6 +100,12 @@ export function breadcrumb(
   if (pathname === APP_ROUTES.developers) {
     return {
       trail: [{ label: API_KEYS_COPY.title, href: APP_ROUTES.developers }],
+      invoiceId: null,
+    };
+  }
+  if (pathname === APP_ROUTES.wallet) {
+    return {
+      trail: [{ label: SETTINGS_COPY.wallet.title, href: APP_ROUTES.wallet }],
       invoiceId: null,
     };
   }

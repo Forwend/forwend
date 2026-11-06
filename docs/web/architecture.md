@@ -39,7 +39,8 @@ features own product behavior, and shared UI components are grouped by purpose. 
   WalletConnect is off, so no page fetches WalletConnect's registry or loads its code. Users add a passkey from the
   overview checklist, the onboarding step or Account and security, all through `useAddPasskey`. It asks
   `GET /v1/me/fresh-sign-in` first, then calls Privy's `useLinkWithPasskey`; they sign in with `useLoginWithPasskey`.
-  The Wallet settings page opens Privy's `useExportWallet` for the profile's wallet, after the same check (R-218). Privy loads only in the
+  The Wallet settings page opens Privy's `useExportWallet` for the profile's wallet, after the same check (R-218).
+  Like the passkey check, it binds Forwend's page only, not Privy's API (Q-13). Privy loads only in the
   `(app)` route group (`/sign-in`, `/app`), never on the landing page or checkout. `/app` sends signed-out visitors to
   `/sign-in` and calls `POST /v1/me` each time it loads, which makes the personal profile and its wallet once (R-34).
 - A fresh sign-in (R-137): when the API answers 401 `reauth_required`, `shared/api/fresh-sign-in.ts` holds the request.

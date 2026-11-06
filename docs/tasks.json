@@ -391,11 +391,83 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-06 review fail by reviewer: Fail, 3 fixes. Security core is sound: /app/wallet needs money.move (owner only, D-61); app-shell shows a spinner and redirects a member who opens it directly; Privy's exportWallet also refuses a wallet not linked to the signed-in user; the key stays in Privy's frame. Must fix: (1) app-nav.ts:113 breadcrumb has no Wallet case, so /app/wallet shows Overview as the current page; app-nav.ts:22 SETTINGS_PATHS lacks APP_ROUTES.wallet, so the phone Settings row is not marked current. Add both with app-nav tests. (2) wallet-screen.tsx:34-38 closes the warning before exportWallet; Privy rejects at once on its own errors (no access token, wallet not ready, not an embedded wallet), so the error is set inside a closed dialog: the user sees nothing, and the stale error shows on the next open. Show it where the user sees it, and test an exportWallet rejection. (3) PROJECT.md:306 R-218 implies Confirm it's you guards the export, but Privy's export runs in the browser with shouldForceMFA only for Privy MFA, so a stolen session can call it directly and take the key. Say so, as R-217 does (Q-13), and name key export in Q-13:455. Ran: vitest src/screens/wallet src/screens/settings src/screens/app-shell -> 5 files, 23 tests passed; harness check typecheck lint docs-check -> all passed."
+      ],
       "blockedReason": null,
-      "evidence": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-06T18:49:41Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.8,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 6.2,
+            "log": ""
+          },
+          {
+            "id": "live-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 522.6,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 43.5,
+            "log": ""
+          }
+        ],
+        "taskHash": "224421d5ff15d10c",
+        "filesHash": "9f5efd0e71763611",
+        "proof": {
+          "1": "web-unit: settings-sections.test.ts shows Wallet to the owner and never to an Admin; wallet-screen.test.tsx shows the address and says so when the profile has no wallet yet",
+          "2": "web-unit: wallet-screen.test.tsx opens Privy's export for the address only after the warning and the api's check, closes the warning first, and opens nothing when the check fails; live-e2e: wallet.spec goes through the warning and Confirm it's you when asked",
+          "3": "live-e2e: wallet.spec opens Privy's export window for the test account's server-made wallet, sees it named, and sees Privy's own Copy key button load in its frame, without pressing it"
+        },
+        "review": {
+          "result": "fail",
+          "by": "reviewer",
+          "summary": "Fail, 3 fixes. Security core is sound: /app/wallet needs money.move (owner only, D-61); app-shell shows a spinner and redirects a member who opens it directly; Privy's exportWallet also refuses a wallet not linked to the signed-in user; the key stays in Privy's frame. Must fix: (1) app-nav.ts:113 breadcrumb has no Wallet case, so /app/wallet shows Overview as the current page; app-nav.ts:22 SETTINGS_PATHS lacks APP_ROUTES.wallet, so the phone Settings row is not marked current. Add both with app-nav tests. (2) wallet-screen.tsx:34-38 closes the warning before exportWallet; Privy rejects at once on its own errors (no access token, wallet not ready, not an embedded wallet), so the error is set inside a closed dialog: the user sees nothing, and the stale error shows on the next open. Show it where the user sees it, and test an exportWallet rejection. (3) PROJECT.md:306 R-218 implies Confirm it's you guards the export, but Privy's export runs in the browser with shouldForceMFA only for Privy MFA, so a stolen session can call it directly and take the key. Say so, as R-217 does (Q-13), and name key export in Q-13:455. Ran: vitest src/screens/wallet src/screens/settings src/screens/app-shell -> 5 files, 23 tests passed; harness check typecheck lint docs-check -> all passed.",
+          "at": "2026-11-06T19:02:08Z",
+          "filesHash": "9f5efd0e71763611"
+        }
+      },
       "branch": "feat/f431-the-owner-exports-a-profile-wallet-s-pri",
-      "baseCommit": "1a129f035f9de357535ad22ab2fa0aeb20c9848b"
+      "baseCommit": "1a129f035f9de357535ad22ab2fa0aeb20c9848b",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
