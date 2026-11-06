@@ -124,7 +124,7 @@
         "The 404 page uses sign-in's layout: the bar, the landscape strip and one centered column (R-34)"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "web-unit",
@@ -246,11 +246,18 @@
           "summary": "Pass. Re-reviewed 6653610f. with-env.sh now keeps RESEND_API_KEY for the api, which sends Confirm it's you codes, and still unsets EXECUTOR_PRIVATE_KEY and COINGECKO_API_KEY for it; the signer and webhooks still never get the email key. api.md and architecture.md say the worker and the api hold it. tests/test_process_secrets.py runs stub programs through the script and prints secret names only; the api case would fail on the old unset line. Note, not blocking: the script cds to apps/backend and loads the real .env, so the test reads local values (names only are printed), and a .env with an empty key would fail it. Ran: python3 -m unittest tests.test_process_secrets (2 ok); harness check docs-check harness passed.",
           "at": "2026-11-06T17:37:21Z",
           "filesHash": "49b3f01d1a03bbe5"
-        }
+        },
+        "commit": "ac547119",
+        "doneAt": "2026-11-06T17:38:34Z"
       },
       "branch": "fix/f430-a-send-asks-confirm-it-s-you-only-after",
       "baseCommit": "69bbc3a24582032f8a7bd1ec92071f94b0f3dec0",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f430-a-send-asks-confirm-it-s-you-only-after",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
