@@ -2,11 +2,10 @@ export const RECEIVE_COPY = {
   searchTokens: "Search tokens",
   searchNetworks: "Search networks",
   receive: "Receive",
+  receiveToken: (symbol: string) => `Receive ${symbol}`,
   token: "Token",
   network: "Network",
   networks: (n: number) => (n === 1 ? "1 network" : `${n} networks`),
-  change: "Change",
-  changeLabel: "Change token and network",
   receiveQrLabel: "QR code of this profile's receive address",
   receiveFailed:
     "We could not load which network and token this address takes, so it stays hidden.",

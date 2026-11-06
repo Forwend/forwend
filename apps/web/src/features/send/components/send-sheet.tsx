@@ -2,7 +2,6 @@
 
 import {
   AmountField,
-  BrandIcon,
   Button,
   EmptyState,
   formatTokenAmount,
@@ -48,10 +47,9 @@ import {
   transferTargets,
 } from "@/features/send/lib/send";
 import type { Recipient, Send, SendMode, SendOption, SendStep } from "@/features/send/types/send";
+import { MoneyChip } from "@/shared/components/chains/money-chip";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { LoadError } from "@/shared/components/load-error";
-import { TOKEN_ICONS } from "@/shared/constants/chains";
-import { chainName } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 
 export interface SendSheetProps {
@@ -387,7 +385,8 @@ export function SendSheet({
       options.length === 0 ? (
         <EmptyState compact icon={WalletMinimal} title={SEND_COPY.nothingToSend} />
       ) : (
-        <Choices title={SEND_COPY.what}>
+        // The sheet's title already says What to send.
+        <Choices title={SEND_COPY.what} titleHidden>
           {options.map((o) => (
             <Choice
               key={`${o.chainId}-${o.token}`}
@@ -520,10 +519,19 @@ export function SendSheet({
   );
 }
 
-function Choices({ title, children }: { title: string; children: ReactNode }) {
+function Choices({
+  title,
+  titleHidden = false,
+  children,
+}: {
+  title: string;
+  /** The list keeps its name for screen readers where the sheet's title already shows it. */
+  titleHidden?: boolean;
+  children: ReactNode;
+}) {
   return (
     <section aria-label={title} className="flex flex-col gap-2">
-      <h3 className="text-sm font-medium text-muted">{title}</h3>
+      {titleHidden ? null : <h3 className="text-sm font-medium text-muted">{title}</h3>}
       <ul className="flex flex-col gap-1">{children}</ul>
     </section>
   );
@@ -567,22 +575,6 @@ function Initial({ text }: { text: string }) {
       className="grid size-9 place-items-center rounded-pill bg-surface-2 text-sm font-medium text-ink"
     >
       {text.slice(0, 1)}
-    </span>
-  );
-}
-
-/** What is sent, in one line over the amount: the token's mark, its symbol and its network. */
-function MoneyChip({ chainId, symbol }: { chainId: number; symbol: string }) {
-  const icon = TOKEN_ICONS[symbol];
-  return (
-    <span className="inline-flex items-center gap-2 rounded-pill border border-line py-1 pr-3 pl-1 text-sm">
-      {icon ? (
-        <BrandIcon name={icon} className="size-6" />
-      ) : (
-        <span aria-hidden className="size-6 rounded-pill bg-surface-2" />
-      )}
-      <span className="font-medium text-ink">{symbol}</span>
-      <span className="text-muted">{chainName(chainId)}</span>
     </span>
   );
 }

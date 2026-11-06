@@ -119,7 +119,8 @@
         "Going back to change the money or amount never shows an old confirm, and each new step fades in place with no slide (R-213)",
         "Confirm it's you says once where the code goes and has one status line under the boxes: sending, a resend countdown, or Try again after a failed send; a full code is checked even after a failed send (R-137)",
         "The wallet address step has one name, Paste and Clear inside the field, a one-line hint, and checks the EIP-55 checksum before Continue (R-213)",
-        "A merchant's sidebar heads its paid-with pages Get paid, as a freelancer's does, and Payments has its own icon apart from Transactions (R-134)"
+        "A merchant's sidebar heads its paid-with pages Get paid, as a freelancer's does, and Payments has its own icon apart from Transactions (R-134)",
+        "Receive walks token and network as steps that fade in place with Back, titles the token once chosen, and shows Send's chip over the QR (R-65)"
       ],
       "dependsOn": [],
       "state": "active",
@@ -135,13 +136,19 @@
         "R-213",
         "R-137",
         "D-49",
-        "R-134"
+        "R-134",
+        "R-65"
       ],
       "keep": [],
       "review": true,
       "notes": [],
       "blockedReason": null,
-      "evidence": null,
+      "evidence": {
+        "version": 3,
+        "status": "running",
+        "at": "2026-11-06T16:00:49Z",
+        "pid": 76344
+      },
       "branch": "fix/f430-a-send-asks-confirm-it-s-you-only-after",
       "baseCommit": "69bbc3a24582032f8a7bd1ec92071f94b0f3dec0"
     }

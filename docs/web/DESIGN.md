@@ -1088,9 +1088,11 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
   page; the new invoice or request action sits beside its title.
 - Filters stay one row, never a grid (see Controls); a segmented control keeps native radio keyboard behavior, a
   select menu the menu's arrow keys.
-- Receive uses one token/network summary, a centered QR on a surface-2 tile that follows the theme (the code alone stays
-  dark on light), the full address with a copy icon, the network warning and
-  a short note. Avoid nested cards around the QR.
+- Receive walks token, then network, as Send does: one step at a time, each fading in place, with Back.
+  - The title names the token once it is chosen ("Receive USDC"); a step with one choice is skipped.
+  - Then Send's chip (token mark, symbol, network) centered over a QR on a surface-2 tile that follows the theme; the
+    code alone stays dark on light.
+  - Then the full address with a copy icon, the network warning and a short note. Avoid nested cards around the QR.
 - Send (R-213) is one sheet for Send and Transfer, a sibling of Receive. Transfer starts on the owner's other profiles;
   Send also offers Wallet address.
   - Steps: To, Wallet address, What to send, Amount, Summary, Confirm it's you when asked, then the progress.

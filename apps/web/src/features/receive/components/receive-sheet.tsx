@@ -2,7 +2,6 @@
 
 import {
   BrandIcon,
-  Button,
   EmptyState,
   NetworkWarning,
   QrCode,
@@ -11,6 +10,7 @@ import {
   SearchField,
   Sheet,
   Skeleton,
+  StepTransition,
   Tooltip,
 } from "@forwend/ui-web";
 import { ChevronRight, Info, WalletMinimal } from "lucide-react";
@@ -19,7 +19,7 @@ import type { Balances } from "@/features/balances/types/balances";
 import { CHAIN_FAMILIES } from "@/features/receive/constants/receive-choice";
 import { RECEIVE_COPY } from "@/features/receive/constants/receive-copy";
 import { addressFor, receiveChoice } from "@/features/receive/lib/receive-choice";
-import { TokenMark } from "@/shared/components/chains/token-mark";
+import { MoneyChip } from "@/shared/components/chains/money-chip";
 import { LoadError } from "@/shared/components/load-error";
 import { CHAINS, TOKEN_ICONS } from "@/shared/constants/chains";
 import { chainName, lookalikeOf, TOKEN_SEARCH_FROM, tokenMatches } from "@/shared/lib/chains";
@@ -33,7 +33,10 @@ export interface ReceiveSheetProps {
   onRetry: () => void;
 }
 
+const STEPS = { token: "token", network: "network", address: "address" } as const;
+
 // The address never shows without the warning naming its network and token, so it hides while tokens load or fail.
+// As Send: one step at a time, each fading in place, with Back; the title names the token once it is chosen.
 export function ReceiveSheet({
   open,
   onOpenChange,
@@ -65,137 +68,144 @@ export function ReceiveSheet({
   const choice = receiveChoice(options, symbol, network);
   const chosen = choice.option;
   const shown = chosen && address ? addressFor(chosen, { [CHAIN_FAMILIES.evm]: address }) : null;
+  const step = !choice.symbol ? STEPS.token : !chosen ? STEPS.network : STEPS.address;
+  // A step chosen for the owner, as the only token or network, has no Back to it.
+  const back =
+    step === STEPS.address && choice.networks.length > 1
+      ? () => setNetwork(null)
+      : step !== STEPS.token && choice.symbols.length > 1
+        ? () => {
+            setSymbol(null);
+            setNetwork(null);
+          }
+        : undefined;
+  const title = choice.symbol ? RECEIVE_COPY.receiveToken(choice.symbol) : RECEIVE_COPY.receive;
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} title={RECEIVE_COPY.receive}>
-      {!address ? (
-        <EmptyState compact icon={WalletMinimal} title={RECEIVE_COPY.noWallet} />
-      ) : !balances && failed ? (
-        <LoadError message={RECEIVE_COPY.receiveFailed} onRetry={onRetry} />
-      ) : !balances ? (
-        // Shaped like the token choice that comes first.
-        <div aria-hidden className="flex flex-col gap-2">
-          <Skeleton className="h-4 w-14" />
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-14" />
-          ))}
-        </div>
-      ) : options.length === 0 ? (
-        <p className="text-sm text-muted">{RECEIVE_COPY.receiveNoTokens}</p>
-      ) : !choice.symbol ? (
-        <div className="flex flex-col gap-3">
-          {choice.symbols.length > TOKEN_SEARCH_FROM ? (
-            <SearchField label={RECEIVE_COPY.searchTokens} value={find} onValueChange={setFind} />
-          ) : null}
-          <Choices title={RECEIVE_COPY.token}>
-            {choice.symbols
-              .filter((s) => tokenMatches({ symbol: s, chainId: 0 }, find))
-              .map((s) => (
+    <Sheet open={open} onOpenChange={onOpenChange} title={title} onBack={back}>
+      {/* A closed sheet holds no step, so each opening starts on the first. */}
+      {open ? (
+        <StepTransition step={step} label={title}>
+          {body()}
+        </StepTransition>
+      ) : null}
+    </Sheet>
+  );
+
+  function body() {
+    return !address ? (
+      <EmptyState compact icon={WalletMinimal} title={RECEIVE_COPY.noWallet} />
+    ) : !balances && failed ? (
+      <LoadError message={RECEIVE_COPY.receiveFailed} onRetry={onRetry} />
+    ) : !balances ? (
+      // Shaped like the token choice that comes first.
+      <div aria-hidden className="flex flex-col gap-2">
+        <Skeleton className="h-4 w-14" />
+        {[0, 1, 2].map((i) => (
+          <Skeleton key={i} className="h-14" />
+        ))}
+      </div>
+    ) : options.length === 0 ? (
+      <p className="text-sm text-muted">{RECEIVE_COPY.receiveNoTokens}</p>
+    ) : !choice.symbol ? (
+      <div className="flex flex-col gap-3">
+        {choice.symbols.length > TOKEN_SEARCH_FROM ? (
+          <SearchField label={RECEIVE_COPY.searchTokens} value={find} onValueChange={setFind} />
+        ) : null}
+        <Choices title={RECEIVE_COPY.token}>
+          {choice.symbols
+            .filter((s) => tokenMatches({ symbol: s, chainId: 0 }, find))
+            .map((s) => (
+              <Choice
+                key={s}
+                icon={<TokenIcon symbol={s} />}
+                label={s}
+                note={RECEIVE_COPY.networks(options.filter((o) => o.symbol === s).length)}
+                onClick={() => {
+                  setSymbol(s);
+                  setFind("");
+                }}
+              />
+            ))}
+        </Choices>
+      </div>
+    ) : !chosen ? (
+      <div className="flex flex-col gap-3">
+        {choice.networks.length > TOKEN_SEARCH_FROM ? (
+          <SearchField label={RECEIVE_COPY.searchNetworks} value={find} onValueChange={setFind} />
+        ) : null}
+        <Choices title={RECEIVE_COPY.network}>
+          {choice.networks
+            .filter((o) => tokenMatches({ symbol: "", chainId: o.chainId }, find))
+            .map((o) => {
+              const icon = CHAINS[o.chainId]?.icon;
+              return (
                 <Choice
-                  key={s}
-                  icon={<TokenIcon symbol={s} />}
-                  label={s}
-                  note={RECEIVE_COPY.networks(options.filter((o) => o.symbol === s).length)}
+                  key={o.network}
+                  icon={
+                    icon ? (
+                      <BrandIcon name={icon} className="size-8 rounded-md" />
+                    ) : (
+                      <Initial text={chainName(o.chainId)} />
+                    )
+                  }
+                  label={chainName(o.chainId)}
                   onClick={() => {
-                    setSymbol(s);
+                    setNetwork(o.network);
                     setFind("");
                   }}
                 />
-              ))}
-          </Choices>
+              );
+            })}
+        </Choices>
+      </div>
+    ) : (
+      <div className="flex flex-col gap-4">
+        {/* What this address takes, in one line, as Send's amount step shows what is sent. */}
+        <div className="flex justify-center">
+          <MoneyChip chainId={chosen.chainId} symbol={chosen.symbol} />
         </div>
-      ) : !chosen ? (
-        <div className="flex flex-col gap-4">
-          {choice.symbols.length > 1 ? (
-            <Summary onChange={() => setSymbol(null)}>
-              <TokenIcon symbol={choice.symbol} />
-              <span className="text-sm font-medium text-ink">{choice.symbol}</span>
-            </Summary>
-          ) : null}
-          {choice.networks.length > TOKEN_SEARCH_FROM ? (
-            <SearchField label={RECEIVE_COPY.searchNetworks} value={find} onValueChange={setFind} />
-          ) : null}
-          <Choices title={RECEIVE_COPY.network}>
-            {choice.networks
-              .filter((o) => tokenMatches({ symbol: "", chainId: o.chainId }, find))
-              .map((o) => {
-                const icon = CHAINS[o.chainId]?.icon;
-                return (
-                  <Choice
-                    key={o.network}
-                    icon={
-                      icon ? (
-                        <BrandIcon name={icon} className="size-8 rounded-md" />
-                      ) : (
-                        <Initial text={chainName(o.chainId)} />
-                      )
-                    }
-                    label={chainName(o.chainId)}
-                    onClick={() => {
-                      setNetwork(o.network);
-                      setFind("");
-                    }}
-                  />
-                );
-              })}
-          </Choices>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-4">
-          <Summary
-            onChange={
-              options.length > 1
-                ? () => {
-                    setSymbol(null);
-                    setNetwork(null);
-                  }
-                : null
-            }
-          >
-            <TokenMark chainId={chosen.chainId} symbol={chosen.symbol} />
-          </Summary>
-          {shown ? (
-            <>
-              {/* The tile follows the theme; the code itself stays dark on light, as scanners need. */}
-              <div className="grid place-items-center rounded-lg bg-surface-2 p-5">
-                <QrCode
-                  value={shown}
-                  label={RECEIVE_COPY.receiveQrLabel}
-                  className="w-44 p-3 shadow-sm"
-                />
-              </div>
-              <ReceiveAddress
-                address={shown}
-                label={RECEIVE_COPY.yourAddress(chainName(chosen.chainId))}
+        {shown ? (
+          <>
+            {/* The tile follows the theme; the code itself stays dark on light, as scanners need. */}
+            <div className="grid place-items-center rounded-lg bg-surface-2 p-5">
+              <QrCode
+                value={shown}
+                label={RECEIVE_COPY.receiveQrLabel}
+                className="w-44 p-3 shadow-sm"
               />
-            </>
-          ) : null}
-          <NetworkWarning
-            token={chosen.symbol}
-            network={chainName(chosen.chainId)}
-            lookalike={lookalikeOf(chosen.chainId, chosen.symbol)}
-          />
-          {/* R-38: smaller deposits aren't listed in activity; the balance, read from the chain, still has them. */}
-          <div className="flex items-center justify-between gap-3 text-xs text-muted">
-            <span>{RECEIVE_COPY.minimum}</span>
-            <span className="flex items-center gap-1.5 text-ink tabular-nums">
-              {RECEIVE_COPY.minimumAmount}
-              <Tooltip content={RECEIVE_COPY.minimumTip}>
-                <button
-                  type="button"
-                  aria-label={RECEIVE_COPY.minimumLabel}
-                  // On a touch screen a 44px band takes the tap; the icon keeps its size.
-                  className="relative grid place-items-center rounded-full text-muted outline-none before:absolute hover:text-ink focus-visible:outline-2 focus-visible:outline-focus pointer-coarse:before:top-1/2 pointer-coarse:before:left-1/2 pointer-coarse:before:size-11 pointer-coarse:before:-translate-x-1/2 pointer-coarse:before:-translate-y-1/2"
-                >
-                  <Info aria-hidden className="size-[var(--fw-icon-sm)]" />
-                </button>
-              </Tooltip>
-            </span>
-          </div>
+            </div>
+            <ReceiveAddress
+              address={shown}
+              label={RECEIVE_COPY.yourAddress(chainName(chosen.chainId))}
+            />
+          </>
+        ) : null}
+        <NetworkWarning
+          token={chosen.symbol}
+          network={chainName(chosen.chainId)}
+          lookalike={lookalikeOf(chosen.chainId, chosen.symbol)}
+        />
+        {/* R-38: smaller deposits aren't listed in activity; the balance, read from the chain, still has them. */}
+        <div className="flex items-center justify-between gap-3 text-xs text-muted">
+          <span>{RECEIVE_COPY.minimum}</span>
+          <span className="flex items-center gap-1.5 text-ink tabular-nums">
+            {RECEIVE_COPY.minimumAmount}
+            <Tooltip content={RECEIVE_COPY.minimumTip}>
+              <button
+                type="button"
+                aria-label={RECEIVE_COPY.minimumLabel}
+                // On a touch screen a 44px band takes the tap; the icon keeps its size.
+                className="relative grid place-items-center rounded-full text-muted outline-none before:absolute hover:text-ink focus-visible:outline-2 focus-visible:outline-focus pointer-coarse:before:top-1/2 pointer-coarse:before:left-1/2 pointer-coarse:before:size-11 pointer-coarse:before:-translate-x-1/2 pointer-coarse:before:-translate-y-1/2"
+              >
+                <Info aria-hidden className="size-[var(--fw-icon-sm)]" />
+              </button>
+            </Tooltip>
+          </span>
         </div>
-      )}
-    </Sheet>
-  );
+      </div>
+    );
+  }
 }
 
 function Choices({ title, children }: { title: string; children: ReactNode }) {
@@ -240,18 +250,5 @@ function Initial({ text }: { text: string }) {
     <span className="grid size-8 place-items-center rounded-pill bg-surface-2 text-xs text-muted">
       {text.slice(0, 1)}
     </span>
-  );
-}
-
-function Summary({ onChange, children }: { onChange: (() => void) | null; children: ReactNode }) {
-  return (
-    <div className="flex min-h-14 items-center gap-3 border-b border-line pb-3">
-      <span className="flex min-w-0 flex-1 items-center gap-3">{children}</span>
-      {onChange ? (
-        <Button size="sm" variant="ghost" aria-label={RECEIVE_COPY.changeLabel} onClick={onChange}>
-          {RECEIVE_COPY.change}
-        </Button>
-      ) : null}
-    </div>
   );
 }
