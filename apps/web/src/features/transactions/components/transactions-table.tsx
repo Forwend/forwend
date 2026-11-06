@@ -35,7 +35,7 @@ import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transaction
 import {
   type DayGroup,
   groupByDay,
-  sendingRow,
+  sendingRows,
   transactionKey,
   transactionStatus,
 } from "@/features/transactions/lib/transactions";
@@ -138,10 +138,7 @@ function ProfileTransactions({
     pollingInterval: waiting ? SENDING_POLL_MS : LIVE_QUERY.pollingInterval,
   });
   const recorded = data?.items ?? [];
-  const sending = (pending.currentData?.sends ?? [])
-    .filter((s): s is typeof s & { txHash: string } => s.txHash !== null)
-    .filter((s) => !recorded.some((t) => t.txHash === s.txHash))
-    .map(sendingRow);
+  const sending = sendingRows(pending.currentData?.sends ?? [], recorded);
   // A send that leaves the pending list has its own row now: read the list again rather than wait for its poll.
   const sendingCount = useRef(sending.length);
   const { refetch } = list;
@@ -150,7 +147,8 @@ function ProfileTransactions({
     sendingCount.current = sending.length;
   }, [sending.length, refetch]);
   if (waiting !== sending.length > 0) setWaiting(sending.length > 0);
-  const rows = [...sending, ...recorded];
+  // A preview keeps its size: Sending rows come first and push the oldest out.
+  const rows = [...sending, ...recorded].slice(0, preview);
   const days = groupByDay(rows, new Date());
   const dayId = useId();
   const filtered = !preview && filters.filtered;

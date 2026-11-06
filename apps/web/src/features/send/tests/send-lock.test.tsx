@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { TooltipProvider } from "@forwend/ui-web";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Profile } from "@/features/profiles/types/profile";
 import { SendProgress } from "@/features/send/components/send-progress";
@@ -100,6 +100,8 @@ describe("the send sheet's lock (R-214)", () => {
     cleanup();
     const down = holding({ status: "FETCH_ERROR" });
     await waitFor(() => expect(api.submit).toHaveBeenCalled());
+    // The rejection is handled and any state it sets rendered before the check.
+    await act(() => new Promise((r) => setTimeout(r, 0)));
     expect(down.at(-1)).toBe(true);
   });
 });

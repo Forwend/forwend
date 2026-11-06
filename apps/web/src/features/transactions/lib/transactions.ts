@@ -41,6 +41,14 @@ export function sendingRow(s: Send & { txHash: string }): Transaction {
   };
 }
 
+/** The pending sends still owed a row: signed, and no recorded row carries their hash yet (R-215). */
+export function sendingRows(sends: Send[], recorded: Transaction[]): Transaction[] {
+  return sends
+    .filter((s): s is Send & { txHash: string } => s.txHash !== null)
+    .filter((s) => !recorded.some((t) => t.txHash === s.txHash))
+    .map(sendingRow);
+}
+
 export interface DayGroup<T> {
   /** The local calendar day, YYYY-MM-DD. */
   day: string;
