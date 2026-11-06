@@ -95,7 +95,7 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   - A failed send ends that round, except when Resend refused the message as sent (400 or 422, such as a bad
     address). Then the round goes on, so one bad address can't hold up the other emails (R-115).
 - Email off or no address: the event is marked done and nothing is sent. Without `RESEND_API_KEY` the worker sends
-  nothing and events wait; `scripts/with-env.sh` gives the key to the worker alone.
+  nothing and events wait; `scripts/with-env.sh` gives the key to the worker and the api (Confirm it's you codes).
 - `PUT /v1/invoices/{payToken}/payer-email` (R-82, D-68, public like the checkout): the payer's address for this
   invoice's receipt only, kept on the main row, trimmed and lowercased, and checked like a client email (plain text,
   exactly one address, else 422); it changes until the receipt is sent (then 409

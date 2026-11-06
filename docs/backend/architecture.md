@@ -32,7 +32,8 @@ Read only the sections your task touches:
   to active receiver addresses), confirmation/finality tracking, reorg handling, invoice state
   machine and ledger booking, Check status rescans, payment reminders and retainer invoices (R-96, R-98), and the
   email from `outbox_events`
-  (`internal/notify`, R-80, R-82, R-84; only the worker holds `RESEND_API_KEY`, and without it nothing is sent).
+  (`internal/notify`, R-80, R-82, R-84). The worker and the api hold `RESEND_API_KEY`, the api for Confirm it's you
+  codes (R-137); without it nothing is sent.
   - Reminders, retainers, email, ECB rates and prices run on a loop beside the chain rounds, at the same interval.
     A slow Resend, ECB or CoinGecko answer never delays a round.
   - Every 5 minutes it logs an `ALERT` for symptoms that hold money (R-180):
