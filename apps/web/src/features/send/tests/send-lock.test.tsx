@@ -1,25 +1,17 @@
 // @vitest-environment jsdom
 import { TooltipProvider } from "@forwend/ui-web";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Profile } from "@/features/profiles/types/profile";
 import { SendProgress } from "@/features/send/components/send-progress";
-import { SendReview } from "@/features/send/components/send-review";
 import type { Send } from "@/features/send/types/send";
 
 const api = vi.hoisted(() => ({
   submit: vi.fn(async (): Promise<unknown> => ({})),
-  sign: vi.fn(async () => "0xhash"),
   read: { currentData: undefined as unknown, fulfilledTimeStamp: 1, error: undefined as unknown },
 }));
 vi.mock("@/features/send/api/send-api", () => ({
   useSubmitSendMutation: () => [() => ({ unwrap: api.submit })],
   useGetSendQuery: () => ({ ...api.read, refetch: () => {} }),
-  // The review reads the send again before signing: it is still prepared.
-  useLazyGetSendQuery: () => [() => ({ unwrap: async () => send })],
-}));
-vi.mock("@/features/send/hooks/use-sign-send", () => ({
-  useSignSend: () => ({ sign: api.sign, canSign: true }),
 }));
 
 const send = {
@@ -56,26 +48,6 @@ afterEach(() => {
 });
 
 describe("the send sheet's lock (R-214)", () => {
-  it("stays on from signing until the progress step holds the hash", async () => {
-    const signing: boolean[] = [];
-    const onSubmitted = vi.fn();
-    render(
-      <SendReview
-        mode="send"
-        send={send}
-        option={option}
-        from={{ profileId: "p1", kind: "personal", name: "Me" } as unknown as Profile}
-        recipient={recipient}
-        onSigning={(on) => signing.push(on)}
-        onSubmitted={onSubmitted}
-      />,
-      { wrapper: TooltipProvider },
-    );
-    fireEvent.click(screen.getByRole("button", { name: /^Send 1/ }));
-    await waitFor(() => expect(onSubmitted).toHaveBeenCalled());
-    expect(signing).toEqual([true]);
-  });
-
   it("lets the sheet close when the server refuses the hash or can't be read, not when one report fails", async () => {
     api.read.currentData = { ...send, status: "sending", txHash: null };
     const holding = (error: unknown) => {

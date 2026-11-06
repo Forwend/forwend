@@ -22,6 +22,7 @@ import {
   EmailCapture,
   EmptyState,
   Form,
+  HoldButton,
   IconButton,
   Menu,
   MenuCheckboxItem,
@@ -211,6 +212,15 @@ export function ComponentsShowcase() {
         <Button variant={BUTTON_VARIANTS.secondary} disabled>
           Disabled
         </Button>
+      </KitGroup>
+      <KitGroup title="Hold button: press and hold to confirm; loading and disabled">
+        <HoldButton onHold={() => {}}>Hold to send 25.00 USDC</HoldButton>
+        <HoldButton onHold={() => {}} loading>
+          Hold to send 25.00 USDC
+        </HoldButton>
+        <HoldButton onHold={() => {}} disabled>
+          Hold to send 25.00 USDC
+        </HoldButton>
       </KitGroup>
       <KitGroup title="Action buttons: primary, default, not yet available">
         <ActionButton icon={ArrowDownLeft} label="Receive" primary />

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 430,
+  "nextId": 431,
   "tasks": [
     {
       "id": "F332",
@@ -108,6 +108,38 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
+    },
+    {
+      "id": "F430",
+      "type": "fix",
+      "behavior": "A send asks Confirm it's you only after the owner holds Send on its Summary, in a step of its own",
+      "acceptance": [
+        "Prepare no longer needs a fresh sign-in; a new approve call does, and answers with the send brought up to date, so the browser signs only one still prepared (R-211, D-49)",
+        "The sheet goes Amount, Summary, then press and hold to send; Confirm it's you comes after that as its own step, with Back to Summary, and signing follows a confirmed code (R-213, R-137)",
+        "Going back to change the money or amount never shows an old confirm (R-213)",
+        "Confirm it's you reads \"We couldn't send a code to …\" and puts its send link under the code: \"Didn't get a code? Send a new one\", or \"We couldn't send a code. Try again\" after an error (R-137)"
+      ],
+      "dependsOn": [],
+      "state": "active",
+      "verification": [
+        "unit",
+        "web-unit",
+        "web-e2e",
+        "live-e2e"
+      ],
+      "refs": [
+        "R-211",
+        "R-213",
+        "R-137",
+        "D-49"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null,
+      "branch": "fix/f430-a-send-asks-confirm-it-s-you-only-after",
+      "baseCommit": "69bbc3a24582032f8a7bd1ec92071f94b0f3dec0"
     }
   ],
   "lastWrapup": {

@@ -6,9 +6,16 @@ const sends = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileI
 
 export const sendApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
-    // Needs a fresh sign-in (D-49): the form that sends it shows the confirm step in place.
     prepareSend: build.mutation<Send, SendRequest>({
       query: ({ profileId, ...body }) => ({ url: sends(profileId), method: "POST", body }),
+      responseSchema: sendSchema,
+    }),
+    // Needs a fresh sign-in (D-49): the sheet shows Confirm it's you as its own step. The answer is the send as GET reads it.
+    approveSend: build.mutation<Send, { profileId: string; sendId: string }>({
+      query: ({ profileId, sendId }) => ({
+        url: `${sends(profileId)}/${encodeURIComponent(sendId)}/approve`,
+        method: "POST",
+      }),
       responseSchema: sendSchema,
     }),
     submitSend: build.mutation<Send, { profileId: string; sendId: string; txHash: string }>({
@@ -51,10 +58,10 @@ export const sendApi = apiSlice.injectEndpoints({
 
 export const {
   usePrepareSendMutation,
+  useApproveSendMutation,
   useSubmitSendMutation,
   useCancelSendMutation,
   useGetSendFeeQuery,
   useGetSendQuery,
-  useLazyGetSendQuery,
   useListPendingSendsQuery,
 } = sendApi;

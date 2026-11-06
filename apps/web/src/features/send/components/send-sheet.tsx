@@ -17,7 +17,7 @@ import {
 import { skipToken } from "@reduxjs/toolkit/query";
 import { ChevronRight, Users, WalletMinimal } from "lucide-react";
 import { type FormEvent, type ReactNode, useState } from "react";
-import { useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
+import { FRESH_SIGN_IN_COPY } from "@/features/auth/constants/auth-copy";
 import type { Balances } from "@/features/balances/types/balances";
 import { AMOUNT_ERRORS } from "@/features/invoices/constants/invoices";
 import { parseTokenAmount } from "@/features/invoices/lib/invoices";
@@ -32,6 +32,7 @@ import { SendProgress } from "@/features/send/components/send-progress";
 import { SendReview } from "@/features/send/components/send-review";
 import { FEE_DECIMALS, SEND_MODES, SEND_STEPS } from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
+import { useSendApproval } from "@/features/send/hooks/use-send-approval";
 import {
   feeLabel,
   isWalletAddress,
@@ -69,6 +70,7 @@ const TITLES: Record<SendStep, string> = {
   [SEND_STEPS.asset]: SEND_COPY.what,
   [SEND_STEPS.amount]: SEND_COPY.amount,
   [SEND_STEPS.review]: SEND_COPY.review,
+  [SEND_STEPS.confirm]: FRESH_SIGN_IN_COPY.title,
   [SEND_STEPS.progress]: "",
 };
 
@@ -103,9 +105,10 @@ export function SendSheet({
   const [signing, setSigning] = useState(false);
   // Every send checked this time; the unsigned ones are given up when the sheet closes.
   const [checked, setChecked] = useState<string[]>([]);
+  // The send whose warning the owner ticked as checked: it holds while the confirm step comes and goes.
+  const [ticked, setTicked] = useState<string | null>(null);
   const [prepare, preparing] = usePrepareSendMutation();
   const [cancel] = useCancelSendMutation();
-  const fresh = useFreshSignIn();
   // Every opening starts over: a send is chosen and checked anew each time.
   const [wasOpen, setWasOpen] = useState(open);
   const [wasMode, setWasMode] = useState(mode);
@@ -125,10 +128,11 @@ export function SendSheet({
       setSubmitted(null);
       setSigning(false);
       setChecked([]);
+      setTicked(null);
       preparing.reset();
     }
   }
-  const step = path[path.length - 1] ?? first;
+  const shown = path[path.length - 1] ?? first;
   const options = sendOptions(balances);
   const sendable = options.filter((o) => o.sendable);
 
@@ -136,7 +140,28 @@ export function SendSheet({
     setDirection(STEP_DIRECTIONS.next);
     setPath((p) => [...p, next]);
   };
+  const approval = useSendApproval({
+    profileId: profile.profileId,
+    send: prepared,
+    onSigning: setSigning,
+    onSubmitted: (s) => {
+      setSubmitted(s);
+      go(SEND_STEPS.progress);
+    },
+  });
+  // R-137: Confirm it's you comes after the owner holds Send, as a step of its own; Back gives it up for the Summary.
+  const confirming = approval.confirmStep !== null && shown === SEND_STEPS.review;
+  const [wasConfirming, setWasConfirming] = useState(confirming);
+  if (confirming !== wasConfirming) {
+    setWasConfirming(confirming);
+    setDirection(confirming ? STEP_DIRECTIONS.next : STEP_DIRECTIONS.back);
+  }
+  const step = confirming ? SEND_STEPS.confirm : shown;
   const back = () => {
+    if (confirming) {
+      approval.cancelConfirm();
+      return;
+    }
     setDirection(STEP_DIRECTIONS.back);
     setPath((p) => (p.length > 1 ? p.slice(0, -1) : p));
   };
@@ -151,7 +176,7 @@ export function SendSheet({
   const close = (next: boolean) => {
     if (!next) {
       if (signing) return;
-      if (fresh.pending) fresh.cancel();
+      approval.cancelConfirm();
       for (const sendId of checked) {
         if (sendId !== submitted?.sendId) cancel({ profileId: profile.profileId, sendId });
       }
@@ -219,10 +244,10 @@ export function SendSheet({
         ? { toProfileId: recipient.profile.profileId }
         : { to: recipient.address }),
     };
-    const result = await fresh
-      .run(() => prepare({ profileId: profile.profileId, ...request }).unwrap())
+    const result = await prepare({ profileId: profile.profileId, ...request })
+      .unwrap()
       .catch((error: unknown) => {
-        if (!fresh.cancelled(error)) setAmountError(sendError(error));
+        setAmountError(sendError(error));
         // The fee may have risen since it was read: Max then uses the new one.
         if (fee) void feeRead.refetch();
         return null;
@@ -424,11 +449,9 @@ export function SendSheet({
             )}
           </span>
         </div>
-        {fresh.step ?? (
-          <Button type="submit" className="w-full" loading={preparing.isLoading}>
-            {SEND_COPY.continue}
-          </Button>
-        )}
+        <Button type="submit" className="w-full" loading={preparing.isLoading}>
+          {SEND_COPY.continue}
+        </Button>
       </form>
     );
   } else if (step === SEND_STEPS.review && prepared && option && recipient) {
@@ -439,13 +462,16 @@ export function SendSheet({
         option={option}
         from={profile}
         recipient={recipient}
-        onSigning={setSigning}
-        onSubmitted={(s) => {
-          setSubmitted(s);
-          go(SEND_STEPS.progress);
-        }}
+        checked={ticked === prepared.sendId}
+        onChecked={(on) => setTicked(on ? prepared.sendId : null)}
+        working={approval.working}
+        error={approval.error}
+        canSign={approval.canSign}
+        onHold={() => void approval.start()}
       />
     );
+  } else if (step === SEND_STEPS.confirm) {
+    body = approval.confirmStep;
   } else if (step === SEND_STEPS.progress && submitted && option && recipient) {
     body = (
       <SendProgress

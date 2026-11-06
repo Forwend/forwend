@@ -982,7 +982,7 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
 
 - Only the owner sends: `money.move` belongs to no role and no key (D-61).
 - The browser signs with Privy; the server never signs for a user wallet (D-46).
-- `POST /v1/profiles/{profileId}/sends` checks a send before signing. It needs a fresh sign-in (D-49).
+- `POST /v1/profiles/{profileId}/sends` checks a send for the review. It needs no fresh sign-in: nothing moves yet.
   - `to` is an outside address; `toProfileId` is another of the owner's profiles. The server finds that wallet itself.
   - A pasted address of another of the owner's profiles counts as a transfer.
   - It refuses an invalid checksum, the zero address, any token contract and the sender's own wallet.
@@ -996,6 +996,8 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
     - `gas` gives the limit and fee caps the browser signs with, so the fee never exceeds `networkFee`.
   - `GET .../sends/fee?chainId=&token=&to=` is that fee now, for the amount step's fee and Max.
     - It prices every amount byte as non-zero, so it covers a send of any amount, Max too.
+- `POST .../sends/{sendId}/approve` needs a fresh sign-in (D-49) and answers with the send, as the GET reads it.
+  - The browser asks it after the owner holds Send, and signs only a send still `prepared`.
 - One unsigned send per wallet and chain: a new prepare cancels it. A signed one still on its way gives 409
   `send_in_progress`.
 - `GET .../sends` lists the signed sends the watcher hasn't recorded yet (R-215). It needs `money.read`.

@@ -193,7 +193,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - An action with no form of its own (Turn off, Signing secret) confirms in its own small dialog, titled with it.
   - It sends a code to the login email at once and says where. The code boxes behave as on the sign-in page.
   - A full code confirms with no click; the same code typed again is tried again.
-  - Send a new one sits inline after where the code went; Send a code, when the first send failed.
+  - Its text says where the code went, or that it couldn't be sent there.
+  - Under the boxes: "Didn't get a code? Send a new one", or "We couldn't send a code. Try again" as an alert.
+    - A send that failed is not a wrong code: the boxes stay unmarked.
+  - A send's confirm is the sheet's own step, after Send is held (see Send).
   - Cancel and Confirm end the foot's one row.
   - Cancel gives the form its buttons back, with no error, and the focus returns to the form's action.
   - A wrong or expired code reads "Wrong or expired code", and the step stays open.
@@ -1086,20 +1089,25 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
   a short note. Avoid nested cards around the QR.
 - Send (R-213) is one sheet for Send and Transfer, a sibling of Receive. Transfer starts on the owner's other profiles;
   Send also offers Wallet address.
-  - Steps: To, Wallet address, What to send, Amount, Review, then the progress. A step with one choice is skipped.
+  - Steps: To, Wallet address, What to send, Amount, Summary, Confirm it's you when asked, then the progress.
+    - A step with one choice is skipped.
   - The title names the step; a Back button sits before it from the second step on.
   - Amount: a one-line chip with the token's mark, symbol and network, then the amount large and centered, no box,
     with the symbol as a muted suffix (`AmountField bare`).
     - Under it "1.2665 USDC available" (cut to 4 decimals, never rounded up) and a Max button.
     - Then one ruled line: Network fee, "Free" where Forwend pays, else "≈ 0.0025 USDC". Max leaves room for that fee, and waits until it is read.
-  - Review: the amount large and centered, then a ruled box: From, To, Network, Network fee.
+  - Summary: the amount large and centered, then a ruled box: From, To, Network, Network fee.
     - Total (≈ amount plus fee) follows only when the wallet pays the fee from the same token (R-216).
   - An estimated fee rounds up to 4 decimals and leads with ≈. No "Up to", no "They receive": the amount says it.
   - An address reads as plain text, shortened (`0x4edd…81fc`), as everywhere in the app.
     - Its tooltip shows the full address on hover, focus or tap (`TruncatedAddress`, `mono={false}`).
   - A first send to an address, or one to a contract, shows a one-line warning and a checkbox; Send stays off until it
     is ticked.
-  - The main button names the amount ("Send 25.00 USDC").
+  - The main button is held, not clicked, and names the amount ("Hold to send 25.00 USDC", `HoldButton`).
+    - A fill crosses it in 1.2 s; letting go sooner runs it back and sends nothing. Space and Enter hold it too.
+  - Confirm it's you comes after the hold, as its own step titled so, when the session needs a fresh sign-in.
+    - Back returns to the Summary with no error; holding again asks again.
+    - Once the code is confirmed, the send is signed and the progress follows.
   - From signing until the server holds the hash, the sheet is locked: Escape, the backdrop, Close and Back do nothing.
     - Closing would not stop the money, and the server needs the hash to follow it.
     - A hash the server refuses lifts the lock, and so does a server that can't be read: the owner may then leave.

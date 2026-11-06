@@ -115,9 +115,13 @@ describe("fresh sign-in", () => {
   it("offers to send again when the code couldn't be sent", async () => {
     api.sendCode.mockRejectedValueOnce(new Error("rate limited"));
     renderForm();
-    await screen.findByText(/We couldn't send a code to owner@example.com/);
-    fireEvent.click(screen.getByRole("button", { name: "Send a code" }));
-    await screen.findByText(/We sent a code to owner@example.com/);
+    await screen.findByText("We couldn't send a code to owner@example.com.");
+    // The way to send again sits under the code, as an alert, not as a wrong code.
+    expect(screen.getByRole("alert").textContent).toBe("We couldn't send a code. Try again");
+    expect(screen.getByLabelText("Code").getAttribute("aria-invalid")).not.toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await screen.findByText("We sent a code to owner@example.com.");
+    expect(screen.getByText("Didn't get a code?")).toBeTruthy();
     expect(api.sendCode).toHaveBeenCalledTimes(2);
     fireEvent.change(screen.getByLabelText("Code"), { target: { value: "123456" } });
     await waitFor(() => expect(answers).toEqual([true]));

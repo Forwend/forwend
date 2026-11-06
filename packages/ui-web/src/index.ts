@@ -7,6 +7,8 @@ export type {
   ButtonVariant,
 } from "./components/buttons/button";
 export { BUTTON_SIZES, BUTTON_VARIANTS, Button, buttonClasses } from "./components/buttons/button";
+export type { HoldButtonProps } from "./components/buttons/hold-button";
+export { HOLD_MS, HoldButton } from "./components/buttons/hold-button";
 export type { IconButtonProps, IconButtonSize } from "./components/buttons/icon-button";
 export { ICON_BUTTON_SIZES, IconButton, iconButtonClasses } from "./components/buttons/icon-button";
 export type { RowButtonProps } from "./components/buttons/row-button";

@@ -1,20 +1,18 @@
 "use client";
 
 import {
-  Button,
   Checkbox,
   formatTokenAmount,
+  HoldButton,
   NOTICE_TONES,
   Notice,
   TruncatedAddress,
 } from "@forwend/ui-web";
-import { type ReactNode, useState } from "react";
+import type { ReactNode } from "react";
 import { profileLabel } from "@/features/profiles/lib/profile";
 import type { Profile } from "@/features/profiles/types/profile";
-import { useLazyGetSendQuery, useSubmitSendMutation } from "@/features/send/api/send-api";
-import { SEND_MODES, SEND_STATUSES, SEND_WARNINGS } from "@/features/send/constants/send";
+import { SEND_MODES, SEND_WARNINGS } from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
-import { useSignSend } from "@/features/send/hooks/use-sign-send";
 import { feeLabel, feeShown } from "@/features/send/lib/send";
 import type { Recipient, Send, SendMode, SendOption } from "@/features/send/types/send";
 import { chainName } from "@/shared/lib/chains";
@@ -26,30 +24,33 @@ export interface SendReviewProps {
   option: SendOption;
   from: Profile;
   recipient: Recipient;
-  /** True while Privy signs: the sheet can't close then. */
-  onSigning: (signing: boolean) => void;
-  onSubmitted: (send: Send) => void;
+  /** The owner ticked that they checked the address a warning names. */
+  checked: boolean;
+  onChecked: (checked: boolean) => void;
+  /** The send is being approved and signed (useSendApproval). */
+  working: boolean;
+  error: string | null;
+  canSign: boolean;
+  onHold: () => void;
 }
 
-// The one screen the owner reads before signing: Privy shows none of its own (R-213). A first send to an address,
-// or one to a contract, asks the owner to tick that they checked it, so a warning can't be passed by habit.
-// Every value shown is the server's send, which is what Privy signs; the sheet refused it if it differs from the
-// request.
+// The Summary: the one screen the owner reads before signing, as Privy shows none of its own (R-213). A first send to
+// an address, or one to a contract, asks the owner to tick that they checked it, so a warning can't be passed by
+// habit. Every value shown is the server's send, which is what Privy signs; the sheet refused it if it differs from
+// the request. Send is held, not clicked: a stray tap or Enter can't move money.
 export function SendReview({
   mode,
   send,
   option,
   from,
   recipient,
-  onSigning,
-  onSubmitted,
+  checked,
+  onChecked,
+  working,
+  error,
+  canSign,
+  onHold,
 }: SendReviewProps) {
-  const { sign, canSign } = useSignSend(send.from);
-  const [submit] = useSubmitSendMutation();
-  const [readSend] = useLazyGetSendQuery();
-  const [checked, setChecked] = useState(false);
-  const [working, setWorking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const units = BigInt(send.amount);
   const amount = formatTokenAmount({
     baseUnits: units,
@@ -62,38 +63,6 @@ export function SendReview({
     mode === SEND_MODES.transfer
       ? SEND_COPY.transferAmount(`${amount} ${option.symbol}`)
       : SEND_COPY.sendAmount(`${amount} ${option.symbol}`);
-
-  const confirm = async () => {
-    setWorking(true);
-    onSigning(true);
-    setError(null);
-    // Only a send the server still holds as prepared is signed: one past its 10 minutes, or replaced from another tab,
-    // was checked against a balance and fees that may have moved.
-    const latest = await readSend({ profileId: from.profileId, sendId: send.sendId })
-      .unwrap()
-      .catch(() => null);
-    if (latest?.status !== SEND_STATUSES.prepared) {
-      setError(latest ? SEND_COPY.outOfDate : SEND_COPY.failedToPrepare);
-      setWorking(false);
-      onSigning(false);
-      return;
-    }
-    let hash: string;
-    try {
-      hash = await sign(send);
-    } catch {
-      setError(SEND_COPY.signFailed);
-      setWorking(false);
-      onSigning(false);
-      return;
-    }
-    // The money is moving now. The sheet stays locked until the progress step holds the hash, which it reports
-    // again if this report is lost; the progress step lifts the lock, so it never opens in between.
-    const reported = await submit({ profileId: from.profileId, sendId: send.sendId, txHash: hash })
-      .unwrap()
-      .catch(() => null);
-    onSubmitted(reported ?? { ...send, status: SEND_STATUSES.sending, txHash: hash });
-  };
 
   return (
     <div className="flex flex-col gap-5">
@@ -149,7 +118,7 @@ export function SendReview({
         <Checkbox
           label={SEND_COPY.checked}
           checked={checked}
-          onChange={(e) => setChecked(e.target.checked)}
+          onChange={(e) => onChecked(e.target.checked)}
         />
       ) : null}
       {error ? (
@@ -157,14 +126,14 @@ export function SendReview({
           {error}
         </p>
       ) : null}
-      <Button
+      <HoldButton
         className="w-full"
         disabled={!canSign || (needsCheck && !checked)}
         loading={working || !canSign}
-        onClick={confirm}
+        onHold={onHold}
       >
         {label}
-      </Button>
+      </HoldButton>
       {canSign ? null : (
         <p className="-mt-3 text-center text-xs text-muted">{SEND_COPY.walletLoading}</p>
       )}

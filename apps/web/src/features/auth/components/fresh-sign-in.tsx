@@ -84,7 +84,8 @@ export function FreshSignInProvider({ register, children }: FreshSignInProviderP
 
 /** For a form whose request may need a fresh sign-in: run sends it, and step is what to show in place of the form's
  * buttons while the user confirms. pending is true then; the form's fields should stay as they were. */
-export function useFreshSignIn() {
+/** titled is false where the step sits under a heading that already says Confirm it's you. */
+export function useFreshSignIn({ titled = true }: { titled?: boolean } = {}) {
   const controller = useContext(FreshSignInContext);
   const [answer, setAnswer] = useState<Answer | null>(null);
   const scope = useRef<Scope>({ open: (a) => setAnswer(() => a) });
@@ -118,7 +119,7 @@ export function useFreshSignIn() {
     },
     [answer],
   );
-  const step = answer ? <ConfirmStep onDone={done} /> : null;
+  const step = answer ? <ConfirmStep onDone={done} titled={titled} /> : null;
   return {
     run,
     step,
@@ -157,6 +158,7 @@ function ConfirmStep({
   const [noEmail, setNoEmail] = useState(false);
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
+  const [sendFailed, setSendFailed] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<"" | "code" | "send">("");
   const titleId = useId();
@@ -167,6 +169,7 @@ function ConfirmStep({
     if (!email) return;
     setBusy("send");
     setError("");
+    setSendFailed(false);
     try {
       await sendCode().unwrap();
       setSent(true);
@@ -176,7 +179,7 @@ function ConfirmStep({
       // This session's code sent a moment ago is still the one to enter.
       if (code === "code_sent_recently") setSent(true);
       else if (code === "no_login_email") setNoEmail(true);
-      else setError(COPY.sendFailed);
+      else setSendFailed(true);
     } finally {
       setBusy("");
     }
@@ -258,21 +261,6 @@ function ConfirmStep({
               : busy === "send"
                 ? COPY.sending
                 : COPY.notSent(to)}
-          {/* A new code is asked for where the code is said to be, as most code screens do. */}
-          {to && (sent || busy !== "send") ? (
-            <>
-              {" "}
-              <Button
-                type="button"
-                variant="link"
-                loading={busy === "send"}
-                disabled={busy === "code"}
-                onClick={() => void send()}
-              >
-                {sent ? COPY.resend : COPY.sendAgain}
-              </Button>
-            </>
-          ) : null}
         </p>
       </div>
       {to ? (
@@ -287,6 +275,25 @@ function ConfirmStep({
           }}
           error={error || undefined}
         />
+      ) : null}
+      {/* A new code is asked for under the boxes, as most code screens do. The line stays while it sends, so the focus
+          stays on its link. */}
+      {to && (sent || sendFailed) ? (
+        <p
+          role={sendFailed ? "alert" : undefined}
+          className={`text-sm ${sendFailed ? "text-danger" : "text-muted"}`}
+        >
+          {sendFailed ? COPY.sendFailed : COPY.notReceived}{" "}
+          <Button
+            type="button"
+            variant="link"
+            loading={busy === "send"}
+            disabled={busy === "code"}
+            onClick={() => void send()}
+          >
+            {sendFailed ? COPY.tryAgain : COPY.resend}
+          </Button>
+        </p>
       ) : null}
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button type="button" variant={BUTTON_VARIANTS.secondary} onClick={cancel}>

@@ -57,10 +57,11 @@ features own product behavior, and shared UI components are grouped by purpose. 
   - A hidden page's address opens the role's first page instead. The API refuses those requests anyway.
   - `/invite/<token>` (R-139) sits in the `(app)` group for Privy, outside `/app`: the invited user may have no account.
   - It calls `POST /v1/me` first, so accepting finds the account, then opens the team's profile in `/app`.
-  - Send (R-211–R-214) asks the api to prepare the send, which needs a fresh sign-in. Then it signs the token transfer in
-    the browser with Privy's `useSendTransaction`, with Privy's screens off (D-46).
+  - Send (R-211–R-214) asks the api to prepare the send, and the Summary shows it. Holding Send approves it, which
+    needs a fresh sign-in (Confirm it's you, its own step). Then it signs the token transfer in the browser with Privy's
+    `useSendTransaction`, with Privy's screens off (D-46).
     - It is sponsored where Forwend pays the gas; on Arc the wallet pays, with the server's gas caps (R-216).
-    - Just before signing it reads the send again and signs only one still prepared.
+    - The approve answer is the send brought up to date: it signs only one still prepared.
     - It signs only once `useWallets` lists the profile's wallet: before that Privy refuses at once (S-9).
     - Every enabled chain is in `PrivyProvider` `supportedChains` (`features/auth/constants/privy-chains.ts`); a
       missing one never returns.

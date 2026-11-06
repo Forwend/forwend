@@ -7,6 +7,7 @@ export const SEND_STEPS = {
   asset: "asset",
   amount: "amount",
   review: "review",
+  confirm: "confirm",
   progress: "progress",
 } as const;
 
