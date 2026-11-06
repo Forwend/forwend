@@ -10,8 +10,6 @@ import {
   RowButton,
   Sheet,
   Skeleton,
-  STEP_DIRECTIONS,
-  type StepDirection,
   StepTransition,
   TextField,
 } from "@forwend/ui-web";
@@ -98,7 +96,6 @@ export function SendSheet({
   const first: SendStep =
     mode === SEND_MODES.send && own.length === 0 ? SEND_STEPS.address : SEND_STEPS.to;
   const [path, setPath] = useState<SendStep[]>([first]);
-  const [direction, setDirection] = useState<StepDirection>(STEP_DIRECTIONS.next);
   const [recipient, setRecipient] = useState<Recipient | null>(null);
   const [address, setAddress] = useState("");
   const [addressError, setAddressError] = useState<string | null>(null);
@@ -123,7 +120,6 @@ export function SendSheet({
     setWasMode(mode);
     if (open) {
       setPath([first]);
-      setDirection(STEP_DIRECTIONS.next);
       setRecipient(null);
       setAddress("");
       setAddressError(null);
@@ -142,10 +138,7 @@ export function SendSheet({
   const options = sendOptions(balances);
   const sendable = options.filter((o) => o.sendable);
 
-  const go = (next: SendStep) => {
-    setDirection(STEP_DIRECTIONS.next);
-    setPath((p) => [...p, next]);
-  };
+  const go = (next: SendStep) => setPath((p) => [...p, next]);
   const approval = useSendApproval({
     profileId: profile.profileId,
     send: prepared,
@@ -157,18 +150,12 @@ export function SendSheet({
   });
   // R-137: Confirm it's you comes after the owner holds Send, as a step of its own; Back gives it up for the Summary.
   const confirming = approval.confirmStep !== null && shown === SEND_STEPS.review;
-  const [wasConfirming, setWasConfirming] = useState(confirming);
-  if (confirming !== wasConfirming) {
-    setWasConfirming(confirming);
-    setDirection(confirming ? STEP_DIRECTIONS.next : STEP_DIRECTIONS.back);
-  }
   const step = confirming ? SEND_STEPS.confirm : shown;
   const back = () => {
     if (confirming) {
       approval.cancelConfirm();
       return;
     }
-    setDirection(STEP_DIRECTIONS.back);
     setPath((p) => (p.length > 1 ? p.slice(0, -1) : p));
   };
   // With one network and token to send, there is nothing to choose.
@@ -525,7 +512,7 @@ export function SendSheet({
     >
       {/* A closed sheet holds no step, so nothing in it polls or signs. */}
       {open ? (
-        <StepTransition step={step} direction={direction} label={title}>
+        <StepTransition step={step} label={title}>
           {body}
         </StepTransition>
       ) : null}

@@ -139,8 +139,10 @@ export function useOpenWhilePending(pending: boolean, open: (() => void) | undef
   }, [pending]);
 }
 
-// A code sent to the login email. In a form it sits under a hairline after the fields; first in a dialog of its own, it needs no rule.
-// titled is false where the dialog's own title already says Confirm it's you.
+// A code sent to the login email, as code screens do it: one line says where the code went, the boxes take it, and
+// one status line under them says what happens next. In a form it sits under a hairline after the fields, with Cancel
+// and Confirm. titled is false where a sheet or dialog title already says Confirm it's you: its Back or Close gives
+// up, so only Confirm is left, full width.
 function ConfirmStep({
   onDone,
   titled = true,
@@ -160,19 +162,22 @@ function ConfirmStep({
   const [sent, setSent] = useState(false);
   const [sendFailed, setSendFailed] = useState(false);
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState<"" | "code" | "send">("");
+  // Sending and checking don't wait on each other: a code from an earlier email still works while a new one goes.
+  const [sending, setSending] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [resendAt, setResendAt] = useState(0);
+  const now = useNow(resendAt);
   const titleId = useId();
   const box = useRef<HTMLFieldSetElement>(null);
 
-  // A resend keeps the code's line and its link, so the focus stays on it.
   const send = useCallback(async () => {
     if (!email) return;
-    setBusy("send");
-    setError("");
+    setSending(true);
     setSendFailed(false);
     try {
-      await sendCode().unwrap();
+      const { resendAfterSeconds } = await sendCode().unwrap();
       setSent(true);
+      setResendAt(Date.now() + resendAfterSeconds * 1000);
     } catch (e) {
       const code = ((e as FetchBaseQueryError).data as { error?: { code?: string } } | undefined)
         ?.error?.code;
@@ -181,13 +186,13 @@ function ConfirmStep({
       else if (code === "no_login_email") setNoEmail(true);
       else setSendFailed(true);
     } finally {
-      setBusy("");
+      setSending(false);
     }
   }, [email, sendCode]);
-  const sending = useRef(false);
+  const started = useRef(false);
   useEffect(() => {
-    if (sending.current) return;
-    sending.current = true;
+    if (started.current) return;
+    started.current = true;
     void send();
   }, [send]);
   // Focus after the step shows, so it lands in a dialog too: showModal moves focus after React's autoFocus ran.
@@ -215,25 +220,26 @@ function ConfirmStep({
 
   const tryCode = useCallback(
     (full: string) => {
-      setBusy("code");
+      setChecking(true);
       setError("");
       verifyCode(full)
         .unwrap()
         .then(() => onDone(true))
         .catch(() => setError(COPY.codeFailed))
-        .finally(() => setBusy(""));
+        .finally(() => setChecking(false));
     },
     [verifyCode, onDone],
   );
-  const retry = useFullCode(code, sent && busy === "", tryCode);
+  const retry = useFullCode(code, !checking, tryCode);
   const confirmCode = () => {
-    if (busy !== "") return;
+    if (checking) return;
     if (code.length === CODE_LENGTH) retry();
     else setError(COPY.codeFailed);
   };
 
   // The api found no login email: nothing can be sent, so only Cancel is left.
   const to = noEmail ? undefined : email;
+  const wait = Math.ceil((resendAt - now) / 1000);
 
   return (
     // Not a form: it sits inside the form it confirms, so Enter confirms here instead of sending that form again.
@@ -253,60 +259,90 @@ function ConfirmStep({
             {COPY.title}
           </p>
         ) : null}
-        <p className="text-sm break-words text-muted" aria-live="polite">
-          {!to
-            ? COPY.noEmail
-            : sent
-              ? COPY.sentTo(to)
-              : busy === "send"
-                ? COPY.sending
-                : COPY.notSent(to)}
-        </p>
+        <p className="text-sm break-words text-muted">{to ? COPY.enterCode(to) : COPY.noEmail}</p>
       </div>
       {to ? (
-        // Stays enabled while the code is checked: disabling it would drop keyboard focus.
-        <CodeInput
-          label={COPY.codeLabel}
-          length={CODE_LENGTH}
-          value={code}
-          onValueChange={(digits) => {
-            setCode(digits);
-            setError("");
-          }}
-          error={error || undefined}
-        />
-      ) : null}
-      {/* A new code is asked for under the boxes, as most code screens do. The line stays while it sends, so the focus
-          stays on its link. */}
-      {to && (sent || sendFailed) ? (
-        <p
-          role={sendFailed ? "alert" : undefined}
-          className={`text-sm ${sendFailed ? "text-danger" : "text-muted"}`}
-        >
-          {sendFailed ? COPY.sendFailed : COPY.notReceived}{" "}
-          <Button
-            type="button"
-            variant="link"
-            loading={busy === "send"}
-            disabled={busy === "code"}
-            onClick={() => void send()}
+        <div className="flex flex-col gap-2">
+          {/* Stays enabled while the code is checked: disabling it would drop keyboard focus. */}
+          <CodeInput
+            label={COPY.codeLabel}
+            length={CODE_LENGTH}
+            value={code}
+            onValueChange={(digits) => {
+              setCode(digits);
+              setError("");
+            }}
+            error={error || undefined}
+          />
+          {/* The one status line. It stays while a code goes out, so the focus stays on its link. */}
+          <p
+            aria-live="polite"
+            className={`min-h-5 text-sm ${sendFailed ? "text-danger" : "text-muted"}`}
           >
-            {sendFailed ? COPY.tryAgain : COPY.resend}
-          </Button>
-        </p>
+            {sending && !sent ? (
+              COPY.sending
+            ) : sendFailed ? (
+              <>
+                {COPY.sendFailed}{" "}
+                <Button type="button" variant="link" loading={sending} onClick={() => void send()}>
+                  {COPY.tryAgain}
+                </Button>
+              </>
+            ) : sent ? (
+              <>
+                {COPY.notReceived}{" "}
+                {wait > 0 ? (
+                  <span className="tabular-nums">{COPY.resendIn(wait)}</span>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="link"
+                    loading={sending}
+                    onClick={() => void send()}
+                  >
+                    {COPY.resend}
+                  </Button>
+                )}
+              </>
+            ) : null}
+          </p>
+        </div>
       ) : null}
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button type="button" variant={BUTTON_VARIANTS.secondary} onClick={cancel}>
-          {COPY.cancel}
-        </Button>
-        {to ? (
-          <Button type="button" loading={busy === "code"} onClick={confirmCode}>
-            {COPY.confirm}
+      {titled ? (
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button type="button" variant={BUTTON_VARIANTS.secondary} onClick={cancel}>
+            {COPY.cancel}
           </Button>
-        ) : null}
-      </div>
+          {to ? (
+            <Button type="button" loading={checking} onClick={confirmCode}>
+              {COPY.confirm}
+            </Button>
+          ) : null}
+        </div>
+      ) : to ? (
+        <Button type="button" className="w-full" loading={checking} onClick={confirmCode}>
+          {COPY.confirm}
+        </Button>
+      ) : null}
     </fieldset>
   );
+}
+
+/** The time, read again each second until until has passed: the resend countdown ticks without a timer of its own. */
+function useNow(until: number) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    // Read again at once, so a wait already over never shows a second left.
+    setNow(Date.now());
+    if (until <= Date.now()) return;
+    const timer = setInterval(() => {
+      const t = Date.now();
+      setNow(t);
+      if (t >= until) clearInterval(timer);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [until]);
+  return now;
 }
 
 // For a request no form claimed. The step mounts only once asked, so its focus lands after the dialog opens.

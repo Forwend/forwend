@@ -81,7 +81,7 @@ async function confirmIfAsked(page: Page) {
   await expect(code.or(progress)).toBeVisible({ timeout: 30_000 });
   if (await code.isVisible()) {
     await expect(sheet(page)).toHaveAccessibleName("Confirm it's you");
-    await expect(sheet(page)).toContainText("We sent a code", { timeout: 20_000 });
+    await expect(sheet(page)).toContainText("Didn't get it?", { timeout: 20_000 });
     await code.fill(await freshCode());
   }
 }
@@ -309,8 +309,8 @@ test("A stale session confirms it's you with Forwend's emailed code, and the sen
   const hold = /^Hold to transfer 0\.01 [A-Z]+$/;
   await holdSend(page, hold);
   await expect(sheet(page)).toHaveAccessibleName("Confirm it's you", { timeout: 20_000 });
-  await expect(sheet(page)).toContainText("We sent a code", { timeout: 20_000 });
-  await expect(sheet(page)).toContainText("Didn't get a code?");
+  // Sent: the status line under the code says so, and offers a new code after the api's wait.
+  await expect(sheet(page)).toContainText("Didn't get it? Resend in", { timeout: 20_000 });
   await shot(page, "../../docs/runs/f430-confirm-step-1440.png");
   expect(await blockingViolations(page)).toEqual([]);
   // Back gives the confirm up for the Summary, with no error; holding again asks again.

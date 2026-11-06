@@ -3,31 +3,21 @@
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { cx } from "../../lib/cx";
 
-export const STEP_DIRECTIONS = { next: "next", back: "back" } as const;
-export type StepDirection = (typeof STEP_DIRECTIONS)[keyof typeof STEP_DIRECTIONS];
-
 export interface StepTransitionProps {
   /** Changing it starts the new step's entrance. */
   step: string;
-  /** next enters from the right, back from the left, so the way through the steps has a place. */
-  direction: StepDirection;
   /** The step's name, read out when the step takes the focus. */
   label: string;
   children: ReactNode;
   className?: string;
 }
 
-/** The steps of a sheet or dialog: the new step slides in from its direction, and the box's height follows it, so
- * the frame grows and shrinks around each step instead of jumping. Reduced motion shows each step at once. When the
+/** The steps of a sheet or dialog: the new step fades in from a slight blur in place, and the box's height follows
+ * it, so the frame grows and shrinks around each step instead of jumping. Nothing slides: the content changes, not the
+ * place. The first step shows at once, as the sheet itself fades in. Reduced motion shows each step at once. When the
  * control that led to the step is gone, the step takes the focus and is read out by its name; a field that took the
  * focus, or a Back button that is still there, keeps it. */
-export function StepTransition({
-  step,
-  direction,
-  label,
-  children,
-  className,
-}: StepTransitionProps) {
+export function StepTransition({ step, label, children, className }: StepTransitionProps) {
   const inner = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState<number | null>(null);
   useLayoutEffect(() => {
@@ -37,6 +27,10 @@ export function StepTransition({
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+  // Only a step after the first enters: opening the sheet is its own fade.
+  const first = useRef(step);
+  const moved = useRef(false);
+  if (step !== first.current) moved.current = true;
   const shown = useRef(step);
   useEffect(() => {
     if (shown.current === step) return;
@@ -59,10 +53,11 @@ export function StepTransition({
       <div ref={inner} role="group" aria-label={label} tabIndex={-1} className="outline-none">
         <div
           key={step}
-          className={cx(
-            "motion-safe:animate-[fw-step-in_var(--fw-duration-base)_var(--fw-ease-out)]",
-            direction === STEP_DIRECTIONS.back ? "[--fw-step-x:-12px]" : "[--fw-step-x:12px]",
-          )}
+          className={
+            moved.current
+              ? "motion-safe:animate-[fw-step-in_var(--fw-duration-base)_var(--fw-ease-out)]"
+              : undefined
+          }
         >
           {children}
         </div>

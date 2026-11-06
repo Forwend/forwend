@@ -7,7 +7,8 @@ export const authApi = apiSlice.injectEndpoints({
       query: () => ({ url: "/v1/me/sign-out-everywhere", method: "POST" }),
     }),
     /** R-137: Forwend emails a 6-digit code for this session; Privy's own sign-in can't prove a confirm (D-49). */
-    sendFreshCode: build.mutation<void, void>({
+    /** resendAfterSeconds: how long until another code may be asked for. */
+    sendFreshCode: build.mutation<{ resendAfterSeconds: number }, void>({
       query: () => ({ url: "/v1/me/fresh-sign-in", method: "POST" }),
       // A 429 means a code went out a moment ago and is still the one to enter, not a wait.
       extraOptions: { answerFirst: true },

@@ -116,8 +116,9 @@
       "acceptance": [
         "Prepare no longer needs a fresh sign-in; a new approve call does, and answers with the send brought up to date, so the browser signs only one still prepared (R-211, D-49)",
         "The sheet goes Amount, Summary, then press and hold to send; Confirm it's you comes after that as its own step, with Back to Summary, and signing follows a confirmed code (R-213, R-137)",
-        "Going back to change the money or amount never shows an old confirm (R-213)",
-        "Confirm it's you reads \"We couldn't send a code to …\" and puts its send link under the code: \"Didn't get a code? Send a new one\", or \"We couldn't send a code. Try again\" after an error (R-137)"
+        "Going back to change the money or amount never shows an old confirm, and each new step fades in place with no slide (R-213)",
+        "Confirm it's you says once where the code goes and has one status line under the boxes: sending, a resend countdown, or Try again after a failed send; a full code is checked even after a failed send (R-137)",
+        "The wallet address step has one name, Paste and Clear inside the field, a one-line hint, and checks the EIP-55 checksum before Continue (R-213)"
       ],
       "dependsOn": [],
       "state": "active",

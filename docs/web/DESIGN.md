@@ -193,9 +193,12 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - An action with no form of its own (Turn off, Signing secret) confirms in its own small dialog, titled with it.
   - It sends a code to the login email at once and says where. The code boxes behave as on the sign-in page.
   - A full code confirms with no click; the same code typed again is tried again.
-  - Its text says where the code went, or that it couldn't be sent there.
-  - Under the boxes: "Didn't get a code? Send a new one", or "We couldn't send a code. Try again" as an alert.
-    - A send that failed is not a wrong code: the boxes stay unmarked.
+  - One line above the boxes says where the code goes: "Enter the 6-digit code sent to …".
+  - One status line under them says what is next, and nothing else repeats it:
+    - "Sending a code…", then "Didn't get it? Resend in 28s", then a Resend code link once the api's wait is over.
+    - "We couldn't send the code. Try again" when the send failed. That is not a wrong code: the boxes stay unmarked.
+  - A full code is checked whatever the send did: an earlier email's code may still be the one.
+  - Under a sheet or dialog title, its Back or Close gives up, so the step has only Confirm, full width.
   - A send's confirm is the sheet's own step, after Send is held (see Send).
   - Cancel and Confirm end the foot's one row.
   - Cancel gives the form its buttons back, with no error, and the focus returns to the form's action.
@@ -1054,9 +1057,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A modal dialog and the centered sheet fade in on `duration-base`, and close at once.
     - No scale or translate: either would misplace a date picker opened inside while it runs.
     - The ⌘K dialog is the exception: no motion, as above.
-  - Steps of a sheet (Send): the next step slides in 12px from the right with a fade, Back from the left, on
-    `duration-base` and `ease-out` (`StepTransition`). The sheet's height follows each step on the same timing.
-    Reduced motion shows each step at once.
+  - Steps of a sheet (Send): the new step fades in place from a 4px blur, on `duration-base` and `ease-out`
+    (`StepTransition`). Nothing slides: the content changes, not the place. The sheet's height follows on the same
+    timing.
+    - The first step shows at once: the sheet itself fades in. Reduced motion shows each step at once.
   - Disclosure: the chevron turns on `duration-fast`; the content appears without a height animation, since
     tables inside can be long.
   - Data: typing, filtering, polling and new rows never animate. A list waiting for a new filter dims its last rows

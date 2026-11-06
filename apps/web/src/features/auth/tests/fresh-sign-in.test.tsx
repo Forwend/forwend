@@ -6,7 +6,8 @@ import type { AskFreshSignIn } from "@/shared/api/fresh-sign-in";
 
 // Forwend's own code routes (R-137), as the api answers them.
 const api = vi.hoisted(() => ({
-  sendCode: vi.fn(async () => {}),
+  // As the api answers a code it sent: 0 lets the tests resend at once.
+  sendCode: vi.fn(async () => ({ resendAfterSeconds: 0 })),
   verifyCode: vi.fn(async (_: string) => {}),
 }));
 vi.mock("@privy-io/react-auth", () => ({
@@ -81,7 +82,8 @@ describe("fresh sign-in", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByLabelText("Name").matches(":disabled")).toBe(true);
     await waitFor(() => expect(api.sendCode).toHaveBeenCalledTimes(1));
-    await screen.findByText(/We sent a code to owner@example.com/);
+    await screen.findByText("Enter the 6-digit code sent to owner@example.com.");
+    await screen.findByText(/Didn't get it\?/);
     // As on the sign-in page: the sixth digit confirms, with no click.
     fireEvent.change(screen.getByLabelText("Code"), { target: { value: "123456" } });
     await waitFor(() => expect(api.verifyCode).toHaveBeenCalledWith("123456"));
@@ -93,9 +95,9 @@ describe("fresh sign-in", () => {
   it("says a wrong or expired code didn't work, keeps the step open, and tries the same code typed again", async () => {
     api.verifyCode.mockRejectedValueOnce(new Error("invalid code"));
     renderForm();
-    await screen.findByText(/We sent a code/);
+    await screen.findByText(/Didn't get it\?/);
     fireEvent.change(screen.getByLabelText("Code"), { target: { value: "000000" } });
-    expect((await screen.findByRole("alert")).textContent).toContain("Wrong or expired code");
+    expect((await screen.findByRole("alert")).textContent).toBe("That code is wrong or expired.");
     expect(answers).toEqual([]);
     fireEvent.change(screen.getByLabelText("Code"), { target: { value: "" } });
     fireEvent.change(screen.getByLabelText("Code"), { target: { value: "000000" } });
@@ -103,10 +105,16 @@ describe("fresh sign-in", () => {
     await waitFor(() => expect(answers).toEqual([true]));
   });
 
-  it("sends a new code on request", async () => {
+  it("counts down before it offers a new code", async () => {
+    api.sendCode.mockResolvedValueOnce({ resendAfterSeconds: 30 });
     renderForm();
-    await screen.findByText(/We sent a code/);
-    fireEvent.click(screen.getByRole("button", { name: "Send a new one" }));
+    await screen.findByText("Resend in 30s");
+    expect(screen.queryByRole("button", { name: "Resend code" })).toBeNull();
+  });
+
+  it("sends a new code on request once the wait is over", async () => {
+    renderForm();
+    fireEvent.click(await screen.findByRole("button", { name: "Resend code" }));
     await waitFor(() => expect(api.sendCode).toHaveBeenCalledTimes(2));
     fireEvent.change(screen.getByLabelText("Code"), { target: { value: "123456" } });
     await waitFor(() => expect(answers).toEqual([true]));
@@ -115,13 +123,12 @@ describe("fresh sign-in", () => {
   it("offers to send again when the code couldn't be sent", async () => {
     api.sendCode.mockRejectedValueOnce(new Error("rate limited"));
     renderForm();
-    await screen.findByText("We couldn't send a code to owner@example.com.");
-    // The way to send again sits under the code, as an alert, not as a wrong code.
-    expect(screen.getByRole("alert").textContent).toBe("We couldn't send a code. Try again");
+    // Said once, under the code, and not as a wrong code: the boxes stay unmarked.
+    await screen.findByText(/We couldn't send the code\./);
+    expect(screen.getAllByText(/couldn't send/)).toHaveLength(1);
     expect(screen.getByLabelText("Code").getAttribute("aria-invalid")).not.toBe("true");
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    await screen.findByText("We sent a code to owner@example.com.");
-    expect(screen.getByText("Didn't get a code?")).toBeTruthy();
+    await screen.findByText(/Didn't get it\?/);
     expect(api.sendCode).toHaveBeenCalledTimes(2);
     fireEvent.change(screen.getByLabelText("Code"), { target: { value: "123456" } });
     await waitFor(() => expect(answers).toEqual([true]));
@@ -131,14 +138,14 @@ describe("fresh sign-in", () => {
     const tooSoon = { status: 429, data: { error: { code: "code_sent_recently" } } };
     api.sendCode.mockRejectedValueOnce(tooSoon);
     renderForm();
-    await screen.findByText(/We sent a code to owner@example.com/);
+    await screen.findByText(/Didn't get it\?/);
     cleanup();
     api.sendCode.mockRejectedValueOnce({
       status: 429,
       data: { error: { code: "too_many_codes" } },
     });
     renderForm();
-    await screen.findByText(/We couldn't send a code to owner@example.com/);
+    await screen.findByText(/We couldn't send the code\./);
   });
 
   it("tells an account with no login email that no code can come", async () => {
@@ -152,9 +159,18 @@ describe("fresh sign-in", () => {
     expect(screen.queryByRole("button", { name: "Confirm" })).toBeNull();
   });
 
+  it("still checks a code after a send failed: an earlier email's code may be the one", async () => {
+    api.sendCode.mockRejectedValueOnce(new Error("resend down"));
+    renderForm();
+    await screen.findByText(/We couldn't send the code\./);
+    fireEvent.change(screen.getByLabelText("Code"), { target: { value: "123456" } });
+    await waitFor(() => expect(api.verifyCode).toHaveBeenCalledWith("123456"));
+    await waitFor(() => expect(answers).toEqual([true]));
+  });
+
   it("tells a retry still refused after the sign-in from a cancel", async () => {
     renderForm();
-    await screen.findByText(/We sent a code/);
+    await screen.findByText(/Didn't get it\?/);
     fireEvent.change(screen.getByLabelText("Code"), { target: { value: "123456" } });
     await waitFor(() => expect(cancelled).toEqual([false]));
   });
@@ -184,10 +200,11 @@ describe("fresh sign-in", () => {
     act(() => {
       void ask().then((ok) => (answered = ok));
     });
-    // The dialog names it, so the step itself carries no second name.
-    await screen.findByText(/We sent a code to owner@example.com/);
+    // The dialog names it, so the step itself carries no second name; its Close gives up, so the step has no Cancel.
+    await screen.findByText("Enter the 6-digit code sent to owner@example.com.");
     expect(screen.queryByRole("group", { name: "Confirm it's you", hidden: true })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Cancel", hidden: true }));
+    expect(screen.queryByRole("button", { name: "Cancel", hidden: true })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Close", hidden: true }));
     await waitFor(() => expect(answered).toBe(false));
   });
 });

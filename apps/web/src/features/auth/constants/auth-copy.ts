@@ -12,17 +12,17 @@ export const AUTH_COPY = {
 /** R-137: confirming it's you, in place, before a change that needs a sign-in from the last 15 minutes (D-63). */
 export const FRESH_SIGN_IN_COPY = {
   title: "Confirm it's you",
-  sentTo: (email: string) => `We sent a code to ${email}.`,
+  enterCode: (email: string) => `Enter the 6-digit code sent to ${email}.`,
   sending: "Sending a code…",
-  notSent: (email: string) => `We couldn't send a code to ${email}.`,
   codeLabel: "Code",
   confirm: "Confirm",
-  notReceived: "Didn't get a code?",
-  resend: "Send a new one",
-  sendFailed: "We couldn't send a code.",
+  notReceived: "Didn't get it?",
+  resend: "Resend code",
+  resendIn: (seconds: number) => `Resend in ${seconds}s`,
+  sendFailed: "We couldn't send the code.",
   tryAgain: "Try again",
   cancel: "Cancel",
-  codeFailed: "Wrong or expired code. Check it or send a new one.",
+  codeFailed: "That code is wrong or expired.",
   noEmail:
     "This change needs a sign-in with your email, and your account has none. Add an email to your account, then try again.",
   close: "Close",

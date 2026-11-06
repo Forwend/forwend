@@ -185,7 +185,7 @@
 @keyframes fw-step-in {
   from {
     opacity: 0;
-    transform: translateX(var(--fw-step-x, 12px));
+    filter: blur(4px);
   }
 }
 
