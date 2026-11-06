@@ -20,6 +20,7 @@ Diagrams (open with `npx mapgrain@0.2.5 studio <file>.json`): [workflow](../diag
 - The address commits to the terms, so nobody can take it over, and an unpaid invoice costs no gas (lazy deploy).
 - Payers send a plain token transfer, so exchange withdrawals work.
 - The same factory address on every chain lets the Safe recover money sent on the wrong chain.
-- No upgrades or admin sweep: a bug is fixed by a new factory, and pause stops settlement meanwhile.
+- No upgrades, and no admin sweep of receiver money: a bug is fixed by a new factory, and pause stops settlement
+  meanwhile.
 - The recipient comes from the profile wallet in our backend; the contract cannot tell right from wrong, so that
   check lives in [money-safety.md](../backend/money-safety.md).

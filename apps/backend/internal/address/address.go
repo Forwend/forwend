@@ -14,8 +14,8 @@ import (
 // The v1 factory, at one address on every chain (packages/contracts/deployments.json), and the receiver
 // implementation it created. A contract change means a new factory and new values here.
 var (
-	Factory        = mustHex20("ECe745390524e4d0B05D26F56AF7F1D38FDb7546")
-	Implementation = mustHex20("322F6c8dAf0a8bd7cF16eb62D0a04700eEA4b639")
+	Factory        = mustHex20("f93da73F1308A9B34aAB78bF6D84F0BAcc600dd2")
+	Implementation = mustHex20("26b7DB220aF2Da25B960E7e5bCcf80a708aE630f")
 )
 
 var ErrAmount = errors.New("amount must be between 0 and 2^256-1")

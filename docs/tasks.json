@@ -37,14 +37,16 @@
     {
       "id": "F417",
       "type": "feat",
-      "behavior": "Tokens sent to the invoice receiver factory can be returned by the refund authority",
+      "behavior": "Tokens sent to the invoice receiver factory or implementation can be returned by the refund authority",
       "acceptance": [
         "The factory gets a refund-authority recover(token, to, amount); nobody else can call it, and it can't touch a receiver's money.",
         "Contract tests and the fuzz and invariant suites cover it; docs/contracts/rules.md and operations.md describe it; it ships before the first mainnet deploy.",
-        "A receiver's refundable() reads 0 off its intended chain, as factory.status does and refund() allows (audit 2026-11-04); a test covers it."
+        "A receiver's refundable() reads 0 off its intended chain, as factory.status does and refund() allows (audit 2026-11-04); a test covers it.",
+        "Money sent to the receiver implementation returns through its recover, for the refund authority only; clones keep every current guard (security review 2026-11-06).",
+        "The backend receive-address constants, vectors and canary example match the new factory and implementation."
       ],
       "dependsOn": [],
-      "state": "blocked",
+      "state": "verified",
       "verification": [
         "harness",
         "docs-check",
@@ -60,8 +62,90 @@
         "2026-11-04 Audit 2026-11-04: InvoiceReceiver.refundable() returns the balance on a wrong chain where refund() reverts. Fix: return 0 when block.chainid != intendedChainId. Any receiver change moves the factory's CREATE2 address (vectors test fails), so it ships with this task's redeploy.",
         "2026-11-05 blocked: Deferred by owner (2026-11-05) to the first mainnet deploy: the refundable() fix moves the factory address, so it ships with that redeploy, with the factory recover."
       ],
-      "blockedReason": "Deferred by owner (2026-11-05) to the first mainnet deploy: the refundable() fix moves the factory address, so it ships with that redeploy, with the factory recover.",
-      "evidence": null
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-06T22:20:21Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 63.6,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.2,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 46.4,
+            "log": ""
+          },
+          {
+            "id": "contracts",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": ""
+          },
+          {
+            "id": "symbolic",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 7.7,
+            "log": ""
+          }
+        ],
+        "taskHash": "411102e09e2d4b9d",
+        "filesHash": "ba5d57f5a86f44ed",
+        "proof": {
+          "1": "contracts: FactoryRecoverTest: only the authority recovers, bad destinations and our own contracts as tokens revert, receiver money stays; symbolic check_factoryRecoverNeverTakesReceiverMoney",
+          "2": "contracts: testFuzz_factoryReturnsOnlyItsOwnBalance, testFuzz_strangersCannotMoveMoney and invariant_factoryReturnsOnlyItsOwnBalance; docs-check covers rules.md and operations.md",
+          "3": "contracts: test_refundableIsZeroOffIntendedChain, test_refundableOffIntendedChainNeedsNoToken and testFuzz_refundableIsZeroOffIntendedChain",
+          "4": "symbolic: check_implementationRecoverOnlyByAuthority; contracts test_implementationReturnsMoneySentToIt and test_cloneMadeOutsideFactoryReverts",
+          "5": "unit: backend internal/address and web features/pay receive-address tests pass against the regenerated vectors; e2e pay.spec fixtures use factory.predict of the new factory"
+        }
+      },
+      "branch": "feat/f417-tokens-sent-to-the-invoice-receiver-fact",
+      "baseCommit": "a8553c9a2f17383987b5b4aece523b4eb054eea4",
+      "failedVerifies": 0
     },
     {
       "id": "F418",
@@ -79,410 +163,6 @@
       ],
       "blockedReason": "Deferred by owner (2026-11-05): low priority for now.",
       "evidence": null
-    },
-    {
-      "id": "F429",
-      "type": "feat",
-      "behavior": "The user lists, adds and removes passkeys in Account and security",
-      "acceptance": [
-        "Account and security lists each passkey with where it was made, when it was added and when it was last used (R-217)",
-        "The user adds another passkey even when one exists, and removes one behind a confirm dialog; adding or removing first asks Confirm it's you (R-217, R-137, Q-13)",
-        "The last way to sign in can't be removed, and the page says why (R-217)",
-        "A live run adds a passkey with a virtual authenticator, removes it, and axe finds no serious or critical violations (R-217)"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "unit",
-        "web-unit",
-        "web-e2e",
-        "auth-live-e2e",
-        "live-e2e"
-      ],
-      "refs": [
-        "R-217",
-        "R-137",
-        "D-63",
-        "Q-13"
-      ],
-      "keep": [],
-      "review": true,
-      "notes": [
-        "2026-11-06 review fail by reviewer: Fail. Ran: go test ./internal/httpapi/tests/ ok (29s); vitest src/screens/settings src/features/auth 3 files 20 tests passed; harness check typecheck lint docs-check passed. Must fix: (1) Two other places add a passkey with no fresh check, against R-217: features/onboarding/components/setup-guide.tsx:81 (sidebar checklist, any time later) and first-run.tsx:299 (onboarding can resume days later). Route all three through one shared add that calls checkFreshSignIn first. (2) Docs overclaim the security. The GET check is a web-only step; it does not bind Privy. A stolen session can call Privy's link API directly, sign in with its own passkey and pass D-49, which is the exact Q-13 threat. PROJECT.md:454 marks Q-13 answered; routes.go:51-52 and openapi say a stale session confirms before it can. Say what it stops (a stale unlocked browser in our UI) and what it doesn't, and keep the residual risk open or name a backend fix. Should fix: architecture.md:39-40 still says passkeys are added only from the checklist and omits the GET check; focus goes to body after a remove (row and open dialog unmount, passkeys.tsx:361); two unnamed passkeys both get 'Remove Passkey'; DESIGN.md:190 and 192 sentences exceed 25 words; no test for a cancelled confirm showing no error, the dialog close cancelling the step, or google_oauth counting as a sign-in method. Rest is sound: guard order, 204/401 test, last-method rule (wallet excluded), error states, structure (screen file flat, logic in lib, tests in tests).",
-        "2026-11-06 review pass by reviewer: Pass on efa70b55. Ran: go test ./internal/httpapi/tests/ ok (32s); vitest src/screens/settings src/features/auth src/features/onboarding 6 files 40 tests passed; harness check typecheck lint docs-check passed. Both must-fixes are fixed. Settings, the overview checklist and onboarding all add a passkey through useAddPasskey, which checks first; a given-up confirm shows no error, and the test checks the order. The route comment, openapi, api.md, architecture.md and R-217 say the check binds Forwend's screens, not Privy's API, and Q-13 is open with the risk and an option. Should-fixes done with tests: focus after removal, Remove names told apart, the reason as aria-describedby, Google counted, a failed add, the dialog clearing its error. Nit to fix before merge: api.md:1056 'A value that isn't 6 digits uses no try' now sits under the GET bullet; it belongs under verify (line 1051). Not tested: a cancelled confirm through the provider, and Safari's passkey prompt after the extra call."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-11-06T18:10:04Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.2,
-            "log": ""
-          },
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 61.2,
-            "log": ""
-          },
-          {
-            "id": "backend-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 28.0,
-            "log": ""
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "live-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 512.1,
-            "log": ""
-          },
-          {
-            "id": "auth-live-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 28.8,
-            "log": ""
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 46.3,
-            "log": ""
-          }
-        ],
-        "taskHash": "94060f3852790aa0",
-        "filesHash": "6dc190bbec9ce27c",
-        "proof": {
-          "1": "web-unit: passkeys-list.test.tsx lists a passkey with Made on Safari, macOS · Added Oct 27 · Last used Nov 5; passkeys.test.ts lists them newest first with the password manager's name; live-e2e: passkeys.spec shows the new passkey with Added and Last used",
-          "2": "web-unit: passkeys-list.test.tsx removes only after the dialog and after the api check, leaves it when the check fails, clears the dialog's error on close, says so when adding fails, and adds another after the check; use-add-passkey.test.ts asks the api before Privy links and links nothing when refused, for Settings, the checklist and onboarding alike; unit: TestAnAccountChangeChecksTheSessionIsFresh; live-e2e: passkeys.spec adds one, Keep it leaves it, Remove removes it",
-          "3": "web-unit: passkeys-list.test.tsx turns Remove off for the only way to sign in, with the reason as its description, and keeps it on beside Google; passkeys.test.ts: a wallet is not a way to sign in",
-          "4": "live-e2e: passkeys.spec adds a passkey with Chrome's virtual authenticator, removes it, and axe finds no serious or critical violations"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Pass on efa70b55. Ran: go test ./internal/httpapi/tests/ ok (32s); vitest src/screens/settings src/features/auth src/features/onboarding 6 files 40 tests passed; harness check typecheck lint docs-check passed. Both must-fixes are fixed. Settings, the overview checklist and onboarding all add a passkey through useAddPasskey, which checks first; a given-up confirm shows no error, and the test checks the order. The route comment, openapi, api.md, architecture.md and R-217 say the check binds Forwend's screens, not Privy's API, and Q-13 is open with the risk and an option. Should-fixes done with tests: focus after removal, Remove names told apart, the reason as aria-describedby, Google counted, a failed add, the dialog clearing its error. Nit to fix before merge: api.md:1056 'A value that isn't 6 digits uses no try' now sits under the GET bullet; it belongs under verify (line 1051). Not tested: a cancelled confirm through the provider, and Safari's passkey prompt after the extra call.",
-          "at": "2026-11-06T18:23:37Z",
-          "filesHash": "6dc190bbec9ce27c"
-        },
-        "commit": "e22ae9f5",
-        "doneAt": "2026-11-06T18:26:16Z"
-      },
-      "branch": "feat/f429-the-user-lists-adds-and-removes-passkeys",
-      "baseCommit": "a4eb09126fae92f8b80d6e011dd14acb7a79a256",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f429-the-user-lists-adds-and-removes-passkeys",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F430",
-      "type": "fix",
-      "behavior": "A send asks Confirm it's you only after the owner holds Send on its Summary, in a step of its own",
-      "acceptance": [
-        "Prepare no longer needs a fresh sign-in; a new approve call does, and answers with the send brought up to date, so the browser signs only one still prepared (R-211, D-49)",
-        "The sheet goes Amount, Summary, then press and hold to send; Confirm it's you comes after that as its own step, with Back to Summary, and signing follows a confirmed code (R-213, R-137)",
-        "Going back to change the money or amount never shows an old confirm, and each new step fades in place with no slide (R-213)",
-        "Confirm it's you says once where the code goes and has one status line under the boxes: sending, a resend countdown, or Try again after a failed send; a full code is checked even after a failed send, and a resend empties the boxes (R-137)",
-        "The wallet address step has one name, Paste and Clear inside the field, a one-line hint, and checks the EIP-55 checksum before Continue (R-213)",
-        "A merchant's sidebar heads its paid-with pages Get paid, as a freelancer's does, and Payments has its own icon apart from Transactions (R-134)",
-        "Receive walks token and network as steps that fade in place with Back, titles the token once chosen, and shows Send's chip over the QR (R-65)",
-        "The 404 page uses sign-in's layout: the bar, the landscape strip and one centered column (R-34)"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "unit",
-        "web-unit",
-        "ui-unit",
-        "web-e2e",
-        "live-e2e"
-      ],
-      "refs": [
-        "R-211",
-        "R-213",
-        "R-137",
-        "D-49",
-        "R-134",
-        "R-65",
-        "R-34"
-      ],
-      "keep": [],
-      "review": true,
-      "notes": [
-        "2026-11-06 review fail by reviewer: Fail on one money-safety gap. After the hold, useSendApproval sets working but calls onSigning(true) only after approve answers (use-send-approval.ts:43-60). While approve is in flight (a Privy call on a fresh session, or the repeat after a confirmed code) the sheet is not locked and Back shows (send-sheet.tsx:169,508,510). Closing sends cancel, but if approve read the send first, Privy still signs it with the sheet closed, and the server may never hold the hash; Back to change the amount can likewise sign the old send. The old Review locked from the click. Fix: lock close and hide Back while approval.working and no confirm step shows (or drop the sign when the attempt was abandoned), with a unit test. Also fix: base.css:183 comment still describes --fw-step-x and slides; R-213 still says the button reads Send 5 USDC and R-214 says pressed, now Hold to send. Should-fix: HoldButton has no path for screen readers in browse mode, which click instead of key or pointer down. Rest looks right: approve gates signing on status prepared, base units via BigInt, one send per hold, FreshSignIn on approve only, openapi and api.md match, EIP-55 check, StepTransition fade with motion-safe, hold fill marked essential. Ran: go test ./internal/httpapi/tests/ ./internal/send/ ok; web vitest 271 passed; ui-web vitest 23 passed; harness check typecheck lint docs-check passed.",
-        "2026-11-06 review pass by reviewer: Pass. Re-reviewed d1a84dcf, 8f38e404 and 9464e8f4. Lock: useSendApproval.locked is working with no confirm step shown; the sheet uses signing or locked for close, Back and Sheet locked, so a send given up can't be signed when approve answers late; Back or close on the confirm step cancels it, and start returns without signing. A unit test covers locked while approve is pending. HoldButton acts on a click with detail 0 only; keyboard Space and Enter clicks stay suppressed by preventDefault on keydown and keyup, and a mouse click does nothing. base.css comment, R-213, R-214 and R-137 now match the code. The hourly cap counts only codes never confirmed, which keeps guessing and inbox flooding capped; a new test covers it. Retry-After reaches the web, as the api is same-origin via the Next rewrite. too_many_codes and code_sent_recently count down, and the code boxes stay usable. Ran: go test ./internal/httpapi/tests/ ./internal/send/ ok; web vitest 274 passed; ui-web vitest 24 passed; check typecheck lint docs-check passed.",
-        "2026-11-06 review pass by reviewer: Pass. Re-reviewed 6653610f. with-env.sh now keeps RESEND_API_KEY for the api, which sends Confirm it's you codes, and still unsets EXECUTOR_PRIVATE_KEY and COINGECKO_API_KEY for it; the signer and webhooks still never get the email key. api.md and architecture.md say the worker and the api hold it. tests/test_process_secrets.py runs stub programs through the script and prints secret names only; the api case would fail on the old unset line. Note, not blocking: the script cds to apps/backend and loads the real .env, so the test reads local values (names only are printed), and a .env with an empty key would fail it. Ran: python3 -m unittest tests.test_process_secrets (2 ok); harness check docs-check harness passed."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-11-06T17:26:16Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 5.2,
-            "log": ""
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.4,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.2,
-            "log": ""
-          },
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 62.9,
-            "log": ""
-          },
-          {
-            "id": "ui-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "backend-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 28.1,
-            "log": ""
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "live-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 517.1,
-            "log": ""
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          }
-        ],
-        "taskHash": "50bd86d1b8ad74ee",
-        "filesHash": "49b3f01d1a03bbe5",
-        "proof": {
-          "1": "unit: TestOnlyTheOwnerPreparesAndOnlyAFreshSignInApprovesASend: a refreshed token prepares (201) but gets reauth_required on approve, a fresh sign-in approves (200, prepared), another user 403; TestProfileRoutesAreAllListed covers approve. web-unit: send-approval.test.tsx signs only a send still prepared, one hold starts one send, and the sheet stays locked while approve is on its way",
-          "2": "live-e2e: send.spec's stale-session test, in a session of its own made stale by a sign-in elsewhere, shows Summary with no confirm, holds Send, gets Confirm it's you as the sheet's step, goes Back to Summary with no alert, holds again, enters the emailed code and reaches Sending; ui-unit: hold-button.test.tsx acts only after the whole hold, from pointer or Space, on a screen reader's activate, never on a mouse click, Enter alone or while disabled",
-          "3": "live-e2e: Back from the confirm step returns to Summary with no alert; send.spec's reduced-motion test shows each step at once; StepTransition fades without translate, as DESIGN.md says",
-          "4": "web-unit: fresh-sign-in.test.tsx: one line says where the code goes, Resend in 30s counts down, a resend empties the boxes, a failed send says so once and leaves the boxes unmarked, too_many_codes counts down Retry-After then offers a code, a full code is checked after a failed send (failed before the fix), and a sheet or dialog step has no Cancel; unit: TestConfirmedCodesDontCountTowardTheHoursCap (failed before the fix) and TestCodesAreLimitedPerUser; harness: test_process_secrets gives the api the email key and never the executor key (failed before the fix); live-e2e: keys.spec confirms with the emailed code",
-          "5": "ui-unit: text-field.test.tsx keeps a hidden label as the name and the in-field control out of it; web-unit: send.test.ts checks EIP-55 vectors; live-e2e: send.spec shows Paste in the field, Continue off, a wrong checksum flagged at once, and Clear",
-          "6": "web-unit: app-nav.test.ts finds no group named like a page in it and no two pages with one icon; it failed with the merchant group named Payments and the shared icon",
-          "7": "live-e2e: balances.spec opens Receive, picks USDC then a network, sees the address, steps Back to the network and then the token, titled Receive USDC and then Receive, and picks again",
-          "8": "web-e2e: link-pay.spec shows the 404 page for an unknown link with its heading This path ends here.; the page uses LandscapePage as sign-in does, with a large 404"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Pass. Re-reviewed 6653610f. with-env.sh now keeps RESEND_API_KEY for the api, which sends Confirm it's you codes, and still unsets EXECUTOR_PRIVATE_KEY and COINGECKO_API_KEY for it; the signer and webhooks still never get the email key. api.md and architecture.md say the worker and the api hold it. tests/test_process_secrets.py runs stub programs through the script and prints secret names only; the api case would fail on the old unset line. Note, not blocking: the script cds to apps/backend and loads the real .env, so the test reads local values (names only are printed), and a .env with an empty key would fail it. Ran: python3 -m unittest tests.test_process_secrets (2 ok); harness check docs-check harness passed.",
-          "at": "2026-11-06T17:37:21Z",
-          "filesHash": "49b3f01d1a03bbe5"
-        },
-        "commit": "ac547119",
-        "doneAt": "2026-11-06T17:38:34Z"
-      },
-      "branch": "fix/f430-a-send-asks-confirm-it-s-you-only-after",
-      "baseCommit": "69bbc3a24582032f8a7bd1ec92071f94b0f3dec0",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f430-a-send-asks-confirm-it-s-you-only-after",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F431",
-      "type": "feat",
-      "behavior": "The owner exports a profile wallet's private key from that profile's settings, through Privy's secure page",
-      "acceptance": [
-        "Each profile's settings have a Wallet section with its address and Export private key, for the owner only, never a team member (R-218, D-61)",
-        "Export shows the warning, asks Confirm it's you for a stale session, then opens Privy's own export window for that profile's wallet; Forwend never sees the key (R-218, D-46)",
-        "A live run shows Privy's export window opens for a server-made profile wallet, names it, and loads its own Copy key button (R-218)"
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "web-unit",
-        "web-e2e",
-        "live-e2e"
-      ],
-      "refs": [
-        "R-218",
-        "R-217",
-        "D-46",
-        "D-61"
-      ],
-      "keep": [],
-      "review": true,
-      "notes": [
-        "2026-11-06 review fail by reviewer: Fail, 3 fixes. Security core is sound: /app/wallet needs money.move (owner only, D-61); app-shell shows a spinner and redirects a member who opens it directly; Privy's exportWallet also refuses a wallet not linked to the signed-in user; the key stays in Privy's frame. Must fix: (1) app-nav.ts:113 breadcrumb has no Wallet case, so /app/wallet shows Overview as the current page; app-nav.ts:22 SETTINGS_PATHS lacks APP_ROUTES.wallet, so the phone Settings row is not marked current. Add both with app-nav tests. (2) wallet-screen.tsx:34-38 closes the warning before exportWallet; Privy rejects at once on its own errors (no access token, wallet not ready, not an embedded wallet), so the error is set inside a closed dialog: the user sees nothing, and the stale error shows on the next open. Show it where the user sees it, and test an exportWallet rejection. (3) PROJECT.md:306 R-218 implies Confirm it's you guards the export, but Privy's export runs in the browser with shouldForceMFA only for Privy MFA, so a stolen session can call it directly and take the key. Say so, as R-217 does (Q-13), and name key export in Q-13:455. Ran: vitest src/screens/wallet src/screens/settings src/screens/app-shell -> 5 files, 23 tests passed; harness check typecheck lint docs-check -> all passed.",
-        "2026-11-06 review pass by reviewer: Pass. 659dbe7a fixes all three findings. (1) breadcrumb names /app/wallet Wallet and SETTINGS_PATHS lists it; app-nav.test covers both. (2) A failed check still shows in the open dialog; after it closes, a rejected exportWallet shows a danger toast (ToastProvider wraps the app shell); a unit test rejects exportWallet and finds the toast with the dialog closed. (3) R-218, Q-13, architecture.md and the page comment now say the check binds Forwend's page only, and Q-13 names key export as the worst case. Owner-only page and nav, Privy's own wallet-ownership check and the key staying in Privy's frame are unchanged. Note, not blocking: Privy rejects with 'User exited before wallet could be connected' if the owner closes its window while it connects, so that cancel shows the failed toast. Ran: vitest src/screens/wallet src/screens/settings src/screens/app-shell -> 5 files, 25 tests passed; harness check typecheck lint docs-check -> all passed.",
-        "2026-11-06 review pass by reviewer: Pass. 9d06b55c is correct. wallet-screen.tsx:52-53 closes the warning and clears opening before awaiting exportWallet, so a pending Privy promise can't leave Show the key busy. Privy 3.51.0 confirms the premise: Escape calls onUserCloseViaDialogOrKeybindRef, which resolves the export, but modal-context nulls that ref on each screen change, so the promise can stay pending. Each Show runs fresh.run (Confirm it's you) again. A rejected exportWallet still shows the danger toast (unit test 3). A second open just replaces Privy's modal data; the old promise is dropped, no double window. The new unit test fails before the fix: Button sets aria-busy while loading and ignores clicks, and the old finally never ran. wallet.spec.ts closes Privy with Escape, checks the button is not busy, and reopens Privy's window. No doc describes the loading state, so no doc change is needed. The comment gives a non-obvious reason. No AI attribution in branch commits. Note, not blocking: wallet-screen.test.tsx:83 could also assert calls.check ran twice. Ran: vitest src/screens/wallet -> 5 passed; pnpm lint, pnpm typecheck, check-docs -> passed.",
-        "2026-11-06 review fail by reviewer: Fail, 1 fix (plus 1 minor). Permission, flow and docs are sound: /app/wallet needs money.move in MENU_PAGES, so settings hides it and app-shell redirects a member; the check runs before exportWallet; docs match the code; unit tests (26), lint and typecheck pass. (1) apps/web/src/screens/wallet/wallet-screen.tsx:420-424: closing Privy's window while it still shows Connecting to your wallet shows a red toast 'The export page didn't open. Try again.' Privy 3.51.0 EmbeddedWalletConnectingScreen wires its close button and Escape to onFailure('User exited before wallet could be connected'), which rejects exportWallet. The connecting step lasts at least 1 s. A user cancel must not read as a failure. Treat that rejection as a cancel (no toast) and add a unit test where exportWallet rejects with it. Closing on the key screen calls onSuccess, so it is fine. (2, minor) apps/web/e2e/privy/wallet.spec.ts:43 (and the copied pattern in passkeys.spec.ts:10): locator.isVisible ignores its timeout in Playwright 1.64 and returns at once. The Confirm it's you step appears only after the check's 401 round trip, so with a stale shared session (over 15 min, D-49) the branch is skipped and the test fails at the dialog-hidden expect. Use confirm.waitFor({ timeout }) with a catch instead. Commits carry no AI attribution.",
-        "2026-11-06 review pass by reviewer: Pass. 5cf922e7 fixes both findings. (1) Privy 3.51.0 EmbeddedWalletConnectingScreen rejects on close with U('User exited before wallet could be connected'), where U wraps a string in a plain Error, and use-export-wallet passes that reject straight through as onFailure. wallet-screen.tsx:450 skips the toast only for that message, and wallet-screen.test.tsx 'says nothing when the owner closes...' fails without it. Closing on the key screen calls onSuccess, so it shows no toast either. Privy is pinned at 3.51.0 exactly, so the string match holds. (2) wallet.spec.ts and passkeys.spec.ts now use waitFor({timeout}).then(true,false). No other e2e file passes a timeout to isVisible. The other bare isVisible() calls are immediate checks by design; send.spec.ts waits on code.or(progress) first. Permission holds: MENU_PAGES puts /app/wallet behind money.move, which no role has (access.go). settingsSections hides it, and app-shell renders a spinner and redirects when not allowed. Checks: vitest wallet/settings/app-shell 27/27, pnpm lint, pnpm typecheck, check-docs all pass. Minor, not blocking: the wallet screen's copy lives in SETTINGS_COPY (screens/settings/constants/settings-copy.ts:47-63), while other settings screens own their copy (D-11)."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-11-06T21:02:50Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "live-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 518.8,
-            "log": ""
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 46.0,
-            "log": ""
-          }
-        ],
-        "taskHash": "224421d5ff15d10c",
-        "filesHash": "180cf45fe8489224",
-        "proof": {
-          "1": "web-unit: settings-sections.test.ts shows Wallet to the owner, not an Admin; wallet-screen.test.tsx shows the address",
-          "2": "web-unit: wallet-screen.test.tsx opens Privy's export only after the warning and the check; Show the key is not stuck when Privy's window stays open; closing Privy while it connects shows no error",
-          "3": "live-e2e: wallet.spec.ts confirms it's you when asked, sees Privy's window name the wallet and load Copy key, then closes it and opens it again"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Pass. 5cf922e7 fixes both findings. (1) Privy 3.51.0 EmbeddedWalletConnectingScreen rejects on close with U('User exited before wallet could be connected'), where U wraps a string in a plain Error, and use-export-wallet passes that reject straight through as onFailure. wallet-screen.tsx:450 skips the toast only for that message, and wallet-screen.test.tsx 'says nothing when the owner closes...' fails without it. Closing on the key screen calls onSuccess, so it shows no toast either. Privy is pinned at 3.51.0 exactly, so the string match holds. (2) wallet.spec.ts and passkeys.spec.ts now use waitFor({timeout}).then(true,false). No other e2e file passes a timeout to isVisible. The other bare isVisible() calls are immediate checks by design; send.spec.ts waits on code.or(progress) first. Permission holds: MENU_PAGES puts /app/wallet behind money.move, which no role has (access.go). settingsSections hides it, and app-shell renders a spinner and redirects when not allowed. Checks: vitest wallet/settings/app-shell 27/27, pnpm lint, pnpm typecheck, check-docs all pass. Minor, not blocking: the wallet screen's copy lives in SETTINGS_COPY (screens/settings/constants/settings-copy.ts:47-63), while other settings screens own their copy (D-11).",
-          "at": "2026-11-06T21:16:02Z",
-          "filesHash": "180cf45fe8489224"
-        },
-        "commit": "67ae10f6",
-        "doneAt": "2026-11-06T21:16:24Z"
-      },
-      "branch": "feat/f431-the-owner-exports-a-profile-wallet-s-pri",
-      "baseCommit": "1a129f035f9de357535ad22ab2fa0aeb20c9848b",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f431-the-owner-exports-a-profile-wallet-s-pri",
-        "base": "main"
-      }
     }
   ],
   "lastWrapup": {

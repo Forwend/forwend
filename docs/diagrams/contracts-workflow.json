@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "forwend-contracts-workflow",
-  "revision": 8,
+  "revision": 9,
   "kind": "workflow",
   "title": "Invoice receiver contracts v1: full workflow",
   "theme": "dark",
@@ -361,10 +361,10 @@
     {
       "id": "recover",
       "kind": "job",
-      "label": "Receiver.recover(token, to, amount)",
+      "label": "recover(token, to, amount)",
       "groupId": "chain",
       "ports": [],
-      "description": "Any non-invoice token, the native coin, or a wrong chain. On the intended chain it never lowers the invoice-token balance (Arc: native coin = USDC). If not deployed on that chain, the queued Safe transaction calls Factory.deploy first (MultiSendCallOnly)"
+      "description": "Any non-invoice token, the native coin, or a wrong chain. On the intended chain it never lowers the invoice-token balance (Arc: native coin = USDC). If not deployed on that chain, the queued Safe transaction calls Factory.deploy first (MultiSendCallOnly). On a receiver, the factory or the implementation: money sent to the factory or the implementation leaves only from their own balance, never a receiver's"
     },
     {
       "id": "lost",

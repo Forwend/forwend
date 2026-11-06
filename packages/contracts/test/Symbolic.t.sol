@@ -78,4 +78,43 @@ contract SymbolicTest is Test {
         assert(!ok);
         assert(token.balanceOf(address(receiver)) == deposit);
     }
+
+    /// Only the authority takes money out of the implementation, which is never an invoice's receiver.
+    function check_implementationRecoverOnlyByAuthority(address caller, address to, uint256 stray, uint256 amount)
+        public
+    {
+        vm.assume(stray <= type(uint128).max);
+        vm.assume(to != address(receiver));
+        address impl = factory.implementation();
+        token.mint(impl, stray);
+        vm.prank(caller);
+        (bool ok,) = impl.call(abi.encodeCall(InvoiceReceiver.recover, (address(token), to, amount)));
+        if (ok) assert(caller == authority && amount <= stray);
+        else assert(token.balanceOf(impl) == stray);
+        assert(token.balanceOf(address(receiver)) == 0);
+    }
+
+    /// The factory's recover() moves only the factory's own balance, and only for the authority.
+    function check_factoryRecoverNeverTakesReceiverMoney(
+        address caller,
+        address to,
+        uint256 deposit,
+        uint256 stray,
+        uint256 amount
+    ) public {
+        vm.assume(deposit <= type(uint128).max && stray <= type(uint128).max);
+        vm.assume(to != address(receiver));
+        token.mint(address(receiver), deposit);
+        token.mint(address(factory), stray);
+        vm.prank(caller);
+        (bool ok,) = address(factory).call(abi.encodeCall(InvoiceReceiverFactory.recover, (address(token), to, amount)));
+        assert(token.balanceOf(address(receiver)) == deposit);
+        if (ok) {
+            assert(caller == authority);
+            assert(amount <= stray);
+            if (to != address(factory)) assert(token.balanceOf(to) == amount);
+        } else {
+            assert(token.balanceOf(address(factory)) == stray);
+        }
+    }
 }

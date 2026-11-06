@@ -124,9 +124,26 @@ contract FactoryTest is Base {
         vm.prank(authority);
         vm.expectRevert(InvoiceReceiver.NotClone.selector);
         impl.refund(payer, 1);
-        vm.prank(authority);
-        vm.expectRevert(InvoiceReceiver.NotClone.selector);
-        impl.recover(address(0), payer, 0);
+        vm.prank(attacker);
+        vm.expectRevert(InvoiceReceiver.Unauthorized.selector);
+        impl.recover(address(0), attacker, 0);
+    }
+
+    /// The implementation has one address on every chain and is never an invoice's receiver: money sent to it returns.
+    function test_implementationReturnsMoneySentToIt() public {
+        InvoiceReceiver impl = InvoiceReceiver(factory.implementation());
+        token.mint(address(impl), 7e6);
+        vm.deal(address(impl), 1 ether);
+        vm.startPrank(authority);
+        vm.expectEmit(address(impl));
+        emit InvoiceReceiver.Recovered(bytes32(0), address(token), payer, 7e6);
+        impl.recover(address(token), payer, 7e6);
+        impl.recover(address(0), payer, 1 ether);
+        vm.expectRevert(InvoiceReceiver.InvalidDestination.selector);
+        impl.recover(address(0), address(impl), 0);
+        vm.stopPrank();
+        assertEq(token.balanceOf(payer), 7e6);
+        assertEq(payer.balance, 1 ether);
     }
 
     function test_cloneMadeOutsideFactoryReverts() public {
@@ -400,6 +417,121 @@ contract RefundTest is Base {
         vm.prank(authority);
         vm.expectRevert(InvoiceReceiver.WrongChain.selector);
         r.refund(payer, 1e6);
+    }
+
+    function test_refundableIsZeroOffIntendedChain() public {
+        InvoiceTerms memory t = terms();
+        pay(t, AMOUNT + 1e6);
+        InvoiceReceiver r = deployed(t);
+        vm.warp(DEADLINE + 1);
+        assertEq(r.refundable(), AMOUNT + 1e6);
+        vm.chainId(block.chainid + 1);
+        assertEq(r.refundable(), 0);
+        assertEq(r.status().refundable, 0);
+    }
+
+    /// Off its chain the invoice token may not exist: refundable() still answers instead of reverting.
+    function test_refundableOffIntendedChainNeedsNoToken() public {
+        InvoiceTerms memory t = termsFor(makeAddr("token on another chain"));
+        t.intendedChainId = block.chainid + 1;
+        InvoiceReceiver r = deployed(t);
+        assertEq(r.refundable(), 0);
+    }
+}
+
+contract FactoryRecoverTest is Base {
+    function test_returnsTokenSentToTheFactory() public {
+        token.mint(address(factory), 7e6);
+        vm.expectEmit(address(factory));
+        emit InvoiceReceiverFactory.Recovered(address(token), payer, 7e6);
+        vm.prank(authority);
+        factory.recover(address(token), payer, 7e6);
+        assertEq(token.balanceOf(payer), 7e6);
+        assertEq(token.balanceOf(address(factory)), 0);
+    }
+
+    function test_returnsNativeCoinHeldByTheFactory() public {
+        vm.deal(address(factory), 1 ether);
+        vm.prank(authority);
+        factory.recover(address(0), payer, 1 ether);
+        assertEq(payer.balance, 1 ether);
+    }
+
+    function test_onlyAuthorityRecoversFromTheFactory() public {
+        token.mint(address(factory), 7e6);
+        address[3] memory others = [executor, attacker, recipient];
+        for (uint256 i; i < others.length; i++) {
+            vm.prank(others[i]);
+            vm.expectRevert(InvoiceReceiverFactory.Unauthorized.selector);
+            factory.recover(address(token), others[i], 7e6);
+        }
+        assertEq(token.balanceOf(address(factory)), 7e6);
+    }
+
+    function test_factoryRecoverRejectsBadDestination() public {
+        token.mint(address(factory), 7e6);
+        vm.startPrank(authority);
+        vm.expectRevert(InvoiceReceiverFactory.InvalidDestination.selector);
+        factory.recover(address(token), address(0), 7e6);
+        vm.expectRevert(InvoiceReceiverFactory.InvalidDestination.selector);
+        factory.recover(address(token), address(factory), 7e6);
+        vm.stopPrank();
+    }
+
+    function test_factoryRecoverWorksWhilePaused() public {
+        token.mint(address(factory), 7e6);
+        vm.startPrank(authority);
+        factory.setPaused(true);
+        factory.recover(address(token), payer, 7e6);
+        vm.stopPrank();
+        assertEq(token.balanceOf(payer), 7e6);
+    }
+
+    /// The factory moves only its own balance: a receiver's money, deployed or not, stays where it is.
+    function test_factoryRecoverNeverTakesReceiverMoney() public {
+        InvoiceTerms memory t = terms();
+        address waiting = pay(t, AMOUNT);
+        InvoiceTerms memory other = terms();
+        other.invoiceId = keccak256("invoice-2");
+        InvoiceReceiver r = InvoiceReceiver(pay(other, AMOUNT));
+        deployed(other);
+        token.mint(address(factory), 1e6);
+
+        vm.startPrank(authority);
+        vm.expectRevert();
+        factory.recover(address(token), attacker, 1e6 + 1);
+        factory.recover(address(token), payer, 1e6);
+        vm.stopPrank();
+        assertEq(token.balanceOf(waiting), AMOUNT);
+        assertEq(token.balanceOf(address(r)), AMOUNT);
+        assertEq(token.balanceOf(attacker), 0);
+    }
+
+    /// Our own contracts and code-less addresses are not tokens: each call reverts and every balance stays.
+    function test_factoryRecoverRejectsOurContractsAsTokens() public {
+        InvoiceTerms memory t = terms();
+        address waiting = pay(t, AMOUNT);
+        InvoiceTerms memory other = terms();
+        other.invoiceId = keccak256("invoice-2");
+        address live = pay(other, AMOUNT);
+        deployed(other);
+        address[5] memory notTokens = [waiting, live, factory.implementation(), address(factory), makeAddr("no code")];
+        vm.startPrank(authority);
+        for (uint256 i; i < notTokens.length; i++) {
+            vm.expectRevert();
+            factory.recover(notTokens[i], attacker, 1);
+        }
+        vm.stopPrank();
+        assertEq(token.balanceOf(waiting), AMOUNT);
+        assertEq(token.balanceOf(live), AMOUNT);
+    }
+
+    function test_failedNativeReturnReverts() public {
+        vm.deal(address(factory), 1 ether);
+        vm.prank(authority);
+        vm.expectRevert(InvoiceReceiverFactory.NativeTransferFailed.selector);
+        factory.recover(address(0), address(token), 1 ether);
+        assertEq(address(factory).balance, 1 ether);
     }
 }
 

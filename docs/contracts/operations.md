@@ -13,8 +13,8 @@ The refund-authority Safe and deploys. Design: [architecture.md](architecture.md
 ## Delay module (24–48 h)
 
 - Every queued transaction alerts all owners, so an honest one can cancel it.
-- Goes through the delay: receiver `refund`, `recover` and late `settle`; Safe admin changes (owners, threshold,
-  guard, modules, fallback handler); the Delay module's own settings.
+- Goes through the delay: receiver `refund`, `recover` and late `settle`; factory and implementation `recover`; Safe
+  admin changes (owners, threshold, guard, modules, fallback handler); the Delay module's own settings.
 - Set `txExpiration`. Cancel every unwanted queued transaction: after the cooldown anyone can execute it.
 - The delay stops tricked or blind signing. It cannot stop owners who hold the threshold themselves.
 
@@ -29,10 +29,12 @@ The refund-authority Safe and deploys. Design: [architecture.md](architecture.md
 ## Before signing
 
 - Check the transaction hash with an independent tool.
-- For a refund: the target is `factory.predict(terms)`, and `receiverOf(invoiceId)` once it is deployed. The terms
-  match the claim, and `refundable` covers the amount.
+- For a refund: the target is `factory.predict(terms)`. `receiverOf(invoiceId)` is only a lookup aid: the first deploy
+  wins, so it can name other terms. The terms match the claim, and `refundable` covers the amount.
 - Refunds require a verified payer destination (D-118). Never assume an exchange sender belongs to the payer;
   a different destination needs written evidence.
+- For a factory or implementation `recover`: that contract holds the amount, and the destination is verified like a
+  refund's.
 - `cmd/ops return` prints the calls and has already checked the amount, the destination and a dry run
   ([returns through support](../backend/money-safety.md#returns-through-support)).
 - A pause longer than a few hours alerts every owner: paid invoices pushed past their effective deadline can then

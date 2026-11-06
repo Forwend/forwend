@@ -66,10 +66,12 @@ contract InvoiceReceiver is ReentrancyGuard {
         return effectiveDeadline(terms().settleDeadline, factory.deployedAt(address(this)));
     }
 
+    /// What refund() allows now: 0 off the intended chain, where refund() reverts and money leaves through recover().
     function refundable() public view onlyClone returns (uint256) {
         InvoiceTerms memory t = terms();
-        return
-            refundableAmount(IERC20(t.token).balanceOf(address(this)), t.amount, settled, deadline(), block.timestamp);
+        if (block.chainid != t.intendedChainId) return 0;
+        (, uint256 balance) = tryBalanceOf(t.token, address(this));
+        return refundableAmount(balance, t.amount, settled, deadline(), block.timestamp);
     }
 
     function status() external view onlyClone returns (InvoiceStatus memory) {
@@ -107,25 +109,36 @@ contract InvoiceReceiver is ReentrancyGuard {
 
     /// Returns other tokens, the native coin (`token == address(0)`) and anything off the intended chain. On it, the
     /// invoice-token balance must not drop (on Arc native and USDC are one balance); an unreadable token holds nothing.
-    function recover(address token, address to, uint256 amount) external nonReentrant onlyClone {
-        InvoiceTerms memory t = terms();
+    /// The implementation itself is never an invoice's receiver, so anything sent to it goes back whole.
+    function recover(address token, address to, uint256 amount) external nonReentrant {
         if (msg.sender != factory.refundAuthority()) revert Unauthorized();
         if (to == address(0) || to == address(this)) revert InvalidDestination();
+        if (address(this) == self) {
+            _send(token, to, amount);
+            emit Recovered(bytes32(0), token, to, amount);
+            return;
+        }
+        _onlyClone();
+        InvoiceTerms memory t = terms();
         bool intended = block.chainid == t.intendedChainId;
         if (intended && token == t.token && t.token != address(0)) revert InvoiceToken();
         (bool guarded, uint256 before) = intended ? tryBalanceOf(t.token, address(this)) : (false, 0);
 
+        _send(token, to, amount);
+        if (guarded) {
+            (, uint256 afterBalance) = tryBalanceOf(t.token, address(this));
+            if (afterBalance < before) revert InvoiceToken();
+        }
+        emit Recovered(t.invoiceId, token, to, amount);
+    }
+
+    function _send(address token, address to, uint256 amount) private {
         if (token == address(0)) {
             (bool ok,) = to.call{value: amount}("");
             if (!ok) revert NativeTransferFailed();
         } else {
             IERC20(token).safeTransfer(to, amount);
         }
-        if (guarded) {
-            (, uint256 afterBalance) = tryBalanceOf(t.token, address(this));
-            if (afterBalance < before) revert InvoiceToken();
-        }
-        emit Recovered(t.invoiceId, token, to, amount);
     }
 }
 
