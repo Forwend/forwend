@@ -377,7 +377,7 @@
         "A live run shows Privy's export window opens for a server-made profile wallet, names it, and loads its own Copy key button (R-218)"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "web-e2e",
@@ -471,11 +471,18 @@
           "summary": "Pass. 5cf922e7 fixes both findings. (1) Privy 3.51.0 EmbeddedWalletConnectingScreen rejects on close with U('User exited before wallet could be connected'), where U wraps a string in a plain Error, and use-export-wallet passes that reject straight through as onFailure. wallet-screen.tsx:450 skips the toast only for that message, and wallet-screen.test.tsx 'says nothing when the owner closes...' fails without it. Closing on the key screen calls onSuccess, so it shows no toast either. Privy is pinned at 3.51.0 exactly, so the string match holds. (2) wallet.spec.ts and passkeys.spec.ts now use waitFor({timeout}).then(true,false). No other e2e file passes a timeout to isVisible. The other bare isVisible() calls are immediate checks by design; send.spec.ts waits on code.or(progress) first. Permission holds: MENU_PAGES puts /app/wallet behind money.move, which no role has (access.go). settingsSections hides it, and app-shell renders a spinner and redirects when not allowed. Checks: vitest wallet/settings/app-shell 27/27, pnpm lint, pnpm typecheck, check-docs all pass. Minor, not blocking: the wallet screen's copy lives in SETTINGS_COPY (screens/settings/constants/settings-copy.ts:47-63), while other settings screens own their copy (D-11).",
           "at": "2026-11-06T21:16:02Z",
           "filesHash": "180cf45fe8489224"
-        }
+        },
+        "commit": "67ae10f6",
+        "doneAt": "2026-11-06T21:16:24Z"
       },
       "branch": "feat/f431-the-owner-exports-a-profile-wallet-s-pri",
       "baseCommit": "1a129f035f9de357535ad22ab2fa0aeb20c9848b",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f431-the-owner-exports-a-profile-wallet-s-pri",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
