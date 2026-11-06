@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 431,
+  "nextId": 432,
   "tasks": [
     {
       "id": "F332",
@@ -366,6 +366,34 @@
         "branch": "fix/f430-a-send-asks-confirm-it-s-you-only-after",
         "base": "main"
       }
+    },
+    {
+      "id": "F431",
+      "type": "feat",
+      "behavior": "The owner exports a profile wallet's private key from that profile's settings, through Privy's secure page",
+      "acceptance": [
+        "Each profile's settings have a Wallet section with its address and Export private key, for the owner only, never a team member (R-218, D-61)",
+        "Export shows a one-line warning, then opens Privy's own secure export page for that profile's wallet; Forwend never sees the key (R-218, D-46)",
+        "A live run shows Privy's export page opens for a server-made profile wallet; if it doesn't, the task stops and says so before any other way is built (R-218)"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "web-e2e",
+        "live-e2e"
+      ],
+      "refs": [
+        "R-218",
+        "R-217",
+        "D-46",
+        "D-61"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

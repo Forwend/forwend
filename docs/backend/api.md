@@ -1049,11 +1049,11 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
   - A code whose email fails is dropped: it counts toward neither limit.
   - The code is stored hashed with its row id, lasts 10 minutes and allows 5 tries.
   - `POST /v1/me/fresh-sign-in/verify` with the code: 204 confirms that session; else 422 `wrong_code`.
+    - A value that isn't 6 digits uses no try.
   - `GET /v1/me/fresh-sign-in` is 204 for a fresh session, else 401 `reauth_required` (R-217).
     - Privy adds and removes a passkey in the browser, so Forwend's screens ask here first.
     - It stops a stale browser left signed in from changing passkeys in Forwend.
     - It doesn't stop a stolen session calling Privy's API itself: that risk stays open as Q-13.
-    - A value that isn't 6 digits uses no try.
   - Without an email key the api sends nothing (503 `code_unavailable`): a full sign-in is the only proof then.
 - A secret API key (R-144) goes in the same header: `Authorization: Bearer fw_test_…`.
   - It works only on its profile's routes whose permission is in its scopes, and only for its store's invoices.
