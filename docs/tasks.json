@@ -91,7 +91,7 @@
         "openapi.yaml and api.md describe the send routes"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "backend-e2e"
@@ -161,11 +161,18 @@
           "summary": "Fresh review of 19c49d8f..f0633a37. Since the passing review (f2dbb0e8) only docs/tasks.json changed: f0633a37 records that review, and the uncommitted change is the 2026-11-06 verify record. No code changed. Read send/, sendapi/, the 00097 migration, the guards, openapi.yaml and api.md. Amounts are base units, positive and capped at the balance. Recipients are refused when invalid, zero, a token contract or the own wallet, and a bad checksum is refused. A transfer looks up the other profile's wallet on the server. The dry run is from the wallet. Contract and new-recipient warnings and a 0 fee paid by forwend are returned. One unsigned send per wallet and chain is kept by a unique index and the wallet row lock. Only a confirmed or detected wallet_transfers row matching hash, wallet, token, recipient and amount makes a send sent; a receipt alone never does. sends_tx gives each hash one send, and a hash is kept for prepared, canceled and expired sends. Prepare needs FreshSignIn(money.move); get, submit and cancel need Can(money.move). No role or key scope has money.move. openapi.yaml and api.md list all four routes. Ran: go test ./internal/send/ ./internal/httpapi/tests/ -count=1 (both ok); check-docs.py (0 errors). Minor, not blocking: api.md says a submit takes its hash in any state but sent and failed. A submitted send takes only its own hash again; another hash is refused. Known and accepted: Submit is not under the wallet lock, so two signed sends can be in flight at once.",
           "at": "2026-11-06T13:26:15Z",
           "filesHash": "eae52ec47489f324"
-        }
+        },
+        "commit": "91219156",
+        "doneAt": "2026-11-06T13:28:06Z"
       },
       "branch": "feat/f424-the-server-prepares-checks-and-tracks-se",
       "baseCommit": "19c49d8fb88c18a9bd72405483e21bbb1a703de2",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f424-the-server-prepares-checks-and-tracks-se",
+        "base": "main"
+      }
     },
     {
       "id": "F425",
