@@ -55,5 +55,6 @@ export const {
   useCancelSendMutation,
   useGetSendFeeQuery,
   useGetSendQuery,
+  useLazyGetSendQuery,
   useListPendingSendsQuery,
 } = sendApi;

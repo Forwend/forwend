@@ -11,7 +11,7 @@ import {
 import { type ReactNode, useState } from "react";
 import { profileLabel } from "@/features/profiles/lib/profile";
 import type { Profile } from "@/features/profiles/types/profile";
-import { useSubmitSendMutation } from "@/features/send/api/send-api";
+import { useLazyGetSendQuery, useSubmitSendMutation } from "@/features/send/api/send-api";
 import { SEND_MODES, SEND_STATUSES, SEND_WARNINGS } from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
 import { useSignSend } from "@/features/send/hooks/use-sign-send";
@@ -46,6 +46,7 @@ export function SendReview({
 }: SendReviewProps) {
   const { sign, canSign } = useSignSend(send.from);
   const [submit] = useSubmitSendMutation();
+  const [readSend] = useLazyGetSendQuery();
   const [checked, setChecked] = useState(false);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +67,17 @@ export function SendReview({
     setWorking(true);
     onSigning(true);
     setError(null);
+    // Only a send the server still holds as prepared is signed: one past its 10 minutes, or replaced from another tab,
+    // was checked against a balance and fees that may have moved.
+    const latest = await readSend({ profileId: from.profileId, sendId: send.sendId })
+      .unwrap()
+      .catch(() => null);
+    if (latest?.status !== SEND_STATUSES.prepared) {
+      setError(latest ? SEND_COPY.outOfDate : SEND_COPY.failedToPrepare);
+      setWorking(false);
+      onSigning(false);
+      return;
+    }
     let hash: string;
     try {
       hash = await sign(send);

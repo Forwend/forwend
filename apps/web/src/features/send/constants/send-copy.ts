@@ -42,6 +42,7 @@ export const SEND_COPY = {
   sendAmount: (amount: string) => `Send ${amount}`,
   transferAmount: (amount: string) => `Transfer ${amount}`,
   signFailed: "We couldn't sign this send. Check Transactions before you try again.",
+  outOfDate: "This review is out of date. Go back and continue again.",
   walletLoading: "Getting your wallet ready…",
   busy: "A send from this wallet is still on its way. Try again once it arrives.",
   failedToPrepare: "We couldn't check this send. Try again.",

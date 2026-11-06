@@ -408,3 +408,29 @@ func TestAWalletPaysItsOwnGasWhereNotSponsored(t *testing.T) {
 		t.Errorf("amount plus fee above the balance: err = %v, want ErrInvalid", err)
 	}
 }
+
+// R-216: Max sends the balance less the fee shown, so that fee covers the gas of any amount the wallet holds.
+func TestMaxFitsTheFeeShown(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	if _, err := e.pool.Exec(ctx, "UPDATE chains SET gas_sponsored = false"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.pool.Exec(ctx, "UPDATE tokens SET native_gas = true"); err != nil {
+		t.Fatal(err)
+	}
+	// A busy chain makes each calldata byte dear; the gas coin is exactly the 100 tokens held, as on Arc.
+	for _, call := range [][]any{{"anvil_setNextBlockBaseFeePerGas", "0x2E90EDD000"}, {"evm_mine"},
+		{"anvil_setBalance", chaintest.Sender, "0x56BC75E2D63100000"}} {
+		if err := e.anvil.RPC.Call(nil, call[0].(string), call[1:]...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	fee, err := e.sends.Fee(ctx, e.profile, chaintest.ChainID, e.token, outsider)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.prepare(t, outsider, "", 100_000_000-fee.Int64()); err != nil {
+		t.Errorf("Max (100 tokens less the fee %v): %v", fee, err)
+	}
+}

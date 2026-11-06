@@ -229,7 +229,13 @@ export function SendSheet({
     setChecked((c) => [...c, result.sendId]);
     const expected =
       "profile" in recipient ? (recipient.profile.walletAddress ?? "") : recipient.address;
-    if (!matchesRequest(result, request, expected)) {
+    if (
+      !matchesRequest(result, request, {
+        to: expected,
+        from: profile.walletAddress ?? "",
+        decimals: option.decimals,
+      })
+    ) {
       cancel({ profileId: profile.profileId, sendId: result.sendId });
       setAmountError(SEND_COPY.failedToPrepare);
       return;

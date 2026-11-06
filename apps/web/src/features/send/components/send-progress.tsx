@@ -29,8 +29,6 @@ export interface SendProgressProps {
   onDone: () => void;
 }
 
-const SETTLED: readonly string[] = [SEND_STATUSES.sent, SEND_STATUSES.failed];
-
 // R-214: the chain, read through the server, says Sent; the browser's own answer only says it was signed.
 export function SendProgress({
   profileId,
@@ -43,7 +41,9 @@ export function SendProgress({
 }: SendProgressProps) {
   const read = useGetSendQuery({ profileId, sendId: initial.sendId });
   const send = read.currentData ?? initial;
-  const settled = SETTLED.includes(send.status);
+  // Sent is followed until final: the note then says it arrived, and a reorg shows as Sending again.
+  const settled =
+    send.status === SEND_STATUSES.failed || (send.status === SEND_STATUSES.sent && send.final);
   const { refetch } = read;
   useEffect(() => {
     if (settled) return;

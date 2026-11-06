@@ -274,11 +274,15 @@ func feeFor(ctx context.Context, client *ethclient.Client, chainID uint64, from,
 	decimals int) (Gas, *big.Int, *big.Int, error) {
 	tokenAddr := common.HexToAddress(token)
 	data := append(bytes.Clone(selTransfer), common.LeftPadBytes(common.HexToAddress(to).Bytes(), 32)...)
-	data = append(data, common.LeftPadBytes(amount.Bytes(), 32)...)
+	word := common.LeftPadBytes(amount.Bytes(), 32)
+	data = append(data, word...)
 	gas, err := client.EstimateGas(ctx, ethereum.CallMsg{From: common.HexToAddress(from), To: &tokenAddr, Data: data})
 	if err := refused(err); err != nil {
 		return Gas{}, nil, nil, err
 	}
+	// Priced as if every amount byte were non-zero (16 gas, not 4): the fee is then the same for any amount, so the
+	// fee shown before the amount is known still covers Max.
+	gas += 12 * uint64(bytes.Count(word, []byte{0}))
 	gas = gas * 6 / 5
 	tip, feeCap, err := settlement.Fees(ctx, client, chainID)
 	if err != nil {
@@ -325,7 +329,7 @@ func (s *Service) Fee(ctx context.Context, profileID string, chainID uint64, tok
 	} else if to, err = parseAddress(to); err != nil {
 		return nil, err
 	}
-	// A one-unit transfer to the recipient costs what the send will, give or take the amount's own bytes.
+	// A one-unit transfer to the recipient costs what a send of any amount will (feeFor).
 	_, fee, _, err := feeFor(ctx, client, chainID, wallet, token, to, big.NewInt(1), decimals)
 	return fee, err
 }

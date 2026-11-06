@@ -57,10 +57,13 @@ export function maxAmount(balance: bigint, decimals: number): string {
 export function matchesRequest(
   send: Send,
   request: Omit<SendRequest, "profileId">,
-  to: string,
+  expected: { to: string; from: string; decimals: number },
 ): boolean {
+  const { to, from, decimals } = expected;
   return (
     send.chainId === request.chainId &&
+    send.from.toLowerCase() === from.toLowerCase() &&
+    send.decimals === decimals &&
     send.token.toLowerCase() === request.token.toLowerCase() &&
     send.amount === request.amount &&
     send.to.toLowerCase() === to.toLowerCase() &&
