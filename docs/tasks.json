@@ -91,7 +91,7 @@
         "A live run adds a passkey with a virtual authenticator, removes it, and axe finds no serious or critical violations (R-217)"
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "unit",
         "web-unit",
@@ -109,9 +109,95 @@
       "review": true,
       "notes": [],
       "blockedReason": null,
-      "evidence": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-06T17:49:48Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.0,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 63.4,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 30.3,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "live-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 496.2,
+            "log": ""
+          },
+          {
+            "id": "auth-live-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 26.2,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 43.1,
+            "log": ""
+          }
+        ],
+        "taskHash": "94060f3852790aa0",
+        "filesHash": "653ae81a8025aabb",
+        "proof": {
+          "1": "web-unit: passkeys-list.test.tsx lists a passkey with Made on Safari, macOS · Added Oct 27 · Last used Nov 5; passkeys.test.ts lists them newest first with the password manager's name; live-e2e: passkeys.spec shows the new passkey with Added and Last used",
+          "2": "web-unit: passkeys-list.test.tsx removes only after the dialog and after the api check, leaves it when the check fails, and adds another after the check; unit: TestAnAccountChangeChecksTheSessionIsFresh: a stale session gets reauth_required, a confirmed code passes, no token is refused; live-e2e: passkeys.spec adds one, Keep it leaves it, Remove removes it, confirming it's you when asked",
+          "3": "web-unit: passkeys-list.test.tsx turns Remove off for the only way to sign in and says why; passkeys.test.ts: a wallet is not a way to sign in",
+          "4": "live-e2e: passkeys.spec adds a passkey with Chrome's virtual authenticator, removes it, and axe finds no serious or critical violations"
+        }
+      },
       "branch": "feat/f429-the-user-lists-adds-and-removes-passkeys",
-      "baseCommit": "a4eb09126fae92f8b80d6e011dd14acb7a79a256"
+      "baseCommit": "a4eb09126fae92f8b80d6e011dd14acb7a79a256",
+      "failedVerifies": 0
     },
     {
       "id": "F430",
