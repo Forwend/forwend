@@ -34,6 +34,8 @@ export const PERMISSIONS = {
   storesWrite: "stores.write",
   clientsRead: "clients.read",
   moneyRead: "money.read",
+  // Sending out of the wallet: the owner's alone (D-61).
+  moneyMove: "money.move",
   billingRead: "billing.read",
   tokensRead: "tokens.read",
   jobs: "jobs",

@@ -37,8 +37,6 @@ export const BALANCES_COPY = {
   transfer: "Transfer",
   withdraw: "Withdraw",
   comingSoon: "Coming soon",
-  sendSoon: "Coming soon: send to another wallet.",
-  transferSoon: "Coming soon: move money between your profiles.",
   withdrawSoon: "Coming soon: withdraw to your bank account.",
   balancesTitle: "My assets",
   inWallet: "In wallet",

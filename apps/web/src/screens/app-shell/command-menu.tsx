@@ -4,6 +4,7 @@ import { THEMES } from "@forwend/design-tokens";
 import { formatTokenAmount, shortAddress, useTheme } from "@forwend/ui-web";
 import {
   ArrowDownLeft,
+  ArrowLeftRight,
   ArrowUpRight,
   CornerDownLeft,
   FilePlus2,
@@ -14,6 +15,7 @@ import {
   Plus,
   QrCode,
   Search,
+  Send,
   Settings,
   UserPlus,
   UserRound,
@@ -77,6 +79,9 @@ export interface CommandMenuProps {
   active: Profile;
   onSwitch: (profileId: string) => void;
   onReceive: () => void;
+  /** Null where the user can't move this profile's money; onTransfer also where there is no other profile. */
+  onSend: (() => void) | null;
+  onTransfer: (() => void) | null;
   onRequest: () => void;
 }
 
@@ -87,6 +92,8 @@ export function CommandMenu({
   active,
   onSwitch,
   onReceive,
+  onSend,
+  onTransfer,
   onRequest,
 }: CommandMenuProps) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -166,6 +173,34 @@ export function CommandMenu({
             run: () => {
               close();
               onReceive();
+            },
+          },
+        ]
+      : []),
+    ...(onSend
+      ? [
+          {
+            id: "send",
+            group: COMMAND_COPY.actions,
+            label: BALANCES_COPY.send,
+            icon: Send,
+            run: () => {
+              close();
+              onSend();
+            },
+          },
+        ]
+      : []),
+    ...(onTransfer
+      ? [
+          {
+            id: "transfer",
+            group: COMMAND_COPY.actions,
+            label: BALANCES_COPY.transfer,
+            icon: ArrowLeftRight,
+            run: () => {
+              close();
+              onTransfer();
             },
           },
         ]

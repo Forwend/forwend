@@ -7,12 +7,15 @@ import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 export interface MoneyActionsProps {
   onReceive: () => void;
   onRequest: () => void;
+  /** Null where the user can't move this profile's money. */
+  onSend: (() => void) | null;
+  onTransfer: (() => void) | null;
 }
 
 // Five buttons share a phone's row: below 360 px the labels shrink, so they never touch.
 const NARROW = "min-w-0 max-[359px]:text-xs sm:w-20";
 
-export function MoneyActions({ onReceive, onRequest }: MoneyActionsProps) {
+export function MoneyActions({ onReceive, onRequest, onSend, onTransfer }: MoneyActionsProps) {
   const actions: readonly {
     label: string;
     icon: LucideIcon;
@@ -23,8 +26,10 @@ export function MoneyActions({ onReceive, onRequest }: MoneyActionsProps) {
     // One lime action per view: Receive, the app's standing one.
     { label: BALANCES_COPY.receive, icon: QrCode, onClick: onReceive, primary: true },
     { label: BALANCES_COPY.request, icon: HandCoins, onClick: onRequest },
-    { label: BALANCES_COPY.send, icon: Send, soon: BALANCES_COPY.sendSoon },
-    { label: BALANCES_COPY.transfer, icon: ArrowLeftRight, soon: BALANCES_COPY.transferSoon },
+    ...(onSend ? [{ label: BALANCES_COPY.send, icon: Send, onClick: onSend }] : []),
+    ...(onTransfer
+      ? [{ label: BALANCES_COPY.transfer, icon: ArrowLeftRight, onClick: onTransfer }]
+      : []),
     { label: BALANCES_COPY.withdraw, icon: Landmark, soon: BALANCES_COPY.withdrawSoon },
   ];
   return (

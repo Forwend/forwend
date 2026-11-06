@@ -14,7 +14,7 @@ const RECENT = 6;
 const ROW = "grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]";
 
 export function PersonalOverview() {
-  const { profile, openReceive, openRequest } = useAppSession();
+  const { profile, openReceive, openRequest, openSend, openTransfer } = useAppSession();
   const { balances, prices, failed, retry } = usePricedBalances(profile.profileId);
   // Two rows as on the business overview: the balance beside the assets it holds, then its history beside the flow.
   return (
@@ -28,6 +28,8 @@ export function PersonalOverview() {
           onRetry={retry}
           onReceive={openReceive}
           onRequest={openRequest}
+          onSend={openSend}
+          onTransfer={openTransfer}
         />
         <AssetsCard balances={balances} failed={failed} onRetry={retry} prices={prices} />
       </div>

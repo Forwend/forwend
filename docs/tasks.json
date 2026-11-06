@@ -181,17 +181,18 @@
       "acceptance": [
         "Send and Transfer in the header, overview and command menu open one sheet; Transfer starts on My profiles (R-213)",
         "Steps slide by direction, the sheet height follows each step, reduced motion shows steps at once, and DESIGN.md describes the pattern (R-213, R-204)",
-        "The review shows from, to with a grouped full address, network, token, amount, network fee and what the recipient gets; the button reads Send (R-213, D-119)",
+        "The review shows the server-checked send: from, to (short address), network, token, amount, network fee and what the recipient gets; the button names the amount (R-213, D-119)",
         "On a testnet, a live run signs a sponsored transfer from a profile wallet through Privy without its screens and shows Sending then Sent (R-214)"
       ],
       "dependsOn": [
         "F424"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "web-unit",
         "web-e2e",
-        "auth-live-e2e"
+        "auth-live-e2e",
+        "send-live-e2e"
       ],
       "refs": [
         "R-213",
@@ -203,9 +204,119 @@
         "packages/contracts/src/*"
       ],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-06 review pass by reviewer: Pass. Money path is sound: Privy signs transfer(send.to, send.amount) on send.token and send.chainId, all from the server's send, which matchesRequest compares to the request (chain, token, amount, recipient) before the review shows; the review shows those same values; amounts stay bigint/base units. The sheet locks (Escape, backdrop, Close, Back) while signing and until a server read holds the hash; a lost submit is re-sent on each 1.5 s read. Send/Transfer only for money.move (owner only, backend enforces too); Transfer only with another owner profile with a wallet. StepTransition: direction slide, height follows, motion-safe/motion-reduce, focus moves to the step. Structure follows the feature layout; architecture.md lists the new imports. Minor, not blocking: (1) send-review.tsx:83 calls onSigning(false) right after onSubmitted, so the sheet is unlocked for one frame before SendProgress sets holding; drop that call and let progress own the lock. (2) matchesRequest does not check send.from against the profile wallet (lib/send.ts:55, send-sheet.tsx:199). (3) No unit test covers the lock or the re-report of a lost hash; only lib functions and the live run. (4) PROJECT.md:298 R-213 still says the button reads Send; it names the amount and reads Transfer for a transfer. (5) feeText shows a non-zero fee in the sent token's units (marked; unreachable while sendable = gas_sponsored). (6) If the server never takes the hash, the progress step stays locked with Done disabled. Ran: vitest src/features/send (5 passed); harness check typecheck lint docs-check (all passed)."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-06T13:32:47Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.3,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "tokens-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": ""
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.1,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.0,
+            "log": ""
+          },
+          {
+            "id": "auth-live-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 36.0,
+            "log": ""
+          },
+          {
+            "id": "send-live-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 58.6,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 42.4,
+            "log": ""
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "42a771c66c43cda0",
+        "filesHash": "b46688e527065bbc",
+        "proof": {
+          "1": "send-live-e2e: the Transfer test opens the sheet from the overview's Total balance and it is named Transfer on Your profiles; the command-menu test opens Transfer from ⌘K; Send to a new address opens Send",
+          "2": "send-live-e2e: with reduced motion each step's animation lasts under 1 ms and the new step takes the focus; ui-unit and the /kit showcase cover StepTransition; docs-check passes with DESIGN.md's step pattern",
+          "3": "send-live-e2e: the review shows the short recipient address, network, amount and Free fee from the server's send, and the button names the amount; web-unit: matchesRequest refuses a prepared send that isn't the one asked for, and the transfer calldata is exact",
+          "4": "send-live-e2e: Transfer signs 0.01 on a testnet through Privy with its screens off and follows the send from Sending to Sent"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass. Money path is sound: Privy signs transfer(send.to, send.amount) on send.token and send.chainId, all from the server's send, which matchesRequest compares to the request (chain, token, amount, recipient) before the review shows; the review shows those same values; amounts stay bigint/base units. The sheet locks (Escape, backdrop, Close, Back) while signing and until a server read holds the hash; a lost submit is re-sent on each 1.5 s read. Send/Transfer only for money.move (owner only, backend enforces too); Transfer only with another owner profile with a wallet. StepTransition: direction slide, height follows, motion-safe/motion-reduce, focus moves to the step. Structure follows the feature layout; architecture.md lists the new imports. Minor, not blocking: (1) send-review.tsx:83 calls onSigning(false) right after onSubmitted, so the sheet is unlocked for one frame before SendProgress sets holding; drop that call and let progress own the lock. (2) matchesRequest does not check send.from against the profile wallet (lib/send.ts:55, send-sheet.tsx:199). (3) No unit test covers the lock or the re-report of a lost hash; only lib functions and the live run. (4) PROJECT.md:298 R-213 still says the button reads Send; it names the amount and reads Transfer for a transfer. (5) feeText shows a non-zero fee in the sent token's units (marked; unreachable while sendable = gas_sponsored). (6) If the server never takes the hash, the progress step stays locked with Done disabled. Ran: vitest src/features/send (5 passed); harness check typecheck lint docs-check (all passed).",
+          "at": "2026-11-06T13:39:04Z",
+          "filesHash": "b46688e527065bbc"
+        },
+        "commit": "45eb984a",
+        "doneAt": "2026-11-06T13:42:49Z"
+      },
+      "branch": "feat/f425-send-and-transfer-open-one-smooth-sheet",
+      "baseCommit": "c18fa94bdf40c29b479965991172b5b2a340ffbf",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f425-send-and-transfer-open-one-smooth-sheet",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {

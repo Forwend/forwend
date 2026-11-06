@@ -4,6 +4,7 @@ import { THEME_ATTRIBUTE, THEMES, type Theme } from "@forwend/design-tokens";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { type ReactNode, useEffect, useState } from "react";
 import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
+import { PRIVY_CHAINS } from "@/features/auth/constants/privy-chains";
 
 /** Privy login methods (D-21); each must also be enabled in the Privy dashboard. No wallet login. */
 const LOGIN_METHODS = ["email", "google", "passkey"] as const;
@@ -33,6 +34,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
         loginMethods: [...LOGIN_METHODS],
         appearance: { theme, walletList: [] },
         externalWallets: { walletConnect: { enabled: false } },
+        supportedChains: PRIVY_CHAINS,
       }}
     >
       {children}

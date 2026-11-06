@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, IconButton, Skeleton, Tooltip } from "@forwend/ui-web";
+import { Button, IconButton, Skeleton } from "@forwend/ui-web";
 import { skipToken } from "@reduxjs/toolkit/query";
 import { ChevronRight, PanelLeftClose, PanelLeftOpen, QrCode, Search, Send } from "lucide-react";
 import Link from "next/link";
@@ -41,6 +41,8 @@ export interface AppHeaderProps {
   onSignOut: () => void;
   onSearch: () => void;
   onReceive: () => void;
+  /** Null where the user can't move this profile's money. */
+  onSend: (() => void) | null;
   collapsed: boolean;
   onToggleCollapsed: () => void;
 }
@@ -52,6 +54,7 @@ export function AppHeader({
   onSignOut,
   onSearch,
   onReceive,
+  onSend,
   collapsed,
   onToggleCollapsed,
 }: AppHeaderProps) {
@@ -107,13 +110,12 @@ export function AppHeader({
       <NotificationsMenu profileId={active.profileId} transfers={money} viewAllHref={viewAll} />
 
       <div className="hidden items-center gap-2 lg:flex">
-        <Tooltip content={BALANCES_COPY.comingSoon} side="bottom">
-          <Button variant="soon" aria-disabled>
+        {onSend ? (
+          <Button variant="secondary" onClick={onSend}>
             <Send aria-hidden className="size-[var(--fw-icon-sm)]" />
             {BALANCES_COPY.send}
-            <span className="sr-only">: {BALANCES_COPY.sendSoon}</span>
           </Button>
-        </Tooltip>
+        ) : null}
         {money ? (
           <Button onClick={onReceive}>
             <QrCode aria-hidden className="size-[var(--fw-icon-sm)]" />

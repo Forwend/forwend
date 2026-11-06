@@ -57,6 +57,12 @@ features own product behavior, and shared UI components are grouped by purpose. 
   - A hidden page's address opens the role's first page instead. The API refuses those requests anyway.
   - `/invite/<token>` (R-139) sits in the `(app)` group for Privy, outside `/app`: the invited user may have no account.
   - It calls `POST /v1/me` first, so accepting finds the account, then opens the team's profile in `/app`.
+  - Send (R-211–R-214) asks the api to prepare the send, which needs a fresh sign-in. Then it signs the token transfer in
+    the browser with Privy's `useSendTransaction`, sponsored and with Privy's screens off (D-46).
+    - It signs only once `useWallets` lists the profile's wallet: before that Privy refuses at once (S-9).
+    - Every enabled chain is in `PrivyProvider` `supportedChains` (`features/auth/constants/privy-chains.ts`); a
+      missing one never returns.
+    - The hash goes to the api, and the sheet reads the send every 1.5 s until the watcher says Sent.
   - Receive's choice is keyed by chain family (`features/receive/lib/receive-choice.ts`), so non-EVM families fit
     later; the address never shows without its exact network and token warning.
   - Balances and activity are read again every 15 s while the tab is visible and when it comes back. Money sent
@@ -98,7 +104,8 @@ features own product behavior, and shared UI components are grouped by purpose. 
   failed request, shown like any other failure, and logged by endpoint and field, never by value; a body that breaks
   its schema is never sent. `openapi-typescript` is not used: it needs the TypeScript compiler API, which TypeScript 7
   does not have.
-- Features import each other only here: receive → balances; invoices → activity, balances, clients (the client block
+- Features import each other only here: receive → balances; send → auth (the in-place fresh sign-in), balances,
+  invoices (the exact amount parser), profiles; invoices → activity, balances, clients (the client block
   an invoice copies, R-86); clients → profiles (the country list); pay → activity, invoices
   (including the `check-status` and `invoice-progress` components); jobs → clients, invoices (the pay link's token
   pattern, Send to client); onboarding → activity, invoices, profiles,

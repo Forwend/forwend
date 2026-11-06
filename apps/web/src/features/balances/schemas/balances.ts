@@ -17,6 +17,8 @@ export const tokenBalanceSchema = z.object({
   confirming: baseUnits.optional(),
   partial: baseUnits.optional(),
   livemode: z.boolean().optional(),
+  // Forwend pays the gas on this chain, so Send offers it (D-119).
+  sendable: z.boolean().optional(),
 });
 
 export const balancesSchema = z.object({

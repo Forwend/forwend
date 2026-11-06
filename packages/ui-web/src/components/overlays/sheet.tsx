@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 import { cx } from "../../lib/cx";
 import { IconButton } from "../buttons/icon-button";
@@ -10,10 +10,24 @@ export interface SheetProps {
   onOpenChange: (open: boolean) => void;
   title: string;
   closeLabel?: string;
+  /** A step after the first: a Back button sits before the title. */
+  onBack?: () => void;
+  backLabel?: string;
+  /** Work that closing would not stop is running, such as a signature: Escape, the backdrop and Close do nothing. */
+  locked?: boolean;
   children: ReactNode;
 }
 
-export function Sheet({ open, onOpenChange, title, closeLabel = "Close", children }: SheetProps) {
+export function Sheet({
+  open,
+  onOpenChange,
+  title,
+  closeLabel = "Close",
+  onBack,
+  backLabel = "Back",
+  locked = false,
+  children,
+}: SheetProps) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -33,9 +47,16 @@ export function Sheet({ open, onOpenChange, title, closeLabel = "Close", childre
       ref={ref}
       aria-label={title}
       tabIndex={-1}
-      onClose={() => onOpenChange(false)}
+      onCancel={(event) => {
+        if (locked) event.preventDefault(); // Escape
+      }}
+      onClose={() => {
+        // A second Escape can't be prevented: a locked sheet opens again at once.
+        if (locked) ref.current?.showModal();
+        else onOpenChange(false);
+      }}
       onClick={(event) => {
-        if (event.target === ref.current) onOpenChange(false); // a click on the backdrop
+        if (event.target === ref.current && !locked) onOpenChange(false); // a click on the backdrop
       }}
       className={cx(
         "mx-0 mt-auto mb-0 max-h-[92dvh] outline-none w-full max-w-none rounded-t-lg border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[var(--fw-scrim)] sm:m-auto sm:max-w-md sm:rounded-lg",
@@ -48,8 +69,20 @@ export function Sheet({ open, onOpenChange, title, closeLabel = "Close", childre
       )}
     >
       <div className="flex items-center justify-between gap-4 px-5 pt-4 pb-2">
-        <h2 className="text-lg font-medium">{title}</h2>
-        <IconButton label={closeLabel} size="md" onClick={() => onOpenChange(false)}>
+        <div className="flex min-w-0 items-center gap-1">
+          {onBack ? (
+            <IconButton label={backLabel} size="md" onClick={onBack} className="-ml-2">
+              <ArrowLeft aria-hidden className="size-[var(--fw-icon-md)]" />
+            </IconButton>
+          ) : null}
+          <h2 className="truncate text-lg font-medium">{title}</h2>
+        </div>
+        <IconButton
+          label={closeLabel}
+          size="md"
+          disabled={locked}
+          onClick={() => onOpenChange(false)}
+        >
           <X aria-hidden className="size-[var(--fw-icon-md)]" />
         </IconButton>
       </div>
