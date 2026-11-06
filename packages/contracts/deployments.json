@@ -13,11 +13,13 @@
       "flow": {
         "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
         "amount": "100000",
+        "invoiceId": "0xb4c3e0cd7cccd91a459d332d7ae3a575879609d8cf0671908905649a7b38f2b7",
         "receiver": "0x021C27Ba89C55eEdafBa215BED2bc499B610BeBd",
+        "pay": "0x918cef546ade632c7886dcc6fc7d8088fe1d5243e016a24b528de2a1b02f5fb2",
         "deploy": "0xfd3997ac02ef484d6e5ffec6d39613d4afaa1f7d3c9974dbaedc43663a3a3eb7",
-        "settle": null,
+        "settle": "0x3f8e87613c19bab5383bac9b21483c4f45dce3563b1b6998fb570914e69cb342",
         "refund": null,
-        "note": "Paid, deployed and settled exactly amount. The refund of the 10000 extra waits: the refund authority has no Base Sepolia gas."
+        "note": "Refund of the 10000 extra not sent: the refund authority has no Base Sepolia gas. It stays refundable."
       }
     },
     "arbitrum-sepolia": {
