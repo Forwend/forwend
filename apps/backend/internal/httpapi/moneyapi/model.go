@@ -29,6 +29,7 @@ type balancesJSON struct {
 type tokenBalanceJSON struct {
 	tokenJSON
 	Livemode       bool    `json:"livemode"`
+	Sendable       bool    `json:"sendable"`
 	Wallet         *string `json:"wallet"`
 	FinalizedBlock *uint64 `json:"finalizedBlock"`
 	Pending        string  `json:"pending"`

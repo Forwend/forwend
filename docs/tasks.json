@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 424,
+  "nextId": 426,
   "tasks": [
     {
       "id": "F332",
@@ -78,6 +78,133 @@
         "2026-11-05 blocked: Deferred by owner (2026-11-05): low priority for now."
       ],
       "blockedReason": "Deferred by owner (2026-11-05): low priority for now.",
+      "evidence": null
+    },
+    {
+      "id": "F424",
+      "type": "feat",
+      "behavior": "The server prepares, checks and tracks sends and transfers from profile wallets",
+      "acceptance": [
+        "An owner with a fresh sign-in prepares a send or transfer; members, keys and stale sign-ins are refused (R-211)",
+        "Invalid, zero, token-contract and own-wallet recipients, too-large amounts and failed dry runs are refused; contract and first-send warnings and the network fee are returned (R-211, D-119)",
+        "A reported hash moves a send to Sending and the watcher's matching transfer to Sent, then final; a reorg returns it to Sending; a revert or a hash with no transaction for 30 minutes fails it; an unreported send expires after 10 minutes; a signed hash is never lost (R-212)",
+        "openapi.yaml and api.md describe the send routes"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "unit",
+        "backend-e2e"
+      ],
+      "refs": [
+        "R-211",
+        "R-212",
+        "D-119",
+        "D-46",
+        "D-61"
+      ],
+      "keep": [
+        "packages/contracts/src/*"
+      ],
+      "review": true,
+      "notes": [
+        "2026-11-05 review pass by reviewer: Re-reviewed 6bf76643..fb99e8cc. All four must-fix items are fixed: openapi lists money.move; only the watcher's transfer makes a send sent, and R-212, api.md and acceptance 3 match; a new test covers a reorg going back to sending and then dropped; api.md lists POST /sends as an Idempotency-Key exception with the reason. The notes are fixed too: a hash is kept in prepared, expired and canceled; sends_tx makes a hash belong to one send; refused() counts only reverts; the log is redacted; toProfileId is lowercased; an API test refuses a key and money.move as a key scope. go test -race on internal/send and httpapi/tests passes. Minor, not blocking: openapi.yaml:2981 still lists 409 send_in_progress for submit, which Submit no longer returns. docs/backend/architecture.md:252 still says one open send per wallet and chain; it is now one unsigned send. The FOR UPDATE wallet lock in keep() (prepare.go:206) does not cover Submit, so a prepare racing a submit can leave two signed sends in flight. Each was signed by the user, so this is harmless.",
+        "2026-11-05 review pass by reviewer: Re-reviewed 6bf76643..f2dbb0e8. The four must-fix items and the earlier notes are fixed. f2dbb0e8 only changes docs: the submit route no longer lists 409, and its description says a replaced, canceled or expired send keeps its hash and that a hash belongs to one send. architecture.md now says one unsigned send per wallet and chain, and one send per hash. Both match the code. go test -race on internal/send and httpapi/tests passes; no Go code changed after that run. Known and accepted: the FOR UPDATE wallet lock in keep() does not cover Submit, so a prepare racing a submit can leave two signed sends in flight. Each one was signed by the user.",
+        "2026-11-06 review pass by reviewer: Fresh review of 19c49d8f..f0633a37. Since the passing review (f2dbb0e8) only docs/tasks.json changed: f0633a37 records that review, and the uncommitted change is the 2026-11-06 verify record. No code changed. Read send/, sendapi/, the 00097 migration, the guards, openapi.yaml and api.md. Amounts are base units, positive and capped at the balance. Recipients are refused when invalid, zero, a token contract or the own wallet, and a bad checksum is refused. A transfer looks up the other profile's wallet on the server. The dry run is from the wallet. Contract and new-recipient warnings and a 0 fee paid by forwend are returned. One unsigned send per wallet and chain is kept by a unique index and the wallet row lock. Only a confirmed or detected wallet_transfers row matching hash, wallet, token, recipient and amount makes a send sent; a receipt alone never does. sends_tx gives each hash one send, and a hash is kept for prepared, canceled and expired sends. Prepare needs FreshSignIn(money.move); get, submit and cancel need Can(money.move). No role or key scope has money.move. openapi.yaml and api.md list all four routes. Ran: go test ./internal/send/ ./internal/httpapi/tests/ -count=1 (both ok); check-docs.py (0 errors). Minor, not blocking: api.md says a submit takes its hash in any state but sent and failed. A submitted send takes only its own hash again; another hash is refused. Known and accepted: Submit is not under the wallet lock, so two signed sends can be in flight at once."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-06T13:22:14Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 58.9,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 28.2,
+            "log": ""
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "57838acb490d69f0",
+        "filesHash": "eae52ec47489f324",
+        "proof": {
+          "1": "unit: TestOnlyTheOwnerWithAFreshSignInPreparesASend: owner 201; refreshed token 401 reauth_required; Admin member and another user 403; a secret key refused, and a key with money.move can't be made",
+          "2": "unit: TestPrepareRefusesWhatWouldLoseMoney, TestPrepareRefusesWhenTheTokenRefuses and TestPrepareWarnsOfANewRecipientAndAContract on Anvil: invalid, zero, token, own and checksum refusals, balance cap, unsponsored chain, reverting token, contract and new-recipient warnings; networkFee 0 paid by forwend in the API test",
+          "3": "unit: TestASendIsSentOnlyWhenTheChainShowsIt (receipt alone stays sending), TestAReorgedSendWaitsAndIsDroppedIfNeverMinedAgain, TestASendFailsWhenItsTransactionMovesSomethingElse, TestUnreportedAndDroppedSendsAreGivenUp and TestOneOpenSendPerWalletAndChain (a replaced send keeps its hash) on Anvil",
+          "4": "unit: TestProfileRoutesAreAllListed and the openapi route test pass; docs-check passes with api.md Sends and transfers and the Idempotency exception"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Fresh review of 19c49d8f..f0633a37. Since the passing review (f2dbb0e8) only docs/tasks.json changed: f0633a37 records that review, and the uncommitted change is the 2026-11-06 verify record. No code changed. Read send/, sendapi/, the 00097 migration, the guards, openapi.yaml and api.md. Amounts are base units, positive and capped at the balance. Recipients are refused when invalid, zero, a token contract or the own wallet, and a bad checksum is refused. A transfer looks up the other profile's wallet on the server. The dry run is from the wallet. Contract and new-recipient warnings and a 0 fee paid by forwend are returned. One unsigned send per wallet and chain is kept by a unique index and the wallet row lock. Only a confirmed or detected wallet_transfers row matching hash, wallet, token, recipient and amount makes a send sent; a receipt alone never does. sends_tx gives each hash one send, and a hash is kept for prepared, canceled and expired sends. Prepare needs FreshSignIn(money.move); get, submit and cancel need Can(money.move). No role or key scope has money.move. openapi.yaml and api.md list all four routes. Ran: go test ./internal/send/ ./internal/httpapi/tests/ -count=1 (both ok); check-docs.py (0 errors). Minor, not blocking: api.md says a submit takes its hash in any state but sent and failed. A submitted send takes only its own hash again; another hash is refused. Known and accepted: Submit is not under the wallet lock, so two signed sends can be in flight at once.",
+          "at": "2026-11-06T13:26:15Z",
+          "filesHash": "eae52ec47489f324"
+        },
+        "commit": "91219156",
+        "doneAt": "2026-11-06T13:28:06Z"
+      },
+      "branch": "feat/f424-the-server-prepares-checks-and-tracks-se",
+      "baseCommit": "19c49d8fb88c18a9bd72405483e21bbb1a703de2",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f424-the-server-prepares-checks-and-tracks-se",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F425",
+      "type": "feat",
+      "behavior": "Send and Transfer open one smooth sheet that signs with Privy and follows the send to the chain",
+      "acceptance": [
+        "Send and Transfer in the header, overview and command menu open one sheet; Transfer starts on My profiles (R-213)",
+        "Steps slide by direction, the sheet height follows each step, reduced motion shows steps at once, and DESIGN.md describes the pattern (R-213, R-204)",
+        "The review shows from, to with a grouped full address, network, token, amount, network fee and what the recipient gets; the button reads Send (R-213, D-119)",
+        "On a testnet, a live run signs a sponsored transfer from a profile wallet through Privy without its screens and shows Sending then Sent (R-214)"
+      ],
+      "dependsOn": [
+        "F424"
+      ],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "web-e2e",
+        "auth-live-e2e"
+      ],
+      "refs": [
+        "R-213",
+        "R-214",
+        "D-119",
+        "D-46"
+      ],
+      "keep": [
+        "packages/contracts/src/*"
+      ],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
       "evidence": null
     }
   ],

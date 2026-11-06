@@ -34,7 +34,9 @@ const (
 	// Balances, activity, transactions and their exports.
 	MoneyRead Permission = "money.read"
 	// Transaction labels and the records currency.
-	MoneyWrite   Permission = "money.write"
+	MoneyWrite Permission = "money.write"
+	// Sending and transferring out of the profile's wallet. No role has it: only the owner moves money (D-61).
+	MoneyMove    Permission = "money.move"
 	BillingRead  Permission = "billing.read"
 	BillingWrite Permission = "billing.write"
 	TokensRead   Permission = "tokens.read"
@@ -54,7 +56,7 @@ const (
 )
 
 var permissions = []Permission{InvoicesRead, InvoicesWrite, StoresRead, StoresWrite, ClientsRead, ClientsWrite, MoneyRead,
-	MoneyWrite, BillingRead, BillingWrite, TokensRead, TokensWrite, Jobs, Notifications, Team, Leave, Keys, Webhooks}
+	MoneyWrite, MoneyMove, BillingRead, BillingWrite, TokensRead, TokensWrite, Jobs, Notifications, Team, Leave, Keys, Webhooks}
 
 // The one map of who may do what (D-93). The owner has every permission, these and the ones no role has.
 var rolePermissions = map[Role][]Permission{

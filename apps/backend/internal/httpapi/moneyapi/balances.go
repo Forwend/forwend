@@ -20,7 +20,7 @@ func getBalances(balances *balance.Service) http.HandlerFunc {
 			out.EstimatedUSDTotal = &b.EstimatedUSD
 		}
 		for _, t := range b.Tokens {
-			j := tokenBalanceJSON{tokenJSON: toTokenJSON(t.Asset), Livemode: t.Livemode, Pending: t.Pending.String(),
+			j := tokenBalanceJSON{tokenJSON: toTokenJSON(t.Asset), Livemode: t.Livemode, Sendable: t.Sendable, Pending: t.Pending.String(),
 				Settling: t.Settling.String(), Confirming: t.Confirming.String(), Partial: t.Partial.String(),
 				Held: t.Held.String()}
 			if t.Wallet != nil {

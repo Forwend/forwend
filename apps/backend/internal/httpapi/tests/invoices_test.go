@@ -22,6 +22,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/httpapi"
 	"github.com/forwend/forwend/apps/backend/internal/privy"
 	"github.com/forwend/forwend/apps/backend/internal/privy/privytest"
+	"github.com/forwend/forwend/apps/backend/internal/send"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -51,6 +52,12 @@ func invoiceAPI(t *testing.T) invoiceEnv {
 // invoiceAPIWith is invoiceAPI with each user's burst of requests (0 keeps mid.UserBurst) and a webhook key (nil for
 // none).
 func invoiceAPIWith(t *testing.T, userBurst int, webhookKey []byte) invoiceEnv {
+	t.Helper()
+	return invoiceAPIChains(t, userBurst, webhookKey, nil)
+}
+
+// invoiceAPIChains is invoiceAPIWith whose sends read chains through clients.
+func invoiceAPIChains(t *testing.T, userBurst int, webhookKey []byte, clients send.Clients) invoiceEnv {
 	t.Helper()
 	ctx := context.Background()
 	verifier, privyKey := testVerifier(t)
@@ -90,7 +97,7 @@ func invoiceAPIWith(t *testing.T, userBurst int, webhookKey []byte) invoiceEnv {
 	e.srv = httptest.NewServer(httpapi.NewMux(pool, verifier, privy.NewClient(privytest.AppID, privytest.AppSecret, e.wallets.URL),
 		func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
 			return big.NewInt(2500000), 100, nil
-		}, webURL, userBurst, webhookKey))
+		}, clients, webURL, userBurst, webhookKey))
 	t.Cleanup(e.srv.Close)
 	return e
 }

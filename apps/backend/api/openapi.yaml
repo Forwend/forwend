@@ -2878,6 +2878,125 @@ paths:
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
         "503": { $ref: "#/components/responses/NetworkNotReady" }
+  /v1/profiles/{profileId}/sends:
+    post:
+      operationId: prepareSend
+      summary: Check a send out of the profile's wallet before the browser signs it (R-211)
+      description: |
+        Only the owner, with a fresh sign-in (D-49, D-61). Give `to` for an outside address or `toProfileId` for
+        another of the owner's profiles. The server reads the wallet's balance, dry-runs the transfer and keeps the
+        send for 10 minutes. It replaces the wallet's earlier unsigned send on the chain. Only chains where Forwend
+        pays the gas offer Send (D-119).
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [chainId, token, amount]
+              properties:
+                chainId: { type: integer }
+                token: { type: string, description: The token's contract }
+                to: { type: string, description: "An address: one case, or mixed case with a valid EIP-55 checksum" }
+                toProfileId: { type: string, format: uuid }
+                amount: { type: string, description: "Base units, a whole number above 0" }
+      responses:
+        "201":
+          description: Checked and kept; the browser signs it next
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Send" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/ReauthRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: A send from this wallet is on its way on this network (send_in_progress)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: |
+            A value breaks a rule (invalid_value): an invalid, zero, token-contract or own address, an amount above the
+            balance, or a network without Send. Or the token's dry run failed (transfer_refused).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503":
+          description: The chain's RPC could not be read (network_unavailable); try again shortly.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/sends/{sendId}:
+    get:
+      operationId: getSend
+      summary: A send, brought up to date from the chain (R-212)
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/SendId"
+      responses:
+        "200":
+          description: The send
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Send" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/SendNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/sends/{sendId}/submit:
+    post:
+      operationId: submitSend
+      summary: Report the hash the browser got from signing the send (R-212)
+      description: |
+        The same hash again is a no-op. A send replaced, canceled or expired while it was being signed takes its hash
+        too. A hash belongs to one send.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/SendId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [txHash]
+              properties:
+                txHash: { type: string, pattern: "^0x[0-9a-fA-F]{64}$" }
+      responses:
+        "200":
+          description: The send, now sending
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Send" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/SendNotFound" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/sends/{sendId}/cancel:
+    post:
+      operationId: cancelSend
+      summary: Give up an unsigned send, as when the owner closes the signing step
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/SendId"
+      responses:
+        "204": { description: Canceled }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/SendNotFound" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/keys:
     get:
       operationId: listApiKeys
@@ -3334,6 +3453,12 @@ components:
       in: path
       required: true
       description: A working secret API key of this profile; another profile's, a revoked or an expired key is 404.
+      schema: { type: string, format: uuid }
+    SendId:
+      name: sendId
+      in: path
+      required: true
+      description: A send of this profile; another profile's is 404.
       schema: { type: string, format: uuid }
     IdempotencyKey:
       name: Idempotency-Key
@@ -4243,7 +4368,7 @@ components:
           items:
             type: string
             enum: [invoices.read, invoices.write, stores.read, stores.write, clients.read, clients.write, money.read,
-              money.write, billing.read, billing.write, tokens.read, tokens.write, jobs, notifications, team, team.leave,
+              money.write, money.move, billing.read, billing.write, tokens.read, tokens.write, jobs, notifications, team, team.leave,
               keys, webhooks]
         name:
           type: [string, "null"]
@@ -4556,14 +4681,15 @@ components:
           description: true without a price, when fetchedAt is over 1 hour old or sourceUpdatedAt over 24 hours old.
     TokenBalance:
       type: object
-      required: [chainId, token, symbol, decimals, livemode, wallet, finalizedBlock, pending, settling, confirming,
-        partial, held]
+      required: [chainId, token, symbol, decimals, livemode, sendable, wallet, finalizedBlock, pending, settling,
+        confirming, partial, held]
       properties:
         chainId: { type: integer }
         token: { $ref: "#/components/schemas/Address" }
         symbol: { type: string }
         decimals: { type: integer, minimum: 0 }
         livemode: { type: boolean, description: The chain's mode (D-87). }
+        sendable: { type: boolean, description: "Forwend pays the gas on this chain, so Send offers it (D-119)." }
         wallet:
           description: The profile wallet's balance at finalizedBlock; null when the profile has no wallet yet or the
             chain could not be read.
@@ -5573,6 +5699,41 @@ components:
           type: integer
           minimum: 0
           description: Estimated seconds until final, from the chain's finalized block time; 0 when confirmed.
+    Send:
+      type: object
+      required: [sendId, chainId, token, from, to, toProfileId, amount, status, final, txHash, failure, networkFee,
+        warnings, createdAt]
+      properties:
+        sendId: { type: string, format: uuid }
+        chainId: { type: integer }
+        token: { type: string }
+        from: { type: string, description: The profile's wallet }
+        to: { type: string }
+        toProfileId: { type: [string, "null"], format: uuid, description: Set for a transfer to another of the owner's profiles }
+        amount: { type: string, description: Base units }
+        status:
+          type: string
+          enum: [prepared, sending, sent, failed, canceled, expired]
+          description: |
+            sending: signed, not in a block yet. sent: its transfer is in a block. expired: never signed within 10
+            minutes.
+        final: { type: boolean, description: The block with its transfer can no longer change }
+        txHash: { type: [string, "null"] }
+        failure:
+          type: [string, "null"]
+          enum: [reverted, dropped, null]
+          description: "reverted: mined without the transfer. dropped: not on the chain 30 minutes after it was signed."
+        networkFee:
+          type: object
+          required: [amount, paidBy]
+          properties:
+            amount: { type: string, description: What the wallet pays, in base units of the token }
+            paidBy: { type: string, enum: [forwend] }
+        warnings:
+          type: array
+          description: Set when prepared. contract, the recipient has code; newRecipient, this wallet never sent there.
+          items: { type: string, enum: [contract, newRecipient] }
+        createdAt: { type: string, format: date-time }
     Error:
       type: object
       required: [error]
@@ -5588,10 +5749,16 @@ components:
                 invoice_not_cancelable, invoice_not_editable, invoice_not_reopenable, receipt_sent, client_email_required, invoice_closed, due_date_required,
                 reminders_stopped, member_not_found, invite_not_found, invite_for_another_email, already_on_team,
                 link_not_found, personal_profile, link_off, link_ended, link_full, invalid_api_key, key_not_found,
-                endpoint_not_found, webhooks_not_configured, delivery_not_found,
+                endpoint_not_found, webhooks_not_configured, delivery_not_found, send_not_found, send_in_progress,
+                transfer_refused,
                 invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
             message: { type: string }
   responses:
+    SendNotFound:
+      description: No such send of this profile (send_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
     MalformedRequest:
       description: Not parseable, unknown field, wrong type, or missing Idempotency-Key (malformed_request)
       content:
