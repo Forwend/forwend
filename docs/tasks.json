@@ -329,7 +329,7 @@
       "dependsOn": [
         "F425"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "web-unit",
@@ -428,11 +428,18 @@
           "summary": "Pass. Re-review of eacda477 on top of the earlier review. The lost-connection lock test now waits one macrotask inside act before it checks; in a scratch copy where every error set refused it failed 6 of 6 runs, so the guard is real. The Sending merge is now sendingRows with a unit test (unsigned left out, a recorded hash drops its row). The preview is sliced to its limit, and slice(0, undefined) keeps the full list. DESIGN.md now lists Sending with the pending badges and describes the lock from signing until the server holds the hash. Left as accepted: no unit test for the search/Received hiding, createdAt day grouping, and a 401/403 resubmit keeping the lock. Commands: vitest run src/features/send src/features/transactions 4 files, 18 passed; harness check typecheck lint docs-check passed; earlier go test ./internal/send/ ./internal/httpapi/tests/ ok (backend unchanged since).",
           "at": "2026-11-06T14:14:30Z",
           "filesHash": "369d6513d1b33b4a"
-        }
+        },
+        "commit": "ba31bfbd",
+        "doneAt": "2026-11-06T14:19:50Z"
       },
       "branch": "feat/f426-a-signed-send-shows-as-a-sending-row-in",
       "baseCommit": "6a11dc828b55de1aa8148a04ceccc7f853b41908",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f426-a-signed-send-shows-as-a-sending-row-in",
+        "base": "main"
+      }
     },
     {
       "id": "F427",
