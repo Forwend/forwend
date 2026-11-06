@@ -1,11 +1,12 @@
 "use client";
 
 import { Button, buttonClasses } from "@forwend/ui-web";
-import { useLinkWithPasskey, usePrivy } from "@privy-io/react-auth";
+import { usePrivy } from "@privy-io/react-auth";
 import { skipToken } from "@reduxjs/toolkit/query";
 import { ChevronUp } from "lucide-react";
 import Link from "next/link";
 import { useId, useState } from "react";
+import { useAddPasskey } from "@/features/auth/hooks/use-add-passkey";
 import { useGetInvoicesInfiniteQuery } from "@/features/invoices/api/invoices-api";
 import { CHECKLIST_STEPS, PRIVY_PASSKEY } from "@/features/onboarding/constants/onboarding";
 import { CHECKLIST_COPY as COPY } from "@/features/onboarding/constants/onboarding-copy";
@@ -22,6 +23,7 @@ import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import type { ProfileKind } from "@/features/profiles/types/profile";
 import { useGetTransactionsQuery } from "@/features/transactions/api/transactions-api";
 import { TRANSACTIONS_PAGE_SIZE } from "@/features/transactions/constants/transactions";
+import { needsFreshSignIn } from "@/shared/api/fresh-sign-in";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 
@@ -41,7 +43,7 @@ export function SetupGuide() {
   const { profile, openReceive, openRequest } = useAppSession();
   const { profileId, kind } = profile;
   const { user } = usePrivy();
-  const { linkWithPasskey } = useLinkWithPasskey();
+  const linkPasskey = useAddPasskey();
   const [dismissal, setDismissal] = useState<ChecklistDismissal>(() => readDismissal(profileId));
   const [linking, setLinking] = useState(false);
   const [error, setError] = useState("");
@@ -78,9 +80,10 @@ export function SetupGuide() {
     setError("");
     setLinking(true);
     try {
-      await linkWithPasskey();
-    } catch {
-      setError(COPY.passkeyFailed);
+      await linkPasskey();
+    } catch (e) {
+      // A confirm the owner gave up isn't a failure.
+      if (!needsFreshSignIn(e)) setError(COPY.passkeyFailed);
     } finally {
       setLinking(false);
     }

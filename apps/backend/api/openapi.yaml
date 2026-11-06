@@ -788,8 +788,9 @@ paths:
       operationId: checkFreshSignIn
       summary: Whether this session counts as freshly signed in, before an account change Privy makes (R-217)
       description: |
-        Privy adds and removes a passkey in the browser, so the web asks here first (Q-13). A stale session gets
-        reauth_required and confirms it's you.
+        Privy adds and removes a passkey in the browser, so Forwend's screens ask here first, and a stale session gets
+        reauth_required and confirms it's you. It doesn't bind Privy's own API, which a stolen session could still
+        call directly (Q-13).
       responses:
         "204": { description: Fresh }
         "401": { $ref: "#/components/responses/ReauthRequired" }

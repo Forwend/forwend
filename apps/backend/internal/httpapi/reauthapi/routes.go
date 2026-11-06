@@ -12,8 +12,8 @@ import (
 func Routes(mux *http.ServeMux, g mid.Guards, codes *reauth.Service) {
 	mux.Handle("POST /v1/me/fresh-sign-in", g.SignedIn(sendCode(codes)))
 	mux.Handle("POST /v1/me/fresh-sign-in/verify", g.SignedIn(verifyCode(codes)))
-	// Privy changes the account in the browser (a passkey, R-217): the web asks here first, so a stale session
-	// confirms it's you before it can.
+	// Privy changes the account in the browser (a passkey, R-217): Forwend's screens ask here first, so a stale session
+	// confirms it's you there. Privy's own API isn't bound by it: a stolen session could still call Privy (Q-13).
 	mux.Handle("GET /v1/me/fresh-sign-in", g.FreshSignedIn(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	})))

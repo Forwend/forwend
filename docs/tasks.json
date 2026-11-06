@@ -91,7 +91,7 @@
         "A live run adds a passkey with a virtual authenticator, removes it, and axe finds no serious or critical violations (R-217)"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "active",
       "verification": [
         "unit",
         "web-unit",
@@ -107,7 +107,9 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-06 review fail by reviewer: Fail. Ran: go test ./internal/httpapi/tests/ ok (29s); vitest src/screens/settings src/features/auth 3 files 20 tests passed; harness check typecheck lint docs-check passed. Must fix: (1) Two other places add a passkey with no fresh check, against R-217: features/onboarding/components/setup-guide.tsx:81 (sidebar checklist, any time later) and first-run.tsx:299 (onboarding can resume days later). Route all three through one shared add that calls checkFreshSignIn first. (2) Docs overclaim the security. The GET check is a web-only step; it does not bind Privy. A stolen session can call Privy's link API directly, sign in with its own passkey and pass D-49, which is the exact Q-13 threat. PROJECT.md:454 marks Q-13 answered; routes.go:51-52 and openapi say a stale session confirms before it can. Say what it stops (a stale unlocked browser in our UI) and what it doesn't, and keep the residual risk open or name a backend fix. Should fix: architecture.md:39-40 still says passkeys are added only from the checklist and omits the GET check; focus goes to body after a remove (row and open dialog unmount, passkeys.tsx:361); two unnamed passkeys both get 'Remove Passkey'; DESIGN.md:190 and 192 sentences exceed 25 words; no test for a cancelled confirm showing no error, the dialog close cancelling the step, or google_oauth counting as a sign-in method. Rest is sound: guard order, 204/401 test, last-method rule (wallet excluded), error states, structure (screen file flat, logic in lib, tests in tests)."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
@@ -193,6 +195,13 @@
           "2": "web-unit: passkeys-list.test.tsx removes only after the dialog and after the api check, leaves it when the check fails, and adds another after the check; unit: TestAnAccountChangeChecksTheSessionIsFresh: a stale session gets reauth_required, a confirmed code passes, no token is refused; live-e2e: passkeys.spec adds one, Keep it leaves it, Remove removes it, confirming it's you when asked",
           "3": "web-unit: passkeys-list.test.tsx turns Remove off for the only way to sign in and says why; passkeys.test.ts: a wallet is not a way to sign in",
           "4": "live-e2e: passkeys.spec adds a passkey with Chrome's virtual authenticator, removes it, and axe finds no serious or critical violations"
+        },
+        "review": {
+          "result": "fail",
+          "by": "reviewer",
+          "summary": "Fail. Ran: go test ./internal/httpapi/tests/ ok (29s); vitest src/screens/settings src/features/auth 3 files 20 tests passed; harness check typecheck lint docs-check passed. Must fix: (1) Two other places add a passkey with no fresh check, against R-217: features/onboarding/components/setup-guide.tsx:81 (sidebar checklist, any time later) and first-run.tsx:299 (onboarding can resume days later). Route all three through one shared add that calls checkFreshSignIn first. (2) Docs overclaim the security. The GET check is a web-only step; it does not bind Privy. A stolen session can call Privy's link API directly, sign in with its own passkey and pass D-49, which is the exact Q-13 threat. PROJECT.md:454 marks Q-13 answered; routes.go:51-52 and openapi say a stale session confirms before it can. Say what it stops (a stale unlocked browser in our UI) and what it doesn't, and keep the residual risk open or name a backend fix. Should fix: architecture.md:39-40 still says passkeys are added only from the checklist and omits the GET check; focus goes to body after a remove (row and open dialog unmount, passkeys.tsx:361); two unnamed passkeys both get 'Remove Passkey'; DESIGN.md:190 and 192 sentences exceed 25 words; no test for a cancelled confirm showing no error, the dialog close cancelling the step, or google_oauth counting as a sign-in method. Rest is sound: guard order, 204/401 test, last-method rule (wallet excluded), error states, structure (screen file flat, logic in lib, tests in tests).",
+          "at": "2026-11-06T18:05:56Z",
+          "filesHash": "653ae81a8025aabb"
         }
       },
       "branch": "feat/f429-the-user-lists-adds-and-removes-passkeys",

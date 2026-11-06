@@ -1,10 +1,10 @@
 "use client";
 
 import { Button } from "@forwend/ui-web";
-import { useLinkWithPasskey } from "@privy-io/react-auth";
 import { ArrowLeft, FilePlus2, KeyRound, Link2, Wallet } from "lucide-react";
 import { useMemo, useState } from "react";
 import { flushSync } from "react-dom";
+import { useAddPasskey } from "@/features/auth/hooks/use-add-passkey";
 import { useCompleteOnboardingMutation } from "@/features/onboarding/api/onboarding-api";
 import {
   type DetailsField,
@@ -38,6 +38,7 @@ import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { billingErrors } from "@/features/profiles/lib/billing-details";
 import type { Profile } from "@/features/profiles/types/profile";
 import { useLazyListStoresQuery, useSaveStoreMutation } from "@/features/stores/api/stores-api";
+import { needsFreshSignIn } from "@/shared/api/fresh-sign-in";
 import { assetKey } from "@/shared/components/chains/asset-selection";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { selectionSummary } from "@/shared/lib/asset-selection";
@@ -96,7 +97,7 @@ export function FirstRun({
   const [saveTokens] = useSaveProfileTokensMutation();
   const [listStores] = useLazyListStoresQuery();
   const [saveStore] = useSaveStoreMutation();
-  const { linkWithPasskey } = useLinkWithPasskey();
+  const addPasskey = useAddPasskey();
   const personal = profiles.find((p) => p.kind === PROFILE_KINDS.personal) ?? profiles[0];
   const tokens = useGetProfileTokensQuery(personal?.profileId ?? "", { skip: !personal });
 
@@ -296,10 +297,11 @@ export function FirstRun({
       setBusy("main");
       setError("");
       try {
-        await linkWithPasskey();
+        await addPasskey();
         next();
-      } catch {
-        setError(COPY.passkey.failed);
+      } catch (e) {
+        // A confirm the owner gave up isn't a failure.
+        if (!needsFreshSignIn(e)) setError(COPY.passkey.failed);
       } finally {
         setBusy(null);
       }

@@ -187,13 +187,15 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Settings is one area with a section column beside the page (13rem); phones get a row of text tabs instead.
   - Your account: Account and security, Notifications. This profile (its name): Billing details, Accepted assets, Team.
   - Each section shows only to a role that can open it (D-93). The pages keep their addresses.
-  - Account and security lists the sign-in methods (email, Google), this device (browser and system from its user
-    agent), Sign out, and Sign out of all devices with its dialog.
-  - Passkeys (R-217) have rows of their own, newest first: a fingerprint mark, the password manager's name or Passkey,
-    then "Made on Safari, macOS · Added Oct 27 · Last used Nov 5", and Remove.
+  - Account and security lists the sign-in methods (email, Google) and this device, from its user agent.
+    - Under them: Sign out, and Sign out of all devices with its dialog.
+  - Passkeys (R-217) have rows of their own, newest first, each with a fingerprint mark and Remove.
+    - A row names the password manager, or Passkey, then "Made on Safari, macOS · Added Oct 27 · Last used Nov 5".
+    - Each Remove is named apart: a passkey with no name adds where it was made.
     - Add a passkey stays under them, for each device the owner signs in on.
     - Remove asks in a small dialog, Keep it or Remove. Adding or removing first confirms it's you, in place.
     - The only way to sign in can't be removed: its Remove is off, and the row says why.
+    - Once a passkey is removed, the focus goes to Add a passkey.
   - Privy can't list sessions or end one alone ([freezing users](https://docs.privy.io/user-management/users/managing-users/freezing-users.md)), so no session list is shown.
 - Confirm it's you (R-137) shows in place of the buttons of the form whose change needs a fresh sign-in.
   - The form stays shown and locked, so the user sees what they confirm; no dialog opens on top of another.

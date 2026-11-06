@@ -37,7 +37,8 @@ features own product behavior, and shared UI components are grouped by purpose. 
 - Users sign in on `/sign-in` with our own forms (email code with the `CodeInput` boxes, Google, passkey; D-21) on the Privy
   React SDK's headless hooks; Privy's modal is not used. With no wallet login, Privy's wallet list is empty and its
   WalletConnect is off, so no page fetches WalletConnect's registry or loads its code. Users add a passkey from the
-  overview checklist (Privy's `useLinkWithPasskey`) and sign in with it (`useLoginWithPasskey`). Privy loads only in the
+  overview checklist, the onboarding step or Account and security, all through `useAddPasskey`. It asks
+  `GET /v1/me/fresh-sign-in` first, then calls Privy's `useLinkWithPasskey`; they sign in with `useLoginWithPasskey`. Privy loads only in the
   `(app)` route group (`/sign-in`, `/app`), never on the landing page or checkout. `/app` sends signed-out visitors to
   `/sign-in` and calls `POST /v1/me` each time it loads, which makes the personal profile and its wallet once (R-34).
 - A fresh sign-in (R-137): when the API answers 401 `reauth_required`, `shared/api/fresh-sign-in.ts` holds the request.
@@ -47,6 +48,8 @@ features own product behavior, and shared UI components are grouped by purpose. 
   - The step asks the api for Forwend's emailed code and confirms it (`/v1/me/fresh-sign-in`), then repeats the request.
     A Privy sign-in made while signed in keeps the session and its sign-in time, so it can't prove a confirm (D-49).
   - Requests that need it together share one ask.
+  - Privy's passkey link and unlink run in the browser, so Forwend asks `GET /v1/me/fresh-sign-in` before them (R-217).
+    That binds Forwend's screens only, not Privy's API (Q-13).
   - Public pages give no `freshSignIn`, so their 401s pass through.
 - Pages, the app shell and the dashboard look as [DESIGN.md](DESIGN.md) says. Wiring behind them:
   - Navigation comes from one `APP_NAV`; switching profile opens the new profile's `/app` (R-76).

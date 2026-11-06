@@ -26,6 +26,7 @@ export const SETTINGS_COPY = {
     passkeyDone: "Passkey added",
     remove: "Remove",
     removeLabel: (name: string) => `Remove ${name}`,
+    namedOn: (name: string, where: string) => `${name} made on ${where}`,
     removeTitle: "Remove this passkey?",
     removeBody:
       "You won't sign in to Forwend with it anymore. It stays on your device until you delete it there.",
