@@ -453,7 +453,7 @@
       "dependsOn": [
         "F425"
       ],
-      "state": "not_started",
+      "state": "active",
       "verification": [
         "unit",
         "web-unit",
@@ -467,7 +467,9 @@
       "review": true,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": null,
+      "branch": "feat/f427-on-arc-the-wallet-pays-its-own-gas-in-us",
+      "baseCommit": "af3c9b6896565838955f02f03e8834e1a6dace4e"
     }
   ],
   "lastWrapup": {
