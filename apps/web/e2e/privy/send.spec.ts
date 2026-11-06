@@ -281,9 +281,13 @@ test("A stale session confirms it's you with Forwend's emailed code, and the sen
   browser,
 }) => {
   test.setTimeout(120_000);
-  const context = await browser.newContext({ storageState: fresh });
+  // A session of its own: the shared one may have confirmed a code in an earlier test, which keeps it fresh for 15
+  // minutes whatever happens elsewhere.
+  const context = await browser.newContext();
   const page = await context.newPage();
-  await page.goto("/app");
+  await page.goto("/sign-in");
+  await signIn(page);
+  await expect(page).toHaveURL("/app", { timeout: 30_000 });
   await expect(page.getByRole("region", { name: "Total balance" })).toBeVisible();
   const elsewhere = await browser.newContext();
   const other = await elsewhere.newPage();

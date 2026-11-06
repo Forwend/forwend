@@ -189,6 +189,13 @@ function ConfirmStep({
       setSending(false);
     }
   }, [email, sendCode]);
+  // A new code makes the old one useless: the boxes empty and take the focus for the new one.
+  const resend = () => {
+    setCode("");
+    setError("");
+    box.current?.querySelector<HTMLElement>("input")?.focus();
+    void send();
+  };
   const started = useRef(false);
   useEffect(() => {
     if (started.current) return;
@@ -284,7 +291,7 @@ function ConfirmStep({
             ) : sendFailed ? (
               <>
                 {COPY.sendFailed}{" "}
-                <Button type="button" variant="link" loading={sending} onClick={() => void send()}>
+                <Button type="button" variant="link" loading={sending} onClick={resend}>
                   {COPY.tryAgain}
                 </Button>
               </>
@@ -294,12 +301,7 @@ function ConfirmStep({
                 {wait > 0 ? (
                   <span className="tabular-nums">{COPY.resendIn(wait)}</span>
                 ) : (
-                  <Button
-                    type="button"
-                    variant="link"
-                    loading={sending}
-                    onClick={() => void send()}
-                  >
+                  <Button type="button" variant="link" loading={sending} onClick={resend}>
                     {COPY.resend}
                   </Button>
                 )}

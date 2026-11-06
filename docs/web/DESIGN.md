@@ -56,6 +56,8 @@ Read only the sections your change touches. Any new control also needs
   - The form sits in the middle of the screen: the bottom padding matches the bar.
   - Large screens keep quiet terrain below the form; only its faded top may sit behind the last button.
 - On phones, sign-in uses an almost plain token surface. Decorative backgrounds do not receive pointer input.
+- The 404 page uses sign-in's layout (`LandscapePage`): the bar, the landscape strip and one centered column.
+  - A small muted 404, the heading, one line, and a full-width Back to Forwend.
 
 ## Type and color
 

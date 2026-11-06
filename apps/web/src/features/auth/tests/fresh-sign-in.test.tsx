@@ -112,9 +112,15 @@ describe("fresh sign-in", () => {
     expect(screen.queryByRole("button", { name: "Resend code" })).toBeNull();
   });
 
-  it("sends a new code on request once the wait is over", async () => {
+  it("sends a new code on request once the wait is over, with the boxes emptied for it", async () => {
+    api.verifyCode.mockRejectedValueOnce(new Error("invalid code"));
     renderForm();
-    fireEvent.click(await screen.findByRole("button", { name: "Resend code" }));
+    const resend = await screen.findByRole("button", { name: "Resend code" });
+    fireEvent.change(screen.getByLabelText("Code"), { target: { value: "000000" } });
+    await screen.findByText("That code is wrong or expired.");
+    fireEvent.click(resend);
+    expect((screen.getByLabelText("Code") as HTMLInputElement).value).toBe("");
+    expect(screen.queryByText("That code is wrong or expired.")).toBeNull();
     await waitFor(() => expect(api.sendCode).toHaveBeenCalledTimes(2));
     fireEvent.change(screen.getByLabelText("Code"), { target: { value: "123456" } });
     await waitFor(() => expect(answers).toEqual([true]));

@@ -64,11 +64,6 @@ export const TYPE_ROLES = [
     sample: "See every step.",
   },
   {
-    token: "text-error-code",
-    className: "font-display font-medium text-error-code",
-    sample: "404",
-  },
-  {
     token: "text-amount-lg",
     className: "font-sans tabular-nums text-amount-lg",
     sample: "1,250.00",
