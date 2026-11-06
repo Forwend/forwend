@@ -399,7 +399,7 @@
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-06T19:04:09Z",
+        "at": "2026-11-06T20:07:09Z",
         "checks": [
           {
             "id": "harness",
@@ -420,15 +420,17 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "web-unit",
@@ -442,30 +444,23 @@
             "id": "live-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 577.9,
+            "seconds": 515.5,
             "log": ""
           },
           {
             "id": "web-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 45.9,
+            "seconds": 46.4,
             "log": ""
           }
         ],
         "taskHash": "224421d5ff15d10c",
-        "filesHash": "a3beb8eaebd247e0",
+        "filesHash": "87cfc5038728d462",
         "proof": {
-          "1": "web-unit: settings-sections.test.ts shows Wallet to the owner and never to an Admin; app-nav.test.ts names the page in the breadcrumb and marks Settings; wallet-screen.test.tsx shows the address and says so when the profile has no wallet yet",
-          "2": "web-unit: wallet-screen.test.tsx opens Privy's export for the address only after the warning and the api's check, closes the warning first, shows a failed check in the dialog and a failed Privy export as a toast; live-e2e: wallet.spec goes through the warning and Confirm it's you when asked",
-          "3": "live-e2e: wallet.spec opens Privy's export window for the test account's server-made wallet, sees it named, and sees Privy's own Copy key button load in its frame, without pressing it"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Pass. 659dbe7a fixes all three findings. (1) breadcrumb names /app/wallet Wallet and SETTINGS_PATHS lists it; app-nav.test covers both. (2) A failed check still shows in the open dialog; after it closes, a rejected exportWallet shows a danger toast (ToastProvider wraps the app shell); a unit test rejects exportWallet and finds the toast with the dialog closed. (3) R-218, Q-13, architecture.md and the page comment now say the check binds Forwend's page only, and Q-13 names key export as the worst case. Owner-only page and nav, Privy's own wallet-ownership check and the key staying in Privy's frame are unchanged. Note, not blocking: Privy rejects with 'User exited before wallet could be connected' if the owner closes its window while it connects, so that cancel shows the failed toast. Ran: vitest src/screens/wallet src/screens/settings src/screens/app-shell -> 5 files, 25 tests passed; harness check typecheck lint docs-check -> all passed.",
-          "at": "2026-11-06T19:16:25Z",
-          "filesHash": "a3beb8eaebd247e0"
+          "1": "web-unit: settings-sections.test.ts shows Wallet to the owner, not an Admin; wallet-screen.test.tsx shows the address",
+          "2": "web-unit: wallet-screen.test.tsx opens Privy's export only after the warning and the check, and Show the key is not stuck loading when Privy's window stays open",
+          "3": "live-e2e: wallet.spec.ts sees Privy's window name the wallet and load Copy key, then closes it and opens it again"
         }
       },
       "branch": "feat/f431-the-owner-exports-a-profile-wallet-s-pri",

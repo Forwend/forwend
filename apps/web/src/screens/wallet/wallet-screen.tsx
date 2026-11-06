@@ -47,14 +47,14 @@ export function WalletScreen() {
       return;
     }
     // Privy's window opens over the app: the warning closes first, so no dialog sits under it, and an error from
-    // Privy shows as a toast, where it can be seen.
+    // Privy shows as a toast, where it can be seen. Privy may not settle its promise when its window is closed, so the
+    // button stops loading here, not after it.
     body.current?.closest("dialog")?.close();
+    setOpening(false);
     try {
       await exportWallet({ address });
     } catch {
       toast({ tone: TONES.danger, title: COPY.failed });
-    } finally {
-      setOpening(false);
     }
   };
 

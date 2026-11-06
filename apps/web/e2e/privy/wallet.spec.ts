@@ -45,5 +45,14 @@ test("the owner opens Privy's export page for the profile wallet after the warni
   const frame = page.frameLocator("iframe[src*='embedded-wallets/export']");
   await expect(frame.getByRole("button", { name: /copy key/i })).toBeVisible({ timeout: 45_000 });
   await page.screenshot({ path: "../../docs/runs/f431-privy-export-1440.png" });
+
+  // Closing Privy's window leaves the export ready to open again, without a reload.
+  await page.keyboard.press("Escape");
+  await expect(window).toBeHidden();
+  await main.getByRole("button", { name: "Export private key" }).click();
+  const show = dialog.getByRole("button", { name: "Show the key" });
+  await expect(show).not.toHaveAttribute("aria-busy");
+  await show.click();
+  await expect(window).toContainText("Export wallet", { timeout: 45_000 });
   await context.close();
 });

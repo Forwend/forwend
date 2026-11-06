@@ -80,6 +80,20 @@ describe("the Wallet page (R-218)", () => {
     expect(dialog.hasAttribute("open")).toBe(false);
   });
 
+  it("lets the owner open the export again while Privy hasn't settled the last one", async () => {
+    calls.exportWallet.mockReturnValueOnce(new Promise(() => {}));
+    render(<WalletScreen />, { wrapper: wrap });
+    fireEvent.click(screen.getByRole("button", { name: "Export private key" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Show the key" }));
+    await waitFor(() => expect(calls.exportWallet).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole("button", { name: "Export private key" }));
+    const show = within(dialog).getByRole("button", { name: "Show the key" });
+    expect(show.getAttribute("aria-busy")).toBeNull();
+    fireEvent.click(show);
+    await waitFor(() => expect(calls.exportWallet).toHaveBeenCalledTimes(2));
+  });
+
   it("says so when the profile has no wallet yet", () => {
     calls.address = null;
     render(<WalletScreen />, { wrapper: wrap });
