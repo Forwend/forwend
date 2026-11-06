@@ -2973,7 +2973,13 @@ paths:
               schema: { $ref: "#/components/schemas/SendFee" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
-        "422": { $ref: "#/components/responses/InvalidValue" }
+        "422":
+          description: |
+            A value breaks a rule (invalid_value): an invalid address, or a network without Send. Or the token refused
+            the estimated transfer (transfer_refused), as when the wallet holds none of it.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "503":
           description: The chain's RPC could not be read (network_unavailable); try again shortly.

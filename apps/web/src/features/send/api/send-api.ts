@@ -1,5 +1,5 @@
 import { pendingSendsSchema, sendFeeSchema, sendSchema } from "@/features/send/schemas/send";
-import type { Send, SendRequest } from "@/features/send/types/send";
+import type { Send, SendFee, SendRequest } from "@/features/send/types/send";
 import { apiSlice } from "@/shared/api/api-slice";
 
 const sends = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/sends`;
@@ -33,7 +33,7 @@ export const sendApi = apiSlice.injectEndpoints({
       providesTags: ["PendingSends"],
     }),
     getSendFee: build.query<
-      { amount: string; paidBy: string },
+      SendFee,
       { profileId: string; chainId: number; token: string; to: string }
     >({
       query: ({ profileId, chainId, token, to }) => ({

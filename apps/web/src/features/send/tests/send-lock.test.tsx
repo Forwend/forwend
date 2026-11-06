@@ -10,7 +10,7 @@ import type { Send } from "@/features/send/types/send";
 const api = vi.hoisted(() => ({
   submit: vi.fn(async (): Promise<unknown> => ({})),
   sign: vi.fn(async () => "0xhash"),
-  read: { currentData: undefined as unknown, fulfilledTimeStamp: 1 },
+  read: { currentData: undefined as unknown, fulfilledTimeStamp: 1, error: undefined as unknown },
 }));
 vi.mock("@/features/send/api/send-api", () => ({
   useSubmitSendMutation: () => [() => ({ unwrap: api.submit })],
@@ -76,7 +76,7 @@ describe("the send sheet's lock (R-214)", () => {
     expect(signing).toEqual([true]);
   });
 
-  it("lets the sheet close when the server refuses the hash, but not when it can't be reached", async () => {
+  it("lets the sheet close when the server refuses the hash or can't be read, not when one report fails", async () => {
     api.read.currentData = { ...send, status: "sending", txHash: null };
     const holding = (error: unknown) => {
       api.submit.mockRejectedValue(error);
@@ -105,5 +105,11 @@ describe("the send sheet's lock (R-214)", () => {
     // The rejection is handled and any state it sets rendered before the check.
     await act(() => new Promise((r) => setTimeout(r, 0)));
     expect(down.at(-1)).toBe(true);
+    cleanup();
+    // A server that can't be read lifts it: the owner may leave, and the transfer still shows in Transactions.
+    api.read.error = { status: "FETCH_ERROR" };
+    const unread = holding({ status: "FETCH_ERROR" });
+    await waitFor(() => expect(unread.at(-1)).toBe(false));
+    api.read.error = undefined;
   });
 });

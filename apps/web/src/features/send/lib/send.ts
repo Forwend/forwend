@@ -46,6 +46,12 @@ export function transferCalldata(to: string, amount: bigint): `0x${string}` {
 }
 
 /** The whole balance as the amount field takes it: every decimal it has, no grouping, no trailing zeros. */
+/** What Max may send (R-216): the balance less the fee, never below 0; null until the fee is known. */
+export function roomForFee(balance: bigint, fee: bigint | null): bigint | null {
+  if (fee === null) return null;
+  return balance > fee ? balance - fee : 0n;
+}
+
 export function maxAmount(balance: bigint, decimals: number): string {
   const scale = 10n ** BigInt(decimals);
   const fraction = (balance % scale).toString().padStart(decimals, "0").replace(/0+$/, "");

@@ -5,6 +5,7 @@ import {
   isWalletAddress,
   matchesRequest,
   maxAmount,
+  roomForFee,
   sendOptions,
   transferCalldata,
 } from "@/features/send/lib/send";
@@ -52,6 +53,13 @@ describe("send", () => {
 });
 
 describe("max and the server's answer", () => {
+  it("keeps room for the fee in Max, and offers none until the fee is known (R-216)", () => {
+    expect(roomForFee(1_000_000n, 3_600n)).toBe(996_400n);
+    expect(roomForFee(2_000n, 3_600n)).toBe(0n);
+    expect(roomForFee(1_000_000n, 0n)).toBe(1_000_000n);
+    expect(roomForFee(1_000_000n, null)).toBeNull();
+  });
+
   it("fills Max with the exact balance, whatever the decimals", () => {
     expect(maxAmount(26_250_000n, 6)).toBe("26.25");
     expect(maxAmount(100n, 0)).toBe("100");

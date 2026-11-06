@@ -37,6 +37,7 @@ import {
   isWalletAddress,
   matchesRequest,
   maxAmount,
+  roomForFee,
   sendError,
   sendOptions,
   transferTargets,
@@ -178,7 +179,8 @@ export function SendSheet({
     { refetchOnMountOrArgChange: true },
   );
   const fee = feeRead.currentData ? BigInt(feeRead.currentData.amount) : null;
-  const room = option ? (option.balance > (fee ?? 0n) ? option.balance - (fee ?? 0n) : 0n) : 0n;
+  // Max waits for the fee: a full balance would leave no room for it. The server checks an amount typed meanwhile.
+  const room = option ? roomForFee(option.balance, fee) : null;
   const shownAmount = (value: bigint, o: SendOption) =>
     `${formatTokenAmount({ baseUnits: value, decimals: o.decimals, fractionDigits: exactDigits(value, o.decimals) })} ${o.symbol}`;
 
@@ -204,7 +206,7 @@ export function SendSheet({
       );
       return;
     }
-    if (units > room) {
+    if (units > (room ?? option.balance)) {
       setAmountError(fee ? SEND_COPY.moreThanBalanceWithFee : SEND_COPY.moreThanBalance);
       return;
     }
@@ -227,11 +229,9 @@ export function SendSheet({
       });
     if (!result) return;
     setChecked((c) => [...c, result.sendId]);
-    const expected =
-      "profile" in recipient ? (recipient.profile.walletAddress ?? "") : recipient.address;
     if (
       !matchesRequest(result, request, {
-        to: expected,
+        to: recipientAddress,
         from: profile.walletAddress ?? "",
         decimals: option.decimals,
       })
@@ -399,7 +399,9 @@ export function SendSheet({
             <Button
               size="sm"
               variant="secondary"
+              disabled={room === null}
               onClick={() => {
+                if (room === null) return;
                 setAmount(maxAmount(room, option.decimals));
                 setAmountError(null);
               }}
