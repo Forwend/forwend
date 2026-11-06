@@ -124,7 +124,7 @@
         "The 404 page uses sign-in's layout: the bar, the landscape strip and one centered column (R-34)"
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "unit",
         "web-unit",
@@ -144,20 +144,22 @@
       "keep": [],
       "review": true,
       "notes": [
-        "2026-11-06 review fail by reviewer: Fail on one money-safety gap. After the hold, useSendApproval sets working but calls onSigning(true) only after approve answers (use-send-approval.ts:43-60). While approve is in flight (a Privy call on a fresh session, or the repeat after a confirmed code) the sheet is not locked and Back shows (send-sheet.tsx:169,508,510). Closing sends cancel, but if approve read the send first, Privy still signs it with the sheet closed, and the server may never hold the hash; Back to change the amount can likewise sign the old send. The old Review locked from the click. Fix: lock close and hide Back while approval.working and no confirm step shows (or drop the sign when the attempt was abandoned), with a unit test. Also fix: base.css:183 comment still describes --fw-step-x and slides; R-213 still says the button reads Send 5 USDC and R-214 says pressed, now Hold to send. Should-fix: HoldButton has no path for screen readers in browse mode, which click instead of key or pointer down. Rest looks right: approve gates signing on status prepared, base units via BigInt, one send per hold, FreshSignIn on approve only, openapi and api.md match, EIP-55 check, StepTransition fade with motion-safe, hold fill marked essential. Ran: go test ./internal/httpapi/tests/ ./internal/send/ ok; web vitest 271 passed; ui-web vitest 23 passed; harness check typecheck lint docs-check passed."
+        "2026-11-06 review fail by reviewer: Fail on one money-safety gap. After the hold, useSendApproval sets working but calls onSigning(true) only after approve answers (use-send-approval.ts:43-60). While approve is in flight (a Privy call on a fresh session, or the repeat after a confirmed code) the sheet is not locked and Back shows (send-sheet.tsx:169,508,510). Closing sends cancel, but if approve read the send first, Privy still signs it with the sheet closed, and the server may never hold the hash; Back to change the amount can likewise sign the old send. The old Review locked from the click. Fix: lock close and hide Back while approval.working and no confirm step shows (or drop the sign when the attempt was abandoned), with a unit test. Also fix: base.css:183 comment still describes --fw-step-x and slides; R-213 still says the button reads Send 5 USDC and R-214 says pressed, now Hold to send. Should-fix: HoldButton has no path for screen readers in browse mode, which click instead of key or pointer down. Rest looks right: approve gates signing on status prepared, base units via BigInt, one send per hold, FreshSignIn on approve only, openapi and api.md match, EIP-55 check, StepTransition fade with motion-safe, hold fill marked essential. Ran: go test ./internal/httpapi/tests/ ./internal/send/ ok; web vitest 271 passed; ui-web vitest 23 passed; harness check typecheck lint docs-check passed.",
+        "2026-11-06 review pass by reviewer: Pass. Re-reviewed d1a84dcf, 8f38e404 and 9464e8f4. Lock: useSendApproval.locked is working with no confirm step shown; the sheet uses signing or locked for close, Back and Sheet locked, so a send given up can't be signed when approve answers late; Back or close on the confirm step cancels it, and start returns without signing. A unit test covers locked while approve is pending. HoldButton acts on a click with detail 0 only; keyboard Space and Enter clicks stay suppressed by preventDefault on keydown and keyup, and a mouse click does nothing. base.css comment, R-213, R-214 and R-137 now match the code. The hourly cap counts only codes never confirmed, which keeps guessing and inbox flooding capped; a new test covers it. Retry-After reaches the web, as the api is same-origin via the Next rewrite. too_many_codes and code_sent_recently count down, and the code boxes stay usable. Ran: go test ./internal/httpapi/tests/ ./internal/send/ ok; web vitest 274 passed; ui-web vitest 24 passed; check typecheck lint docs-check passed."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-06T16:39:29Z",
+        "at": "2026-11-06T17:03:43Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 4.1,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "docs-check",
@@ -170,7 +172,7 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.4,
+            "seconds": 0.3,
             "log": ""
           },
           {
@@ -184,7 +186,7 @@
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 60.2,
+            "seconds": 63.1,
             "log": ""
           },
           {
@@ -199,49 +201,50 @@
             "id": "backend-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 28.9,
+            "seconds": 28.0,
             "log": ""
           },
           {
             "id": "web-unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 4.3,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "live-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 492.8,
+            "seconds": 500.8,
             "log": ""
           },
           {
             "id": "web-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 45.5,
+            "seconds": 43.9,
             "log": ""
           }
         ],
         "taskHash": "50bd86d1b8ad74ee",
-        "filesHash": "7ca2b6e3e87e4a67",
+        "filesHash": "248f12cf6a6cb433",
         "proof": {
-          "1": "unit: TestOnlyTheOwnerPreparesAndOnlyAFreshSignInApprovesASend: a refreshed token prepares (201) but gets reauth_required on approve, a fresh sign-in approves (200, prepared), another user 403; TestProfileRoutesAreAllListed covers approve. web-unit: send-approval.test.tsx signs only a send still prepared, and one hold starts one send",
-          "2": "live-e2e: send.spec's stale-session test, in a session of its own made stale by a sign-in elsewhere, shows Summary with no confirm, holds Send, gets Confirm it's you as the sheet's step, goes Back to Summary with no alert, holds again, enters the emailed code and reaches Sending; ui-unit: hold-button.test.tsx acts only after the whole hold, from pointer or Space, never on Enter alone or while disabled",
+          "1": "unit: TestOnlyTheOwnerPreparesAndOnlyAFreshSignInApprovesASend: a refreshed token prepares (201) but gets reauth_required on approve, a fresh sign-in approves (200, prepared), another user 403; TestProfileRoutesAreAllListed covers approve. web-unit: send-approval.test.tsx signs only a send still prepared, one hold starts one send, and the sheet stays locked while approve is on its way",
+          "2": "live-e2e: send.spec's stale-session test, in a session of its own made stale by a sign-in elsewhere, shows Summary with no confirm, holds Send, gets Confirm it's you as the sheet's step, goes Back to Summary with no alert, holds again, enters the emailed code and reaches Sending; ui-unit: hold-button.test.tsx acts only after the whole hold, from pointer or Space, on a screen reader's activate, never on a mouse click, Enter alone or while disabled",
           "3": "live-e2e: Back from the confirm step returns to Summary with no alert; send.spec's reduced-motion test shows each step at once; StepTransition fades without translate, as DESIGN.md says",
-          "4": "web-unit: fresh-sign-in.test.tsx: one line says where the code goes, Resend in 30s counts down, a resend empties the boxes, a failed send says so once and leaves the boxes unmarked, a full code is checked after a failed send (failed before the fix), and a sheet or dialog step has no Cancel; live-e2e: keys.spec confirms with the emailed code",
+          "4": "web-unit: fresh-sign-in.test.tsx: one line says where the code goes, Resend in 30s counts down, a resend empties the boxes, a failed send says so once and leaves the boxes unmarked, too_many_codes counts down Retry-After then offers a code, a full code is checked after a failed send (failed before the fix), and a sheet or dialog step has no Cancel; unit: TestConfirmedCodesDontCountTowardTheHoursCap (failed before the fix) and TestCodesAreLimitedPerUser; live-e2e: keys.spec confirms with the emailed code",
           "5": "ui-unit: text-field.test.tsx keeps a hidden label as the name and the in-field control out of it; web-unit: send.test.ts checks EIP-55 vectors; live-e2e: send.spec shows Paste in the field, Continue off, a wrong checksum flagged at once, and Clear",
           "6": "web-unit: app-nav.test.ts finds no group named like a page in it and no two pages with one icon; it failed with the merchant group named Payments and the shared icon",
           "7": "live-e2e: balances.spec opens Receive, picks USDC then a network, sees the address, steps Back to the network and then the token, titled Receive USDC and then Receive, and picks again",
-          "8": "web-e2e: link-pay.spec shows the 404 page for an unknown link with its heading This path ends here.; the page uses LandscapePage as sign-in does"
+          "8": "web-e2e: link-pay.spec shows the 404 page for an unknown link with its heading This path ends here.; the page uses LandscapePage as sign-in does, with a large 404"
         },
         "review": {
-          "result": "fail",
+          "result": "pass",
           "by": "reviewer",
-          "summary": "Fail on one money-safety gap. After the hold, useSendApproval sets working but calls onSigning(true) only after approve answers (use-send-approval.ts:43-60). While approve is in flight (a Privy call on a fresh session, or the repeat after a confirmed code) the sheet is not locked and Back shows (send-sheet.tsx:169,508,510). Closing sends cancel, but if approve read the send first, Privy still signs it with the sheet closed, and the server may never hold the hash; Back to change the amount can likewise sign the old send. The old Review locked from the click. Fix: lock close and hide Back while approval.working and no confirm step shows (or drop the sign when the attempt was abandoned), with a unit test. Also fix: base.css:183 comment still describes --fw-step-x and slides; R-213 still says the button reads Send 5 USDC and R-214 says pressed, now Hold to send. Should-fix: HoldButton has no path for screen readers in browse mode, which click instead of key or pointer down. Rest looks right: approve gates signing on status prepared, base units via BigInt, one send per hold, FreshSignIn on approve only, openapi and api.md match, EIP-55 check, StepTransition fade with motion-safe, hold fill marked essential. Ran: go test ./internal/httpapi/tests/ ./internal/send/ ok; web vitest 271 passed; ui-web vitest 23 passed; harness check typecheck lint docs-check passed.",
-          "at": "2026-11-06T16:54:34Z",
-          "filesHash": "7ca2b6e3e87e4a67"
+          "summary": "Pass. Re-reviewed d1a84dcf, 8f38e404 and 9464e8f4. Lock: useSendApproval.locked is working with no confirm step shown; the sheet uses signing or locked for close, Back and Sheet locked, so a send given up can't be signed when approve answers late; Back or close on the confirm step cancels it, and start returns without signing. A unit test covers locked while approve is pending. HoldButton acts on a click with detail 0 only; keyboard Space and Enter clicks stay suppressed by preventDefault on keydown and keyup, and a mouse click does nothing. base.css comment, R-213, R-214 and R-137 now match the code. The hourly cap counts only codes never confirmed, which keeps guessing and inbox flooding capped; a new test covers it. Retry-After reaches the web, as the api is same-origin via the Next rewrite. too_many_codes and code_sent_recently count down, and the code boxes stay usable. Ran: go test ./internal/httpapi/tests/ ./internal/send/ ok; web vitest 274 passed; ui-web vitest 24 passed; check typecheck lint docs-check passed.",
+          "at": "2026-11-06T17:17:02Z",
+          "filesHash": "248f12cf6a6cb433"
         }
       },
       "branch": "fix/f430-a-send-asks-confirm-it-s-you-only-after",
