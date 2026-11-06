@@ -91,7 +91,7 @@
         "A live run adds a passkey with a virtual authenticator, removes it, and axe finds no serious or critical violations (R-217)"
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "unit",
         "web-unit",
@@ -108,20 +108,22 @@
       "keep": [],
       "review": true,
       "notes": [
-        "2026-11-06 review fail by reviewer: Fail. Ran: go test ./internal/httpapi/tests/ ok (29s); vitest src/screens/settings src/features/auth 3 files 20 tests passed; harness check typecheck lint docs-check passed. Must fix: (1) Two other places add a passkey with no fresh check, against R-217: features/onboarding/components/setup-guide.tsx:81 (sidebar checklist, any time later) and first-run.tsx:299 (onboarding can resume days later). Route all three through one shared add that calls checkFreshSignIn first. (2) Docs overclaim the security. The GET check is a web-only step; it does not bind Privy. A stolen session can call Privy's link API directly, sign in with its own passkey and pass D-49, which is the exact Q-13 threat. PROJECT.md:454 marks Q-13 answered; routes.go:51-52 and openapi say a stale session confirms before it can. Say what it stops (a stale unlocked browser in our UI) and what it doesn't, and keep the residual risk open or name a backend fix. Should fix: architecture.md:39-40 still says passkeys are added only from the checklist and omits the GET check; focus goes to body after a remove (row and open dialog unmount, passkeys.tsx:361); two unnamed passkeys both get 'Remove Passkey'; DESIGN.md:190 and 192 sentences exceed 25 words; no test for a cancelled confirm showing no error, the dialog close cancelling the step, or google_oauth counting as a sign-in method. Rest is sound: guard order, 204/401 test, last-method rule (wallet excluded), error states, structure (screen file flat, logic in lib, tests in tests)."
+        "2026-11-06 review fail by reviewer: Fail. Ran: go test ./internal/httpapi/tests/ ok (29s); vitest src/screens/settings src/features/auth 3 files 20 tests passed; harness check typecheck lint docs-check passed. Must fix: (1) Two other places add a passkey with no fresh check, against R-217: features/onboarding/components/setup-guide.tsx:81 (sidebar checklist, any time later) and first-run.tsx:299 (onboarding can resume days later). Route all three through one shared add that calls checkFreshSignIn first. (2) Docs overclaim the security. The GET check is a web-only step; it does not bind Privy. A stolen session can call Privy's link API directly, sign in with its own passkey and pass D-49, which is the exact Q-13 threat. PROJECT.md:454 marks Q-13 answered; routes.go:51-52 and openapi say a stale session confirms before it can. Say what it stops (a stale unlocked browser in our UI) and what it doesn't, and keep the residual risk open or name a backend fix. Should fix: architecture.md:39-40 still says passkeys are added only from the checklist and omits the GET check; focus goes to body after a remove (row and open dialog unmount, passkeys.tsx:361); two unnamed passkeys both get 'Remove Passkey'; DESIGN.md:190 and 192 sentences exceed 25 words; no test for a cancelled confirm showing no error, the dialog close cancelling the step, or google_oauth counting as a sign-in method. Rest is sound: guard order, 204/401 test, last-method rule (wallet excluded), error states, structure (screen file flat, logic in lib, tests in tests).",
+        "2026-11-06 review pass by reviewer: Pass on efa70b55. Ran: go test ./internal/httpapi/tests/ ok (32s); vitest src/screens/settings src/features/auth src/features/onboarding 6 files 40 tests passed; harness check typecheck lint docs-check passed. Both must-fixes are fixed. Settings, the overview checklist and onboarding all add a passkey through useAddPasskey, which checks first; a given-up confirm shows no error, and the test checks the order. The route comment, openapi, api.md, architecture.md and R-217 say the check binds Forwend's screens, not Privy's API, and Q-13 is open with the risk and an option. Should-fixes done with tests: focus after removal, Remove names told apart, the reason as aria-describedby, Google counted, a failed add, the dialog clearing its error. Nit to fix before merge: api.md:1056 'A value that isn't 6 digits uses no try' now sits under the GET bullet; it belongs under verify (line 1051). Not tested: a cancelled confirm through the provider, and Safari's passkey prompt after the extra call."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-06T17:49:48Z",
+        "at": "2026-11-06T18:10:04Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 5.0,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "docs-check",
@@ -134,7 +136,7 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.4,
+            "seconds": 0.3,
             "log": ""
           },
           {
@@ -148,14 +150,14 @@
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 63.4,
+            "seconds": 61.2,
             "log": ""
           },
           {
             "id": "backend-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 30.3,
+            "seconds": 28.0,
             "log": ""
           },
           {
@@ -170,38 +172,38 @@
             "id": "live-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 496.2,
+            "seconds": 512.1,
             "log": ""
           },
           {
             "id": "auth-live-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 26.2,
+            "seconds": 28.8,
             "log": ""
           },
           {
             "id": "web-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 43.1,
+            "seconds": 46.3,
             "log": ""
           }
         ],
         "taskHash": "94060f3852790aa0",
-        "filesHash": "653ae81a8025aabb",
+        "filesHash": "6dc190bbec9ce27c",
         "proof": {
           "1": "web-unit: passkeys-list.test.tsx lists a passkey with Made on Safari, macOS · Added Oct 27 · Last used Nov 5; passkeys.test.ts lists them newest first with the password manager's name; live-e2e: passkeys.spec shows the new passkey with Added and Last used",
-          "2": "web-unit: passkeys-list.test.tsx removes only after the dialog and after the api check, leaves it when the check fails, and adds another after the check; unit: TestAnAccountChangeChecksTheSessionIsFresh: a stale session gets reauth_required, a confirmed code passes, no token is refused; live-e2e: passkeys.spec adds one, Keep it leaves it, Remove removes it, confirming it's you when asked",
-          "3": "web-unit: passkeys-list.test.tsx turns Remove off for the only way to sign in and says why; passkeys.test.ts: a wallet is not a way to sign in",
+          "2": "web-unit: passkeys-list.test.tsx removes only after the dialog and after the api check, leaves it when the check fails, clears the dialog's error on close, says so when adding fails, and adds another after the check; use-add-passkey.test.ts asks the api before Privy links and links nothing when refused, for Settings, the checklist and onboarding alike; unit: TestAnAccountChangeChecksTheSessionIsFresh; live-e2e: passkeys.spec adds one, Keep it leaves it, Remove removes it",
+          "3": "web-unit: passkeys-list.test.tsx turns Remove off for the only way to sign in, with the reason as its description, and keeps it on beside Google; passkeys.test.ts: a wallet is not a way to sign in",
           "4": "live-e2e: passkeys.spec adds a passkey with Chrome's virtual authenticator, removes it, and axe finds no serious or critical violations"
         },
         "review": {
-          "result": "fail",
+          "result": "pass",
           "by": "reviewer",
-          "summary": "Fail. Ran: go test ./internal/httpapi/tests/ ok (29s); vitest src/screens/settings src/features/auth 3 files 20 tests passed; harness check typecheck lint docs-check passed. Must fix: (1) Two other places add a passkey with no fresh check, against R-217: features/onboarding/components/setup-guide.tsx:81 (sidebar checklist, any time later) and first-run.tsx:299 (onboarding can resume days later). Route all three through one shared add that calls checkFreshSignIn first. (2) Docs overclaim the security. The GET check is a web-only step; it does not bind Privy. A stolen session can call Privy's link API directly, sign in with its own passkey and pass D-49, which is the exact Q-13 threat. PROJECT.md:454 marks Q-13 answered; routes.go:51-52 and openapi say a stale session confirms before it can. Say what it stops (a stale unlocked browser in our UI) and what it doesn't, and keep the residual risk open or name a backend fix. Should fix: architecture.md:39-40 still says passkeys are added only from the checklist and omits the GET check; focus goes to body after a remove (row and open dialog unmount, passkeys.tsx:361); two unnamed passkeys both get 'Remove Passkey'; DESIGN.md:190 and 192 sentences exceed 25 words; no test for a cancelled confirm showing no error, the dialog close cancelling the step, or google_oauth counting as a sign-in method. Rest is sound: guard order, 204/401 test, last-method rule (wallet excluded), error states, structure (screen file flat, logic in lib, tests in tests).",
-          "at": "2026-11-06T18:05:56Z",
-          "filesHash": "653ae81a8025aabb"
+          "summary": "Pass on efa70b55. Ran: go test ./internal/httpapi/tests/ ok (32s); vitest src/screens/settings src/features/auth src/features/onboarding 6 files 40 tests passed; harness check typecheck lint docs-check passed. Both must-fixes are fixed. Settings, the overview checklist and onboarding all add a passkey through useAddPasskey, which checks first; a given-up confirm shows no error, and the test checks the order. The route comment, openapi, api.md, architecture.md and R-217 say the check binds Forwend's screens, not Privy's API, and Q-13 is open with the risk and an option. Should-fixes done with tests: focus after removal, Remove names told apart, the reason as aria-describedby, Google counted, a failed add, the dialog clearing its error. Nit to fix before merge: api.md:1056 'A value that isn't 6 digits uses no try' now sits under the GET bullet; it belongs under verify (line 1051). Not tested: a cancelled confirm through the provider, and Safari's passkey prompt after the extra call.",
+          "at": "2026-11-06T18:23:37Z",
+          "filesHash": "6dc190bbec9ce27c"
         }
       },
       "branch": "feat/f429-the-user-lists-adds-and-removes-passkeys",
