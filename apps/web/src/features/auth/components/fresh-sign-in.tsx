@@ -1,7 +1,8 @@
 "use client";
 
 import { BUTTON_VARIANTS, Button, CodeInput, Dialog } from "@forwend/ui-web";
-import { useLoginWithEmail, usePrivy } from "@privy-io/react-auth";
+import { usePrivy } from "@privy-io/react-auth";
+import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import {
   createContext,
   type ReactNode,
@@ -13,6 +14,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useSendFreshCodeMutation, useVerifyFreshCodeMutation } from "@/features/auth/api/auth-api";
 import { FRESH_SIGN_IN_COPY as COPY } from "@/features/auth/constants/auth-copy";
 import { CODE_LENGTH } from "@/features/auth/constants/sign-in";
 import { useFullCode } from "@/features/auth/hooks/use-full-code";
@@ -136,8 +138,7 @@ export function useOpenWhilePending(pending: boolean, open: (() => void) | undef
   }, [pending]);
 }
 
-// A code sent to the login email: a new sign-in while signed in gives a token Privy marks as a sign-in, not a
-// refresh (S-8). In a form it sits under a hairline after the fields; first in a dialog of its own, it needs no rule.
+// A code sent to the login email. In a form it sits under a hairline after the fields; first in a dialog of its own, it needs no rule.
 // titled is false where the dialog's own title already says Confirm it's you.
 function ConfirmStep({
   onDone,
@@ -147,8 +148,13 @@ function ConfirmStep({
   titled?: boolean;
 }) {
   const { user } = usePrivy();
-  const { sendCode, loginWithCode } = useLoginWithEmail();
-  const email = user?.email?.address;
+  // Forwend's own code (R-137): a Privy sign-in made while signed in keeps the session and its sign-in time, so the
+  // api can't tell it happened (D-49).
+  const [sendCode] = useSendFreshCodeMutation();
+  const [verifyCode] = useVerifyFreshCodeMutation();
+  // The api sends the code to the login email, or a Google-only account's Google address.
+  const email = user?.email?.address ?? user?.google?.email;
+  const [noEmail, setNoEmail] = useState(false);
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
@@ -162,10 +168,15 @@ function ConfirmStep({
     setBusy("send");
     setError("");
     try {
-      await sendCode({ email });
+      await sendCode().unwrap();
       setSent(true);
-    } catch {
-      setError(COPY.sendFailed);
+    } catch (e) {
+      const code = ((e as FetchBaseQueryError).data as { error?: { code?: string } } | undefined)
+        ?.error?.code;
+      // This session's code sent a moment ago is still the one to enter.
+      if (code === "code_sent_recently") setSent(true);
+      else if (code === "no_login_email") setNoEmail(true);
+      else setError(COPY.sendFailed);
     } finally {
       setBusy("");
     }
@@ -203,12 +214,13 @@ function ConfirmStep({
     (full: string) => {
       setBusy("code");
       setError("");
-      loginWithCode({ code: full })
+      verifyCode(full)
+        .unwrap()
         .then(() => onDone(true))
         .catch(() => setError(COPY.codeFailed))
         .finally(() => setBusy(""));
     },
-    [loginWithCode, onDone],
+    [verifyCode, onDone],
   );
   const retry = useFullCode(code, sent && busy === "", tryCode);
   const confirmCode = () => {
@@ -216,6 +228,9 @@ function ConfirmStep({
     if (code.length === CODE_LENGTH) retry();
     else setError(COPY.codeFailed);
   };
+
+  // The api found no login email: nothing can be sent, so only Cancel is left.
+  const to = noEmail ? undefined : email;
 
   return (
     // Not a form: it sits inside the form it confirms, so Enter confirms here instead of sending that form again.
@@ -236,15 +251,15 @@ function ConfirmStep({
           </p>
         ) : null}
         <p className="text-sm break-words text-muted" aria-live="polite">
-          {!email
+          {!to
             ? COPY.noEmail
             : sent
-              ? COPY.sentTo(email)
+              ? COPY.sentTo(to)
               : busy === "send"
                 ? COPY.sending
-                : COPY.notSent(email)}
+                : COPY.notSent(to)}
           {/* A new code is asked for where the code is said to be, as most code screens do. */}
-          {email && (sent || busy !== "send") ? (
+          {to && (sent || busy !== "send") ? (
             <>
               {" "}
               <Button
@@ -260,7 +275,7 @@ function ConfirmStep({
           ) : null}
         </p>
       </div>
-      {email ? (
+      {to ? (
         // Stays enabled while the code is checked: disabling it would drop keyboard focus.
         <CodeInput
           label={COPY.codeLabel}
@@ -277,7 +292,7 @@ function ConfirmStep({
         <Button type="button" variant={BUTTON_VARIANTS.secondary} onClick={cancel}>
           {COPY.cancel}
         </Button>
-        {email ? (
+        {to ? (
           <Button type="button" loading={busy === "code"} onClick={confirmCode}>
             {COPY.confirm}
           </Button>

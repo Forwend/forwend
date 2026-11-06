@@ -40,6 +40,11 @@ services:
       PRIVY_APP_SECRET: ${PRIVY_APP_SECRET:?set PRIVY_APP_SECRET}
       PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:?set PUBLIC_WEB_URL}
       WEBHOOK_SECRET_KEY: ${WEBHOOK_SECRET_KEY:?set WEBHOOK_SECRET_KEY}
+      # Confirm it's you codes (R-137) go out from the api at once.
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-Forwend <notifications@mail.forwend.com>}
+      EMAIL_POSTAL_ADDRESS: ${EMAIL_POSTAL_ADDRESS:-}
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:?set SUPPORT_EMAIL}
     depends_on:
       postgres:
         condition: service_healthy

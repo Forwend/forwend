@@ -288,6 +288,18 @@ func welcome(app string) view {
 		Button: button{"Open Forwend", app}, Reason: "You get this email once, because you created a Forwend account."}
 }
 
+// CodeMessage is the email with a Confirm it's you code (R-137); the api sends it at once, outside the outbox.
+func CodeMessage(site Site, code string, ttl time.Duration) (email.Message, error) {
+	return message(site, view{Subject: "Your Forwend code: " + code, Preheader: "Use it to confirm it's you.",
+		Title: "Confirm it's you", Amount: code,
+		// The plain-text part has no large figure, so the code is in the words too.
+		Lead: []string{"Your code is " + code + ". Enter it in Forwend to confirm it's you. " +
+			fmt.Sprintf("It works for %d minutes.", int(ttl.Minutes()))},
+		Note:   "Didn't ask for it? Don't share it. Sign out of all devices in Forwend's Settings.",
+		Button: button{"Open Forwend", site.WebURL + "/app"},
+		Reason: "You get this email because someone asked to confirm it's you in Forwend."})
+}
+
 // receipt is the payer's one email (R-82): nothing else is ever sent to this address.
 func receipt(number, amount, symbol, network, issuer, sender, tx, pdf string) view {
 	v := view{Subject: "Your receipt for " + number, Badge: "Paid", Tone: "success", Title: "Receipt for " + number,

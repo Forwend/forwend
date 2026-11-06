@@ -35,8 +35,14 @@ type API struct {
 	PublicWebURL string
 	// UserBurst is each signed-in user's burst of requests; 0 keeps the default (mid.UserBurst). Only the live e2e,
 	// whose tests all run as one user, sets it.
-	UserBurst         int
+	UserBurst int
+	// CodesPerHour is each user's Confirm it's you codes an hour; 0 keeps reauth.MaxPerHour. Only the live e2e, whose
+	// one test account confirms on every run against a lasting database, sets it.
+	CodesPerHour      int
 	EnableTestnetUSDC bool
+	// Email sends Confirm it's you codes (R-137); without a key no code can be sent, so protected changes need a
+	// full sign-in.
+	Email Email
 	// WebhookKey seals webhook signing secrets (R-146): 32 bytes, or nil to leave webhooks off. Never log it.
 	WebhookKey []byte
 }
@@ -124,19 +130,25 @@ func LoadAPI() (API, error) {
 		PrivyAppID: r.get("PRIVY_APP_ID"), PrivyJWKSURL: r.keysURL("PRIVY_JWKS_URL"), PrivyAppSecret: r.get("PRIVY_APP_SECRET"),
 		RPCSecrets: r.rpcSecrets(), RPCAllowLoopback: r.flag("RPC_ALLOW_LOOPBACK"), RPCRate: r.rate(),
 		PublicWebURL: r.origin("PUBLIC_WEB_URL"), UserBurst: r.count("API_USER_BURST"),
-		EnableTestnetUSDC: r.flag("ENABLE_TESTNET_USDC"), WebhookKey: r.base64Key("WEBHOOK_SECRET_KEY")}
+		CodesPerHour:      r.count("API_CODES_PER_HOUR"),
+		EnableTestnetUSDC: r.flag("ENABLE_TESTNET_USDC"), WebhookKey: r.base64Key("WEBHOOK_SECRET_KEY"), Email: email()}
+	c.Email.PublicWebURL = c.PublicWebURL
 	return c, r.err()
+}
+
+// email is the optional Resend settings the api and the worker share; an empty key sends nothing.
+func email() Email {
+	e := Email{ResendKey: os.Getenv("RESEND_API_KEY"), ResendURL: os.Getenv("RESEND_API_URL"),
+		PostalAddress: os.Getenv("EMAIL_POSTAL_ADDRESS"), Support: os.Getenv("SUPPORT_EMAIL"), From: os.Getenv("EMAIL_FROM")}
+	if e.From == "" {
+		e.From = DefaultEmailFrom
+	}
+	return e
 }
 
 func LoadWorker() (Worker, error) {
 	var r reader
-	c := Worker{DatabaseURL: r.get("DATABASE_URL"), Chains: r.chains(),
-		Email: Email{ResendKey: os.Getenv("RESEND_API_KEY"), ResendURL: os.Getenv("RESEND_API_URL"),
-			PostalAddress: os.Getenv("EMAIL_POSTAL_ADDRESS"), Support: os.Getenv("SUPPORT_EMAIL"),
-			From: os.Getenv("EMAIL_FROM")}}
-	if c.Email.From == "" {
-		c.Email.From = DefaultEmailFrom
-	}
+	c := Worker{DatabaseURL: r.get("DATABASE_URL"), Chains: r.chains(), Email: email()}
 	if c.RatesURL = os.Getenv("ECB_RATES_URL"); c.RatesURL == "" {
 		c.RatesURL = DefaultRatesURL
 	}

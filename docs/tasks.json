@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 428,
+  "nextId": 429,
   "tasks": [
     {
       "id": "F332",
@@ -564,6 +564,146 @@
       "delivery": {
         "mode": "pr",
         "branch": "feat/f427-on-arc-the-wallet-pays-its-own-gas-in-us",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F428",
+      "type": "fix",
+      "behavior": "Confirm it's you works: Forwend emails its own code and a confirmed session stays fresh for 15 minutes",
+      "acceptance": [
+        "POST /v1/me/fresh-sign-in emails a 6-digit code from the api, at most one per 30 s and 10 per hour; the code is hashed, lasts 10 minutes and allows 5 tries (D-49)",
+        "POST /v1/me/fresh-sign-in/verify with the right code makes the token's Privy session pass FreshSignIn for 15 minutes; a wrong, expired or other session's code doesn't (R-137)",
+        "The web's Confirm it's you sends and checks Forwend's code in place, then repeats the request (R-137)",
+        "A live run confirms in place after the session went stale and the send goes through (R-137)"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "unit",
+        "web-unit",
+        "web-e2e",
+        "auth-live-e2e",
+        "live-e2e"
+      ],
+      "refs": [
+        "R-137",
+        "D-49",
+        "D-63"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-11-06 review pass by reviewer: Pass. Read show F428 and git diff 46e23458..HEAD. Security: 6-digit code from crypto/rand, stored as sha256(row id:code), compared with subtle.ConstantTimeCompare; 5 tries and 10 minutes per code, newest code per session only, locked FOR UPDATE so tries count under concurrency; lookups filter on both user and sid, so another user or session can't use it; Fresh counts only confirmed_at within auth.FreshWindow. Send reads the Privy login email before taking the user row lock, checks 30 s per session and the hourly cap per user under that lock, commits, then emails outside the lock; a failed email deletes the row so it counts toward neither limit. Keys and missing tokens get 401 on both routes (RequireUser). Errors map to wrong_code 422, code_sent_recently and too_many_codes 429 with Retry-After, no_login_email 409, code_unavailable 503; no code or secret reaches a log or error string. Web: code_sent_recently counts as sent, no_login_email hides the code box, other failures offer a resend; verify failures say wrong or expired. Tests would fail if session binding, tries, expiry, window, lock or failed-email cleanup broke. Docs, openapi and .env.example match the code. Ran: go test ./internal/reauth/... ./internal/httpapi/tests/ ./internal/notify/ ./internal/config/ -count=1 (ok); vitest run src/features/auth (9 passed); harness check typecheck lint docs-check (passed). Non-blocking: too_many_codes shows the generic could-not-send line, and its Send a code button will get 429 again until Retry-After; fresh_sign_ins rows are never pruned; accept 4's live test stops at Review after the guarded prepare passes, the full send is covered by the other send.spec tests; an unknown users row in Send gives 500, not 404."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-06T14:56:25Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.6,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 64.4,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 7.4,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 45.5,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.9,
+            "log": ""
+          },
+          {
+            "id": "live-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 539.5,
+            "log": ""
+          },
+          {
+            "id": "auth-live-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 38.1,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 44.9,
+            "log": ""
+          }
+        ],
+        "taskHash": "1f1f4d777255cae2",
+        "filesHash": "5db67571e2097a6e",
+        "proof": {
+          "1": "unit: TestAConfirmedCodeMakesItsSessionFresh (one code per session per 30 s, code_sent_recently), TestCodesAreLimitedPerUser (five requests at once send one email; the eleventh in an hour is too_many_codes with Retry-After near an hour), TestACodeWhoseEmailFailedIsNotSent, TestCodesNeedASignedInPersonWithAnEmail (no_login_email 409; a key or no token 401), TestACodeEndsAfterFiveTriesOrTenMinutes; notify test: the email carries the code and says it works for 10 minutes",
+          "2": "unit: TestAConfirmedCodeMakesItsSessionFresh: a stale session gets reauth_required, a wrong code and another session's code get 422, the right code 204 makes that session pass FreshSignIn and not another, a used code fails, and 16 minutes later it no longer counts; TestProtectedChangesNeedAFreshSignIn still passes",
+          "3": "web-unit: fresh-sign-in.test.tsx sends the code, a full code confirms in place, a wrong code says so, a new code on request, code_sent_recently counts as sent but too_many_codes doesn't, and no_login_email hides the code box; live-e2e: the keys confirm test sends, refuses a wrong code and confirms the emailed one",
+          "4": "live-e2e: send.spec's stale-session test confirms it's you with Forwend's emailed code from the fake Resend, and the send goes on to the review"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass. Read show F428 and git diff 46e23458..HEAD. Security: 6-digit code from crypto/rand, stored as sha256(row id:code), compared with subtle.ConstantTimeCompare; 5 tries and 10 minutes per code, newest code per session only, locked FOR UPDATE so tries count under concurrency; lookups filter on both user and sid, so another user or session can't use it; Fresh counts only confirmed_at within auth.FreshWindow. Send reads the Privy login email before taking the user row lock, checks 30 s per session and the hourly cap per user under that lock, commits, then emails outside the lock; a failed email deletes the row so it counts toward neither limit. Keys and missing tokens get 401 on both routes (RequireUser). Errors map to wrong_code 422, code_sent_recently and too_many_codes 429 with Retry-After, no_login_email 409, code_unavailable 503; no code or secret reaches a log or error string. Web: code_sent_recently counts as sent, no_login_email hides the code box, other failures offer a resend; verify failures say wrong or expired. Tests would fail if session binding, tries, expiry, window, lock or failed-email cleanup broke. Docs, openapi and .env.example match the code. Ran: go test ./internal/reauth/... ./internal/httpapi/tests/ ./internal/notify/ ./internal/config/ -count=1 (ok); vitest run src/features/auth (9 passed); harness check typecheck lint docs-check (passed). Non-blocking: too_many_codes shows the generic could-not-send line, and its Send a code button will get 429 again until Retry-After; fresh_sign_ins rows are never pruned; accept 4's live test stops at Review after the guarded prepare passes, the full send is covered by the other send.spec tests; an unknown users row in Send gives 500, not 404.",
+          "at": "2026-11-06T15:12:42Z",
+          "filesHash": "5db67571e2097a6e"
+        },
+        "commit": "5c72a731",
+        "doneAt": "2026-11-06T15:14:17Z"
+      },
+      "branch": "fix/f428-confirm-it-s-you-works-forwend-emails-it",
+      "baseCommit": "46e23458b01e60131fbf96c985ab65560e408861",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f428-confirm-it-s-you-works-forwend-emails-it",
         "base": "main"
       }
     }

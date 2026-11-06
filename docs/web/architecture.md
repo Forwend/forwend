@@ -44,10 +44,10 @@ features own product behavior, and shared UI components are grouped by purpose. 
   - `providers/store-provider.tsx` mounts `FreshSignInProvider` (`features/auth/components/fresh-sign-in.tsx`) once.
   - A form sends its request through `useFreshSignIn().run`, which claims the ask: its `step` shows in the form.
   - A request no form claimed asks in the provider's own dialog.
-  - The step signs in again with the email code (`useLoginWithEmail`), which Privy counts as a sign-in, not a refresh.
-  - The request then goes once more with the new token; requests that need it together share one ask.
+  - The step asks the api for Forwend's emailed code and confirms it (`/v1/me/fresh-sign-in`), then repeats the request.
+    A Privy sign-in made while signed in keeps the session and its sign-in time, so it can't prove a confirm (D-49).
+  - Requests that need it together share one ask.
   - Public pages give no `freshSignIn`, so their 401s pass through.
-  - Signing in again replaces the browser's Privy session; its other tabs share the new one (measured 2026-10-25).
 - Pages, the app shell and the dashboard look as [DESIGN.md](DESIGN.md) says. Wiring behind them:
   - Navigation comes from one `APP_NAV`; switching profile opens the new profile's `/app` (R-76).
   - Each page names the permission it needs; `GET /v1/me` lists each profile's permissions (D-93).
@@ -177,4 +177,5 @@ Every run shares that account and the dev database, so its data must not pile up
 Its invoices and requests close within 2 days, and Send to client is mocked.
 A repeating invoice is stopped, and a job deleted, in the same test.
 The api it starts has `API_USER_BURST=1000`: every test signs in as one user, so a person's limit would run out.
+It also has `API_CODES_PER_HOUR=1000`: each run confirms it's you again, against the same database.
 What is worth a test: [rules.md](rules.md).

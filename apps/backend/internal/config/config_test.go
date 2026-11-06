@@ -53,6 +53,11 @@ func TestAPI(t *testing.T) {
 		}
 	}
 	t.Setenv("API_USER_BURST", "")
+	t.Setenv("API_CODES_PER_HOUR", "500")
+	if got, err := config.LoadAPI(); err != nil || got.CodesPerHour != 500 {
+		t.Fatalf("API_CODES_PER_HOUR=500: %d %v", got.CodesPerHour, err)
+	}
+	t.Setenv("API_CODES_PER_HOUR", "")
 	t.Setenv("PRIVY_JWKS_URL", "http://jwks.example")
 	if _, err := config.LoadAPI(); err == nil || !strings.Contains(err.Error(), "PRIVY_JWKS_URL (an https URL)") {
 		t.Fatalf("plain-http PRIVY_JWKS_URL: got %v", err)

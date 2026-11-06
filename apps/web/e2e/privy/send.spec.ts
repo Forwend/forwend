@@ -3,7 +3,7 @@ import { readFileSync, rmSync } from "node:fs";
 import { parseEnv } from "node:util";
 import { expect, type Page, test } from "@playwright/test";
 import { blockingViolations } from "./axe";
-import { code, signIn } from "./session";
+import { freshCode, signIn } from "./session";
 
 // Sent comes from the worker's watcher (R-212), so this file runs one beside the api. Without the email key it sends
 // no email.
@@ -66,8 +66,9 @@ async function confirmIfAsked(page: Page) {
   const review = sheet(page).getByRole("button", { name: /^(Send|Transfer) \d/ });
   await expect(confirm.or(review)).toBeVisible({ timeout: 30_000 });
   if (await confirm.isVisible()) {
-    // A full code confirms with no click; then the send is asked for again with the new token.
-    await confirm.getByRole("textbox", { name: "Code" }).fill(code);
+    // Forwend's emailed code (R-137): a full one confirms with no click, then the send is asked for again.
+    await expect(confirm).toContainText("We sent a code", { timeout: 20_000 });
+    await confirm.getByRole("textbox", { name: "Code" }).fill(await freshCode());
     await expect(review).toBeVisible({ timeout: 30_000 });
   }
 }
@@ -251,5 +252,42 @@ test("On Arc the wallet pays its own fee in USDC, shown before the send, and the
     timeout: 150_000,
   });
   await shot(page, "../../docs/runs/f427-arc-sent-1440.png");
+  await context.close();
+});
+
+// R-137: a sign-in elsewhere makes this session stale; Forwend's emailed code confirms it in place, and the send goes
+// on without signing out.
+test("A stale session confirms it's you with Forwend's emailed code, and the send goes on", async ({
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  const context = await browser.newContext({ storageState: fresh });
+  const page = await context.newPage();
+  await page.goto("/app");
+  await expect(page.getByRole("region", { name: "Total balance" })).toBeVisible();
+  const elsewhere = await browser.newContext();
+  const other = await elsewhere.newPage();
+  await other.goto("/sign-in");
+  await signIn(other);
+  await expect(other).toHaveURL("/app", { timeout: 30_000 });
+  await elsewhere.close();
+
+  await page
+    .getByRole("region", { name: "Total balance" })
+    .getByRole("button", { name: /^Transfer/ })
+    .click();
+  await sheet(page)
+    .getByRole("region", { name: "Your profiles" })
+    .getByRole("button")
+    .first()
+    .click();
+  await pickMoney(page);
+  await sheet(page).getByRole("textbox", { name: "Amount" }).fill("0.01");
+  await sheet(page).getByRole("button", { name: "Continue" }).click();
+  const confirm = sheet(page).getByRole("group", { name: "Confirm it's you" });
+  await expect(confirm).toContainText("We sent a code", { timeout: 20_000 });
+  await confirm.getByRole("textbox", { name: "Code" }).fill(await freshCode());
+  await expect(sheet(page)).toHaveAccessibleName("Review", { timeout: 20_000 });
+  await page.keyboard.press("Escape");
   await context.close();
 });

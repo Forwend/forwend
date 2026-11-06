@@ -80,7 +80,9 @@ async function mockTeam(page: Page, me: ReturnType<typeof shop>) {
     }
     if (path === `${base}/stores`) return route.fulfill({ json: { stores: [store] } });
     if (path === `${base}/members`) return route.fulfill({ json: team });
-    if (request.method() === "GET") return route.fallback();
+    // Confirm it's you asks the real api for its code; it is not a team change.
+    if (request.method() === "GET" || path.startsWith("/v1/me/fresh-sign-in"))
+      return route.fallback();
     sent.push({ method: request.method(), path, body: request.postDataJSON() });
     if (path === `${base}/invites`) {
       const invite = {

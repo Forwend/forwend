@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"math/big"
 	"net/http"
@@ -19,9 +20,12 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/address"
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
+	"github.com/forwend/forwend/apps/backend/internal/email"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi"
+	"github.com/forwend/forwend/apps/backend/internal/notify"
 	"github.com/forwend/forwend/apps/backend/internal/privy"
 	"github.com/forwend/forwend/apps/backend/internal/privy/privytest"
+	"github.com/forwend/forwend/apps/backend/internal/reauth"
 	"github.com/forwend/forwend/apps/backend/internal/send"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -41,6 +45,42 @@ type invoiceEnv struct {
 	aliceProfile string // has an EVM wallet
 	walletless   string // Alice's second profile, without a wallet
 	bobProfile   string
+	codes        *codeMailbox // the Confirm it's you emails the api sent
+}
+
+// codeMailbox keeps the emails a test's api sends, as Resend would deliver them.
+type codeMailbox struct {
+	sync.Mutex
+	sent []email.Message
+	down bool // Resend refuses every email
+}
+
+func (m *codeMailbox) Send(_ context.Context, msg email.Message) error {
+	m.Lock()
+	defer m.Unlock()
+	if m.down {
+		return errors.New("resend: status 503")
+	}
+	m.sent = append(m.sent, msg)
+	return nil
+}
+
+func (m *codeMailbox) count() int {
+	m.Lock()
+	defer m.Unlock()
+	return len(m.sent)
+}
+
+// last is the code of the newest email to address, from its subject.
+func (m *codeMailbox) last(address string) string {
+	m.Lock()
+	defer m.Unlock()
+	for i := len(m.sent) - 1; i >= 0; i-- {
+		if m.sent[i].To == address {
+			return strings.TrimPrefix(m.sent[i].Subject, "Your Forwend code: ")
+		}
+	}
+	return ""
 }
 
 // invoiceAPI: wallet balances read 2500000 at block 100, and Base Sepolia has enabled USDC and a disabled token.
@@ -94,10 +134,15 @@ func invoiceAPIChains(t *testing.T, userBurst int, webhookKey []byte, clients se
 	if err != nil {
 		t.Fatal(err)
 	}
-	e.srv = httptest.NewServer(httpapi.NewMux(pool, verifier, privy.NewClient(privytest.AppID, privytest.AppSecret, e.wallets.URL),
+	users := privy.NewClient(privytest.AppID, privytest.AppSecret, e.wallets.URL)
+	e.codes = &codeMailbox{}
+	codes := reauth.NewService(pool, e.codes, func(code string) (email.Message, error) {
+		return notify.CodeMessage(notify.Site{WebURL: webURL}, code, reauth.CodeTTL)
+	}, users.LoginEmail, 0)
+	e.srv = httptest.NewServer(httpapi.NewMux(pool, verifier, users,
 		func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
 			return big.NewInt(2500000), 100, nil
-		}, clients, webURL, userBurst, webhookKey))
+		}, clients, codes, webURL, userBurst, webhookKey))
 	t.Cleanup(e.srv.Close)
 	return e
 }

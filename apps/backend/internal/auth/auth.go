@@ -24,17 +24,21 @@ var ErrUnauthorized = errors.New("invalid access token")
 // ErrForbidden means the user may not do this on the profile, or it does not exist.
 var ErrForbidden = errors.New("not allowed for this profile")
 
-// ErrReauthRequired means the action needs a token from a sign-in within FreshWindow, not from a refresh (D-49).
+// ErrReauthRequired means the action needs a fresh sign-in (D-49): a full sign-in, or a confirmed Forwend code for the
+// session, within FreshWindow.
 var ErrReauthRequired = errors.New("fresh sign-in required")
 
-// FreshWindow is how old a token may be for a money action or another change D-63 names. Privy keeps a sign-in's token
+// FreshWindow is how old a token may be for a money action or another change D-63 names, and how long a confirmed
+// Forwend code keeps its session fresh. Privy keeps a sign-in's token
 // about 55 minutes before a refresh changes its iat, so this can stay that long at most.
 const FreshWindow = 15 * time.Minute
 
-// Token is a verified access token: the user's Privy DID and when Privy issued it.
+// Token is a verified access token: the user's Privy DID, when Privy issued it, and its Privy session (sid). A
+// refresh keeps the session, and so does a Privy sign-in made while signed in.
 type Token struct {
 	User     string
 	IssuedAt time.Time
+	Session  string
 }
 
 // IsFresh reports whether t comes from a sign-in, not a refresh: Privy sets an email or passkey account's
@@ -114,7 +118,7 @@ func (v *Verifier) Verify(ctx context.Context, token string) (Token, error) {
 		return Token{}, fmt.Errorf("%w: not an access token", ErrUnauthorized)
 	}
 	// No iat reads as the Unix epoch: before any sign-out cutoff, and never fresh.
-	t := Token{User: claims.Subject, IssuedAt: time.Unix(0, 0)}
+	t := Token{User: claims.Subject, IssuedAt: time.Unix(0, 0), Session: claims.SessionID}
 	if claims.IssuedAt != nil {
 		t.IssuedAt = claims.IssuedAt.Time
 	}
