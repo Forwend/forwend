@@ -12,6 +12,11 @@ export const authApi = apiSlice.injectEndpoints({
       query: () => ({ url: "/v1/me/fresh-sign-in", method: "POST" }),
       // A 429 means a code went out a moment ago and is still the one to enter, not a wait.
       extraOptions: { answerFirst: true },
+      // Its Retry-After says when another code may go: the step counts down to it.
+      transformErrorResponse: (error, meta) => ({
+        ...error,
+        retryAfterSeconds: Number(meta?.response?.headers.get("Retry-After")) || 0,
+      }),
     }),
     /** The right code makes this session count as freshly signed in for 15 minutes. */
     verifyFreshCode: build.mutation<void, string>({

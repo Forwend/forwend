@@ -140,20 +140,37 @@ describe("fresh sign-in", () => {
     await waitFor(() => expect(answers).toEqual([true]));
   });
 
-  it("takes this session's code sent a moment ago as sent, but not a full hour's codes", async () => {
-    const tooSoon = { status: 429, data: { error: { code: "code_sent_recently" } } };
-    api.sendCode.mockRejectedValueOnce(tooSoon);
+  it("takes this session's code sent a moment ago as sent, counting down the api's wait", async () => {
+    api.sendCode.mockRejectedValueOnce({
+      status: 429,
+      data: { error: { code: "code_sent_recently" } },
+      retryAfterSeconds: 20,
+    });
     renderForm();
-    await screen.findByText(/Didn't get it\?/);
-    cleanup();
+    await screen.findByText("Resend in 20s");
+  });
+
+  it("counts down to the next code when the hour's codes are used up, with no link meanwhile", async () => {
     api.sendCode.mockRejectedValueOnce({
       status: 429,
       data: { error: { code: "too_many_codes" } },
+      retryAfterSeconds: 3_120,
     });
     renderForm();
-    // The hour's codes are used up: said so, with no link that would fail the same way.
-    await screen.findByText("That's the most codes for one hour. Try again later.");
+    await screen.findByText("Too many codes for now. Try again in 52 min.");
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Resend code" })).toBeNull();
+  });
+
+  it("offers a code again once the wait for the hour's codes is over", async () => {
+    api.sendCode.mockRejectedValueOnce({
+      status: 429,
+      data: { error: { code: "too_many_codes" } },
+      retryAfterSeconds: 0,
+    });
+    renderForm();
+    fireEvent.click(await screen.findByRole("button", { name: "Resend code" }));
+    await waitFor(() => expect(api.sendCode).toHaveBeenCalledTimes(2));
   });
 
   it("tells an account with no login email that no code can come", async () => {

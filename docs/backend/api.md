@@ -1041,7 +1041,8 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
 - Confirm it's you (R-137): Privy keeps the session and the sign-in time when someone signs in again while signed in.
   - So the web asks `POST /v1/me/fresh-sign-in`: the api emails a 6-digit code to the login email at once.
   - One per session per 30 s (429 `code_sent_recently`: the code sent is still the one to enter).
-  - 10 per user per hour (429 `too_many_codes`). Both give Retry-After.
+  - 10 never confirmed per user per hour (429 `too_many_codes`). Both give Retry-After.
+    - A confirmed code proves the inbox is the owner's, so it doesn't count: guessing and flooding stay capped.
   - `API_CODES_PER_HOUR` raises the 10. Only the live e2e sets it (1000): its one account confirms on every run (D-85).
   - No login email: 409 `no_login_email`.
   - A send locks the user's row, so requests at once send one email.

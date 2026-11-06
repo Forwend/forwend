@@ -161,7 +161,7 @@ function ConfirmStep({
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
   const [sendFailed, setSendFailed] = useState(false);
-  // The hour's codes are used up (too_many_codes): asking again would fail the same way, so no link.
+  // The hour's codes are used up (too_many_codes): the step counts down to the api's Retry-After, then offers a code.
   const [tooMany, setTooMany] = useState(false);
   const [error, setError] = useState("");
   // Sending and checking don't wait on each other: a code from an earlier email still works while a new one goes.
@@ -176,18 +176,24 @@ function ConfirmStep({
     if (!email) return;
     setSending(true);
     setSendFailed(false);
+    setTooMany(false);
     try {
       const { resendAfterSeconds } = await sendCode().unwrap();
       setSent(true);
       setResendAt(Date.now() + resendAfterSeconds * 1000);
     } catch (e) {
-      const code = ((e as FetchBaseQueryError).data as { error?: { code?: string } } | undefined)
-        ?.error?.code;
+      const failure = e as FetchBaseQueryError & { retryAfterSeconds?: number };
+      const code = (failure.data as { error?: { code?: string } } | undefined)?.error?.code;
+      const waitUntil = Date.now() + (failure.retryAfterSeconds ?? 0) * 1000;
       // This session's code sent a moment ago is still the one to enter.
-      if (code === "code_sent_recently") setSent(true);
-      else if (code === "no_login_email") setNoEmail(true);
-      else if (code === "too_many_codes") setTooMany(true);
-      else setSendFailed(true);
+      if (code === "code_sent_recently") {
+        setSent(true);
+        setResendAt(waitUntil);
+      } else if (code === "no_login_email") setNoEmail(true);
+      else if (code === "too_many_codes") {
+        setTooMany(true);
+        setResendAt(waitUntil);
+      } else setSendFailed(true);
     } finally {
       setSending(false);
     }
@@ -287,12 +293,12 @@ function ConfirmStep({
           {/* The one status line. It stays while a code goes out, so the focus stays on its link. */}
           <p
             aria-live="polite"
-            className={`min-h-5 text-sm ${sendFailed || tooMany ? "text-danger" : "text-muted"}`}
+            className={`min-h-5 text-sm ${sendFailed || (tooMany && wait > 0) ? "text-danger" : "text-muted"}`}
           >
             {sending && !sent ? (
               COPY.sending
-            ) : tooMany ? (
-              COPY.tooMany
+            ) : tooMany && wait > 0 ? (
+              <span className="tabular-nums">{COPY.tooMany(COPY.wait(wait))}</span>
             ) : sendFailed ? (
               <>
                 {COPY.sendFailed}{" "}
@@ -300,7 +306,7 @@ function ConfirmStep({
                   {COPY.tryAgain}
                 </Button>
               </>
-            ) : sent ? (
+            ) : sent || tooMany ? (
               <>
                 {COPY.notReceived}{" "}
                 {wait > 0 ? (

@@ -199,7 +199,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - One status line under them says what is next, and nothing else repeats it:
     - "Sending a code…", then "Didn't get it? Resend in 28s", then a Resend code link once the api's wait is over.
     - "We couldn't send the code. Try again" when the send failed. That is not a wrong code: the boxes stay unmarked.
-    - When the hour's codes are used up, it says so, with no link: asking again would fail the same way.
+    - When the hour's codes are used up: "Too many codes for now. Try again in 52 min.", counting down the api's
+      Retry-After, then the Resend code link. A code sent a moment ago counts down its real wait too.
   - A full code is checked whatever the send did: an earlier email's code may still be the one.
   - Under a sheet or dialog title, its Back or Close gives up, so the step has only Confirm, full width.
   - A send's confirm is the sheet's own step, after Send is held (see Send).

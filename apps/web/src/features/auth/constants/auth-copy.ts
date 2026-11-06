@@ -20,7 +20,9 @@ export const FRESH_SIGN_IN_COPY = {
   resend: "Resend code",
   resendIn: (seconds: number) => `Resend in ${seconds}s`,
   sendFailed: "We couldn't send the code.",
-  tooMany: "That's the most codes for one hour. Try again later.",
+  tooMany: (wait: string) => `Too many codes for now. Try again in ${wait}.`,
+  /** A wait as the countdown reads it: seconds under a minute, else whole minutes rounded up. */
+  wait: (seconds: number) => (seconds < 60 ? `${seconds}s` : `${Math.ceil(seconds / 60)} min`),
   tryAgain: "Try again",
   cancel: "Cancel",
   codeFailed: "That code is wrong or expired.",

@@ -790,7 +790,7 @@ paths:
       description: |
         Privy keeps the session and the sign-in time when someone signs in again while signed in, so after a
         reauth_required the web asks for Forwend's own code. It goes to the login email at once; one per 30 seconds
-        per session and 10 per user per hour. It works for 10 minutes and 5 tries.
+        per session, and 10 never confirmed per user per hour. It works for 10 minutes and 5 tries.
       responses:
         "202":
           description: Sent
