@@ -18,6 +18,10 @@ export const authApi = apiSlice.injectEndpoints({
         retryAfterSeconds: Number(meta?.response?.headers.get("Retry-After")) || 0,
       }),
     }),
+    /** R-217: before Privy changes the account in the browser; a stale session confirms it's you first (Q-13). */
+    checkFreshSignIn: build.mutation<void, void>({
+      query: () => ({ url: "/v1/me/fresh-sign-in", method: "GET" }),
+    }),
     /** The right code makes this session count as freshly signed in for 15 minutes. */
     verifyFreshCode: build.mutation<void, string>({
       query: (code) => ({ url: "/v1/me/fresh-sign-in/verify", method: "POST", body: { code } }),
@@ -29,4 +33,5 @@ export const {
   useSignOutEverywhereMutation,
   useSendFreshCodeMutation,
   useVerifyFreshCodeMutation,
+  useCheckFreshSignInMutation,
 } = authApi;

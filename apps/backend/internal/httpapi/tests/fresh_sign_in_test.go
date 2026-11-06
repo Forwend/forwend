@@ -208,6 +208,41 @@ func TestConfirmedCodesDontCountTowardTheHoursCap(t *testing.T) {
 	}
 }
 
+// R-217, Q-13: an account change Privy makes in the browser, such as adding or removing a passkey, first asks the api
+// whether the session is fresh; a stale one gets reauth_required, and a confirmed code makes it pass.
+func TestAnAccountChangeChecksTheSessionIsFresh(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	e.wallets.Lock()
+	e.wallets.Emails[alice] = "alice@example.com"
+	e.wallets.Unlock()
+	refreshed := signedInAt.Add(2 * time.Second)
+	check := func(sid string, iat time.Time) reply {
+		return e.inSession(t, "GET", "/v1/me/fresh-sign-in", alice, sid, iat, "")
+	}
+	if r := check("session-1", signedInAt); r.status != http.StatusNoContent {
+		t.Errorf("a token from the sign-in: %d %v", r.status, r.body)
+	}
+	if r := check("session-1", refreshed); r.status != http.StatusUnauthorized || errorCode(r) != "reauth_required" {
+		t.Fatalf("a refreshed token: %d %v", r.status, r.body)
+	}
+	if r := e.inSession(t, "POST", "/v1/me/fresh-sign-in", alice, "session-1", refreshed, ""); r.status !=
+		http.StatusAccepted {
+		t.Fatalf("send a code: %d %v", r.status, r.body)
+	}
+	code := e.codes.last("alice@example.com")
+	if r := e.inSession(t, "POST", "/v1/me/fresh-sign-in/verify", alice, "session-1", refreshed,
+		`{"code": "`+code+`"}`); r.status != http.StatusNoContent {
+		t.Fatalf("confirm: %d %v", r.status, r.body)
+	}
+	if r := check("session-1", refreshed); r.status != http.StatusNoContent {
+		t.Errorf("after the confirm: %d %v", r.status, r.body)
+	}
+	if r := e.withKey(t, "GET", "/v1/me/fresh-sign-in", "", ""); r.status != http.StatusUnauthorized {
+		t.Errorf("no token: %d %v", r.status, r.body)
+	}
+}
+
 // R-137: a code whose email failed was never sent, so asking again sends one at once.
 func TestACodeWhoseEmailFailedIsNotSent(t *testing.T) {
 	e := invoiceAPI(t)
