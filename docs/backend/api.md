@@ -992,6 +992,8 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
   - `networkFee` is what the wallet pays. Only chains with `gas_sponsored` offer Send, so it is 0, paid by Forwend.
 - One unsigned send per wallet and chain: a new prepare cancels it. A signed one still on its way gives 409
   `send_in_progress`.
+- `GET .../sends` lists the signed sends the watcher hasn't recorded yet (R-215). It needs `money.read`.
+  - The money lists show them first, until the transfer's own row takes their place.
 - `POST .../sends/{sendId}/submit` takes the hash Privy returned. `POST .../cancel` gives up an unsigned send.
 - `GET .../sends/{sendId}` brings the status up to date on each read:
   - `sending` until the watcher records a wallet transfer that matches hash, wallet, token, recipient and amount.

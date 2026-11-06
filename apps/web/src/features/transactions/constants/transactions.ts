@@ -6,6 +6,8 @@ export const TRANSACTION_DIRECTIONS = {
 export const TRANSACTION_STATUSES = {
   detected: "detected",
   confirmed: "confirmed",
+  // Not the API's: a signed send no block holds yet, shown from GET .../sends (R-215).
+  sending: "sending",
 } as const;
 
 export const TRANSACTION_FILTERS = {

@@ -7,6 +7,8 @@ export const sendSchema = z.object({
   sendId: z.guid(),
   chainId: count,
   token: evmAddress,
+  symbol: z.string(),
+  decimals: count,
   from: evmAddress,
   to: evmAddress,
   toProfileId: z.guid().nullable(),
@@ -20,3 +22,6 @@ export const sendSchema = z.object({
   warnings: z.array(z.enum(SEND_WARNINGS)),
   createdAt: apiTime,
 });
+
+/** GET /v1/profiles/{id}/sends: signed sends no block holds yet (R-215). */
+export const pendingSendsSchema = z.object({ sends: z.array(sendSchema) });

@@ -74,7 +74,7 @@ Read only the sections your change touches. Any new control also needs
   In dark mode the same role takes the lime.
 - Links that lead to another record are underlined ink (`RecordLink`), never colored text.
 - Success, warning, error and information use their matching text/background token pairs. Art never becomes a UI color.
-- Detected and confirming are pending: a neutral badge with a turning icon, never a success color.
+- Sending, detected and confirming are pending: a neutral badge with a turning icon, never a success color.
   Only paid and In wallet look done.
 - Panels and fields are flat with hairlines. Menus, toasts and the sample receipt float with soft shadows.
 - Fields share one edge (the `field` tokens): quiet at rest, a gray step toward the ink with a faint ring on focus,
@@ -343,6 +343,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Transactions' Type column (R-109) follows the Transaction column; on phones the type is a line under the row.
   - An invoice payment is an underlined link: the invoice number, then the client after a middle dot.
   - Own transfer and Sent are quiet text.
+  - A signed send no block holds yet is the first row, with the Sending status, until its transfer's row replaces it.
   - Money in that Forwend can't classify has a compact select: Unclassified, Income, Own transfer, Refund, Other.
   - A label the API refuses or fails to save says so in a warning toast.
   - The overview's Recent transactions keeps its columns, with no type.
@@ -1095,8 +1096,9 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
   - A first send to an address, or one to a contract, shows a one-line warning and a checkbox; Send stays off until it
     is ticked.
   - The main button names the amount ("Send 25.00 USDC").
-  - While Privy signs, the sheet is locked: Escape, the backdrop, Close and Back do nothing, since closing would not
-    stop the money.
+  - From signing until the server holds the hash, the sheet is locked: Escape, the backdrop, Close and Back do nothing.
+    - Closing would not stop the money, and the server needs the hash to follow it.
+    - A hash the server refuses lifts the lock; a lost connection keeps it.
   - Progress: a spinner and Sending, then the drawn check and Sent, or the alert icon and why it failed; then the
     explorer link and Done.
 - Fixed navigation and page edges respect safe-area insets; zoom stays enabled and touch text inputs use the base

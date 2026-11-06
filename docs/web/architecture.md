@@ -105,7 +105,7 @@ features own product behavior, and shared UI components are grouped by purpose. 
   its schema is never sent. `openapi-typescript` is not used: it needs the TypeScript compiler API, which TypeScript 7
   does not have.
 - Features import each other only here: receive → balances; send → auth (the in-place fresh sign-in), balances,
-  invoices (the exact amount parser), profiles; invoices → activity, balances, clients (the client block
+  invoices (the exact amount parser), profiles; transactions → send (the Sending rows, R-215); invoices → activity, balances, clients (the client block
   an invoice copies, R-86); clients → profiles (the country list); pay → activity, invoices
   (including the `check-status` and `invoice-progress` components); jobs → clients, invoices (the pay link's token
   pattern, Send to client); onboarding → activity, invoices, profiles,

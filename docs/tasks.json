@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 426,
+  "nextId": 428,
   "tasks": [
     {
       "id": "F332",
@@ -317,6 +317,157 @@
         "branch": "feat/f425-send-and-transfer-open-one-smooth-sheet",
         "base": "main"
       }
+    },
+    {
+      "id": "F426",
+      "type": "feat",
+      "behavior": "A signed send shows as a Sending row in the money lists until the watcher records it",
+      "acceptance": [
+        "The server lists a profile's signed sends with no recorded transfer, bringing each up to date (R-215)",
+        "Transactions and Recent transactions show them first as Sending rows, and read again when a send is signed (R-215)"
+      ],
+      "dependsOn": [
+        "F425"
+      ],
+      "state": "passing",
+      "verification": [
+        "unit",
+        "web-unit",
+        "send-live-e2e"
+      ],
+      "refs": [
+        "R-215",
+        "R-212"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-11-06 review fail by reviewer: Fail on one test fix; the code itself is right. Backend: GET /v1/profiles/{id}/sends uses g.Can(money.read), the same as transactions. It reads only this profile's submitted sends and drops a send once the watcher records it (OnChain or Sent). TestPendingListsSignedSendsUntilTheWatcherRecordsThem covers unsigned, another user's profile and recorded. Web: Sending rows come first, are dropped when a recorded row has the same hash, are hidden by search and Received, keep amounts in base units, and submit invalidates PendingSends. Lock: the review no longer unlocks; progress holds the lock until the server has the hash; only 404/422 unlock. Must fix: send-lock.test.tsx:101-103 asserts the network-failure case right after submit is called, before its rejection is handled. In a scratch copy where every error set refused, the test still passed 2 of 6 runs, so the network-failure guard is not reliably tested. Wait for the rejection to be handled (a flag set when the mock rejects and is caught, or a macrotask) before asserting holding is still true. Should fix: DESIGN.md:1099 still says the sheet is locked only while Privy signs; it now stays locked until the server holds the hash and opens on a 404/422 refusal. DESIGN.md:77 lists pending badges without Sending. No web test covers the Sending merge (dedupe by hash, search/Received hiding). Commands: go test ./internal/send/ ./internal/httpapi/tests/ -count=1 ok; vitest run src/features/send src/features/transactions 17 passed; harness check typecheck lint docs-check passed.",
+        "2026-11-06 review pass by reviewer: Pass. Re-review of eacda477 on top of the earlier review. The lost-connection lock test now waits one macrotask inside act before it checks; in a scratch copy where every error set refused it failed 6 of 6 runs, so the guard is real. The Sending merge is now sendingRows with a unit test (unsigned left out, a recorded hash drops its row). The preview is sliced to its limit, and slice(0, undefined) keeps the full list. DESIGN.md now lists Sending with the pending badges and describes the lock from signing until the server holds the hash. Left as accepted: no unit test for the search/Received hiding, createdAt day grouping, and a 401/403 resubmit keeping the lock. Commands: vitest run src/features/send src/features/transactions 4 files, 18 passed; harness check typecheck lint docs-check passed; earlier go test ./internal/send/ ./internal/httpapi/tests/ ok (backend unchanged since)."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-06T14:09:42Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 64.9,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 28.6,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.6,
+            "log": ""
+          },
+          {
+            "id": "send-live-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 74.2,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 45.3,
+            "log": ""
+          }
+        ],
+        "taskHash": "4d60ff89333d271e",
+        "filesHash": "369d6513d1b33b4a",
+        "proof": {
+          "1": "unit: TestPendingListsSignedSendsUntilTheWatcherRecordsThem on Anvil lists a signed send until the watcher records its transfer, brought up to date, and leaves out unsigned ones and other users' profiles; TestProfileRoutesAreAllListed covers GET /sends with money.read",
+          "2": "web-unit: sending-rows.test.ts shows each signed send until a recorded row carries its hash; send-lock.test.tsx keeps the sheet locked from signing until the server holds the hash. send-live-e2e: right after Transfer is signed, Recent transactions links the send's hash within 6 s, before the 15 s poll"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass. Re-review of eacda477 on top of the earlier review. The lost-connection lock test now waits one macrotask inside act before it checks; in a scratch copy where every error set refused it failed 6 of 6 runs, so the guard is real. The Sending merge is now sendingRows with a unit test (unsigned left out, a recorded hash drops its row). The preview is sliced to its limit, and slice(0, undefined) keeps the full list. DESIGN.md now lists Sending with the pending badges and describes the lock from signing until the server holds the hash. Left as accepted: no unit test for the search/Received hiding, createdAt day grouping, and a 401/403 resubmit keeping the lock. Commands: vitest run src/features/send src/features/transactions 4 files, 18 passed; harness check typecheck lint docs-check passed; earlier go test ./internal/send/ ./internal/httpapi/tests/ ok (backend unchanged since).",
+          "at": "2026-11-06T14:14:30Z",
+          "filesHash": "369d6513d1b33b4a"
+        },
+        "commit": "ba31bfbd",
+        "doneAt": "2026-11-06T14:19:50Z"
+      },
+      "branch": "feat/f426-a-signed-send-shows-as-a-sending-row-in",
+      "baseCommit": "6a11dc828b55de1aa8148a04ceccc7f853b41908",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f426-a-signed-send-shows-as-a-sending-row-in",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F427",
+      "type": "feat",
+      "behavior": "On Arc the wallet pays its own gas in USDC, and the send shows that fee",
+      "acceptance": [
+        "The server estimates the fee on a chain without sponsorship whose gas coin is the sent token, refuses amount plus fee above the balance, and returns the gas limit and fee caps (R-216)",
+        "The amount step and review show the fee, Max leaves room for it, and the browser signs unsponsored with the server's gas values (R-216)",
+        "A live run sends USDC on Arc testnet and shows Sent (R-216)"
+      ],
+      "dependsOn": [
+        "F425"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "web-unit",
+        "send-live-e2e"
+      ],
+      "refs": [
+        "R-216",
+        "D-119"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

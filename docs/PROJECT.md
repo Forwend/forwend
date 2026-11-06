@@ -299,6 +299,10 @@ as short Given / When / Then sentences. Layout belongs in [DESIGN.md](web/DESIGN
 
 | R-214 | The browser signs a send with Privy and shows its progress. | Given the review, when Send is pressed, then the web signs the token transfer from the profile's wallet through Privy, without Privy's screens. Gas is sponsored where the chain has sponsorship. The web reports the hash and shows Sending, then Sent with an explorer link, or why it failed. A canceled signature keeps the review open. | send-live-e2e | D-46, R-212 |
 
+| R-215 | A signed send shows in the money lists at once. | Given a send the owner signed, when Transactions or Recent transactions shows, then a Sending row is first. It has the recipient, amount and network. It shows before the watcher records the transfer. Once the watcher records it, the transfer's own row takes its place. The lists read again when the send is signed. | send-live-e2e | R-212, R-38 |
+
+| R-216 | On a chain without sponsorship, the wallet pays its own gas in the sent token. | Given a chain Forwend doesn't sponsor whose gas coin is the sent token (Arc USDC), when the owner prepares a send, then the server estimates the fee. The amount step and the review show the fee. Max leaves room for it. Amount plus fee must fit the balance. The browser signs with the server's gas limit and fee caps, so the wallet never pays more than shown. A chain whose gas coin is another token offers no Send. | backend, send-live-e2e | R-211, D-119 |
+
 ## Decisions
 
 All D- IDs are defined here. The roadmap refers to these decisions.

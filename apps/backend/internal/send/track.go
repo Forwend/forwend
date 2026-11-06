@@ -18,14 +18,16 @@ import (
 var hashPattern = regexp.MustCompile(`^0x[0-9a-f]{64}$`)
 
 const columns = `id::text, profile_id::text, chain_id, token_contract, from_address, to_address, to_profile_id::text,
-	amount::text, status, tx_hash, failure, created_at, submitted_at, finished_at`
+	amount::text, status, tx_hash, failure, created_at, submitted_at, finished_at,
+	(SELECT tk.symbol FROM tokens tk WHERE tk.chain_id = sends.chain_id AND tk.contract = sends.token_contract),
+	(SELECT tk.decimals FROM tokens tk WHERE tk.chain_id = sends.chain_id AND tk.contract = sends.token_contract)`
 
 func scan(row pgx.Row) (Send, error) {
 	var s Send
 	var chainID int64
 	var amount string
 	err := row.Scan(&s.ID, &s.ProfileID, &chainID, &s.Token, &s.From, &s.To, &s.ToProfileID, &amount, &s.Status,
-		&s.TxHash, &s.Failure, &s.CreatedAt, &s.SubmittedAt, &s.FinishedAt)
+		&s.TxHash, &s.Failure, &s.CreatedAt, &s.SubmittedAt, &s.FinishedAt, &s.Symbol, &s.Decimals)
 	s.ChainID = uint64(chainID)
 	s.Amount, _ = new(big.Int).SetString(amount, 10)
 	return s, err
@@ -85,6 +87,31 @@ func (s *Service) Get(ctx context.Context, profileID, sendID string) (Send, erro
 		return Send{}, fmt.Errorf("read send: %w", err)
 	}
 	return s.refresh(ctx, out)
+}
+
+// Pending is the profile's signed sends the watcher hasn't recorded yet, newest first, each brought up to date
+// (R-215): the money lists show them until the transfer's own row takes their place.
+func (s *Service) Pending(ctx context.Context, profileID string) ([]Send, error) {
+	rows, err := s.pool.Query(ctx, "SELECT "+columns+` FROM sends WHERE profile_id = $1 AND status = 'submitted'
+		ORDER BY submitted_at DESC LIMIT 20`, profileID)
+	if err != nil {
+		return nil, fmt.Errorf("read pending sends: %w", err)
+	}
+	open, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (Send, error) { return scan(r) })
+	if err != nil {
+		return nil, fmt.Errorf("read pending sends: %w", err)
+	}
+	out := []Send{}
+	for _, o := range open {
+		o, err := s.refresh(ctx, o)
+		if err != nil {
+			return nil, err
+		}
+		if o.Status == Submitted && !o.OnChain {
+			out = append(out, o)
+		}
+	}
+	return out, nil
 }
 
 // finishOpen brings the wallet's open sends on the chain up to date, so a finished one no longer holds the next.

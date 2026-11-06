@@ -23,6 +23,7 @@ export interface StatusPillProps {
 /** Each status's icon: pills, filters and menus show the same one. */
 export const PAYMENT_STATUS_ICONS: Record<PaymentStatus, typeof Check> = {
   open: Circle,
+  sending: LoaderCircle,
   detected: LoaderCircle,
   confirming: LoaderCircle,
   confirmed: CircleCheck,
@@ -38,7 +39,7 @@ export const PAYMENT_STATUS_ICONS: Record<PaymentStatus, typeof Check> = {
   refunded: RotateCcw,
 };
 
-const PENDING: ReadonlySet<PaymentStatus> = new Set(["detected", "confirming"]);
+const PENDING: ReadonlySet<PaymentStatus> = new Set(["sending", "detected", "confirming"]);
 
 export function StatusPill({ status, quiet }: StatusPillProps) {
   const { label, tone } = PAYMENT_STATUSES[status];

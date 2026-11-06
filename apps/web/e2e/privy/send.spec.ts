@@ -110,7 +110,15 @@ test("Transfer moves testnet money to the owner's other profile and follows it t
   await expect(sheet(page).getByRole("heading", { name: /^(Sending|Sent)$/ })).toBeVisible({
     timeout: 60_000,
   });
-  await expect(sheet(page).getByRole("link", { name: /^View on / })).toBeVisible();
+  const explorer = sheet(page).getByRole("link", { name: /^View on / });
+  await expect(explorer).toBeVisible();
+  // R-215: the list behind the sheet has the transaction at once, as Sending or as its recorded transfer, well
+  // before its 15 s poll.
+  const hash = (await explorer.getAttribute("href"))?.split("/tx/")[1] ?? "";
+  expect(hash).toMatch(/^0x[0-9a-f]{64}$/);
+  await expect(
+    page.getByRole("region", { name: "Recent transactions" }).locator(`a[href$="${hash}"]`).first(),
+  ).toBeAttached({ timeout: 6_000 });
   await expect(sheet(page).getByRole("heading", { name: "Sent" })).toBeVisible({
     timeout: 150_000,
   });

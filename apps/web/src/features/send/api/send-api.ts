@@ -1,4 +1,4 @@
-import { sendSchema } from "@/features/send/schemas/send";
+import { pendingSendsSchema, sendSchema } from "@/features/send/schemas/send";
 import type { Send, SendRequest } from "@/features/send/types/send";
 import { apiSlice } from "@/shared/api/api-slice";
 
@@ -18,12 +18,19 @@ export const sendApi = apiSlice.injectEndpoints({
         body: { txHash },
       }),
       responseSchema: sendSchema,
+      // The money lists show it as Sending at once (R-215).
+      invalidatesTags: ["PendingSends"],
     }),
     cancelSend: build.mutation<void, { profileId: string; sendId: string }>({
       query: ({ profileId, sendId }) => ({
         url: `${sends(profileId)}/${encodeURIComponent(sendId)}/cancel`,
         method: "POST",
       }),
+    }),
+    listPendingSends: build.query<{ sends: Send[] }, string>({
+      query: (profileId) => sends(profileId),
+      responseSchema: pendingSendsSchema,
+      providesTags: ["PendingSends"],
     }),
     getSend: build.query<Send, { profileId: string; sendId: string }>({
       query: ({ profileId, sendId }) => `${sends(profileId)}/${encodeURIComponent(sendId)}`,
@@ -37,4 +44,5 @@ export const {
   useSubmitSendMutation,
   useCancelSendMutation,
   useGetSendQuery,
+  useListPendingSendsQuery,
 } = sendApi;

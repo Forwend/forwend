@@ -3,6 +3,8 @@ import { TONES } from "../../../lib/tone";
 /** Status ids, for code that names one status. */
 export const PAYMENT_STATUS = {
   open: "open",
+  // A send the owner signed that no block holds yet (R-215).
+  sending: "sending",
   detected: "detected",
   confirming: "confirming",
   confirmed: "confirmed",
@@ -22,6 +24,7 @@ export const PAYMENT_STATUS = {
 // never the info or success colors, so nobody reads them as done. Settled money is "In wallet" everywhere.
 export const PAYMENT_STATUSES = {
   open: { label: "Waiting for payment", tone: TONES.neutral },
+  sending: { label: "Sending", tone: TONES.neutral },
   detected: { label: "Detected", tone: TONES.neutral },
   confirming: { label: "Confirming", tone: TONES.neutral },
   confirmed: { label: "Confirmed", tone: TONES.success },

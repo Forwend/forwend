@@ -2879,6 +2879,30 @@ paths:
         "500": { $ref: "#/components/responses/Internal" }
         "503": { $ref: "#/components/responses/NetworkNotReady" }
   /v1/profiles/{profileId}/sends:
+    get:
+      operationId: listPendingSends
+      summary: Signed sends the watcher hasn't recorded yet, newest first (R-215)
+      description: |
+        Each is brought up to date first. Once the watcher records the transfer it leaves this list: the transaction
+        itself shows in GET .../transactions. Needs money.read, as the transactions do.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      responses:
+        "200":
+          description: The sends, at most 20
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sends]
+                properties:
+                  sends:
+                    type: array
+                    items: { $ref: "#/components/schemas/Send" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
     post:
       operationId: prepareSend
       summary: Check a send out of the profile's wallet before the browser signs it (R-211)
@@ -5701,12 +5725,14 @@ components:
           description: Estimated seconds until final, from the chain's finalized block time; 0 when confirmed.
     Send:
       type: object
-      required: [sendId, chainId, token, from, to, toProfileId, amount, status, final, txHash, failure, networkFee,
-        warnings, createdAt]
+      required: [sendId, chainId, token, symbol, decimals, from, to, toProfileId, amount, status, final, txHash, failure,
+        networkFee, warnings, createdAt]
       properties:
         sendId: { type: string, format: uuid }
         chainId: { type: integer }
         token: { type: string }
+        symbol: { type: string }
+        decimals: { type: integer, minimum: 0 }
         from: { type: string, description: The profile's wallet }
         to: { type: string }
         toProfileId: { type: [string, "null"], format: uuid, description: Set for a transfer to another of the owner's profiles }

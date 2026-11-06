@@ -9,7 +9,7 @@ import {
   shortAddress,
 } from "@forwend/ui-web";
 import { CircleAlert, ExternalLink } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { profileLabel } from "@/features/profiles/lib/profile";
 import { useGetSendQuery, useSubmitSendMutation } from "@/features/send/api/send-api";
 import { SEND_FAILURES, SEND_POLL_MS, SEND_STATUSES } from "@/features/send/constants/send";
@@ -56,10 +56,18 @@ export function SendProgress({
   const hash = initial.txHash;
   const lost = read.currentData !== undefined && read.currentData.txHash === null;
   const readAt = read.fulfilledTimeStamp;
+  // A refusal (not a lost connection) won't change on the next try: the sheet may close, and the watcher still shows
+  // the transfer in Transactions.
+  const [refused, setRefused] = useState(false);
   useEffect(() => {
-    if (lost && hash && readAt) submit({ profileId, sendId: initial.sendId, txHash: hash });
+    if (!lost || !hash || !readAt) return;
+    submit({ profileId, sendId: initial.sendId, txHash: hash })
+      .unwrap()
+      .catch((e: { status?: unknown }) => {
+        if (e.status === 404 || e.status === 422) setRefused(true);
+      });
   }, [lost, hash, readAt, submit, profileId, initial.sendId]);
-  const holding = read.currentData?.txHash == null;
+  const holding = read.currentData?.txHash == null && !refused;
   useEffect(() => onHolding(holding), [holding, onHolding]);
   const told = useRef(false);
   useEffect(() => {

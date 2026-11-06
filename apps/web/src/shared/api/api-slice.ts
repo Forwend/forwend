@@ -42,5 +42,7 @@ export const apiSlice = createApi({
     );
     console.error(`${info.endpoint}: ${error.schemaName} failed at ${fields.join(", ")}`);
   },
+  // Only cache entries a mutation elsewhere must refresh carry a tag.
+  tagTypes: ["PendingSends"],
   endpoints: () => ({}),
 });

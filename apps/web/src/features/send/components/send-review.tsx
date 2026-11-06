@@ -75,12 +75,11 @@ export function SendReview({
       return;
     }
     // The money is moving now. The sheet stays locked until the progress step holds the hash, which it reports
-    // again if this report is lost.
+    // again if this report is lost; the progress step lifts the lock, so it never opens in between.
     const reported = await submit({ profileId: from.profileId, sendId: send.sendId, txHash: hash })
       .unwrap()
       .catch(() => null);
     onSubmitted(reported ?? { ...send, status: SEND_STATUSES.sending, txHash: hash });
-    onSigning(false);
   };
 
   return (
