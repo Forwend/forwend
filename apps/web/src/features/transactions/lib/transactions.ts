@@ -1,6 +1,9 @@
 import { PAYMENT_STATUS, type PaymentStatus } from "@forwend/ui-web";
+import type { Send } from "@/features/send/types/send";
 import {
   RELATIVE_DAYS,
+  TRANSACTION_CLASSES,
+  TRANSACTION_DIRECTIONS,
   TRANSACTION_STATUSES,
 } from "@/features/transactions/constants/transactions";
 import type { RelativeDay, Transaction } from "@/features/transactions/types/transactions";
@@ -9,7 +12,33 @@ import type { RelativeDay, Transaction } from "@/features/transactions/types/tra
 export function transactionStatus(t: Transaction): PaymentStatus {
   return t.status === TRANSACTION_STATUSES.confirmed
     ? PAYMENT_STATUS.confirmed
-    : PAYMENT_STATUS.confirming;
+    : t.status === TRANSACTION_STATUSES.sending
+      ? PAYMENT_STATUS.sending
+      : PAYMENT_STATUS.confirming;
+}
+
+/** A signed send no block holds yet, as a row (R-215). Its transfer's own row takes its place once recorded; it has
+ * no log yet, so its key's log index is -1, and no USD value, since no row shows one. */
+export function sendingRow(s: Send & { txHash: string }): Transaction {
+  return {
+    chainId: s.chainId,
+    token: s.token,
+    symbol: s.symbol,
+    decimals: s.decimals,
+    direction: TRANSACTION_DIRECTIONS.out,
+    amount: s.amount,
+    counterparty: s.to,
+    txHash: s.txHash,
+    logIndex: -1,
+    blockNumber: 0,
+    at: s.createdAt,
+    status: TRANSACTION_STATUSES.sending,
+    usdValue: "0",
+    classification: s.toProfileId ? TRANSACTION_CLASSES.ownTransfer : TRANSACTION_CLASSES.sent,
+    labelable: false,
+    invoice: null,
+    recordsValue: null,
+  };
 }
 
 export interface DayGroup<T> {

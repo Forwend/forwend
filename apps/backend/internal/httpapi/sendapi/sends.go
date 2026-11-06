@@ -37,6 +37,23 @@ func prepareSend(sends *send.Service) http.HandlerFunc {
 	}
 }
 
+func listPendingSends(sends *send.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		list, err := sends.Pending(r.Context(), r.PathValue("profileId"))
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		out := struct {
+			Sends []sendJSON `json:"sends"`
+		}{Sends: []sendJSON{}}
+		for _, s := range list {
+			out.Sends = append(out.Sends, toSendJSON(s))
+		}
+		httpio.WriteJSON(w, http.StatusOK, out)
+	}
+}
+
 func getSend(sends *send.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		s, err := sends.Get(r.Context(), r.PathValue("profileId"), r.PathValue("sendId"))

@@ -277,6 +277,7 @@ var profileRoutes = []struct{ method, path, body string }{
 		`{"title": "Extra page", "amountUsd": "100", "dueDays": 7}`},
 	{"DELETE", "/v1/profiles/%s/jobs/00000000-0000-0000-0000-000000000000/payments/3", ""},
 	{"POST", "/v1/profiles/%s/sends", `{"chainId": 84532, "token": "` + usdc + `", "to": "` + outsideAddress + `", "amount": "1"}`},
+	{"GET", "/v1/profiles/%s/sends", ""},
 	{"GET", "/v1/profiles/%s/sends/00000000-0000-0000-0000-000000000000", ""},
 	{"POST", "/v1/profiles/%s/sends/00000000-0000-0000-0000-000000000000/submit", `{"txHash": "0x` +
 		strings.Repeat("0", 64) + `"}`},

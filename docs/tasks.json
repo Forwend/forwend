@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 426,
+  "nextId": 428,
   "tasks": [
     {
       "id": "F332",
@@ -317,6 +317,63 @@
         "branch": "feat/f425-send-and-transfer-open-one-smooth-sheet",
         "base": "main"
       }
+    },
+    {
+      "id": "F426",
+      "type": "feat",
+      "behavior": "A signed send shows as a Sending row in the money lists until the watcher records it",
+      "acceptance": [
+        "The server lists a profile's signed sends with no recorded transfer, bringing each up to date (R-215)",
+        "Transactions and Recent transactions show them first as Sending rows, and read again when a send is signed (R-215)"
+      ],
+      "dependsOn": [
+        "F425"
+      ],
+      "state": "active",
+      "verification": [
+        "unit",
+        "web-unit",
+        "send-live-e2e"
+      ],
+      "refs": [
+        "R-215",
+        "R-212"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null,
+      "branch": "feat/f426-a-signed-send-shows-as-a-sending-row-in",
+      "baseCommit": "6a11dc828b55de1aa8148a04ceccc7f853b41908"
+    },
+    {
+      "id": "F427",
+      "type": "feat",
+      "behavior": "On Arc the wallet pays its own gas in USDC, and the send shows that fee",
+      "acceptance": [
+        "The server estimates the fee on a chain without sponsorship whose gas coin is the sent token, refuses amount plus fee above the balance, and returns the gas limit and fee caps (R-216)",
+        "The amount step and review show the fee, Max leaves room for it, and the browser signs unsponsored with the server's gas values (R-216)",
+        "A live run sends USDC on Arc testnet and shows Sent (R-216)"
+      ],
+      "dependsOn": [
+        "F425"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "web-unit",
+        "send-live-e2e"
+      ],
+      "refs": [
+        "R-216",
+        "D-119"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

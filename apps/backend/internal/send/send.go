@@ -57,6 +57,8 @@ type Send struct {
 	ProfileID   string
 	ChainID     uint64
 	Token       string
+	Symbol      string
+	Decimals    int
 	From        string
 	To          string
 	ToProfileID *string

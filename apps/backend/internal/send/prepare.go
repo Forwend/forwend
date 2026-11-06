@@ -219,9 +219,11 @@ func (s *Service) keep(ctx context.Context, out Send) (Send, error) {
 	err = tx.QueryRow(ctx, `
 		INSERT INTO sends (profile_id, chain_id, chain_family, token_contract, from_address, to_address, to_profile_id,
 		                   amount)
-		VALUES ($1, $2, 'evm', $3, $4, $5, $6, $7::numeric) RETURNING id::text, status, created_at`,
+		VALUES ($1, $2, 'evm', $3, $4, $5, $6, $7::numeric) RETURNING id::text, status, created_at,
+		    (SELECT symbol FROM tokens WHERE chain_id = $2 AND contract = $3),
+		    (SELECT decimals FROM tokens WHERE chain_id = $2 AND contract = $3)`,
 		out.ProfileID, int64(out.ChainID), out.Token, out.From, out.To, out.ToProfileID, out.Amount.String()).
-		Scan(&out.ID, &out.Status, &out.CreatedAt)
+		Scan(&out.ID, &out.Status, &out.CreatedAt, &out.Symbol, &out.Decimals)
 	if pgErr := (*pgconn.PgError)(nil); errors.As(err, &pgErr) && pgErr.ConstraintName == "sends_one_unsigned" {
 		return Send{}, ErrBusy
 	} else if err != nil {

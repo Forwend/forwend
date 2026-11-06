@@ -336,3 +336,32 @@ func TestUnreportedAndDroppedSendsAreGivenUp(t *testing.T) {
 		t.Errorf("Bob reads Alice's send: err = %v", err)
 	}
 }
+
+func TestPendingListsSignedSendsUntilTheWatcherRecordsThem(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	unsigned, err := e.prepare(t, outsider, "", 1_000_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if list, err := e.sends.Pending(ctx, e.profile); err != nil || len(list) != 0 {
+		t.Fatalf("an unsigned send is pending: %v %v", list, err)
+	}
+	hash := e.anvil.Transfer(e.token, outsider, "1000000")
+	if _, err := e.sends.Submit(ctx, e.profile, unsigned.ID, hash); err != nil {
+		t.Fatal(err)
+	}
+	list, err := e.sends.Pending(ctx, e.profile)
+	if err != nil || len(list) != 1 || list[0].ID != unsigned.ID {
+		t.Fatalf("signed, not recorded = %v %v", list, err)
+	}
+	if other, _ := e.sends.Pending(ctx, e.bob); len(other) != 0 {
+		t.Errorf("Bob sees Alice's send: %v", other)
+	}
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if list, _ = e.sends.Pending(ctx, e.profile); len(list) != 0 {
+		t.Errorf("recorded by the watcher, still pending: %v", list)
+	}
+}

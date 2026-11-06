@@ -17,7 +17,8 @@ import {
 import { skipToken } from "@reduxjs/toolkit/query";
 import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { type ReactNode, useId, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { useListPendingSendsQuery } from "@/features/send/api/send-api";
 import {
   useGetTransactionPagesInfiniteQuery,
   useGetTransactionsQuery,
@@ -34,6 +35,7 @@ import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transaction
 import {
   type DayGroup,
   groupByDay,
+  sendingRow,
   transactionKey,
   transactionStatus,
 } from "@/features/transactions/lib/transactions";
@@ -52,6 +54,7 @@ import { useListFilters, useShownData } from "@/shared/hooks/use-list-filters";
 import { addressLink, chainName } from "@/shared/lib/chains";
 
 const ZERO_ADDRESS = `0x${"0".repeat(40)}`;
+const SENDING_POLL_MS = 3000;
 const TIME = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
 const DAY = new Intl.DateTimeFormat(undefined, {
   weekday: "short",
@@ -125,7 +128,29 @@ function ProfileTransactions({
   const data = preview
     ? recent.data
     : pagedData && { items: pagedData.pages.flatMap((page) => page.items) };
-  const rows = data?.items ?? [];
+  // R-215: signed sends come first as Sending until the watcher records them. A search or Received only hides them.
+  const showsSends =
+    Boolean(preview) || (!filters.apiQuery && filters.apiFilter !== TRANSACTION_DIRECTIONS.in);
+  const [waiting, setWaiting] = useState(false);
+  const pending = useListPendingSendsQuery(showsSends ? profileId : skipToken, {
+    ...LIVE_QUERY,
+    // About a block while one waits, so its row hands over to the recorded transfer soon after.
+    pollingInterval: waiting ? SENDING_POLL_MS : LIVE_QUERY.pollingInterval,
+  });
+  const recorded = data?.items ?? [];
+  const sending = (pending.currentData?.sends ?? [])
+    .filter((s): s is typeof s & { txHash: string } => s.txHash !== null)
+    .filter((s) => !recorded.some((t) => t.txHash === s.txHash))
+    .map(sendingRow);
+  // A send that leaves the pending list has its own row now: read the list again rather than wait for its poll.
+  const sendingCount = useRef(sending.length);
+  const { refetch } = list;
+  useEffect(() => {
+    if (sending.length < sendingCount.current) void refetch();
+    sendingCount.current = sending.length;
+  }, [sending.length, refetch]);
+  if (waiting !== sending.length > 0) setWaiting(sending.length > 0);
+  const rows = [...sending, ...recorded];
   const days = groupByDay(rows, new Date());
   const dayId = useId();
   const filtered = !preview && filters.filtered;

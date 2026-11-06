@@ -343,6 +343,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Transactions' Type column (R-109) follows the Transaction column; on phones the type is a line under the row.
   - An invoice payment is an underlined link: the invoice number, then the client after a middle dot.
   - Own transfer and Sent are quiet text.
+  - A signed send no block holds yet is the first row, with the Sending status, until its transfer's row replaces it.
   - Money in that Forwend can't classify has a compact select: Unclassified, Income, Own transfer, Refund, Other.
   - A label the API refuses or fails to save says so in a warning toast.
   - The overview's Recent transactions keeps its columns, with no type.
