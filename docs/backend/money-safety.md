@@ -115,6 +115,8 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
   - It dry-runs the recover, or the token transfer before deploy, and checks the address still holds the amount.
   - A deploy on the invoice's chain while it can still be paid warns: it starts the hold limit, and Arc then refuses native USDC.
   - Otherwise it says plainly that the money can't be returned now, and why. Support promises nothing.
+  - It doesn't find money sent to the factory or the receiver implementation.
+    - The Safe returns it with their `recover`, by hand ([operations](../contracts/operations.md#before-signing)).
   - An RPC error, such as a rate limit, stops the command; it never reads as "can't be returned".
   - Printing locks that transfer (`stray_recoveries`), so its recover is printed once.
     - Another transfer's money still there can't be returned to the first sender twice.

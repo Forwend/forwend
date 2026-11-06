@@ -67,8 +67,12 @@ Every rule has a test.
 ## Tests
 
 - A unit test per rule; fuzz on amounts and timestamps.
-- Invariants: settled ≤ amount; settled + refunded ≤ received; only `recipient` gets settlement; refunds never take
-  `amount` before the deadline; the executor moves money only to `recipient`; the factory returns only its own balance.
+- Invariants:
+  - settled ≤ amount; settled + refunded ≤ received;
+  - only `recipient` gets settlement;
+  - refunds never take `amount` before the deadline;
+  - the executor moves money only to `recipient`;
+  - the factory returns only its own balance.
 - Halmos for `settle`, `refund`, and receiver, implementation and factory `recover` (`forge clean` first).
 - Cross-chain: same terms, same address on two Anvil chains; calls revert on the wrong one.
 - Fork test on Base Sepolia with real USDC; a mock token for USDT behaviour.

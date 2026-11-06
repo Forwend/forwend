@@ -13,8 +13,11 @@ The refund-authority Safe and deploys. Design: [architecture.md](architecture.md
 ## Delay module (24–48 h)
 
 - Every queued transaction alerts all owners, so an honest one can cancel it.
-- Goes through the delay: receiver `refund`, `recover` and late `settle`; factory and implementation `recover`; Safe
-  admin changes (owners, threshold, guard, modules, fallback handler); the Delay module's own settings.
+- Goes through the delay:
+  - receiver `refund`, `recover` and late `settle`;
+  - factory and implementation `recover`;
+  - Safe admin changes (owners, threshold, guard, modules, fallback handler);
+  - the Delay module's own settings.
 - Set `txExpiration`. Cancel every unwanted queued transaction: after the cooldown anyone can execute it.
 - The delay stops tricked or blind signing. It cannot stop owners who hold the threshold themselves.
 

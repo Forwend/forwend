@@ -61,19 +61,20 @@
       "notes": [
         "2026-11-04 Audit 2026-11-04: InvoiceReceiver.refundable() returns the balance on a wrong chain where refund() reverts. Fix: return 0 when block.chainid != intendedChainId. Any receiver change moves the factory's CREATE2 address (vectors test fails), so it ships with this task's redeploy.",
         "2026-11-05 blocked: Deferred by owner (2026-11-05) to the first mainnet deploy: the refundable() fix moves the factory address, so it ships with that redeploy, with the factory recover.",
-        "2026-11-06 review fail by reviewer: Contract code is sound; docs and one test fall short. Security: only the refund authority moves money. Factory recover moves only the factory's own balance: transfer() from the factory, and no receiver has that selector, fallback or receive. The implementation branch (address(this) == self) is unreachable from factory clones, outside clones or delegatecall contexts, because self is the implementation's immutable. Clones still run _onlyClone, terms and the invoice-token guard before any transfer. The implementation's ReentrancyGuard uses its own storage. No new stuck-funds case. Addresses: recomputed factory 0xf93da73F…0dd2, implementation 0x26b7DB22…630f, runtime codehash 0xdca35aa3…9cd1; the e2e RECEIVE and OPTION_RECEIVE equal predict. Old addresses appear only in deployments.json and config_test.go. forge test: 79 pass, 1 skipped. Pay vitest: 48 pass. Go address/config: ok. docs-check: 0 errors. Findings to fix (no contract source change, so addresses stay): (1) docs/diagrams/security-keys.json, the 'who can move money' diagram, is not updated. Edge a14 Safe->factory says only 'pause', and the factory node never mentions recover. The Safe->implementation recover path is missing. docs/contracts/rules.md Status asks for docs/diagrams updates in the same PR. AGENTS.md says a fix covers every place the behavior shows. (2) PLAN.md:147 still lists 'The factory gets a refund-authority recover: tokens sent to it have no way out today' as an open pre-mainnet gap. This PR closes it, and the implementation case too. (3) test/Symbolic.t.sol check_implementationRecoverOnlyByAuthority: assert(token.balanceOf(address(receiver)) == 0) is vacuous, since the receiver gets no deposit. Mint a symbolic deposit to the receiver, as check_factoryRecoverNeverTakesReceiverMoney does. No test covers impl.recover(..., address(0), ...) reverting InvalidDestination. Non-blocking: (4) After merge, address.Factory names an undeployed factory. cmd/api startup (main.go:67, FactoryDeployed through chain.CheckEnabled) then refuses to start on staging. settle.go:212, returns.go:148 and stray.go:164 reject old-factory testnet invoices. Promote to staging only after the testnet redeploy and the deployments.json update. (5) Nits: forge lint now flags arbitrary-send-eth at InvoiceReceiver.sol:137 (_send), because the authority check sits in the caller. rules.md:57-58 is one sentence of about 29 words (D-84 limit 25)."
+        "2026-11-06 review fail by reviewer: Contract code is sound; docs and one test fall short. Security: only the refund authority moves money. Factory recover moves only the factory's own balance: transfer() from the factory, and no receiver has that selector, fallback or receive. The implementation branch (address(this) == self) is unreachable from factory clones, outside clones or delegatecall contexts, because self is the implementation's immutable. Clones still run _onlyClone, terms and the invoice-token guard before any transfer. The implementation's ReentrancyGuard uses its own storage. No new stuck-funds case. Addresses: recomputed factory 0xf93da73F…0dd2, implementation 0x26b7DB22…630f, runtime codehash 0xdca35aa3…9cd1; the e2e RECEIVE and OPTION_RECEIVE equal predict. Old addresses appear only in deployments.json and config_test.go. forge test: 79 pass, 1 skipped. Pay vitest: 48 pass. Go address/config: ok. docs-check: 0 errors. Findings to fix (no contract source change, so addresses stay): (1) docs/diagrams/security-keys.json, the 'who can move money' diagram, is not updated. Edge a14 Safe->factory says only 'pause', and the factory node never mentions recover. The Safe->implementation recover path is missing. docs/contracts/rules.md Status asks for docs/diagrams updates in the same PR. AGENTS.md says a fix covers every place the behavior shows. (2) PLAN.md:147 still lists 'The factory gets a refund-authority recover: tokens sent to it have no way out today' as an open pre-mainnet gap. This PR closes it, and the implementation case too. (3) test/Symbolic.t.sol check_implementationRecoverOnlyByAuthority: assert(token.balanceOf(address(receiver)) == 0) is vacuous, since the receiver gets no deposit. Mint a symbolic deposit to the receiver, as check_factoryRecoverNeverTakesReceiverMoney does. No test covers impl.recover(..., address(0), ...) reverting InvalidDestination. Non-blocking: (4) After merge, address.Factory names an undeployed factory. cmd/api startup (main.go:67, FactoryDeployed through chain.CheckEnabled) then refuses to start on staging. settle.go:212, returns.go:148 and stray.go:164 reject old-factory testnet invoices. Promote to staging only after the testnet redeploy and the deployments.json update. (5) Nits: forge lint now flags arbitrary-send-eth at InvoiceReceiver.sol:137 (_send), because the authority check sits in the caller. rules.md:57-58 is one sentence of about 29 words (D-84 limit 25).",
+        "2026-11-06 review fail by reviewer: Contract code and tests are sound; the four earlier findings are fixed. Two doc lines this PR wrote break D-84, the same class as finding 4. Fixed: (1) security-keys.json factory node names the factory and implementation recover; edge a14 says 'pause, executor, recover'. (2) PLAN.md no longer lists the factory recover gap. (3) check_implementationRecoverOnlyByAuthority mints a symbolic deposit to the receiver and asserts it stays; test_implementationReturnsMoneySentToIt covers to == 0 (InvalidDestination). (4) rules.md:57-59 is split into sub-bullets. Security, fresh look: the implementation branch runs only where address(this) == self (the implementation's immutable), so factory clones, outside clones and delegatecall contexts never reach it; outside clones still revert NotClone for the authority (test_cloneMadeOutsideFactoryReverts). Factory recover moves only its own balance, has no state to reenter, and receivers have no transfer selector, fallback or receive. No new stuck-funds path. Addresses recomputed in a scratch copy: factory 0xf93da73F...0dd2, implementation 0x26b7DB22...630f, runtime codehash 0xdca35aa3...9cd1; e2e RECEIVE 0x9404a075... and OPTION_RECEIVE 0x1109f4fa... equal predict. Old addresses (case-insensitive, with and without 0x) only in deployments.json and config_test.go. forge test: 79 pass, 1 skipped. Pay vitest: 48 pass. Go address/config: ok. docs-check: 0 errors. Commits carry no AI attribution. Blocking (docs only; no contract change, so addresses stay): (a) docs/contracts/operations.md:16-17, the 'Goes through the delay' bullet, grew from 24 to 28 words with 'factory and implementation recover'. Split it into sub-bullets. (b) docs/contracts/rules.md:70-71, the Invariants bullet, is now about 31 words, with 'the factory returns only its own balance' appended. Make each invariant a sub-bullet. AGENTS.md: at most 25 words, one fact per bullet. Non-blocking: (c) refundable() now reads with tryBalanceOf on the intended chain, but no test uses a broken or code-less token there, so going back to IERC20.balanceOf would pass every test. (d) docs/backend/money-safety.md 'ops case' says money it can't find 'can't be returned now'. Money sent to the factory or implementation is now returnable by a manual Safe recover (operations.md). Neither doc says the ops tool doesn't print that call. (e) contracts-workflow.json recover node: 'On a receiver, the factory or the implementation: money sent to the factory or the implementation leaves only from their own balance' reads garbled."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-06T22:31:24Z",
+        "at": "2026-11-06T22:42:22Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 4.7,
+            "seconds": 5.0,
             "log": ""
           },
           {
@@ -101,21 +102,21 @@
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 61.3,
+            "seconds": 60.8,
             "log": ""
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.3,
+            "seconds": 1.4,
             "log": ""
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 45.3,
+            "seconds": 45.5,
             "log": ""
           },
           {
@@ -129,16 +130,16 @@
             "id": "symbolic",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 6.2,
+            "seconds": 6.1,
             "log": ""
           }
         ],
         "taskHash": "411102e09e2d4b9d",
-        "filesHash": "f84bc0c5f3995f90",
+        "filesHash": "46a536a1d88a21fa",
         "proof": {
           "1": "contracts: FactoryRecoverTest: only the authority recovers, bad destinations and our own contracts as tokens revert, receiver money stays; symbolic check_factoryRecoverNeverTakesReceiverMoney",
           "2": "contracts: testFuzz_factoryReturnsOnlyItsOwnBalance, testFuzz_strangersCannotMoveMoney and invariant_factoryReturnsOnlyItsOwnBalance; docs-check covers rules.md and operations.md",
-          "3": "contracts: test_refundableIsZeroOffIntendedChain, test_refundableOffIntendedChainNeedsNoToken and testFuzz_refundableIsZeroOffIntendedChain",
+          "3": "contracts: test_refundableIsZeroOffIntendedChain, test_refundableOffIntendedChainNeedsNoToken, test_refundableReadsBrokenTokenAsZero and testFuzz_refundableIsZeroOffIntendedChain",
           "4": "symbolic: check_implementationRecoverOnlyByAuthority with a symbolic receiver deposit; contracts test_implementationReturnsMoneySentToIt and test_cloneMadeOutsideFactoryReverts",
           "5": "unit: backend internal/address and web features/pay receive-address tests pass against the regenerated vectors; e2e pay.spec fixtures use factory.predict of the new factory"
         }

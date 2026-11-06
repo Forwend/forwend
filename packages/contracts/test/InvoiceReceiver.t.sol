@@ -5,7 +5,7 @@ import {Base} from "./Base.t.sol";
 import {InvoiceReceiverFactory} from "../src/InvoiceReceiverFactory.sol";
 import {InvoiceReceiver} from "../src/InvoiceReceiver.sol";
 import {InvoiceTerms} from "../src/InvoiceTypes.sol";
-import {MockToken, FeeToken, ReentrantToken} from "./mocks/MockToken.sol";
+import {MockToken, FeeToken, ReentrantToken, BrokenToken} from "./mocks/MockToken.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
@@ -428,6 +428,14 @@ contract RefundTest is Base {
         vm.warp(DEADLINE + 1);
         assertEq(r.refundable(), AMOUNT + 1e6);
         vm.chainId(block.chainid + 1);
+        assertEq(r.refundable(), 0);
+        assertEq(r.status().refundable, 0);
+    }
+
+    /// A broken invoice token reads as an empty balance, as in factory.status, instead of reverting.
+    function test_refundableReadsBrokenTokenAsZero() public {
+        InvoiceReceiver r = deployed(termsFor(address(new BrokenToken())));
+        vm.warp(DEADLINE + 1);
         assertEq(r.refundable(), 0);
         assertEq(r.status().refundable, 0);
     }
