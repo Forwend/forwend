@@ -453,7 +453,7 @@
       "dependsOn": [
         "F425"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "web-unit",
@@ -554,11 +554,18 @@
           "summary": "Re-review of d32cdf36: maxAmount's doc comment is back on maxAmount, and roomForFee keeps only its own. Every earlier finding is fixed. The money path holds: the fee rounds up; gas limit x maxFeePerGas <= fee x 1e12, checked on the server and in the browser; the browser signs only the server's checked send; Max fits the fee and waits until the fee is read. Lock tests cover a refused hash, a failed hash report and a server that can't be read. Ran: vitest src/features/send passed; harness check lint passed; earlier: go test send and httpapi ok, typecheck and docs-check passed.",
           "at": "2026-11-06T14:44:59Z",
           "filesHash": "f80074477681962a"
-        }
+        },
+        "commit": "02ea8163",
+        "doneAt": "2026-11-06T14:54:52Z"
       },
       "branch": "feat/f427-on-arc-the-wallet-pays-its-own-gas-in-us",
       "baseCommit": "af3c9b6896565838955f02f03e8834e1a6dace4e",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f427-on-arc-the-wallet-pays-its-own-gas-in-us",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
