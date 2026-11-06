@@ -1,4 +1,6 @@
 import { formatTokenAmount } from "@forwend/ui-web";
+import { keccak_256 } from "@noble/hashes/sha3.js";
+import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
 import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import type { Balances } from "@/features/balances/types/balances";
 import { ROLES } from "@/features/profiles/constants/profile";
@@ -8,8 +10,17 @@ import { SEND_COPY } from "@/features/send/constants/send-copy";
 import type { Send, SendOption, SendRequest } from "@/features/send/types/send";
 import { evmAddress } from "@/shared/schemas/api";
 
+/** An address as the server takes it: one case, or mixed case with a valid EIP-55 checksum, so a mistyped letter is
+ * caught on the address step, not after the amount. */
 export function isWalletAddress(text: string): boolean {
-  return evmAddress.safeParse(text.trim()).success;
+  const address = text.trim();
+  if (!evmAddress.safeParse(address).success) return false;
+  const hex = address.slice(2);
+  if (hex === hex.toLowerCase() || hex === hex.toUpperCase()) return true;
+  const hash = bytesToHex(keccak_256(utf8ToBytes(hex.toLowerCase())));
+  return [...hex].every(
+    (c, i) => c === (Number.parseInt(hash[i] ?? "0", 16) >= 8 ? c.toUpperCase() : c.toLowerCase()),
+  );
 }
 
 /** What the wallet holds, the networks Send offers first; empty balances and unread ones are left out. */

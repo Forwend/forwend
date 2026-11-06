@@ -6,6 +6,7 @@ import {
   Button,
   EmptyState,
   formatTokenAmount,
+  IconButton,
   RowButton,
   Sheet,
   Skeleton,
@@ -15,7 +16,7 @@ import {
   TextField,
 } from "@forwend/ui-web";
 import { skipToken } from "@reduxjs/toolkit/query";
-import { ChevronRight, Users, WalletMinimal } from "lucide-react";
+import { ChevronRight, Users, WalletMinimal, X } from "lucide-react";
 import { type FormEvent, type ReactNode, useState } from "react";
 import { FRESH_SIGN_IN_COPY } from "@/features/auth/constants/auth-copy";
 import type { Balances } from "@/features/balances/types/balances";
@@ -30,7 +31,12 @@ import {
 } from "@/features/send/api/send-api";
 import { SendProgress } from "@/features/send/components/send-progress";
 import { SendReview } from "@/features/send/components/send-review";
-import { FEE_DECIMALS, SEND_MODES, SEND_STEPS } from "@/features/send/constants/send";
+import {
+  ADDRESS_LENGTH,
+  FEE_DECIMALS,
+  SEND_MODES,
+  SEND_STEPS,
+} from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
 import { useSendApproval } from "@/features/send/hooks/use-send-approval";
 import {
@@ -330,9 +336,12 @@ export function SendSheet({
       );
   } else if (step === SEND_STEPS.address) {
     body = (
+      // The sheet's title names the field. As in wallets: Paste sits in the field and gives way to Clear; a whole
+      // address that isn't valid says so at once, and Continue waits for a valid one.
       <form noValidate onSubmit={submitAddress} className="flex flex-col gap-5">
         <TextField
-          label={SEND_COPY.address}
+          label={SEND_COPY.walletAddress}
+          labelHidden
           placeholder={SEND_COPY.addressPlaceholder}
           value={address}
           autoFocus
@@ -340,29 +349,48 @@ export function SendSheet({
           autoCapitalize="off"
           autoCorrect="off"
           autoComplete="off"
-          className="font-mono"
+          inputClassName="font-mono"
           onChange={(e) => {
             setAddress(e.target.value);
             setAddressError(null);
           }}
+          onBlur={() => {
+            if (address.trim() && !isWalletAddress(address))
+              setAddressError(SEND_COPY.addressInvalid);
+          }}
           hint={SEND_COPY.addressHint}
-          error={addressError ?? undefined}
-          action={
-            <Button
-              variant="secondary"
-              onClick={async () => {
-                const text = await navigator.clipboard?.readText().catch(() => "");
-                if (text) {
-                  setAddress(text.trim());
+          error={
+            addressError ??
+            (address.trim().length >= ADDRESS_LENGTH && !isWalletAddress(address)
+              ? SEND_COPY.addressInvalid
+              : undefined)
+          }
+          end={
+            address ? (
+              <IconButton
+                label={SEND_COPY.clearAddress}
+                onClick={() => {
+                  setAddress("");
                   setAddressError(null);
-                }
-              }}
-            >
-              {SEND_COPY.paste}
-            </Button>
+                }}
+              >
+                <X aria-hidden className="size-[var(--fw-icon-sm)]" />
+              </IconButton>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  const text = await navigator.clipboard?.readText().catch(() => "");
+                  if (text) setAddress(text.trim());
+                }}
+              >
+                {SEND_COPY.paste}
+              </Button>
+            )
           }
         />
-        <Button type="submit" className="w-full">
+        <Button type="submit" className="w-full" disabled={!isWalletAddress(address)}>
           {SEND_COPY.continue}
         </Button>
       </form>

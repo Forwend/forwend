@@ -154,12 +154,24 @@ test("Send to a new address warns and asks to check the address before it can be
   await sheet(page)
     .getByRole("button", { name: /^Wallet address/ })
     .click();
+  // One name for the step and its field; Paste sits in the field, and Continue waits for a valid address.
+  await expect(sheet(page)).toHaveAccessibleName("Wallet address");
   const address = sheet(page).getByRole("textbox", { name: "Wallet address" });
-  await address.fill("0x1234");
-  await sheet(page).getByRole("button", { name: "Continue" }).click();
-  await expect(sheet(page).getByRole("alert")).toContainText("isn't a wallet address");
+  const next = sheet(page).getByRole("button", { name: "Continue" });
+  await expect(sheet(page).getByRole("button", { name: "Paste" })).toBeVisible();
+  await expect(next).toBeDisabled();
+  await shot(page, "../../docs/runs/f430-address-390.png");
+  expect(await blockingViolations(page)).toEqual([]);
+  // A whole address that isn't valid says so at once: here one letter of the checksum is wrong.
+  await address.fill("0x000000000000000000000000000000000000dEAD");
+  await expect(sheet(page).getByRole("alert")).toHaveText("This isn't a valid wallet address.");
+  await expect(next).toBeDisabled();
+  await sheet(page).getByRole("button", { name: "Clear address" }).click();
+  await expect(address).toHaveValue("");
   await address.fill("0x000000000000000000000000000000000000dEaD");
-  await sheet(page).getByRole("button", { name: "Continue" }).click();
+  await expect(sheet(page).getByRole("alert")).toHaveCount(0);
+  await shot(page, "../../docs/runs/f430-address-filled-390.png");
+  await next.click();
   await pickMoney(page);
   await sheet(page).getByRole("textbox", { name: "Amount" }).fill("0.01");
   await sheet(page).getByRole("button", { name: "Continue" }).click();

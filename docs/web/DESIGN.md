@@ -1092,6 +1092,9 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
   - Steps: To, Wallet address, What to send, Amount, Summary, Confirm it's you when asked, then the progress.
     - A step with one choice is skipped.
   - The title names the step; a Back button sits before it from the second step on.
+  - Wallet address: the title names the field, so its label is for screen readers only.
+    - Paste sits inside the field and gives way to Clear once there is text; only the address is set in mono.
+    - A whole address that isn't valid, its EIP-55 checksum too, says so at once. Continue waits for a valid one.
   - Amount: a one-line chip with the token's mark, symbol and network, then the amount large and centered, no box,
     with the symbol as a muted suffix (`AmountField bare`).
     - Under it "1.2665 USDC available" (cut to 4 decimals, never rounded up) and a Max button.

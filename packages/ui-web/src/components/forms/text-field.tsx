@@ -2,7 +2,11 @@
 
 import { type ComponentPropsWithoutRef, type ReactNode, useId } from "react";
 import { cx } from "../../lib/cx";
-import { FIELD_CONTROL_CLASSES } from "./field-classes";
+import {
+  FIELD_BARE_INPUT_CLASSES,
+  FIELD_CONTROL_CLASSES,
+  FIELD_FRAME_CLASSES,
+} from "./field-classes";
 
 export interface TextFieldProps extends ComponentPropsWithoutRef<"input"> {
   label: string;
@@ -10,6 +14,12 @@ export interface TextFieldProps extends ComponentPropsWithoutRef<"input"> {
   error?: string;
   /** A button that acts on the value, on the input's row: the hint and error stay under both. */
   action?: ReactNode;
+  /** A small control inside the field, at its end, such as Paste or Clear; it stays out of the field's name. */
+  end?: ReactNode;
+  /** The label is for screen readers only, where a heading right above already names the field. */
+  labelHidden?: boolean;
+  /** Classes for the input alone, such as font-mono for an address, so the label and hint keep the body font. */
+  inputClassName?: string;
   /** A setting's short value: the label and its line on the left, a narrow input at the row's end. */
   inline?: boolean;
 }
@@ -19,6 +29,9 @@ export function TextField({
   hint,
   error,
   action,
+  end,
+  labelHidden = false,
+  inputClassName,
   inline = false,
   id,
   className,
@@ -60,17 +73,28 @@ export function TextField({
   }
   return (
     <div className={cx("flex flex-col gap-1.5", className)}>
-      <label htmlFor={fieldId} className="text-sm font-medium text-ink">
+      <label htmlFor={fieldId} className={labelHidden ? "sr-only" : "text-sm font-medium text-ink"}>
         {label}
       </label>
-      {action ? (
+      {end ? (
+        <div className={FIELD_FRAME_CLASSES}>
+          <input
+            id={fieldId}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={describedBy}
+            className={cx(FIELD_BARE_INPUT_CLASSES, inputClassName)}
+            {...props}
+          />
+          <div className="flex shrink-0 items-center">{end}</div>
+        </div>
+      ) : action ? (
         // The action (a pill button) takes the field's height, so the two read as one row.
         <div className="flex items-center gap-2 [&>*]:h-10 pointer-coarse:[&>*]:h-11">
           <input
             id={fieldId}
             aria-invalid={error ? true : undefined}
             aria-describedby={describedBy}
-            className={cx(FIELD_CONTROL_CLASSES, "min-w-0 flex-1")}
+            className={cx(FIELD_CONTROL_CLASSES, "min-w-0 flex-1", inputClassName)}
             {...props}
           />
           {action}
@@ -80,7 +104,7 @@ export function TextField({
           id={fieldId}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
-          className={FIELD_CONTROL_CLASSES}
+          className={cx(FIELD_CONTROL_CLASSES, inputClassName)}
           {...props}
         />
       )}
