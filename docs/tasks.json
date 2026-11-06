@@ -93,9 +93,11 @@
       "dependsOn": [],
       "state": "active",
       "verification": [
+        "unit",
         "web-unit",
         "web-e2e",
-        "auth-live-e2e"
+        "auth-live-e2e",
+        "live-e2e"
       ],
       "refs": [
         "R-217",
