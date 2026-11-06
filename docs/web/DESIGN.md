@@ -1116,6 +1116,8 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
     is ticked.
   - The main button is held, not clicked, and names the amount ("Hold to send 25.00 USDC", `HoldButton`).
     - A fill crosses it in 1.2 s; letting go sooner runs it back and sends nothing. Space and Enter hold it too.
+    - A screen reader's activate acts at once: it has no press to hold, and it is deliberate.
+    - From the hold until signing starts the sheet is locked, except while Confirm it's you waits for a code.
   - Confirm it's you comes after the hold, as its own step titled so, when the session needs a fresh sign-in.
     - Back returns to the Summary with no error; holding again asks again.
     - Once the code is confirmed, the send is signed and the progress follows.

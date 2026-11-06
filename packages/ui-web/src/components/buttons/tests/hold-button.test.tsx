@@ -13,7 +13,8 @@ describe("HoldButton", () => {
     const onHold = vi.fn();
     render(<HoldButton onHold={onHold}>Hold to send</HoldButton>);
     const button = screen.getByRole("button", { name: "Hold to send" });
-    fireEvent.click(button);
+    // A mouse click (detail 1) is a press let go at once.
+    fireEvent.click(button, { detail: 1 });
     fireEvent.pointerDown(button, { button: 0 });
     act(() => vi.advanceTimersByTime(HOLD_MS - 1));
     fireEvent.pointerUp(button);
@@ -36,6 +37,13 @@ describe("HoldButton", () => {
 
     fireEvent.keyDown(button, { key: " " });
     act(() => vi.advanceTimersByTime(HOLD_MS));
+    expect(onHold).toHaveBeenCalledTimes(1);
+  });
+
+  it("acts on a screen reader's activate, a click with no press before it", () => {
+    const onHold = vi.fn();
+    render(<HoldButton onHold={onHold}>Hold to send</HoldButton>);
+    fireEvent.click(screen.getByRole("button", { name: "Hold to send" }), { detail: 0 });
     expect(onHold).toHaveBeenCalledTimes(1);
   });
 

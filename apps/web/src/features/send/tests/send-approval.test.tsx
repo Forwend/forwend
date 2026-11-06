@@ -65,6 +65,18 @@ describe("approving a send (R-137, D-49)", () => {
     expect(current.signing).toEqual([true]);
   });
 
+  it("holds the sheet locked from the hold on, while the approve answer is on its way", async () => {
+    let answer: (s: Send) => void = () => {};
+    api.approve.mockReturnValueOnce(new Promise<Send>((r) => (answer = r)));
+    const { hook } = approval();
+    expect(hook.result.current.locked).toBe(false);
+    act(() => void hook.result.current.start());
+    // Closing or Back now could leave a send that is signed anyway once the answer comes.
+    expect(hook.result.current.locked).toBe(true);
+    await act(async () => answer({ ...send, status: "expired" }));
+    expect(hook.result.current.locked).toBe(false);
+  });
+
   it("starts one send however many times Send is held", async () => {
     let answer: (s: Send) => void = () => {};
     api.approve.mockReturnValueOnce(new Promise<Send>((r) => (answer = r)));

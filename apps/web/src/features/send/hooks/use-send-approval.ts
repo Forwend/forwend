@@ -81,6 +81,9 @@ export function useSendApproval({
     working,
     error,
     canSign,
+    /** From the hold until signing starts, except while Confirm it's you waits for a code: the sheet can't close and
+     * shows no Back, so a send it gave up can't be signed once the approve answer comes. */
+    locked: working && fresh.step === null,
     /** Confirm it's you, while the server asks for it: the sheet shows it as its own step. */
     confirmStep: fresh.step,
     /** Back to the Summary, or the sheet closing: gives up the confirm. */

@@ -83,8 +83,8 @@ export function FreshSignInProvider({ register, children }: FreshSignInProviderP
 }
 
 /** For a form whose request may need a fresh sign-in: run sends it, and step is what to show in place of the form's
- * buttons while the user confirms. pending is true then; the form's fields should stay as they were. */
-/** titled is false where the step sits under a heading that already says Confirm it's you. */
+ * buttons while the user confirms. pending is true then; the form's fields should stay as they were. titled is false
+ * where the step sits under a heading that already says Confirm it's you. */
 export function useFreshSignIn({ titled = true }: { titled?: boolean } = {}) {
   const controller = useContext(FreshSignInContext);
   const [answer, setAnswer] = useState<Answer | null>(null);

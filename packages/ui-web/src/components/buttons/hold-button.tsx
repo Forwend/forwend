@@ -15,7 +15,8 @@ export interface HoldButtonProps extends Omit<ButtonProps, "onClick"> {
 const HOLD_KEYS = [" ", "Enter"];
 
 /** Press and hold to confirm, for an action that moves money: a tap or a stray Enter can't start it. The fill crosses
- * the button while it is held and runs back when let go. Space and Enter hold it from the keyboard. */
+ * the button while it is held and runs back when let go. Space and Enter hold it from the keyboard. A screen reader's
+ * activate sends a click with no press before it (detail 0): that is deliberate, so it acts at once. */
 export function HoldButton({
   onHold,
   holdMs = HOLD_MS,
@@ -67,6 +68,9 @@ export function HoldButton({
       onKeyUp={(event) => key(event, false)}
       onBlur={stop}
       onContextMenu={(event) => event.preventDefault()}
+      onClick={(event) => {
+        if (event.detail === 0 && !disabled && !loading) latest.current();
+      }}
     >
       {/* The hold's progress: the one motion that says how long is left, so reduced motion keeps it. */}
       <span

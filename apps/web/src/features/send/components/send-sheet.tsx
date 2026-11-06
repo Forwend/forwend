@@ -166,7 +166,7 @@ export function SendSheet({
   };
   const close = (next: boolean) => {
     if (!next) {
-      if (signing) return;
+      if (locked) return;
       approval.cancelConfirm();
       for (const sendId of checked) {
         if (sendId !== submitted?.sendId) cancel({ profileId: profile.profileId, sendId });
@@ -267,6 +267,8 @@ export function SendSheet({
         : SEND_COPY.send
       : TITLES[step];
   const canGoBack = path.length > 1 && step !== SEND_STEPS.progress;
+  // Signing, or the approve that comes before it (R-214): closing would not stop the money.
+  const locked = signing || approval.locked;
 
   let body: ReactNode;
   if (!profile.walletAddress) {
@@ -505,9 +507,9 @@ export function SendSheet({
       open={open}
       onOpenChange={close}
       title={title}
-      onBack={canGoBack && !signing ? back : undefined}
+      onBack={canGoBack && !locked ? back : undefined}
       backLabel={SEND_COPY.back}
-      locked={signing}
+      locked={locked}
     >
       {/* A closed sheet holds no step, so nothing in it polls or signs. */}
       {open ? (
