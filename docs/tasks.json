@@ -118,7 +118,8 @@
         "The sheet goes Amount, Summary, then press and hold to send; Confirm it's you comes after that as its own step, with Back to Summary, and signing follows a confirmed code (R-213, R-137)",
         "Going back to change the money or amount never shows an old confirm, and each new step fades in place with no slide (R-213)",
         "Confirm it's you says once where the code goes and has one status line under the boxes: sending, a resend countdown, or Try again after a failed send; a full code is checked even after a failed send (R-137)",
-        "The wallet address step has one name, Paste and Clear inside the field, a one-line hint, and checks the EIP-55 checksum before Continue (R-213)"
+        "The wallet address step has one name, Paste and Clear inside the field, a one-line hint, and checks the EIP-55 checksum before Continue (R-213)",
+        "A merchant's sidebar heads its paid-with pages Get paid, as a freelancer's does, and Payments has its own icon apart from Transactions (R-134)"
       ],
       "dependsOn": [],
       "state": "active",
@@ -132,7 +133,8 @@
         "R-211",
         "R-213",
         "R-137",
-        "D-49"
+        "D-49",
+        "R-134"
       ],
       "keep": [],
       "review": true,

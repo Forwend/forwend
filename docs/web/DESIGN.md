@@ -404,7 +404,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   form pages under Clients laid out like New invoice (Contact, Address and tax, and On invoices with the default PO
   or reference and the payment reminders default (R-97), as panels); Delete waits in the More actions menu at the page's top right and asks to confirm in a
   dialog, as Cancel does on an invoice.
-- Stores (R-134) sits in a merchant's Payments group after Clients. It is laid out like Clients, without search.
+- Stores (R-134) sits in a merchant's Get paid group after Clients. It is laid out like Clients, without search.
   A store's page is a record page (project ID with Copy, Edit for stores.write) with its payments:
   - The toolbar holds a one-line intro, with Add store at its end (beside the title on phones).
   - The table shows the store, its project ID, when its checkout closes and its allowed origins.
@@ -488,7 +488,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Export follows validated filters and uses the existing date dialog pattern; invalid or unresolved filters disable export.
   - Invoices identify a customer by name or email; business tax fields remain optional, and personal requests retain their simpler flow.
   - Failed store, billing or token loads show explicit retry actions; empty acceptance never restores disabled tokens.
-- Payment links (R-140) sits after Invoices in a merchant's Payments group and a freelancer's Get paid group.
+- Payment links (R-140) sits after Invoices in the Get paid group of a merchant or freelancer.
   - It is laid out like Stores: a one-line intro with New link at its end (for roles that can make links), then a table.
   - The table shows the link with its `/l/<slug>`, the amount, a status badge and visits, paid purchases and reserved slots.
   - The status is On, Off, Ended, Limit reached or Setup needed; only On is green.
