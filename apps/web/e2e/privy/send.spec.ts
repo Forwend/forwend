@@ -65,9 +65,8 @@ async function pickMoney(page: Page, screenshot?: string) {
 async function holdSend(page: Page, name: RegExp) {
   const button = sheet(page).getByRole("button", { name });
   await expect(button).toBeEnabled({ timeout: 30_000 });
-  const box = await button.boundingBox();
-  if (!box) throw new Error("The Send button has no box");
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  // hover waits for the button to stop moving: the sheet's height may still follow the step that went before.
+  await button.hover();
   await page.mouse.down();
   await page.waitForTimeout(1_400);
   await page.mouse.up();
