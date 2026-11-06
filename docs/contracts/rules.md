@@ -54,8 +54,9 @@ Every rule has a test.
 - `nonReentrant` and checks-effects-interactions on `settle`, `refund`, `recover`.
 - No `approve`, `isValidSignature`, `fallback`, `receive`, `selfdestruct` or `delegatecall`. External calls only to
   tokens, reads from the factory, and the native-coin destination of `recover`.
-- Works only if our factory deployed it (`deployedAt != 0`): on the implementation and outside clones every function
-  and view reverts except the getters `settled` and `factory`, and the implementation's `recover`.
+- Works only if our factory deployed it (`deployedAt != 0`).
+  - On the implementation and outside clones, every function and view reverts.
+  - The exceptions are the getters `settled` and `factory`, and the implementation's `recover`.
 - The implementation's `recover` returns anything sent to it, for the refund authority only. It is never an invoice's
   receiver, so it holds no invoice money.
 - Accepted: a malicious invoice token can block `recover` on the intended chain (needs a compromised API).

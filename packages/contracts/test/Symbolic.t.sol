@@ -80,18 +80,23 @@ contract SymbolicTest is Test {
     }
 
     /// Only the authority takes money out of the implementation, which is never an invoice's receiver.
-    function check_implementationRecoverOnlyByAuthority(address caller, address to, uint256 stray, uint256 amount)
-        public
-    {
-        vm.assume(stray <= type(uint128).max);
+    function check_implementationRecoverOnlyByAuthority(
+        address caller,
+        address to,
+        uint256 deposit,
+        uint256 stray,
+        uint256 amount
+    ) public {
+        vm.assume(deposit <= type(uint128).max && stray <= type(uint128).max);
         vm.assume(to != address(receiver));
         address impl = factory.implementation();
+        token.mint(address(receiver), deposit);
         token.mint(impl, stray);
         vm.prank(caller);
         (bool ok,) = impl.call(abi.encodeCall(InvoiceReceiver.recover, (address(token), to, amount)));
         if (ok) assert(caller == authority && amount <= stray);
         else assert(token.balanceOf(impl) == stray);
-        assert(token.balanceOf(address(receiver)) == 0);
+        assert(token.balanceOf(address(receiver)) == deposit);
     }
 
     /// The factory's recover() moves only the factory's own balance, and only for the authority.

@@ -141,6 +141,8 @@ contract FactoryTest is Base {
         impl.recover(address(0), payer, 1 ether);
         vm.expectRevert(InvoiceReceiver.InvalidDestination.selector);
         impl.recover(address(0), address(impl), 0);
+        vm.expectRevert(InvoiceReceiver.InvalidDestination.selector);
+        impl.recover(address(0), address(0), 0);
         vm.stopPrank();
         assertEq(token.balanceOf(payer), 7e6);
         assertEq(payer.balance, 1 ether);
