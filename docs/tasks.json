@@ -373,11 +373,11 @@
       "behavior": "The owner exports a profile wallet's private key from that profile's settings, through Privy's secure page",
       "acceptance": [
         "Each profile's settings have a Wallet section with its address and Export private key, for the owner only, never a team member (R-218, D-61)",
-        "Export shows a one-line warning, then opens Privy's own secure export page for that profile's wallet; Forwend never sees the key (R-218, D-46)",
-        "A live run shows Privy's export page opens for a server-made profile wallet; if it doesn't, the task stops and says so before any other way is built (R-218)"
+        "Export shows the warning, asks Confirm it's you for a stale session, then opens Privy's own export window for that profile's wallet; Forwend never sees the key (R-218, D-46)",
+        "A live run shows Privy's export window opens for a server-made profile wallet, names it, and loads its own Copy key button (R-218)"
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "active",
       "verification": [
         "web-unit",
         "web-e2e",
@@ -393,7 +393,9 @@
       "review": true,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": null,
+      "branch": "feat/f431-the-owner-exports-a-profile-wallet-s-pri",
+      "baseCommit": "1a129f035f9de357535ad22ab2fa0aeb20c9848b"
     }
   ],
   "lastWrapup": {

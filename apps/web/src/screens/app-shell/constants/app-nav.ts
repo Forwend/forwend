@@ -163,6 +163,8 @@ export const MENU_PAGES: readonly { href: string; permission: Permission }[] = [
   { href: APP_ROUTES.notifications, permission: PERMISSIONS.notifications },
   { href: APP_ROUTES.networks, permission: PERMISSIONS.tokensRead },
   { href: APP_ROUTES.settings, permission: PERMISSIONS.tokensRead },
+  // The wallet's key moves its money, so only the owner sees the page (D-61, R-218).
+  { href: APP_ROUTES.wallet, permission: PERMISSIONS.moneyMove },
   // Every member may leave; an Admin also manages the team there.
   { href: APP_ROUTES.team, permission: PERMISSIONS.leave },
 ];

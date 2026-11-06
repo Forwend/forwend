@@ -1,0 +1,109 @@
+"use client";
+
+import { BUTTON_VARIANTS, Button, Dialog, EmptyState, ReceiveAddress } from "@forwend/ui-web";
+import { useExportWallet } from "@privy-io/react-auth";
+import { KeyRound, WalletMinimal } from "lucide-react";
+import { useRef, useState } from "react";
+import { useCheckFreshSignInMutation } from "@/features/auth/api/auth-api";
+import { useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
+import { useAppSession } from "@/features/profiles/hooks/use-app-session";
+import { SETTINGS_COPY } from "@/screens/settings/constants/settings-copy";
+import { SplitSection } from "@/shared/components/split-section";
+
+const COPY = SETTINGS_COPY.wallet;
+
+// R-218: the owner exports this profile's wallet key. A short warning comes first, then Confirm it's you for a stale
+// session, then Privy's own export page for this wallet: the key loads on Privy's domain, so Forwend never sees it.
+// Privy asks for its own confirmation only for MFA, which Forwend doesn't use, hence the check here.
+export function WalletScreen() {
+  const { profile } = useAppSession();
+  const address = profile.walletAddress;
+  const { exportWallet } = useExportWallet();
+  const [check] = useCheckFreshSignInMutation();
+  const fresh = useFreshSignIn();
+  const [opening, setOpening] = useState(false);
+  const [error, setError] = useState("");
+  const body = useRef<HTMLDivElement>(null);
+
+  const show = async () => {
+    if (!address) return;
+    setError("");
+    setOpening(true);
+    try {
+      await fresh.run(() => check().unwrap());
+      // Privy's page opens over the app: the warning closes first, so no dialog sits under it.
+      body.current?.closest("dialog")?.close();
+      await exportWallet({ address });
+    } catch (e) {
+      if (!fresh.cancelled(e)) setError(COPY.failed);
+    } finally {
+      setOpening(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-xl font-semibold tracking-tight text-ink">{COPY.title}</h1>
+        <p className="text-sm text-muted">{COPY.intro}</p>
+      </div>
+      {!address ? (
+        <EmptyState compact icon={WalletMinimal} title={COPY.noWallet} />
+      ) : (
+        <>
+          <SplitSection title={COPY.address} description={COPY.addressNote}>
+            <ReceiveAddress address={address} label={COPY.yourAddress} />
+          </SplitSection>
+          <SplitSection title={COPY.key} description={COPY.keyNote}>
+            <div className="fw-panel flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
+              <span className="grid size-10 shrink-0 place-items-center rounded-md bg-surface-2 text-muted max-sm:hidden">
+                <KeyRound aria-hidden className="size-[var(--fw-icon-md)]" />
+              </span>
+              <p className="min-w-0 flex-1 text-sm text-muted">{COPY.exportHint}</p>
+              <Dialog
+                triggerLabel={COPY.export}
+                title={COPY.warningTitle}
+                onClose={() => {
+                  fresh.cancel();
+                  setError("");
+                }}
+                trigger={(open) => (
+                  <Button size="sm" variant={BUTTON_VARIANTS.secondary} onClick={open}>
+                    {COPY.export}
+                  </Button>
+                )}
+              >
+                <div ref={body}>
+                  <p>{COPY.warningBody}</p>
+                  {error ? (
+                    <p role="alert" className="mt-3 text-sm text-danger">
+                      {error}
+                    </p>
+                  ) : null}
+                  {/* Confirm it's you takes the place of the dialog's buttons, as in other protected dialogs. */}
+                  <div className="mt-5">
+                    {fresh.step ?? (
+                      <form method="dialog" className="flex flex-wrap justify-end gap-2">
+                        <Button type="submit" variant={BUTTON_VARIANTS.secondary}>
+                          {COPY.cancel}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={BUTTON_VARIANTS.danger}
+                          loading={opening}
+                          onClick={() => void show()}
+                        >
+                          {COPY.show}
+                        </Button>
+                      </form>
+                    )}
+                  </div>
+                </div>
+              </Dialog>
+            </div>
+          </SplitSection>
+        </>
+      )}
+    </div>
+  );
+}
