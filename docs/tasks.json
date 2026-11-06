@@ -377,7 +377,7 @@
         "A live run shows Privy's export window opens for a server-made profile wallet, names it, and loads its own Copy key button (R-218)"
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "web-unit",
         "web-e2e",
@@ -392,20 +392,22 @@
       "keep": [],
       "review": true,
       "notes": [
-        "2026-11-06 review fail by reviewer: Fail, 3 fixes. Security core is sound: /app/wallet needs money.move (owner only, D-61); app-shell shows a spinner and redirects a member who opens it directly; Privy's exportWallet also refuses a wallet not linked to the signed-in user; the key stays in Privy's frame. Must fix: (1) app-nav.ts:113 breadcrumb has no Wallet case, so /app/wallet shows Overview as the current page; app-nav.ts:22 SETTINGS_PATHS lacks APP_ROUTES.wallet, so the phone Settings row is not marked current. Add both with app-nav tests. (2) wallet-screen.tsx:34-38 closes the warning before exportWallet; Privy rejects at once on its own errors (no access token, wallet not ready, not an embedded wallet), so the error is set inside a closed dialog: the user sees nothing, and the stale error shows on the next open. Show it where the user sees it, and test an exportWallet rejection. (3) PROJECT.md:306 R-218 implies Confirm it's you guards the export, but Privy's export runs in the browser with shouldForceMFA only for Privy MFA, so a stolen session can call it directly and take the key. Say so, as R-217 does (Q-13), and name key export in Q-13:455. Ran: vitest src/screens/wallet src/screens/settings src/screens/app-shell -> 5 files, 23 tests passed; harness check typecheck lint docs-check -> all passed."
+        "2026-11-06 review fail by reviewer: Fail, 3 fixes. Security core is sound: /app/wallet needs money.move (owner only, D-61); app-shell shows a spinner and redirects a member who opens it directly; Privy's exportWallet also refuses a wallet not linked to the signed-in user; the key stays in Privy's frame. Must fix: (1) app-nav.ts:113 breadcrumb has no Wallet case, so /app/wallet shows Overview as the current page; app-nav.ts:22 SETTINGS_PATHS lacks APP_ROUTES.wallet, so the phone Settings row is not marked current. Add both with app-nav tests. (2) wallet-screen.tsx:34-38 closes the warning before exportWallet; Privy rejects at once on its own errors (no access token, wallet not ready, not an embedded wallet), so the error is set inside a closed dialog: the user sees nothing, and the stale error shows on the next open. Show it where the user sees it, and test an exportWallet rejection. (3) PROJECT.md:306 R-218 implies Confirm it's you guards the export, but Privy's export runs in the browser with shouldForceMFA only for Privy MFA, so a stolen session can call it directly and take the key. Say so, as R-217 does (Q-13), and name key export in Q-13:455. Ran: vitest src/screens/wallet src/screens/settings src/screens/app-shell -> 5 files, 23 tests passed; harness check typecheck lint docs-check -> all passed.",
+        "2026-11-06 review pass by reviewer: Pass. 659dbe7a fixes all three findings. (1) breadcrumb names /app/wallet Wallet and SETTINGS_PATHS lists it; app-nav.test covers both. (2) A failed check still shows in the open dialog; after it closes, a rejected exportWallet shows a danger toast (ToastProvider wraps the app shell); a unit test rejects exportWallet and finds the toast with the dialog closed. (3) R-218, Q-13, architecture.md and the page comment now say the check binds Forwend's page only, and Q-13 names key export as the worst case. Owner-only page and nav, Privy's own wallet-ownership check and the key staying in Privy's frame are unchanged. Note, not blocking: Privy rejects with 'User exited before wallet could be connected' if the owner closes its window while it connects, so that cancel shows the failed toast. Ran: vitest src/screens/wallet src/screens/settings src/screens/app-shell -> 5 files, 25 tests passed; harness check typecheck lint docs-check -> all passed."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-06T18:49:41Z",
+        "at": "2026-11-06T19:04:09Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 4.8,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "docs-check",
@@ -432,37 +434,38 @@
             "id": "web-unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 6.2,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "live-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 522.6,
+            "seconds": 577.9,
             "log": ""
           },
           {
             "id": "web-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 43.5,
+            "seconds": 45.9,
             "log": ""
           }
         ],
         "taskHash": "224421d5ff15d10c",
-        "filesHash": "9f5efd0e71763611",
+        "filesHash": "a3beb8eaebd247e0",
         "proof": {
-          "1": "web-unit: settings-sections.test.ts shows Wallet to the owner and never to an Admin; wallet-screen.test.tsx shows the address and says so when the profile has no wallet yet",
-          "2": "web-unit: wallet-screen.test.tsx opens Privy's export for the address only after the warning and the api's check, closes the warning first, and opens nothing when the check fails; live-e2e: wallet.spec goes through the warning and Confirm it's you when asked",
+          "1": "web-unit: settings-sections.test.ts shows Wallet to the owner and never to an Admin; app-nav.test.ts names the page in the breadcrumb and marks Settings; wallet-screen.test.tsx shows the address and says so when the profile has no wallet yet",
+          "2": "web-unit: wallet-screen.test.tsx opens Privy's export for the address only after the warning and the api's check, closes the warning first, shows a failed check in the dialog and a failed Privy export as a toast; live-e2e: wallet.spec goes through the warning and Confirm it's you when asked",
           "3": "live-e2e: wallet.spec opens Privy's export window for the test account's server-made wallet, sees it named, and sees Privy's own Copy key button load in its frame, without pressing it"
         },
         "review": {
-          "result": "fail",
+          "result": "pass",
           "by": "reviewer",
-          "summary": "Fail, 3 fixes. Security core is sound: /app/wallet needs money.move (owner only, D-61); app-shell shows a spinner and redirects a member who opens it directly; Privy's exportWallet also refuses a wallet not linked to the signed-in user; the key stays in Privy's frame. Must fix: (1) app-nav.ts:113 breadcrumb has no Wallet case, so /app/wallet shows Overview as the current page; app-nav.ts:22 SETTINGS_PATHS lacks APP_ROUTES.wallet, so the phone Settings row is not marked current. Add both with app-nav tests. (2) wallet-screen.tsx:34-38 closes the warning before exportWallet; Privy rejects at once on its own errors (no access token, wallet not ready, not an embedded wallet), so the error is set inside a closed dialog: the user sees nothing, and the stale error shows on the next open. Show it where the user sees it, and test an exportWallet rejection. (3) PROJECT.md:306 R-218 implies Confirm it's you guards the export, but Privy's export runs in the browser with shouldForceMFA only for Privy MFA, so a stolen session can call it directly and take the key. Say so, as R-217 does (Q-13), and name key export in Q-13:455. Ran: vitest src/screens/wallet src/screens/settings src/screens/app-shell -> 5 files, 23 tests passed; harness check typecheck lint docs-check -> all passed.",
-          "at": "2026-11-06T19:02:08Z",
-          "filesHash": "9f5efd0e71763611"
+          "summary": "Pass. 659dbe7a fixes all three findings. (1) breadcrumb names /app/wallet Wallet and SETTINGS_PATHS lists it; app-nav.test covers both. (2) A failed check still shows in the open dialog; after it closes, a rejected exportWallet shows a danger toast (ToastProvider wraps the app shell); a unit test rejects exportWallet and finds the toast with the dialog closed. (3) R-218, Q-13, architecture.md and the page comment now say the check binds Forwend's page only, and Q-13 names key export as the worst case. Owner-only page and nav, Privy's own wallet-ownership check and the key staying in Privy's frame are unchanged. Note, not blocking: Privy rejects with 'User exited before wallet could be connected' if the owner closes its window while it connects, so that cancel shows the failed toast. Ran: vitest src/screens/wallet src/screens/settings src/screens/app-shell -> 5 files, 25 tests passed; harness check typecheck lint docs-check -> all passed.",
+          "at": "2026-11-06T19:16:25Z",
+          "filesHash": "a3beb8eaebd247e0"
         }
       },
       "branch": "feat/f431-the-owner-exports-a-profile-wallet-s-pri",
