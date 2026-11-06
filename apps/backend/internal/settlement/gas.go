@@ -63,7 +63,7 @@ var errFundIt = errors.New("fund it")
 
 // checkGas fails unless the executor holds the gas of settlements deploys and settles at the current fee cap.
 func checkGas(ctx context.Context, client *ethclient.Client, chainID uint64, executor common.Address, settlements int64) error {
-	_, feeCap, err := fees(ctx, client, chainID)
+	_, feeCap, err := Fees(ctx, client, chainID)
 	if err != nil {
 		return fmt.Errorf("chain %d: %w", chainID, err)
 	}

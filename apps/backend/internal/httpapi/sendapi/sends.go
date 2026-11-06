@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"strconv"
 
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
 	"github.com/forwend/forwend/apps/backend/internal/send"
@@ -51,6 +52,27 @@ func listPendingSends(sends *send.Service) http.HandlerFunc {
 			out.Sends = append(out.Sends, toSendJSON(s))
 		}
 		httpio.WriteJSON(w, http.StatusOK, out)
+	}
+}
+
+func getSendFee(sends *send.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		chainID, err := strconv.ParseUint(r.URL.Query().Get("chainId"), 10, 64)
+		if err != nil {
+			httpio.WriteError(w, r, fmt.Errorf("%w: chainId must be a chain id", send.ErrInvalid))
+			return
+		}
+		fee, err := sends.Fee(r.Context(), r.PathValue("profileId"), chainID, r.URL.Query().Get("token"),
+			r.URL.Query().Get("to"))
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		paidBy := paidByForwend
+		if fee.Sign() > 0 {
+			paidBy = paidByWallet
+		}
+		httpio.WriteJSON(w, http.StatusOK, feeJSON{Amount: fee.String(), PaidBy: paidBy})
 	}
 }
 

@@ -92,7 +92,7 @@ test("Transfer moves testnet money to the owner's other profile and follows it t
   await pickMoney(page, "../../docs/runs/f425-transfer-asset-1440.png");
   await sheet(page).getByRole("textbox", { name: "Amount" }).fill("0.01");
   await expect(sheet(page).getByText("Free")).toBeVisible();
-  await expect(sheet(page).getByText(/^0\.01 [A-Z]+$/)).toBeVisible();
+  await expect(sheet(page).getByText(/ available$/)).toBeVisible();
   await shot(page, "../../docs/runs/f425-transfer-amount-1440.png");
   expect(await blockingViolations(page)).toEqual([]);
   await sheet(page).getByRole("button", { name: "Continue" }).click();
@@ -201,5 +201,55 @@ test("Transfer opens from the command menu, and with reduced motion each step sh
   expect(moving).toBeLessThan(1);
   await page.keyboard.press("Escape");
   await expect(sheet(page)).toHaveCount(0);
+  await context.close();
+});
+
+// R-216: Arc has no sponsorship, so the wallet pays its gas in the USDC it sends. The test account's business
+// profile holds Arc testnet USDC.
+test("On Arc the wallet pays its own fee in USDC, shown before the send, and the send reaches Sent", async ({
+  browser,
+}) => {
+  test.setTimeout(240_000);
+  const context = await browser.newContext({ storageState: fresh });
+  const page = await context.newPage();
+  await page.goto("/app");
+  await expect(page.getByRole("region", { name: "Total balance" })).toBeVisible();
+  await page.keyboard.press("ControlOrMeta+k");
+  const search = page.getByRole("dialog", { name: "Search" });
+  await search.getByRole("combobox").fill("Nmae");
+  await search.getByRole("option", { name: /^Switch to Merchant/ }).click();
+  await expect(
+    page.getByRole("banner").getByRole("button", { name: "Send", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("banner").getByRole("button", { name: "Send", exact: true }).click();
+  await sheet(page)
+    .getByRole("region", { name: "Your profiles" })
+    .getByRole("button", { name: /^Personal/ })
+    .click();
+  await expect(sheet(page)).toHaveAccessibleName("What to send");
+  await sheet(page)
+    .getByRole("button", { name: /Arc Testnet/ })
+    .click();
+  await expect(sheet(page)).toHaveAccessibleName("Amount");
+  // The fee is the wallet's own, an estimate in USDC; the review adds the total.
+  await expect(sheet(page).getByText(/^≈ \d+\.\d{4} USDC$/)).toBeVisible({ timeout: 20_000 });
+  await sheet(page).getByRole("textbox", { name: "Amount" }).fill("0.01");
+  await shot(page, "../../docs/runs/f427-arc-amount-1440.png");
+  await sheet(page).getByRole("button", { name: "Continue" }).click();
+  await confirmIfAsked(page);
+  await expect(sheet(page)).toHaveAccessibleName("Review");
+  await expect(sheet(page).getByText("Free", { exact: true })).toHaveCount(0);
+  await expect(sheet(page).getByText("Total", { exact: true })).toBeVisible();
+  await shot(page, "../../docs/runs/f427-arc-review-1440.png");
+  await sheet(page)
+    .getByRole("button", { name: /^(Send|Transfer) 0\.01 USDC$/ })
+    .click();
+  await expect(sheet(page).getByRole("link", { name: "View on ArcScan" })).toBeVisible({
+    timeout: 60_000,
+  });
+  await expect(sheet(page).getByRole("heading", { name: "Sent" })).toBeVisible({
+    timeout: 150_000,
+  });
+  await shot(page, "../../docs/runs/f427-arc-sent-1440.png");
   await context.close();
 });

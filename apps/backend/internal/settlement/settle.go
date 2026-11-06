@@ -261,7 +261,7 @@ func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uin
 		}
 	}
 	gas = max(gas, minGas)
-	tip, feeCap, err := fees(ctx, client, chainID)
+	tip, feeCap, err := Fees(ctx, client, chainID)
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +275,7 @@ func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uin
 // replace raises tip and fee cap by at least an eighth (geth wants a tenth) and to at least today's fees, saved before
 // it is sent with old's hash kept, since either may be mined. Over MaxFeeFactor it returns old, to be sent again as is.
 func (s *Signer) replace(ctx context.Context, client *ethclient.Client, in intent, old *types.Transaction) (*types.Transaction, error) {
-	tip, feeCap, err := fees(ctx, client, in.chainID)
+	tip, feeCap, err := Fees(ctx, client, in.chainID)
 	if err != nil {
 		return nil, err
 	}
@@ -351,7 +351,9 @@ func bigMax(a, b *big.Int) *big.Int {
 	return b
 }
 
-func fees(ctx context.Context, client *ethclient.Client, chainID uint64) (tip, feeCap *big.Int, err error) {
+// Fees are a transaction's tip and fee cap on the chain: twice the base fee plus the tip, never above the chain's
+// ceiling in maxFeePerGas (R-189).
+func Fees(ctx context.Context, client *ethclient.Client, chainID uint64) (tip, feeCap *big.Int, err error) {
 	tip, err = client.SuggestGasTipCap(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("read gas tip: %w", err)

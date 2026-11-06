@@ -1,7 +1,9 @@
+import { formatTokenAmount } from "@forwend/ui-web";
 import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import type { Balances } from "@/features/balances/types/balances";
 import { ROLES } from "@/features/profiles/constants/profile";
 import type { Profile } from "@/features/profiles/types/profile";
+import { FEE_DECIMALS, NATIVE_DECIMALS } from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
 import type { Send, SendOption, SendRequest } from "@/features/send/types/send";
 import { evmAddress } from "@/shared/schemas/api";
@@ -43,6 +45,12 @@ export function transferCalldata(to: string, amount: bigint): `0x${string}` {
   return `0xa9059cbb${word(to.slice(2).toLowerCase())}${word(amount.toString(16))}`;
 }
 
+/** What Max may send (R-216): the balance less the fee, never below 0; null until the fee is known. */
+export function roomForFee(balance: bigint, fee: bigint | null): bigint | null {
+  if (fee === null) return null;
+  return balance > fee ? balance - fee : 0n;
+}
+
 /** The whole balance as the amount field takes it: every decimal it has, no grouping, no trailing zeros. */
 export function maxAmount(balance: bigint, decimals: number): string {
   const scale = 10n ** BigInt(decimals);
@@ -55,22 +63,47 @@ export function maxAmount(balance: bigint, decimals: number): string {
 export function matchesRequest(
   send: Send,
   request: Omit<SendRequest, "profileId">,
-  to: string,
+  expected: { to: string; from: string; decimals: number },
 ): boolean {
+  const { to, from, decimals } = expected;
   return (
     send.chainId === request.chainId &&
+    send.from.toLowerCase() === from.toLowerCase() &&
+    send.decimals === decimals &&
     send.token.toLowerCase() === request.token.toLowerCase() &&
     send.amount === request.amount &&
-    send.to.toLowerCase() === to.toLowerCase()
+    send.to.toLowerCase() === to.toLowerCase() &&
+    gasWithinFee(send)
   );
 }
 
-/** The network fee the wallet pays (D-119): Free where Forwend pays it.
- * ponytail: a non-zero fee is shown in the sent token's units; only sponsored chains offer Send today, so it is
- * always 0. Name the gas token here once a chain without sponsorship offers Send. */
-export function feeText(send: Send, option: SendOption): string {
+/** The gas caps Privy signs with can cost at most the fee the review shows (R-216); a sponsored send has none. */
+function gasWithinFee(send: Send): boolean {
   const fee = BigInt(send.networkFee.amount);
-  return fee === 0n ? SEND_COPY.free : `${maxAmount(fee, option.decimals)} ${option.symbol}`;
+  const gas = send.gas;
+  if (!gas) return fee === 0n;
+  if (fee === 0n || BigInt(gas.maxPriorityFeePerGas) > BigInt(gas.maxFeePerGas)) return false;
+  const scale = 10n ** BigInt(NATIVE_DECIMALS - send.decimals);
+  return BigInt(gas.limit) * BigInt(gas.maxFeePerGas) <= fee * scale;
+}
+
+/** An estimated fee rounded up to 4 decimals, so the figure shown is never below what the wallet can pay (R-216). */
+export function feeShown(fee: bigint, decimals: number): bigint {
+  if (decimals <= FEE_DECIMALS) return fee;
+  const step = 10n ** BigInt(decimals - FEE_DECIMALS);
+  return ((fee + step - 1n) / step) * step;
+}
+
+/** The network fee as a wallet writes it (D-119): Free where Forwend pays, else ≈ the estimate in the token. */
+export function feeLabel(fee: bigint, option: Pick<SendOption, "decimals" | "symbol">): string {
+  if (fee === 0n) return SEND_COPY.free;
+  const shown = feeShown(fee, option.decimals);
+  const text = formatTokenAmount({
+    baseUnits: shown,
+    decimals: option.decimals,
+    fractionDigits: Math.min(option.decimals, FEE_DECIMALS),
+  });
+  return SEND_COPY.approx(`${text} ${option.symbol}`);
 }
 
 /** The owner's other profiles with a wallet: where a Transfer can go. */

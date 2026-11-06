@@ -1,5 +1,5 @@
-import { pendingSendsSchema, sendSchema } from "@/features/send/schemas/send";
-import type { Send, SendRequest } from "@/features/send/types/send";
+import { pendingSendsSchema, sendFeeSchema, sendSchema } from "@/features/send/schemas/send";
+import type { Send, SendFee, SendRequest } from "@/features/send/types/send";
 import { apiSlice } from "@/shared/api/api-slice";
 
 const sends = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/sends`;
@@ -32,6 +32,16 @@ export const sendApi = apiSlice.injectEndpoints({
       responseSchema: pendingSendsSchema,
       providesTags: ["PendingSends"],
     }),
+    getSendFee: build.query<
+      SendFee,
+      { profileId: string; chainId: number; token: string; to: string }
+    >({
+      query: ({ profileId, chainId, token, to }) => ({
+        url: `${sends(profileId)}/fee`,
+        params: { chainId, token, to },
+      }),
+      responseSchema: sendFeeSchema,
+    }),
     getSend: build.query<Send, { profileId: string; sendId: string }>({
       query: ({ profileId, sendId }) => `${sends(profileId)}/${encodeURIComponent(sendId)}`,
       responseSchema: sendSchema,
@@ -43,6 +53,8 @@ export const {
   usePrepareSendMutation,
   useSubmitSendMutation,
   useCancelSendMutation,
+  useGetSendFeeQuery,
   useGetSendQuery,
+  useLazyGetSendQuery,
   useListPendingSendsQuery,
 } = sendApi;

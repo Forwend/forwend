@@ -1,13 +1,15 @@
 import type { z } from "zod";
 import type { Profile } from "@/features/profiles/types/profile";
 import type { SEND_MODES, SEND_STEPS } from "@/features/send/constants/send";
-import type { sendSchema } from "@/features/send/schemas/send";
+import type { sendFeeSchema, sendSchema } from "@/features/send/schemas/send";
 
 export type SendMode = (typeof SEND_MODES)[keyof typeof SEND_MODES];
 
 export type SendStep = (typeof SEND_STEPS)[keyof typeof SEND_STEPS];
 
 export type Send = z.infer<typeof sendSchema>;
+
+export type SendFee = z.infer<typeof sendFeeSchema>;
 
 /** What the owner asks to send: to an outside address, or to another of their profiles. */
 export interface SendRequest {

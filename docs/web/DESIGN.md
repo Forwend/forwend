@@ -1088,9 +1088,13 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
   Send also offers Wallet address.
   - Steps: To, Wallet address, What to send, Amount, Review, then the progress. A step with one choice is skipped.
   - The title names the step; a Back button sits before it from the second step on.
-  - Amount: the large amount field with the unit inside, the available balance with Max, then Network fee (Free) and
-    They receive on a surface-2 box.
-  - Review: the amount large and centered, then a ruled box: From, To, Network, Network fee, They receive.
+  - Amount: a one-line chip with the token's mark, symbol and network, then the amount large and centered, no box,
+    with the symbol as a muted suffix (`AmountField bare`).
+    - Under it "1.2665 USDC available" (cut to 4 decimals, never rounded up) and a Max button.
+    - Then one ruled line: Network fee, "Free" where Forwend pays, else "≈ 0.0025 USDC". Max leaves room for that fee, and waits until it is read.
+  - Review: the amount large and centered, then a ruled box: From, To, Network, Network fee.
+    - Total (≈ amount plus fee) follows only when the wallet pays the fee from the same token (R-216).
+  - An estimated fee rounds up to 4 decimals and leads with ≈. No "Up to", no "They receive": the amount says it.
   - An address reads as plain text, shortened (`0x4edd…81fc`), as everywhere in the app.
     - Its tooltip shows the full address on hover, focus or tap (`TruncatedAddress`, `mono={false}`).
   - A first send to an address, or one to a contract, shows a one-line warning and a checkbox; Send stays off until it
@@ -1098,7 +1102,8 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
   - The main button names the amount ("Send 25.00 USDC").
   - From signing until the server holds the hash, the sheet is locked: Escape, the backdrop, Close and Back do nothing.
     - Closing would not stop the money, and the server needs the hash to follow it.
-    - A hash the server refuses lifts the lock; a lost connection keeps it.
+    - A hash the server refuses lifts the lock, and so does a server that can't be read: the owner may then leave.
+    - A failed hash report alone keeps it, and the report goes again on the next read.
   - Progress: a spinner and Sending, then the drawn check and Sent, or the alert icon and why it failed; then the
     explorer link and Done.
 - Fixed navigation and page edges respect safe-area insets; zoom stays enabled and touch text inputs use the base

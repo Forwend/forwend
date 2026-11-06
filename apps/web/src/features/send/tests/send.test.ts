@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  feeLabel,
+  feeShown,
   isWalletAddress,
   matchesRequest,
   maxAmount,
+  roomForFee,
   sendOptions,
   transferCalldata,
 } from "@/features/send/lib/send";
@@ -50,6 +53,13 @@ describe("send", () => {
 });
 
 describe("max and the server's answer", () => {
+  it("keeps room for the fee in Max, and offers none until the fee is known (R-216)", () => {
+    expect(roomForFee(1_000_000n, 3_600n)).toBe(996_400n);
+    expect(roomForFee(2_000n, 3_600n)).toBe(0n);
+    expect(roomForFee(1_000_000n, 0n)).toBe(1_000_000n);
+    expect(roomForFee(1_000_000n, null)).toBeNull();
+  });
+
   it("fills Max with the exact balance, whatever the decimals", () => {
     expect(maxAmount(26_250_000n, 6)).toBe("26.25");
     expect(maxAmount(100n, 0)).toBe("100");
@@ -59,16 +69,64 @@ describe("max and the server's answer", () => {
 
   it("refuses a prepared send that isn't the one asked for", () => {
     const asked = { chainId: 84532, token: "0xAA", amount: "100", to: "0xBb" };
+    const expected = { to: asked.to, from: "0xWa", decimals: 6 };
     const send = {
       chainId: 84532,
       token: "0xaa",
       amount: "100",
       to: "0xbb",
+      from: "0xwa",
+      decimals: 6,
+      networkFee: { amount: "0", paidBy: "forwend" },
+      gas: null,
     } as Parameters<typeof matchesRequest>[0];
-    expect(matchesRequest(send, asked, asked.to)).toBe(true);
-    expect(matchesRequest({ ...send, amount: "1000" }, asked, asked.to)).toBe(false);
-    expect(matchesRequest({ ...send, to: "0xcc" }, asked, asked.to)).toBe(false);
-    expect(matchesRequest({ ...send, chainId: 421614 }, asked, asked.to)).toBe(false);
-    expect(matchesRequest({ ...send, token: "0xdd" }, asked, asked.to)).toBe(false);
+    expect(matchesRequest(send, asked, expected)).toBe(true);
+    expect(matchesRequest({ ...send, amount: "1000" }, asked, expected)).toBe(false);
+    expect(matchesRequest({ ...send, to: "0xcc" }, asked, expected)).toBe(false);
+    expect(matchesRequest({ ...send, chainId: 421614 }, asked, expected)).toBe(false);
+    expect(matchesRequest({ ...send, token: "0xdd" }, asked, expected)).toBe(false);
+    // Privy signs from the wallet the send names, in the units the amount step used.
+    expect(matchesRequest({ ...send, from: "0xee" }, asked, expected)).toBe(false);
+    expect(matchesRequest({ ...send, decimals: 18 }, asked, expected)).toBe(false);
+  });
+});
+
+describe("a wallet-paid send", () => {
+  const asked = { chainId: 5042002, token: "0x36", amount: "10000", to: "0xbb" };
+  const expected = { to: asked.to, from: "0xwa", decimals: 6 };
+  // 90,000 gas at 40 gwei is 0.0036 of an 18-decimal coin: 3,600 base units of a 6-decimal token.
+  const gas = { limit: "90000", maxFeePerGas: "40000000000", maxPriorityFeePerGas: "1000000000" };
+  const send = {
+    ...asked,
+    from: "0xwa",
+    decimals: 6,
+    networkFee: { amount: "3600", paidBy: "wallet" },
+    gas,
+  } as Parameters<typeof matchesRequest>[0];
+
+  it("is signed only when its gas caps cost at most the fee shown", () => {
+    expect(matchesRequest(send, asked, expected)).toBe(true);
+    const over = { ...send, gas: { ...gas, maxFeePerGas: "40000000001" } };
+    expect(matchesRequest(over, asked, expected)).toBe(false);
+    const tipAboveCap = { ...send, gas: { ...gas, maxPriorityFeePerGas: "50000000000" } };
+    expect(matchesRequest(tipAboveCap, asked, expected)).toBe(false);
+    expect(matchesRequest({ ...send, gas: null }, asked, expected)).toBe(false);
+    expect(
+      matchesRequest({ ...send, networkFee: { amount: "0", paidBy: "wallet" } }, asked, expected),
+    ).toBe(false);
+  });
+});
+
+describe("the fee shown", () => {
+  it("rounds an estimate up to 4 decimals, never below what the wallet can pay", () => {
+    expect(feeShown(2_067n, 6)).toBe(2_100n);
+    expect(feeShown(2_100n, 6)).toBe(2_100n);
+    expect(feeShown(1n, 6)).toBe(100n);
+  });
+
+  it("reads Free where Forwend pays, else ≈ the estimate", () => {
+    const usdc = { decimals: 6, symbol: "USDC" };
+    expect(feeLabel(0n, usdc)).toBe("Free");
+    expect(feeLabel(2_067n, usdc)).toBe("≈ 0.0021 USDC");
   });
 });

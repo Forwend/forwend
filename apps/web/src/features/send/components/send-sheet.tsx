@@ -2,6 +2,7 @@
 
 import {
   AmountField,
+  BrandIcon,
   Button,
   EmptyState,
   formatTokenAmount,
@@ -13,6 +14,7 @@ import {
   StepTransition,
   TextField,
 } from "@forwend/ui-web";
+import { skipToken } from "@reduxjs/toolkit/query";
 import { ChevronRight, Users, WalletMinimal } from "lucide-react";
 import { type FormEvent, type ReactNode, useState } from "react";
 import { useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
@@ -21,15 +23,21 @@ import { AMOUNT_ERRORS } from "@/features/invoices/constants/invoices";
 import { parseTokenAmount } from "@/features/invoices/lib/invoices";
 import { profileLabel } from "@/features/profiles/lib/profile";
 import type { Profile } from "@/features/profiles/types/profile";
-import { useCancelSendMutation, usePrepareSendMutation } from "@/features/send/api/send-api";
+import {
+  useCancelSendMutation,
+  useGetSendFeeQuery,
+  usePrepareSendMutation,
+} from "@/features/send/api/send-api";
 import { SendProgress } from "@/features/send/components/send-progress";
 import { SendReview } from "@/features/send/components/send-review";
-import { SEND_MODES, SEND_STEPS } from "@/features/send/constants/send";
+import { FEE_DECIMALS, SEND_MODES, SEND_STEPS } from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
 import {
+  feeLabel,
   isWalletAddress,
   matchesRequest,
   maxAmount,
+  roomForFee,
   sendError,
   sendOptions,
   transferTargets,
@@ -37,6 +45,8 @@ import {
 import type { Recipient, Send, SendMode, SendOption, SendStep } from "@/features/send/types/send";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { LoadError } from "@/shared/components/load-error";
+import { TOKEN_ICONS } from "@/shared/constants/chains";
+import { chainName } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 
 export interface SendSheetProps {
@@ -150,6 +160,27 @@ export function SendSheet({
   };
 
   const units = option ? parseTokenAmount(amount, option.decimals) : null;
+  // R-216: where the wallet pays its gas, the fee comes out of the same balance, so Max and the check keep room for it.
+  const recipientAddress = recipient
+    ? "profile" in recipient
+      ? (recipient.profile.walletAddress ?? "")
+      : recipient.address
+    : "";
+  // Read anew on each visit to the amount step: gas prices move.
+  const feeRead = useGetSendFeeQuery(
+    step === SEND_STEPS.amount && option
+      ? {
+          profileId: profile.profileId,
+          chainId: option.chainId,
+          token: option.token,
+          to: recipientAddress,
+        }
+      : skipToken,
+    { refetchOnMountOrArgChange: true },
+  );
+  const fee = feeRead.currentData ? BigInt(feeRead.currentData.amount) : null;
+  // Max waits for the fee: a full balance would leave no room for it. The server checks an amount typed meanwhile.
+  const room = option ? roomForFee(option.balance, fee) : null;
   const shownAmount = (value: bigint, o: SendOption) =>
     `${formatTokenAmount({ baseUnits: value, decimals: o.decimals, fractionDigits: exactDigits(value, o.decimals) })} ${o.symbol}`;
 
@@ -175,8 +206,8 @@ export function SendSheet({
       );
       return;
     }
-    if (units > option.balance) {
-      setAmountError(SEND_COPY.moreThanBalance);
+    if (units > (room ?? option.balance)) {
+      setAmountError(fee ? SEND_COPY.moreThanBalanceWithFee : SEND_COPY.moreThanBalance);
       return;
     }
     setAmountError(null);
@@ -192,13 +223,19 @@ export function SendSheet({
       .run(() => prepare({ profileId: profile.profileId, ...request }).unwrap())
       .catch((error: unknown) => {
         if (!fresh.cancelled(error)) setAmountError(sendError(error));
+        // The fee may have risen since it was read: Max then uses the new one.
+        if (fee) void feeRead.refetch();
         return null;
       });
     if (!result) return;
     setChecked((c) => [...c, result.sendId]);
-    const expected =
-      "profile" in recipient ? (recipient.profile.walletAddress ?? "") : recipient.address;
-    if (!matchesRequest(result, request, expected)) {
+    if (
+      !matchesRequest(result, request, {
+        to: recipientAddress,
+        from: profile.walletAddress ?? "",
+        decimals: option.decimals,
+      })
+    ) {
       cancel({ profileId: profile.profileId, sendId: result.sendId });
       setAmountError(SEND_COPY.failedToPrepare);
       return;
@@ -328,14 +365,15 @@ export function SendSheet({
         </Choices>
       );
   } else if (step === SEND_STEPS.amount && option) {
-    const theyGet = typeof units === "bigint" && units <= option.balance ? units : 0n;
     body = (
-      <form noValidate onSubmit={submitAmount} className="flex flex-col gap-5">
-        <div className="flex flex-col gap-2">
+      <form noValidate onSubmit={submitAmount} className="flex flex-col gap-6">
+        <div className="flex flex-col items-center gap-4 pt-2">
+          <MoneyChip chainId={option.chainId} symbol={option.symbol} />
           <AmountField
+            bare
             label={SEND_COPY.amount}
             unit={option.symbol}
-            placeholder="0.00"
+            placeholder="0"
             value={amount}
             autoFocus
             onChange={(e) => {
@@ -344,15 +382,27 @@ export function SendSheet({
             }}
             error={amountError ?? undefined}
           />
-          <div className="flex items-center justify-between gap-3 text-sm text-muted">
-            <span className="tabular-nums">
-              {SEND_COPY.available(shownAmount(option.balance, option))}
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted tabular-nums">
+              {/* Cut, never rounded up: the wallet never seems to hold more than it does. */}
+              {SEND_COPY.available(
+                `${formatTokenAmount({
+                  baseUnits: option.balance,
+                  decimals: option.decimals,
+                  fractionDigits: Math.min(
+                    exactDigits(option.balance, option.decimals),
+                    FEE_DECIMALS,
+                  ),
+                })} ${option.symbol}`,
+              )}
             </span>
             <Button
               size="sm"
-              variant="ghost"
+              variant="secondary"
+              disabled={room === null}
               onClick={() => {
-                setAmount(maxAmount(option.balance, option.decimals));
+                if (room === null) return;
+                setAmount(maxAmount(room, option.decimals));
                 setAmountError(null);
               }}
             >
@@ -360,16 +410,20 @@ export function SendSheet({
             </Button>
           </div>
         </div>
-        <dl className="flex flex-col gap-2 rounded-md bg-surface-2 px-4 py-3 text-sm">
-          <div className="flex items-baseline justify-between gap-3">
-            <dt className="text-muted">{SEND_COPY.networkFee}</dt>
-            <dd className="text-right text-ink">{SEND_COPY.free}</dd>
-          </div>
-          <div className="flex items-baseline justify-between gap-3">
-            <dt className="text-muted">{SEND_COPY.theyGet}</dt>
-            <dd className="font-medium text-ink tabular-nums">{shownAmount(theyGet, option)}</dd>
-          </div>
-        </dl>
+        <div className="flex items-center justify-between gap-3 border-t border-line pt-4 text-sm">
+          <span className="text-muted">{SEND_COPY.networkFee}</span>
+          <span className="font-medium text-ink tabular-nums">
+            {fee === null ? (
+              feeRead.isError ? (
+                SEND_COPY.feeAtReview
+              ) : (
+                <Skeleton className="inline-block h-4 w-20 align-middle" />
+              )
+            ) : (
+              feeLabel(fee, option)
+            )}
+          </span>
+        </div>
         {fresh.step ?? (
           <Button type="submit" className="w-full" loading={preparing.isLoading}>
             {SEND_COPY.continue}
@@ -467,8 +521,27 @@ function Choice({
 
 function Initial({ text }: { text: string }) {
   return (
-    <span className="grid size-9 place-items-center rounded-pill bg-surface-2 text-sm font-medium text-ink">
+    <span
+      aria-hidden
+      className="grid size-9 place-items-center rounded-pill bg-surface-2 text-sm font-medium text-ink"
+    >
       {text.slice(0, 1)}
+    </span>
+  );
+}
+
+/** What is sent, in one line over the amount: the token's mark, its symbol and its network. */
+function MoneyChip({ chainId, symbol }: { chainId: number; symbol: string }) {
+  const icon = TOKEN_ICONS[symbol];
+  return (
+    <span className="inline-flex items-center gap-2 rounded-pill border border-line py-1 pr-3 pl-1 text-sm">
+      {icon ? (
+        <BrandIcon name={icon} className="size-6" />
+      ) : (
+        <span aria-hidden className="size-6 rounded-pill bg-surface-2" />
+      )}
+      <span className="font-medium text-ink">{symbol}</span>
+      <span className="text-muted">{chainName(chainId)}</span>
     </span>
   );
 }

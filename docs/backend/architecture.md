@@ -252,6 +252,7 @@ with a test.
 - `sends` (R-211, R-212): a send out of a profile wallet, from prepared to sent, failed, canceled or expired. One
   unsigned send per wallet and chain, and one send per hash. `wallet_transfers` decides sent; the hash only links them.
 - `chains.gas_sponsored`: Privy pays the gas there, so the chain offers Send (D-119). Set to match the Privy dashboard.
+- `tokens.native_gas`: the token is its chain's gas coin (Arc USDC), so a send of it can pay its own gas (R-216).
 - `transfer_labels` (R-108): the user's label for money in that Forwend can't classify, one per profile and transfer
   log (chain, transaction, log index).
 - `ecb_rates` (R-110, D-82): the ECB's daily euro reference rates, units per 1 EUR, one per currency and day.

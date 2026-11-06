@@ -71,8 +71,19 @@ type Send struct {
 	CreatedAt   time.Time
 	SubmittedAt *time.Time
 	FinishedAt  *time.Time
+	// NetworkFee is the most the wallet pays for gas, in the token's base units: 0 where Forwend pays (D-119).
+	NetworkFee *big.Int
+	// Gas is what the browser signs with when the wallet pays; nil where Forwend pays.
+	Gas *Gas
 	// Warnings are set by Prepare only.
 	Warnings []Warning
+}
+
+// Gas caps a send the wallet pays for (R-216): at these values the fee is at most NetworkFee.
+type Gas struct {
+	Limit                uint64
+	MaxFeePerGas         *big.Int
+	MaxPriorityFeePerGas *big.Int
 }
 
 // Clients gives the RPC client of an enabled chain.

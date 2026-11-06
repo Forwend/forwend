@@ -29,8 +29,6 @@ export interface SendProgressProps {
   onDone: () => void;
 }
 
-const SETTLED: readonly string[] = [SEND_STATUSES.sent, SEND_STATUSES.failed];
-
 // R-214: the chain, read through the server, says Sent; the browser's own answer only says it was signed.
 export function SendProgress({
   profileId,
@@ -43,7 +41,9 @@ export function SendProgress({
 }: SendProgressProps) {
   const read = useGetSendQuery({ profileId, sendId: initial.sendId });
   const send = read.currentData ?? initial;
-  const settled = SETTLED.includes(send.status);
+  // Sent is followed until final: the note then says it arrived, and a reorg shows as Sending again.
+  const settled =
+    send.status === SEND_STATUSES.failed || (send.status === SEND_STATUSES.sent && send.final);
   const { refetch } = read;
   useEffect(() => {
     if (settled) return;
@@ -67,7 +67,11 @@ export function SendProgress({
         if (e.status === 404 || e.status === 422) setRefused(true);
       });
   }, [lost, hash, readAt, submit, profileId, initial.sendId]);
-  const holding = read.currentData?.txHash == null && !refused;
+  // Locked until the server holds the hash, unless the server can't be reached: then the owner may leave, and the
+  // transfer still shows in Transactions once the watcher records it.
+  // read.error stays until a read succeeds, so a retry in flight doesn't lock the sheet again.
+  const unreachable = read.error !== undefined;
+  const holding = read.currentData?.txHash == null && !unreachable && !refused;
   useEffect(() => onHolding(holding), [holding, onHolding]);
   const told = useRef(false);
   useEffect(() => {
@@ -112,6 +116,11 @@ export function SendProgress({
               : SEND_COPY.sendingNote}
         </p>
       </div>
+      {unreachable && !sent && !failed ? (
+        <p role="status" className="text-sm text-muted">
+          {SEND_COPY.unreachable}
+        </p>
+      ) : null}
       <div className="flex w-full flex-col gap-2">
         {link ? (
           <a

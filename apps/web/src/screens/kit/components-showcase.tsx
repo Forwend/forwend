@@ -485,6 +485,14 @@ export function ComponentsShowcase() {
         <div className="grid w-full max-w-xl gap-4">
           <AmountField label="Amount" unit="USD" placeholder="0.00" />
           <AmountField label="Amount" unit="USD" defaultValue="12.50" />
+          <AmountField label="Amount" unit="USDC" placeholder="0" bare />
+          <AmountField
+            label="Amount"
+            unit="USDC"
+            defaultValue="25.50"
+            bare
+            error="That is more than this wallet holds."
+          />
           <AmountField
             label="Amount"
             unit="USD"

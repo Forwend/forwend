@@ -989,7 +989,13 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
   - It reads the wallet's balance and dry-runs the token transfer from the wallet at the latest block.
   - A token revert is `transfer_refused`; a chain that can't be read is 503 `network_unavailable`.
   - Warnings: `contract` (the recipient has code that isn't an EIP-7702 delegation) and `newRecipient`.
-  - `networkFee` is what the wallet pays. Only chains with `gas_sponsored` offer Send, so it is 0, paid by Forwend.
+  - `networkFee` is the most the wallet pays. Where `gas_sponsored`, it is 0, paid by Forwend.
+  - Elsewhere only a `native_gas` token offers Send (Arc's USDC, R-216); the wallet pays its gas from that token.
+    - The server estimates the gas and a fifth more, at the fee cap of `settlement.Fees` (R-189).
+    - Amount plus fee must fit the wallet's gas-coin balance.
+    - `gas` gives the limit and fee caps the browser signs with, so the fee never exceeds `networkFee`.
+  - `GET .../sends/fee?chainId=&token=&to=` is that fee now, for the amount step's fee and Max.
+    - It prices every amount byte as non-zero, so it covers a send of any amount, Max too.
 - One unsigned send per wallet and chain: a new prepare cancels it. A signed one still on its way gives 409
   `send_in_progress`.
 - `GET .../sends` lists the signed sends the watcher hasn't recorded yet (R-215). It needs `money.read`.
