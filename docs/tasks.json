@@ -109,13 +109,14 @@
       "review": true,
       "notes": [
         "2026-11-05 review pass by reviewer: Re-reviewed 6bf76643..fb99e8cc. All four must-fix items are fixed: openapi lists money.move; only the watcher's transfer makes a send sent, and R-212, api.md and acceptance 3 match; a new test covers a reorg going back to sending and then dropped; api.md lists POST /sends as an Idempotency-Key exception with the reason. The notes are fixed too: a hash is kept in prepared, expired and canceled; sends_tx makes a hash belong to one send; refused() counts only reverts; the log is redacted; toProfileId is lowercased; an API test refuses a key and money.move as a key scope. go test -race on internal/send and httpapi/tests passes. Minor, not blocking: openapi.yaml:2981 still lists 409 send_in_progress for submit, which Submit no longer returns. docs/backend/architecture.md:252 still says one open send per wallet and chain; it is now one unsigned send. The FOR UPDATE wallet lock in keep() (prepare.go:206) does not cover Submit, so a prepare racing a submit can leave two signed sends in flight. Each was signed by the user, so this is harmless.",
-        "2026-11-05 review pass by reviewer: Re-reviewed 6bf76643..f2dbb0e8. The four must-fix items and the earlier notes are fixed. f2dbb0e8 only changes docs: the submit route no longer lists 409, and its description says a replaced, canceled or expired send keeps its hash and that a hash belongs to one send. architecture.md now says one unsigned send per wallet and chain, and one send per hash. Both match the code. go test -race on internal/send and httpapi/tests passes; no Go code changed after that run. Known and accepted: the FOR UPDATE wallet lock in keep() does not cover Submit, so a prepare racing a submit can leave two signed sends in flight. Each one was signed by the user."
+        "2026-11-05 review pass by reviewer: Re-reviewed 6bf76643..f2dbb0e8. The four must-fix items and the earlier notes are fixed. f2dbb0e8 only changes docs: the submit route no longer lists 409, and its description says a replaced, canceled or expired send keeps its hash and that a hash belongs to one send. architecture.md now says one unsigned send per wallet and chain, and one send per hash. Both match the code. go test -race on internal/send and httpapi/tests passes; no Go code changed after that run. Known and accepted: the FOR UPDATE wallet lock in keep() does not cover Submit, so a prepare racing a submit can leave two signed sends in flight. Each one was signed by the user.",
+        "2026-11-06 review pass by reviewer: Fresh review of 19c49d8f..f0633a37. Since the passing review (f2dbb0e8) only docs/tasks.json changed: f0633a37 records that review, and the uncommitted change is the 2026-11-06 verify record. No code changed. Read send/, sendapi/, the 00097 migration, the guards, openapi.yaml and api.md. Amounts are base units, positive and capped at the balance. Recipients are refused when invalid, zero, a token contract or the own wallet, and a bad checksum is refused. A transfer looks up the other profile's wallet on the server. The dry run is from the wallet. Contract and new-recipient warnings and a 0 fee paid by forwend are returned. One unsigned send per wallet and chain is kept by a unique index and the wallet row lock. Only a confirmed or detected wallet_transfers row matching hash, wallet, token, recipient and amount makes a send sent; a receipt alone never does. sends_tx gives each hash one send, and a hash is kept for prepared, canceled and expired sends. Prepare needs FreshSignIn(money.move); get, submit and cancel need Can(money.move). No role or key scope has money.move. openapi.yaml and api.md list all four routes. Ran: go test ./internal/send/ ./internal/httpapi/tests/ -count=1 (both ok); check-docs.py (0 errors). Minor, not blocking: api.md says a submit takes its hash in any state but sent and failed. A submitted send takes only its own hash again; another hash is refused. Known and accepted: Submit is not under the wallet lock, so two signed sends can be in flight at once."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-05T17:28:11Z",
+        "at": "2026-11-06T13:22:14Z",
         "checks": [
           {
             "id": "docs-check",
@@ -128,14 +129,14 @@
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 64.5,
+            "seconds": 58.9,
             "log": ""
           },
           {
             "id": "backend-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 30.1,
+            "seconds": 28.2,
             "log": ""
           },
           {
@@ -157,8 +158,8 @@
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "Re-reviewed 6bf76643..f2dbb0e8. The four must-fix items and the earlier notes are fixed. f2dbb0e8 only changes docs: the submit route no longer lists 409, and its description says a replaced, canceled or expired send keeps its hash and that a hash belongs to one send. architecture.md now says one unsigned send per wallet and chain, and one send per hash. Both match the code. go test -race on internal/send and httpapi/tests passes; no Go code changed after that run. Known and accepted: the FOR UPDATE wallet lock in keep() does not cover Submit, so a prepare racing a submit can leave two signed sends in flight. Each one was signed by the user.",
-          "at": "2026-11-05T17:30:05Z",
+          "summary": "Fresh review of 19c49d8f..f0633a37. Since the passing review (f2dbb0e8) only docs/tasks.json changed: f0633a37 records that review, and the uncommitted change is the 2026-11-06 verify record. No code changed. Read send/, sendapi/, the 00097 migration, the guards, openapi.yaml and api.md. Amounts are base units, positive and capped at the balance. Recipients are refused when invalid, zero, a token contract or the own wallet, and a bad checksum is refused. A transfer looks up the other profile's wallet on the server. The dry run is from the wallet. Contract and new-recipient warnings and a 0 fee paid by forwend are returned. One unsigned send per wallet and chain is kept by a unique index and the wallet row lock. Only a confirmed or detected wallet_transfers row matching hash, wallet, token, recipient and amount makes a send sent; a receipt alone never does. sends_tx gives each hash one send, and a hash is kept for prepared, canceled and expired sends. Prepare needs FreshSignIn(money.move); get, submit and cancel need Can(money.move). No role or key scope has money.move. openapi.yaml and api.md list all four routes. Ran: go test ./internal/send/ ./internal/httpapi/tests/ -count=1 (both ok); check-docs.py (0 errors). Minor, not blocking: api.md says a submit takes its hash in any state but sent and failed. A submitted send takes only its own hash again; another hash is refused. Known and accepted: Submit is not under the wallet lock, so two signed sends can be in flight at once.",
+          "at": "2026-11-06T13:26:15Z",
           "filesHash": "eae52ec47489f324"
         }
       },
