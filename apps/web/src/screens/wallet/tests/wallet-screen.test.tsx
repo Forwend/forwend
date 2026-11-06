@@ -80,6 +80,20 @@ describe("the Wallet page (R-218)", () => {
     expect(dialog.hasAttribute("open")).toBe(false);
   });
 
+  it("says nothing when the owner closes Privy's window while it still connects", async () => {
+    calls.exportWallet.mockRejectedValueOnce(
+      new Error("User exited before wallet could be connected"),
+    );
+    render(<WalletScreen />, { wrapper: wrap });
+    fireEvent.click(screen.getByRole("button", { name: "Export private key" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Show the key" }),
+    );
+    await waitFor(() => expect(calls.exportWallet).toHaveBeenCalledTimes(1));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(screen.queryByText("The export page didn't open. Try again.")).toBeNull();
+  });
+
   it("lets the owner open the export again while Privy hasn't settled the last one", async () => {
     calls.exportWallet.mockReturnValueOnce(new Promise(() => {}));
     render(<WalletScreen />, { wrapper: wrap });

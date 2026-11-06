@@ -19,6 +19,8 @@ import { SETTINGS_COPY } from "@/screens/settings/constants/settings-copy";
 import { SplitSection } from "@/shared/components/split-section";
 
 const COPY = SETTINGS_COPY.wallet;
+// Privy rejects with only this message, no code, when the owner closes its window while it still connects.
+const CLOSED_WHILE_CONNECTING = "User exited before wallet could be connected";
 
 // R-218: the owner exports this profile's wallet key. A short warning comes first, then Confirm it's you for a stale
 // session, then Privy's own export page for this wallet: the key loads on Privy's domain, so Forwend never sees it.
@@ -53,8 +55,10 @@ export function WalletScreen() {
     setOpening(false);
     try {
       await exportWallet({ address });
-    } catch {
-      toast({ tone: TONES.danger, title: COPY.failed });
+    } catch (e) {
+      if (!(e instanceof Error && e.message === CLOSED_WHILE_CONNECTING)) {
+        toast({ tone: TONES.danger, title: COPY.failed });
+      }
     }
   };
 

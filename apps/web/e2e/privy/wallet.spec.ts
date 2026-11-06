@@ -22,7 +22,12 @@ test("the owner opens Privy's export page for the profile wallet after the warni
   await expect(dialog).toContainText("Anyone with this key controls this wallet");
   await dialog.getByRole("button", { name: "Show the key" }).click();
   const confirm = dialog.getByRole("group", { name: "Confirm it's you" });
-  if (await confirm.isVisible({ timeout: 5_000 }).catch(() => false)) {
+  if (
+    await confirm.waitFor({ timeout: 5_000 }).then(
+      () => true,
+      () => false,
+    )
+  ) {
     await expect(confirm).toContainText("Didn't get it?", { timeout: 20_000 });
     await confirm.getByRole("textbox", { name: "Code" }).fill(await freshCode());
   }

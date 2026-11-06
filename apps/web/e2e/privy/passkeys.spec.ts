@@ -7,7 +7,12 @@ import { freshCode, session } from "./session";
 async function confirmIfAsked(where: ReturnType<Page["getByRole"]>) {
   const confirm = where.getByRole("group", { name: "Confirm it's you" });
   const code = confirm.getByRole("textbox", { name: "Code" });
-  if (await confirm.isVisible({ timeout: 5_000 }).catch(() => false)) {
+  if (
+    await confirm.waitFor({ timeout: 5_000 }).then(
+      () => true,
+      () => false,
+    )
+  ) {
     await expect(confirm).toContainText("Didn't get it?", { timeout: 20_000 });
     await code.fill(await freshCode());
   }

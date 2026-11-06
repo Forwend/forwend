@@ -394,13 +394,14 @@
       "notes": [
         "2026-11-06 review fail by reviewer: Fail, 3 fixes. Security core is sound: /app/wallet needs money.move (owner only, D-61); app-shell shows a spinner and redirects a member who opens it directly; Privy's exportWallet also refuses a wallet not linked to the signed-in user; the key stays in Privy's frame. Must fix: (1) app-nav.ts:113 breadcrumb has no Wallet case, so /app/wallet shows Overview as the current page; app-nav.ts:22 SETTINGS_PATHS lacks APP_ROUTES.wallet, so the phone Settings row is not marked current. Add both with app-nav tests. (2) wallet-screen.tsx:34-38 closes the warning before exportWallet; Privy rejects at once on its own errors (no access token, wallet not ready, not an embedded wallet), so the error is set inside a closed dialog: the user sees nothing, and the stale error shows on the next open. Show it where the user sees it, and test an exportWallet rejection. (3) PROJECT.md:306 R-218 implies Confirm it's you guards the export, but Privy's export runs in the browser with shouldForceMFA only for Privy MFA, so a stolen session can call it directly and take the key. Say so, as R-217 does (Q-13), and name key export in Q-13:455. Ran: vitest src/screens/wallet src/screens/settings src/screens/app-shell -> 5 files, 23 tests passed; harness check typecheck lint docs-check -> all passed.",
         "2026-11-06 review pass by reviewer: Pass. 659dbe7a fixes all three findings. (1) breadcrumb names /app/wallet Wallet and SETTINGS_PATHS lists it; app-nav.test covers both. (2) A failed check still shows in the open dialog; after it closes, a rejected exportWallet shows a danger toast (ToastProvider wraps the app shell); a unit test rejects exportWallet and finds the toast with the dialog closed. (3) R-218, Q-13, architecture.md and the page comment now say the check binds Forwend's page only, and Q-13 names key export as the worst case. Owner-only page and nav, Privy's own wallet-ownership check and the key staying in Privy's frame are unchanged. Note, not blocking: Privy rejects with 'User exited before wallet could be connected' if the owner closes its window while it connects, so that cancel shows the failed toast. Ran: vitest src/screens/wallet src/screens/settings src/screens/app-shell -> 5 files, 25 tests passed; harness check typecheck lint docs-check -> all passed.",
-        "2026-11-06 review pass by reviewer: Pass. 9d06b55c is correct. wallet-screen.tsx:52-53 closes the warning and clears opening before awaiting exportWallet, so a pending Privy promise can't leave Show the key busy. Privy 3.51.0 confirms the premise: Escape calls onUserCloseViaDialogOrKeybindRef, which resolves the export, but modal-context nulls that ref on each screen change, so the promise can stay pending. Each Show runs fresh.run (Confirm it's you) again. A rejected exportWallet still shows the danger toast (unit test 3). A second open just replaces Privy's modal data; the old promise is dropped, no double window. The new unit test fails before the fix: Button sets aria-busy while loading and ignores clicks, and the old finally never ran. wallet.spec.ts closes Privy with Escape, checks the button is not busy, and reopens Privy's window. No doc describes the loading state, so no doc change is needed. The comment gives a non-obvious reason. No AI attribution in branch commits. Note, not blocking: wallet-screen.test.tsx:83 could also assert calls.check ran twice. Ran: vitest src/screens/wallet -> 5 passed; pnpm lint, pnpm typecheck, check-docs -> passed."
+        "2026-11-06 review pass by reviewer: Pass. 9d06b55c is correct. wallet-screen.tsx:52-53 closes the warning and clears opening before awaiting exportWallet, so a pending Privy promise can't leave Show the key busy. Privy 3.51.0 confirms the premise: Escape calls onUserCloseViaDialogOrKeybindRef, which resolves the export, but modal-context nulls that ref on each screen change, so the promise can stay pending. Each Show runs fresh.run (Confirm it's you) again. A rejected exportWallet still shows the danger toast (unit test 3). A second open just replaces Privy's modal data; the old promise is dropped, no double window. The new unit test fails before the fix: Button sets aria-busy while loading and ignores clicks, and the old finally never ran. wallet.spec.ts closes Privy with Escape, checks the button is not busy, and reopens Privy's window. No doc describes the loading state, so no doc change is needed. The comment gives a non-obvious reason. No AI attribution in branch commits. Note, not blocking: wallet-screen.test.tsx:83 could also assert calls.check ran twice. Ran: vitest src/screens/wallet -> 5 passed; pnpm lint, pnpm typecheck, check-docs -> passed.",
+        "2026-11-06 review fail by reviewer: Fail, 1 fix (plus 1 minor). Permission, flow and docs are sound: /app/wallet needs money.move in MENU_PAGES, so settings hides it and app-shell redirects a member; the check runs before exportWallet; docs match the code; unit tests (26), lint and typecheck pass. (1) apps/web/src/screens/wallet/wallet-screen.tsx:420-424: closing Privy's window while it still shows Connecting to your wallet shows a red toast 'The export page didn't open. Try again.' Privy 3.51.0 EmbeddedWalletConnectingScreen wires its close button and Escape to onFailure('User exited before wallet could be connected'), which rejects exportWallet. The connecting step lasts at least 1 s. A user cancel must not read as a failure. Treat that rejection as a cancel (no toast) and add a unit test where exportWallet rejects with it. Closing on the key screen calls onSuccess, so it is fine. (2, minor) apps/web/e2e/privy/wallet.spec.ts:43 (and the copied pattern in passkeys.spec.ts:10): locator.isVisible ignores its timeout in Playwright 1.64 and returns at once. The Confirm it's you step appears only after the check's 401 round trip, so with a stale shared session (over 15 min, D-49) the branch is skipped and the test fails at the dialog-hidden expect. Use confirm.waitFor({ timeout }) with a catch instead. Commits carry no AI attribution."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-06T20:07:09Z",
+        "at": "2026-11-06T21:02:50Z",
         "checks": [
           {
             "id": "harness",
@@ -445,30 +446,23 @@
             "id": "live-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 515.5,
+            "seconds": 518.8,
             "log": ""
           },
           {
             "id": "web-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 46.4,
+            "seconds": 46.0,
             "log": ""
           }
         ],
         "taskHash": "224421d5ff15d10c",
-        "filesHash": "87cfc5038728d462",
+        "filesHash": "180cf45fe8489224",
         "proof": {
           "1": "web-unit: settings-sections.test.ts shows Wallet to the owner, not an Admin; wallet-screen.test.tsx shows the address",
-          "2": "web-unit: wallet-screen.test.tsx opens Privy's export only after the warning and the check, and Show the key is not stuck loading when Privy's window stays open",
-          "3": "live-e2e: wallet.spec.ts sees Privy's window name the wallet and load Copy key, then closes it and opens it again"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Pass. 9d06b55c is correct. wallet-screen.tsx:52-53 closes the warning and clears opening before awaiting exportWallet, so a pending Privy promise can't leave Show the key busy. Privy 3.51.0 confirms the premise: Escape calls onUserCloseViaDialogOrKeybindRef, which resolves the export, but modal-context nulls that ref on each screen change, so the promise can stay pending. Each Show runs fresh.run (Confirm it's you) again. A rejected exportWallet still shows the danger toast (unit test 3). A second open just replaces Privy's modal data; the old promise is dropped, no double window. The new unit test fails before the fix: Button sets aria-busy while loading and ignores clicks, and the old finally never ran. wallet.spec.ts closes Privy with Escape, checks the button is not busy, and reopens Privy's window. No doc describes the loading state, so no doc change is needed. The comment gives a non-obvious reason. No AI attribution in branch commits. Note, not blocking: wallet-screen.test.tsx:83 could also assert calls.check ran twice. Ran: vitest src/screens/wallet -> 5 passed; pnpm lint, pnpm typecheck, check-docs -> passed.",
-          "at": "2026-11-06T20:18:57Z",
-          "filesHash": "87cfc5038728d462"
+          "2": "web-unit: wallet-screen.test.tsx opens Privy's export only after the warning and the check; Show the key is not stuck when Privy's window stays open; closing Privy while it connects shows no error",
+          "3": "live-e2e: wallet.spec.ts confirms it's you when asked, sees Privy's window name the wallet and load Copy key, then closes it and opens it again"
         }
       },
       "branch": "feat/f431-the-owner-exports-a-profile-wallet-s-pri",
