@@ -18,6 +18,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/forwend/forwend/apps/backend/internal/link"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
+	"github.com/forwend/forwend/apps/backend/internal/reauth"
 	"github.com/forwend/forwend/apps/backend/internal/search"
 	"github.com/forwend/forwend/apps/backend/internal/send"
 	"github.com/forwend/forwend/apps/backend/internal/team"
@@ -85,6 +86,16 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusNotFound, "logo_not_found", "the store has no logo"
 	case errors.Is(err, profile.ErrNotMerchant):
 		status, code, message = http.StatusConflict, "not_merchant", "only a merchant profile has stores"
+	case errors.Is(err, reauth.ErrWrongCode):
+		status, code, message = http.StatusUnprocessableEntity, "wrong_code", "wrong or expired code: check it or ask for a new one"
+	case errors.Is(err, reauth.ErrTooSoon):
+		status, code, message = http.StatusTooManyRequests, "code_sent_recently", "a code was sent a moment ago: enter it, or wait Retry-After seconds"
+	case errors.Is(err, reauth.ErrTooMany):
+		status, code, message = http.StatusTooManyRequests, "too_many_codes", "too many codes this hour: wait Retry-After seconds"
+	case errors.Is(err, reauth.ErrNoAddress):
+		status, code, message = http.StatusConflict, "no_login_email", "this account has no email to send a code to"
+	case errors.Is(err, reauth.ErrNoEmail), errors.Is(err, reauth.ErrNoSession):
+		status, code, message = http.StatusServiceUnavailable, "code_unavailable", "a code can't be sent now: sign out and sign in again"
 	case errors.Is(err, send.ErrNotFound):
 		status, code, message = http.StatusNotFound, "send_not_found", "send not found"
 	case errors.Is(err, send.ErrBusy):

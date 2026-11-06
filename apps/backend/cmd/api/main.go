@@ -19,8 +19,11 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/config"
 	"github.com/forwend/forwend/apps/backend/internal/database"
+	"github.com/forwend/forwend/apps/backend/internal/email"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi"
+	"github.com/forwend/forwend/apps/backend/internal/notify"
 	"github.com/forwend/forwend/apps/backend/internal/privy"
+	"github.com/forwend/forwend/apps/backend/internal/reauth"
 )
 
 func main() {
@@ -74,10 +77,24 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	users := privy.NewClient(cfg.PrivyAppID, cfg.PrivyAppSecret, "")
+	// Confirm it's you codes (R-137) go out from the api at once; without a key none can be sent.
+	var sender email.Sender
+	if cfg.Email.ResendKey != "" {
+		r := email.NewResend(cfg.Email.ResendKey, cfg.Email.From)
+		if cfg.Email.ResendURL != "" {
+			r.URL = cfg.Email.ResendURL // a test's fake Resend
+		}
+		sender = r
+	}
+	site := notify.Site{WebURL: cfg.Email.PublicWebURL, PostalAddress: cfg.Email.PostalAddress, Support: cfg.Email.Support}
+	codes := reauth.NewService(pool, sender, func(code string) (email.Message, error) {
+		return notify.CodeMessage(site, code, reauth.CodeTTL)
+	}, users.LoginEmail, cfg.CodesPerHour)
 	server := &http.Server{
 		Addr: cfg.Addr,
-		Handler: httpapi.NewMux(pool, verifier, privy.NewClient(cfg.PrivyAppID, cfg.PrivyAppSecret, ""),
-			balances.Read, balances.Client, cfg.PublicWebURL, cfg.UserBurst, cfg.WebhookKey),
+		Handler: httpapi.NewMux(pool, verifier, users, balances.Read, balances.Client, codes, cfg.PublicWebURL,
+			cfg.UserBurst, cfg.WebhookKey),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

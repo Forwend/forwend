@@ -12,9 +12,11 @@ const readEnv = (path: string) => {
   }
 };
 const web = readEnv(".env");
-// The api needs neither the executor key nor the email key (only the worker sends email).
+// The api needs no executor key, and its email key is the fake Resend's below; the real one never reaches a test.
 const { EXECUTOR_PRIVATE_KEY: _, RESEND_API_KEY: __, ...backend } = readEnv("../backend/.env");
 const APP_URL = "http://localhost:3000";
+// The api emails Confirm it's you codes to this stand-in for Resend, which the tests read (e2e/privy/fake-resend.mjs).
+export const FAKE_RESEND_URL = `http://127.0.0.1:${process.env.FAKE_RESEND_PORT ?? 4319}`;
 const apiURL = new URL(web.API_URL ?? "http://localhost:8080");
 
 export default defineConfig({
@@ -31,6 +33,11 @@ export default defineConfig({
   ],
   webServer: [
     {
+      command: "node e2e/privy/fake-resend.mjs",
+      url: `${FAKE_RESEND_URL}/health`,
+      reuseExistingServer: false,
+    },
+    {
       command: "go run ./cmd/api",
       cwd: "../backend",
       env: {
@@ -38,6 +45,10 @@ export default defineConfig({
         API_ADDR: `${apiURL.hostname}:${apiURL.port}`,
         // Every test signs in as the one test account, so the suite would use up a person's limit (D-85).
         API_USER_BURST: "1000",
+        // Each run confirms it's you again, and the dev database keeps the hour's codes (D-85).
+        API_CODES_PER_HOUR: "1000",
+        RESEND_API_KEY: "fake",
+        RESEND_API_URL: `${FAKE_RESEND_URL}/emails`,
       },
       url: new URL("/healthz", apiURL).href,
       reuseExistingServer: false,

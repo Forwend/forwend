@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 428,
+  "nextId": 429,
   "tasks": [
     {
       "id": "F332",
@@ -566,6 +566,37 @@
         "branch": "feat/f427-on-arc-the-wallet-pays-its-own-gas-in-us",
         "base": "main"
       }
+    },
+    {
+      "id": "F428",
+      "type": "fix",
+      "behavior": "Confirm it's you works: Forwend emails its own code and a confirmed session stays fresh for 15 minutes",
+      "acceptance": [
+        "POST /v1/me/fresh-sign-in emails a 6-digit code from the api, at most one per 30 s and 10 per hour; the code is hashed, lasts 10 minutes and allows 5 tries (D-49)",
+        "POST /v1/me/fresh-sign-in/verify with the right code makes the token's Privy session pass FreshSignIn for 15 minutes; a wrong, expired or other session's code doesn't (R-137)",
+        "The web's Confirm it's you sends and checks Forwend's code in place, then repeats the request (R-137)",
+        "A live run confirms in place after the session went stale and the send goes through (R-137)"
+      ],
+      "dependsOn": [],
+      "state": "active",
+      "verification": [
+        "unit",
+        "web-unit",
+        "web-e2e",
+        "auth-live-e2e"
+      ],
+      "refs": [
+        "R-137",
+        "D-49",
+        "D-63"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null,
+      "branch": "fix/f428-confirm-it-s-you-works-forwend-emails-it",
+      "baseCommit": "46e23458b01e60131fbf96c985ab65560e408861"
     }
   ],
   "lastWrapup": {

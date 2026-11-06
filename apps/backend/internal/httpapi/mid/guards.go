@@ -7,6 +7,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/apikey"
 	"github.com/forwend/forwend/apps/backend/internal/auth"
 	"github.com/forwend/forwend/apps/backend/internal/privy"
+	"github.com/forwend/forwend/apps/backend/internal/reauth"
 )
 
 // Modules take Guards from the router, so every module shares one rate limit per user.
@@ -20,7 +21,7 @@ type Guards struct {
 }
 
 func NewGuards(verifier *auth.Verifier, owners *auth.Service, keys *apikey.Service, users *privy.Client,
-	userBurst int) Guards {
+	codes *reauth.Service, userBurst int) Guards {
 	if userBurst == 0 {
 		userBurst = UserBurst
 	}
@@ -49,7 +50,7 @@ func NewGuards(verifier *auth.Verifier, owners *auth.Service, keys *apikey.Servi
 		SignedIn: signedIn,
 		Can:      can,
 		FreshSignIn: func(p auth.Permission) func(http.Handler) http.Handler {
-			return func(h http.Handler) http.Handler { return can(p)(RequireFreshSignIn(users, h)) }
+			return func(h http.Handler) http.Handler { return can(p)(RequireFreshSignIn(users, codes, h)) }
 		},
 	}
 }

@@ -4,9 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FreshSignInProvider, useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
 import type { AskFreshSignIn } from "@/shared/api/fresh-sign-in";
 
-const privy = vi.hoisted(() => ({
+// Forwend's own code routes (R-137), as the api answers them.
+const api = vi.hoisted(() => ({
   sendCode: vi.fn(async () => {}),
-  loginWithCode: vi.fn(async (_: { code: string }) => {}),
+  verifyCode: vi.fn(async (_: string) => {}),
 }));
 vi.mock("@privy-io/react-auth", () => ({
   usePrivy: () => ({
@@ -15,7 +16,10 @@ vi.mock("@privy-io/react-auth", () => ({
       linkedAccounts: [{ type: "email" }],
     },
   }),
-  useLoginWithEmail: () => ({ sendCode: privy.sendCode, loginWithCode: privy.loginWithCode }),
+}));
+vi.mock("@/features/auth/api/auth-api", () => ({
+  useSendFreshCodeMutation: () => [() => ({ unwrap: api.sendCode })],
+  useVerifyFreshCodeMutation: () => [(code: string) => ({ unwrap: () => api.verifyCode(code) })],
 }));
 
 let ask: AskFreshSignIn = async () => false;
@@ -76,20 +80,18 @@ describe("fresh sign-in", () => {
     const step = await screen.findByRole("group", { name: "Confirm it's you" });
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByLabelText("Name").matches(":disabled")).toBe(true);
-    await waitFor(() =>
-      expect(privy.sendCode).toHaveBeenCalledWith({ email: "owner@example.com" }),
-    );
+    await waitFor(() => expect(api.sendCode).toHaveBeenCalledTimes(1));
     await screen.findByText(/We sent a code to owner@example.com/);
     // As on the sign-in page: the sixth digit confirms, with no click.
     fireEvent.change(screen.getByLabelText("Code"), { target: { value: "123456" } });
-    await waitFor(() => expect(privy.loginWithCode).toHaveBeenCalledWith({ code: "123456" }));
+    await waitFor(() => expect(api.verifyCode).toHaveBeenCalledWith("123456"));
     await waitFor(() => expect(answers).toEqual([true]));
     expect(step.isConnected).toBe(false);
     expect(screen.getByLabelText("Name").matches(":disabled")).toBe(false);
   });
 
   it("says a wrong or expired code didn't work, keeps the step open, and tries the same code typed again", async () => {
-    privy.loginWithCode.mockRejectedValueOnce(new Error("invalid code"));
+    api.verifyCode.mockRejectedValueOnce(new Error("invalid code"));
     renderForm();
     await screen.findByText(/We sent a code/);
     fireEvent.change(screen.getByLabelText("Code"), { target: { value: "000000" } });
@@ -97,7 +99,7 @@ describe("fresh sign-in", () => {
     expect(answers).toEqual([]);
     fireEvent.change(screen.getByLabelText("Code"), { target: { value: "" } });
     fireEvent.change(screen.getByLabelText("Code"), { target: { value: "000000" } });
-    await waitFor(() => expect(privy.loginWithCode).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(api.verifyCode).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(answers).toEqual([true]));
   });
 
@@ -105,20 +107,45 @@ describe("fresh sign-in", () => {
     renderForm();
     await screen.findByText(/We sent a code/);
     fireEvent.click(screen.getByRole("button", { name: "Send a new one" }));
-    await waitFor(() => expect(privy.sendCode).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(api.sendCode).toHaveBeenCalledTimes(2));
     fireEvent.change(screen.getByLabelText("Code"), { target: { value: "123456" } });
     await waitFor(() => expect(answers).toEqual([true]));
   });
 
   it("offers to send again when the code couldn't be sent", async () => {
-    privy.sendCode.mockRejectedValueOnce(new Error("rate limited"));
+    api.sendCode.mockRejectedValueOnce(new Error("rate limited"));
     renderForm();
     await screen.findByText(/We couldn't send a code to owner@example.com/);
     fireEvent.click(screen.getByRole("button", { name: "Send a code" }));
     await screen.findByText(/We sent a code to owner@example.com/);
-    expect(privy.sendCode).toHaveBeenCalledTimes(2);
+    expect(api.sendCode).toHaveBeenCalledTimes(2);
     fireEvent.change(screen.getByLabelText("Code"), { target: { value: "123456" } });
     await waitFor(() => expect(answers).toEqual([true]));
+  });
+
+  it("takes this session's code sent a moment ago as sent, but not a full hour's codes", async () => {
+    const tooSoon = { status: 429, data: { error: { code: "code_sent_recently" } } };
+    api.sendCode.mockRejectedValueOnce(tooSoon);
+    renderForm();
+    await screen.findByText(/We sent a code to owner@example.com/);
+    cleanup();
+    api.sendCode.mockRejectedValueOnce({
+      status: 429,
+      data: { error: { code: "too_many_codes" } },
+    });
+    renderForm();
+    await screen.findByText(/We couldn't send a code to owner@example.com/);
+  });
+
+  it("tells an account with no login email that no code can come", async () => {
+    api.sendCode.mockRejectedValueOnce({
+      status: 409,
+      data: { error: { code: "no_login_email" } },
+    });
+    renderForm();
+    await screen.findByText(/your account has none/);
+    expect(screen.queryByLabelText("Code")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Confirm" })).toBeNull();
   });
 
   it("tells a retry still refused after the sign-in from a cancel", async () => {

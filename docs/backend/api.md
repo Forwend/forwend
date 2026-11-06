@@ -1032,9 +1032,22 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
   - Once the freeze worked, the cutoff is set even if the unfreeze failed. A disconnect stops neither.
 - `mid.RequireFreshSignIn` (the `FreshSignIn` guard) protects the changes D-63 names.
   - They are giving a role, making or rolling an API key, saving a webhook endpoint, and revealing or rotating its secret.
-  - The token must be at most 15 minutes old (`auth.FreshWindow`).
-  - Its `iat` must equal the `latest_verified_at` of the user's email or passkey account, read from Privy each time.
+  - It passes when its Privy session (`sid`) confirmed Forwend's code in the last 15 minutes (D-49).
+  - Or when it is at most 15 minutes old (`auth.FreshWindow`) and its `iat` equals the `latest_verified_at` of the
+    user's email or passkey account, read from Privy then.
   - Otherwise 401 `reauth_required`; when Privy can't answer, 500, and nothing runs.
+- Confirm it's you (R-137): Privy keeps the session and the sign-in time when someone signs in again while signed in.
+  - So the web asks `POST /v1/me/fresh-sign-in`: the api emails a 6-digit code to the login email at once.
+  - One per session per 30 s (429 `code_sent_recently`: the code sent is still the one to enter).
+  - 10 per user per hour (429 `too_many_codes`). Both give Retry-After.
+  - `API_CODES_PER_HOUR` raises the 10. Only the live e2e sets it (1000): its one account confirms on every run (D-85).
+  - No login email: 409 `no_login_email`.
+  - A send locks the user's row, so requests at once send one email.
+  - A code whose email fails is dropped: it counts toward neither limit.
+  - The code is stored hashed with its row id, lasts 10 minutes and allows 5 tries.
+  - `POST /v1/me/fresh-sign-in/verify` with the code: 204 confirms that session; else 422 `wrong_code`.
+    - A value that isn't 6 digits uses no try.
+  - Without an email key the api sends nothing (503 `code_unavailable`): a full sign-in is the only proof then.
 - A secret API key (R-144) goes in the same header: `Authorization: Bearer fw_test_…`.
   - It works only on its profile's routes whose permission is in its scopes, and only for its store's invoices.
   - It never passes a `FreshSignIn` route (403), and `/v1/me` and the other routes for a person answer 401.

@@ -286,6 +286,8 @@ export async function mockApi(
   await page.route("/api/v1/**", (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname.replace(/^\/api/, "");
+    // Confirm it's you is the real api's: it emails the code the test reads (R-137).
+    if (path.startsWith("/v1/me/fresh-sign-in")) return route.fallback();
     // USDC at exactly 1 USD, so the overview's figures read their token amounts (R-178).
     if (path === "/v1/prices") {
       return route.fulfill({

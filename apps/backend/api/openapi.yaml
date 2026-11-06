@@ -783,6 +783,68 @@ paths:
         "404": { $ref: "#/components/responses/NotSignedUp" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/me/fresh-sign-in:
+    post:
+      operationId: sendFreshSignInCode
+      summary: Email a 6-digit code that confirms it's you for this session (R-137)
+      description: |
+        Privy keeps the session and the sign-in time when someone signs in again while signed in, so after a
+        reauth_required the web asks for Forwend's own code. It goes to the login email at once; one per 30 seconds
+        per session and 10 per user per hour. It works for 10 minutes and 5 tries.
+      responses:
+        "202":
+          description: Sent
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [resendAfterSeconds]
+                properties:
+                  resendAfterSeconds: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409":
+          description: The account has no email to send a code to (no_login_email)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429":
+          description: |
+            This session got a code a moment ago, still the one to enter (code_sent_recently), or the user had 10 this
+            hour (too_many_codes). Retry-After says when to ask again.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "503":
+          description: No code can be sent now (code_unavailable); sign out and sign in again.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/me/fresh-sign-in/verify:
+    post:
+      operationId: verifyFreshSignInCode
+      summary: Confirm the emailed code; the session then counts as freshly signed in for 15 minutes (R-137)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [code]
+              properties:
+                code: { type: string, pattern: "^[0-9]{6}$" }
+      responses:
+        "204": { description: Confirmed }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422":
+          description: Wrong, expired, used up or another session's code (wrong_code)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/me/sign-out-everywhere:
     post:
       operationId: signOutEverywhere
@@ -5821,7 +5883,7 @@ components:
                 reminders_stopped, member_not_found, invite_not_found, invite_for_another_email, already_on_team,
                 link_not_found, personal_profile, link_off, link_ended, link_full, invalid_api_key, key_not_found,
                 endpoint_not_found, webhooks_not_configured, delivery_not_found, send_not_found, send_in_progress,
-                transfer_refused,
+                transfer_refused, wrong_code, code_sent_recently, too_many_codes, no_login_email, code_unavailable,
                 invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
             message: { type: string }
   responses:

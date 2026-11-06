@@ -205,4 +205,4 @@ class BrowserCommandTests(unittest.TestCase):
     def test_live_config_refuses_existing_servers(self):
         text = (ROOT / 'apps/web/playwright.privy.config.ts').read_text()
         self.assertNotIn('reuseExistingServer: true', text)
-        self.assertEqual(text.count('reuseExistingServer: false'), 2)
+        self.assertEqual(text.count('reuseExistingServer: false'), 3)  # fake Resend, api, web

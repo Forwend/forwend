@@ -13,6 +13,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/link"
 	"github.com/forwend/forwend/apps/backend/internal/privy"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
+	"github.com/forwend/forwend/apps/backend/internal/reauth"
 )
 
 type tokenKey struct{}
@@ -132,9 +133,9 @@ func ProfileAccess(r *http.Request) auth.Access {
 	return access
 }
 
-// RequireFreshSignIn lets through only a token from a sign-in within auth.FreshWindow (D-49, D-63). It asks Privy
-// each time; when Privy can't answer, nothing is let through.
-func RequireFreshSignIn(users *privy.Client, next http.Handler) http.Handler {
+// RequireFreshSignIn lets through a token whose session confirmed Forwend's code within auth.FreshWindow, or a token
+// from a full sign-in within it (D-49, D-63). For the second it asks Privy; when Privy can't answer, nothing passes.
+func RequireFreshSignIn(users *privy.Client, codes *reauth.Service, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if RequestKey(r) != "" { // only a person signs in (R-144)
 			httpio.WriteError(w, r, auth.ErrForbidden)
@@ -145,17 +146,36 @@ func RequireFreshSignIn(users *privy.Client, next http.Handler) http.Handler {
 			httpio.WriteError(w, r, auth.ErrUnauthorized)
 			return
 		}
-		signIns, err := users.SignInTimes(r.Context(), token.User)
-		if err != nil {
-			httpio.WriteError(w, r, err)
-			return
+		// A session that confirmed Forwend's code (R-137), else a token from the last full sign-in: a Privy sign-in
+		// made while signed in keeps the session and moves no sign-in time, so it alone proves nothing.
+		fresh := false
+		if codes != nil {
+			var err error
+			if fresh, err = codes.Fresh(r.Context(), token); err != nil {
+				httpio.WriteError(w, r, err)
+				return
+			}
 		}
-		if !auth.IsFresh(token, time.Now(), signIns) {
+		if !fresh {
+			signIns, err := users.SignInTimes(r.Context(), token.User)
+			if err != nil {
+				httpio.WriteError(w, r, err)
+				return
+			}
+			fresh = auth.IsFresh(token, time.Now(), signIns)
+		}
+		if !fresh {
 			httpio.WriteError(w, r, auth.ErrReauthRequired)
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// SignedInToken is the verified token of the request, with its Privy session.
+func SignedInToken(r *http.Request) auth.Token {
+	token, _ := r.Context().Value(tokenKey{}).(auth.Token)
+	return token
 }
 
 func SignedInUser(r *http.Request) string {

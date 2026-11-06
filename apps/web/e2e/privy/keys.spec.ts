@@ -2,7 +2,7 @@ import { expect, type Page, test } from "@playwright/test";
 import { sidewaysScroll } from "../sideways";
 import { blockingViolations } from "./axe";
 import { mockApi } from "./sample-api";
-import { code, email, session } from "./session";
+import { email, freshCode, session } from "./session";
 
 // R-145: the API answers are mocked; the Go API test covers the real ones.
 const SHOP = "22222222-2222-2222-2222-222222222222";
@@ -230,13 +230,16 @@ test("making a key asks to confirm it's you in place, then one sign-in covers th
   });
   const page = await context.newPage();
   const calls = await mockKeys(page);
-  // The token from before the confirm is too old; any later one is the fresh sign-in's.
+  // The session is stale until the real api confirms Forwend's emailed code (R-137); the same token then passes.
   const tokens: (string | null)[] = [];
+  let confirmed = false;
+  page.on("response", (r) => {
+    if (r.url().endsWith("/api/v1/me/fresh-sign-in/verify") && r.status() === 204) confirmed = true;
+  });
   await page.route(`/api/v1/profiles/${SHOP}/keys**`, async (route) => {
     if (route.request().method() !== "POST") return route.fallback();
-    const token = await route.request().headerValue("authorization");
-    tokens.push(token);
-    if (token === tokens[0])
+    tokens.push(await route.request().headerValue("authorization"));
+    if (!confirmed)
       return route.fulfill({
         status: 401,
         json: { error: { code: "reauth_required", message: "sign in again" } },
@@ -279,33 +282,34 @@ test("making a key asks to confirm it's you in place, then one sign-in covers th
 
   await dialog.getByRole("button", { name: "Make key" }).click();
   await expect(confirm).toContainText(`We sent a code to ${email}`);
-  // A wrong code: Privy refuses it, and the step stays open for another.
+  // A wrong code: the api refuses it, and the step stays open for another.
   const codeBox = confirm.getByRole("textbox", { name: "Code" });
+  const code = await freshCode();
   await codeBox.fill(code === "000000" ? "111111" : "000000");
   await expect(confirm.getByRole("alert")).toHaveText(
     "Wrong or expired code. Check it or send a new one.",
   );
-  // An expired code: Privy's answer for it is stood in for here, as a real one takes ten minutes.
-  await page.route("**/passwordless/authenticate", (route) =>
-    route.fulfill({ status: 401, json: { error: "Expired code", code: "invalid_credentials" } }),
+  // An expired code: the api's answer for it is stood in for here, as a real one takes ten minutes.
+  await page.route("**/api/v1/me/fresh-sign-in/verify", (route) =>
+    route.fulfill({
+      status: 422,
+      json: { error: { code: "wrong_code", message: "wrong or expired code" } },
+    }),
   );
   await codeBox.fill(code);
   await expect(confirm.getByRole("alert")).toHaveText(
     "Wrong or expired code. Check it or send a new one.",
   );
-  await page.unroute("**/passwordless/authenticate");
-  // The right code: a full one confirms with no click, and the key is made with the new token.
+  await page.unroute("**/api/v1/me/fresh-sign-in/verify");
+  // The right code: a full one confirms with no click, and the request goes again.
   await codeBox.fill("");
   await codeBox.fill(code);
   const secret = page.getByRole("dialog", { name: "Copy your key now" });
   await expect(secret.getByText(SECRET)).toBeVisible({ timeout: 15_000 });
-  // Signing in again replaces this browser's Privy session, so the tests after this one share the new session.
-  await context.storageState({ path: session });
   expect(tokens).toHaveLength(4);
-  expect(tokens[3]).not.toEqual(tokens[0]);
   await secret.getByRole("button", { name: "Done" }).click();
 
-  // The next protected change in the window asks nothing: it goes with the fresh sign-in's token.
+  // The next protected change in the window asks nothing: the confirm covers the session.
   const row = main
     .getByRole("region", { name: "API keys" })
     .getByRole("row")
@@ -317,7 +321,6 @@ test("making a key asks to confirm it's you in place, then one sign-in covers th
   await expect(secret.getByText(SECRET)).toBeVisible();
   await expect(rolling.getByRole("group", { name: "Confirm it's you" })).toHaveCount(0);
   expect(tokens).toHaveLength(5);
-  expect(tokens[4]).toEqual(tokens[3]);
   expect(calls.filter((c) => c.method === "POST").at(-1)?.path).toBe(
     "keys/aaaaaaaa-0000-4000-8000-000000000001/roll",
   );

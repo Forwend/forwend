@@ -801,3 +801,18 @@ func TestPayerEmailChangeWaitsForTheReceiptBeingSent(t *testing.T) {
 		t.Fatalf("the receipt is not marked sent")
 	}
 }
+
+// R-137: the code is in the subject and both parts, and the email names no link but the app.
+func TestTheCodeEmailCarriesItsCode(t *testing.T) {
+	m, err := CodeMessage(Site{WebURL: "https://forwend.test"}, "042517", 10*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(m.Text, "It works for 10 minutes.") {
+		t.Errorf("text %q doesn't say how long the code works", m.Text)
+	}
+	if m.Subject != "Your Forwend code: 042517" || !strings.Contains(m.Text, "042517") || !strings.Contains(m.HTML, "042517") {
+		t.Errorf("subject %q, text has code %v, html has code %v", m.Subject, strings.Contains(m.Text, "042517"),
+			strings.Contains(m.HTML, "042517"))
+	}
+}

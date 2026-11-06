@@ -251,6 +251,8 @@ with a test.
   Block fields, statuses and identity rules as in `chain_transfers`, with the wallet and direction in each key.
 - `sends` (R-211, R-212): a send out of a profile wallet, from prepared to sent, failed, canceled or expired. One
   unsigned send per wallet and chain, and one send per hash. `wallet_transfers` decides sent; the hash only links them.
+- `fresh_sign_ins` (R-137, D-49): an emailed Confirm it's you code per Privy session, hashed, with tries and expiry.
+  A confirmed row makes its session fresh for 15 minutes.
 - `chains.gas_sponsored`: Privy pays the gas there, so the chain offers Send (D-119). Set to match the Privy dashboard.
 - `tokens.native_gas`: the token is its chain's gas coin (Arc USDC), so a send of it can pay its own gas (R-216).
 - `transfer_labels` (R-108): the user's label for money in that Forwend can't classify, one per profile and transfer
