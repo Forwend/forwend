@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 429,
+  "nextId": 430,
   "tasks": [
     {
       "id": "F332",
@@ -78,6 +78,35 @@
         "2026-11-05 blocked: Deferred by owner (2026-11-05): low priority for now."
       ],
       "blockedReason": "Deferred by owner (2026-11-05): low priority for now.",
+      "evidence": null
+    },
+    {
+      "id": "F429",
+      "type": "feat",
+      "behavior": "The user lists, adds and removes passkeys in Account and security",
+      "acceptance": [
+        "Account and security lists each passkey with where it was made, when it was added and when it was last used (R-217)",
+        "The user adds another passkey even when one exists, and removes one behind a confirm dialog; adding or removing first asks Confirm it's you (R-217, R-137, Q-13)",
+        "The last way to sign in can't be removed, and the page says why (R-217)",
+        "A live run adds a passkey with a virtual authenticator, removes it, and axe finds no serious or critical violations (R-217)"
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "web-e2e",
+        "auth-live-e2e"
+      ],
+      "refs": [
+        "R-217",
+        "R-137",
+        "D-63",
+        "Q-13"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
       "evidence": null
     }
   ],
