@@ -15,6 +15,8 @@ const api = vi.hoisted(() => ({
 vi.mock("@/features/send/api/send-api", () => ({
   useSubmitSendMutation: () => [() => ({ unwrap: api.submit })],
   useGetSendQuery: () => ({ ...api.read, refetch: () => {} }),
+  // The review reads the send again before signing: it is still prepared.
+  useLazyGetSendQuery: () => [() => ({ unwrap: async () => send })],
 }));
 vi.mock("@/features/send/hooks/use-sign-send", () => ({
   useSignSend: () => ({ sign: api.sign, canSign: true }),
