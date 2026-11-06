@@ -1102,7 +1102,8 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
   - The main button names the amount ("Send 25.00 USDC").
   - From signing until the server holds the hash, the sheet is locked: Escape, the backdrop, Close and Back do nothing.
     - Closing would not stop the money, and the server needs the hash to follow it.
-    - A hash the server refuses lifts the lock; a lost connection keeps it.
+    - A hash the server refuses lifts the lock, and so does a server that can't be read: the owner may then leave.
+    - A failed hash report alone keeps it, and the report goes again on the next read.
   - Progress: a spinner and Sending, then the drawn check and Sent, or the alert icon and why it failed; then the
     explorer link and Done.
 - Fixed navigation and page edges respect safe-area insets; zoom stays enabled and touch text inputs use the base
