@@ -1,4 +1,12 @@
-import { Bell, Coins, Landmark, type LucideIcon, ShieldCheck, Users } from "lucide-react";
+import {
+  Bell,
+  Coins,
+  Landmark,
+  type LucideIcon,
+  ShieldCheck,
+  Users,
+  WalletMinimal,
+} from "lucide-react";
 import type { Profile } from "@/features/profiles/types/profile";
 import { accountLinks, pageAllowed } from "@/screens/app-shell/lib/app-nav";
 import { SETTINGS_COPY as COPY } from "@/screens/settings/constants/settings-copy";
@@ -29,6 +37,9 @@ export function settingsSections(
       ? [{ href: APP_ROUTES.networks, label: COPY.networks.title, icon: Coins }]
       : []),
     ...(links.team ? [{ href: APP_ROUTES.team, label: COPY.team.title, icon: Users }] : []),
+    ...(pageAllowed(profile, APP_ROUTES.wallet)
+      ? [{ href: APP_ROUTES.wallet, label: COPY.wallet.title, icon: WalletMinimal }]
+      : []),
   ];
   return [
     { label: COPY.yourAccount, business: false, items: account },

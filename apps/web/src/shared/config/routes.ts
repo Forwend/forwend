@@ -25,6 +25,7 @@ export const APP_ROUTES = {
   networks: "/app/networks",
   settings: "/app/settings",
   team: "/app/team",
+  wallet: "/app/wallet",
   developers: "/app/developers",
   docs: "/docs",
 } as const;

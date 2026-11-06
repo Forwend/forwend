@@ -7,6 +7,7 @@ import {
   firstPage,
   navFor,
   pageAllowed,
+  SETTINGS_PATHS,
 } from "@/screens/app-shell/lib/app-nav";
 import { APP_ROUTES } from "@/shared/config/routes";
 
@@ -95,6 +96,14 @@ describe("breadcrumb", () => {
       trail: [{ label: "Payments", href: APP_ROUTES.payments }, details],
       invoiceId: null,
     });
+  });
+
+  it("names the Wallet settings page and marks Settings as the place (R-218)", () => {
+    expect(breadcrumb(APP_ROUTES.wallet, "personal")).toEqual({
+      trail: [{ label: "Wallet", href: APP_ROUTES.wallet }],
+      invoiceId: null,
+    });
+    expect(SETTINGS_PATHS).toContain(APP_ROUTES.wallet);
   });
 
   it("names a client's and a store's own page apart from its edit form", () => {

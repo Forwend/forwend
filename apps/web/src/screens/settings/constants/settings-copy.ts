@@ -44,4 +44,22 @@ export const SETTINGS_COPY = {
   networks: { title: "Accepted assets" },
   notifications: { title: "Notifications" },
   team: { title: "Team" },
+  wallet: {
+    title: "Wallet",
+    intro: "This profile's wallet and its private key.",
+    address: "Wallet address",
+    addressNote: "Where this profile's money is held: one address on every network.",
+    yourAddress: "This profile's address",
+    key: "Private key",
+    keyNote: "Use this wallet in another app, such as MetaMask.",
+    exportHint: "Privy shows the key on its own secure page. Forwend never sees it.",
+    export: "Export private key",
+    warningTitle: "Export this wallet's private key?",
+    warningBody:
+      "Anyone with this key controls this wallet and its money. Never share it. Forwend can't undo an export or recover a key.",
+    cancel: "Cancel",
+    show: "Show the key",
+    failed: "The export page didn't open. Try again.",
+    noWallet: "This profile's wallet isn't ready yet.",
+  },
 } as const;

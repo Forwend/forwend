@@ -185,7 +185,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     step with its action and Skip. It has no close button.
   - It goes once every step is done or skipped; phones show it at the top of More.
 - Settings is one area with a section column beside the page (13rem); phones get a row of text tabs instead.
-  - Your account: Account and security, Notifications. This profile (its name): Billing details, Accepted assets, Team.
+  - Your account: Account and security, Notifications. This profile (its name): Billing details, Accepted assets, Team,
+    Wallet.
+  - Wallet (R-218, the owner's only): the full address, then Export private key.
+    - Export asks in a dialog with the warning, then Confirm it's you when stale, then opens Privy's export window.
+    - The warning closes first, so no dialog sits under Privy's.
   - Each section shows only to a role that can open it (D-93). The pages keep their addresses.
   - Account and security lists the sign-in methods (email, Google) and this device, from its user agent.
     - Under them: Sign out, and Sign out of all devices with its dialog.
