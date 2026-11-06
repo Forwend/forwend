@@ -187,7 +187,7 @@
       "dependsOn": [
         "F424"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "web-e2e",
@@ -305,11 +305,18 @@
           "summary": "Pass. Money path is sound: Privy signs transfer(send.to, send.amount) on send.token and send.chainId, all from the server's send, which matchesRequest compares to the request (chain, token, amount, recipient) before the review shows; the review shows those same values; amounts stay bigint/base units. The sheet locks (Escape, backdrop, Close, Back) while signing and until a server read holds the hash; a lost submit is re-sent on each 1.5 s read. Send/Transfer only for money.move (owner only, backend enforces too); Transfer only with another owner profile with a wallet. StepTransition: direction slide, height follows, motion-safe/motion-reduce, focus moves to the step. Structure follows the feature layout; architecture.md lists the new imports. Minor, not blocking: (1) send-review.tsx:83 calls onSigning(false) right after onSubmitted, so the sheet is unlocked for one frame before SendProgress sets holding; drop that call and let progress own the lock. (2) matchesRequest does not check send.from against the profile wallet (lib/send.ts:55, send-sheet.tsx:199). (3) No unit test covers the lock or the re-report of a lost hash; only lib functions and the live run. (4) PROJECT.md:298 R-213 still says the button reads Send; it names the amount and reads Transfer for a transfer. (5) feeText shows a non-zero fee in the sent token's units (marked; unreachable while sendable = gas_sponsored). (6) If the server never takes the hash, the progress step stays locked with Done disabled. Ran: vitest src/features/send (5 passed); harness check typecheck lint docs-check (all passed).",
           "at": "2026-11-06T13:39:04Z",
           "filesHash": "b46688e527065bbc"
-        }
+        },
+        "commit": "45eb984a",
+        "doneAt": "2026-11-06T13:42:49Z"
       },
       "branch": "feat/f425-send-and-transfer-open-one-smooth-sheet",
       "baseCommit": "c18fa94bdf40c29b479965991172b5b2a340ffbf",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f425-send-and-transfer-open-one-smooth-sheet",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
