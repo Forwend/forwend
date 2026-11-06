@@ -280,6 +280,7 @@ var profileRoutes = []struct{ method, path, body string }{
 	{"GET", "/v1/profiles/%s/sends", ""},
 	{"GET", "/v1/profiles/%s/sends/fee?chainId=84532&token=" + usdc, ""},
 	{"GET", "/v1/profiles/%s/sends/00000000-0000-0000-0000-000000000000", ""},
+	{"POST", "/v1/profiles/%s/sends/00000000-0000-0000-0000-000000000000/approve", ""},
 	{"POST", "/v1/profiles/%s/sends/00000000-0000-0000-0000-000000000000/submit", `{"txHash": "0x` +
 		strings.Repeat("0", 64) + `"}`},
 	{"POST", "/v1/profiles/%s/sends/00000000-0000-0000-0000-000000000000/cancel", ""},

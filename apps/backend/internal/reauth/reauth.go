@@ -25,7 +25,7 @@ const (
 	CodeTTL = 10 * time.Minute
 	// MaxAttempts wrong codes end a code: a million codes can't be guessed in five.
 	MaxAttempts = 5
-	// ResendAfter is per session; MaxPerHour bounds the codes one user can have emailed.
+	// ResendAfter is per session; MaxPerHour bounds the codes one user had emailed and never confirmed in an hour.
 	ResendAfter = 30 * time.Second
 	MaxPerHour  = 10
 )
@@ -98,13 +98,15 @@ func (s *Service) Send(ctx context.Context, t auth.Token) (wait time.Duration, e
 	var hour int
 	err = tx.QueryRow(ctx, `
 		SELECT max(created_at) FILTER (WHERE session = $2),
-		       min(created_at) FILTER (WHERE created_at > $3::timestamptz - interval '1 hour'),
-		       count(*) FILTER (WHERE created_at > $3::timestamptz - interval '1 hour')
+		       min(created_at) FILTER (WHERE created_at > $3::timestamptz - interval '1 hour' AND confirmed_at IS NULL),
+		       count(*) FILTER (WHERE created_at > $3::timestamptz - interval '1 hour' AND confirmed_at IS NULL)
 		FROM fresh_sign_ins WHERE user_id = $1`, user, t.Session, now).Scan(&last, &oldest, &hour)
 	if err != nil {
 		return 0, fmt.Errorf("read codes sent: %w", err)
 	}
-	// The gap is per session: another device's code is no use here. The hourly cap is per user, as the inbox is.
+	// The gap is per session: another device's code is no use here. The hourly cap is per user, as the inbox is, and
+	// counts codes never confirmed: those are what guessing and a flooded inbox take, so an owner who confirms isn't
+	// stopped.
 	if last != nil && now.Sub(*last) < ResendAfter {
 		return ResendAfter - now.Sub(*last), ErrTooSoon
 	}

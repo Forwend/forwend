@@ -61,15 +61,27 @@ async function pickMoney(page: Page, screenshot?: string) {
   await expect(sheet(page)).toHaveAccessibleName("Amount");
 }
 
+// Send is held, not clicked: a press shorter than the hold does nothing.
+async function holdSend(page: Page, name: RegExp) {
+  const button = sheet(page).getByRole("button", { name });
+  await expect(button).toBeEnabled({ timeout: 30_000 });
+  // hover waits for the button to stop moving: the sheet's height may still follow the step that went before.
+  await button.hover();
+  await page.mouse.down();
+  await page.waitForTimeout(1_400);
+  await page.mouse.up();
+}
+
+// R-137: after the hold, a stale session gets Confirm it's you as its own step; a full code confirms with no click,
+// and the send is signed.
 async function confirmIfAsked(page: Page) {
-  const confirm = sheet(page).getByRole("group", { name: "Confirm it's you" });
-  const review = sheet(page).getByRole("button", { name: /^(Send|Transfer) \d/ });
-  await expect(confirm.or(review)).toBeVisible({ timeout: 30_000 });
-  if (await confirm.isVisible()) {
-    // Forwend's emailed code (R-137): a full one confirms with no click, then the send is asked for again.
-    await expect(confirm).toContainText("We sent a code", { timeout: 20_000 });
-    await confirm.getByRole("textbox", { name: "Code" }).fill(await freshCode());
-    await expect(review).toBeVisible({ timeout: 30_000 });
+  const code = sheet(page).getByRole("textbox", { name: "Code" });
+  const progress = sheet(page).getByRole("heading", { name: /^(Sending|Sent)$/ });
+  await expect(code.or(progress)).toBeVisible({ timeout: 30_000 });
+  if (await code.isVisible()) {
+    await expect(sheet(page)).toHaveAccessibleName("Confirm it's you");
+    await expect(sheet(page)).toContainText("Didn't get it?", { timeout: 20_000 });
+    await code.fill(await freshCode());
   }
 }
 
@@ -97,15 +109,13 @@ test("Transfer moves testnet money to the owner's other profile and follows it t
   await shot(page, "../../docs/runs/f425-transfer-amount-1440.png");
   expect(await blockingViolations(page)).toEqual([]);
   await sheet(page).getByRole("button", { name: "Continue" }).click();
-  await confirmIfAsked(page);
 
-  // The review the server checked: Privy shows nothing of its own.
-  await expect(sheet(page)).toHaveAccessibleName("Review");
+  // The Summary the server checked: Privy shows nothing of its own.
+  await expect(sheet(page)).toHaveAccessibleName("Summary");
   await shot(page, "../../docs/runs/f425-transfer-review-1440.png");
   expect(await blockingViolations(page)).toEqual([]);
-  await sheet(page)
-    .getByRole("button", { name: /^Transfer 0\.01 [A-Z]+$/ })
-    .click();
+  await holdSend(page, /^Hold to transfer 0\.01 [A-Z]+$/);
+  await confirmIfAsked(page);
 
   // R-214: signed with Privy in the browser, then Sent once the watcher records the transfer.
   await expect(sheet(page).getByRole("heading", { name: /^(Sending|Sent)$/ })).toBeVisible({
@@ -143,18 +153,29 @@ test("Send to a new address warns and asks to check the address before it can be
   await sheet(page)
     .getByRole("button", { name: /^Wallet address/ })
     .click();
+  // One name for the step and its field; Paste sits in the field, and Continue waits for a valid address.
+  await expect(sheet(page)).toHaveAccessibleName("Wallet address");
   const address = sheet(page).getByRole("textbox", { name: "Wallet address" });
-  await address.fill("0x1234");
-  await sheet(page).getByRole("button", { name: "Continue" }).click();
-  await expect(sheet(page).getByRole("alert")).toContainText("isn't a wallet address");
+  const next = sheet(page).getByRole("button", { name: "Continue" });
+  await expect(sheet(page).getByRole("button", { name: "Paste" })).toBeVisible();
+  await expect(next).toBeDisabled();
+  await shot(page, "../../docs/runs/f430-address-390.png");
+  expect(await blockingViolations(page)).toEqual([]);
+  // A whole address that isn't valid says so at once: here one letter of the checksum is wrong.
+  await address.fill("0x000000000000000000000000000000000000dEAD");
+  await expect(sheet(page).getByRole("alert")).toHaveText("This isn't a valid wallet address.");
+  await expect(next).toBeDisabled();
+  await sheet(page).getByRole("button", { name: "Clear address" }).click();
+  await expect(address).toHaveValue("");
   await address.fill("0x000000000000000000000000000000000000dEaD");
-  await sheet(page).getByRole("button", { name: "Continue" }).click();
+  await expect(sheet(page).getByRole("alert")).toHaveCount(0);
+  await shot(page, "../../docs/runs/f430-address-filled-390.png");
+  await next.click();
   await pickMoney(page);
   await sheet(page).getByRole("textbox", { name: "Amount" }).fill("0.01");
   await sheet(page).getByRole("button", { name: "Continue" }).click();
-  await confirmIfAsked(page);
 
-  const send = sheet(page).getByRole("button", { name: /^Send 0\.01 [A-Z]+$/ });
+  const send = sheet(page).getByRole("button", { name: /^Hold to send 0\.01 [A-Z]+$/ });
   await expect(sheet(page).getByText("You haven't sent to this address before.")).toBeVisible();
   await expect(send).toBeDisabled();
   // Short in the review; the tooltip has every character.
@@ -237,14 +258,12 @@ test("On Arc the wallet pays its own fee in USDC, shown before the send, and the
   await sheet(page).getByRole("textbox", { name: "Amount" }).fill("0.01");
   await shot(page, "../../docs/runs/f427-arc-amount-1440.png");
   await sheet(page).getByRole("button", { name: "Continue" }).click();
-  await confirmIfAsked(page);
-  await expect(sheet(page)).toHaveAccessibleName("Review");
+  await expect(sheet(page)).toHaveAccessibleName("Summary");
   await expect(sheet(page).getByText("Free", { exact: true })).toHaveCount(0);
   await expect(sheet(page).getByText("Total", { exact: true })).toBeVisible();
   await shot(page, "../../docs/runs/f427-arc-review-1440.png");
-  await sheet(page)
-    .getByRole("button", { name: /^(Send|Transfer) 0\.01 USDC$/ })
-    .click();
+  await holdSend(page, /^Hold to (send|transfer) 0\.01 USDC$/);
+  await confirmIfAsked(page);
   await expect(sheet(page).getByRole("link", { name: "View on ArcScan" })).toBeVisible({
     timeout: 60_000,
   });
@@ -261,9 +280,13 @@ test("A stale session confirms it's you with Forwend's emailed code, and the sen
   browser,
 }) => {
   test.setTimeout(120_000);
-  const context = await browser.newContext({ storageState: fresh });
+  // A session of its own: the shared one may have confirmed a code in an earlier test, which keeps it fresh for 15
+  // minutes whatever happens elsewhere.
+  const context = await browser.newContext();
   const page = await context.newPage();
-  await page.goto("/app");
+  await page.goto("/sign-in");
+  await signIn(page);
+  await expect(page).toHaveURL("/app", { timeout: 30_000 });
   await expect(page.getByRole("region", { name: "Total balance" })).toBeVisible();
   const elsewhere = await browser.newContext();
   const other = await elsewhere.newPage();
@@ -283,11 +306,28 @@ test("A stale session confirms it's you with Forwend's emailed code, and the sen
     .click();
   await pickMoney(page);
   await sheet(page).getByRole("textbox", { name: "Amount" }).fill("0.01");
+  // The Summary needs no fresh sign-in: Confirm it's you comes only once Send is held, as its own step.
   await sheet(page).getByRole("button", { name: "Continue" }).click();
-  const confirm = sheet(page).getByRole("group", { name: "Confirm it's you" });
-  await expect(confirm).toContainText("We sent a code", { timeout: 20_000 });
-  await confirm.getByRole("textbox", { name: "Code" }).fill(await freshCode());
-  await expect(sheet(page)).toHaveAccessibleName("Review", { timeout: 20_000 });
-  await page.keyboard.press("Escape");
+  await expect(sheet(page)).toHaveAccessibleName("Summary", { timeout: 20_000 });
+  const hold = /^Hold to transfer 0\.01 [A-Z]+$/;
+  await holdSend(page, hold);
+  await expect(sheet(page)).toHaveAccessibleName("Confirm it's you", { timeout: 20_000 });
+  // Sent: the status line under the code says so, and offers a new code after the api's wait.
+  await expect(sheet(page)).toContainText("Didn't get it? Resend in", { timeout: 20_000 });
+  await shot(page, "../../docs/runs/f430-confirm-step-1440.png");
+  expect(await blockingViolations(page)).toEqual([]);
+  // Back gives the confirm up for the Summary, with no error; holding again asks again.
+  await sheet(page).getByRole("button", { name: "Back" }).click();
+  await expect(sheet(page)).toHaveAccessibleName("Summary");
+  await expect(sheet(page).getByRole("alert")).toHaveCount(0);
+  await holdSend(page, hold);
+  await expect(sheet(page)).toHaveAccessibleName("Confirm it's you", { timeout: 20_000 });
+  await sheet(page)
+    .getByRole("textbox", { name: "Code" })
+    .fill(await freshCode());
+  await expect(sheet(page).getByRole("heading", { name: /^(Sending|Sent)$/ })).toBeVisible({
+    timeout: 60_000,
+  });
+  await expect(sheet(page).getByRole("link", { name: /^View on / })).toBeVisible();
   await context.close();
 });

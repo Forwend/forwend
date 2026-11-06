@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -182,6 +183,28 @@ func TestCodesAreLimitedPerUser(t *testing.T) {
 	}
 	if r := send("session-y"); errorCode(r) != "too_many_codes" {
 		t.Errorf("the eleventh code's answer: %d %v", r.status, r.body)
+	}
+}
+
+// D-49: the hour's cap counts codes never confirmed, which is what guessing and a flooded inbox take; an owner who
+// confirms each code is never stopped by it.
+func TestConfirmedCodesDontCountTowardTheHoursCap(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	e.wallets.Lock()
+	e.wallets.Emails[alice] = "alice@example.com"
+	e.wallets.Unlock()
+	refreshed := signedInAt.Add(2 * time.Second)
+	for i := range 11 {
+		sid := fmt.Sprintf("session-%d", i)
+		if r := e.inSession(t, "POST", "/v1/me/fresh-sign-in", alice, sid, refreshed, ""); r.status != http.StatusAccepted {
+			t.Fatalf("code %d after %d confirmed: %d %v", i+1, i, r.status, r.body)
+		}
+		code := e.codes.last("alice@example.com")
+		if r := e.inSession(t, "POST", "/v1/me/fresh-sign-in/verify", alice, sid, refreshed,
+			`{"code": "`+code+`"}`); r.status != http.StatusNoContent {
+			t.Fatalf("confirm code %d: %d %v", i+1, r.status, r.body)
+		}
 	}
 }
 

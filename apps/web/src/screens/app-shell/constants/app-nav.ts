@@ -1,5 +1,6 @@
 import {
   ArrowLeftRight,
+  BanknoteArrowDown,
   BriefcaseBusiness,
   ChartLine,
   Code,
@@ -21,6 +22,7 @@ import { CLIENTS_COPY } from "@/features/clients/constants/clients-copy";
 import { INVOICES_COPY, REQUESTS_COPY } from "@/features/invoices/constants/invoices-copy";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
 import { LINKS_COPY } from "@/features/links/constants/links-copy";
+import { PAYMENTS_COPY } from "@/features/payments/constants/payments-copy";
 import { PERMISSIONS, PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import type { Permission, ProfileKind } from "@/features/profiles/types/profile";
 import { STORES_COPY } from "@/features/stores/constants/stores-copy";
@@ -56,8 +58,9 @@ export const NAV = {
   },
   payments: {
     href: APP_ROUTES.payments,
-    label: "Payments",
-    icon: ArrowLeftRight,
+    label: PAYMENTS_COPY.title,
+    // Money coming in, apart from Transactions' both ways.
+    icon: BanknoteArrowDown,
     permission: PERMISSIONS.invoicesRead,
   },
   invoices: {
@@ -117,6 +120,8 @@ export const NAV = {
 
 const MONEY: NavGroup = { label: "Money", items: [NAV.overview, NAV.transactions, NAV.balances] };
 const INSIGHTS: NavGroup = { label: "Insights", items: [NAV.analytics] };
+// The heading over what a profile is paid with; not "Payments", which is an item in it.
+const GET_PAID = "Get paid";
 
 export const APP_NAV: Readonly<Record<ProfileKind, readonly NavGroup[]>> = {
   [PROFILE_KINDS.personal]: [
@@ -126,7 +131,7 @@ export const APP_NAV: Readonly<Record<ProfileKind, readonly NavGroup[]>> = {
   [PROFILE_KINDS.freelancer]: [
     MONEY,
     {
-      label: "Get paid",
+      label: GET_PAID,
       items: [NAV.payments, NAV.invoices, NAV.links, NAV.jobs, NAV.clients, NAV.activity],
     },
     { label: "Build", items: [NAV.developers] },
@@ -135,7 +140,7 @@ export const APP_NAV: Readonly<Record<ProfileKind, readonly NavGroup[]>> = {
   [PROFILE_KINDS.merchant]: [
     MONEY,
     {
-      label: "Payments",
+      label: GET_PAID,
       items: [
         NAV.payments,
         NAV.invoices,

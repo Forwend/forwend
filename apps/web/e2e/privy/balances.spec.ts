@@ -62,7 +62,12 @@ test("a profile shows its balance, networks, receive address and activity; a new
     await choose("Base Sepolia");
     expect(await blockingViolations(page)).toEqual([]);
     const text = await address.textContent();
-    await sheet.getByRole("button", { name: "Change token and network" }).click();
+    // As Send: Back steps out, to the network, then the token; the title names the token chosen.
+    await expect(sheet).toHaveAccessibleName("Receive USDC");
+    await sheet.getByRole("button", { name: "Back" }).click();
+    await expect(sheet.getByRole("region", { name: "Network" })).toBeVisible();
+    await sheet.getByRole("button", { name: "Back" }).click();
+    await expect(sheet).toHaveAccessibleName("Receive");
     await choose("Arbitrum Sepolia");
     // One wallet address serves every EVM network.
     await expect(address).toHaveText(text ?? "");

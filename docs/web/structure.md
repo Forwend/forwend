@@ -95,6 +95,7 @@ A folder is useful when a section has supporting files, not merely because it ap
 The landing uses sign-in links instead of a waitlist form.
 An image also used by sign-in is shared branding, not landing-only data.
 The site bar that landing and sign-in share lives in `shared/components/site-bar/`.
+The landscape page that sign-in and the 404 share lives in `shared/components/landscape-page/`.
 
 ## Requests, services and hooks
 

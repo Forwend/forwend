@@ -254,7 +254,7 @@ test("making a key asks to confirm it's you in place, then one sign-in covers th
   await dialog.getByRole("button", { name: "Make key" }).click();
   // The confirm takes the place of the dialog's buttons: no dialog on top, and the key stays in view, locked.
   const confirm = dialog.getByRole("group", { name: "Confirm it's you" });
-  await expect(confirm).toContainText(`We sent a code to ${email}`);
+  await expect(confirm).toContainText(`Enter the 6-digit code sent to ${email}.`);
   await expect(page.getByRole("dialog")).toHaveCount(1);
   await expect(dialog.getByRole("textbox", { name: "Name" })).toHaveValue("Staging");
   await expect(dialog.getByRole("textbox", { name: "Name" })).toBeDisabled();
@@ -272,7 +272,7 @@ test("making a key asks to confirm it's you in place, then one sign-in covers th
   await expect(dialog.getByRole("textbox", { name: "Name" })).toHaveValue("");
   await dialog.getByRole("textbox", { name: "Name" }).fill("Staging");
   await dialog.getByRole("button", { name: "Make key" }).click();
-  await expect(confirm).toContainText(`We sent a code to ${email}`);
+  await expect(confirm).toContainText(`Enter the 6-digit code sent to ${email}.`);
   // Cancel gives the dialog its buttons back and sends nothing more.
   await confirm.getByRole("button", { name: "Cancel" }).click();
   await expect(confirm).toHaveCount(0);
@@ -281,14 +281,13 @@ test("making a key asks to confirm it's you in place, then one sign-in covers th
   expect(tokens).toHaveLength(2);
 
   await dialog.getByRole("button", { name: "Make key" }).click();
-  await expect(confirm).toContainText(`We sent a code to ${email}`);
+  await expect(confirm).toContainText(`Enter the 6-digit code sent to ${email}.`);
+  await expect(confirm).toContainText("Didn't get it?");
   // A wrong code: the api refuses it, and the step stays open for another.
   const codeBox = confirm.getByRole("textbox", { name: "Code" });
   const code = await freshCode();
   await codeBox.fill(code === "000000" ? "111111" : "000000");
-  await expect(confirm.getByRole("alert")).toHaveText(
-    "Wrong or expired code. Check it or send a new one.",
-  );
+  await expect(confirm.getByRole("alert")).toHaveText("That code is wrong or expired.");
   // An expired code: the api's answer for it is stood in for here, as a real one takes ten minutes.
   await page.route("**/api/v1/me/fresh-sign-in/verify", (route) =>
     route.fulfill({
@@ -297,9 +296,7 @@ test("making a key asks to confirm it's you in place, then one sign-in covers th
     }),
   );
   await codeBox.fill(code);
-  await expect(confirm.getByRole("alert")).toHaveText(
-    "Wrong or expired code. Check it or send a new one.",
-  );
+  await expect(confirm.getByRole("alert")).toHaveText("That code is wrong or expired.");
   await page.unroute("**/api/v1/me/fresh-sign-in/verify");
   // The right code: a full one confirms with no click, and the request goes again.
   await codeBox.fill("");

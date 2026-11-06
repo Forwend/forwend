@@ -37,4 +37,23 @@ describe("TextField", () => {
       "Enter a whole number.",
     );
   });
+
+  it("keeps a hidden label as the name, and a control inside the field out of it", () => {
+    render(
+      <TextField
+        label="Wallet address"
+        labelHidden
+        inputClassName="font-mono"
+        hint="On the network you send on."
+        end={<Button>Paste</Button>}
+      />,
+    );
+    const input = screen.getByRole("textbox", { name: "Wallet address" });
+    expect(input.className).toContain("font-mono");
+    expect(input.getAttribute("aria-describedby")).toBeTruthy();
+    expect(screen.getByText("Wallet address").className).toBe("sr-only");
+    expect(screen.getByRole("button", { name: "Paste" })).toBeTruthy();
+    // The body font stays on the label and the hint.
+    expect(screen.getByText("On the network you send on.").className).not.toContain("font-mono");
+  });
 });

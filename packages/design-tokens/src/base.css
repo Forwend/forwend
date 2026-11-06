@@ -180,12 +180,11 @@
   }
 }
 
-/* A step of a sheet or dialog. --fw-step-x is the start offset: positive enters from the right (next), negative from
-   the left (back). */
+/* A step of a sheet or dialog: it fades in place from a slight blur, so the content changes but not the place. */
 @keyframes fw-step-in {
   from {
     opacity: 0;
-    transform: translateX(var(--fw-step-x, 12px));
+    filter: blur(4px);
   }
 }
 

@@ -56,6 +56,8 @@ Read only the sections your change touches. Any new control also needs
   - The form sits in the middle of the screen: the bottom padding matches the bar.
   - Large screens keep quiet terrain below the form; only its faded top may sit behind the last button.
 - On phones, sign-in uses an almost plain token surface. Decorative backgrounds do not receive pointer input.
+- The 404 page uses sign-in's layout (`LandscapePage`): the bar, the landscape strip and one centered column.
+  - A large 404 in the display face leads, then the heading, one line, and a full-width Back to Forwend.
 
 ## Type and color
 
@@ -193,7 +195,15 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - An action with no form of its own (Turn off, Signing secret) confirms in its own small dialog, titled with it.
   - It sends a code to the login email at once and says where. The code boxes behave as on the sign-in page.
   - A full code confirms with no click; the same code typed again is tried again.
-  - Send a new one sits inline after where the code went; Send a code, when the first send failed.
+  - One line above the boxes says where the code goes: "Enter the 6-digit code sent to …".
+  - One status line under them says what is next, and nothing else repeats it:
+    - "Sending a code…", then "Didn't get it? Resend in 28s", then a Resend code link once the api's wait is over.
+    - "We couldn't send the code. Try again" when the send failed. That is not a wrong code: the boxes stay unmarked.
+    - When the hour's codes are used up: "Too many codes for now. Try again in 52 min.", counting down the api's
+      Retry-After, then the Resend code link. A code sent a moment ago counts down its real wait too.
+  - A full code is checked whatever the send did: an earlier email's code may still be the one.
+  - Under a sheet or dialog title, its Back or Close gives up, so the step has only Confirm, full width.
+  - A send's confirm is the sheet's own step, after Send is held (see Send).
   - Cancel and Confirm end the foot's one row.
   - Cancel gives the form its buttons back, with no error, and the focus returns to the form's action.
   - A wrong or expired code reads "Wrong or expired code", and the step stays open.
@@ -398,7 +408,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   form pages under Clients laid out like New invoice (Contact, Address and tax, and On invoices with the default PO
   or reference and the payment reminders default (R-97), as panels); Delete waits in the More actions menu at the page's top right and asks to confirm in a
   dialog, as Cancel does on an invoice.
-- Stores (R-134) sits in a merchant's Payments group after Clients. It is laid out like Clients, without search.
+- Stores (R-134) sits in a merchant's Get paid group after Clients. It is laid out like Clients, without search.
   A store's page is a record page (project ID with Copy, Edit for stores.write) with its payments:
   - The toolbar holds a one-line intro, with Add store at its end (beside the title on phones).
   - The table shows the store, its project ID, when its checkout closes and its allowed origins.
@@ -482,7 +492,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Export follows validated filters and uses the existing date dialog pattern; invalid or unresolved filters disable export.
   - Invoices identify a customer by name or email; business tax fields remain optional, and personal requests retain their simpler flow.
   - Failed store, billing or token loads show explicit retry actions; empty acceptance never restores disabled tokens.
-- Payment links (R-140) sits after Invoices in a merchant's Payments group and a freelancer's Get paid group.
+- Payment links (R-140) sits after Invoices in the Get paid group of a merchant or freelancer.
   - It is laid out like Stores: a one-line intro with New link at its end (for roles that can make links), then a table.
   - The table shows the link with its `/l/<slug>`, the amount, a status badge and visits, paid purchases and reserved slots.
   - The status is On, Off, Ended, Limit reached or Setup needed; only On is green.
@@ -1051,9 +1061,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A modal dialog and the centered sheet fade in on `duration-base`, and close at once.
     - No scale or translate: either would misplace a date picker opened inside while it runs.
     - The ⌘K dialog is the exception: no motion, as above.
-  - Steps of a sheet (Send): the next step slides in 12px from the right with a fade, Back from the left, on
-    `duration-base` and `ease-out` (`StepTransition`). The sheet's height follows each step on the same timing.
-    Reduced motion shows each step at once.
+  - Steps of a sheet (Send): the new step fades in place from a 4px blur, on `duration-base` and `ease-out`
+    (`StepTransition`). Nothing slides: the content changes, not the place. The sheet's height follows on the same
+    timing.
+    - The first step shows at once: the sheet itself fades in. Reduced motion shows each step at once.
   - Disclosure: the chevron turns on `duration-fast`; the content appears without a height animation, since
     tables inside can be long.
   - Data: typing, filtering, polling and new rows never animate. A list waiting for a new filter dims its last rows
@@ -1081,25 +1092,37 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
   page; the new invoice or request action sits beside its title.
 - Filters stay one row, never a grid (see Controls); a segmented control keeps native radio keyboard behavior, a
   select menu the menu's arrow keys.
-- Receive uses one token/network summary, a centered QR on a surface-2 tile that follows the theme (the code alone stays
-  dark on light), the full address with a copy icon, the network warning and
-  a short note. Avoid nested cards around the QR.
+- Receive walks token, then network, as Send does: one step at a time, each fading in place, with Back.
+  - The title names the token once it is chosen ("Receive USDC"); a step with one choice is skipped.
+  - Then Send's chip (token mark, symbol, network) centered over a QR on a surface-2 tile that follows the theme; the
+    code alone stays dark on light.
+  - Then the full address with a copy icon, the network warning and a short note. Avoid nested cards around the QR.
 - Send (R-213) is one sheet for Send and Transfer, a sibling of Receive. Transfer starts on the owner's other profiles;
   Send also offers Wallet address.
-  - Steps: To, Wallet address, What to send, Amount, Review, then the progress. A step with one choice is skipped.
+  - Steps: To, Wallet address, What to send, Amount, Summary, Confirm it's you when asked, then the progress.
+    - A step with one choice is skipped.
   - The title names the step; a Back button sits before it from the second step on.
+  - Wallet address: the title names the field, so its label is for screen readers only.
+    - Paste sits inside the field and gives way to Clear once there is text; only the address is set in mono.
+    - A whole address that isn't valid, its EIP-55 checksum too, says so at once. Continue waits for a valid one.
   - Amount: a one-line chip with the token's mark, symbol and network, then the amount large and centered, no box,
     with the symbol as a muted suffix (`AmountField bare`).
     - Under it "1.2665 USDC available" (cut to 4 decimals, never rounded up) and a Max button.
     - Then one ruled line: Network fee, "Free" where Forwend pays, else "≈ 0.0025 USDC". Max leaves room for that fee, and waits until it is read.
-  - Review: the amount large and centered, then a ruled box: From, To, Network, Network fee.
+  - Summary: the amount large and centered, then a ruled box: From, To, Network, Network fee.
     - Total (≈ amount plus fee) follows only when the wallet pays the fee from the same token (R-216).
   - An estimated fee rounds up to 4 decimals and leads with ≈. No "Up to", no "They receive": the amount says it.
   - An address reads as plain text, shortened (`0x4edd…81fc`), as everywhere in the app.
     - Its tooltip shows the full address on hover, focus or tap (`TruncatedAddress`, `mono={false}`).
   - A first send to an address, or one to a contract, shows a one-line warning and a checkbox; Send stays off until it
     is ticked.
-  - The main button names the amount ("Send 25.00 USDC").
+  - The main button is held, not clicked, and names the amount ("Hold to send 25.00 USDC", `HoldButton`).
+    - A fill crosses it in 1.2 s; letting go sooner runs it back and sends nothing. Space and Enter hold it too.
+    - A screen reader's activate acts at once: it has no press to hold, and it is deliberate.
+    - From the hold until signing starts the sheet is locked, except while Confirm it's you waits for a code.
+  - Confirm it's you comes after the hold, as its own step titled so, when the session needs a fresh sign-in.
+    - Back returns to the Summary with no error; holding again asks again.
+    - Once the code is confirmed, the send is signed and the progress follows.
   - From signing until the server holds the hash, the sheet is locked: Escape, the backdrop, Close and Back do nothing.
     - Closing would not stop the money, and the server needs the hash to follow it.
     - A hash the server refuses lifts the lock, and so does a server that can't be read: the owner may then leave.

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Profile } from "@/features/profiles/types/profile";
+import { APP_NAV } from "@/screens/app-shell/constants/app-nav";
 import {
   accountLinks,
   breadcrumb,
@@ -67,6 +68,18 @@ describe("navigation by role", () => {
     };
     expect(accountLinks(owner)).toEqual({ notifications: true, team: true });
     expect(accountLinks({ ...developer, kind: "freelancer" }).team).toBe(false);
+  });
+});
+
+describe("sidebar names", () => {
+  it("never heads a group with the name of a page in it, and gives each page its own icon", () => {
+    for (const groups of Object.values(APP_NAV)) {
+      for (const group of groups) {
+        expect(group.items.map((item) => item.label)).not.toContain(group.label);
+      }
+      const items = groups.flatMap((group) => group.items);
+      expect(new Set(items.map((item) => item.icon)).size).toBe(items.length);
+    }
   });
 });
 

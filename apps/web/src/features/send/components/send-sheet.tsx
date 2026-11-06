@@ -2,22 +2,20 @@
 
 import {
   AmountField,
-  BrandIcon,
   Button,
   EmptyState,
   formatTokenAmount,
+  IconButton,
   RowButton,
   Sheet,
   Skeleton,
-  STEP_DIRECTIONS,
-  type StepDirection,
   StepTransition,
   TextField,
 } from "@forwend/ui-web";
 import { skipToken } from "@reduxjs/toolkit/query";
-import { ChevronRight, Users, WalletMinimal } from "lucide-react";
+import { ChevronRight, Users, WalletMinimal, X } from "lucide-react";
 import { type FormEvent, type ReactNode, useState } from "react";
-import { useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
+import { FRESH_SIGN_IN_COPY } from "@/features/auth/constants/auth-copy";
 import type { Balances } from "@/features/balances/types/balances";
 import { AMOUNT_ERRORS } from "@/features/invoices/constants/invoices";
 import { parseTokenAmount } from "@/features/invoices/lib/invoices";
@@ -30,8 +28,14 @@ import {
 } from "@/features/send/api/send-api";
 import { SendProgress } from "@/features/send/components/send-progress";
 import { SendReview } from "@/features/send/components/send-review";
-import { FEE_DECIMALS, SEND_MODES, SEND_STEPS } from "@/features/send/constants/send";
+import {
+  ADDRESS_LENGTH,
+  FEE_DECIMALS,
+  SEND_MODES,
+  SEND_STEPS,
+} from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
+import { useSendApproval } from "@/features/send/hooks/use-send-approval";
 import {
   feeLabel,
   isWalletAddress,
@@ -43,10 +47,9 @@ import {
   transferTargets,
 } from "@/features/send/lib/send";
 import type { Recipient, Send, SendMode, SendOption, SendStep } from "@/features/send/types/send";
+import { MoneyChip } from "@/shared/components/chains/money-chip";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { LoadError } from "@/shared/components/load-error";
-import { TOKEN_ICONS } from "@/shared/constants/chains";
-import { chainName } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 
 export interface SendSheetProps {
@@ -69,6 +72,7 @@ const TITLES: Record<SendStep, string> = {
   [SEND_STEPS.asset]: SEND_COPY.what,
   [SEND_STEPS.amount]: SEND_COPY.amount,
   [SEND_STEPS.review]: SEND_COPY.review,
+  [SEND_STEPS.confirm]: FRESH_SIGN_IN_COPY.title,
   [SEND_STEPS.progress]: "",
 };
 
@@ -90,7 +94,6 @@ export function SendSheet({
   const first: SendStep =
     mode === SEND_MODES.send && own.length === 0 ? SEND_STEPS.address : SEND_STEPS.to;
   const [path, setPath] = useState<SendStep[]>([first]);
-  const [direction, setDirection] = useState<StepDirection>(STEP_DIRECTIONS.next);
   const [recipient, setRecipient] = useState<Recipient | null>(null);
   const [address, setAddress] = useState("");
   const [addressError, setAddressError] = useState<string | null>(null);
@@ -103,9 +106,10 @@ export function SendSheet({
   const [signing, setSigning] = useState(false);
   // Every send checked this time; the unsigned ones are given up when the sheet closes.
   const [checked, setChecked] = useState<string[]>([]);
+  // The send whose warning the owner ticked as checked: it holds while the confirm step comes and goes.
+  const [ticked, setTicked] = useState<string | null>(null);
   const [prepare, preparing] = usePrepareSendMutation();
   const [cancel] = useCancelSendMutation();
-  const fresh = useFreshSignIn();
   // Every opening starts over: a send is chosen and checked anew each time.
   const [wasOpen, setWasOpen] = useState(open);
   const [wasMode, setWasMode] = useState(mode);
@@ -114,7 +118,6 @@ export function SendSheet({
     setWasMode(mode);
     if (open) {
       setPath([first]);
-      setDirection(STEP_DIRECTIONS.next);
       setRecipient(null);
       setAddress("");
       setAddressError(null);
@@ -125,19 +128,32 @@ export function SendSheet({
       setSubmitted(null);
       setSigning(false);
       setChecked([]);
+      setTicked(null);
       preparing.reset();
     }
   }
-  const step = path[path.length - 1] ?? first;
+  const shown = path[path.length - 1] ?? first;
   const options = sendOptions(balances);
   const sendable = options.filter((o) => o.sendable);
 
-  const go = (next: SendStep) => {
-    setDirection(STEP_DIRECTIONS.next);
-    setPath((p) => [...p, next]);
-  };
+  const go = (next: SendStep) => setPath((p) => [...p, next]);
+  const approval = useSendApproval({
+    profileId: profile.profileId,
+    send: prepared,
+    onSigning: setSigning,
+    onSubmitted: (s) => {
+      setSubmitted(s);
+      go(SEND_STEPS.progress);
+    },
+  });
+  // R-137: Confirm it's you comes after the owner holds Send, as a step of its own; Back gives it up for the Summary.
+  const confirming = approval.confirmStep !== null && shown === SEND_STEPS.review;
+  const step = confirming ? SEND_STEPS.confirm : shown;
   const back = () => {
-    setDirection(STEP_DIRECTIONS.back);
+    if (confirming) {
+      approval.cancelConfirm();
+      return;
+    }
     setPath((p) => (p.length > 1 ? p.slice(0, -1) : p));
   };
   // With one network and token to send, there is nothing to choose.
@@ -150,8 +166,8 @@ export function SendSheet({
   };
   const close = (next: boolean) => {
     if (!next) {
-      if (signing) return;
-      if (fresh.pending) fresh.cancel();
+      if (locked) return;
+      approval.cancelConfirm();
       for (const sendId of checked) {
         if (sendId !== submitted?.sendId) cancel({ profileId: profile.profileId, sendId });
       }
@@ -219,10 +235,10 @@ export function SendSheet({
         ? { toProfileId: recipient.profile.profileId }
         : { to: recipient.address }),
     };
-    const result = await fresh
-      .run(() => prepare({ profileId: profile.profileId, ...request }).unwrap())
+    const result = await prepare({ profileId: profile.profileId, ...request })
+      .unwrap()
       .catch((error: unknown) => {
-        if (!fresh.cancelled(error)) setAmountError(sendError(error));
+        setAmountError(sendError(error));
         // The fee may have risen since it was read: Max then uses the new one.
         if (fee) void feeRead.refetch();
         return null;
@@ -251,6 +267,8 @@ export function SendSheet({
         : SEND_COPY.send
       : TITLES[step];
   const canGoBack = path.length > 1 && step !== SEND_STEPS.progress;
+  // Signing, or the approve that comes before it (R-214): closing would not stop the money.
+  const locked = signing || approval.locked;
 
   let body: ReactNode;
   if (!profile.walletAddress) {
@@ -305,9 +323,12 @@ export function SendSheet({
       );
   } else if (step === SEND_STEPS.address) {
     body = (
+      // The sheet's title names the field. As in wallets: Paste sits in the field and gives way to Clear; a whole
+      // address that isn't valid says so at once, and Continue waits for a valid one.
       <form noValidate onSubmit={submitAddress} className="flex flex-col gap-5">
         <TextField
-          label={SEND_COPY.address}
+          label={SEND_COPY.walletAddress}
+          labelHidden
           placeholder={SEND_COPY.addressPlaceholder}
           value={address}
           autoFocus
@@ -315,29 +336,48 @@ export function SendSheet({
           autoCapitalize="off"
           autoCorrect="off"
           autoComplete="off"
-          className="font-mono"
+          inputClassName="font-mono"
           onChange={(e) => {
             setAddress(e.target.value);
             setAddressError(null);
           }}
+          onBlur={() => {
+            if (address.trim() && !isWalletAddress(address))
+              setAddressError(SEND_COPY.addressInvalid);
+          }}
           hint={SEND_COPY.addressHint}
-          error={addressError ?? undefined}
-          action={
-            <Button
-              variant="secondary"
-              onClick={async () => {
-                const text = await navigator.clipboard?.readText().catch(() => "");
-                if (text) {
-                  setAddress(text.trim());
+          error={
+            addressError ??
+            (address.trim().length >= ADDRESS_LENGTH && !isWalletAddress(address)
+              ? SEND_COPY.addressInvalid
+              : undefined)
+          }
+          end={
+            address ? (
+              <IconButton
+                label={SEND_COPY.clearAddress}
+                onClick={() => {
+                  setAddress("");
                   setAddressError(null);
-                }
-              }}
-            >
-              {SEND_COPY.paste}
-            </Button>
+                }}
+              >
+                <X aria-hidden className="size-[var(--fw-icon-sm)]" />
+              </IconButton>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  const text = await navigator.clipboard?.readText().catch(() => "");
+                  if (text) setAddress(text.trim());
+                }}
+              >
+                {SEND_COPY.paste}
+              </Button>
+            )
           }
         />
-        <Button type="submit" className="w-full">
+        <Button type="submit" className="w-full" disabled={!isWalletAddress(address)}>
           {SEND_COPY.continue}
         </Button>
       </form>
@@ -347,7 +387,8 @@ export function SendSheet({
       options.length === 0 ? (
         <EmptyState compact icon={WalletMinimal} title={SEND_COPY.nothingToSend} />
       ) : (
-        <Choices title={SEND_COPY.what}>
+        // The sheet's title already says What to send.
+        <Choices title={SEND_COPY.what} titleHidden>
           {options.map((o) => (
             <Choice
               key={`${o.chainId}-${o.token}`}
@@ -424,11 +465,9 @@ export function SendSheet({
             )}
           </span>
         </div>
-        {fresh.step ?? (
-          <Button type="submit" className="w-full" loading={preparing.isLoading}>
-            {SEND_COPY.continue}
-          </Button>
-        )}
+        <Button type="submit" className="w-full" loading={preparing.isLoading}>
+          {SEND_COPY.continue}
+        </Button>
       </form>
     );
   } else if (step === SEND_STEPS.review && prepared && option && recipient) {
@@ -439,13 +478,16 @@ export function SendSheet({
         option={option}
         from={profile}
         recipient={recipient}
-        onSigning={setSigning}
-        onSubmitted={(s) => {
-          setSubmitted(s);
-          go(SEND_STEPS.progress);
-        }}
+        checked={ticked === prepared.sendId}
+        onChecked={(on) => setTicked(on ? prepared.sendId : null)}
+        working={approval.working}
+        error={approval.error}
+        canSign={approval.canSign}
+        onHold={() => void approval.start()}
       />
     );
+  } else if (step === SEND_STEPS.confirm) {
+    body = approval.confirmStep;
   } else if (step === SEND_STEPS.progress && submitted && option && recipient) {
     body = (
       <SendProgress
@@ -465,13 +507,13 @@ export function SendSheet({
       open={open}
       onOpenChange={close}
       title={title}
-      onBack={canGoBack && !signing ? back : undefined}
+      onBack={canGoBack && !locked ? back : undefined}
       backLabel={SEND_COPY.back}
-      locked={signing}
+      locked={locked}
     >
       {/* A closed sheet holds no step, so nothing in it polls or signs. */}
       {open ? (
-        <StepTransition step={step} direction={direction} label={title}>
+        <StepTransition step={step} label={title}>
           {body}
         </StepTransition>
       ) : null}
@@ -479,10 +521,19 @@ export function SendSheet({
   );
 }
 
-function Choices({ title, children }: { title: string; children: ReactNode }) {
+function Choices({
+  title,
+  titleHidden = false,
+  children,
+}: {
+  title: string;
+  /** The list keeps its name for screen readers where the sheet's title already shows it. */
+  titleHidden?: boolean;
+  children: ReactNode;
+}) {
   return (
     <section aria-label={title} className="flex flex-col gap-2">
-      <h3 className="text-sm font-medium text-muted">{title}</h3>
+      {titleHidden ? null : <h3 className="text-sm font-medium text-muted">{title}</h3>}
       <ul className="flex flex-col gap-1">{children}</ul>
     </section>
   );
@@ -526,22 +577,6 @@ function Initial({ text }: { text: string }) {
       className="grid size-9 place-items-center rounded-pill bg-surface-2 text-sm font-medium text-ink"
     >
       {text.slice(0, 1)}
-    </span>
-  );
-}
-
-/** What is sent, in one line over the amount: the token's mark, its symbol and its network. */
-function MoneyChip({ chainId, symbol }: { chainId: number; symbol: string }) {
-  const icon = TOKEN_ICONS[symbol];
-  return (
-    <span className="inline-flex items-center gap-2 rounded-pill border border-line py-1 pr-3 pl-1 text-sm">
-      {icon ? (
-        <BrandIcon name={icon} className="size-6" />
-      ) : (
-        <span aria-hidden className="size-6 rounded-pill bg-surface-2" />
-      )}
-      <span className="font-medium text-ink">{symbol}</span>
-      <span className="text-muted">{chainName(chainId)}</span>
     </span>
   );
 }

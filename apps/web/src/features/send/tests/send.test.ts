@@ -33,6 +33,10 @@ describe("send", () => {
     expect(isWalletAddress(" 0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed ")).toBe(true);
     expect(isWalletAddress("5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed")).toBe(false);
     expect(isWalletAddress("0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAe")).toBe(false);
+    // EIP-55: one case is fine; mixed case must carry the checksum.
+    expect(isWalletAddress("0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed")).toBe(true);
+    expect(isWalletAddress("0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359")).toBe(true);
+    expect(isWalletAddress("0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAeD")).toBe(false);
   });
 
   it("offers only money the wallet holds, sendable networks first", () => {

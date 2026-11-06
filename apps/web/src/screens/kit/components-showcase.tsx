@@ -22,6 +22,7 @@ import {
   EmailCapture,
   EmptyState,
   Form,
+  HoldButton,
   IconButton,
   Menu,
   MenuCheckboxItem,
@@ -45,8 +46,6 @@ import {
   SelectMenu,
   Sheet,
   Skeleton,
-  STEP_DIRECTIONS,
-  type StepDirection,
   Stepper,
   StepTransition,
   Switch,
@@ -211,6 +210,15 @@ export function ComponentsShowcase() {
         <Button variant={BUTTON_VARIANTS.secondary} disabled>
           Disabled
         </Button>
+      </KitGroup>
+      <KitGroup title="Hold button: press and hold to confirm; loading and disabled">
+        <HoldButton onHold={() => {}}>Hold to send 25.00 USDC</HoldButton>
+        <HoldButton onHold={() => {}} loading>
+          Hold to send 25.00 USDC
+        </HoldButton>
+        <HoldButton onHold={() => {}} disabled>
+          Hold to send 25.00 USDC
+        </HoldButton>
       </KitGroup>
       <KitGroup title="Action buttons: primary, default, not yet available">
         <ActionButton icon={ArrowDownLeft} label="Receive" primary />
@@ -732,19 +740,15 @@ export function ComponentsShowcase() {
   );
 }
 
-// A stepped sheet: each step slides in from its direction and the height follows it (Send's steps).
+// A stepped sheet: each step fades in place and the height follows it (Send's steps).
 const DEMO_STEPS = ["Short step", "Taller step", "Shortest"] as const;
 
 function StepsDemo() {
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
-  const [direction, setDirection] = useState<StepDirection>(STEP_DIRECTIONS.next);
   // Locked: work that closing would not stop, such as a signature.
   const [locked, setLocked] = useState(false);
-  const move = (by: 1 | -1) => {
-    setDirection(by === 1 ? STEP_DIRECTIONS.next : STEP_DIRECTIONS.back);
-    setIndex((i) => i + by);
-  };
+  const move = (by: 1 | -1) => setIndex((i) => i + by);
   return (
     <>
       <Button
@@ -763,7 +767,7 @@ function StepsDemo() {
         onBack={index > 0 && !locked ? () => move(-1) : undefined}
         locked={locked}
       >
-        <StepTransition step={String(index)} direction={direction} label={DEMO_STEPS[index] ?? ""}>
+        <StepTransition step={String(index)} label={DEMO_STEPS[index] ?? ""}>
           <div className="flex flex-col gap-3">
             {Array.from({ length: index === 1 ? 6 : index === 0 ? 3 : 1 }, (_, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: placeholder rows, one per position

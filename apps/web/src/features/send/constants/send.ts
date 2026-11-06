@@ -7,6 +7,7 @@ export const SEND_STEPS = {
   asset: "asset",
   amount: "amount",
   review: "review",
+  confirm: "confirm",
   progress: "progress",
 } as const;
 
@@ -29,6 +30,9 @@ export const NATIVE_DECIMALS = 18;
 
 /** An estimated fee shows 4 decimals: enough to see it, never a false precision. */
 export const FEE_DECIMALS = 4;
+
+/** 0x and 40 hex digits: a whole EVM address, which the address step checks as soon as it is typed. */
+export const ADDRESS_LENGTH = 42;
 
 /** Who pays the network fee (D-119): Forwend where it sponsors gas, else the wallet, from the token itself (R-216). */
 export const FEE_PAYERS = { forwend: "forwend", wallet: "wallet" } as const;

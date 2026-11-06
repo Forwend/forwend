@@ -7,6 +7,8 @@ export type {
   ButtonVariant,
 } from "./components/buttons/button";
 export { BUTTON_SIZES, BUTTON_VARIANTS, Button, buttonClasses } from "./components/buttons/button";
+export type { HoldButtonProps } from "./components/buttons/hold-button";
+export { HOLD_MS, HoldButton } from "./components/buttons/hold-button";
 export type { IconButtonProps, IconButtonSize } from "./components/buttons/icon-button";
 export { ICON_BUTTON_SIZES, IconButton, iconButtonClasses } from "./components/buttons/icon-button";
 export type { RowButtonProps } from "./components/buttons/row-button";
@@ -123,8 +125,8 @@ export {
 } from "./components/overlays/menu";
 export type { SheetProps } from "./components/overlays/sheet";
 export { Sheet } from "./components/overlays/sheet";
-export type { StepDirection, StepTransitionProps } from "./components/overlays/step-transition";
-export { STEP_DIRECTIONS, StepTransition } from "./components/overlays/step-transition";
+export type { StepTransitionProps } from "./components/overlays/step-transition";
+export { StepTransition } from "./components/overlays/step-transition";
 export type { TooltipProps, TooltipProviderProps } from "./components/overlays/tooltip";
 export { Tooltip, TooltipProvider } from "./components/overlays/tooltip";
 export type { ActivityDirection, ActivityRowProps } from "./components/payments/activity-row";

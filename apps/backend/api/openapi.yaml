@@ -790,7 +790,7 @@ paths:
       description: |
         Privy keeps the session and the sign-in time when someone signs in again while signed in, so after a
         reauth_required the web asks for Forwend's own code. It goes to the login email at once; one per 30 seconds
-        per session and 10 per user per hour. It works for 10 minutes and 5 tries.
+        per session, and 10 never confirmed per user per hour. It works for 10 minutes and 5 tries.
       responses:
         "202":
           description: Sent
@@ -2969,7 +2969,7 @@ paths:
       operationId: prepareSend
       summary: Check a send out of the profile's wallet before the browser signs it (R-211)
       description: |
-        Only the owner, with a fresh sign-in (D-49, D-61). Give `to` for an outside address or `toProfileId` for
+        Only the owner (D-61); a fresh sign-in comes at approve (D-49). Give `to` for an outside address or `toProfileId` for
         another of the owner's profiles. The server reads the wallet's balance, dry-runs the transfer and keeps the
         send for 10 minutes. It replaces the wallet's earlier unsigned send on the chain. Only chains where Forwend
         pays the gas offer Send (D-119).
@@ -2991,12 +2991,12 @@ paths:
                 amount: { type: string, description: "Base units, a whole number above 0" }
       responses:
         "201":
-          description: Checked and kept; the browser signs it next
+          description: Checked and kept; the review shows it, then approve
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Send" }
         "400": { $ref: "#/components/responses/MalformedRequest" }
-        "401": { $ref: "#/components/responses/ReauthRequired" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "409":
           description: A send from this wallet is on its way on this network (send_in_progress)
@@ -3063,6 +3063,27 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Send" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/SendNotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/sends/{sendId}/approve:
+    post:
+      operationId: approveSend
+      summary: Confirm it's you for a send before the browser signs it (R-211, D-49)
+      description: |
+        Needs a fresh sign-in. Answers with the send brought up to date, as the GET does. The browser signs only a send
+        still `prepared`; an expired, canceled or replaced one is checked again from the amount.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/SendId"
+      responses:
+        "200":
+          description: The send
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Send" }
+        "401": { $ref: "#/components/responses/ReauthRequired" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/SendNotFound" }
         "429": { $ref: "#/components/responses/RateLimited" }

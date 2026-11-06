@@ -31,7 +31,7 @@ func sendsAPI(t *testing.T) (invoiceEnv, string) {
 }
 
 // R-211, D-61: only the owner, freshly signed in, prepares a send; a team member, even an Admin, never moves money.
-func TestOnlyTheOwnerWithAFreshSignInPreparesASend(t *testing.T) {
+func TestOnlyTheOwnerPreparesAndOnlyAFreshSignInApprovesASend(t *testing.T) {
 	e, token := sendsAPI(t)
 	body := `{"chainId": 31337, "token": "` + token + `", "to": "0x00000000000000000000000000000000000000cc",
 		"amount": "2500000"}`
@@ -48,9 +48,23 @@ func TestOnlyTheOwnerWithAFreshSignInPreparesASend(t *testing.T) {
 	if w := r.body["warnings"].([]any); len(w) != 1 || w[0] != "newRecipient" {
 		t.Errorf("warnings = %v", w)
 	}
-	if r := e.signedAt(t, "POST", path, "did:privy:alice", signedInAt.Add(2*time.Second), body); r.status !=
+	// D-49: the review is only a check, so a refreshed token prepares; approving the send for signing needs a fresh
+	// sign-in, and answers with the send as GET reads it.
+	refreshed := e.signedAt(t, "POST", path, "did:privy:alice", signedInAt.Add(2*time.Second), body)
+	if refreshed.status != http.StatusCreated {
+		t.Fatalf("a refreshed token prepares: %d %v", refreshed.status, refreshed.body)
+	}
+	approve := path + "/" + refreshed.body["sendId"].(string) + "/approve"
+	if r := e.signedAt(t, "POST", approve, "did:privy:alice", signedInAt.Add(2*time.Second), ""); r.status !=
 		http.StatusUnauthorized || errorCode(r) != "reauth_required" {
-		t.Errorf("a refreshed token: %d %v", r.status, r.body)
+		t.Errorf("a refreshed token approves: %d %v", r.status, r.body)
+	}
+	if r := e.call(t, "POST", approve, "did:privy:alice", "", ""); r.status != http.StatusOK ||
+		r.body["status"] != "prepared" || r.body["sendId"] != refreshed.body["sendId"] {
+		t.Errorf("a fresh sign-in approves: %d %v", r.status, r.body)
+	}
+	if r := e.call(t, "POST", approve, "did:privy:bob", "", ""); r.status != http.StatusForbidden {
+		t.Errorf("another user approves: %d %v", r.status, r.body)
 	}
 	merchant := "/v1/profiles/" + e.walletless + "/sends"
 	if r := e.call(t, "POST", merchant, "did:privy:bob", "", body); r.status != http.StatusForbidden {
