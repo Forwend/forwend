@@ -20,8 +20,11 @@ export const metadata: Metadata = {
 export default function NotFound() {
   return (
     <LandscapePage homeLabel={SIGN_IN_COPY.homeLabel}>
-      <div className="flex flex-col items-center gap-2 text-center">
-        <p className="text-sm font-medium text-muted tabular-nums">{NOT_FOUND.code}</p>
+      <div className="flex flex-col items-center gap-3 text-center">
+        {/* The number leads, in the display face, as on most product 404s; the heading says it in words. */}
+        <p className="font-display text-8xl leading-none font-medium tracking-tighter text-ink tabular-nums">
+          {NOT_FOUND.code}
+        </p>
         <h1 className="text-3xl font-semibold tracking-tight text-balance text-ink">
           {NOT_FOUND.title}
         </h1>

@@ -161,6 +161,8 @@ function ConfirmStep({
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
   const [sendFailed, setSendFailed] = useState(false);
+  // The hour's codes are used up (too_many_codes): asking again would fail the same way, so no link.
+  const [tooMany, setTooMany] = useState(false);
   const [error, setError] = useState("");
   // Sending and checking don't wait on each other: a code from an earlier email still works while a new one goes.
   const [sending, setSending] = useState(false);
@@ -184,6 +186,7 @@ function ConfirmStep({
       // This session's code sent a moment ago is still the one to enter.
       if (code === "code_sent_recently") setSent(true);
       else if (code === "no_login_email") setNoEmail(true);
+      else if (code === "too_many_codes") setTooMany(true);
       else setSendFailed(true);
     } finally {
       setSending(false);
@@ -284,10 +287,12 @@ function ConfirmStep({
           {/* The one status line. It stays while a code goes out, so the focus stays on its link. */}
           <p
             aria-live="polite"
-            className={`min-h-5 text-sm ${sendFailed ? "text-danger" : "text-muted"}`}
+            className={`min-h-5 text-sm ${sendFailed || tooMany ? "text-danger" : "text-muted"}`}
           >
             {sending && !sent ? (
               COPY.sending
+            ) : tooMany ? (
+              COPY.tooMany
             ) : sendFailed ? (
               <>
                 {COPY.sendFailed}{" "}

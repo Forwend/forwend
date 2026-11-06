@@ -143,18 +143,20 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-06 review fail by reviewer: Fail on one money-safety gap. After the hold, useSendApproval sets working but calls onSigning(true) only after approve answers (use-send-approval.ts:43-60). While approve is in flight (a Privy call on a fresh session, or the repeat after a confirmed code) the sheet is not locked and Back shows (send-sheet.tsx:169,508,510). Closing sends cancel, but if approve read the send first, Privy still signs it with the sheet closed, and the server may never hold the hash; Back to change the amount can likewise sign the old send. The old Review locked from the click. Fix: lock close and hide Back while approval.working and no confirm step shows (or drop the sign when the attempt was abandoned), with a unit test. Also fix: base.css:183 comment still describes --fw-step-x and slides; R-213 still says the button reads Send 5 USDC and R-214 says pressed, now Hold to send. Should-fix: HoldButton has no path for screen readers in browse mode, which click instead of key or pointer down. Rest looks right: approve gates signing on status prepared, base units via BigInt, one send per hold, FreshSignIn on approve only, openapi and api.md match, EIP-55 check, StepTransition fade with motion-safe, hold fill marked essential. Ran: go test ./internal/httpapi/tests/ ./internal/send/ ok; web vitest 271 passed; ui-web vitest 23 passed; harness check typecheck lint docs-check passed."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
-        "status": "failed",
-        "at": "2026-11-06T16:09:39Z",
+        "status": "passed",
+        "at": "2026-11-06T16:39:29Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 4.5,
+            "seconds": 4.1,
             "log": ""
           },
           {
@@ -168,7 +170,7 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
+            "seconds": 0.4,
             "log": ""
           },
           {
@@ -182,7 +184,7 @@
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 63.4,
+            "seconds": 60.2,
             "log": ""
           },
           {
@@ -197,40 +199,54 @@
             "id": "backend-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 29.6,
+            "seconds": 28.9,
             "log": ""
           },
           {
             "id": "web-unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
+            "seconds": 4.3,
+            "log": ""
           },
           {
             "id": "live-e2e",
-            "outcome": "failed",
-            "exit": 1,
-            "seconds": 511.4,
-            "log": "docs/runs/F430-20261106T160939Z-live-e2e.log"
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 492.8,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 45.5,
+            "log": ""
           }
         ],
-        "taskHash": "1134cc9cb0c00a94",
-        "filesHash": "0d5f6e771698cb76",
+        "taskHash": "50bd86d1b8ad74ee",
+        "filesHash": "7ca2b6e3e87e4a67",
         "proof": {
           "1": "unit: TestOnlyTheOwnerPreparesAndOnlyAFreshSignInApprovesASend: a refreshed token prepares (201) but gets reauth_required on approve, a fresh sign-in approves (200, prepared), another user 403; TestProfileRoutesAreAllListed covers approve. web-unit: send-approval.test.tsx signs only a send still prepared, and one hold starts one send",
-          "2": "live-e2e: send.spec's stale-session test shows Summary with no confirm, holds Send, gets Confirm it's you as the sheet's step, goes Back to Summary with no alert, holds again, enters the emailed code and reaches Sending with an explorer link; ui-unit: hold-button.test.tsx acts only after the whole hold, from pointer or Space, never on Enter alone or while disabled",
+          "2": "live-e2e: send.spec's stale-session test, in a session of its own made stale by a sign-in elsewhere, shows Summary with no confirm, holds Send, gets Confirm it's you as the sheet's step, goes Back to Summary with no alert, holds again, enters the emailed code and reaches Sending; ui-unit: hold-button.test.tsx acts only after the whole hold, from pointer or Space, never on Enter alone or while disabled",
           "3": "live-e2e: Back from the confirm step returns to Summary with no alert; send.spec's reduced-motion test shows each step at once; StepTransition fades without translate, as DESIGN.md says",
-          "4": "web-unit: fresh-sign-in.test.tsx: one line says where the code goes, Resend in 30s counts down, a failed send says so once and leaves the boxes unmarked, a full code is checked after a failed send (failed before the fix), and a sheet or dialog step has no Cancel; live-e2e: keys.spec confirms with the emailed code",
+          "4": "web-unit: fresh-sign-in.test.tsx: one line says where the code goes, Resend in 30s counts down, a resend empties the boxes, a failed send says so once and leaves the boxes unmarked, a full code is checked after a failed send (failed before the fix), and a sheet or dialog step has no Cancel; live-e2e: keys.spec confirms with the emailed code",
           "5": "ui-unit: text-field.test.tsx keeps a hidden label as the name and the in-field control out of it; web-unit: send.test.ts checks EIP-55 vectors; live-e2e: send.spec shows Paste in the field, Continue off, a wrong checksum flagged at once, and Clear",
           "6": "web-unit: app-nav.test.ts finds no group named like a page in it and no two pages with one icon; it failed with the merchant group named Payments and the shared icon",
-          "7": "live-e2e: balances.spec opens Receive, picks USDC then a network, sees the address, steps Back to the network and then the token, titled Receive USDC and then Receive, and picks again"
+          "7": "live-e2e: balances.spec opens Receive, picks USDC then a network, sees the address, steps Back to the network and then the token, titled Receive USDC and then Receive, and picks again",
+          "8": "web-e2e: link-pay.spec shows the 404 page for an unknown link with its heading This path ends here.; the page uses LandscapePage as sign-in does"
+        },
+        "review": {
+          "result": "fail",
+          "by": "reviewer",
+          "summary": "Fail on one money-safety gap. After the hold, useSendApproval sets working but calls onSigning(true) only after approve answers (use-send-approval.ts:43-60). While approve is in flight (a Privy call on a fresh session, or the repeat after a confirmed code) the sheet is not locked and Back shows (send-sheet.tsx:169,508,510). Closing sends cancel, but if approve read the send first, Privy still signs it with the sheet closed, and the server may never hold the hash; Back to change the amount can likewise sign the old send. The old Review locked from the click. Fix: lock close and hide Back while approval.working and no confirm step shows (or drop the sign when the attempt was abandoned), with a unit test. Also fix: base.css:183 comment still describes --fw-step-x and slides; R-213 still says the button reads Send 5 USDC and R-214 says pressed, now Hold to send. Should-fix: HoldButton has no path for screen readers in browse mode, which click instead of key or pointer down. Rest looks right: approve gates signing on status prepared, base units via BigInt, one send per hold, FreshSignIn on approve only, openapi and api.md match, EIP-55 check, StepTransition fade with motion-safe, hold fill marked essential. Ran: go test ./internal/httpapi/tests/ ./internal/send/ ok; web vitest 271 passed; ui-web vitest 23 passed; harness check typecheck lint docs-check passed.",
+          "at": "2026-11-06T16:54:34Z",
+          "filesHash": "7ca2b6e3e87e4a67"
         }
       },
       "branch": "fix/f430-a-send-asks-confirm-it-s-you-only-after",
       "baseCommit": "69bbc3a24582032f8a7bd1ec92071f94b0f3dec0",
-      "failedVerifies": 1
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

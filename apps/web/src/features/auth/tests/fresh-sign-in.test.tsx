@@ -151,7 +151,9 @@ describe("fresh sign-in", () => {
       data: { error: { code: "too_many_codes" } },
     });
     renderForm();
-    await screen.findByText(/We couldn't send the code\./);
+    // The hour's codes are used up: said so, with no link that would fail the same way.
+    await screen.findByText("That's the most codes for one hour. Try again later.");
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 
   it("tells an account with no login email that no code can come", async () => {

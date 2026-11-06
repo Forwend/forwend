@@ -57,7 +57,7 @@ Read only the sections your change touches. Any new control also needs
   - Large screens keep quiet terrain below the form; only its faded top may sit behind the last button.
 - On phones, sign-in uses an almost plain token surface. Decorative backgrounds do not receive pointer input.
 - The 404 page uses sign-in's layout (`LandscapePage`): the bar, the landscape strip and one centered column.
-  - A small muted 404, the heading, one line, and a full-width Back to Forwend.
+  - A large 404 in the display face leads, then the heading, one line, and a full-width Back to Forwend.
 
 ## Type and color
 
@@ -199,6 +199,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - One status line under them says what is next, and nothing else repeats it:
     - "Sending a code…", then "Didn't get it? Resend in 28s", then a Resend code link once the api's wait is over.
     - "We couldn't send the code. Try again" when the send failed. That is not a wrong code: the boxes stay unmarked.
+    - When the hour's codes are used up, it says so, with no link: asking again would fail the same way.
   - A full code is checked whatever the send did: an earlier email's code may still be the one.
   - Under a sheet or dialog title, its Back or Close gives up, so the step has only Confirm, full width.
   - A send's confirm is the sheet's own step, after Send is held (see Send).

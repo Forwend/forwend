@@ -20,6 +20,7 @@ export const FRESH_SIGN_IN_COPY = {
   resend: "Resend code",
   resendIn: (seconds: number) => `Resend in ${seconds}s`,
   sendFailed: "We couldn't send the code.",
+  tooMany: "That's the most codes for one hour. Try again later.",
   tryAgain: "Try again",
   cancel: "Cancel",
   codeFailed: "That code is wrong or expired.",
