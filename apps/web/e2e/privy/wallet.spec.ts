@@ -28,13 +28,11 @@ test("the owner opens Privy's export page for the profile wallet after the warni
   }
   // Privy's own window opens over the page and connects to the wallet; its key loads in a frame on Privy's domain.
   await expect(dialog).toBeHidden({ timeout: 20_000 });
-  const connecting = page.getByText("Connecting to your wallet");
-  await expect(connecting).toBeVisible({ timeout: 20_000 });
-  await expect(connecting).toBeHidden({ timeout: 45_000 });
   // Privy's window names the wallet it exports, and its copy buttons load in Privy's frame: the key is reachable there.
   // The test never presses them, so no key reaches a log.
+  // Privy may first show "Connecting to your wallet", or skip it when the wallet is already connected.
   const window = page.locator("#privy-modal-content");
-  await expect(window).toContainText("Export wallet");
+  await expect(window).toContainText("Export wallet", { timeout: 45_000 });
   const address =
     (
       await main
