@@ -172,8 +172,9 @@ code, and never connect a wallet (D-37).
 - 12.2a Settings pages: account settings (security from 12.2, passkey sign-in) apart from each profile's settings.
   Freelancer and personal profiles: billing details (now `/app/billing-details`, reached from the checklist) and
   profile name; merchant profiles add stores and team (11.1, 11.2).
-  - Add the Test mode / Live mode switch after phase 12 or 13, once production contracts exist.
-  - Until then, staging uses testnets only. Test mode uses testnet tokens; live mode uses mainnets and real money.
+  - Each profile has a Developer mode toggle in its settings (D-120, F438).
+  - Off is live mode on mainnets with real money; on is test mode on the testnets.
+  - Until F438 ships, staging uses testnets only.
 - 12.3 Same-chain send to your own profiles and outside addresses. Review recipient, profile, chain, token, debit,
   network fee and amount received; fresh sign-in; Privy client signing with sponsored gas (D-46). After 12.1.
 - 12.4 Handles (D-67) and saved contacts; new addresses are confirmed. After 12.3.

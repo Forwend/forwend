@@ -182,7 +182,7 @@ func TestPendingParts(t *testing.T) {
 		}
 	}
 	if _, err := pool.Exec(ctx, `
-		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled, livemode) VALUES (8453, 'evm', 'base', true, true))
+		WITH c AS (UPDATE chains SET enabled = true WHERE chain_id = 8453)
 		INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
 		VALUES (8453, 'evm', $1, 'USDC', 6, true)`, token); err != nil {
 		t.Fatal(err)

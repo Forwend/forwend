@@ -11,6 +11,10 @@
 - Migration 94 adds thirdweb for Base, Arbitrum and Arc, in its own budget group, measured on 2026-10-30.
   - Without a key it takes logs over up to 1000 blocks and batches of up to 25 calls; larger ones are refused.
   - It turns off Tenderly, whose 100-call batches get a rate limit, and PublicNode's WSS, which answers part of a batch.
+- Migration 105 adds the four mainnets, live mode and switched off, with public endpoints from chainlist.org (a list of chain RPCs), measured on 2026-11-08 (R-220).
+  - Each passed the migration 92 checks, with 1000-block logs and 25-call batches.
+  - Left out: `mainnet.base.org`, which refused logs and batches at its rate limit.
+  - Also left out: PublicNode on Arbitrum, which has no state at the finalized block.
 - Private endpoints require `secret_ref` and prohibit `public_url`; public endpoints require `public_url` and prohibit `secret_ref`.
 - `RPC_ENDPOINT_SECRETS` maps references to complete URLs in the backend environment.
 - Example format: `RPC_ENDPOINT_SECRETS='{"BASE_PRIMARY":"https://provider.example/api/replace-with-secret"}'`.
