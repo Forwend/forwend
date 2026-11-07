@@ -179,7 +179,7 @@
         "The embedded checkout fits a merchant's page after the redesign: phone panels reach the edge, a wide frame shows no art over the summary, and the example shop sets its own theme."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "browser-packages"
@@ -286,11 +286,18 @@
           "summary": "Since de5898c9 only docs/tasks.json changed (46d1c6fc). The four proof lines have their full descriptions again. No source changed after the earlier pass. Verify passed at 2026-11-07T22:59:44Z.",
           "at": "2026-11-07T23:00:03Z",
           "filesHash": "e5b1b9fcf5851e67"
-        }
+        },
+        "commit": "db323083",
+        "doneAt": "2026-11-07T23:04:33Z"
       },
       "branch": "fix/f434-the-node-js-and-react-packages-match-the",
       "baseCommit": "cb7a59b00b52cf13be954dc86e34485b54fe36de",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f434-the-node-js-and-react-packages-match-the",
+        "base": "main"
+      }
     },
     {
       "id": "F435",
