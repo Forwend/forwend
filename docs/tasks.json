@@ -193,7 +193,7 @@
         "The file stays valid JSON, its readers still work and every mixed-case address keeps its EIP-55 checksum."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "contracts"
       ],
@@ -250,11 +250,18 @@
           "summary": "Pass. deployments.json base-sepolia flow.refund is now 0xd5a72444...2b07 (32-byte lowercase hash, like pay, deploy and settle); the note no longer says the refund waits. JSON parses. Flow keys match arc-testnet and tempo-moderato plus the existing note. Note is accurate and one 19-word sentence (D-84). Readers: chaintest.go DeployFactory and ReceiveAddressVectors.s.sol read only chains.base-sepolia.refundAuthority and executor, unchanged; forge test 80 pass 1 skipped, including ReceiveAddressVectors.t.sol. All 17 mixed-case addresses match cast to-check-sum-address (offline). docs-check 0 errors. No other repo text mentions the pending refund. Diff touches only that file and docs/tasks.json harness records. Commit has no AI attribution. Non-blocking: the note now records history the commit already carries; dropping it would give the flow the same keys as the others. Refund tx not checked on chain (no RPC).",
           "at": "2026-11-07T00:20:33Z",
           "filesHash": "816db149e4b80b9c"
-        }
+        },
+        "commit": "47c57762",
+        "doneAt": "2026-11-07T00:21:51Z"
       },
       "branch": "chore/f432-the-base-sepolia-deploy-record-of-the-f4",
       "baseCommit": "fcee5659be0003a76b6838cc88c13b6127e93c50",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "chore/f432-the-base-sepolia-deploy-record-of-the-f4",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
