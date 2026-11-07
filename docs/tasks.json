@@ -198,20 +198,22 @@
         "2026-11-07 review fail by reviewer: Must-fix: apps/web/e2e/privy/payments.spec.ts:34-63. The payment fixture has hostedUrl but no payToken. payment-detail.tsx:93 now reads only payment.payToken, so the detail mock built from it (detail, line 83) shows no Invoice PDF link. Then the check at payments.spec.ts:843 fails. This spec runs only under e2e:live (playwright.privy.config.ts), so verify did not catch it. Add payToken: 'd'.repeat(64) to the fixture. Should-fix: route.ts quota comment. The limiter uses fixed 10-minute windows, so 15 minutes can span three windows: up to 60 checkouts open at once, not 40. At 12 options that is 720 addresses, over the 500 a day. The real bound is 8 options; today's testnets give 3, so it holds in practice. Fix the numbers in the comment. All earlier findings are fixed. client.ts:189-190: a Retry-After over 60s, or a 502/503/504 with one, throws at once with retryAfter. The new send test proves one call. RETRY_STATUSES comment is right. expiresIn 900 is sent. wait() creates no entries and hit() runs only for an accepted order, so the map stays small. A shop refusal no longer costs the visitor a slot, and the route test proves it. node CHANGELOG is in files, and check-browser-packages is not affected. Ran: node test 17 passed, example-merchant test 11 passed.",
         "2026-11-07 review pass by reviewer: Both open findings are fixed. apps/web/e2e/privy/payments.spec.ts:61: the payment fixture has payToken, and detail and row spread it, so the Invoice PDF check at line 843 has its token again. apps/example-merchant/src/app/api/orders/route.ts:7-10: the comment now says 15 minutes can span three fixed windows, so at most 60 are open; that stays under 500 addresses up to 8 options. All earlier findings stay fixed. Open, not a code finding: the live e2e suite (e2e:live, playwright.privy.config.ts) was not run, because the owner's dev stack holds port 8080. Run it before merge to prove the fixture change. The web typecheck is clean. Verify passed at 2026-11-07T22:38:25Z.",
         "2026-11-07 F434 verified (8 checks) and review passed; not committed yet. Live e2e not run: owner's dev stack holds port 8080. Next: commit, run e2e:live, then done F434.",
-        "2026-11-07 review pass by reviewer: The release edits in a0046f21 match the code: forwend 0.2.0 and @forwend/js and @forwend/react 0.1.1, the CHANGELOG dates, and the docs text on methods, retryAfter, the short Retry-After retry and https baseUrl. Open, not a code defect: npm view still shows 0.1.0 for all three packages. The AGENTS lines, PLAN 11.9.4, the docs install commands and the published-registry sentence are true only once publishing is done. Publish before merge or deploy. Publish react with pnpm, so its workspace:^ dependency on @forwend/js becomes ^0.1.1. Nit: apps/example-merchant/README.md:35 still says npm's forwend 0.1.0 has no checkout methods yet; name 0.2.0 now. The live suite passed, 82 tests, as the coordinator reported."
+        "2026-11-07 review pass by reviewer: The release edits in a0046f21 match the code: forwend 0.2.0 and @forwend/js and @forwend/react 0.1.1, the CHANGELOG dates, and the docs text on methods, retryAfter, the short Retry-After retry and https baseUrl. Open, not a code defect: npm view still shows 0.1.0 for all three packages. The AGENTS lines, PLAN 11.9.4, the docs install commands and the published-registry sentence are true only once publishing is done. Publish before merge or deploy. Publish react with pnpm, so its workspace:^ dependency on @forwend/js becomes ^0.1.1. Nit: apps/example-merchant/README.md:35 still says npm's forwend 0.1.0 has no checkout methods yet; name 0.2.0 now. The live suite passed, 82 tests, as the coordinator reported.",
+        "2026-11-07 review pass by reviewer: de5898c9 fixes the README nit: apps/example-merchant/README.md:35 now names forwend 0.2.0. Publishing pnpm-packed tarballs with npm before the merge is fine, because pack rewrites the react dependency to ^0.1.1. Should-fix: the last verify replaced the four proof lines in docs/tasks.json with 'unchanged'. Before done, give the full proof descriptions again, so the delivery record still says what each check proves."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-07T22:56:40Z",
+        "at": "2026-11-07T22:59:44Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 5.0,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "docs-check",
@@ -224,36 +226,41 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.5,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.8,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 69.2,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 2.1,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 46.3,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "browser-packages",
@@ -267,10 +274,10 @@
         "taskHash": "a79f6bd9312a4b56",
         "filesHash": "e5b1b9fcf5851e67",
         "proof": {
-          "1": "unit: unchanged since the last pass; example README names forwend 0.2.0",
-          "2": "browser-packages: unchanged",
-          "3": "unit: unchanged",
-          "4": "e2e: unchanged"
+          "1": "unit: packages/node 0.2.0 tests pass: full Payment, PaymentDetails, Store types, list filters, stores and invoice cancel/reopen/send routes, retries keep the key, a Retry-After over 60s throws at once, https-only base, id checks, case-insensitive webhook headers, non-JSON body error; openapi error enum and Payment fields match Go; backend checkout test asserts payToken; web payment detail reads payToken (live suite 82 passed)",
+          "2": "browser-packages: @forwend/js 0.1.1 refuses an http baseUrl except localhost (unit test); js and react 0.1.1 pack, fit their gzip budget and install fresh; READMEs and docs pages say where payToken comes from, when to set theme, and the new versions",
+          "3": "unit: example-merchant route test: 15-minute checkouts, 20 per shop and 5 per visitor behind TRUST_PROXY_HEADER per 10 minutes, 429 with Retry-After, a shop refusal costs the visitor nothing; at most 60 open checkouts keep under 500 addresses up to 8 options",
+          "4": "e2e: example-merchant spec passes with the real frame; fw-safe-x has its own 1rem/1.5rem gutter so fw-panel reaches the edge (measured 0-390 on a 390 phone, app and embed), ridges hidden in embed, shop pins theme light (screens checked at 1280 and 390, light and dark)"
         }
       },
       "branch": "fix/f434-the-node-js-and-react-packages-match-the",
