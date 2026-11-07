@@ -46,7 +46,7 @@
         "The backend receive-address constants, vectors and canary example match the new factory and implementation."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "harness",
         "docs-check",
@@ -154,11 +154,18 @@
           "summary": "Pass. Both blocking and non-blocking points of the last review are fixed in f7d64064. (1) deployments.json base-sepolia flow.receiver is now 0x021c27ba89C55eEdAfBa215BeD2Bc499b610BEbd, equal to cast to-check-sum-address. All 17 mixed-case addresses in the file checksum correctly (cast, offline); the 4 others are all-lowercase or digit-only and carry no checksum. JSON parses. (2) settle.go:41-42 comment now fills to 118 columns; '(deployments.json, superseded).' would reach 131, so the break is right. go vet ./internal/settlement ok; gofmt -l clean. The file's other lines over 120 (278, 325, 335, 341, 386) predate this commit. (3) architecture.md:105-106 now says 'its v1 testnet deploy and settle used 1,305,758 and 572,845 gas'. Accurate: the figures came in at 2e5cda2b and 272aee24 (F121, F124), from the F040 v1 Tempo flow, now superseded[0]. The sentence is 24 words (D-84). docs-check: 0 errors. Diff touches only those three lines plus docs/tasks.json harness records (prior review entry, evidence timings, filesHash). Commit carries no AI attribution. Gas figures not rechecked on chain (no RPC).",
           "at": "2026-11-07T00:02:56Z",
           "filesHash": "b903d7e7f9352333"
-        }
+        },
+        "commit": "41166ef5",
+        "doneAt": "2026-11-07T00:05:29Z"
       },
       "branch": "feat/f417-tokens-sent-to-the-invoice-receiver-fact",
       "baseCommit": "a8553c9a2f17383987b5b4aece523b4eb054eea4",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f417-tokens-sent-to-the-invoice-receiver-fact",
+        "base": "main"
+      }
     },
     {
       "id": "F418",
