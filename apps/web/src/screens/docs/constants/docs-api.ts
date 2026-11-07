@@ -419,7 +419,13 @@ export const API_PAGES: readonly DocsArticle[] = [
           {
             name: "payment.hostedUrl",
             type: "string | null",
-            description: "Hosted checkout URL; its final path segment is the public pay token.",
+            description: "Hosted checkout URL to redirect the customer to.",
+          },
+          {
+            name: "payment.payToken",
+            type: "string | null",
+            description:
+              "The public pay token, the URL's last segment, for @forwend/js and @forwend/react.",
           },
           {
             name: "payment.chainId, token, amount, symbol, decimals",

@@ -55,12 +55,15 @@
   }
 }
 
+/* The app's and checkout's gutter, which fw-panel bleeds over on phones. Its own variable: the public pages'
+   --fw-page-gutter is wider on phones and would leave every panel short of the screen's edge. */
 @utility fw-safe-x {
-  padding-left: max(var(--fw-page-gutter, 1rem), env(safe-area-inset-left));
-  padding-right: max(var(--fw-page-gutter, 1rem), env(safe-area-inset-right));
+  --fw-safe-gutter: 1rem;
+  padding-left: max(var(--fw-safe-gutter), env(safe-area-inset-left));
+  padding-right: max(var(--fw-safe-gutter), env(safe-area-inset-right));
 
   @variant sm {
-    --fw-page-gutter: 1.5rem;
+    --fw-safe-gutter: 1.5rem;
   }
 }
 

@@ -11,7 +11,7 @@ export function Cart() {
   const router = useRouter();
   const [quantities, setQuantities] = useState<Partial<Record<ItemId, number>>>({});
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
   const lines = ITEMS.filter(([id]) => (quantities[id] ?? 0) > 0).map(([id]) => ({
     id,
     quantity: quantities[id],
@@ -20,7 +20,7 @@ export function Cart() {
 
   async function checkout() {
     setBusy(true);
-    setFailed(false);
+    setFailed(null);
     const answer = await fetch("/api/orders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -28,7 +28,12 @@ export function Cart() {
     }).catch(() => null);
     if (!answer?.ok) {
       setBusy(false);
-      setFailed(true);
+      // The server's own reason, such as its order limit; any other failure gets the general one.
+      const reason = await answer?.json().then(
+        (b) => b?.error,
+        () => null,
+      );
+      setFailed(typeof reason === "string" ? reason : "The order could not be made. Try again.");
       return;
     }
     router.push(`/orders/${(await answer.json()).orderId}`);
@@ -61,7 +66,7 @@ export function Cart() {
       >
         {busy ? "Creating the order…" : "Check out"}
       </button>
-      {failed ? <p role="alert">The order could not be made. Try again.</p> : null}
+      {failed ? <p role="alert">{failed}</p> : null}
     </section>
   );
 }

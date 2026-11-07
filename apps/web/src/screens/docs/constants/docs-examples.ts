@@ -22,8 +22,9 @@ export const CHECKOUT_REQUEST = `const response = await fetch(
 );
 if (!response.ok) throw new Error("Checkout could not be created");
 const session = await response.json();
-// Send only the hosted URL to your browser.
-const hostedUrl = session.payment.hostedUrl;`;
+// Send only the hosted URL, or the pay token for an embedded checkout, to your browser.
+const hostedUrl = session.payment.hostedUrl;
+const payToken = session.payment.payToken;`;
 
 export const INVOICE_REQUEST = `import { Forwend } from "forwend";
 

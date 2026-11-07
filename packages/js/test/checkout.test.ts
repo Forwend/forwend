@@ -108,6 +108,14 @@ describe("mountCheckout", () => {
       expect(() => mount({ payToken }), payToken).toThrow(TypeError);
     }
   });
+
+  it("frames the checkout only over https, or from a local web app", () => {
+    for (const baseUrl of ["http://forwend.com", "http://evil.example", "javascript:alert(1)"]) {
+      expect(() => mount({ baseUrl }), baseUrl).toThrow(TypeError);
+      expect(() => payUrl(TOKEN, baseUrl), baseUrl).toThrow(TypeError);
+    }
+    expect(() => mount({ baseUrl: "http://127.0.0.1:3000" })).not.toThrow();
+  });
 });
 
 describe("hosted links", () => {

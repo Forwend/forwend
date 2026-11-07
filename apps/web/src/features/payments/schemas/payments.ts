@@ -54,6 +54,8 @@ export const paymentSchema = z.object({
   createdAt: apiTime,
   closesAt: apiTime,
   hostedUrl: z.url().nullable(),
+  /** hostedUrl's last part; an API from before it leaves it out. */
+  payToken: z.string().nullable().optional(),
   amounts: paymentAmountsSchema,
   /** Derived by the API (D-114); older reads leave them out and the raw facts decide. */
   state: z.string().optional(),

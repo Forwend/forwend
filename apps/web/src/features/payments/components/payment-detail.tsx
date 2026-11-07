@@ -90,7 +90,7 @@ export function PaymentDetail({ profileId, paymentId, actions }: PaymentDetailPr
   const status = paymentDisplayStatus(payment);
   const held = heldHint(payment.problems);
   const wallet = paymentWallet(payment);
-  const payToken = payment.hostedUrl ? new URL(payment.hostedUrl).pathname.split("/").pop() : null;
+  const payToken = payment.payToken ?? null;
   const chosen = payment.options.find((option) => option.optionId === payment.optionId);
   // Items are in the base units of the option whose id is the payment's.
   const main = payment.options.find((option) => option.optionId === payment.paymentId);

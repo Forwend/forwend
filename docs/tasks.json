@@ -175,20 +175,129 @@
       "acceptance": [
         "The node SDK types, README and published package match openapi and the backend.",
         "The js and react packages and their READMEs match what the API returns and the embed protocol, with the audit's hardening fixes.",
-        "The example merchant's POST /api/orders is limited, so shop visitors can't use up the profile's checkout quota (audit medium, left from F433)."
+        "The example merchant's POST /api/orders is limited, so shop visitors can't use up the profile's checkout quota (audit medium, left from F433).",
+        "The embedded checkout fits a merchant's page after the redesign: phone panels reach the edge, a wide frame shows no art over the summary, and the example shop sets its own theme."
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "unit",
         "browser-packages"
       ],
-      "refs": [],
+      "refs": [
+        "R-154",
+        "R-168",
+        "R-169",
+        "R-170",
+        "R-188"
+      ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-11-07 review fail by reviewer: Must-fix 1: packages/node/src/client.ts:188 and :223 sleep for the full Retry-After with no cap. invoices.send on an invoice sent in the last 24h gets 429 rate_limited with Retry-After up to 86400 (invoice/send.go:63-79, SendEvery 24h). A script against dist showed two 86400000 ms sleeps, then the email is sent a day later. Retry only when Retry-After is short (for example 60s or less), else throw ForwendError with retryAfter at once. Add a test. Must-fix 2: the example's shop limit does not protect the checkout quota, so acceptance 3 and the new R-170 text are not met. route.ts:30 sends no expiresIn, so sessions take the store default, 604800s by DB default (migrations/00058_stores.sql:9). Unpaid sessions then stay open 7 days and count toward MaxOpen 1000 and MaxPerDay 500 (invoice/invoice.go:49-50, create.go:200-216), per option. At 20 per 10 min (route.ts:11) one visitor without TRUST_PROXY_HEADER fills the daily 500 in about 4 hours, sooner with several options. Send a short expiresIn (such as 900) and pick limits whose product stays under the quota; state the math in the comment. Should-fix: client.ts:43 comment says a 502/503/504 retry is safe whatever the request; a 502/504 can come after the API acted, and the code rightly retries them only for GET or keyed requests. Fix the comment. Should-fix: limit.ts:8 prunes only expired entries; with a trusted proxy and many IPv6 addresses the map grows without bound inside a 10-minute window, and every request past 10000 keys scans the whole map. Cap the map (refuse or drop the oldest). Should-fix: route.ts:21 counts a visitor's hit even when the shop limit then refuses it. Should-fix: apps/web/src/features/payments/components/payment-detail.tsx:93 still parses the token out of hostedUrl; read payment.payToken and add it to features/payments/schemas/payments.ts:56. Nit: no route-level test for the 429 path and the trusted header; only the limiter is tested. Nit: packages/node has no CHANGELOG while js and react got Unreleased entries. Checked and fine: retry loop response handling and body cancel, unkeyed POSTs (cancel, reopen, expire) never retried after a lost answer, same Idempotency-Key reused, timeout per try also covers the body read. SDK routes, Store, PaymentDetails and list filters match Go and openapi. openapi Error enum now covers every code WriteError sends. FromInvoice is the only Payment constructor, so payToken reaches create, get, list, attention and details. fw-safe-x change: no element inside fw-safe-x reads --fw-page-gutter (onboarding, site-bar, landing are outside), so only the phone padding changes, 1.25rem to 1rem, as intended. FooterRidges in-[[data-embed]] matches EmbedFrame's data-embed ancestor. Kept tests fit the workflow rule. Ran: node test 16 passed, js test 7 passed, example-merchant test 9 passed, go test TestCheckoutSessionsReplayExpireAndExposeCanonicalPayments ok.",
+        "2026-11-07 review fail by reviewer: Must-fix: apps/web/e2e/privy/payments.spec.ts:34-63. The payment fixture has hostedUrl but no payToken. payment-detail.tsx:93 now reads only payment.payToken, so the detail mock built from it (detail, line 83) shows no Invoice PDF link. Then the check at payments.spec.ts:843 fails. This spec runs only under e2e:live (playwright.privy.config.ts), so verify did not catch it. Add payToken: 'd'.repeat(64) to the fixture. Should-fix: route.ts quota comment. The limiter uses fixed 10-minute windows, so 15 minutes can span three windows: up to 60 checkouts open at once, not 40. At 12 options that is 720 addresses, over the 500 a day. The real bound is 8 options; today's testnets give 3, so it holds in practice. Fix the numbers in the comment. All earlier findings are fixed. client.ts:189-190: a Retry-After over 60s, or a 502/503/504 with one, throws at once with retryAfter. The new send test proves one call. RETRY_STATUSES comment is right. expiresIn 900 is sent. wait() creates no entries and hit() runs only for an accepted order, so the map stays small. A shop refusal no longer costs the visitor a slot, and the route test proves it. node CHANGELOG is in files, and check-browser-packages is not affected. Ran: node test 17 passed, example-merchant test 11 passed.",
+        "2026-11-07 review pass by reviewer: Both open findings are fixed. apps/web/e2e/privy/payments.spec.ts:61: the payment fixture has payToken, and detail and row spread it, so the Invoice PDF check at line 843 has its token again. apps/example-merchant/src/app/api/orders/route.ts:7-10: the comment now says 15 minutes can span three fixed windows, so at most 60 are open; that stays under 500 addresses up to 8 options. All earlier findings stay fixed. Open, not a code finding: the live e2e suite (e2e:live, playwright.privy.config.ts) was not run, because the owner's dev stack holds port 8080. Run it before merge to prove the fixture change. The web typecheck is clean. Verify passed at 2026-11-07T22:38:25Z.",
+        "2026-11-07 F434 verified (8 checks) and review passed; not committed yet. Live e2e not run: owner's dev stack holds port 8080. Next: commit, run e2e:live, then done F434.",
+        "2026-11-07 review pass by reviewer: The release edits in a0046f21 match the code: forwend 0.2.0 and @forwend/js and @forwend/react 0.1.1, the CHANGELOG dates, and the docs text on methods, retryAfter, the short Retry-After retry and https baseUrl. Open, not a code defect: npm view still shows 0.1.0 for all three packages. The AGENTS lines, PLAN 11.9.4, the docs install commands and the published-registry sentence are true only once publishing is done. Publish before merge or deploy. Publish react with pnpm, so its workspace:^ dependency on @forwend/js becomes ^0.1.1. Nit: apps/example-merchant/README.md:35 still says npm's forwend 0.1.0 has no checkout methods yet; name 0.2.0 now. The live suite passed, 82 tests, as the coordinator reported.",
+        "2026-11-07 review pass by reviewer: de5898c9 fixes the README nit: apps/example-merchant/README.md:35 now names forwend 0.2.0. Publishing pnpm-packed tarballs with npm before the merge is fine, because pack rewrites the react dependency to ^0.1.1. Should-fix: the last verify replaced the four proof lines in docs/tasks.json with 'unchanged'. Before done, give the full proof descriptions again, so the delivery record still says what each check proves.",
+        "2026-11-07 review pass by reviewer: Since de5898c9 only docs/tasks.json changed (46d1c6fc). The four proof lines have their full descriptions again. No source changed after the earlier pass. Verify passed at 2026-11-07T22:59:44Z."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-07T22:59:44Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "browser-packages",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          }
+        ],
+        "taskHash": "a79f6bd9312a4b56",
+        "filesHash": "e5b1b9fcf5851e67",
+        "proof": {
+          "1": "unit: packages/node 0.2.0 tests pass: full Payment, PaymentDetails, Store types, list filters, stores and invoice cancel/reopen/send routes, retries keep the key, a Retry-After over 60s throws at once, https-only base, id checks, case-insensitive webhook headers, non-JSON body error; openapi error enum and Payment fields match Go; backend checkout test asserts payToken; web payment detail reads payToken (live suite 82 passed)",
+          "2": "browser-packages: @forwend/js 0.1.1 refuses an http baseUrl except localhost (unit test); js and react 0.1.1 pack, fit their gzip budget and install fresh; READMEs and docs pages say where payToken comes from, when to set theme, and the new versions",
+          "3": "unit: example-merchant route test: 15-minute checkouts, 20 per shop and 5 per visitor behind TRUST_PROXY_HEADER per 10 minutes, 429 with Retry-After, a shop refusal costs the visitor nothing; at most 60 open checkouts keep under 500 addresses up to 8 options",
+          "4": "e2e: example-merchant spec passes with the real frame; fw-safe-x has its own 1rem/1.5rem gutter so fw-panel reaches the edge (measured 0-390 on a 390 phone, app and embed), ridges hidden in embed, shop pins theme light (screens checked at 1280 and 390, light and dark)"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Since de5898c9 only docs/tasks.json changed (46d1c6fc). The four proof lines have their full descriptions again. No source changed after the earlier pass. Verify passed at 2026-11-07T22:59:44Z.",
+          "at": "2026-11-07T23:00:03Z",
+          "filesHash": "e5b1b9fcf5851e67"
+        },
+        "commit": "db323083",
+        "doneAt": "2026-11-07T23:04:33Z"
+      },
+      "branch": "fix/f434-the-node-js-and-react-packages-match-the",
+      "baseCommit": "cb7a59b00b52cf13be954dc86e34485b54fe36de",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f434-the-node-js-and-react-packages-match-the",
+        "base": "main"
+      }
     },
     {
       "id": "F435",
@@ -214,9 +323,9 @@
     }
   ],
   "lastWrapup": {
-    "at": "2026-11-04T19:31:01Z",
+    "at": "2026-11-07T22:41:02Z",
     "clean": true,
     "problems": [],
-    "note": "F420 merged in #412; next: F421 optimizations from the same audits"
+    "note": "F434 verified (8 checks) and review passed; not committed yet. Live e2e not run: owner's dev stack holds port 8080. Next: commit, run e2e:live, then done F434."
   }
 }

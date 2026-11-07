@@ -312,6 +312,7 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
 - Exact retries return the original session, including concurrent retries that fill the last creation slot.
 - Changed prices, items, references, stores or key modes conflict; current store settings do not alter a retry.
 - Responses contain `sessionId`, session `status` and a canonical `payment` with its `paymentId`, states and `hostedUrl`.
+  - `payment.payToken` is the last part of `hostedUrl`: the token `@forwend/js` and `@forwend/react` take.
 - Session status is `open`, `complete` or `expired`; payment and settlement states remain separate.
 - `GET /v1/profiles/{profileId}/checkout-sessions` and `/{sessionId}` read checkout attempts without document-number restrictions.
 - `POST /v1/profiles/{profileId}/checkout-sessions/{sessionId}/expire` closes an open attempt without observed money.

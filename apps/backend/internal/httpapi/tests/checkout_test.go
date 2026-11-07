@@ -25,7 +25,8 @@ func TestCheckoutSessionsReplayExpireAndExposeCanonicalPayments(t *testing.T) {
 	id := created.body["sessionId"].(string)
 	payment := created.body["payment"].(map[string]any)
 	if payment["paymentId"] != id || payment["reference"] != "order-42" || payment["number"] != nil ||
-		payment["documentKind"] != "none" || payment["hostedUrl"] != webURL+"/pay/"+e.link(t, id) {
+		payment["documentKind"] != "none" || payment["hostedUrl"] != webURL+"/pay/"+e.link(t, id) ||
+		payment["payToken"] != e.link(t, id) {
 		t.Fatalf("checkout payment: %v", payment)
 	}
 	retry := e.call(t, "POST", base+"/checkout-sessions", alice, "purchase-42", strings.ReplaceAll(body, "2.00", "2.0"))

@@ -54,6 +54,7 @@ type Payment struct {
 	CreatedAt        string                `json:"createdAt"`
 	ClosesAt         string                `json:"closesAt"`
 	HostedURL        *string               `json:"hostedUrl"`
+	PayToken         *string               `json:"payToken"`
 }
 
 func FromInvoice(inv invoice.Invoice, webURL string) Payment {
@@ -70,6 +71,7 @@ func FromInvoice(inv invoice.Invoice, webURL string) Payment {
 	if inv.PayToken != "" {
 		url := webURL + "/pay/" + inv.PayToken
 		p.HostedURL = &url
+		p.PayToken = &inv.PayToken
 	}
 	return p
 }

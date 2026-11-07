@@ -59,6 +59,7 @@ export function OrderCheckout({ orderId, payToken, forwendUrl }: OrderCheckoutPr
         <PaymentElement
           payToken={payToken}
           baseUrl={forwendUrl}
+          theme="light"
           onStatus={() => void check()}
           onLoadError={() => setLoadFailed(true)}
         />
@@ -66,6 +67,7 @@ export function OrderCheckout({ orderId, payToken, forwendUrl }: OrderCheckoutPr
         <Checkout
           payToken={payToken}
           baseUrl={forwendUrl}
+          theme="light"
           onStatus={() => void check()}
           onLoadError={() => setLoadFailed(true)}
         />

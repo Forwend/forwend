@@ -1,7 +1,7 @@
 {
   "name": "forwend",
-  "version": "0.1.0",
-  "description": "The Forwend API for Node: invoices, webhook events and webhook verification.",
+  "version": "0.2.0",
+  "description": "The Forwend API for Node: checkout sessions, payments, invoices, stores, webhook events and webhook verification.",
   "license": "MIT",
   "homepage": "https://forwend.com/docs",
   "repository": {
@@ -17,13 +17,16 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "pnpm run build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },

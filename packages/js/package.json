@@ -1,6 +1,6 @@
 {
   "name": "@forwend/js",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Forwend checkout in the browser: a pay link, and the embedded checkout framed in your page.",
   "license": "MIT",
   "homepage": "https://forwend.com/docs",

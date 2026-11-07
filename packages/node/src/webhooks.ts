@@ -5,7 +5,7 @@ import type { TestWebhookEvent, WebhookEvent } from "./types.js";
 export interface VerifyWebhookOptions {
   /** The request body exactly as it arrived: a body parsed and written again won't match its signature. */
   payload: string | Uint8Array;
-  /** fetch Headers, or Node's incoming headers, whose names are lowercase. */
+  /** fetch Headers, or a plain object such as Node's incoming headers; names in any case. */
   headers: Headers | Record<string, string | string[] | undefined>;
   /** The endpoint's signing secrets (whsec_…): during a rotation's 24 hours, the new and the old one. */
   secrets: string | readonly string[];
@@ -19,7 +19,8 @@ const MIN_KEY_BYTES = 24;
 
 const header = (headers: VerifyWebhookOptions["headers"], name: string): string | undefined => {
   if (headers instanceof Headers) return headers.get(name) ?? undefined;
-  const value = headers[name];
+  const key = Object.keys(headers).find((k) => k.toLowerCase() === name);
+  const value = key === undefined ? undefined : headers[key];
   return Array.isArray(value) ? value[0] : value;
 };
 
@@ -62,5 +63,9 @@ export function verifyWebhook(options: VerifyWebhookOptions): WebhookEvent | Tes
     return given.some((sig) => sig.length === expected.length && timingSafeEqual(sig, expected));
   });
   if (!matches) throw new WebhookVerificationError("no signature matches the secrets");
-  return JSON.parse(payload.toString("utf8"));
+  try {
+    return JSON.parse(payload.toString("utf8"));
+  } catch {
+    throw new WebhookVerificationError("the signed body is not JSON");
+  }
 }
