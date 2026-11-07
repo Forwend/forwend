@@ -14,7 +14,7 @@
         "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
         "amount": "100000",
         "invoiceId": "0xb4c3e0cd7cccd91a459d332d7ae3a575879609d8cf0671908905649a7b38f2b7",
-        "receiver": "0x021C27Ba89C55eEdafBa215BED2bc499B610BeBd",
+        "receiver": "0x021c27ba89C55eEdAfBa215BeD2Bc499b610BEbd",
         "pay": "0x918cef546ade632c7886dcc6fc7d8088fe1d5243e016a24b528de2a1b02f5fb2",
         "deploy": "0xfd3997ac02ef484d6e5ffec6d39613d4afaa1f7d3c9974dbaedc43663a3a3eb7",
         "settle": "0x3f8e87613c19bab5383bac9b21483c4f45dce3563b1b6998fb570914e69cb342",

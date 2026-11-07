@@ -64,13 +64,14 @@
         "2026-11-06 review fail by reviewer: Contract code is sound; docs and one test fall short. Security: only the refund authority moves money. Factory recover moves only the factory's own balance: transfer() from the factory, and no receiver has that selector, fallback or receive. The implementation branch (address(this) == self) is unreachable from factory clones, outside clones or delegatecall contexts, because self is the implementation's immutable. Clones still run _onlyClone, terms and the invoice-token guard before any transfer. The implementation's ReentrancyGuard uses its own storage. No new stuck-funds case. Addresses: recomputed factory 0xf93da73F…0dd2, implementation 0x26b7DB22…630f, runtime codehash 0xdca35aa3…9cd1; the e2e RECEIVE and OPTION_RECEIVE equal predict. Old addresses appear only in deployments.json and config_test.go. forge test: 79 pass, 1 skipped. Pay vitest: 48 pass. Go address/config: ok. docs-check: 0 errors. Findings to fix (no contract source change, so addresses stay): (1) docs/diagrams/security-keys.json, the 'who can move money' diagram, is not updated. Edge a14 Safe->factory says only 'pause', and the factory node never mentions recover. The Safe->implementation recover path is missing. docs/contracts/rules.md Status asks for docs/diagrams updates in the same PR. AGENTS.md says a fix covers every place the behavior shows. (2) PLAN.md:147 still lists 'The factory gets a refund-authority recover: tokens sent to it have no way out today' as an open pre-mainnet gap. This PR closes it, and the implementation case too. (3) test/Symbolic.t.sol check_implementationRecoverOnlyByAuthority: assert(token.balanceOf(address(receiver)) == 0) is vacuous, since the receiver gets no deposit. Mint a symbolic deposit to the receiver, as check_factoryRecoverNeverTakesReceiverMoney does. No test covers impl.recover(..., address(0), ...) reverting InvalidDestination. Non-blocking: (4) After merge, address.Factory names an undeployed factory. cmd/api startup (main.go:67, FactoryDeployed through chain.CheckEnabled) then refuses to start on staging. settle.go:212, returns.go:148 and stray.go:164 reject old-factory testnet invoices. Promote to staging only after the testnet redeploy and the deployments.json update. (5) Nits: forge lint now flags arbitrary-send-eth at InvoiceReceiver.sol:137 (_send), because the authority check sits in the caller. rules.md:57-58 is one sentence of about 29 words (D-84 limit 25).",
         "2026-11-06 review fail by reviewer: Contract code and tests are sound; the four earlier findings are fixed. Two doc lines this PR wrote break D-84, the same class as finding 4. Fixed: (1) security-keys.json factory node names the factory and implementation recover; edge a14 says 'pause, executor, recover'. (2) PLAN.md no longer lists the factory recover gap. (3) check_implementationRecoverOnlyByAuthority mints a symbolic deposit to the receiver and asserts it stays; test_implementationReturnsMoneySentToIt covers to == 0 (InvalidDestination). (4) rules.md:57-59 is split into sub-bullets. Security, fresh look: the implementation branch runs only where address(this) == self (the implementation's immutable), so factory clones, outside clones and delegatecall contexts never reach it; outside clones still revert NotClone for the authority (test_cloneMadeOutsideFactoryReverts). Factory recover moves only its own balance, has no state to reenter, and receivers have no transfer selector, fallback or receive. No new stuck-funds path. Addresses recomputed in a scratch copy: factory 0xf93da73F...0dd2, implementation 0x26b7DB22...630f, runtime codehash 0xdca35aa3...9cd1; e2e RECEIVE 0x9404a075... and OPTION_RECEIVE 0x1109f4fa... equal predict. Old addresses (case-insensitive, with and without 0x) only in deployments.json and config_test.go. forge test: 79 pass, 1 skipped. Pay vitest: 48 pass. Go address/config: ok. docs-check: 0 errors. Commits carry no AI attribution. Blocking (docs only; no contract change, so addresses stay): (a) docs/contracts/operations.md:16-17, the 'Goes through the delay' bullet, grew from 24 to 28 words with 'factory and implementation recover'. Split it into sub-bullets. (b) docs/contracts/rules.md:70-71, the Invariants bullet, is now about 31 words, with 'the factory returns only its own balance' appended. Make each invariant a sub-bullet. AGENTS.md: at most 25 words, one fact per bullet. Non-blocking: (c) refundable() now reads with tryBalanceOf on the intended chain, but no test uses a broken or code-less token there, so going back to IERC20.balanceOf would pass every test. (d) docs/backend/money-safety.md 'ops case' says money it can't find 'can't be returned now'. Money sent to the factory or implementation is now returnable by a manual Safe recover (operations.md). Neither doc says the ops tool doesn't print that call. (e) contracts-workflow.json recover node: 'On a receiver, the factory or the implementation: money sent to the factory or the implementation leaves only from their own balance' reads garbled.",
         "2026-11-06 review pass by reviewer: Pass. All five points of the last review are fixed. (a) operations.md:16-20 'Goes through the delay' is split into sub-bullets. (b) rules.md:70-75 Invariants are sub-bullets. (c) test_refundableReadsBrokenTokenAsZero runs on the intended chain with BrokenToken, whose balanceOf reverts, so going back to IERC20.balanceOf fails it. (d) money-safety.md:118-119 says ops case doesn't find factory or implementation money; FindStrays matches only invoices.receive_address, so this is accurate. (e) The contracts-workflow.json recover description reads clearly. Every sentence in touched doc bullets is at most 25 words (scripted count). Security, fresh look: the implementation branch runs only where address(this) == self; clones, outside clones and delegatecall contexts still hit _onlyClone, terms and the invoice-token guard. Factory recover is authority-only, moves only its own balance, has no state to reenter; receivers have no transfer selector or fallback (tested). The watcher and ops filter Recovered logs by receiver address, so the implementation's invoiceId-0 event is never read. No new stuck-funds path; deploy then recover works on chains where the factory or implementation address got money first. Addresses checked offline: vectors test passes against predict; implementation = factory nonce 1 (0x26b7DB22...630f); factory runtime codehash with filled immutables = 0xdca35aa3...9cd1, as in .env.example; e2e RECEIVE 0x9404a075... and OPTION_RECEIVE 0x1109f4fa... equal predict. Old factory and implementation addresses (case-insensitive, with and without 0x) appear only in deployments.json and config_test.go; old receive addresses and old codehash appear nowhere. forge fmt --check ok; forge test 80 pass, 1 skipped; pay vitest 48 pass; Go address/config ok; docs-check 0 errors. Commits have no AI attribution. tasks.json drops F429-F431: harness archive of merged tasks, same as #434. Non-blocking nits (one fact per bullet, D-84): rules.md:71 keeps two invariants in one sub-bullet ('settled <= amount; settled + refunded <= received'); operations.md:35-36 'For a refund' bullet now holds three facts. Halmos not rerun here (needs pipx download); recorded verify passed it.",
-        "2026-11-06 review fail by reviewer: Fail on one record defect; the script fix and every address are correct. Blocking: (1) packages/contracts/deployments.json:13-20, the base-sepolia flow, says 'Paid, deployed and settled exactly amount' but has settle: null and no pay or invoiceId keys. Every other flow uses null for a step that did not happen (refund: null here), so the record reads as not settled. It is the only evidence for the commit's 'Base Sepolia settled' claim. The receiver 0x021C27Ba...BeBd equals predict for invoiceId 0xb4c3e0cd7cccd91a459d332d7ae3a575879609d8cf0671908905649a7b38f2b7 (deploy.sh terms, now=1794007840), so add that invoiceId and the pay and settle hashes from the explorer, or say in the note that they were not captured. Checked and fine: Deploy.s.sol:21 computeCreate2Address(salt, initHash, deployer) is the right overload; 0x4e59 takes salt ++ initcode (same as ReceiveAddressVectors.s.sol and chaintest.go); line 27 rejects a missing deployer (ok but no code) before anything is broadcast; already-deployed skips the broadcast; refundAuthority check unchanged; Smoke.s.sol inherits deployFactory unchanged; Deploy.t.sol passes through the new path. Offline recompute: factory 0xf93da73F...0dd2 from base-sepolia refundAuthority and executor, implementation = factory nonce 1 0x26b7DB22...630f, probe 0x0D25B44a...DfBE = predict(Smoke probe terms); Arc and Tempo flow receivers equal predict of their invoiceIds. JSON readers (ReceiveAddressVectors.s.sol, chaintest.go DeployFactory) read only chains.base-sepolia.refundAuthority and executor, unchanged; superseded entry has the v1-preview shape. Constants in vectors, address.go, receive-address.ts, e2e pay-invoice.ts, backend .env.example and config_test.go agree; old addresses remain only in superseded. forge build ok, forge test 80 pass 1 skipped, forge fmt --check ok, no new lint on scripts, go test internal/config and internal/address ok. No AI attribution. Non-blocking: (a) deploy.sh prints tx hashes only after all four steps, so a failed refund loses the pay and settle hashes; that caused (1). (b) settlement/gas.go:22 and settle.go:41 cite the Tempo flow in deployments.json; those gas numbers now come from superseded v1, not chains.tempo-moderato."
+        "2026-11-06 review fail by reviewer: Fail on one record defect; the script fix and every address are correct. Blocking: (1) packages/contracts/deployments.json:13-20, the base-sepolia flow, says 'Paid, deployed and settled exactly amount' but has settle: null and no pay or invoiceId keys. Every other flow uses null for a step that did not happen (refund: null here), so the record reads as not settled. It is the only evidence for the commit's 'Base Sepolia settled' claim. The receiver 0x021C27Ba...BeBd equals predict for invoiceId 0xb4c3e0cd7cccd91a459d332d7ae3a575879609d8cf0671908905649a7b38f2b7 (deploy.sh terms, now=1794007840), so add that invoiceId and the pay and settle hashes from the explorer, or say in the note that they were not captured. Checked and fine: Deploy.s.sol:21 computeCreate2Address(salt, initHash, deployer) is the right overload; 0x4e59 takes salt ++ initcode (same as ReceiveAddressVectors.s.sol and chaintest.go); line 27 rejects a missing deployer (ok but no code) before anything is broadcast; already-deployed skips the broadcast; refundAuthority check unchanged; Smoke.s.sol inherits deployFactory unchanged; Deploy.t.sol passes through the new path. Offline recompute: factory 0xf93da73F...0dd2 from base-sepolia refundAuthority and executor, implementation = factory nonce 1 0x26b7DB22...630f, probe 0x0D25B44a...DfBE = predict(Smoke probe terms); Arc and Tempo flow receivers equal predict of their invoiceIds. JSON readers (ReceiveAddressVectors.s.sol, chaintest.go DeployFactory) read only chains.base-sepolia.refundAuthority and executor, unchanged; superseded entry has the v1-preview shape. Constants in vectors, address.go, receive-address.ts, e2e pay-invoice.ts, backend .env.example and config_test.go agree; old addresses remain only in superseded. forge build ok, forge test 80 pass 1 skipped, forge fmt --check ok, no new lint on scripts, go test internal/config and internal/address ok. No AI attribution. Non-blocking: (a) deploy.sh prints tx hashes only after all four steps, so a failed refund loses the pay and settle hashes; that caused (1). (b) settlement/gas.go:22 and settle.go:41 cite the Tempo flow in deployments.json; those gas numbers now come from superseded v1, not chains.tempo-moderato.",
+        "2026-11-06 review fail by reviewer: Fail on one record defect; last review's finding (1) and note (b) are fixed. Blocking: (1) packages/contracts/deployments.json:17, base-sepolia flow.receiver '0x021C27Ba89C55eEdafBa215BED2bc499B610BeBd' has an invalid EIP-55 checksum. The correct form is 0x021c27ba89C55eEdAfBa215BeD2Bc499b610BEbd (cast to-check-sum-address, which matches the EIP-55 spec vector 0x5aAeb605...BeAed). Every other mixed-case address in the file checksums correctly. Strict parsers (ethers getAddress, Solidity literals, wallet send forms) reject it, and cast and explorers never print that casing, so the value was typed by hand. Introduced in fab8e656; earlier reviews compared it case-insensitively. Use the checksummed form. Checked and fine: invoiceId 0xb4c3e0cd...f2b7 = keccak256('forwend.testnet.flow.84532.1794007840'), as deploy.sh builds it; Smoke broadcast run-1794007834856 timestamp 1794007838 fits now=1794007840. Offline recompute of predict (OZ cloneDeterministicWithImmutableArgs code, args = abi.encode(terms), salt = keccak256(args), factory 0xf93da73F...0dd2, implementation 0x26b7DB22...630f, recipient 0x34b9c6d2...bc7521, token 0x036cbd53...3dcf7e, amount 100000, expiresAt now+3600, settleDeadline now+3600+86400, chain 84532) gives 0x021c27ba...b610bebd, equal to the record's bytes. pay, deploy and settle are set; refund null; the note says why (authority has no Base Sepolia gas) and 'stays refundable' is right: refundableAmount returns the whole balance once settled. Pay and settle hashes not checked on chain (no RPC). JSON parses; its readers (chaintest.go DeployFactory, ReceiveAddressVectors.s.sol) read only chains.base-sepolia.refundAuthority and executor, unchanged. gas.go:22 and settle.go:41-42 now say v1 and superseded; the numbers came in at 2e5cda2b, when deployments.json was the F040 v1 record, now superseded[0]. go vet ./internal/settlement ok, gofmt clean, forge test 80 pass 1 skipped. Commits carry no AI attribution. Non-blocking: (a) settle.go:41 breaks at 99 columns while the file fills to 120; '(deployments.json,' fits on line 41. (b) docs/backend/architecture.md:105-106 gives the same 1,305,758 and 572,845 as 'its testnet deploy and settle' with no 'v1'; not wrong, but it now reads as the current Tempo deploy."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-06T23:54:22Z",
+        "at": "2026-11-06T23:59:51Z",
         "checks": [
           {
             "id": "harness",
@@ -91,56 +92,54 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
+            "seconds": 0.5,
+            "log": ""
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
+            "seconds": 0.2,
+            "log": ""
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 66.0,
+            "seconds": 63.6,
             "log": ""
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.4,
+            "seconds": 3.6,
             "log": ""
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 46.1,
+            "seconds": 48.9,
             "log": ""
           },
           {
             "id": "contracts",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.8,
+            "seconds": 1.9,
             "log": ""
           },
           {
             "id": "symbolic",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 6.1,
+            "seconds": 5.7,
             "log": ""
           }
         ],
         "taskHash": "411102e09e2d4b9d",
-        "filesHash": "c3a0c16f01dce49c",
+        "filesHash": "b903d7e7f9352333",
         "proof": {
           "1": "contracts: FactoryRecoverTest: only the authority recovers, bad destinations and our own contracts as tokens revert, receiver money stays; symbolic check_factoryRecoverNeverTakesReceiverMoney",
           "2": "contracts: testFuzz_factoryReturnsOnlyItsOwnBalance, testFuzz_strangersCannotMoveMoney and invariant_factoryReturnsOnlyItsOwnBalance; docs-check covers rules.md and operations.md; deployed on the four testnets 2026-11-07 (deployments.json)",

@@ -103,7 +103,7 @@ D-71); a chain whose RPCs don't answer is logged and skipped:
   where Tempo's fee manager precompile exists, the check reads the executor's fee token instead (its choice in the fee
   manager, else PathUSD) and needs ceil(fee cap × `TempoMinGas` / 10^12) of its 6-decimal units, since Tempo prices
   gas in attodollars. `TempoMinGas` is 2,262,000: Tempo charges far more for creating contracts and storage, and its
-  testnet deploy and settle used 1,305,758 and 572,845 gas.
+  v1 testnet deploy and settle used 1,305,758 and 572,845 gas.
   - Every 5 minutes the signer checks again for `GasAlertSettlements` (20) deploys and settles (R-189).
     - Below that it logs `ALERT executor gas runs low`, long before it can't pay a settle.
   - No fee it signs exceeds the chain's ceiling per gas unit (`settlement.maxFeePerGas`), whatever a provider suggests.
