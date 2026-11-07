@@ -332,7 +332,7 @@
         "packages/contracts/chains.json lists the same mainnets, so script/rpc.mjs finds a working RPC for each."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "docs-check"
@@ -411,11 +411,18 @@
           "summary": "No blocking findings. All five earlier findings are fixed: R-221 says an API key keeps its own mode (R-156); F438 refs R-144 and D-95, and accept 6 adds fw_live_ keys; R-222 drops the real-invoice sentence, and F438 accept 7 needs the owner's yes and a docs/runs record; D-120 marks Admins and old profiles as agent defaults; PLAN 12.2a keeps staging on testnets until F438. Every sentence is 25 words or less. Refs exist and docs-check passes. F437 reads clearly: its factory, refund authority and executor addresses match deployments.json, and accept 5 records the EOA refund authority. Non-blocking, new: (1) F438 makes new profiles live by default but never says that other people's money waits for the Safe factory F437 accept 5 requires; its mainnet executor is the burner key. Before F438 starts, add a line that keeps live mode to the owner's profiles until a Safe factory exists, or make F438 depend on that task. (2) F437 accept 3: Smoke.s.sol's probe uses chain 84532 and Base Sepolia USDC terms. That is fine for an address check. Without a token argument deploy.sh runs no flow, so no real money moves. Earlier findings still hold: 00105 follows 82/92/94, passes rpc_endpoints CHECKs, no dRPC, unique readable IDs, correct Down; switched-off chains are not served (every reader filters c.enabled and needs token rows); no ID or name conflicts; rpc.mjs is the only chains.json reader; endpoints spot-checked with cast; rpc.md:14 defines chainlist.org. Earlier non-blocking: packages/contracts/script/deploy.sh:10 has no mainnet guard (F437 now uses it on mainnet with the owner's yes per chain); apps/web/src/shared/constants/chains.ts:9 says all chains.json chains are testnets and CHAINS lacks mainnets; 00105_mainnet_chains.sql:7-12 ON CONFLICT DO NOTHING keeps a hand-made livemode false row and Down deletes it.",
           "at": "2026-11-07T23:56:44Z",
           "filesHash": "146ab230134a1a3b"
-        }
+        },
+        "commit": "83e2d36f",
+        "doneAt": "2026-11-07T23:59:45Z"
       },
       "branch": "feat/f436-base-arbitrum-arc-and-tempo-mainnets-are",
       "baseCommit": "99fe24854e3342a5b94fa17ba78603300e2168cb",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f436-base-arbitrum-arc-and-tempo-mainnets-are",
+        "base": "main"
+      }
     },
     {
       "id": "F437",
