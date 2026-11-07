@@ -200,7 +200,9 @@
       "refs": [],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-11-07 review pass by reviewer: Pass. deployments.json base-sepolia flow.refund is now 0xd5a72444...2b07 (32-byte lowercase hash, like pay, deploy and settle); the note no longer says the refund waits. JSON parses. Flow keys match arc-testnet and tempo-moderato plus the existing note. Note is accurate and one 19-word sentence (D-84). Readers: chaintest.go DeployFactory and ReceiveAddressVectors.s.sol read only chains.base-sepolia.refundAuthority and executor, unchanged; forge test 80 pass 1 skipped, including ReceiveAddressVectors.t.sol. All 17 mixed-case addresses match cast to-check-sum-address (offline). docs-check 0 errors. No other repo text mentions the pending refund. Diff touches only that file and docs/tasks.json harness records. Commit has no AI attribution. Non-blocking: the note now records history the commit already carries; dropping it would give the flow the same keys as the others. Refund tx not checked on chain (no RPC)."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
@@ -241,6 +243,13 @@
         "proof": {
           "1": "contracts: deployments.json base-sepolia flow.refund is the on-chain refund tx (status success; receiver balance and refundable() now 0)",
           "2": "contracts: forge test passes, including the vectors test that reads deployments.json; all 17 mixed-case addresses match cast to-check-sum-address"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass. deployments.json base-sepolia flow.refund is now 0xd5a72444...2b07 (32-byte lowercase hash, like pay, deploy and settle); the note no longer says the refund waits. JSON parses. Flow keys match arc-testnet and tempo-moderato plus the existing note. Note is accurate and one 19-word sentence (D-84). Readers: chaintest.go DeployFactory and ReceiveAddressVectors.s.sol read only chains.base-sepolia.refundAuthority and executor, unchanged; forge test 80 pass 1 skipped, including ReceiveAddressVectors.t.sol. All 17 mixed-case addresses match cast to-check-sum-address (offline). docs-check 0 errors. No other repo text mentions the pending refund. Diff touches only that file and docs/tasks.json harness records. Commit has no AI attribution. Non-blocking: the note now records history the commit already carries; dropping it would give the flow the same keys as the others. Refund tx not checked on chain (no RPC).",
+          "at": "2026-11-07T00:20:33Z",
+          "filesHash": "816db149e4b80b9c"
         }
       },
       "branch": "chore/f432-the-base-sepolia-deploy-record-of-the-f4",
