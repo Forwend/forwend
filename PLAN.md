@@ -144,7 +144,6 @@ code, and never connect a wallet (D-37).
   - 11.10.5 Anvil suite (F412): overpaid, late, expired partial, canceled and wrong-token money each go through the
     tool and the Safe call. The ledger matches the chain after each.
   - Before the first mainnet, close the stuck-money gaps found on 2026-10-31:
-    - The factory gets a refund-authority `recover`: tokens sent to it have no way out today.
     - The Safe exists at its address on every enabled chain, and on chains payers often mistake for them.
     - Back up the invoice terms and test a restore: an undeployed receiver can't move money without them.
     - Check that the Safe and its fee token work on Tempo, which has no native gas coin.

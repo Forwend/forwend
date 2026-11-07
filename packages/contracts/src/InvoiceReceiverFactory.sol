@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {InvoiceReceiver} from "./InvoiceReceiver.sol";
 import {
@@ -15,6 +17,8 @@ import {
 /// Deploys invoice receivers at addresses that commit to their terms. Deployed through the CREATE2 deployer with the
 /// same bytecode and constructor args everywhere, so it has one address on every chain. Rules: ../AGENTS.md.
 contract InvoiceReceiverFactory {
+    using SafeERC20 for IERC20;
+
     /// The Safe multisig on mainnet, a test EOA on testnets. Fixed: changing it means a new factory.
     address public immutable refundAuthority;
     address public immutable implementation;
@@ -27,9 +31,12 @@ contract InvoiceReceiverFactory {
     event ExecutorChanged(address indexed executor);
     event PausedChanged(bool paused);
     event ReceiverDeployed(address indexed receiver, bytes32 indexed invoiceId);
+    event Recovered(address indexed token, address indexed to, uint256 amount);
 
     error Unauthorized();
     error ZeroAddress();
+    error InvalidDestination();
+    error NativeTransferFailed();
 
     constructor(address refundAuthority_, address executor_) {
         if (refundAuthority_ == address(0) || executor_ == address(0)) revert ZeroAddress();
@@ -57,6 +64,19 @@ contract InvoiceReceiverFactory {
     function setPaused(bool paused_) external onlyRefundAuthority {
         paused = paused_;
         emit PausedChanged(paused_);
+    }
+
+    /// Returns tokens or the native coin (`token == address(0)`) sent to the factory by mistake. The factory holds no
+    /// invoice money and moves only its own balance, so receivers are untouched. Not blocked by `paused`.
+    function recover(address token, address to, uint256 amount) external onlyRefundAuthority {
+        if (to == address(0) || to == address(this)) revert InvalidDestination();
+        if (token == address(0)) {
+            (bool ok,) = to.call{value: amount}("");
+            if (!ok) revert NativeTransferFailed();
+        } else {
+            IERC20(token).safeTransfer(to, amount);
+        }
+        emit Recovered(token, to, amount);
     }
 
     function isReceiver(address receiver) external view returns (bool) {

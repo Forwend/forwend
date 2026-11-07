@@ -38,7 +38,8 @@ const (
 // 135,632; the floor plus a fifth covers it. On Arbitrum the estimate at the deploy's block adds the L1 data cost.
 const SettleGasFloor = 125_000
 
-// TempoSettleGasFloor: Tempo prices storage far higher, and its testnet settle used 572,845 gas (deployments.json).
+// TempoSettleGasFloor: Tempo prices storage far higher, and its v1 testnet settle used 572,845 gas (deployments.json,
+// superseded).
 const TempoSettleGasFloor = 580_000
 
 // An unmined settle is re-signed after this with a higher fee, so later settles on the chain aren't held up.

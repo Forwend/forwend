@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "forwend-security-keys",
-  "revision": 6,
+  "revision": 7,
   "kind": "architecture",
   "title": "Who can move money",
   "theme": "dark",
@@ -119,7 +119,7 @@
       "label": "Factory v1",
       "groupId": "chain",
       "ports": [],
-      "description": "Holds the refund authority (immutable) and the executor (only the Safe changes it). Only these two may deploy receivers. Read-only status by terms or invoiceId. Only the Safe sets the pause flag"
+      "description": "Holds the refund authority (immutable) and the executor (only the Safe changes it). Only these two may deploy receivers. Read-only status by terms or invoiceId. Only the Safe sets the pause flag. Only the Safe returns money sent to the factory itself or to the receiver implementation (recover); neither ever moves a receiver's money"
     },
     {
       "id": "receiver",
@@ -297,7 +297,7 @@
       },
       "type": "calls",
       "direction": "forward",
-      "label": "pause"
+      "label": "pause, executor, recover"
     },
     {
       "id": "a15",

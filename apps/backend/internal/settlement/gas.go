@@ -19,7 +19,7 @@ import (
 // leaves out the L1 data cost: it is a floor, not a budget.
 const MinGas = (160_000 + SettleGasFloor) * 6 / 5
 
-// Tempo's testnet flow (deployments.json) used 1,305,758 gas to deploy and 572,845 to settle.
+// Tempo's v1 testnet flow (deployments.json, superseded) used 1,305,758 gas to deploy and 572,845 to settle.
 const TempoMinGas = (1_310_000 + 575_000) * 6 / 5
 
 // maxFeePerGas bounds what one unit of gas may cost on each chain, in its fee unit (wei, or attodollars on Tempo), so a

@@ -5,7 +5,7 @@ import type { Page } from "@playwright/test";
 // only while every term is unchanged.
 export const PAY = "7f3a9c1e5b2d4086a1c3e5f7092b4d6f8a0c2e4f6a8b0d2f4e6c8a0b2d4f6e81";
 export const ID = "0x0bc3ec4e72d7b5f3cc8a059ea1a0f06cc9d24ea5e71a2acfd86fea75540e9a31";
-export const RECEIVE = "0x25425f508790c1847090371590297cad428868f3";
+export const RECEIVE = "0x9404a075f2f597196c889f6a70e561e9d07de554";
 export const NOW = new Date("2026-10-10T12:00:00Z");
 
 export const MAIN_OPTION = {
@@ -56,7 +56,7 @@ export const OPEN = {
   token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
   amount: "1250000000",
   recipient: "0x1111111111111111111111111111111111111111",
-  factory: "0xece745390524e4d0b05d26f56af7f1d38fdb7546",
+  factory: "0xf93da73f1308a9b34aab78bf6d84f0bacc600dd2",
   receiveAddress: RECEIVE,
   expiresAt: "2026-10-17T15:00:00Z",
   closesAt: "2026-10-17T15:00:00Z",

@@ -25,6 +25,9 @@ Every rule has a test.
   same one on every chain and keep passing it as `EXECUTOR` to `script/Deploy.s.sol`. On a new chain, call
   `setExecutor` right after deploying.
 - `paused`: set by the refund authority; blocks `settle` only, never refunds.
+- `recover(token, to, amount)`: refund authority only. Returns tokens or the native coin sent to the factory itself.
+  - It moves only the factory's own balance, never a receiver's money.
+  - `to` is not 0 or the factory. `paused` does not block it.
 - Creates the implementation in its constructor. New invoices always use the newest factory.
 - Only the executor or the refund authority may `deploy` (an early deploy would block native USDC top-ups on Arc).
 - `deploy` returns an existing receiver and records `deployedAt` and `receiverOf(invoiceId)` (first wins; lookup only,
@@ -41,24 +44,35 @@ Every rule has a test.
   deadline, then only the refund authority. Pays exactly `amount` and checks the recipient's balance rose by `amount`.
 - `refund(to, amount)`: refund authority, intended chain, `to` not 0 or the receiver. May repeat, never above `refundableAmount`:
   everything once settled or past the deadline; before that only the excess over `amount`.
+- `refundable()`: what `refund` allows now. Off the intended chain it is 0: `refund` reverts there, and money leaves
+  through `recover`.
 - `recover(token, to, amount)`: refund authority. On the intended chain it never sends the invoice token or lowers its
   balance (Arc: native coin and USDC are one balance). The balance read copies at most 32 bytes, so a broken invoice
   token never blocks recovery of others. No gas cap on that read: Tempo's built-in tokens need far more gas.
   `token = address(0)` is the native coin.
 - `SafeERC20` for transfers; only allowlisted tokens, never fee-on-transfer ones.
 - `nonReentrant` and checks-effects-interactions on `settle`, `refund`, `recover`.
-- No `approve`, `isValidSignature`, `fallback`, `receive`, `selfdestruct` or `delegatecall`. External calls only to the
-  token and reads from the factory.
-- Works only if our factory deployed it (`deployedAt != 0`): on the implementation and outside clones every function
-  and view reverts except the getters `settled` and `factory`.
-- Accepted: a gas-burning invoice token can block `recover` (needs a compromised API); on Arc `recover(address(0))` can
-  move under 0.000001 USDC unseen.
+- No `approve`, `isValidSignature`, `fallback`, `receive`, `selfdestruct` or `delegatecall`. External calls only to
+  tokens, reads from the factory, and the native-coin destination of `recover`.
+- Works only if our factory deployed it (`deployedAt != 0`).
+  - On the implementation and outside clones, every function and view reverts.
+  - The exceptions are the getters `settled` and `factory`, and the implementation's `recover`.
+- The implementation's `recover` returns anything sent to it, for the refund authority only. It is never an invoice's
+  receiver, so it holds no invoice money.
+- Accepted: a malicious invoice token can block `recover` on the intended chain (needs a compromised API).
+  - Examples: one that burns gas, or one whose balance changes during the call.
+  - Off the intended chain there is no such check, so recovery still works there.
+- Accepted: on Arc `recover(address(0))` can move under 0.000001 USDC unseen.
 
 ## Tests
 
 - A unit test per rule; fuzz on amounts and timestamps.
-- Invariants: settled ≤ amount; settled + refunded ≤ received; only `recipient` gets settlement; refunds never take
-  `amount` before the deadline; the executor moves money only to `recipient`.
-- Halmos for `settle`, `refund`, `recover` (`forge clean` first).
+- Invariants:
+  - settled ≤ amount; settled + refunded ≤ received;
+  - only `recipient` gets settlement;
+  - refunds never take `amount` before the deadline;
+  - the executor moves money only to `recipient`;
+  - the factory returns only its own balance.
+- Halmos for `settle`, `refund`, and receiver, implementation and factory `recover` (`forge clean` first).
 - Cross-chain: same terms, same address on two Anvil chains; calls revert on the wrong one.
 - Fork test on Base Sepolia with real USDC; a mock token for USDT behaviour.

@@ -138,13 +138,13 @@ func TestWorkerAndSigner(t *testing.T) {
 func TestCanary(t *testing.T) {
 	t.Setenv("CANARY_API_URL", "https://api.forwend.app")
 	t.Setenv("CANARY_WEB_URL", "https://forwend.app")
-	t.Setenv("CANARY_FACTORY", "0xECe745390524e4d0B05D26F56AF7F1D38FDb7546")
+	t.Setenv("CANARY_FACTORY", "0xf93da73F1308A9B34aAB78bF6D84F0BAcc600dd2")
 	t.Setenv("CANARY_FACTORY_CODE_HASH", "0x"+strings.Repeat("Ab", 32))
 	t.Setenv("CANARY_RPC_URLS", `{"84532": ["https://a.example/v3/secret", "https://b.example"]}`)
 	t.Setenv("CANARY_PAGE_SCRIPT", "../web/scripts/canary-pay-page.ts")
 	got, err := config.LoadCanary()
 	if err != nil || got.APIURL != "https://api.forwend.app" || got.WebURL != "https://forwend.app" ||
-		got.Factory != "0xece745390524e4d0b05d26f56af7f1d38fdb7546" || got.FactoryCodeHash != "0x"+strings.Repeat("ab", 32) ||
+		got.Factory != "0xf93da73f1308a9b34aab78bf6d84f0bacc600dd2" || got.FactoryCodeHash != "0x"+strings.Repeat("ab", 32) ||
 		got.RPCURLs[84532] != [2]string{"https://a.example/v3/secret", "https://b.example"} ||
 		got.PageScript != "../web/scripts/canary-pay-page.ts" {
 		t.Fatalf("got %+v, %v", got, err)

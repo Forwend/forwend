@@ -9,7 +9,7 @@ import { sidewaysScroll } from "./sideways";
 // A second option of a payer-chooses invoice (R-56): USDC on Arbitrum Sepolia, its id derived from ID as the API does
 // (keccak256(abi.encode(ID, 421614, token))) and the address predict gives for the same terms with that id.
 const OPTION_ID = "0x285391c5b8b001b41a459f4011b40661d4c83c871d3f0d7881682bbced83a1c1";
-const OPTION_RECEIVE = "0x66d0b871c6371d997f8bf34ea320927aff32dc6f";
+const OPTION_RECEIVE = "0x1109f4fabb1748c2ce1858b2aaf8442523cfeeb0";
 const POLL_MS = 15_000;
 
 const CHOOSING = {

@@ -17,9 +17,13 @@ contract Handler is Test {
     address public recipient;
     address public payer = makeAddr("payer");
     address public attacker = makeAddr("attacker");
+    address public returnedTo = makeAddr("returned to");
 
     uint256 public totalIn;
     uint256 public totalRefunded;
+    uint256 public refundedToAttacker;
+    uint256 public totalStray;
+    uint256 public totalReturnedByFactory;
     bool public tookOwedBeforeDeadline;
 
     constructor(InvoiceReceiverFactory factory_, MockToken token_, InvoiceTerms memory t_) {
@@ -64,6 +68,7 @@ contract Handler is Test {
         vm.prank(_actor(who));
         try r.refund(toAttacker ? attacker : payer, amount) {
             totalRefunded += amount;
+            if (toAttacker) refundedToAttacker += amount;
             if (owedProtected && token.balanceOf(receiver) < t.amount) tookOwedBeforeDeadline = true;
         } catch {}
     }
@@ -72,6 +77,20 @@ contract Handler is Test {
         if (receiver.code.length == 0) return;
         vm.prank(_actor(who));
         try InvoiceReceiver(receiver).recover(address(token), attacker, amount) {} catch {}
+    }
+
+    function strayToFactory(uint256 amount) external {
+        amount = bound(amount, 1, t.amount);
+        token.mint(address(factory), amount);
+        totalStray += amount;
+    }
+
+    function factoryRecover(uint256 who, uint256 amount) external {
+        amount = bound(amount, 0, t.amount * 4);
+        vm.prank(_actor(who));
+        try factory.recover(address(token), returnedTo, amount) {
+            totalReturnedByFactory += amount;
+        } catch {}
     }
 
     function _actor(uint256 who) internal view returns (address) {
@@ -122,8 +141,13 @@ contract InvariantsTest is Test {
         assertFalse(handler.tookOwedBeforeDeadline());
     }
 
+    function invariant_factoryReturnsOnlyItsOwnBalance() public view {
+        assertEq(token.balanceOf(handler.returnedTo()), handler.totalReturnedByFactory());
+        assertEq(token.balanceOf(address(handler.factory())), handler.totalStray() - handler.totalReturnedByFactory());
+    }
+
     function invariant_invoiceTokenNeverRecovered() public view {
-        // recover() is aimed at the attacker; only authority refunds may reach it
-        assertLe(token.balanceOf(handler.attacker()), handler.totalRefunded());
+        // recover() is aimed at the attacker; only the authority's refunds to it may reach it
+        assertEq(token.balanceOf(handler.attacker()), handler.refundedToAttacker());
     }
 }
