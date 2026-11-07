@@ -32,7 +32,7 @@ A small shop that takes stablecoin payments through Forwend, end to end. Use it 
 
 ## Limits
 
-- It uses the `forwend` package from this repository: npm's `forwend` 0.1.0 has no checkout methods yet.
+- It uses the `forwend` package from this repository, the code npm has as `forwend` 0.2.0.
 - Orders live in one SQLite file (`EXAMPLE_DATABASE`). A real shop keeps them in its own database.
 - Every network is a testnet for now, so every checkout is in test mode.
 
