@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 432,
+  "nextId": 433,
   "tasks": [
     {
       "id": "F332",
@@ -183,6 +183,69 @@
       ],
       "blockedReason": "Deferred by owner (2026-11-05): low priority for now.",
       "evidence": null
+    },
+    {
+      "id": "F432",
+      "type": "chore",
+      "behavior": "The Base Sepolia deploy record of the F417 factory lists its refund",
+      "acceptance": [
+        "packages/contracts/deployments.json lists the Base Sepolia flow refund transaction 0xd5a72444bb4b63b43a448fabefd02435ae49b316e528b86aade84afbc8292b07 and no longer says the refund waits.",
+        "The file stays valid JSON, its readers still work and every mixed-case address keeps its EIP-55 checksum."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "contracts"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-07T00:17:54Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "contracts",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": ""
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 61.9,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 30.8,
+            "log": ""
+          }
+        ],
+        "taskHash": "2a7c97ecede4d156",
+        "filesHash": "816db149e4b80b9c",
+        "proof": {
+          "1": "contracts: deployments.json base-sepolia flow.refund is the on-chain refund tx (status success; receiver balance and refundable() now 0)",
+          "2": "contracts: forge test passes, including the vectors test that reads deployments.json; all 17 mixed-case addresses match cast to-check-sum-address"
+        }
+      },
+      "branch": "chore/f432-the-base-sepolia-deploy-record-of-the-f4",
+      "baseCommit": "fcee5659be0003a76b6838cc88c13b6127e93c50",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
