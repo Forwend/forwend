@@ -61,7 +61,7 @@
         "The full check set and the live suite still pass."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "e2e",
@@ -155,11 +155,18 @@
           "summary": "Pass: no must-fix on 5766da6c. The sheet is a flex column only while open (closed stays display:none); short sheets fit their content, tall ones scroll only in the body (dialog scrollHeight equals clientHeight at 1024 and 375 wide), and the phone slide-up and Escape/focus return still work. The setup's code label is tied to the input and MfaStep's label is unchanged. Open: no docs/runs screenshot of the setup step, and not checked in WebKit. db0e7699 passed its own reviews before.",
           "at": "2026-11-07T21:57:15Z",
           "filesHash": "16e79e2cd7321310"
-        }
+        },
+        "commit": "20537ef2",
+        "doneAt": "2026-11-07T21:57:46Z"
       },
       "branch": "fix/f433-the-high-and-medium-findings-of-the-2026",
       "baseCommit": "ec24e97882374c79a5e5d6fb93330e6b9f0b8910",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f433-the-high-and-medium-findings-of-the-2026",
+        "base": "main"
+      }
     },
     {
       "id": "F434",
