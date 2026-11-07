@@ -1,3 +1,4 @@
+import type { MfaMethod } from "@privy-io/react-auth";
 import { apiSlice } from "@/shared/api/api-slice";
 
 export const authApi = apiSlice.injectEndpoints({
@@ -22,6 +23,11 @@ export const authApi = apiSlice.injectEndpoints({
     checkFreshSignIn: build.mutation<void, void>({
       query: () => ({ url: "/v1/me/fresh-sign-in", method: "GET" }),
     }),
+    /** R-219: records the two-step methods at Privy behind a fresh sign-in, once Privy lists each type the user just
+     * set up; two-step then stands in for the emailed code on a send (D-49). */
+    recordTwoStep: build.mutation<void, readonly MfaMethod[]>({
+      query: (methods) => ({ url: "/v1/me/two-step", method: "PUT", body: { methods } }),
+    }),
     /** The right code makes this session count as freshly signed in for 15 minutes. */
     verifyFreshCode: build.mutation<void, string>({
       query: (code) => ({ url: "/v1/me/fresh-sign-in/verify", method: "POST", body: { code } }),
@@ -34,4 +40,5 @@ export const {
   useSendFreshCodeMutation,
   useVerifyFreshCodeMutation,
   useCheckFreshSignInMutation,
+  useRecordTwoStepMutation,
 } = authApi;

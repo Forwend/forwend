@@ -832,6 +832,40 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/me/two-step:
+    put:
+      operationId: recordTwoStep
+      summary: Record the two-step methods the user just set up at Privy (R-219)
+      description: |
+        Needs a fresh sign-in, so a stolen session can't record its own. Privy can answer without a new method for a
+        moment, so this reads Privy again until it lists each type in methods, then records every method it lists.
+        From then on two-step stands in for the emailed code on a send's approve (D-49). A method set up at Privy
+        without this, or set up again later, doesn't.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [methods]
+              properties:
+                methods:
+                  type: array
+                  minItems: 1
+                  maxItems: 3
+                  items: { type: string, enum: [passkey, totp, sms] }
+      responses:
+        "204": { description: Recorded }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/ReauthRequired" }
+        "409":
+          description: Privy doesn't list the methods named (two_step_not_set_up).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/me/fresh-sign-in/verify:
     post:
       operationId: verifyFreshSignInCode
@@ -2657,7 +2691,15 @@ paths:
         - $ref: "#/components/parameters/ProfileId"
         - $ref: "#/components/parameters/MemberId"
       responses:
-        "204": { description: Removed }
+        "200":
+          description: Removed, with what they could still use for the owner to roll (D-93)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [toRoll]
+                properties:
+                  toRoll: { $ref: "#/components/schemas/ToRoll" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/MemberNotFound" }
@@ -3084,8 +3126,9 @@ paths:
       operationId: approveSend
       summary: Confirm it's you for a send before the browser signs it (R-211, D-49)
       description: |
-        Needs a fresh sign-in. Answers with the send brought up to date, as the GET does. The browser signs only a send
-        still `prepared`; an expired, canceled or replaced one is checked again from the amount.
+        Needs a fresh sign-in. Approves a `prepared` send once and answers it `approved`; the browser signs only that. A
+        second approve is 409 `send_approved`: the first may have been signed though its answer was lost. A send no
+        longer prepared (expired, canceled or replaced) comes back as it is and is checked again from the amount.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - $ref: "#/components/parameters/SendId"
@@ -3098,6 +3141,11 @@ paths:
         "401": { $ref: "#/components/responses/ReauthRequired" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/SendNotFound" }
+        "409":
+          description: The send was approved already and may have been signed (send_approved)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/sends/{sendId}/submit:
@@ -3105,8 +3153,8 @@ paths:
       operationId: submitSend
       summary: Report the hash the browser got from signing the send (R-212)
       description: |
-        The same hash again is a no-op. A send replaced, canceled or expired while it was being signed takes its hash
-        too. A hash belongs to one send.
+        The same hash again is a no-op. Only an approved send takes a hash, including one whose hold ended while it was
+        being signed; any other answers 422. A hash belongs to one send of its wallet.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - $ref: "#/components/parameters/SendId"
@@ -4451,6 +4499,30 @@ components:
           required: [email]
           properties:
             email: { type: string, description: Checked like a client email; kept in lower case. }
+    ToRoll:
+      type: object
+      description: What a member who lost access could still use, for the owner to roll (D-93).
+      required: [keys, webhooks]
+      properties:
+        keys:
+          type: array
+          description: API keys they made that still work.
+          items:
+            type: object
+            required: [keyId, name, last4]
+            properties:
+              keyId: { type: string, format: uuid }
+              name: { type: string }
+              last4: { type: string }
+        webhooks:
+          type: array
+          description: For a former Admin, every webhook endpoint, whose signing secret they could reveal.
+          items:
+            type: object
+            required: [endpointId, url]
+            properties:
+              endpointId: { type: string, format: uuid }
+              url: { type: string }
     Member:
       type: object
       required: [memberId, email, role, stores, createdAt]
@@ -4466,6 +4538,9 @@ components:
           type: array
           description: Empty for the owner and Admins, who reach every store.
           items: { type: string, format: uuid }
+        toRoll:
+          $ref: "#/components/schemas/ToRoll"
+          description: Set only when a role change took an Admin's role away.
         createdAt: { type: string, format: date-time }
     Invite:
       type: object
@@ -5868,10 +5943,10 @@ components:
         amount: { type: string, description: Base units }
         status:
           type: string
-          enum: [prepared, sending, sent, failed, canceled, expired]
+          enum: [prepared, approved, sending, sent, failed, canceled, expired]
           description: |
-            sending: signed, not in a block yet. sent: its transfer is in a block. expired: never signed within 10
-            minutes.
+            sending: signed, not in a block yet. sent: its transfer is in a block. expired: never approved within 10
+            minutes, or approved and never reported once the hold ended.
         final: { type: boolean, description: The block with its transfer can no longer change }
         txHash: { type: [string, "null"] }
         failure:
@@ -5915,8 +5990,8 @@ components:
                 invoice_not_cancelable, invoice_not_editable, invoice_not_reopenable, receipt_sent, client_email_required, invoice_closed, due_date_required,
                 reminders_stopped, member_not_found, invite_not_found, invite_for_another_email, already_on_team,
                 link_not_found, personal_profile, link_off, link_ended, link_full, invalid_api_key, key_not_found,
-                endpoint_not_found, webhooks_not_configured, delivery_not_found, send_not_found, send_in_progress,
-                transfer_refused, wrong_code, code_sent_recently, too_many_codes, no_login_email, code_unavailable,
+                endpoint_not_found, webhooks_not_configured, delivery_not_found, send_not_found, send_in_progress, send_approved,
+                transfer_refused, wrong_code, code_sent_recently, too_many_codes, no_login_email, code_unavailable, two_step_not_set_up,
                 invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
             message: { type: string }
   responses:

@@ -77,6 +77,14 @@ func (e env) prepare(t *testing.T, to, toProfile string, amount int64) (Send, er
 		ToProfileID: toProfile, Amount: big.NewInt(amount)})
 }
 
+// approve stands in for the owner's hold on Send: the browser signs only an approved send.
+func (e env) approve(t *testing.T, s Send) {
+	t.Helper()
+	if _, err := e.sends.Approve(context.Background(), e.profile, s.ID); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestPrepareRefusesWhatWouldLoseMoney(t *testing.T) {
 	e := newEnv(t)
 	checksummed := "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed"
@@ -195,6 +203,7 @@ func TestOneOpenSendPerWalletAndChain(t *testing.T) {
 	if got, _ := e.sends.Get(ctx, e.profile, first.ID); got.Status != Canceled {
 		t.Errorf("the replaced unsigned send is %s, want canceled", got.Status)
 	}
+	e.approve(t, second)
 	hash := e.anvil.Transfer(e.token, outsider, "2000000")
 	if _, err := e.sends.Submit(ctx, e.profile, second.ID, hash); err != nil {
 		t.Fatal(err)
@@ -205,10 +214,9 @@ func TestOneOpenSendPerWalletAndChain(t *testing.T) {
 	if _, err := e.sends.Submit(ctx, e.profile, first.ID, hash); !errors.Is(err, ErrInvalid) {
 		t.Errorf("a second send takes the same hash: err = %v", err)
 	}
-	// The replaced send was signed in another tab after all: it still takes its own hash, so its money is followed.
-	other := e.anvil.Transfer(e.token, outsider, "1000000")
-	if got, err := e.sends.Submit(ctx, e.profile, first.ID, other); err != nil || got.Status != Submitted {
-		t.Errorf("the replaced send's own hash = %v, %v", got.Status, err)
+	// The replaced send was never approved, so nothing signed it: it takes no hash, which could hide another transfer.
+	if _, err := e.sends.Submit(ctx, e.profile, first.ID, "0x"+strings.Repeat("cd", 32)); !errors.Is(err, ErrInvalid) {
+		t.Errorf("a send never approved takes a hash: err = %v", err)
 	}
 	if again, err := e.sends.Submit(ctx, e.profile, second.ID, hash); err != nil || again.Status != Submitted {
 		t.Errorf("the same hash again = %v, %v", again.Status, err)
@@ -230,6 +238,7 @@ func TestASendIsSentOnlyWhenTheChainShowsIt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	e.approve(t, s)
 	hash := e.anvil.Transfer(e.token, outsider, "3000000")
 	if s, err = e.sends.Submit(ctx, e.profile, s.ID, hash); err != nil || s.Status != Submitted || s.OnChain {
 		t.Fatalf("submitted = %s on chain %v, %v", s.Status, s.OnChain, err)
@@ -261,6 +270,7 @@ func TestAReorgedSendWaitsAndIsDroppedIfNeverMinedAgain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	e.approve(t, s)
 	hash := e.anvil.Transfer(e.token, outsider, "3000000")
 	if _, err = e.sends.Submit(ctx, e.profile, s.ID, hash); err != nil {
 		t.Fatal(err)
@@ -293,6 +303,7 @@ func TestASendFailsWhenItsTransactionMovesSomethingElse(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The reported hash is of a transaction without this transfer, as when the wallet's call inside it reverted.
+	e.approve(t, s)
 	hash := e.anvil.Transfer(e.token, outsider, "1")
 	if _, err = e.sends.Submit(ctx, e.profile, s.ID, hash); err != nil {
 		t.Fatal(err)
@@ -319,6 +330,7 @@ func TestUnreportedAndDroppedSendsAreGivenUp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	e.approve(t, s)
 	unknown := "0x" + strings.Repeat("ab", 32)
 	if _, err = e.sends.Submit(ctx, e.profile, s.ID, unknown); err != nil {
 		t.Fatal(err)
@@ -347,6 +359,7 @@ func TestPendingListsSignedSendsUntilTheWatcherRecordsThem(t *testing.T) {
 	if list, err := e.sends.Pending(ctx, e.profile); err != nil || len(list) != 0 {
 		t.Fatalf("an unsigned send is pending: %v %v", list, err)
 	}
+	e.approve(t, unsigned)
 	hash := e.anvil.Transfer(e.token, outsider, "1000000")
 	if _, err := e.sends.Submit(ctx, e.profile, unsigned.ID, hash); err != nil {
 		t.Fatal(err)
@@ -432,5 +445,261 @@ func TestMaxFitsTheFeeShown(t *testing.T) {
 	}
 	if _, err := e.prepare(t, outsider, "", 100_000_000-fee.Int64()); err != nil {
 		t.Errorf("Max (100 tokens less the fee %v): %v", fee, err)
+	}
+}
+
+// R-211: a summary is signed at most once. When the browser loses the answer of a signature that went out, a second
+// approve is refused and the wallet waits until the watcher finds the transfer, which becomes the send's hash, so the
+// owner can't send the same money twice. With no transfer, the approval ends after ApproveHold.
+func TestAnApprovedSendIsSignedOnceAndAnUnreportedOneIsFound(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	s, err := e.prepare(t, outsider, "", 2_000_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s, err = e.sends.Approve(ctx, e.profile, s.ID); err != nil || s.Status != Approved {
+		t.Fatalf("approve = %s, %v", s.Status, err)
+	}
+	if _, err := e.sends.Approve(ctx, e.profile, s.ID); !errors.Is(err, ErrApproved) {
+		t.Errorf("a second approve: err = %v, want ErrApproved", err)
+	}
+	// Signed, but the browser never got the hash back.
+	hash := e.anvil.Transfer(e.token, outsider, "2000000")
+	if _, err := e.prepare(t, outsider, "", 2_000_000); !errors.Is(err, ErrBusy) {
+		t.Errorf("a new send while the approved one may be on its way: err = %v, want ErrBusy", err)
+	}
+	// Mined, but the watcher hasn't read it: the hold lasts until it has read the chain past the hold.
+	e.sends.now = func() time.Time { return time.Now().Add(ApproveHold) }
+	if got, _ := e.sends.Get(ctx, e.profile, s.ID); got.Status != Approved {
+		t.Errorf("mined, not read by the watcher after the hold = %s, want approved", got.Status)
+	}
+	e.sends.now = time.Now
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	got, err := e.sends.Get(ctx, e.profile, s.ID)
+	if err != nil || got.Status != Submitted || got.TxHash == nil || *got.TxHash != strings.ToLower(hash) {
+		t.Errorf("the watcher's transfer = %s %v, %v; want submitted with %s", got.Status, got.TxHash, err, hash)
+	}
+
+	e.anvil.Mine(2)
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	other, err := e.prepare(t, outsider, "", 1_000_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if other, err = e.sends.Approve(ctx, e.profile, other.ID); err != nil {
+		t.Fatal(err)
+	}
+	e.anvil.Wait(int64(ApproveHold.Seconds()))
+	e.anvil.Mine(1)
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	e.sends.now = func() time.Time { return time.Now().Add(ApproveHold) }
+	if got, _ := e.sends.Get(ctx, e.profile, other.ID); got.Status != Expired {
+		t.Errorf("approved, never signed = %s, want expired after the hold", got.Status)
+	}
+	if _, err := e.prepare(t, outsider, "", 1_000_000); err != nil {
+		t.Errorf("after the hold: %v", err)
+	}
+}
+
+// R-211: an approved send whose signature still waits in the mempool holds the wallet past ApproveHold, so a new send
+// can't be signed behind it; once mined, its transfer becomes its hash.
+func TestAnApprovedSendStillWaitingHoldsTheWallet(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	s, err := e.prepare(t, outsider, "", 2_000_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.approve(t, s)
+	hash := e.anvil.Transfer(e.token, outsider, "2000000")
+	raw := e.anvil.RawTx(hash)
+	e.anvil.Reorg(1) // the transaction leaves the chain and the mempool
+	// The watcher has read the chain past the hold, so only the waiting transaction holds the wallet.
+	e.anvil.Wait(int64(ApproveHold.Seconds()))
+	e.anvil.Mine(1)
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.anvil.RPC.Call(nil, "evm_setAutomine", false); err != nil {
+		t.Fatal(err)
+	}
+	var sent string
+	if err := e.anvil.RPC.Call(&sent, "eth_sendRawTransaction", raw); err != nil {
+		t.Fatal(err)
+	}
+	e.sends.now = func() time.Time { return time.Now().Add(ApproveHold) }
+	if got, _ := e.sends.Get(ctx, e.profile, s.ID); got.Status != Approved {
+		t.Errorf("signed, waiting, answer lost = %s after the hold, want approved", got.Status)
+	}
+	if _, err := e.prepare(t, outsider, "", 1_000_000); !errors.Is(err, ErrBusy) {
+		t.Errorf("a new send while the signature waits: err = %v, want ErrBusy", err)
+	}
+	e.anvil.Mine(1)
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := e.sends.Get(ctx, e.profile, s.ID); got.Status != Submitted || got.TxHash == nil ||
+		*got.TxHash != strings.ToLower(hash) {
+		t.Errorf("once mined = %s %v, want submitted with %s", got.Status, got.TxHash, hash)
+	}
+}
+
+// R-212: a transaction still waiting in the mempool after DropAfter is not given up, and one given up as dropped that
+// is mined after all becomes sent once the watcher records it.
+func TestAWaitingSendIsNotDroppedAndADroppedOneMinedLaterIsSent(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	s, err := e.prepare(t, outsider, "", 3_000_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.approve(t, s)
+	hash := e.anvil.Transfer(e.token, outsider, "3000000")
+	raw := e.anvil.RawTx(hash)
+	e.anvil.Reorg(1) // the transaction leaves the chain and the mempool
+	if _, err = e.sends.Submit(ctx, e.profile, s.ID, hash); err != nil {
+		t.Fatal(err)
+	}
+	// Back in the mempool, waiting: no block takes it.
+	if err := e.anvil.RPC.Call(nil, "evm_setAutomine", false); err != nil {
+		t.Fatal(err)
+	}
+	var sent string
+	if err := e.anvil.RPC.Call(&sent, "eth_sendRawTransaction", raw); err != nil {
+		t.Fatal(err)
+	}
+	e.sends.now = func() time.Time { return time.Now().Add(DropAfter) }
+	if got, _ := e.sends.Get(ctx, e.profile, s.ID); got.Status != Submitted {
+		t.Errorf("waiting in the mempool after DropAfter = %s, want submitted", got.Status)
+	}
+
+	// The node forgets it, so it is given up; then it is mined after all.
+	e.sends.now = time.Now
+	if err := e.anvil.RPC.Call(nil, "anvil_dropTransaction", hash); err != nil {
+		t.Fatal(err)
+	}
+	e.sends.now = func() time.Time { return time.Now().Add(DropAfter) }
+	if got, _ := e.sends.Get(ctx, e.profile, s.ID); got.Status != Failed {
+		t.Fatalf("forgotten by the node = %s, want failed dropped", got.Status)
+	}
+	if err := e.anvil.RPC.Call(nil, "evm_setAutomine", true); err != nil {
+		t.Fatal(err)
+	}
+	e.anvil.SendRaw(raw)
+	e.anvil.Mine(2)
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := e.sends.Get(ctx, e.profile, s.ID); got.Status != Sent || got.Failure != nil {
+		t.Errorf("mined after it was given up = %s %v, want sent", got.Status, got.Failure)
+	}
+}
+
+// D-49: money that leaves a profile wallet without a send its owner approved in Forwend tells the owner, once it is
+// final: a stolen session can sign through Privy without Forwend's screens. Reporting the theft's hash on a send never
+// approved, or on one for another amount, hides nothing; the owner's own approved send tells nobody.
+func TestMoneyLeavingAWalletWithoutASendTellsItsOwner(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	outflows := func() int {
+		t.Helper()
+		var n int
+		if err := e.pool.QueryRow(ctx, "SELECT count(*) FROM outbox_events WHERE kind = 'wallet.outflow'").Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	small, err := e.prepare(t, outsider, "", 1_000_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	theft := e.anvil.Transfer(e.token, outsider, "2000000") // signed through Privy, never through Forwend
+	if _, err := e.sends.Submit(ctx, e.profile, small.ID, theft); !errors.Is(err, ErrInvalid) {
+		t.Errorf("a send never approved takes the theft's hash: err = %v", err)
+	}
+	e.approve(t, small)
+	if _, err := e.sends.Submit(ctx, e.profile, small.ID, theft); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if n := outflows(); n != 0 {
+		t.Fatalf("before the transfer is final: %d notices", n)
+	}
+	e.anvil.Mine(2)
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if n := outflows(); n != 1 {
+		t.Errorf("a transfer whose hash an approved send of another amount claims: %d notices, want 1", n)
+	}
+	// Its receipt holds no transfer of its amount, so it fails and frees the wallet.
+	e.sends.now = func() time.Time { return time.Now().Add(receiptAfter) }
+	if got, _ := e.sends.Get(ctx, e.profile, small.ID); got.Status != Failed {
+		t.Fatalf("the send that claimed the theft = %s, want failed", got.Status)
+	}
+	e.sends.now = time.Now
+
+	s, err := e.prepare(t, outsider, "", 1_000_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.approve(t, s)
+	hash := e.anvil.Transfer(e.token, outsider, "1000000")
+	if _, err := e.sends.Submit(ctx, e.profile, s.ID, hash); err != nil {
+		t.Fatal(err)
+	}
+	e.anvil.Mine(2)
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if n := outflows(); n != 1 {
+		t.Errorf("after the owner's approved send: %d notices, want still 1", n)
+	}
+
+	// Signed after its approval ended, and the answer lost: still the owner's send.
+	late, err := e.prepare(t, outsider, "", 1_000_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.approve(t, late)
+	e.anvil.Wait(int64(ApproveHold.Seconds()))
+	e.anvil.Mine(1)
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	e.sends.now = func() time.Time { return time.Now().Add(ApproveHold) }
+	if got, _ := e.sends.Get(ctx, e.profile, late.ID); got.Status != Expired {
+		t.Fatalf("approved, unsigned after the hold = %s, want expired", got.Status)
+	}
+	e.sends.now = time.Now
+	e.anvil.Transfer(e.token, outsider, "1000000")
+	e.anvil.Mine(2)
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if n := outflows(); n != 1 {
+		t.Errorf("after a send signed once its approval ended: %d notices, want still 1", n)
+	}
+	// An approval that ended long ago explains nothing.
+	if _, err := e.pool.Exec(ctx, `UPDATE sends SET approved_at = approved_at - interval '2 hours',
+		finished_at = finished_at - interval '2 hours' WHERE id = $1`, late.ID); err != nil {
+		t.Fatal(err)
+	}
+	e.anvil.Transfer(e.token, outsider, "1000000")
+	e.anvil.Mine(2)
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if n := outflows(); n != 2 {
+		t.Errorf("a transfer matching an approval that ended 2 hours ago: %d notices, want 2", n)
 	}
 }

@@ -2,6 +2,7 @@ package team
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/forwend/forwend/apps/backend/internal/auth"
@@ -46,12 +47,49 @@ func (s *Service) List(ctx context.Context, profileID string) (Team, error) {
 	return Team{Members: members, Invites: invites}, nil
 }
 
-// SetMember gives a member another role and stores (D-63: the caller asked for a fresh sign-in).
-func (s *Service) SetMember(ctx context.Context, profileID, userID, privyUserID string, g Grant) (Member, error) {
+// ToRoll is what a member who no longer may could still use: API keys they made that work, and, for a former Admin,
+// every webhook endpoint, whose signing secret they could reveal. The owner rolls them (D-93).
+type ToRoll struct {
+	Keys      []RollKey
+	Endpoints []RollEndpoint
+}
+
+type RollKey struct{ ID, Name, Last4 string }
+
+type RollEndpoint struct{ ID, URL string }
+
+func toRoll(ctx context.Context, tx pgx.Tx, profileID, userID string, wasAdmin bool) (ToRoll, error) {
+	var out ToRoll
+	rows, err := tx.Query(ctx, `SELECT id::text, name, last4 FROM api_keys WHERE profile_id = $1 AND created_by = $2
+		AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now()) ORDER BY created_at`, profileID, userID)
+	if err != nil {
+		return ToRoll{}, fmt.Errorf("read the member's keys: %w", err)
+	}
+	if out.Keys, err = pgx.CollectRows(rows, pgx.RowToStructByPos[RollKey]); err != nil {
+		return ToRoll{}, fmt.Errorf("read the member's keys: %w", err)
+	}
+	if !wasAdmin {
+		return out, nil
+	}
+	rows, err = tx.Query(ctx, "SELECT id::text, url FROM webhook_endpoints WHERE profile_id = $1 ORDER BY created_at",
+		profileID)
+	if err != nil {
+		return ToRoll{}, fmt.Errorf("read webhook endpoints: %w", err)
+	}
+	if out.Endpoints, err = pgx.CollectRows(rows, pgx.RowToStructByPos[RollEndpoint]); err != nil {
+		return ToRoll{}, fmt.Errorf("read webhook endpoints: %w", err)
+	}
+	return out, nil
+}
+
+// SetMember gives a member another role and stores (D-63: the caller asked for a fresh sign-in). An Admin given
+// another role leaves what they could still use (ToRoll).
+func (s *Service) SetMember(ctx context.Context, profileID, userID, privyUserID string, g Grant) (Member, ToRoll, error) {
 	if !lowercaseUUID.MatchString(userID) {
-		return Member{}, ErrMemberNotFound
+		return Member{}, ToRoll{}, ErrMemberNotFound
 	}
 	var m Member
+	var roll ToRoll
 	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		if err := lockMerchant(ctx, tx, profileID); err != nil {
 			return err
@@ -67,13 +105,19 @@ func (s *Service) SetMember(ctx context.Context, profileID, userID, privyUserID 
 		if err := g.check(ctx, tx, profileID); err != nil {
 			return err
 		}
-		tag, err := tx.Exec(ctx, "UPDATE profile_members SET role = $3 WHERE profile_id = $1 AND user_id = $2", profileID,
-			userID, g.Role)
-		if err != nil {
+		var old string
+		err := tx.QueryRow(ctx, `UPDATE profile_members m SET role = $3 FROM profile_members was
+			WHERE m.profile_id = $1 AND m.user_id = $2 AND was.profile_id = m.profile_id AND was.user_id = m.user_id
+			RETURNING was.role`, profileID, userID, g.Role).Scan(&old)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrMemberNotFound
+		} else if err != nil {
 			return fmt.Errorf("save member role: %w", err)
 		}
-		if tag.RowsAffected() == 0 {
-			return ErrMemberNotFound
+		if old == string(auth.Admin) && g.Role != string(auth.Admin) {
+			if roll, err = toRoll(ctx, tx, profileID, userID, true); err != nil {
+				return err
+			}
 		}
 		if !(auth.Access{Role: auth.Role(g.Role)}).Can(auth.Team) {
 			if err := revokeInvitesBy(ctx, tx, profileID, userID); err != nil {
@@ -92,15 +136,17 @@ func (s *Service) SetMember(ctx context.Context, profileID, userID, privyUserID 
 			FROM profile_members m JOIN users u ON u.id = m.user_id WHERE m.profile_id = $1 AND m.user_id = $2`,
 			profileID, userID).Scan(&m.UserID, &m.Email, &m.Role, &m.Stores, &m.CreatedAt)
 	})
-	return m, err
+	return m, roll, err
 }
 
-// RemoveMember takes a member off the team. Their next request no longer reaches the profile.
-func (s *Service) RemoveMember(ctx context.Context, profileID, userID string) error {
+// RemoveMember takes a member off the team. Their next request no longer reaches the profile; what they could still
+// use comes back for the owner to roll (ToRoll).
+func (s *Service) RemoveMember(ctx context.Context, profileID, userID string) (ToRoll, error) {
 	if !lowercaseUUID.MatchString(userID) {
-		return ErrMemberNotFound
+		return ToRoll{}, ErrMemberNotFound
 	}
-	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+	var roll ToRoll
+	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		// The profile lock orders this after or before an invite the member is sending, so revoking catches it.
 		if err := lockMerchant(ctx, tx, profileID); err != nil {
 			return err
@@ -110,15 +156,20 @@ func (s *Service) RemoveMember(ctx context.Context, profileID, userID string) er
 		} else if owner {
 			return fmt.Errorf("%w: the owner stays on the team", ErrInvalid)
 		}
-		tag, err := tx.Exec(ctx, "DELETE FROM profile_members WHERE profile_id = $1 AND user_id = $2", profileID, userID)
-		if err != nil {
+		var role string
+		err := tx.QueryRow(ctx, "DELETE FROM profile_members WHERE profile_id = $1 AND user_id = $2 RETURNING role",
+			profileID, userID).Scan(&role)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrMemberNotFound
+		} else if err != nil {
 			return fmt.Errorf("remove member: %w", err)
 		}
-		if tag.RowsAffected() == 0 {
-			return ErrMemberNotFound
+		if roll, err = toRoll(ctx, tx, profileID, userID, role == string(auth.Admin)); err != nil {
+			return err
 		}
 		return revokeInvitesBy(ctx, tx, profileID, userID)
 	})
+	return roll, err
 }
 
 // Leave takes the signed-in member off the team. The owner can't leave, so a team always keeps an Admin (D-93).
@@ -128,5 +179,6 @@ func (s *Service) Leave(ctx context.Context, profileID, privyUserID string) erro
 		Scan(&userID); err != nil {
 		return fmt.Errorf("read user: %w", err)
 	}
-	return s.RemoveMember(ctx, profileID, userID)
+	_, err := s.RemoveMember(ctx, profileID, userID)
+	return err
 }

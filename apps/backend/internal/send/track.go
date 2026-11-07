@@ -21,7 +21,7 @@ const columns = `id::text, profile_id::text, chain_id, token_contract, from_addr
 	amount::text, status, tx_hash, failure, created_at, submitted_at, finished_at,
 	(SELECT tk.symbol FROM tokens tk WHERE tk.chain_id = sends.chain_id AND tk.contract = sends.token_contract),
 	(SELECT tk.decimals FROM tokens tk WHERE tk.chain_id = sends.chain_id AND tk.contract = sends.token_contract),
-	network_fee::text, gas_limit, max_fee_per_gas::text, max_priority_fee_per_gas::text`
+	network_fee::text, gas_limit, max_fee_per_gas::text, max_priority_fee_per_gas::text, approved_at`
 
 func scan(row pgx.Row) (Send, error) {
 	var s Send
@@ -31,7 +31,7 @@ func scan(row pgx.Row) (Send, error) {
 	var maxFee, tip *string
 	err := row.Scan(&s.ID, &s.ProfileID, &chainID, &s.Token, &s.From, &s.To, &s.ToProfileID, &amount, &s.Status,
 		&s.TxHash, &s.Failure, &s.CreatedAt, &s.SubmittedAt, &s.FinishedAt, &s.Symbol, &s.Decimals, &fee, &limit, &maxFee,
-		&tip)
+		&tip, &s.ApprovedAt)
 	s.ChainID = uint64(chainID)
 	s.Amount, _ = new(big.Int).SetString(amount, 10)
 	s.NetworkFee, _ = new(big.Int).SetString(fee, 10)
@@ -43,8 +43,9 @@ func scan(row pgx.Row) (Send, error) {
 	return s, err
 }
 
-// Submit records the hash the browser got from signing the send (R-212). The same hash again is a no-op. A send
-// given up or replaced while the browser was signing takes its hash too: the money is moving.
+// Submit records the hash the browser got from signing the send (R-212). The same hash again is a no-op. Only an
+// approved send takes one, including one whose hold ended while the browser was signing: the browser signs only after
+// the approve, and a hash on a send never approved would explain away money that left without one (D-49).
 func (s *Service) Submit(ctx context.Context, profileID, sendID, txHash string) (Send, error) {
 	txHash = strings.ToLower(txHash)
 	if !hashPattern.MatchString(txHash) {
@@ -52,7 +53,8 @@ func (s *Service) Submit(ctx context.Context, profileID, sendID, txHash string) 
 	}
 	out, err := scan(s.pool.QueryRow(ctx, `
 		UPDATE sends SET status = 'submitted', tx_hash = $3, submitted_at = now(), finished_at = NULL
-		WHERE id::text = $1 AND profile_id = $2 AND status IN ('prepared', 'expired', 'canceled') RETURNING `+columns,
+		WHERE id::text = $1 AND profile_id = $2 AND approved_at IS NOT NULL AND status IN ('approved', 'expired')
+		RETURNING `+columns,
 		strings.ToLower(sendID), profileID, txHash))
 	if errors.Is(err, pgx.ErrNoRows) {
 		out, err = s.Get(ctx, profileID, sendID)
@@ -69,6 +71,33 @@ func (s *Service) Submit(ctx context.Context, profileID, sendID, txHash string) 
 		return Send{}, fmt.Errorf("submit send: %w", err)
 	}
 	return out, nil
+}
+
+// Approve lets the browser sign a prepared send, once: a second approve is ErrApproved, so one summary is never
+// signed twice. A send no longer prepared, such as one past PrepareTTL, comes back as it is.
+func (s *Service) Approve(ctx context.Context, profileID, sendID string) (Send, error) {
+	out, err := s.Get(ctx, profileID, sendID)
+	if err != nil {
+		return Send{}, err
+	}
+	if out.Status == Approved {
+		return Send{}, ErrApproved
+	}
+	if out.Status != Prepared {
+		return out, nil
+	}
+	approved, err := scan(s.pool.QueryRow(ctx, `UPDATE sends SET status = 'approved', approved_at = now()
+		WHERE id = $1 AND status = 'prepared' RETURNING `+columns, out.ID))
+	if errors.Is(err, pgx.ErrNoRows) { // approved, given up or replaced since the read
+		if out, err = s.Get(ctx, profileID, sendID); err == nil && out.Status == Approved {
+			return Send{}, ErrApproved
+		}
+		return out, err
+	} else if err != nil {
+		return Send{}, fmt.Errorf("approve send: %w", err)
+	}
+	approved.Gas, approved.NetworkFee = out.Gas, out.NetworkFee
+	return approved, nil
 }
 
 // Cancel gives up an unsigned send, as when the owner closes the review.
@@ -127,7 +156,7 @@ func (s *Service) Pending(ctx context.Context, profileID string) ([]Send, error)
 // finishOpen brings the wallet's open sends on the chain up to date, so a finished one no longer holds the next.
 func (s *Service) finishOpen(ctx context.Context, wallet string, chainID uint64) error {
 	rows, err := s.pool.Query(ctx, "SELECT "+columns+` FROM sends
-		WHERE from_address = $1 AND chain_id = $2 AND status IN ('prepared', 'submitted')`, wallet, int64(chainID))
+		WHERE from_address = $1 AND chain_id = $2 AND status IN ('prepared', 'approved', 'submitted')`, wallet, int64(chainID))
 	if err != nil {
 		return fmt.Errorf("read open sends: %w", err)
 	}
@@ -153,7 +182,15 @@ func (s *Service) refresh(ctx context.Context, out Send) (Send, error) {
 			return out, nil
 		}
 		return s.finish(ctx, out, Expired, nil)
+	case Approved:
+		return s.unreported(ctx, out)
 	case Submitted:
+	case Failed:
+		// A transaction given up as dropped can still be mined: once the watcher records its transfer as final, the
+		// send was sent after all.
+		if out.Failure == nil || *out.Failure != "dropped" {
+			return out, nil
+		}
 	default:
 		return out, nil
 	}
@@ -169,6 +206,8 @@ func (s *Service) refresh(ctx context.Context, out Send) (Send, error) {
 	switch {
 	case seen != nil && *seen == "confirmed":
 		return s.finish(ctx, out, Sent, nil)
+	case out.Status == Failed:
+		return out, nil
 	case seen != nil:
 		out.OnChain = true
 		return out, nil
@@ -183,6 +222,10 @@ func (s *Service) refresh(ctx context.Context, out Send) (Send, error) {
 	switch {
 	case errors.Is(err, ethereum.NotFound):
 		if now.Sub(*out.SubmittedAt) < DropAfter {
+			return out, nil
+		}
+		// A waiting transaction has no receipt either: one the node still knows, or can't tell about, isn't dropped.
+		if _, _, err := client.TransactionByHash(ctx, common.HexToHash(*out.TxHash)); !errors.Is(err, ethereum.NotFound) {
 			return out, nil
 		}
 		dropped := "dropped"
@@ -213,6 +256,62 @@ func moves(r *types.Receipt, out Send) bool {
 		}
 	}
 	return false
+}
+
+// unreported settles an approved send the browser never reported: its signature may have gone out though the answer
+// was lost. The wallet's transfer to the same address and amount that the watcher recorded since the approve, and no
+// send claims, becomes its hash; with none, the approval ends after ApproveHold, once the watcher has read the chain
+// past it and the wallet has no transaction still waiting.
+func (s *Service) unreported(ctx context.Context, out Send) (Send, error) {
+	// The watcher's place is read before its transfers: a scan that commits in between then only adds a transfer,
+	// and never looks past the hold without it.
+	var read bool
+	if err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM chain_cursors WHERE chain_id = $1
+		AND last_scanned_time >= $2)`, int64(out.ChainID), out.ApprovedAt.Add(ApproveHold).Unix()).Scan(&read); err != nil {
+		return Send{}, fmt.Errorf("read chain cursor: %w", err)
+	}
+	var hash string
+	err := s.pool.QueryRow(ctx, `
+		SELECT w.tx_hash FROM wallet_transfers w WHERE w.chain_id = $1 AND w.wallet_address = $2 AND w.direction = 'out'
+		AND w.token_contract = $3 AND w.counterparty = $4 AND w.amount = $5::numeric AND w.status <> 'reorged'
+		AND w.created_at >= $6 AND NOT EXISTS (SELECT 1 FROM sends x WHERE x.chain_id = w.chain_id
+		    AND x.from_address = w.wallet_address AND x.tx_hash = w.tx_hash)
+		ORDER BY w.block_number, w.log_index LIMIT 1`,
+		int64(out.ChainID), out.From, out.Token, out.To, out.Amount.String(), *out.ApprovedAt).Scan(&hash)
+	if errors.Is(err, pgx.ErrNoRows) {
+		// A transfer mined within the hold that the watcher hasn't read yet would otherwise free the wallet for the
+		// same money again.
+		if s.now().Sub(*out.ApprovedAt) < ApproveHold || !read || s.waiting(ctx, out) {
+			return out, nil
+		}
+		return s.finish(ctx, out, Expired, nil)
+	} else if err != nil {
+		return Send{}, fmt.Errorf("read wallet transfer: %w", err)
+	}
+	next, err := scan(s.pool.QueryRow(ctx, `UPDATE sends SET status = 'submitted', tx_hash = $2, submitted_at = now()
+		WHERE id = $1::uuid AND status = 'approved' RETURNING `+columns, out.ID, hash))
+	if errors.Is(err, pgx.ErrNoRows) { // the browser's report came first
+		return s.Get(ctx, out.ProfileID, out.ID)
+	} else if err != nil {
+		return Send{}, fmt.Errorf("record unreported send: %w", err)
+	}
+	return s.refresh(ctx, next)
+}
+
+// waiting reports whether the wallet has a transaction no block holds yet, or the node can't tell. The lost signature
+// may be that transaction, and a new send would be signed at the next nonce and go out after it.
+func (s *Service) waiting(ctx context.Context, out Send) bool {
+	client, err := s.client(out.ChainID)
+	if err != nil {
+		return true
+	}
+	from := common.HexToAddress(out.From)
+	pending, err := client.PendingNonceAt(ctx, from)
+	if err != nil {
+		return true
+	}
+	mined, err := client.NonceAt(ctx, from, nil)
+	return err != nil || pending > mined
 }
 
 func (s *Service) finish(ctx context.Context, out Send, status Status, failure *string) (Send, error) {

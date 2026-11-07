@@ -432,6 +432,11 @@ func (s *Service) funded(ctx context.Context, tx pgx.Tx, invoiceID string, chain
 	return true, nil
 }
 
+// DustExcess: an unexplained balance under this many base units (0.01 of a 6-decimal token) doesn't stop expiry. Arc
+// floors each native transfer but balanceOf floors their sum, so sub-micro sends leave dust no transfer explains,
+// and anyone could send some to keep an invoice open for good. The dust stays in the receiver for the Safe.
+const DustExcess = 10_000
+
 // balanced asks the selected RPC whether the receive address holds exactly what is booked.
 func (s *Service) balanced(ctx context.Context, tx pgx.Tx, invoiceID string, chainID, finalized uint64, token, receive string) (bool, error) {
 	var waiting bool
@@ -443,11 +448,14 @@ func (s *Service) balanced(ctx context.Context, tx pgx.Tx, invoiceID string, cha
 	if err != nil || onChain == nil {
 		return false, err
 	}
-	if onChain.Cmp(booked) > 0 {
+	if excess := new(big.Int).Sub(onChain, booked); excess.Cmp(big.NewInt(DustExcess)) >= 0 {
 		// A deposit the watcher never saw: an operator refunds it (money-safety.md).
 		slog.Error("ALERT receive address holds money with no booked transfer; not expiring", "invoice", invoiceID,
 			"booked", booked.String(), "onChain", onChain.String())
 		return false, alertAgainLater(ctx, tx, invoiceID)
+	} else if excess.Sign() > 0 {
+		slog.Warn("receive address holds dust no transfer explains; expiring", "invoice", invoiceID,
+			"booked", booked.String(), "onChain", onChain.String())
 	}
 	if onChain.Cmp(booked) < 0 {
 		slog.Error("ALERT receive address holds less than booked; not expiring", "invoice", invoiceID,

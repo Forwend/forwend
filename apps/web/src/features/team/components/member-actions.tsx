@@ -22,7 +22,9 @@ import { GrantFields } from "@/features/team/components/grant-fields";
 import { MEMBER_ROLES } from "@/features/team/constants/team";
 import { TEAM_COPY as COPY } from "@/features/team/constants/team-copy";
 import { grantError } from "@/features/team/lib/team";
-import type { Member, MemberRole } from "@/features/team/types/team";
+import type { Member, MemberRole, ToRoll } from "@/features/team/types/team";
+
+const hasAnything = (r: ToRoll) => r.keys.length + r.webhooks.length > 0;
 
 export interface MemberActionsProps {
   profileId: string;
@@ -30,13 +32,15 @@ export interface MemberActionsProps {
   /** How the member is named: their email, or a placeholder when they have none. */
   who: string;
   stores: readonly Store[];
+  /** A removal or role change left the member with less: what they could still use, for the owner to roll. */
+  onToRoll: (toRoll: ToRoll) => void;
 }
 
 const memberRole = (member: Member): MemberRole =>
   MEMBER_ROLES.find((r) => r === member.role) ?? ROLES.admin;
 
 // D-93: a role change needs a fresh sign-in, which the API asks for (D-63); removing someone does not.
-export function MemberActions({ profileId, member, who, stores }: MemberActionsProps) {
+export function MemberActions({ profileId, member, who, stores, onToRoll }: MemberActionsProps) {
   const [setMember, saving] = useSetMemberMutation();
   const fresh = useFreshSignIn();
   const [remove, removing] = useRemoveMemberMutation();
@@ -59,7 +63,7 @@ export function MemberActions({ profileId, member, who, stores }: MemberActionsP
       return setErrors({ stores: COPY.errors.stores });
     setErrors({});
     try {
-      await fresh.run(() =>
+      const saved = await fresh.run(() =>
         setMember({
           profileId,
           memberId: member.memberId,
@@ -68,14 +72,16 @@ export function MemberActions({ profileId, member, who, stores }: MemberActionsP
       );
       toast({ tone: TONES.success, title: COPY.changed(who, ROLE_LABELS[role]) });
       form.current?.closest("dialog")?.close();
+      if (saved.toRoll && hasAnything(saved.toRoll)) onToRoll(saved.toRoll);
     } catch (failure) {
       if (!fresh.cancelled(failure)) setErrors(grantError(failure));
     }
   };
   const confirmRemove = async () => {
     try {
-      await remove({ profileId, memberId: member.memberId }).unwrap();
+      const toRoll = await remove({ profileId, memberId: member.memberId }).unwrap();
       toast({ tone: TONES.success, title: COPY.removed(who) });
+      if (hasAnything(toRoll)) onToRoll(toRoll);
     } catch {
       // The dialog shows the error.
     }

@@ -94,6 +94,9 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   LOCKED`; a failed send is retried after 1 min doubling to 1 h, given up after 10 tries.
   - A failed send ends that round, except when Resend refused the message as sent (400 or 422, such as a bad
     address). Then the round goes on, so one bad address can't hold up the other emails (R-115).
+- The watcher queues `wallet.outflow` when money leaves a profile wallet with no approved send (D-49).
+  - It goes to the owner whatever the email setting: it may be a theft.
+- The signer queues `settlement.waiting` while the daily settle cap holds paid money back: one email a day per user.
 - Email off or no address: the event is marked done and nothing is sent. Without `RESEND_API_KEY` the worker sends
   nothing and events wait; `scripts/with-env.sh` gives the key to the worker and the api (Confirm it's you codes).
 - `PUT /v1/invoices/{payToken}/payer-email` (R-82, D-68, public like the checkout): the payer's address for this
@@ -284,7 +287,11 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
   - A revoked, accepted or expired invite sends nothing. Reply-To is the inviter's login email.
 - `DELETE /v1/profiles/{profileId}/invites/{inviteId}` (`team`) revokes an open invite: 204, else 404 `invite_not_found`.
 - `PUT /v1/profiles/{profileId}/members/{memberId}` (`team`, fresh sign-in) takes `{role, stores}` and answers the member.
-- `DELETE /v1/profiles/{profileId}/members/{memberId}` (`team`) takes a member off the team: 204.
+  - An Admin given another role adds `toRoll`: what they could still use, as below.
+- `DELETE /v1/profiles/{profileId}/members/{memberId}` (`team`) takes a member off the team: 200 with `toRoll`.
+  - `toRoll.keys`: the API keys they made that still work (`keyId`, `name`, `last4`).
+  - `toRoll.webhooks`: for a former Admin, every webhook endpoint, whose secret they could reveal (`endpointId`, `url`).
+  - The web lists them and sends the owner to Developers to roll them (D-93).
 - `POST /v1/profiles/{profileId}/leave` (`team.leave`) takes the signed-in member off the team: 204.
   - Removing a member, leaving, or a change away from Admin revokes the open invites that member sent.
   - The owner is an Admin for good: changing, removing or leaving as the owner is 422.
@@ -467,6 +474,8 @@ R-146, D-96; the full schema is in openapi.yaml. Owners and Admins manage them w
   - 201 the first time, when it gets its first secret, which only the secret route shows; 200 after.
   - The role is checked again as it is written, as for keys.
   - Another profile's id is 404 `endpoint_not_found`.
+  - A profile has at most 16 endpoints: a 17th is 422 `invalid_value`. Each event writes a delivery per endpoint inside
+    the money transaction that raised it.
   - `url` is https, at most 2048 characters, with no credentials and no fragment.
   - Its host must be public: no localhost, `.local` or `.internal` name, and no private, loopback, link-local or CGNAT address.
   - A name must be ASCII, in its punycode form, and can't end in a number: resolvers read `127.1` as 127.0.0.1.
@@ -996,10 +1005,25 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
     - `gas` gives the limit and fee caps the browser signs with, so the fee never exceeds `networkFee`.
   - `GET .../sends/fee?chainId=&token=&to=` is that fee now, for the amount step's fee and Max.
     - It prices every amount byte as non-zero, so it covers a send of any amount, Max too.
-- `POST .../sends/{sendId}/approve` needs a fresh sign-in (D-49) and answers with the send, as the GET reads it.
-  - The browser asks it after the owner holds Send, and signs only a send still `prepared`.
+- `POST .../sends/{sendId}/approve` needs a fresh sign-in (D-49) and approves a `prepared` send once: it answers `approved`.
+  - A user whose MFA methods Forwend recorded passes without one: Privy asks for one as it signs.
+  - Recorded means each of Privy's `mfa_methods`, as `type:verified_at`, is in `users.two_step_methods`.
+  - The browser asks it after the owner holds Send, and signs only a send it answered `approved`.
+  - A second approve answers 409 `send_approved`: the first may have been signed though its answer was lost.
+  - A send no longer prepared, such as one past its 10 minutes, comes back as it is.
+- `PUT /v1/me/two-step` records the user's MFA methods at Privy, behind a fresh sign-in (R-219).
+  - Its body names the types the user just set up: `{"methods": ["passkey", "totp"]}` (passkey, totp or sms).
+  - Privy can answer without a new method for a moment, so it reads again until Privy lists each type.
+  - It answers 204, 400 for another body, or 409 `two_step_not_set_up` when Privy never lists them.
+  - Setting a method up again at Privy changes its `verified_at`, so it needs recording again.
+  - Only the web's setup records them, never a send: a send would record a method a stolen session set up.
 - One unsigned send per wallet and chain: a new prepare cancels it. A signed one still on its way gives 409
   `send_in_progress`.
+  - So does an approved one never reported, for 2 minutes: the watcher may yet record its transfer, which then becomes
+    its hash.
+  - It holds until the watcher has read the chain past those 2 minutes, so a transfer it hasn't read yet still counts.
+  - It also holds while the wallet has a transaction no block holds yet: a new send would go out after it.
+  - That check reads the wallet's nonce, so it may not see a sponsored transaction a relayer sends.
 - `GET .../sends` lists the signed sends the watcher hasn't recorded yet (R-215). It needs `money.read`.
   - The money lists show them first, until the transfer's own row takes their place.
 - `POST .../sends/{sendId}/submit` takes the hash Privy returned. `POST .../cancel` gives up an unsigned send.
@@ -1007,9 +1031,14 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
   - `sending` until the watcher records a wallet transfer that matches hash, wallet, token, recipient and amount.
   - `sent` once it does: the transfer is in a block. `final` once that transfer is confirmed and can't change.
   - A reorged transfer goes back to `sending`; it is `sent` again when the transaction is mined again.
-  - `failed` `reverted`: the receipt has no such transfer. `failed` `dropped`: no receipt 30 minutes after submit.
-  - `expired`: never submitted within 10 minutes. Nothing is ever sent again on its own.
-- A submit takes its hash in any state but `sent` and `failed`, so a signed send is never lost. A hash belongs to one send.
+  - `failed` `reverted`: the receipt has no such transfer.
+  - `failed` `dropped`: no receipt 30 minutes after submit, and the node no longer knows the transaction.
+    A dropped send that is mined later becomes `sent`.
+  - `expired`: never approved within 10 minutes, or approved and never reported once the hold ended.
+    Nothing is ever sent again on its own.
+- A submit takes a hash only for an approved send, including one whose hold ended while the browser signed.
+  - Other sends answer 422: the browser signs only after the approve.
+  - A hash belongs to one send of its wallet.
 
 ## Idempotency
 
@@ -1091,7 +1120,8 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
 - 400 malformed, 401 no or bad token, 403 not yours, 404 missing, 409 conflict, 422 invalid value, 429 too many
   requests, 503 a network the worker has not scanned yet (`network_not_ready` on invoice create, `network_unavailable` when a recheck cannot read it), 500 anything else.
   A profile has at most 1,000 invoices open for payment at once and creates at most 500 a day: 422 above.
-  Invoices payers make on its payment links have the same limits, counted apart, so link traffic never blocks the owner (R-188).
+  Invoices payers make on its payment links, and its checkout sessions, have the same limits, each counted apart, so
+  that traffic never blocks the owner (R-188). A link checkout or session that expired unpaid leaves the day's count.
 - A 500 never shows internal details. `httpio.WriteError` maps sentinel errors to codes in one place.
 
 ## Rate limits
@@ -1116,7 +1146,9 @@ seconds (when the next token is back) and runs nothing else.
   count; it can't stop one.
 - `POST /v1/links/{slug}/visits` (R-142): per link, 5 at once, then one every 5 s.
 - `POST /v1/links/{slug}/pay` makes a checkout, so it has limits in `linkapi/routes.go` (R-142).
-  - Per link: 5 at once, then one every 10 s.
+  - Per payer: 5 at once, then one every 10 s. The payer is the last `X-Forwarded-For` address when
+    `TRUST_PROXY_HEADER=1`, which a proxy in front (Traefik on staging) sets. Without it every caller looks alike, so
+    the budget is per link.
   - For all links together: 20 at once, then one a second, spent only by a Pay that makes an invoice (R-117).
   - It is asked just before the insert, so any Pay that makes no invoice spends none, a repeated key included.
 - `POST /v1/jobs/{token}/accept` makes an invoice, so it has limits in `jobapi/routes.go`. Accepting a change has its
@@ -1131,7 +1163,9 @@ seconds (when the next token is back) and runs nothing else.
   per IP at the load balancer or edge once hosting is chosen (Q-8), and keep the api reachable only through it.
   `/healthz` has no limit.
 - The buckets live in each api process (D-72): with N replicas behind a load balancer a caller gets up to N times the
-  rate. Redis can hold the counts once more than a few replicas run.
+  rate.
+- A key over 128 characters, or a new one once 100,000 buckets are held, shares one overflow bucket: a public route's
+  key comes from its path, which anyone can make up. Redis can hold the counts once more than a few replicas run.
 - How the web handles 429: [web architecture](../web/architecture.md).
 
 ## Handlers and tests

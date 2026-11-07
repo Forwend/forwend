@@ -81,6 +81,8 @@
 | `EMAIL_FROM` | `Forwend <notifications@mail.forwend.com>` by default; use a sender verified by Resend. |
 | `EMAIL_POSTAL_ADDRESS` | Optional sender address for email footers; empty omits it. |
 | `SUPPORT_EMAIL` | The monitored support inbox. Email footers name it, and the web build puts it in the pay page's Need help. |
+| `TRUST_PROXY_HEADER` | `1` on staging: Traefik sets `X-Forwarded-For` to the client's address, so public Pay is limited per payer (R-188). |
+| `WALLET_MFA` | `1` once Privy dashboard > User management > Authentication > MFA allows both passkeys and the authenticator app (D-49, R-219): an owner sets up both before a first send or export. The web build reads it. Empty or `0` leaves the gate off. |
 | `COINGECKO_API_KEY` | Optional CoinGecko Demo plan key for display prices (R-178); empty calls without a key. |
 | `WEBHOOK_SECRET_KEY` | 32 random bytes in base64, from `openssl rand -base64 32`. Compose refuses to deploy without it. It opens the saved signing secrets; under another key, deliveries stop. |
 

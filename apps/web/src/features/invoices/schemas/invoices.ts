@@ -125,6 +125,8 @@ export const invoiceSummarySchema = z.object({
   amount: baseUnits,
   // The profile wallet that settlement pays.
   recipient: evmAddress,
+  // The factory the receive address comes from: the one the invoice was made with.
+  factory: evmAddress,
   receiveAddress: evmAddress,
   // The terms' expiry, which the receive address commits to; checkout closes at closesAt (R-130).
   expiresAt: apiTime,

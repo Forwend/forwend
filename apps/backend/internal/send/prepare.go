@@ -213,7 +213,7 @@ func (s *Service) keep(ctx context.Context, out Send) (Send, error) {
 	// The wallet's row lock makes the check and the insert one step for concurrent prepares.
 	var busy bool
 	err = tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM sends WHERE from_address = $1 AND chain_id = $2
-		AND status = 'submitted') FROM profile_wallets WHERE address = $1 FOR UPDATE`, out.From, int64(out.ChainID)).
+		AND status IN ('approved', 'submitted')) FROM profile_wallets WHERE address = $1 FOR UPDATE`, out.From, int64(out.ChainID)).
 		Scan(&busy)
 	if err != nil {
 		return Send{}, fmt.Errorf("lock wallet: %w", err)

@@ -23,9 +23,21 @@ const calls = vi.hoisted(() => ({
   address: "0x4edd1111111111111111111111111111111181fc" as string | null,
   check: vi.fn(async () => {}),
   exportWallet: vi.fn(async (_: { address: string }) => {}),
+  mfa: { needed: false, enrolled: false },
 }));
+vi.mock("@/features/auth/hooks/use-wallet-mfa", () => ({ useWalletMfa: () => calls.mfa }));
 vi.mock("@privy-io/react-auth", () => ({
   useExportWallet: () => ({ exportWallet: calls.exportWallet }),
+}));
+vi.mock("@/features/auth/components/mfa-step", () => ({
+  useMfaStep: () => ({
+    run: (action: () => unknown) => action(),
+    step: null,
+    cancel: vi.fn(),
+  }),
+}));
+vi.mock("@/features/auth/components/two-step-setup", () => ({
+  TwoStepSetup: () => <p>two-step setup</p>,
 }));
 vi.mock("@/features/auth/api/auth-api", () => ({
   useCheckFreshSignInMutation: () => [() => ({ unwrap: calls.check })],
@@ -40,6 +52,8 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
   calls.address = ADDRESS;
+  calls.mfa.needed = false;
+  calls.mfa.enrolled = false;
 });
 
 describe("the Wallet page (R-218)", () => {
@@ -106,6 +120,31 @@ describe("the Wallet page (R-218)", () => {
     expect(show.getAttribute("aria-busy")).toBeNull();
     fireEvent.click(show);
     await waitFor(() => expect(calls.exportWallet).toHaveBeenCalledTimes(2));
+  });
+
+  // R-219: Privy asks for the owner's second step before it shows a key, so it is set up first, in this dialog.
+  it("sets up two-step in place of Show the key until it is set up", () => {
+    calls.mfa.needed = true;
+    render(<WalletScreen />, { wrapper: wrap });
+    fireEvent.click(screen.getByRole("button", { name: "Export private key" }));
+    const dialog = screen.getByRole("dialog", { name: "Export this wallet's private key?" });
+    expect(within(dialog).queryByRole("button", { name: "Show the key" })).toBeNull();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Set up two-step verification" }));
+    expect(within(dialog).getByText("two-step setup")).toBeTruthy();
+    expect(calls.check).not.toHaveBeenCalled();
+    expect(calls.exportWallet).not.toHaveBeenCalled();
+  });
+
+  // D-49: with two-step set up, Privy asks for its code before it shows the key: that is the one check.
+  it("opens Privy's export without Forwend's emailed code once two-step is set up", async () => {
+    calls.mfa.enrolled = true;
+    render(<WalletScreen />, { wrapper: wrap });
+    fireEvent.click(screen.getByRole("button", { name: "Export private key" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Show the key" }),
+    );
+    await waitFor(() => expect(calls.exportWallet).toHaveBeenCalledWith({ address: ADDRESS }));
+    expect(calls.check).not.toHaveBeenCalled();
   });
 
   it("says so when the profile has no wallet yet", () => {

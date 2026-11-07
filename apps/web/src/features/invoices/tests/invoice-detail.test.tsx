@@ -76,6 +76,7 @@ const OPEN = {
   token: TOKEN.token,
   amount: "1250000000",
   recipient: "0x1111111111111111111111111111111111111111",
+  factory: "0xf93da73f1308a9b34aab78bf6d84f0bacc600dd2",
   receiveAddress: "0x586134f74b654f5835860ca198ae725344670078",
   expiresAt: new Date(Date.now() + 7 * 86_400_000).toISOString(),
   closesAt: new Date(Date.now() + 7 * 86_400_000).toISOString(),

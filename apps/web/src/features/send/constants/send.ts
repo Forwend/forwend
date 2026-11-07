@@ -14,6 +14,7 @@ export const SEND_STEPS = {
 /** GET /v1/profiles/{id}/sends/{sendId}, Send.status. */
 export const SEND_STATUSES = {
   prepared: "prepared",
+  approved: "approved",
   sending: "sending",
   sent: "sent",
   failed: "failed",

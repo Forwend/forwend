@@ -39,9 +39,10 @@ import (
 // chain); webURL is the pay links' origin; userBurst 0 keeps mid.UserBurst;
 // webhookKey seals webhook secrets, and nil leaves webhooks off (R-146).
 func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, balances ledger.BalanceOf,
-	sendClients send.Clients, codes *reauth.Service, webURL string, userBurst int, webhookKey []byte) http.Handler {
+	sendClients send.Clients, codes *reauth.Service, webURL string, userBurst int, webhookKey []byte,
+	trustProxy bool) http.Handler {
 	keys := apikey.NewService(pool)
-	guards := mid.NewGuards(verifier, auth.NewService(pool), keys, wallets, codes, userBurst)
+	guards := mid.NewGuards(verifier, auth.NewService(pool), keys, wallets, codes, userBurst, trustProxy)
 	mux := http.NewServeMux()
 	healthapi.Routes(mux, pool)
 	profiles := profile.NewService(pool, wallets)
@@ -53,7 +54,7 @@ func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, 
 	jobapi.Routes(mux, guards, job.NewService(pool, invoices))
 	moneyapi.Routes(mux, guards, balance.NewService(pool, balances), activity.NewService(pool), profiles)
 	sendapi.Routes(mux, guards, send.NewService(pool, sendClients))
-	reauthapi.Routes(mux, guards, codes)
+	reauthapi.Routes(mux, guards, codes, wallets)
 	teamapi.Routes(mux, guards, team.NewService(pool, wallets))
 	linkapi.Routes(mux, guards, link.NewService(pool, invoices))
 	keyapi.Routes(mux, guards, keys)

@@ -70,6 +70,7 @@ describe("checkedReceiveAddress", () => {
   };
   const invoice: Invoice = {
     ...terms,
+    factory: `0x${FACTORY}`,
     closesAt: terms.expiresAt,
     payToken,
     optionId: terms.invoiceId,
@@ -120,6 +121,29 @@ describe("checkedReceiveAddress", () => {
         payToken,
       ),
     ).toBe(invoice.receiveAddress);
+  });
+
+  // An invoice keeps the factory it was made with: one on a replaced factory still shows its address, and a factory
+  // Forwend never deployed shows none, whatever the API says.
+  it("checks the address against the invoice's own factory, which must be one Forwend deployed", () => {
+    const v1 = "ece745390524e4d0b05d26f56af7f1d38fdb7546";
+    const onV1 = {
+      ...invoice,
+      factory: `0x${v1}`,
+      receiveAddress: receiveAddress(
+        {
+          ...terms,
+          amount: 1_250_000_000n,
+          expiresAt: BigInt(Date.parse(terms.expiresAt) / 1000),
+          settleDeadline: BigInt(Date.parse(terms.settleDeadline) / 1000),
+          intendedChainId: 84532n,
+        },
+        v1,
+      ),
+    };
+    expect(checkedReceiveAddress(onV1, payToken)).toBe(onV1.receiveAddress);
+    expect(checkedReceiveAddress({ ...onV1, factory: `0x${"2".repeat(40)}` }, payToken)).toBeNull();
+    expect(checkedReceiveAddress({ ...invoice, factory: `0x${v1}` }, payToken)).toBeNull();
   });
 
   it("gives none when any term or the address changed", () => {

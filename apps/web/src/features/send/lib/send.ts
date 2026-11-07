@@ -43,6 +43,7 @@ export function sendError(error: unknown): string {
   const e = error as FetchBaseQueryError | undefined;
   const body = (e?.data as { error?: { code?: string; message?: string } } | undefined)?.error;
   if (body?.code === "send_in_progress") return SEND_COPY.busy;
+  if (body?.code === "send_approved") return SEND_COPY.alreadyApproved;
   if ((body?.code === "invalid_value" || body?.code === "transfer_refused") && body.message) {
     const text = body.message.replace(/^invalid send: /, "");
     return `${text.charAt(0).toUpperCase()}${text.slice(1)}.`;

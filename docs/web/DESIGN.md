@@ -188,7 +188,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Your account: Account and security, Notifications. This profile (its name): Billing details, Accepted assets, Team,
     Wallet.
   - Wallet (R-218, the owner's only): the full address, then Export private key.
-    - Export asks in a dialog with the warning, then Confirm it's you when stale, then opens Privy's export window.
+    - Export asks in a dialog with the warning, then opens Privy's export window.
+      - With two-step on, it is asked in place of the dialog's buttons; without it, Confirm it's you when stale.
+      - Until two-step is set up (wallet MFA on), Set up two-step verification takes the place of Show the key.
     - The warning closes first, so no dialog sits under Privy's.
   - Each section shows only to a role that can open it (D-93). The pages keep their addresses.
   - Account and security lists the sign-in methods (email, Google) and this device, from its user agent.
@@ -200,20 +202,38 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - Remove asks in a small dialog, Keep it or Remove. Adding or removing first confirms it's you, in place.
     - The only way to sign in can't be removed: its Remove is off, and the row says why.
     - Once a passkey is removed, the focus goes to Add a passkey.
+  - Two-step verification (R-219) sits between the sign-in methods and the sessions: one row per method.
+    - Passkey (fingerprint mark) and Authenticator app (phone mark), each with a one-line hint.
+    - On: an On badge and Remove; removing asks for two-step in place of the dialog's buttons and says what is left.
+    - Off: Set up, primary while no method is on; with wallet MFA on, the row says it is needed for sends.
+- Two-step setup and two-step itself are a step of the form that needs them, never a dialog over it.
+  - Each view is centered: the method's mark in an accent tile, as on the first run's passkey step, a headline and one
+    line. Under them, the action full width, then a quiet Cancel.
+  - Setup turns on what is missing, the passkey first: "Step 1 of 2", "Step 2 of 2" above the mark.
+    - The passkey: "Use your passkey" and a tap on the one on this device; without one, Create a passkey.
+    - The app: the QR code, the key in groups of four with Copy and a note to keep it, the code boxes, then Turn on.
+    - On a phone, "Open in authenticator app" under the QR code hands the app the key.
+    - "One moment" while Privy starts a step: the same buttons as the view that follows, the main one busy.
+  - The ask: "Confirm with your passkey" with Continue with passkey, or "Enter your authentication code" with the
+    boxes and Verify. With both on, a link switches between them. Cancel ends what asked, and nothing is signed.
+    - A wrong code clears and marks the boxes red, with the reason under them, as on the sign-in page.
+    - While Privy checks an answer, Cancel and the sheet's Back are off: Privy goes on whatever they do.
+  - Privy's own MFA windows are off (`noPromptOnMfaRequired`): they would open under Forwend's dialogs.
   - Privy can't list sessions or end one alone ([freezing users](https://docs.privy.io/user-management/users/managing-users/freezing-users.md)), so no session list is shown.
 - Confirm it's you (R-137) shows in place of the buttons of the form whose change needs a fresh sign-in.
   - The form stays shown and locked, so the user sees what they confirm; no dialog opens on top of another.
   - An action with no form of its own (Turn off, Signing secret) confirms in its own small dialog, titled with it.
   - It sends a code to the login email at once and says where. The code boxes behave as on the sign-in page.
   - A full code confirms with no click; the same code typed again is tried again.
-  - One line above the boxes says where the code goes: "Enter the 6-digit code sent to …".
+  - It looks as the two-step views do, centered: the mail mark, "Check your email", then where the code went:
+    "Enter the 6-digit code sent to …". The boxes are centered; their label is for screen readers.
   - One status line under them says what is next, and nothing else repeats it:
     - "Sending a code…", then "Didn't get it? Resend in 28s", then a Resend code link once the api's wait is over.
     - "We couldn't send the code. Try again" when the send failed. That is not a wrong code: the boxes stay unmarked.
     - When the hour's codes are used up: "Too many codes for now. Try again in 52 min.", counting down the api's
       Retry-After, then the Resend code link. A code sent a moment ago counts down its real wait too.
   - A full code is checked whatever the send did: an earlier email's code may still be the one.
-  - Under a sheet or dialog title, its Back or Close gives up, so the step has only Confirm, full width.
+  - Confirm full width, then a quiet Cancel; a sheet's Back or a dialog's Close gives up as Cancel does.
   - A send's confirm is the sheet's own step, after Send is held (see Send).
   - Cancel and Confirm end the foot's one row.
   - Cancel gives the form its buttons back, with no error, and the focus returns to the form's action.
@@ -232,6 +252,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   open on and close at once (a fade-out would return focus late and shut a menu reopened meanwhile); the phone sheet
   slides up from the screen edge; the centered panel fades in like a dialog. Reduced
   motion removes the movement. Behind a modal the page darkens with the `scrim` token in both themes.
+  - A sheet's header stays put; its body is the one part that scrolls, so a tall step shows one scrollbar.
 - Panels are solid surface with a hairline border, large corners and no shadow; a panel's header row is ruled off.
   Figure strips and tables use hairline rules between cells and rows, not separate cards. On phones a panel is a
   full-width section between top and bottom hairlines (no side border or corners, no box inside a box), its title
@@ -889,6 +910,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   The owner's steps are Waiting, Detected, Confirming, Paid and In wallet.
   - Done, now and next differ by shape: a filled ink disc with a check, a ring, and an empty circle.
   - The line to the next step is ink once a step is done.
+  - Side by side, the path runs edge to edge: the first step at the start, the last at the end, the rest evenly between.
+    - The first label starts under its marker, the last ends under it, and the others center under theirs.
   - The current ring fills only by real evidence (blocks passed, or the share received when partly paid, R-69).
   - Without a known share it turns; reduced motion keeps a still quarter. Nothing fills because time passed.
   Up to four steps always sit side by side (the payer's timeline, the landing's samples). The owner's five don't fit a
@@ -1123,14 +1146,20 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
   - Summary: the amount large and centered, then a ruled box: From, To, Network, Network fee.
     - Total (≈ amount plus fee) follows only when the wallet pays the fee from the same token (R-216).
   - An estimated fee rounds up to 4 decimals and leads with ≈. No "Up to", no "They receive": the amount says it.
-  - An address reads as plain text, shortened (`0x4edd…81fc`), as everywhere in the app.
-    - Its tooltip shows the full address on hover, focus or tap (`TruncatedAddress`, `mono={false}`).
+  - A pasted To address shows whole, in groups of four, first and last groups in ink (`FullAddress`).
+    - A look-alike made to match only the start and end shows different middle characters.
+  - From, and To for a transfer to the owner's other profile, read shortened (`0x4edd…81fc`) under the profile name.
+    - The full address is in a tooltip (`TruncatedAddress`, `mono={false}`).
   - A first send to an address, or one to a contract, shows a one-line warning and a checkbox; Send stays off until it
     is ticked.
   - The main button is held, not clicked, and names the amount ("Hold to send 25.00 USDC", `HoldButton`).
     - A fill crosses it in 1.2 s; letting go sooner runs it back and sends nothing. Space and Enter hold it too.
     - A screen reader's activate acts at once: it has no press to hold, and it is deliberate.
     - From the hold until signing starts the sheet is locked, except while Confirm it's you waits for a code.
+  - With two-step on, the hold shows two-step as the sheet's next step, Confirm it's you, before anything is approved;
+    no emailed code follows. Until it is set up (wallet MFA on), Set up two-step verification takes the hold's place.
+    - The line under it says what the setup asks for. It waits for no wallet, so "Getting your wallet ready" is not shown.
+    - The setup's step is titled "Set up two-step verification", in the sheet and in the export dialog.
   - Confirm it's you comes after the hold, as its own step titled so, when the session needs a fresh sign-in.
     - Back returns to the Summary with no error; holding again asks again.
     - Once the code is confirmed, the send is signed and the progress follows.

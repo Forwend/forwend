@@ -90,11 +90,11 @@ func run() error {
 	site := notify.Site{WebURL: cfg.Email.PublicWebURL, PostalAddress: cfg.Email.PostalAddress, Support: cfg.Email.Support}
 	codes := reauth.NewService(pool, sender, func(code string) (email.Message, error) {
 		return notify.CodeMessage(site, code, reauth.CodeTTL)
-	}, users.LoginEmail, cfg.CodesPerHour)
+	}, cfg.CodesPerHour)
 	server := &http.Server{
 		Addr: cfg.Addr,
 		Handler: httpapi.NewMux(pool, verifier, users, balances.Read, balances.Client, codes, cfg.PublicWebURL,
-			cfg.UserBurst, cfg.WebhookKey),
+			cfg.UserBurst, cfg.WebhookKey, cfg.TrustProxyHeader),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

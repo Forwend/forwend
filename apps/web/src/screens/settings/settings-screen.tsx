@@ -10,6 +10,7 @@ import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { SETTINGS_COPY } from "@/screens/settings/constants/settings-copy";
 import { deviceName } from "@/screens/settings/lib/device";
 import { Passkeys } from "@/screens/settings/passkeys";
+import { TwoStep } from "@/screens/settings/two-step";
 import { SplitSection } from "@/shared/components/split-section";
 
 const COPY = SETTINGS_COPY.account;
@@ -65,6 +66,10 @@ export function SettingsScreen() {
           {/* Passkeys have rows of their own: where each was made, when it was used, and Remove (R-217). */}
           <Passkeys />
         </div>
+      </SplitSection>
+
+      <SplitSection title={COPY.twoStep} description={COPY.twoStepNote}>
+        <TwoStep />
       </SplitSection>
 
       <SplitSection title={COPY.device} description={COPY.deviceNote}>

@@ -7,6 +7,7 @@ import { ChevronUp } from "lucide-react";
 import Link from "next/link";
 import { useId, useState } from "react";
 import { useAddPasskey } from "@/features/auth/hooks/use-add-passkey";
+import { PasskeyOnDevice } from "@/features/auth/lib/passkeys";
 import { useGetInvoicesInfiniteQuery } from "@/features/invoices/api/invoices-api";
 import { CHECKLIST_STEPS, PRIVY_PASSKEY } from "@/features/onboarding/constants/onboarding";
 import { CHECKLIST_COPY as COPY } from "@/features/onboarding/constants/onboarding-copy";
@@ -83,7 +84,8 @@ export function SetupGuide() {
       await linkPasskey();
     } catch (e) {
       // A confirm the owner gave up isn't a failure.
-      if (!needsFreshSignIn(e)) setError(COPY.passkeyFailed);
+      if (!needsFreshSignIn(e))
+        setError(e instanceof PasskeyOnDevice ? e.message : COPY.passkeyFailed);
     } finally {
       setLinking(false);
     }

@@ -31,23 +31,31 @@ func setMember(members *team.Service) http.HandlerFunc {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		m, err := members.SetMember(r.Context(), r.PathValue("profileId"), r.PathValue("memberId"), mid.SignedInUser(r),
-			team.Grant{Role: body.Role, Stores: body.Stores})
+		m, roll, err := members.SetMember(r.Context(), r.PathValue("profileId"), r.PathValue("memberId"),
+			mid.SignedInUser(r), team.Grant{Role: body.Role, Stores: body.Stores})
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		httpio.WriteJSON(w, http.StatusOK, toMemberJSON(m))
+		out := toMemberJSON(m)
+		if len(roll.Keys)+len(roll.Endpoints) > 0 {
+			rollJSON := toRollJSONOf(roll)
+			out.ToRoll = &rollJSON
+		}
+		httpio.WriteJSON(w, http.StatusOK, out)
 	}
 }
 
 func removeMember(members *team.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := members.RemoveMember(r.Context(), r.PathValue("profileId"), r.PathValue("memberId")); err != nil {
+		roll, err := members.RemoveMember(r.Context(), r.PathValue("profileId"), r.PathValue("memberId"))
+		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		w.WriteHeader(http.StatusNoContent)
+		httpio.WriteJSON(w, http.StatusOK, struct {
+			ToRoll toRollJSON `json:"toRoll"`
+		}{toRollJSONOf(roll)})
 	}
 }
 

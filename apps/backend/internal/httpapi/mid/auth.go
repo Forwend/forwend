@@ -3,6 +3,7 @@ package mid
 import (
 	"context"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -135,7 +136,9 @@ func ProfileAccess(r *http.Request) auth.Access {
 
 // RequireFreshSignIn lets through a token whose session confirmed Forwend's code within auth.FreshWindow, or a token
 // from a full sign-in within it (D-49, D-63). For the second it asks Privy; when Privy can't answer, nothing passes.
-func RequireFreshSignIn(users *privy.Client, codes *reauth.Service, next http.Handler) http.Handler {
+// With mfaEnough, a user whose MFA methods Forwend recorded passes too: Privy asks for one before it signs, so the
+// emailed code would be a second check of the same send (R-219).
+func RequireFreshSignIn(users *privy.Client, codes *reauth.Service, mfaEnough bool, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if RequestKey(r) != "" { // only a person signs in (R-144)
 			httpio.WriteError(w, r, auth.ErrForbidden)
@@ -148,21 +151,26 @@ func RequireFreshSignIn(users *privy.Client, codes *reauth.Service, next http.Ha
 		}
 		// A session that confirmed Forwend's code (R-137), else a token from the last full sign-in: a Privy sign-in
 		// made while signed in keeps the session and moves no sign-in time, so it alone proves nothing.
-		fresh := false
+		fresh, stored := false, reauth.Stored{}
 		if codes != nil {
 			var err error
-			if fresh, err = codes.Fresh(r.Context(), token); err != nil {
+			if fresh, stored, err = codes.Fresh(r.Context(), token); err != nil {
 				httpio.WriteError(w, r, err)
 				return
 			}
 		}
 		if !fresh {
-			signIns, err := users.SignInTimes(r.Context(), token.User)
+			signIns, twoStep, err := users.SignInTimes(r.Context(), token.User, stored.LoginEmail)
 			if err != nil {
 				httpio.WriteError(w, r, err)
 				return
 			}
-			fresh = auth.IsFresh(token, time.Now(), signIns)
+			// Only methods Forwend recorded: a stolen session can set up its own at Privy, but can't record it, and adding
+			// one to a recorded method needs that method first.
+			trusted := len(twoStep) > 0 && !slices.ContainsFunc(twoStep, func(m string) bool {
+				return !slices.Contains(stored.TwoStep, m)
+			})
+			fresh = mfaEnough && trusted || auth.IsFresh(token, time.Now(), signIns)
 		}
 		if !fresh {
 			httpio.WriteError(w, r, auth.ErrReauthRequired)

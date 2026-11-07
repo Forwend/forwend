@@ -17,6 +17,8 @@ var (
 	ErrNotFound = errors.New("send not found")
 	// ErrBusy: the wallet has a send on its way on this chain; the next one waits for it.
 	ErrBusy = errors.New("a send from this wallet is on its way")
+	// ErrApproved: the send was approved already, so it may have been signed; signing it again needs a new summary.
+	ErrApproved = errors.New("this send was approved already")
 	// ErrRefused: the token's dry run of the transfer failed, as when an address is blocked or the token is paused.
 	ErrRefused = errors.New("the token refuses this transfer")
 	// ErrUnavailable: the chain can't be read just now.
@@ -26,7 +28,9 @@ var (
 type Status string
 
 const (
-	Prepared  Status = "prepared"
+	Prepared Status = "prepared"
+	// Approved: Confirm it's you passed and the browser may sign it, once (R-211).
+	Approved  Status = "approved"
 	Submitted Status = "submitted"
 	Sent      Status = "sent"
 	Failed    Status = "failed"
@@ -46,6 +50,9 @@ const (
 const (
 	// A prepared send the browser never reported is given up after this.
 	PrepareTTL = 10 * time.Minute
+	// An approved send the browser never reported holds its wallet this long: its signature may have gone out though
+	// the answer was lost. The watcher records such a transfer well within it.
+	ApproveHold = 2 * time.Minute
 	// A reported hash with no transaction on the chain after this is given up as dropped.
 	DropAfter = 30 * time.Minute
 	// Before this the chain is not asked for the receipt: the watcher usually records the transfer first.
@@ -69,6 +76,7 @@ type Send struct {
 	TxHash      *string
 	Failure     *string
 	CreatedAt   time.Time
+	ApprovedAt  *time.Time
 	SubmittedAt *time.Time
 	FinishedAt  *time.Time
 	// NetworkFee is the most the wallet pays for gas, in the token's base units: 0 where Forwend pays (D-119).

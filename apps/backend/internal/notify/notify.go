@@ -59,14 +59,16 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 	var (
 		id                                         int64
 		kind, invoice, user, job, invite, endpoint string
+		transfer                                   int64
 		payload                                    []byte
 		attempts                                   int
 	)
 	err = tx.QueryRow(ctx, `SELECT id, kind, coalesce(invoice_id, ''), coalesce(user_id::text, ''),
-		    coalesce(job_id::text, ''), coalesce(invite_id::text, ''), coalesce(endpoint_id::text, ''), payload, attempts
+		    coalesce(job_id::text, ''), coalesce(invite_id::text, ''), coalesce(endpoint_id::text, ''),
+		    coalesce(wallet_transfer_id, 0), payload, attempts
 		FROM outbox_events WHERE published_at IS NULL AND failed_at IS NULL AND next_attempt_at <= now()
-		ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED`).Scan(&id, &kind, &invoice, &user, &job, &invite, &endpoint, &payload,
-		&attempts)
+		ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED`).Scan(&id, &kind, &invoice, &user, &job, &invite, &endpoint, &transfer,
+		&payload, &attempts)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	} else if err != nil {
@@ -94,6 +96,30 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 		scope = "invite-" + invite
 		if v, to, on, err = inviteEmail(ctx, tx, invite, payload, site.WebURL); err != nil {
 			return false, fmt.Errorf("read email event %d: %w", id, err)
+		}
+	case outbox.WalletOutflow:
+		// About the owner's money: the profile's email setting doesn't apply.
+		on, scope = true, fmt.Sprintf("outflow-%d", transfer)
+		var symbol, counterparty, hash, amount string
+		var decimals int
+		var chainID uint64
+		if err := tx.QueryRow(ctx, `SELECT u.login_email, t.symbol, t.decimals, w.chain_id, w.counterparty, w.tx_hash,
+			    w.amount::text
+			FROM wallet_transfers w JOIN profile_wallets pw ON pw.address = w.wallet_address
+			JOIN profiles p ON p.id = pw.profile_id JOIN users u ON u.id = p.user_id
+			JOIN tokens t ON t.chain_id = w.chain_id AND t.contract = w.token_contract WHERE w.id = $1`, transfer).
+			Scan(&to, &symbol, &decimals, &chainID, &counterparty, &hash, &amount); err != nil {
+			return false, fmt.Errorf("read email event %d transfer: %w", id, err)
+		}
+		units, _ := new(big.Int).SetString(amount, 10)
+		v = outflow(document.Amount(units, decimals, symbol), counterparty, document.NetworkName(chainID),
+			document.TxURL(chainID, hash), site.WebURL+"/app/settings")
+	case outbox.SettleWaiting:
+		// About the account's settlements, so the profile's email setting doesn't apply.
+		on, scope, v = true, "waiting-"+invoice, waiting(site.WebURL+"/app/transactions")
+		if err := tx.QueryRow(ctx, `SELECT u.login_email FROM invoices i JOIN profiles p ON p.id = i.profile_id
+			JOIN users u ON u.id = p.user_id WHERE i.id = $1`, invoice).Scan(&to); err != nil {
+			return false, fmt.Errorf("read email event %d owner: %w", id, err)
 		}
 	case outbox.WebhookDisabled:
 		scope = "endpoint-" + endpoint
@@ -423,6 +449,33 @@ func disabledEmail(ctx context.Context, tx pgx.Tx, endpoint string, payload []by
 	}
 	u, _ := url.Parse(raw) // saved only once it parsed
 	return disabled(u.Hostname(), p.Reason, webURL+"/app/developers"), to, true, nil
+}
+
+// outflow tells the owner money left their wallet with no send they approved in Forwend (D-49): a stolen session can
+// sign through Privy without Forwend's screens.
+func outflow(amount, to, network, tx, link string) view {
+	what := amount + " left your wallet on " + network + " to " + to + ", without a send you approved in Forwend."
+	v := view{Subject: "Money left your wallet", Preheader: what, Badge: "Check this", Tone: "warning",
+		Title: "Money left your wallet", Button: button{"Open Account and security", link},
+		Lead: []string{what, "If you moved it yourself, for example from another wallet app, nothing is wrong. If " +
+			"you didn't, sign out of all devices now and contact support."},
+		Details: []row{{Label: "Amount", Value: amount}, {Label: "To", Value: to}, {Label: "Network", Value: network}},
+		Reason:  "You get this email because money left one of your Forwend wallets."}
+	if tx != "" {
+		v.Details = append(v.Details, row{Label: "Transaction", Value: "View on the block explorer", Href: tx})
+	}
+	return v
+}
+
+// waiting tells the owner their paid invoices wait on the day's sponsored settlements (SEC-03).
+func waiting(link string) view {
+	why := "You were paid for more invoices in 24 hours than Forwend settles to your wallets in a day. The rest wait " +
+		"at their receive addresses and settle as the day's limit frees up."
+	return view{Subject: "Some payments are waiting to settle", Preheader: why, Badge: "Waiting", Tone: "warning",
+		Title: "Some payments are waiting to settle", Button: button{"Open Transactions", link},
+		Lead: []string{why, "The money is safe. If payments keep coming at this pace, contact support so a payment " +
+			"isn't left waiting past its settle deadline."},
+		Reason: "You get this email because payments to your profiles are waiting to settle."}
 }
 
 // disabled names only the endpoint's host: its path or query may hold the receiver's own token.

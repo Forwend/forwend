@@ -87,6 +87,17 @@ func getSend(sends *send.Service) http.HandlerFunc {
 	}
 }
 
+func approveSend(sends *send.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		s, err := sends.Approve(r.Context(), r.PathValue("profileId"), r.PathValue("sendId"))
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusOK, toSendJSON(s))
+	}
+}
+
 func submitSend(sends *send.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {

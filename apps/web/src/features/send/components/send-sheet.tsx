@@ -15,7 +15,8 @@ import {
 import { skipToken } from "@reduxjs/toolkit/query";
 import { ChevronRight, Users, WalletMinimal, X } from "lucide-react";
 import { type FormEvent, type ReactNode, useState } from "react";
-import { FRESH_SIGN_IN_COPY } from "@/features/auth/constants/auth-copy";
+import { TwoStepSetup } from "@/features/auth/components/two-step-setup";
+import { FRESH_SIGN_IN_COPY, TWO_STEP_COPY } from "@/features/auth/constants/auth-copy";
 import type { Balances } from "@/features/balances/types/balances";
 import { AMOUNT_ERRORS } from "@/features/invoices/constants/invoices";
 import { parseTokenAmount } from "@/features/invoices/lib/invoices";
@@ -147,7 +148,8 @@ export function SendSheet({
     },
   });
   // R-137: Confirm it's you comes after the owner holds Send, as a step of its own; Back gives it up for the Summary.
-  const confirming = approval.confirmStep !== null && shown === SEND_STEPS.review;
+  const confirming =
+    (approval.confirmStep !== null || approval.settingUp) && shown === SEND_STEPS.review;
   const step = confirming ? SEND_STEPS.confirm : shown;
   const back = () => {
     if (confirming) {
@@ -265,7 +267,9 @@ export function SendSheet({
       ? mode === SEND_MODES.transfer
         ? SEND_COPY.transfer
         : SEND_COPY.send
-      : TITLES[step];
+      : step === SEND_STEPS.confirm && approval.settingUp
+        ? TWO_STEP_COPY.setUp
+        : TITLES[step];
   const canGoBack = path.length > 1 && step !== SEND_STEPS.progress;
   // Signing, or the approve that comes before it (R-214): closing would not stop the money.
   const locked = signing || approval.locked;
@@ -487,7 +491,9 @@ export function SendSheet({
       />
     );
   } else if (step === SEND_STEPS.confirm) {
-    body = approval.confirmStep;
+    body = approval.confirmStep ?? (
+      <TwoStepSetup onDone={approval.endSetUp} onCancel={approval.endSetUp} />
+    );
   } else if (step === SEND_STEPS.progress && submitted && option && recipient) {
     body = (
       <SendProgress

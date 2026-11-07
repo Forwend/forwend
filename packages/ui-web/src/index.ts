@@ -133,6 +133,8 @@ export type { ActivityDirection, ActivityRowProps } from "./components/payments/
 export { ACTIVITY_DIRECTIONS, ActivityRow } from "./components/payments/activity-row";
 export type { AddressProps } from "./components/payments/address/address";
 export { Address } from "./components/payments/address/address";
+export type { FullAddressProps } from "./components/payments/address/full-address";
+export { FullAddress } from "./components/payments/address/full-address";
 export { shortAddress } from "./components/payments/address/short-address";
 export type { TruncatedAddressProps } from "./components/payments/address/truncated-address";
 export { TruncatedAddress } from "./components/payments/address/truncated-address";

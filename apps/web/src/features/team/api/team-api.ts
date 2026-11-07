@@ -8,6 +8,7 @@ import {
   inviteSchema,
   memberSchema,
   teamSchema,
+  toRollSchema,
 } from "@/features/team/schemas/team";
 import type {
   GrantBody,
@@ -16,6 +17,7 @@ import type {
   InviteBody,
   Member,
   Team,
+  ToRoll,
 } from "@/features/team/types/team";
 import { apiSlice } from "@/shared/api/api-slice";
 
@@ -76,11 +78,14 @@ export const teamApi = apiSlice.enhanceEndpoints({ addTagTypes: [TEAM_TAG] }).in
       invalidatesTags: [TEAM_TAG],
       onQueryStarted: (_, { dispatch, queryFulfilled }) => readMeAgain(dispatch, queryFulfilled),
     }),
-    removeMember: build.mutation<void, { profileId: string; memberId: string }>({
+    /** Answers what the member could still use, for the owner to roll. */
+    removeMember: build.mutation<ToRoll, { profileId: string; memberId: string }>({
       query: ({ profileId, memberId }) => ({
         url: `${profileUrl(profileId)}/members/${encodeURIComponent(memberId)}`,
         method: "DELETE",
       }),
+      rawResponseSchema: z.object({ toRoll: toRollSchema }),
+      transformResponse: (data: { toRoll: ToRoll }) => data.toRoll,
       invalidatesTags: [TEAM_TAG],
       onQueryStarted: (_, { dispatch, queryFulfilled }) => readMeAgain(dispatch, queryFulfilled),
     }),

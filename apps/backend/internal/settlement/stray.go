@@ -161,14 +161,15 @@ func PlanRecovery(ctx context.Context, db *pgxpool.Pool, home, there *ethclient.
 		Scan(&recipient, &token, &amount, &expires, &deadline, &receive, &factory, &payable); err != nil {
 		return Recovery{}, fmt.Errorf("read invoice %s: %w", s.Option.ID, err)
 	}
-	if !strings.EqualFold(factory, common.Address(address.Factory).Hex()) {
-		return Recovery{}, fmt.Errorf("invoice %s: its factory is not the compiled factory", s.Option.ID)
+	known, ok := address.KnownFactory(factory)
+	if !ok {
+		return Recovery{}, fmt.Errorf("invoice %s: its factory is not a Forwend factory", s.Option.ID)
 	}
-	terms, err := termsOf(s.Option.ID, recipient, token, amount, expires, deadline, s.Option.ChainID, receive)
+	terms, err := termsOf(known, s.Option.ID, recipient, token, amount, expires, deadline, s.Option.ChainID, receive)
 	if err != nil {
 		return Recovery{}, err
 	}
-	factoryAddress := common.Address(address.Factory)
+	factoryAddress := common.Address(known)
 	out, err := home.CallContract(ctx, ethereum.CallMsg{To: &factoryAddress, Data: authoritySelector}, nil)
 	if err != nil {
 		return Recovery{}, fmt.Errorf("factory.refundAuthority: %w", err)
@@ -178,7 +179,7 @@ func PlanRecovery(ctx context.Context, db *pgxpool.Pool, home, there *ethclient.
 	}
 	r := Recovery{To: s.From, Authority: common.BytesToAddress(out)}
 	if s.ChainID != s.Option.ChainID {
-		if err := ours(ctx, home, there, r.Authority); err != nil {
+		if err := ours(ctx, home, there, known, r.Authority); err != nil {
 			return Recovery{}, err
 		}
 	}
@@ -186,7 +187,7 @@ func PlanRecovery(ctx context.Context, db *pgxpool.Pool, home, there *ethclient.
 		r.To = *to
 	}
 	receiver := common.HexToAddress(receive)
-	if r.To == (common.Address{}) || r.To == receiver || r.To == s.Token || r.To == factoryAddress {
+	if r.To == (common.Address{}) || r.To == receiver || r.To == s.Token || address.Ours(r.To) {
 		return Recovery{}, ErrDestination
 	}
 	var invoiceAddress bool
@@ -221,7 +222,7 @@ func PlanRecovery(ctx context.Context, db *pgxpool.Pool, home, there *ethclient.
 	args := common.LeftPadBytes(r.To.Bytes(), 32)
 	args = append(args, common.LeftPadBytes(s.Amount.Bytes(), 32)...)
 	recoverData := append(append(append([]byte{}, recoverSelector...), common.LeftPadBytes(s.Token.Bytes(), 32)...), args...)
-	status, err := factoryStatus(ctx, there, terms)
+	status, err := factoryStatus(ctx, there, factoryAddress, terms)
 	if err != nil {
 		return Recovery{}, err
 	}
@@ -397,7 +398,7 @@ func reverted(err error) bool {
 // ours is nil when the chain the money went to has our factory with our receiver code, and our refund authority:
 // the same key, or a Safe with the same code, singleton, owners, threshold and modules. Anyone can put other code at
 // these addresses.
-func ours(ctx context.Context, home, there *ethclient.Client, authority common.Address) error {
+func ours(ctx context.Context, home, there *ethclient.Client, factory [20]byte, authority common.Address) error {
 	// Both chains' answers for one read; a failed read is an error, never "not ours".
 	same := func(read func(*ethclient.Client) ([]byte, error)) (bool, int, error) {
 		a, err := read(home)
@@ -413,12 +414,12 @@ func ours(ctx context.Context, home, there *ethclient.Client, authority common.A
 	code := func(at common.Address) func(*ethclient.Client) ([]byte, error) {
 		return func(c *ethclient.Client) ([]byte, error) { return c.CodeAt(ctx, at, nil) }
 	}
-	if ok, n, err := same(code(common.Address(address.Factory))); err != nil {
+	if ok, n, err := same(code(common.Address(factory))); err != nil {
 		return fmt.Errorf("read the factory: %w", err)
 	} else if !ok || n == 0 {
-		return fmt.Errorf("%w: that chain has no Forwend factory at %s", ErrCantReturn, common.Address(address.Factory).Hex())
+		return fmt.Errorf("%w: that chain has no Forwend factory at %s", ErrCantReturn, common.Address(factory).Hex())
 	}
-	if ok, n, err := same(code(common.Address(address.Implementation))); err != nil {
+	if ok, n, err := same(code(common.Address(address.Known[factory]))); err != nil {
 		return fmt.Errorf("read the receiver code: %w", err)
 	} else if !ok || n == 0 {
 		return fmt.Errorf("%w: that chain has no Forwend receiver code", ErrCantReturn)

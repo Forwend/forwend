@@ -7,11 +7,14 @@ import type {
   inviteSchema,
   memberSchema,
   teamSchema,
+  toRollSchema,
 } from "@/features/team/schemas/team";
 
 export type MemberRole = (typeof MEMBER_ROLES)[number];
 
 export type Member = z.infer<typeof memberSchema>;
+
+export type ToRoll = z.infer<typeof toRollSchema>;
 
 export type Invite = z.infer<typeof inviteSchema>;
 

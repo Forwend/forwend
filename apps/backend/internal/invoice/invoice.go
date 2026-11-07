@@ -575,7 +575,10 @@ func buildTerms(id [32]byte, chainID uint64, token, recipient string, amount *bi
 	if err != nil {
 		return t, "", fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
-	for _, a := range [][20]byte{{}, receiver, address.Factory, address.Implementation, t.Token} {
+	if address.Ours(t.Recipient) {
+		return t, "", fmt.Errorf("%w: the profile wallet can't receive these terms", ErrInvalid)
+	}
+	for _, a := range [][20]byte{{}, receiver, t.Token} {
 		if t.Recipient == a {
 			return t, "", fmt.Errorf("%w: the profile wallet can't receive these terms", ErrInvalid)
 		}

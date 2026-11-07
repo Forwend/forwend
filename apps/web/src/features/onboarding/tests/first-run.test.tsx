@@ -8,7 +8,10 @@ import type { Profile } from "@/features/profiles/types/profile";
 import { makeStore } from "@/store/store";
 
 const link = vi.fn(async () => {});
-vi.mock("@privy-io/react-auth", () => ({ useLinkWithPasskey: () => ({ linkWithPasskey: link }) }));
+vi.mock("@privy-io/react-auth", () => ({
+  useLinkWithPasskey: () => ({ linkWithPasskey: link }),
+  usePrivy: () => ({ user: null }),
+}));
 
 const NodeRequest = globalThis.Request;
 vi.stubGlobal(

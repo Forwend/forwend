@@ -36,6 +36,9 @@ type API struct {
 	// UserBurst is each signed-in user's burst of requests; 0 keeps the default (mid.UserBurst). Only the live e2e,
 	// whose tests all run as one user, sets it.
 	UserBurst int
+	// TrustProxyHeader: a proxy in front (such as Traefik) sets X-Forwarded-For to the client's address, so public
+	// limits can count per payer. Off, the header is the client's own and is ignored.
+	TrustProxyHeader bool
 	// CodesPerHour is each user's Confirm it's you codes an hour; 0 keeps reauth.MaxPerHour. Only the live e2e, whose
 	// one test account confirms on every run against a lasting database, sets it.
 	CodesPerHour      int
@@ -130,6 +133,7 @@ func LoadAPI() (API, error) {
 		PrivyAppID: r.get("PRIVY_APP_ID"), PrivyJWKSURL: r.keysURL("PRIVY_JWKS_URL"), PrivyAppSecret: r.get("PRIVY_APP_SECRET"),
 		RPCSecrets: r.rpcSecrets(), RPCAllowLoopback: r.flag("RPC_ALLOW_LOOPBACK"), RPCRate: r.rate(),
 		PublicWebURL: r.origin("PUBLIC_WEB_URL"), UserBurst: r.count("API_USER_BURST"),
+		TrustProxyHeader:  r.flag("TRUST_PROXY_HEADER"),
 		CodesPerHour:      r.count("API_CODES_PER_HOUR"),
 		EnableTestnetUSDC: r.flag("ENABLE_TESTNET_USDC"), WebhookKey: r.base64Key("WEBHOOK_SECRET_KEY"), Email: email()}
 	c.Email.PublicWebURL = c.PublicWebURL

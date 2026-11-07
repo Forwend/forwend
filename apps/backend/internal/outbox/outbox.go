@@ -27,6 +27,10 @@ const (
 	Invite   = "team.invite" // a team invite, to the address invited (R-139)
 	// A webhook endpoint Forwend turned off, to the profile owner's login email (R-148); payload has the reason.
 	WebhookDisabled = "webhook.disabled"
+	// SettleWaiting: paid invoices wait on the day's sponsored settlements, to their owner; at most one a day per user.
+	SettleWaiting = "settlement.waiting"
+	// WalletOutflow: money left a profile wallet with no send its owner approved in Forwend, to the owner (D-49).
+	WalletOutflow = "wallet.outflow"
 )
 
 // MaxClientEmails caps a user's client emails (Sent, reminders, job changes, invites) in any 24 hours (R-116), so one

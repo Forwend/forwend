@@ -180,13 +180,26 @@ func TestUnexplainedBalanceDelaysExpiry(t *testing.T) {
 	}
 }
 
+// Arc floors each native transfer to micro-USDC but balanceOf floors their sum, so two sends under a micro each leave
+// 1 on chain that no transfer explains. Dust like that must not keep an invoice open past its close for good.
+func TestDustNoTransferExplainsDoesNotDelayExpiry(t *testing.T) {
+	s := newSim(t)
+	id, receive := s.invoice()
+	s.answer[receive] = big.NewInt(DustExcess - 1)
+	s.finalizedAt(simExpires + 1)
+	s.process(id)
+	if payment, _ := s.payment(id); payment != Expired {
+		t.Fatalf("with dust on chain: %s, want expired", payment)
+	}
+}
+
 // R-120: stuck invoices can't use up a chain's round, and an honest invoice in the same round is still paid.
 func TestUnexplainedBalanceWaitsLongerEachTime(t *testing.T) {
 	s := newSim(t)
 	var stuck []string
 	for range 20 {
 		id, receive := s.invoice()
-		s.answer[receive] = big.NewInt(1)
+		s.answer[receive] = big.NewInt(DustExcess)
 		stuck = append(stuck, id)
 	}
 	honest, receive := s.invoice()

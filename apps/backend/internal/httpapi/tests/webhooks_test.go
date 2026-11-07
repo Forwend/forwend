@@ -3,6 +3,7 @@ package tests
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
@@ -197,5 +198,29 @@ func TestWebhooksNeedTheWebhooksPermission(t *testing.T) {
 		if r := e.call(t, c.method, c.path, "did:privy:erin", "", c.body); errorCode(r) != "forbidden" {
 			t.Errorf("a Developer %s %s: %d %v", c.method, c.path, r.status, r.body)
 		}
+	}
+}
+
+// R-146: a profile has at most webhook.MaxEndpoints endpoints: each event writes a delivery per endpoint inside the
+// money transaction that raised it. An existing one can still be changed at the cap.
+func TestWebhookEndpointsAreCappedPerProfile(t *testing.T) {
+	e := invoiceAPI(t)
+	shop := e.merchant(t)
+	put := func(n int) reply {
+		t.Helper()
+		id := fmt.Sprintf("eeeeeeee-0000-4000-8000-%012d", n)
+		return e.call(t, "PUT", "/v1/profiles/"+shop+"/webhooks/"+id, "did:privy:alice", "",
+			`{"url": "https://shop.example.com/hooks", "events": ["invoice.paid"]}`)
+	}
+	for n := range webhook.MaxEndpoints {
+		if r := put(n); r.status != http.StatusCreated {
+			t.Fatalf("endpoint %d: %d %v", n, r.status, r.body)
+		}
+	}
+	if r := put(webhook.MaxEndpoints); r.status != http.StatusUnprocessableEntity || errorCode(r) != "invalid_value" {
+		t.Errorf("one more: %d %v", r.status, r.body)
+	}
+	if r := put(0); r.status != http.StatusOK {
+		t.Errorf("changing one at the cap: %d %v", r.status, r.body)
 	}
 }

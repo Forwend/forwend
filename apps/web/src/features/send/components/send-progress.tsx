@@ -51,7 +51,7 @@ export function SendProgress({
     return () => clearInterval(timer);
   }, [settled, refetch]);
   // A hash the server doesn't have yet is reported again on every read: the server must know it to follow the money.
-  // It takes the hash for a send that expired or was replaced meanwhile too.
+  // It takes the hash for a send whose approval ended meanwhile too.
   const [submit] = useSubmitSendMutation();
   const hash = initial.txHash;
   const lost = read.currentData !== undefined && read.currentData.txHash === null;

@@ -45,6 +45,9 @@ const email = { type: "email", address: "owner@example.com" };
 
 const wrap = ({ children }: { children: ReactNode }) => <ToastProvider>{children}</ToastProvider>;
 
+const signal = vi.fn(async (_: { rpId: string; credentialId: string }) => {});
+vi.stubGlobal("PublicKeyCredential", { signalUnknownCredential: signal });
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -72,6 +75,10 @@ describe("passkeys in Account and security (R-217)", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Remove" }));
     await waitFor(() => expect(privy.unlink).toHaveBeenCalledWith("cred-1"));
     expect(privy.check).toHaveBeenCalledBefore(privy.unlink);
+    // The password manager drops it too, so sign-in stops offering it.
+    await waitFor(() =>
+      expect(signal).toHaveBeenCalledWith({ rpId: location.hostname, credentialId: "cred-1" }),
+    );
   });
 
   it("leaves the passkey when the api can't say the session is fresh", async () => {
@@ -102,6 +109,21 @@ describe("passkeys in Account and security (R-217)", () => {
         .getByRole("button", { name: "Remove iCloud Keychain made on Safari, macOS" })
         .getAttribute("aria-describedby"),
     ).toBe(reason.id);
+  });
+
+  // R-219: Privy keeps two-step on with nothing to answer it when its passkey is unlinked, which locks the owner out.
+  it("keeps the passkey that is two-step's, and says why", () => {
+    privy.accounts = [email, { ...passkey, enrolledInMfa: true }];
+    render(<Passkeys />, { wrapper: wrap });
+    const remove = screen.getByRole("button", {
+      name: "Remove iCloud Keychain made on Safari, macOS",
+    }) as HTMLButtonElement;
+    expect(remove.disabled).toBe(true);
+    const reason = screen.getByText(
+      "It's your two-step verification. Remove it from two-step first.",
+    );
+    expect(remove.getAttribute("aria-describedby")).toBe(reason.id);
+    expect(screen.getByText("Two-step")).toBeTruthy();
   });
 
   it("names each Remove apart, by where a passkey with no name was made", () => {

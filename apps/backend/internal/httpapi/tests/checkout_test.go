@@ -191,3 +191,35 @@ func TestCheckoutBoundariesIncludeStoreRoleTenantKeyAndMode(t *testing.T) {
 		t.Fatalf("test key list leaks live checkout: %d %v", r.status, r.body)
 	}
 }
+
+// R-188: checkout sessions, which a shop opens for anonymous shoppers, have their own quota, so a shop's visitors
+// can't use up what the owner's own invoices need.
+func TestCheckoutSessionsCantUseUpTheOwnersInvoiceQuota(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	shop := e.merchant(t)
+	store := storeIDs(t, e, shop)[0]
+	base := "/v1/profiles/" + shop
+	session := func(key string) reply {
+		return e.call(t, "POST", base+"/checkout-sessions", alice, key, `{"storeId":"`+store+`","amountUsd":"2.00"}`)
+	}
+	if r := session("first"); r.status != http.StatusCreated {
+		t.Fatalf("create checkout: %d %v", r.status, r.body)
+	}
+	// A day's quota of sessions, still open.
+	e.exec(t, `INSERT INTO invoices (id, profile_id, store_id, purpose, document_kind, chain_id, chain_family,
+		token_contract, amount, expires_at, settle_deadline, recipient_address, receive_method, factory_address,
+		receive_address, idempotency_key, request_hash)
+		SELECT '0x'||repeat(md5(n::text), 2), profile_id, store_id, purpose, document_kind, chain_id, chain_family,
+		    token_contract, amount, expires_at, settle_deadline, recipient_address, receive_method, factory_address,
+		    '0x'||lpad(to_hex(n), 40, '0'), 'session-'||n, request_hash
+		FROM invoices i CROSS JOIN generate_series(1, $2) n WHERE i.profile_id = $1 AND i.purpose = 'checkout'`,
+		shop, invoice.MaxPerDay)
+	if r := session("one-more"); r.status != http.StatusUnprocessableEntity {
+		t.Errorf("a session past the sessions' quota: %d %v", r.status, r.body)
+	}
+	if r := e.post(t, alice, shop, "owners-own", `{"chainId":84532,"token":"`+usdc+`","amount":"2000000"}`); r.status !=
+		http.StatusCreated {
+		t.Errorf("the owner's invoice after a day of sessions: %d %v", r.status, r.body)
+	}
+}

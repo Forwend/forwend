@@ -12,13 +12,13 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/forwend/forwend/apps/backend/internal/address"
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
+	"github.com/forwend/forwend/apps/backend/internal/outbox"
 )
 
 // ReceiptWait is how long one run waits for a sent transaction; an unmined one is reconciled on the next run.
@@ -76,7 +76,8 @@ func (s *Signer) settle(ctx context.Context, id int64, release func()) error {
 	if reason != "" {
 		return s.refuse(ctx, in, reason)
 	}
-	st, err := factoryStatus(ctx, client, terms)
+	factory := common.HexToAddress(in.factory)
+	st, err := factoryStatus(ctx, client, factory, terms)
 	if err != nil {
 		return err
 	}
@@ -139,6 +140,15 @@ func (s *Signer) settle(ctx context.Context, id int64, release func()) error {
 	if used >= SponsoredPerDay {
 		slog.Error("ALERT a user's settlements in 24 hours reached the sponsored limit", "invoice", in.invoiceID,
 			"limit", SponsoredPerDay)
+		// The owner hears it once a day: their paid money waits, and past the deadline only the Safe can settle it.
+		if _, err := s.pool.Exec(ctx, `INSERT INTO outbox_events (kind, invoice_id, payload)
+			SELECT $2, $1, '{}' WHERE NOT EXISTS (SELECT 1 FROM outbox_events e JOIN invoices i ON i.id = e.invoice_id
+			    JOIN profiles p ON p.id = i.profile_id
+			    WHERE e.kind = $2 AND e.created_at > now() - interval '24 hours'
+			      AND p.user_id = (SELECT p.user_id FROM invoices i JOIN profiles p ON p.id = i.profile_id WHERE i.id = $1))`,
+			in.invoiceID, outbox.SettleWaiting); err != nil {
+			return fmt.Errorf("tell the owner settlements wait: %w", err)
+		}
 		return s.postpone(ctx, in, waitCap, "the user's sponsored settlements for 24 hours are used up")
 	}
 
@@ -147,7 +157,6 @@ func (s *Signer) settle(ctx context.Context, id int64, release func()) error {
 	var deployed *big.Int // that deploy's block
 	if !st.Deployed {
 		data, _ := callData(deploySelector, terms)
-		factory := common.Address(address.Factory)
 		tx, err := s.sign(ctx, client, in.chainID, factory, data, 0, 0, nil)
 		if err != nil {
 			return err
@@ -210,15 +219,17 @@ func check(in intent) (address.Terms, string) {
 		return address.Terms{}, "invoice is " + in.payment + ", not paid"
 	case in.wallet == nil || !strings.EqualFold(*in.wallet, in.recipient):
 		return address.Terms{}, "recipient is not the profile wallet"
-	case !strings.EqualFold(in.factory, hexutil.Encode(address.Factory[:])):
-		return address.Terms{}, "invoice factory is not the compiled factory"
+	}
+	factory, known := address.KnownFactory(in.factory)
+	if !known {
+		return address.Terms{}, "invoice factory is not a Forwend factory"
 	}
 	terms := address.Terms{
 		InvoiceID: [32]byte(common.FromHex(in.invoiceID)), Recipient: common.HexToAddress(in.recipient),
 		Token: common.HexToAddress(in.token), Amount: in.amount, ExpiresAt: in.expires,
 		SettleDeadline: in.deadline, IntendedChainID: in.chainID,
 	}
-	receive, err := address.Receive(terms)
+	receive, err := address.ReceiveAt(factory, terms)
 	if err != nil || !bytes.Equal(receive[:], common.HexToAddress(in.receive).Bytes()) {
 		return address.Terms{}, "terms do not compute the stored receive address"
 	}
