@@ -18,8 +18,8 @@
         "pay": "0x918cef546ade632c7886dcc6fc7d8088fe1d5243e016a24b528de2a1b02f5fb2",
         "deploy": "0xfd3997ac02ef484d6e5ffec6d39613d4afaa1f7d3c9974dbaedc43663a3a3eb7",
         "settle": "0x3f8e87613c19bab5383bac9b21483c4f45dce3563b1b6998fb570914e69cb342",
-        "refund": null,
-        "note": "Refund of the 10000 extra not sent: the refund authority has no Base Sepolia gas. It stays refundable."
+        "refund": "0xd5a72444bb4b63b43a448fabefd02435ae49b316e528b86aade84afbc8292b07",
+        "note": "The refund authority had no Base Sepolia gas during the deploy, so the refund was sent after funding it."
       }
     },
     "arbitrum-sepolia": {
