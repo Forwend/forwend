@@ -116,7 +116,7 @@ export function WalletScreen() {
               <p className="min-w-0 flex-1 text-sm text-muted">{COPY.exportHint}</p>
               <Dialog
                 triggerLabel={COPY.export}
-                title={COPY.warningTitle}
+                title={settingUp ? TWO_STEP_COPY.setUp : COPY.warningTitle}
                 onClose={() => {
                   fresh.cancel();
                   mfaStep.cancel();

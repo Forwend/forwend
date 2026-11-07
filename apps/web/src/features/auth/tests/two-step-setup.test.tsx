@@ -64,7 +64,7 @@ afterEach(() => {
 describe("Setting up two-step (R-219)", () => {
   it("shows a wrong app code on the code boxes, without asking for the passkey", async () => {
     setup("totp");
-    const input = await screen.findByLabelText(TWO_STEP_COPY.codeLabel);
+    const input = await screen.findByLabelText(TWO_STEP_COPY.enterSetupCode);
     fireEvent.change(input, { target: { value: "123456" } });
     await waitFor(() => expect(input.getAttribute("aria-invalid")).toBe("true"));
     expect(screen.getByRole("alert").textContent).toBe(TWO_STEP_COPY.wrongCode);

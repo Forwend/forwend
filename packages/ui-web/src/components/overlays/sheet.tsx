@@ -61,7 +61,8 @@ export function Sheet({
         if (event.target === ref.current && !locked) onOpenChange(false); // a click on the backdrop
       }}
       className={cx(
-        "mx-0 mt-auto mb-0 max-h-[92dvh] outline-none w-full max-w-none rounded-t-lg border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[var(--fw-scrim)] sm:m-auto sm:max-w-md sm:rounded-lg",
+        // A column: the body takes what the header leaves and is the one part that scrolls.
+        "mx-0 mt-auto mb-0 max-h-[92dvh] overflow-hidden open:flex open:flex-col outline-none w-full max-w-none rounded-t-lg border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[var(--fw-scrim)] sm:m-auto sm:max-w-md sm:rounded-lg",
         // Phones only: the bottom sheet slides up. Closing stays instant: an exit transition needs a discrete
         // display/overlay transition, which only Chromium supports, so other browsers flash the closing sheet.
         "max-sm:transition-[translate] max-sm:duration-[var(--fw-duration-base)] max-sm:ease-out max-sm:starting:open:translate-y-full",
@@ -70,7 +71,7 @@ export function Sheet({
         "sm:transition-opacity sm:duration-[var(--fw-duration-base)] sm:ease-out sm:starting:open:opacity-0 sm:backdrop:transition-opacity sm:backdrop:duration-[var(--fw-duration-base)] sm:backdrop:ease-out sm:starting:open:backdrop:opacity-0",
       )}
     >
-      <div className="flex items-center justify-between gap-4 px-5 pt-4 pb-2">
+      <div className="flex shrink-0 items-center justify-between gap-4 px-5 pt-4 pb-2">
         <div className="flex min-w-0 items-center gap-1">
           {onBack ? (
             <IconButton label={backLabel} size="md" onClick={onBack} className="-ml-2">
@@ -88,7 +89,7 @@ export function Sheet({
           <X aria-hidden className="size-[var(--fw-icon-md)]" />
         </IconButton>
       </div>
-      <div className="max-h-[calc(92dvh-4rem)] overflow-y-auto overscroll-contain px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
         {children}
       </div>
     </dialog>

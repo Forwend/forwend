@@ -252,6 +252,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   open on and close at once (a fade-out would return focus late and shut a menu reopened meanwhile); the phone sheet
   slides up from the screen edge; the centered panel fades in like a dialog. Reduced
   motion removes the movement. Behind a modal the page darkens with the `scrim` token in both themes.
+  - A sheet's header stays put; its body is the one part that scrolls, so a tall step shows one scrollbar.
 - Panels are solid surface with a hairline border, large corners and no shadow; a panel's header row is ruled off.
   Figure strips and tables use hairline rules between cells and rows, not separate cards. On phones a panel is a
   full-width section between top and bottom hairlines (no side border or corners, no box inside a box), its title
@@ -1158,6 +1159,7 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
   - With two-step on, the hold shows two-step as the sheet's next step, Confirm it's you, before anything is approved;
     no emailed code follows. Until it is set up (wallet MFA on), Set up two-step verification takes the hold's place.
     - The line under it says what the setup asks for. It waits for no wallet, so "Getting your wallet ready" is not shown.
+    - The setup's step is titled "Set up two-step verification", in the sheet and in the export dialog.
   - Confirm it's you comes after the hold, as its own step titled so, when the session needs a fresh sign-in.
     - Back returns to the Summary with no error; holding again asks again.
     - Once the code is confirmed, the send is signed and the progress follows.

@@ -299,10 +299,11 @@ function AppCode({
       .finally(() => setChecking(false));
   });
   return (
-    <div ref={box} className="flex w-full flex-col items-center gap-5">
+    // Centered, as the two-step ask is.
+    <div ref={box} className="flex w-full flex-col items-center gap-5 text-center">
       <StepLead icon={Smartphone} title={COPY.scanTitle} body={COPY.scan} />
       {/* Always dark on light, as QrCode draws it; the frame keeps it apart from the dark surface. */}
-      <QrCode value={totp.authUrl} label={COPY.qrLabel} className="w-44 rounded-lg" />
+      <QrCode value={totp.authUrl} label={COPY.qrLabel} className="w-40 rounded-lg" />
       {/* On a phone the app is on this device: the link hands it the key, with nothing to scan. */}
       <a
         href={totp.authUrl}
@@ -312,8 +313,9 @@ function AppCode({
       </a>
       <div className="flex w-full flex-col gap-2">
         <p className="text-sm text-muted">{COPY.noScan}</p>
-        <div className="flex items-center gap-3 rounded-md border border-line bg-surface-2 px-3 py-2">
-          <code className="min-w-0 flex-1 font-mono text-sm break-all text-ink">
+        <div className="flex items-center gap-3 rounded-md border border-line bg-surface-2 py-2 pr-2 pl-3 text-left">
+          {/* A line breaks between groups of four, never inside one. */}
+          <code className="min-w-0 flex-1 font-mono text-sm text-ink [overflow-wrap:anywhere]">
             {totp.secret.match(/.{1,4}/g)?.join(" ")}
           </code>
           <Button
@@ -333,10 +335,10 @@ function AppCode({
           {copyStatus === COPY_STATUS.failed ? COPY.copyFailed : COPY.saveKey}
         </p>
       </div>
-      <div className="flex w-full flex-col gap-2 border-t border-line pt-5">
-        <p className="text-sm text-muted">{COPY.enterSetupCode}</p>
+      <div className="flex w-full flex-col border-t border-line pt-5">
         <CodeInput
-          label={COPY.codeLabel}
+          className="w-full items-center"
+          label={COPY.enterSetupCode}
           length={CODE_LENGTH}
           value={code}
           onValueChange={(digits) => {

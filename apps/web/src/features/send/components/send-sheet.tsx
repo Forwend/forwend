@@ -16,7 +16,7 @@ import { skipToken } from "@reduxjs/toolkit/query";
 import { ChevronRight, Users, WalletMinimal, X } from "lucide-react";
 import { type FormEvent, type ReactNode, useState } from "react";
 import { TwoStepSetup } from "@/features/auth/components/two-step-setup";
-import { FRESH_SIGN_IN_COPY } from "@/features/auth/constants/auth-copy";
+import { FRESH_SIGN_IN_COPY, TWO_STEP_COPY } from "@/features/auth/constants/auth-copy";
 import type { Balances } from "@/features/balances/types/balances";
 import { AMOUNT_ERRORS } from "@/features/invoices/constants/invoices";
 import { parseTokenAmount } from "@/features/invoices/lib/invoices";
@@ -267,7 +267,9 @@ export function SendSheet({
       ? mode === SEND_MODES.transfer
         ? SEND_COPY.transfer
         : SEND_COPY.send
-      : TITLES[step];
+      : step === SEND_STEPS.confirm && approval.settingUp
+        ? TWO_STEP_COPY.setUp
+        : TITLES[step];
   const canGoBack = path.length > 1 && step !== SEND_STEPS.progress;
   // Signing, or the approve that comes before it (R-214): closing would not stop the money.
   const locked = signing || approval.locked;

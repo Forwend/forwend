@@ -82,15 +82,14 @@
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-07T21:03:48Z",
+        "at": "2026-11-07T21:35:37Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
+            "seconds": 5.9,
+            "log": ""
           },
           {
             "id": "docs-check",
@@ -103,58 +102,51 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.3,
+            "seconds": 0.4,
             "log": ""
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.2,
+            "seconds": 1.9,
             "log": ""
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 68.6,
+            "seconds": 69.1,
             "log": ""
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 5.6,
+            "seconds": 7.1,
             "log": ""
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 47.1,
+            "seconds": 46.9,
             "log": ""
           },
           {
             "id": "live-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 547.0,
+            "seconds": 529.4,
             "log": ""
           }
         ],
         "taskHash": "55001939e37c0e18",
-        "filesHash": "86ac0df8693631bb",
+        "filesHash": "16e79e2cd7321310",
         "proof": {
           "1": "unit: every medium re-checked against the code first, all true positives; each fixed with a test: fresh_sign_in_test and sessions_test (code destination, recently linked, sign-up account counts, only the stored login email counts, code on its way), factory_test and receive-address.test (known factories), send_test (approve once, only approved sends take a hash, outflow alert not hidden by another send's hash, unreported hold until the watcher has read past it, waiting signature holds the wallet, late-signed send sends no alert, waiting not dropped, late mined sent), link_checkout_test and checkout_test (per payer, IPv6 /64, closed unpaid, checkout quota), ratelimit_test, webhooks_test (cap), signer_test (settle-waiting notice), team_test and roll-after-removal.test (toRoll), expiry_test (dust), payments.test (FullAddress), sends_test TestRecordedTwoStepStandsInForTheEmailedCodeOnASend (only two-step methods Forwend recorded behind a fresh sign-in let a send approve without the emailed code; one set up at Privy alone or set up again doesn't; a stale session can't record; the record reads Privy again until it lists each method just set up), use-wallet-mfa.test (both a passkey and an authenticator app before money moves), two-step-setup.test (only the passkey the owner taps on this device turns on, never another linked one; a wrong app code marks the boxes and asks for no passkey), send-approval test (no send records two-step methods, even one confirmed with the emailed code), mfa-step.test (the ask in place of the form's buttons, the passkey in one tap, a wrong code marked, Cancel ends the action, the ask ends when its form goes away), overlays.test (a dialog opened inside another closes alone), passkeys.test and passkeys-list.test (a new passkey named with the account email, a second one on the same device refused, the two-step passkey kept, a removed passkey dropped from the password manager), send-approval and wallet-screen tests (setup offered until both are on, two-step before approve, nothing approved when closed, export without the emailed code). Partly closed, moved to F434/F435 accept lines: example-merchant /api/orders limit; Admin who leaves; notice on a Privy-linked email or passkey; one Pay per close on a one-time link; checkout quota per store and mode; settle cap as Q-10",
           "2": "unit: each new test failed on the old code (mutation runs) and passes now; only tests the 'Which tests to keep' rule names were kept",
           "3": "live-e2e: full live suite against the testnets; e2e: backend and web browser tests"
-        },
-        "review": {
-          "result": "pass",
-          "by": "subagent",
-          "summary": "Pass: no must-fix. The setup turns on only the passkey tapped on this device or made there, and only the setup records, behind a real fresh sign-in; a stolen session can't add a method beside the owner's, and one it adds first blocks the owner's setup, so nothing it set up gets recorded. The record reads Privy until it lists each method set up; the handler is in codes.go and the reread in reauth.Service; helpers moved to features/auth/lib. Follow-ups checked: record-failed copy, create-a-passkey-instead path (only the new ID turns on, with a test), WALLET_MFA rows in staging.md and .env.example, and the live send test waiting for Sent. After that check: PasskeyOnDevice on create-instead returns to the tap with its message (the reviewer's last should-fix), and the live export test signs in on its own, as it failed late in full runs with the shared session but passed alone. Open: the passkey tap is proven only against faked WebAuthn; the live suite runs with the MFA gate off.",
-          "at": "2026-11-07T21:15:14Z",
-          "filesHash": "86ac0df8693631bb"
         }
       },
       "branch": "fix/f433-the-high-and-medium-findings-of-the-2026",
