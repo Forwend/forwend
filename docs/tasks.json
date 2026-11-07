@@ -199,7 +199,8 @@
         "2026-11-07 review pass by reviewer: Both open findings are fixed. apps/web/e2e/privy/payments.spec.ts:61: the payment fixture has payToken, and detail and row spread it, so the Invoice PDF check at line 843 has its token again. apps/example-merchant/src/app/api/orders/route.ts:7-10: the comment now says 15 minutes can span three fixed windows, so at most 60 are open; that stays under 500 addresses up to 8 options. All earlier findings stay fixed. Open, not a code finding: the live e2e suite (e2e:live, playwright.privy.config.ts) was not run, because the owner's dev stack holds port 8080. Run it before merge to prove the fixture change. The web typecheck is clean. Verify passed at 2026-11-07T22:38:25Z.",
         "2026-11-07 F434 verified (8 checks) and review passed; not committed yet. Live e2e not run: owner's dev stack holds port 8080. Next: commit, run e2e:live, then done F434.",
         "2026-11-07 review pass by reviewer: The release edits in a0046f21 match the code: forwend 0.2.0 and @forwend/js and @forwend/react 0.1.1, the CHANGELOG dates, and the docs text on methods, retryAfter, the short Retry-After retry and https baseUrl. Open, not a code defect: npm view still shows 0.1.0 for all three packages. The AGENTS lines, PLAN 11.9.4, the docs install commands and the published-registry sentence are true only once publishing is done. Publish before merge or deploy. Publish react with pnpm, so its workspace:^ dependency on @forwend/js becomes ^0.1.1. Nit: apps/example-merchant/README.md:35 still says npm's forwend 0.1.0 has no checkout methods yet; name 0.2.0 now. The live suite passed, 82 tests, as the coordinator reported.",
-        "2026-11-07 review pass by reviewer: de5898c9 fixes the README nit: apps/example-merchant/README.md:35 now names forwend 0.2.0. Publishing pnpm-packed tarballs with npm before the merge is fine, because pack rewrites the react dependency to ^0.1.1. Should-fix: the last verify replaced the four proof lines in docs/tasks.json with 'unchanged'. Before done, give the full proof descriptions again, so the delivery record still says what each check proves."
+        "2026-11-07 review pass by reviewer: de5898c9 fixes the README nit: apps/example-merchant/README.md:35 now names forwend 0.2.0. Publishing pnpm-packed tarballs with npm before the merge is fine, because pack rewrites the react dependency to ^0.1.1. Should-fix: the last verify replaced the four proof lines in docs/tasks.json with 'unchanged'. Before done, give the full proof descriptions again, so the delivery record still says what each check proves.",
+        "2026-11-07 review pass by reviewer: Since de5898c9 only docs/tasks.json changed (46d1c6fc). The four proof lines have their full descriptions again. No source changed after the earlier pass. Verify passed at 2026-11-07T22:59:44Z."
       ],
       "blockedReason": null,
       "evidence": {
@@ -278,6 +279,13 @@
           "2": "browser-packages: @forwend/js 0.1.1 refuses an http baseUrl except localhost (unit test); js and react 0.1.1 pack, fit their gzip budget and install fresh; READMEs and docs pages say where payToken comes from, when to set theme, and the new versions",
           "3": "unit: example-merchant route test: 15-minute checkouts, 20 per shop and 5 per visitor behind TRUST_PROXY_HEADER per 10 minutes, 429 with Retry-After, a shop refusal costs the visitor nothing; at most 60 open checkouts keep under 500 addresses up to 8 options",
           "4": "e2e: example-merchant spec passes with the real frame; fw-safe-x has its own 1rem/1.5rem gutter so fw-panel reaches the edge (measured 0-390 on a 390 phone, app and embed), ridges hidden in embed, shop pins theme light (screens checked at 1280 and 390, light and dark)"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Since de5898c9 only docs/tasks.json changed (46d1c6fc). The four proof lines have their full descriptions again. No source changed after the earlier pass. Verify passed at 2026-11-07T22:59:44Z.",
+          "at": "2026-11-07T23:00:03Z",
+          "filesHash": "e5b1b9fcf5851e67"
         }
       },
       "branch": "fix/f434-the-node-js-and-react-packages-match-the",
