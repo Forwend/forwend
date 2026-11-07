@@ -41,6 +41,7 @@ const session = (id) => {
       paymentStatus: paid ? "paid" : "open",
       settlementStatus: paid ? "pending" : "none",
       hostedUrl: `${process.env.FORWEND_URL}/pay/${process.env.PAY_TOKEN}`,
+      payToken: process.env.PAY_TOKEN,
     },
   };
 };

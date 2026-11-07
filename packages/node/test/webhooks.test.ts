@@ -53,6 +53,29 @@ describe("verifyWebhook", () => {
         now: AT,
       }),
     ).toEqual({ test: 2432232314 });
+    // A platform that keeps the sender's header case.
+    expect(
+      verifyWebhook({
+        payload: PAYLOAD,
+        headers: {
+          "Webhook-Id": ID,
+          "Webhook-Timestamp": String(TIMESTAMP),
+          "Webhook-Signature": SIGNATURE,
+        },
+        secrets: SECRET,
+        now: AT,
+      }),
+    ).toEqual({ test: 2432232314 });
+  });
+
+  it("throws a WebhookVerificationError, not a SyntaxError, for a signed body that is not JSON", () => {
+    const body = "not json";
+    const signed = `v1,${createHmac("sha256", Buffer.from(SECRET.slice(6), "base64"))
+      .update(`${ID}.${TIMESTAMP}.${body}`)
+      .digest("base64")}`;
+    expect(() =>
+      verifyWebhook({ payload: body, headers: headers(signed), secrets: SECRET, now: AT }),
+    ).toThrow(WebhookVerificationError);
   });
 
   it("refuses a wrong secret, a changed body, a timestamp over 5 minutes off and missing headers", () => {

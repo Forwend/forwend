@@ -3729,9 +3729,9 @@ components:
           description: Booked money on this option still owed to the payer (extra, late, another option's or after expiry).
     Payment:
       type: object
-      required: [paymentId, optionId, optionLocked, optionCount, source, symbol, decimals, purpose, documentKind, number, storeId, storeName, linkId, livemode, title,
+      required: [receipts, customerName, customerEmail, paymentId, optionId, optionLocked, optionCount, source, symbol, decimals, purpose, documentKind, number, storeId, storeName, linkId, livemode, title,
         reference, chainId, token, amount, paymentStatus, settlementStatus, refundStatus, state, wallet, dueDate, confirming,
-        closed, createdAt, closesAt, hostedUrl]
+        closed, createdAt, closesAt, hostedUrl, payToken]
       properties:
         receipts: { type: array, items: { $ref: "#/components/schemas/PaymentReceipt" } }
         customerName: { type: [string, "null"] }
@@ -3775,6 +3775,10 @@ components:
         createdAt: { type: string, format: date-time }
         closesAt: { type: string, format: date-time }
         hostedUrl: { type: [string, "null"], format: uri }
+        payToken:
+          type: [string, "null"]
+          pattern: "^[0-9a-f]{64}$"
+          description: The hosted page's token, the last part of hostedUrl, for @forwend/js and @forwend/react. Null with hostedUrl.
     PaymentDetails:
       allOf:
         - $ref: "#/components/schemas/Payment"
@@ -5992,6 +5996,8 @@ components:
                 link_not_found, personal_profile, link_off, link_ended, link_full, invalid_api_key, key_not_found,
                 endpoint_not_found, webhooks_not_configured, delivery_not_found, send_not_found, send_in_progress, send_approved,
                 transfer_refused, wrong_code, code_sent_recently, too_many_codes, no_login_email, code_unavailable, two_step_not_set_up,
+                payment_not_found, checkout_not_found, checkout_not_expirable, too_many_movements, link_not_ready, link_changed,
+                pick_locked, webhook_queue_full, payment_reconciliation_pending,
                 invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
             message: { type: string }
   responses:

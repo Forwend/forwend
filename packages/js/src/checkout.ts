@@ -29,6 +29,7 @@ const INITIAL_HEIGHT: Record<CheckoutLayout, number> = { full: 720, element: 480
 const READY_MS = 15_000;
 const PAY_TOKEN = /^[0-9a-f]{64}$/;
 const LINK_SLUG = /^[a-z0-9]{12}$/;
+const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 export interface CheckoutOptions {
   /** The pay token of a checkout your server created. */
@@ -59,7 +60,7 @@ export interface MountedCheckout {
 
 /** The hosted checkout's address, for a pay button or a redirect: it needs no script. */
 export function payUrl(payToken: string, baseUrl: string = FORWEND_URL): string {
-  return new URL(`/pay/${checkedToken(payToken)}`, baseUrl).href;
+  return new URL(`/pay/${checkedToken(payToken)}`, checkedBase(baseUrl)).href;
 }
 
 /** A payment link's address. */
@@ -67,14 +68,14 @@ export function linkUrl(slug: string, baseUrl: string = FORWEND_URL): string {
   if (!LINK_SLUG.test(slug)) {
     throw new TypeError("slug must be the payment link's 12-character slug");
   }
-  return new URL(`/l/${slug}`, baseUrl).href;
+  return new URL(`/l/${slug}`, checkedBase(baseUrl)).href;
 }
 
 /** Frames the checkout in container. Only an origin the store allows can show it; the frame then fits its content.
  * Its events are hints for the page: a paid order is fulfilled from the webhook, never from them. */
 export function mountCheckout(container: HTMLElement, options: CheckoutOptions): MountedCheckout {
   const layout = options.layout ?? CHECKOUT_LAYOUTS.full;
-  const base = new URL(options.baseUrl ?? FORWEND_URL);
+  const base = checkedBase(options.baseUrl ?? FORWEND_URL);
   const src = new URL(`/embed/${checkedToken(options.payToken)}`, base);
   src.searchParams.set("layout", layout);
   src.searchParams.set("origin", window.location.origin);
@@ -125,4 +126,13 @@ function checkedToken(payToken: string): string {
     throw new TypeError("payToken must be the checkout's 64-character pay token");
   }
   return payToken;
+}
+
+// Over plain http anyone on the way could swap the checkout, and its address with it: only a local web app may use it.
+function checkedBase(baseUrl: string): URL {
+  const base = new URL(baseUrl);
+  if (base.protocol !== "https:" && !(base.protocol === "http:" && LOOPBACK.has(base.hostname))) {
+    throw new TypeError("baseUrl must be https, or http on localhost");
+  }
+  return base;
 }

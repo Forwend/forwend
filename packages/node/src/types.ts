@@ -52,10 +52,25 @@ export type PaymentPurpose = (typeof PAYMENT_PURPOSES)[number];
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 export type CheckoutState = (typeof CHECKOUT_STATES)[number];
 
+/** The merchant's payment state (D-114); paymentStatus keeps its raw value. */
+export const PAYMENT_STATES = [
+  "waiting",
+  "confirming",
+  "partially_paid",
+  "paid",
+  "overpaid",
+  "expired",
+  "canceled",
+] as const;
+export type PaymentState = (typeof PAYMENT_STATES)[number];
+/** Where the received money is on its way to the profile's wallet (D-114). */
+export const WALLET_STATES = ["none", "pending", "in_wallet", "delayed", "refused"] as const;
+export type WalletState = (typeof WALLET_STATES)[number];
+
 export const RECONCILIATION_STATUSES = ["verified", "pending", "review"] as const;
 export type ReconciliationStatus = (typeof RECONCILIATION_STATUSES)[number];
 export interface PaymentAmounts {
-  reconciliationStatus?: ReconciliationStatus;
+  reconciliationStatus: ReconciliationStatus;
   receiver: string;
   payable: string;
   held: string;
@@ -75,12 +90,14 @@ export interface PaymentReceipt {
   decimals: number;
   received: string;
   pending: string;
+  /** Booked money on this option still owed to the payer. */
+  held: string;
 }
 
 export interface Payment {
-  receipts?: PaymentReceipt[];
-  customerName?: string | null;
-  customerEmail?: string | null;
+  receipts: PaymentReceipt[];
+  customerName: string | null;
+  customerEmail: string | null;
   amounts?: PaymentAmounts;
   paymentId: string;
   source: PaymentSource;
@@ -104,11 +121,105 @@ export interface Payment {
   paymentStatus: PaymentStatus;
   settlementStatus: SettlementStatus;
   refundStatus: RefundStatus;
+  state: PaymentState;
+  wallet: WalletState;
+  dueDate: string | null;
   confirming: boolean;
   closed: boolean;
   createdAt: string;
   closesAt: string;
   hostedUrl: string | null;
+  /** The hosted page's token, the last part of hostedUrl: what @forwend/js and @forwend/react take. */
+  payToken: string | null;
+}
+
+/** One payment with its line items, options and open problems, as payments.get returns it. */
+export interface PaymentDetails extends Payment {
+  customer: { name: string | null; email: string | null };
+  metadata: Record<string, string>;
+  /** Money in the base units of the option whose optionId is the paymentId; quantity has 2 decimals. */
+  items: { description: string; quantity: string; unitPrice: string; amount: string }[];
+  options: PaymentOption[];
+  deliveries: PaymentDelivery[];
+  deliveryCount: number;
+  deliveriesTruncated: boolean;
+  problems: PaymentProblem[];
+  snapshotAt: string;
+}
+
+/** A token and network the payer may pay with. The fields a server most often needs are typed; the rest stay as sent. */
+export interface PaymentOption {
+  optionId: string;
+  chainId: number;
+  token: string;
+  symbol: string;
+  decimals: number;
+  amount: string;
+  receiveAddress: string;
+  closesAt: string;
+  paymentStatus: PaymentStatus;
+  settlementStatus: SettlementStatus;
+  refundStatus: RefundStatus;
+  amounts: PaymentAmounts | null;
+  [field: string]: unknown;
+}
+
+export interface PaymentDelivery {
+  endpointId: string;
+  eventId: string;
+  eventType: WebhookEventType;
+  status: string;
+  enabled: boolean;
+  attempts: number;
+  lastStatusCode: number | null;
+  lastAttemptAt: string | null;
+  nextAttemptAt: string;
+  canManage: boolean;
+}
+
+export const PAYMENT_PROBLEM_CODES = [
+  "verification_pending",
+  "reconciliation_required",
+  "partial_payment",
+  "held_funds",
+  "outflow_unreconciled",
+  "funds_movement_exception",
+  "settlement_delayed",
+  "settlement_refused",
+  "webhook_delivery",
+] as const;
+export const PAYMENT_PROBLEM_ACTIONS = [
+  "wait",
+  "share_checkout",
+  "review_funds",
+  "review_settlement",
+  "review_webhooks",
+  "ask_admin",
+] as const;
+
+/** Something about a payment that needs a look, and what to do. */
+export interface PaymentProblem {
+  code: (typeof PAYMENT_PROBLEM_CODES)[number];
+  action: (typeof PAYMENT_PROBLEM_ACTIONS)[number];
+  amount: string | null;
+  asset: { chainId: number; token: string; symbol: string; decimals: number } | null;
+  optionId: string | null;
+  endpointId: string | null;
+  eventId: string | null;
+  reason: string | null;
+}
+
+/** A merchant profile's store. storeId is public and grants nothing. */
+export interface Store {
+  storeId: string;
+  name: string;
+  defaultExpiresIn: number;
+  /** The origins that may frame this store's checkout. */
+  allowedOrigins: string[];
+  brandColor: string | null;
+  logoAt: string | null;
+  tokensOff: { chainId: number; token: string }[];
+  updatedAt: string;
 }
 
 export interface CheckoutSession {
@@ -137,6 +248,10 @@ export interface ListPayments extends ListCheckoutSessions {
   paymentStatus?: PaymentStatus;
   settlementStatus?: SettlementStatus;
   refundStatus?: RefundStatus;
+  state?: PaymentState;
+  wallet?: WalletState;
+  /** Exactly your order's reference. */
+  reference?: string;
 }
 
 export interface ListCheckoutSessions {
@@ -205,6 +320,7 @@ export interface ListInvoices {
   /** Items per page, 1 to 100. */
   limit?: number;
   status?: ListStatus;
+  state?: PaymentState;
   /** Search text, as the owner's invoice list takes it. */
   q?: string;
   /** Start after this cursor instead of the first page. */

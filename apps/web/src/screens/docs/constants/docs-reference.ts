@@ -198,24 +198,22 @@ export const REFERENCE_PAGES: readonly DocsArticle[] = [
         fields: [
           {
             name: "forwend",
-            type: "0.1.0 · Node ≥20",
+            type: "0.2.0 · Node ≥20",
             description:
-              "Invoices, webhook-event listing and signature verification. No runtime dependencies.",
+              "Checkout sessions, payments, invoices, stores, webhook events and signature verification. No runtime dependencies.",
           },
           {
             name: "@forwend/js",
-            type: "0.1.0 · browser",
+            type: "0.1.1 · browser",
             description: "mountCheckout, payUrl and linkUrl.",
           },
           {
             name: "@forwend/react",
-            type: "0.1.0 · React 18 / 19",
+            type: "0.1.1 · React 18 / 19",
             description: "Checkout, PaymentElement and PayButton.",
           },
         ],
-        paragraphs: [
-          "Versions and exports were checked against published registry packages. Repository source includes newer checkout-session client methods that are not in forwend 0.1.0.",
-        ],
+        paragraphs: ["Versions and exports were checked against published registry packages."],
       },
       {
         id: "policy",
@@ -234,6 +232,15 @@ export const REFERENCE_PAGES: readonly DocsArticle[] = [
     title: "Changelog",
     description: "Verified releases, newest first.",
     sections: [
+      {
+        id: "2026-11-08",
+        title: "2026-11-08 · Packages match the API",
+        points: [
+          "forwend 0.2.0: checkout sessions, payment details, stores, invoice cancel, reopen and send, and safe retries.",
+          "@forwend/js and @forwend/react 0.1.1 accept only an https base URL, or http on localhost.",
+          "Payment reads include payToken, the public token the browser packages take.",
+        ],
+      },
       {
         id: "2026-10-31",
         title: "2026-10-31 · Browser checkout",

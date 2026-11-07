@@ -288,7 +288,7 @@ export const GUIDE_PAGES: readonly DocsArticle[] = [
         title: "Allow your application origin",
         paragraphs: [
           "Add your site’s exact origin in the store settings before embedding. HTTPS is required outside test loopback development.",
-          "Create the session on your server. Extract its pay token from the returned payment.hostedUrl and pass only that public token to the browser.",
+          "Create the session on your server. Pass only its public payment.payToken to the browser.",
           "The iframe stays on Forwend’s origin. Browser packages check message origin and source, but messages remain display hints.",
         ],
       },
@@ -374,10 +374,10 @@ export const GUIDE_PAGES: readonly DocsArticle[] = [
         id: "install",
         title: "Install the Node package",
         paragraphs: [
-          "forwend 0.1.0 requires Node 20 or later and has no runtime dependencies. Published methods are invoices.create/get/list and webhookEvents.list, plus verifyWebhook.",
-          "Checkout-session and payment methods exist in the repository but are not in the published 0.1.0 package. Use HTTP for those operations.",
+          "forwend 0.2.0 requires Node 20 or later and has no runtime dependencies. It covers checkout sessions, payments, invoices, stores and webhook events, plus verifyWebhook.",
+          "The base URL must be https, or http on localhost while you develop.",
         ],
-        code: { language: "Shell", code: "npm install forwend@0.1.0" },
+        code: { language: "Shell", code: "npm install forwend@0.2.0" },
       },
       {
         id: "client",
@@ -388,8 +388,9 @@ export const GUIDE_PAGES: readonly DocsArticle[] = [
         id: "errors",
         title: "Handle errors and pagination",
         paragraphs: [
-          "The client throws ForwendError with status and code for API errors. Act on code, not message text.",
-          "Invoice and webhook-event lists are async iterables. Iterate with for await to request further pages. The client generates a create idempotency key when omitted; supply your own stable order key for retries across process restarts.",
+          "The client throws ForwendError with status, code and retryAfter for API errors. Act on code, not message text.",
+          "The client tries a rate limit again after a short Retry-After, and a lost answer on reads and keyed creates, with the same idempotency key.",
+          "Lists are async iterables. Iterate with for await to request further pages. The client generates a create idempotency key when omitted; supply your own stable order key for retries across process restarts.",
         ],
         links: [
           { label: "Error reference", slug: "reference/errors" },
@@ -408,16 +409,16 @@ export const GUIDE_PAGES: readonly DocsArticle[] = [
         id: "react",
         title: "React 18 and 19",
         paragraphs: [
-          "@forwend/react 0.1.0 exports Checkout, PaymentElement and PayButton. Install it alongside your existing React application.",
+          "@forwend/react 0.1.1 exports Checkout, PaymentElement and PayButton. Install it alongside your existing React application.",
         ],
-        code: { language: "Shell", code: "npm install @forwend/react@0.1.0" },
+        code: { language: "Shell", code: "npm install @forwend/react@0.1.1" },
         links: [{ label: "React component examples", slug: "collect/embedded-checkout" }],
       },
       {
         id: "javascript",
         title: "Plain JavaScript",
         paragraphs: [
-          "@forwend/js 0.1.0 exports mountCheckout, payUrl and linkUrl. mountCheckout returns an instance with destroy() for cleanup.",
+          "@forwend/js 0.1.1 exports mountCheckout, payUrl and linkUrl. mountCheckout returns an instance with destroy() for cleanup.",
         ],
         code: {
           language: "JavaScript",

@@ -58,6 +58,7 @@ const payment = {
   createdAt: AT,
   closesAt: "2026-10-28T06:00:00Z",
   hostedUrl: `http://localhost:3000/pay/${"d".repeat(64)}`,
+  payToken: "d".repeat(64),
   amounts,
   receipts: [{ ...ASSET, optionId: hash("a"), received: "2500000", pending: "0", held: "500000" }],
 };

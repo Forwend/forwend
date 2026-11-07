@@ -20,5 +20,7 @@ export function forwend(): Forwend {
 
 export const storeId = () => env("FORWEND_STORE_ID");
 export const webhookSecret = () => env("FORWEND_WEBHOOK_SECRET");
+/** The header this shop's own proxy sets to the visitor's address, if it has one. */
+export const trustedIpHeader = () => process.env.TRUST_PROXY_HEADER || undefined;
 /** Forwend's web app, which the embeds frame. */
 export const forwendUrl = () => env("FORWEND_URL");
