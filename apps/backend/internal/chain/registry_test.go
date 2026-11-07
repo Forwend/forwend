@@ -79,6 +79,33 @@ func TestDatabaseEndpointConfiguration(t *testing.T) {
 	}
 }
 
+func TestMainnetChainsStartOffInLiveMode(t *testing.T) {
+	ctx := t.Context()
+	db, err := database.Open(ctx, databasetest.Migrated(t, database.Migrate))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	mainnets := map[uint64]int{8453: 3, 42161: 3, 5042: 4, 4217: 4} // enabled public endpoints (00105)
+	var off int
+	if err := db.QueryRow(ctx, `SELECT count(*) FROM chains
+ WHERE chain_id IN (8453, 42161, 5042, 4217) AND livemode AND NOT enabled`).Scan(&off); err != nil || off != 4 {
+		t.Fatalf("mainnets off in live mode: %d, %v", off, err)
+	}
+	if _, err := db.Exec(ctx, `UPDATE chains SET enabled = true WHERE chain_id IN (8453, 42161, 5042, 4217)`); err != nil {
+		t.Fatal(err)
+	}
+	specs, err := Specs(ctx, db, nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for id, endpoints := range mainnets {
+		if got := len(specs[id].Endpoints); got != endpoints {
+			t.Errorf("chain %d: %d endpoints, want %d", id, got, endpoints)
+		}
+	}
+}
+
 func TestRegistryRejectsInvalidEndpointMetadata(t *testing.T) {
 	valid := Spec{ChainID: 1, Endpoints: []Endpoint{
 		{ID: "a", Provider: "a", Role: Primary, Tier: Private, URL: "https://a.example/key", BudgetGroup: "a"},

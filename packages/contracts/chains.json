@@ -31,5 +31,37 @@
     "chainId": 42431,
     "infura": null,
     "public": ["https://rpc.moderato.tempo.xyz", "https://tempo-moderato-testnet.drpc.org"]
+  },
+  "base-mainnet": {
+    "chainId": 8453,
+    "infura": "base-mainnet",
+    "public": [
+      "https://base-rpc.publicnode.com",
+      "https://base.api.pocket.network",
+      "https://8453.rpc.thirdweb.com"
+    ]
+  },
+  "arbitrum-one": {
+    "chainId": 42161,
+    "infura": "arbitrum-mainnet",
+    "public": [
+      "https://arb1.arbitrum.io/rpc",
+      "https://arb-one.api.pocket.network",
+      "https://42161.rpc.thirdweb.com"
+    ]
+  },
+  "arc-mainnet": {
+    "chainId": 5042,
+    "infura": null,
+    "public": [
+      "https://rpc.blockdaemon.mainnet.arc.io",
+      "https://arc-rpc.publicnode.com",
+      "https://5042.rpc.thirdweb.com"
+    ]
+  },
+  "tempo-mainnet": {
+    "chainId": 4217,
+    "infura": null,
+    "public": ["https://rpc.mainnet.tempo.xyz", "https://rpc.tempo.xyz"]
   }
 }
