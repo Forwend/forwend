@@ -29,6 +29,9 @@ func scanEndpoint(row pgx.CollectableRow) (Endpoint, error) {
 	return e, err
 }
 
+// MaxEndpoints is a profile's most webhook endpoints.
+const MaxEndpoints = 16
+
 // Save creates the endpoint with the id the caller picks, with its first secret, or replaces every field of the
 // profile's endpoint with that id. created is true for a new one. The caller has checked the user's access to the
 // profile and the fresh sign-in (D-63); Save checks the access again as it writes.
@@ -65,14 +68,21 @@ func (s *Service) Save(ctx context.Context, profileID, user, id string, d Detail
 			return err
 		}
 		var kind string
-		var stored bool
-		if err := tx.QueryRow(ctx, `SELECT kind, EXISTS (SELECT 1 FROM stores WHERE profile_id = p.id AND id::text = $2)
-			FROM profiles p WHERE id = $1`, profileID, d.StoreID).Scan(&kind, &stored); err != nil {
+		var stored, known bool
+		var endpoints int
+		// The profile lock makes the count and the insert one step.
+		if err := tx.QueryRow(ctx, `SELECT kind, EXISTS (SELECT 1 FROM stores WHERE profile_id = p.id AND id::text = $2),
+			    (SELECT count(*) FROM webhook_endpoints WHERE profile_id = p.id),
+			    EXISTS (SELECT 1 FROM webhook_endpoints WHERE profile_id = p.id AND id::text = $3)
+			FROM profiles p WHERE id = $1 FOR UPDATE`, profileID, d.StoreID, id).Scan(&kind, &stored, &endpoints, &known); err != nil {
 			return fmt.Errorf("read profile: %w", err)
 		}
 		switch {
 		case kind == profile.Personal:
 			return ErrPersonal
+		case !known && endpoints >= MaxEndpoints:
+			// Each event writes a delivery per endpoint inside the money transaction that raised it.
+			return fmt.Errorf("%w: a profile has at most %d webhook endpoints", ErrInvalid, MaxEndpoints)
 		case kind == profile.Merchant && d.StoreID != "" && !stored:
 			return fmt.Errorf("%w: storeId must be one of the profile's stores", ErrInvalid)
 		case kind != profile.Merchant && d.StoreID != "":

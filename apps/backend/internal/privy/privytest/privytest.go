@@ -43,6 +43,13 @@ type Fake struct {
 	// passkey account verified at that time.
 	SignedInAt    map[string]int64
 	PasskeySignIn int64
+	// LinkedAt is a user's email first_verified_at (1 when unset); PasskeyLinkedAt is the passkey's. CreatedAt is every
+	// user's created_at (1 when unset).
+	LinkedAt        map[string]int64
+	PasskeyLinkedAt int64
+	CreatedAt       int64
+	// Mfa is each user's MFA methods at Privy: verified_at by type (totp, passkey).
+	Mfa map[string]map[string]int64
 	// GoogleSignIn, when set, gives every user a Google account verified at that time.
 	GoogleSignIn int64
 	// Freezes lists "freeze <id>" and "unfreeze <id>" calls in order. FailFreezes and FailUnfreezes answer that many
@@ -54,7 +61,7 @@ type Fake struct {
 
 func New(t *testing.T) *Fake {
 	f := &Fake{t: t, wallets: map[string]map[string]any{}, failedKeys: map[string]bool{}, Emails: map[string]string{},
-		SignedInAt: map[string]int64{}}
+		SignedInAt: map[string]int64{}, LinkedAt: map[string]int64{}, Mfa: map[string]map[string]int64{}}
 	srv := httptest.NewServer(f)
 	t.Cleanup(srv.Close)
 	f.URL = srv.URL
@@ -155,7 +162,11 @@ func (f *Fake) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if at == 0 {
 				at = 1
 			}
-			accounts = append(accounts, map[string]any{"type": "email", "address": email, "first_verified_at": 1,
+			linked := f.LinkedAt[id]
+			if linked == 0 {
+				linked = 1
+			}
+			accounts = append(accounts, map[string]any{"type": "email", "address": email, "first_verified_at": linked,
 				"latest_verified_at": at, "verified_at": 1})
 		}
 		if f.GoogleSignIn != 0 {
@@ -164,11 +175,23 @@ func (f *Fake) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				"verified_at": 1})
 		}
 		if f.PasskeySignIn != 0 {
+			linked := f.PasskeyLinkedAt
+			if linked == 0 {
+				linked = 1
+			}
 			accounts = append(accounts, map[string]any{"type": "passkey", "credential_id": "cred-1",
-				"first_verified_at": 1, "latest_verified_at": f.PasskeySignIn, "verified_at": 1})
+				"first_verified_at": linked, "latest_verified_at": f.PasskeySignIn, "verified_at": 1})
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"id": id, "created_at": 1, "has_accepted_terms": true,
-			"is_guest": false, "linked_accounts": accounts, "mfa_methods": []any{}})
+		created := f.CreatedAt
+		if created == 0 {
+			created = 1
+		}
+		mfa := []any{}
+		for kind, at := range f.Mfa[id] {
+			mfa = append(mfa, map[string]any{"type": kind, "verified_at": at})
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": id, "created_at": created, "has_accepted_terms": true,
+			"is_guest": false, "linked_accounts": accounts, "mfa_methods": mfa})
 	default:
 		w.WriteHeader(http.StatusNotFound)
 	}

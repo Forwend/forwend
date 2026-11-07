@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { TONES } from "../../../lib/tone";
 import { ACTIVITY_DIRECTIONS, ActivityRow } from "../activity-row";
+import { FullAddress } from "../address/full-address";
 import { Money } from "../money/money";
 import { NetworkWarning } from "../network-warning";
 import { ReceiveAddress } from "../receive-address";
@@ -94,5 +95,16 @@ describe("NetworkWarning", () => {
     );
     rerender(<NetworkWarning token="USDC" network="Base Sepolia" />);
     expect(container.textContent).not.toContain("Native");
+  });
+});
+
+// Address poisoning copies an address's start and end: the address checked before money moves shows every character.
+describe("FullAddress", () => {
+  it("shows and announces every character of the address", () => {
+    const address = "0x1234abcd5678ef901234abcd5678ef901234abcd";
+    const { container } = render(<FullAddress address={address} />);
+    const shown = container.querySelector("[aria-hidden]")?.textContent;
+    expect(shown).toBe(address);
+    expect(screen.getByText(address)).toBeTruthy();
   });
 });

@@ -188,18 +188,23 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		return Invoice{}, false, fmt.Errorf("%w: this invoice must be %s mode, and no token of that mode is enabled",
 			ErrInvalid, modeName(live))
 	}
-	// Invoices payers make on payment links have their own quota, so a stranger who spams a public link can't stop
-	// the owner's invoices (R-188).
-	fromLink := r.LinkID != ""
-	whose, has, creates := "a profile", "has", "creates"
-	if fromLink {
-		whose, has, creates = "a profile's payment links", "have", "create"
+	// Payers on payment links and shoppers behind the checkout API each have their own quota, so strangers can't use
+	// up what the owner's own invoices need (R-188).
+	source, whose, has, creates := "invoice", "a profile", "has", "creates"
+	switch {
+	case r.LinkID != "":
+		source, whose, has, creates = "link", "a profile's payment links", "have", "create"
+	case r.Purpose == PurposeCheckout:
+		source, whose, has, creates = "checkout", "a profile's checkout sessions", "have", "create"
 	}
+	// A stranger's checkout that expired unpaid leaves the day's count, so opening checkouts and never paying can't
+	// turn them off for the day. The open count still bounds what is watched at once.
 	var open, today int
 	if err := tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE closes_at > $2),
-		count(*) FILTER (WHERE created_at > now() - interval '1 day') FROM invoices
-		WHERE profile_id = $1 AND (link_id IS NOT NULL) = $3`,
-		profileID, s.currentTime().Unix(), fromLink).Scan(&open, &today); err != nil {
+		count(*) FILTER (WHERE created_at > now() - interval '1 day' AND NOT ($3 <> 'invoice' AND payment_status = 'expired'))
+		FROM invoices WHERE profile_id = $1 AND CASE WHEN link_id IS NOT NULL THEN 'link'
+		    WHEN purpose = 'checkout' THEN 'checkout' ELSE 'invoice' END = $3`,
+		profileID, s.currentTime().Unix(), source).Scan(&open, &today); err != nil {
 		return Invoice{}, false, fmt.Errorf("count open invoices: %w", err)
 	}
 	// Each option is a watched receive address, so it counts.

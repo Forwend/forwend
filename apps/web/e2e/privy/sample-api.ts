@@ -83,6 +83,7 @@ export const sampleInvoice = (
   token: USDC,
   amount: `${number}000000`,
   recipient: `0x${"7a21".repeat(10)}`,
+  factory: "0xf93da73f1308a9b34aab78bf6d84f0bacc600dd2",
   receiveAddress: `0x${"c".repeat(40)}`,
   expiresAt: new Date(NOW + 86_400_000).toISOString(),
   closesAt: new Date(NOW + 86_400_000).toISOString(),

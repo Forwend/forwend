@@ -9,6 +9,7 @@ const calls = vi.hoisted(() => ({
 }));
 vi.mock("@privy-io/react-auth", () => ({
   useLinkWithPasskey: () => ({ linkWithPasskey: calls.link }),
+  usePrivy: () => ({ user: null }),
 }));
 vi.mock("@/features/auth/api/auth-api", () => ({
   useCheckFreshSignInMutation: () => [() => ({ unwrap: calls.check })],

@@ -92,6 +92,8 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, message = http.StatusTooManyRequests, "code_sent_recently", "a code was sent a moment ago: enter it, or wait Retry-After seconds"
 	case errors.Is(err, reauth.ErrTooMany):
 		status, code, message = http.StatusTooManyRequests, "too_many_codes", "too many codes this hour: wait Retry-After seconds"
+	case errors.Is(err, reauth.ErrNoTwoStep):
+		status, code, message = http.StatusConflict, "two_step_not_set_up", "set up two-step verification at Privy first"
 	case errors.Is(err, reauth.ErrNoAddress):
 		status, code, message = http.StatusConflict, "no_login_email", "this account has no email to send a code to"
 	case errors.Is(err, reauth.ErrNoEmail), errors.Is(err, reauth.ErrNoSession):
@@ -101,6 +103,9 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, send.ErrBusy):
 		status, code, message = http.StatusConflict, "send_in_progress",
 			"a send from this wallet is on its way on this network: wait until it is sent"
+	case errors.Is(err, send.ErrApproved):
+		status, code, message = http.StatusConflict, "send_approved",
+			"this send was approved already and may have gone out: check Transactions, then prepare it again"
 	case errors.Is(err, send.ErrRefused):
 		status, code, message = http.StatusUnprocessableEntity, "transfer_refused", err.Error()
 	case errors.Is(err, send.ErrUnavailable):

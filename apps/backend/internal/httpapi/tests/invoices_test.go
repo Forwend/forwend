@@ -53,9 +53,21 @@ type codeMailbox struct {
 	sync.Mutex
 	sent []email.Message
 	down bool // Resend refuses every email
+	// during runs while an email is on its way, before it is accepted.
+	during func(ctx context.Context, msg email.Message)
 }
 
-func (m *codeMailbox) Send(_ context.Context, msg email.Message) error {
+func (m *codeMailbox) Send(ctx context.Context, msg email.Message) error {
+	m.Lock()
+	during := m.during
+	m.Unlock()
+	if during != nil {
+		during(ctx, msg)
+	}
+	// Like Resend's client: a request whose caller gave up fails.
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	m.Lock()
 	defer m.Unlock()
 	if m.down {
@@ -138,11 +150,11 @@ func invoiceAPIChains(t *testing.T, userBurst int, webhookKey []byte, clients se
 	e.codes = &codeMailbox{}
 	codes := reauth.NewService(pool, e.codes, func(code string) (email.Message, error) {
 		return notify.CodeMessage(notify.Site{WebURL: webURL}, code, reauth.CodeTTL)
-	}, users.LoginEmail, 0)
+	}, 0)
 	e.srv = httptest.NewServer(httpapi.NewMux(pool, verifier, users,
 		func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
 			return big.NewInt(2500000), 100, nil
-		}, clients, codes, webURL, userBurst, webhookKey))
+		}, clients, codes, webURL, userBurst, webhookKey, true))
 	t.Cleanup(e.srv.Close)
 	return e
 }

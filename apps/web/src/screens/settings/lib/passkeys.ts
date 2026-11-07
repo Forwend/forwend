@@ -9,6 +9,8 @@ export interface PasskeyRow {
   madeOn: string | null;
   added: Date | null;
   lastUsed: Date | null;
+  /** Privy's second step (R-219): removing it leaves two-step on with nothing that can answer it. */
+  twoStep: boolean;
 }
 
 const SIGN_IN_TYPES: readonly string[] = ["email", "google_oauth", PRIVY_PASSKEY];
@@ -25,6 +27,7 @@ export function passkeysOf(accounts: readonly LinkedAccountWithMetadata[]): Pass
               madeOn: [a.createdWithBrowser, a.createdWithOs].filter(Boolean).join(", ") || null,
               added: a.firstVerifiedAt,
               lastUsed: a.latestVerifiedAt,
+              twoStep: a.enrolledInMfa,
             },
           ]
         : [],

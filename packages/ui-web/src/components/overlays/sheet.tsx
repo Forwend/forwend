@@ -47,10 +47,12 @@ export function Sheet({
       ref={ref}
       aria-label={title}
       tabIndex={-1}
+      // React hands a dialog's cancel and close to every enclosing one: a dialog opened inside answers its own.
       onCancel={(event) => {
-        if (locked) event.preventDefault(); // Escape
+        if (locked && event.target === ref.current) event.preventDefault(); // Escape
       }}
-      onClose={() => {
+      onClose={(event) => {
+        if (event.target !== ref.current) return;
         // A second Escape can't be prevented: a locked sheet opens again at once.
         if (locked) ref.current?.showModal();
         else onOpenChange(false);

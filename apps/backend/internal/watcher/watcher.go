@@ -21,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/forwend/forwend/apps/backend/internal/chain"
+	"github.com/forwend/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -593,16 +594,37 @@ func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit,
 			status = "confirmed"
 		}
 		// As for deposits: a confirmed row is final and never changes; a reorged one comes back.
-		_, err = tx.Exec(ctx, `
+		var id int64
+		err = tx.QueryRow(ctx, `
 			INSERT INTO wallet_transfers (chain_id, chain_family, token_contract, wallet_address, direction, counterparty,
 			    tx_hash, log_index, block_hash, block_number, block_time, amount, status)
 			VALUES ($1, 'evm', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 			ON CONFLICT (chain_id, block_hash, log_index, wallet_address, direction) DO UPDATE SET status = excluded.status
-			WHERE wallet_transfers.status <> 'confirmed' AND wallet_transfers.status <> excluded.status`,
+			WHERE wallet_transfers.status <> 'confirmed' AND wallet_transfers.status <> excluded.status
+			RETURNING id`,
 			c.chainID, t.token, t.wallet, t.direction, t.counterparty, t.txHash, t.logIndex, t.blockHash, t.blockNumber,
-			t.blockTime, t.amount.String(), status)
-		if err != nil {
+			t.blockTime, t.amount.String(), status).Scan(&id)
+		if errors.Is(err, pgx.ErrNoRows) { // already recorded as it is
+			continue
+		} else if err != nil {
 			return fmt.Errorf("record chain %d wallet transfer %s/%d: %w", c.chainID, t.txHash, t.logIndex, err)
+		}
+		// Money out of a profile wallet that no send the owner approved explains: a stolen session can sign through
+		// Privy without Forwend's screens (D-49), so the owner hears at once. Checked once final: by then the browser
+		// reported its send's hash, or the send waits approved for this transfer, or its approval ended within the
+		// hour before. Only the same wallet, token, recipient and amount explain it, so a hash reported on another
+		// send can't hide the transfer.
+		if t.direction == "out" && t.final {
+			if _, err := tx.Exec(ctx, `INSERT INTO outbox_events (kind, wallet_transfer_id, payload)
+				SELECT $2, w.id, '{}' FROM wallet_transfers w WHERE w.id = $1
+				  AND NOT EXISTS (SELECT 1 FROM sends s WHERE s.chain_id = w.chain_id AND s.approved_at IS NOT NULL
+				      AND s.from_address = w.wallet_address AND s.token_contract = w.token_contract
+				      AND s.to_address = w.counterparty AND s.amount = w.amount
+				      AND (s.tx_hash = w.tx_hash OR s.tx_hash IS NULL AND w.created_at >= s.approved_at
+				          AND (s.status = 'approved' OR s.status = 'expired' AND w.created_at < s.finished_at + interval '1 hour')))
+				ON CONFLICT DO NOTHING`, id, outbox.WalletOutflow); err != nil {
+				return fmt.Errorf("tell the owner of wallet transfer %s: %w", t.txHash, err)
+			}
 		}
 	}
 

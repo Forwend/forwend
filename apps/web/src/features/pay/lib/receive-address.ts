@@ -1,7 +1,7 @@
 import { keccak_256 } from "@noble/hashes/sha3.js";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import type { Invoice } from "@/features/invoices/types/invoices";
-import { FACTORY, IMPLEMENTATION } from "@/features/pay/constants/receive-address";
+import { FACTORY, KNOWN_FACTORIES } from "@/features/pay/constants/receive-address";
 import type { InvoiceTerms } from "@/features/pay/types/receive-address";
 
 // invoice.SettleWindow (7 days; 1 day for invoices made before, D-18) and the longest expiry the API accepts.
@@ -15,8 +15,10 @@ const UINT64_MAX = 2n ** 64n - 1n;
 const UINT256_MAX = 2n ** 256n - 1n;
 
 // As apps/backend/internal/address: a CREATE2 clone (OpenZeppelin Clones.cloneDeterministicWithImmutableArgs)
-// with args = abi.encode(terms) and salt = keccak256(args). Throws on a term outside its type.
-export function receiveAddress(t: InvoiceTerms): string {
+// with args = abi.encode(terms) and salt = keccak256(args). Throws on a term outside its type or an unknown factory.
+export function receiveAddress(t: InvoiceTerms, factory: string = FACTORY): string {
+  const implementation = KNOWN_FACTORIES[factory];
+  if (!implementation) throw new Error("not a Forwend factory");
   const args = [
     fixedBytes(t.invoiceId, 32),
     fixedBytes(t.recipient, 20),
@@ -28,9 +30,9 @@ export function receiveAddress(t: InvoiceTerms): string {
   ].join("");
   // Clones._cloneCodeWithImmutableArgs: 0x61 <uint16 len(args)+0x2d> <prefix> <implementation> <suffix> <args>.
   const size = (args.length / 2 + 0x2d).toString(16).padStart(4, "0");
-  const code = `61${size}3d81600a3d39f3363d3d373d3d3d363d73${IMPLEMENTATION}5af43d82803e903d91602b57fd5bf3${args}`;
+  const code = `61${size}3d81600a3d39f3363d3d373d3d3d363d73${implementation}5af43d82803e903d91602b57fd5bf3${args}`;
   // CREATE2: keccak256(0xff ++ factory ++ salt ++ keccak256(init code))[12:].
-  return `0x${keccak(`ff${FACTORY}${keccak(args)}${keccak(code)}`).slice(24)}`;
+  return `0x${keccak(`ff${factory}${keccak(args)}${keccak(code)}`).slice(24)}`;
 }
 
 /** As the API derives it (D-86): keccak256(token); throws on a token that is not 32 bytes of hex. */
@@ -65,15 +67,17 @@ export function checkedReceiveAddress(inv: Invoice, payToken: string): string | 
       intendedChainId: BigInt(inv.chainId),
     };
     const recipient = terms.recipient.toLowerCase().replace(/^0x/, "");
+    // The invoice's own factory, which must be one Forwend deployed: the API can't name another.
+    const factory = inv.factory.toLowerCase().replace(/^0x/, "");
+    const ours = Object.entries(KNOWN_FACTORIES).flat();
     const invalid =
+      !(factory in KNOWN_FACTORIES) ||
       terms.amount <= 0n ||
       !SETTLE_WINDOWS_S.includes(terms.settleDeadline - terms.expiresAt) ||
       terms.expiresAt > unixSeconds(inv.createdAt) + MAX_EXPIRY_S + CLOCK_SKEW_S ||
-      [ZERO, terms.token.toLowerCase().replace(/^0x/, ""), FACTORY, IMPLEMENTATION].includes(
-        recipient,
-      );
+      [ZERO, terms.token.toLowerCase().replace(/^0x/, ""), ...ours].includes(recipient);
     if (invalid) return null;
-    const address = receiveAddress(terms);
+    const address = receiveAddress(terms, factory);
     return address === inv.receiveAddress.toLowerCase() ? address : null;
   } catch {
     return null;

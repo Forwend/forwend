@@ -188,7 +188,7 @@ func TestTeamInvitesAndRoles(t *testing.T) {
 		http.StatusCreated {
 		t.Fatalf("Carol invites: %d %v", r.status, r.body)
 	}
-	if r := e.call(t, "DELETE", path("/members/"+carolID), alice, "", ""); r.status != http.StatusNoContent {
+	if r := e.call(t, "DELETE", path("/members/"+carolID), alice, "", ""); r.status != http.StatusOK {
 		t.Fatalf("remove Carol: %d %v", r.status, r.body)
 	}
 	if r := e.call(t, "GET", "/v1/invites/"+e.inviteToken(t, "erin@example.com"), bob, "", ""); r.status !=
@@ -240,5 +240,44 @@ func TestInvitesCountTowardTheClientEmailCap(t *testing.T) {
 		"role": "admin"}`)
 	if r.status != http.StatusTooManyRequests || errorCode(r) != "rate_limited" {
 		t.Fatalf("invite 21: %d %v", r.status, r.body)
+	}
+}
+
+// D-93: an Admin taken off the team, or given another role, leaves what they could still use: the API keys they made
+// and the webhook endpoints whose secrets they could reveal. The answer lists them for the owner to roll; a member
+// who never was an Admin leaves nothing.
+func TestARemovedOrDemotedAdminLeavesWhatToRoll(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice, bob = "did:privy:alice", "did:privy:bob"
+	shop := e.merchant(t)
+	path := func(p string) string { return "/v1/profiles/" + shop + p }
+	store := storeIDs(t, e, shop)[0]
+	var bobID string
+	if err := e.pool.QueryRow(t.Context(), `INSERT INTO profile_members (profile_id, user_id, role)
+		SELECT $1, id, 'admin' FROM users WHERE privy_user_id = $2 RETURNING user_id::text`, shop, bob).Scan(&bobID); err != nil {
+		t.Fatal(err)
+	}
+	made := e.call(t, "POST", path("/keys"), bob, "", `{"name": "Bob's", "storeId": "`+store+`", "scopes": ["invoices.read"]}`)
+	if made.status != http.StatusCreated {
+		t.Fatalf("Bob makes a key: %d %v", made.status, made.body)
+	}
+	if r := e.call(t, "PUT", path("/webhooks/eeeeeeee-0000-4000-8000-000000000001"), alice, "",
+		`{"url": "https://shop.example.com/hooks", "events": ["invoice.paid"]}`); r.status != http.StatusCreated {
+		t.Fatalf("an endpoint: %d %v", r.status, r.body)
+	}
+	listed := func(r reply) (keys, hooks []any) {
+		roll, _ := r.body["toRoll"].(map[string]any)
+		keys, _ = roll["keys"].([]any)
+		hooks, _ = roll["webhooks"].([]any)
+		return keys, hooks
+	}
+	demoted := e.call(t, "PUT", path("/members/"+bobID), alice, "", `{"role": "developer", "stores": ["`+store+`"]}`)
+	if keys, hooks := listed(demoted); demoted.status != http.StatusOK || len(keys) != 1 || len(hooks) != 1 ||
+		keys[0].(map[string]any)["keyId"] != made.body["keyId"] {
+		t.Errorf("Bob made a Developer: %d %v", demoted.status, demoted.body)
+	}
+	removed := e.call(t, "DELETE", path("/members/"+bobID), alice, "", "")
+	if keys, hooks := listed(removed); removed.status != http.StatusOK || len(keys) != 1 || len(hooks) != 0 {
+		t.Errorf("Bob removed as a Developer, his key still working: %d %v", removed.status, removed.body)
 	}
 }

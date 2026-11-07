@@ -3,6 +3,7 @@
 import { THEME_ATTRIBUTE, THEMES, type Theme } from "@forwend/design-tokens";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { type ReactNode, useEffect, useState } from "react";
+import { MfaProvider } from "@/features/auth/components/mfa-step";
 import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 import { PRIVY_CHAINS } from "@/features/auth/constants/privy-chains";
 
@@ -35,9 +36,13 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
         appearance: { theme, walletList: [] },
         externalWallets: { walletConnect: { enabled: false } },
         supportedChains: PRIVY_CHAINS,
+        // Privy still requires its MFA to sign or export; Forwend asks for it in its own step (MfaProvider).
+        mfa: { noPromptOnMfaRequired: true },
+        // A passkey turned off as the second step stays a way to sign in.
+        passkeys: { shouldUnlinkOnUnenrollMfa: false },
       }}
     >
-      {children}
+      <MfaProvider>{children}</MfaProvider>
     </PrivyProvider>
   );
 }

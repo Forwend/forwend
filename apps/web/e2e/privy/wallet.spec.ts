@@ -1,14 +1,19 @@
 import { expect, test } from "@playwright/test";
 import { blockingViolations } from "./axe";
-import { freshCode, session } from "./session";
+import { freshCode, signIn } from "./session";
 
 // R-218: the owner opens Privy's own export page for the profile's server-made wallet; Forwend never sees the key.
 test("the owner opens Privy's export page for the profile wallet after the warning", async ({
   browser,
 }) => {
   test.setTimeout(120_000);
-  const context = await browser.newContext({ storageState: session });
+  // A session of its own: with the one shared since the run began, Privy's export window sometimes never opens late
+  // in a full run, though this test passes alone.
+  const context = await browser.newContext();
   const page = await context.newPage();
+  await page.goto("/sign-in");
+  await signIn(page);
+  await expect(page).toHaveURL("/app", { timeout: 30_000 });
   await page.goto("/app/wallet");
   const main = page.getByRole("main");
   await expect(main.getByRole("heading", { level: 1, name: "Wallet" })).toBeVisible({

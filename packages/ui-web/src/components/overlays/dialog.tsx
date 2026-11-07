@@ -50,7 +50,10 @@ export function Dialog({
       <dialog
         ref={ref}
         aria-label={title}
-        onClose={onClose}
+        // React hands a dialog's close to every enclosing one: a dialog opened inside closes alone.
+        onClose={(event) => {
+          if (event.target === ref.current) onClose?.();
+        }}
         onClick={(event) => {
           if (event.target === ref.current) ref.current.close(); // a click on the backdrop
         }}

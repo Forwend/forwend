@@ -43,12 +43,11 @@ type onChain struct {
 	Deadline        uint64
 }
 
-func factoryStatus(ctx context.Context, client *ethclient.Client, terms address.Terms) (onChain, error) {
+func factoryStatus(ctx context.Context, client *ethclient.Client, factory common.Address, terms address.Terms) (onChain, error) {
 	data, err := callData(statusSelector, terms)
 	if err != nil {
 		return onChain{}, err
 	}
-	factory := common.Address(address.Factory)
 	out, err := client.CallContract(ctx, ethereum.CallMsg{To: &factory, Data: data}, nil)
 	if err != nil {
 		return onChain{}, fmt.Errorf("factory.status: %w", err)

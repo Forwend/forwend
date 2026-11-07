@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Deposit, Invoice } from "@/features/invoices/types/invoices";
 import { PAY_STATES } from "@/features/pay/constants/pay";
+import { FACTORY } from "@/features/pay/constants/receive-address";
 import {
   clockRuns,
   firstPaymentOption,
@@ -40,6 +41,7 @@ const invoice: Invoice = {
   token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
   amount: "1000",
   recipient: `0x${"4".repeat(40)}`,
+  factory: `0x${FACTORY}`,
   receiveAddress: `0x${"2".repeat(40)}`,
   expiresAt: "2026-10-17T10:00:00Z",
   closesAt: "2026-10-17T10:00:00Z",

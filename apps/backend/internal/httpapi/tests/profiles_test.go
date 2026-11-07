@@ -296,7 +296,7 @@ func TestProfileRoutesAreAllListed(t *testing.T) {
 	files = append(files, "../router.go")
 	registered := regexp.MustCompile(`mux\.Handle(?:Func)?\("(\w+) (/v1/profiles/\{profileId\}[^"]*)",\s*([^\n]*)`)
 	// R-138: every profile route asks for a permission from the one map.
-	guarded := regexp.MustCompile(`^g\.(Can|FreshSignIn)\(auth\.\w+\)`)
+	guarded := regexp.MustCompile(`^g\.(Can|FreshSignIn|SigningCheck)\(auth\.\w+\)`)
 	for _, file := range files {
 		src, err := os.ReadFile(file)
 		if err != nil {

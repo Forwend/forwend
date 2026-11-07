@@ -6,6 +6,10 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 
 - Compute it locally (`internal/address`) from the factory and implementation addresses compiled into the binary. The
   init-code hash differs per invoice: the clone's init code contains the terms. Never read it from the database or an RPC.
+  - New invoices use the newest factory. An invoice keeps the factory it was made with.
+  - `address.Known` lists every factory an invoice may still use, with its implementation; the web holds the same list.
+  - Settle, returns and stray recovery accept only an invoice's own factory from that list. Drop an old factory from
+    it only once none of its invoices can hold money.
 - `(chain_id, receive_address)` is unique. The signer refuses to settle when the stored terms do not recompute the
   receive address or `factory.predict` gives another one (`internal/settlement/settle.go`); the canary checks open
   invoices ([Canary](#canary)).
@@ -147,9 +151,11 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
   - Each `0x3600` log takes at most one twin, so every transfer counts once.
   - A system log without a twin is a native send: it counts as `0x3600` money, floored to 6 decimals.
   - Under one micro-USDC is no deposit: `balanceOf` truncates it too.
-  - Several native sends with sub-micro parts can book less than `balanceOf` shows; paid still holds, and expiry alerts.
+  - Several native sends with sub-micro parts can book less than `balanceOf` shows; paid still holds.
+    - Expiry ignores such dust: an excess under `ledger.DustExcess` (0.01 of a 6-decimal token) stays for the Safe.
+    - Otherwise anyone could send two sub-micro amounts and keep an invoice open for good.
   - No contract can emit from the system emitter: it has no code.
-- When the selected RPC's `balanceOf` holds more than is booked, the invoice never expires.
+- When the selected RPC's `balanceOf` holds at least `ledger.DustExcess` more than is booked, the invoice never expires.
   - The worker logs `ALERT receive address holds money with no booked transfer`.
   - An operator checks the chain and refunds the money with the refund authority.
   - The worker reads that balance again after 1 min, doubling to at most a day (`invoice_balance_alerts`, R-120).
@@ -177,6 +183,27 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
   - The recipient is not zero, the token, the factory or the implementation.
   - The terms must compute to the address.
 - No third-party scripts; pinned dependencies.
+
+## Money out of a profile wallet
+
+- Privy signs and exports on the user's session alone, so Forwend's Confirm it's you binds only its own screens (D-49).
+- With `NEXT_PUBLIC_WALLET_MFA` on, the owner sets up both a passkey and an authenticator app as Privy's MFA before a
+  first send or export, so one lost still confirms and removes the other.
+  - Privy then requires its code before it signs or shows a key; Forwend only draws the prompt (R-219).
+  - Forwend records the methods behind a fresh sign-in. Only recorded ones let a send's approve skip the emailed code.
+  - Only the setup records them. Its passkey is the one the owner taps on this device, or makes there.
+    - Privy turns on any linked passkey by ID with no tap: every one would take a passkey a stolen session linked.
+  - A method a stolen session sets up at Privy alone isn't recorded, so its sends still need the code and still email
+    the owner when the money leaves without an approved send.
+  - Forwend drops Privy's 15-minute pass after each send.
+- The watcher checks every final transfer out of a profile wallet. It emails the owner at once (`wallet.outflow`)
+  unless an approved send explains it.
+  - That send has the same wallet, token, recipient and amount, and reported this hash or still waits for one.
+  - Or its approval ended within the hour before the transfer was recorded, after the approve: it was signed late.
+  - Submit takes a hash only for an approved send, so a hash reported on another send can't hide a transfer.
+  - An owner with no login email, such as one who signed up with a passkey alone, gets no such email yet.
+  - A token approval or permit signed through Privy moves nothing, so nothing is sent until the money leaves.
+  - Moving money with an exported key in another wallet app also sends it; the email says that is fine.
 
 ## Canary
 
@@ -224,7 +251,8 @@ psql "$READONLY_DATABASE_URL" -At -F ' ' -c "SELECT i.id, i.chain_id, i.recipien
   JOIN invoices m ON m.id = coalesce(i.main_id, i.id)
   JOIN tokens t ON t.chain_id = i.chain_id AND t.contract = i.token_contract JOIN chains c ON c.chain_id = i.chain_id
   WHERE i.payment_status IN ('open', 'partially_paid') AND i.closes_at > extract(epoch FROM now()) + 60
-    AND (m.chosen_id IS NULL OR m.chosen_id = i.id) AND m.pay_token IS NOT NULL" |
+    AND (m.chosen_id IS NULL OR m.chosen_id = i.id) AND m.pay_token IS NOT NULL
+    AND i.factory_address = lower('$CANARY_FACTORY')" |
   pnpm --silent --filter @forwend/backend canary
 ```
 
@@ -237,6 +265,8 @@ Limits:
 
 - The canary trusts the database's terms. A wrong recipient written when the invoice was made is not caught; that
   needs the profile wallet read from Privy, which the canary does not hold.
+- It checks only invoices of `CANARY_FACTORY`, so the query leaves out those of an older factory.
+  - Those keep paying and settling through their own factory, and are not checked until they close.
 - It catches tampering and drift that do not hide from it. A bundle written to evade it (spotting the headless
   browser, or drawing another QR over the checked one) is not caught.
 

@@ -231,3 +231,72 @@ func TestLinkPayRefusedByCreateSpendsNoSharedBudget(t *testing.T) {
 		t.Fatalf("a payer's Pay after the junk: %d %v", paid.status, paid.body)
 	}
 }
+
+// R-142: behind a trusted proxy Pay is limited per payer, so one stranger's requests can't stop a busy link for
+// everyone. The address is the proxy's, the last in X-Forwarded-For: earlier ones are whatever the client sent.
+func TestOneStrangerCantStopABusyLink(t *testing.T) {
+	e := invoiceAPI(t)
+	r := e.call(t, "PUT", "/v1/profiles/"+e.aliceProfile+"/links/eeeeeeee-0000-4000-8000-000000000001",
+		"did:privy:alice", "", `{"title": "Hourly", "amountUsd": "1"}`)
+	slug := r.body["slug"].(string)
+	pay := func(forwarded, key string) reply {
+		t.Helper()
+		req, err := http.NewRequest("POST", e.srv.URL+"/v1/links/"+slug+"/pay", strings.NewReader(`{}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("X-Forwarded-For", forwarded)
+		req.Header.Set("Idempotency-Key", key)
+		return e.do(t, req)
+	}
+	for i := range 5 {
+		if r := pay("198.51.100.7, 203.0.113.9", "s-"+strconv.Itoa(i)); r.status != http.StatusCreated {
+			t.Fatalf("the stranger's Pay %d: %d %v", i, r.status, r.body)
+		}
+	}
+	if r := pay("192.0.2.1, 203.0.113.9", "s-5"); errorCode(r) != "rate_limited" {
+		t.Errorf("the stranger's sixth Pay, with another address forged before the proxy's: %d %v", r.status, r.body)
+	}
+	if r := pay("198.51.100.7", "p-0"); r.status != http.StatusCreated {
+		t.Errorf("another payer on the same link: %d %v", r.status, r.body)
+	}
+	// An IPv6 network is one payer: its /64 gives it more addresses than any limit.
+	for i := range 5 {
+		if r := pay("2001:db8::"+strconv.Itoa(i+1), "v6-"+strconv.Itoa(i)); r.status != http.StatusCreated {
+			t.Fatalf("Pay %d from one IPv6 network: %d %v", i, r.status, r.body)
+		}
+	}
+	if r := pay("2001:db8::ffff:1", "v6-5"); errorCode(r) != "rate_limited" {
+		t.Errorf("a sixth Pay from another address of the same /64: %d %v", r.status, r.body)
+	}
+}
+
+// R-188: a link checkout that closed unpaid no longer counts toward the day's link quota, so strangers who open
+// checkouts and never pay can't turn off a profile's links for the rest of the day.
+func TestUnpaidClosedLinkCheckoutsDontUseUpTheDaysQuota(t *testing.T) {
+	e := invoiceAPI(t)
+	r := e.call(t, "PUT", "/v1/profiles/"+e.aliceProfile+"/links/eeeeeeee-0000-4000-8000-000000000001",
+		"did:privy:alice", "", `{"title": "Hourly", "amountUsd": "1"}`)
+	slug := r.body["slug"].(string)
+	first := e.call(t, "POST", "/v1/links/"+slug+"/pay", "", "k-0", `{}`)
+	if first.status != http.StatusCreated {
+		t.Fatalf("Pay: %d %v", first.status, first.body)
+	}
+	// A day's quota of checkouts that closed unpaid.
+	e.exec(t, `INSERT INTO invoices (id, profile_id, link_id, number, chain_id, chain_family, token_contract, amount,
+		expires_at, settle_deadline, recipient_address, receive_method, factory_address, receive_address,
+		idempotency_key, request_hash)
+		SELECT '0x'||repeat(md5(n::text), 2), profile_id, link_id, 1000 + n, chain_id, chain_family, token_contract, amount,
+		    1, settle_deadline, recipient_address, receive_method, factory_address, '0x'||lpad(to_hex(n), 40, '0'),
+		    'quota-'||n, request_hash
+		FROM invoices i CROSS JOIN generate_series(1, $2) n
+		WHERE i.link_id = (SELECT id FROM payment_links WHERE slug = $1)`, slug, invoice.MaxPerDay)
+	e.exec(t, "UPDATE invoices SET payment_status = 'expired' WHERE idempotency_key LIKE 'quota-%'")
+	var n int
+	if err := e.pool.QueryRow(t.Context(), "SELECT count(*) FROM invoices WHERE link_id IS NOT NULL AND payment_status = 'expired'").Scan(&n); err != nil || n != invoice.MaxPerDay {
+		t.Fatalf("closed unpaid checkouts = %d, %v", n, err)
+	}
+	if r := e.call(t, "POST", "/v1/links/"+slug+"/pay", "", "k-1", `{}`); r.status != http.StatusCreated {
+		t.Errorf("Pay after a day of unpaid closed checkouts: %d %v", r.status, r.body)
+	}
+}

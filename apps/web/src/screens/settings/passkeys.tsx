@@ -1,12 +1,13 @@
 "use client";
 
-import { BUTTON_VARIANTS, Button, Dialog, TONES, useToast } from "@forwend/ui-web";
+import { Badge, BUTTON_VARIANTS, Button, Dialog, TONES, useToast } from "@forwend/ui-web";
 import { usePrivy } from "@privy-io/react-auth";
 import { Fingerprint } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import { useCheckFreshSignInMutation } from "@/features/auth/api/auth-api";
 import { useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
 import { useAddPasskey } from "@/features/auth/hooks/use-add-passkey";
+import { forgetOnDevice, PasskeyOnDevice } from "@/features/auth/lib/passkeys";
 import { SETTINGS_COPY } from "@/screens/settings/constants/settings-copy";
 import { canRemovePasskey, type PasskeyRow, passkeysOf } from "@/screens/settings/lib/passkeys";
 import { shortDate } from "@/shared/lib/dates";
@@ -36,7 +37,8 @@ export function Passkeys() {
       await addPasskey(fresh.run);
       toast({ tone: TONES.success, title: COPY.passkeyDone });
     } catch (e) {
-      if (!fresh.cancelled(e)) setError(COPY.passkeyFailed);
+      if (!fresh.cancelled(e))
+        setError(e instanceof PasskeyOnDevice ? e.message : COPY.passkeyFailed);
     } finally {
       setAdding(false);
     }
@@ -103,6 +105,8 @@ function PasskeyItem({
   // Two passkeys with no name read apart by where they were made.
   const label = COPY.removeLabel(passkey.madeOn ? COPY.namedOn(name, passkey.madeOn) : name);
   const reasonId = useId();
+  // Privy leaves two-step on with nothing to answer it when its passkey goes, so that one stays until two-step is off.
+  const blocked = !removable ? COPY.onlyWay : passkey.twoStep ? COPY.twoStepPasskey : null;
   const meta = [
     passkey.madeOn ? COPY.passkeyMade(passkey.madeOn) : null,
     passkey.added ? COPY.passkeyAdded(shortDate(passkey.added.toISOString())) : null,
@@ -116,6 +120,7 @@ function PasskeyItem({
     try {
       await fresh.run(() => check().unwrap());
       await unlinkPasskey(passkey.credentialId);
+      forgetOnDevice(passkey.credentialId);
       toast({ tone: TONES.success, title: COPY.removed });
       onRemoved();
     } catch (e) {
@@ -131,13 +136,16 @@ function PasskeyItem({
         <Fingerprint aria-hidden className="size-[var(--fw-icon-md)]" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-ink">{name}</p>
+        <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-ink">
+          {name}
+          {passkey.twoStep ? <Badge>{COPY.twoStepBadge}</Badge> : null}
+        </p>
         <p className="text-sm text-muted">{meta.join(" · ")}</p>
-        {removable ? null : (
+        {blocked ? (
           <p id={reasonId} className="text-sm text-muted">
-            {COPY.onlyWay}
+            {blocked}
           </p>
-        )}
+        ) : null}
       </div>
       <Dialog
         triggerLabel={label}
@@ -150,9 +158,9 @@ function PasskeyItem({
           <Button
             size="sm"
             variant={BUTTON_VARIANTS.ghost}
-            disabled={!removable}
+            disabled={blocked !== null}
             aria-label={label}
-            aria-describedby={removable ? undefined : reasonId}
+            aria-describedby={blocked ? reasonId : undefined}
             onClick={open}
           >
             {COPY.remove}

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 433,
+  "nextId": 436,
   "tasks": [
     {
       "id": "F332",
@@ -35,44 +35,54 @@
       "evidence": null
     },
     {
-      "id": "F417",
-      "type": "feat",
-      "behavior": "Tokens sent to the invoice receiver factory or implementation can be returned by the refund authority",
+      "id": "F418",
+      "type": "fix",
+      "behavior": "Fix IDs on payments, checkouts, invoices and payment links",
+      "acceptance": [],
+      "dependsOn": [],
+      "state": "blocked",
+      "verification": [],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-11-05 blocked: Deferred by owner (2026-11-05): low priority for now."
+      ],
+      "blockedReason": "Deferred by owner (2026-11-05): low priority for now.",
+      "evidence": null
+    },
+    {
+      "id": "F433",
+      "type": "fix",
+      "behavior": "The high and medium findings of the 2026-11-07 audit that hold up are fixed, each proven by a test",
       "acceptance": [
-        "The factory gets a refund-authority recover(token, to, amount); nobody else can call it, and it can't touch a receiver's money.",
-        "Contract tests and the fuzz and invariant suites cover it; docs/contracts/rules.md and operations.md describe it; it ships before the first mainnet deploy.",
-        "A receiver's refundable() reads 0 off its intended chain, as factory.status does and refund() allows (audit 2026-11-04); a test covers it.",
-        "Money sent to the receiver implementation returns through its recover, for the refund authority only; clones keep every current guard (security review 2026-11-06).",
-        "The backend receive-address constants, vectors and canary example match the new factory and implementation."
+        "Each medium finding is re-checked first; the ones that hold up are fixed, and the false positives are listed with the reason.",
+        "Each fix comes with a test that fails before it and passes after; only tests the workflow's 'Which tests to keep' rule names stay.",
+        "The full check set and the live suite still pass."
       ],
       "dependsOn": [],
-      "state": "passing",
+      "state": "verified",
       "verification": [
-        "harness",
-        "docs-check",
-        "contracts",
-        "symbolic"
+        "unit",
+        "e2e",
+        "live-e2e"
       ],
-      "refs": [
-        "D-118"
-      ],
+      "refs": [],
       "keep": [],
-      "review": true,
+      "review": false,
       "notes": [
-        "2026-11-04 Audit 2026-11-04: InvoiceReceiver.refundable() returns the balance on a wrong chain where refund() reverts. Fix: return 0 when block.chainid != intendedChainId. Any receiver change moves the factory's CREATE2 address (vectors test fails), so it ships with this task's redeploy.",
-        "2026-11-05 blocked: Deferred by owner (2026-11-05) to the first mainnet deploy: the refundable() fix moves the factory address, so it ships with that redeploy, with the factory recover.",
-        "2026-11-06 review fail by reviewer: Contract code is sound; docs and one test fall short. Security: only the refund authority moves money. Factory recover moves only the factory's own balance: transfer() from the factory, and no receiver has that selector, fallback or receive. The implementation branch (address(this) == self) is unreachable from factory clones, outside clones or delegatecall contexts, because self is the implementation's immutable. Clones still run _onlyClone, terms and the invoice-token guard before any transfer. The implementation's ReentrancyGuard uses its own storage. No new stuck-funds case. Addresses: recomputed factory 0xf93da73F…0dd2, implementation 0x26b7DB22…630f, runtime codehash 0xdca35aa3…9cd1; the e2e RECEIVE and OPTION_RECEIVE equal predict. Old addresses appear only in deployments.json and config_test.go. forge test: 79 pass, 1 skipped. Pay vitest: 48 pass. Go address/config: ok. docs-check: 0 errors. Findings to fix (no contract source change, so addresses stay): (1) docs/diagrams/security-keys.json, the 'who can move money' diagram, is not updated. Edge a14 Safe->factory says only 'pause', and the factory node never mentions recover. The Safe->implementation recover path is missing. docs/contracts/rules.md Status asks for docs/diagrams updates in the same PR. AGENTS.md says a fix covers every place the behavior shows. (2) PLAN.md:147 still lists 'The factory gets a refund-authority recover: tokens sent to it have no way out today' as an open pre-mainnet gap. This PR closes it, and the implementation case too. (3) test/Symbolic.t.sol check_implementationRecoverOnlyByAuthority: assert(token.balanceOf(address(receiver)) == 0) is vacuous, since the receiver gets no deposit. Mint a symbolic deposit to the receiver, as check_factoryRecoverNeverTakesReceiverMoney does. No test covers impl.recover(..., address(0), ...) reverting InvalidDestination. Non-blocking: (4) After merge, address.Factory names an undeployed factory. cmd/api startup (main.go:67, FactoryDeployed through chain.CheckEnabled) then refuses to start on staging. settle.go:212, returns.go:148 and stray.go:164 reject old-factory testnet invoices. Promote to staging only after the testnet redeploy and the deployments.json update. (5) Nits: forge lint now flags arbitrary-send-eth at InvoiceReceiver.sol:137 (_send), because the authority check sits in the caller. rules.md:57-58 is one sentence of about 29 words (D-84 limit 25).",
-        "2026-11-06 review fail by reviewer: Contract code and tests are sound; the four earlier findings are fixed. Two doc lines this PR wrote break D-84, the same class as finding 4. Fixed: (1) security-keys.json factory node names the factory and implementation recover; edge a14 says 'pause, executor, recover'. (2) PLAN.md no longer lists the factory recover gap. (3) check_implementationRecoverOnlyByAuthority mints a symbolic deposit to the receiver and asserts it stays; test_implementationReturnsMoneySentToIt covers to == 0 (InvalidDestination). (4) rules.md:57-59 is split into sub-bullets. Security, fresh look: the implementation branch runs only where address(this) == self (the implementation's immutable), so factory clones, outside clones and delegatecall contexts never reach it; outside clones still revert NotClone for the authority (test_cloneMadeOutsideFactoryReverts). Factory recover moves only its own balance, has no state to reenter, and receivers have no transfer selector, fallback or receive. No new stuck-funds path. Addresses recomputed in a scratch copy: factory 0xf93da73F...0dd2, implementation 0x26b7DB22...630f, runtime codehash 0xdca35aa3...9cd1; e2e RECEIVE 0x9404a075... and OPTION_RECEIVE 0x1109f4fa... equal predict. Old addresses (case-insensitive, with and without 0x) only in deployments.json and config_test.go. forge test: 79 pass, 1 skipped. Pay vitest: 48 pass. Go address/config: ok. docs-check: 0 errors. Commits carry no AI attribution. Blocking (docs only; no contract change, so addresses stay): (a) docs/contracts/operations.md:16-17, the 'Goes through the delay' bullet, grew from 24 to 28 words with 'factory and implementation recover'. Split it into sub-bullets. (b) docs/contracts/rules.md:70-71, the Invariants bullet, is now about 31 words, with 'the factory returns only its own balance' appended. Make each invariant a sub-bullet. AGENTS.md: at most 25 words, one fact per bullet. Non-blocking: (c) refundable() now reads with tryBalanceOf on the intended chain, but no test uses a broken or code-less token there, so going back to IERC20.balanceOf would pass every test. (d) docs/backend/money-safety.md 'ops case' says money it can't find 'can't be returned now'. Money sent to the factory or implementation is now returnable by a manual Safe recover (operations.md). Neither doc says the ops tool doesn't print that call. (e) contracts-workflow.json recover node: 'On a receiver, the factory or the implementation: money sent to the factory or the implementation leaves only from their own balance' reads garbled.",
-        "2026-11-06 review pass by reviewer: Pass. All five points of the last review are fixed. (a) operations.md:16-20 'Goes through the delay' is split into sub-bullets. (b) rules.md:70-75 Invariants are sub-bullets. (c) test_refundableReadsBrokenTokenAsZero runs on the intended chain with BrokenToken, whose balanceOf reverts, so going back to IERC20.balanceOf fails it. (d) money-safety.md:118-119 says ops case doesn't find factory or implementation money; FindStrays matches only invoices.receive_address, so this is accurate. (e) The contracts-workflow.json recover description reads clearly. Every sentence in touched doc bullets is at most 25 words (scripted count). Security, fresh look: the implementation branch runs only where address(this) == self; clones, outside clones and delegatecall contexts still hit _onlyClone, terms and the invoice-token guard. Factory recover is authority-only, moves only its own balance, has no state to reenter; receivers have no transfer selector or fallback (tested). The watcher and ops filter Recovered logs by receiver address, so the implementation's invoiceId-0 event is never read. No new stuck-funds path; deploy then recover works on chains where the factory or implementation address got money first. Addresses checked offline: vectors test passes against predict; implementation = factory nonce 1 (0x26b7DB22...630f); factory runtime codehash with filled immutables = 0xdca35aa3...9cd1, as in .env.example; e2e RECEIVE 0x9404a075... and OPTION_RECEIVE 0x1109f4fa... equal predict. Old factory and implementation addresses (case-insensitive, with and without 0x) appear only in deployments.json and config_test.go; old receive addresses and old codehash appear nowhere. forge fmt --check ok; forge test 80 pass, 1 skipped; pay vitest 48 pass; Go address/config ok; docs-check 0 errors. Commits have no AI attribution. tasks.json drops F429-F431: harness archive of merged tasks, same as #434. Non-blocking nits (one fact per bullet, D-84): rules.md:71 keeps two invariants in one sub-bullet ('settled <= amount; settled + refunded <= received'); operations.md:35-36 'For a refund' bullet now holds three facts. Halmos not rerun here (needs pipx download); recorded verify passed it.",
-        "2026-11-06 review fail by reviewer: Fail on one record defect; the script fix and every address are correct. Blocking: (1) packages/contracts/deployments.json:13-20, the base-sepolia flow, says 'Paid, deployed and settled exactly amount' but has settle: null and no pay or invoiceId keys. Every other flow uses null for a step that did not happen (refund: null here), so the record reads as not settled. It is the only evidence for the commit's 'Base Sepolia settled' claim. The receiver 0x021C27Ba...BeBd equals predict for invoiceId 0xb4c3e0cd7cccd91a459d332d7ae3a575879609d8cf0671908905649a7b38f2b7 (deploy.sh terms, now=1794007840), so add that invoiceId and the pay and settle hashes from the explorer, or say in the note that they were not captured. Checked and fine: Deploy.s.sol:21 computeCreate2Address(salt, initHash, deployer) is the right overload; 0x4e59 takes salt ++ initcode (same as ReceiveAddressVectors.s.sol and chaintest.go); line 27 rejects a missing deployer (ok but no code) before anything is broadcast; already-deployed skips the broadcast; refundAuthority check unchanged; Smoke.s.sol inherits deployFactory unchanged; Deploy.t.sol passes through the new path. Offline recompute: factory 0xf93da73F...0dd2 from base-sepolia refundAuthority and executor, implementation = factory nonce 1 0x26b7DB22...630f, probe 0x0D25B44a...DfBE = predict(Smoke probe terms); Arc and Tempo flow receivers equal predict of their invoiceIds. JSON readers (ReceiveAddressVectors.s.sol, chaintest.go DeployFactory) read only chains.base-sepolia.refundAuthority and executor, unchanged; superseded entry has the v1-preview shape. Constants in vectors, address.go, receive-address.ts, e2e pay-invoice.ts, backend .env.example and config_test.go agree; old addresses remain only in superseded. forge build ok, forge test 80 pass 1 skipped, forge fmt --check ok, no new lint on scripts, go test internal/config and internal/address ok. No AI attribution. Non-blocking: (a) deploy.sh prints tx hashes only after all four steps, so a failed refund loses the pay and settle hashes; that caused (1). (b) settlement/gas.go:22 and settle.go:41 cite the Tempo flow in deployments.json; those gas numbers now come from superseded v1, not chains.tempo-moderato.",
-        "2026-11-06 review fail by reviewer: Fail on one record defect; last review's finding (1) and note (b) are fixed. Blocking: (1) packages/contracts/deployments.json:17, base-sepolia flow.receiver '0x021C27Ba89C55eEdafBa215BED2bc499B610BeBd' has an invalid EIP-55 checksum. The correct form is 0x021c27ba89C55eEdAfBa215BeD2Bc499b610BEbd (cast to-check-sum-address, which matches the EIP-55 spec vector 0x5aAeb605...BeAed). Every other mixed-case address in the file checksums correctly. Strict parsers (ethers getAddress, Solidity literals, wallet send forms) reject it, and cast and explorers never print that casing, so the value was typed by hand. Introduced in fab8e656; earlier reviews compared it case-insensitively. Use the checksummed form. Checked and fine: invoiceId 0xb4c3e0cd...f2b7 = keccak256('forwend.testnet.flow.84532.1794007840'), as deploy.sh builds it; Smoke broadcast run-1794007834856 timestamp 1794007838 fits now=1794007840. Offline recompute of predict (OZ cloneDeterministicWithImmutableArgs code, args = abi.encode(terms), salt = keccak256(args), factory 0xf93da73F...0dd2, implementation 0x26b7DB22...630f, recipient 0x34b9c6d2...bc7521, token 0x036cbd53...3dcf7e, amount 100000, expiresAt now+3600, settleDeadline now+3600+86400, chain 84532) gives 0x021c27ba...b610bebd, equal to the record's bytes. pay, deploy and settle are set; refund null; the note says why (authority has no Base Sepolia gas) and 'stays refundable' is right: refundableAmount returns the whole balance once settled. Pay and settle hashes not checked on chain (no RPC). JSON parses; its readers (chaintest.go DeployFactory, ReceiveAddressVectors.s.sol) read only chains.base-sepolia.refundAuthority and executor, unchanged. gas.go:22 and settle.go:41-42 now say v1 and superseded; the numbers came in at 2e5cda2b, when deployments.json was the F040 v1 record, now superseded[0]. go vet ./internal/settlement ok, gofmt clean, forge test 80 pass 1 skipped. Commits carry no AI attribution. Non-blocking: (a) settle.go:41 breaks at 99 columns while the file fills to 120; '(deployments.json,' fits on line 41. (b) docs/backend/architecture.md:105-106 gives the same 1,305,758 and 572,845 as 'its testnet deploy and settle' with no 'v1'; not wrong, but it now reads as the current Tempo deploy.",
-        "2026-11-07 review pass by reviewer: Pass. Both blocking and non-blocking points of the last review are fixed in f7d64064. (1) deployments.json base-sepolia flow.receiver is now 0x021c27ba89C55eEdAfBa215BeD2Bc499b610BEbd, equal to cast to-check-sum-address. All 17 mixed-case addresses in the file checksum correctly (cast, offline); the 4 others are all-lowercase or digit-only and carry no checksum. JSON parses. (2) settle.go:41-42 comment now fills to 118 columns; '(deployments.json, superseded).' would reach 131, so the break is right. go vet ./internal/settlement ok; gofmt -l clean. The file's other lines over 120 (278, 325, 335, 341, 386) predate this commit. (3) architecture.md:105-106 now says 'its v1 testnet deploy and settle used 1,305,758 and 572,845 gas'. Accurate: the figures came in at 2e5cda2b and 272aee24 (F121, F124), from the F040 v1 Tempo flow, now superseded[0]. The sentence is 24 words (D-84). docs-check: 0 errors. Diff touches only those three lines plus docs/tasks.json harness records (prior review entry, evidence timings, filesHash). Commit carries no AI attribution. Gas figures not rechecked on chain (no RPC)."
+        "2026-11-07 review fail by reviewer: Fail on one money-safety gap. Must-fix: the wallet.outflow alert, the only active control for the high finding while WALLET_MFA is off by default, is silenced by any send that claims the hash. watcher.go:618 needs only s.tx_hash = w.tx_hash, and Submit (track.go:55) takes a hash for a prepared, expired or canceled send with no approve and no fresh sign-in. A stolen session prepares a tiny send or reuses an old expired one, drains the wallet through Privy, then submits the drain hash: no email. Fix: count a send as the explanation only when approved_at is set and from, token, to and amount match the transfer, or let Submit take only approved sends. Update TestMoneyLeavingAWalletWithoutASendTellsItsOwner, which submits an unapproved send today. Should-fix: per-payer Pay key uses the full IPv6 address (guards.go:83), so one /64 gets unlimited buckets and can fill MaxKeys; key IPv6 by /64. Leave (members.go:182) drops toRoll, so an Admin who leaves gives the owner no list. New passkey-only accounts can't pass D-49 for 24 h: no login email and the sign-up passkey is under NewAccountAge (privy.go:98). ApproveHold frees the wallet after 2 min even if the signed tx still waits in the mempool. Unclosed parts: capped-link reservation (link/checkout.go:75), settle cap past the deadline (email only), no notice on Privy email or passkey link, checkout quota per profile not per store and mode, example-merchant route unthrottled. DESIGN.md:1126 still says the Summary shows the short address. FullAddress is not on /kit. Canary still checks one factory (canary.go:237). Nits: doc comments now attached to the wrong item (endpoints.go:36, process.go:439, team.ts:11); api.md:1018 dropped rule; architecture.md and api.md notifications skip the two new email kinds; TransactionByHash found-and-mined still marks dropped (track.go:226). go vet on changed packages is clean.",
+        "2026-11-07 review pass by reviewer: Pass: no must-fix. The earlier must-fix is closed: Submit takes a hash only for an approved send, and the outflow check needs an approved send with the same wallet, token, recipient and amount. Every earlier should-fix is fixed in code or moved to F434/F435. go vet on changed packages is clean. Should-fix: (1) track.go:275 expires an approved send after 2 min when the watcher has not recorded its transfer yet (worker down or lagging). A signed, mined send whose answer was lost then stays expired, frees the wallet for a second send of the same money, and sends the owner a false wallet.outflow email (watcher.go:622 only accepts approved or same hash). Hold until the watcher has scanned past approved_at + ApproveHold, or let a later matching transfer explain and revive an expired approved send. (2) notify.go:135 skips wallet.outflow when login_email is empty, so passkey-only owners get no alert, while D-49 and money-safety.md say every owner is emailed. Record the gap or show it in the app. (3) use-wallet-mfa.ts asks for MFA only before a first send or export: an owner who only receives has none, and a stolen session can enroll its own first. Prompt at sign-in when WALLET_MFA is on, and say this in D-49. (4) privy.go:100 trusts first_verified_at; if Privy updateEmail keeps it, a swapped email passes D-49 at once. Count an email account only when its address equals users.login_email. Nits: approvals and permits signed by a stolen session leave no transfer to alert on (record in Q-13); in-flight sends at deploy have no approved_at and will alert once (backfill in 00100); the overflow bucket blocks every new public caller once 100k keys are held; R-142 still says per link; R-146 lacks the 16-endpoint cap; api.md:1027 and openapi Send.status expired text ignore the approve hold; R-188 says closed unpaid but canceled still counts (create.go:204); send-progress.tsx:54 comment says a replaced send takes its hash; signer_test.go:8 import sits in the stdlib group; roll-after-removal.test.tsx mostly checks copy; accept 1 wants the false positives listed, and the task record has none.",
+        "2026-11-07 review pass by reviewer: Pass: no must-fix. The hold, the outflow check, the sign-up-email rule and migrations 00100/00103 hold up. Should-fix: (1) TestAnApprovedSendStillWaitingHoldsTheWallet (send_test.go:513) never reaches waiting(): no scan moves the cursor past the hold, so the !read branch keeps the send approved; deleting waiting() fails no test. Move the chain past the hold (Wait, Mine, Scan) before re-sending the raw tx. (2) track.go:267-283 reads the transfer, then the cursor, in two statements; the watcher commits both in one transaction, so a scan landing between them expires a send whose transfer was just recorded. Read the cursor first. Nits: expired approved send explains every later matching transfer with no time bound (watcher.go:623); waiting() treats any RPC error as waiting, with no ceiling; on sponsored chains the wallet nonce may not show a relayed tx (unsure); R-211 and api.md:1014 omit the watcher-cursor condition; api.md:1114 says closed unpaid, code counts only expired; D-49/Q-13 don't say an owner who never set up MFA leaves the slot to a stolen session; privy.go:101 counts first_verified_at 0 as sign-up (unchanged risk).",
+        "2026-11-07 review fail by reviewer: Fail on one money-safety regression in the MFA work. Must-fix: privy.go:107 counts any mfa_methods entry and auth.go:167 lets approve pass on it, but Privy enrolls TOTP on the access token alone (initEnrollMfa needs no MFA or code when none is set). A stolen session of an owner without MFA enrolls its own authenticator, approves a send to itself with no emailed code, signs with its TOTP and submits: the approved send explains the transfer (watcher.go:620), so wallet.outflow never fires. Before, approve needed the code and the drain emailed the owner. Fix: bypass only for an MFA method Forwend saw confirmed with a fresh sign-in (store its verified_at at the first code-confirmed approve and require a match), or at least apply NewAccountAge to mfa_methods[].verified_at; add a test with a just-enrolled method. Should-fix: (1) React propagates the nested dialog close event, and Sheet onClose (sheet.tsx:53) has no target check, so dismissing Two-step setup opened from the send Summary (send-review.tsx:136) closes the sheet and cancels the prepared send; check event.target === ref.current. (2) 'Lost your phone? Contact support.' (settings-copy.ts:44) promises a recovery Q-13 says is unconfirmed with Privy. (3) A Cancel or close while a right code is being checked (mfa-prompt.tsx:44, Cancel stays enabled at :146) cannot stop it: Privy already has the code, verify resolves and the send is approved and signed, against R-219 'Closing the prompt approves and signs nothing'. Nits: a failed verify that is not a cancel shows nothing (use-send-approval.ts:52); Privy's 5-min MFA timeout leaves the prompt open and a later code hangs on Checking; Privy's promptMfa never settles without an access token, leaving the sheet locked; after Cancel in the export, Privy's own window shows 'Something went wrong'; turn-off copy (settings-copy.ts:48) is wrong with WALLET_MFA off and when Privy's 15-min pass is hot; money-safety.md:192 ties the bypass to the flag but the server bypasses whenever MFA exists; web/.env.example:6 and staging.md name different Privy dashboard settings; setup success unmounts TwoStepSetup while open, so focus falls to body; export with MFA (our dialog over Privy's Headless UI modal) has no live test (unsure it works).",
+        "2026-11-07 review fail by subagent: Fail on two money-safety holes in the two-step record. two-step-setup.tsx enrolls every linked passkey into Privy MFA with no tap and then records the methods, so a passkey a stolen session linked becomes trusted. use-send-approval.tsx records whatever Privy lists after a code-confirmed send, so a TOTP a stolen session enrolled becomes trusted. Either way the attacker approves with no emailed code and the approved send silences wallet.outflow. Should-fix: the record rereads Privy only on an empty answer; the handler sits inline in routes.go; a .tsx hook and non-hook logic sit in hooks/; Remove shows an error on cancel; useMfaStep has no unmount cleanup; api.md, openapi and R-219 wording drift; a sends_test name no longer matches; unused copy keys.",
+        "2026-11-07 review pass by subagent: Pass: no must-fix. The setup turns on only the passkey tapped on this device or made there, and only the setup records, behind a real fresh sign-in; a stolen session can't add a method beside the owner's, and one it adds first blocks the owner's setup, so nothing it set up gets recorded. The record reads Privy until it lists each method set up; the handler is in codes.go and the reread in reauth.Service; helpers moved to features/auth/lib. Follow-ups checked: record-failed copy, create-a-passkey-instead path (only the new ID turns on, with a test), WALLET_MFA rows in staging.md and .env.example, and the live send test waiting for Sent. After that check: PasskeyOnDevice on create-instead returns to the tap with its message (the reviewer's last should-fix), and the live export test signs in on its own, as it failed late in full runs with the shared session but passed alone. Open: the passkey tap is proven only against faked WebAuthn; the live suite runs with the MFA gate off."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-06T23:59:51Z",
+        "at": "2026-11-07T21:03:48Z",
         "checks": [
           {
             "id": "harness",
@@ -93,7 +103,7 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.5,
+            "seconds": 0.3,
             "log": ""
           },
           {
@@ -107,161 +117,93 @@
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 63.6,
+            "seconds": 68.6,
             "log": ""
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.6,
+            "seconds": 5.6,
             "log": ""
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 48.9,
+            "seconds": 47.1,
             "log": ""
           },
           {
-            "id": "contracts",
+            "id": "live-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.9,
-            "log": ""
-          },
-          {
-            "id": "symbolic",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 5.7,
+            "seconds": 547.0,
             "log": ""
           }
         ],
-        "taskHash": "411102e09e2d4b9d",
-        "filesHash": "b903d7e7f9352333",
+        "taskHash": "55001939e37c0e18",
+        "filesHash": "86ac0df8693631bb",
         "proof": {
-          "1": "contracts: FactoryRecoverTest: only the authority recovers, bad destinations and our own contracts as tokens revert, receiver money stays; symbolic check_factoryRecoverNeverTakesReceiverMoney",
-          "2": "contracts: testFuzz_factoryReturnsOnlyItsOwnBalance, testFuzz_strangersCannotMoveMoney and invariant_factoryReturnsOnlyItsOwnBalance; docs-check covers rules.md and operations.md; deployed on the four testnets 2026-11-07 (deployments.json)",
-          "3": "contracts: test_refundableIsZeroOffIntendedChain, test_refundableOffIntendedChainNeedsNoToken, test_refundableReadsBrokenTokenAsZero and testFuzz_refundableIsZeroOffIntendedChain",
-          "4": "symbolic: check_implementationRecoverOnlyByAuthority with a symbolic receiver deposit; contracts test_implementationReturnsMoneySentToIt and test_cloneMadeOutsideFactoryReverts",
-          "5": "unit: backend internal/address and config and web features/pay tests pass against the regenerated vectors; e2e pay.spec fixtures use factory.predict; live-e2e passed against the deployed factory"
+          "1": "unit: every medium re-checked against the code first, all true positives; each fixed with a test: fresh_sign_in_test and sessions_test (code destination, recently linked, sign-up account counts, only the stored login email counts, code on its way), factory_test and receive-address.test (known factories), send_test (approve once, only approved sends take a hash, outflow alert not hidden by another send's hash, unreported hold until the watcher has read past it, waiting signature holds the wallet, late-signed send sends no alert, waiting not dropped, late mined sent), link_checkout_test and checkout_test (per payer, IPv6 /64, closed unpaid, checkout quota), ratelimit_test, webhooks_test (cap), signer_test (settle-waiting notice), team_test and roll-after-removal.test (toRoll), expiry_test (dust), payments.test (FullAddress), sends_test TestRecordedTwoStepStandsInForTheEmailedCodeOnASend (only two-step methods Forwend recorded behind a fresh sign-in let a send approve without the emailed code; one set up at Privy alone or set up again doesn't; a stale session can't record; the record reads Privy again until it lists each method just set up), use-wallet-mfa.test (both a passkey and an authenticator app before money moves), two-step-setup.test (only the passkey the owner taps on this device turns on, never another linked one; a wrong app code marks the boxes and asks for no passkey), send-approval test (no send records two-step methods, even one confirmed with the emailed code), mfa-step.test (the ask in place of the form's buttons, the passkey in one tap, a wrong code marked, Cancel ends the action, the ask ends when its form goes away), overlays.test (a dialog opened inside another closes alone), passkeys.test and passkeys-list.test (a new passkey named with the account email, a second one on the same device refused, the two-step passkey kept, a removed passkey dropped from the password manager), send-approval and wallet-screen tests (setup offered until both are on, two-step before approve, nothing approved when closed, export without the emailed code). Partly closed, moved to F434/F435 accept lines: example-merchant /api/orders limit; Admin who leaves; notice on a Privy-linked email or passkey; one Pay per close on a one-time link; checkout quota per store and mode; settle cap as Q-10",
+          "2": "unit: each new test failed on the old code (mutation runs) and passes now; only tests the 'Which tests to keep' rule names were kept",
+          "3": "live-e2e: full live suite against the testnets; e2e: backend and web browser tests"
         },
         "review": {
           "result": "pass",
-          "by": "reviewer",
-          "summary": "Pass. Both blocking and non-blocking points of the last review are fixed in f7d64064. (1) deployments.json base-sepolia flow.receiver is now 0x021c27ba89C55eEdAfBa215BeD2Bc499b610BEbd, equal to cast to-check-sum-address. All 17 mixed-case addresses in the file checksum correctly (cast, offline); the 4 others are all-lowercase or digit-only and carry no checksum. JSON parses. (2) settle.go:41-42 comment now fills to 118 columns; '(deployments.json, superseded).' would reach 131, so the break is right. go vet ./internal/settlement ok; gofmt -l clean. The file's other lines over 120 (278, 325, 335, 341, 386) predate this commit. (3) architecture.md:105-106 now says 'its v1 testnet deploy and settle used 1,305,758 and 572,845 gas'. Accurate: the figures came in at 2e5cda2b and 272aee24 (F121, F124), from the F040 v1 Tempo flow, now superseded[0]. The sentence is 24 words (D-84). docs-check: 0 errors. Diff touches only those three lines plus docs/tasks.json harness records (prior review entry, evidence timings, filesHash). Commit carries no AI attribution. Gas figures not rechecked on chain (no RPC).",
-          "at": "2026-11-07T00:02:56Z",
-          "filesHash": "b903d7e7f9352333"
-        },
-        "commit": "41166ef5",
-        "doneAt": "2026-11-07T00:05:29Z"
+          "by": "subagent",
+          "summary": "Pass: no must-fix. The setup turns on only the passkey tapped on this device or made there, and only the setup records, behind a real fresh sign-in; a stolen session can't add a method beside the owner's, and one it adds first blocks the owner's setup, so nothing it set up gets recorded. The record reads Privy until it lists each method set up; the handler is in codes.go and the reread in reauth.Service; helpers moved to features/auth/lib. Follow-ups checked: record-failed copy, create-a-passkey-instead path (only the new ID turns on, with a test), WALLET_MFA rows in staging.md and .env.example, and the live send test waiting for Sent. After that check: PasskeyOnDevice on create-instead returns to the tap with its message (the reviewer's last should-fix), and the live export test signs in on its own, as it failed late in full runs with the shared session but passed alone. Open: the passkey tap is proven only against faked WebAuthn; the live suite runs with the MFA gate off.",
+          "at": "2026-11-07T21:15:14Z",
+          "filesHash": "86ac0df8693631bb"
+        }
       },
-      "branch": "feat/f417-tokens-sent-to-the-invoice-receiver-fact",
-      "baseCommit": "a8553c9a2f17383987b5b4aece523b4eb054eea4",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f417-tokens-sent-to-the-invoice-receiver-fact",
-        "base": "main"
-      }
+      "branch": "fix/f433-the-high-and-medium-findings-of-the-2026",
+      "baseCommit": "ec24e97882374c79a5e5d6fb93330e6b9f0b8910",
+      "failedVerifies": 0
     },
     {
-      "id": "F418",
+      "id": "F434",
       "type": "fix",
-      "behavior": "Fix IDs on payments, checkouts, invoices and payment links",
-      "acceptance": [],
+      "behavior": "The node, js and react packages match the API and are hardened against the audit's findings",
+      "acceptance": [
+        "The node SDK types, README and published package match openapi and the backend.",
+        "The js and react packages and their READMEs match what the API returns and the embed protocol, with the audit's hardening fixes.",
+        "The example merchant's POST /api/orders is limited, so shop visitors can't use up the profile's checkout quota (audit medium, left from F433)."
+      ],
       "dependsOn": [],
-      "state": "blocked",
-      "verification": [],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "browser-packages"
+      ],
       "refs": [],
       "keep": [],
       "review": false,
-      "notes": [
-        "2026-11-05 blocked: Deferred by owner (2026-11-05): low priority for now."
-      ],
-      "blockedReason": "Deferred by owner (2026-11-05): low priority for now.",
+      "notes": [],
+      "blockedReason": null,
       "evidence": null
     },
     {
-      "id": "F432",
-      "type": "chore",
-      "behavior": "The Base Sepolia deploy record of the F417 factory lists its refund",
+      "id": "F435",
+      "type": "fix",
+      "behavior": "The audit's low findings worth fixing are fixed, and live mode, gas sponsorship and the mainnet business model are recorded as open questions",
       "acceptance": [
-        "packages/contracts/deployments.json lists the Base Sepolia flow refund transaction 0xd5a72444bb4b63b43a448fabefd02435ae49b316e528b86aade84afbc8292b07 and no longer says the refund waits.",
-        "The file stays valid JSON, its readers still work and every mixed-case address keeps its EIP-55 checksum."
+        "The low findings are triaged with the owner first; the ones agreed on are fixed with tests.",
+        "PROJECT.md records live mode (Developer mode after mainnet), testnet-only gas sponsorship and the mainnet business model, with the settle cap's gas, as open questions.",
+        "What F433 left of the mediums is fixed or recorded: an Admin who leaves gives the owner keys to roll; the owner hears when an email or passkey is linked at Privy; an owner with no login email gets the wallet.outflow alert another way; one Pay per close can hold a one-time link; the checkout quota is per profile, not per store or mode."
       ],
       "dependsOn": [],
-      "state": "passing",
+      "state": "not_started",
       "verification": [
-        "contracts"
+        "unit",
+        "docs-check"
       ],
       "refs": [],
       "keep": [],
       "review": false,
-      "notes": [
-        "2026-11-07 review pass by reviewer: Pass. deployments.json base-sepolia flow.refund is now 0xd5a72444...2b07 (32-byte lowercase hash, like pay, deploy and settle); the note no longer says the refund waits. JSON parses. Flow keys match arc-testnet and tempo-moderato plus the existing note. Note is accurate and one 19-word sentence (D-84). Readers: chaintest.go DeployFactory and ReceiveAddressVectors.s.sol read only chains.base-sepolia.refundAuthority and executor, unchanged; forge test 80 pass 1 skipped, including ReceiveAddressVectors.t.sol. All 17 mixed-case addresses match cast to-check-sum-address (offline). docs-check 0 errors. No other repo text mentions the pending refund. Diff touches only that file and docs/tasks.json harness records. Commit has no AI attribution. Non-blocking: the note now records history the commit already carries; dropping it would give the flow the same keys as the others. Refund tx not checked on chain (no RPC)."
-      ],
+      "notes": [],
       "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-11-07T00:17:54Z",
-        "checks": [
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "contracts",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.5,
-            "log": ""
-          },
-          {
-            "id": "backend",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 61.9,
-            "log": ""
-          },
-          {
-            "id": "backend-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 30.8,
-            "log": ""
-          }
-        ],
-        "taskHash": "2a7c97ecede4d156",
-        "filesHash": "816db149e4b80b9c",
-        "proof": {
-          "1": "contracts: deployments.json base-sepolia flow.refund is the on-chain refund tx (status success; receiver balance and refundable() now 0)",
-          "2": "contracts: forge test passes, including the vectors test that reads deployments.json; all 17 mixed-case addresses match cast to-check-sum-address"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Pass. deployments.json base-sepolia flow.refund is now 0xd5a72444...2b07 (32-byte lowercase hash, like pay, deploy and settle); the note no longer says the refund waits. JSON parses. Flow keys match arc-testnet and tempo-moderato plus the existing note. Note is accurate and one 19-word sentence (D-84). Readers: chaintest.go DeployFactory and ReceiveAddressVectors.s.sol read only chains.base-sepolia.refundAuthority and executor, unchanged; forge test 80 pass 1 skipped, including ReceiveAddressVectors.t.sol. All 17 mixed-case addresses match cast to-check-sum-address (offline). docs-check 0 errors. No other repo text mentions the pending refund. Diff touches only that file and docs/tasks.json harness records. Commit has no AI attribution. Non-blocking: the note now records history the commit already carries; dropping it would give the flow the same keys as the others. Refund tx not checked on chain (no RPC).",
-          "at": "2026-11-07T00:20:33Z",
-          "filesHash": "816db149e4b80b9c"
-        },
-        "commit": "47c57762",
-        "doneAt": "2026-11-07T00:21:51Z"
-      },
-      "branch": "chore/f432-the-base-sepolia-deploy-record-of-the-f4",
-      "baseCommit": "fcee5659be0003a76b6838cc88c13b6127e93c50",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "chore/f432-the-base-sepolia-deploy-record-of-the-f4",
-        "base": "main"
-      }
+      "evidence": null
     }
   ],
   "lastWrapup": {

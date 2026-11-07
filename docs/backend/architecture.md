@@ -277,6 +277,8 @@ with a test.
   `invite_id` and carry the link's token until the worker sends the email or gives up, then drop it (R-139).
   `users.login_email` and `profiles.email_notifications` decide where and whether; `users.welcome` marks accounts made
   after welcome emails existed.
+  - `wallet.outflow` rows name a `wallet_transfer_id`: money left a profile wallet with no approved send (D-49).
+  - `settlement.waiting` rows name one invoice the daily settle cap holds back: one email a day per user (SEC-03).
 - `history_events` (R-123, D-92): what happened to each invoice, one row per change.
   - `history.Add` writes it in the transaction that makes the change.
   - A row has the main invoice, `kind`, `actor` (`owner`, `payer` or `system`), `at` and small `data`.
@@ -479,6 +481,8 @@ signer:
      settle);
    - the invoice's user already had `SponsoredPerDay` (50) settlements signed in 24 hours, across all their profiles.
      Tiny invoices paid back and forth would otherwise drain the executor's gas for everyone. This logs an `ALERT`.
+     The owner gets one email a day (`settlement.waiting`): their paid money waits, and past the deadline only the
+     refund authority can settle it. Who pays for more is the business-model question (Q-10).
 4. Deploys the receiver if needed (`deploy` is idempotent).
    - When a transaction we never saved waits at the executor's next mined nonce (an earlier deploy the fee left
      behind), the deploy takes that nonce.

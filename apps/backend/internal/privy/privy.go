@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -79,21 +80,38 @@ func (c *Client) LoginEmail(ctx context.Context, privyUserID string) (string, er
 	return google, nil
 }
 
-// SignInTimes are the latest_verified_at of the user's email and passkey accounts, in Unix seconds (D-49).
-func (c *Client) SignInTimes(ctx context.Context, privyUserID string) ([]int64, error) {
+// NewAccountAge: an email or passkey linked this recently isn't a sign-in for D-49. A stolen session can link its own
+// at Privy and sign in with it (Q-13). The one the user signed up with counts at once: a passkey alone has no email
+// for a code.
+const NewAccountAge = 24 * time.Hour
+
+// SignInTimes are the latest_verified_at of the user's passkeys and of their email account at loginEmail, the one
+// Forwend stored at sign-up, in Unix seconds (D-49), except those linked within NewAccountAge after sign-up. Another
+// email doesn't count: a stolen session can change the email at Privy, which may keep the old account's times.
+// twoStep names the user's MFA methods at Privy, sorted, each as type:verified_at: Privy asks for one before it signs
+// or exports, and setting one up again changes its time (R-219).
+func (c *Client) SignInTimes(ctx context.Context, privyUserID, loginEmail string) (times []int64, twoStep []string,
+	err error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	u, err := c.sdk.Users.Get(ctx, privyUserID)
 	if err != nil {
-		return nil, fmt.Errorf("read Privy user: %w", err)
+		return nil, nil, fmt.Errorf("read Privy user: %w", err)
 	}
-	var times []int64
+	created := time.Unix(int64(u.CreatedAt), 0)
 	for _, a := range u.LinkedAccounts {
-		if a.Type == "email" || a.Type == "passkey" {
+		linked := time.Unix(int64(a.FirstVerifiedAt), 0)
+		atSignUp := linked.Sub(created).Abs() < time.Minute
+		ours := a.Type == "passkey" || a.Type == "email" && loginEmail != "" && strings.EqualFold(a.Address, loginEmail)
+		if ours && (atSignUp || time.Since(linked) >= NewAccountAge) {
 			times = append(times, int64(a.LatestVerifiedAt))
 		}
 	}
-	return times, nil
+	for _, m := range u.MfaMethods {
+		twoStep = append(twoStep, fmt.Sprintf("%s:%d", m.Type, int64(m.VerifiedAt)))
+	}
+	slices.Sort(twoStep)
+	return times, twoStep, nil
 }
 
 // EndSessions freezes the user, which ends every session and refresh token at Privy, then unfreezes them so they can

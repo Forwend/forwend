@@ -178,11 +178,8 @@ test("Send to a new address warns and asks to check the address before it can be
   const send = sheet(page).getByRole("button", { name: /^Hold to send 0\.01 [A-Z]+$/ });
   await expect(sheet(page).getByText("You haven't sent to this address before.")).toBeVisible();
   await expect(send).toBeDisabled();
-  // Short in the review; the tooltip has every character.
-  await sheet(page).getByRole("button", { name: "0x0000…dead", exact: true }).hover();
-  await expect(page.getByRole("tooltip")).toContainText(
-    "0x000000000000000000000000000000000000dead",
-  );
+  // Whole in the review: a look-alike made to match only the start and end shows different middle characters.
+  await expect(sheet(page)).toContainText("0x000000000000000000000000000000000000dead");
   await shot(page, "../../docs/runs/f425-send-review-390.png", true);
   expect(await blockingViolations(page)).toEqual([]);
   await sheet(page).getByRole("checkbox", { name: "I checked the address" }).check();
@@ -279,7 +276,7 @@ test("On Arc the wallet pays its own fee in USDC, shown before the send, and the
 test("A stale session confirms it's you with Forwend's emailed code, and the send goes on", async ({
   browser,
 }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(240_000);
   // A session of its own: the shared one may have confirmed a code in an earlier test, which keeps it fresh for 15
   // minutes whatever happens elsewhere.
   const context = await browser.newContext();
@@ -325,9 +322,12 @@ test("A stale session confirms it's you with Forwend's emailed code, and the sen
   await sheet(page)
     .getByRole("textbox", { name: "Code" })
     .fill(await freshCode());
-  await expect(sheet(page).getByRole("heading", { name: /^(Sending|Sent)$/ })).toBeVisible({
+  await expect(sheet(page).getByRole("link", { name: /^View on / })).toBeVisible({
     timeout: 60_000,
   });
-  await expect(sheet(page).getByRole("link", { name: /^View on / })).toBeVisible();
+  // Sent, not only Sending: a send left on its way holds the wallet, and the next run's Transfer would get 409.
+  await expect(sheet(page).getByRole("heading", { name: "Sent" })).toBeVisible({
+    timeout: 150_000,
+  });
   await context.close();
 });

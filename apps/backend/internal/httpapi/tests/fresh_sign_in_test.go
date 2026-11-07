@@ -1,13 +1,25 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/forwend/forwend/apps/backend/internal/email"
 )
+
+// signedUpWith stores address as user's login email, as sign-up does, and as their email at Privy.
+func (e invoiceEnv) signedUpWith(t *testing.T, user, address string) {
+	t.Helper()
+	e.exec(t, "UPDATE users SET login_email = $2 WHERE privy_user_id = $1", user, address)
+	e.wallets.Lock()
+	e.wallets.Emails[user] = address
+	e.wallets.Unlock()
+}
 
 // inSession calls the API with a token of the Privy session sid, issued at iat.
 func (e invoiceEnv) inSession(t *testing.T, method, path, user, sid string, iat time.Time, body string) reply {
@@ -27,9 +39,7 @@ func (e invoiceEnv) inSession(t *testing.T, method, path, user, sid string, iat 
 func TestAConfirmedCodeMakesItsSessionFresh(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
-	e.wallets.Lock()
-	e.wallets.Emails[alice] = "alice@example.com"
-	e.wallets.Unlock()
+	e.signedUpWith(t, alice, "alice@example.com")
 	refreshed := signedInAt.Add(2 * time.Second) // a token that isn't the sign-in's
 	keys := "/v1/profiles/" + e.aliceProfile + "/keys"
 	makeKey := func(sid string) reply {
@@ -92,9 +102,7 @@ func TestAConfirmedCodeMakesItsSessionFresh(t *testing.T) {
 func TestACodeEndsAfterFiveTriesOrTenMinutes(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
-	e.wallets.Lock()
-	e.wallets.Emails[alice] = "alice@example.com"
-	e.wallets.Unlock()
+	e.signedUpWith(t, alice, "alice@example.com")
 	refreshed := signedInAt.Add(2 * time.Second)
 	newCode := func() string {
 		t.Helper()
@@ -135,9 +143,7 @@ func TestACodeEndsAfterFiveTriesOrTenMinutes(t *testing.T) {
 func TestCodesAreLimitedPerUser(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
-	e.wallets.Lock()
-	e.wallets.Emails[alice] = "alice@example.com"
-	e.wallets.Unlock()
+	e.signedUpWith(t, alice, "alice@example.com")
 	refreshed := signedInAt.Add(2 * time.Second)
 	send := func(sid string) reply {
 		return e.inSession(t, "POST", "/v1/me/fresh-sign-in", alice, sid, refreshed, "")
@@ -191,9 +197,7 @@ func TestCodesAreLimitedPerUser(t *testing.T) {
 func TestConfirmedCodesDontCountTowardTheHoursCap(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
-	e.wallets.Lock()
-	e.wallets.Emails[alice] = "alice@example.com"
-	e.wallets.Unlock()
+	e.signedUpWith(t, alice, "alice@example.com")
 	refreshed := signedInAt.Add(2 * time.Second)
 	for i := range 11 {
 		sid := fmt.Sprintf("session-%d", i)
@@ -213,9 +217,7 @@ func TestConfirmedCodesDontCountTowardTheHoursCap(t *testing.T) {
 func TestAnAccountChangeChecksTheSessionIsFresh(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
-	e.wallets.Lock()
-	e.wallets.Emails[alice] = "alice@example.com"
-	e.wallets.Unlock()
+	e.signedUpWith(t, alice, "alice@example.com")
 	refreshed := signedInAt.Add(2 * time.Second)
 	check := func(sid string, iat time.Time) reply {
 		return e.inSession(t, "GET", "/v1/me/fresh-sign-in", alice, sid, iat, "")
@@ -247,9 +249,7 @@ func TestAnAccountChangeChecksTheSessionIsFresh(t *testing.T) {
 func TestACodeWhoseEmailFailedIsNotSent(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
-	e.wallets.Lock()
-	e.wallets.Emails[alice] = "alice@example.com"
-	e.wallets.Unlock()
+	e.signedUpWith(t, alice, "alice@example.com")
 	send := func() reply {
 		return e.inSession(t, "POST", "/v1/me/fresh-sign-in", alice, "session-1", signedInAt.Add(2*time.Second), "")
 	}
@@ -292,5 +292,118 @@ func TestCodesNeedASignedInPersonWithAnEmail(t *testing.T) {
 	}
 	if e.codes.count() != 0 {
 		t.Errorf("%d emails sent", e.codes.count())
+	}
+}
+
+// D-49: the code goes to the email stored at sign-up. A session that links its own email at Privy gets no code.
+func TestCodesGoToTheSignUpEmailNotOneLinkedLater(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	e.signedUpWith(t, alice, "alice@example.com")
+	e.wallets.Lock()
+	e.wallets.Emails[alice] = "attacker@example.com"
+	e.wallets.Unlock()
+	if r := e.inSession(t, "POST", "/v1/me/fresh-sign-in", alice, "session-1", signedInAt.Add(2*time.Second), ""); r.status !=
+		http.StatusAccepted {
+		t.Fatalf("send a code: %d %v", r.status, r.body)
+	}
+	if e.codes.last("attacker@example.com") != "" || len(e.codes.last("alice@example.com")) != 6 {
+		t.Errorf("the code went to the email linked later")
+	}
+}
+
+// D-49, Q-13: an email or passkey linked in the last day isn't a sign-in, and neither is an email other than the one
+// stored at sign-up. A stolen session could link or swap in its own and sign in with it. The account the user signed
+// up with counts at once.
+func TestARecentlyLinkedAccountIsNotAFreshSignIn(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	e.signedUpWith(t, alice, "alice@example.com")
+	keys := "/v1/profiles/" + e.aliceProfile + "/keys"
+	makeKey := func() reply {
+		return e.inSession(t, "POST", keys, alice, "session-1", signedInAt, `{"name": "Server", "scopes": ["invoices.read"]}`)
+	}
+	// The env's passkey signed in at signedInAt too: linked an hour ago, like the email, neither counts.
+	e.wallets.Lock()
+	e.wallets.Emails[alice] = "attacker@example.com"
+	e.wallets.SignedInAt[alice] = signedInAt.Unix()
+	e.wallets.LinkedAt[alice] = time.Now().Add(-time.Hour).Unix()
+	e.wallets.PasskeyLinkedAt = time.Now().Add(-time.Hour).Unix()
+	e.wallets.Unlock()
+	if r := makeKey(); r.status != http.StatusUnauthorized || errorCode(r) != "reauth_required" {
+		t.Errorf("a sign-in with an email and a passkey linked an hour ago: %d %v", r.status, r.body)
+	}
+	e.wallets.Lock()
+	e.wallets.CreatedAt = e.wallets.PasskeyLinkedAt + 1 // Privy may stamp the account a moment before the user
+	e.wallets.Unlock()
+	if r := makeKey(); r.status != http.StatusCreated {
+		t.Errorf("a sign-in with the passkey the user signed up with an hour ago: %d %v", r.status, r.body)
+	}
+	e.wallets.Lock()
+	e.wallets.CreatedAt = 0
+	e.wallets.LinkedAt[alice] = time.Now().Add(-25 * time.Hour).Unix()
+	e.wallets.Unlock()
+	if r := makeKey(); r.status != http.StatusUnauthorized {
+		t.Errorf("a sign-in with an email swapped in at Privy that keeps an old link time: %d %v", r.status, r.body)
+	}
+	e.wallets.Lock()
+	e.wallets.Emails[alice] = "Alice@example.com"
+	e.wallets.Unlock()
+	if r := makeKey(); r.status != http.StatusCreated {
+		t.Errorf("a sign-in with the sign-up email, linked a day ago: %d %v", r.status, r.body)
+	}
+}
+
+// D-49: a code can be checked only once its email went out, so no guess reaches it on its way, and a caller who gives
+// up then can't take back a code that reached the inbox.
+func TestACodeOnItsWayCantBeGuessedOrTakenBack(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	e.signedUpWith(t, alice, "alice@example.com")
+	refreshed := signedInAt.Add(2 * time.Second)
+	verify := func(code string) reply {
+		return e.inSession(t, "POST", "/v1/me/fresh-sign-in/verify", alice, "session-1", refreshed, `{"code": "`+code+`"}`)
+	}
+	ctx, giveUp := context.WithCancel(context.Background())
+	var guess reply
+	var code string
+	e.codes.Lock()
+	e.codes.during = func(ctx context.Context, m email.Message) {
+		code = strings.TrimPrefix(m.Subject, "Your Forwend code: ")
+		guess = verify(code)
+		giveUp()
+		select { // the api sees the caller leave
+		case <-ctx.Done():
+		case <-time.After(300 * time.Millisecond):
+		}
+	}
+	e.codes.Unlock()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, e.srv.URL+"/v1/me/fresh-sign-in", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := claims(alice)
+	c["sid"], c["iat"], c["exp"] = "session-1", refreshed.Unix(), refreshed.Add(time.Hour).Unix()
+	req.Header.Set("Authorization", "Bearer "+signES256(t, e.privyKey, c))
+	if res, err := e.srv.Client().Do(req); err == nil {
+		res.Body.Close()
+	}
+	if guess.status != http.StatusUnprocessableEntity {
+		t.Errorf("a guess while the email was on its way: %d %v", guess.status, guess.body)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for e.codes.count() == 0 && time.Now().Before(deadline) {
+		time.Sleep(20 * time.Millisecond)
+	}
+	// The api commits right after the email; a few slow tries stay within the user's rate limit.
+	var r reply
+	for range 5 {
+		if r = verify(code); r.status == http.StatusNoContent {
+			break
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	if r.status != http.StatusNoContent {
+		t.Errorf("the emailed code after its caller gave up: %d %v", r.status, r.body)
 	}
 }

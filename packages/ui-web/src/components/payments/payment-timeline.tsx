@@ -70,21 +70,36 @@ export function PaymentTimeline({
   doneLabel = ", done",
   notStartedLabel = ", not started",
 }: PaymentTimelineProps) {
-  // Side by side while each step has room. Five steps can't share a phone's width, so narrower than 28rem they stack
-  // into one vertical path; up to four always sit side by side.
+  // Side by side, the path runs edge to edge with the steps evenly apart: the first at the start, the last at the end,
+  // each between centered on two half columns. Five steps can't share a phone's width, so narrower than 28rem they
+  // stack into one vertical path; up to four always sit side by side.
   const stack = steps.length > 4;
+  const lastIndex = steps.length - 1;
+  const line = (state: StepState) => (state === STEP_STATES.complete ? "bg-ink" : "bg-line-strong");
   return (
     <div className="@container">
       <ol
         aria-label={label}
         className={cx(
-          "grid grid-cols-[repeat(calc(var(--fw-steps)-1),minmax(0,1fr))_auto]",
+          "grid grid-cols-[repeat(var(--fw-cols),minmax(0,1fr))]",
           stack && "@max-md:grid-cols-1",
         )}
-        style={{ "--fw-steps": steps.length } as CSSProperties}
+        style={{ "--fw-cols": Math.max(1, 2 * lastIndex) } as CSSProperties}
       >
         {steps.map((step, i) => {
-          const last = i === steps.length - 1;
+          const first = i === 0;
+          const last = i === lastIndex && !first;
+          // Where the label sits under its marker; a first or last label may run into the next half column.
+          const align = cx(
+            "w-max",
+            first
+              ? "max-w-[200%] justify-self-start"
+              : last
+                ? "max-w-[200%] justify-self-end justify-end text-right"
+                : "max-w-full justify-self-center justify-center text-center",
+            stack &&
+              "@max-md:col-span-1 @max-md:col-start-2 @max-md:max-w-full @max-md:justify-self-start @max-md:justify-start @max-md:text-left",
+          );
           return (
             <li
               // A label can change while its step runs (a count); the place keeps the marker mounted.
@@ -92,29 +107,43 @@ export function PaymentTimeline({
               key={i}
               aria-current={step.state === STEP_STATES.current ? "step" : undefined}
               className={cx(
-                "grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-2 gap-y-1.5",
-                !stack && "grid-rows-[1.25rem_auto]",
+                "grid grid-rows-[1.25rem_auto] gap-y-1.5",
+                first
+                  ? "grid-cols-[1.25rem_minmax(0,1fr)]"
+                  : last
+                    ? "grid-cols-[minmax(0,1fr)_1.25rem]"
+                    : "col-span-2 grid-cols-[minmax(0,1fr)_1.25rem_minmax(0,1fr)]",
                 stack &&
-                  "@md:grid-rows-[1.25rem_auto] @max-md:grid-rows-[1.25rem_auto] @max-md:gap-x-3",
+                  "@max-md:col-span-1 @max-md:grid-cols-[1.25rem_minmax(0,1fr)] @max-md:gap-x-3",
               )}
             >
+              {/* The path to and from the marker: ink once the step before is done, so it shows how far it got. */}
+              {first ? null : (
+                <span
+                  aria-hidden
+                  className={cx(
+                    "mr-2 h-px self-center",
+                    line(steps[i - 1]?.state ?? step.state),
+                    stack && "@max-md:hidden",
+                  )}
+                />
+              )}
               <Marker step={step} />
-              {/* The line to the next step: ink once this step is done, so the path shows how far it got. */}
+              {i === lastIndex ? null : (
+                <span
+                  aria-hidden
+                  className={cx(
+                    "ml-2 h-px self-center",
+                    line(step.state),
+                    stack && "@max-md:hidden",
+                  )}
+                />
+              )}
               <span
-                aria-hidden
                 className={cx(
-                  "h-px self-center",
-                  last ? "invisible" : "",
-                  !last && "mr-2",
-                  step.state === STEP_STATES.complete ? "bg-ink" : "bg-line-strong",
-                  stack && "@max-md:hidden",
-                )}
-              />
-              <span
-                className={cx(
-                  "col-span-2 flex flex-wrap items-center gap-1 pr-2",
-                  stack &&
-                    "@max-md:col-span-1 @max-md:col-start-2 @max-md:row-start-1 @max-md:pr-0",
+                  "col-span-full flex flex-wrap items-center gap-1",
+                  align,
+                  stack && "@max-md:row-start-1",
                 )}
               >
                 <span
@@ -149,8 +178,9 @@ export function PaymentTimeline({
               {step.detail ? (
                 <span
                   className={cx(
-                    "col-span-2 text-xs text-muted tabular-nums [overflow-wrap:anywhere]",
-                    stack && "@max-md:col-span-1 @max-md:col-start-2 @max-md:pb-2",
+                    "col-span-full text-xs text-muted tabular-nums [overflow-wrap:anywhere]",
+                    align,
+                    stack && "@max-md:pb-2",
                   )}
                 >
                   {step.detail}

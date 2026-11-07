@@ -73,9 +73,10 @@ func TestProtectedChangesNeedAFreshSignIn(t *testing.T) {
 	if r := makeKey(refreshed); r.status != http.StatusUnauthorized || errorCode(r) != "reauth_required" {
 		t.Fatalf("a token from a Google sign-in: %d %v", r.status, r.body)
 	}
-	// The email account's sign-in time counts too.
+	// The sign-in time of the email stored at sign-up counts too.
+	e.signedUpWith(t, alice, "alice@example.com")
 	e.wallets.Lock()
-	e.wallets.Emails[alice], e.wallets.SignedInAt[alice] = "alice@example.com", refreshed.Unix()
+	e.wallets.SignedInAt[alice] = refreshed.Unix()
 	e.wallets.Unlock()
 	if r := makeKey(refreshed); r.status != http.StatusCreated || keys() != 3 {
 		t.Fatalf("a token from an email sign-in: %d %v", r.status, r.body)

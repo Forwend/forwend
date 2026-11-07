@@ -22,6 +22,35 @@ type memberJSON struct {
 	Role      string   `json:"role"`
 	Stores    []string `json:"stores"`
 	CreatedAt string   `json:"createdAt"`
+	// Set when a role change left the member with less: what they could still use, for the owner to roll.
+	ToRoll *toRollJSON `json:"toRoll,omitempty"`
+}
+
+type toRollJSON struct {
+	Keys     []rollKeyJSON      `json:"keys"`
+	Webhooks []rollEndpointJSON `json:"webhooks"`
+}
+
+type rollKeyJSON struct {
+	KeyID string `json:"keyId"`
+	Name  string `json:"name"`
+	Last4 string `json:"last4"`
+}
+
+type rollEndpointJSON struct {
+	EndpointID string `json:"endpointId"`
+	URL        string `json:"url"`
+}
+
+func toRollJSONOf(r team.ToRoll) toRollJSON {
+	out := toRollJSON{Keys: []rollKeyJSON{}, Webhooks: []rollEndpointJSON{}}
+	for _, k := range r.Keys {
+		out.Keys = append(out.Keys, rollKeyJSON{KeyID: k.ID, Name: k.Name, Last4: k.Last4})
+	}
+	for _, e := range r.Endpoints {
+		out.Webhooks = append(out.Webhooks, rollEndpointJSON{EndpointID: e.ID, URL: e.URL})
+	}
+	return out
 }
 
 type inviteJSON struct {

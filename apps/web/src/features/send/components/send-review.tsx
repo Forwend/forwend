@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  Button,
   Checkbox,
+  FullAddress,
   formatTokenAmount,
   HoldButton,
   NOTICE_TONES,
@@ -9,6 +11,8 @@ import {
   TruncatedAddress,
 } from "@forwend/ui-web";
 import type { ReactNode } from "react";
+import { TWO_STEP_COPY } from "@/features/auth/constants/auth-copy";
+import { useWalletMfa } from "@/features/auth/hooks/use-wallet-mfa";
 import { profileLabel } from "@/features/profiles/lib/profile";
 import type { Profile } from "@/features/profiles/types/profile";
 import { SEND_MODES, SEND_WARNINGS } from "@/features/send/constants/send";
@@ -58,6 +62,7 @@ export function SendReview({
     fractionDigits: exactDigits(units, option.decimals),
   });
   const needsCheck = send.warnings.length > 0;
+  const mfa = useWalletMfa();
   const fee = BigInt(send.networkFee.amount);
   const label =
     mode === SEND_MODES.transfer
@@ -77,13 +82,15 @@ export function SendReview({
           <TruncatedAddress address={send.from} mono={false} className="text-xs text-muted" />
         </Row>
         <Row term={SEND_COPY.to}>
+          {/* The server finds the other profile's wallet itself, so it reads short like From. A pasted address shows
+              whole: the owner ticks that they checked it, and a look-alike copies only its start and end. */}
           {"profile" in recipient ? (
             <>
               <span className="block text-ink">{profileLabel(recipient.profile)}</span>
               <TruncatedAddress address={send.to} mono={false} className="text-xs text-muted" />
             </>
           ) : (
-            <TruncatedAddress address={send.to} mono={false} className="text-ink" />
+            <FullAddress address={send.to} />
           )}
         </Row>
         <Row term={SEND_COPY.network}>{chainName(send.chainId)}</Row>
@@ -126,17 +133,28 @@ export function SendReview({
           {error}
         </p>
       ) : null}
-      <HoldButton
-        className="w-full"
-        disabled={!canSign || (needsCheck && !checked)}
-        loading={working || !canSign}
-        onHold={onHold}
-      >
-        {label}
-      </HoldButton>
-      {canSign ? null : (
-        <p className="-mt-3 text-center text-xs text-muted">{SEND_COPY.walletLoading}</p>
+      {/* R-219: Privy asks for two-step before it signs. Until it is set up, this sets it up as the sheet's next step,
+          then the Summary comes back with Send. */}
+      {mfa.needed ? (
+        <Button className="w-full" disabled={needsCheck && !checked} onClick={onHold}>
+          {TWO_STEP_COPY.setUp}
+        </Button>
+      ) : (
+        <HoldButton
+          className="w-full"
+          disabled={!canSign || (needsCheck && !checked)}
+          loading={working || !canSign}
+          onHold={onHold}
+        >
+          {label}
+        </HoldButton>
       )}
+      {/* The setup signs nothing, so it waits for no wallet. */}
+      {mfa.needed || !canSign ? (
+        <p className="-mt-3 text-center text-xs text-balance text-muted">
+          {mfa.needed ? SEND_COPY.setUpMfa : SEND_COPY.walletLoading}
+        </p>
+      ) : null}
     </div>
   );
 }

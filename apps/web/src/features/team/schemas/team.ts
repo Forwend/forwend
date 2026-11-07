@@ -9,6 +9,12 @@ export const grantBodySchema = z.object({ role: z.enum(MEMBER_ROLES), stores: z.
 /** POST /v1/profiles/{profileId}/invites. */
 export const inviteBodySchema = grantBodySchema.extend({ email: z.string() });
 
+/** What a member who lost access could still use, for the owner to roll (D-93). */
+export const toRollSchema = z.object({
+  keys: z.array(z.object({ keyId: z.guid(), name: z.string(), last4: z.string() })),
+  webhooks: z.array(z.object({ endpointId: z.guid(), url: z.string() })),
+});
+
 /** The owner or a member (apps/backend/api/openapi.yaml, Member); email is null when the account has none. */
 export const memberSchema = z.object({
   memberId: z.guid(),
@@ -16,6 +22,8 @@ export const memberSchema = z.object({
   role: z.enum(ROLES),
   stores: z.array(z.guid()),
   createdAt: apiTime,
+  // Set on a role change that left an Admin with less.
+  toRoll: toRollSchema.optional(),
 });
 
 /** An open invite: not accepted, revoked or expired. */

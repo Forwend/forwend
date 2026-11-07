@@ -6,6 +6,7 @@ import {
   Card,
   DetailList,
   DetailRow,
+  FullAddress,
   Money,
   NetworkWarning,
   PAYMENT_STATUSES,
@@ -91,6 +92,10 @@ export function PaymentsShowcase() {
         {/* Short, with the full address in a tooltip on hover, focus or tap; plain text among other text. */}
         <TruncatedAddress address={SAMPLE_ADDRESS} />
         <TruncatedAddress address={SAMPLE_ADDRESS} mono={false} />
+        {/* Every character, in groups of four: the address someone checks before money moves. */}
+        <div className="w-full max-w-xs">
+          <FullAddress address={SAMPLE_ADDRESS} />
+        </div>
       </KitGroup>
       <KitGroup title="Receive address: full, start and end marked, with copy">
         <div className="w-full max-w-xs">

@@ -225,10 +225,8 @@ describe("fresh sign-in", () => {
     act(() => {
       void ask().then((ok) => (answered = ok));
     });
-    // The dialog names it, so the step itself carries no second name; its Close gives up, so the step has no Cancel.
+    // Closing the dialog gives up, as its Cancel does.
     await screen.findByText("Enter the 6-digit code sent to owner@example.com.");
-    expect(screen.queryByRole("group", { name: "Confirm it's you", hidden: true })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Cancel", hidden: true })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Close", hidden: true }));
     await waitFor(() => expect(answered).toBe(false));
   });

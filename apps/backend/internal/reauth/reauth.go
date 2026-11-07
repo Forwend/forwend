@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"math/big"
 	"regexp"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/auth"
@@ -43,44 +45,37 @@ var (
 	ErrNoEmail = errors.New("email is not configured")
 	// ErrNoAddress: the user has no login email to send a code to.
 	ErrNoAddress = errors.New("the account has no email")
+	// ErrNoTwoStep: Privy doesn't list the MFA methods the user set up, so there is nothing to record.
+	ErrNoTwoStep = errors.New("two-step verification is not set up")
 )
 
 // Mailer turns a code into the email that carries it (notify.CodeMessage).
 type Mailer func(code string) (email.Message, error)
 
-// Addresses gives a user's login email (privy.Client.LoginEmail); "" for none.
-type Addresses func(ctx context.Context, privyUserID string) (string, error)
-
 type Service struct {
 	pool    *pgxpool.Pool
 	sender  email.Sender // nil: no email key
 	mail    Mailer
-	address Addresses
 	perHour int
 	now     func() time.Time
 }
 
 // NewService: perHour 0 keeps MaxPerHour.
-func NewService(pool *pgxpool.Pool, sender email.Sender, mail Mailer, address Addresses, perHour int) *Service {
+func NewService(pool *pgxpool.Pool, sender email.Sender, mail Mailer, perHour int) *Service {
 	if perHour == 0 {
 		perHour = MaxPerHour
 	}
-	return &Service{pool: pool, sender: sender, mail: mail, address: address, perHour: perHour, now: time.Now}
+	return &Service{pool: pool, sender: sender, mail: mail, perHour: perHour, now: time.Now}
 }
 
-// Send emails a new code to the user's login email for the token's session. wait is how long until another may be
-// asked for.
+// Send emails a new code for the token's session to the login email stored at sign-up, never the one Privy has now: a
+// stolen session can link its own email at Privy. wait is how long until another may be asked for.
 func (s *Service) Send(ctx context.Context, t auth.Token) (wait time.Duration, err error) {
 	if t.Session == "" {
 		return 0, ErrNoSession
 	}
 	if s == nil || s.sender == nil {
 		return 0, ErrNoEmail
-	}
-	// Read before the lock: a slow Privy answer must not hold the user's row.
-	address, err := s.address(ctx, t.User)
-	if err != nil {
-		return 0, err
 	}
 	now := s.now()
 	// The user's row lock makes the limits and the new code one step, so requests at once send one email.
@@ -89,9 +84,9 @@ func (s *Service) Send(ctx context.Context, t auth.Token) (wait time.Duration, e
 		return 0, fmt.Errorf("begin: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	var user string
-	if err := tx.QueryRow(ctx, "SELECT id::text FROM users WHERE privy_user_id = $1 FOR UPDATE", t.User).
-		Scan(&user); err != nil {
+	var user, address string
+	if err := tx.QueryRow(ctx, "SELECT id::text, coalesce(login_email, '') FROM users WHERE privy_user_id = $1 FOR UPDATE",
+		t.User).Scan(&user, &address); err != nil {
 		return 0, fmt.Errorf("lock user: %w", err)
 	}
 	var last, oldest *time.Time
@@ -131,20 +126,20 @@ func (s *Service) Send(ctx context.Context, t auth.Token) (wait time.Duration, e
 	if _, err := tx.Exec(ctx, "UPDATE fresh_sign_ins SET code_hash = $2 WHERE id = $1", id, hash(id, code)); err != nil {
 		return 0, fmt.Errorf("save code: %w", err)
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return 0, fmt.Errorf("commit: %w", err)
-	}
+	// The code is committed only once its email went out: until then no guess can reach it, and one that never left
+	// doesn't count for the 30 s gap or the hour's cap. A caller who gives up can't fail the email, so every code that
+	// reached the inbox counts. The email's own timeout bounds how long the user's row stays locked.
+	stay := context.WithoutCancel(ctx)
 	m, err := s.mail(code)
 	if err == nil {
 		m.To, m.Key = address, "fresh-sign-in-"+id
-		err = s.sender.Send(ctx, m)
+		err = s.sender.Send(stay, m)
 	}
 	if err != nil {
-		// A code that never left must not count as sent: not for the 30 s gap, nor the hour's cap.
-		if _, delErr := s.pool.Exec(context.WithoutCancel(ctx), "DELETE FROM fresh_sign_ins WHERE id = $1", id); delErr != nil {
-			return 0, errors.Join(fmt.Errorf("email code: %w", err), fmt.Errorf("drop unsent code: %w", delErr))
-		}
 		return 0, fmt.Errorf("email code: %w", err)
+	}
+	if err := tx.Commit(stay); err != nil {
+		return 0, fmt.Errorf("commit: %w", err)
 	}
 	return ResendAfter, nil
 }
@@ -201,20 +196,68 @@ func (s *Service) Verify(ctx context.Context, t auth.Token, code string) error {
 	return nil
 }
 
-// Fresh reports whether the token's session confirmed a code within auth.FreshWindow.
-func (s *Service) Fresh(ctx context.Context, t auth.Token) (bool, error) {
-	if t.Session == "" {
-		return false, nil
+// Stored is what Forwend keeps about a user for D-49: the login email ("" when none), and the MFA methods set up
+// behind a fresh sign-in, as privy.SignInTimes names them (R-219).
+type Stored struct {
+	LoginEmail string
+	TwoStep    []string
+}
+
+// Fresh reports whether the token's session confirmed a code within auth.FreshWindow, with what Forwend stored.
+func (s *Service) Fresh(ctx context.Context, t auth.Token) (fresh bool, user Stored, err error) {
+	err = s.pool.QueryRow(ctx, `
+		SELECT coalesce(u.login_email, ''), u.two_step_methods, $2 <> '' AND EXISTS (
+		    SELECT 1 FROM fresh_sign_ins f WHERE f.user_id = u.id AND f.session = $2 AND f.confirmed_at > $3)
+		FROM users u WHERE u.privy_user_id = $1`, t.User, t.Session, s.now().Add(-auth.FreshWindow)).
+		Scan(&user.LoginEmail, &user.TwoStep, &fresh)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, Stored{}, nil
+	} else if err != nil {
+		return false, Stored{}, fmt.Errorf("read confirmed code: %w", err)
 	}
-	var fresh bool
-	err := s.pool.QueryRow(ctx, `
-		SELECT EXISTS (SELECT 1 FROM fresh_sign_ins f JOIN users u ON u.id = f.user_id
-		               WHERE u.privy_user_id = $1 AND f.session = $2 AND f.confirmed_at > $3)`,
-		t.User, t.Session, s.now().Add(-auth.FreshWindow)).Scan(&fresh)
+	return fresh, user, nil
+}
+
+// TwoStepRereads and TwoStepWait: how often and how long apart RecordTwoStep reads Privy again.
+var (
+	TwoStepRereads = 3
+	TwoStepWait    = 700 * time.Millisecond
+)
+
+// RecordTwoStep keeps the MFA methods read answers ("type:verified_at") once they hold every type in want, the ones
+// the user just set up; the caller has checked the fresh sign-in, so a stolen session can't record its own. Privy's
+// API can answer with the methods from before a change for a moment, so it reads again before giving up.
+func (s *Service) RecordTwoStep(ctx context.Context, privyUserID string, want []string,
+	read func(context.Context) ([]string, error)) error {
+	methods, err := read(ctx)
+	for try := 0; err == nil && !holds(methods, want) && try < TwoStepRereads; try++ {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(TwoStepWait):
+		}
+		methods, err = read(ctx)
+	}
 	if err != nil {
-		return false, fmt.Errorf("read confirmed code: %w", err)
+		return err
 	}
-	return fresh, nil
+	if len(methods) == 0 || !holds(methods, want) {
+		return ErrNoTwoStep
+	}
+	if _, err := s.pool.Exec(ctx, "UPDATE users SET two_step_methods = $2 WHERE privy_user_id = $1", privyUserID,
+		methods); err != nil {
+		return fmt.Errorf("record two-step: %w", err)
+	}
+	return nil
+}
+
+func holds(methods, types []string) bool {
+	for _, t := range types {
+		if !slices.ContainsFunc(methods, func(m string) bool { return strings.HasPrefix(m, t+":") }) {
+			return false
+		}
+	}
+	return true
 }
 
 var codePattern = regexp.MustCompile(`^[0-9]{6}$`)

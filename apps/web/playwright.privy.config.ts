@@ -55,8 +55,12 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
+      // --force: a fresh build clears .next, where an earlier `next start` of another build left cached pages that a
+      // turbo cache restore would keep.
       command:
-        "pnpm --workspace-root exec turbo run build --filter=@forwend/web && pnpm start -p 3000 -H localhost",
+        "pnpm --workspace-root exec turbo run build --filter=@forwend/web --force && pnpm start -p 3000 -H localhost",
+      // The test account has no second step set up at Privy, so the wallet MFA gate (D-49) stays off here.
+      env: { NEXT_PUBLIC_WALLET_MFA: "0" },
       url: APP_URL,
       reuseExistingServer: false,
       timeout: 240_000,

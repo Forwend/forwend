@@ -5,6 +5,7 @@ import { ArrowLeft, FilePlus2, KeyRound, Link2, Wallet } from "lucide-react";
 import { useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 import { useAddPasskey } from "@/features/auth/hooks/use-add-passkey";
+import { PasskeyOnDevice } from "@/features/auth/lib/passkeys";
 import { useCompleteOnboardingMutation } from "@/features/onboarding/api/onboarding-api";
 import {
   type DetailsField,
@@ -301,7 +302,8 @@ export function FirstRun({
         next();
       } catch (e) {
         // A confirm the owner gave up isn't a failure.
-        if (!needsFreshSignIn(e)) setError(COPY.passkey.failed);
+        if (!needsFreshSignIn(e))
+          setError(e instanceof PasskeyOnDevice ? e.message : COPY.passkey.failed);
       } finally {
         setBusy(null);
       }

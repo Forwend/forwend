@@ -14,6 +14,11 @@ import { KeyRound, WalletMinimal } from "lucide-react";
 import { useRef, useState } from "react";
 import { useCheckFreshSignInMutation } from "@/features/auth/api/auth-api";
 import { useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
+import { useMfaStep } from "@/features/auth/components/mfa-step";
+import { TwoStepSetup } from "@/features/auth/components/two-step-setup";
+import { TWO_STEP_COPY } from "@/features/auth/constants/auth-copy";
+import { useWalletMfa } from "@/features/auth/hooks/use-wallet-mfa";
+import { mfaCancelled } from "@/features/auth/lib/two-step";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { SETTINGS_COPY } from "@/screens/settings/constants/settings-copy";
 import { SplitSection } from "@/shared/components/split-section";
@@ -22,25 +27,53 @@ const COPY = SETTINGS_COPY.wallet;
 // Privy rejects with only this message, no code, when the owner closes its window while it still connects.
 const CLOSED_WHILE_CONNECTING = "User exited before wallet could be connected";
 
-// R-218: the owner exports this profile's wallet key. A short warning comes first, then Confirm it's you for a stale
-// session, then Privy's own export page for this wallet: the key loads on Privy's domain, so Forwend never sees it.
-// Privy asks for its own confirmation only for MFA, which Forwend doesn't use, hence the check here. It binds this page
-// only: a stolen session could still call Privy's export itself (Q-13).
+// R-218: the owner exports this profile's wallet key. A short warning comes first, then Privy's own export page for this
+// wallet: the key loads on Privy's domain, so Forwend never sees it. With two-step set up, Privy asks for it first, in
+// this dialog (D-49). Without it, Confirm it's you comes first for a stale session; that binds this page only, as a
+// stolen session could call Privy's export itself (Q-13).
 export function WalletScreen() {
   const { profile } = useAppSession();
   const address = profile.walletAddress;
   const { exportWallet } = useExportWallet();
   const [check] = useCheckFreshSignInMutation();
   const fresh = useFreshSignIn();
+  const mfa = useWalletMfa();
   const toast = useToast();
   const [opening, setOpening] = useState(false);
   const [error, setError] = useState("");
+  const [settingUp, setSettingUp] = useState(false);
   const body = useRef<HTMLDivElement>(null);
+  // Privy's window, opened under this one, shows the key once Privy takes the two-step answer.
+  const mfaStep = useMfaStep({
+    onVerified: () => {
+      setOpening(false);
+      body.current?.closest("dialog")?.close();
+    },
+  });
+  const quiet = (e: unknown) =>
+    mfaCancelled(e) || (e instanceof Error && e.message === CLOSED_WHILE_CONNECTING);
 
   const show = async () => {
     if (!address) return;
+    // R-219: until two-step is set up, the warning sets it up in place, then offers Show the key.
+    if (mfa.needed) {
+      setSettingUp(true);
+      return;
+    }
     setError("");
     setOpening(true);
+    // Privy asks for two-step before it shows the key: the ask takes the place of these buttons. Privy may not settle
+    // its promise when its window closes, so nothing waits on it here.
+    if (mfa.enrolled) {
+      void mfaStep
+        .run(() => exportWallet({ address }))
+        .catch((e: unknown) => {
+          if (!quiet(e)) setError(COPY.failed);
+        })
+        .finally(() => setOpening(false));
+      return;
+    }
+    // Without two-step, Confirm it's you comes first for a stale session.
     try {
       await fresh.run(() => check().unwrap());
     } catch (e) {
@@ -56,7 +89,7 @@ export function WalletScreen() {
     try {
       await exportWallet({ address });
     } catch (e) {
-      if (!(e instanceof Error && e.message === CLOSED_WHILE_CONNECTING)) {
+      if (!quiet(e)) {
         toast({ tone: TONES.danger, title: COPY.failed });
       }
     }
@@ -86,6 +119,8 @@ export function WalletScreen() {
                 title={COPY.warningTitle}
                 onClose={() => {
                   fresh.cancel();
+                  mfaStep.cancel();
+                  setSettingUp(false);
                   setError("");
                 }}
                 trigger={(open) => (
@@ -101,22 +136,34 @@ export function WalletScreen() {
                       {error}
                     </p>
                   ) : null}
-                  {/* Confirm it's you takes the place of the dialog's buttons, as in other protected dialogs. */}
+                  {mfa.needed && !settingUp ? (
+                    <p className="mt-3 text-sm">{COPY.setUpMfa}</p>
+                  ) : null}
+                  {/* Each ask takes the place of the dialog's buttons, as in other protected dialogs: the setup,
+                      two-step, or Confirm it's you. */}
                   <div className="mt-5">
-                    {fresh.step ?? (
-                      <form method="dialog" className="flex flex-wrap justify-end gap-2">
-                        <Button type="submit" variant={BUTTON_VARIANTS.secondary}>
-                          {COPY.cancel}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={BUTTON_VARIANTS.danger}
-                          loading={opening}
-                          onClick={() => void show()}
-                        >
-                          {COPY.show}
-                        </Button>
-                      </form>
+                    {settingUp ? (
+                      <TwoStepSetup
+                        onDone={() => setSettingUp(false)}
+                        onCancel={() => setSettingUp(false)}
+                      />
+                    ) : (
+                      (fresh.step ??
+                      mfaStep.step ?? (
+                        <form method="dialog" className="flex flex-wrap justify-end gap-2">
+                          <Button type="submit" variant={BUTTON_VARIANTS.secondary}>
+                            {COPY.cancel}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={mfa.needed ? BUTTON_VARIANTS.primary : BUTTON_VARIANTS.danger}
+                            loading={opening}
+                            onClick={() => void show()}
+                          >
+                            {mfa.needed ? TWO_STEP_COPY.setUp : COPY.show}
+                          </Button>
+                        </form>
+                      ))
                     )}
                   </div>
                 </div>

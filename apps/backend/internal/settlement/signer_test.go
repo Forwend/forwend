@@ -26,6 +26,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/history/historytest"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
+	"github.com/forwend/forwend/apps/backend/internal/outbox"
 	"github.com/forwend/forwend/apps/backend/internal/watcher"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -1420,6 +1421,19 @@ func TestSponsoredSettlementsPerUserAreCapped(t *testing.T) {
 		e.wait(t, id) != waitCap || e.nonce(t) != before {
 		t.Fatalf("over the budget: intent %s (%s), %d transactions sent; want pending and none", status, reason,
 			e.nonce(t)-before)
+	}
+	// The owner hears it once a day, however often settlements wait.
+	if _, err := e.pool.Exec(ctx, "UPDATE settlement_intents SET next_attempt_at = now() WHERE invoice_id = $1", id); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.signer(t).Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var notices int
+	var about string
+	if err := e.pool.QueryRow(ctx, `SELECT count(*), coalesce(min(invoice_id), '') FROM outbox_events WHERE kind = $1`,
+		outbox.SettleWaiting).Scan(&notices, &about); err != nil || notices != 1 || about != id {
+		t.Errorf("owner notices = %d about %s, %v; want 1 about %s", notices, about, err, id)
 	}
 }
 

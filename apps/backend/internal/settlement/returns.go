@@ -11,7 +11,6 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/forwend/forwend/apps/backend/internal/address"
 	"github.com/forwend/forwend/apps/backend/internal/history"
@@ -65,6 +64,7 @@ type Held struct {
 	Deadline                                                       time.Time
 	Authority                                                      common.Address
 	terms                                                          address.Terms
+	factory                                                        common.Address // the invoice's own
 }
 
 // Call is one transaction for the refund authority. Signature and Args give it to `cast send`.
@@ -145,10 +145,12 @@ func ReadHeld(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client, i
 	if err != nil {
 		return Held{}, fmt.Errorf("read invoice %s: %w", invoiceID, err)
 	}
-	if !strings.EqualFold(factory, hexutil.Encode(address.Factory[:])) {
-		return Held{}, fmt.Errorf("invoice %s: its factory is not the compiled factory", invoiceID)
+	known, ok := address.KnownFactory(factory)
+	if !ok {
+		return Held{}, fmt.Errorf("invoice %s: its factory is not a Forwend factory", invoiceID)
 	}
-	if h.terms, err = termsOf(invoiceID, recipient, h.Token, amount, expires, deadline, h.ChainID, h.Receive); err != nil {
+	h.factory = common.Address(known)
+	if h.terms, err = termsOf(known, invoiceID, recipient, h.Token, amount, expires, deadline, h.ChainID, h.Receive); err != nil {
 		return Held{}, err
 	}
 	amounts, err := ledger.ReadAmounts(ctx, db, invoiceID)
@@ -179,14 +181,13 @@ func ReadHeld(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client, i
 	if h.Reasons, err = pgx.CollectRows(rows, pgx.RowTo[string]); err != nil {
 		return Held{}, fmt.Errorf("read invoice %s held reasons: %w", invoiceID, err)
 	}
-	status, err := factoryStatus(ctx, client, h.terms)
+	status, err := factoryStatus(ctx, client, h.factory, h.terms)
 	if err != nil {
 		return Held{}, err
 	}
 	h.Deployed, h.Settled, h.Balance, h.Refundable = status.Deployed, status.Settled, status.Balance, status.Refundable
 	h.Deadline = time.Unix(int64(status.Deadline), 0).UTC()
-	factoryAddress := common.Address(address.Factory)
-	out, err := client.CallContract(ctx, ethereum.CallMsg{To: &factoryAddress, Data: authoritySelector}, nil)
+	out, err := client.CallContract(ctx, ethereum.CallMsg{To: &h.factory, Data: authoritySelector}, nil)
 	if err != nil {
 		return Held{}, fmt.Errorf("factory.refundAuthority: %w", err)
 	}
@@ -198,12 +199,13 @@ func ReadHeld(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client, i
 }
 
 // termsOf builds an option's terms and checks they compute its stored receive address: money moves only by those.
-func termsOf(invoiceID, recipient, token, amount string, expires, deadline int64, chainID uint64, receive string) (address.Terms, error) {
+func termsOf(factory [20]byte, invoiceID, recipient, token, amount string, expires, deadline int64, chainID uint64,
+	receive string) (address.Terms, error) {
 	value, _ := new(big.Int).SetString(amount, 10)
 	t := address.Terms{InvoiceID: [32]byte(common.FromHex(invoiceID)), Recipient: common.HexToAddress(recipient),
 		Token: common.HexToAddress(token), Amount: value, ExpiresAt: uint64(expires), SettleDeadline: uint64(deadline),
 		IntendedChainID: chainID}
-	if at, err := address.Receive(t); err != nil || !strings.EqualFold(common.Address(at).Hex(), receive) {
+	if at, err := address.ReceiveAt(factory, t); err != nil || !strings.EqualFold(common.Address(at).Hex(), receive) {
 		return address.Terms{}, fmt.Errorf("invoice %s: its terms do not compute its receive address", invoiceID)
 	}
 	return t, nil
@@ -248,7 +250,7 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 		r.To = *to
 	}
 	receive, token := common.HexToAddress(h.Receive), common.HexToAddress(h.Token)
-	if r.To == (common.Address{}) || r.To == receive || r.To == token || r.To == common.Address(address.Factory) {
+	if r.To == (common.Address{}) || r.To == receive || r.To == token || address.Ours(r.To) {
 		return Return{}, ErrDestination
 	}
 	var invoiceAddress bool
@@ -309,7 +311,7 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 		if err != nil {
 			return Return{}, err
 		}
-		r.Calls = append(r.Calls, Call{To: common.Address(address.Factory), Data: deploy, Signature: deploySignature,
+		r.Calls = append(r.Calls, Call{To: h.factory, Data: deploy, Signature: deploySignature,
 			Args: []string{fmt.Sprintf("(%s,%s,%s,%s,%d,%d,%d)", invoiceID, strings.ToLower(common.Address(h.terms.Recipient).Hex()),
 				h.Token, h.terms.Amount, h.terms.ExpiresAt, h.terms.SettleDeadline, h.ChainID)}})
 	}

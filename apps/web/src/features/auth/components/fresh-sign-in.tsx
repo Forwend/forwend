@@ -3,18 +3,19 @@
 import { BUTTON_VARIANTS, Button, CodeInput, Dialog } from "@forwend/ui-web";
 import { usePrivy } from "@privy-io/react-auth";
 import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
+import { Mail } from "lucide-react";
 import {
   createContext,
   type ReactNode,
   useCallback,
   useContext,
   useEffect,
-  useId,
   useMemo,
   useRef,
   useState,
 } from "react";
 import { useSendFreshCodeMutation, useVerifyFreshCodeMutation } from "@/features/auth/api/auth-api";
+import { StepLead } from "@/features/auth/components/step-lead";
 import { FRESH_SIGN_IN_COPY as COPY } from "@/features/auth/constants/auth-copy";
 import { CODE_LENGTH } from "@/features/auth/constants/sign-in";
 import { useFullCode } from "@/features/auth/hooks/use-full-code";
@@ -83,9 +84,8 @@ export function FreshSignInProvider({ register, children }: FreshSignInProviderP
 }
 
 /** For a form whose request may need a fresh sign-in: run sends it, and step is what to show in place of the form's
- * buttons while the user confirms. pending is true then; the form's fields should stay as they were. titled is false
- * where the step sits under a heading that already says Confirm it's you. */
-export function useFreshSignIn({ titled = true }: { titled?: boolean } = {}) {
+ * buttons while the user confirms. pending is true then; the form's fields should stay as they were. */
+export function useFreshSignIn() {
   const controller = useContext(FreshSignInContext);
   const [answer, setAnswer] = useState<Answer | null>(null);
   const scope = useRef<Scope>({ open: (a) => setAnswer(() => a) });
@@ -119,7 +119,7 @@ export function useFreshSignIn({ titled = true }: { titled?: boolean } = {}) {
     },
     [answer],
   );
-  const step = answer ? <ConfirmStep onDone={done} titled={titled} /> : null;
+  const step = answer ? <ConfirmStep onDone={done} /> : null;
   return {
     run,
     step,
@@ -139,17 +139,9 @@ export function useOpenWhilePending(pending: boolean, open: (() => void) | undef
   }, [pending]);
 }
 
-// A code sent to the login email, as code screens do it: one line says where the code went, the boxes take it, and
-// one status line under them says what happens next. In a form it sits under a hairline after the fields, with Cancel
-// and Confirm. titled is false where a sheet or dialog title already says Confirm it's you: its Back or Close gives
-// up, so only Confirm is left, full width.
-function ConfirmStep({
-  onDone,
-  titled = true,
-}: {
-  onDone: (ok: boolean) => void;
-  titled?: boolean;
-}) {
+// A code sent to the login email, as the two-step views look: the mail mark, where the code went, the boxes, one
+// status line under them, then Confirm full width and a quiet Cancel.
+function ConfirmStep({ onDone }: { onDone: (ok: boolean) => void }) {
   const { user } = usePrivy();
   // Forwend's own code (R-137): a Privy sign-in made while signed in keeps the session and its sign-in time, so the
   // api can't tell it happened (D-49).
@@ -169,7 +161,6 @@ function ConfirmStep({
   const [checking, setChecking] = useState(false);
   const [resendAt, setResendAt] = useState(0);
   const now = useNow(resendAt);
-  const titleId = useId();
   const box = useRef<HTMLFieldSetElement>(null);
 
   const send = useCallback(async () => {
@@ -261,26 +252,21 @@ function ConfirmStep({
     // Not a form: it sits inside the form it confirms, so Enter confirms here instead of sending that form again.
     <fieldset
       ref={box}
-      aria-labelledby={titled ? titleId : undefined}
-      className="flex min-w-0 flex-col gap-4 border-t border-line pt-5 first:border-t-0 first:pt-0"
+      aria-label={COPY.title}
+      className="flex min-w-0 flex-col items-center gap-5 text-center"
       onKeyDownCapture={(event) => {
         if (event.key !== "Enter" || !(event.target instanceof HTMLInputElement)) return;
         event.preventDefault();
         confirmCode();
       }}
     >
-      <div className="flex flex-col gap-1">
-        {titled ? (
-          <p id={titleId} className="text-sm font-semibold text-ink">
-            {COPY.title}
-          </p>
-        ) : null}
-        <p className="text-sm break-words text-muted">{to ? COPY.enterCode(to) : COPY.noEmail}</p>
-      </div>
+      <StepLead icon={Mail} title={COPY.checkEmail} body={to ? COPY.enterCode(to) : COPY.noEmail} />
       {to ? (
-        <div className="flex flex-col gap-2">
-          {/* Stays enabled while the code is checked: disabling it would drop keyboard focus. */}
+        <div className="flex w-full flex-col items-center gap-2">
+          {/* Stays enabled while the code is checked: disabling it would drop keyboard focus. The headline says
+              what to enter, so the label is for screen readers. */}
           <CodeInput
+            className="w-full items-center [&_label]:sr-only"
             label={COPY.codeLabel}
             length={CODE_LENGTH}
             value={code}
@@ -321,22 +307,16 @@ function ConfirmStep({
           </p>
         </div>
       ) : null}
-      {titled ? (
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button type="button" variant={BUTTON_VARIANTS.secondary} onClick={cancel}>
-            {COPY.cancel}
+      <div className="flex w-full flex-col gap-2">
+        {to ? (
+          <Button type="button" className="w-full" loading={checking} onClick={confirmCode}>
+            {COPY.confirm}
           </Button>
-          {to ? (
-            <Button type="button" loading={checking} onClick={confirmCode}>
-              {COPY.confirm}
-            </Button>
-          ) : null}
-        </div>
-      ) : to ? (
-        <Button type="button" className="w-full" loading={checking} onClick={confirmCode}>
-          {COPY.confirm}
+        ) : null}
+        <Button type="button" className="w-full" variant={BUTTON_VARIANTS.ghost} onClick={cancel}>
+          {COPY.cancel}
         </Button>
-      ) : null}
+      </div>
     </fieldset>
   );
 }
@@ -374,7 +354,6 @@ function FallbackDialog({ asked, open, answer }: { asked: number; open: boolean;
       <div ref={box}>
         {open ? (
           <ConfirmStep
-            titled={false}
             onDone={(ok) => {
               latest.current(ok);
               box.current?.closest("dialog")?.close();
@@ -388,7 +367,7 @@ function FallbackDialog({ asked, open, answer }: { asked: number; open: boolean;
 
 // The dialog opens from a request, not a button: each ask opens it once. open is new on every render, and opening an
 // open dialog throws, so only a new ask runs it.
-function OpenWhenAsked({ asked, open }: { asked: number; open: () => void }) {
+export function OpenWhenAsked({ asked, open }: { asked: number; open: () => void }) {
   const latest = useRef(open);
   latest.current = open;
   useEffect(() => {

@@ -50,6 +50,12 @@ export const TEAM_COPY = {
   removeBody: "They lose access to this profile at once. You can invite them again later.",
   keep: "Keep",
   removed: (who: string) => `${who} removed`,
+  rollTitle: (who: string) => `Roll what ${who} could still use`,
+  rollBody: (who: string) =>
+    `${who} can't open this profile any more, but these still work for them until you roll them on the Developers page.`,
+  rollKey: (name: string, last4: string) => `API key ${name} ending ${last4}`,
+  rollWebhook: (host: string) => `Webhook signing secret for ${host}`,
+  rollOpen: "Open Developers",
   removeFailed: "Could not remove them. Try again.",
   yourRole: (role: string) => `You are ${role} on this profile.`,
   yourRoleHint: "An Admin changes roles and which stores each person works with.",

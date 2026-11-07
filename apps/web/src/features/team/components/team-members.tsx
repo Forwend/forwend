@@ -12,14 +12,16 @@ import {
   useToast,
 } from "@forwend/ui-web";
 import { Mail } from "lucide-react";
+import { useState } from "react";
 import { ROLE_LABELS, ROLES } from "@/features/profiles/constants/profile";
 import { useListStoresQuery } from "@/features/stores/api/stores-api";
 import { useGetTeamQuery, useRevokeInviteMutation } from "@/features/team/api/team-api";
 import { InviteDialog } from "@/features/team/components/invite-dialog";
 import { MemberActions } from "@/features/team/components/member-actions";
+import { RollAfterRemoval } from "@/features/team/components/roll-after-removal";
 import { TEAM_COPY as COPY } from "@/features/team/constants/team-copy";
 import { formatExpiry } from "@/features/team/lib/team";
-import type { Invite } from "@/features/team/types/team";
+import type { Invite, ToRoll } from "@/features/team/types/team";
 import { LoadError } from "@/shared/components/load-error";
 
 export interface TeamMembersProps {
@@ -37,6 +39,8 @@ export function TeamMembers({ profileId }: TeamMembersProps) {
   const stores = useListStoresQuery(profileId);
   const [revoke, revoking] = useRevokeInviteMutation();
   const toast = useToast();
+  // Here, not in the member's row: removing them takes the row and its dialogs away.
+  const [roll, setRoll] = useState<{ who: string; toRoll: ToRoll } | null>(null);
   const names = new Map((stores.currentData ?? []).map((s) => [s.storeId, s.name]));
   const reach = (ids: readonly string[]) =>
     ids.length === 0
@@ -127,6 +131,7 @@ export function TeamMembers({ profileId }: TeamMembersProps) {
                             member={member}
                             who={who}
                             stores={storeList}
+                            onToRoll={(toRoll) => setRoll({ who, toRoll })}
                           />
                         )}
                       </div>
@@ -201,6 +206,7 @@ export function TeamMembers({ profileId }: TeamMembersProps) {
           </table>
         )}
       </section>
+      <RollAfterRemoval roll={roll} onClose={() => setRoll(null)} />
     </>
   );
 }
