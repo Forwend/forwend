@@ -53,7 +53,7 @@ type rates struct {
 var transferSQL = `
 	SELECT t.id, t.chain_id, t.token_contract, tk.symbol, tk.decimals, t.direction, t.amount::text, t.counterparty,
 	       t.tx_hash, t.log_index, t.block_number, t.block_time, t.status, inv.id, inv.number, inv.client_name,
-        inv.purpose, inv.document_kind, inv.policy_exception, inv.unreconciled,
+        inv.purpose, inv.document_kind, inv.policy_exception, inv.unreconciled, inv.fees,
 	       EXISTS (SELECT 1 FROM profile_wallets ow JOIN profiles op ON op.id = ow.profile_id
 	               WHERE op.user_id = p.user_id AND op.id <> p.id AND ow.chain_family = t.chain_family
 	                 AND ow.address = t.counterparty),
@@ -66,7 +66,10 @@ var transferSQL = `
 	JOIN profiles p ON p.id = w.profile_id
 	JOIN tokens tk ON tk.chain_id = t.chain_id AND tk.contract = t.token_contract
 	LEFT JOIN LATERAL (SELECT m.id, m.number, m.client_name, m.purpose, m.document_kind,
-                       coalesce(evidence.policy_exception,'') AS policy_exception, ` + ledger.UnreconciledSQL("o.id") + ` AS unreconciled
+                       coalesce(evidence.policy_exception,'') AS policy_exception, ` + ledger.UnreconciledSQL("o.id") + ` AS unreconciled,
+                       (SELECT sum(f.amount)::text FROM receiver_outflows f WHERE f.invoice_id = o.id
+                            AND f.tx_hash = evidence.tx_hash AND f.kind IN ('network_fee', 'platform_fee')
+                            AND f.ledger_transaction_id IS NOT NULL) AS fees
                     FROM invoices o JOIN invoices m ON m.id = coalesce(o.main_id, o.id)
 	                   JOIN receiver_outflows evidence ON evidence.invoice_id = o.id AND evidence.kind = 'settlement'
                     WHERE t.direction = 'in' AND o.chain_id = t.chain_id AND o.token_contract = t.token_contract
@@ -119,10 +122,10 @@ func scanTransfer(row pgx.CollectableRow) (Transfer, error) {
 		unreconciled                           *bool
 		number                                 *int64
 		day                                    *time.Time
-		usd, cur, fee                          *string
+		usd, cur, fee, fees                    *string
 	)
 	err := row.Scan(&t.id, &t.ChainID, &t.Token, &t.Symbol, &t.Decimals, &t.Direction, &amount, &t.Counterparty,
-		&t.TxHash, &t.LogIndex, &t.BlockNumber, &at, &t.Status, &invoiceID, &number, &client, &purpose, &documentKind, &policyException, &unreconciled, &t.own, &t.Label,
+		&t.TxHash, &t.LogIndex, &t.BlockNumber, &at, &t.Status, &invoiceID, &number, &client, &purpose, &documentKind, &policyException, &unreconciled, &fees, &t.own, &t.Label,
 		&t.RecordsCurrency, &day, &usd, &cur, &fee)
 	if err != nil {
 		return t, err
@@ -140,6 +143,9 @@ func scanTransfer(row pgx.CollectableRow) (Transfer, error) {
 	if invoiceID != nil {
 		t.Payment = &TransferPayment{ID: *invoiceID, Purpose: invoice.Purpose(*purpose), DocumentKind: invoice.DocumentKind(*documentKind),
 			PolicyException: *policyException, Unreconciled: *unreconciled}
+		if fees != nil {
+			t.Payment.Fees, _ = new(big.Int).SetString(*fees, 10)
+		}
 		if number != nil && t.Payment.DocumentKind == invoice.DocumentInvoice {
 			t.Invoice = &TransferInvoice{ID: *invoiceID, Number: *number}
 			if client != nil {

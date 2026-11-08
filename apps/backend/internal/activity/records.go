@@ -47,6 +47,9 @@ type TransferPayment struct {
 	DocumentKind    invoice.DocumentKind
 	PolicyException string
 	Unreconciled    bool
+	// Fees are what the settlement behind the transfer paid out of the payment before the rest reached the wallet
+	// (R-228); nil when it paid none.
+	Fees *big.Int
 }
 
 // R-108.

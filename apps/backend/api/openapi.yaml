@@ -4886,7 +4886,7 @@ components:
         decimals: { type: integer, minimum: 0 }
         amount:
           allOf: [{ $ref: "#/components/schemas/Uint256" }]
-          description: The option's amount; for invoice.held, the amount newly held for the payer.
+          description: The option's amount; for invoice.settled, what reached the wallet, less any fees; for invoice.held, the amount newly held for the payer.
         at:
           type: string
           format: date-time
@@ -5183,13 +5183,17 @@ components:
             clientName: { type: [string, "null"] }
         payment:
           type: object
-          required: [paymentId, purpose, documentKind, policyException, unreconciled]
+          required: [paymentId, purpose, documentKind, policyException, unreconciled, fees]
           properties:
             paymentId: { $ref: "#/components/schemas/InvoiceId" }
             purpose: { type: string, enum: [invoice, checkout, request] }
             documentKind: { type: string, enum: [invoice, request, none] }
             policyException: { type: [string, "null"] }
             unreconciled: { type: boolean }
+            fees:
+              type: [string, "null"]
+              pattern: "^[0-9]+$"
+              description: What the settlement behind the transfer paid out of the payment before the rest reached the wallet (R-228); null when none.
         recordsValue:
           type: [object, "null"]
           description: |

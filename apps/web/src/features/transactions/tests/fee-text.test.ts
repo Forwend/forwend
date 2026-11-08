@@ -25,4 +25,23 @@ describe("feeText", () => {
     expect(feeText({ ...sent, feePaid: "0" })).toBeNull();
     expect(feeText({ ...sent, feePaid: null })).toBeNull();
   });
+
+  // R-228: a settlement's transfer is the net; the fees it paid out of the payment show under it.
+  it("shows the fees a settlement paid out of the payment, and nothing for a settlement without fees", () => {
+    const settled = {
+      ...sent,
+      direction: "in",
+      feePaid: null,
+      payment: {
+        paymentId: `0x${"b".repeat(64)}`,
+        purpose: "invoice",
+        documentKind: "invoice",
+        policyException: null,
+        unreconciled: false,
+        fees: "50000",
+      },
+    } as const;
+    expect(feeText(settled)).toBe("After 0.05 USDC in fees");
+    expect(feeText({ ...settled, payment: { ...settled.payment, fees: null } })).toBeNull();
+  });
 });

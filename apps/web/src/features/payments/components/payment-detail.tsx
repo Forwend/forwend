@@ -22,7 +22,12 @@ import { ArrowDownLeft, ExternalLink, FileDown } from "lucide-react";
 import { type ReactNode, useId, useRef } from "react";
 import { InvoiceLines } from "@/features/invoices/components/invoice-lines";
 import { ConfirmingStatus } from "@/features/invoices/components/invoice-progress";
-import { invoiceNumber, invoicePdfUrl, optionFees } from "@/features/invoices/lib/invoices";
+import {
+  invoiceNumber,
+  invoicePdfUrl,
+  linesFigures,
+  optionFees,
+} from "@/features/invoices/lib/invoices";
 import { useGetPaymentQuery } from "@/features/payments/api/payments-api";
 import { ExportPayments } from "@/features/payments/components/export-payments";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
@@ -66,6 +71,9 @@ export interface PaymentDetailProps {
   /** Under the not found line: the screen's way to the other mode (R-221). */
   notFound?: ReactNode;
 }
+
+// The owner receives nothing of these, so they show no fees or net.
+const CLOSED_UNPAID: readonly string[] = ["canceled", "expired", "expired_partially_paid"];
 
 type Option = PaymentDetailType["options"][number];
 
@@ -205,7 +213,10 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
                   <span className="text-subtle">{COPY.nothing}</span>
                 )}
               </Figure>
-              {paidWith && fees && fees.total > 0n ? (
+              {paidWith &&
+              fees &&
+              fees.total > 0n &&
+              !CLOSED_UNPAID.includes(payment.paymentStatus) ? (
                 <>
                   <Figure term={COPY.fees}>
                     <PaymentAmount
@@ -346,9 +357,8 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
               lines={payment.items}
               decimals={main.decimals}
               unit={payment.optionCount > 1 ? MONEY_COPY.usd : main.symbol}
-              total={BigInt(main.amount)}
-              fees={optionFees(main)}
-              owner
+              // Fees and what the owner receives are the paid option's, in the Amount panel.
+              {...linesFigures(main, paidWith)}
             />
           ) : null}
         </div>

@@ -39,7 +39,7 @@ import {
   invoicePdfUrl,
   invoiceProgress,
   invoiceStatus,
-  optionFees,
+  linesFigures,
   tokenKey,
 } from "@/features/invoices/lib/invoices";
 import type {
@@ -372,8 +372,10 @@ function Loaded({
               lines={invoice.lines}
               decimals={main.decimals}
               unit={invoice.optionCount > 1 ? MONEY_COPY.usd : main.symbol}
-              total={BigInt(main.amount)}
-              fees={optionFees(main)}
+              {...linesFigures(
+                main,
+                invoice.options.find((o) => o.optionId === invoice.optionId),
+              )}
               owner
               // One token only: with several, each option's money is in its own units. Money sent after the close
               // is the payer's, so it is not counted.

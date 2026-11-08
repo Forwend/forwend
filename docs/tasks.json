@@ -1239,7 +1239,8 @@
         "Each option's network fee is its deploy and settle gas at the chain's fee cap, with a margin, rounded up to 0.01 USD. ETH/USD prices it on Base and Arbitrum.",
         "Profiles get a Fees paid by default (you or your client) in settings. The invoice and link forms show the fee, what the client pays and what the owner receives, with a per-invoice override. The API takes feesPaidBy.",
         "When the client pays, the amount is the price plus the fees; when the owner pays, the amount is the price. Fees never pass the contract's tenth of the amount.",
-        "The canary builds each option's terms with its fees, so an invoice with fees raises no false alarm."
+        "The canary builds each option's terms with its fees, so an invoice with fees raises no false alarm.",
+        "A payer-chooses invoice whose options' amounts differ by their fees says so where it names one amount: the pay page before a pick and the PDF's Pay line. The dashboard's daily-limit copy no longer says Forwend pays the network fee."
       ],
       "dependsOn": [
         "F445"

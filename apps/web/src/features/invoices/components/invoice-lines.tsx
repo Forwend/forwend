@@ -3,8 +3,8 @@
 import { Button, formatTokenAmount } from "@forwend/ui-web";
 import { useState } from "react";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
-import { type optionFees, shortQuantity } from "@/features/invoices/lib/invoices";
-import type { InvoiceLine } from "@/features/invoices/types/invoices";
+import { shortQuantity } from "@/features/invoices/lib/invoices";
+import type { InvoiceLine, OptionFees } from "@/features/invoices/types/invoices";
 import { exactDigits } from "@/shared/lib/money";
 
 export interface InvoiceLinesProps {
@@ -18,7 +18,7 @@ export interface InvoiceLinesProps {
   /** Rows on the page's own ground, as a checkout lists them, not a panel. */
   plain?: boolean;
   /** The option's fees (R-228). The client's fees show before the total; owner adds what the owner receives. */
-  fees?: ReturnType<typeof optionFees>;
+  fees?: OptionFees;
   owner?: boolean;
 }
 
@@ -133,7 +133,7 @@ function FeeRows({
   money,
   minus,
 }: {
-  fees: ReturnType<typeof optionFees>;
+  fees: OptionFees;
   money: (units: bigint) => string;
   minus?: boolean;
 }) {

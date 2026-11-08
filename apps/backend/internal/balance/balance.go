@@ -75,6 +75,7 @@ func (s *Service) of(ctx context.Context, profileID string, records bool) (Balan
 	}
 	// One pass over the profile's ledger: credits are negative, so minus the sum is what is owed. A partly paid
 	// option paid in full waits for the finalized balance check and never expires (ledger.status), so it is confirming.
+	// Settlement pays the option's fees out of what is owed, so the wallet gets the rest (R-228).
 	query, args := `
 		WITH options AS (
 		    SELECT i.chain_id, i.token_contract,
@@ -82,7 +83,8 @@ func (s *Service) of(ctx context.Context, profileID string, records bool) (Balan
 		            WHEN i.payment_status = 'partially_paid'
 		                AND -coalesce(sum(e.amount) FILTER (WHERE e.account = 'recipient_payable'), 0) < i.amount THEN 'partial'
 		            ELSE 'confirming' END AS part,
-		        -coalesce(sum(e.amount) FILTER (WHERE e.account = 'recipient_payable'), 0) AS payable,
+		        greatest(-coalesce(sum(e.amount) FILTER (WHERE e.account = 'recipient_payable'), 0)
+		            - (i.network_fee + i.platform_fee), 0) AS payable,
 		        -coalesce(sum(e.amount) FILTER (WHERE e.account = 'payer_held'), 0) AS held
 		    FROM invoices i JOIN ledger_transactions x ON x.invoice_id = i.id JOIN ledger_entries e ON e.transaction_id = x.id
 		    WHERE i.profile_id = $1 AND e.account IN ('recipient_payable', 'payer_held')

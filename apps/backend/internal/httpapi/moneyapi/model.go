@@ -115,6 +115,8 @@ type transactionPaymentJSON struct {
 	DocumentKind    invoice.DocumentKind `json:"documentKind"`
 	PolicyException *string              `json:"policyException"`
 	Unreconciled    bool                 `json:"unreconciled"`
+	// What the settlement paid out of the payment before the rest reached the wallet; null when none (R-228).
+	Fees *string `json:"fees"`
 }
 
 // R-108.
@@ -132,6 +134,10 @@ func toTransactionJSON(t activity.Transfer) transactionJSON {
 	if p := t.Payment; p != nil {
 		out.Payment = &transactionPaymentJSON{PaymentID: p.ID, Purpose: p.Purpose, DocumentKind: p.DocumentKind,
 			PolicyException: httpio.OrNull(p.PolicyException), Unreconciled: p.Unreconciled}
+		if p.Fees != nil {
+			fees := p.Fees.String()
+			out.Payment.Fees = &fees
+		}
 	}
 	if i := t.Invoice; i != nil {
 		out.Invoice = &transactionInvoiceJSON{InvoiceID: i.ID, Number: i.Number, ClientName: httpio.OrNull(i.ClientName)}
@@ -147,8 +153,11 @@ func toTransactionJSON(t activity.Transfer) transactionJSON {
 }
 
 func tokenAmount(t activity.Transfer) string {
-	return new(big.Rat).SetFrac(t.Amount, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(t.Decimals)), nil)).
-		FloatString(t.Decimals)
+	return units(t.Amount, t.Decimals)
+}
+
+func units(n *big.Int, decimals int) string {
+	return new(big.Rat).SetFrac(n, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)).FloatString(decimals)
 }
 
 type balanceHistoryJSON struct {

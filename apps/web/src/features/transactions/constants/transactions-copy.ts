@@ -7,6 +7,7 @@ import type { TransactionClass } from "@/features/transactions/types/transaction
 export const TRANSACTIONS_COPY = {
   transactions: "Transactions",
   fee: (amount: string) => `Network fee ${amount}`,
+  settlementFees: (amount: string) => `After ${amount} in fees`,
   intro: "Every transfer in and out of this profile's wallet.",
   introBusiness:
     "Every transfer in and out of the profile's wallet, across all stores. Payments has each customer payment.",

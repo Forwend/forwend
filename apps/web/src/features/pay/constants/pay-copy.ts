@@ -18,7 +18,9 @@ export const PAY_COPY = {
   leftToPay: "Left to pay",
   on: (network: string) => `on ${network}`,
   // R-228: the client pays the fees on top of the price.
-  withFees: (price: string, fees: string) => `${price} plus ${fees} in fees`,
+  withFees: (price: string, fees: readonly string[]) => `${price} plus ${fees.join(" and ")}`,
+  networkFee: (amount: string) => `${amount} network fee`,
+  platformFee: (amount: string) => `${amount} platform fee`,
   reference: (reference: string) => `Reference ${reference}`,
   agreed: (value: string, date: string) => `Agreed value ${value} on ${date}`,
   due: (date: string) => `Due ${date}`,

@@ -19,18 +19,19 @@ export function transactionStatus(t: Transaction): PaymentStatus {
       : PAYMENT_STATUS.confirming;
 }
 
-/** R-224: the fee the wallet paid for the send behind the transfer, to the last digit; null where there is none to show,
- *  as for a transfer no send made, or one Forwend paid for. */
+/** R-224: the fee the wallet paid for the send behind the transfer, to the last digit; R-228: for a settlement, the fees
+ *  it paid out of the payment. Null where there is none to show, as for a transfer no send made, or one Forwend paid. */
 export function feeText(t: Transaction): string | null {
-  if (!t.feePaid) return null;
-  const units = BigInt(t.feePaid);
+  const fee = t.feePaid ?? t.payment?.fees;
+  if (!fee) return null;
+  const units = BigInt(fee);
   if (units === 0n) return null;
-  const amount = formatTokenAmount({
+  const amount = `${formatTokenAmount({
     baseUnits: units,
     decimals: t.decimals,
     fractionDigits: exactDigits(units, t.decimals),
-  });
-  return TRANSACTIONS_COPY.fee(`${amount} ${t.symbol}`);
+  })} ${t.symbol}`;
+  return t.feePaid ? TRANSACTIONS_COPY.fee(amount) : TRANSACTIONS_COPY.settlementFees(amount);
 }
 
 /** A signed send no block holds yet, as a row (R-215). Its transfer's own row takes its place once recorded; it has

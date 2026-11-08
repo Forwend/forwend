@@ -217,7 +217,7 @@ test.describe("pay page", () => {
     });
     await expect(page.locator("[data-money]")).toHaveText("1,250.05 USDC");
     await expect(
-      page.getByText("1,250.00 USDC plus 0.05 USDC in fees", { exact: true }),
+      page.getByText("1,250.00 USDC plus 0.05 USDC network fee", { exact: true }),
     ).toBeVisible();
     await showAddress(page).click();
     await expect(page.getByText(receive, { exact: true })).toBeVisible();

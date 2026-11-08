@@ -2,6 +2,7 @@ import { Badge, PAYMENT_STATUS, StatusPill, TABLE_ROW_CLASSES, TONES } from "@fo
 import { ArrowUpRight, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { ConfirmingHint } from "@/features/invoices/components/invoice-progress";
+import { optionFees } from "@/features/invoices/lib/invoices";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
 import { PAYMENT_DETAIL_COPY as COPY } from "@/features/payments/constants/payments-copy";
 import type { PaymentDetail } from "@/features/payments/types/payments";
@@ -21,7 +22,9 @@ export function WalletTransferRow({ option }: WalletTransferRowProps) {
   const settled = option.settlementStatus === "settled";
   if (!settlement && !settled) return null;
   const txHash = settled ? settlement?.txHash : (settlement?.receiptTxHash ?? settlement?.txHash);
-  const amount = settled ? option.amounts.settled : option.amounts.payable;
+  // Settlement pays the option's fees out of what is owed; the wallet gets the rest (R-228).
+  const owed = BigInt(option.amounts.payable) - optionFees(option).total;
+  const amount = settled ? option.amounts.settled : (owed > 0n ? owed : 0n).toString();
   const state = settled ? (
     <StatusPill status={PAYMENT_STATUS.settled} />
   ) : settlement?.status === "refused" ? (

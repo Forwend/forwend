@@ -49,6 +49,21 @@ import type {
 
 export type PayWith = (typeof PAY_WITH)[keyof typeof PAY_WITH];
 export type FeesPaidBy = (typeof FEES_PAID_BY)[keyof typeof FEES_PAID_BY];
+/** An option's amount and the fees in its terms (R-228). */
+export interface FeeTerms {
+  amount: string;
+  networkFee?: string;
+  platformFee?: string;
+  feesPaidBy?: FeesPaidBy;
+}
+/** Settlement pays the fees out of the amount; the owner receives net. */
+export interface OptionFees {
+  network: bigint;
+  platform: bigint;
+  total: bigint;
+  net: bigint;
+  clientPays: boolean;
+}
 export type InvoiceEventKind = (typeof INVOICE_EVENTS)[keyof typeof INVOICE_EVENTS];
 export type OwedKind = (typeof OWED_KINDS)[keyof typeof OWED_KINDS];
 export type ReminderStep = (typeof REMINDER_STEPS)[keyof typeof REMINDER_STEPS];

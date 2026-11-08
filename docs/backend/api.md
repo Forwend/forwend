@@ -179,7 +179,8 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   it was sent, the email settings link on owner emails, and `SUPPORT_EMAIL` and `EMAIL_POSTAL_ADDRESS` when set.
   Tables, inline styles and a dark-mode block; no scripts, tracking pixels or other remote assets.
 - `GET /v1/profiles/{profileId}/events?limit=` (R-81, at most 50): the same events for the bell, newest first, with the
-  document number when present, the option's token and the amount (newly held for `invoice.held`).
+  document number when present, the option's token and the amount (newly held for `invoice.held`; for `invoice.settled`, what
+  reached the wallet, less any fees).
 - Events include purpose, document kind and title; document-free checkout events have `number: null` and open payment details.
 - Existing invoice and request event numbers remain unchanged; no document number is invented for checkout.
 - Owner checkout emails open Payments; customer receipt links remain public.
@@ -971,6 +972,7 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   - Rows go into the file as the database sends them; the request never holds every transfer.
   - Columns: date (UTC), direction, amount, token, network, counterparty, transaction, status, USD value.
   - Then the classification, invoice number and client; `Payment ID` follows any optional currency columns.
+  - `Settlement fees` last: what the settlement behind an incoming transfer paid out of the payment (R-228), else empty.
   - A cell starting like a formula gets a leading apostrophe.
   - So does a formula start right after a `;`, also after quotes: a spreadsheet set for a `;` list separator (de-DE,
     fr-FR) starts a cell there.

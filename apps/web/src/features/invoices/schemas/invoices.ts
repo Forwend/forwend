@@ -367,7 +367,7 @@ export const invoiceEventSchema = z.object({
   token: evmAddress,
   symbol: z.string(),
   decimals: count,
-  // The option's amount; for held money, the amount newly held for the payer.
+  // The option's amount; settled: what reached the wallet, less any fees; held: the amount newly held for the payer.
   amount: baseUnits,
   at: apiTime,
 });
