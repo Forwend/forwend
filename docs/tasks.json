@@ -438,7 +438,7 @@
       "dependsOn": [
         "F436"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "contracts",
         "docs-check"
@@ -502,11 +502,18 @@
           "summary": "No blocking findings. I checked on chain, read only. All 9 tx hashes in deployments.json have status 1, and each was sent by the executor 0xe158...2755. On Base, Arbitrum, Arc and Tempo, the factory and implementation code hashes equal Base Sepolia's: factory 0xdca35aa3..., implementation 0x949474e2.... On every chain, executor(), refundAuthority() and implementation() return the recorded addresses, and probe 0x0D25...DDfBE has code. On Tempo the fee tx calls the fee manager 0xfeec..., and userTokens(executor) returns 0x20c0...74be, whose symbol is OUSD. ReceiveAddressVectors.s.sol and chaintest.go read only chains.base-sepolia, which is unchanged; no other code reads deployments.json. explorer.arc.io and explore.tempo.xyz answer 200. operations.md sentences are 25 words or less, and docs-check passes. Non-blocking: (1) packages/contracts/.env.example:1 still says testnet keys only. The test EOA and the burner executor now control recovery and settles on four mainnets, so say these keys now guard mainnet money. (2) Accepts 4 and 5 ask for 'not other people's money' and 'needs a Safe factory first'. The note and operations.md say 'development only' and 'production gets new contracts with the Safe', which means the same but less directly. (3) The operations.md heading 'Safe setup (mainnet; testnets use an EOA)' is no longer true for the development mainnets; the new section explains why.",
           "at": "2026-11-08T00:12:46Z",
           "filesHash": "07e2715f0a855b6c"
-        }
+        },
+        "commit": "5ac5b1b6",
+        "doneAt": "2026-11-08T00:13:06Z"
       },
       "branch": "chore/f437-the-invoice-receiver-factory-runs-on-bas",
       "baseCommit": "0079b23e5f7175b90f32e10918766856c708f157",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "chore/f437-the-invoice-receiver-factory-runs-on-bas",
+        "base": "main"
+      }
     },
     {
       "id": "F438",
