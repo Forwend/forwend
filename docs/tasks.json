@@ -1208,7 +1208,7 @@
       "dependsOn": [
         "F443"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "web-unit",
@@ -1324,11 +1324,18 @@
           "summary": "Pass. The fee math holds everywhere: net is amount less both fees, so it matches the contract's settle order and its tenth ceiling (receive-address.ts:87). Balances and the To wallet row subtract the fees from what is owed, received totals and PDF booked() add the fees paid, invoice.settled carries the net, and Transactions, CSV, movements and reconciliation read the booked fee outflows. Zero fees show no row, and the API, webhook invoice body and node types carry networkFee, platformFee, netAmount and feesPaidBy. Non-blocking: the owner fee rows (invoice-lines.tsx:82-98, payment-detail.tsx:221) and non-zero fees through the API, Transactions SQL and movements have no test (the Transactions one is queued in F446); unbooked confirming deposits stay gross in balance.go:105.",
           "at": "2026-11-08T23:57:49Z",
           "filesHash": "975cce1fe57ed2ad"
-        }
+        },
+        "commit": "b1a5e435",
+        "doneAt": "2026-11-08T23:58:09Z"
       },
       "branch": "feat/f445-every-reader-shows-an-invoice-option-s-f",
       "baseCommit": "525e9c3388c72ffbcb1692c5d87742c12bde2208",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f445-every-reader-shows-an-invoice-option-s-f",
+        "base": "main"
+      }
     },
     {
       "id": "F446",
