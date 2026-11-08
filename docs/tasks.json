@@ -1090,7 +1090,7 @@
       "dependsOn": [
         "F442"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "docs-check"
@@ -1157,9 +1157,16 @@
           "summary": "Re-reviewed through 3c053464. Production code is unchanged since 5abd21ad, which passed review with no defects. The new TestSettlementAndFeesMustMatchTheTerms inserts outflows marked awaiting_booking, so it checks the ledger's own checks: a full-amount settlement on an option with fees, and a network fee other than the option's, both stay unbooked as invalid_terms, while the correct net books. It passes (go test -run TestSettlementAndFeesMustMatchTheTerms ./internal/ledger). This closes the earlier test gap for acceptance 3. F446 now carries the canary acceptance line. Notes for F445 still stand: PDF Received and web receivedAmount understate by the fees; the movements export shows fee rows with no source amount or addresses; the API and webhook settled amount is the net.",
           "at": "2026-11-08T20:42:42Z",
           "filesHash": "895a875dc532f64a"
-        }
+        },
+        "commit": "7abce62f",
+        "doneAt": "2026-11-08T23:41:22Z"
       },
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f443-a-settlement-that-pays-fees-is-booked-in",
+        "base": "main"
+      }
     },
     {
       "id": "F444",
