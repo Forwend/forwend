@@ -109,11 +109,12 @@ func (s *Service) Create(ctx context.Context, profileID, key string, r Request) 
 			return fmt.Errorf("%w: a profile has at most %d jobs", ErrInvalid, MaxJobs)
 		}
 		c := r.Client
+		// The job keeps the profile's mode now: its invoices are of it, whatever the profile's mode later (R-221).
 		err := tx.QueryRow(ctx, `INSERT INTO jobs (profile_id, token, idempotency_key, request_hash, title, scope,
 			    client_name, client_email, client_address, client_country, client_tax_id, issuer_name, issuer_address,
-			    issuer_country, issuer_tax_id, issuer_email)
+			    issuer_country, issuer_tax_id, issuer_email, livemode)
 			SELECT $1, $2, $3, $4, $5, NULLIF($6, ''), $7, $8, NULLIF($9, ''), NULLIF($10, ''), NULLIF($11, ''), b.name,
-			    b.address, b.country, b.tax_id, b.contact_email
+			    b.address, b.country, b.tax_id, b.contact_email, (SELECT p.livemode FROM profiles p WHERE p.id = $1)
 			FROM profile_billing_details b WHERE b.profile_id = $1 RETURNING id::text`,
 			profileID, hex.EncodeToString(token), key, hash[:], r.Title, r.Scope, c.Name, c.Email, c.Address, c.Country,
 			c.TaxID).Scan(&id)

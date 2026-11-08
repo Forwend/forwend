@@ -93,7 +93,9 @@ type Job struct {
 	AcceptedEmail string
 	AcceptedAt    time.Time
 	CreatedAt     time.Time
-	profileID     string
+	// Livemode is the profile's mode when the job was quoted: every invoice of the job is of it (R-221).
+	Livemode  bool
+	profileID string
 }
 
 func USD(cents int64) string {

@@ -294,6 +294,7 @@ with a test.
 - `invoice_reminders`: one row per invoice once the owner first turns reminders on, with `enabled`, the client's
   `stop_token` and `stopped_at`.
 - `jobs` (R-100): a quote with its link `token`, title, scope, a client copy and an issuer copy from billing details.
+  - `livemode` is the profile's mode when it was quoted; every invoice of the job is of it (R-221).
   It keeps the client's typed `accepted_name` and `accepted_email`, with `accepted_at`. `job_payments` is its schedule in cents.
   A payment marked done keeps `done_at` and an optional `delivery_link` (R-103).
   A scope change (R-105) has `proposed_at`, its `change_key` and `change_hash`, and the client's typed `accepted_*`.

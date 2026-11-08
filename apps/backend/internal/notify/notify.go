@@ -282,7 +282,8 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 	if number == nil {
 		v.Details[0].Label = "Payment"
 	}
-	return v, to, on, nil
+	// The payer's receipt and the owner's own emails say test mode too: testnet tokens never read as real money.
+	return marked(v, live), to, on, nil
 }
 
 func compose(kind, number, amount, symbol, network, link, settings string) view {
@@ -357,7 +358,7 @@ func receipt(number, amount, symbol, network, issuer, sender, tx, pdf string) vi
 	return v
 }
 
-// marked says a client's email is about a test-mode invoice (R-143), so testnet tokens never pass for real money.
+// marked says an email is about a test-mode invoice (R-143), so testnet tokens never pass for real money.
 func marked(v view, live bool) view {
 	if !live {
 		v.Lead = append(v.Lead, document.TestMode+".")

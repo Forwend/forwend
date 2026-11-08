@@ -888,6 +888,7 @@ R-100, D-81; the full schema is in openapi.yaml. A job is a quote with a payment
   - It copies the billing details as `issuer`, so no billing details is 409 `billing_details_required`.
   - The job gets a random 32-byte link token. A profile has at most 1000 jobs.
 - `GET /v1/profiles/{profileId}/jobs` lists them newest first, with the total and how many payments are paid.
+  - Only jobs of the profile's mode (D-120). A job keeps the mode it was quoted in, and its invoices are of it (R-221).
   - It reads one page: `limit` (1–100, default 50) and `cursor`, and `nextCursor` continues it.
   - `q` matches the title or the client's name in any letter case.
 - `GET /v1/profiles/{profileId}/jobs/{jobId}` reads one: the client, the token, and each payment's invoice.

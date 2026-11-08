@@ -163,8 +163,8 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		}
 	}
 	// D-87: an invoice's options are all of one mode, so its livemode never changes. A key's invoice is of the key's
-	// mode, and a Revise or a retainer's later month keeps the mode of the invoice it follows. Any other create, such as
-	// a job's, takes the profile's mode (D-120).
+	// mode, a job's of the job's, and a Revise or a retainer's later month keeps the mode of the invoice it follows. Any
+	// other create takes the profile's mode (D-120).
 	follows, err := followedMode(ctx, tx, profileID, r)
 	if err != nil {
 		return Invoice{}, false, err

@@ -380,7 +380,7 @@ func TestDeliverSendsTheReceiptToThePayer(t *testing.T) {
 	}
 	m := f.sent[0]
 	for _, want := range []string{"You paid 5.00 USDC on Base Sepolia to Mara Ilić for INV-0001.",
-		"The name is what the invoice's creator gave; Forwend doesn't check it.",
+		"The name is what the invoice's creator gave; Forwend doesn't check it.", "Test mode: testnet tokens have no value.",
 		"Transaction: https://sepolia.basescan.org/tx/" + hash, "Download receipt (PDF): " + web + "/api/v1/invoices/" + payToken + "/receipt.pdf"} {
 		if !strings.Contains(m.Text, want) {
 			t.Fatalf("receipt text %q lacks %q", m.Text, want)
