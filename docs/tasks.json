@@ -1353,7 +1353,7 @@
       "dependsOn": [
         "F445"
       ],
-      "state": "not_started",
+      "state": "active",
       "verification": [
         "backend",
         "web-unit",
@@ -1369,7 +1369,9 @@
       "review": true,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": null,
+      "branch": "feat/f446-each-invoice-option-quotes-a-network-fee",
+      "baseCommit": "d2b79356405931ee2e25e338deb7ab6d4639c55e"
     }
   ],
   "lastWrapup": {
