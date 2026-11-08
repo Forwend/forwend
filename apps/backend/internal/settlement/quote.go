@@ -22,8 +22,9 @@ const (
 	QuoteStale = time.Hour
 )
 
-// NetworkFeeMax bounds a quote: real ones are cents, so more is a lying RPC or price feed, never put in terms (D-122).
-var NetworkFeeMax = big.NewRat(1, 1)
+// NetworkFeeMax bounds a quote: real ones are cents, and a gas spike stays well under it, so more is a lying RPC or
+// price feed, never put in terms (D-122). Each invoice's fees stay within a tenth of its amount anyway.
+var NetworkFeeMax = big.NewRat(5, 1)
 
 // Quotes prices one receiver deploy and settle on each chain in USD, for the network fee in an invoice's terms (D-122).
 type Quotes struct {

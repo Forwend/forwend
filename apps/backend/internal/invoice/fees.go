@@ -119,7 +119,11 @@ func (s *Service) QuoteFees(ctx context.Context, profileID string, r Request) (s
 		}
 		q := OptionQuote{ChainID: o.chainID, Token: o.token, Decimals: o.decimals, Price: o.amount}
 		if q.NetworkFee, q.PlatformFee, err = s.optionFees(ctx, o.chainID, o.decimals, o.amount); err != nil {
-			return "", nil, err
+			// As a create does: a payer-chooses invoice leaves the network out, a fixed one can't be made now.
+			if usd == nil {
+				return "", nil, err
+			}
+			continue
 		}
 		quotes = append(quotes, q)
 	}

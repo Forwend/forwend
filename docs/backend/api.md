@@ -104,7 +104,7 @@ R-227, D-122; the full schema is in openapi.yaml.
   - ETH/USD prices it on Base and Arbitrum; Tempo's gas unit and Arc's native USDC are already dollars.
   - One quote serves a chain's new invoices for a minute (`settlement.QuoteAge`).
   - A read that fails falls back on the chain's last quote for an hour (`settlement.QuoteStale`).
-  - A quote over 1.00 USD (`settlement.NetworkFeeMax`) is a lying RPC or feed and is refused.
+  - A quote over 5.00 USD (`settlement.NetworkFeeMax`) is a lying RPC or feed and is refused.
   - The platform fee is `PLATFORM_FEE_BPS` (0 to 500) of the price, within `PLATFORM_FEE_MIN_USD` and `PLATFORM_FEE_CAP_USD`; 0 at launch.
 - `feesPaidBy` is `owner` (deducted at settlement) or `client` (added on top of the price).
   - The profile's choice applies unless an invoice, checkout session or link says otherwise.
@@ -118,6 +118,7 @@ R-227, D-122; the full schema is in openapi.yaml.
 - When each network adds its own fee on top, the client's invoice and reminder emails say the price plus the network fee.
 - `GET /v1/profiles/{profileId}/fees` takes a price as a create does (`chainId`, `token` and `amount`, or `amountUsd`).
   - It gives the profile's `feesPaidBy` and each option's `price`, `networkFee` and `platformFee`, so a form shows them.
+  - A payer-chooses price leaves out a network that can't be priced now, as the create does.
   - The invoice gets its own quote when it is made.
 
 ## Notifications

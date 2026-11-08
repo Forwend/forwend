@@ -367,7 +367,7 @@ export function LinkForm({
             token=""
             units={(() => {
               const units = parseTokenAmount(
-                (kind === AMOUNT_KINDS.fixed ? typed.amountUsd : typed.minUsd) || "1",
+                kind === AMOUNT_KINDS.fixed ? typed.amountUsd : typed.minUsd || "1",
                 PRICE_DECIMALS,
               );
               return typeof units === "string" ? 0n : units;
