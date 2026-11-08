@@ -4,6 +4,7 @@ package e2e
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -97,7 +98,8 @@ func TestReusableLinkReservationsExpireAndPurchasesSettleIndependently(t *testin
 		t.Fatalf("link usage mixes paid, held or expired attempts: %v", usage)
 	}
 	balances := ledger.BalanceFrom(map[uint64]*ethclient.Client{chaintest.ChainID: ethclient.NewClient(st.anvil.RPC)})
-	for holder, want := range map[string]string{merchantWallet: "10000000", firstReceive: "1000000", receivers[0]: "0", receivers[1]: "0"} {
+	for holder, want := range map[string]string{merchantWallet: strconv.Itoa(10000000 - 2*networkFee), firstReceive: "1000000",
+		receivers[0]: "0", receivers[1]: "0"} {
 		got, _, err := balances(ctx, chaintest.ChainID, st.token, holder)
 		if err != nil || got.String() != want {
 			t.Fatalf("independent chain balance %s: %v, %v; want %s", holder, got, err, want)

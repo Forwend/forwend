@@ -141,7 +141,7 @@ func TestExceptionsCancelAndEmail(t *testing.T) {
 		t.Fatalf("%d settlement intents (%v), want A's alone", settles, err)
 	}
 	balance := ledger.BalanceFrom(map[uint64]*ethclient.Client{chaintest.ChainID: ethclient.NewClient(st.anvil.RPC)})
-	for receive, want := range map[string]int64{aReceive: 0, bReceive: 1000000, cReceive: 5000000, dReceive: 5000000, wallet: 5000000} {
+	for receive, want := range map[string]int64{aReceive: 0, bReceive: 1000000, cReceive: 5000000, dReceive: 5000000, wallet: 5000000 - networkFee} {
 		got, _, err := balance(ctx, chaintest.ChainID, st.token, receive)
 		if err != nil || got.Int64() != want {
 			t.Fatalf("balance of %s: %v %v, want %d", receive, got, err, want)
@@ -150,7 +150,7 @@ func TestExceptionsCancelAndEmail(t *testing.T) {
 
 	want := map[string]string{
 		"owner@example.com|INV-0001 paid: 5.00 USDC":               "",
-		"owner@example.com|INV-0001: 5.00 USDC is in your wallet":  "",
+		"owner@example.com|INV-0001: 4.99 USDC is in your wallet":  "", // the 5.00 less its 0.01 network fee
 		"payer@example.com|Your receipt for INV-0001":              "",
 		"owner@example.com|INV-0002: 1.00 USDC held for the payer": "",
 		"owner@example.com|INV-0003: 5.00 USDC held for the payer": "",
