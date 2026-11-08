@@ -10,6 +10,7 @@ import type { FeeQuote } from "@/features/invoices/types/invoices";
 
 // A quote waits until typing stops, so each keystroke asks nothing.
 const QUOTE_WAIT_MS = 400;
+const UNAVAILABLE = 503; // network_fee_unavailable
 
 export interface FeeSummaryProps {
   profileId: string;
@@ -22,8 +23,10 @@ export interface FeeSummaryProps {
   clientPays: boolean;
   onClientPays: (clientPays: boolean) => void;
   /** The quote, for the preview. */
-  onQuote: (quote: FeeQuote | undefined) => void;
+  onQuote?: (quote: FeeQuote | undefined) => void;
   money: (units: bigint) => string;
+  /** Only the fee: the price is the payer's to choose, as on an open payment link. */
+  feeOnly?: boolean;
 }
 
 /** R-227: who pays the network fee, and what the client pays and the owner receives, before the form saves. */
@@ -38,6 +41,7 @@ export function FeeSummary({
   onClientPays,
   onQuote,
   money,
+  feeOnly,
 }: FeeSummaryProps) {
   const price =
     units > 0n
@@ -58,7 +62,7 @@ export function FeeSummary({
         : { profileId, chainId, token, amount: asked.split(":")[2] ?? "" },
   );
   const current = asked === price ? quote.currentData : undefined;
-  useEffect(() => onQuote(current), [current, onQuote]);
+  useEffect(() => onQuote?.(current), [current, onQuote]);
   const figures = feeFigures(current, decimals, clientPays);
   const range = ([low, high]: [bigint, bigint]) =>
     low === high ? money(low) : COPY.range(money(low), money(high));
@@ -73,9 +77,13 @@ export function FeeSummary({
       {figures ? (
         <dl className="flex flex-col gap-1.5 text-sm">
           {[
-            [COPY.networkFee, range(figures.fee)],
-            [COPY.clientTotal, range(figures.pays)],
-            [COPY.youReceive, range(figures.receives)],
+            [figures.platform ? COPY.fees : COPY.networkFee, range(figures.fee)],
+            ...(feeOnly
+              ? []
+              : [
+                  [COPY.clientTotal, range(figures.pays)],
+                  [COPY.youReceive, range(figures.receives)],
+                ]),
           ].map(([term, value]) => (
             <div key={term} className="flex items-baseline justify-between gap-4">
               <dt className="text-muted">{term}</dt>
@@ -83,9 +91,14 @@ export function FeeSummary({
             </div>
           ))}
         </dl>
-      ) : price === "" ? null : (
+      ) : price === "" || current ? null : (
+        // A refused price says why in its own field; only a quote that can't be had now is said here.
         <p role="status" className="text-sm text-muted">
-          {quote.isError && asked === price ? COPY.failed : COPY.pricing}
+          {quote.isError && asked === price
+            ? (quote.error as { status?: unknown }).status === UNAVAILABLE
+              ? COPY.failed
+              : null
+            : COPY.pricing}
         </p>
       )}
     </div>

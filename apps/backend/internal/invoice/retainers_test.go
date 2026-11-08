@@ -355,3 +355,33 @@ func TestPayerChoosesRetainerMonthOffersWhatIsOn(t *testing.T) {
 		t.Fatalf("%d months made (%v), want only the first", months, err)
 	}
 }
+
+// D-122: a retainer's months keep who pays its first month's fees, also one saved before the choice was in its
+// request, when the profile chooses otherwise later.
+func TestRetainerMonthsKeepWhoPaysTheFees(t *testing.T) {
+	ctx := context.Background()
+	pool, profile := open(t)
+	s := NewService(pool)
+	now, _ := time.Parse(time.DateOnly, "2027-01-10")
+	s.now = func() time.Time { return now.Add(12 * time.Hour) }
+	if _, _, err := s.Create(ctx, profile, "k1", Request{ChainID: 84532, Token: usdc, Amount: "5000000",
+		ExpiresInSeconds: new(int64(86400)), Repeat: &Repeat{EndDate: "2027-04-30"},
+		Details: Details{Title: "Retainer", DueDate: "2027-01-31", ClientName: "Bob Ltd", ClientEmail: "ap@bob.example"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE retainers SET request = request - 'FeesPaidBy'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE profiles SET fees_paid_by = 'client' WHERE id = $1`, profile); err != nil {
+		t.Fatal(err)
+	}
+	now, _ = time.Parse(time.DateOnly, "2027-02-24")
+	if err := s.MakeRetainerInvoices(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var paidBy string
+	if err := pool.QueryRow(ctx, `SELECT string_agg(i.fees_paid_by, ',' ORDER BY ri.cycle) FROM retainer_invoices ri
+		JOIN invoices i ON i.id = ri.invoice_id`).Scan(&paidBy); err != nil || paidBy != "owner,owner" {
+		t.Fatalf("who pays each month: %q (%v), want the first month's owner twice", paidBy, err)
+	}
+}

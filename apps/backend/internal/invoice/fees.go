@@ -5,7 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"slices"
 	"time"
+
+	"github.com/forwend/forwend/apps/backend/internal/profile"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -25,8 +28,8 @@ type Quoter interface {
 // ErrFeeQuote: a chain's network fee can't be priced now, so no invoice is made; the same request may try again.
 var ErrFeeQuote = errors.New("the network fee can't be priced right now")
 
-// quoteWait bounds a quote, which runs under the profile's lock.
-const quoteWait = 10 * time.Second
+// quoteWait bounds a quote, which runs under the profile's lock; a slow RPC falls back on the chain's last quote.
+const quoteWait = 3 * time.Second
 
 // Pricing is how new invoices are given their fees: Quotes prices the network fee, Plan the platform fee. Without
 // Quotes they carry none.
@@ -104,9 +107,14 @@ func (s *Service) QuoteFees(ctx context.Context, profileID string, r Request) (s
 	if err != nil {
 		return "", nil, err
 	}
+	// The profile's own switches, as a create keeps them (R-136); a store's may turn off more.
+	off, err := profile.TokensOff(ctx, tx, profileID, "")
+	if err != nil {
+		return "", nil, err
+	}
 	quotes := []OptionQuote{}
 	for _, o := range options {
-		if o.live != live {
+		if o.live != live || slices.Contains(off, profile.TokenPair{ChainID: o.chainID, Token: o.token}) {
 			continue
 		}
 		q := OptionQuote{ChainID: o.chainID, Token: o.token, Decimals: o.decimals, Price: o.amount}

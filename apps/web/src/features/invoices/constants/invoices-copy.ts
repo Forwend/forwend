@@ -691,6 +691,7 @@ export const FEES_FORM_COPY = {
   clientPays: "Add the network fee to what your client pays",
   subtotal: "Subtotal",
   networkFee: "Network fee",
+  fees: "Network and platform fees",
   clientTotal: "Your client pays",
   youReceive: "You receive",
   range: (low: string, high: string) => `${low} to ${high}, by network`,

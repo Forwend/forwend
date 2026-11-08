@@ -103,7 +103,9 @@ R-227, D-122; the full schema is in openapi.yaml.
   - The network fee is a receiver deploy and settle at the chain's current fee cap, twice over, rounded up to 0.01 USD.
   - ETH/USD prices it on Base and Arbitrum; Tempo's gas unit and Arc's native USDC are already dollars.
   - One quote serves a chain's new invoices for a minute (`settlement.QuoteAge`).
-  - The platform fee is `PLATFORM_FEE_BPS` of the price, within `PLATFORM_FEE_MIN_USD` and `PLATFORM_FEE_CAP_USD`; 0 at launch.
+  - A read that fails falls back on the chain's last quote for an hour (`settlement.QuoteStale`).
+  - A quote over 1.00 USD (`settlement.NetworkFeeMax`) is a lying RPC or feed and is refused.
+  - The platform fee is `PLATFORM_FEE_BPS` (0 to 500) of the price, within `PLATFORM_FEE_MIN_USD` and `PLATFORM_FEE_CAP_USD`; 0 at launch.
 - `feesPaidBy` is `owner` (deducted at settlement) or `client` (added on top of the price).
   - The profile's choice applies unless an invoice, checkout session or link says otherwise.
   - `PUT /v1/profiles/{profileId}/fees` takes `{"feesPaidBy": "owner"|"client"}`, with `billing.write`. `GET /v1/me` gives it.
@@ -111,6 +113,9 @@ R-227, D-122; the full schema is in openapi.yaml.
   - A retainer's later months keep its first invoice's choice.
 - Fees past a tenth of the amount, as `settle()` refuses them, make the create 422: the price is too small.
 - A chain whose fee can't be priced makes the create 503 `network_fee_unavailable`; the same request can try again.
+  - A payer-chooses invoice leaves out such a network, and one whose fees its price can't carry, as an unscanned one.
+  - It fails only when no network is left.
+- When each network adds its own fee on top, the client's invoice and reminder emails say the price plus the network fee.
 - `GET /v1/profiles/{profileId}/fees` takes a price as a create does (`chainId`, `token` and `amount`, or `amountUsd`).
   - It gives the profile's `feesPaidBy` and each option's `price`, `networkFee` and `platformFee`, so a form shows them.
   - The invoice gets its own quote when it is made.

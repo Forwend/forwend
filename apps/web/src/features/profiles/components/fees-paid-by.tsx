@@ -2,13 +2,11 @@
 
 import { ChoiceCard, TONES, useToast } from "@forwend/ui-web";
 import { UserRound, Wallet } from "lucide-react";
-import { FEES_PAID_BY } from "@/features/invoices/constants/invoices";
-import type { FeesPaidBy } from "@/features/invoices/types/invoices";
 import { useSaveProfileFeesMutation } from "@/features/profiles/api/profiles-api";
-import { PERMISSIONS } from "@/features/profiles/constants/profile";
+import { FEES_PAID_BY, PERMISSIONS } from "@/features/profiles/constants/profile";
 import { FEES_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
 import { can } from "@/features/profiles/lib/profile";
-import type { Profile } from "@/features/profiles/types/profile";
+import type { FeesPaidBy, Profile } from "@/features/profiles/types/profile";
 import { SplitSection } from "@/shared/components/split-section";
 
 /** D-122, R-227: who pays the profile's new invoices' fees unless an invoice or link says otherwise. */

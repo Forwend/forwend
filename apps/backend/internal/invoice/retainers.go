@@ -1,6 +1,7 @@
 package invoice
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -126,10 +127,13 @@ func (s *Service) MakeRetainerInvoices(ctx context.Context) error {
 		n                 int
 		due               time.Time
 		remindersStopped  bool
+		feesPaidBy        string // the first month's (D-122)
 	}
 	rows, err := s.pool.Query(ctx, `SELECT r.id, r.profile_id, r.request, c.n, c.due,
 		    EXISTS (SELECT 1 FROM retainer_invoices x JOIN invoice_reminders ir ON ir.invoice_id = x.invoice_id
-		            WHERE x.retainer_id = r.id AND ir.stopped_at IS NOT NULL)
+		            WHERE x.retainer_id = r.id AND ir.stopped_at IS NOT NULL),
+		    coalesce((SELECT i.fees_paid_by FROM retainer_invoices x JOIN invoices i ON i.id = x.invoice_id
+		              WHERE x.retainer_id = r.id ORDER BY x.cycle LIMIT 1), '')
 		FROM retainers r `+nextMonthSQL("$1::date")+`
 		WHERE r.stopped_at IS NULL AND c.due - $2::int <= $1::date AND (r.end_date IS NULL OR c.due <= r.end_date)`,
 		s.currentTime().UTC().Format(time.DateOnly), RetainerLead)
@@ -138,7 +142,7 @@ func (s *Service) MakeRetainerInvoices(ctx context.Context) error {
 	}
 	months, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (month, error) {
 		var m month
-		return m, row.Scan(&m.retainer, &m.profile, &m.request, &m.n, &m.due, &m.remindersStopped)
+		return m, row.Scan(&m.retainer, &m.profile, &m.request, &m.n, &m.due, &m.remindersStopped, &m.feesPaidBy)
 	})
 	if err != nil {
 		return fmt.Errorf("read due retainers: %w", err)
@@ -152,6 +156,8 @@ func (s *Service) MakeRetainerInvoices(ctx context.Context) error {
 		}
 		// A Revise belongs only to the first month, including templates saved with that action.
 		r.Replaces = ""
+		// A retainer saved before who pays the fees was in its request keeps its first month's.
+		r.FeesPaidBy = cmp.Or(r.FeesPaidBy, m.feesPaidBy)
 		// D-80: the checkout stays open to the end of the 60th day after the due date, in whole seconds rounded up.
 		seconds := int64((m.due.AddDate(0, 0, DueGraceDays+1).Sub(s.currentTime()) + time.Second - 1) / time.Second)
 		r.DueDate, r.ExpiresInSeconds = m.due.Format(time.DateOnly), &seconds

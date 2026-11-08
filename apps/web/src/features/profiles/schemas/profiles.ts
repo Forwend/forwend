@@ -1,6 +1,5 @@
 import { z } from "zod";
-import { FEES_PAID_BY } from "@/features/invoices/constants/invoices";
-import { PROFILE_KINDS, ROLES } from "@/features/profiles/constants/profile";
+import { FEES_PAID_BY, PROFILE_KINDS, ROLES } from "@/features/profiles/constants/profile";
 import { apiTime, count, evmAddress } from "@/shared/schemas/api";
 
 /** One profile as the API returns it (apps/backend/api/openapi.yaml, Profile). */

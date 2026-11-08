@@ -70,6 +70,7 @@ export function LinkFormScreen({ linkId }: LinkFormScreenProps) {
           profileId={profile.profileId}
           link={link}
           stores={stores.currentData ?? []}
+          feesPaidBy={profile.feesPaidBy}
         />
       ) : (
         <div className="flex flex-col items-start gap-3 text-sm text-muted">

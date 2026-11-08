@@ -375,14 +375,14 @@ func (r *reader) chainIDs(name string) []uint64 {
 	return ids
 }
 
-// fees reads the platform fee plan. The contract takes at most a tenth of the amount in fees, so a rate is at most
-// 1000 basis points.
+// fees reads the platform fee plan. The contract takes at most a tenth of the amount in fees, network fee included, so
+// a rate is at most 500 basis points.
 func (r *reader) fees() Fees {
 	var f Fees
 	if raw := os.Getenv("PLATFORM_FEE_BPS"); raw != "" {
 		v, err := strconv.ParseInt(raw, 10, 64)
-		if err != nil || v < 0 || v > 1000 {
-			r.invalid = append(r.invalid, "PLATFORM_FEE_BPS (basis points from 0 to 1000, such as 50 for 0.5%)")
+		if err != nil || v < 0 || v > 500 {
+			r.invalid = append(r.invalid, "PLATFORM_FEE_BPS (basis points from 0 to 500, such as 50 for 0.5%)")
 		}
 		f.RateBps = v
 	}
@@ -399,6 +399,9 @@ func (r *reader) fees() Fees {
 		return v
 	}
 	f.MinUSD, f.CapUSD = usd("PLATFORM_FEE_MIN_USD"), usd("PLATFORM_FEE_CAP_USD")
+	if f.MinUSD != nil && f.CapUSD != nil && f.MinUSD.Cmp(f.CapUSD) > 0 {
+		r.invalid = append(r.invalid, "PLATFORM_FEE_MIN_USD (at most PLATFORM_FEE_CAP_USD)")
+	}
 	return f
 }
 

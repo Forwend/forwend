@@ -16,13 +16,19 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/ledger/ledgertest"
 )
 
-// quote is a chain's network fee in USD, or err for a chain that can't be priced.
+// quote is a chain's network fee in USD, or err for a chain that can't be priced: every chain, or failing alone.
 type quote struct {
-	usd *big.Rat
-	err error
+	usd     *big.Rat
+	err     error
+	failing uint64
 }
 
-func (q *quote) NetworkFee(context.Context, uint64) (*big.Rat, error) { return q.usd, q.err }
+func (q *quote) NetworkFee(_ context.Context, chainID uint64) (*big.Rat, error) {
+	if chainID == q.failing {
+		return nil, errors.New("rpc down")
+	}
+	return q.usd, q.err
+}
 
 // R-227: a new invoice's network fee is in its terms. The owner pays it by default, deducted at settlement; the
 // client pays it on top when the invoice or the profile says so.
@@ -90,7 +96,7 @@ func TestInvoicesCarryTheirNetworkFee(t *testing.T) {
 	// settle() takes at most a tenth of the amount in fees: an invoice past it is refused, never made.
 	q.usd = big.NewRat(11, 100)
 	if r := e.post(t, alice, e.aliceProfile, "fee-5", `{"chainId": 84532, "token": "`+usdc+`", "amount": "1000000",
-		"feesPaidBy": "owner"}`); r.status != http.StatusUnprocessableEntity || !strings.Contains(fmt.Sprint(r.body["error"]), "network fee") {
+		"feesPaidBy": "owner"}`); r.status != http.StatusUnprocessableEntity || !strings.Contains(fmt.Sprint(r.body["error"]), "too small for its fees") {
 		t.Fatalf("fees over a tenth: %d %v, want 422", r.status, r.body)
 	}
 	q.usd, q.err = nil, errors.New("rpc down")
@@ -152,5 +158,26 @@ func TestAPaymentLinkChoosesWhoPaysTheFees(t *testing.T) {
 	}
 	if after := e.call(t, "GET", "/v1/links/"+made.body["slug"].(string), "", "", "").body["version"]; after == before {
 		t.Fatalf("who pays changed, the link's version stayed %v", after)
+	}
+}
+
+// R-227: a payer-chooses invoice leaves out a network it can't price now, as one not scanned yet; a fixed invoice on
+// it has no other to offer, so it waits for the quote.
+func TestAChainThatCantBePricedLeavesThePayerTheOthers(t *testing.T) {
+	e := invoiceAPIPriced(t, 0, webhookKey, nil, invoice.Pricing{Quotes: &quote{usd: big.NewRat(5, 100), failing: 421614}})
+	const alice, arbitrum = "did:privy:alice", "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d"
+	e.exec(t, `WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (421614, 'evm', 'arbitrum-sepolia', true)
+		    ON CONFLICT (chain_id) DO UPDATE SET enabled = true RETURNING chain_id),
+		  cur AS (INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block) SELECT chain_id, 0, 0 FROM c)
+		INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled) VALUES (421614, 'evm', $1, 'USDC', 6, true)
+		ON CONFLICT (chain_id, contract) DO UPDATE SET enabled = true`, arbitrum)
+	made := e.post(t, alice, e.aliceProfile, "fee-1", `{"amountUsd": "5"}`)
+	options, _ := made.body["options"].([]any)
+	if made.status != http.StatusCreated || len(options) != 1 || options[0].(map[string]any)["chainId"] != float64(84532) {
+		t.Fatalf("payer chooses: %d %v, want Base Sepolia alone", made.status, made.body["options"])
+	}
+	if r := e.post(t, alice, e.aliceProfile, "fee-2", `{"chainId": 421614, "token": "`+arbitrum+`", "amount": "5000000"}`); r.status != http.StatusServiceUnavailable ||
+		errorCode(r) != "network_fee_unavailable" {
+		t.Fatalf("fixed on the chain that can't be priced: %d %v, want 503", r.status, r.body)
 	}
 }

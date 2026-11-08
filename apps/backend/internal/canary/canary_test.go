@@ -46,6 +46,13 @@ func lineOf(pay string) string {
 		expiresAt, deadline, pay, expiresAt)
 }
 
+// withFees is line with its network_fee and platform_fee fields set.
+func withFees(line, network, platform string) string {
+	f := strings.Fields(line)
+	f[11], f[12] = network, platform
+	return strings.Join(f, " ")
+}
+
 // withClose is line with its closes_at field set to at.
 func withClose[T int | int64 | uint64](line string, at T) string {
 	f := strings.Fields(line)
@@ -151,7 +158,9 @@ func TestCheckRejectsMalformedInput(t *testing.T) {
 		strings.Replace(line, amount, "0", 1), strings.Replace(line, fmt.Sprint(deadline), fmt.Sprint(deadline+1), 1),
 		strings.Replace(line, fmt.Sprint(deadline), fmt.Sprint(expiresAt+2*86400), 1),
 		strings.Replace(line, recipient, "0x0000000000000000000000000000000000000000", 1),
-		strings.Replace(line, recipient, token, 1)} {
+		strings.Replace(line, recipient, token, 1),
+		// R-226: fees over a tenth of the amount, which settle() refuses.
+		withFees(line, "200000", "50001")} {
 		alerts := canary.Check(context.Background(), config.Canary{AllowLoopback: true}, []string{bad})
 		if len(alerts) != 1 || !strings.Contains(alerts[0], "input line") {
 			t.Errorf("%q: got alerts %q", bad, alerts)
@@ -159,12 +168,17 @@ func TestCheckRejectsMalformedInput(t *testing.T) {
 	}
 	// D-18: invoices made before the 7-day window settle 1 day after expiry; both are create's rules.
 	week := strings.Replace(line, fmt.Sprint(deadline), fmt.Sprint(expiresAt+7*86400), 1)
-	for _, good := range []string{week, closing(deadline - 1), closing(expiresAt - 1)} {
+	for _, good := range []string{week, closing(deadline - 1), closing(expiresAt - 1), withFees(line, "200000", "50000")} {
 		for _, alert := range canary.Check(context.Background(), config.Canary{AllowLoopback: true}, []string{good}) {
 			if strings.Contains(alert, "input line") {
 				t.Errorf("%q: %q", good, alert)
 			}
 		}
+	}
+	// A factory whose terms have no fees can't have made terms with them.
+	alerts := canary.Check(context.Background(), config.Canary{AllowLoopback: true}, []string{withFees(line, "1", "0")})
+	if !slices.ContainsFunc(alerts, func(a string) bool { return strings.Contains(a, "factory's terms have none") }) {
+		t.Errorf("fees on a factory without them: %q", alerts)
 	}
 }
 

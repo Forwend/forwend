@@ -1,5 +1,4 @@
 import { z } from "zod";
-import type { FeesPaidBy } from "@/features/invoices/types/invoices";
 import {
   billingDetailsBodySchema,
   billingDetailsSchema,
@@ -13,7 +12,7 @@ import {
 } from "@/features/profiles/schemas/profiles";
 import type { BillingDetails, BillingDetailsBody } from "@/features/profiles/types/billing-details";
 import type { Notifications } from "@/features/profiles/types/notifications";
-import type { Me, Profile, ProfileKind } from "@/features/profiles/types/profile";
+import type { FeesPaidBy, Me, Profile, ProfileKind } from "@/features/profiles/types/profile";
 import type { TokenRef, TokenSwitch } from "@/features/profiles/types/tokens";
 import { apiSlice } from "@/shared/api/api-slice";
 

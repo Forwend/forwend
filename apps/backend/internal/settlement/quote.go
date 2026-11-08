@@ -15,8 +15,15 @@ import (
 // so gas may cost this many times more before the executor pays more than it is paid (R-227).
 const NetworkFeeMargin = 2
 
-// QuoteAge is how long one chain's quote serves its new invoices.
-const QuoteAge = time.Minute
+// QuoteAge is how long one chain's quote serves its new invoices. A read that fails then falls back on the last good
+// quote while it is younger than QuoteStale, so one slow RPC doesn't stop invoices.
+const (
+	QuoteAge   = time.Minute
+	QuoteStale = time.Hour
+)
+
+// NetworkFeeMax bounds a quote: real ones are cents, so more is a lying RPC or price feed, never put in terms (D-122).
+var NetworkFeeMax = big.NewRat(1, 1)
 
 // Quotes prices one receiver deploy and settle on each chain in USD, for the network fee in an invoice's terms (D-122).
 type Quotes struct {
@@ -43,6 +50,20 @@ func (q *Quotes) NetworkFee(ctx context.Context, chainID uint64) (*big.Rat, erro
 	if ok && time.Since(kept.at) < QuoteAge {
 		return kept.usd, nil
 	}
+	usd, err := q.read(ctx, chainID)
+	if err != nil {
+		if ok && time.Since(kept.at) < QuoteStale {
+			return kept.usd, nil
+		}
+		return nil, err
+	}
+	q.mu.Lock()
+	q.kept[chainID] = quote{usd: usd, at: time.Now()}
+	q.mu.Unlock()
+	return usd, nil
+}
+
+func (q *Quotes) read(ctx context.Context, chainID uint64) (*big.Rat, error) {
 	client, err := q.client(chainID)
 	if err != nil {
 		return nil, err
@@ -68,9 +89,10 @@ func (q *Quotes) NetworkFee(ctx context.Context, chainID uint64) (*big.Rat, erro
 		cost.Mul(cost, new(big.Rat).SetFrac(price, new(big.Int).Exp(big.NewInt(10), big.NewInt(chain.EthUSDDecimals), nil)))
 	}
 	usd := CeilCents(cost)
-	q.mu.Lock()
-	q.kept[chainID] = quote{usd: usd, at: time.Now()}
-	q.mu.Unlock()
+	if usd.Cmp(NetworkFeeMax) > 0 {
+		return nil, fmt.Errorf("quote chain %d network fee: %s USD is over the %s USD a settlement can cost", chainID,
+			usd.FloatString(2), NetworkFeeMax.FloatString(2))
+	}
 	return usd, nil
 }
 

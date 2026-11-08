@@ -149,6 +149,9 @@ func checkFactory(ctx context.Context, c config.Canary, cl *rpc.Client, chainID 
 }
 
 func checkInvoice(ctx context.Context, c config.Canary, rpcs map[uint64][2]*rpc.Client, t terms, page payPage) error {
+	if !c.FactoryFees && (t.NetworkFee != "0" || t.PlatformFee != "0") {
+		return errors.New("the terms carry fees, but the factory's terms have none")
+	}
 	api, err := readAPI(ctx, c.APIURL+"/v1/invoices/"+t.PayToken)
 	if err != nil {
 		return fmt.Errorf("api: %w", err)
@@ -172,9 +175,6 @@ func checkInvoice(ctx context.Context, c config.Canary, rpcs map[uint64][2]*rpc.
 	}
 	if err := sameTerms(c, t, api); err != nil {
 		return err
-	}
-	if !c.FactoryFees && (t.NetworkFee != "0" || t.PlatformFee != "0") {
-		return errors.New("the terms carry fees, but the factory's terms have none")
 	}
 	pair, ok := rpcs[t.ChainID]
 	if !ok {

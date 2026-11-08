@@ -42,7 +42,6 @@ import {
   AMOUNT_ERRORS,
   CUSTOM_EXPIRY,
   EXPIRY_CHOICES,
-  FEES_PAID_BY,
   INVOICE_FIELDS,
   INVOICE_LIMITS,
   INVOICE_STEP_IDS,
@@ -81,7 +80,6 @@ import type {
   CreateInvoiceBody,
   ExpiryChoice,
   FeeQuote,
-  FeesPaidBy,
   Invoice,
   InvoiceField,
   InvoiceStart,
@@ -90,6 +88,8 @@ import type {
   LineError,
   PayWith,
 } from "@/features/invoices/types/invoices";
+import { FEES_PAID_BY } from "@/features/profiles/constants/profile";
+import type { FeesPaidBy } from "@/features/profiles/types/profile";
 import { allowsReturnLink, returnLinkOrigins } from "@/features/stores/lib/stores";
 import type { Store } from "@/features/stores/types/stores";
 import { AssetIcon } from "@/shared/components/chains/asset-icon";
@@ -161,7 +161,9 @@ export function NewInvoiceForm({
   feesPaidBy = FEES_PAID_BY.owner,
 }: NewInvoiceFormProps) {
   const COPY = request ? NEW_REQUEST_COPY : NEW_INVOICE_COPY;
-  const [clientPays, setClientPays] = useState(feesPaidBy === FEES_PAID_BY.client);
+  const [clientPays, setClientPays] = useState(
+    (start?.feesPaidBy ?? feesPaidBy) === FEES_PAID_BY.client,
+  );
   const [quote, setQuote] = useState<FeeQuote>();
   const [createInvoice] = useCreateInvoiceMutation();
   const router = useRouter();

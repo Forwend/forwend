@@ -3,6 +3,7 @@
 import {
   ChoiceCard,
   DatePicker,
+  formatTokenAmount,
   SelectField,
   SwitchCard,
   TextField,
@@ -13,8 +14,8 @@ import { PencilLine, Power, Repeat, Tag } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { FEES_PAID_BY } from "@/features/invoices/constants/invoices";
-import { formatDueDate } from "@/features/invoices/lib/invoices";
+import { FeeSummary } from "@/features/invoices/components/fee-summary";
+import { formatDueDate, parseTokenAmount } from "@/features/invoices/lib/invoices";
 import { useSaveLinkMutation } from "@/features/links/api/links-api";
 import {
   AMOUNT_KINDS,
@@ -31,17 +32,23 @@ import type {
   Link as PaymentLink,
 } from "@/features/links/types/links";
 import { Payee } from "@/features/pay/components/payee";
+import { FEES_PAID_BY } from "@/features/profiles/constants/profile";
+import type { FeesPaidBy } from "@/features/profiles/types/profile";
 import type { Store } from "@/features/stores/types/stores";
 import { CopyValue } from "@/shared/components/copy-value";
 import { FieldGroup } from "@/shared/components/field-group";
 import { FormPreview, StepForm, useFormSteps } from "@/shared/components/step-form";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { exactDigits } from "@/shared/lib/money";
 
 export interface LinkFormProps {
   profileId: string;
   link?: PaymentLink;
   /** A merchant's stores the user reaches; empty for a freelancer. */
   stores: readonly Store[];
+  /** D-122: who pays the fees unless the link says otherwise, the profile's choice. */
+  feesPaidBy?: FeesPaidBy;
 }
 
 const STEPS = { link: "link", amount: "amount", limits: "limits" } as const;
@@ -53,11 +60,16 @@ const FIELD_STEPS: Record<LinkField, string> = {
   maxPayments: STEPS.limits,
 };
 
-// The select's value for no choice of the link's own: a select item can't have an empty value.
-const PROFILE_CHOICE = "profile";
+// A link's price is USD, which the stablecoins hold with 6 decimals (USDC, OUSD); the quote is in their units.
+const PRICE_DECIMALS = 6;
 
 // R-140: a new link's id is made once, so a retried save after an error makes one link.
-export function LinkForm({ profileId, link, stores }: LinkFormProps) {
+export function LinkForm({
+  profileId,
+  link,
+  stores,
+  feesPaidBy = FEES_PAID_BY.owner,
+}: LinkFormProps) {
   const [save] = useSaveLinkMutation();
   const toast = useToast();
   const router = useRouter();
@@ -68,7 +80,9 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
   const [store, setStore] = useState(link?.storeId ?? stores[0]?.storeId ?? "");
   const [endsAt, setEndsAt] = useState<string | null>(link?.endsAt ?? null);
   const [active, setActive] = useState(link?.active ?? true);
-  const [feesPaidBy, setFeesPaidBy] = useState<string>(link?.feesPaidBy ?? PROFILE_CHOICE);
+  const [clientPays, setClientPays] = useState(
+    (link?.feesPaidBy ?? feesPaidBy) === FEES_PAID_BY.client,
+  );
   // Off, the link takes one payment: a cap of 1.
   const [reusable, setReusable] = useState(link?.maxPayments !== 1);
   const [errors, setErrors] = useState<Partial<Record<LinkField, string>>>({});
@@ -113,8 +127,7 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
       endsAt,
       maxPayments: !reusable ? 1 : cap ? Number(cap) : null,
       active,
-      feesPaidBy:
-        feesPaidBy === FEES_PAID_BY.owner || feesPaidBy === FEES_PAID_BY.client ? feesPaidBy : null,
+      feesPaidBy: clientPays ? FEES_PAID_BY.client : FEES_PAID_BY.owner,
     };
   };
   // Every problem the form has now, whichever step holds it.
@@ -346,17 +359,26 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
               </p>
             </div>
           )}
-          {/* D-122: the profile's choice unless the link makes its own. */}
-          <SelectField
-            label={COPY.feesPaidBy}
-            value={feesPaidBy}
-            onValueChange={setFeesPaidBy}
-            hint={COPY.feesHint}
-            options={[
-              { value: PROFILE_CHOICE, label: COPY.feesDefault },
-              { value: FEES_PAID_BY.owner, label: COPY.feesOwner },
-              { value: FEES_PAID_BY.client, label: COPY.feesClient },
-            ]}
+          {/* R-227: an open link's payer chooses the price, so it shows the fee alone; the lowest price prices it. */}
+          <FeeSummary
+            profileId={profileId}
+            any
+            chainId={0}
+            token=""
+            units={(() => {
+              const units = parseTokenAmount(
+                (kind === AMOUNT_KINDS.fixed ? typed.amountUsd : typed.minUsd) || "1",
+                PRICE_DECIMALS,
+              );
+              return typeof units === "string" ? 0n : units;
+            })()}
+            decimals={PRICE_DECIMALS}
+            clientPays={clientPays}
+            onClientPays={setClientPays}
+            money={(units) =>
+              `${formatTokenAmount({ baseUnits: units, decimals: PRICE_DECIMALS, fractionDigits: Math.max(2, exactDigits(units, PRICE_DECIMALS)) })} ${MONEY_COPY.usd}`
+            }
+            feeOnly={kind === AMOUNT_KINDS.open}
           />
         </FieldGroup>
       </div>

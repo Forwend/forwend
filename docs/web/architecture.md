@@ -133,7 +133,8 @@ features own product behavior, and shared UI components are grouped by purpose. 
 - Two more edges lead to stores: invoices → stores and pay → stores.
   - invoices: the store a merchant invoice records, its return-link origins and the brand's schema (R-134, R-135).
   - pay: the logo's address (R-135).
-- invoices → profiles and stores → profiles: the token switches and their types (R-136).
+- invoices → profiles and stores → profiles: the token switches and their types (R-136), and who pays the fees (D-122).
+- links → profiles: who pays a link's fees, the profile's choice unless the link makes its own (D-122).
 - Team (R-139) leads to profiles (roles, permissions and the profile list) and to stores (the store names it offers).
 - API keys (R-145) lead to profiles (the permission names its scopes reuse) and to stores (a merchant key's store).
 - Links (R-140) lead to stores: a merchant's link names one of its stores, and the payer's read has its brand (R-142).

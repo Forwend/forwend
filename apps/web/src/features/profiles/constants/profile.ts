@@ -64,3 +64,7 @@ export const PROFILE_NAME_MAX = 64;
 
 /** The most profiles one user can own (profile.MaxProfiles). */
 export const PROFILES_MAX = 10;
+
+/** Who pays an invoice's fees (D-122): the owner, deducted at settlement, or the client, on top of the price. The
+ * profile chooses for its invoices unless one chooses otherwise. */
+export const FEES_PAID_BY = { owner: "owner", client: "client" } as const;

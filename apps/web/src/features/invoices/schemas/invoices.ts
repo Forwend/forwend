@@ -7,7 +7,6 @@ import type {
 import { clientBodySchema } from "@/features/clients/schemas/clients";
 import {
   DOCUMENT_KINDS,
-  FEES_PAID_BY,
   PAY_TOKEN_PATTERN,
   PAYMENT_PURPOSES,
   RECONCILIATION_STATES,
@@ -21,6 +20,7 @@ import type {
   OwedKind,
   ReminderStep,
 } from "@/features/invoices/types/invoices";
+import { FEES_PAID_BY } from "@/features/profiles/constants/profile";
 import { storeBrandSchema } from "@/features/stores/schemas/stores";
 import {
   apiDate,

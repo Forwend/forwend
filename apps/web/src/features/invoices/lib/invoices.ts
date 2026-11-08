@@ -7,7 +7,6 @@ import {
   DUE_GRACE_DAYS,
   EXPIRY_BOUNDS_S,
   EXPIRY_CHOICES,
-  FEES_PAID_BY,
   INVOICE_EXCEPTIONS,
   INVOICE_FIELDS,
   INVOICE_TIMELINE,
@@ -38,6 +37,7 @@ import type {
   OptionFees,
   Owed,
 } from "@/features/invoices/types/invoices";
+import { FEES_PAID_BY } from "@/features/profiles/constants/profile";
 import type { TokenRef } from "@/features/profiles/types/tokens";
 import { API_BASE } from "@/shared/config/api";
 import { APP_ROUTES } from "@/shared/config/routes";
@@ -303,7 +303,13 @@ export function feeFigures(
   quote: FeeQuote | undefined,
   decimals: number,
   clientPays: boolean,
-): { fee: [bigint, bigint]; pays: [bigint, bigint]; receives: [bigint, bigint] } | null {
+): {
+  fee: [bigint, bigint];
+  pays: [bigint, bigint];
+  receives: [bigint, bigint];
+  /** A platform fee is part of fee. */
+  platform: boolean;
+} | null {
   const options = quote?.options.filter((o) => o.decimals === decimals) ?? [];
   const first = options[0];
   if (!first) return null;
@@ -318,6 +324,7 @@ export function feeFigures(
     fee: [low, high],
     pays: clientPays ? [price + low, price + high] : [price, price],
     receives: clientPays ? [price, price] : [price - high, price - low],
+    platform: options.some((o) => BigInt(o.platformFee) > 0n),
   };
 }
 
@@ -391,7 +398,10 @@ export function restartFrom(
 ): InvoiceStart {
   const decimals = inv.options.find((o) => o.optionId === inv.optionId)?.decimals ?? 0;
   const { received, left } = invoiceException(inv, PAYMENT_STATUS.expiredPartiallyPaid);
-  const units = rest ? left : BigInt(inv.amount);
+  // The price, without the fees a client paid on top: the new invoice adds its own (R-227).
+  const fees = optionFees(inv);
+  const onTop = fees.clientPays ? fees.total : 0n;
+  const units = rest ? (left > onTop ? left - onTop : 0n) : BigInt(inv.amount) - onTop;
   // Lines are in the base units of the invoice's own option (R-88).
   const lineDecimals = inv.options.find((o) => o.optionId === inv.invoiceId)?.decimals ?? decimals;
   return {
@@ -408,6 +418,7 @@ export function restartFrom(
         })),
     title: inv.title ?? "",
     note: inv.note ?? "",
+    feesPaidBy: inv.feesPaidBy ?? FEES_PAID_BY.owner,
     returnUrl: inv.returnUrl ?? "",
     reference: inv.reference ?? "",
     // The price agreed for the whole amount (R-93): it does not describe the rest.

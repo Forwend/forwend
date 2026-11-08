@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { FEES_PAID_BY, PAY_TOKEN_PATTERN } from "@/features/invoices/constants/invoices";
+import { PAY_TOKEN_PATTERN } from "@/features/invoices/constants/invoices";
 import { LINK_SLUG_PATTERN, LINK_STATES } from "@/features/links/constants/links";
+import { FEES_PAID_BY } from "@/features/profiles/constants/profile";
 import { storeBrandSchema } from "@/features/stores/schemas/stores";
 import { apiTime, count, usdAmount } from "@/shared/schemas/api";
 

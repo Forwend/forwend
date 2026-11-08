@@ -383,11 +383,15 @@ function Summary({
         <p className={`text-sm text-muted ${picking ? "invisible" : ""}`}>
           {COPY.on(chainName(invoice.chainId))}
         </p>
+        {/* Every token is worth 1 USD (D-75): the options' fees differ when their dollars do. */}
         {picking &&
-        invoice.options.some((o) => {
-          const f = optionFees(o);
-          return f.clientPays && f.total > 0n;
-        }) ? (
+        new Set(
+          invoice.options.map((o) => {
+            const f = optionFees(o);
+            // In 18 decimals, so options in tokens of other decimals compare.
+            return f.clientPays ? f.total * 10n ** BigInt(18 - o.decimals) : 0n;
+          }),
+        ).size > 1 ? (
           <p className="text-sm text-muted">{COPY.feeByNetwork}</p>
         ) : null}
         {fees.clientPays && fees.total > 0n && !picking && !partial ? (
