@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 439,
+  "nextId": 440,
   "tasks": [
     {
       "id": "F332",
@@ -525,13 +525,12 @@
         "Web cross-check: every component that names a chain, token, explorer, price or test mode works for mainnets: onboarding, invoices, pay page and checkout, payments, links, keys, webhooks, balances, send, Privy chains and the content security policy.",
         "Packages cross-check: forwend, @forwend/js, @forwend/react and the example merchant work against live-mode invoices, and their READMEs no longer say every checkout is test mode.",
         "Landing and docs lead with mainnets and real money; Developer mode is how to test (D-120).",
-        "Mainnet USDC on Base, Arbitrum and Arc and OUSD on Tempo are tokens, identified by chain and contract; the owner switches each chain on. Live keys (fw_live_) can be made once a live chain is on (R-144, D-95).",
-        "With the owner's yes for the spend, one owner invoice per chain pays, settles and reconciles to zero by hand, with livemode true; the run is recorded in docs/runs. A Developer-mode invoice still runs on testnet."
+        "Mainnet USDC on Base, Arbitrum and Arc and OUSD on Tempo are tokens, identified by chain and contract; the owner switches each chain on with ENABLE_MAINNETS. Keys made in live mode are fw_live_ (R-144, D-95)."
       ],
       "dependsOn": [
         "F437"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend",
         "unit",
@@ -550,6 +549,137 @@
         "D-95",
         "R-189",
         "R-220"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-11-08 review fail by reviewer: Blocking: (1) apps/web/src/shared/components/developer-mode-strip.tsx:3 imports @/features/profiles/constants/profiles-copy. docs/web/structure.md:178-179 says shared code never imports features. Its only user is the app shell; move it to screens/app-shell or features/profiles/components. (2) docs/backend/architecture.md:83 puts the ENABLE_MAINNETS bullet between ENABLE_TESTNET_USDC and its sub-bullets, so the doc now says ENABLE_MAINNETS defaults to 1 on Dokploy. Lines 216-218 do the same: the profiles.livemode bullet now holds the 'An operator can enable another pair' text and the ENABLE_TESTNET_USDC sub-bullets. (3) PROJECT R-144 still says a key's text is fw_test_, and D-95 says keys are test mode until a live chain exists. The code now makes fw_live_ keys whenever the profile is live, even with no live chain on (developer_mode_test.go makes one so). Accept 6 says once a live chain is on. Update R-144 and D-95, or refuse live mode without a live chain. Non-blocking: (a) chain/mainnets.go:20 is not atomic: ENABLE_MAINNETS=8453,84532 switches Base on, then stops the API. Run it in a transaction. (b) profiles-copy.ts:94: the R-80 comment now heads DEVELOPER_MODE_COPY, and NOTIFICATIONS_COPY lost it. (c) Webhook Delete, Secrets, Rotate, Deliveries, Resend and SendTest, key Roll and Revoke, and sends by id are not mode-scoped. Only Save and the lists are. (d) Email links (notify.go:254-257) and job payment links to an invoice or payment of the other mode now show not found, with no hint to switch mode. A USD invoice-sent email in test mode says no test mode. (e) The statement PDF (document/statement.go:37 passes false) in test mode lists only testnet income without the Test mode mark. (f) The Developer mode page turns live mode on with no live chain on, as on staging; new invoices then fail with 422. (g) saveProfileMode force-refetches every cached query of every profile at once. RTK 2.13 handles infinite queries, so it works; profile-scoped tag invalidation is lighter. (h) architecture.md:216 says the mainnet tokens are switched off; migration 106 enables them, only the chains are off. Checked and passing: the profile_mode_default trigger and Up/Down; existing profiles start in test mode. Tempo trigger and backfill for 4217. Store saves keep the other mode's store_tokens_off rows, because store-form.tsx:111 resends the hidden ones. Only mid/auth.go:88 reads Access.Livemode, and not as a key check. Payments, movements, CSV, reconciliation, attention, owed, events, activity, transfers, exports, balances, history, sends, links and checkout sessions filter by mode. openapi matches putMode. CSP gets arc-rpc.publicnode.com. Narrow Go tests (DeveloperMode, NewProfilesStartLive, KeyMode, PaymentLinks, InvoiceMode, EnableMainnets, FeeCeiling, PendingParts, Tempo, config), vitest for profiles-api and app-nav, tsc and check-docs pass.",
+        "2026-11-08 review pass by reviewer: Re-review: no blocking findings. The 3 earlier blocking findings are fixed. (1) The Developer mode strip moved to screens/app-shell/developer-mode-strip.tsx; no shared file imports features now. (2) architecture.md: the ENABLE_TESTNET_USDC sub-bullets are back under it, and ENABLE_MAINNETS is its own bullet, all or none. The profiles.livemode bullet follows the operator text. (3) R-144 says fw_test_ in Developer mode or fw_live_ in live mode. D-95 says a key takes its profile's mode. Accept 6 matches. Earlier non-blocking (a) is fixed: EnableMainnets runs in one transaction, and TestEnableMainnets checks that a refused list leaves Arbitrum off. (b) is fixed: R-80 heads NOTIFICATIONS_COPY again, and R-221 heads DEVELOPER_MODE_COPY. Still open, as owner follow-ups: (c) webhook Delete, Secrets, Rotate, Deliveries, Resend and SendTest, key Roll and Revoke, and sends by id are not mode-scoped. (d) Email and job links to the other mode's invoice or payment show not found. A USD invoice-sent email in test mode says no test mode. (e) The statement PDF has no Test mode mark in test mode. (f) Live mode can be turned on with no mainnet on. (g) saveProfileMode force-refetches every cached query. New nits: architecture.md:217, the 'Migrations 105 and 106' sub-bullet now sits before the 'An operator can enable another pair' text, so Markdown joins that text into the sub-bullet. Put the sub-bullet after the paragraph. The R-144 title still says keys for test mode. Checks: go test ./internal/chain -run EnableMainnets passes. tsc, vitest for app-shell and profiles (11 tests) and check-docs pass.",
+        "2026-11-08 review fail by reviewer: Blocking: (1) internal/webhook/endpoints.go:191 adds the profile-mode filter (e.ofProfileMode) to secrets(). The delivery worker also calls secrets(): deliver.go:80 calls s.secrets(ctx, s.pool, d.profileID, d.endpointID). Once the profile's mode differs from an endpoint's mode, that endpoint gets no secrets. sign() (client.go:47-57) then sends an empty webhook-signature header. Example: an Admin turns Developer mode on to test. Every live endpoint then gets unsigned invoice.paid deliveries, which receivers reject. The failures then retry, and can turn the endpoint off (deliver.go:200). Keep the mode filter on the dashboard paths only: Secrets and Rotate. Let the worker read secrets by endpoint id. Add a test that delivers to a live endpoint while the profile is in Developer mode, and checks the signature. Fixed since the last review: (c) webhook Delete, Secrets, Rotate, Deliveries, Resend, ResendFailed and SendTest, and key Roll and Revoke, now check the profile's mode. Only secrets() is shared with a background path. Sends by id stay unscoped, as api.md says. (d) Test-mode invoice-sent and reminder emails carry the TestMode line. The invoice and payment pages show OtherModeHint through a notFound slot. (e) The statement PDF draws the Testnet band in Developer mode. (f) PUT /mode with livemode true is 422 while no mainnet is on. The architecture.md nit and the R-144 title are fixed. Earlier fixes still hold: the strip in screens/app-shell, the architecture.md bullets, R-144/D-95/accept 6, the EnableMainnets transaction, the R-80 comment. Still open: (g) saveProfileMode force-refetches every cached query. New non-blocking: other-mode-hint.tsx shows noLive for any failed switch to live mode, network errors included. Checks: Go tests pass for DeveloperMode, NewProfilesStartLive, KeyMode, and packages notify, document, webhook and profile. tsc passes, vitest passes (profiles, invoices, payments, screens: 110 tests), and check-docs passes. No current test catches (1).",
+        "2026-11-08 review pass by reviewer: Re-review: no blocking findings. The last blocking finding is fixed. secrets() no longer filters by mode, so the delivery worker (deliver.go:80) signs with every endpoint's secrets. Rotate's read in its transaction does too. The dashboard's Secrets() calls owned() first, so it is still 404 from the other mode. Rotate checks the mode in its FOR UPDATE lock. TestDeliveriesStaySignedWhateverTheProfilesMode flips the mode, delivers, and checks the signature. ofProfileMode is now only on dashboard routes: Delete, owned (Deliveries, Resend-failed, Secrets), Resend, SendTest, Rotate, and key Roll and Revoke. Earlier fixes still hold. The strip is in screens/app-shell. The architecture.md bullets and the 105/106 sub-bullet are in place. R-144, D-95 and accept 6 match fw_live_. EnableMainnets runs in one transaction. The R-80 and R-221 comments are right. (c) by-id webhook and key actions check the mode; sends by id stay unscoped, as api.md says. (d) test-mode client emails say Test mode, and OtherModeHint shows on not-found invoice and payment pages. (e) the statement PDF has the Testnet band. (f) PUT /mode true is 422 with no mainnet on. The hint now shows noLive only on a 422. Open, non-blocking: (g) saveProfileMode force-refetches every cached query, a known follow-up. Checks: these Go tests pass: TestDeliveriesStaySigned, the webhook tests and TestDeveloperMode in httpapi/tests, and ./internal/webhook. tsc, vitest for profiles, and check-docs pass.",
+        "2026-11-08 review fail by reviewer: Blocking: (1) A job's invoices now take the profile's mode at the moment they are made, so one job can mix modes. invoice/create.go:165-174 gives a create with no key, link, Revise or retainer the profile's current mode. job/accept.go:56 and job/done.go:55 build the request with paymentRequest (job/accept.go:95), which sets no Livemode. Before this change a job invoice was always live once a live chain was on. Example: a freelancer sends a real job in live mode, then turns on Developer mode to test. The client accepts, and the deposit invoice is on a testnet. The client can pay it with free faucet tokens. job/read.go:62-65 and :134 then count it as paid, and the job pages show no mode, so the job reads paid with no real money. The reverse also happens: a job quoted to test the flow becomes live. R-221 says turning the mode changes no existing object's mode; retainers already keep theirs (followedMode). Fix: give a job the mode it was made in, pass it as the request's Livemode for every job invoice, and show or filter jobs by mode. Add a test: a job made in live mode, the profile switched to Developer mode, the client accepts, and the deposit is live. Non-blocking: (a) profile/notifications.go:24 holds SetLivemode; name a file for the operation (docs/backend/rules.md:99-100). (b) e2e/privy/developer-mode.spec.ts runs only in the live suite (playwright.config.ts:19 ignores privy/**), so pnpm e2e does not cover R-221 in the browser. (c) The receipt and owner paid emails of a test-mode invoice carry no Test mode line (notify.go:272-276). (d) saveProfileMode force-refetches every cached query (known). (e) first-run.tsx:105 takes the testnet flag from the personal profile, which can differ from a new profile's mode for a user made before D-120. Checked and fine: access mode filter in mid/auth.go, invoices, payments, links, checkout, activity, transfers, exports, balances, history, sends, keys, webhook routes and the delivery worker's secrets, PUT /mode (tokens.write, 422 with no mainnet), the profile_mode_default trigger, EnableMainnets in one transaction, fee ceilings with a test for every chain, Tempo fee token detection, PDFs and statement band, test-mode client emails, CHAINS, PAY_TOKENS, PRIVY_CHAINS, CSP, OtherModeHint, the strip in screens/app-shell, docs and package READMEs.",
+        "2026-11-08 review pass by reviewer: Re-review: no blocking findings. The job fix is complete. jobs.livemode (00107) takes the profile's mode in the create insert (job/create.go:117). Both paths that make a job invoice, Accept (accept.go:56) and MarkDone (done.go:55), build it with paymentRequest, which now passes the job's mode as Livemode (accept.go:100). AcceptChange and ProposeChange make no invoice. Create keeps a job's invoice to that mode and never falls back to the other one. With no enabled token of that mode, accept is a safe 422. The replay passes the same mode, so a retried accept or mark done answers the same invoice. Old jobs default to test mode, as their invoices are. The jobs list filters by the profile's mode (read.go:137). TestAJobsInvoicesKeepTheModeItWasQuotedIn fails without the fix and passes with it. Every other invoice.Create caller passes a mode or follows one: invoiceapi and checkoutapi pass access.Livemode, links pass the link's, retainers follow the first month. Receipts and owner paid emails carry the Test mode line. SetLivemode sits in profile/mode.go. Non-blocking: (a) docs/backend/architecture.md:297: the livemode sub-bullet sits before the jobs bullet's continuation lines 298-301, so Markdown joins 'It keeps the client's typed accepted_name' into it. Move it after line 301. (b) GET jobs/{jobId} (job/read.go:30) is not mode-scoped and carries no livemode. A job of the other mode opens by direct link and shows paid with no Test mode mark. The client's /w page says nothing about test mode before accept. Money is safe, because its invoices keep the job's mode. (c) link/save.go:101-106: the 'live when any live token' fallback is now unreachable, because access.Livemode is set for people too. The comment at invoice.go:114 names only key, link and job. (d) Only Accept has a mode test; MarkDone shares paymentRequest. Still open: saveProfileMode refetches every cached query, the privy e2e runs only in the live suite, and first-run.tsx:105. Checks: go test ./internal/job, ./internal/notify, ./internal/profile and httpapi/tests -run DeveloperMode|KeyMode|NewProfilesStartLive pass. go vet and check-docs pass."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-08T18:28:39Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.9,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 71.0,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.4,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 47.7,
+            "log": ""
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 62.5,
+            "log": ""
+          },
+          {
+            "id": "browser-packages",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.9,
+            "log": ""
+          }
+        ],
+        "taskHash": "fc2715236c39c41f",
+        "filesHash": "420902c9f397d90e",
+        "proof": {
+          "1": "backend: TestDeveloperModeIsTheProfilesMode (mode, live refused with no mainnet, by-id 404s for webhooks and keys), TestDeliveriesStaySignedWhateverTheProfilesMode, TestNewProfilesStartLiveOnceAMainnetIsOn, TestKeyMode, TestPendingParts; web-unit profiles-api and first-run tests; live e2e developer-mode.spec.ts (toggle, strip, other-mode hint) passed with screenshots in docs/runs; TestAJobsInvoicesKeepTheModeItWasQuotedIn (a job's invoices keep the mode it was quoted in; the list shows one mode)",
+          "2": "backend: TestEveryChainHasAFeeCeiling, TestEnableMainnets, TestPendingParts, TestStatement (Testnet band), TestDeliverSendsTheInvoiceToTheClient (test-mode line), document network names; the full Go suite passes; TestDeliverSendsTheReceiptToThePayer (test-mode line on receipts)",
+          "3": "unit: web unit suite passes with mainnet CHAINS, PAY_TOKENS, PRIVY_CHAINS, the Arc mainnet wallet-paid RPC in the CSP, onboarding and invoice preview by mode, fw_live_ keys",
+          "4": "browser-packages: package checks pass; READMEs and changelogs say live and test mode by key",
+          "5": "e2e: landing, docs and SEO specs pass with mainnet copy and the Developer mode guide",
+          "6": "backend: migration 00106 adds the four mainnet tokens; TestEnableMainnets switches chains on, all or none; TestDeveloperModeIsTheProfilesMode makes fw_live_ keys"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review: no blocking findings. The job fix is complete. jobs.livemode (00107) takes the profile's mode in the create insert (job/create.go:117). Both paths that make a job invoice, Accept (accept.go:56) and MarkDone (done.go:55), build it with paymentRequest, which now passes the job's mode as Livemode (accept.go:100). AcceptChange and ProposeChange make no invoice. Create keeps a job's invoice to that mode and never falls back to the other one. With no enabled token of that mode, accept is a safe 422. The replay passes the same mode, so a retried accept or mark done answers the same invoice. Old jobs default to test mode, as their invoices are. The jobs list filters by the profile's mode (read.go:137). TestAJobsInvoicesKeepTheModeItWasQuotedIn fails without the fix and passes with it. Every other invoice.Create caller passes a mode or follows one: invoiceapi and checkoutapi pass access.Livemode, links pass the link's, retainers follow the first month. Receipts and owner paid emails carry the Test mode line. SetLivemode sits in profile/mode.go. Non-blocking: (a) docs/backend/architecture.md:297: the livemode sub-bullet sits before the jobs bullet's continuation lines 298-301, so Markdown joins 'It keeps the client's typed accepted_name' into it. Move it after line 301. (b) GET jobs/{jobId} (job/read.go:30) is not mode-scoped and carries no livemode. A job of the other mode opens by direct link and shows paid with no Test mode mark. The client's /w page says nothing about test mode before accept. Money is safe, because its invoices keep the job's mode. (c) link/save.go:101-106: the 'live when any live token' fallback is now unreachable, because access.Livemode is set for people too. The comment at invoice.go:114 names only key, link and job. (d) Only Accept has a mode test; MarkDone shares paymentRequest. Still open: saveProfileMode refetches every cached query, the privy e2e runs only in the live suite, and first-run.tsx:105. Checks: go test ./internal/job, ./internal/notify, ./internal/profile and httpapi/tests -run DeveloperMode|KeyMode|NewProfilesStartLive pass. go vet and check-docs pass.",
+          "at": "2026-11-08T18:37:53Z",
+          "filesHash": "420902c9f397d90e"
+        },
+        "commit": "edba46a0",
+        "doneAt": "2026-11-08T18:38:26Z"
+      },
+      "branch": "feat/f438-forwend-runs-in-live-mode-on-base-arbitr",
+      "baseCommit": "3bbb3454a69f4f7ba6fa718afd003da2d4cdabd0",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f438-forwend-runs-in-live-mode-on-base-arbitr",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F439",
+      "type": "chore",
+      "behavior": "With each mainnet switched on, an owner invoice per chain pays, settles and reconciles to zero, and a Developer-mode invoice still runs on testnet",
+      "acceptance": [
+        "The owner approves the spend in chat before any real payment.",
+        "ENABLE_MAINNETS switches Base, Arbitrum, Arc and Tempo on where the owner runs Forwend; the signer starts with gas on each.",
+        "One owner invoice per chain pays, settles and reconciles to zero, with livemode true; the run is recorded in docs/runs.",
+        "A Developer-mode invoice on the same profile still runs on testnet."
+      ],
+      "dependsOn": [
+        "F438"
+      ],
+      "state": "not_started",
+      "verification": [
+        "docs-check"
+      ],
+      "refs": [
+        "R-222",
+        "D-120",
+        "R-189"
       ],
       "keep": [],
       "review": true,

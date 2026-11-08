@@ -88,13 +88,14 @@ func (s *Service) Save(ctx context.Context, profileID, user, id string, d Detail
 		case kind != profile.Merchant && d.StoreID != "":
 			return fmt.Errorf("%w: storeId: only a merchant profile has stores", ErrInvalid)
 		}
+		// A new endpoint takes the profile's mode (D-120); one of the other mode is not found, as in the list.
 		rows, err := tx.Query(ctx, `INSERT INTO webhook_endpoints (id, profile_id, store_id, url, description, events,
-			    enabled)
-			VALUES ($1, $2, NULLIF($3, '')::uuid, $4, $5, $6, $7)
+			    enabled, livemode)
+			VALUES ($1, $2, NULLIF($3, '')::uuid, $4, $5, $6, $7, (SELECT livemode FROM profiles WHERE id = $2))
 			ON CONFLICT (id) DO UPDATE SET store_id = excluded.store_id, url = excluded.url,
 			    description = excluded.description, events = excluded.events, enabled = excluded.enabled,
 			    updated_at = now()
-			WHERE webhook_endpoints.profile_id = excluded.profile_id
+			WHERE webhook_endpoints.profile_id = excluded.profile_id AND webhook_endpoints.livemode = excluded.livemode
 			RETURNING `+endpointColumns+`, xmax = 0`, id, profileID, d.StoreID, d.URL, d.Description, d.Events,
 			d.Enabled)
 		if err != nil {
@@ -134,10 +135,14 @@ func (s *Service) addSecret(ctx context.Context, tx pgx.Tx, endpointID string) e
 	return nil
 }
 
-// List is the profile's endpoints, newest first.
+// ofProfileMode keeps an endpoint, by id with its profile as $2, to the profile's mode: the dashboard reaches one mode
+// at a time (R-221), and only signed-in owners and Admins manage endpoints.
+const ofProfileMode = "livemode = (SELECT livemode FROM profiles WHERE id = $2)"
+
+// List is the profile's endpoints of its mode (R-221), newest first.
 func (s *Service) List(ctx context.Context, profileID string) ([]Endpoint, error) {
 	rows, err := s.pool.Query(ctx, `SELECT `+endpointColumns+` FROM webhook_endpoints WHERE profile_id = $1
-		ORDER BY created_at DESC, id`, profileID)
+		AND livemode = (SELECT livemode FROM profiles WHERE id = $1) ORDER BY created_at DESC, id`, profileID)
 	if err != nil {
 		return nil, fmt.Errorf("list webhook endpoints: %w", err)
 	}
@@ -153,7 +158,8 @@ func (s *Service) Delete(ctx context.Context, profileID, id string) error {
 	if !lowercaseUUID.MatchString(id) {
 		return ErrNotFound
 	}
-	tag, err := s.pool.Exec(ctx, "DELETE FROM webhook_endpoints WHERE id = $1 AND profile_id = $2", id, profileID)
+	tag, err := s.pool.Exec(ctx, "DELETE FROM webhook_endpoints WHERE id = $1 AND profile_id = $2 AND "+ofProfileMode, id,
+		profileID)
 	if err != nil {
 		return fmt.Errorf("delete webhook endpoint: %w", err)
 	}
@@ -169,8 +175,9 @@ func (s *Service) Secrets(ctx context.Context, profileID, id string) ([]Secret, 
 	if s.key == nil {
 		return nil, ErrNotConfigured
 	}
-	if !lowercaseUUID.MatchString(id) {
-		return nil, ErrNotFound
+	// The dashboard reaches the profile's mode only (R-221); deliveries read every endpoint's secrets.
+	if err := s.owned(ctx, profileID, id); err != nil {
+		return nil, err
 	}
 	return s.secrets(ctx, s.pool, profileID, id)
 }
@@ -227,8 +234,8 @@ func (s *Service) Rotate(ctx context.Context, profileID, user, id string) ([]Sec
 		if err := auth.StillCan(ctx, tx, profileID, user, auth.Webhooks); err != nil {
 			return err
 		}
-		tag, err := tx.Exec(ctx, "SELECT 1 FROM webhook_endpoints WHERE id = $1 AND profile_id = $2 FOR UPDATE", id,
-			profileID)
+		tag, err := tx.Exec(ctx, "SELECT 1 FROM webhook_endpoints WHERE id = $1 AND profile_id = $2 AND "+ofProfileMode+
+			" FOR UPDATE", id, profileID)
 		if err != nil {
 			return fmt.Errorf("lock webhook endpoint: %w", err)
 		}

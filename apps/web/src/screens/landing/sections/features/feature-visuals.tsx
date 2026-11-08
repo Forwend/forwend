@@ -47,7 +47,7 @@ export function InvoiceVisual() {
           <span>
             <FileText className="size-3.5" /> Invoice PDF
           </span>
-          <span>{chainName(example.chainId)} · Testnet</span>
+          <span>{chainName(example.chainId)}</span>
         </div>
       </div>
       <div className={`${styles.float} ${styles.floatTop}`}>
@@ -83,7 +83,7 @@ export function LinkVisual() {
         <strong className={styles.checkoutAmount}>
           <Usdc baseUnits={450000000n} />
         </strong>
-        <TokenMark chainId={5042002} symbol="USDC" />
+        <TokenMark chainId={5042} symbol="USDC" />
         <span className={styles.payButton}>Pay</span>
       </div>
     </div>
@@ -117,7 +117,7 @@ export function CheckoutVisual() {
         <strong className={styles.checkoutAmount}>
           <Money baseUnits={89000000n} decimals={6} token="OUSD" fractionDigits={2} />
         </strong>
-        <TokenMark chainId={42431} symbol="OUSD" />
+        <TokenMark chainId={4217} symbol="OUSD" />
       </div>
     </div>
   );
@@ -150,7 +150,7 @@ export function StatusVisual() {
         {"\nwebhook-signature: …\n\n"}
         {'{ "type": '}
         <span className={styles.codeString}>"invoice.paid"</span>
-        {', "livemode": false }'}
+        {', "livemode": true }'}
       </pre>
     </div>
   );

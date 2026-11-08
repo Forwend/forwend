@@ -38,6 +38,7 @@ export const PERMISSIONS = {
   moneyMove: "money.move",
   billingRead: "billing.read",
   tokensRead: "tokens.read",
+  tokensWrite: "tokens.write",
   jobs: "jobs",
   notifications: "notifications",
   team: "team",

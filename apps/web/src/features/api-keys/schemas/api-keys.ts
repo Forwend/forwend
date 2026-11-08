@@ -22,7 +22,7 @@ export const apiKeysSchema = z.object({ keys: z.array(apiKeySchema) });
 
 /** A made or rolled key: the one answer with its text. */
 export const newApiKeySchema = apiKeySchema.extend({
-  secret: z.string().regex(/^fw_test_[0-9A-Za-z]{36}$/),
+  secret: z.string().regex(/^fw_(test|live)_[0-9A-Za-z]{36}$/),
 });
 
 export const apiKeyBodySchema = z.object({

@@ -38,8 +38,8 @@ func scanKey(row pgx.CollectableRow) (Key, error) {
 	return k, err
 }
 
-// Create makes a test-mode key and answers its text, the one time it is shown. A merchant's key is for one of its
-// stores; a freelancer's has none. Live keys wait for a live chain (D-87).
+// Create makes a key in the profile's mode (D-120) and answers its text, the one time it is shown. A merchant's key is
+// for one of its stores; a freelancer's has none.
 // The caller has checked the user's access to the profile and the fresh sign-in (D-63).
 func (s *Service) Create(ctx context.Context, profileID, user, name, storeID string, scopes []auth.Permission) (Key,
 	string, error) {
@@ -58,9 +58,9 @@ func (s *Service) Create(ctx context.Context, profileID, user, name, storeID str
 	scopes = slices.DeleteFunc(slices.Clone(Scopes), func(p auth.Permission) bool { return !slices.Contains(scopes, p) })
 	storeID = strings.ToLower(storeID)
 	var kind string
-	var stored bool
-	if err := s.pool.QueryRow(ctx, `SELECT kind, EXISTS (SELECT 1 FROM stores WHERE profile_id = p.id AND id::text = $2)
-		FROM profiles p WHERE id = $1`, profileID, storeID).Scan(&kind, &stored); err != nil {
+	var stored, live bool
+	if err := s.pool.QueryRow(ctx, `SELECT kind, EXISTS (SELECT 1 FROM stores WHERE profile_id = p.id AND id::text = $2),
+		livemode FROM profiles p WHERE id = $1`, profileID, storeID).Scan(&kind, &stored, &live); err != nil {
 		return Key{}, "", fmt.Errorf("read profile: %w", err)
 	}
 	switch {
@@ -75,7 +75,7 @@ func (s *Service) Create(ctx context.Context, profileID, user, name, storeID str
 	var text string
 	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		k, text, err = s.insert(ctx, tx, profileID, user, Key{StoreID: storeID, Name: name, Scopes: scopes})
+		k, text, err = s.insert(ctx, tx, profileID, user, Key{StoreID: storeID, Name: name, Livemode: live, Scopes: scopes})
 		return err
 	})
 	return k, text, err
@@ -98,10 +98,14 @@ func (s *Service) insert(ctx context.Context, tx pgx.Tx, profileID, user string,
 	return k, text, nil
 }
 
-// List is the profile's working keys, newest first.
+// ofProfileMode keeps a key, by id with its profile as $2, to the profile's mode: the dashboard reaches one mode at a
+// time (R-221), and only signed-in owners and Admins manage keys.
+const ofProfileMode = "livemode = (SELECT livemode FROM profiles WHERE id = $2)"
+
+// List is the profile's working keys of its mode (R-221), newest first.
 func (s *Service) List(ctx context.Context, profileID string) ([]Key, error) {
 	rows, err := s.pool.Query(ctx, `SELECT `+keyColumns+` FROM api_keys WHERE profile_id = $1 AND `+working+`
-		ORDER BY created_at DESC, id`, profileID)
+		AND livemode = (SELECT livemode FROM profiles WHERE id = $1) ORDER BY created_at DESC, id`, profileID)
 	if err != nil {
 		return nil, fmt.Errorf("list API keys: %w", err)
 	}
@@ -125,7 +129,7 @@ func (s *Service) Roll(ctx context.Context, profileID, id, user string, overlap 
 	var text string
 	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		rows, err := tx.Query(ctx, `UPDATE api_keys SET expires_at = now() + $3 * interval '1 second'
-			WHERE id = $1 AND profile_id = $2 AND revoked_at IS NULL AND expires_at IS NULL
+			WHERE id = $1 AND profile_id = $2 AND revoked_at IS NULL AND expires_at IS NULL AND `+ofProfileMode+`
 			RETURNING `+keyColumns, id, profileID, int64(overlap/time.Second))
 		if err != nil {
 			return fmt.Errorf("roll API key: %w", err)
@@ -148,8 +152,8 @@ func (s *Service) Revoke(ctx context.Context, profileID, id string) error {
 	if !lowercaseUUID.MatchString(id) {
 		return ErrNotFound
 	}
-	tag, err := s.pool.Exec(ctx, `UPDATE api_keys SET revoked_at = now() WHERE id = $1 AND profile_id = $2 AND `+working,
-		id, profileID)
+	tag, err := s.pool.Exec(ctx, `UPDATE api_keys SET revoked_at = now() WHERE id = $1 AND profile_id = $2 AND `+working+
+		` AND `+ofProfileMode, id, profileID)
 	if err != nil {
 		return fmt.Errorf("revoke API key: %w", err)
 	}

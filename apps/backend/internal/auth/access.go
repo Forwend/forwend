@@ -75,7 +75,7 @@ type Access struct {
 	Stores []string
 	// Scopes are a key's permissions (R-144); nil for a person, whose role decides.
 	Scopes []Permission
-	// Livemode is a key's mode: it reaches only that mode's invoices (D-87). Nil for a person, who reaches both.
+	// Livemode is the mode the caller reaches (D-87): a key's own, or for a person the profile's (D-120, R-221).
 	Livemode *bool
 }
 
@@ -109,21 +109,23 @@ func (s *Service) CheckAccess(ctx context.Context, privyUserID, profileID string
 		return Access{}, ErrForbidden
 	}
 	var a Access
+	var live bool
 	err := s.pool.QueryRow(ctx, `
-		SELECT CASE WHEN p.user_id = u.id THEN 'owner' ELSE m.role END,
+		SELECT p.livemode, CASE WHEN p.user_id = u.id THEN 'owner' ELSE m.role END,
 		       CASE WHEN m.role IN ('developer', 'finance') THEN coalesce((
 		           SELECT array_agg(ms.store_id::text ORDER BY s.created_at, s.id)
 		           FROM member_stores ms JOIN stores s ON s.id = ms.store_id
 		           WHERE ms.profile_id = p.id AND ms.user_id = u.id), '{}') END
 		FROM profiles p JOIN users u ON u.privy_user_id = $2
 		LEFT JOIN profile_members m ON m.profile_id = p.id AND m.user_id = u.id
-		WHERE p.id = $1 AND (p.user_id = u.id OR m.user_id IS NOT NULL)`, id, privyUserID).Scan(&a.Role, &a.Stores)
+		WHERE p.id = $1 AND (p.user_id = u.id OR m.user_id IS NOT NULL)`, id, privyUserID).Scan(&live, &a.Role, &a.Stores)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Access{}, ErrForbidden
 	}
 	if err != nil {
 		return Access{}, fmt.Errorf("check profile access: %w", err)
 	}
+	a.Livemode = &live
 	return a, nil
 }
 

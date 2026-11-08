@@ -97,7 +97,9 @@ func (s *Service) paymentRequest(j Job, p Payment) invoice.Request {
 	today := s.now().UTC().Truncate(24 * time.Hour)
 	seconds := int64(p.DueDays+invoice.DueGraceDays+1) * 24 * 60 * 60
 	c := j.Client
+	live := j.Livemode
 	return invoice.Request{
+		Livemode:         &live,
 		AmountUSD:        usd,
 		ExpiresInSeconds: &seconds,
 		Lines:            []invoice.LineRequest{{Description: p.Title, Quantity: "1", UnitPrice: usd}},

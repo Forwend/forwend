@@ -111,7 +111,7 @@ type Request struct {
 	StoreID string
 	// Stores, when not nil, are the only stores a Developer or Finance member reaches (R-138): Replaces must be in one.
 	Stores []string `json:"-"`
-	// Livemode requires the mode of an API key or payment link (D-87).
+	// Livemode requires the mode of an API key, payment link or job (D-87, R-221).
 	Livemode *bool `json:"-"`
 	// After runs in the insert's transaction before commit, and not on an idempotent replay (R-100).
 	After func(ctx context.Context, tx pgx.Tx, invoiceID string) error `json:"-"`

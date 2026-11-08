@@ -129,7 +129,7 @@ Payment status and wallet transfer are separate facts (D-114). The API derives b
 - Hosted checkout comes first; embedded checkout is restricted to the store's allowed origins.
 - Browser packages never receive secret API keys or decide financial success.
 - Full refund claim/execution tools remain PLAN 11.10.
-- The Test mode / Live mode switch remains after production contracts, as planned.
+- Each profile has a Developer mode toggle (D-120): off is live mode on mainnets, on is test mode on testnets.
 
 ## Primary evidence
 

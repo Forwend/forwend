@@ -44,10 +44,11 @@ func (s *Service) Prepare(ctx context.Context, profileID string, req Request) (S
 	var decimals int
 	err := s.pool.QueryRow(ctx, `
 		SELECT c.chain_family, c.gas_sponsored, t.native_gas, t.decimals FROM chains c JOIN tokens t ON t.chain_id = c.chain_id
-		WHERE c.chain_id = $1 AND t.contract = $2 AND c.enabled AND t.enabled`,
-		int64(req.ChainID), strings.ToLower(req.Token)).Scan(&family, &sponsored, &nativeGas, &decimals)
+		WHERE c.chain_id = $1 AND t.contract = $2 AND c.enabled AND t.enabled
+		  AND c.livemode = (SELECT livemode FROM profiles WHERE id = $3)`,
+		int64(req.ChainID), strings.ToLower(req.Token), profileID).Scan(&family, &sponsored, &nativeGas, &decimals)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Send{}, fmt.Errorf("%w: token is not enabled on this network", ErrInvalid)
+		return Send{}, fmt.Errorf("%w: token is not enabled on this network in the profile's mode", ErrInvalid)
 	} else if err != nil {
 		return Send{}, fmt.Errorf("read chain: %w", err)
 	}
@@ -307,7 +308,8 @@ func (s *Service) Fee(ctx context.Context, profileID string, chainID uint64, tok
 	err := s.pool.QueryRow(ctx, `
 		SELECT c.gas_sponsored, t.native_gas, t.decimals, w.address FROM chains c JOIN tokens t ON t.chain_id = c.chain_id
 		JOIN profile_wallets w ON w.profile_id = $3 AND w.chain_family = c.chain_family
-		WHERE c.chain_id = $1 AND t.contract = $2 AND c.enabled AND t.enabled`,
+		WHERE c.chain_id = $1 AND t.contract = $2 AND c.enabled AND t.enabled
+		  AND c.livemode = (SELECT livemode FROM profiles WHERE id = $3)`,
 		int64(chainID), strings.ToLower(token), profileID).Scan(&sponsored, &nativeGas, &decimals, &wallet)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("%w: token is not enabled on this network, or the profile has no wallet", ErrInvalid)

@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -42,6 +43,15 @@ func TestAPI(t *testing.T) {
 		t.Fatalf("invalid ENABLE_TESTNET_USDC: %v", err)
 	}
 	t.Setenv("ENABLE_TESTNET_USDC", "")
+	t.Setenv("ENABLE_MAINNETS", "8453, 42161")
+	if got, err := config.LoadAPI(); err != nil || !slices.Equal(got.EnableMainnets, []uint64{8453, 42161}) {
+		t.Fatalf("ENABLE_MAINNETS=8453, 42161: %v, %v", got.EnableMainnets, err)
+	}
+	t.Setenv("ENABLE_MAINNETS", "base")
+	if _, err := config.LoadAPI(); err == nil || !strings.Contains(err.Error(), "ENABLE_MAINNETS") {
+		t.Fatalf("invalid ENABLE_MAINNETS: %v", err)
+	}
+	t.Setenv("ENABLE_MAINNETS", "")
 	t.Setenv("API_USER_BURST", "1000")
 	if got, err := config.LoadAPI(); err != nil || got.UserBurst != 1000 {
 		t.Fatalf("API_USER_BURST=1000: %d %v", got.UserBurst, err)

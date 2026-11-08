@@ -10,7 +10,7 @@ import (
 func (s *Service) List(ctx context.Context, privyUserID string) ([]Profile, error) {
 	// The user's own profiles first, then the merchant profiles they are a member of.
 	rows, err := s.pool.Query(ctx, `
-		SELECT p.id::text, p.kind, coalesce(p.name, ''), coalesce(w.address, ''), p.created_at, a.role
+		SELECT p.id::text, p.kind, coalesce(p.name, ''), coalesce(w.address, ''), p.created_at, a.role, p.livemode
 		FROM users u
 		JOIN (SELECT user_id, id AS profile_id, 'owner' AS role FROM profiles
 		      UNION ALL SELECT user_id, profile_id, role FROM profile_members) a ON a.user_id = u.id
@@ -22,7 +22,7 @@ func (s *Service) List(ctx context.Context, privyUserID string) ([]Profile, erro
 	}
 	profiles, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (Profile, error) {
 		var p Profile
-		err := row.Scan(&p.ID, &p.Kind, &p.Name, &p.WalletAddress, &p.CreatedAt, &p.Role)
+		err := row.Scan(&p.ID, &p.Kind, &p.Name, &p.WalletAddress, &p.CreatedAt, &p.Role, &p.Livemode)
 		return p, err
 	})
 	if err != nil {

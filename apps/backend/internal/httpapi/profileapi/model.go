@@ -22,6 +22,8 @@ type profileJSON struct {
 	// R-138: owner, admin, developer or finance, and what that role may do, so the app shows only what it can use.
 	Role        string            `json:"role"`
 	Permissions []auth.Permission `json:"permissions"`
+	// D-120: false while the profile is in Developer mode, on the testnets.
+	Livemode bool `json:"livemode"`
 }
 
 type meJSON struct {
@@ -167,7 +169,7 @@ func toMeJSON(list []profile.Profile, onboardedAt *time.Time) meJSON {
 
 func toProfileJSON(p profile.Profile) profileJSON {
 	out := profileJSON{ProfileID: p.ID, Kind: p.Kind, CreatedAt: p.CreatedAt.UTC().Format(time.RFC3339), Role: p.Role,
-		Permissions: auth.Access{Role: auth.Role(p.Role)}.Permissions()}
+		Permissions: auth.Access{Role: auth.Role(p.Role)}.Permissions(), Livemode: p.Livemode}
 	if p.Name != "" {
 		out.Name = &p.Name
 	}
@@ -175,6 +177,14 @@ func toProfileJSON(p profile.Profile) profileJSON {
 		out.WalletAddress = &p.WalletAddress
 	}
 	return out
+}
+
+type modeBody struct {
+	Livemode *bool `json:"livemode"`
+}
+
+type modeJSON struct {
+	Livemode bool `json:"livemode"`
 }
 
 type notificationsBody struct {

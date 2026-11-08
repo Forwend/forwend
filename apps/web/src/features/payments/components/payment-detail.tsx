@@ -55,20 +55,31 @@ import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { dateTime } from "@/shared/lib/dates";
 
+const NOT_FOUND = 404;
+
 export interface PaymentDetailProps {
   profileId: string;
   paymentId: string;
   /** More header actions the screen composes from other features, such as a checkout's Cancel; focusTitle is where
    * focus goes once one of them is done and gone. */
   actions?: (payment: PaymentDetailType, focusTitle: () => void) => ReactNode;
+  /** Under the not found line: the screen's way to the other mode (R-221). */
+  notFound?: ReactNode;
 }
 
 type Option = PaymentDetailType["options"][number];
 
-export function PaymentDetail({ profileId, paymentId, actions }: PaymentDetailProps) {
+export function PaymentDetail({ profileId, paymentId, actions, notFound }: PaymentDetailProps) {
   const read = useGetPaymentQuery({ profileId, paymentId }, LIVE_QUERY);
   const title = useRef<HTMLHeadingElement>(null);
   const payment = read.currentData;
+  if (!payment && (read.error as { status?: unknown } | undefined)?.status === NOT_FOUND)
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="text-muted">{COPY.notFound}</p>
+        {notFound}
+      </div>
+    );
   if (!payment)
     return read.isError ? (
       <LoadError

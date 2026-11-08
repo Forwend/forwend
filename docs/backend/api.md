@@ -80,6 +80,21 @@ column existed were set to their signup time (migration 00013), so they never se
     reading as Forwend.
 - Onboarding counts toward the 10 profiles too.
 
+## Developer mode
+
+R-221, D-120; the full schema is in openapi.yaml. Owners and Admins turn it with the `tokens.write` permission.
+
+- `PUT /v1/profiles/{profileId}/mode` takes `{"livemode": true|false}`; `false` is Developer mode, on the testnets.
+  - `true` is 422 while no mainnet is switched on: the profile could take no payment then.
+- `GET /v1/me` gives each profile's `livemode`.
+  - A new profile starts in live mode when a mainnet is switched on, else in test mode.
+- A signed-in request works in its profile's mode, as a key works in its own (R-156).
+  - Lists, reads, owed, activity, transactions, exports, balances, token switches, keys and webhook endpoints show only that mode.
+  - Another mode's invoice, payment, link, webhook endpoint or key is 404 until the mode is switched back.
+  - A send already prepared finishes in any mode, so a signed transfer is always recorded.
+  - New invoices, links, keys and webhook endpoints take the mode; an existing object keeps its own.
+  - A send works only on a chain of the mode.
+
 ## Notifications
 
 R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notifications`, D-93).
@@ -449,7 +464,7 @@ R-144, D-95; the full schema is in openapi.yaml. Owners and Admins manage keys w
 - `POST /v1/profiles/{profileId}/keys` makes a key and needs a fresh sign-in (D-63). It answers 201 with its `secret`.
   - The `secret` is in that answer alone; only its SHA-256 is kept.
   - The role is checked again as the key is written: a request checked before a removal or a role change is 403.
-  - It is `fw_test_`, 30 random base62 characters and a 6-character CRC32 of the rest. Live keys wait for a live chain.
+  - It is `fw_test_` in Developer mode or `fw_live_` in live mode (D-120), 30 random base62 characters and a 6-character CRC32 of the rest.
   - `name` is 1–100 characters of plain text; `scopes` are one or more of the four D-95 names.
   - A merchant key needs `storeId`, one of the profile's stores. A freelancer's key has none; a personal profile is 409.
 - A key reaches only invoices of its own mode (D-87, R-156).
@@ -457,8 +472,8 @@ R-144, D-95; the full schema is in openapi.yaml. Owners and Admins manage keys w
   - Its creates are of its mode: a token of the other mode is 422, and a replay of another mode's create is 409.
   - A Revise of the other mode's invoice is 404. A Revise or a retainer's later month keeps the mode it follows.
   - A payer-chooses invoice's options are all of one mode.
-  - An unscoped USD create chooses live mode before profile and store token preferences when enabled live options exist.
-  - Filtering out those live tokens returns 422; it never falls back to test mode.
+  - An unscoped USD create takes the key's mode, or the profile's from the app, before profile and store token preferences.
+  - Filtering out every token of that mode returns 422; it never falls back to the other mode.
 - `POST /v1/profiles/{profileId}/keys/{keyId}/roll` makes its new key, with a fresh sign-in, and answers 201 with it.
   - `overlapHours` (0–168, default 24) is how long the old key keeps working. A key rolls once.
 - `DELETE /v1/profiles/{profileId}/keys/{keyId}` revokes the key at once (204). An unknown or stopped key is 404.
@@ -873,6 +888,7 @@ R-100, D-81; the full schema is in openapi.yaml. A job is a quote with a payment
   - It copies the billing details as `issuer`, so no billing details is 409 `billing_details_required`.
   - The job gets a random 32-byte link token. A profile has at most 1000 jobs.
 - `GET /v1/profiles/{profileId}/jobs` lists them newest first, with the total and how many payments are paid.
+  - Only jobs of the profile's mode (D-120). A job keeps the mode it was quoted in, and its invoices are of it (R-221).
   - It reads one page: `limit` (1–100, default 50) and `cursor`, and `nextCursor` continues it.
   - `q` matches the title or the client's name in any letter case.
 - `GET /v1/profiles/{profileId}/jobs/{jobId}` reads one: the client, the token, and each payment's invoice.
@@ -985,6 +1001,7 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   - `partial`: owed to the creator on partly paid payments; held for the payer if the checkout closes first.
   - `held` stays apart: it is the payer's money.
   - Each token has its chain's `livemode`; so does each balance-history token.
+  - Only the profile's mode is listed, so the USD total never adds testnet tokens to real money (D-120).
 
 ## Sends and transfers
 

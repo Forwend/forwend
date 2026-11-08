@@ -3,7 +3,8 @@ import type { KeyScope } from "@/features/api-keys/types/api-keys";
 import { PERMISSIONS } from "@/features/profiles/constants/profile";
 
 // After a roll two keys share a name, so the end of the text tells them apart.
-const keyText = (last4: string) => `fw_test_…${last4}`;
+const keyText = (last4: string, livemode: boolean) =>
+  `${livemode ? "fw_live_" : "fw_test_"}…${last4}`;
 
 /** R-145: the Developers page's API keys. */
 export const API_KEYS_COPY = {
@@ -54,9 +55,11 @@ export const API_KEYS_COPY = {
   secretHint: "Store it in your server's secrets, not in your code.",
   copyLabel: "Copy the secret key",
   done: "Done",
-  actions: (name: string, last4: string) => `Actions for ${name}, ${keyText(last4)}`,
+  actions: (name: string, last4: string, livemode: boolean) =>
+    `Actions for ${name}, ${keyText(last4, livemode)}`,
   roll: "Roll",
-  rollTitle: (name: string, last4: string) => `Roll ${name}, ${keyText(last4)}`,
+  rollTitle: (name: string, last4: string, livemode: boolean) =>
+    `Roll ${name}, ${keyText(last4, livemode)}`,
   rollBody:
     "A new key takes its place with the same access. The old one keeps working for the time you pick, so you can swap it without downtime.",
   overlap: "The old key keeps working",
@@ -68,7 +71,8 @@ export const API_KEYS_COPY = {
   } satisfies Record<(typeof OVERLAP_HOURS)[number], string>,
   rollSubmit: "Roll key",
   revoke: "Revoke",
-  revokeTitle: (name: string, last4: string) => `Revoke ${name}, ${keyText(last4)}?`,
+  revokeTitle: (name: string, last4: string, livemode: boolean) =>
+    `Revoke ${name}, ${keyText(last4, livemode)}?`,
   revokeBody: "It stops working at once, and requests that use it start failing.",
   keep: "Keep",
   revoked: (name: string) => `${name} revoked`,

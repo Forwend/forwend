@@ -28,16 +28,20 @@ type Statement struct {
 	Issued       time.Time
 	Currency     string
 	Decimals     int
+	Test         bool // made in Developer mode, of testnet money (R-143, R-221)
 	Lines        []StatementLine
 	Unclassified int
 }
 
 func StatementPDF(s Statement) ([]byte, error) {
 	period := s.From.Format(time.DateOnly) + " to " + s.To.Format(time.DateOnly)
-	d := open("Statement", period, bmp(s.Holder.Name), s.Issued, nil, false, "")
+	d := open("Statement", period, bmp(s.Holder.Name), s.Issued, nil, s.Test, "")
 	d.Ln(4)
 	d.rule()
 	d.Ln(6)
+	if s.Test {
+		d.testnet()
+	}
 	tax := ""
 	if s.Holder.TaxID != "" {
 		tax = "Tax ID " + s.Holder.TaxID

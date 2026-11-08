@@ -24,7 +24,7 @@ var (
 const jobColumns = `j.id::text, j.token, j.profile_id::text, j.title, coalesce(j.scope, ''), j.client_name, j.client_email,
 	coalesce(j.client_address, ''), coalesce(j.client_country, ''), coalesce(j.client_tax_id, ''), j.issuer_name,
 	j.issuer_address, j.issuer_country, coalesce(j.issuer_tax_id, ''), j.issuer_email, coalesce(j.accepted_name, ''),
-	coalesce(j.accepted_email, ''), j.accepted_at, j.created_at`
+	coalesce(j.accepted_email, ''), j.accepted_at, j.created_at, j.livemode`
 
 // The caller must check the user's access to the profile.
 func (s *Service) Get(ctx context.Context, profileID, id string) (Job, error) {
@@ -48,7 +48,7 @@ func (s *Service) read(ctx context.Context, where string, args ...any) (Job, err
 	err := s.pool.QueryRow(ctx, "SELECT "+jobColumns+" FROM jobs j WHERE "+where, args...).Scan(&j.ID, &j.Token,
 		&j.profileID, &j.Title, &j.Scope, &j.Client.Name, &j.Client.Email, &j.Client.Address, &j.Client.Country,
 		&j.Client.TaxID, &j.Issuer.Name, &j.Issuer.Address, &j.Issuer.Country, &j.Issuer.TaxID, &j.Issuer.Email,
-		&j.AcceptedName, &j.AcceptedEmail, &accepted, &j.CreatedAt)
+		&j.AcceptedName, &j.AcceptedEmail, &accepted, &j.CreatedAt, &j.Livemode)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Job{}, ErrNotFound
 	} else if err != nil {
@@ -113,7 +113,8 @@ type Page struct {
 	NextCursor string
 }
 
-// List is the profile's jobs, newest first, limit after cursor; q matches the title or the client's name.
+// List is the profile's jobs of its mode (D-120), newest first, limit after cursor; q matches the title or the
+// client's name.
 func (s *Service) List(ctx context.Context, profileID, cursor string, limit int, q search.Query) (Page, error) {
 	if limit < 1 || limit > MaxLimit {
 		return Page{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxLimit)
@@ -133,7 +134,8 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 	rows, err := s.pool.Query(ctx, `SELECT j.id::text, j.title, j.client_name, sum(p.amount_cents)::bigint, count(*),
 		    count(*) FILTER (WHERE invoices.id IS NOT NULL AND `+invoice.StatusFilterSQL+` IN ('paid', 'settled')),
 		    j.accepted_at, j.created_at
-		FROM (SELECT * FROM jobs WHERE profile_id = $1 AND ($3::text IS NULL OR title ILIKE $3 OR client_name ILIKE $3)`+
+		FROM (SELECT * FROM jobs WHERE profile_id = $1 AND livemode = (SELECT livemode FROM profiles WHERE id = $1)
+		      AND ($3::text IS NULL OR title ILIKE $3 OR client_name ILIKE $3)`+
 		after+` ORDER BY created_at DESC, id LIMIT $2) j
 		JOIN job_payments p ON p.job_id = j.id AND (p.proposed_at IS NULL OR p.accepted_at IS NOT NULL)
 		LEFT JOIN invoices_current invoices ON invoices.id = p.invoice_id

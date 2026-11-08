@@ -34,6 +34,6 @@ A small shop that takes stablecoin payments through Forwend, end to end. Use it 
 
 - It uses the `forwend` package from this repository, the code npm has as `forwend` 0.2.0.
 - Orders live in one SQLite file (`EXAMPLE_DATABASE`). A real shop keeps them in its own database.
-- Every network is a testnet for now, so every checkout is in test mode.
+- A `fw_live_` key takes real money on mainnets; a `fw_test_` key runs on testnets. Try the shop with a test key first.
 
 Browser tests: `apps/web/e2e/example-merchant.spec.ts`, against Forwend's real checkout frame and a stub api.

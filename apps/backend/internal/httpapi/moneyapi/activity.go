@@ -14,6 +14,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/activity"
 	"github.com/forwend/forwend/apps/backend/internal/document"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/mid"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 )
@@ -238,7 +239,9 @@ func getStatement(activities *activity.Service, profiles *profile.Service) http.
 			httpio.WriteError(w, r, err)
 			return
 		}
-		s := document.Statement{Holder: holder.Issuer, From: from, To: to.AddDate(0, 0, -1), Issued: time.Now().UTC().Truncate(time.Second)}
+		live := mid.ProfileAccess(r).Livemode
+		s := document.Statement{Holder: holder.Issuer, From: from, To: to.AddDate(0, 0, -1),
+			Issued: time.Now().UTC().Truncate(time.Second), Test: live != nil && !*live}
 		err = activities.ExportTransfers(r.Context(), id, from, to, func(currency string) error {
 			s.Currency = currency
 			s.Decimals = invoice.AgreedCurrencies[currency]

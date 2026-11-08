@@ -69,12 +69,12 @@ export function KeyActions({ profileId, apiKey, onRolled }: KeyActionsProps) {
   return (
     <Dialog
       triggerLabel={COPY.revoke}
-      title={COPY.revokeTitle(apiKey.name, apiKey.last4)}
+      title={COPY.revokeTitle(apiKey.name, apiKey.last4, apiKey.livemode)}
       onClose={revoking.reset}
       trigger={(openRevoke) => (
         <Dialog
           triggerLabel={COPY.roll}
-          title={COPY.rollTitle(apiKey.name, apiKey.last4)}
+          title={COPY.rollTitle(apiKey.name, apiKey.last4, apiKey.livemode)}
           onClose={() => {
             fresh.cancel();
             resetRoll();
@@ -84,8 +84,8 @@ export function KeyActions({ profileId, apiKey, onRolled }: KeyActionsProps) {
               <MenuTrigger asChild>
                 <IconButton
                   ref={trigger}
-                  label={COPY.actions(apiKey.name, apiKey.last4)}
-                  title={COPY.actions(apiKey.name, apiKey.last4)}
+                  label={COPY.actions(apiKey.name, apiKey.last4, apiKey.livemode)}
+                  title={COPY.actions(apiKey.name, apiKey.last4, apiKey.livemode)}
                 >
                   <Ellipsis aria-hidden className="size-[var(--fw-icon-sm)]" />
                 </IconButton>

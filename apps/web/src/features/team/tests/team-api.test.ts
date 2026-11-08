@@ -13,6 +13,7 @@ const shop = (role: Profile["role"], permissions: string[]): Profile => ({
   createdAt: "2026-10-10T00:00:00Z",
   role,
   permissions,
+  livemode: false,
 });
 
 // The app calls the API same-origin ("/api/…"); Node's Request needs an absolute URL.

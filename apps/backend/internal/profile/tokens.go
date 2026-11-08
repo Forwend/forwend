@@ -25,13 +25,14 @@ type TokenSwitch struct {
 	On       bool
 }
 
-// Tokens lists every enabled token with its saved profile preference.
+// Tokens lists every enabled token of the profile's mode (R-221) with its saved profile preference.
 func (s *Service) Tokens(ctx context.Context, profileID string) ([]TokenSwitch, error) {
 	rows, err := s.pool.Query(ctx, `SELECT t.chain_id, t.contract, t.symbol, t.decimals, c.name,
 		    NOT EXISTS (SELECT 1 FROM profile_tokens_off o
 		                WHERE o.profile_id = $1 AND o.chain_id = t.chain_id AND o.token_contract = t.contract)
 		FROM tokens t JOIN chains c ON c.chain_id = t.chain_id
-		WHERE t.enabled AND c.enabled ORDER BY t.chain_id, t.symbol, t.contract`, profileID)
+		WHERE t.enabled AND c.enabled AND c.livemode = (SELECT livemode FROM profiles WHERE id = $1)
+		ORDER BY t.chain_id, t.symbol, t.contract`, profileID)
 	if err != nil {
 		return nil, fmt.Errorf("list tokens: %w", err)
 	}
@@ -46,7 +47,8 @@ func (s *Service) Tokens(ctx context.Context, profileID string) ([]TokenSwitch, 
 	return list, nil
 }
 
-// SetTokensOff replaces the available tokens the profile has off, preserving unavailable tokens' preferences.
+// SetTokensOff replaces the available tokens of the profile's mode it has off, preserving the other mode's and
+// unavailable tokens' preferences.
 func (s *Service) SetTokensOff(ctx context.Context, profileID string, off []TokenPair) ([]TokenSwitch, error) {
 	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		// The profile row lock makes concurrent saves replace the list one after another.
@@ -59,12 +61,13 @@ func (s *Service) SetTokensOff(ctx context.Context, profileID string, off []Toke
 		}
 		if _, err := tx.Exec(ctx, `DELETE FROM profile_tokens_off o USING tokens t, chains c
 			WHERE o.profile_id = $1 AND o.chain_id = t.chain_id AND o.token_contract = t.contract
-			AND c.chain_id = t.chain_id AND t.enabled AND c.enabled`, profileID); err != nil {
+			AND c.chain_id = t.chain_id AND t.enabled AND c.enabled
+			AND c.livemode = (SELECT livemode FROM profiles WHERE id = $1)`, profileID); err != nil {
 			return fmt.Errorf("save tokens off: %w", err)
 		}
 		for _, t := range off {
 			if _, err := tx.Exec(ctx, `INSERT INTO profile_tokens_off (profile_id, chain_id, token_contract)
-				VALUES ($1, $2, $3)`, profileID, t.ChainID, t.Token); err != nil {
+				VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, profileID, t.ChainID, t.Token); err != nil {
 				return fmt.Errorf("save tokens off: %w", err)
 			}
 		}

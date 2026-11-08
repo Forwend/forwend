@@ -21,6 +21,8 @@ export interface ReadyStepProps {
   /** One per goal picked, the first as the main one. */
   actions: readonly ReadyAction[];
   onAction: (action: ReadyAction) => void;
+  /** Developer mode (D-120): the faucet's test USDC is the money to try it with. */
+  testnet: boolean;
 }
 
 const CARD =
@@ -39,7 +41,7 @@ export function ReadyLead() {
 }
 
 /** The first thing to do with each profile, the main one first, then test money and the docs' first payment. */
-export function ReadyStep({ actions, onAction }: ReadyStepProps) {
+export function ReadyStep({ actions, onAction, testnet }: ReadyStepProps) {
   const [main, ...more] = actions;
   return (
     <div className="flex flex-col gap-3">
@@ -75,21 +77,23 @@ export function ReadyStep({ actions, onAction }: ReadyStepProps) {
             </span>
           </button>
         ))}
-        <a
-          href={TEST_USDC_FAUCET}
-          target="_blank"
-          rel="noreferrer"
-          className={`${CARD} border-line`}
-        >
-          <span className={TILE}>
-            <Droplet aria-hidden className="size-5" />
-          </span>
-          <span className="flex min-w-0 flex-col gap-0.5">
-            <span className="font-medium">{COPY.faucet}</span>
-            <span className="text-sm text-muted">{COPY.faucetHint}</span>
-          </span>
-          <span className="sr-only">{COPY.newTab}</span>
-        </a>
+        {testnet ? (
+          <a
+            href={TEST_USDC_FAUCET}
+            target="_blank"
+            rel="noreferrer"
+            className={`${CARD} border-line`}
+          >
+            <span className={TILE}>
+              <Droplet aria-hidden className="size-5" />
+            </span>
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="font-medium">{COPY.faucet}</span>
+              <span className="text-sm text-muted">{COPY.faucetHint}</span>
+            </span>
+            <span className="sr-only">{COPY.newTab}</span>
+          </a>
+        ) : null}
         <a href={docsPath("start/first-test-payment")} className={`${CARD} border-line`}>
           <span className={TILE}>
             <BookOpen aria-hidden className="size-5" />

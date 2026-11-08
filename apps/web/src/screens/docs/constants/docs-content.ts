@@ -7,7 +7,7 @@ export const DOCS = {
   title: "Documentation",
   heading: "Build your payment flow.",
   description:
-    "Guides and API references for stablecoin invoices, payment links and checkout. Start with a test payment.",
+    "Guides and API references for stablecoin invoices, payment links and checkout. Try a test payment in Developer mode first.",
 } as const;
 
 export const DOCS_GROUPS = [

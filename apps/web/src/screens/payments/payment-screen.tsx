@@ -5,6 +5,7 @@ import { CheckoutActions } from "@/features/checkout/components/checkout-actions
 import { PaymentDetail } from "@/features/payments/components/payment-detail";
 import { PAYMENT_SOURCE } from "@/features/payments/constants/payments";
 import { paymentDisplayStatus } from "@/features/payments/lib/payments";
+import { OtherModeHint } from "@/features/profiles/components/other-mode-hint";
 import { PERMISSIONS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { can } from "@/features/profiles/lib/profile";
@@ -20,6 +21,7 @@ export function PaymentScreen({ paymentId }: PaymentScreenProps) {
       key={`${profile.profileId}:${paymentId}`}
       profileId={profile.profileId}
       paymentId={paymentId}
+      notFound={<OtherModeHint />}
       actions={(payment, focusTitle) =>
         payment.source === PAYMENT_SOURCE.checkout && can(profile, PERMISSIONS.invoicesWrite) ? (
           <CheckoutActions

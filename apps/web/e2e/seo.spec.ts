@@ -6,7 +6,7 @@ test.describe("search metadata", () => {
     await expect(page).toHaveTitle(/Forwend/);
     await expect(page.locator('meta[name="description"]')).toHaveAttribute(
       "content",
-      /stablecoins.*testnet/i,
+      /stablecoins.*Base, Arbitrum, Arc and Tempo/i,
     );
     await expect(page.locator('meta[property="og:image"]')).toHaveCount(1);
   });

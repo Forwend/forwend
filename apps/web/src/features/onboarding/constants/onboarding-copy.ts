@@ -115,14 +115,14 @@ export const FIRST_RUN_COPY = {
     actions: {
       [PROFILE_KINDS.freelancer]: {
         title: "Create your first invoice",
-        hint: "Your details are already on it. Send the link to a client, or pay it yourself with test USDC.",
+        hint: "Your details are already on it. Send the link to a client, or pay it yourself to try it.",
       },
       [PROFILE_KINDS.merchant]: {
         title: "Create a payment link",
-        hint: "Share it with a customer, or open it and pay with test USDC.",
+        hint: "Share it with a customer, or open it and pay it yourself to try it.",
       },
       developer: {
-        title: "Create a test API key",
+        title: "Create an API key",
         hint: "Then start a checkout from your server.",
       },
       [PROFILE_KINDS.personal]: {

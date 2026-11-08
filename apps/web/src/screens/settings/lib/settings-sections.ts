@@ -1,6 +1,7 @@
 import {
   Bell,
   Coins,
+  FlaskConical,
   Landmark,
   type LucideIcon,
   ShieldCheck,
@@ -35,6 +36,9 @@ export function settingsSections(
       : []),
     ...(pageAllowed(profile, APP_ROUTES.networks)
       ? [{ href: APP_ROUTES.networks, label: COPY.networks.title, icon: Coins }]
+      : []),
+    ...(pageAllowed(profile, APP_ROUTES.developerMode)
+      ? [{ href: APP_ROUTES.developerMode, label: COPY.developerMode.title, icon: FlaskConical }]
       : []),
     ...(links.team ? [{ href: APP_ROUTES.team, label: COPY.team.title, icon: Users }] : []),
     ...(pageAllowed(profile, APP_ROUTES.wallet)

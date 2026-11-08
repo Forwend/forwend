@@ -34,4 +34,5 @@ const checkout = mountCheckout(document.getElementById("checkout")!, {
 - If your page sends a Content-Security-Policy, allow `frame-src https://forwend.com`.
 - `onLoadError` runs when no checkout appears within 15 seconds, as when the origin is not allowed.
 
-Every network is a testnet for now, so every checkout is in test mode. Docs: https://forwend.com/docs
+A checkout takes real money on mainnets in live mode, and testnet tokens in test mode: the key that made it decides.
+Docs: https://forwend.com/docs

@@ -115,7 +115,7 @@ for (const width of [320, 390, 768, 1024, 1440]) {
       await expect(drawer).not.toBeVisible();
       await expect(trigger).toBeFocused();
       await trigger.click();
-      await drawer.getByRole("link", { name: "Test mode", exact: true }).click();
+      await drawer.getByRole("link", { name: "Developer mode", exact: true }).click();
       await expect(page).toHaveURL(`${PUBLIC_URL}/docs/start/test-mode`);
       await expect(drawer).not.toBeVisible();
     }

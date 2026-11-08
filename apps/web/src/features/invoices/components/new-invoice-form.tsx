@@ -131,6 +131,8 @@ export interface NewInvoiceFormProps {
     taxId: string | null;
     email: string;
   } | null;
+  /** Developer mode (D-120): the preview is marked as a testnet invoice. */
+  testnet: boolean;
 }
 
 const NO_CLIENT: ClientBody = { name: "", email: "", address: "", country: "", taxId: "" };
@@ -147,6 +149,7 @@ export function NewInvoiceForm({
   replaces,
   stores,
   issuer,
+  testnet,
 }: NewInvoiceFormProps) {
   const COPY = request ? NEW_REQUEST_COPY : NEW_INVOICE_COPY;
   const [createInvoice] = useCreateInvoiceMutation();
@@ -587,7 +590,7 @@ export function NewInvoiceForm({
       kind: docKind,
       number: COPY.preview.draft,
       reference,
-      testnet: true,
+      testnet,
       status: {
         label: COPY.preview.waiting,
         detail: "",

@@ -6,8 +6,8 @@ interface Explorer {
   url: string;
 }
 
-/** The chains the API may return (packages/contracts/chains.json); all are test networks today. Explorers come from
- * each network's docs; a local chain has none. */
+/** The chains the API may return (packages/contracts/chains.json): mainnets in live mode, testnets in test mode.
+ * Explorers come from each network's docs; a local chain has none. */
 export const CHAINS: Readonly<
   Record<
     number,
@@ -20,6 +20,27 @@ export const CHAINS: Readonly<
     }
   >
 > = {
+  8453: {
+    name: "Base",
+    icon: "base",
+    explorer: { name: "Basescan", url: "https://basescan.org" },
+  },
+  42161: {
+    name: "Arbitrum",
+    icon: "arbitrum",
+    explorer: { name: "Arbiscan", url: "https://arbiscan.io" },
+    lookalikes: { USDC: "USDC.e" },
+  },
+  5042: {
+    name: "Arc",
+    icon: "arc",
+    explorer: { name: "Arc Explorer", url: "https://explorer.arc.io" },
+  },
+  4217: {
+    name: "Tempo",
+    icon: "tempo",
+    explorer: { name: "Tempo Explorer", url: "https://explore.tempo.xyz" },
+  },
   84532: {
     name: "Base Sepolia",
     icon: "base",

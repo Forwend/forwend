@@ -380,7 +380,7 @@ func TestDeliverSendsTheReceiptToThePayer(t *testing.T) {
 	}
 	m := f.sent[0]
 	for _, want := range []string{"You paid 5.00 USDC on Base Sepolia to Mara Ilić for INV-0001.",
-		"The name is what the invoice's creator gave; Forwend doesn't check it.",
+		"The name is what the invoice's creator gave; Forwend doesn't check it.", "Test mode: testnet tokens have no value.",
 		"Transaction: https://sepolia.basescan.org/tx/" + hash, "Download receipt (PDF): " + web + "/api/v1/invoices/" + payToken + "/receipt.pdf"} {
 		if !strings.Contains(m.Text, want) {
 			t.Fatalf("receipt text %q lacks %q", m.Text, want)
@@ -503,7 +503,8 @@ func TestDeliverSendsTheInvoiceToTheClient(t *testing.T) {
 	}
 	for _, want := range []string{"Alice Design GmbH sent you INV-0001 for 5.00 USDC.", "Due date: 30 Nov 2026",
 		"Network: Base Sepolia", "Invoice PDF: " + web + "/api/v1/invoices/" + payToken + "/invoice.pdf",
-		"View and pay: " + web + "/pay/" + payToken, "Reply to this email to reach them."} {
+		"View and pay: " + web + "/pay/" + payToken, "Reply to this email to reach them.",
+		"Test mode: testnet tokens have no value."} {
 		if !strings.Contains(m.Text, want) {
 			t.Fatalf("text %q lacks %q", m.Text, want)
 		}
@@ -525,6 +526,16 @@ func TestDeliverSendsTheInvoiceToTheClient(t *testing.T) {
 	if len(f.sent) != 2 || !strings.Contains(f.sent[1].Text, "for 5.00 USD.") ||
 		!strings.Contains(f.sent[1].Text, "Network: You choose on the payment page") {
 		t.Fatalf("payer-chooses email %+v", f.sent[len(f.sent)-1])
+	}
+
+	// A live invoice's email says nothing of test mode (R-143).
+	exec(t, pool, "UPDATE chains SET livemode = true WHERE chain_id = (SELECT chain_id FROM invoices WHERE id = $1)", id)
+	send(id, "k3")
+	if err := Deliver(context.Background(), pool, f, site); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.sent) != 3 || strings.Contains(f.sent[2].Text, "Test mode") {
+		t.Fatalf("live email %+v", f.sent[len(f.sent)-1])
 	}
 }
 

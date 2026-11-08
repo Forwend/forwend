@@ -78,7 +78,13 @@ var transferSQL = `
 	                     -- The ECB closes at most 4 days in a row (Easter): an older rate is a missed read, so none.
 	                     AND u.day > (to_timestamp(t.block_time) AT TIME ZONE 'UTC')::date - 7
 	                   ORDER BY u.day DESC LIMIT 1) fx ON true
-	WHERE w.profile_id = $1 AND t.status <> 'reorged'`
+	WHERE w.profile_id = $1 AND t.status <> 'reorged' AND ` + inMode("t.chain_id")
+
+// inMode keeps the rows on a chain of profile $1's mode: the dashboard shows one mode at a time (D-120, R-221).
+func inMode(chainID string) string {
+	return "EXISTS (SELECT 1 FROM chains mc JOIN profiles mp ON mp.id = $1 WHERE mc.chain_id = " + chainID +
+		" AND mc.livemode = mp.livemode)"
+}
 
 // listed leaves out an incoming transfer under 0.10 USD (R-38): such transfers are mostly spam that plants a
 // look-alike address in the history. A settlement from one of the profile's invoices and a transfer from another of
@@ -166,6 +172,7 @@ func (s *Service) Transfers(ctx context.Context, profileID, cursor string, limit
 		    SELECT t.id, t.block_time FROM wallet_transfers t
 		    JOIN tokens tk ON tk.chain_id = t.chain_id AND tk.contract = t.token_contract
 		    WHERE t.chain_family = w.chain_family AND t.wallet_address = w.address AND t.status <> 'reorged' AND `+listed+`
+		      AND `+inMode("t.chain_id")+`
 		      AND ($2::bigint IS NULL OR (t.block_time, t.id) < ($2, $3)) AND ($5::text IS NULL OR t.direction = $5)
 		      AND ($6::text IS NULL OR t.counterparty ILIKE $6 OR t.tx_hash ILIKE $6 OR tk.symbol ILIKE $6
 		           OR t.amount = $7::numeric * 10::numeric ^ tk.decimals)

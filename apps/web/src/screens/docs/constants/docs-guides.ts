@@ -66,12 +66,12 @@ export const GUIDE_PAGES: readonly DocsArticle[] = [
         points: [
           "Sign in, choose business payments or integration, and complete your profile’s billing details.",
           "Create a store. Check that your profile wallet and at least one test token are ready.",
-          "Open Developers. Create a test key for that store with invoices.write and invoices.read. Save its profile ID and store ID.",
+          "Turn on Developer mode in the profile’s settings. Open Developers and create a key for that store with invoices.write and invoices.read: in Developer mode it is a test key. Save its profile ID and store ID.",
           "Get test tokens and the network’s fee token for your payer wallet. Use exactly the network shown by checkout. Never send real funds.",
         ],
         links: [
           { label: "Keys and permissions", slug: "integrate/authentication" },
-          { label: "Test networks and tokens", slug: "reference/networks" },
+          { label: "Networks and tokens", slug: "reference/networks" },
         ],
       },
       {
@@ -79,7 +79,7 @@ export const GUIDE_PAGES: readonly DocsArticle[] = [
         title: "2. Set server credentials",
         paragraphs: [
           "Store these values in your server’s environment. The documentation host, your application host and the API origin are different settings.",
-          "The hosted API address below is the configured application endpoint, not evidence of a production launch. For local development, use http://localhost:8080.",
+          "The API address below serves live and test mode alike: the key decides. For local development, use http://localhost:8080.",
         ],
         code: {
           language: "Shell",
@@ -151,26 +151,27 @@ export const GUIDE_PAGES: readonly DocsArticle[] = [
   {
     slug: "start/test-mode",
     group: "Start here",
-    title: "Test mode",
-    description: "Try the full payment flow without treating test tokens as money.",
+    title: "Developer mode",
+    description: "Try the full payment flow on test networks before you take real money.",
     sections: [
       {
         id: "availability",
-        title: "Verified environment",
+        title: "Live mode and Developer mode",
         paragraphs: [
-          "The verified configuration uses Base Sepolia, Arbitrum Sepolia, Arc Testnet and Tempo Moderato. These are test networks. Production availability has not been verified.",
-          "Test objects have livemode: false. Test tokens have no monetary value. A key, invoice or checkout session stays in its own mode.",
+          "Each profile has a Developer mode switch in its settings. Off, the profile works in live mode on Base, Arbitrum, Arc and Tempo, with real money.",
+          "On, it works in test mode on Base Sepolia, Arbitrum Sepolia, Arc Testnet and Tempo Moderato. Test objects have livemode: false, and test tokens have no value.",
+          "The dashboard shows one mode at a time. A key, invoice, link or checkout session stays in the mode it was made in.",
         ],
-        links: [{ label: "Supported test pairs", slug: "reference/networks" }],
+        links: [{ label: "Networks and tokens", slug: "reference/networks" }],
       },
       {
         id: "isolation",
         title: "Keep test and live data separate",
         points: [
-          "Use a fw_test_ key for test objects.",
+          "A key takes the profile’s mode when it is made: fw_test_ in Developer mode, fw_live_ in live mode.",
           "A key cannot read another mode’s invoices; those reads return 404.",
           "An invoice cannot mix token options from different modes.",
-          "Do not use successful test payments as evidence of mainnet availability.",
+          "A test payment proves your integration works; only a live payment moves real money.",
         ],
       },
     ],
@@ -323,7 +324,7 @@ export const GUIDE_PAGES: readonly DocsArticle[] = [
         title: "Create a secret key",
         paragraphs: [
           "In a freelancer or merchant profile, open Developers and create a key. This action needs a fresh sign-in. Copy its secret once and store it on your server.",
-          "Send Authorization: Bearer fw_test_… on API requests. Never include this key in browser code, source control or a public environment variable.",
+          "Send Authorization: Bearer fw_live_… (or fw_test_… in Developer mode) on API requests. Never include this key in browser code, source control or a public environment variable.",
         ],
         fields: [
           {

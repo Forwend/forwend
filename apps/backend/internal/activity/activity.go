@@ -118,8 +118,8 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 		args = append(args, v)
 		return fmt.Sprintf("$%d", len(args))
 	}
-	invoices := "invoices.profile_id = $1 AND invoices.number IS NOT NULL"
-	deposits := "i.profile_id = $1 AND t.status <> 'reorged'"
+	invoices := "invoices.profile_id = $1 AND invoices.number IS NOT NULL AND " + inMode("invoices.chain_id")
+	deposits := "i.profile_id = $1 AND t.status <> 'reorged' AND " + inMode("t.chain_id")
 	depositsFrom := "chain_transfers t JOIN invoices i ON i.id = t.invoice_id"
 	// Newest first; at the same time a deposit comes before an invoice, and the key breaks the other ties, so pages
 	// never skip or repeat an item. Each part reads only rows after the cursor, and at most a page of them.

@@ -66,6 +66,10 @@ var (
 type network struct{ name, explorer, url string }
 
 var networks = map[uint64]network{
+	8453:    {"Base", "Basescan", "https://basescan.org"},
+	42161:   {"Arbitrum", "Arbiscan", "https://arbiscan.io"},
+	5042:    {"Arc", "Arc Explorer", "https://explorer.arc.io"},
+	4217:    {"Tempo", "Tempo Explorer", "https://explore.tempo.xyz"},
 	84532:   {"Base Sepolia", "Basescan", "https://sepolia.basescan.org"},
 	421614:  {"Arbitrum Sepolia", "Arbiscan", "https://sepolia.arbiscan.io"},
 	5042002: {"Arc Testnet", "ArcScan", "https://testnet.arcscan.app"},
@@ -95,6 +99,20 @@ func anyOption(inv invoice.Invoice) bool {
 
 // TestMode marks a test-mode invoice's PDFs (R-143).
 const TestMode = "Test mode: testnet tokens have no value"
+
+// testnet is the band under the header of a test-mode PDF: a forwarded one must not pass testnet tokens off as money
+// (D-87).
+func (d doc) testnet() {
+	y := d.GetY()
+	d.color(surface)
+	d.Rect(margin, y, width, 9, "F")
+	d.SetXY(margin+5, y+2)
+	d.SetFont(font, "B", 8)
+	d.CellFormat(18, lineHeight, "Testnet", "", 0, "L", false, 0, "")
+	d.SetFont(font, "", 9)
+	d.CellFormat(width-28, lineHeight, TestMode, "", 0, "L", false, 0, "")
+	d.SetY(y + 9 + 5)
+}
 
 func Number(n int64) string {
 	return fmt.Sprintf("INV-%04d", n)
@@ -435,17 +453,8 @@ func start(inv invoice.Invoice, kind string, logo []byte, s standing) doc {
 		d.rule()
 	}
 	d.Ln(7)
-	// A forwarded PDF must not pass testnet tokens off as money (D-87).
 	if !inv.Livemode {
-		y := d.GetY()
-		d.color(surface)
-		d.Rect(margin, y, width, 9, "F")
-		d.SetXY(margin+5, y+2)
-		d.SetFont(font, "B", 8)
-		d.CellFormat(18, lineHeight, "Testnet", "", 0, "L", false, 0, "")
-		d.SetFont(font, "", 9)
-		d.CellFormat(width-28, lineHeight, TestMode, "", 0, "L", false, 0, "")
-		d.SetY(y + 9 + 5)
+		d.testnet()
 	}
 	d.summary(s)
 

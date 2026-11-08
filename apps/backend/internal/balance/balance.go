@@ -65,7 +65,8 @@ func (s *Service) Of(ctx context.Context, profileID string) (Balances, error) {
 	return s.of(ctx, profileID, true)
 }
 
-// of reads the wallet balances and, with records, pending and held from our records; without, those are 0.
+// of reads the wallet balances and, with records, pending and held from our records; without, those are 0. It lists
+// only the profile's mode, so the USD total never adds testnet tokens to real money (D-120).
 func (s *Service) of(ctx context.Context, profileID string, records bool) (Balances, error) {
 	var wallet string
 	if err := s.pool.QueryRow(ctx, `SELECT coalesce((SELECT address FROM profile_wallets
@@ -104,13 +105,13 @@ func (s *Service) of(ctx context.Context, profileID string, records bool) (Balan
 		FROM tokens t JOIN chains c ON c.chain_id = t.chain_id
 		LEFT JOIN booked b ON b.chain_id = t.chain_id AND b.token_contract = t.contract
 		LEFT JOIN unbooked u ON u.chain_id = t.chain_id AND u.token_contract = t.contract
-		WHERE c.enabled AND t.enabled AND c.chain_family = 'evm'
+		WHERE c.enabled AND t.enabled AND c.chain_family = 'evm' AND c.livemode = (SELECT livemode FROM profiles WHERE id = $1)
 		ORDER BY t.chain_id, t.contract`, []any{profileID}
 	if !records {
-		query, args = `SELECT t.chain_id, t.contract, t.symbol, t.decimals, c.livemode, c.gas_sponsored OR t.native_gas, '0', '0', '0', '0'
+		query = `SELECT t.chain_id, t.contract, t.symbol, t.decimals, c.livemode, c.gas_sponsored OR t.native_gas, '0', '0', '0', '0'
 			FROM tokens t JOIN chains c ON c.chain_id = t.chain_id
-			WHERE c.enabled AND t.enabled AND c.chain_family = 'evm'
-			ORDER BY t.chain_id, t.contract`, nil
+			WHERE c.enabled AND t.enabled AND c.chain_family = 'evm' AND c.livemode = (SELECT livemode FROM profiles WHERE id = $1)
+			ORDER BY t.chain_id, t.contract`
 	}
 	rows, err := s.pool.Query(ctx, query, args...)
 	if err != nil {

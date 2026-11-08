@@ -5,6 +5,7 @@ import {
   createProfileBodySchema,
   meSchema,
   notificationsSchema,
+  profileModeSchema,
   profileSchema,
   profileTokensSchema,
 } from "@/features/profiles/schemas/profiles";
@@ -21,6 +22,7 @@ const billingDetailsUrl = (profileId: string) =>
 const notificationsUrl = (profileId: string) =>
   `/v1/profiles/${encodeURIComponent(profileId)}/notifications`;
 const tokensUrl = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/tokens`;
+const modeUrl = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/mode`;
 
 export const profilesApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
@@ -103,6 +105,40 @@ export const profilesApi = apiSlice.injectEndpoints({
         }
       },
     }),
+    /** R-221: Developer mode, false livemode. Every other cached read was of the old mode, so each reads again; the
+     *  profile list only changes the mode, so the app shell stays as it is. */
+    saveProfileMode: build.mutation<
+      { livemode: boolean },
+      { profileId: string; livemode: boolean }
+    >({
+      query: ({ profileId, livemode }) => ({
+        url: modeUrl(profileId),
+        method: "PUT",
+        body: { livemode },
+      }),
+      responseSchema: profileModeSchema,
+      async onQueryStarted({ profileId }, { dispatch, getState, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(
+            profilesApi.util.updateQueryData("signUp", undefined, (me) => {
+              const profile = me.profiles.find((p) => p.profileId === profileId);
+              if (profile) profile.livemode = data.livemode;
+            }),
+          );
+          for (const entry of Object.values(getState().api.queries)) {
+            if (entry && entry.endpointName !== "signUp")
+              dispatch(
+                apiSlice.util.prefetch(entry.endpointName as never, entry.originalArgs as never, {
+                  force: true,
+                }),
+              );
+          }
+        } catch {
+          // The page shows the error.
+        }
+      },
+    }),
     /** R-136: every enabled token, on until the profile turns it off. */
     // The schema checks the list itself, as upsertQueryData below runs the endpoint's schemas on it.
     getProfileTokens: build.query<TokenSwitch[], string>({
@@ -143,4 +179,5 @@ export const {
   useSaveNotificationsMutation,
   useGetProfileTokensQuery,
   useSaveProfileTokensMutation,
+  useSaveProfileModeMutation,
 } = profilesApi;

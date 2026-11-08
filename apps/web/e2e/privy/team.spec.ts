@@ -18,6 +18,7 @@ const shop = (role: string, permissions: readonly string[]) => ({
   createdAt: "2026-09-02T00:00:00Z",
   role,
   permissions,
+  livemode: false,
 });
 const store = {
   storeId: STORE,

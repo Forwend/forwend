@@ -153,6 +153,26 @@ func putNotifications(profiles *profile.Service) http.HandlerFunc {
 	}
 }
 
+// R-221: Developer mode. The mode decides what the dashboard reaches; an API key keeps its own.
+func putMode(profiles *profile.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body modeBody
+		if err := httpio.DecodeJSON(w, r, &body); err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		if body.Livemode == nil {
+			httpio.WriteError(w, r, fmt.Errorf("%w: livemode: give true or false", profile.ErrInvalid))
+			return
+		}
+		if err := profiles.SetLivemode(r.Context(), r.PathValue("profileId"), *body.Livemode); err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusOK, modeJSON{Livemode: *body.Livemode})
+	}
+}
+
 // R-137: every session ends, this one too; the web signs out.
 func signOutEverywhere(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

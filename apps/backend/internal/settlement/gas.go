@@ -24,11 +24,16 @@ const TempoMinGas = (1_310_000 + 575_000) * 6 / 5
 
 // maxFeePerGas bounds what one unit of gas may cost on each chain, in its fee unit (wei, or attodollars on Tempo), so a
 // wrong or lying fee suggestion from one provider can't drain the executor (R-189). Fees on 2026-10-30 were far below:
-// Base Sepolia 0.005 gwei, Arbitrum Sepolia 0.02, Arc 20 plus a 12.5 tip, Tempo 0.6. A chain without one is not served.
+// Base Sepolia 0.005 gwei, Arbitrum Sepolia 0.02, Arc 20 plus a 12.5 tip, Tempo 0.6. Mainnet fees on 2026-11-08 were
+// alike: Base 0.006, Arbitrum 0.02, Arc 25.75, Tempo 0.6. A chain without one is not served.
 var maxFeePerGas = map[uint64]*big.Int{
+	8453:    big.NewInt(1e9),
 	84532:   big.NewInt(1e9),
+	42161:   big.NewInt(1e9),
 	421614:  big.NewInt(1e9),
+	5042:    big.NewInt(1000e9),
 	5042002: big.NewInt(1000e9),
+	4217:    big.NewInt(100e9),
 	42431:   big.NewInt(100e9),
 	31337:   big.NewInt(1000e9), // Anvil, in tests
 	31338:   big.NewInt(1000e9), // a second Anvil, in tests

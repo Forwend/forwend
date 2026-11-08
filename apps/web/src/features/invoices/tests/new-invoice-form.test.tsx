@@ -78,7 +78,7 @@ describe("new invoice form", () => {
     );
     render(
       <Provider store={makeStore({ getAccessToken: async () => "token" })}>
-        <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} />
+        <NewInvoiceForm profileId={PROFILE} testnet tokens={[TOKEN]} />
       </Provider>,
     );
     fireEvent.change(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }), {
@@ -131,7 +131,12 @@ describe("new invoice form", () => {
     Element.prototype.scrollIntoView = vi.fn();
     render(
       <Provider store={makeStore({ getAccessToken: async () => "token" })}>
-        <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} clientSearch={found([client])} />
+        <NewInvoiceForm
+          profileId={PROFILE}
+          testnet
+          tokens={[TOKEN]}
+          clientSearch={found([client])}
+        />
       </Provider>,
     );
     fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "100" } });
@@ -176,7 +181,7 @@ describe("new invoice form", () => {
     const fill = (tokens: (typeof TOKEN)[]) => {
       render(
         <Provider store={makeStore({ getAccessToken: async () => "token" })}>
-          <NewInvoiceForm profileId={PROFILE} tokens={tokens} />
+          <NewInvoiceForm profileId={PROFILE} testnet tokens={tokens} />
         </Provider>,
       );
       fireEvent.change(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }), {
@@ -236,7 +241,7 @@ describe("new invoice form", () => {
   it("shows each item's amount and the total exactly, not cut to cents", () => {
     render(
       <Provider store={makeStore({ getAccessToken: async () => "token" })}>
-        <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} />
+        <NewInvoiceForm profileId={PROFILE} testnet tokens={[TOKEN]} />
       </Provider>,
     );
     fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "12.345" } });
@@ -263,7 +268,7 @@ describe("new invoice form", () => {
     );
     render(
       <Provider store={makeStore({ getAccessToken: async () => "token" })}>
-        <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} />
+        <NewInvoiceForm profileId={PROFILE} testnet tokens={[TOKEN]} />
       </Provider>,
     );
     fireEvent.change(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }), {
@@ -297,6 +302,7 @@ describe("new invoice form", () => {
       <Provider store={makeStore({ getAccessToken: async () => "token" })}>
         <NewInvoiceForm
           profileId={PROFILE}
+          testnet
           tokens={[TOKEN]}
           replaces={{ invoiceId: old, number: "INV-0007" }}
         />
@@ -317,7 +323,7 @@ describe("new invoice form", () => {
   it("clears the missing-client error once a name or an email is typed", () => {
     render(
       <Provider store={makeStore({ getAccessToken: async () => "token" })}>
-        <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} />
+        <NewInvoiceForm profileId={PROFILE} testnet tokens={[TOKEN]} />
       </Provider>,
     );
     const name = screen.getByRole("textbox", { name: /^(Legal|Full) name/ });
@@ -336,7 +342,7 @@ describe("new invoice form", () => {
   it("keeps keyboard focus on the items as they are added and removed", () => {
     render(
       <Provider store={makeStore({ getAccessToken: async () => "token" })}>
-        <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} />
+        <NewInvoiceForm profileId={PROFILE} testnet tokens={[TOKEN]} />
       </Provider>,
     );
     fireEvent.click(screen.getByRole("button", { name: "Add item" }));
@@ -367,7 +373,12 @@ describe("new invoice form", () => {
     Element.prototype.scrollIntoView = vi.fn();
     render(
       <Provider store={makeStore({ getAccessToken: async () => "token" })}>
-        <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} clientSearch={found([acme, bob])} />
+        <NewInvoiceForm
+          profileId={PROFILE}
+          testnet
+          tokens={[TOKEN]}
+          clientSearch={found([acme, bob])}
+        />
       </Provider>,
     );
     const reference = () => (screen.getByLabelText(/^PO or reference/) as HTMLInputElement).value;
@@ -399,6 +410,7 @@ describe("new invoice form", () => {
       <Provider store={makeStore({ getAccessToken: async () => "token" })}>
         <NewInvoiceForm
           profileId={PROFILE}
+          testnet
           tokens={[TOKEN]}
           start={{
             payWith: "fixed",
@@ -453,7 +465,7 @@ describe("new invoice form", () => {
     Element.prototype.scrollIntoView = vi.fn();
     render(
       <Provider store={makeStore({ getAccessToken: async () => "token" })}>
-        <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} />
+        <NewInvoiceForm profileId={PROFILE} testnet tokens={[TOKEN]} />
       </Provider>,
     );
     fireEvent.change(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }), {
@@ -501,7 +513,7 @@ describe("new invoice form", () => {
     );
     render(
       <Provider store={makeStore({ getAccessToken: async () => "token" })}>
-        <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} />
+        <NewInvoiceForm profileId={PROFILE} testnet tokens={[TOKEN]} />
       </Provider>,
     );
     fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "100" } });
@@ -551,7 +563,7 @@ it("requires an invoice recipient while accepting an individual without business
   vi.stubGlobal("fetch", send);
   render(
     <Provider store={makeStore({ getAccessToken: async () => "token" })}>
-      <NewInvoiceForm profileId={PROFILE} tokens={[TOKEN]} />
+      <NewInvoiceForm profileId={PROFILE} testnet tokens={[TOKEN]} />
     </Provider>,
   );
   fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "10" } });
@@ -574,6 +586,7 @@ it("starts billed to the saved client a client page opened it for", () => {
     <Provider store={makeStore({ getAccessToken: async () => "token" })}>
       <NewInvoiceForm
         profileId={PROFILE}
+        testnet
         tokens={[TOKEN]}
         startClient={{
           clientId: "6f9619ff-8b86-4011-b42d-00c04fc964aa",

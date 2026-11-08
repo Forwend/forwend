@@ -30,7 +30,7 @@ export function Faq() {
           {
             question: "Is Forwend available on mainnet?",
             answer:
-              "The verified configuration uses test networks. Mainnet availability has not been confirmed. Use test tokens on the exact network shown in checkout.",
+              "Yes. Payers pay real USDC or OUSD on Base, Arbitrum, Arc and Tempo. Turn on Developer mode in a profile's settings to try everything on test networks with free test tokens.",
           },
           {
             question: "Can I withdraw to my bank?",

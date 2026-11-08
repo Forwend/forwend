@@ -363,7 +363,8 @@ func TestStatement(t *testing.T) {
 		"2025-10-09 12:00", "Income", "1.23", "0.99", "1.234567 USDC on Base Sepolia", income,
 		"2025-10-20 09:00", "no rate", late,
 		"Total", "9.25", "—",
-		"no EUR value, so the EUR total is left out", "1 payment in is unclassified and not listed")
+		"no EUR value, so the EUR total is left out", "1 payment in is unclassified and not listed",
+		"Test mode: testnet tokens have no value") // made in Developer mode (R-221)
 	for _, never := range []string{fmt.Sprintf("0x%064x", 3), fmt.Sprintf("0x%064x", 4), fmt.Sprintf("0x%064x", 5),
 		fmt.Sprintf("0x%064x", 7)} {
 		if strings.Contains(text, never) {

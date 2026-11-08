@@ -37,4 +37,5 @@ type Profile struct {
 	WalletAddress string
 	CreatedAt     time.Time
 	Role          string
+	Livemode      bool // false while Developer mode is on (D-120)
 }

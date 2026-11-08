@@ -91,6 +91,32 @@ export const TOKENS_COPY = {
   savedAll: "Changes saved.",
 } as const;
 
+/** R-221. */
+export const DEVELOPER_MODE_COPY = {
+  title: "Developer mode",
+  intro: "Try Forwend on test networks with free testnet tokens before you take real money.",
+  section: "Mode",
+  sectionNote: "For this profile only: each of your profiles has its own mode.",
+  toggle: "Developer mode",
+  on: "On: test networks. New invoices, links, keys and webhooks use testnet tokens, which have no value.",
+  off: "Off: live networks. Payers pay real stablecoins on Base, Arbitrum, Arc and Tempo.",
+  kept: "Turning it changes nothing you already made: each invoice, link, key and webhook keeps its mode.",
+  ownersOnly: "Only the owner or an Admin can change it.",
+  saveFailed: "We could not change the mode. Try again.",
+  noLive: "No live network is switched on yet, so this profile stays in Developer mode.",
+  saved: (on: boolean) =>
+    on ? "Developer mode on: test networks" : "Developer mode off: live networks",
+  strip: "Developer mode: test networks only. Tokens here have no value.",
+  stripAction: "Turn off",
+  // On a page that found nothing: what it opened may be of the other mode (R-221).
+  otherMode: (developer: boolean) =>
+    developer
+      ? "A live one shows only with Developer mode off."
+      : "A test one shows only in Developer mode.",
+  switchMode: (developer: boolean) =>
+    developer ? "Turn off Developer mode" : "Turn on Developer mode",
+} as const;
+
 /** R-80. */
 export const NOTIFICATIONS_COPY = {
   emailSection: "Email",

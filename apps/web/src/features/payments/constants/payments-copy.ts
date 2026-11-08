@@ -61,6 +61,7 @@ export const PAYMENT_DETAIL_COPY = {
   back: "Payments",
   testnet: "Testnet",
   unavailable: "We could not load this payment.",
+  notFound: "No payment has this link.",
   stale: "We could not refresh this payment. The last update is shown.",
   loading: "Loading payment",
   viewReceipt: "Open receipt",

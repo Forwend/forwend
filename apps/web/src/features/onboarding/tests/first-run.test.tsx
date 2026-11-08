@@ -35,6 +35,7 @@ const profile = (profileId: string, kind: Profile["kind"], name: string | null):
   createdAt: "2026-11-05T10:00:00Z",
   role: "owner",
   permissions: [],
+  livemode: false,
 });
 const PERSONAL_PROFILE = profile(PERSONAL, "personal", null);
 const TOKENS = [
@@ -59,6 +60,8 @@ const TOKENS = [
 type Call = { method: string; path: string; body: unknown };
 let calls: Call[];
 let failBillingOnce: boolean;
+// Whether a mainnet is on, so the personal profile, and the ones onboarding makes, start in live mode (D-120).
+let live: boolean;
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
@@ -68,7 +71,8 @@ async function api(request: Request): Promise<Response> {
   const text = await request.text();
   const body = text ? JSON.parse(text) : null;
   calls.push({ method: request.method, path, body });
-  if (path === "/api/v1/me") return json({ onboardedAt: null, profiles: [PERSONAL_PROFILE] });
+  if (path === "/api/v1/me")
+    return json({ onboardedAt: null, profiles: [{ ...PERSONAL_PROFILE, livemode: live }] });
   if (path.endsWith("/tokens") && request.method === "GET") return json({ tokens: TOKENS });
   if (path.endsWith("/tokens")) {
     const off = (body as { off: { token: string }[] }).off;
@@ -159,6 +163,7 @@ async function mount(props: { passkeyLinked?: boolean } = {}) {
 beforeEach(() => {
   calls = [];
   failBillingOnce = false;
+  live = false;
   link.mockClear();
   sessionStorage.clear();
   vi.stubGlobal("fetch", vi.fn(api));
@@ -168,6 +173,17 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("first run (R-50)", () => {
+  it("says the tokens are test money only in Developer mode (D-120)", async () => {
+    live = true;
+    await mount();
+    fireEvent.click(screen.getByRole("checkbox", { name: /Invoice clients/ }));
+    await click("Continue");
+    await fillDetails("Mara Ilić Design");
+    await click("Continue");
+    expect(screen.getByText("Step 3 of 5")).toBeTruthy();
+    expect(screen.queryByText(/Test money only/)).toBeNull();
+  });
+
   it("asks for at least one use, and counts the steps the uses need", async () => {
     await mount();
     expect(screen.getByText("Step 1 of 4")).toBeTruthy();

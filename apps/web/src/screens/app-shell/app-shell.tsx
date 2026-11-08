@@ -30,6 +30,7 @@ import type { SendMode } from "@/features/send/types/send";
 import { AppHeader } from "@/screens/app-shell/app-header";
 import { AppSidebar } from "@/screens/app-shell/app-sidebar";
 import { CommandMenu } from "@/screens/app-shell/command-menu";
+import { DeveloperModeStrip } from "@/screens/app-shell/developer-mode-strip";
 import { firstPage, pageAllowed } from "@/screens/app-shell/lib/app-nav";
 import { PhoneTabBar } from "@/screens/app-shell/phone-tab-bar";
 import { useRetryUnreachable, useServerUnreachable } from "@/shared/api/server-reach";
@@ -256,6 +257,9 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
             {down ? (
               <ServerStrip className="sticky top-[calc(4rem+env(safe-area-inset-top,0px))] z-[var(--fw-z-nav)] rounded-none" />
             ) : null}
+            {active.livemode ? null : (
+              <DeveloperModeStrip canTurnOff={can(active, PERMISSIONS.tokensWrite)} />
+            )}
             <main
               id="app-content"
               tabIndex={-1}

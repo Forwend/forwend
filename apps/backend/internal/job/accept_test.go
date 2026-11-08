@@ -13,6 +13,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/history/historytest"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
+	"github.com/forwend/forwend/apps/backend/internal/search"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -265,3 +266,64 @@ func TestConcurrentAcceptsWithoutDeposit(t *testing.T) {
 }
 
 func noLimit() time.Duration { return 0 }
+
+// R-221: a job keeps the mode its profile had when it was quoted. Turning Developer mode on or off later never moves
+// its invoices to the other mode, so a live quote is never paid with testnet tokens, and the list shows each mode's
+// jobs only in that mode.
+func TestAJobsInvoicesKeepTheModeItWasQuotedIn(t *testing.T) {
+	ctx := context.Background()
+	pool, profileID := open(t)
+	if _, err := pool.Exec(ctx, `UPDATE chains SET enabled = true WHERE chain_id = 8453;
+		INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block) VALUES (8453, 0, 0)
+		ON CONFLICT DO NOTHING`); err != nil {
+		t.Fatal(err)
+	}
+	mode := func(live bool) {
+		t.Helper()
+		if _, err := pool.Exec(ctx, "UPDATE profiles SET livemode = $2 WHERE id = $1", profileID, live); err != nil {
+			t.Fatal(err)
+		}
+	}
+	invoices := invoice.NewService(pool)
+	s := NewService(pool, invoices)
+	mode(true)
+	live, _, err := s.Create(ctx, profileID, "live", quote(true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	mode(false)
+	test, _, err := s.Create(ctx, profileID, "test", quote(true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !live.Livemode || test.Livemode {
+		t.Fatalf("job modes live %v, test %v", live.Livemode, test.Livemode)
+	}
+	// The owner is in Developer mode when the client accepts the live quote: its deposit is still live.
+	accepted, err := s.Accept(ctx, live.Token, "Jane Doe", "jane@bob.example", noLimit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inv, err := invoices.GetOfProfile(ctx, profileID, accepted.Payments[0].InvoiceID)
+	if err != nil || !inv.Livemode || inv.ChainID != 8453 {
+		t.Fatalf("live job's deposit: livemode %v chain %d, %v; want live on Base", inv.Livemode, inv.ChainID, err)
+	}
+	// And the other way round.
+	mode(true)
+	accepted, err = s.Accept(ctx, test.Token, "Jane Doe", "jane@bob.example", noLimit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inv, err = invoices.GetOfProfile(ctx, profileID, accepted.Payments[0].InvoiceID)
+	if err != nil || inv.Livemode || inv.ChainID != 84532 {
+		t.Fatalf("test job's deposit: livemode %v chain %d, %v; want test mode on Base Sepolia", inv.Livemode,
+			inv.ChainID, err)
+	}
+	for live, want := range map[bool]string{true: live.ID, false: test.ID} {
+		mode(live)
+		page, err := s.List(ctx, profileID, "", 10, search.Query{})
+		if err != nil || len(page.Jobs) != 1 || page.Jobs[0].ID != want {
+			t.Errorf("list in live mode %v: %+v, %v; want only job %s", live, page.Jobs, err, want)
+		}
+	}
+}
