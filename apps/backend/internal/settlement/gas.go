@@ -4,12 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math/big"
 	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/forwend/forwend/apps/backend/internal/chain"
@@ -147,6 +150,186 @@ func checkFeeToken(ctx context.Context, client *ethclient.Client, chainID uint64
 			"cost at the current gas price: %w", chainID, executor.Hex(), usd(have), token.Hex(), usd(need), what, errFundIt)
 	}
 	return nil
+}
+
+// swapRoutes is where the signer buys ether with the USDC network fees it is paid (R-229): Uniswap v3's SwapRouter02
+// and its WETH, swapping native USDC in the USDC/WETH pool of the fee tier. Checked on 2026-11-09 against Uniswap's
+// deployment docs and each router's factory() and WETH9(). The 0.05% pools then held 1.2M (Base) and 6.8M (Arbitrum)
+// USDC: deep enough for a top-up, at the lowest fee. Arc and Tempo pay gas in the stablecoin itself.
+var swapRoutes = map[uint64]swapRoute{
+	8453: {router: common.HexToAddress("0x2626664c2603336E57B271c5C0b26F421741e481"),
+		weth: common.HexToAddress("0x4200000000000000000000000000000000000006"),
+		usdc: common.HexToAddress("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"), fee: 500},
+	42161: {router: common.HexToAddress("0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"),
+		weth: common.HexToAddress("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"),
+		usdc: common.HexToAddress("0xaf88d065e77c8cC2239327C5EDb3A432268e5831"), fee: 500},
+}
+
+type swapRoute struct {
+	router, weth, usdc common.Address
+	fee                int64 // the pool's fee tier, in millionths
+}
+
+// A swap buys at least the ether the Chainlink price gives, less swapSlack percent (R-229). It brings the executor to
+// topUpSettlements deploys and settles, so one swap lasts many alert periods.
+const (
+	swapSlack        = 1
+	topUpSettlements = 2 * GasAlertSettlements
+)
+
+// SwapRouter02's IV3SwapRouter.exactInputSingle has no deadline; multicall's carries it.
+var routerABI = func() abi.ABI {
+	parsed, err := abi.JSON(strings.NewReader(`[
+	{"type":"function","name":"multicall","inputs":[{"name":"deadline","type":"uint256"},{"name":"data","type":"bytes[]"}]},
+	{"type":"function","name":"exactInputSingle","inputs":[{"name":"params","type":"tuple","components":[
+		{"name":"tokenIn","type":"address"},{"name":"tokenOut","type":"address"},{"name":"fee","type":"uint24"},
+		{"name":"recipient","type":"address"},{"name":"amountIn","type":"uint256"},
+		{"name":"amountOutMinimum","type":"uint256"},{"name":"sqrtPriceLimitX96","type":"uint160"}]}]},
+	{"type":"function","name":"unwrapWETH9","inputs":[{"name":"amountMinimum","type":"uint256"}]}]`))
+	if err != nil {
+		panic(err)
+	}
+	return parsed
+}()
+
+type exactInputSingle struct {
+	TokenIn, TokenOut          common.Address
+	Fee                        *big.Int
+	Recipient                  common.Address
+	AmountIn, AmountOutMinimum *big.Int
+	SqrtPriceLimitX96          *big.Int
+}
+
+// The router's Constants.ADDRESS_THIS: the swap leaves the WETH with the router, whose unwrapWETH9 pays the caller.
+var routerItself = common.HexToAddress("0x0000000000000000000000000000000000000002")
+
+// buyGas swaps USDC for the ether that brings the executor to topUpSettlements deploys and settles at the current fee
+// cap, or all its USDC if that buys less, and unwraps it in the same transaction. The router reverts unless the swap
+// pays at least the Chainlink price less swapSlack, so a moved or lying pool takes no more. A swap its gas estimate
+// refuses is never sent, and its approve is spent by the next one instead of sent again.
+func (s *Signer) buyGas(ctx context.Context, client *ethclient.Client, chainID uint64, route swapRoute) error {
+	mined, err := client.NonceAt(ctx, s.sender, nil)
+	if err != nil {
+		return fmt.Errorf("read executor nonce: %w", err)
+	}
+	pending, err := client.PendingNonceAt(ctx, s.sender)
+	if err != nil {
+		return fmt.Errorf("read executor nonce: %w", err)
+	}
+	if pending > mined {
+		// An approve stacked behind a stuck transaction would hold a nonce and buy nothing.
+		return fmt.Errorf("a transaction at nonce %d is not mined yet: buying next round", mined)
+	}
+	_, feeCap, err := Fees(ctx, client, chainID)
+	if err != nil {
+		return err
+	}
+	have, err := client.BalanceAt(ctx, s.sender, nil)
+	if err != nil {
+		return fmt.Errorf("read the executor's balance: %w", err)
+	}
+	want := new(big.Int).Sub(new(big.Int).Mul(feeCap, big.NewInt(MinGas*topUpSettlements)), have)
+	if want.Sign() <= 0 {
+		return nil
+	}
+	price, err := chain.EthPrice(ctx, client, chainID)
+	if err != nil {
+		return err
+	}
+	head, err := client.HeaderByNumber(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("read the latest block: %w", err)
+	}
+	held, err := chain.TokenBalanceAt(ctx, client, chainID, route.usdc.Hex(), s.sender.Hex(), head.Number.Uint64())
+	if err != nil {
+		return err
+	}
+	out, err := client.CallContract(ctx, ethereum.CallMsg{To: &route.usdc, Data: append(append(
+		selector("allowance(address,address)"), common.LeftPadBytes(s.sender.Bytes(), 32)...),
+		common.LeftPadBytes(route.router.Bytes(), 32)...)}, nil)
+	if err != nil || len(out) != 32 {
+		return fmt.Errorf("read the router's USDC allowance: %d bytes, %v", len(out), err)
+	}
+	// An allowance left by a refused swap is swapped before any new approve.
+	allowed, spendable := new(big.Int).SetBytes(out), held
+	if allowed.Sign() > 0 {
+		spendable = minBig(held, allowed)
+	}
+	in, least := swapAmounts(want, spendable, price)
+	if least.Sign() == 0 {
+		return fmt.Errorf("%s USDC to swap: too little to buy ether", usd(spendable))
+	}
+	var after uint64
+	if allowed.Sign() == 0 {
+		// Only what this swap takes: a router bug or a swap never sent can't reach more of the executor's USDC.
+		approve := append(append(selector("approve(address,uint256)"), common.LeftPadBytes(route.router.Bytes(), 32)...),
+			common.LeftPadBytes(in.Bytes(), 32)...)
+		tx, err := s.sendAndWait(ctx, client, chainID, route.usdc, approve, 0)
+		if err != nil {
+			return fmt.Errorf("approve the router: %w", err)
+		}
+		after = tx.Nonce() + 1
+	}
+	swap, err := routerABI.Pack("exactInputSingle", exactInputSingle{TokenIn: route.usdc, TokenOut: route.weth,
+		Fee: big.NewInt(route.fee), Recipient: routerItself, AmountIn: in, AmountOutMinimum: least,
+		SqrtPriceLimitX96: new(big.Int)})
+	if err != nil {
+		return err
+	}
+	unwrap, err := routerABI.Pack("unwrapWETH9", least)
+	if err != nil {
+		return err
+	}
+	// Mined later than this, it reverts: the price it was bounded by is old.
+	deadline := new(big.Int).SetUint64(head.Time + uint64(GasCheckEvery/time.Second))
+	data, err := routerABI.Pack("multicall", deadline, [][]byte{swap, unwrap})
+	if err != nil {
+		return err
+	}
+	tx, err := s.sendAndWait(ctx, client, chainID, route.router, data, after)
+	if err != nil {
+		return fmt.Errorf("swap: %w", err)
+	}
+	slog.Info("executor bought ether for gas", "chain", chainID, "usdc", usd(in), "ether_at_least", ether(least),
+		"tx", tx.Hash().Hex())
+	return nil
+}
+
+// swapAmounts: in is the USDC that buys wei of ether at price (USD per ether, chain.EthUSDDecimals decimals), rounded
+// up and at most held, taking USDC at 1 USD; least is the ether in must buy, less swapSlack percent, rounded down.
+func swapAmounts(wei, held, price *big.Int) (in, least *big.Int) {
+	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(18+chain.EthUSDDecimals-6), nil)
+	in = new(big.Int).Mul(wei, price)
+	in.Add(in, new(big.Int).Sub(scale, big.NewInt(1))).Div(in, scale)
+	if in.Cmp(held) > 0 {
+		in.Set(held)
+	}
+	least = new(big.Int).Mul(in, scale)
+	least.Mul(least, big.NewInt(100-swapSlack)).Div(least, new(big.Int).Mul(price, big.NewInt(100)))
+	return in, least
+}
+
+// sendAndWait signs at the executor's next nonce, at least after, and waits for the transaction to succeed. One not
+// mined in ReceiptWait stays unsaved: the next deploy replaces it if it holds the nonce (overStuck).
+func (s *Signer) sendAndWait(ctx context.Context, client *ethclient.Client, chainID uint64, to common.Address,
+	data []byte, after uint64) (*types.Transaction, error) {
+	tx, err := s.sign(ctx, client, chainID, to, data, after, 0, nil)
+	if err != nil {
+		return nil, err
+	}
+	if err := client.SendTransaction(ctx, tx); err != nil {
+		return nil, fmt.Errorf("send %s: %w", tx.Hash().Hex(), err)
+	}
+	r, err := s.await(ctx, client, tx.Hash())
+	switch {
+	case err != nil:
+		return nil, err
+	case r == nil:
+		return nil, fmt.Errorf("%s not mined in %s", tx.Hash().Hex(), ReceiptWait)
+	case r.Status != types.ReceiptStatusSuccessful:
+		return nil, fmt.Errorf("%s reverted", tx.Hash().Hex())
+	}
+	return tx, nil
 }
 
 func usd(units *big.Int) string {

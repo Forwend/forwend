@@ -225,3 +225,59 @@ func TestEveryChainHasAFeeCeiling(t *testing.T) {
 		}
 	}
 }
+
+// At 2,000 USD an ether: one ether costs 2,000 USDC and must buy at least 0.99 ether; a wei costs a whole USDC unit;
+// short of USDC, all of it buys what it can.
+func TestSwapAmounts(t *testing.T) {
+	price := big.NewInt(2000e8)
+	for _, c := range []struct {
+		wei, held, in, least string
+	}{
+		{"1000000000000000000", "5000000000", "2000000000", "990000000000000000"},
+		{"1", "5000000000", "1", "495000000"},
+		{"1000000000000000000", "1000000", "1000000", "495000000000000"},
+		{"1000000000000000000", "0", "0", "0"},
+	} {
+		wei, _ := new(big.Int).SetString(c.wei, 10)
+		held, _ := new(big.Int).SetString(c.held, 10)
+		in, least := swapAmounts(wei, held, price)
+		if in.String() != c.in || least.String() != c.least {
+			t.Errorf("%s wei with %s USDC units: in %s, least %s; want %s, %s", c.wei, c.held, in, least, c.in, c.least)
+		}
+	}
+}
+
+// Where the signer buys its gas, a buy that fails still alerts and names why: this Anvil has Base's id, not its feed.
+func TestSignerAlertsWhenItCantBuyGas(t *testing.T) {
+	ctx := t.Context()
+	pool, err := database.Open(ctx, databasetest.Migrated(t, database.Migrate))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	a := chaintest.StartChain(t, 8453)
+	client := ethclient.NewClient(a.RPC)
+	key, err := crypto.HexToECDSA(strings.TrimPrefix(chaintest.Key, "0x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := NewSigner(pool, key, map[uint64]*ethclient.Client{8453: client})
+	_, feeCap, err := Fees(ctx, client, 8453)
+	if err != nil {
+		t.Fatal(err)
+	}
+	low := new(big.Int).Mul(feeCap, big.NewInt(MinGas*2))
+	if err := a.RPC.Call(nil, "anvil_setBalance", s.sender, hexutil.EncodeBig(low)); err != nil {
+		t.Fatal(err)
+	}
+	var logs strings.Builder
+	defer slog.SetDefault(slog.Default())
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(logs.String(), "ALERT executor gas runs low") ||
+		!strings.Contains(logs.String(), "no ether bought: chain 8453 ETH/USD feed answered 0 bytes") {
+		t.Fatalf("logs lack the low gas alert with the failed buy:\n%s", logs.String())
+	}
+}

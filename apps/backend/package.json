@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "go build ./...",
-    "test": "sh -c 'f=$(gofmt -l .); [ -z \"$f\" ] || { echo \"gofmt: $f\"; exit 1; }' && go vet -tags e2e,privylive,loadtest ./... && sh scripts/with-env.sh go test -race -count=1 ./...",
+    "test": "sh -c 'f=$(gofmt -l .); [ -z \"$f\" ] || { echo \"gofmt: $f\"; exit 1; }' && go vet -tags e2e,privylive,loadtest,mainnetfork ./... && sh scripts/with-env.sh go test -race -count=1 ./...",
     "dev": "sh scripts/dev.sh",
     "postgres:up": "docker compose --env-file .env -f ../../infra/docker-compose.local.yml up -d --wait",
     "api": "sh scripts/with-env.sh go run ./cmd/api",

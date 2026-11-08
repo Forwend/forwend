@@ -56,7 +56,13 @@ func StartChain(t *testing.T, chainID uint64) *Anvil {
 	return startChain(t, chainID, "")
 }
 
-func startChain(t *testing.T, chainID uint64, archive string) *Anvil {
+// StartFork runs Anvil on a fork of the chain at url, with that chain's id and contracts. It caches nothing on disk.
+func StartFork(t *testing.T, url string) *Anvil {
+	t.Helper()
+	return startChain(t, 0, "", "--fork-url", url, "--no-storage-caching")
+}
+
+func startChain(t *testing.T, chainID uint64, archive string, fork ...string) *Anvil {
 	t.Helper()
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -70,8 +76,11 @@ func startChain(t *testing.T, chainID uint64, archive string) *Anvil {
 	if archive != "" {
 		persisted = "20000"
 	}
-	cmd := exec.Command("anvil", "--port", fmt.Sprint(port), "--slots-in-an-epoch", "1", "--silent",
-		"--max-persisted-states", persisted, "--chain-id", fmt.Sprint(chainID))
+	cmd := exec.Command("anvil", append([]string{"--port", fmt.Sprint(port), "--slots-in-an-epoch", "1", "--silent",
+		"--max-persisted-states", persisted}, fork...)...)
+	if chainID != 0 {
+		cmd.Args = append(cmd.Args, "--chain-id", fmt.Sprint(chainID))
+	}
 	if archive != "" {
 		cmd.Args = append(cmd.Args, "--cache-path", archive)
 	}
@@ -166,6 +175,18 @@ func (a *Anvil) code(at common.Address) int {
 		a.t.Fatal(err)
 	}
 	return len(code)
+}
+
+// As sends a call from any account, impersonated and given gas money: on a fork, a test takes tokens from a holder.
+func (a *Anvil) As(from, to, sig string, args ...string) {
+	a.t.Helper()
+	if err := a.RPC.Call(nil, "anvil_impersonateAccount", from); err != nil {
+		a.t.Fatal(err)
+	}
+	if err := a.RPC.Call(nil, "anvil_setBalance", from, "0xde0b6b3a7640000"); err != nil {
+		a.t.Fatal(err)
+	}
+	a.call(from, to, sig, args...)
 }
 
 // AsAuthority sends a call from the factory's refund authority (after DeployFactory).
