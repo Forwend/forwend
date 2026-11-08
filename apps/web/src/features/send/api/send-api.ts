@@ -18,11 +18,15 @@ export const sendApi = apiSlice.injectEndpoints({
       }),
       responseSchema: sendSchema,
     }),
-    submitSend: build.mutation<Send, { profileId: string; sendId: string; txHash: string }>({
-      query: ({ profileId, sendId, txHash }) => ({
+    // The hash of a send the browser signed, or the signature over a paymaster send's Privy request (R-225).
+    submitSend: build.mutation<
+      Send,
+      { profileId: string; sendId: string } & ({ txHash: string } | { signature: string })
+    >({
+      query: ({ profileId, sendId, ...body }) => ({
         url: `${sends(profileId)}/${encodeURIComponent(sendId)}/submit`,
         method: "POST",
-        body: { txHash },
+        body,
       }),
       responseSchema: sendSchema,
       // The money lists show it as Sending at once (R-215).

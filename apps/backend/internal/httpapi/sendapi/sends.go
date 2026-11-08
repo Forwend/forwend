@@ -62,15 +62,15 @@ func getSendFee(sends *send.Service) http.HandlerFunc {
 			httpio.WriteError(w, r, fmt.Errorf("%w: chainId must be a chain id", send.ErrInvalid))
 			return
 		}
-		fee, err := sends.Fee(r.Context(), r.PathValue("profileId"), chainID, r.URL.Query().Get("token"),
+		fee, paymaster, err := sends.Fee(r.Context(), r.PathValue("profileId"), chainID, r.URL.Query().Get("token"),
 			r.URL.Query().Get("to"))
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		paidBy := paidByForwend
-		if fee.Sign() > 0 {
-			paidBy = paidByWallet
+		paidBy := paidByWallet
+		if paymaster {
+			paidBy = paidByPaymaster
 		}
 		httpio.WriteJSON(w, http.StatusOK, feeJSON{Amount: fee.String(), PaidBy: paidBy})
 	}
@@ -100,14 +100,24 @@ func approveSend(sends *send.Service) http.HandlerFunc {
 
 func submitSend(sends *send.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// txHash for a send the browser signed; signature, over the approve's privyRequest, for a paymaster send.
 		var body struct {
-			TxHash string `json:"txHash"`
+			TxHash    string `json:"txHash"`
+			Signature string `json:"signature"`
 		}
 		if err := httpio.DecodeJSON(w, r, &body); err != nil {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		s, err := sends.Submit(r.Context(), r.PathValue("profileId"), r.PathValue("sendId"), body.TxHash)
+		if (body.TxHash == "") == (body.Signature == "") {
+			httpio.WriteError(w, r, fmt.Errorf("%w: give either txHash or signature", send.ErrInvalid))
+			return
+		}
+		submit := sends.Submit
+		if body.Signature != "" {
+			submit = sends.Relay
+		}
+		s, err := submit(r.Context(), r.PathValue("profileId"), r.PathValue("sendId"), body.TxHash+body.Signature)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

@@ -98,7 +98,8 @@ export function SendReview({
           <span className="tabular-nums">{feeLabel(fee, option)}</span>
         </Row>
         {fee === 0n ? null : (
-          // The amount and the fee come from one balance: the total is what leaves the wallet, at most.
+          // The amount and the fee come from one balance: the total is what leaves the wallet, at most where the wallet
+          // signs gas caps, about where a paymaster takes the fee (R-225).
           <Row term={SEND_COPY.total}>
             <span className="font-medium tabular-nums">
               {SEND_COPY.approx(

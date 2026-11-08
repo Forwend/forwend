@@ -27,12 +27,20 @@ export const sendSchema = z.object({
   txHash: z.string().nullable(),
   failure: z.enum(SEND_FAILURES).nullable(),
   networkFee: sendFeeSchema,
-  // What a wallet-paid send is signed with, so it costs at most networkFee (R-216); null when Forwend pays.
+  // What a wallet-paid send is signed with, so it costs at most networkFee (R-216); null otherwise.
   gas: z
     .object({ limit: baseUnits, maxFeePerGas: baseUnits, maxPriorityFeePerGas: baseUnits })
     .nullable(),
   warnings: z.array(z.enum(SEND_WARNINGS)),
   createdAt: apiTime,
+  // Approve's answer for a paymaster send: the Privy request the user's key signs (R-225).
+  privyRequest: z
+    .object({
+      url: z.string(),
+      body: z.record(z.string(), z.unknown()),
+      headers: z.record(z.string(), z.string()),
+    })
+    .optional(),
 });
 
 /** GET /v1/profiles/{id}/sends: signed sends no block holds yet (R-215). */

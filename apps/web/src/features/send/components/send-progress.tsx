@@ -12,15 +12,22 @@ import { CircleAlert, ExternalLink } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { profileLabel } from "@/features/profiles/lib/profile";
 import { useGetSendQuery, useSubmitSendMutation } from "@/features/send/api/send-api";
-import { SEND_FAILURES, SEND_POLL_MS, SEND_STATUSES } from "@/features/send/constants/send";
+import {
+  FEE_PAYERS,
+  SEND_FAILURES,
+  SEND_POLL_MS,
+  SEND_STATUSES,
+} from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
-import type { Recipient, Send, SendOption } from "@/features/send/types/send";
+import type { Recipient, Relay, Send, SendOption } from "@/features/send/types/send";
 import { txLink } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 
 export interface SendProgressProps {
   profileId: string;
   initial: Send;
+  /** A paymaster send's signature, sent again while the server shows it unsent and its request is valid. */
+  relay?: Relay | null;
   option: SendOption;
   recipient: Recipient;
   onSent: () => void;
@@ -33,6 +40,7 @@ export interface SendProgressProps {
 export function SendProgress({
   profileId,
   initial,
+  relay,
   option,
   recipient,
   onSent,
@@ -41,9 +49,20 @@ export function SendProgress({
 }: SendProgressProps) {
   const read = useGetSendQuery({ profileId, sendId: initial.sendId });
   const send = read.currentData ?? initial;
+  const readAt = read.fulfilledTimeStamp;
+  // A refusal (not a lost connection) won't change on the next try: the sheet may close, and the watcher still shows
+  // the transfer in Transactions.
+  const [refused, setRefused] = useState(false);
+  // A paymaster send the server shows approved or expired never reached it, or Privy answered and the server lost
+  // that: the same signed request again is safe, as Privy sends it once. Once it expires (the server refuses it by
+  // its own clock) the send is over. A wallet-paid send has its hash to report instead.
+  const relayLate = relay != null && readAt !== undefined && readAt >= relay.until;
+  const unsent = send.status === SEND_STATUSES.expired && relay != null && (relayLate || refused);
   // Sent is followed until final: the note then says it arrived, and a reorg shows as Sending again.
   const settled =
-    send.status === SEND_STATUSES.failed || (send.status === SEND_STATUSES.sent && send.final);
+    send.status === SEND_STATUSES.failed ||
+    unsent ||
+    (send.status === SEND_STATUSES.sent && send.final);
   const { refetch } = read;
   useEffect(() => {
     if (settled) return;
@@ -55,10 +74,26 @@ export function SendProgress({
   const [submit] = useSubmitSendMutation();
   const hash = initial.txHash;
   const lost = read.currentData !== undefined && read.currentData.txHash === null;
-  const readAt = read.fulfilledTimeStamp;
-  // A refusal (not a lost connection) won't change on the next try: the sheet may close, and the watcher still shows
-  // the transfer in Transactions.
-  const [refused, setRefused] = useState(false);
+  const relayLost =
+    relay != null &&
+    !relayLate &&
+    !refused &&
+    (read.currentData?.status === SEND_STATUSES.approved ||
+      read.currentData?.status === SEND_STATUSES.expired);
+  // One at a time: a relay can take the server 25 s, and reads come every 1.5 s.
+  const relaying = useRef(false);
+  useEffect(() => {
+    if (!relayLost || !relay || !readAt || relaying.current) return;
+    relaying.current = true;
+    submit({ profileId, sendId: initial.sendId, signature: relay.signature })
+      .unwrap()
+      .catch((e: { status?: unknown }) => {
+        if (e.status === 404 || e.status === 422) setRefused(true);
+      })
+      .finally(() => {
+        relaying.current = false;
+      });
+  }, [relayLost, relay, readAt, submit, profileId, initial.sendId]);
   useEffect(() => {
     if (!lost || !hash || !readAt) return;
     submit({ profileId, sendId: initial.sendId, txHash: hash })
@@ -68,10 +103,15 @@ export function SendProgress({
       });
   }, [lost, hash, readAt, submit, profileId, initial.sendId]);
   // Locked until the server holds the hash, unless the server can't be reached: then the owner may leave, and the
-  // transfer still shows in Transactions once the watcher records it.
+  // transfer still shows in Transactions once the watcher records it. A paymaster send has no hash to report: the
+  // server already holds its signed request (R-225).
   // read.error stays until a read succeeds, so a retry in flight doesn't lock the sheet again.
   const unreachable = read.error !== undefined;
-  const holding = read.currentData?.txHash == null && !unreachable && !refused;
+  const holding =
+    send.networkFee.paidBy !== FEE_PAYERS.paymaster &&
+    read.currentData?.txHash == null &&
+    !unreachable &&
+    !refused;
   useEffect(() => onHolding(holding), [holding, onHolding]);
   const told = useRef(false);
   useEffect(() => {
@@ -86,7 +126,7 @@ export function SendProgress({
   const to =
     "profile" in recipient ? profileLabel(recipient.profile) : shortAddress(recipient.address);
   const link = send.txHash ? txLink(send.chainId, send.txHash) : null;
-  const failed = send.status === SEND_STATUSES.failed;
+  const failed = send.status === SEND_STATUSES.failed || unsent;
   const sent = send.status === SEND_STATUSES.sent;
 
   return (
@@ -110,9 +150,11 @@ export function SendProgress({
               ? SEND_COPY.arrived(amount, to)
               : SEND_COPY.sentNote(amount, to)
             : failed
-              ? send.failure === SEND_FAILURES.dropped
-                ? SEND_COPY.dropped
-                : SEND_COPY.reverted
+              ? unsent
+                ? SEND_COPY.notSent
+                : send.failure === SEND_FAILURES.dropped
+                  ? SEND_COPY.dropped
+                  : SEND_COPY.reverted
               : SEND_COPY.sendingNote}
         </p>
       </div>

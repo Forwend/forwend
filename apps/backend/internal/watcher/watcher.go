@@ -618,8 +618,11 @@ func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit,
 	// without Forwend's screens (D-49), so the owner hears at once. Checked once final: by then the browser reported its
 	// send's hash, or the send waits approved for this transfer, or its approval ended within the hour before. Only the
 	// same wallet, token, recipient and amount explain it, so a hash reported on another send can't hide the transfer.
-	// A Tempo send's fee is the one other transfer its transaction explains (chain.TempoFee). Checked after the whole
-	// batch is recorded, so a fee logged before the send's own transfer is still explained.
+	// A relayed send Privy hasn't given a hash yet explains its own transfer for DropAfter, as an approved one does.
+	// A send's network fee is the one other transfer its transaction explains: a Tempo send's (chain.TempoFee), or a
+	// relayed send's paymaster's (chain.PaymasterFee), for which only Privy gives the hash, never the browser or the
+	// chain (R-225). Checked after the whole batch is recorded, so a fee logged before the send's own transfer is still
+	// explained.
 	for _, id := range final {
 		if _, err := tx.Exec(ctx, `INSERT INTO outbox_events (kind, wallet_transfer_id, payload)
 			SELECT $2, w.id, '{}' FROM wallet_transfers w WHERE w.id = $1
@@ -627,8 +630,10 @@ func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit,
 			      AND s.from_address = w.wallet_address AND s.token_contract = w.token_contract
 			      AND (s.to_address = w.counterparty AND s.amount = w.amount
 			          AND (s.tx_hash = w.tx_hash OR s.tx_hash IS NULL AND w.created_at >= s.approved_at
-			              AND (s.status = 'approved' OR s.status = 'expired' AND w.created_at < s.finished_at + interval '1 hour'))
-			          OR `+chain.TempoFee("w", "s")+`))
+			              AND (s.status = 'approved' OR s.status = 'submitted' AND s.privy_transaction_id IS NOT NULL
+			                      AND w.created_at < s.submitted_at + interval '30 minutes'
+			                  OR s.status = 'expired' AND w.created_at < s.finished_at + interval '1 hour'))
+			          OR `+chain.TempoFee("w", "s")+` OR `+chain.PaymasterFee("w", "s")+`))
 			ON CONFLICT DO NOTHING`, id, outbox.WalletOutflow); err != nil {
 			return fmt.Errorf("tell the owner of wallet transfer %d: %w", id, err)
 		}

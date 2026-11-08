@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net"
 	"os"
 	"os/exec"
@@ -217,6 +218,18 @@ func (a *Anvil) TwoTransfers(token, to1, amount1, to2, amount2 string) string {
 		a.t.Fatal(err)
 	}
 	return a.transact(Sender, batcher, append(first, second...)).TransactionHash
+}
+
+// PriceFeed puts a Chainlink-style feed on the chain whose latestRoundData answers price, and returns its address.
+func (a *Anvil) PriceFeed(price *big.Int) common.Address {
+	a.t.Helper()
+	feed := common.HexToAddress("0x00000000000000000000000000000000000000fd")
+	// Five words, the second the price.
+	code := "0x7f" + common.Bytes2Hex(common.LeftPadBytes(price.Bytes(), 32)) + "60205260a06000f3"
+	if err := a.RPC.Call(nil, "anvil_setCode", feed.Hex(), code); err != nil {
+		a.t.Fatal(err)
+	}
+	return feed
 }
 
 // Send calls a contract from the sender, waits for the receipt and returns the transaction hash.

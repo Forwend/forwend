@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/forwend/forwend/apps/backend/internal/privy"
 	"github.com/forwend/forwend/apps/backend/internal/send"
 )
 
@@ -14,14 +15,16 @@ const (
 	statusSent    = "sent"
 )
 
-// Who pays the network fee (D-119): Forwend where it sponsors gas, else the wallet, from the token itself (R-216).
+// How the wallet pays its network fee from the token itself (D-121): as the chain's gas coin, signed with gas caps
+// (R-216), or taken by a paymaster from a Privy request the server sends (R-225). Forwend paid for sends before D-121.
 const (
-	paidByForwend = "forwend"
-	paidByWallet  = "wallet"
+	paidByForwend   = "forwend"
+	paidByWallet    = "wallet"
+	paidByPaymaster = "paymaster"
 )
 
 type feeJSON struct {
-	// The most the wallet pays, in the token's base units; 0 when Forwend pays.
+	// In the token's base units: the most a wallet-paid send costs, the estimate a paymaster send shows.
 	Amount string `json:"amount"`
 	PaidBy string `json:"paidBy"`
 }
@@ -53,6 +56,8 @@ type sendJSON struct {
 	Gas       *gasJSON       `json:"gas"`
 	Warnings  []send.Warning `json:"warnings"`
 	CreatedAt string         `json:"createdAt"`
+	// PrivyRequest is set by approve on a paymaster send: what the user's key signs for submit.
+	PrivyRequest *privy.Request `json:"privyRequest,omitempty"`
 }
 
 func toSendJSON(s send.Send) sendJSON {
@@ -70,7 +75,10 @@ func toSendJSON(s send.Send) sendJSON {
 	out := sendJSON{SendID: s.ID, ChainID: s.ChainID, Token: s.Token, Symbol: s.Symbol, Decimals: s.Decimals, From: s.From, To: s.To, ToProfileID: s.ToProfileID,
 		Amount: s.Amount.String(), Status: status, Final: s.Status == send.Sent, TxHash: s.TxHash, Failure: s.Failure,
 		NetworkFee: feeJSON{Amount: s.NetworkFee.String(), PaidBy: paidByForwend}, Warnings: warnings,
-		CreatedAt: s.CreatedAt.UTC().Format(time.RFC3339)}
+		CreatedAt: s.CreatedAt.UTC().Format(time.RFC3339), PrivyRequest: s.Relay}
+	if s.FeeAsset != nil {
+		out.NetworkFee.PaidBy = paidByPaymaster
+	}
 	if s.FeePaid != nil {
 		paid := s.FeePaid.String()
 		out.FeePaid = &paid

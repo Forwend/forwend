@@ -3,6 +3,7 @@ import {
   feeLabel,
   feeShown,
   isWalletAddress,
+  matchesPrivyRequest,
   matchesRequest,
   maxAmount,
   roomForFee,
@@ -117,6 +118,127 @@ describe("a wallet-paid send", () => {
     expect(matchesRequest({ ...send, gas: null }, asked, expected)).toBe(false);
     expect(
       matchesRequest({ ...send, networkFee: { amount: "0", paidBy: "wallet" } }, asked, expected),
+    ).toBe(false);
+  });
+});
+
+describe("a paymaster send", () => {
+  const asked = {
+    chainId: 8453,
+    token: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+    amount: "2500000",
+    to: "0x" + "bb".repeat(20),
+  };
+  const expected = { to: asked.to, from: "0x" + "aa".repeat(20), decimals: 6 };
+  const send = {
+    ...asked,
+    sendId: "send-1",
+    symbol: "USDC",
+    from: expected.from,
+    decimals: 6,
+    networkFee: { amount: "12000", paidBy: "paymaster" },
+    gas: null,
+  } as Parameters<typeof matchesRequest>[0];
+  const request = {
+    url: "https://api.privy.io/v1/wallets/w1/rpc",
+    headers: {
+      "privy-app-id": "app",
+      "privy-idempotency-key": "send-1",
+      "privy-request-expiry": String(1_000_000 + 120_000),
+    },
+    body: {
+      method: "eth_sendTransaction",
+      caip2: "eip155:8453",
+      chain_type: "ethereum",
+      sponsor: true,
+      sponsor_options: { asset: "usdc" },
+      reference_id: "send-1",
+      params: {
+        transaction: {
+          from: send.from,
+          to: send.token,
+          data: transferCalldata(send.to, 2_500_000n),
+          value: "0x0",
+          chain_id: "0x2105",
+        },
+      },
+    },
+  };
+  const tx = request.body.params.transaction;
+  const withTx = (change: Record<string, unknown>) => ({
+    ...request,
+    body: { ...request.body, params: { transaction: { ...tx, ...change } } },
+  });
+
+  it("has an estimated fee and no gas caps", () => {
+    expect(matchesRequest(send, asked, expected)).toBe(true);
+    expect(
+      matchesRequest(
+        { ...send, networkFee: { amount: "0", paidBy: "paymaster" } },
+        asked,
+        expected,
+      ),
+    ).toBe(false);
+    const gas = { limit: "1", maxFeePerGas: "1", maxPriorityFeePerGas: "1" };
+    expect(matchesRequest({ ...send, gas }, asked, expected)).toBe(false);
+  });
+
+  it("signs only a Privy request that moves what the review showed", () => {
+    const now = 1_000_000;
+    const matches = (s: typeof send, r: typeof request) => matchesPrivyRequest(s, r, now);
+    expect(matches(send, request)).toBe(true);
+    const headers = (change: Record<string, string>) => ({
+      ...request,
+      headers: { ...request.headers, ...change },
+    });
+    // Sent once, soon: a far expiry could be sent again after Privy's idempotency window.
+    expect(matches(send, headers({ "privy-idempotency-key": "send-2" }))).toBe(false);
+    expect(matches(send, headers({ "privy-request-expiry": String(now + 24 * 3_600_000) }))).toBe(
+      false,
+    );
+    // A device clock a few minutes fast still signs; Privy refuses an expired request itself.
+    expect(matches(send, headers({ "privy-request-expiry": String(now - 180_000) }))).toBe(true);
+    expect(matches(send, headers({ "privy-extra": "1" }))).toBe(false);
+    expect(matches(send, { ...request, body: { ...request.body, reference_id: "send-2" } })).toBe(
+      false,
+    );
+    expect(matches(send, { ...request, body: { ...request.body, chain_type: "solana" } })).toBe(
+      false,
+    );
+    expect(
+      matches(send, {
+        ...request,
+        body: { ...request.body, sponsor_options: { asset: "usdc", extra: 1 } },
+      } as unknown as typeof request),
+    ).toBe(false);
+    expect(
+      matches(send, {
+        ...request,
+        body: { ...request.body, params: { transaction: tx, other: 1 } },
+      } as unknown as typeof request),
+    ).toBe(false);
+    expect(
+      matches(send, { ...request, body: { ...request.body, sponsor_options: { asset: "usdt" } } }),
+    ).toBe(false);
+    expect(matches(send, withTx({ data: transferCalldata(send.to, 2_500_001n) }))).toBe(false);
+    expect(matches(send, withTx({ to: "0x" + "cc".repeat(20) }))).toBe(false);
+    expect(matches(send, withTx({ from: "0x" + "dd".repeat(20) }))).toBe(false);
+    expect(matches(send, withTx({ value: "0x1" }))).toBe(false);
+    expect(matches(send, withTx({ gas: "0x1" }))).toBe(false);
+    expect(
+      matchesPrivyRequest(send, { ...request, body: { ...request.body, caip2: "eip155:42161" } }),
+    ).toBe(false);
+    expect(
+      matchesPrivyRequest(send, {
+        ...request,
+        body: { ...request.body, method: "eth_signTransaction" },
+      }),
+    ).toBe(false);
+    expect(
+      matchesPrivyRequest(send, { ...request, body: { ...request.body, wallet_id: "other" } }),
+    ).toBe(false);
+    expect(
+      matchesPrivyRequest(send, { ...request, url: "https://example.com/v1/wallets/w1/rpc" }),
     ).toBe(false);
   });
 });

@@ -47,7 +47,14 @@ import {
   sendOptions,
   transferTargets,
 } from "@/features/send/lib/send";
-import type { Recipient, Send, SendMode, SendOption, SendStep } from "@/features/send/types/send";
+import type {
+  Recipient,
+  Relay,
+  Send,
+  SendMode,
+  SendOption,
+  SendStep,
+} from "@/features/send/types/send";
 import { MoneyChip } from "@/shared/components/chains/money-chip";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { LoadError } from "@/shared/components/load-error";
@@ -103,6 +110,7 @@ export function SendSheet({
   const [amountError, setAmountError] = useState<string | null>(null);
   const [prepared, setPrepared] = useState<Send | null>(null);
   const [submitted, setSubmitted] = useState<Send | null>(null);
+  const [relay, setRelay] = useState<Relay | null>(null);
   // While Privy signs, the sheet stays open: closing it would not stop the money.
   const [signing, setSigning] = useState(false);
   // Every send checked this time; the unsigned ones are given up when the sheet closes.
@@ -142,8 +150,9 @@ export function SendSheet({
     profileId: profile.profileId,
     send: prepared,
     onSigning: setSigning,
-    onSubmitted: (s) => {
+    onSubmitted: (s, r) => {
       setSubmitted(s);
+      setRelay(r);
       go(SEND_STEPS.progress);
     },
   });
@@ -499,6 +508,7 @@ export function SendSheet({
       <SendProgress
         profileId={profile.profileId}
         initial={submitted}
+        relay={relay}
         option={option}
         recipient={recipient}
         onSent={onSent}

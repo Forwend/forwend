@@ -42,23 +42,25 @@ func (s *Service) Prepare(ctx context.Context, profileID string, req Request) (S
 		return Send{}, fmt.Errorf("%w: amount must be a positive number of base units", ErrInvalid)
 	}
 	var family string
-	var sponsored, nativeGas bool
+	var nativeGas bool
+	var feeAsset *string
 	var decimals int
 	err := s.pool.QueryRow(ctx, `
-		SELECT c.chain_family, c.gas_sponsored, t.native_gas, t.decimals FROM chains c JOIN tokens t ON t.chain_id = c.chain_id
+		SELECT c.chain_family, t.native_gas, t.fee_asset, t.decimals FROM chains c JOIN tokens t ON t.chain_id = c.chain_id
 		WHERE c.chain_id = $1 AND t.contract = $2 AND c.enabled AND t.enabled
 		  AND c.livemode = (SELECT livemode FROM profiles WHERE id = $3)`,
-		int64(req.ChainID), strings.ToLower(req.Token), profileID).Scan(&family, &sponsored, &nativeGas, &decimals)
+		int64(req.ChainID), strings.ToLower(req.Token), profileID).Scan(&family, &nativeGas, &feeAsset, &decimals)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Send{}, fmt.Errorf("%w: token is not enabled on this network in the profile's mode", ErrInvalid)
 	} else if err != nil {
 		return Send{}, fmt.Errorf("read chain: %w", err)
 	}
-	// Without sponsorship the wallet pays its gas, which only a token that is the chain's gas coin can (R-216).
-	if !sponsored && !nativeGas {
+	// The wallet pays its own fee in the token (D-121): as the chain's gas coin (R-216), or through a paymaster (R-225).
+	if !nativeGas && feeAsset == nil {
 		return Send{}, fmt.Errorf("%w: this network's gas is paid in another coin, so it offers no Send yet", ErrInvalid)
 	}
-	out := Send{ProfileID: profileID, ChainID: req.ChainID, Token: strings.ToLower(req.Token), Amount: req.Amount}
+	out := Send{ProfileID: profileID, ChainID: req.ChainID, Token: strings.ToLower(req.Token), Amount: req.Amount,
+		FeeAsset: feeAsset}
 	err = s.pool.QueryRow(ctx, "SELECT address FROM profile_wallets WHERE profile_id = $1 AND chain_family = $2",
 		profileID, family).Scan(&out.From)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -79,11 +81,16 @@ func (s *Service) Prepare(ctx context.Context, profileID string, req Request) (S
 	if err := checkOnChain(ctx, client, &out); err != nil {
 		return Send{}, err
 	}
-	out.NetworkFee = new(big.Int)
-	if !sponsored {
-		if err := s.estimate(ctx, client, &out, decimals); err != nil {
+	if feeAsset != nil {
+		if out.NetworkFee, err = paymasterFee(ctx, client, out.ChainID, out.From, out.Token, out.To, out.Amount,
+			decimals); err != nil {
 			return Send{}, err
 		}
+		if err := covers(ctx, client, out); err != nil {
+			return Send{}, err
+		}
+	} else if err := s.estimate(ctx, client, &out, decimals); err != nil {
+		return Send{}, err
 	}
 	if out.ToProfileID == nil {
 		var sentBefore bool
@@ -234,14 +241,14 @@ func (s *Service) keep(ctx context.Context, out Send) (Send, error) {
 	}
 	err = tx.QueryRow(ctx, `
 		INSERT INTO sends (profile_id, chain_id, chain_family, token_contract, from_address, to_address, to_profile_id,
-		                   amount, network_fee, gas_limit, max_fee_per_gas, max_priority_fee_per_gas)
-		VALUES ($1, $2, 'evm', $3, $4, $5, $6, $7::numeric, $8::numeric, $9, $10::numeric, $11::numeric)
+		                   amount, network_fee, gas_limit, max_fee_per_gas, max_priority_fee_per_gas, fee_asset)
+		VALUES ($1, $2, 'evm', $3, $4, $5, $6, $7::numeric, $8::numeric, $9, $10::numeric, $11::numeric, $12)
 		RETURNING id::text, status, created_at,
 		    (SELECT symbol FROM tokens WHERE chain_id = $2 AND contract = $3),
 		    (SELECT decimals FROM tokens WHERE chain_id = $2 AND contract = $3)`,
 		out.ProfileID, int64(out.ChainID), out.Token, out.From, out.To, out.ToProfileID, out.Amount.String(),
 		out.NetworkFee.String(), gasLimit(out.Gas), gasValue(out.Gas, func(g *Gas) *big.Int { return g.MaxFeePerGas }),
-		gasValue(out.Gas, func(g *Gas) *big.Int { return g.MaxPriorityFeePerGas })).
+		gasValue(out.Gas, func(g *Gas) *big.Int { return g.MaxPriorityFeePerGas }), out.FeeAsset).
 		Scan(&out.ID, &out.Status, &out.CreatedAt, &out.Symbol, &out.Decimals)
 	if pgErr := (*pgconn.PgError)(nil); errors.As(err, &pgErr) && pgErr.ConstraintName == "sends_one_unsigned" {
 		return Send{}, ErrBusy
@@ -274,19 +281,8 @@ func (s *Service) estimate(ctx context.Context, client *ethclient.Client, out *S
 		if chosen != (common.Address{}) && chosen != common.HexToAddress(out.Token) {
 			return fmt.Errorf("%w: this wallet pays Tempo fees in another token", ErrInvalid)
 		}
-		block, err := client.BlockNumber(ctx)
-		if err != nil {
-			return errors.Join(ErrUnavailable, fmt.Errorf("read the latest block: %w", err))
-		}
-		held, err := ledger.BalanceAt(ctx, client, out.ChainID, out.Token, out.From, block)
-		if err != nil {
-			return errors.Join(ErrUnavailable, fmt.Errorf("read token balance: %w", err))
-		}
-		if need := new(big.Int).Add(out.Amount, fee); held.Cmp(need) < 0 {
-			return fmt.Errorf("%w: amount plus the network fee is more than the wallet holds", ErrInvalid)
-		}
 		out.NetworkFee, out.Gas = fee, &gas
-		return nil
+		return covers(ctx, client, *out)
 	}
 	held, err := client.BalanceAt(ctx, from, nil)
 	if err != nil {
@@ -298,6 +294,52 @@ func (s *Service) estimate(ctx context.Context, client *ethclient.Client, out *S
 	}
 	out.NetworkFee, out.Gas = fee, &gas
 	return nil
+}
+
+// covers checks that the wallet's token balance holds the amount plus the fee, which comes out of the same token.
+func covers(ctx context.Context, client *ethclient.Client, out Send) error {
+	block, err := client.BlockNumber(ctx)
+	if err != nil {
+		return errors.Join(ErrUnavailable, fmt.Errorf("read the latest block: %w", err))
+	}
+	held, err := ledger.BalanceAt(ctx, client, out.ChainID, out.Token, out.From, block)
+	if err != nil {
+		return errors.Join(ErrUnavailable, fmt.Errorf("read token balance: %w", err))
+	}
+	if need := new(big.Int).Add(out.Amount, out.NetworkFee); held.Cmp(need) < 0 {
+		return fmt.Errorf("%w: amount plus the network fee is more than the wallet holds", ErrInvalid)
+	}
+	return nil
+}
+
+// userOpGas is what a paymaster send adds to the transfer's own gas: the EIP-4337 user operation's checks, the
+// paymaster's fee pull and the bundle's overhead, L1 data included.
+// ponytail: a guess with room, not a measure; set it from the first live sends' receipts.
+const userOpGas = 400_000
+
+// paymasterFee is Forwend's estimate of what Privy's paymaster takes for the send, in the token's base units, rounded
+// up (R-225): the transfer's gas plus userOpGas at the chain's fee cap, in dollars at the chain's ETH/USD feed. Privy
+// quotes none, so the fee really taken can differ; FeePaid records it.
+func paymasterFee(ctx context.Context, client *ethclient.Client, chainID uint64, from, token, to string,
+	amount *big.Int, decimals int) (*big.Int, error) {
+	gas, _, _, err := feeFor(ctx, client, chainID, from, token, to, amount, decimals)
+	if err != nil {
+		return nil, err
+	}
+	price, err := chain.EthPrice(ctx, client, chainID)
+	if err != nil {
+		return nil, errors.Join(ErrUnavailable, err)
+	}
+	units := new(big.Int).Mul(gas.MaxFeePerGas, new(big.Int).SetUint64(gas.Limit+userOpGas))
+	units.Mul(units, price)
+	units.Mul(units, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil))
+	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(nativeDecimals+chain.EthUSDDecimals), nil)
+	units.Add(units, new(big.Int).Sub(scale, big.NewInt(1)))
+	units.Div(units, scale)
+	if units.Sign() == 0 {
+		units.SetInt64(1)
+	}
+	return units, nil
 }
 
 // feeFor is the transfer's estimated gas and a fifth more, at the chain's fee cap (settlement.Fees, R-189): the
@@ -329,42 +371,45 @@ func feeFor(ctx context.Context, client *ethclient.Client, chainID uint64, from,
 	return Gas{Limit: gas, MaxFeePerGas: feeCap, MaxPriorityFeePerGas: tip}, fee, wei, nil
 }
 
-// Fee is the most a send of the token on the chain to the address costs the profile's wallet now, in the token's
-// base units (R-216): 0 where Forwend pays. The amount step shows it and keeps room for it in Max; Prepare checks it
-// again. An empty to estimates a send to the wallet itself.
-func (s *Service) Fee(ctx context.Context, profileID string, chainID uint64, token, to string) (*big.Int, error) {
-	var sponsored, nativeGas bool
+// Fee is what a send of the token on the chain to the address costs the profile's wallet now, in the token's base
+// units (R-216, R-225), and whether a paymaster takes it. The amount step shows it and keeps room for it in Max;
+// Prepare checks it again. An empty to estimates a send to the wallet itself.
+func (s *Service) Fee(ctx context.Context, profileID string, chainID uint64, token, to string) (*big.Int, bool, error) {
+	var nativeGas bool
+	var feeAsset *string
 	var decimals int
 	var wallet string
 	err := s.pool.QueryRow(ctx, `
-		SELECT c.gas_sponsored, t.native_gas, t.decimals, w.address FROM chains c JOIN tokens t ON t.chain_id = c.chain_id
+		SELECT t.native_gas, t.fee_asset, t.decimals, w.address FROM chains c JOIN tokens t ON t.chain_id = c.chain_id
 		JOIN profile_wallets w ON w.profile_id = $3 AND w.chain_family = c.chain_family
 		WHERE c.chain_id = $1 AND t.contract = $2 AND c.enabled AND t.enabled
 		  AND c.livemode = (SELECT livemode FROM profiles WHERE id = $3)`,
-		int64(chainID), strings.ToLower(token), profileID).Scan(&sponsored, &nativeGas, &decimals, &wallet)
+		int64(chainID), strings.ToLower(token), profileID).Scan(&nativeGas, &feeAsset, &decimals, &wallet)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("%w: token is not enabled on this network, or the profile has no wallet", ErrInvalid)
+		return nil, false, fmt.Errorf("%w: token is not enabled on this network, or the profile has no wallet", ErrInvalid)
 	} else if err != nil {
-		return nil, fmt.Errorf("read chain: %w", err)
+		return nil, false, fmt.Errorf("read chain: %w", err)
 	}
-	if sponsored {
-		return new(big.Int), nil
-	}
-	if !nativeGas {
-		return nil, fmt.Errorf("%w: this network's gas is paid in another coin, so it offers no Send yet", ErrInvalid)
+	if !nativeGas && feeAsset == nil {
+		return nil, false, fmt.Errorf("%w: this network's gas is paid in another coin, so it offers no Send yet",
+			ErrInvalid)
 	}
 	client, err := s.client(chainID)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if to == "" {
 		to = wallet
 	} else if to, err = parseAddress(to); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	// A one-unit transfer to the recipient costs what a send of any amount will (feeFor).
+	if feeAsset != nil {
+		fee, err := paymasterFee(ctx, client, chainID, wallet, token, to, big.NewInt(1), decimals)
+		return fee, true, err
+	}
 	_, fee, _, err := feeFor(ctx, client, chainID, wallet, token, to, big.NewInt(1), decimals)
-	return fee, err
+	return fee, false, err
 }
 
 func gasLimit(g *Gas) *int64 {

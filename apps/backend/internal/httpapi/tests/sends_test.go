@@ -1,17 +1,20 @@
 package tests
 
 import (
+	"math/big"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 	"github.com/forwend/forwend/apps/backend/internal/reauth"
 )
 
-// sendsAPI: Alice's freelancer wallet holds 10 tokens of a sponsored Anvil chain, and Bob is an Admin of her merchant
-// profile.
+// sendsAPI: Alice's freelancer wallet holds 10 tokens of an Anvil chain where Privy's paymaster takes the fee in the
+// token, and Bob is an Admin of her merchant profile.
 func sendsAPI(t *testing.T) (invoiceEnv, string) {
 	t.Helper()
 	anvil := chaintest.Start(t)
@@ -20,10 +23,12 @@ func sendsAPI(t *testing.T) (invoiceEnv, string) {
 	anvil.Transfer(token, aliceWallet, "10000000")
 	client := ethclient.NewClient(anvil.RPC)
 	e := invoiceAPIChains(t, 0, webhookKey, func(uint64) (*ethclient.Client, error) { return client, nil })
-	e.exec(t, `INSERT INTO chains (chain_id, chain_family, name, enabled, gas_sponsored) VALUES ($1, 'evm', 'anvil', true, true)`,
+	e.exec(t, `INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES ($1, 'evm', 'anvil', true)`,
 		chaintest.ChainID)
-	e.exec(t, `INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
-		VALUES ($1, 'evm', $2, 'USDC', 6, true)`, chaintest.ChainID, token)
+	e.exec(t, `INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled, fee_asset)
+		VALUES ($1, 'evm', $2, 'USDC', 6, true, 'usdc')`, chaintest.ChainID, token)
+	chain.EthUSD[chaintest.ChainID] = anvil.PriceFeed(big.NewInt(2000e8))
+	t.Cleanup(func() { delete(chain.EthUSD, chaintest.ChainID) })
 	e.exec(t, `INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)
 		VALUES ($1, 'privy', 'merchant-wallet', 'evm', '0x00000000000000000000000000000000000000aa')`, e.walletless)
 	e.exec(t, `INSERT INTO profile_members (profile_id, user_id, role)
@@ -43,8 +48,9 @@ func TestOnlyTheOwnerPreparesAndOnlyAFreshSignInApprovesASend(t *testing.T) {
 		r.body["from"] != aliceWallet {
 		t.Fatalf("owner: %d %v", r.status, r.body)
 	}
-	if fee := r.body["networkFee"].(map[string]any); fee["amount"] != "0" || fee["paidBy"] != "forwend" {
-		t.Errorf("networkFee = %v", fee)
+	if fee := r.body["networkFee"].(map[string]any); fee["amount"] == "0" || fee["paidBy"] != "paymaster" ||
+		r.body["gas"] != nil {
+		t.Errorf("networkFee = %v, gas %v", fee, r.body["gas"])
 	}
 	if w := r.body["warnings"].([]any); len(w) != 1 || w[0] != "newRecipient" {
 		t.Errorf("warnings = %v", w)
@@ -174,8 +180,9 @@ func TestRecordedTwoStepStandsInForTheEmailedCodeOnASend(t *testing.T) {
 	}
 }
 
-// R-212: the browser reports the hash; only the owner reads and moves the send on.
-func TestTheOwnerReportsAndReadsASend(t *testing.T) {
+// R-212, R-225: only the owner reads and moves the send on. A paymaster send's approve gives the Privy request the
+// user's key signs, and submit sends it with that signature; it takes no hash from the browser.
+func TestTheOwnerSignsAndReadsASend(t *testing.T) {
 	e, token := sendsAPI(t)
 	path := "/v1/profiles/" + e.aliceProfile + "/sends"
 	r := e.call(t, "POST", path, "did:privy:alice", "", `{"chainId": 31337, "token": "`+token+`",
@@ -184,19 +191,41 @@ func TestTheOwnerReportsAndReadsASend(t *testing.T) {
 		t.Fatalf("prepare: %d %v", r.status, r.body)
 	}
 	one := path + "/" + r.body["sendId"].(string)
-	hash := `{"txHash": "0x` + "ab" + "000000000000000000000000000000000000000000000000000000000000ab" + `"}`
-	if r := e.call(t, "POST", one+"/submit", "did:privy:bob", "", hash); r.status != http.StatusForbidden {
+	signed := `{"signature": "sig-1"}`
+	if r := e.call(t, "POST", one+"/submit", "did:privy:bob", "", signed); r.status != http.StatusForbidden {
 		t.Errorf("another user submits: %d %v", r.status, r.body)
 	}
+	if r := e.call(t, "POST", one+"/submit", "did:privy:alice", "", signed); r.status != http.StatusUnprocessableEntity {
+		t.Errorf("a signature for a send never approved: %d %v", r.status, r.body)
+	}
+	approved := e.call(t, "POST", one+"/approve", "did:privy:alice", "", "")
+	request, _ := approved.body["privyRequest"].(map[string]any)
+	if approved.status != http.StatusOK || request == nil ||
+		request["url"] != e.wallets.URL+"/v1/wallets/fixture-wallet/rpc" || request["body"] == nil {
+		t.Fatalf("approve: %d %v", approved.status, approved.body)
+	}
+	hash := `{"txHash": "0x` + "ab" + "000000000000000000000000000000000000000000000000000000000000ab" + `"}`
 	if r := e.call(t, "POST", one+"/submit", "did:privy:alice", "", hash); r.status != http.StatusUnprocessableEntity {
-		t.Errorf("a hash for a send never approved: %d %v", r.status, r.body)
+		t.Errorf("a browser hash on a paymaster send: %d %v", r.status, r.body)
 	}
-	if r := e.call(t, "POST", one+"/approve", "did:privy:alice", "", ""); r.status != http.StatusOK {
-		t.Fatalf("approve: %d %v", r.status, r.body)
+	if r := e.call(t, "POST", one+"/submit", "did:privy:alice", "", `{"txHash": "0x01", "signature": "s"}`); r.status !=
+		http.StatusUnprocessableEntity {
+		t.Errorf("both a hash and a signature: %d %v", r.status, r.body)
 	}
-	if r := e.call(t, "POST", one+"/submit", "did:privy:alice", "", hash); r.status != http.StatusOK ||
-		r.body["status"] != "sending" || r.body["final"] != false {
+	// Privy has the hash at once here; the api waits for it before answering.
+	privyHash := "0x" + strings.Repeat("cd", 32)
+	e.wallets.Lock()
+	e.wallets.Hashes["tx-"+r.body["sendId"].(string)] = privyHash
+	e.wallets.Unlock()
+	if r := e.call(t, "POST", one+"/submit", "did:privy:alice", "", signed); r.status != http.StatusOK ||
+		r.body["status"] != "sending" || r.body["final"] != false || r.body["txHash"] != privyHash {
 		t.Errorf("submit: %d %v", r.status, r.body)
+	}
+	e.wallets.Lock()
+	rpcs := e.wallets.RPCs
+	e.wallets.Unlock()
+	if len(rpcs) != 1 || rpcs[0].Headers.Get("privy-authorization-signature") != "sig-1" {
+		t.Errorf("Privy got %d requests: %+v", len(rpcs), rpcs)
 	}
 	if r := e.call(t, "GET", one, "did:privy:alice", "", ""); r.status != http.StatusOK || r.body["status"] != "sending" {
 		t.Errorf("read: %d %v", r.status, r.body)

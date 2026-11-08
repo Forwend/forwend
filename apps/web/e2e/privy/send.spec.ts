@@ -104,7 +104,13 @@ test("Transfer moves testnet money to the owner's other profile and follows it t
     .click();
   await pickMoney(page, "../../docs/runs/f425-transfer-asset-1440.png");
   await sheet(page).getByRole("textbox", { name: "Amount" }).fill("0.01");
-  await expect(sheet(page).getByText("Free")).toBeVisible();
+  // D-121: the wallet pays its own fee in the token, on testnets too.
+  await expect(
+    sheet(page)
+      .getByText(/^≈ .* (USDC|OUSD)$/)
+      .first(),
+  ).toBeVisible();
+  await expect(sheet(page).getByText("Free", { exact: true })).toHaveCount(0);
   await expect(sheet(page).getByText(/ available$/)).toBeVisible();
   await shot(page, "../../docs/runs/f425-transfer-amount-1440.png");
   expect(await blockingViolations(page)).toEqual([]);
@@ -176,6 +182,8 @@ test("Send to a new address warns and asks to check the address before it can be
   await sheet(page).getByRole("button", { name: "Continue" }).click();
 
   const send = sheet(page).getByRole("button", { name: /^Hold to send 0\.01 [A-Z]+$/ });
+  // The Summary waits for the server's checks on the chain: a wallet-paid network reads the fee too.
+  await expect(sheet(page)).toHaveAccessibleName("Summary", { timeout: 20_000 });
   await expect(sheet(page).getByText("You haven't sent to this address before.")).toBeVisible();
   await expect(send).toBeDisabled();
   // Whole in the review: a look-alike made to match only the start and end shows different middle characters.
@@ -223,7 +231,7 @@ test("Transfer opens from the command menu, and with reduced motion each step sh
   await context.close();
 });
 
-// R-216: Arc has no sponsorship, so the wallet pays its gas in the USDC it sends. The test account's business
+// R-216: on Arc the wallet pays its gas in the USDC it sends. The test account's business
 // profile holds Arc testnet USDC.
 test("On Arc the wallet pays its own fee in USDC, shown before the send, and the send reaches Sent", async ({
   browser,

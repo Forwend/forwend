@@ -3165,7 +3165,8 @@ paths:
       description: |
         Needs a fresh sign-in. Approves a `prepared` send once and answers it `approved`; the browser signs only that. A
         second approve is 409 `send_approved`: the first may have been signed though its answer was lost. A send no
-        longer prepared (expired, canceled or replaced) comes back as it is and is checked again from the amount.
+        longer prepared (expired, canceled or replaced) comes back as it is and is checked again from the amount. A
+        paymaster send (`networkFee.paidBy` paymaster) comes with `privyRequest`, which the user's key signs (R-225).
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - $ref: "#/components/parameters/SendId"
@@ -3188,10 +3189,13 @@ paths:
   /v1/profiles/{profileId}/sends/{sendId}/submit:
     post:
       operationId: submitSend
-      summary: Report the hash the browser got from signing the send (R-212)
+      summary: Report the signed send (R-212, R-225)
       description: |
-        The same hash again is a no-op. Only an approved send takes a hash, including one whose hold ended while it was
-        being signed; any other answers 422. A hash belongs to one send of its wallet.
+        `txHash` is the hash the browser got from signing a wallet-paid send. The same hash again is a no-op. Only an
+        approved send takes a hash, including one whose hold ended while it was being signed; any other answers 422. A
+        hash belongs to one send of its wallet. `signature` is the user's authorization signature over a paymaster send's
+        `privyRequest`: the server sends that request to Privy once, and the hash follows when Privy gives it. Give one
+        of the two.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - $ref: "#/components/parameters/SendId"
@@ -3202,9 +3206,12 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [txHash]
               properties:
                 txHash: { type: string, pattern: "^0x[0-9a-fA-F]{64}$" }
+                signature: { type: string, minLength: 1 }
+              oneOf:
+                - required: [txHash]
+                - required: [signature]
       responses:
         "200":
           description: The send, now sending
@@ -5988,7 +5995,8 @@ components:
           type: [string, "null"]
           description: |
             R-224. What the wallet really paid for gas once the send was mined or reverted, in the token's base units, from
-            its receipt: "0" where Forwend paid. Null until then, or when the receipt could not be read.
+            its receipt: gas used times its price, or what a paymaster took. "0" for a send Forwend sponsored before
+            D-121. Null until then, or when the receipt could not be read.
         chainId: { type: integer }
         token: { type: string }
         symbol: { type: string }
@@ -6011,7 +6019,7 @@ components:
           description: "reverted: mined without the transfer. dropped: not on the chain 30 minutes after it was signed."
         networkFee: { $ref: "#/components/schemas/SendFee" }
         gas:
-          description: What the browser signs a wallet-paid send with, so it costs at most networkFee; null when Forwend pays.
+          description: What the browser signs a wallet-paid send with, so it costs at most networkFee; null otherwise.
           oneOf:
             - type: object
               required: [limit, maxFeePerGas, maxPriorityFeePerGas]
@@ -6025,12 +6033,27 @@ components:
           description: Set when prepared. contract, the recipient has code; newRecipient, this wallet never sent there.
           items: { type: string, enum: [contract, newRecipient] }
         createdAt: { type: string, format: date-time }
+        privyRequest:
+          type: object
+          description: |
+            Set by approve on a paymaster send (R-225): a Privy wallet RPC request. The user's key signs
+            `{version: 1, method: "POST", url, body, headers}` as Privy's authorization signature payload.
+          required: [url, body, headers]
+          properties:
+            url: { type: string }
+            body: { type: object }
+            headers: { type: object, additionalProperties: { type: string } }
     SendFee:
       type: object
       required: [amount, paidBy]
       properties:
-        amount: { type: string, description: "The most the wallet pays, in the token's base units; 0 when Forwend pays" }
-        paidBy: { type: string, enum: [forwend, wallet] }
+        amount:
+          type: string
+          description: |
+            In the token's base units. wallet: the most the wallet pays as the chain's gas coin (R-216). paymaster:
+            Forwend's estimate of what Privy's paymaster takes from the token (R-225). forwend: 0, a send sponsored
+            before D-121.
+        paidBy: { type: string, enum: [forwend, wallet, paymaster] }
     Error:
       type: object
       required: [error]

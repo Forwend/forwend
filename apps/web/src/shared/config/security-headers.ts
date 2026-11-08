@@ -4,6 +4,7 @@ export const WALLET_PAID_RPCS: Readonly<Record<number, string>> = {
   4217: "https://rpc.mainnet.tempo.xyz",
   5042: "https://arc-rpc.publicnode.com",
   5042002: "https://arc-testnet-rpc.publicnode.com",
+  42431: "https://rpc.moderato.tempo.xyz",
 };
 
 // Privy's recommended policy (docs.privy.io/security/implementation-guide/content-security-policy). Scripts allow
