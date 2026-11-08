@@ -7,6 +7,7 @@ import {
   DUE_GRACE_DAYS,
   EXPIRY_BOUNDS_S,
   EXPIRY_CHOICES,
+  FEES_PAID_BY,
   INVOICE_EXCEPTIONS,
   INVOICE_FIELDS,
   INVOICE_TIMELINE,
@@ -21,6 +22,7 @@ import type {
   AmountError,
   Deposit,
   ExpiryChoice,
+  FeesPaidBy,
   Invoice,
   InvoiceClient,
   InvoiceException,
@@ -279,6 +281,24 @@ const EXCEPTIONS: Partial<Record<PaymentStatus, InvoiceException["kind"]>> = {
   [PAYMENT_STATUS.expired]: INVOICE_EXCEPTIONS.closedUnpaid,
   [PAYMENT_STATUS.expiredPartiallyPaid]: INVOICE_EXCEPTIONS.closedPartial,
 };
+
+/** An option's fees and what the owner receives of its amount (R-228): the amount less both fees. */
+export function optionFees(o: {
+  amount: string;
+  networkFee?: string;
+  platformFee?: string;
+  feesPaidBy?: FeesPaidBy;
+}) {
+  const network = BigInt(o.networkFee ?? "0");
+  const platform = BigInt(o.platformFee ?? "0");
+  return {
+    network,
+    platform,
+    total: network + platform,
+    net: BigInt(o.amount) - network - platform,
+    clientPays: o.feesPaidBy === FEES_PAID_BY.client,
+  };
+}
 
 /** Totals cover every transfer even when the API returns a bounded preview. */
 export function depositAmount(

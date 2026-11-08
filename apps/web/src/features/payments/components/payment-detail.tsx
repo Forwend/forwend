@@ -22,7 +22,7 @@ import { ArrowDownLeft, ExternalLink, FileDown } from "lucide-react";
 import { type ReactNode, useId, useRef } from "react";
 import { InvoiceLines } from "@/features/invoices/components/invoice-lines";
 import { ConfirmingStatus } from "@/features/invoices/components/invoice-progress";
-import { invoiceNumber, invoicePdfUrl } from "@/features/invoices/lib/invoices";
+import { invoiceNumber, invoicePdfUrl, optionFees } from "@/features/invoices/lib/invoices";
 import { useGetPaymentQuery } from "@/features/payments/api/payments-api";
 import { ExportPayments } from "@/features/payments/components/export-payments";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
@@ -114,6 +114,8 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
   // The token money arrived in, else the one the payment is fixed to; before either, it lists what it accepts.
   const paidWith =
     lead ?? (chosen && (payment.optionLocked || payment.optionCount === 1) ? chosen : undefined);
+  // R-228: the fees settlement pays from this option's amount, and what reaches the owner.
+  const fees = paidWith ? optionFees(paidWith) : null;
   const deposits = used.flatMap((option) =>
     option.deposits.map((deposit) => ({ deposit, option })),
   );
@@ -203,6 +205,24 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
                   <span className="text-subtle">{COPY.nothing}</span>
                 )}
               </Figure>
+              {paidWith && fees && fees.total > 0n ? (
+                <>
+                  <Figure term={COPY.fees}>
+                    <PaymentAmount
+                      amount={fees.total.toString()}
+                      decimals={paidWith.decimals}
+                      symbol={paidWith.symbol}
+                    />
+                  </Figure>
+                  <Figure term={COPY.youReceive}>
+                    <PaymentAmount
+                      amount={fees.net.toString()}
+                      decimals={paidWith.decimals}
+                      symbol={paidWith.symbol}
+                    />
+                  </Figure>
+                </>
+              ) : null}
               {lead && BigInt(lead.amounts.refunded) > 0n ? (
                 <Figure term={COPY.returned}>
                   <PaymentAmount
@@ -327,6 +347,8 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
               decimals={main.decimals}
               unit={payment.optionCount > 1 ? MONEY_COPY.usd : main.symbol}
               total={BigInt(main.amount)}
+              fees={optionFees(main)}
+              owner
             />
           ) : null}
         </div>

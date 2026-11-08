@@ -41,6 +41,7 @@ const ALL = "all";
 const isQuiet = (a: Asset) =>
   COLUMNS.every((c) => ACCOUNTS.every((k) => a[c][k] === "0")) &&
   a.settled === "0" &&
+  (a.fees ?? "0") === "0" &&
   a.refunded === "0";
 
 export interface PaymentReconciliationProps {
@@ -325,6 +326,11 @@ function Proof({ asset }: { asset: Asset }) {
         <DetailRow term={COPY.pending}>{asset.pendingDeposits}</DetailRow>
         <DetailRow term={COPY.unbookedIn}>{asset.unbookedDeposits}</DetailRow>
         <DetailRow term={COPY.unbookedOut}>{asset.unbookedOutflows}</DetailRow>
+        {asset.fees && asset.fees !== "0" ? (
+          <DetailRow term={COPY.feesPaid}>
+            <PaymentAmount amount={asset.fees} {...asset} />
+          </DetailRow>
+        ) : null}
         <DetailRow term={COPY.otherAssets}>{asset.otherAssetMovements}</DetailRow>
         <DetailRow term={COPY.exceptions}>{asset.policyExceptions}</DetailRow>
         <DetailRow term={COPY.difference}>

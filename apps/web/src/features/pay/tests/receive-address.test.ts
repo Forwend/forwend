@@ -209,6 +209,32 @@ describe("checkedReceiveAddress", () => {
     }
   });
 
+  // R-226, R-228: the option's fees are part of its terms, and the page checks them as settle() will.
+  it("computes the address with the option's fees, and refuses fees over a tenth of the amount", () => {
+    const withFees = (networkFee: bigint, platformFee: bigint): Invoice => ({
+      ...invoice,
+      networkFee: networkFee.toString(),
+      platformFee: platformFee.toString(),
+      feesPaidBy: "client",
+      receiveAddress: receiveAddress({
+        ...terms,
+        amount: 1_250_000_000n,
+        expiresAt: BigInt(Date.parse(terms.expiresAt) / 1000),
+        settleDeadline: BigInt(Date.parse(terms.settleDeadline) / 1000),
+        intendedChainId: 84532n,
+        networkFee,
+        platformFee,
+      }),
+    });
+    const ceiling = withFees(100_000_000n, 25_000_000n);
+    expect(checkedReceiveAddress(ceiling, payToken)).toBe(ceiling.receiveAddress);
+    // The same address with the fees the API left out, or changed, computes to another one.
+    expect(checkedReceiveAddress({ ...ceiling, networkFee: undefined }, payToken)).toBeNull();
+    expect(checkedReceiveAddress({ ...ceiling, platformFee: "25000001" }, payToken)).toBeNull();
+    // One base unit over a tenth: settle() would refuse it, so money sent there could only be refunded.
+    expect(checkedReceiveAddress(withFees(100_000_000n, 25_000_001n), payToken)).toBeNull();
+  });
+
   // D-18: invoices made since settle 7 days after expiry, those before 1 day.
   it("gives the address for a 7-day settle window as for a 1-day one", () => {
     const week = { ...invoice, settleDeadline: "2026-10-24T10:00:00Z" };

@@ -130,13 +130,15 @@ test.describe("pay page", () => {
     await expect(page.getByText(/test network/)).toHaveCount(0);
     await expect(page.getByRole("list", { name: "Payment progress" })).toHaveCount(0);
     const scam = page.getByText(
-      "Forwend never asks you to pay a different address or an extra fee.",
+      "Forwend never asks you to pay a different address or a fee this page doesn't show.",
     );
     await expect(scam).toBeHidden();
     await page.getByRole("contentinfo").getByRole("button", { name: "Need help?" }).click();
     const help = page.getByRole("dialog", { name: "Need help?" });
     await expect(
-      help.getByText("Forwend never asks you to pay a different address or an extra fee."),
+      help.getByText(
+        "Forwend never asks you to pay a different address or a fee this page doesn't show.",
+      ),
     ).toBeVisible();
     await expect(help.getByText(`You are on ${new URL(PUBLIC_URL).host}.`)).toBeVisible();
     await expect(help.getByRole("heading", { level: 3 })).toHaveText([
@@ -193,6 +195,32 @@ test.describe("pay page", () => {
 
     expect(scripts.length).toBeGreaterThan(0);
     for (const url of scripts) expect(new URL(url).origin, url).toBe(new URL(PUBLIC_URL).origin);
+  });
+
+  // R-228: the client pays the fees on top of the price; the address is predict's for terms with them (R-226).
+  test("when the client pays the fees, the amount says the price and the fees, and the address carries them", async ({
+    page,
+  }) => {
+    const receive = "0xf1d8352d510b68a825152dca4582582aeb9486b3";
+    const fees = {
+      amount: "1250050000",
+      networkFee: "50000",
+      platformFee: "0",
+      feesPaidBy: "client",
+      receiveAddress: receive,
+    };
+    await openPay(page, {
+      ...OPEN,
+      ...fees,
+      factory: "0xe917ce63865f8cf91a0038136e496b25ece2a54e",
+      options: [{ ...MAIN_OPTION, ...fees }],
+    });
+    await expect(page.locator("[data-money]")).toHaveText("1,250.05 USDC");
+    await expect(
+      page.getByText("1,250.00 USDC plus 0.05 USDC in fees", { exact: true }),
+    ).toBeVisible();
+    await showAddress(page).click();
+    await expect(page.getByText(receive, { exact: true })).toBeVisible();
   });
 
   test("a payment-link invoice before its first deposit shows no number (R-141)", async ({

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Invoices, payments and their options carry networkFee, platformFee, netAmount and feesPaidBy.
+- Payment amounts carry fees: what settlement paid the settler and Forwend. settled is what reached the wallet.
+
 ## 0.2.0 (2026-11-08)
 
 - Checkout sessions, payments with their details, stores, and invoice cancel, reopen and send.

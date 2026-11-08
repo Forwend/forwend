@@ -26,6 +26,7 @@ type reconciliationAssetJSON struct {
 	Changes               balancesJSON `json:"changes"`
 	Closing               balancesJSON `json:"closing"`
 	Settled               string       `json:"settled"`
+	Fees                  string       `json:"fees"`
 	Refunded              string       `json:"refunded"`
 	CheckpointBalance     *string      `json:"checkpointBalance"`
 	CheckpointDifference  *string      `json:"checkpointDifference"`
@@ -73,7 +74,7 @@ func reconciliation(invoices *invoice.Service) http.HandlerFunc {
 		for _, asset := range result.Assets {
 			out.Assets = append(out.Assets, reconciliationAssetJSON{
 				StoreID: httpio.OrNull(asset.StoreID), StoreName: httpio.OrNull(asset.StoreName), ChainID: asset.ChainID, Token: asset.Token, Symbol: asset.Symbol, Decimals: asset.Decimals, Livemode: asset.Livemode,
-				Opening: toBalances(asset.Opening), Changes: toBalances(asset.Changes), Closing: toBalances(asset.Closing), Settled: asset.Settled.String(), Refunded: asset.Refunded.String(),
+				Opening: toBalances(asset.Opening), Changes: toBalances(asset.Changes), Closing: toBalances(asset.Closing), Settled: asset.Settled.String(), Fees: asset.Fees.String(), Refunded: asset.Refunded.String(),
 				CheckpointBalance: optionalAmount(asset.CheckpointBalance), CheckpointDifference: optionalAmount(asset.CheckpointDifference), ReceiverCount: asset.ReceiverCount, VerifiedReceivers: asset.VerifiedReceivers, UnreconciledReceivers: asset.UnreconciledReceivers,
 				PendingDeposits: asset.PendingDeposits, UnbookedDeposits: asset.UnbookedDeposits, UnprovedDeposits: asset.UnprovedDeposits, UnbookedOutflows: asset.UnbookedOutflows, OtherAssetMovements: asset.OtherAssetMovements, PolicyExceptions: asset.PolicyExceptions, BookedMovements: asset.BookedMovements,
 				MinVerifiedBlock: asset.MinVerifiedBlock, MaxVerifiedBlock: asset.MaxVerifiedBlock, ChainFinalizedBlock: asset.ChainFinalizedBlock})

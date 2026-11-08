@@ -53,14 +53,17 @@ const invoiceColumns = `id, option_id, chosen_id IS NOT NULL,
  (SELECT symbol FROM tokens t WHERE t.chain_id = invoices.chain_id AND t.contract = invoices.token_contract),
  (SELECT decimals FROM tokens t WHERE t.chain_id = invoices.chain_id AND t.contract = invoices.token_contract),
  ` + PaymentStateSQL + `, ` + WalletSQL + `,
- coalesce((SELECT picked_id FROM invoices m WHERE m.id = invoices.id), '')`
+ coalesce((SELECT picked_id FROM invoices m WHERE m.id = invoices.id), ''),
+ (SELECT o.network_fee::text FROM invoices o WHERE o.id = invoices.option_id),
+ (SELECT o.platform_fee::text FROM invoices o WHERE o.id = invoices.option_id),
+ (SELECT o.fees_paid_by FROM invoices o WHERE o.id = invoices.option_id)`
 
 // The invoices_current view (migration 00020) aliased as invoices, so filters written for the table work on it.
 const invoicesCurrent = "invoices_current invoices"
 
 func scanInvoice(row pgx.Row) (Invoice, error) {
 	var inv Invoice
-	var amount string
+	var amount, networkFee, platformFee, feesPaidBy string
 	var expiresAt, settleDeadline, closesAt int64
 	var issuerName *string
 	var canceledAt *time.Time
@@ -76,7 +79,7 @@ func scanInvoice(row pgx.Row) (Invoice, error) {
 		&inv.SupplyDate, &inv.Reference, &agreedCurrency, &agreedAmount, &agreedDecimals, &agreedDate, &inv.PayToken,
 		&closesAt, &inv.receiverDeployedAt, &inv.StoreID, &inv.StoreName, &inv.BrandColor, &inv.LogoAt,
 		&inv.Livemode, &inv.Metadata, &inv.Purpose, &inv.DocumentKind, &inv.LinkID, &inv.Symbol, &inv.Decimals,
-		&inv.State, &inv.Wallet, &inv.PickedOptionID}
+		&inv.State, &inv.Wallet, &inv.PickedOptionID, &networkFee, &platformFee, &feesPaidBy}
 	if err := row.Scan(dest...); errors.Is(err, pgx.ErrNoRows) {
 		return Invoice{}, ErrNotFound
 	} else if err != nil {
@@ -95,6 +98,7 @@ func scanInvoice(row pgx.Row) (Invoice, error) {
 		inv.CanceledAt = *canceledAt
 	}
 	inv.Amount, _ = new(big.Int).SetString(amount, 10)
+	inv.Fees = scanFees(networkFee, platformFee, feesPaidBy)
 	inv.ExpiresAt, inv.SettleDeadline = time.Unix(expiresAt, 0).UTC(), time.Unix(settleDeadline, 0).UTC()
 	inv.ClosesAt = time.Unix(closesAt, 0).UTC()
 	return inv, nil

@@ -60,6 +60,7 @@ import {
   invoicePdfUrl,
   invoiceProgress,
   isReturnLink,
+  optionFees,
 } from "@/features/invoices/lib/invoices";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import { Backdrop } from "@/features/pay/components/backdrop";
@@ -341,6 +342,9 @@ function Summary({
   const done = pay.state === PAY_STATES.paid || pay.state === PAY_STATES.settled;
   const partial = pay.canSend && pay.received > 0n;
   const shown = partial ? pay.remaining : amount;
+  const fees = optionFees(invoice);
+  const units = (n: bigint) =>
+    `${formatTokenAmount({ baseUnits: n, decimals: token.decimals, fractionDigits: exactDigits(n, token.decimals) })} ${token.symbol}`;
   return (
     <section aria-labelledby="pay-amount" className="order-1 flex min-w-0 flex-col gap-5 lg:gap-6">
       <div className="flex items-center justify-between gap-3">
@@ -378,6 +382,9 @@ function Summary({
         <p className={`text-sm text-muted ${picking ? "invisible" : ""}`}>
           {COPY.on(chainName(invoice.chainId))}
         </p>
+        {fees.clientPays && fees.total > 0n && !picking && !partial ? (
+          <p className="text-sm text-muted">{COPY.withFees(units(fees.net), units(fees.total))}</p>
+        ) : null}
       </div>
     </section>
   );
@@ -404,6 +411,7 @@ function Terms({ invoice, linkToken }: { invoice: Invoice; linkToken: string }) 
                 : lineToken.symbol
             }
             total={BigInt(main.amount)}
+            fees={optionFees(main)}
             plain
           />
         </div>

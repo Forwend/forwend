@@ -279,7 +279,7 @@ func readPaymentOptions(ctx context.Context, db paymentReader, id string) ([]Opt
 
 func readPaymentOptionsFor(ctx context.Context, db paymentReader, ids []string, activeOnly bool) (map[string][]Option, error) {
 	rows, err := db.Query(ctx, `SELECT coalesce(i.main_id,i.id),i.id,i.chain_id,i.token_contract,t.symbol,t.decimals,c.name,
-        i.amount::text,i.receive_address,i.closes_at FROM invoices i
+        i.amount::text,i.network_fee::text,i.platform_fee::text,i.fees_paid_by,i.receive_address,i.closes_at FROM invoices i
         JOIN tokens t ON t.chain_id = i.chain_id AND t.contract = i.token_contract JOIN chains c ON c.chain_id = i.chain_id
         WHERE (i.id = ANY($1::text[]) OR i.main_id = ANY($1::text[])) AND (NOT $2
         OR i.main_id IS NULL
@@ -294,13 +294,15 @@ func readPaymentOptionsFor(ctx context.Context, db paymentReader, ids []string, 
 	defer rows.Close()
 	result := make(map[string][]Option, len(ids))
 	for rows.Next() {
-		var main, amount string
+		var main, amount, networkFee, platformFee, feesPaidBy string
 		var closes int64
 		var option Option
-		if err := rows.Scan(&main, &option.ID, &option.ChainID, &option.Token, &option.Symbol, &option.Decimals, &option.Network, &amount, &option.ReceiveAddress, &closes); err != nil {
+		if err := rows.Scan(&main, &option.ID, &option.ChainID, &option.Token, &option.Symbol, &option.Decimals, &option.Network,
+			&amount, &networkFee, &platformFee, &feesPaidBy, &option.ReceiveAddress, &closes); err != nil {
 			return nil, err
 		}
 		option.Amount, _ = new(big.Int).SetString(amount, 10)
+		option.Fees = scanFees(networkFee, platformFee, feesPaidBy)
 		option.ClosesAt = time.Unix(closes, 0).UTC()
 		result[main] = append(result[main], option)
 	}

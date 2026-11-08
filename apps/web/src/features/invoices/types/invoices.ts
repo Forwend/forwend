@@ -4,6 +4,7 @@ import type { ClientBody } from "@/features/clients/types/clients";
 import type {
   AMOUNT_ERRORS,
   EXPIRY_CHOICES,
+  FEES_PAID_BY,
   HISTORY_ACTORS,
   HISTORY_CATEGORIES,
   HISTORY_FIELDS,
@@ -47,6 +48,7 @@ import type {
 } from "@/features/invoices/schemas/invoices";
 
 export type PayWith = (typeof PAY_WITH)[keyof typeof PAY_WITH];
+export type FeesPaidBy = (typeof FEES_PAID_BY)[keyof typeof FEES_PAID_BY];
 export type InvoiceEventKind = (typeof INVOICE_EVENTS)[keyof typeof INVOICE_EVENTS];
 export type OwedKind = (typeof OWED_KINDS)[keyof typeof OWED_KINDS];
 export type ReminderStep = (typeof REMINDER_STEPS)[keyof typeof REMINDER_STEPS];

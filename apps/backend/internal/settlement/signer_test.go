@@ -357,8 +357,15 @@ func TestSettlementWithFeesIsBookedInFull(t *testing.T) {
 		t.Fatal(err)
 	}
 	if amounts.Receiver.Sign() != 0 || amounts.Payable.Sign() != 0 || amounts.Held.Sign() != 0 ||
-		amounts.Settled.Int64() != 4950000 || amounts.ReconciliationStatus != ledger.ReconciliationVerified {
-		t.Fatalf("ledger after settle: %+v; want everything paid out, 4950000 settled, verified", amounts)
+		amounts.Settled.Int64() != 4950000 || amounts.Fees.Int64() != 50000 ||
+		amounts.ReconciliationStatus != ledger.ReconciliationVerified {
+		t.Fatalf("ledger after settle: %+v; want everything paid out, 4950000 settled, 50000 fees, verified", amounts)
+	}
+	// R-228: the owner hears what reached the wallet.
+	var settled string
+	if err := e.pool.QueryRow(ctx, `SELECT payload->>'amount' FROM outbox_events WHERE invoice_id = $1
+		AND kind = 'invoice.settled'`, id).Scan(&settled); err != nil || settled != "4950000" {
+		t.Fatalf("invoice.settled amount %q (%v), want the net 4950000", settled, err)
 	}
 	// The worker's scan then sees the same events: each is recorded and booked once.
 	if err := e.watch.Scan(ctx); err != nil {

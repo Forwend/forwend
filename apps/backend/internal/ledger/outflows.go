@@ -178,7 +178,8 @@ func bookOutflow(ctx context.Context, tx pgx.Tx, invoiceID string, m movement, a
 		return true, history.Add(ctx, tx, invoiceID, history.ReceiverSettled, history.System,
 			history.Data{Amount: value.String(), TxHash: hash, Reason: policy, Option: invoiceID})
 	}
-	if err := outbox.Queue(ctx, tx, outbox.Settled, invoiceID, nil); err != nil {
+	// What reached the wallet: the amount less the fees (R-228).
+	if err := outbox.Queue(ctx, tx, outbox.Settled, invoiceID, value); err != nil {
 		return false, err
 	}
 	return true, history.Add(ctx, tx, invoiceID, history.Settled, history.System, history.Data{TxHash: hash, Reason: policy})

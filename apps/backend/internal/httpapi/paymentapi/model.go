@@ -36,12 +36,13 @@ type itemJSON struct {
 }
 
 type optionJSON struct {
-	OptionID          string              `json:"optionId"`
-	ChainID           uint64              `json:"chainId"`
-	Token             string              `json:"token"`
-	Symbol            string              `json:"symbol"`
-	Decimals          int                 `json:"decimals"`
-	Amount            string              `json:"amount"`
+	OptionID string `json:"optionId"`
+	ChainID  uint64 `json:"chainId"`
+	Token    string `json:"token"`
+	Symbol   string `json:"symbol"`
+	Decimals int    `json:"decimals"`
+	Amount   string `json:"amount"`
+	paymentio.Fees
 	ReceiveAddress    string              `json:"receiveAddress"`
 	ClosesAt          string              `json:"closesAt"`
 	PaymentStatus     string              `json:"paymentStatus"`
@@ -151,7 +152,7 @@ func toDetails(detail invoice.PaymentDetails, webURL string, access auth.Access)
 	for _, option := range detail.Options {
 		state := option.State
 		row := optionJSON{OptionID: option.ID, ChainID: option.ChainID, Token: option.Token, Symbol: option.Symbol, Decimals: option.Decimals,
-			Amount: option.Amount.String(), ReceiveAddress: option.ReceiveAddress, ClosesAt: option.ClosesAt.UTC().Format(time.RFC3339),
+			Amount: option.Amount.String(), Fees: paymentio.FromFees(option.Amount, option.Fees), ReceiveAddress: option.ReceiveAddress, ClosesAt: option.ClosesAt.UTC().Format(time.RFC3339),
 			PaymentStatus: state.PaymentStatus, SettlementStatus: state.SettlementStatus, RefundStatus: state.RefundStatus, Amounts: paymentio.FromAmounts(option.Amounts),
 			Coverage: coverageJSON{HistoryComplete: state.HistoryComplete, VerifiedBlock: state.VerifiedBlock, VerifiedHash: httpio.OrNull(state.VerifiedHash),
 				VerifiedTime: optionalTime(state.VerifiedTime), ObservedBalance: optionalAmount(state.ObservedBalance), BalanceDifference: optionalAmount(state.BalanceDifference),

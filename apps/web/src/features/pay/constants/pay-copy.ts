@@ -17,6 +17,8 @@ export const PAY_COPY = {
   amountPaid: "Amount paid",
   leftToPay: "Left to pay",
   on: (network: string) => `on ${network}`,
+  // R-228: the client pays the fees on top of the price.
+  withFees: (price: string, fees: string) => `${price} plus ${fees} in fees`,
   reference: (reference: string) => `Reference ${reference}`,
   agreed: (value: string, date: string) => `Agreed value ${value} on ${date}`,
   due: (date: string) => `Due ${date}`,
@@ -142,7 +144,7 @@ export const PAY_COPY = {
   embeddedHostHint: "Open it in a new tab to see that address in your browser.",
   openInTab: "Open in a new tab",
   unverifiedName: "The name at the top is what the recipient gave. Forwend doesn't check it.",
-  scam: "Forwend never asks you to pay a different address or an extra fee.",
+  scam: "Forwend never asks you to pay a different address or a fee this page doesn't show.",
   // PLAN 11.10: support returns held money by hand for now, and never promises it.
   heldHelp: [
     "That money is held for you. It isn't paid to the recipient.",

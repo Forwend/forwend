@@ -3,7 +3,7 @@
 import { Button, formatTokenAmount } from "@forwend/ui-web";
 import { useState } from "react";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
-import { shortQuantity } from "@/features/invoices/lib/invoices";
+import { type optionFees, shortQuantity } from "@/features/invoices/lib/invoices";
 import type { InvoiceLine } from "@/features/invoices/types/invoices";
 import { exactDigits } from "@/shared/lib/money";
 
@@ -17,13 +17,25 @@ export interface InvoiceLinesProps {
   received?: bigint;
   /** Rows on the page's own ground, as a checkout lists them, not a panel. */
   plain?: boolean;
+  /** The option's fees (R-228). The client's fees show before the total; owner adds what the owner receives. */
+  fees?: ReturnType<typeof optionFees>;
+  owner?: boolean;
 }
 
 // An invoice can list up to 100 lines: past these, the rest wait behind Show all so the total stays in reach.
 const SHOWN = 10;
 
 // R-88: the same rows on every width, as the PDF lists them.
-export function InvoiceLines({ lines, decimals, unit, total, received, plain }: InvoiceLinesProps) {
+export function InvoiceLines({
+  lines,
+  decimals,
+  unit,
+  total,
+  received,
+  plain,
+  fees,
+  owner,
+}: InvoiceLinesProps) {
   const inset = plain ? "" : "px-4 sm:px-5";
   const [all, setAll] = useState(lines.length <= SHOWN);
   const money = (units: string | bigint) => {
@@ -67,6 +79,12 @@ export function InvoiceLines({ lines, decimals, unit, total, received, plain }: 
       <dl
         className={`flex flex-col gap-2 border-t border-line py-3 text-sm [h2+&]:border-t-0 ${inset} ${plain ? "border-line-strong" : ""}`}
       >
+        {fees && fees.total > 0n && fees.clientPays ? (
+          <>
+            <Row label={COPY.subtotal} value={money(total - fees.total)} />
+            <FeeRows fees={fees} money={money} />
+          </>
+        ) : null}
         <div className="flex items-baseline justify-between gap-4">
           <dt className="text-muted">{COPY.itemsTotal}</dt>
           <dd
@@ -75,6 +93,12 @@ export function InvoiceLines({ lines, decimals, unit, total, received, plain }: 
             {money(total)}
           </dd>
         </div>
+        {fees && fees.total > 0n && owner ? (
+          <>
+            {fees.clientPays ? null : <FeeRows fees={fees} money={money} minus />}
+            <Row label={COPY.youReceive} value={money(fees.net)} />
+          </>
+        ) : null}
         {received === undefined ? null : (
           <>
             <div className="flex items-baseline justify-between gap-4">
@@ -91,5 +115,37 @@ export function InvoiceLines({ lines, decimals, unit, total, received, plain }: 
         )}
       </dl>
     </section>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4">
+      <dt className="text-muted">{label}</dt>
+      <dd className="text-ink tabular-nums">{value}</dd>
+    </div>
+  );
+}
+
+// A fee of 0 shows no line (R-228); minus: deducted from what the owner receives.
+function FeeRows({
+  fees,
+  money,
+  minus,
+}: {
+  fees: ReturnType<typeof optionFees>;
+  money: (units: bigint) => string;
+  minus?: boolean;
+}) {
+  const sign = minus ? "−" : "";
+  return (
+    <>
+      {fees.network > 0n ? (
+        <Row label={COPY.networkFee} value={`${sign}${money(fees.network)}`} />
+      ) : null}
+      {fees.platform > 0n ? (
+        <Row label={COPY.platformFee} value={`${sign}${money(fees.platform)}`} />
+      ) : null}
+    </>
   );
 }

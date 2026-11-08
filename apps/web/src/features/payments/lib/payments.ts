@@ -69,11 +69,13 @@ export function heldHint(problems: readonly PaymentProblem[]): string | null {
     .join(" ");
 }
 
+/** Every booked transfer, wherever the money went since: owed, held, settled, paid as fees or returned. */
 export function receivedAmount(amounts: Payment["amounts"]): string {
   return (
     BigInt(amounts.payable) +
     BigInt(amounts.held) +
     BigInt(amounts.settled) +
+    BigInt(amounts.fees ?? "0") +
     BigInt(amounts.refunded)
   ).toString();
 }

@@ -157,6 +157,18 @@ func statusOf(inv invoice.Invoice, now time.Time) standing {
 	}
 	// Each fact once: the dates row has the dates, so the box never repeats them; the totals grow only once money arrived.
 	s := standing{figure: "Amount due", amount: total, totals: [][2]string{{"Total", total}}, left: left}
+	// When the client pays the fees, the price and each fee come before the total they make (R-228).
+	if f := inv.Fees; f.PaidBy == invoice.FeesPaidByClient && f.Net(inv.Amount).Cmp(inv.Amount) < 0 {
+		unit := func(n *big.Int) string { return Amount(n, inv.Decimals, priced(inv)) }
+		s.totals = [][2]string{{"Subtotal", unit(f.Net(inv.Amount))}}
+		if f.Network.Sign() > 0 {
+			s.totals = append(s.totals, [2]string{"Network fee", unit(f.Network)})
+		}
+		if f.Platform.Sign() > 0 {
+			s.totals = append(s.totals, [2]string{"Platform fee", unit(f.Platform)})
+		}
+		s.totals = append(s.totals, [2]string{"Total", total})
+	}
 	switch {
 	case inv.PaymentStatus == ledger.Paid:
 		s.label, s.figure, s.amount = "Paid", "Amount paid", token(inv.Amount)
@@ -411,12 +423,13 @@ func (d doc) payments(inv invoice.Invoice) {
 }
 
 // booked is every transfer the ledger booked to the option, wherever the money went since: still owed, held,
-// settled or returned. Payments counts received money the same way.
+// settled, paid as fees or returned. Payments counts received money the same way.
 func booked(a *ledger.Amounts) *big.Int {
 	n := new(big.Int)
 	if a != nil {
 		n.Add(a.Payable, a.Held)
 		n.Add(n, a.Settled)
+		n.Add(n, a.Fees)
 		n.Add(n, a.Refunded)
 	}
 	return n

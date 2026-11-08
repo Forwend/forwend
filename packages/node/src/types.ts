@@ -74,12 +74,30 @@ export interface PaymentAmounts {
   receiver: string;
   payable: string;
   held: string;
+  /** What settlement paid the recipient: the amount less the fees. */
   settled: string;
+  /** The network and platform fees settlement paid. */
+  fees: string;
   refunded: string;
   observedRefunded: string;
   lastReturnTxHash: string | null;
   unreconciled: boolean;
   hasPolicyException: boolean;
+}
+
+export const FEES_PAID_BY = ["owner", "client"] as const;
+/** owner: the fees are deducted at settlement. client: they are added on top of the price. */
+export type FeesPaidBy = (typeof FEES_PAID_BY)[number];
+
+/** An option's fees, in base units of its token, and what the owner receives of its amount. */
+export interface OptionFees {
+  /** Paid at settlement to the settler for its gas. */
+  networkFee: string;
+  /** Paid at settlement to Forwend; 0 at launch. */
+  platformFee: string;
+  /** The amount less both fees. */
+  netAmount: string;
+  feesPaidBy: FeesPaidBy;
 }
 
 export interface PaymentReceipt {
@@ -94,7 +112,7 @@ export interface PaymentReceipt {
   held: string;
 }
 
-export interface Payment {
+export interface Payment extends OptionFees {
   receipts: PaymentReceipt[];
   customerName: string | null;
   customerEmail: string | null;
@@ -148,7 +166,7 @@ export interface PaymentDetails extends Payment {
 }
 
 /** A token and network the payer may pay with. The fields a server most often needs are typed; the rest stay as sent. */
-export interface PaymentOption {
+export interface PaymentOption extends OptionFees {
   optionId: string;
   chainId: number;
   token: string;
@@ -261,7 +279,7 @@ export interface ListCheckoutSessions {
 }
 
 /** An invoice as its owner reads it. The fields a server most often needs are typed; the rest stay as sent. */
-export interface Invoice {
+export interface Invoice extends OptionFees {
   amounts?: PaymentAmounts;
   purpose?: PaymentPurpose;
   documentKind?: DocumentKind;
