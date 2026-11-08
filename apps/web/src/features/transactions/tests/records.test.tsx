@@ -53,6 +53,7 @@ const base: Transaction = {
   labelable: true,
   invoice: null,
   recordsValue: null,
+  feePaid: null,
 };
 
 type Call = { method: string; url: string; body: string };

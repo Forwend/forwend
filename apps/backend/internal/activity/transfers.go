@@ -31,6 +31,9 @@ type Transfer struct {
 	Invoice      *TransferInvoice
 	Payment      *TransferPayment
 	Label        string
+	// FeePaid is the gas the wallet paid for the Forwend send behind an outgoing transfer, in the token's base units
+	// (R-224): 0 where Forwend paid, nil for other transfers or a fee not known yet.
+	FeePaid *big.Int
 	// RecordsCurrency is the profile's other records currency, "" for none (R-110); fx its ECB rates for this transfer.
 	RecordsCurrency string
 	fx              *rates
@@ -54,7 +57,10 @@ var transferSQL = `
 	       EXISTS (SELECT 1 FROM profile_wallets ow JOIN profiles op ON op.id = ow.profile_id
 	               WHERE op.user_id = p.user_id AND op.id <> p.id AND ow.chain_family = t.chain_family
 	                 AND ow.address = t.counterparty),
-	       coalesce(l.label, ''), coalesce(p.records_currency, ''), fx.day, fx.usd::text, fx.cur::text
+	       coalesce(l.label, ''), coalesce(p.records_currency, ''), fx.day, fx.usd::text, fx.cur::text,
+	       (SELECT x.fee_paid::text FROM sends x WHERE t.direction = 'out' AND x.chain_id = t.chain_id
+	            AND x.tx_hash = t.tx_hash AND x.from_address = t.wallet_address AND x.token_contract = t.token_contract
+	            AND x.to_address = t.counterparty AND x.amount = t.amount)
 	FROM wallet_transfers t
 	JOIN profile_wallets w ON w.chain_family = t.chain_family AND w.address = t.wallet_address
 	JOIN profiles p ON p.id = w.profile_id
@@ -78,7 +84,11 @@ var transferSQL = `
 	                     -- The ECB closes at most 4 days in a row (Easter): an older rate is a missed read, so none.
 	                     AND u.day > (to_timestamp(t.block_time) AT TIME ZONE 'UTC')::date - 7
 	                   ORDER BY u.day DESC LIMIT 1) fx ON true
-	WHERE w.profile_id = $1 AND t.status <> 'reorged' AND ` + inMode("t.chain_id")
+	WHERE w.profile_id = $1 AND t.status <> 'reorged' AND ` + inMode("t.chain_id") + " AND " + notFee
+
+// notFee leaves out a send's Tempo fee: the send's row shows it as the fee paid (R-224), not as money sent. The
+// balance history still counts it, as the balance does.
+var notFee = `NOT EXISTS (SELECT 1 FROM sends fs WHERE ` + chain.TempoFee("t", "fs") + `)`
 
 // inMode keeps the rows on a chain of profile $1's mode: the dashboard shows one mode at a time (D-120, R-221).
 func inMode(chainID string) string {
@@ -107,13 +117,16 @@ func scanTransfer(row pgx.CollectableRow) (Transfer, error) {
 		unreconciled                           *bool
 		number                                 *int64
 		day                                    *time.Time
-		usd, cur                               *string
+		usd, cur, fee                          *string
 	)
 	err := row.Scan(&t.id, &t.ChainID, &t.Token, &t.Symbol, &t.Decimals, &t.Direction, &amount, &t.Counterparty,
 		&t.TxHash, &t.LogIndex, &t.BlockNumber, &at, &t.Status, &invoiceID, &number, &client, &purpose, &documentKind, &policyException, &unreconciled, &t.own, &t.Label,
-		&t.RecordsCurrency, &day, &usd, &cur)
+		&t.RecordsCurrency, &day, &usd, &cur, &fee)
 	if err != nil {
 		return t, err
+	}
+	if fee != nil {
+		t.FeePaid, _ = new(big.Int).SetString(*fee, 10)
 	}
 	if day != nil && usd != nil && cur != nil {
 		t.fx = &rates{day: *day}
@@ -172,7 +185,7 @@ func (s *Service) Transfers(ctx context.Context, profileID, cursor string, limit
 		    SELECT t.id, t.block_time FROM wallet_transfers t
 		    JOIN tokens tk ON tk.chain_id = t.chain_id AND tk.contract = t.token_contract
 		    WHERE t.chain_family = w.chain_family AND t.wallet_address = w.address AND t.status <> 'reorged' AND `+listed+`
-		      AND `+inMode("t.chain_id")+`
+		      AND `+inMode("t.chain_id")+` AND `+notFee+`
 		      AND ($2::bigint IS NULL OR (t.block_time, t.id) < ($2, $3)) AND ($5::text IS NULL OR t.direction = $5)
 		      AND ($6::text IS NULL OR t.counterparty ILIKE $6 OR t.tx_hash ILIKE $6 OR tk.symbol ILIKE $6
 		           OR t.amount = $7::numeric * 10::numeric ^ tk.decimals)

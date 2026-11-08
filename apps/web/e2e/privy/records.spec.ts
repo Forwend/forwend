@@ -45,6 +45,10 @@ test("transactions show their type, take a label, and export the days chosen; it
       readsAfterLabel++;
   });
   await page.goto("/app/transactions");
+  // R-224: a send that paid its own gas shows the fee under its amount, to the last digit.
+  await expect(page.getByText("Network fee 0.003908 USDC").first()).toBeVisible({
+    timeout: 30_000,
+  });
   const main = page.getByRole("main");
   const table = main.getByRole("table");
   await expect(table.getByRole("columnheader", { name: "Type" })).toBeVisible();

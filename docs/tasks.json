@@ -686,6 +686,155 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
+    },
+    {
+      "id": "F440",
+      "type": "feat",
+      "behavior": "Tempo mainnet wallets pay send fees in OUSD, and each send keeps and shows the fee it really paid",
+      "acceptance": [
+        "Tempo mainnet OUSD offers Send, paid from the wallet's OUSD: the balance check reads the token, and a wallet with another fee token is refused (R-223).",
+        "Each mined or reverted send keeps feePaid from its receipt, 0 where Forwend pays, and the send and transactions APIs return it (R-224).",
+        "A Tempo fee's Transfer to the fee manager is not recorded as money sent (R-224).",
+        "Transactions shows an outgoing transfer's fee under its amount; Privy reaches Tempo mainnet through its wallet-paid RPC.",
+        "The testnets keep Privy's sponsorship unchanged."
+      ],
+      "dependsOn": [
+        "F438"
+      ],
+      "state": "passing",
+      "verification": [
+        "backend",
+        "unit",
+        "e2e",
+        "docs-check"
+      ],
+      "refs": [
+        "D-121",
+        "R-223",
+        "R-224",
+        "R-216"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-11-08 review fail by reviewer: Blocking: apps/backend/internal/watcher/wallet.go:116-120 skips every TIP-20 Transfer from a profile wallet to the Tempo fee manager, not only the fee. The fee manager also takes real money: Fee AMM mint(userToken, validatorToken, amount, to) and rebalanceSwap(userToken, validatorToken, amountOut, to) move the caller's tokens into it and pay out to any 'to' address. A stolen Privy session can drain OUSD that way. The transfer then gets no wallet_transfers row, no Transactions row, and no WalletOutflow alert (watcher.go:613-626, D-49). Before this change it was recorded and alerted. Skip only the tx's own fee Transfer, for example the post-execution log whose amount equals ceil(gasUsed * effectiveGasPrice / 1e12) from the receipt. Keep and alert any other wallet-to-fee-manager transfer. send_test.go:842 tests a plain transfer() to the fee manager as a fee, which on Tempo is money sent; it needs a real fee case and a non-fee case. Checked and fine: fee rounding in track.go:337-341 matches Tempo's ceil(gasUsed * effectiveGasPrice / 1e12) and Arc's wei-to-6-decimal rounding up. The activity subquery matches at most one send through the sends_tx unique index. A sponsored send keeps 0, and Moderato keeps sponsorship. Refusing the fee manager as a recipient prevents a wallet stuck in submitted. Prepare's Tempo branch checks the token balance and the chosen fee token. CSP and Privy chain for 4217 are correct. Added files fit their owners. Non-blocking: a receipt read that fails in finishMined (track.go:334) leaves fee_paid NULL for good. A reverted send's fee shows in no web screen. Records CSV export and balance history (history.go:100) ignore sends.fee_paid.",
+        "2026-11-08 review fail by reviewer: Blocking: a legitimate Tempo send's own fee can still tell the owner money left. apps/backend/internal/chain/tempo.go:23 requires the send's tx_hash to equal the fee transfer's hash. apps/backend/internal/watcher/watcher.go:623-634 raises the outflow notice once, when the row is first final. The send's own transfer has a fallback for a send with no hash yet (watcher.go:629: approved, hash NULL), but the fee has none. Scenario: the browser's Submit lands after the watcher records the block as final (Tempo finality is near-instant and the watcher polls every 3 s), or the Submit answer is lost and unreported() (send/track.go) sets the hash later. The fee transfer then gets a wallet.outflow email that is never withdrawn, while Transactions later hides that row. This breaks R-224 (the send's fee is not money out). Fix: let TempoFee also match an approved send without a hash, under the same approval-window rules the main branch uses, when the same transaction moves exactly that send. Add a test where the watcher scans before Submit. Checked and fine: the sum bound and NULLs cannot hide more than network_fee. The fee manager is refused as a recipient. unreported() only attaches a hash whose tx moves the send. Real fee <= ceil(gas_limit*maxFee/1e12) = network_fee. The notice is still once per final row. Privy RPC and CSP for 4217 are OK. Minor: the transfers.go:61 feePaid subquery does not match amount. Unverified: whether a reverted Tempo send logs its fee Transfer. If it does, that fee is also shown and notified.",
+        "2026-11-08 review pass by reviewer: No blocking defect. chain/tempo.go:18-32 TempoFee groups right: AND binds inside each OR branch; the hashless branch needs approved_at, status approved or expired within the hour, and a same-tx transfer of exactly the send. NULL network_fee, finished_at or hash make the test false, so the row shows and notifies. The sum bound counts every non-reorged fee-manager outflow of that wallet, token and tx, so at most network_fee is ever hidden. Submit and unreported() set a hash only on an approved send, and approve needs a fresh sign-in. watcher.go:619-635 checks notices after the whole batch, so a fee logged first is still explained. Hash before or after finality, a lost Submit answer, an expired approval and a dropped-then-mined send are all explained. A swap or extra amount through the fee manager still shows and notifies. Reorged rows are left out. Fee rounding, the feePaid readers (amount matched, sends_tx keeps one row), prepare's Tempo branch, Privy chain 4217 and CSP are correct. Structure fits. Minor: (1) docs/backend/money-safety.md:199-206 owns the outflow rule but does not name the Tempo fee exception; only api.md does. (2) A reverted Tempo send whose hash arrives after finality still emails the owner about its fee: there is no send transfer to match. Rare and on the safe side. (3) A reverted send's fee is hidden from Transactions and shows on no row; the CSV export and statement carry no fee. (4) fee_paid stays NULL if the receipt read fails at finish (track.go:334). (5) The early-finality test checks notices only, not that the row is hidden before Submit."
+      ],
+      "blockedReason": null,
+      "branch": "feat/f440-tempo-mainnet-wallets-pay-send-fees-in-o",
+      "baseCommit": "bb28c6adf77fecd5e426c37cf2517165cb4cfeca",
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-08T19:03:26Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.4,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 73.7,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 47.4,
+            "log": ""
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 62.6,
+            "log": ""
+          }
+        ],
+        "taskHash": "faae60c22c1df4d6",
+        "filesHash": "dc836b110a047816",
+        "proof": {
+          "1": "backend: TestATempoWalletPaysItsFeeInTheTokenItSends: the balance check reads the token on Tempo, and a wallet whose fee token is another is refused",
+          "2": "backend: TestASentSendRecordsTheFeeItsWalletPaid and TestASendFailsWhenItsTransactionMovesSomethingElse keep feePaid from the receipt, 0 where sponsored; the send and transactions APIs return it",
+          "3": "backend: TestOnlyASendsOwnTempoFeeIsNotMoneySent: a send's own fee within its signed fee is hidden and tells nobody, also when final before the hash is reported; a TIP-20 or any transfer to the fee manager outside a send, or above the signed fee, shows and notifies",
+          "4": "unit: fee-text.test.ts shows Network fee under the amount; PRIVY_CHAINS and the CSP carry Tempo mainnet's wallet-paid RPC",
+          "5": "backend: TestOnlyTheOwnerPreparesAndOnlyAFreshSignInApprovesASend: a testnet send is sponsored, fee 0 paid by Forwend"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "No blocking defect. chain/tempo.go:18-32 TempoFee groups right: AND binds inside each OR branch; the hashless branch needs approved_at, status approved or expired within the hour, and a same-tx transfer of exactly the send. NULL network_fee, finished_at or hash make the test false, so the row shows and notifies. The sum bound counts every non-reorged fee-manager outflow of that wallet, token and tx, so at most network_fee is ever hidden. Submit and unreported() set a hash only on an approved send, and approve needs a fresh sign-in. watcher.go:619-635 checks notices after the whole batch, so a fee logged first is still explained. Hash before or after finality, a lost Submit answer, an expired approval and a dropped-then-mined send are all explained. A swap or extra amount through the fee manager still shows and notifies. Reorged rows are left out. Fee rounding, the feePaid readers (amount matched, sends_tx keeps one row), prepare's Tempo branch, Privy chain 4217 and CSP are correct. Structure fits. Minor: (1) docs/backend/money-safety.md:199-206 owns the outflow rule but does not name the Tempo fee exception; only api.md does. (2) A reverted Tempo send whose hash arrives after finality still emails the owner about its fee: there is no send transfer to match. Rare and on the safe side. (3) A reverted send's fee is hidden from Transactions and shows on no row; the CSV export and statement carry no fee. (4) fee_paid stays NULL if the receipt read fails at finish (track.go:334). (5) The early-finality test checks notices only, not that the row is hidden before Submit.",
+          "at": "2026-11-08T19:11:56Z",
+          "filesHash": "dc836b110a047816"
+        },
+        "commit": "6df6316f",
+        "doneAt": "2026-11-08T19:12:18Z"
+      },
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f440-tempo-mainnet-wallets-pay-send-fees-in-o",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F441",
+      "type": "feat",
+      "behavior": "Base and Arbitrum mainnet wallets pay send fees in USDC through Circle Paymaster",
+      "acceptance": [
+        "The owner picks the bundler and approves any paid account before it is used.",
+        "The server builds the EIP-7702 delegated user operation with Circle Paymaster v0.8, quotes the most the fee costs in USDC, caps it with the permit, and sends it to the bundler; the browser only signs with Privy (R-225).",
+        "Send shows the fee in USDC before sending and Max leaves room for it; the wallet holds no ETH.",
+        "feePaid is the USDC the paymaster took; the paymaster's prefund and refund are not recorded as money sent (R-224).",
+        "Proven end to end on Base Sepolia and Arbitrum Sepolia with Paymaster v0.8, then once on mainnet with the owner's yes; the testnets keep Privy's sponsorship for users."
+      ],
+      "dependsOn": [
+        "F440"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "unit",
+        "e2e",
+        "docs-check"
+      ],
+      "refs": [
+        "D-121",
+        "R-225",
+        "R-224"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null
     }
   ],
   "lastWrapup": {

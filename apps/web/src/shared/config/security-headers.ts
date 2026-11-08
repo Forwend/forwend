@@ -1,6 +1,7 @@
 /** The RPC the browser reaches itself, for a send whose wallet pays its own gas (R-216): Privy reads the nonce and
  * broadcasts through it. Kept here, not with the chains, as next.config loads this file on its own. */
 export const WALLET_PAID_RPCS: Readonly<Record<number, string>> = {
+  4217: "https://rpc.mainnet.tempo.xyz",
   5042: "https://arc-rpc.publicnode.com",
   5042002: "https://arc-testnet-rpc.publicnode.com",
 };

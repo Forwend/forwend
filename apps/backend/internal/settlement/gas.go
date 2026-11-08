@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
@@ -47,7 +48,7 @@ const (
 
 // Tempo has no native coin (eth_getBalance is a placeholder): fees are paid in the executor's fee token, else PathUSD.
 var (
-	tempoFeeManager = common.HexToAddress("0xfeec000000000000000000000000000000000000")
+	tempoFeeManager = chain.TempoFeeManager
 	pathUSD         = common.HexToAddress("0x20c0000000000000000000000000000000000000")
 	userTokens      = crypto.Keccak256([]byte("userTokens(address)"))[:4]
 )
@@ -97,25 +98,36 @@ func checkGas(ctx context.Context, client *ethclient.Client, chainID uint64, exe
 }
 
 func feeToken(ctx context.Context, client *ethclient.Client, executor common.Address) (common.Address, error) {
-	code, err := client.CodeAt(ctx, tempoFeeManager, nil)
-	if err != nil {
-		return common.Address{}, fmt.Errorf("read the fee manager's code: %w", err)
+	token, tempo, err := UserFeeToken(ctx, client, executor)
+	if err != nil || !tempo {
+		return common.Address{}, err
 	}
-	if len(code) == 0 {
-		return common.Address{}, nil
-	}
-	data := append(append([]byte{}, userTokens...), common.LeftPadBytes(executor.Bytes(), 32)...)
-	out, err := client.CallContract(ctx, ethereum.CallMsg{To: &tempoFeeManager, Data: data}, nil)
-	if err != nil {
-		return common.Address{}, fmt.Errorf("read the executor's fee token: %w", err)
-	}
-	if len(out) != 32 {
-		return common.Address{}, fmt.Errorf("read the executor's fee token: %d-byte answer", len(out))
-	}
-	if token := common.BytesToAddress(out); token != (common.Address{}) {
+	if token != (common.Address{}) {
 		return token, nil
 	}
 	return pathUSD, nil
+}
+
+// UserFeeToken is the fee token the account chose in Tempo's fee manager, the zero address for none; tempo is false
+// on a chain without the fee manager.
+func UserFeeToken(ctx context.Context, client *ethclient.Client, account common.Address) (token common.Address,
+	tempo bool, err error) {
+	code, err := client.CodeAt(ctx, tempoFeeManager, nil)
+	if err != nil {
+		return common.Address{}, false, fmt.Errorf("read the fee manager's code: %w", err)
+	}
+	if len(code) == 0 {
+		return common.Address{}, false, nil
+	}
+	data := append(append([]byte{}, userTokens...), common.LeftPadBytes(account.Bytes(), 32)...)
+	out, err := client.CallContract(ctx, ethereum.CallMsg{To: &tempoFeeManager, Data: data}, nil)
+	if err != nil {
+		return common.Address{}, true, fmt.Errorf("read the account's fee token: %w", err)
+	}
+	if len(out) != 32 {
+		return common.Address{}, true, fmt.Errorf("read the account's fee token: %d-byte answer", len(out))
+	}
+	return common.BytesToAddress(out), true, nil
 }
 
 func checkFeeToken(ctx context.Context, client *ethclient.Client, chainID uint64, executor, token common.Address,

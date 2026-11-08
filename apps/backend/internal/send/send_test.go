@@ -9,10 +9,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/forwend/forwend/apps/backend/internal/activity"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
+	"github.com/forwend/forwend/apps/backend/internal/search"
 	"github.com/forwend/forwend/apps/backend/internal/watcher"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -311,6 +315,25 @@ func TestASendFailsWhenItsTransactionMovesSomethingElse(t *testing.T) {
 	e.sends.now = func() time.Time { return time.Now().Add(receiptAfter) }
 	if s, _ = e.sends.Get(ctx, e.profile, s.ID); s.Status != Failed || s.Failure == nil || *s.Failure != "reverted" {
 		t.Errorf("status = %s failure %v, want failed reverted", s.Status, s.Failure)
+	}
+	if s.FeePaid == nil || s.FeePaid.Sign() != 0 {
+		t.Errorf("a sponsored reverted send paid %v, want 0", s.FeePaid)
+	}
+
+	// A wallet-paid one still paid for its gas, and keeps that fee (R-224).
+	if _, err := e.pool.Exec(ctx, "UPDATE chains SET gas_sponsored = false; UPDATE tokens SET native_gas = true"); err != nil {
+		t.Fatal(err)
+	}
+	s, err = e.prepare(t, outsider, "", 3_000_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.approve(t, s)
+	if _, err = e.sends.Submit(ctx, e.profile, s.ID, e.anvil.Transfer(e.token, outsider, "1")); err != nil {
+		t.Fatal(err)
+	}
+	if s, _ = e.sends.Get(ctx, e.profile, s.ID); s.Status != Failed || s.FeePaid == nil || s.FeePaid.Sign() <= 0 {
+		t.Errorf("a wallet-paid reverted send = %s, fee %v; want failed with its fee", s.Status, s.FeePaid)
 	}
 }
 
@@ -701,5 +724,218 @@ func TestMoneyLeavingAWalletWithoutASendTellsItsOwner(t *testing.T) {
 	}
 	if n := outflows(); n != 2 {
 		t.Errorf("a transfer matching an approval that ended 2 hours ago: %d notices, want 2", n)
+	}
+}
+
+// R-224: a sent send keeps what its wallet really paid for gas, from the receipt; 0 where Forwend pays.
+func TestASentSendRecordsTheFeeItsWalletPaid(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	sent := func(amount string) Send {
+		t.Helper()
+		s, err := e.prepare(t, outsider, "", 1_000_000)
+		if err != nil {
+			t.Fatal(err)
+		}
+		e.approve(t, s)
+		hash := e.anvil.Transfer(e.token, outsider, amount)
+		if _, err := e.sends.Submit(ctx, e.profile, s.ID, hash); err != nil {
+			t.Fatal(err)
+		}
+		e.anvil.Mine(3)
+		if err := e.watch.Scan(ctx); err != nil {
+			t.Fatal(err)
+		}
+		got, err := e.sends.Get(ctx, e.profile, s.ID)
+		if err != nil || got.Status != Sent {
+			t.Fatalf("send %s, %v; want sent", got.Status, err)
+		}
+		return got
+	}
+	if s := sent("1000000"); s.FeePaid == nil || s.FeePaid.Sign() != 0 {
+		t.Errorf("sponsored send paid %v, want 0", s.FeePaid)
+	}
+	if _, err := e.pool.Exec(ctx, "UPDATE chains SET gas_sponsored = false; UPDATE tokens SET native_gas = true"); err != nil {
+		t.Fatal(err)
+	}
+	s := sent("1000000")
+	receipt, err := ethclient.NewClient(e.anvil.RPC).TransactionReceipt(ctx, common.HexToHash(*s.TxHash))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wei := new(big.Int).Mul(receipt.EffectiveGasPrice, new(big.Int).SetUint64(receipt.GasUsed))
+	want := new(big.Int).Div(new(big.Int).Add(wei, big.NewInt(1e12-1)), big.NewInt(1e12))
+	if s.FeePaid == nil || s.FeePaid.Cmp(want) != 0 || s.FeePaid.Cmp(s.NetworkFee) > 0 {
+		t.Errorf("wallet-paid send paid %v, want %v (at most the %v shown)", s.FeePaid, want, s.NetworkFee)
+	}
+	// Its transfer carries the fee in Transactions; an incoming transfer carries none.
+	page, err := activity.NewService(e.pool).Transfers(ctx, e.profile, "", 10, "", search.Query{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tr := range page.Items {
+		switch {
+		case tr.TxHash == *s.TxHash && (tr.FeePaid == nil || tr.FeePaid.Cmp(want) != 0):
+			t.Errorf("the send's transfer shows fee %v, want %v", tr.FeePaid, want)
+		case tr.Direction == "in" && tr.FeePaid != nil:
+			t.Errorf("an incoming transfer shows fee %v", tr.FeePaid)
+		}
+	}
+}
+
+// R-224: on Tempo, where the fee manager exists, a wallet pays a send's fee in the token it sends: its native balance is
+// a placeholder, and a wallet that chose another fee token can't send.
+func TestATempoWalletPaysItsFeeInTheTokenItSends(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	if _, err := e.pool.Exec(ctx, "UPDATE chains SET gas_sponsored = false; UPDATE tokens SET native_gas = true"); err != nil {
+		t.Fatal(err)
+	}
+	// userTokens(address) answers this word whatever the account.
+	feeManager := func(word string) {
+		t.Helper()
+		if err := e.anvil.RPC.Call(nil, "anvil_setCode", chain.TempoFeeManager.Hex(), "0x7f"+word+"60005260206000f3"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	feeManager(strings.Repeat("00", 32))
+	// No gas coin at all: only the token can pay.
+	if err := e.anvil.RPC.Call(nil, "anvil_setBalance", chaintest.Sender, "0x0"); err != nil {
+		t.Fatal(err)
+	}
+	s, err := e.prepare(t, outsider, "", 1_000_000)
+	if err != nil || s.Gas == nil || s.NetworkFee.Sign() <= 0 {
+		t.Fatalf("a Tempo send without a gas coin: %+v, %v", s, err)
+	}
+	if err := e.sends.Cancel(ctx, e.profile, s.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.prepare(t, outsider, "", 100_000_000); !errors.Is(err, ErrInvalid) {
+		t.Errorf("all the tokens plus the fee: err = %v, want ErrInvalid", err)
+	}
+	feeManager(strings.Repeat("00", 12) + strings.Repeat("ab", 20))
+	if _, err := e.prepare(t, outsider, "", 1_000_000); !errors.Is(err, ErrInvalid) {
+		t.Errorf("a wallet paying fees in another token: err = %v, want ErrInvalid", err)
+	}
+}
+
+// R-224, D-49: a Tempo wallet's fee leaves as a Transfer to the fee manager in its send's own transaction. Only that,
+// within the fee the send was signed for, is the send's fee and not money sent. The fee manager also swaps and takes
+// liquidity, so any other transfer to it, or a larger one in the send's transaction, shows in Transactions and tells
+// the owner. The fee manager is refused as a send's recipient, since the send would never end.
+func TestOnlyASendsOwnTempoFeeIsNotMoneySent(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	if _, err := e.pool.Exec(ctx, "UPDATE chains SET gas_sponsored = false; UPDATE tokens SET native_gas = true"); err != nil {
+		t.Fatal(err)
+	}
+	feeManager := strings.ToLower(chain.TempoFeeManager.Hex())
+	// send moves 1 token to outsider and, in the same transaction, the send's quoted fee plus extra to the fee manager.
+	send := func(extra int64) Send {
+		t.Helper()
+		s, err := e.prepare(t, outsider, "", 1_000_000)
+		if err != nil {
+			t.Fatal(err)
+		}
+		e.approve(t, s)
+		taken := new(big.Int).Add(s.NetworkFee, big.NewInt(extra))
+		hash := e.anvil.TwoTransfers(e.token, outsider, "1000000", feeManager, taken.String())
+		if _, err := e.sends.Submit(ctx, e.profile, s.ID, hash); err != nil {
+			t.Fatal(err)
+		}
+		e.anvil.Mine(3)
+		if err := e.watch.Scan(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if s, err = e.sends.Get(ctx, e.profile, s.ID); err != nil || s.Status != Sent {
+			t.Fatalf("send %s, %v; want sent", s.Status, err)
+		}
+		return s
+	}
+	notices := func() int {
+		t.Helper()
+		var n int
+		if err := e.pool.QueryRow(ctx, `SELECT count(*) FROM outbox_events o JOIN wallet_transfers w ON w.id = o.wallet_transfer_id
+			WHERE o.kind = 'wallet.outflow' AND w.counterparty = $1`, feeManager).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	shown := func() int {
+		t.Helper()
+		page, err := activity.NewService(e.pool).Transfers(ctx, e.profile, "", 20, "", search.Query{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		n := 0
+		for _, tr := range page.Items {
+			if tr.Counterparty == feeManager {
+				n++
+			}
+		}
+		return n
+	}
+	send(0)
+	if n, m := notices(), shown(); n != 0 || m != 0 {
+		t.Fatalf("the send's own fee: %d notices, %d rows; want none", n, m)
+	}
+	// A swap through the fee manager, outside any send: money out.
+	e.anvil.Transfer(e.token, feeManager, "3")
+	e.anvil.Mine(3)
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if n, m := notices(), shown(); n != 1 || m != 1 {
+		t.Fatalf("a transfer to the fee manager outside a send: %d notices, %d rows; want 1 and 1", n, m)
+	}
+	// More than the send was signed for, in its own transaction: money out too.
+	send(1)
+	if n, m := notices(), shown(); n != 2 || m != 2 {
+		t.Fatalf("one unit over the signed fee in a send's transaction: %d notices, %d rows; want 2 and 2", n, m)
+	}
+	// A TIP-20 token's transfer to the fee manager outside a send, as a swap through its Fee AMM: money out as well.
+	const tip20 = "0x20c0000000000000000000000000000000000077" // the test token's code there stands in for OUSD
+	var code string
+	if err := e.anvil.RPC.Call(&code, "eth_getCode", e.token, "latest"); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.anvil.RPC.Call(nil, "anvil_setCode", tip20, code); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.pool.Exec(ctx, `INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
+		VALUES ($1, 'evm', $2, 'OUSD', 6, true)`, chaintest.ChainID, tip20); err != nil {
+		t.Fatal(err)
+	}
+	e.watch = watcher.NewChain(e.pool, chaintest.ChainID, e.anvil.RPC) // reads the token list anew
+	e.anvil.Mint(tip20, "100")
+	e.anvil.Transfer(tip20, feeManager, "27")
+	e.anvil.Mine(3)
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if n := notices(); n != 3 {
+		t.Errorf("a TIP-20 transfer to the fee manager outside a send: %d notices in all, want 3", n)
+	}
+	// The chain is final before the browser reports the hash, as on Tempo: the fee of the approved send moving exactly
+	// that money tells nobody either.
+	before := notices()
+	early, err := e.prepare(t, outsider, "", 1_000_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.approve(t, early)
+	hash := e.anvil.TwoTransfers(e.token, outsider, "1000000", feeManager, early.NetworkFee.String())
+	e.anvil.Mine(3)
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if n := notices(); n != before {
+		t.Errorf("a fee final before its send's hash was reported: %d notices, want %d", n, before)
+	}
+	if _, err := e.sends.Submit(ctx, e.profile, early.ID, hash); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.prepare(t, chain.TempoFeeManager.Hex(), "", 1_000_000); !errors.Is(err, ErrInvalid) {
+		t.Errorf("a send to the fee manager: err = %v, want ErrInvalid", err)
 	}
 }

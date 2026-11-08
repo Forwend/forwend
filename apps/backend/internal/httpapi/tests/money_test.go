@@ -112,7 +112,7 @@ func TestGetTransactions(t *testing.T) {
 	want := map[string]any{"chainId": float64(84532), "token": usdc, "symbol": "USDC", "decimals": float64(6),
 		"direction": "out", "amount": "1000000", "counterparty": counterparty, "txHash": hash(2), "logIndex": float64(0),
 		"blockNumber": float64(2), "at": "2025-10-09T08:54:20Z", "status": "detected", "usdValue": "1.000000",
-		"classification": "sent", "labelable": false, "invoice": nil, "recordsValue": nil}
+		"classification": "sent", "labelable": false, "invoice": nil, "recordsValue": nil, "feePaid": nil}
 	if page.status != http.StatusOK || len(items) != 1 || cursor == "" || !reflect.DeepEqual(items[0], want) {
 		t.Fatalf("page 1: %d %v\nwant item %v", page.status, page.body, want)
 	}

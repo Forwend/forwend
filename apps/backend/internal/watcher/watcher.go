@@ -588,6 +588,7 @@ func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit,
 	if err := RecordOutflows(ctx, tx, c.chainID, outflows); err != nil {
 		return err
 	}
+	var final []int64
 	for _, t := range transfers {
 		status := "detected"
 		if t.final {
@@ -609,22 +610,27 @@ func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit,
 		} else if err != nil {
 			return fmt.Errorf("record chain %d wallet transfer %s/%d: %w", c.chainID, t.txHash, t.logIndex, err)
 		}
-		// Money out of a profile wallet that no send the owner approved explains: a stolen session can sign through
-		// Privy without Forwend's screens (D-49), so the owner hears at once. Checked once final: by then the browser
-		// reported its send's hash, or the send waits approved for this transfer, or its approval ended within the
-		// hour before. Only the same wallet, token, recipient and amount explain it, so a hash reported on another
-		// send can't hide the transfer.
 		if t.direction == "out" && t.final {
-			if _, err := tx.Exec(ctx, `INSERT INTO outbox_events (kind, wallet_transfer_id, payload)
-				SELECT $2, w.id, '{}' FROM wallet_transfers w WHERE w.id = $1
-				  AND NOT EXISTS (SELECT 1 FROM sends s WHERE s.chain_id = w.chain_id AND s.approved_at IS NOT NULL
-				      AND s.from_address = w.wallet_address AND s.token_contract = w.token_contract
-				      AND s.to_address = w.counterparty AND s.amount = w.amount
-				      AND (s.tx_hash = w.tx_hash OR s.tx_hash IS NULL AND w.created_at >= s.approved_at
-				          AND (s.status = 'approved' OR s.status = 'expired' AND w.created_at < s.finished_at + interval '1 hour')))
-				ON CONFLICT DO NOTHING`, id, outbox.WalletOutflow); err != nil {
-				return fmt.Errorf("tell the owner of wallet transfer %s: %w", t.txHash, err)
-			}
+			final = append(final, id)
+		}
+	}
+	// Money out of a profile wallet that no send the owner approved explains: a stolen session can sign through Privy
+	// without Forwend's screens (D-49), so the owner hears at once. Checked once final: by then the browser reported its
+	// send's hash, or the send waits approved for this transfer, or its approval ended within the hour before. Only the
+	// same wallet, token, recipient and amount explain it, so a hash reported on another send can't hide the transfer.
+	// A Tempo send's fee is the one other transfer its transaction explains (chain.TempoFee). Checked after the whole
+	// batch is recorded, so a fee logged before the send's own transfer is still explained.
+	for _, id := range final {
+		if _, err := tx.Exec(ctx, `INSERT INTO outbox_events (kind, wallet_transfer_id, payload)
+			SELECT $2, w.id, '{}' FROM wallet_transfers w WHERE w.id = $1
+			  AND NOT EXISTS (SELECT 1 FROM sends s WHERE s.chain_id = w.chain_id AND s.approved_at IS NOT NULL
+			      AND s.from_address = w.wallet_address AND s.token_contract = w.token_contract
+			      AND (s.to_address = w.counterparty AND s.amount = w.amount
+			          AND (s.tx_hash = w.tx_hash OR s.tx_hash IS NULL AND w.created_at >= s.approved_at
+			              AND (s.status = 'approved' OR s.status = 'expired' AND w.created_at < s.finished_at + interval '1 hour'))
+			          OR `+chain.TempoFee("w", "s")+`))
+			ON CONFLICT DO NOTHING`, id, outbox.WalletOutflow); err != nil {
+			return fmt.Errorf("tell the owner of wallet transfer %d: %w", id, err)
 		}
 	}
 

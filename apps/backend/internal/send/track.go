@@ -21,17 +21,20 @@ const columns = `id::text, profile_id::text, chain_id, token_contract, from_addr
 	amount::text, status, tx_hash, failure, created_at, submitted_at, finished_at,
 	(SELECT tk.symbol FROM tokens tk WHERE tk.chain_id = sends.chain_id AND tk.contract = sends.token_contract),
 	(SELECT tk.decimals FROM tokens tk WHERE tk.chain_id = sends.chain_id AND tk.contract = sends.token_contract),
-	network_fee::text, gas_limit, max_fee_per_gas::text, max_priority_fee_per_gas::text, approved_at`
+	network_fee::text, gas_limit, max_fee_per_gas::text, max_priority_fee_per_gas::text, approved_at, fee_paid::text`
 
 func scan(row pgx.Row) (Send, error) {
 	var s Send
 	var chainID int64
 	var amount, fee string
 	var limit *int64
-	var maxFee, tip *string
+	var maxFee, tip, paid *string
 	err := row.Scan(&s.ID, &s.ProfileID, &chainID, &s.Token, &s.From, &s.To, &s.ToProfileID, &amount, &s.Status,
 		&s.TxHash, &s.Failure, &s.CreatedAt, &s.SubmittedAt, &s.FinishedAt, &s.Symbol, &s.Decimals, &fee, &limit, &maxFee,
-		&tip, &s.ApprovedAt)
+		&tip, &s.ApprovedAt, &paid)
+	if paid != nil {
+		s.FeePaid, _ = new(big.Int).SetString(*paid, 10)
+	}
 	s.ChainID = uint64(chainID)
 	s.Amount, _ = new(big.Int).SetString(amount, 10)
 	s.NetworkFee, _ = new(big.Int).SetString(fee, 10)
@@ -206,7 +209,7 @@ func (s *Service) refresh(ctx context.Context, out Send) (Send, error) {
 	}
 	switch {
 	case seen != nil && *seen == "confirmed":
-		return s.finish(ctx, out, Sent, nil)
+		return s.finishMined(ctx, out, Sent, nil, nil)
 	case out.Status == Failed:
 		return out, nil
 	case seen != nil:
@@ -234,9 +237,9 @@ func (s *Service) refresh(ctx context.Context, out Send) (Send, error) {
 	case err != nil:
 		return out, nil
 	case !moves(receipt, out):
-		// Mined without the transfer: the transaction or the wallet's call inside it reverted.
+		// Mined without the transfer: the transaction or the wallet's call inside it reverted, and still paid its gas.
 		reverted := "reverted"
-		return s.finish(ctx, out, Failed, &reverted)
+		return s.finishMined(ctx, out, Failed, &reverted, receipt)
 	}
 	return out, nil // mined with the transfer: sent once the watcher records it
 }
@@ -316,8 +319,41 @@ func (s *Service) waiting(ctx context.Context, out Send) bool {
 }
 
 func (s *Service) finish(ctx context.Context, out Send, status Status, failure *string) (Send, error) {
-	next, err := scan(s.pool.QueryRow(ctx, `UPDATE sends SET status = $2, failure = $3, finished_at = now()
-		WHERE id = $1::uuid AND status = $4 RETURNING `+columns, out.ID, status, failure, out.Status))
+	return s.finishPaid(ctx, out, status, failure, nil)
+}
+
+// finishMined ends a mined send with the gas its wallet paid, from receipt or read now: 0 where Forwend pays. A receipt
+// that can't be read leaves the fee unknown rather than holding the send.
+func (s *Service) finishMined(ctx context.Context, out Send, status Status, failure *string,
+	receipt *types.Receipt) (Send, error) {
+	paid := new(big.Int)
+	if out.Gas != nil {
+		paid = nil
+		if receipt == nil {
+			if client, err := s.client(out.ChainID); err == nil {
+				receipt, _ = client.TransactionReceipt(ctx, common.HexToHash(*out.TxHash))
+			}
+		}
+		if receipt != nil && receipt.EffectiveGasPrice != nil {
+			// Wei of an 18-decimal gas coin (Arc) or attodollars (Tempo), in the token's base units, rounded up.
+			wei := new(big.Int).Mul(receipt.EffectiveGasPrice, new(big.Int).SetUint64(receipt.GasUsed))
+			scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(nativeDecimals-out.Decimals)), nil)
+			paid = new(big.Int).Div(new(big.Int).Add(wei, new(big.Int).Sub(scale, big.NewInt(1))), scale)
+		}
+	}
+	return s.finishPaid(ctx, out, status, failure, paid)
+}
+
+func (s *Service) finishPaid(ctx context.Context, out Send, status Status, failure *string, paid *big.Int) (Send,
+	error) {
+	var fee *string
+	if paid != nil {
+		v := paid.String()
+		fee = &v
+	}
+	next, err := scan(s.pool.QueryRow(ctx, `UPDATE sends SET status = $2, failure = $3, finished_at = now(),
+		fee_paid = $5::numeric WHERE id = $1::uuid AND status = $4 RETURNING `+columns, out.ID, status, failure, out.Status,
+		fee))
 	if errors.Is(err, pgx.ErrNoRows) { // another read moved it first
 		return s.Get(ctx, out.ProfileID, out.ID)
 	} else if err != nil {

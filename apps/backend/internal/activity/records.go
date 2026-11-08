@@ -124,7 +124,7 @@ func (s *Service) ExportTransfers(ctx context.Context, profileID string, from, t
 	if err := tx.QueryRow(ctx, `SELECT count(*) FROM (SELECT 1 FROM wallet_transfers t
       JOIN profile_wallets w ON w.chain_family = t.chain_family AND w.address = t.wallet_address
       WHERE w.profile_id = $1 AND t.status <> 'reorged' AND t.block_time >= $2 AND t.block_time < $3
-        AND `+inMode("t.chain_id")+`
+        AND `+inMode("t.chain_id")+` AND `+notFee+`
       LIMIT $4) bounded`, profileID, from.Unix(), to.Unix(), MaxExportRows+1).Scan(&count); err != nil {
 		return fmt.Errorf("count wallet export rows: %w", err)
 	}

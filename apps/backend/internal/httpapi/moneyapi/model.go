@@ -98,6 +98,8 @@ type transactionJSON struct {
 	Payment        *transactionPaymentJSON `json:"payment,omitempty"`
 	Invoice        *transactionInvoiceJSON `json:"invoice"`
 	RecordsValue   *recordsValueJSON       `json:"recordsValue"`
+	// FeePaid is the gas the wallet paid for the send, in the token's base units; null when not a known send (R-224).
+	FeePaid *string `json:"feePaid"`
 }
 
 // R-110: at the ECB rate of RateDate.
@@ -136,6 +138,10 @@ func toTransactionJSON(t activity.Transfer) transactionJSON {
 	}
 	if amount, day, ok := t.RecordsValue(); ok {
 		out.RecordsValue = &recordsValueJSON{Currency: t.RecordsCurrency, Amount: amount, RateDate: day.Format(time.DateOnly)}
+	}
+	if t.FeePaid != nil {
+		paid := t.FeePaid.String()
+		out.FeePaid = &paid
 	}
 	return out
 }

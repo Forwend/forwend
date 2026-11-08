@@ -83,6 +83,9 @@ type Send struct {
 	NetworkFee *big.Int
 	// Gas is what the browser signs with when the wallet pays; nil where Forwend pays.
 	Gas *Gas
+	// FeePaid is what the wallet really paid for gas once the send was mined, in the token's base units: 0 where
+	// Forwend pays, nil until known (R-224).
+	FeePaid *big.Int
 	// Warnings are set by Prepare only.
 	Warnings []Warning
 }
