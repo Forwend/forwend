@@ -55,7 +55,7 @@ const FEATURES: readonly {
     body: "Detected, confirmed and in your wallet are separate steps. You see each one, and your server gets a signed webhook.",
     points: [
       "Signed, retried webhooks",
-      "Testnet today on Base, Arbitrum, Arc and Tempo",
+      "Live on Base, Arbitrum, Arc and Tempo",
       "Exact token and network on every payment",
     ],
     link: { label: "Networks and tokens", slug: "reference/networks" },

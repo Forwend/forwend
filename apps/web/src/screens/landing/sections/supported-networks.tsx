@@ -5,14 +5,18 @@ import styles from "./supported-networks.module.css";
 // USDT has artwork but no enabled payments, so it stays out (docs: reference/networks).
 const TOKENS = ["USDC", "OUSD"] as const;
 
+// Each network once, by its mainnet's name: a mainnet's chain id is lower than its testnet's, so CHAINS lists it first.
+const NETWORKS = new Map<BrandIconName, string>();
+for (const chain of Object.values(CHAINS)) {
+  if (chain.icon && !NETWORKS.has(chain.icon)) NETWORKS.set(chain.icon, chain.name);
+}
+
 const ITEMS: readonly { name: string; icon: BrandIconName }[] = [
   ...TOKENS.flatMap((symbol) => {
     const icon = TOKEN_ICONS[symbol];
     return icon ? [{ name: symbol, icon }] : [];
   }),
-  ...Object.values(CHAINS).flatMap((chain) =>
-    chain.icon ? [{ name: chain.name, icon: chain.icon }] : [],
-  ),
+  ...Array.from(NETWORKS, ([icon, name]) => ({ name, icon })),
 ];
 
 function Row({ copy }: { copy?: boolean }) {
@@ -30,7 +34,7 @@ function Row({ copy }: { copy?: boolean }) {
 
 export function SupportedNetworks() {
   return (
-    <section className={styles.networks} aria-label="Test tokens and networks">
+    <section className={styles.networks} aria-label="Tokens and networks">
       <div className={styles.marquee}>
         {/* Four copies keep the loop wider than any screen; it moves by two, so the seam never shows. */}
         <div

@@ -12,7 +12,12 @@ export const profileSchema = z.object({
   // R-138: the user's role here, and its permissions; one the app doesn't know yet is kept and never matches.
   role: z.enum(ROLES),
   permissions: z.array(z.string()),
+  // D-120: false while the profile is in Developer mode, on the testnets.
+  livemode: z.boolean(),
 });
+
+/** PUT /v1/profiles/{profileId}/mode. */
+export const profileModeSchema = z.object({ livemode: z.boolean() });
 
 /** POST and GET /v1/me, and POST /v1/me/onboarding. */
 export const meSchema = z.object({

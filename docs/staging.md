@@ -70,6 +70,7 @@
 | `POSTGRES_PASSWORD` | A new random hexadecimal password. |
 | `POSTGRES_DB` | `forwend` |
 | `ENABLE_TESTNET_USDC` | `1` by default; API startup enables the three supported USDC testnet pairs and Tempo OUSD. `0` leaves network settings unchanged. |
+| `ENABLE_MAINNETS` | Empty by default. Chain IDs such as `8453,42161,5042,4217`: API startup switches those live chains on (R-222). |
 | `PUBLIC_WEB_URL` | Your staging HTTPS origin, without a trailing slash. |
 | `NEXT_PUBLIC_PRIVY_APP_ID` | The test Privy app ID; must match the secret below. |
 | `PRIVY_APP_SECRET` | That test Privy app's secret from `apps/backend/.env`. |

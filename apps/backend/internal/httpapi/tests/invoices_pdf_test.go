@@ -470,6 +470,7 @@ func TestInvoiceModeFollowsItsChain(t *testing.T) {
 	owner := "/v1/profiles/" + e.aliceProfile + "/invoices/"
 	for _, live := range []bool{false, true} {
 		e.exec(t, "UPDATE chains SET livemode = $1 WHERE chain_id = 84532", live)
+		e.exec(t, "UPDATE profiles SET livemode = $1 WHERE id = $2", live, e.aliceProfile) // the owner reads its mode
 		read := e.get(t, id)
 		listed, _ := e.call(t, "GET", strings.TrimSuffix(owner, "/"), "did:privy:alice", "", "").body["items"].([]any)
 		marked := strings.Contains(pdfText(t, e.pdf(t, id, "invoice.pdf", "").body), "Test mode: testnet tokens have no value")

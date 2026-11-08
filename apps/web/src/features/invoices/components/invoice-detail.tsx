@@ -77,15 +77,19 @@ export interface InvoiceDetailProps {
   profileId: string;
   tokens: readonly InvoiceToken[] | null;
   request?: boolean;
+  /** Under the not found line: the screen's way to the other mode (R-221). */
+  notFound?: ReactNode;
 }
 
-// A 404 means another profile made the invoice (the public read needs the pay token, D-86).
+// A 404 means another profile made the invoice (the public read needs the pay token, D-86), or it is of the profile's
+// other mode (R-221).
 // A personal profile's invoice is a request: it has no client and no due date.
 export function InvoiceDetail({
   invoiceId,
   profileId,
   tokens,
   request = false,
+  notFound,
 }: InvoiceDetailProps) {
   const invoice = useGetProfileInvoiceQuery({ profileId, invoiceId, summary: true }, LIVE_QUERY);
   const mine = invoice.currentData ?? null;
@@ -111,7 +115,10 @@ export function InvoiceDetail({
           retrying={invoice.isFetching}
         />
       ) : failure?.status === NOT_FOUND ? (
-        <p className="text-muted">{COPY.notFound}</p>
+        <>
+          <p className="text-muted">{COPY.notFound}</p>
+          {notFound}
+        </>
       ) : invoice.isError ? (
         <LoadError message={COPY.failed} onRetry={() => void invoice.refetch()} />
       ) : (

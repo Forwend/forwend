@@ -80,10 +80,10 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	// NO KEY UPDATE allows payment events to check their profile foreign key while holding invoice or link locks.
 	// Billing details are never removed, so once there they stay for the insert trigger to copy.
 	var kind string
-	var billed bool
+	var billed, live bool
 	if err := tx.QueryRow(ctx, `SELECT kind,
-		EXISTS (SELECT 1 FROM profile_billing_details WHERE profile_id = $1) FROM profiles WHERE id = $1 FOR NO KEY UPDATE`,
-		profileID).Scan(&kind, &billed); err != nil {
+		EXISTS (SELECT 1 FROM profile_billing_details WHERE profile_id = $1), livemode FROM profiles WHERE id = $1
+		FOR NO KEY UPDATE`, profileID).Scan(&kind, &billed, &live); err != nil {
 		return Invoice{}, false, fmt.Errorf("lock profile: %w", err)
 	}
 	// A concurrent create may have committed while this request waited for the profile lock.
@@ -111,7 +111,6 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	if err != nil {
 		return Invoice{}, false, err
 	}
-	live := slices.ContainsFunc(options, func(o accepted) bool { return o.live })
 	var recipient string
 	err = tx.QueryRow(ctx, "SELECT address FROM profile_wallets WHERE profile_id = $1 AND chain_family = $2",
 		profileID, options[0].family).Scan(&recipient)
@@ -164,8 +163,8 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		}
 	}
 	// D-87: an invoice's options are all of one mode, so its livemode never changes. A key's invoice is of the key's
-	// mode, and a Revise or a retainer's later month keeps the mode of the invoice it follows. Any other create takes
-	// live options when there are some.
+	// mode, and a Revise or a retainer's later month keeps the mode of the invoice it follows. Any other create, such as
+	// a job's, takes the profile's mode (D-120).
 	follows, err := followedMode(ctx, tx, profileID, r)
 	if err != nil {
 		return Invoice{}, false, err

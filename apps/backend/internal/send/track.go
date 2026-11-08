@@ -132,6 +132,7 @@ func (s *Service) Get(ctx context.Context, profileID, sendID string) (Send, erro
 // (R-215): the money lists show them until the transfer's own row takes their place.
 func (s *Service) Pending(ctx context.Context, profileID string) ([]Send, error) {
 	rows, err := s.pool.Query(ctx, "SELECT "+columns+` FROM sends WHERE profile_id = $1 AND status = 'submitted'
+		AND chain_id IN (SELECT chain_id FROM chains WHERE livemode = (SELECT livemode FROM profiles WHERE id = $1))
 		ORDER BY submitted_at DESC LIMIT 20`, profileID)
 	if err != nil {
 		return nil, fmt.Errorf("read pending sends: %w", err)

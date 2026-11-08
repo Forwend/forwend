@@ -181,31 +181,37 @@ func TestPendingParts(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if _, err := pool.Exec(ctx, `
-		WITH c AS (UPDATE chains SET enabled = true WHERE chain_id = 8453)
-		INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
-		VALUES (8453, 'evm', $1, 'USDC', 6, true)`, token); err != nil {
+	// Base mainnet is on beside the test chain: the profile sees only its own mode's tokens (D-120).
+	if _, err := pool.Exec(ctx, `UPDATE chains SET enabled = true WHERE chain_id = 8453`); err != nil {
 		t.Fatal(err)
 	}
 	s := NewService(pool, func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
 		return big.NewInt(0), 1, nil
 	})
-	got, err := s.Of(ctx, profile)
-	if err != nil {
+	lines := func() []string {
+		t.Helper()
+		got, err := s.Of(ctx, profile)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out []string
+		for _, tk := range got.Tokens {
+			out = append(out, fmt.Sprintf("%d live=%t pending=%s settling=%s confirming=%s partial=%s held=%s", tk.ChainID,
+				tk.Livemode, tk.Pending, tk.Settling, tk.Confirming, tk.Partial, tk.Held))
+		}
+		return out
+	}
+	want := []string{fmt.Sprintf("%d live=false pending=9700000 settling=4000000 confirming=5000000 partial=700000 held=3000000",
+		chaintest.ChainID)}
+	if got := lines(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("test mode: got\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+	if _, err := pool.Exec(ctx, `UPDATE profiles SET livemode = true WHERE id = $1`, profile); err != nil {
 		t.Fatal(err)
 	}
-	var lines []string
-	for _, tk := range got.Tokens {
-		lines = append(lines, fmt.Sprintf("%d live=%t pending=%s settling=%s confirming=%s partial=%s held=%s", tk.ChainID,
-			tk.Livemode, tk.Pending, tk.Settling, tk.Confirming, tk.Partial, tk.Held))
-	}
-	want := []string{
-		"8453 live=true pending=0 settling=0 confirming=0 partial=0 held=0",
-		fmt.Sprintf("%d live=false pending=9700000 settling=4000000 confirming=5000000 partial=700000 held=3000000",
-			chaintest.ChainID),
-	}
-	if !reflect.DeepEqual(lines, want) {
-		t.Fatalf("got\n%s\nwant\n%s", strings.Join(lines, "\n"), strings.Join(want, "\n"))
+	want = []string{"8453 live=true pending=0 settling=0 confirming=0 partial=0 held=0"}
+	if got := lines(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("live mode: got\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
 	}
 }
 

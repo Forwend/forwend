@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The README says a checkout is in live mode on mainnets or test mode on testnets, by its key.
+
 ## 0.1.1 (2026-11-08)
 
 - `baseUrl` must be https, or http on localhost: over plain http the checkout and its address could be swapped.

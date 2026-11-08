@@ -139,14 +139,44 @@ export const REFERENCE_PAGES: readonly DocsArticle[] = [
     slug: "reference/networks",
     group: "Reference",
     title: "Networks and tokens",
-    description: "Verified test configuration, with the exact network names preserved.",
+    description: "Live and test networks, with their exact chain IDs.",
     sections: [
       {
-        id: "pairs",
-        title: "Configured test pairs",
+        id: "live",
+        title: "Live networks",
         paragraphs: [
-          "These pairs are present in configuration and seed data. They do not prove production launch or that every profile currently accepts them.",
+          "Live mode takes real money on these networks. A profile accepts what it has turned on; read it from the API.",
         ],
+        fields: [
+          {
+            name: "Base · 8453",
+            type: "USDC · 6 decimals",
+            description: "Live network. USDC at 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913.",
+          },
+          {
+            name: "Arbitrum · 42161",
+            type: "USDC · 6 decimals",
+            description:
+              "Live network. Native USDC at 0xaf88d065e77c8cC2239327C5EDb3A432268e5831; bridged USDC.e is not accepted.",
+          },
+          {
+            name: "Arc · 5042",
+            type: "USDC · 6 decimals",
+            description:
+              "Live network. USDC at 0x3600000000000000000000000000000000000000, also Arc’s gas.",
+          },
+          {
+            name: "Tempo · 4217",
+            type: "OUSD · 6 decimals",
+            description:
+              "Live network. OUSD at 0x20c0000000000000000000006a37da5c996874be; it starts off for profiles.",
+          },
+        ],
+      },
+      {
+        id: "pairs",
+        title: "Test networks (Developer mode)",
+        paragraphs: ["Developer mode uses these networks. Their tokens have no value."],
         fields: [
           {
             name: "Base Sepolia · 84532",
@@ -177,11 +207,11 @@ export const REFERENCE_PAGES: readonly DocsArticle[] = [
         paragraphs: [
           "Read GET /v1/profiles/{profileId}/tokens with tokens.read. The response includes globally enabled assets and the profile’s on switch.",
           "A store can further turn assets off. Use the payment’s returned options as the source for its actual token/network combinations.",
-          "USDT artwork or metadata does not establish enabled USDT payments. Production networks and assets remain unverified.",
+          "USDT artwork or metadata does not establish enabled USDT payments.",
         ],
         links: [
           { label: "Token API", slug: "api/tokens" },
-          { label: "Test mode", slug: "start/test-mode" },
+          { label: "Developer mode", slug: "start/test-mode" },
         ],
       },
     ],

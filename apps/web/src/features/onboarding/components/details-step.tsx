@@ -88,7 +88,11 @@ export function DetailsStep({ kind, value, onChange, website, errors }: DetailsS
 }
 
 /** The invoice these details make, drawn as the PDF draws it; the client and items are an example. */
-export function DetailsPreview({ kind, value }: Pick<DetailsStepProps, "kind" | "value">) {
+export function DetailsPreview({
+  kind,
+  value,
+  testnet,
+}: Pick<DetailsStepProps, "kind" | "value"> & { testnet: boolean }) {
   const countries = useMemo(countryOptions, []);
   const country = countries.find((option) => option.value === value.country)?.label ?? "";
   const sample = COPY.sample;
@@ -103,7 +107,7 @@ export function DetailsPreview({ kind, value }: Pick<DetailsStepProps, "kind" | 
         kind="Invoice"
         number={sample.number}
         reference=""
-        testnet
+        testnet={testnet}
         status={{
           label: PREVIEW.waiting,
           detail: "",

@@ -44,7 +44,15 @@ func TestKeyMode(t *testing.T) {
 		return out
 	}
 
-	// From the app, a USD invoice takes only the live options; with the test key, only the test ones. Both are overdue.
+	// From the app in live mode, a USD invoice takes only the live options; with the test key, only the test ones (D-120).
+	// Both are overdue.
+	mode := func(live bool) {
+		t.Helper()
+		if r := e.call(t, "PUT", profile+"/mode", alice, "", `{"livemode": `+map[bool]string{true: "true", false: "false"}[live]+`}`); r.status != http.StatusOK {
+			t.Fatalf("mode %v: %d %v", live, r.status, r.body)
+		}
+	}
+	mode(true)
 	usd := `{"amountUsd": "12.50", "dueDate": "` + time.Now().UTC().AddDate(0, 0, -3).Format(time.DateOnly) + `"}`
 	app := e.post(t, alice, e.aliceProfile, "app-usd", usd)
 	if app.status != http.StatusCreated || app.body["livemode"] != true || !slices.Equal(chains(app), []float64{421614}) {
@@ -67,7 +75,7 @@ func TestKeyMode(t *testing.T) {
 		t.Errorf("the live invoice after the refused Revise: %v", r.body["paymentStatus"])
 	}
 
-	// Reads with the key see only test mode; the owner sees both.
+	// Reads with the key see only test mode; the owner sees the profile's mode, live now.
 	ids := func(r reply) []string {
 		t.Helper()
 		if r.status != http.StatusOK {
@@ -86,8 +94,11 @@ func TestKeyMode(t *testing.T) {
 	if got := ids(e.withKey(t, "GET", profile+"/invoices", key, "")); !slices.Equal(got, []string{testID}) {
 		t.Errorf("the key's list: %v, want only %s", got, testID)
 	}
-	if got := ids(e.call(t, "GET", profile+"/invoices", alice, "", "")); len(got) != 2 {
-		t.Errorf("the owner's list: %v, want both", got)
+	if got := ids(e.call(t, "GET", profile+"/invoices", alice, "", "")); !slices.Equal(got, []string{appID}) {
+		t.Errorf("the owner's live list: %v, want only %s", got, appID)
+	}
+	if r := e.call(t, "GET", profile+"/invoices/"+testID, alice, "", ""); errorCode(r) != "invoice_not_found" {
+		t.Errorf("the test invoice for the owner in live mode: %d %v", r.status, r.body)
 	}
 	for _, path := range []string{"", "/cancel"} {
 		method := map[string]string{"": "GET", "/cancel": "POST"}[path]
@@ -103,23 +114,25 @@ func TestKeyMode(t *testing.T) {
 	if got := ids(e.withKey(t, "GET", profile+"/owed", key, "")); !slices.Equal(got, []string{testID}) {
 		t.Errorf("owed with the key: %v, want only %s", got, testID)
 	}
-	if got := ids(e.call(t, "GET", profile+"/owed", alice, "", "")); len(got) != 2 {
-		t.Errorf("owed for the owner: %v, want both", got)
+	if got := ids(e.call(t, "GET", profile+"/owed", alice, "", "")); !slices.Equal(got, []string{appID}) {
+		t.Errorf("owed for the owner: %v, want only %s", got, appID)
 	}
 	e.exec(t, `INSERT INTO outbox_events (kind, invoice_id, payload)
 		SELECT 'invoice.paid', id, jsonb_build_object('option', id) FROM invoices WHERE id = ANY($1)`,
 		[]string{appID, testID})
 	for _, id := range []string{appID, testID} {
+		mode(id == appID)
 		if r := e.call(t, "POST", profile+"/invoices/"+id+"/cancel", alice, "", ""); r.status != http.StatusOK {
 			t.Fatalf("cancel %s: %d %v", id, r.status, r.body)
 		}
 	}
+	mode(true)
 	for _, path := range []string{"/events", "/webhook-events"} {
 		if got := ids(e.withKey(t, "GET", profile+path, key, "")); !slices.Equal(got, []string{testID}) {
 			t.Errorf("%s with the key: %v, want only %s", path, got, testID)
 		}
-		if got := ids(e.call(t, "GET", profile+path, alice, "", "")); len(got) != 2 {
-			t.Errorf("%s for the owner: %v, want both", path, got)
+		if got := ids(e.call(t, "GET", profile+path, alice, "", "")); !slices.Equal(got, []string{appID}) {
+			t.Errorf("%s for the owner: %v, want only %s", path, got, appID)
 		}
 	}
 
@@ -149,6 +162,7 @@ func TestKeyMode(t *testing.T) {
 	}
 
 	// A Revise keeps the mode of the invoice it replaces, and a retainer's later month the mode of its first.
+	mode(false)
 	fixed := e.post(t, alice, e.aliceProfile, "app-fixed", basicBody).body["invoiceId"].(string)
 	revised := e.post(t, alice, e.aliceProfile, "app-revise", `{"amountUsd": "6", "replaces": "`+fixed+`"}`)
 	if revised.status != http.StatusCreated || revised.body["livemode"] != false ||
@@ -180,6 +194,7 @@ func TestUSDInvoiceDoesNotFallBackWhenLiveTokensAreOff(t *testing.T) {
 	e.exec(t, "UPDATE chains SET livemode = true WHERE chain_id = 421614")
 	e.exec(t, `INSERT INTO profile_tokens_off (profile_id, chain_id, token_contract) VALUES ($1, 421614, $2)`,
 		e.aliceProfile, arbUSDC)
+	e.exec(t, "UPDATE profiles SET livemode = true WHERE id = $1", e.aliceProfile)
 	r := e.post(t, "did:privy:alice", e.aliceProfile, "no-fallback", `{"amountUsd": "5"}`)
 	if r.status != http.StatusUnprocessableEntity || errorCode(r) != "invalid_value" {
 		t.Fatalf("all live tokens off: %d %v, want 422", r.status, r.body)
@@ -198,10 +213,13 @@ func TestPaymentLinksStayInTheirMode(t *testing.T) {
 	}
 	e.enableArbUSDC(t)
 	e.exec(t, "UPDATE chains SET livemode = true WHERE chain_id = 421614")
+	// The dashboard makes a link in the profile's mode (D-120), and a key in it too.
+	e.exec(t, "UPDATE profiles SET livemode = true WHERE id = $1", e.aliceProfile)
 	live := e.call(t, "PUT", path+"/links/"+liveID, alice, "", `{"title": "Live", "amountUsd": "5"}`)
 	if live.status != http.StatusCreated || live.body["livemode"] != true {
 		t.Fatalf("live link: %d %v", live.status, live.body)
 	}
+	e.exec(t, "UPDATE profiles SET livemode = false WHERE id = $1", e.aliceProfile)
 	key := e.call(t, "POST", path+"/keys", alice, "", `{"name": "Test server", "scopes": ["invoices.read", "invoices.write"]}`).body["secret"].(string)
 	const byKeyID = "aaaaaaaa-0000-4000-8000-000000000033"
 	if r := e.withKey(t, "PUT", path+"/links/"+byKeyID, key, `{"title": "Key test", "amountUsd": "5"}`); r.status != http.StatusCreated || r.body["livemode"] != false {

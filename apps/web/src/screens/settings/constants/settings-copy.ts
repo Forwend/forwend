@@ -62,6 +62,7 @@ export const SETTINGS_COPY = {
   },
   billing: { title: "Billing details" },
   networks: { title: "Accepted assets" },
+  developerMode: { title: "Developer mode" },
   notifications: { title: "Notifications" },
   team: { title: "Team" },
   wallet: {

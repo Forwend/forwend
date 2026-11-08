@@ -83,6 +83,8 @@ D-71); a chain whose RPCs don't answer is logged and skipped:
 - With `ENABLE_TESTNET_USDC=1`, the API then enables the three USDC testnet pairs before chain checks.
   - Dokploy defaults to 1. Local development leaves it off; `0` leaves existing network settings unchanged.
   - Repeated startup enables those pairs again. Other pairs keep their settings; see [staging](../staging.md#dokploy-staging).
+- With `ENABLE_MAINNETS` set, it then switches the named live chains on, all or none.
+  - An ID that is not a live chain stops startup and switches nothing on. Empty leaves the chains as they are.
 - Every enabled chain has validated endpoint metadata and at least one answering endpoint (D-15), within 30 s per chain.
   - A mistake stops the process when endpoint metadata is missing or every configured endpoint serves another chain.
     Fix the metadata or disable that chain.
@@ -217,8 +219,11 @@ with a test.
   `UPDATE chains SET enabled = true WHERE chain_id = 421614; UPDATE tokens SET enabled = true WHERE chain_id = 421614;`
   Then restart the api, worker and signer so their startup checks cover it. A chain they log as unavailable at
   startup is not checked yet: restart them again once it answers.
+  - Migrations 105 and 106 add the mainnets, live mode and switched off, and their enabled tokens. `ENABLE_MAINNETS` switches each chain on.
   - With `ENABLE_TESTNET_USDC=1`, startup adds Base Sepolia and enables its USDC alongside Arbitrum Sepolia and Arc Testnet USDC.
   - This activation runs after migrations on fresh and existing databases. Schema migrations alone still leave the pairs disabled.
+- `profiles.livemode` is the profile's mode (D-120): false while Developer mode is on.
+  - A trigger starts a new profile live when a mainnet is switched on, else in test mode.
 - `invoices`: immutable terms (`id` = the on-chain invoice id, profile, chain, token, `amount`, `expires_at` and
   `settle_deadline` as the contract's uint64 seconds, recipient, factory and receive address, `receive_method` (D-44)),
   separate **payment**, **settlement** and **refund** status columns, `idempotency_key` unique per profile with a

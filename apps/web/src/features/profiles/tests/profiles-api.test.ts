@@ -11,6 +11,7 @@ const personal: Profile = {
   createdAt: "2026-10-10T00:00:00Z",
   role: "owner",
   permissions: ["invoices.read", "money.read"],
+  livemode: false,
 };
 const merchant: Profile = {
   ...personal,
@@ -63,5 +64,47 @@ describe("profiles API", () => {
       merchant,
     ]);
     expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("reads again what the other mode read once Developer mode turns, and keeps the profiles (R-221)", async () => {
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        answer({ onboardedAt: null, profiles: [personal, merchant] } satisfies Me),
+      )
+      .mockResolvedValueOnce(answer({ email: true, address: null }))
+      .mockResolvedValueOnce(answer({ livemode: true }))
+      .mockResolvedValueOnce(answer({ email: false, address: null }));
+    const store = makeStore({ getAccessToken: async () => "token-1" });
+    await store.dispatch(profilesApi.endpoints.signUp.initiate());
+    await store.dispatch(profilesApi.endpoints.getNotifications.initiate(merchant.profileId));
+
+    await store
+      .dispatch(
+        profilesApi.endpoints.saveProfileMode.initiate({
+          profileId: merchant.profileId,
+          livemode: true,
+        }),
+      )
+      .unwrap();
+    const put = fetch.mock.calls[2]?.[0] as Request;
+    expect([put.method, new URL(put.url).pathname]).toEqual([
+      "PUT",
+      `/api/v1/profiles/${merchant.profileId}/mode`,
+    ]);
+    await vi.waitFor(() =>
+      expect(
+        profilesApi.endpoints.signUp
+          .select()(store.getState())
+          .data?.profiles.map((p) => p.livemode),
+      ).toEqual([false, true]),
+    );
+    await vi.waitFor(() =>
+      expect(
+        profilesApi.endpoints.getNotifications.select(merchant.profileId)(store.getState()).data
+          ?.email,
+      ).toBe(false),
+    );
+    expect(fetch).toHaveBeenCalledTimes(4);
   });
 });

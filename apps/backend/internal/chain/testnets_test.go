@@ -75,3 +75,32 @@ func TestEnableTestnetTokens(t *testing.T) {
 		})
 	}
 }
+
+// R-222: ENABLE_MAINNETS switches on the named live chains, and refuses a testnet or an unknown chain.
+func TestEnableMainnets(t *testing.T) {
+	ctx := context.Background()
+	db, err := database.Open(ctx, databasetest.Migrated(t, database.Migrate))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := EnableMainnets(ctx, db, []uint64{8453, 4217}); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := db.Query(ctx, `SELECT chain_id FROM chains WHERE enabled AND livemode ORDER BY chain_id`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if on, err := pgx.CollectRows(rows, pgx.RowTo[int64]); err != nil || !slices.Equal(on, []int64{4217, 8453}) {
+		t.Fatalf("live chains on: %v, %v; want Tempo and Base", on, err)
+	}
+	for _, id := range []uint64{84532, 1} {
+		if err := EnableMainnets(ctx, db, []uint64{42161, id}); err == nil {
+			t.Errorf("chain %d switched on as a mainnet", id)
+		}
+	}
+	var arbitrum bool
+	if err := db.QueryRow(ctx, `SELECT enabled FROM chains WHERE chain_id = 42161`).Scan(&arbitrum); err != nil || arbitrum {
+		t.Fatalf("Arbitrum on after a refused list: %v, %v; want all or none", arbitrum, err)
+	}
+}

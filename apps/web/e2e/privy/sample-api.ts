@@ -15,9 +15,10 @@ const SAMPLE_STORE = {
 };
 
 export const hash = (c: string) => `0x${c.repeat(64)}`;
-// GET /v1/me lists every permission for the owner (R-138).
+// GET /v1/me lists every permission for the owner (R-138). Its profiles are in Developer mode, on the testnets (D-120).
 export const OWNER = {
   role: "owner",
+  livemode: false,
   permissions: [
     "invoices.read",
     "invoices.write",

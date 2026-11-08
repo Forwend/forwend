@@ -54,6 +54,11 @@ func run() error {
 			return err
 		}
 	}
+	if len(cfg.EnableMainnets) > 0 {
+		if err := chain.EnableMainnets(ctx, pool, cfg.EnableMainnets); err != nil {
+			return err
+		}
+	}
 	specs, err := chain.Specs(ctx, pool, cfg.RPCSecrets, cfg.RPCAllowLoopback)
 	if err != nil {
 		return err

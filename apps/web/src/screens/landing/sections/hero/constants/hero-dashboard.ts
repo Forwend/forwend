@@ -26,13 +26,13 @@ export const DASHBOARD = {
   latest: [
     {
       title: "INV-0012",
-      detail: "Alex Morgan · Base Sepolia",
+      detail: "Alex Morgan · Base",
       amount: "1,250.00",
       status: PAYMENT_STATUS.paid,
     },
     {
       title: "Logo design",
-      detail: "Payment link · Arc Testnet",
+      detail: "Payment link · Arc",
       amount: "450.00",
       status: PAYMENT_STATUS.confirming,
     },

@@ -1,6 +1,7 @@
 "use client";
 
 import { InvoiceDetail } from "@/features/invoices/components/invoice-detail";
+import { OtherModeHint } from "@/features/profiles/components/other-mode-hint";
 import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 
@@ -16,6 +17,7 @@ export function InvoiceScreen({ invoiceId }: InvoiceScreenProps) {
       profileId={profile.profileId}
       tokens={[]}
       request={profile.kind === PROFILE_KINDS.personal}
+      notFound={<OtherModeHint />}
     />
   );
 }

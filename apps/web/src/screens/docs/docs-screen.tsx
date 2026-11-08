@@ -125,8 +125,9 @@ function DocsHome() {
       <div className={styles.testNotice}>
         <span className={styles.testMark} aria-hidden="true" />
         <p>
-          <strong>Start in test mode.</strong> The verified networks are testnets. Use test tokens,
-          not real funds. <Link href={docsPath("start/test-mode")}>How test mode works</Link>
+          <strong>Try it in Developer mode first.</strong> Turn it on in a profile’s settings to use
+          test networks and test tokens before real money.{" "}
+          <Link href={docsPath("start/test-mode")}>How Developer mode works</Link>
         </p>
       </div>
       <section className={styles.quickstart} aria-labelledby="quickstart-title">

@@ -15,6 +15,9 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
+	"github.com/forwend/forwend/apps/backend/internal/database"
+	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
+	"github.com/jackc/pgx/v5"
 )
 
 // One wei short of one deploy and settle is refused, naming the chain, the executor and its balance in whole coins.
@@ -198,5 +201,27 @@ func TestSignerAlertsWhenExecutorGasRunsLow(t *testing.T) {
 	}
 	if n := strings.Count(logs.String(), "ALERT executor gas runs low"); n != 1 {
 		t.Fatalf("%d gas alerts in two rounds; want one per GasCheckEvery", n)
+	}
+}
+
+func TestEveryChainHasAFeeCeiling(t *testing.T) {
+	ctx := t.Context()
+	pool, err := database.Open(ctx, databasetest.Migrated(t, database.Migrate))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	rows, err := pool.Query(ctx, `SELECT chain_id FROM chains`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids, err := pgx.CollectRows(rows, pgx.RowTo[int64])
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range ids {
+		if maxFeePerGas[uint64(id)] == nil {
+			t.Errorf("chain %d has no fee ceiling: switched on, it would not be served", id)
+		}
 	}
 }

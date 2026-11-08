@@ -33,4 +33,5 @@ import { Checkout, PayButton, PaymentElement } from "@forwend/react";
 - If your page sends a Content-Security-Policy, allow `frame-src https://forwend.com`.
 - The components work in Next.js app routes: they are client components and render an empty box on the server.
 
-Every network is a testnet for now, so every checkout is in test mode. Docs: https://forwend.com/docs
+A checkout takes real money on mainnets in live mode, and testnet tokens in test mode: the key that made it decides.
+Docs: https://forwend.com/docs

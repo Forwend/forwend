@@ -163,7 +163,7 @@ test("reduced motion leaves content visible without animated movement", async ({
   await expect(page.locator("#roadmap")).toBeVisible();
 });
 
-test("the hero dashboard and product sections show testnet payments on named networks", async ({
+test("the hero dashboard and product sections show live payments on named networks", async ({
   page,
 }) => {
   await page.goto("/");
@@ -186,7 +186,8 @@ test("the hero dashboard and product sections show testnet payments on named net
   }
   const invoice = product.getByRole("article").filter({ hasText: "Invoice a client" });
   await expect(invoice).toContainText("1,250.00 USDC");
-  await expect(invoice).toContainText("Base Sepolia · Testnet");
+  await expect(invoice).toContainText("Base");
+  await expect(invoice).not.toContainText(/Sepolia|Testnet/);
   const status = product.getByRole("article").filter({ hasText: "See every step" });
   for (const step of ["Detected", "Confirmed", "In wallet"])
     await expect(status).toContainText(step);
@@ -216,7 +217,7 @@ test("the hero dashboard and product sections work without JavaScript", async ({
     "Invoice a client for the work",
   );
   await expect(invoice.locator("[data-money]").last()).toHaveText("1,250.00 USDC");
-  await expect(invoice).toContainText("Base Sepolia");
+  await expect(invoice).toContainText("Base");
   await context.close();
 });
 

@@ -66,7 +66,7 @@ export function ApiKeys({ profileId, merchant }: ApiKeysProps) {
   }
   const list = keys.currentData;
   const loading = !list || (merchant && !stores.currentData);
-  // Every key is a test key today; a badge on each row would repeat the panel's.
+  // The list is the profile's mode (R-221), so one badge on the panel says test mode for every row.
   const allTest = !!list?.length && list.every((k) => !k.livemode);
   const storeName = (key: ApiKey) => (key.storeId ? (names.get(key.storeId) ?? key.storeId) : null);
   const scopes = (key: ApiKey) => key.scopes.map((scope) => COPY.scopeLabels[scope]).join(", ");
@@ -126,7 +126,7 @@ export function ApiKeys({ profileId, merchant }: ApiKeysProps) {
                     ) : null}
                   </span>
                   <span className={NARROW}>
-                    <code className="font-mono">{COPY.keyText(key.last4)}</code>
+                    <code className="font-mono">{COPY.keyText(key.last4, key.livemode)}</code>
                     {storeName(key) ? ` · ${storeName(key)}` : null}
                     {` · ${scopes(key)}`}
                   </span>
@@ -141,7 +141,9 @@ export function ApiKeys({ profileId, merchant }: ApiKeysProps) {
                   ) : null}
                 </td>
                 <td className={cx(WIDE, "truncate")}>
-                  <code className="font-mono text-xs text-muted">{COPY.keyText(key.last4)}</code>
+                  <code className="font-mono text-xs text-muted">
+                    {COPY.keyText(key.last4, key.livemode)}
+                  </code>
                 </td>
                 {merchant ? (
                   <td className={cx(WIDE, "truncate text-ink")}>{storeName(key)}</td>

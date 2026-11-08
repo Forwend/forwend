@@ -35,6 +35,7 @@ services:
       <<: *chain-environment
       API_ADDR: :8080
       ENABLE_TESTNET_USDC: ${ENABLE_TESTNET_USDC:-1}
+      ENABLE_MAINNETS: ${ENABLE_MAINNETS:-}
       # Traefik in front sets X-Forwarded-For to the client's address (R-188).
       TRUST_PROXY_HEADER: ${TRUST_PROXY_HEADER:-0}
       PRIVY_APP_ID: ${NEXT_PUBLIC_PRIVY_APP_ID:?set NEXT_PUBLIC_PRIVY_APP_ID}

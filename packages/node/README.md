@@ -44,4 +44,5 @@ if (payment.paymentStatus === "paid") fulfil();
 - Each try times out after 30 seconds (`timeoutMs`).
 - An error answer throws a `ForwendError` with the HTTP `status`, the API's `code` and `retryAfter` in seconds.
 
-Every network is a testnet for now, so every key and payment is in test mode. Docs: https://forwend.com/docs
+A `fw_live_` key works in live mode, on mainnets with real money. A `fw_test_` key works in test mode, on testnets.
+Each payment's `livemode` says which. Docs: https://forwend.com/docs

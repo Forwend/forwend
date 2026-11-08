@@ -185,8 +185,15 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     step with its action and Skip. It has no close button.
   - It goes once every step is done or skipped; phones show it at the top of More.
 - Settings is one area with a section column beside the page (13rem); phones get a row of text tabs instead.
-  - Your account: Account and security, Notifications. This profile (its name): Billing details, Accepted assets, Team,
-    Wallet.
+  - Your account: Account and security, Notifications. This profile (its name): Billing details, Accepted assets,
+    Developer mode, Team, Wallet.
+  - Developer mode (R-221): one switch in a panel, like Notifications. A line under it says what On or Off means.
+    - Another line says nothing already made changes mode; a role that can't turn it reads Only the owner or an Admin.
+    - While it is on, every app page has a warning strip under the header with Turn off.
+    - The app then reads every page again in the new mode, without reloading.
+    - With no mainnet on, turning it off is refused, and a line says the profile stays in Developer mode.
+  - An invoice or payment page that finds nothing says a live or test one shows only in the other mode.
+    - It offers Turn on (or Turn off) Developer mode to owners and Admins.
   - Wallet (R-218, the owner's only): the full address, then Export private key.
     - Export asks in a dialog with the warning, then opens Privy's export window.
       - With two-step on, it is asked in place of the dialog's buttons; without it, Confirm it's you when stale.
@@ -551,7 +558,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Developers (R-145) is in the sidebar's Build group for a freelancer's or merchant's owner and Admins. It is laid out like Team.
   - An intro line says keys belong on a server, with a Read the API docs link to `/docs`.
   - The profile ID follows, with Copy: the API's routes name it. API keys is a panel with a table, New key (lime) in its head.
-  - Columns: Name, Key (`fw_test_…` and the last 4), Store (merchants), Access, Last used. Test mode shows once, on the panel.
+  - Columns: Name, Key (`fw_live_…` or `fw_test_…` and the last 4), Store (merchants), Access, Last used.
+  - The list is the profile's mode; in Developer mode Test mode shows once, on the panel.
   - New key is a dialog: Name, a Store select when there are two or more, and scope checkboxes.
   - After it saves, a dialog shows the key's text once, with Copy focused and Done.
   - A key's More actions menu holds Roll, with an overlap select, and Revoke, which confirms.

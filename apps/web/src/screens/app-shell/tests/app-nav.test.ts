@@ -27,6 +27,7 @@ const developer: Profile = {
     "tokens.read",
     "team.leave",
   ],
+  livemode: false,
 };
 
 // R-138: the app hides the pages a role can't use; the API refuses them anyway.

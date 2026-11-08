@@ -16,24 +16,36 @@ export interface TokensStepProps {
   onRetry: () => void;
   selected: ReadonlySet<string>;
   onChange: (keys: readonly string[], on: boolean) => void;
+  /** Developer mode (D-120): the tokens are test money. */
+  testnet: boolean;
 }
 
-/** What payers can use, said once as test money (R-50): each token beside its network, the profile's defaults on. */
-export function TokensStep({ options, failed, onRetry, selected, onChange }: TokensStepProps) {
+/** What payers can use (R-50), said once as test money in Developer mode: each token beside its network, the profile's
+ *  defaults on. */
+export function TokensStep({
+  options,
+  failed,
+  onRetry,
+  selected,
+  onChange,
+  testnet,
+}: TokensStepProps) {
   return (
     <div className="flex flex-col gap-5">
-      <Notice>
-        <strong className="font-semibold">{COPY.testnet}</strong> {COPY.testnetDetail}{" "}
-        <a
-          href={TEST_USDC_FAUCET}
-          target="_blank"
-          rel="noreferrer"
-          aria-label={COPY.faucetLabel}
-          className="underline underline-offset-2"
-        >
-          {COPY.faucet}
-        </a>
-      </Notice>
+      {testnet ? (
+        <Notice>
+          <strong className="font-semibold">{COPY.testnet}</strong> {COPY.testnetDetail}{" "}
+          <a
+            href={TEST_USDC_FAUCET}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={COPY.faucetLabel}
+            className="underline underline-offset-2"
+          >
+            {COPY.faucet}
+          </a>
+        </Notice>
+      ) : null}
       {options ? (
         <AssetSelection
           label={COPY.label}

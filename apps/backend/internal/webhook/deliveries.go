@@ -99,7 +99,8 @@ func (s *Service) Resend(ctx context.Context, profileID, endpointID, event strin
 		}
 		var pending bool
 		err = tx.QueryRow(ctx, `SELECT d.status='pending' FROM webhook_deliveries d JOIN webhook_endpoints e ON e.id=d.endpoint_id
- WHERE e.profile_id=$1 AND d.endpoint_id=$2 AND d.event_id=$3 FOR UPDATE OF d`, profileID, endpointID, event).Scan(&pending)
+ WHERE e.profile_id=$1 AND d.endpoint_id=$2 AND d.event_id=$3 AND e.livemode = (SELECT livemode FROM profiles WHERE id = $1)
+ FOR UPDATE OF d`, profileID, endpointID, event).Scan(&pending)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNoDelivery
 		}
@@ -162,7 +163,7 @@ func (s *Service) SendTest(ctx context.Context, profileID, endpointID string) (s
 			return ErrQueueFull
 		}
 		err = tx.QueryRow(ctx, `WITH e AS (INSERT INTO webhook_events(profile_id,type,livemode)
- SELECT profile_id,$3,livemode FROM webhook_endpoints WHERE id=$1 AND profile_id=$2 RETURNING id)
+ SELECT profile_id,$3,livemode FROM webhook_endpoints WHERE id=$1 AND profile_id=$2 AND `+ofProfileMode+` RETURNING id)
  INSERT INTO webhook_deliveries(endpoint_id,event_id) SELECT $1,id FROM e RETURNING event_id`, endpointID, profileID, Test).Scan(&id)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
@@ -172,12 +173,12 @@ func (s *Service) SendTest(ctx context.Context, profileID, endpointID string) (s
 	return id, err
 }
 
-// owned is ErrNotFound unless the endpoint is the profile's.
+// owned is ErrNotFound unless the endpoint is the profile's, in its mode.
 func (s *Service) owned(ctx context.Context, profileID, endpointID string) error {
 	var ok bool
 	if lowercaseUUID.MatchString(endpointID) {
-		if err := s.pool.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM webhook_endpoints WHERE id = $1 AND profile_id = $2)",
-			endpointID, profileID).Scan(&ok); err != nil {
+		if err := s.pool.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM webhook_endpoints WHERE id = $1 AND profile_id = $2 AND "+
+			ofProfileMode+")", endpointID, profileID).Scan(&ok); err != nil {
 			return fmt.Errorf("read webhook endpoint: %w", err)
 		}
 	}

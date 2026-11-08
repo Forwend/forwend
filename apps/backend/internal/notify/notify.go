@@ -223,6 +223,7 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 		pay                  string // the pay link's token (D-86)
 		decimals, options    int
 		chainID              uint64
+		live                 bool
 	)
 	if err := tx.QueryRow(ctx, `SELECT p.email_notifications, u.login_email, m.payer_email, m.number,
 		    coalesce(m.issuer_name, ''), coalesce(m.sender_name, ''), t.symbol, t.decimals, o.chain_id, o.amount::text,
@@ -231,11 +232,12 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 		              JOIN ledger_entries e ON e.transaction_id = x.id AND e.account = 'recipient_payable'
 		              WHERE d.invoice_id = o.id ORDER BY d.block_number DESC, d.log_index DESC LIMIT 1), ''),
 		    coalesce(m.client_email, ''), coalesce(m.issuer_email, ''), coalesce(m.due_date::text, ''),
-		    (SELECT count(*) FROM invoices x WHERE coalesce(x.main_id, x.id) = m.id), coalesce(m.pay_token, '')
+		    (SELECT count(*) FROM invoices x WHERE coalesce(x.main_id, x.id) = m.id), coalesce(m.pay_token, ''),
+		    (SELECT livemode FROM chains c WHERE c.chain_id = o.chain_id)
 		FROM invoices m JOIN profiles p ON p.id = m.profile_id JOIN users u ON u.id = p.user_id
 		JOIN invoices o ON o.id = $2 JOIN tokens t ON t.chain_id = o.chain_id AND t.contract = o.token_contract
 		WHERE m.id = $1`, invoice, p.Option).Scan(&on, &to, &payer, &number, &issuer, &typed, &symbol, &decimals, &chainID,
-		&amount, &hash, &client, &replyTo, &due, &options, &pay); err != nil {
+		&amount, &hash, &client, &replyTo, &due, &options, &pay, &live); err != nil {
 		return view{}, nil, false, fmt.Errorf("invoice: %w", err)
 	}
 	// An invoice made before D-86 has no pay link: the client's and the payer's emails would link nowhere.
@@ -262,8 +264,9 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 		if options > 1 { // the client chooses the token and network, each at 1 USD (D-75)
 			symbol, network = "USD", ""
 		}
-		return sent(reference, document.Amount(units, decimals, symbol), network, issuer, typed, document.DateText(due),
-			replyTo, webURL+"/pay/"+pay, webURL+"/api/v1/invoices/"+pay+"/invoice.pdf"), &client, true, nil
+		return marked(sent(reference, document.Amount(units, decimals, symbol), network, issuer, typed,
+				document.DateText(due), replyTo, webURL+"/pay/"+pay, webURL+"/api/v1/invoices/"+pay+"/invoice.pdf"), live),
+			&client, true, nil
 	}
 	var v view
 	if kind == outbox.Receipt {
@@ -351,6 +354,14 @@ func receipt(number, amount, symbol, network, issuer, sender, tx, pdf string) vi
 	}
 	v.Lead = []string{"You paid " + amount + " on " + network + to + " for " + number + "."}
 	v.Preheader = v.Lead[0]
+	return v
+}
+
+// marked says a client's email is about a test-mode invoice (R-143), so testnet tokens never pass for real money.
+func marked(v view, live bool) view {
+	if !live {
+		v.Lead = append(v.Lead, document.TestMode+".")
+	}
 	return v
 }
 
@@ -533,6 +544,7 @@ func reminderEmail(ctx context.Context, tx pgx.Tx, id string, p outbox.Payload, 
 		number                           int64
 		decimals, options                int
 		chainID                          uint64
+		live                             bool
 	)
 	if err := tx.QueryRow(ctx, `SELECT r.enabled AND r.stopped_at IS NULL
 		        AND (SELECT `+invoice.StatusFilterSQL+` FROM invoices_current invoices WHERE invoices.id = m.id) = 'open',
@@ -540,11 +552,11 @@ func reminderEmail(ctx context.Context, tx pgx.Tx, id string, p outbox.Payload, 
 		    coalesce(m.issuer_email, ''), coalesce(to_char(m.due_date, 'YYYY-MM-DD'), ''), m.number, t.symbol, t.decimals,
 		    o.chain_id, (o.amount + `+invoice.PaidToOwnerSQL("o.id")+`)::text,
 		    (SELECT count(*) FROM invoices c WHERE c.id = m.id OR c.main_id = m.id), m.chosen_id IS NOT NULL, r.stop_token,
-		    coalesce(m.pay_token, '')
+		    coalesce(m.pay_token, ''), (SELECT livemode FROM chains c WHERE c.chain_id = o.chain_id)
 		FROM invoices m JOIN invoice_reminders r ON r.invoice_id = m.id JOIN invoices o ON o.id = $2
 		JOIN tokens t ON t.chain_id = o.chain_id AND t.contract = o.token_contract
 		WHERE m.id = $1`, id, p.Option).Scan(&on, &to, &issuer, &sender, &replyTo, &due, &number, &symbol, &decimals,
-		&chainID, &left, &options, &locked, &token, &pay); err != nil {
+		&chainID, &left, &options, &locked, &token, &pay, &live); err != nil {
 		return view{}, nil, false, fmt.Errorf("reminder: %w", err)
 	}
 	units, _ := new(big.Int).SetString(left, 10)
@@ -555,8 +567,8 @@ func reminderEmail(ctx context.Context, tx pgx.Tx, id string, p outbox.Payload, 
 	if options > 1 && !locked { // the client still chooses the token and network, each at 1 USD (D-75)
 		symbol, network = "USD", ""
 	}
-	v := reminder(p.Step, document.Number(number), document.Amount(units, decimals, symbol), network, issuer, sender, document.DateText(due),
-		replyTo, webURL+"/pay/"+pay, webURL+"/api/v1/invoices/"+pay+"/invoice.pdf")
+	v := marked(reminder(p.Step, document.Number(number), document.Amount(units, decimals, symbol), network, issuer, sender,
+		document.DateText(due), replyTo, webURL+"/pay/"+pay, webURL+"/api/v1/invoices/"+pay+"/invoice.pdf"), live)
 	v.Stop, v.Unsubscribe = webURL+"/reminders/"+token, webURL+"/api/v1/reminders/"+token+"/stop"
 	return v, &to, on, nil
 }

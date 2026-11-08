@@ -280,6 +280,19 @@ func TestWebhookDeliveriesAreSignedAndRetried(t *testing.T) {
 	}
 }
 
+// R-221: Developer mode is the dashboard's; deliveries to an endpoint of the profile's other mode stay signed.
+func TestDeliveriesStaySignedWhateverTheProfilesMode(t *testing.T) {
+	h := newHookEnv(t)
+	h.canceled(t, "key-1")
+	first := h.secrets(t)
+	h.exec(t, "UPDATE profiles SET livemode = NOT livemode WHERE id = $1", h.shop)
+	h.recv.answer(http.StatusNoContent)
+	h.deliver(t)
+	if n := h.recv.requests(); n != 1 || !signedBy(first[0], h.recv.got[0], h.recv.body[0]) {
+		t.Fatalf("%d requests; signature %q", n, h.recv.got[0].Header.Get("webhook-signature"))
+	}
+}
+
 // R-148: a 410, or a delivery's last failure, turns the endpoint off and emails its owner once.
 func TestWebhookEndpointsTurnOff(t *testing.T) {
 	h := newHookEnv(t)

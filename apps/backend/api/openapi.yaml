@@ -1148,6 +1148,43 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/mode:
+    put:
+      operationId: putProfileMode
+      summary: Turn the profile's Developer mode on or off
+      description: |
+        R-221, D-120. livemode false is Developer mode: the dashboard works in test mode, on the testnets. true is live
+        mode, on the mainnets with real money. The dashboard's new invoices, links, keys and webhook endpoints take this
+        mode, and its lists, balances, activity and sends show only it. Existing objects keep their mode, and an API key
+        keeps its own (R-156). Owners and Admins only (tokens.write). true is 422 while no mainnet is switched on.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [livemode]
+              properties:
+                livemode: { type: boolean }
+      responses:
+        "200":
+          description: The saved mode
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [livemode]
+                properties:
+                  livemode: { type: boolean }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/billing-details:
     get:
       operationId: getBillingDetails
@@ -4582,9 +4619,14 @@ components:
         expiresAt: { type: string, format: date-time }
     Profile:
       type: object
-      required: [profileId, kind, name, walletAddress, createdAt, role, permissions]
+      required: [profileId, kind, name, walletAddress, createdAt, role, permissions, livemode]
       properties:
         profileId: { type: string, format: uuid }
+        livemode:
+          type: boolean
+          description: |
+            D-120. false while the profile is in Developer mode, on the testnets. A new profile starts in live mode when a
+            mainnet is switched on, else in test mode.
         kind:
           type: string
           enum: [personal, freelancer, merchant]

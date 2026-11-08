@@ -30,6 +30,8 @@ func Routes(mux *http.ServeMux, g mid.Guards, profiles *profile.Service) {
 	mux.Handle("GET /v1/stores/{storeId}/logo.png", getStoreLogo(profiles)) // pay pages show it: no sign-in
 	mux.Handle("GET /v1/profiles/{profileId}/tokens", g.Can(auth.TokensRead)(getTokens(profiles)))
 	mux.Handle("PUT /v1/profiles/{profileId}/tokens", g.Can(auth.TokensWrite)(putTokens(profiles)))
+	// The mode picks the profile's chains and tokens, so it takes the tokens permission: owners and Admins (D-120).
+	mux.Handle("PUT /v1/profiles/{profileId}/mode", g.Can(auth.TokensWrite)(putMode(profiles)))
 	mux.Handle("GET /v1/profiles/{profileId}/notifications", g.Can(auth.Notifications)(getNotifications(profiles)))
 	mux.Handle("PUT /v1/profiles/{profileId}/notifications", g.Can(auth.Notifications)(putNotifications(profiles)))
 }

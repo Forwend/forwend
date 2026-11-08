@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The README says a checkout is in live mode on mainnets or test mode on testnets, by its key.
+
 ## 0.1.1 (2026-11-08)
 
 - Takes `@forwend/js`'s https-only `baseUrl`.

@@ -7,6 +7,7 @@ import { LINKS_COPY } from "@/features/links/constants/links-copy";
 import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import {
   BILLING_DETAILS_COPY,
+  DEVELOPER_MODE_COPY,
   NOTIFICATIONS_COPY,
   TOKENS_COPY,
 } from "@/features/profiles/constants/profiles-copy";
@@ -25,6 +26,7 @@ export const SETTINGS_PATHS: readonly string[] = [
   APP_ROUTES.notifications,
   APP_ROUTES.billingDetails,
   APP_ROUTES.networks,
+  APP_ROUTES.developerMode,
   APP_ROUTES.team,
   APP_ROUTES.wallet,
 ];
@@ -92,6 +94,12 @@ export function breadcrumb(
   }
   if (pathname === APP_ROUTES.networks) {
     return { trail: [{ label: TOKENS_COPY.title, href: APP_ROUTES.networks }], invoiceId: null };
+  }
+  if (pathname === APP_ROUTES.developerMode) {
+    return {
+      trail: [{ label: DEVELOPER_MODE_COPY.title, href: APP_ROUTES.developerMode }],
+      invoiceId: null,
+    };
   }
   if (pathname === APP_ROUTES.team) {
     return { trail: [{ label: TEAM_COPY.title, href: APP_ROUTES.team }], invoiceId: null };

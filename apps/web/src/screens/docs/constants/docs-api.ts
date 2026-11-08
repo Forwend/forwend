@@ -245,7 +245,7 @@ export const API_PAGES: readonly DocsArticle[] = [
           {
             name: "livemode",
             type: "boolean",
-            description: "false on the verified test networks.",
+            description: "true on the live networks; false in test mode, on the test networks.",
           },
           {
             name: "receiveAddress, recipient",
@@ -509,7 +509,7 @@ export const API_PAGES: readonly DocsArticle[] = [
               "Whether the profile accepts this token. Tempo OUSD starts off by default.",
           },
         ],
-        links: [{ label: "Verified test pairs", slug: "reference/networks" }],
+        links: [{ label: "Networks and tokens", slug: "reference/networks" }],
       },
       ERRORS,
     ],

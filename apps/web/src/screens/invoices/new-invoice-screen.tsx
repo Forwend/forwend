@@ -147,6 +147,7 @@ export function NewInvoiceScreen() {
           <NewInvoiceForm
             key={`${profile.profileId}:${from ?? ""}:${clientId ?? ""}`}
             profileId={profile.profileId}
+            testnet={!profile.livemode}
             issuer={billing.currentData}
             tokens={tokens}
             start={start}

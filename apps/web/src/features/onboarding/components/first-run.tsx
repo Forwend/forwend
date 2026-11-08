@@ -101,6 +101,8 @@ export function FirstRun({
   const addPasskey = useAddPasskey();
   const personal = profiles.find((p) => p.kind === PROFILE_KINDS.personal) ?? profiles[0];
   const tokens = useGetProfileTokensQuery(personal?.profileId ?? "", { skip: !personal });
+  // The new profiles start in the personal one's mode (D-120): test mode where no mainnet is on.
+  const testnet = !personal?.livemode;
 
   const [picked, setPicked] = useState<OnboardingChoice[]>([]);
   // Fixed from the start: adding a passkey on its step must not shift the steps after it.
@@ -401,7 +403,7 @@ export function FirstRun({
         secondary={backButton}
         skip={skipButton(() => skipDetails(kind))}
         primary={continueButton}
-        aside={<DetailsPreview kind={kind} value={details[kind]} />}
+        aside={<DetailsPreview kind={kind} value={details[kind]} testnet={testnet} />}
       >
         <DetailsStep
           kind={kind}
@@ -433,6 +435,7 @@ export function FirstRun({
           onRetry={() => void tokens.refetch()}
           selected={selected}
           onChange={changeTokens}
+          testnet={testnet}
         />
       </OnboardingFrame>
     );
@@ -484,7 +487,11 @@ export function FirstRun({
           </Button>
         }
       >
-        <ReadyStep actions={actions} onAction={(action) => open(action.kind, action.href)} />
+        <ReadyStep
+          actions={actions}
+          onAction={(action) => open(action.kind, action.href)}
+          testnet={testnet}
+        />
       </OnboardingFrame>
     );
   }

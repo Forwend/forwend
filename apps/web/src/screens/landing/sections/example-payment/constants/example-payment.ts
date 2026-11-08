@@ -6,5 +6,5 @@ export const PAYMENT_EXAMPLE = {
   baseUnits: 1250000000n,
   decimals: 6,
   symbol: "USDC",
-  chainId: 84532,
+  chainId: 8453,
 } as const;

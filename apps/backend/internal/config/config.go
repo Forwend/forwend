@@ -43,6 +43,8 @@ type API struct {
 	// one test account confirms on every run against a lasting database, sets it.
 	CodesPerHour      int
 	EnableTestnetUSDC bool
+	// EnableMainnets are the live chains API startup switches on (R-222); the owner names each one.
+	EnableMainnets []uint64
 	// Email sends Confirm it's you codes (R-137); without a key no code can be sent, so protected changes need a
 	// full sign-in.
 	Email Email
@@ -135,7 +137,8 @@ func LoadAPI() (API, error) {
 		PublicWebURL: r.origin("PUBLIC_WEB_URL"), UserBurst: r.count("API_USER_BURST"),
 		TrustProxyHeader:  r.flag("TRUST_PROXY_HEADER"),
 		CodesPerHour:      r.count("API_CODES_PER_HOUR"),
-		EnableTestnetUSDC: r.flag("ENABLE_TESTNET_USDC"), WebhookKey: r.base64Key("WEBHOOK_SECRET_KEY"), Email: email()}
+		EnableTestnetUSDC: r.flag("ENABLE_TESTNET_USDC"), EnableMainnets: r.chainIDs("ENABLE_MAINNETS"),
+		WebhookKey: r.base64Key("WEBHOOK_SECRET_KEY"), Email: email()}
 	c.Email.PublicWebURL = c.PublicWebURL
 	return c, r.err()
 }
@@ -340,6 +343,24 @@ func (r *reader) base64Key(name string) []byte {
 		r.invalid = append(r.invalid, name+" (32 bytes in base64)")
 	}
 	return key
+}
+
+// chainIDs is a comma-separated list of chain IDs, or nil when unset.
+func (r *reader) chainIDs(name string) []uint64 {
+	raw := os.Getenv(name)
+	if raw == "" {
+		return nil
+	}
+	var ids []uint64
+	for part := range strings.SplitSeq(raw, ",") {
+		id, err := strconv.ParseUint(strings.TrimSpace(part), 10, 64)
+		if err != nil || id == 0 {
+			r.invalid = append(r.invalid, name+" (chain IDs separated by commas, such as 8453,42161)")
+			return nil
+		}
+		ids = append(ids, id)
+	}
+	return ids
 }
 
 func (r *reader) count(name string) int {
