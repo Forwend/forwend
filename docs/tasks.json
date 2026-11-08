@@ -438,7 +438,7 @@
       "dependsOn": [
         "F436"
       ],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "contracts",
         "docs-check"
@@ -449,9 +449,64 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-08 review pass by reviewer: No blocking findings. I checked on chain, read only. All 9 tx hashes in deployments.json have status 1, and each was sent by the executor 0xe158...2755. On Base, Arbitrum, Arc and Tempo, the factory and implementation code hashes equal Base Sepolia's: factory 0xdca35aa3..., implementation 0x949474e2.... On every chain, executor(), refundAuthority() and implementation() return the recorded addresses, and probe 0x0D25...DDfBE has code. On Tempo the fee tx calls the fee manager 0xfeec..., and userTokens(executor) returns 0x20c0...74be, whose symbol is OUSD. ReceiveAddressVectors.s.sol and chaintest.go read only chains.base-sepolia, which is unchanged; no other code reads deployments.json. explorer.arc.io and explore.tempo.xyz answer 200. operations.md sentences are 25 words or less, and docs-check passes. Non-blocking: (1) packages/contracts/.env.example:1 still says testnet keys only. The test EOA and the burner executor now control recovery and settles on four mainnets, so say these keys now guard mainnet money. (2) Accepts 4 and 5 ask for 'not other people's money' and 'needs a Safe factory first'. The note and operations.md say 'development only' and 'production gets new contracts with the Safe', which means the same but less directly. (3) The operations.md heading 'Safe setup (mainnet; testnets use an EOA)' is no longer true for the development mainnets; the new section explains why."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-08T00:09:35Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "contracts",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": ""
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 60.3,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 28.4,
+            "log": ""
+          }
+        ],
+        "taskHash": "0e3b966f2fb73370",
+        "filesHash": "07e2715f0a855b6c",
+        "proof": {
+          "1": "docs-check: the owner said in chat 'yes do f437 deploy on every chain'; operations.md and deployments.json record the test EOA refund authority and factory 0xf93da73F...0dd2",
+          "2": "docs-check: deployments.json mainnets.tempo-mainnet.deploy.executorFeeToken is tx 0x40e77104... setUserToken(OUSD), status 1; userTokens(executor) now reads OUSD",
+          "3": "contracts: deploy.sh ran on base-mainnet, arbitrum-one, arc-mainnet and tempo-mainnet; every receipt has status 1; each factory's code hash is 0xdca35aa3..., the testnet one, with executor 0xe158...2755",
+          "4": "contracts: deployments.json lists the four chains under mainnets with tx hashes and a development-only note; ReceiveAddressVectors and chaintest still read chains.base-sepolia",
+          "5": "docs-check: docs/contracts/operations.md has a Development mainnet deploys section"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "No blocking findings. I checked on chain, read only. All 9 tx hashes in deployments.json have status 1, and each was sent by the executor 0xe158...2755. On Base, Arbitrum, Arc and Tempo, the factory and implementation code hashes equal Base Sepolia's: factory 0xdca35aa3..., implementation 0x949474e2.... On every chain, executor(), refundAuthority() and implementation() return the recorded addresses, and probe 0x0D25...DDfBE has code. On Tempo the fee tx calls the fee manager 0xfeec..., and userTokens(executor) returns 0x20c0...74be, whose symbol is OUSD. ReceiveAddressVectors.s.sol and chaintest.go read only chains.base-sepolia, which is unchanged; no other code reads deployments.json. explorer.arc.io and explore.tempo.xyz answer 200. operations.md sentences are 25 words or less, and docs-check passes. Non-blocking: (1) packages/contracts/.env.example:1 still says testnet keys only. The test EOA and the burner executor now control recovery and settles on four mainnets, so say these keys now guard mainnet money. (2) Accepts 4 and 5 ask for 'not other people's money' and 'needs a Safe factory first'. The note and operations.md say 'development only' and 'production gets new contracts with the Safe', which means the same but less directly. (3) The operations.md heading 'Safe setup (mainnet; testnets use an EOA)' is no longer true for the development mainnets; the new section explains why.",
+          "at": "2026-11-08T00:12:46Z",
+          "filesHash": "07e2715f0a855b6c"
+        }
+      },
+      "branch": "chore/f437-the-invoice-receiver-factory-runs-on-bas",
+      "baseCommit": "0079b23e5f7175b90f32e10918766856c708f157",
+      "failedVerifies": 0
     },
     {
       "id": "F438",
