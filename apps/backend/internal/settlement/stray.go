@@ -152,13 +152,15 @@ func PlanRecovery(ctx context.Context, db *pgxpool.Pool, home, there *ethclient.
 	if block.Hash != s.BlockHash {
 		return Recovery{}, ErrNotFinal
 	}
-	var recipient, token, amount, receive, factory string
+	var recipient, token, receive, factory string
+	var amount [3]string
 	var expires, deadline int64
 	var payable bool
-	if err := db.QueryRow(ctx, `SELECT recipient_address, token_contract, amount::text, expires_at, settle_deadline,
-		receive_address, factory_address, payment_status IN ('open', 'detected', 'partially_paid') AND closes_at > extract(epoch FROM now())
+	if err := db.QueryRow(ctx, `SELECT recipient_address, token_contract, amount::text, network_fee::text,
+		platform_fee::text, expires_at, settle_deadline, receive_address, factory_address,
+		payment_status IN ('open', 'detected', 'partially_paid') AND closes_at > extract(epoch FROM now())
 		FROM invoices WHERE id = $1`, s.Option.ID).
-		Scan(&recipient, &token, &amount, &expires, &deadline, &receive, &factory, &payable); err != nil {
+		Scan(&recipient, &token, &amount[0], &amount[1], &amount[2], &expires, &deadline, &receive, &factory, &payable); err != nil {
 		return Recovery{}, fmt.Errorf("read invoice %s: %w", s.Option.ID, err)
 	}
 	known, ok := address.KnownFactory(factory)

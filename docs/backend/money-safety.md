@@ -39,13 +39,17 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 
 - One chain scan reads every watched receive address together (D-116). It has no per-address scan, proof or coverage gate.
   - Money in: the allowlisted token's `Transfer` logs to the address.
-  - Money out: the receiver's own `Settled`, `Refunded` and `Recovered` events.
+  - Money out: the receiver's own `Settled`, `FeesPaid`, `Refunded` and `Recovered` events.
 - A deposit or a receiver event counts only at or below the finalized block, with the block hash the RPC returned.
 - Each receiver event is recorded once in `receiver_outflows`, with its block, transaction and log.
   - The token `Transfer` before it in the same transaction names the transfer that moved the money.
   - An event recorded without that transfer stays unbooked and is read again while its block is in the rescan window.
     - A later scan or the signer's receipt that finds the transfer completes the record; nothing else on it changes.
     - Past that window it waits for an operator, as any unbooked outflow does.
+  - `FeesPaid` is one outflow per fee above 0 (R-230): the network fee to the settler, the platform fee to the refund authority.
+    - The refund authority is in the factory's init code, so the backend knows it per factory (`address.Known`).
+    - The fee transfers are settle's own, after its transfer to the recipient and before `Settled`, in that order.
+    - So they are found once `Settled`'s transfer is.
   - Activity uses that transfer to link a settlement to the profile wallet's incoming transfer.
   - A receiver event first records the receiver's deploy time; an early deploy can shorten the checkout close (R-130).
 - The signer records its own settle from its finalized receipt, so `settled` never waits for the scan.
@@ -66,7 +70,9 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 - A movement found after later ones were booked is refused for review, never booked against today's balances.
 - The ledger books deposits and receiver events together, in chain order, against the balances at that point.
   - A movement waits while an earlier deposit is still detected.
-  - Refunds take held money first, then payable; settlements take payable first, then held.
+  - Refunds take held money first, then payable; settlements and fees take payable first, then held.
+  - A settlement must be the amount less the option's fees, and each fee the option's own; else `invalid_terms`.
+    - Each fee is booked as its own kind, `network_fee` or `platform_fee`, so the receiver ends at 0.
   - Either exception is recorded as a policy exception and shown to the owner.
   - An event the balances can't cover stays unbooked with its reason, and later movements wait behind it.
   - The ledger tries it again every round, so a late-found earlier deposit lets it book.

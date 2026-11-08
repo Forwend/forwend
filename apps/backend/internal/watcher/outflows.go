@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/forwend/forwend/apps/backend/internal/address"
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/history"
 	"github.com/jackc/pgx/v5"
@@ -25,9 +26,10 @@ var (
 	settledTopic   = crypto.Keccak256Hash([]byte("Settled(bytes32,address,uint256)"))
 	refundedTopic  = crypto.Keccak256Hash([]byte("Refunded(bytes32,address,uint256)"))
 	recoveredTopic = crypto.Keccak256Hash([]byte("Recovered(bytes32,address,address,uint256)"))
+	feesPaidTopic  = crypto.Keccak256Hash([]byte("FeesPaid(bytes32,address,uint256,uint256)"))
 )
 
-// Outflow is one settle, refund or recover event of a receiver at or below the finalized block, with the token
+// Outflow is one settle, fees, refund or recover event of a receiver at or below the finalized block, with the token
 // Transfer logs of its transaction, which name the transfer that moved the money.
 type Outflow struct {
 	InvoiceID string
@@ -37,7 +39,7 @@ type Outflow struct {
 	Verified  uint64 // the finalized block that confirmed it
 }
 
-// outflowLogs reads the settle, refund and recover events the watched receivers emitted in [lo, hi].
+// outflowLogs reads the settle, fees, refund and recover events the watched receivers emitted in [lo, hi].
 func (c *Chain) outflowLogs(ctx context.Context, lo, hi uint64, invoices map[common.Address]receiver) ([]types.Log, error) {
 	var addresses []common.Address
 	for addr := range invoices {
@@ -50,7 +52,7 @@ func (c *Chain) outflowLogs(ctx context.Context, lo, hi uint64, invoices map[com
 	for len(addresses) > 0 {
 		part := addresses[:min(size, len(addresses))]
 		found, err := c.filterLogs(ctx, ethereum.FilterQuery{FromBlock: new(big.Int).SetUint64(lo), ToBlock: new(big.Int).SetUint64(hi),
-			Addresses: part, Topics: [][]common.Hash{{settledTopic, refundedTopic, recoveredTopic}}})
+			Addresses: part, Topics: [][]common.Hash{{settledTopic, feesPaidTopic, refundedTopic, recoveredTopic}}})
 		if len(part) > 1 && chain.AddressesTooMany(err) {
 			size = len(part) / 2
 			continue
@@ -75,9 +77,10 @@ func (c *Chain) outflows(ctx context.Context, logs []types.Log, headers map[uint
 	}
 	recorded := map[logKey]bool{}
 	if len(hashes) > 0 {
+		// FeesPaid makes an outflow per fee: its event is recorded once both are.
 		rows, err := c.pool.Query(ctx, `SELECT block_hash, log_index FROM receiver_outflows
-			WHERE chain_id = $1 AND block_hash = ANY($2::text[])
-			  AND (transfer_log_index IS NOT NULL OR kind = 'recovery' OR ledger_transaction_id IS NOT NULL)`,
+			WHERE chain_id = $1 AND block_hash = ANY($2::text[]) GROUP BY block_hash, log_index
+			HAVING bool_and(transfer_log_index IS NOT NULL OR kind = 'recovery' OR ledger_transaction_id IS NOT NULL)`,
 			c.chainID, hashes)
 		if err != nil {
 			return nil, fmt.Errorf("read chain %d recorded receiver events: %w", c.chainID, err)
@@ -135,7 +138,8 @@ func ReceiptOutflows(invoiceID string, receiver common.Address, r *types.Receipt
 	var out []Outflow
 	for _, l := range transfers {
 		if l.Address == receiver && len(l.Topics) > 0 &&
-			(l.Topics[0] == settledTopic || l.Topics[0] == refundedTopic || l.Topics[0] == recoveredTopic) {
+			(l.Topics[0] == settledTopic || l.Topics[0] == feesPaidTopic || l.Topics[0] == refundedTopic ||
+				l.Topics[0] == recoveredTopic) {
 			out = append(out, Outflow{InvoiceID: invoiceID, Log: l, Transfers: transfers, Time: at, Verified: verified})
 		}
 	}
@@ -174,17 +178,30 @@ func RecordOutflows(ctx context.Context, tx pgx.Tx, chainID uint64, outflows []O
 // recordOutflow pairs the event with the latest matching token transfer before it in the same transaction, and after
 // the previous event of that transaction.
 func recordOutflow(ctx context.Context, tx pgx.Tx, chainID uint64, o Outflow, previous *uint) error {
-	var receive, token, recipient, amountText string
-	if err := tx.QueryRow(ctx, `SELECT receive_address, token_contract, recipient_address, amount::text FROM invoices
-		WHERE id = $1 AND chain_id = $2`, o.InvoiceID, chainID).Scan(&receive, &token, &recipient, &amountText); err != nil {
+	var receive, token, recipient, factory, amountText string
+	var fees [2]string // network, platform
+	if err := tx.QueryRow(ctx, `SELECT receive_address, token_contract, recipient_address, factory_address, amount::text,
+		network_fee::text, platform_fee::text FROM invoices WHERE id = $1 AND chain_id = $2`, o.InvoiceID, chainID).
+		Scan(&receive, &token, &recipient, &factory, &amountText, &fees[0], &fees[1]); err != nil {
 		return fmt.Errorf("read invoice %s for its receiver event: %w", o.InvoiceID, err)
 	}
 	l := o.Log
 	if l.Address != common.HexToAddress(receive) {
 		return fmt.Errorf("receiver %s movement came from another contract: %w", o.InvoiceID, errBadEvent)
 	}
-	if len(l.Data) != 32 || len(l.Topics) < 3 || l.Topics[1] != common.HexToHash(o.InvoiceID) {
+	size := 32
+	if len(l.Topics) > 0 && l.Topics[0] == feesPaidTopic {
+		size = 64
+	}
+	if len(l.Data) != size || len(l.Topics) < 3 || l.Topics[1] != common.HexToHash(o.InvoiceID) {
 		return fmt.Errorf("receiver %s emitted malformed movement evidence: %w", o.InvoiceID, errBadEvent)
+	}
+	var terms [2]*big.Int
+	for i, fee := range fees {
+		terms[i], _ = new(big.Int).SetString(fee, 10)
+	}
+	if l.Topics[0] == feesPaidTopic {
+		return recordFees(ctx, tx, chainID, o, receive, token, factory, terms)
 	}
 	kind, destination, reason := "", common.BytesToAddress(l.Topics[2].Bytes()), "awaiting_booking"
 	switch l.Topics[0] {
@@ -209,29 +226,94 @@ func recordOutflow(ctx context.Context, tx pgx.Tx, chainID uint64, o Outflow, pr
 		return fmt.Errorf("receiver %s emitted unknown movement: %w", o.InvoiceID, errBadEvent)
 	}
 	amount := new(big.Int).SetBytes(l.Data)
-	if kind == "settlement" && amount.String() != amountText {
-		reason = "invalid_terms"
+	if kind == "settlement" { // the recipient gets the amount less the fees (R-230)
+		net, _ := new(big.Int).SetString(amountText, 10)
+		if amount.Cmp(net.Sub(net, terms[0]).Sub(net, terms[1])) != 0 {
+			reason = "invalid_terms"
+		}
 	}
 	if amount.Sign() == 0 {
 		return nil
 	}
 	var transferIndex *uint64
 	if kind != "recovery" {
-		for _, candidate := range o.Transfers {
-			if candidate.TxHash == l.TxHash && candidate.BlockHash == l.BlockHash && candidate.Index < l.Index && (previous == nil || candidate.Index > *previous) &&
-				candidate.Address == common.HexToAddress(token) && len(candidate.Topics) == 3 && len(candidate.Data) == 32 &&
-				common.BytesToAddress(candidate.Topics[1].Bytes()) == common.HexToAddress(receive) &&
-				common.BytesToAddress(candidate.Topics[2].Bytes()) == destination && new(big.Int).SetBytes(candidate.Data).Cmp(amount) == 0 {
-				index := uint64(candidate.Index)
-				if transferIndex == nil || index > *transferIndex {
-					transferIndex = &index
-				}
-			}
+		var lo *uint64
+		if previous != nil {
+			p := uint64(*previous)
+			lo = &p
 		}
-		if transferIndex == nil {
+		if found := transfers(o, token, receive, destination, amount, lo, uint64(l.Index)); len(found) > 0 {
+			transferIndex = &found[len(found)-1]
+		} else {
 			reason = "transfer_evidence_missing"
 		}
 	}
+	return insertOutflow(ctx, tx, chainID, o, receive, token, kind, destination, amount, reason, transferIndex)
+}
+
+// recordFees records FeesPaid as an outflow per fee above 0: the network fee to the settler, the platform fee to the
+// factory's refund authority (R-230). Their transfers are settle's own, in that order, after its transfer to the
+// recipient and before Settled, so they are found once Settled's transfer is.
+func recordFees(ctx context.Context, tx pgx.Tx, chainID uint64, o Outflow, receive, token, factory string, terms [2]*big.Int) error {
+	l := o.Log
+	known, ok := address.KnownFactory(factory)
+	if !ok || !address.Known[known].Fees {
+		return fmt.Errorf("receiver %s has no fees in its terms: %w", o.InvoiceID, errBadEvent)
+	}
+	paid := [2]*big.Int{new(big.Int).SetBytes(l.Data[:32]), new(big.Int).SetBytes(l.Data[32:])}
+	reason := "awaiting_booking"
+	if len(l.Topics) != 3 || paid[0].Cmp(terms[0]) != 0 || paid[1].Cmp(terms[1]) != 0 {
+		reason = "invalid_terms"
+	}
+	var after, settled *uint64
+	err := tx.QueryRow(ctx, `SELECT transfer_log_index, log_index FROM receiver_outflows WHERE chain_id = $1
+		AND block_hash = $2 AND tx_hash = $3 AND receiver_address = $4 AND kind = 'settlement'`, chainID,
+		hexutil.Encode(l.BlockHash[:]), hexutil.Encode(l.TxHash[:]), receive).Scan(&after, &settled)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("read receiver %s settlement of its fees: %w", o.InvoiceID, err)
+	}
+	to := [2]common.Address{common.BytesToAddress(l.Topics[2].Bytes()), common.Address(address.Known[known].RefundAuthority)}
+	for i, kind := range []string{"network_fee", "platform_fee"} {
+		if paid[i].Sign() == 0 {
+			continue
+		}
+		why, index := reason, (*uint64)(nil)
+		if after != nil {
+			if found := transfers(o, token, receive, to[i], paid[i], after, *settled); len(found) > 0 {
+				index, after = &found[0], &found[0]
+			}
+		}
+		if index == nil {
+			why = "transfer_evidence_missing"
+		}
+		if err := insertOutflow(ctx, tx, chainID, o, receive, token, kind, to[i], paid[i], why, index); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// transfers are the indexes, in order, of the event's transaction's token transfers from receive to destination of
+// amount, after lo (nil: any) and before hi.
+func transfers(o Outflow, token, receive string, destination common.Address, amount *big.Int, lo *uint64, hi uint64) []uint64 {
+	l := o.Log
+	var out []uint64
+	for _, candidate := range o.Transfers {
+		index := uint64(candidate.Index)
+		if candidate.TxHash == l.TxHash && candidate.BlockHash == l.BlockHash && index < hi && (lo == nil || index > *lo) &&
+			candidate.Address == common.HexToAddress(token) && len(candidate.Topics) == 3 && len(candidate.Data) == 32 &&
+			common.BytesToAddress(candidate.Topics[1].Bytes()) == common.HexToAddress(receive) &&
+			common.BytesToAddress(candidate.Topics[2].Bytes()) == destination && new(big.Int).SetBytes(candidate.Data).Cmp(amount) == 0 {
+			out = append(out, index)
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+func insertOutflow(ctx context.Context, tx pgx.Tx, chainID uint64, o Outflow, receive, token, kind string,
+	destination common.Address, amount *big.Int, reason string, transferIndex *uint64) error {
+	l := o.Log
 	tag, err := tx.Exec(ctx, `INSERT INTO receiver_outflows (invoice_id, chain_id, receiver_address, token_contract,
   kind, destination, amount, tx_hash, log_index, block_hash, block_number, block_time, verified_block, reconciliation_error, transfer_log_index)
   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) ON CONFLICT DO NOTHING`,

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 440,
+  "nextId": 447,
   "tasks": [
     {
       "id": "F332",
@@ -1080,36 +1080,93 @@
     {
       "id": "F443",
       "type": "feat",
-      "behavior": "Each invoice quotes a network fee and a platform fee, the owner chooses who pays them, and every reader shows them",
+      "behavior": "A settlement that pays fees is booked in full: the recipient's net and each fee, so the settle intent finishes",
       "acceptance": [
-        "Before any invoice carries a fee, the watcher and ledger book a v2 settlement with fees: Settled is checked against the amount less the fees (watcher/outflows.go, ledger/outflows.go), and the fee transfers out of the receiver (FeesPaid) are their own outflow kind, booked to the fee accounts, so the settle intent finishes.",
-        "A fee plan (rate in basis points, USD minimum and cap) sets the platform fee, 0% at launch; changing it reaches new invoices only (R-227).",
-        "Each option's network fee is quoted from its deploy and settle gas at the fee cap, priced by ETH/USD on Base and Arbitrum, with a margin, rounded up to 0.01 USD.",
-        "Profiles get a Fees paid by default (you or your client) in settings; the invoice and link forms show the fee and what the client pays and the owner receives, with a per-invoice override; the API takes feesPaidBy.",
-        "The ledger books the net and each fee; the pay page, payment and invoice detail, receipts, PDFs, Transactions, exports, records, API, webhooks and packages show the fees and the net (R-228).",
-        "A platform fee of 0 shows no line; every money reader is checked for the new amounts, and old invoices without fees read as before."
+        "Invoice options store a network fee and a platform fee, 0 by default. The database refuses a change to them, and fees above a tenth of the amount. Every terms builder uses them: settle, status, returns and stray deploys (R-226).",
+        "The watcher records FeesPaid as a network_fee and a platform_fee outflow, each matched to its own token transfer before Settled. Settled is checked against the amount less the fees (R-230).",
+        "The ledger books the net and each fee as its own kind. The receiver's balance reaches 0, the settle intent is confirmed and nothing waits for review. A wrong net or fee is refused as invalid_terms (R-230).",
+        "A chain test settles a v2 receiver with both fees through the signer, watcher and ledger. Invoices without fees book as before."
       ],
       "dependsOn": [
         "F442"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend",
-        "web-unit",
-        "e2e",
-        "browser-packages",
-        "node-unit",
         "docs-check"
       ],
       "refs": [
-        "R-227",
-        "R-228",
+        "R-230",
+        "R-226",
         "D-122"
       ],
       "keep": [],
       "review": true,
-      "notes": [],
-      "blockedReason": null
+      "notes": [
+        "2026-11-08 review pass by reviewer: Reviewed 5abd21ad (same code as the uncommitted diff). No defects. Watcher: FeesPaid becomes one row per fee above 0; the network fee matches the first transfer to the settler, the platform fee the next to the refund authority, both inside (settlement transfer, Settled); the unique key with kind, the HAVING bool_and recorded filter and the completion UPDATE work for fee rows. Ledger: settlement checked against amount less fees, each fee against the invoice fee, payable first then held; fee rows at the same position don't block each other; the intent confirms on the settlement booking. Migration ceiling matches feesWithinCeiling; Down refuses when fees exist and rollback test passes. Every address.Terms builder from stored rows (signer check, returns termsOf, stray) reads both fees; invoice.buildTerms still writes 0 until F446. Extra checks run through a go test overlay, not committed: a full-amount Settled with fees is refused invalid_terms; settlement booked before FeesPaid is recorded, then fees booked, ends verified at 0; the refund authority settling with equal fees matches transfers 1 and 2; network fee only; FeesPaid recorded before Settled completes later. Package tests pass. Notes, not failures: no kept test for a wrong net refused as invalid_terms, or for the ledger refusing an invalid_terms fee row (the watcher test covers a wrong fee at record time); canary.go:277 and web receive-address.ts:68 still say fees are 0 until F443 (the pay page is F445; the canary is in no task); F445 readers: PDF Received and web receivedAmount (payable+held+settled+refunded) understate by the fees, the movements export shows fee rows with no source amount or addresses and verified false, Settled amount in the API and webhooks is the net.",
+        "2026-11-08 review pass by reviewer: Re-reviewed through 3c053464. Production code is unchanged since 5abd21ad, which passed review with no defects. The new TestSettlementAndFeesMustMatchTheTerms inserts outflows marked awaiting_booking, so it checks the ledger's own checks: a full-amount settlement on an option with fees, and a network fee other than the option's, both stay unbooked as invalid_terms, while the correct net books. It passes (go test -run TestSettlementAndFeesMustMatchTheTerms ./internal/ledger). This closes the earlier test gap for acceptance 3. F446 now carries the canary acceptance line. Notes for F445 still stand: PDF Received and web receivedAmount understate by the fees; the movements export shows fee rows with no source amount or addresses; the API and webhook settled amount is the net."
+      ],
+      "blockedReason": null,
+      "branch": "feat/f443-a-settlement-that-pays-fees-is-booked-in",
+      "baseCommit": "143a65591d94ecf757b0629aa84c0f5b7b79db31",
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-08T20:39:29Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 63.2,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 64.2,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 29.4,
+            "log": ""
+          }
+        ],
+        "taskHash": "607ad84d77cadeff",
+        "filesHash": "895a875dc532f64a",
+        "proof": {
+          "1": "backend: migration 00110 adds network_fee/platform_fee (default 0, ceiling check, fixed by trigger); TestInvoiceFeesAreFixedTermsWithinATenth; settle, status, returns and stray terms read both fees",
+          "2": "backend: TestFeesPaidIsAnOutflowPerFee records network_fee and platform_fee rows matched to their transfers between the net transfer and Settled, completes them on a later read, refuses a wrong fee",
+          "3": "backend: TestSettlementWithFeesIsBookedInFull books net and both fees, receiver 0, verified, intent confirmed; TestSettlementAndFeesMustMatchTheTerms refuses a full-amount settlement and a wrong network fee as invalid_terms (both fail on the old ledger)",
+          "4": "backend: TestSettlementWithFeesIsBookedInFull runs signer, watcher and ledger on Anvil with the v2 factory; the rest of the suite passes for invoices without fees"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-reviewed through 3c053464. Production code is unchanged since 5abd21ad, which passed review with no defects. The new TestSettlementAndFeesMustMatchTheTerms inserts outflows marked awaiting_booking, so it checks the ledger's own checks: a full-amount settlement on an option with fees, and a network fee other than the option's, both stay unbooked as invalid_terms, while the correct net books. It passes (go test -run TestSettlementAndFeesMustMatchTheTerms ./internal/ledger). This closes the earlier test gap for acceptance 3. F446 now carries the canary acceptance line. Notes for F445 still stand: PDF Received and web receivedAmount understate by the fees; the movements export shows fee rows with no source amount or addresses; the API and webhook settled amount is the net.",
+          "at": "2026-11-08T20:42:42Z",
+          "filesHash": "895a875dc532f64a"
+        },
+        "commit": "7abce62f",
+        "doneAt": "2026-11-08T23:41:22Z"
+      },
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f443-a-settlement-that-pays-fees-is-booked-in",
+        "base": "main"
+      }
     },
     {
       "id": "F444",
@@ -1121,7 +1178,7 @@
         "A failed or refused swap leaves settlement waiting and alerting as today, never losing money; the first swap on each mainnet runs only after the owner's yes."
       ],
       "dependsOn": [
-        "F443"
+        "F446"
       ],
       "state": "not_started",
       "verification": [
@@ -1137,6 +1194,71 @@
       "review": true,
       "notes": [],
       "blockedReason": null
+    },
+    {
+      "id": "F445",
+      "type": "feat",
+      "behavior": "Every reader shows an invoice option's fees: what was paid, each fee and what the owner received",
+      "acceptance": [
+        "The pay page computes the receive address with the option's fees. When the client pays, it shows the price, the network fee and the total (R-228).",
+        "Payment and invoice detail, receipts, PDFs, Transactions, exports and records show what was paid, each fee and what the owner received.",
+        "The API, webhooks and the node, js and react packages carry networkFee, platformFee and netAmount.",
+        "A fee of 0 shows no line. Every money reader is checked, and invoices without fees read as before."
+      ],
+      "dependsOn": [
+        "F443"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "web-unit",
+        "e2e",
+        "browser-packages",
+        "node-unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-228",
+        "D-122",
+        "R-230"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F446",
+      "type": "feat",
+      "behavior": "Each invoice option quotes a network fee and a platform fee, and the owner chooses who pays them",
+      "acceptance": [
+        "A fee plan (rate in basis points, USD minimum and cap) sets the platform fee, 0% at launch. Changing it reaches new invoices only (R-227).",
+        "Each option's network fee is its deploy and settle gas at the chain's fee cap, with a margin, rounded up to 0.01 USD. ETH/USD prices it on Base and Arbitrum.",
+        "Profiles get a Fees paid by default (you or your client) in settings. The invoice and link forms show the fee, what the client pays and what the owner receives, with a per-invoice override. The API takes feesPaidBy.",
+        "When the client pays, the amount is the price plus the fees; when the owner pays, the amount is the price. Fees never pass the contract's tenth of the amount.",
+        "The canary builds each option's terms with its fees, so an invoice with fees raises no false alarm."
+      ],
+      "dependsOn": [
+        "F445"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "web-unit",
+        "e2e",
+        "node-unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-227",
+        "D-122"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {
