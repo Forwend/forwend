@@ -357,8 +357,9 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
               lines={payment.items}
               decimals={main.decimals}
               unit={payment.optionCount > 1 ? MONEY_COPY.usd : main.symbol}
-              // Fees and what the owner receives are the paid option's, in the Amount panel.
-              {...linesFigures(main, paidWith)}
+              // Every option carries the same fees (D-122), so before the client picks, the main option's are theirs.
+              {...linesFigures(main, paidWith ?? main)}
+              owner
             />
           ) : null}
         </div>

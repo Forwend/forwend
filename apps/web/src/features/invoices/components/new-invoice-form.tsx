@@ -165,6 +165,7 @@ export function NewInvoiceForm({
     (start?.feesPaidBy ?? feesPaidBy) === FEES_PAID_BY.client,
   );
   const [quote, setQuote] = useState<FeeQuote>();
+  const [pricing, setPricing] = useState(false);
   const [createInvoice] = useCreateInvoiceMutation();
   const router = useRouter();
   const keys = useRef(new Map<string, { key: string; body: CreateInvoiceBody }>());
@@ -596,9 +597,7 @@ export function NewInvoiceForm({
   const total = typeof typedUnits === "string" ? 0n : typedUnits;
   // R-227: when the client pays the fees, the client's documents ask for the price plus them.
   const fees = clientPays ? feeFigures(quote, decimals, true) : null;
-  const span = ([low, high]: [bigint, bigint]) =>
-    low === high ? money(low) : FEES_FORM_COPY.range(money(low), money(high));
-  const due = fees && fees.fee[1] > 0n ? span(fees.pays) : money(total);
+  const due = fees && fees.fee > 0n ? money(fees.pays) : money(total);
   const closes =
     expiry === CUSTOM_EXPIRY ? (closesOn ? formatDueDate(closesOn) : "") : COPY.expiry[expiry];
   const docKind = request ? "Request" : "Invoice";
@@ -659,10 +658,10 @@ export function NewInvoiceForm({
         };
       }),
       totals:
-        fees && fees.fee[1] > 0n
+        fees && fees.fee > 0n
           ? [
               [FEES_FORM_COPY.subtotal, money(total)],
-              [FEES_FORM_COPY.networkFee, span(fees.fee)],
+              [FEES_FORM_COPY.networkFee, money(fees.fee)],
               [COPY.preview.total, due],
             ]
           : [[COPY.preview.total, money(total)]],
@@ -1024,6 +1023,7 @@ export function NewInvoiceForm({
                   )}
                   <FeeSummary
                     profileId={profileId}
+                    storeId={storeId || undefined}
                     any={any}
                     chainId={token.chainId}
                     token={token.token}
@@ -1032,6 +1032,7 @@ export function NewInvoiceForm({
                     clientPays={clientPays}
                     onClientPays={setClientPays}
                     onQuote={setQuote}
+                    onPricing={setPricing}
                     money={money}
                   />
                   {request ? null : agreed ? (
@@ -1288,6 +1289,8 @@ export function NewInvoiceForm({
             ) : (
               <Button
                 key="continue"
+                // What the client pays and the owner receives wait on the fee quote (R-227).
+                disabled={stepId === STEP_IDS.items && pricing}
                 onClick={(event) => {
                   event.preventDefault();
                   next(event.currentTarget.form);

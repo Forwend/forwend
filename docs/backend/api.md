@@ -100,7 +100,8 @@ R-221, D-120; the full schema is in openapi.yaml. Owners and Admins turn it with
 R-227, D-122; the full schema is in openapi.yaml.
 
 - Each new invoice option gets a network fee and a platform fee in its contract terms.
-  - The network fee is a receiver deploy and settle at the chain's current fee cap, twice over, rounded up to 0.01 USD.
+  - A network's fee is a receiver deploy and settle at the chain's current fee cap, twice over, rounded up to 0.01 USD.
+  - Every option carries the highest fee its networks quote, so one amount covers whichever network the client picks.
   - ETH/USD prices it on Base and Arbitrum; Tempo's gas unit and Arc's native USDC are already dollars.
   - One quote serves a chain's new invoices for a minute (`settlement.QuoteAge`).
   - A read that fails falls back on the chain's last quote for an hour (`settlement.QuoteStale`).
@@ -113,12 +114,13 @@ R-227, D-122; the full schema is in openapi.yaml.
   - A retainer's later months keep its first invoice's choice.
 - Fees past a tenth of the amount, as `settle()` refuses them, make the create 422: the price is too small.
 - A chain whose fee can't be priced makes the create 503 `network_fee_unavailable`; the same request can try again.
-  - A payer-chooses invoice leaves out such a network, and one whose fees its price can't carry, as an unscanned one.
-  - It fails only when no network is left.
-- When each network adds its own fee on top, the client's invoice and reminder emails say the price plus the network fee.
+  - A payer-chooses invoice leaves out such a network, and one whose own fee its price can't carry, as an unscanned one.
+  - The highest fee is taken over the networks left. It fails only when no network is left.
 - `GET /v1/profiles/{profileId}/fees` takes a price as a create does (`chainId`, `token` and `amount`, or `amountUsd`).
   - It gives the profile's `feesPaidBy` and each option's `price`, `networkFee` and `platformFee`, so a form shows them.
-  - A payer-chooses price leaves out a network that can't be priced now, as the create does.
+  - `feesPaidBy` prices it as an invoice with that choice: a client's fees on top let a smaller price carry them.
+  - `storeId` keeps a merchant store's tokens, as the create does; the first store serves when none is named.
+  - It leaves out networks and takes the highest fee as the create does.
   - The invoice gets its own quote when it is made.
 
 ## Notifications

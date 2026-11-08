@@ -490,7 +490,7 @@ describe("tokensOn", () => {
   });
 });
 
-// R-227: a payer-chooses invoice's networks each add their own fee, so the form says the lowest and highest.
+// R-227, D-122: every option carries the highest network's fee, so the form shows one figure of each.
 describe("feeFigures", () => {
   const option = (networkFee: string, decimals = 6) => ({
     chainId: 84532,
@@ -502,20 +502,20 @@ describe("feeFigures", () => {
   });
   const quote = {
     feesPaidBy: "owner" as const,
-    options: [option("50000"), option("20000"), option("9", 18)],
+    options: [option("9", 18), option("50000"), option("50000")],
   };
 
   it("adds the fees to what the client pays, or takes them from what the owner receives", () => {
     expect(feeFigures(quote, 6, true)).toEqual({
-      fee: [20000n, 50000n],
-      pays: [5020000n, 5050000n],
-      receives: [5000000n, 5000000n],
+      fee: 50000n,
+      pays: 5050000n,
+      receives: 5000000n,
       platform: false,
     });
     expect(feeFigures(quote, 6, false)).toEqual({
-      fee: [20000n, 50000n],
-      pays: [5000000n, 5000000n],
-      receives: [4950000n, 4980000n],
+      fee: 50000n,
+      pays: 5000000n,
+      receives: 4950000n,
       platform: false,
     });
   });

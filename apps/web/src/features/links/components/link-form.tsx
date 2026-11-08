@@ -362,6 +362,7 @@ export function LinkForm({
           {/* R-227: an open link's payer chooses the price, so it shows the fee alone; the lowest price prices it. */}
           <FeeSummary
             profileId={profileId}
+            storeId={store || undefined}
             any
             chainId={0}
             token=""

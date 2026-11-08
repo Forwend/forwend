@@ -20,7 +20,6 @@ export const PAY_COPY = {
   // R-228: the client pays the fees on top of the price.
   withFees: (price: string, fees: readonly string[]) => `${price} plus ${fees.join(" and ")}`,
   networkFee: (amount: string) => `${amount} network fee`,
-  feeByNetwork: "Each network adds its own network fee: the amount follows the one you pick.",
   platformFee: (amount: string) => `${amount} platform fee`,
   reference: (reference: string) => `Reference ${reference}`,
   agreed: (value: string, date: string) => `Agreed value ${value} on ${date}`,

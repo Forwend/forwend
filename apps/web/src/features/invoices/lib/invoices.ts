@@ -297,34 +297,28 @@ export function optionFees(o: FeeTerms): OptionFees {
   };
 }
 
-/** What the client pays and the owner receives of a quoted price (R-227), lowest and highest over the options in the
- * form's units: on a payer-chooses invoice each network adds its own fee. Null before a quote. */
+/** What the client pays and the owner receives of a quoted price (R-227), in the form's units. Every option carries
+ * the same fees, the highest network's (D-122), so one figure covers any network. Null before a quote. */
 export function feeFigures(
   quote: FeeQuote | undefined,
   decimals: number,
   clientPays: boolean,
 ): {
-  fee: [bigint, bigint];
-  pays: [bigint, bigint];
-  receives: [bigint, bigint];
+  fee: bigint;
+  pays: bigint;
+  receives: bigint;
   /** A platform fee is part of fee. */
   platform: boolean;
 } | null {
-  const options = quote?.options.filter((o) => o.decimals === decimals) ?? [];
-  const first = options[0];
-  if (!first) return null;
-  // bigint has no Math.min: the sorted ends instead.
-  const fees = options
-    .map((o) => BigInt(o.networkFee) + BigInt(o.platformFee))
-    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-  const low = fees[0] ?? 0n;
-  const high = fees[fees.length - 1] ?? 0n;
-  const price = BigInt(first.price);
+  const option = quote?.options.find((o) => o.decimals === decimals);
+  if (!option) return null;
+  const fee = BigInt(option.networkFee) + BigInt(option.platformFee);
+  const price = BigInt(option.price);
   return {
-    fee: [low, high],
-    pays: clientPays ? [price + low, price + high] : [price, price],
-    receives: clientPays ? [price, price] : [price - high, price - low],
-    platform: options.some((o) => BigInt(o.platformFee) > 0n),
+    fee,
+    pays: clientPays ? price + fee : price,
+    receives: clientPays ? price : price - fee,
+    platform: BigInt(option.platformFee) > 0n,
   };
 }
 

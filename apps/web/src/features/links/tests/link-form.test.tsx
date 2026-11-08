@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { ToastProvider } from "@forwend/ui-web";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, expect, it, vi } from "vitest";
 import { LinkForm } from "@/features/links/components/link-form";
@@ -107,4 +107,42 @@ it("saves who pays the network fee", async () => {
   );
   await save();
   expect(bodies.map((body) => body.feesPaidBy)).toEqual(["owner", "client"]);
+});
+
+// D-122: a link's invoices keep its store's tokens, so its fee quote does too.
+it("prices the fee with the link's store", async () => {
+  const asked: URL[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (request: Request) => {
+      asked.push(new URL(request.url));
+      return Response.json({}, { status: 500 });
+    }),
+  );
+  const store = (storeId: string, name: string) => ({
+    storeId,
+    name,
+    defaultExpiresIn: 3600,
+    allowedOrigins: [],
+    brandColor: null,
+    logoAt: null,
+    tokensOff: [],
+    updatedAt: "2026-09-02T00:00:00Z",
+  });
+  const second = "66666666-6666-4666-8666-666666666667";
+  render(
+    <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+      <ToastProvider>
+        <LinkForm
+          profileId="6f9619ff-8b86-4011-b42d-00c04fc964ff"
+          link={{ ...LINK, storeId: second }}
+          stores={[store("66666666-6666-4666-8666-666666666666", "First"), store(second, "Second")]}
+        />
+      </ToastProvider>
+    </Provider>,
+  );
+  await waitFor(() => expect(asked.some((u) => u.pathname.endsWith("/fees"))).toBe(true), {
+    timeout: 2000,
+  });
+  expect(asked.find((u) => u.pathname.endsWith("/fees"))?.searchParams.get("storeId")).toBe(second);
 });

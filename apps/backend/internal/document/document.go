@@ -266,18 +266,10 @@ func Invoice(inv invoice.Invoice, payLink string, logo []byte, now time.Time) ([
 
 func payment(inv invoice.Invoice, s standing) []string {
 	if anyOption(inv) && !inv.OptionLocked {
-		pay := "Pay " + s.amount + " in one of the available options."
-		// When the client pays the fees, each network adds its own (R-227). Every token is worth 1 USD (D-75).
-		usd := func(n *big.Int, decimals int) *big.Rat {
-			return new(big.Rat).SetFrac(n, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil))
+		return []string{
+			"Pay " + s.amount + " in one of the available options.",
+			"Scan the code or open the link, then pick the token and network.",
 		}
-		for _, o := range inv.Options {
-			if usd(o.Amount, o.Decimals).Cmp(usd(inv.Amount, inv.Decimals)) != 0 {
-				pay = "Pay " + s.amount + " or the amount the pay page shows for the network you pick: each adds its own fee."
-				break
-			}
-		}
-		return []string{pay, "Scan the code or open the link, then pick the token and network."}
 	}
 	net := NetworkName(inv.ChainID)
 	return []string{
