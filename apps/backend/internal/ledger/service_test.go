@@ -340,3 +340,61 @@ func TestRecordedDepositTheChainDoesNotHoldIsNeverPaid(t *testing.T) {
 		t.Fatalf("a recorded deposit the finalized balance does not cover became paid: %+v at %s", got, receive)
 	}
 }
+
+// R-230: the ledger books a settlement only as the amount less the option's fees, and each fee only as the option's
+// own, whatever an outflow record says.
+func TestSettlementAndFeesMustMatchTheTerms(t *testing.T) {
+	e := newChainEnv(t)
+	ctx := context.Background()
+	outflow := func(id, receive, kind, destination string, amount int64, block uint64) {
+		t.Helper()
+		if _, err := e.pool.Exec(ctx, `INSERT INTO receiver_outflows (invoice_id, chain_id, receiver_address,
+		    token_contract, kind, destination, amount, tx_hash, log_index, block_hash, block_number, block_time,
+		    verified_block, transfer_log_index)
+		    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 3, $8, $9, 1800000000, $9, $10)`, id, chaintest.ChainID, receive,
+			e.token, kind, destination, amount, fmt.Sprintf("0x%064x", block), block, map[string]int{"settlement": 0,
+				"network_fee": 1, "platform_fee": 2}[kind]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	refused := func(id string) string {
+		t.Helper()
+		var got string
+		if err := e.pool.QueryRow(ctx, `SELECT string_agg(kind || ' ' || reconciliation_error || ' ' ||
+			(ledger_transaction_id IS NOT NULL), ', ' ORDER BY kind) FROM receiver_outflows WHERE invoice_id = $1`, id).
+			Scan(&got); err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	recipient := "0x1111111111111111111111111111111111111111"
+	var invoices [2][2]string
+	for n := range invoices {
+		id, receive := fmt.Sprintf("0x%064x", n+1), fmt.Sprintf("0x%040x", 0xa1+n)
+		if _, err := e.pool.Exec(ctx, `INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract,
+		    amount, expires_at, settle_deadline, recipient_address, receive_method, factory_address, receive_address,
+		    idempotency_key, request_hash, network_fee, platform_fee)
+		    SELECT $1, id, $2, 'evm', $3, 5000000, $4::bigint, $4::bigint + 86400, $5, 'evm_create2', $6, $7, $1,
+		        decode(repeat('00', 32), 'hex'), 30000, 20000 FROM profiles`,
+			id, chaintest.ChainID, e.token, e.anvil.Now()+3600, recipient, e.factory, receive); err != nil {
+			t.Fatal(err)
+		}
+		e.anvil.Transfer(e.token, receive, "5000000")
+		invoices[n] = [2]string{id, receive}
+	}
+	e.anvil.Mine(2)
+	e.run(t)
+	after := uint64(e.anvil.Now()) // any block number after the deposits'
+	// The full amount to the recipient, as if no fees were taken.
+	outflow(invoices[0][0], invoices[0][1], "settlement", recipient, 5000000, after)
+	// The net is right, but the network fee is not the option's.
+	outflow(invoices[1][0], invoices[1][1], "settlement", recipient, 4950000, after+1)
+	outflow(invoices[1][0], invoices[1][1], "network_fee", chaintest.Sender, 40000, after+1)
+	e.run(t)
+	if got := refused(invoices[0][0]); got != "settlement invalid_terms false" {
+		t.Errorf("a settlement of the full amount: %s", got)
+	}
+	if got := refused(invoices[1][0]); got != "network_fee invalid_terms false, settlement  true" {
+		t.Errorf("a network fee other than the terms': %s", got)
+	}
+}
