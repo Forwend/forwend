@@ -131,11 +131,17 @@ func (e env) create(t *testing.T, n int) (id, receive string) {
 
 func (e env) createFor(t *testing.T, n int, expiresIn int64) (id, receive string) {
 	t.Helper()
+	return e.createWithFees(t, n, expiresIn, 0, 0)
+}
+
+func (e env) createWithFees(t *testing.T, n int, expiresIn, networkFee, platformFee int64) (id, receive string) {
+	t.Helper()
 	ctx := context.Background()
 	now := e.anvil.Now()
 	terms := address.Terms{InvoiceID: [32]byte(common.FromHex(fmt.Sprintf("0x%064x", n))), Recipient: common.HexToAddress(wallet),
 		Token: common.HexToAddress(e.token), Amount: big.NewInt(5000000), ExpiresAt: uint64(now + expiresIn),
-		SettleDeadline: uint64(now + expiresIn + 86400), IntendedChainID: e.chainID}
+		SettleDeadline: uint64(now + expiresIn + 86400), IntendedChainID: e.chainID,
+		NetworkFee: big.NewInt(networkFee), PlatformFee: big.NewInt(platformFee)}
 	addr, err := address.Receive(terms)
 	if err != nil {
 		t.Fatal(err)
@@ -143,10 +149,12 @@ func (e env) createFor(t *testing.T, n int, expiresIn int64) (id, receive string
 	id, receive = fmt.Sprintf("0x%064x", n), strings.ToLower(common.Address(addr).Hex())
 	_, err = e.pool.Exec(ctx, `
 		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
-		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
-		SELECT $1, profile_id, $2, 'evm', $3, 5000000, $4, $5, $6, 'evm_create2', $7, $8, $9, decode(repeat('00', 32), 'hex')
+		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash,
+		    network_fee, platform_fee)
+		SELECT $1, profile_id, $2, 'evm', $3, 5000000, $4, $5, $6, 'evm_create2', $7, $8, $9, decode(repeat('00', 32), 'hex'),
+		    $10, $11
 		FROM profile_wallets`, id, e.chainID, e.token, terms.ExpiresAt, terms.SettleDeadline, wallet,
-		strings.ToLower(common.Address(address.Factory).Hex()), receive, fmt.Sprintf("k%d", n))
+		strings.ToLower(common.Address(address.Factory).Hex()), receive, fmt.Sprintf("k%d", n), networkFee, platformFee)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -292,6 +300,75 @@ func TestSettlesAPaidInvoiceOnce(t *testing.T) {
 	var pgErr *pgconn.PgError
 	if !errors.As(err, &pgErr) || pgErr.Code != "23505" {
 		t.Fatalf("a second intent for the invoice: %v, want a unique violation", err)
+	}
+}
+
+// R-230: the recipient gets the amount less the fees, the executor the network fee and the refund authority the
+// platform fee. The ledger books each, so the receiver ends at 0 with nothing left to explain.
+func TestSettlementWithFeesIsBookedInFull(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, receive := e.createWithFees(t, 7, 3600, 30000, 20000)
+	e.anvil.Transfer(e.token, receive, "5000000")
+	e.anvil.Mine(2)
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.ledger.ProcessChain(ctx, e.chainID); err != nil {
+		t.Fatal(err)
+	}
+	authority := strings.ToLower(common.Address(address.Known[address.Factory].RefundAuthority).Hex())
+	executor, platform := e.balance(t, chaintest.Sender), e.balance(t, authority)
+	if err := e.signer(t).Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	e.final(t, e.signer(t))
+	if status, settlement, reason := e.intent(t, id); status != "confirmed" || settlement != "settled" {
+		t.Fatalf("intent %s, invoice settlement %s (%s); want confirmed, settled", status, settlement, reason)
+	}
+	for _, c := range []struct {
+		holder string
+		got    int64
+		want   int64
+	}{{wallet, e.balance(t, wallet), 4950000}, {"executor", e.balance(t, chaintest.Sender) - executor, 30000},
+		{"refund authority", e.balance(t, authority) - platform, 20000}, {"receive address", e.balance(t, receive), 0}} {
+		if c.got != c.want {
+			t.Errorf("%s got %d, want %d", c.holder, c.got, c.want)
+		}
+	}
+	booked := func() string {
+		t.Helper()
+		var got string
+		if err := e.pool.QueryRow(ctx, `SELECT string_agg(o.kind || ' ' || o.amount || ' ' || o.destination || ' ' ||
+			(o.transfer_log_index IS NOT NULL) || ' ' || coalesce(t.kind, 'unbooked'), ', ' ORDER BY o.log_index, o.kind)
+			FROM receiver_outflows o LEFT JOIN ledger_transactions t ON t.id = o.ledger_transaction_id
+			WHERE o.invoice_id = $1`, id).Scan(&got); err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	want := fmt.Sprintf("settlement 4950000 %s true settlement, network_fee 30000 %s true network_fee, "+
+		"platform_fee 20000 %s true platform_fee", wallet, strings.ToLower(chaintest.Sender), authority)
+	if got := booked(); got != want {
+		t.Fatalf("receiver outflows:\n got %s\nwant %s", got, want)
+	}
+	amounts, err := ledger.ReadAmounts(ctx, e.pool, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if amounts.Receiver.Sign() != 0 || amounts.Payable.Sign() != 0 || amounts.Held.Sign() != 0 ||
+		amounts.Settled.Int64() != 4950000 || amounts.ReconciliationStatus != ledger.ReconciliationVerified {
+		t.Fatalf("ledger after settle: %+v; want everything paid out, 4950000 settled, verified", amounts)
+	}
+	// The worker's scan then sees the same events: each is recorded and booked once.
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.ledger.ProcessChain(ctx, e.chainID); err != nil {
+		t.Fatal(err)
+	}
+	if got := booked(); got != want {
+		t.Fatalf("after the worker's scan:\n got %s\nwant %s", got, want)
 	}
 }
 

@@ -70,6 +70,7 @@ type intent struct {
 	factory, receive   string
 	wallet             *string
 	amount             *big.Int
+	fees               [2]*big.Int // network, platform
 	expires, deadline  uint64
 }
 
@@ -147,19 +148,22 @@ func (s *Signer) Run(ctx context.Context) error {
 
 func (s *Signer) load(ctx context.Context, id int64) (intent, error) {
 	var in intent
-	var amount string
+	var amount, network, platform string
 	err := s.pool.QueryRow(ctx, `
 		SELECT si.id, si.status, si.sender, si.nonce, si.tx_hash, si.raw_tx, si.replaced_hashes,
 		       coalesce(si.signed_at, si.updated_at), i.id, i.payment_status, i.chain_id, i.token_contract,
 		       i.recipient_address, i.factory_address, i.receive_address,
 		       (SELECT w.address FROM profile_wallets w WHERE w.profile_id = i.profile_id AND w.chain_family = i.chain_family),
-		       i.amount::text, i.expires_at, i.settle_deadline
+		       i.amount::text, i.network_fee::text, i.platform_fee::text, i.expires_at, i.settle_deadline
 		FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id WHERE si.id = $1`, id).Scan(
 		&in.id, &in.status, &in.sender, &in.nonce, &in.txHash, &in.rawTx, &in.replaced, &in.signedAt, &in.invoiceID,
-		&in.payment, &in.chainID, &in.token, &in.recipient, &in.factory, &in.receive, &in.wallet, &amount, &in.expires, &in.deadline)
+		&in.payment, &in.chainID, &in.token, &in.recipient, &in.factory, &in.receive, &in.wallet, &amount, &network,
+		&platform, &in.expires, &in.deadline)
 	if err != nil {
 		return intent{}, fmt.Errorf("read settlement intent %d: %w", id, err)
 	}
 	in.amount, _ = new(big.Int).SetString(amount, 10)
+	in.fees[0], _ = new(big.Int).SetString(network, 10)
+	in.fees[1], _ = new(big.Int).SetString(platform, 10)
 	return in, nil
 }

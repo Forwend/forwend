@@ -225,7 +225,8 @@ with a test.
 - `profiles.livemode` is the profile's mode (D-120): false while Developer mode is on.
   - A trigger starts a new profile live when a mainnet is switched on, else in test mode.
 - `invoices`: immutable terms (`id` = the on-chain invoice id, profile, chain, token, `amount`, `expires_at` and
-  `settle_deadline` as the contract's uint64 seconds, recipient, factory and receive address, `receive_method` (D-44)),
+  `settle_deadline` as the contract's uint64 seconds, recipient, factory and receive address, `receive_method` (D-44),
+  `network_fee` and `platform_fee`, 0 by default and at most a tenth of the amount together (R-226)),
   separate **payment**, **settlement** and **refund** status columns, `idempotency_key` unique per profile with a
   SHA-256 `request_hash` of the create request. `number` is unique per profile, taken from `profiles.invoice_seq` by
   the insert trigger (D-50). A payment-link invoice has a null `number` until the ledger books its first deposit (R-141).
@@ -515,7 +516,7 @@ signer:
    - for our settle, its receipt's block is final too;
    - the selected RPC reads `settled()` true at its finalized block (D-15, as for paid).
 
-   Then it records the receipt's `Settled` event as a receiver movement and books the invoice.
+   Then it records the receipt's `Settled` and `FeesPaid` events as receiver movements and books the invoice.
    - Booking the settlement confirms the intent and sets the invoice's `settlement_status` `settled`.
    - A receiver another settler settled waits for the chain's scan to record its event.
    - A settle a reorg drops before that is reconciled like an unsent one.

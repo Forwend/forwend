@@ -92,6 +92,37 @@ func TestReceiveMatchesFactoryPredict(t *testing.T) {
 	checkVectors(t, f)
 }
 
+// R-230: the watcher matches a platform fee to the refund authority the factory was deployed with.
+func TestTheFactorysRefundAuthorityIsTheDeployedOne(t *testing.T) {
+	raw, err := os.ReadFile("../../../../packages/contracts/deployments.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	type chains map[string]struct{ Factory, RefundAuthority string }
+	var d struct {
+		Chains   chains
+		Mainnets struct{ Chains chains }
+	}
+	if err := json.Unmarshal(raw, &d); err != nil {
+		t.Fatal(err)
+	}
+	found := 0
+	for _, chains := range []chains{d.Chains, d.Mainnets.Chains} {
+		for name, c := range chains {
+			if !strings.EqualFold(c.Factory, hexAddress(Factory)) {
+				continue
+			}
+			found++
+			if got := hexAddress(Known[Factory].RefundAuthority); got != strings.ToLower(c.RefundAuthority) {
+				t.Errorf("%s: compiled refund authority %s, deployed %s", name, got, c.RefundAuthority)
+			}
+		}
+	}
+	if found < 8 {
+		t.Fatalf("the newest factory is on %d chains in deployments.json, want 8", found)
+	}
+}
+
 // R-226: invoices made before the fees keep their v1.1 factory and its seven-field terms.
 func TestV1_1InvoicesKeepTheirAddresses(t *testing.T) {
 	f := readVectors(t, vectorsV1_1Path)

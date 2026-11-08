@@ -114,6 +114,23 @@ func TestAmountFitsUint256(t *testing.T) {
 	wantCode(t, insertInvoice(conn, profile, 3, hex20(102), "key-3", "0"), codeCheck, "amount 0")
 }
 
+// R-226: the fees are contract terms, so they never change and never pass the contract's tenth of the amount.
+func TestInvoiceFeesAreFixedTermsWithinATenth(t *testing.T) {
+	conn, profile := moneyDB(t)
+	ctx := context.Background()
+	must(t, insertInvoice(conn, profile, 1, hex20(100), "key-1", "5000000"))
+	_, err := conn.Exec(ctx, "UPDATE invoices SET network_fee = 300000, platform_fee = 200000 WHERE id = $1", hex32(1))
+	wantCode(t, err, codeRaise, "fees changed after the invoice was made")
+	must(t, insertInvoice(conn, profile, 2, hex20(101), "key-2", "5000000"))
+	_, err = conn.Exec(ctx, `INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at,
+		    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
+		    request_hash, network_fee, platform_fee)
+		SELECT $1, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
+		    recipient_address, receive_method, factory_address, $2, $3, request_hash, $4, 200000 FROM invoices WHERE id = $5`,
+		hex32(3), hex20(102), "key-3", "300001", hex32(2))
+	wantCode(t, err, codeCheck, "fees over a tenth of the amount")
+}
+
 func TestTransferIsUniqueUntilReorged(t *testing.T) {
 	conn, profile := moneyDB(t)
 	ctx := context.Background()

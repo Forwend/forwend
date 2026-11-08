@@ -134,14 +134,15 @@ func CaseOptions(ctx context.Context, db *pgxpool.Pool, ref string) ([]CaseOptio
 // ReadHeld reads an option's held money from the ledger and its receiver from the chain.
 func ReadHeld(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client, invoiceID string) (Held, error) {
 	h := Held{InvoiceID: invoiceID}
-	var recipient, amount, factory string
+	var recipient, factory string
+	var amount [3]string
 	var expires, deadline int64
 	err := db.QueryRow(ctx, `SELECT i.chain_id, i.receive_address, i.token_contract, coalesce(t.symbol, ''),
-		coalesce(t.decimals, 0), i.payment_status, i.refund_status, i.recipient_address, i.amount::text, i.expires_at,
-		i.settle_deadline, i.factory_address
+		coalesce(t.decimals, 0), i.payment_status, i.refund_status, i.recipient_address, i.amount::text,
+		i.network_fee::text, i.platform_fee::text, i.expires_at, i.settle_deadline, i.factory_address
 		FROM invoices i LEFT JOIN tokens t ON t.chain_id = i.chain_id AND t.contract = i.token_contract WHERE i.id = $1`,
 		invoiceID).Scan(&h.ChainID, &h.Receive, &h.Token, &h.Symbol, &h.Decimals, &h.PaymentStatus, &h.RefundStatus,
-		&recipient, &amount, &expires, &deadline, &factory)
+		&recipient, &amount[0], &amount[1], &amount[2], &expires, &deadline, &factory)
 	if err != nil {
 		return Held{}, fmt.Errorf("read invoice %s: %w", invoiceID, err)
 	}
@@ -199,12 +200,15 @@ func ReadHeld(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client, i
 }
 
 // termsOf builds an option's terms and checks they compute its stored receive address: money moves only by those.
-func termsOf(factory [20]byte, invoiceID, recipient, token, amount string, expires, deadline int64, chainID uint64,
+func termsOf(factory [20]byte, invoiceID, recipient, token string, amount [3]string, expires, deadline int64, chainID uint64,
 	receive string) (address.Terms, error) {
-	value, _ := new(big.Int).SetString(amount, 10)
+	var value [3]*big.Int // amount, network fee, platform fee
+	for i, a := range amount {
+		value[i], _ = new(big.Int).SetString(a, 10)
+	}
 	t := address.Terms{InvoiceID: [32]byte(common.FromHex(invoiceID)), Recipient: common.HexToAddress(recipient),
-		Token: common.HexToAddress(token), Amount: value, ExpiresAt: uint64(expires), SettleDeadline: uint64(deadline),
-		IntendedChainID: chainID}
+		Token: common.HexToAddress(token), Amount: value[0], ExpiresAt: uint64(expires), SettleDeadline: uint64(deadline),
+		IntendedChainID: chainID, NetworkFee: value[1], PlatformFee: value[2]}
 	if at, err := address.ReceiveAt(factory, t); err != nil || !strings.EqualFold(common.Address(at).Hex(), receive) {
 		return address.Terms{}, fmt.Errorf("invoice %s: its terms do not compute its receive address", invoiceID)
 	}

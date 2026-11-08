@@ -77,15 +77,22 @@ func attachLegacySettlement(ctx context.Context, tx pgx.Tx, invoiceID string) er
 	return err
 }
 
-func bookOutflow(ctx context.Context, tx pgx.Tx, invoiceID string, m movement, target *big.Int, shown bool) (bool, error) {
-	var token, intended, destination, recipient, hash, reason string
+// bookOutflow books a settlement as the amount less the fees, and each fee as its own kind (R-230).
+func bookOutflow(ctx context.Context, tx pgx.Tx, invoiceID string, m movement, amount *big.Int, shown bool) (bool, error) {
+	var token, intended, destination, recipient, hash, reason, networkFee, platformFee string
 	if err := tx.QueryRow(ctx, `SELECT o.token_contract, i.token_contract, o.destination, i.recipient_address,
-  o.tx_hash, o.reconciliation_error FROM receiver_outflows o JOIN invoices i ON i.id = o.invoice_id WHERE o.id = $1`, m.ID).
-		Scan(&token, &intended, &destination, &recipient, &hash, &reason); err != nil {
+  o.tx_hash, o.reconciliation_error, i.network_fee::text, i.platform_fee::text
+  FROM receiver_outflows o JOIN invoices i ON i.id = o.invoice_id WHERE o.id = $1`, m.ID).
+		Scan(&token, &intended, &destination, &recipient, &hash, &reason, &networkFee, &platformFee); err != nil {
 		return false, err
 	}
 	value, _ := new(big.Int).SetString(m.Amount, 10)
-	if token != intended || (reason == "invalid_terms" || reason == "transfer_evidence_missing") || m.Kind == "settlement" && (destination != recipient || value.Cmp(target) != 0) {
+	network, _ := new(big.Int).SetString(networkFee, 10)
+	platform, _ := new(big.Int).SetString(platformFee, 10)
+	want := map[string]*big.Int{"settlement": new(big.Int).Sub(amount, new(big.Int).Add(network, platform)),
+		"network_fee": network, "platform_fee": platform}[m.Kind]
+	if token != intended || (reason == "invalid_terms" || reason == "transfer_evidence_missing") ||
+		m.Kind == "settlement" && destination != recipient || want != nil && value.Cmp(want) != 0 {
 		return outflowRefusal(ctx, tx, m.ID, "invalid_terms")
 	}
 	var predecessor bool
@@ -151,6 +158,9 @@ func bookOutflow(ctx context.Context, tx pgx.Tx, invoiceID string, m movement, t
 	if _, err := tx.Exec(ctx, `UPDATE receiver_outflows SET ledger_transaction_id = $2, reconciliation_error = '',
   policy_exception = nullif($3, '') WHERE id = $1`, m.ID, tid, policy); err != nil {
 		return false, err
+	}
+	if m.Kind == "network_fee" || m.Kind == "platform_fee" {
+		return true, nil
 	}
 	if m.Kind == "refund" {
 		data := history.Data{Amount: value.String(), TxHash: hash, Reason: policy}

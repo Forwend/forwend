@@ -20,18 +20,21 @@ var (
 	Implementation = mustHex20("81CdA02E469083fD14A75583257d9b721Ca76132")
 )
 
-// Spec is a factory's receiver implementation, and whether its terms carry the fees (v2 on, R-226).
+// Spec is a factory's receiver implementation, whether its terms carry the fees (v2 on, R-226), and the refund
+// authority a v2 settlement pays the platform fee. The authority is in the factory's CREATE2 init code, so a factory
+// address has the same one on every chain.
 type Spec struct {
-	Implementation [20]byte
-	Fees           bool
+	Implementation  [20]byte
+	Fees            bool
+	RefundAuthority [20]byte
 }
 
 // Known maps every factory an invoice may still use to its spec. An invoice keeps the factory it was made with, so a
 // replaced factory stays here until none of its invoices can hold money.
 var Known = map[[20]byte]Spec{
-	Factory: {Implementation, true},
-	mustHex20("f93da73F1308A9B34aAB78bF6D84F0BAcc600dd2"): {mustHex20("26b7DB220aF2Da25B960E7e5bCcf80a708aE630f"), false}, // v1.1
-	mustHex20("ECe745390524e4d0B05D26F56AF7F1D38FDb7546"): {mustHex20("322F6c8dAf0a8bd7cF16eb62D0a04700eEA4b639"), false}, // v1
+	Factory: {Implementation: Implementation, Fees: true, RefundAuthority: mustHex20("3E202009C02aBc635eE83fb5c9D1eE3F10FEEa00")},
+	mustHex20("f93da73F1308A9B34aAB78bF6D84F0BAcc600dd2"): {Implementation: mustHex20("26b7DB220aF2Da25B960E7e5bCcf80a708aE630f")}, // v1.1
+	mustHex20("ECe745390524e4d0B05D26F56AF7F1D38FDb7546"): {Implementation: mustHex20("322F6c8dAf0a8bd7cF16eb62D0a04700eEA4b639")}, // v1
 }
 
 var (

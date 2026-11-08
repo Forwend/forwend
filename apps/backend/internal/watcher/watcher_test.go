@@ -660,3 +660,78 @@ func TestOnlyNewFinalCanonicalEventsOfWatchedReceiversAreRecorded(t *testing.T) 
 		t.Fatalf("a complete event was read again: %+v (%v)", again, err)
 	}
 }
+
+// R-230: FeesPaid is an outflow per fee, each matched to settle's own transfer between its transfer to the recipient
+// and Settled. Missed transfers are found by a later read; a fee other than the terms' is refused.
+func TestFeesPaidIsAnOutflowPerFee(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, at := "0x"+strings.Repeat("02", 32), common.HexToAddress("0x00000000000000000000000000000000000000bb")
+	if _, err := e.pool.Exec(ctx, `INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount,
+		    expires_at, settle_deadline, recipient_address, receive_method, factory_address, receive_address,
+		    idempotency_key, request_hash, network_fee, platform_fee)
+		SELECT $1, profile_id, chain_id, 'evm', token_contract, 5000000, 1800000000, 1800086400, recipient_address,
+		    'evm_create2', $2, $3, 'key-2', request_hash, 30000, 20000 FROM invoices`, id,
+		strings.ToLower(common.Address(address.Factory).Hex()), strings.ToLower(at.Hex())); err != nil {
+		t.Fatal(err)
+	}
+	recipient, settler := common.HexToAddress("0x1111111111111111111111111111111111111111"), common.HexToAddress("0x5e77")
+	authority := common.Address(address.Known[address.Factory].RefundAuthority)
+	word := func(n int64) []byte { return common.LeftPadBytes(big.NewInt(n).Bytes(), 32) }
+	topic := func(a common.Address) common.Hash { return common.BytesToHash(a.Bytes()) }
+	// settle's logs: its transfers to the recipient, the settler and the refund authority, then Settled and FeesPaid.
+	settle := func(block common.Hash, network int64) []Outflow {
+		log := func(index uint, address common.Address, data []byte, topics ...common.Hash) types.Log {
+			return types.Log{Address: address, BlockNumber: 5, BlockHash: block, TxHash: block, Index: index, Data: data, Topics: topics}
+		}
+		transfer := func(index uint, to common.Address, amount int64) types.Log {
+			return log(index, common.HexToAddress(e.token), word(amount), transferTopic, topic(at), topic(to))
+		}
+		transfers := []types.Log{transfer(0, recipient, 4950000), transfer(1, settler, network), transfer(2, authority, 20000)}
+		return []Outflow{
+			{InvoiceID: id, Log: log(3, at, word(4950000), settledTopic, common.HexToHash(id), topic(recipient)), Transfers: transfers, Verified: 5},
+			{InvoiceID: id, Log: log(4, at, append(word(network), word(20000)...), feesPaidTopic, common.HexToHash(id), topic(settler)),
+				Transfers: transfers, Verified: 5},
+		}
+	}
+	record := func(outflows []Outflow) {
+		t.Helper()
+		if err := pgx.BeginFunc(ctx, e.pool, func(tx pgx.Tx) error { return RecordOutflows(ctx, tx, chaintest.ChainID, outflows) }); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rows := func(block common.Hash) string {
+		t.Helper()
+		var got string
+		if err := e.pool.QueryRow(ctx, `SELECT string_agg(kind || ' ' || amount || ' ' || destination || ' ' ||
+			coalesce(transfer_log_index::text, '-') || ' ' || reconciliation_error, ', ' ORDER BY log_index, kind)
+			FROM receiver_outflows WHERE block_hash = $1`, hexutil.Encode(block[:])).Scan(&got); err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	r, s, a := strings.ToLower(recipient.Hex()), strings.ToLower(settler.Hex()), strings.ToLower(authority.Hex())
+
+	block := common.HexToHash("0xb1")
+	missed := settle(block, 30000)
+	for i := range missed {
+		missed[i].Transfers = nil // a node answered without the transfers
+	}
+	record(missed)
+	if got, want := rows(block), fmt.Sprintf("settlement 4950000 %s - transfer_evidence_missing, network_fee 30000 %s - "+
+		"transfer_evidence_missing, platform_fee 20000 %s - transfer_evidence_missing", r, s, a); got != want {
+		t.Fatalf("without the transfers:\n got %s\nwant %s", got, want)
+	}
+	record(settle(block, 30000))
+	if got, want := rows(block), fmt.Sprintf("settlement 4950000 %s 0 awaiting_booking, network_fee 30000 %s 1 "+
+		"awaiting_booking, platform_fee 20000 %s 2 awaiting_booking", r, s, a); got != want {
+		t.Fatalf("with the transfers:\n got %s\nwant %s", got, want)
+	}
+
+	other := common.HexToHash("0xb2")
+	record(settle(other, 40000))
+	if got, want := rows(other), fmt.Sprintf("settlement 4950000 %s 0 awaiting_booking, network_fee 40000 %s 1 "+
+		"invalid_terms, platform_fee 20000 %s 2 invalid_terms", r, s, a); got != want {
+		t.Fatalf("a fee other than the terms':\n got %s\nwant %s", got, want)
+	}
+}

@@ -227,7 +227,7 @@ func check(in intent) (address.Terms, string) {
 	terms := address.Terms{
 		InvoiceID: [32]byte(common.FromHex(in.invoiceID)), Recipient: common.HexToAddress(in.recipient),
 		Token: common.HexToAddress(in.token), Amount: in.amount, ExpiresAt: in.expires,
-		SettleDeadline: in.deadline, IntendedChainID: in.chainID,
+		SettleDeadline: in.deadline, IntendedChainID: in.chainID, NetworkFee: in.fees[0], PlatformFee: in.fees[1],
 	}
 	receive, err := address.ReceiveAt(factory, terms)
 	if err != nil || !bytes.Equal(receive[:], common.HexToAddress(in.receive).Bytes()) {
