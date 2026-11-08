@@ -1,136 +1,242 @@
 {
-  "_note": "Testnet deployment, 2026-11-07 (F417): adds the factory and implementation recover and refundable() 0 off the intended chain. The refund authority is a test EOA standing in for the Safe; the executor is the burner deployer. Not for real money.",
-  "version": "v1.1",
+  "_note": "Testnet deployment, 2026-11-08 (F442): invoice terms carry a network fee and a platform fee, paid at settlement to the settler and the refund authority, at most a tenth of the amount together (R-226). The refund authority is a test EOA standing in for the Safe; the executor is the burner deployer. Not for real money. Each flow took a 1% network fee and a 0.5% platform fee.",
+  "version": "v2",
   "chains": {
     "base-sepolia": {
       "chainId": 84532,
       "explorer": "https://sepolia.basescan.org",
-      "factory": "0xf93da73F1308A9B34aAB78bF6D84F0BAcc600dd2",
-      "implementation": "0x26b7DB220aF2Da25B960E7e5bCcf80a708aE630f",
+      "factory": "0xe917cE63865f8Cf91a0038136E496B25eCE2A54e",
+      "implementation": "0x81CdA02E469083fD14A75583257d9b721Ca76132",
       "refundAuthority": "0x3E202009C02aBc635eE83fb5c9D1eE3F10FEEa00",
       "executor": "0xe15800B2007EaC6Fe3f3eac3BE38207ce32d2755",
-      "probeReceiver": "0x0D25B44a9F41825f70186276e23532734D1DDfBE",
+      "probeReceiver": "0xb4d40dF32f1d787B9749B5492437cEaC030FCEcd",
+      "deploy": {
+        "factory": "0xd32effc5278af6a2aa89c56f025ffda875adb6c2b366836896b8afabdf801d59",
+        "probe": "0xd0d49e38953ac6ee3bec4c8cbebde11b7fc5b6a55f7f2c8bf61d76b5f30109ec"
+      },
       "flow": {
         "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
         "amount": "100000",
-        "invoiceId": "0xb4c3e0cd7cccd91a459d332d7ae3a575879609d8cf0671908905649a7b38f2b7",
-        "receiver": "0x021c27ba89C55eEdAfBa215BeD2Bc499b610BEbd",
-        "pay": "0x918cef546ade632c7886dcc6fc7d8088fe1d5243e016a24b528de2a1b02f5fb2",
-        "deploy": "0xfd3997ac02ef484d6e5ffec6d39613d4afaa1f7d3c9974dbaedc43663a3a3eb7",
-        "settle": "0x3f8e87613c19bab5383bac9b21483c4f45dce3563b1b6998fb570914e69cb342",
-        "refund": "0xd5a72444bb4b63b43a448fabefd02435ae49b316e528b86aade84afbc8292b07",
-        "note": "The refund authority had no Base Sepolia gas during the deploy, so the refund was sent after funding it."
+        "networkFee": "1000",
+        "platformFee": "500",
+        "invoiceId": "0x317a2e8b9ef64922858c3d080ddbb6df5c90f204156b14313100536c1eb217ef",
+        "receiver": "0x8812d538c1E0bBF6049E51296509F27Dac7EDb9B",
+        "pay": "0x7c4c1e2d9cb7182982715f3e73fcc731c3588cfd43595ddae4e39804957caf69",
+        "deploy": "0xd86503bb3c0ca72321cb1f4eab87a10f68e129e5153147d4e285b83b315a27ba",
+        "settle": "0xe39859f836d42a884ac7f99ce7f693ddb5251a6ed1b288ae87293cf6df31e37b",
+        "refund": "0x47ae7b787cd4991c79b04a7e77cff73715841a23a16273bebebd7cc08690c83d"
       }
     },
     "arbitrum-sepolia": {
       "chainId": 421614,
       "explorer": "https://sepolia.arbiscan.io",
-      "factory": "0xf93da73F1308A9B34aAB78bF6D84F0BAcc600dd2",
-      "implementation": "0x26b7DB220aF2Da25B960E7e5bCcf80a708aE630f",
+      "factory": "0xe917cE63865f8Cf91a0038136E496B25eCE2A54e",
+      "implementation": "0x81CdA02E469083fD14A75583257d9b721Ca76132",
       "refundAuthority": "0x3E202009C02aBc635eE83fb5c9D1eE3F10FEEa00",
       "executor": "0xe15800B2007EaC6Fe3f3eac3BE38207ce32d2755",
-      "probeReceiver": "0x0D25B44a9F41825f70186276e23532734D1DDfBE",
+      "probeReceiver": "0xb4d40dF32f1d787B9749B5492437cEaC030FCEcd",
+      "deploy": {
+        "factory": "0xa62deebcd9dbff5946448672f21ca714f791b113f1f0d8b8ad0b8e28caf32233",
+        "probe": "0x8c367e0e646e633bf884f48a3472a80b98363ea9b257d9fd058f1a6348a4ac48"
+      },
       "flow": null
     },
     "arc-testnet": {
       "chainId": 5042002,
       "explorer": "https://testnet.arcscan.app",
-      "factory": "0xf93da73F1308A9B34aAB78bF6D84F0BAcc600dd2",
-      "implementation": "0x26b7DB220aF2Da25B960E7e5bCcf80a708aE630f",
+      "factory": "0xe917cE63865f8Cf91a0038136E496B25eCE2A54e",
+      "implementation": "0x81CdA02E469083fD14A75583257d9b721Ca76132",
       "refundAuthority": "0x3E202009C02aBc635eE83fb5c9D1eE3F10FEEa00",
       "executor": "0xe15800B2007EaC6Fe3f3eac3BE38207ce32d2755",
-      "probeReceiver": "0x0D25B44a9F41825f70186276e23532734D1DDfBE",
+      "probeReceiver": "0xb4d40dF32f1d787B9749B5492437cEaC030FCEcd",
+      "deploy": {
+        "factory": "0x40733c7308eccd7104206fa8239bfe14c15e9862006e8bec60c7f6c7db87f03f",
+        "probe": "0x9a2a768a815fca1398e769c4357b21a969b92f5754897e67814d94ac04889a72"
+      },
       "flow": {
         "token": "0x3600000000000000000000000000000000000000",
         "amount": "100000",
-        "invoiceId": "0x9e3953b100c66177ac3dbc22d1346ffd24924c84703599b566a4445059961388",
-        "receiver": "0x3Fef87AebfF99250E02A2d234F503B69406350Bc",
-        "pay": "0x2bd999dafdd2dc64a596bd7ef296b46e372798a9dff35344f9dc4e3f821b2877",
-        "deploy": "0xf99502f691375c32bfe3badf9aa0f4797903745e09d0bb7d12924da3fc920c0f",
-        "settle": "0x3a26921708a9e39c32864ac30055145d4469b67b855015c0cf097110e74c3556",
-        "refund": "0xf2dd022f9206e941957f353d0b0ef62a37c257d493f54be3c775633a6ae7aa3f"
+        "networkFee": "1000",
+        "platformFee": "500",
+        "invoiceId": "0x117e750eb09ee81304f77045d3e84ff0b205310a04bdef4d465528b0cf2fbcb2",
+        "receiver": "0xB0D75F061B5520a8F32eD8e0Eb922ff277935F9e",
+        "pay": "0x3c9877f82e5950905c51cd7abafe8f31828ca54f33399e45048765d4894baa11",
+        "deploy": "0x567789181c8d43d5cfb5b3ade7dbe8e402982b2923344785af4e849bdeceffc3",
+        "settle": "0xfce5be5f148a638460a83825cd01ccdbd2b342ea4dce1ba91b4eedfe41b0cb94",
+        "refund": "0x355f4ea307c54a011504a3a9a01c3f22221127b5483e33809af4059c5499a828"
       }
     },
     "tempo-moderato": {
       "chainId": 42431,
       "explorer": "https://explore.tempo.xyz",
-      "factory": "0xf93da73F1308A9B34aAB78bF6D84F0BAcc600dd2",
-      "implementation": "0x26b7DB220aF2Da25B960E7e5bCcf80a708aE630f",
+      "factory": "0xe917cE63865f8Cf91a0038136E496B25eCE2A54e",
+      "implementation": "0x81CdA02E469083fD14A75583257d9b721Ca76132",
       "refundAuthority": "0x3E202009C02aBc635eE83fb5c9D1eE3F10FEEa00",
       "executor": "0xe15800B2007EaC6Fe3f3eac3BE38207ce32d2755",
-      "probeReceiver": "0x0D25B44a9F41825f70186276e23532734D1DDfBE",
+      "probeReceiver": "0xb4d40dF32f1d787B9749B5492437cEaC030FCEcd",
+      "deploy": {
+        "factory": "0xee0866762e539617e21f4a69d8da58acd52762d0cfd3fdc28b810adadff7cad2",
+        "probe": "0x6efa2dc19a4084d9085409a7862338732d49fccb237c41a8a4cb20be750b4881"
+      },
       "flow": {
         "token": "0x20c0000000000000000000000000000000000001",
         "amount": "100000",
-        "invoiceId": "0x6700c3af5a580fa7faa4dadb84e62bb08a4ac605f65602735f43e3ff1071da3f",
-        "receiver": "0xa0E5555b8D05626793Fe441B02C7aDed5456ed51",
-        "pay": "0x7b6c80a548ac59cf7c2b7edf80b965e9204f811d805f9e0520943f553e5e13d3",
-        "deploy": "0xb9f75ae5dbbc308f31627db2d0fbb788fe088437ace0def7ad7032043bd1f29b",
-        "settle": "0x158de7ae813d969bac14dcc9abbe3a89e17d64e76840044cd2e56fad4697c922",
-        "refund": "0x475db3f98b23856df72c1745c9beb8d13e5dc30aedb034031affb21bbd60f6ae"
+        "networkFee": "1000",
+        "platformFee": "500",
+        "invoiceId": "0xe48b8d1dbc088f023823eb2fbd7632a4ffa074af44c8314b643820315c3796a6",
+        "receiver": "0xC7c4F58e5b4B97866BCFb2beE022767f22b8fEbe",
+        "pay": "0x0a7460c05ab357b49ed81fe4e7be568ce4bbc19bf6478b37e99ad9d83eb6faeb",
+        "deploy": "0xd19ee74221001a711cb6a42c10d87c53a11c3d7ab7eb84444389b1abf2e5ee43",
+        "settle": "0x5f389a92c943be3c0591b3882742e13db1a1a3555077e88a49ab1a8e8f11519a",
+        "refund": "0x32863c3557e5e739579480f6d03ad71036d049ae7ce3b35f334f18e457266e3b"
       }
     }
   },
   "mainnets": {
-    "_note": "Development mainnet deployment, 2026-11-08 (F437): the same v1.1 code and arguments as the testnets, so the same addresses. The refund authority is the test EOA, not a Safe, by owner choice: for development only. Production gets new contracts.",
+    "_note": "Development mainnet deployment, 2026-11-08 (F442): the same v2 code and arguments as the testnets, so the same addresses. Factory and probe only: no money sent to the test recipient. The refund authority is the test EOA, not a Safe, by owner choice: for development only. Production gets new contracts.",
     "chains": {
       "base-mainnet": {
         "chainId": 8453,
         "explorer": "https://basescan.org",
-        "factory": "0xf93da73F1308A9B34aAB78bF6D84F0BAcc600dd2",
-        "implementation": "0x26b7DB220aF2Da25B960E7e5bCcf80a708aE630f",
+        "factory": "0xe917cE63865f8Cf91a0038136E496B25eCE2A54e",
+        "implementation": "0x81CdA02E469083fD14A75583257d9b721Ca76132",
         "refundAuthority": "0x3E202009C02aBc635eE83fb5c9D1eE3F10FEEa00",
         "executor": "0xe15800B2007EaC6Fe3f3eac3BE38207ce32d2755",
-        "probeReceiver": "0x0D25B44a9F41825f70186276e23532734D1DDfBE",
+        "probeReceiver": "0xb4d40dF32f1d787B9749B5492437cEaC030FCEcd",
         "deploy": {
-          "factory": "0xc4ce6567a21774b77d5b82d6f43ce4763008961a7717e3e3b3f7e31cd96e6a8c",
-          "probe": "0xf1f0367a490712488d2d7de4b28d277f1f69cd9d19c71cbe52e7724f0a7cf78e"
+          "factory": "0x01fd37c106f48ac07fa34bee1194af31a1a8fa7d3def91d91f626d3353399f28",
+          "probe": "0x776d9a4970a15af99471b89ff8c4f17b0a575f8a056b5843b319f5a85ba1ca46"
         }
       },
       "arbitrum-one": {
         "chainId": 42161,
         "explorer": "https://arbiscan.io",
-        "factory": "0xf93da73F1308A9B34aAB78bF6D84F0BAcc600dd2",
-        "implementation": "0x26b7DB220aF2Da25B960E7e5bCcf80a708aE630f",
+        "factory": "0xe917cE63865f8Cf91a0038136E496B25eCE2A54e",
+        "implementation": "0x81CdA02E469083fD14A75583257d9b721Ca76132",
         "refundAuthority": "0x3E202009C02aBc635eE83fb5c9D1eE3F10FEEa00",
         "executor": "0xe15800B2007EaC6Fe3f3eac3BE38207ce32d2755",
-        "probeReceiver": "0x0D25B44a9F41825f70186276e23532734D1DDfBE",
+        "probeReceiver": "0xb4d40dF32f1d787B9749B5492437cEaC030FCEcd",
         "deploy": {
-          "factory": "0x1f27e0758131d58cd04100cfa9f537b33ea168b0ac673a78e4a9971954ec3e6f",
-          "probe": "0x3c05d462d60ecc5587fcce1332f4e4f8302a6b562b1bdc6ae244c3d15c62bfb2"
+          "factory": "0x5887b81131be25adc8a6b7f15bdbe654eceebe920d4a6d5ea42a1820d9101ec2",
+          "probe": "0x42d4ea527fd97b883044e479d09e5cde3320a435d2b01fa2585c9a7bcef85085"
         }
       },
       "arc-mainnet": {
         "chainId": 5042,
         "explorer": "https://explorer.arc.io",
-        "factory": "0xf93da73F1308A9B34aAB78bF6D84F0BAcc600dd2",
-        "implementation": "0x26b7DB220aF2Da25B960E7e5bCcf80a708aE630f",
+        "factory": "0xe917cE63865f8Cf91a0038136E496B25eCE2A54e",
+        "implementation": "0x81CdA02E469083fD14A75583257d9b721Ca76132",
         "refundAuthority": "0x3E202009C02aBc635eE83fb5c9D1eE3F10FEEa00",
         "executor": "0xe15800B2007EaC6Fe3f3eac3BE38207ce32d2755",
-        "probeReceiver": "0x0D25B44a9F41825f70186276e23532734D1DDfBE",
+        "probeReceiver": "0xb4d40dF32f1d787B9749B5492437cEaC030FCEcd",
         "deploy": {
-          "factory": "0x8ea63e09548782753a72f5fdc6451e852b4a30e14df49e468a933026249c6127",
-          "probe": "0xbfc32b945f3d3fa4a0f75893ff1b3344718ed29f781129bbb87f69bd9483d88c"
+          "factory": "0x0464d7a655c7101db5c9a9f9fc85e66a277b95781cd5dd913df095cef46bcd62",
+          "probe": "0xe5d92b19e2393f14801d55c90e867cd29551d7f7cb926df2c9b9fa105ce7fc58"
         }
       },
       "tempo-mainnet": {
         "chainId": 4217,
         "explorer": "https://explore.tempo.xyz",
-        "factory": "0xf93da73F1308A9B34aAB78bF6D84F0BAcc600dd2",
-        "implementation": "0x26b7DB220aF2Da25B960E7e5bCcf80a708aE630f",
+        "factory": "0xe917cE63865f8Cf91a0038136E496B25eCE2A54e",
+        "implementation": "0x81CdA02E469083fD14A75583257d9b721Ca76132",
         "refundAuthority": "0x3E202009C02aBc635eE83fb5c9D1eE3F10FEEa00",
         "executor": "0xe15800B2007EaC6Fe3f3eac3BE38207ce32d2755",
-        "probeReceiver": "0x0D25B44a9F41825f70186276e23532734D1DDfBE",
+        "probeReceiver": "0xb4d40dF32f1d787B9749B5492437cEaC030FCEcd",
         "deploy": {
-          "executorFeeToken": "0x40e77104dde4dd1afa28dc1013280c6899b3b58b62b4f04cefb19d71eac4a64e",
-          "factory": "0x908e716377d86e9f98820ee838d37cee1282b935625c6b174148dd1e4cd5bbd5",
-          "probe": "0xde289efaac19d1bf9f47206f4c1933e46e0b6505fb697f872dc43b3a9b60fca1"
+          "factory": "0xb9f40f9b7d3e1a05bc03bc28d05a66b173101ec63b8c2a1cf54e6c2769088dba",
+          "probe": "0x90c7a97a6e70d64fc05b8bc1c9c4710e7947ef3787549f95ee6dff6f36d1df38"
         },
-        "note": "executorFeeToken: setUserToken(OUSD) in the fee manager, so the executor pays Tempo fees in OUSD."
+        "note": "The executor pays Tempo fees in OUSD: setUserToken(OUSD) in the fee manager, set in F437."
       }
     }
   },
   "superseded": [
+    {
+      "version": "v1.1",
+      "task": "F417, F437",
+      "note": "Replaced by F442: terms without fees. Kept: invoices made before stay on it, and for recovery of anything sent to it. Same addresses on the testnets and the development mainnets.",
+      "factory": "0xf93da73F1308A9B34aAB78bF6D84F0BAcc600dd2",
+      "implementation": "0x26b7DB220aF2Da25B960E7e5bCcf80a708aE630f",
+      "probeReceiver": "0x0D25B44a9F41825f70186276e23532734D1DDfBE",
+      "chains": {
+        "base-sepolia": {
+          "chainId": 84532,
+          "flow": {
+            "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+            "amount": "100000",
+            "invoiceId": "0xb4c3e0cd7cccd91a459d332d7ae3a575879609d8cf0671908905649a7b38f2b7",
+            "receiver": "0x021c27ba89C55eEdAfBa215BeD2Bc499b610BEbd",
+            "pay": "0x918cef546ade632c7886dcc6fc7d8088fe1d5243e016a24b528de2a1b02f5fb2",
+            "deploy": "0xfd3997ac02ef484d6e5ffec6d39613d4afaa1f7d3c9974dbaedc43663a3a3eb7",
+            "settle": "0x3f8e87613c19bab5383bac9b21483c4f45dce3563b1b6998fb570914e69cb342",
+            "refund": "0xd5a72444bb4b63b43a448fabefd02435ae49b316e528b86aade84afbc8292b07",
+            "note": "The refund authority had no Base Sepolia gas during the deploy, so the refund was sent after funding it."
+          }
+        },
+        "arbitrum-sepolia": {
+          "chainId": 421614,
+          "flow": null
+        },
+        "arc-testnet": {
+          "chainId": 5042002,
+          "flow": {
+            "token": "0x3600000000000000000000000000000000000000",
+            "amount": "100000",
+            "invoiceId": "0x9e3953b100c66177ac3dbc22d1346ffd24924c84703599b566a4445059961388",
+            "receiver": "0x3Fef87AebfF99250E02A2d234F503B69406350Bc",
+            "pay": "0x2bd999dafdd2dc64a596bd7ef296b46e372798a9dff35344f9dc4e3f821b2877",
+            "deploy": "0xf99502f691375c32bfe3badf9aa0f4797903745e09d0bb7d12924da3fc920c0f",
+            "settle": "0x3a26921708a9e39c32864ac30055145d4469b67b855015c0cf097110e74c3556",
+            "refund": "0xf2dd022f9206e941957f353d0b0ef62a37c257d493f54be3c775633a6ae7aa3f"
+          }
+        },
+        "tempo-moderato": {
+          "chainId": 42431,
+          "flow": {
+            "token": "0x20c0000000000000000000000000000000000001",
+            "amount": "100000",
+            "invoiceId": "0x6700c3af5a580fa7faa4dadb84e62bb08a4ac605f65602735f43e3ff1071da3f",
+            "receiver": "0xa0E5555b8D05626793Fe441B02C7aDed5456ed51",
+            "pay": "0x7b6c80a548ac59cf7c2b7edf80b965e9204f811d805f9e0520943f553e5e13d3",
+            "deploy": "0xb9f75ae5dbbc308f31627db2d0fbb788fe088437ace0def7ad7032043bd1f29b",
+            "settle": "0x158de7ae813d969bac14dcc9abbe3a89e17d64e76840044cd2e56fad4697c922",
+            "refund": "0x475db3f98b23856df72c1745c9beb8d13e5dc30aedb034031affb21bbd60f6ae"
+          }
+        }
+      },
+      "mainnets": {
+        "base-mainnet": {
+          "chainId": 8453,
+          "deploy": {
+            "factory": "0xc4ce6567a21774b77d5b82d6f43ce4763008961a7717e3e3b3f7e31cd96e6a8c",
+            "probe": "0xf1f0367a490712488d2d7de4b28d277f1f69cd9d19c71cbe52e7724f0a7cf78e"
+          }
+        },
+        "arbitrum-one": {
+          "chainId": 42161,
+          "deploy": {
+            "factory": "0x1f27e0758131d58cd04100cfa9f537b33ea168b0ac673a78e4a9971954ec3e6f",
+            "probe": "0x3c05d462d60ecc5587fcce1332f4e4f8302a6b562b1bdc6ae244c3d15c62bfb2"
+          }
+        },
+        "arc-mainnet": {
+          "chainId": 5042,
+          "deploy": {
+            "factory": "0x8ea63e09548782753a72f5fdc6451e852b4a30e14df49e468a933026249c6127",
+            "probe": "0xbfc32b945f3d3fa4a0f75893ff1b3344718ed29f781129bbb87f69bd9483d88c"
+          }
+        },
+        "tempo-mainnet": {
+          "chainId": 4217,
+          "deploy": {
+            "executorFeeToken": "0x40e77104dde4dd1afa28dc1013280c6899b3b58b62b4f04cefb19d71eac4a64e",
+            "factory": "0x908e716377d86e9f98820ee838d37cee1282b935625c6b174148dd1e4cd5bbd5",
+            "probe": "0xde289efaac19d1bf9f47206f4c1933e46e0b6505fb697f872dc43b3a9b60fca1"
+          },
+          "note": "executorFeeToken: setUserToken(OUSD) in the fee manager, so the executor pays Tempo fees in OUSD."
+        }
+      }
+    },
     {
       "version": "v1",
       "task": "F040",

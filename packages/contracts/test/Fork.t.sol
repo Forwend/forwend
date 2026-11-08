@@ -29,7 +29,9 @@ contract BaseSepoliaForkTest is Test {
             amount: 25e6,
             expiresAt: uint64(block.timestamp + 1 hours),
             settleDeadline: uint64(block.timestamp + 1 hours + 1 days),
-            intendedChainId: block.chainid
+            intendedChainId: block.chainid,
+            networkFee: 0,
+            platformFee: 0
         });
 
         address at = factory.predict(t);

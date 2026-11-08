@@ -307,13 +307,13 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 			return Return{}, fmt.Errorf("the receiver refuses this refund: %w", err)
 		}
 	} else {
-		deploy, err := callData(deploySelector, h.terms)
+		deploy, err := address.Call([20]byte(h.factory), "deploy", h.terms)
 		if err != nil {
 			return Return{}, err
 		}
-		r.Calls = append(r.Calls, Call{To: h.factory, Data: deploy, Signature: deploySignature,
-			Args: []string{fmt.Sprintf("(%s,%s,%s,%s,%d,%d,%d)", invoiceID, strings.ToLower(common.Address(h.terms.Recipient).Hex()),
-				h.Token, h.terms.Amount, h.terms.ExpiresAt, h.terms.SettleDeadline, h.ChainID)}})
+		signature, _ := address.Signature([20]byte(h.factory), "deploy")
+		args, _ := address.Args([20]byte(h.factory), invoiceID, h.terms)
+		r.Calls = append(r.Calls, Call{To: h.factory, Data: deploy, Signature: signature, Args: []string{args}})
 	}
 	r.Calls = append(r.Calls, Call{To: receive, Data: refund, Signature: refundSignature,
 		Args: []string{strings.ToLower(r.To.Hex()), r.Amount.String()}})

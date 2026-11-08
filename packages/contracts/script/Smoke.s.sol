@@ -22,7 +22,9 @@ contract Smoke is Deploy {
             amount: 1e6,
             expiresAt: 1_798_761_600, // 2027-01-01
             settleDeadline: 1_798_848_000,
-            intendedChainId: 84532
+            intendedChainId: 84532,
+            networkFee: 0,
+            platformFee: 0
         });
         vm.startBroadcast(deployerKey);
         address deployed = factory.deploy(probe);

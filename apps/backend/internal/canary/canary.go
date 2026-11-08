@@ -33,7 +33,9 @@ const payPageCloses = 6 * time.Minute
 var (
 	invoiceID = regexp.MustCompile(`^0x[0-9a-f]{64}$`)
 	payToken  = regexp.MustCompile(`^[0-9a-f]{64}$`)
-	predict   = crypto.Keccak256([]byte("predict((bytes32,address,address,uint256,uint64,uint64,uint256))"))[:4]
+	predictV1 = crypto.Keccak256([]byte("predict((bytes32,address,address,uint256,uint64,uint64,uint256))"))[:4]
+	// v2 terms end with the network and platform fees (R-226).
+	predictV2 = crypto.Keccak256([]byte("predict((bytes32,address,address,uint256,uint64,uint64,uint256,uint256,uint256))"))[:4]
 )
 
 // terms is one stdin line: the invoice or one of its accepted options, as the database holds it. PayToken is the
@@ -178,7 +180,7 @@ func checkInvoice(ctx context.Context, c config.Canary, rpcs map[uint64][2]*rpc.
 			return fmt.Errorf("rpc %d unavailable", i+1)
 		}
 		var out hexutil.Bytes
-		err := cl.CallContext(ctx, &out, "eth_call", map[string]any{"to": c.Factory, "data": hexutil.Bytes(t.predictCall())},
+		err := cl.CallContext(ctx, &out, "eth_call", map[string]any{"to": c.Factory, "data": hexutil.Bytes(t.predictCall(c.FactoryFees))},
 			"latest")
 		if err != nil {
 			return fmt.Errorf("rpc %d predict: %w", i+1, redact(err))
@@ -272,11 +274,15 @@ func parseTerms(line string) (terms, error) {
 // Seconds from expiry to the settle deadline that create used: 7 days (invoice.SettleWindow), 1 day before it (D-18).
 var settleWindows = []uint64{604800, 86400}
 
-func (t terms) predictCall() []byte {
+// predictCall is factory.predict(terms). Fees are 0 until invoices carry them (F443).
+func (t terms) predictCall(fees bool) []byte {
 	word := func(n *big.Int) []byte { return n.FillBytes(make([]byte, 32)) }
 	address := func(s string) []byte { return word(new(big.Int).SetBytes(common.HexToAddress(s).Bytes())) }
 	amount, _ := new(big.Int).SetString(t.Amount, 10)
-	data := append([]byte{}, predict...)
+	data := append([]byte{}, predictV1...)
+	if fees {
+		data = append([]byte{}, predictV2...)
+	}
 	data = append(data, common.FromHex(t.ID)...)
 	data = append(data, address(t.Recipient)...)
 	data = append(data, address(t.Token)...)
@@ -284,6 +290,9 @@ func (t terms) predictCall() []byte {
 	data = append(data, word(new(big.Int).SetUint64(t.ExpiresAt))...)
 	data = append(data, word(new(big.Int).SetUint64(t.SettleDeadline))...)
 	data = append(data, word(new(big.Int).SetUint64(t.ChainID))...)
+	if fees {
+		data = append(data, make([]byte, 64)...)
+	}
 	return data
 }
 

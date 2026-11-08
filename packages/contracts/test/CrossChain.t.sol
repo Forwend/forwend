@@ -28,7 +28,9 @@ contract CrossChainTest is Test {
             amount: 500e6,
             expiresAt: 1_000_000,
             settleDeadline: 1_000_000 + 1 days,
-            intendedChainId: 84532
+            intendedChainId: 84532,
+            networkFee: 0,
+            platformFee: 0
         });
         vm.prank(executor);
         receiver = InvoiceReceiverFactory(factory).deploy(t);

@@ -47,14 +47,19 @@ The refund-authority Safe and deploys. Design: [architecture.md](architecture.md
 
 - `packages/contracts/script/deploy.sh <chain> [<token> <amount>]`: deploys the factory (idempotent) and probe;
   with a token it also pays, settles, refunds the extra and checks `statusOf`.
+  - The flow's terms take a 1% network fee and a 0.5% platform fee (R-226).
+  - It checks the recipient got the amount less both, and the refund authority the platform fee.
+  - Run it only where the test recipient's money may be lost: no one holds its key.
 - It reads the first executor from `FIRST_EXECUTOR`, never from the signing key: that address is part of the factory address.
 - Record it in `packages/contracts/deployments.json`; a replaced factory moves to `superseded`.
 - Every deploy needs Sasha's explicit yes. Results: local docs/spikes/s5-s6-testnets.md notes (`../spikes/s5-s6-testnets.md`).
 
 ## Development mainnet deploys
 
-- The factory on Base, Arbitrum, Arc and Tempo mainnets (F437) uses the testnet arguments: the test EOA is its refund authority.
+- The factory on Base, Arbitrum, Arc and Tempo mainnets uses the testnet arguments: the test EOA is its refund authority.
+  - v1.1 came in F437, v2 with the fees in F442; v1.1 stays for the invoices made before.
 - So it sits at the testnet factory's address; `deployments.json` lists it under `mainnets`.
+- Mainnet runs deploy the factory and probe only, never the flow: its money would go to the keyless test recipient.
 - This is the owner's choice for development. Production gets new contracts with the Safe above.
 - `script/deploy.sh <chain>` takes the mainnet names in `chains.json`. Each run needs Sasha's explicit yes.
 - On Tempo the executor pays fees in OUSD. It set that once with `setUserToken(OUSD)` on the fee manager.

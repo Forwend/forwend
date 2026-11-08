@@ -246,13 +246,13 @@ func PlanRecovery(ctx context.Context, db *pgxpool.Pool, home, there *ethclient.
 			r.Warnings = append(r.Warnings, "The invoice can still be paid. Deploying its receiver now starts its hold "+
 				"limit, and on Arc it then refuses native USDC. Wait until the checkout closes if you can.")
 		}
-		deploy, err := callData(deploySelector, terms)
+		deploy, err := address.Call(known, "deploy", terms)
 		if err != nil {
 			return Recovery{}, err
 		}
-		r.Calls = append(r.Calls, Call{To: factoryAddress, Data: deploy, Signature: deploySignature,
-			Args: []string{fmt.Sprintf("(%s,%s,%s,%s,%d,%d,%d)", s.Option.ID, strings.ToLower(common.Address(terms.Recipient).Hex()),
-				strings.ToLower(token), terms.Amount, terms.ExpiresAt, terms.SettleDeadline, terms.IntendedChainID)}})
+		signature, _ := address.Signature(known, "deploy")
+		args, _ := address.Args(known, s.Option.ID, terms)
+		r.Calls = append(r.Calls, Call{To: factoryAddress, Data: deploy, Signature: signature, Args: []string{args}})
 	}
 	r.Calls = append(r.Calls, Call{To: receiver, Data: recoverData, Signature: recoverSignature,
 		Args: []string{strings.ToLower(s.Token.Hex()), strings.ToLower(r.To.Hex()), s.Amount.String()}})
@@ -419,7 +419,7 @@ func ours(ctx context.Context, home, there *ethclient.Client, factory [20]byte, 
 	} else if !ok || n == 0 {
 		return fmt.Errorf("%w: that chain has no Forwend factory at %s", ErrCantReturn, common.Address(factory).Hex())
 	}
-	if ok, n, err := same(code(common.Address(address.Known[factory]))); err != nil {
+	if ok, n, err := same(code(common.Address(address.Known[factory].Implementation))); err != nil {
 		return fmt.Errorf("read the receiver code: %w", err)
 	} else if !ok || n == 0 {
 		return fmt.Errorf("%w: that chain has no Forwend receiver code", ErrCantReturn)

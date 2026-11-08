@@ -667,9 +667,9 @@ func (e env) settleOutside(t *testing.T, id, receive string) {
 		id).Scan(&expires, &deadline); err != nil {
 		t.Fatal(err)
 	}
-	terms := fmt.Sprintf("(%s,%s,%s,5000000,%d,%d,%d)", id, wallet, e.token, expires, deadline, chaintest.ChainID)
+	terms := fmt.Sprintf("(%s,%s,%s,5000000,%d,%d,%d,0,0)", id, wallet, e.token, expires, deadline, chaintest.ChainID)
 	e.anvil.Send(strings.ToLower(common.Address(address.Factory).Hex()),
-		"deploy((bytes32,address,address,uint256,uint64,uint64,uint256))", terms)
+		"deploy((bytes32,address,address,uint256,uint64,uint64,uint256,uint256,uint256))", terms)
 	e.anvil.Send(receive, "settle()")
 }
 
@@ -788,8 +788,8 @@ func TestAfterTheDeadlineTheSignerWaitsForTheRefundAuthority(t *testing.T) {
 		t.Fatal(err)
 	}
 	e.anvil.AsAuthority(strings.ToLower(common.Address(address.Factory).Hex()),
-		"deploy((bytes32,address,address,uint256,uint64,uint64,uint256))",
-		fmt.Sprintf("(%s,%s,%s,5000000,%d,%d,%d)", id, wallet, e.token, expires, deadline, chaintest.ChainID))
+		"deploy((bytes32,address,address,uint256,uint64,uint64,uint256,uint256,uint256))",
+		fmt.Sprintf("(%s,%s,%s,5000000,%d,%d,%d,0,0)", id, wallet, e.token, expires, deadline, chaintest.ChainID))
 	e.anvil.AsAuthority(receive, "settle()")
 	if _, err := e.pool.Exec(ctx, "UPDATE settlement_intents SET next_attempt_at = now()"); err != nil {
 		t.Fatal(err)

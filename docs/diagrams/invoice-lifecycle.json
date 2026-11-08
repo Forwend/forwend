@@ -48,7 +48,7 @@
       "label": "Settled",
       "groupId": null,
       "ports": [],
-      "description": "Invoice amount in the profile wallet. Ends here unless more money arrives"
+      "description": "Invoice amount less its fees in the profile wallet. Ends here unless more money arrives"
     },
     {
       "id": "expired",

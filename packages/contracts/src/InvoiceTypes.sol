@@ -2,7 +2,8 @@
 pragma solidity 0.8.30;
 
 /// Invoice terms, stored as the receiver clone's immutable args. The receiver address commits to them.
-/// No authority, executor or fee here: the API writes the terms and must not choose who can move money.
+/// No authority or executor here: the API writes the terms and must not choose who can move money. The fees are only
+/// amounts: the contract fixes who gets them, and refuses fees above a tenth of `amount` (feesWithinCeiling).
 struct InvoiceTerms {
     bytes32 invoiceId; // 256 random bits from the backend
     address recipient; // the creator's profile wallet
@@ -11,6 +12,8 @@ struct InvoiceTerms {
     uint64 expiresAt;
     uint64 settleDeadline; // the executor may settle until here (capped, see MAX_HOLD), then only the refund authority
     uint256 intendedChainId;
+    uint256 networkFee; // paid at settlement to the settler, who paid the gas
+    uint256 platformFee; // paid at settlement to the refund authority
 }
 
 struct InvoiceStatus {
@@ -52,6 +55,15 @@ function refundableAmount(uint256 balance, uint256 amount, bool settled, uint64 
     return balance > amount ? balance - amount : 0;
 }
 
+// The fees together may take at most amount / MAX_FEE_DIVISOR: a backend bug or a compromised API can't take more.
+uint256 constant MAX_FEE_DIVISOR = 10;
+
+/// Both fees fit under the ceiling. Never overflows: the second test runs only once the first holds.
+function feesWithinCeiling(InvoiceTerms memory t) pure returns (bool) {
+    uint256 ceiling = t.amount / MAX_FEE_DIVISOR;
+    return t.networkFee <= ceiling && t.platformFee <= ceiling - t.networkFee;
+}
+
 /// Terms that settle() accepts. Terms are not checked at deploy (an address that holds money must stay deployable), so
 /// unsafe ones are refused when money moves and go to refund instead. Shared by settle() and status().
 function safeToSettle(InvoiceTerms memory t, address receiver, address factory, address implementation)
@@ -59,7 +71,7 @@ function safeToSettle(InvoiceTerms memory t, address receiver, address factory, 
     returns (bool)
 {
     return t.amount != 0 && t.recipient != address(0) && t.recipient != receiver && t.recipient != factory
-        && t.recipient != implementation && t.recipient != t.token;
+        && t.recipient != implementation && t.recipient != t.token && feesWithinCeiling(t);
 }
 
 /// Balance read that never reverts: false for a token without code, with a failing balanceOf or a short reply. Copies

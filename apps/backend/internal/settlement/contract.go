@@ -16,15 +16,11 @@ import (
 
 // The only calls the signer makes (packages/contracts/src/InvoiceReceiverFactory.sol, InvoiceReceiver.sol).
 var (
-	deploySelector  = selector(deploySignature)
-	statusSelector  = selector("status((bytes32,address,address,uint256,uint64,uint64,uint256))")
 	settleSelector  = selector("settle()")
 	settledSelector = selector("settled()")
 	// Logged only by a successful settle.
 	settledEvent = crypto.Keccak256Hash([]byte("Settled(bytes32,address,uint256)"))
 )
-
-const deploySignature = "deploy((bytes32,address,address,uint256,uint64,uint64,uint256))"
 
 func selector(signature string) []byte {
 	return crypto.Keccak256([]byte(signature))[:4]
@@ -44,7 +40,7 @@ type onChain struct {
 }
 
 func factoryStatus(ctx context.Context, client *ethclient.Client, factory common.Address, terms address.Terms) (onChain, error) {
-	data, err := callData(statusSelector, terms)
+	data, err := address.Call([20]byte(factory), "status", terms)
 	if err != nil {
 		return onChain{}, err
 	}
@@ -61,14 +57,6 @@ func factoryStatus(ctx context.Context, client *ethclient.Client, factory common
 		Balance: new(big.Int).SetBytes(word(3)), Settled: word(4)[31] == 1, Refundable: new(big.Int).SetBytes(word(5)),
 		Settleable: word(6)[31] == 1, Settler: common.BytesToAddress(word(7)), Deadline: new(big.Int).SetBytes(word(8)).Uint64(),
 	}, nil
-}
-
-func callData(sel []byte, terms address.Terms) ([]byte, error) {
-	args, err := terms.Encode()
-	if err != nil {
-		return nil, err
-	}
-	return append(append([]byte{}, sel...), args...), nil
 }
 
 // finalized is the block tag for reads that must not be undone by a reorg (D-45).

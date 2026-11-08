@@ -9,12 +9,14 @@ Every rule has a test.
 
 ## Terms (immutable clone args)
 
-- Only `invoiceId` (256 random bits), `recipient`, `token`, `amount`, `expiresAt`, `settleDeadline`, `intendedChainId`.
-- No authority, executor or fee in the terms: the API writes them and must not choose who moves money.
+- Only `invoiceId` (256 random bits), `recipient`, `token`, `amount`, `expiresAt`, `settleDeadline`, `intendedChainId`,
+  `networkFee`, `platformFee` (v2 on; v1.1 ends at `intendedChainId`).
+- No authority or executor in the terms: the API writes them and must not choose who moves money.
+- The fees are only amounts (R-226). The contract fixes who gets them: the settler and the refund authority.
 - No profile, merchant or project ID: terms are public forever and would link a profile's invoices.
 - `predict` and `deploy` never reject terms, so every address a payer saw stays deployable.
-- `settle` refuses unsafe terms: amount 0, or recipient 0 / receiver / factory / implementation / token. That money
-  goes to `refund`.
+- `settle` refuses unsafe terms: amount 0, recipient 0 / receiver / factory / implementation / token, or fees above
+  a tenth of `amount` together (`feesWithinCeiling`). That money goes to `refund`.
 - Effective deadline = `min(settleDeadline, deployedAt + 30 days)`, so a wrong deadline cannot freeze money.
 
 ## Factory
@@ -41,7 +43,10 @@ Every rule has a test.
 ## Receiver
 
 - `settle()`: intended chain, not paused, not settled, safe terms, balance ≥ `amount`. Executor until the effective
-  deadline, then only the refund authority. Pays exactly `amount` and checks the recipient's balance rose by `amount`.
+  deadline, then only the refund authority. Pays the recipient `amount` less both fees, and checks its balance rose by
+  that. Then pays `networkFee` to the settler, who paid the gas, and `platformFee` to the refund authority.
+  - `Settled` carries what the recipient got. `FeesPaid` carries both fees, only when one is above 0.
+  - A refund takes no fee: the fees leave only by `settle`.
 - `refund(to, amount)`: refund authority, intended chain, `to` not 0 or the receiver. May repeat, never above `refundableAmount`:
   everything once settled or past the deadline; before that only the excess over `amount`.
 - `refundable()`: what `refund` allows now. Off the intended chain it is 0: `refund` reverts there, and money leaves
@@ -69,10 +74,10 @@ Every rule has a test.
 - A unit test per rule; fuzz on amounts and timestamps.
 - Invariants:
   - settled ≤ amount; settled + refunded ≤ received;
-  - only `recipient` gets settlement;
+  - the recipient gets 0 or `amount` less the fees; the fees are paid once, at settlement, and nothing else;
   - refunds never take `amount` before the deadline;
-  - the executor moves money only to `recipient`;
+  - the executor moves money only to `recipient`, and to itself only the network fee;
   - the factory returns only its own balance.
-- Halmos for `settle`, `refund`, and receiver, implementation and factory `recover` (`forge clean` first).
+- Halmos for `settle` (with any fees too), `refund`, and receiver, implementation and factory `recover` (`forge clean` first).
 - Cross-chain: same terms, same address on two Anvil chains; calls revert on the wrong one.
 - Fork test on Base Sepolia with real USDC; a mock token for USDT behaviour.

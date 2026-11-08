@@ -102,7 +102,7 @@
       "label": "Fix invoice terms",
       "groupId": "backend",
       "ports": [],
-      "description": "invoiceId (256 random bits), recipient, token, amount, expiresAt (default 1 h, creator can change), settleDeadline, intendedChainId. Terms never change"
+      "description": "invoiceId (256 random bits), recipient, token, amount, expiresAt (default 1 h, creator can change), settleDeadline, intendedChainId, networkFee, platformFee (v2). Terms never change"
     },
     {
       "id": "predict",
@@ -241,12 +241,12 @@
       "label": "Receiver.settle()",
       "groupId": "chain",
       "ports": [],
-      "description": "Intended chain only. Refuses unsafe terms (amount 0, bad recipient), so that money goes to refund. Exactly amount to the fixed recipient, once; checks the recipient received it. Executor until min(settleDeadline, deployedAt + 30 days), then only the multisig. Reverts unless the factory deployed this receiver (deployedAt), so clones made outside the factory do nothing"
+      "description": "Intended chain only. Refuses unsafe terms (amount 0, bad recipient, fees above a tenth of amount), so that money goes to refund. Amount less the fees to the fixed recipient, once; checks the recipient received it; then the network fee to the settler and the platform fee to the multisig. Executor until min(settleDeadline, deployedAt + 30 days), then only the multisig. Reverts unless the factory deployed this receiver (deployedAt), so clones made outside the factory do nothing"
     },
     {
       "id": "wallet",
       "kind": "job",
-      "label": "Profile wallet gets the invoice amount",
+      "label": "Profile wallet gets the invoice amount less its fees",
       "groupId": "creator",
       "ports": [],
       "description": "State: settled"
