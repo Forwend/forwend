@@ -1201,7 +1201,7 @@
       "behavior": "Every reader shows an invoice option's fees: what was paid, each fee and what the owner received",
       "acceptance": [
         "The pay page computes the receive address with the option's fees. When the client pays, it shows the price, the network fee and the total (R-228).",
-        "Payment and invoice detail, receipts, PDFs, Transactions, exports and records show what was paid, each fee and what the owner received.",
+        "Payment and invoice detail, exports and records show what was paid, each fee and what the owner received. Transactions show what a settlement paid out of the payment; PDFs show each fee when the client pays them (R-228).",
         "The API, webhooks and the node, js and react packages carry networkFee, platformFee and netAmount.",
         "A fee of 0 shows no line. Every money reader is checked, and invoices without fees read as before."
       ],
@@ -1240,7 +1240,8 @@
         "Profiles get a Fees paid by default (you or your client) in settings. The invoice and link forms show the fee, what the client pays and what the owner receives, with a per-invoice override. The API takes feesPaidBy.",
         "When the client pays, the amount is the price plus the fees; when the owner pays, the amount is the price. Fees never pass the contract's tenth of the amount.",
         "The canary builds each option's terms with its fees, so an invoice with fees raises no false alarm.",
-        "A payer-chooses invoice whose options' amounts differ by their fees says so where it names one amount: the pay page before a pick and the PDF's Pay line. The dashboard's daily-limit copy no longer says Forwend pays the network fee."
+        "A payer-chooses invoice whose options' amounts differ by their fees says so where it names one amount: the pay page before a pick and the PDF's Pay line. The dashboard's daily-limit copy no longer says Forwend pays the network fee.",
+        "A backend test reads a settled invoice with fees through Transactions JSON and CSV (the settlement row's fees)."
       ],
       "dependsOn": [
         "F445"

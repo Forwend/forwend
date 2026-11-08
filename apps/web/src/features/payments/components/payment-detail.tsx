@@ -58,6 +58,7 @@ import { RecordLink } from "@/shared/components/record-link";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
 import { dateTime } from "@/shared/lib/dates";
 
 const NOT_FOUND = 404;
@@ -71,9 +72,6 @@ export interface PaymentDetailProps {
   /** Under the not found line: the screen's way to the other mode (R-221). */
   notFound?: ReactNode;
 }
-
-// The owner receives nothing of these, so they show no fees or net.
-const CLOSED_UNPAID: readonly string[] = ["canceled", "expired", "expired_partially_paid"];
 
 type Option = PaymentDetailType["options"][number];
 
@@ -216,7 +214,9 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
               {paidWith &&
               fees &&
               fees.total > 0n &&
-              !CLOSED_UNPAID.includes(payment.paymentStatus) ? (
+              // The owner receives nothing of a payment canceled or closed unpaid.
+              payment.paymentStatus !== API_PAYMENT_STATUSES.canceled &&
+              !(payment.closed && payment.paymentStatus !== API_PAYMENT_STATUSES.paid) ? (
                 <>
                   <Figure term={COPY.fees}>
                     <PaymentAmount
