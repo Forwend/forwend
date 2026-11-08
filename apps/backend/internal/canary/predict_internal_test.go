@@ -10,7 +10,7 @@ import (
 func TestPredictCallMatchesEachFactorysTerms(t *testing.T) {
 	line := terms{ID: "0x" + repeat("05", 32), Recipient: "0x1a2B3c4D5e6F708192a3B4c5D6e7F80912A3b4C5",
 		Token: "0x00000000000000000000000000000000000000bb", Amount: "5000000", ExpiresAt: 1800000000,
-		SettleDeadline: 1800086400, ChainID: 31337}
+		SettleDeadline: 1800086400, ChainID: 31337, NetworkFee: "0", PlatformFee: "0"}
 	words := repeat("05", 32) +
 		"0000000000000000000000001a2b3c4d5e6f708192a3b4c5d6e7f80912a3b4c5" +
 		"00000000000000000000000000000000000000000000000000000000000000bb" +
@@ -23,6 +23,11 @@ func TestPredictCallMatchesEachFactorysTerms(t *testing.T) {
 	}
 	if got := hex.EncodeToString(line.predictCall(true)); got != "ab97e44a"+words+repeat("0", 128) {
 		t.Errorf("v2 predict\n got %s", got)
+	}
+	// R-227: the option's fees, as the database holds them, end the v2 terms.
+	line.NetworkFee, line.PlatformFee = "30000", "20000"
+	if got, want := hex.EncodeToString(line.predictCall(true)), "ab97e44a"+words+repeat("0", 60)+"7530"+repeat("0", 60)+"4e20"; got != want {
+		t.Errorf("v2 predict with fees\n got %s\nwant %s", got, want)
 	}
 }
 

@@ -69,10 +69,11 @@ func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 				ClientName: body.Client.Name, ClientEmail: body.Client.Email, ClientAddress: body.Client.Address,
 				ClientCountry: body.Client.Country, ClientTaxID: body.Client.TaxID,
 				SenderName: body.SenderName, ReturnURL: body.ReturnURL, Reference: body.Reference, Metadata: metadata},
-			Replaces: body.Replaces,
-			StoreID:  body.StoreID,
-			Stores:   mid.ProfileAccess(r).Stores,
-			Livemode: mid.ProfileAccess(r).Livemode,
+			Replaces:   body.Replaces,
+			FeesPaidBy: body.FeesPaidBy,
+			StoreID:    body.StoreID,
+			Stores:     mid.ProfileAccess(r).Stores,
+			Livemode:   mid.ProfileAccess(r).Livemode,
 		})
 		if err != nil {
 			httpio.WriteError(w, r, err)

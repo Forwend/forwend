@@ -106,7 +106,9 @@ type Request struct {
 	Repeat *Repeat
 	// R-129: the profile's invoice this one replaces, canceled in the same transaction.
 	Replaces string
-	cycle    *cycle
+	// FeesPaidBy is FeesPaidByOwner or FeesPaidByClient; "" takes the profile's (R-227). A retainer keeps its first's.
+	FeesPaidBy string
+	cycle      *cycle
 	// R-134: a merchant invoice's store; "" is the profile's first store.
 	StoreID string
 	// Stores, when not nil, are the only stores a Developer or Finance member reaches (R-138): Replaces must be in one.
@@ -588,7 +590,8 @@ func requestHash(chainID uint64, token string, amount fmt.Stringer, expiresIn ti
 
 // buildTerms computes the receive address and refuses terms that settle() would refuse, so no payer is ever shown an
 // address whose money could only be refunded (docs/backend/money-safety.md).
-func buildTerms(id [32]byte, chainID uint64, token, recipient string, amount *big.Int, expiresAt, settleDeadline time.Time) (address.Terms, string, error) {
+func buildTerms(id [32]byte, chainID uint64, token, recipient string, amount, networkFee, platformFee *big.Int,
+	expiresAt, settleDeadline time.Time) (address.Terms, string, error) {
 	t := address.Terms{
 		InvoiceID:       id,
 		Recipient:       hex20(recipient),
@@ -597,6 +600,8 @@ func buildTerms(id [32]byte, chainID uint64, token, recipient string, amount *bi
 		ExpiresAt:       uint64(expiresAt.Unix()),
 		SettleDeadline:  uint64(settleDeadline.Unix()),
 		IntendedChainID: chainID,
+		NetworkFee:      networkFee,
+		PlatformFee:     platformFee,
 	}
 	receiver, err := address.Receive(t)
 	if err != nil {

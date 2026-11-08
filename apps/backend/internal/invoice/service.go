@@ -12,8 +12,10 @@ import (
 )
 
 type Service struct {
-	pool *pgxpool.Pool
-	now  func() time.Time
+	pool   *pgxpool.Pool
+	now    func() time.Time
+	quotes Quoter // nil: no fees (SetFees)
+	plan   FeePlan
 }
 
 func NewService(pool *pgxpool.Pool) *Service {

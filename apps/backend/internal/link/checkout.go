@@ -60,7 +60,8 @@ func (s *Service) Public(ctx context.Context, slug string) (Public, error) {
 		FROM payment_links l LEFT JOIN profile_billing_details b ON b.profile_id = l.profile_id
 		LEFT JOIN stores st ON st.id = l.store_id WHERE l.slug = $1`, slug).Scan(&l.ID, &l.StoreID, &l.Slug, &l.Title,
 		&l.AmountCents, &l.MinCents, &l.MaxCents, &l.EndsAt, &l.MaxPayments, &l.Active, &l.Visits, &l.Paid,
-		&l.Reserved, &l.CreatedAt, &l.UpdatedAt, &l.Livemode, &l.Revision, &p.ProfileID, &p.Payee, &p.BrandColor, &p.LogoAt)
+		&l.Reserved, &l.CreatedAt, &l.UpdatedAt, &l.Livemode, &l.Revision, &l.FeesPaidBy, &p.ProfileID, &p.Payee,
+		&p.BrandColor, &p.LogoAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Public{}, ErrNotFound
 	}
@@ -168,7 +169,8 @@ func (s *Service) Pay(ctx context.Context, slug, key string, request PayRequest)
 	}
 	// Keys are the profile's: a payer's key must never replay the owner's invoices.
 	inv, created, err := s.invoices.Create(ctx, p.ProfileID, "link:"+p.ID+":"+key, invoice.Request{Purpose: invoice.PurposeCheckout, AmountUSD: job.USD(amount),
-		Details: invoice.Details{Title: p.Title}, StoreID: p.StoreID, LinkID: p.ID, By: history.Payer, Allow: request.Allow,
+		Details: invoice.Details{Title: p.Title}, StoreID: p.StoreID, LinkID: p.ID, FeesPaidBy: p.FeesPaidBy, By: history.Payer,
+		Allow:    request.Allow,
 		Livemode: &p.Livemode, Before: func(ctx context.Context, tx pgx.Tx) error {
 			if _, err := tx.Exec(ctx, "SELECT 1 FROM payment_links WHERE id = $1 FOR UPDATE", p.ID); err != nil {
 				return fmt.Errorf("lock link checkout: %w", err)

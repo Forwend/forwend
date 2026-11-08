@@ -48,6 +48,9 @@ func (s *Service) Save(ctx context.Context, profileID, id string, d Details) (l 
 	if !lowercaseUUID.MatchString(id) {
 		return Link{}, false, fmt.Errorf("%w: linkId must be a lowercase UUID", ErrInvalid)
 	}
+	if d.FeesPaidBy != "" && d.FeesPaidBy != invoice.FeesPaidByOwner && d.FeesPaidBy != invoice.FeesPaidByClient {
+		return Link{}, false, fmt.Errorf("%w: feesPaidBy must be owner, client or null", ErrInvalid)
+	}
 	if d.Title == "" || !utf8.ValidString(d.Title) || utf8.RuneCountInString(d.Title) > invoice.MaxTitle ||
 		!profile.PlainText(d.Title, false) {
 		return Link{}, false, fmt.Errorf("%w: title must be 1 to %d characters of plain text", ErrInvalid, invoice.MaxTitle)
@@ -133,16 +136,17 @@ func (s *Service) Save(ctx context.Context, profileID, id string, d Details) (l 
 		// An id of another profile's link neither inserts (the conflict) nor updates (the WHERE): no row comes back.
 		err := tx.QueryRow(ctx, `
 			INSERT INTO payment_links (id, profile_id, store_id, slug, title, amount_cents, min_cents, max_cents, ends_at,
-			    max_payments, active, livemode)
-			VALUES ($1, $2, nullif($3, '')::uuid, $4, $5, nullif($6, 0), nullif($7, 0), nullif($8, 0), $9, nullif($10, 0), $11, $12)
+			    max_payments, active, livemode, fees_paid_by)
+			VALUES ($1, $2, nullif($3, '')::uuid, $4, $5, nullif($6, 0), nullif($7, 0), nullif($8, 0), $9, nullif($10, 0), $11, $12,
+			    nullif($14, ''))
 			ON CONFLICT (id) DO UPDATE SET title = excluded.title,
 			    amount_cents = excluded.amount_cents, min_cents = excluded.min_cents, max_cents = excluded.max_cents,
 			    ends_at = excluded.ends_at, max_payments = excluded.max_payments, active = excluded.active,
-			    updated_at = now()
+			    fees_paid_by = excluded.fees_paid_by, updated_at = now()
 			    WHERE payment_links.profile_id = excluded.profile_id
 			      AND ($13::boolean IS NULL OR payment_links.livemode = $13)
 			RETURNING xmax = 0`, id, profileID, store, slug, d.Title, amount, low, high, d.EndsAt, maxPayments,
-			d.Active, live, d.Livemode).Scan(&created)
+			d.Active, live, d.Livemode, d.FeesPaidBy).Scan(&created)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}

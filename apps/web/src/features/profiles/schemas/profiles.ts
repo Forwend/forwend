@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { FEES_PAID_BY } from "@/features/invoices/constants/invoices";
 import { PROFILE_KINDS, ROLES } from "@/features/profiles/constants/profile";
 import { apiTime, count, evmAddress } from "@/shared/schemas/api";
 
@@ -14,10 +15,15 @@ export const profileSchema = z.object({
   permissions: z.array(z.string()),
   // D-120: false while the profile is in Developer mode, on the testnets.
   livemode: z.boolean(),
+  // D-122: who pays new invoices' fees unless one says otherwise; an answer without it has the owner pay.
+  feesPaidBy: z.enum(FEES_PAID_BY).optional(),
 });
 
 /** PUT /v1/profiles/{profileId}/mode. */
 export const profileModeSchema = z.object({ livemode: z.boolean() });
+
+/** PUT /v1/profiles/{profileId}/fees. */
+export const profileFeesSchema = z.object({ feesPaidBy: z.enum(FEES_PAID_BY) });
 
 /** POST and GET /v1/me, and POST /v1/me/onboarding. */
 export const meSchema = z.object({

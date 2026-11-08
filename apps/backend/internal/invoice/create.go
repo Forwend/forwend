@@ -2,6 +2,7 @@ package invoice
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -27,7 +28,10 @@ type accepted struct {
 	live          bool
 	amount        *big.Int
 	// scale turns request amounts into base units: 0 for a fixed invoice, the token's decimals for USD (D-75).
-	scale int
+	scale    int
+	decimals int
+	// The fees in the option's terms (R-227); amount includes them when the client pays.
+	networkFee, platformFee *big.Int
 }
 
 // Create is idempotent per (profile, key): a repeat returns the stored invoice with created false.
@@ -67,6 +71,14 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		sum := sha256.Sum256(append(hash, []byte("|purpose="+r.Purpose)...))
 		hash = sum[:]
 	}
+	switch r.FeesPaidBy {
+	case "":
+	case FeesPaidByOwner, FeesPaidByClient:
+		sum := sha256.Sum256(append(hash, []byte("|feesPaidBy="+r.FeesPaidBy)...))
+		hash = sum[:]
+	default:
+		return Invoice{}, false, fmt.Errorf("%w: feesPaidBy must be owner or client", ErrInvalid)
+	}
 	if inv, err := s.replay(ctx, profileID, idempotencyKey, hash, r.Livemode); !errors.Is(err, ErrNotFound) {
 		return inv, false, err
 	}
@@ -79,11 +91,11 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	// The profile row lock makes concurrent creates count one after another, so none passes a cap on a stale count.
 	// NO KEY UPDATE allows payment events to check their profile foreign key while holding invoice or link locks.
 	// Billing details are never removed, so once there they stay for the insert trigger to copy.
-	var kind string
+	var kind, feesPaidBy string
 	var billed, live bool
 	if err := tx.QueryRow(ctx, `SELECT kind,
-		EXISTS (SELECT 1 FROM profile_billing_details WHERE profile_id = $1), livemode FROM profiles WHERE id = $1
-		FOR NO KEY UPDATE`, profileID).Scan(&kind, &billed, &live); err != nil {
+		EXISTS (SELECT 1 FROM profile_billing_details WHERE profile_id = $1), livemode, fees_paid_by FROM profiles
+		WHERE id = $1 FOR NO KEY UPDATE`, profileID).Scan(&kind, &billed, &live, &feesPaidBy); err != nil {
 		return Invoice{}, false, fmt.Errorf("lock profile: %w", err)
 	}
 	// A concurrent create may have committed while this request waited for the profile lock.
@@ -187,6 +199,23 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		return Invoice{}, false, fmt.Errorf("%w: this invoice must be %s mode, and no token of that mode is enabled",
 			ErrInvalid, modeName(live))
 	}
+	// D-122: the fees are on the price. The client pays them on top, or the owner has them deducted at settlement;
+	// either way settle() takes at most a tenth of the amount.
+	r.FeesPaidBy = cmp.Or(r.FeesPaidBy, feesPaidBy)
+	for i := range options {
+		o := &options[i]
+		if o.networkFee, o.platformFee, err = s.optionFees(ctx, o.chainID, o.decimals, o.amount); err != nil {
+			return Invoice{}, false, err
+		}
+		fees := new(big.Int).Add(o.networkFee, o.platformFee)
+		if r.FeesPaidBy == FeesPaidByClient {
+			o.amount = new(big.Int).Add(o.amount, fees)
+		}
+		if new(big.Int).Mul(fees, big.NewInt(10)).Cmp(o.amount) > 0 {
+			return Invoice{}, false, fmt.Errorf("%w: the amount is too small for its network fee of %s base units on chain %d",
+				ErrInvalid, o.networkFee, o.chainID)
+		}
+	}
 	// Payers on payment links and shoppers behind the checkout API each have their own quota, so strangers can't use
 	// up what the owner's own invoices need (R-188).
 	source, whose, has, creates := "invoice", "a profile", "has", "creates"
@@ -254,7 +283,8 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		if i > 0 {
 			id = address.OptionID(first, o.chainID, hex20(o.token))
 		}
-		_, receive, err := buildTerms(id, o.chainID, o.token, recipient, o.amount, expiresAt, settleDeadline)
+		_, receive, err := buildTerms(id, o.chainID, o.token, recipient, o.amount, o.networkFee, o.platformFee, expiresAt,
+			settleDeadline)
 		if err != nil {
 			return Invoice{}, false, err
 		}
@@ -275,17 +305,18 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 			    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
 			    request_hash, title, note, due_date, client_name, client_email, client_address, sender_name, return_url,
 			    client_country, client_tax_id, supply_date, reference, agreed_currency, agreed_amount, agreed_decimals,
-			    agreed_date, pay_token, store_id, link_id, metadata, purpose, document_kind)
+			    agreed_date, pay_token, store_id, link_id, metadata, purpose, document_kind, network_fee, platform_fee,
+			    fees_paid_by)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'evm_create2', $11, $12, $13, $14, NULLIF($15, ''),
 			    NULLIF($16, ''), NULLIF($17, '')::date, NULLIF($18, ''), NULLIF($19, ''), NULLIF($20, ''), NULLIF($21, ''),
 			    NULLIF($22, ''), NULLIF($23, ''), NULLIF($24, ''), NULLIF($25, '')::date, NULLIF($26, ''), $27, $28, $29, $30::date,
-			    NULLIF($31, ''), $32, NULLIF($33, '')::uuid, $34, $35, $36)`,
+			    NULLIF($31, ''), $32, NULLIF($33, '')::uuid, $34, $35, $36, $37, $38, $39)`,
 			hexID(id), mainID, profileID, o.chainID, o.family, o.token, o.amount.String(), expiresAt.Unix(),
 			settleDeadline.Unix(), recipient, hexAddress(address.Factory), receive, idempotencyKey, hash, details.Title,
 			details.Note, details.DueDate, details.ClientName, details.ClientEmail, details.ClientAddress, details.SenderName,
 			details.ReturnURL, details.ClientCountry, details.ClientTaxID, details.SupplyDate, details.Reference,
 			agreedCurrency, agreedAmount, agreedDecimals, agreedDate, pay, storeID, r.LinkID, metadataJSON(details.Metadata),
-			purpose, documentKind)
+			purpose, documentKind, o.networkFee.String(), o.platformFee.String(), r.FeesPaidBy)
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.ConstraintName == "invoices_profile_idempotency_key" {
 			// A concurrent request with the same key won the insert.
@@ -384,7 +415,7 @@ func (s *Service) accepted(ctx context.Context, tx pgx.Tx, chainID uint64, token
 		if least := usdUnits(minUSD, decimals); least == nil || amount.Cmp(least) < 0 {
 			return nil, fmt.Errorf("%w: amount must be at least 1.00 %s", ErrInvalid, symbol)
 		}
-		return []accepted{{chainID: chainID, family: family, token: token, live: live, amount: amount}}, nil
+		return []accepted{{chainID: chainID, family: family, token: token, live: live, amount: amount, decimals: decimals}}, nil
 	}
 	// A chain the worker has not scanned yet is left out: a payment there before its first scan would never be seen
 	// (SEC-02). Only EVM chains for now: one recipient wallet serves them all.
@@ -406,7 +437,7 @@ func (s *Service) accepted(ctx context.Context, tx pgx.Tx, chainID uint64, token
 		if err := rows.Scan(&a.chainID, &a.family, &a.live, &a.token, &symbol, &decimals); err != nil {
 			return nil, fmt.Errorf("read enabled tokens: %w", err)
 		}
-		a.scale = decimals
+		a.scale, a.decimals = decimals, decimals
 		if a.amount = usdUnits(usd, decimals); a.amount == nil {
 			return nil, fmt.Errorf("%w: amountUsd has more decimals than %s (%d) can hold", ErrInvalid, symbol, decimals)
 		}

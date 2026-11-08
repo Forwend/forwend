@@ -324,9 +324,26 @@ export const recheckSchema = z.object({
 export const invoicesPageSchema = pageOf(invoiceSummarySchema);
 
 /** Fixed: chainId, token and amount; payer chooses: amountUsd alone (R-56). */
+/** GET /v1/profiles/{profileId}/fees: each option's fees for a price, before the invoice is made (R-227). */
+export const feeQuoteSchema = z.object({
+  feesPaidBy: z.enum(FEES_PAID_BY),
+  options: z.array(
+    z.object({
+      chainId: count,
+      token: evmAddress,
+      decimals: count,
+      price: baseUnits,
+      networkFee: baseUnits,
+      platformFee: baseUnits,
+    }),
+  ),
+});
+
 export const createInvoiceBodySchema = z.object({
   // R-129: the invoice it replaces.
   replaces: hash32.optional(),
+  // D-122: who pays the fees; left out, the profile's choice.
+  feesPaidBy: z.enum(FEES_PAID_BY).optional(),
   // R-134: a merchant invoice's store.
   storeId: z.guid().optional(),
   chainId: count.optional(),

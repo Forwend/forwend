@@ -18,3 +18,15 @@ func (s *Service) SetLivemode(ctx context.Context, profileID string, live bool) 
 	}
 	return nil
 }
+
+// SetFeesPaidBy sets who pays the profile's new invoices' fees (D-122, R-227): "owner", deducted at settlement, or
+// "client", added on top of the price. Invoices made before keep theirs.
+func (s *Service) SetFeesPaidBy(ctx context.Context, profileID, paidBy string) error {
+	if paidBy != "owner" && paidBy != "client" {
+		return fmt.Errorf("%w: feesPaidBy must be owner or client", ErrInvalid)
+	}
+	if _, err := s.pool.Exec(ctx, "UPDATE profiles SET fees_paid_by = $2 WHERE id = $1", profileID, paidBy); err != nil {
+		return fmt.Errorf("save who pays the fees: %w", err)
+	}
+	return nil
+}

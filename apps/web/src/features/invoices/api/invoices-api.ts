@@ -2,6 +2,7 @@ import { z } from "zod";
 import { INVOICES_PAGE_SIZE } from "@/features/invoices/constants/invoices";
 import {
   createInvoiceBodySchema,
+  feeQuoteSchema,
   invoiceEventsSchema,
   invoiceSchema,
   invoicesPageSchema,
@@ -11,6 +12,7 @@ import {
 } from "@/features/invoices/schemas/invoices";
 import type {
   CreateInvoiceBody,
+  FeeQuote,
   Invoice,
   InvoiceEvent,
   InvoicesPage,
@@ -77,6 +79,20 @@ export const invoicesApi = apiSlice
         }),
         rawResponseSchema: invoiceEventsSchema,
         transformResponse: (data: { items: InvoiceEvent[] }) => data.items,
+      }),
+      /** R-227: the fees each option of a price would carry, so a form shows them before it saves. */
+      getFees: build.query<
+        FeeQuote,
+        { profileId: string } & (
+          | { amountUsd: string }
+          | { chainId: number; token: string; amount: string }
+        )
+      >({
+        query: ({ profileId, ...price }) => ({
+          url: `/v1/profiles/${encodeURIComponent(profileId)}/fees`,
+          params: price,
+        }),
+        responseSchema: feeQuoteSchema,
       }),
       /** Owed to you (R-95). */
       getOwed: build.query<OwedList, string>({
@@ -239,6 +255,7 @@ export const {
   useStopRemindersMutation,
   useGetInvoiceEventsQuery,
   useGetOwedQuery,
+  useGetFeesQuery,
   useRecheckInvoiceMutation,
   useSetPayerEmailMutation,
   usePickOptionMutation,

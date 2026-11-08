@@ -37,6 +37,7 @@ export const PERMISSIONS = {
   // Sending out of the wallet: the owner's alone (D-61).
   moneyMove: "money.move",
   billingRead: "billing.read",
+  billingWrite: "billing.write",
   tokensRead: "tokens.read",
   tokensWrite: "tokens.write",
   jobs: "jobs",

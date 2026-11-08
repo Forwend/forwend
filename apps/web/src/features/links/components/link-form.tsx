@@ -13,6 +13,7 @@ import { PencilLine, Power, Repeat, Tag } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import { FEES_PAID_BY } from "@/features/invoices/constants/invoices";
 import { formatDueDate } from "@/features/invoices/lib/invoices";
 import { useSaveLinkMutation } from "@/features/links/api/links-api";
 import {
@@ -52,6 +53,9 @@ const FIELD_STEPS: Record<LinkField, string> = {
   maxPayments: STEPS.limits,
 };
 
+// The select's value for no choice of the link's own: a select item can't have an empty value.
+const PROFILE_CHOICE = "profile";
+
 // R-140: a new link's id is made once, so a retried save after an error makes one link.
 export function LinkForm({ profileId, link, stores }: LinkFormProps) {
   const [save] = useSaveLinkMutation();
@@ -64,6 +68,7 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
   const [store, setStore] = useState(link?.storeId ?? stores[0]?.storeId ?? "");
   const [endsAt, setEndsAt] = useState<string | null>(link?.endsAt ?? null);
   const [active, setActive] = useState(link?.active ?? true);
+  const [feesPaidBy, setFeesPaidBy] = useState<string>(link?.feesPaidBy ?? PROFILE_CHOICE);
   // Off, the link takes one payment: a cap of 1.
   const [reusable, setReusable] = useState(link?.maxPayments !== 1);
   const [errors, setErrors] = useState<Partial<Record<LinkField, string>>>({});
@@ -108,6 +113,8 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
       endsAt,
       maxPayments: !reusable ? 1 : cap ? Number(cap) : null,
       active,
+      feesPaidBy:
+        feesPaidBy === FEES_PAID_BY.owner || feesPaidBy === FEES_PAID_BY.client ? feesPaidBy : null,
     };
   };
   // Every problem the form has now, whichever step holds it.
@@ -339,6 +346,18 @@ export function LinkForm({ profileId, link, stores }: LinkFormProps) {
               </p>
             </div>
           )}
+          {/* D-122: the profile's choice unless the link makes its own. */}
+          <SelectField
+            label={COPY.feesPaidBy}
+            value={feesPaidBy}
+            onValueChange={setFeesPaidBy}
+            hint={COPY.feesHint}
+            options={[
+              { value: PROFILE_CHOICE, label: COPY.feesDefault },
+              { value: FEES_PAID_BY.owner, label: COPY.feesOwner },
+              { value: FEES_PAID_BY.client, label: COPY.feesClient },
+            ]}
+          />
         </FieldGroup>
       </div>
       <div data-step={STEPS.limits} className={flow.shows(STEPS.limits)}>

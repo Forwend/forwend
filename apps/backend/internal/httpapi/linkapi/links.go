@@ -78,10 +78,14 @@ func putLink(links *link.Service) http.HandlerFunc {
 			}
 		}
 		active := body.Active == nil || *body.Active
+		feesPaidBy := ""
+		if body.FeesPaidBy != nil {
+			feesPaidBy = *body.FeesPaidBy
+		}
 		l, created, err := links.Save(r.Context(), r.PathValue("profileId"), r.PathValue("linkId"), link.Details{
 			Title: body.Title, StoreID: body.StoreID, AmountUSD: body.AmountUSD, MinUSD: body.MinUSD,
 			MaxUSD: body.MaxUSD, EndsAt: body.EndsAt, MaxPayments: body.MaxPayments, Active: active,
-			Livemode: mid.ProfileAccess(r).Livemode})
+			Livemode: mid.ProfileAccess(r).Livemode, FeesPaidBy: feesPaidBy})
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

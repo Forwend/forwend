@@ -22,6 +22,7 @@ import type {
   AmountError,
   Deposit,
   ExpiryChoice,
+  FeeQuote,
   FeeTerms,
   Invoice,
   InvoiceClient,
@@ -293,6 +294,30 @@ export function optionFees(o: FeeTerms): OptionFees {
     total: network + platform,
     net: BigInt(o.amount) - network - platform,
     clientPays: o.feesPaidBy === FEES_PAID_BY.client,
+  };
+}
+
+/** What the client pays and the owner receives of a quoted price (R-227), lowest and highest over the options in the
+ * form's units: on a payer-chooses invoice each network adds its own fee. Null before a quote. */
+export function feeFigures(
+  quote: FeeQuote | undefined,
+  decimals: number,
+  clientPays: boolean,
+): { fee: [bigint, bigint]; pays: [bigint, bigint]; receives: [bigint, bigint] } | null {
+  const options = quote?.options.filter((o) => o.decimals === decimals) ?? [];
+  const first = options[0];
+  if (!first) return null;
+  // bigint has no Math.min: the sorted ends instead.
+  const fees = options
+    .map((o) => BigInt(o.networkFee) + BigInt(o.platformFee))
+    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const low = fees[0] ?? 0n;
+  const high = fees[fees.length - 1] ?? 0n;
+  const price = BigInt(first.price);
+  return {
+    fee: [low, high],
+    pays: clientPays ? [price + low, price + high] : [price, price],
+    receives: clientPays ? [price, price] : [price - high, price - low],
   };
 }
 

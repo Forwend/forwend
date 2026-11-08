@@ -1,10 +1,12 @@
 import { z } from "zod";
+import type { FeesPaidBy } from "@/features/invoices/types/invoices";
 import {
   billingDetailsBodySchema,
   billingDetailsSchema,
   createProfileBodySchema,
   meSchema,
   notificationsSchema,
+  profileFeesSchema,
   profileModeSchema,
   profileSchema,
   profileTokensSchema,
@@ -23,6 +25,7 @@ const notificationsUrl = (profileId: string) =>
   `/v1/profiles/${encodeURIComponent(profileId)}/notifications`;
 const tokensUrl = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/tokens`;
 const modeUrl = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/mode`;
+const feesUrl = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/fees`;
 
 export const profilesApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
@@ -139,6 +142,31 @@ export const profilesApi = apiSlice.injectEndpoints({
         }
       },
     }),
+    /** D-122: who pays the profile's new invoices' fees; the profile list keeps it. */
+    saveProfileFees: build.mutation<
+      { feesPaidBy: FeesPaidBy },
+      { profileId: string; feesPaidBy: FeesPaidBy }
+    >({
+      query: ({ profileId, feesPaidBy }) => ({
+        url: feesUrl(profileId),
+        method: "PUT",
+        body: { feesPaidBy },
+      }),
+      responseSchema: profileFeesSchema,
+      async onQueryStarted({ profileId }, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(
+            profilesApi.util.updateQueryData("signUp", undefined, (me) => {
+              const profile = me.profiles.find((p) => p.profileId === profileId);
+              if (profile) profile.feesPaidBy = data.feesPaidBy;
+            }),
+          );
+        } catch {
+          // The page shows the error.
+        }
+      },
+    }),
     /** R-136: every enabled token, on until the profile turns it off. */
     // The schema checks the list itself, as upsertQueryData below runs the endpoint's schemas on it.
     getProfileTokens: build.query<TokenSwitch[], string>({
@@ -180,4 +208,5 @@ export const {
   useGetProfileTokensQuery,
   useSaveProfileTokensMutation,
   useSaveProfileModeMutation,
+  useSaveProfileFeesMutation,
 } = profilesApi;

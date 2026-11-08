@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/forwend/forwend/apps/backend/internal/balance"
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/config"
 	"github.com/forwend/forwend/apps/backend/internal/database"
@@ -19,6 +20,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/notify"
 	"github.com/forwend/forwend/apps/backend/internal/price"
+	"github.com/forwend/forwend/apps/backend/internal/settlement"
 	"github.com/forwend/forwend/apps/backend/internal/worker"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -80,6 +82,11 @@ func run() error {
 		sender = r
 	}
 	invoices := invoice.NewService(pool)
+	// A retainer's later month is quoted like any new invoice (R-227).
+	quotes := balance.NewChainReader(specs, cfg.Chains.RPCRate, budget)
+	defer quotes.Close()
+	invoices.SetPricing(invoice.Pricing{Quotes: settlement.NewQuotes(quotes.Client),
+		Plan: invoice.FeePlan{RateBps: cfg.Fees.RateBps, MinUSD: cfg.Fees.MinUSD, CapUSD: cfg.Fees.CapUSD}})
 	rates := &ecb.Keeper{Pool: pool, Client: &http.Client{Timeout: 30 * time.Second}, URL: cfg.RatesURL}
 	prices := &price.Keeper{Pool: pool, URL: cfg.Prices.URL, Key: cfg.Prices.Key, Every: cfg.Prices.Every,
 		// The key's header would follow a redirect to any host.

@@ -4,6 +4,7 @@
 
 - Invoices, payments and their options carry networkFee, platformFee, netAmount and feesPaidBy.
 - Payment amounts carry fees: what settlement paid the settler and Forwend. settled is what reached the wallet.
+- Invoice and checkout session creates take feesPaidBy.
 
 ## 0.2.0 (2026-11-08)
 

@@ -95,6 +95,26 @@ R-221, D-120; the full schema is in openapi.yaml. Owners and Admins turn it with
   - New invoices, links, keys and webhook endpoints take the mode; an existing object keeps its own.
   - A send works only on a chain of the mode.
 
+## Invoice fees
+
+R-227, D-122; the full schema is in openapi.yaml.
+
+- Each new invoice option gets a network fee and a platform fee in its contract terms.
+  - The network fee is a receiver deploy and settle at the chain's current fee cap, twice over, rounded up to 0.01 USD.
+  - ETH/USD prices it on Base and Arbitrum; Tempo's gas unit and Arc's native USDC are already dollars.
+  - One quote serves a chain's new invoices for a minute (`settlement.QuoteAge`).
+  - The platform fee is `PLATFORM_FEE_BPS` of the price, within `PLATFORM_FEE_MIN_USD` and `PLATFORM_FEE_CAP_USD`; 0 at launch.
+- `feesPaidBy` is `owner` (deducted at settlement) or `client` (added on top of the price).
+  - The profile's choice applies unless an invoice, checkout session or link says otherwise.
+  - `PUT /v1/profiles/{profileId}/fees` takes `{"feesPaidBy": "owner"|"client"}`, with `billing.write`. `GET /v1/me` gives it.
+  - When the client pays, `amount` is the price plus the fees and the lines add up to the price.
+  - A retainer's later months keep its first invoice's choice.
+- Fees past a tenth of the amount, as `settle()` refuses them, make the create 422: the price is too small.
+- A chain whose fee can't be priced makes the create 503 `network_fee_unavailable`; the same request can try again.
+- `GET /v1/profiles/{profileId}/fees` takes a price as a create does (`chainId`, `token` and `amount`, or `amountUsd`).
+  - It gives the profile's `feesPaidBy` and each option's `price`, `networkFee` and `platformFee`, so a form shows them.
+  - The invoice gets its own quote when it is made.
+
 ## Notifications
 
 R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notifications`, D-93).
@@ -416,6 +436,7 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
 R-140, R-163, D-54, D-94; openapi.yaml owns the schema. Members use `invoices.read` and `invoices.write` (D-93).
 
 - A link is a reusable offer at `/l/<slug>`; opening it creates nothing.
+- `feesPaidBy` (null: the profile's choice) sets who pays its invoices' fees; a change to it is a new revision (R-163).
 - Its profile, store, mode and random 12-character slug never change.
 - Keys create and read links only in their mode; owner creates choose live mode when enabled live tokens exist.
 - Owner edits preserve mode; missing `storeId` preserves the original store.

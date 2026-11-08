@@ -32,6 +32,8 @@ func Routes(mux *http.ServeMux, g mid.Guards, profiles *profile.Service) {
 	mux.Handle("PUT /v1/profiles/{profileId}/tokens", g.Can(auth.TokensWrite)(putTokens(profiles)))
 	// The mode picks the profile's chains and tokens, so it takes the tokens permission: owners and Admins (D-120).
 	mux.Handle("PUT /v1/profiles/{profileId}/mode", g.Can(auth.TokensWrite)(putMode(profiles)))
+	// Who pays the fees sets what a client pays: it takes the billing permission, as the billing details do.
+	mux.Handle("PUT /v1/profiles/{profileId}/fees", g.Can(auth.BillingWrite)(putFees(profiles)))
 	mux.Handle("GET /v1/profiles/{profileId}/notifications", g.Can(auth.Notifications)(getNotifications(profiles)))
 	mux.Handle("PUT /v1/profiles/{profileId}/notifications", g.Can(auth.Notifications)(putNotifications(profiles)))
 }

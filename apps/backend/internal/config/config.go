@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/big"
 	"net"
 	"net/url"
 	"os"
@@ -50,6 +51,14 @@ type API struct {
 	Email Email
 	// WebhookKey seals webhook signing secrets (R-146): 32 bytes, or nil to leave webhooks off. Never log it.
 	WebhookKey []byte
+	Fees       Fees
+}
+
+// Fees is the platform fee plan (D-122) the api and the worker quote new invoices with: PLATFORM_FEE_BPS of the price,
+// at least PLATFORM_FEE_MIN_USD and at most PLATFORM_FEE_CAP_USD (unset: no cap). Unset, the rate is 0.
+type Fees struct {
+	RateBps        int64
+	MinUSD, CapUSD *big.Rat
 }
 
 type Worker struct {
@@ -59,6 +68,7 @@ type Worker struct {
 	// RatesURL is the ECB's reference rates file (R-110); ECB_RATES_URL is set only by tests that run a fake.
 	RatesURL string
 	Prices   Prices
+	Fees     Fees // for a retainer's later months
 }
 
 // Prices is CoinGecko for the stablecoins' display prices (R-178). URL is its API root; COINGECKO_API_URL is set only
@@ -139,7 +149,7 @@ func LoadAPI() (API, error) {
 		TrustProxyHeader:  r.flag("TRUST_PROXY_HEADER"),
 		CodesPerHour:      r.count("API_CODES_PER_HOUR"),
 		EnableTestnetUSDC: r.flag("ENABLE_TESTNET_USDC"), EnableMainnets: r.chainIDs("ENABLE_MAINNETS"),
-		WebhookKey: r.base64Key("WEBHOOK_SECRET_KEY"), Email: email()}
+		WebhookKey: r.base64Key("WEBHOOK_SECRET_KEY"), Email: email(), Fees: r.fees()}
 	c.Email.PublicWebURL = c.PublicWebURL
 	return c, r.err()
 }
@@ -156,7 +166,7 @@ func email() Email {
 
 func LoadWorker() (Worker, error) {
 	var r reader
-	c := Worker{DatabaseURL: r.get("DATABASE_URL"), Chains: r.chains(), Email: email()}
+	c := Worker{DatabaseURL: r.get("DATABASE_URL"), Chains: r.chains(), Email: email(), Fees: r.fees()}
 	if c.RatesURL = os.Getenv("ECB_RATES_URL"); c.RatesURL == "" {
 		c.RatesURL = DefaultRatesURL
 	}
@@ -363,6 +373,33 @@ func (r *reader) chainIDs(name string) []uint64 {
 		ids = append(ids, id)
 	}
 	return ids
+}
+
+// fees reads the platform fee plan. The contract takes at most a tenth of the amount in fees, so a rate is at most
+// 1000 basis points.
+func (r *reader) fees() Fees {
+	var f Fees
+	if raw := os.Getenv("PLATFORM_FEE_BPS"); raw != "" {
+		v, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || v < 0 || v > 1000 {
+			r.invalid = append(r.invalid, "PLATFORM_FEE_BPS (basis points from 0 to 1000, such as 50 for 0.5%)")
+		}
+		f.RateBps = v
+	}
+	usd := func(name string) *big.Rat {
+		raw := os.Getenv(name)
+		if raw == "" {
+			return nil
+		}
+		v, ok := new(big.Rat).SetString(raw)
+		if !ok || v.Sign() < 0 || !regexp.MustCompile(`^\d+(\.\d{1,2})?$`).MatchString(raw) {
+			r.invalid = append(r.invalid, name+" (USD with at most 2 decimals, such as 0.50)")
+			return nil
+		}
+		return v
+	}
+	f.MinUSD, f.CapUSD = usd("PLATFORM_FEE_MIN_USD"), usd("PLATFORM_FEE_CAP_USD")
+	return f
 }
 
 func (r *reader) count(name string) int {

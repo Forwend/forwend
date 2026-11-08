@@ -230,6 +230,8 @@ var profileRoutes = []struct{ method, path, body string }{
 	{"GET", "/v1/profiles/%s/tokens", ""},
 	{"PUT", "/v1/profiles/%s/tokens", `{"off": []}`},
 	{"PUT", "/v1/profiles/%s/mode", `{"livemode": false}`},
+	{"PUT", "/v1/profiles/%s/fees", `{"feesPaidBy": "owner"}`},
+	{"GET", "/v1/profiles/%s/fees?amountUsd=5", ""},
 	{"GET", "/v1/profiles/%s/members", ""},
 	{"PUT", "/v1/profiles/%s/members/00000000-0000-0000-0000-000000000000", `{"role": "admin"}`},
 	{"DELETE", "/v1/profiles/%s/members/00000000-0000-0000-0000-000000000000", ""},

@@ -22,6 +22,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
 	"github.com/forwend/forwend/apps/backend/internal/email"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/notify"
 	"github.com/forwend/forwend/apps/backend/internal/privy"
 	"github.com/forwend/forwend/apps/backend/internal/privy/privytest"
@@ -111,6 +112,13 @@ func invoiceAPIWith(t *testing.T, userBurst int, webhookKey []byte) invoiceEnv {
 // invoiceAPIChains is invoiceAPIWith whose sends read chains through clients.
 func invoiceAPIChains(t *testing.T, userBurst int, webhookKey []byte, clients send.Clients) invoiceEnv {
 	t.Helper()
+	return invoiceAPIPriced(t, userBurst, webhookKey, clients, invoice.Pricing{})
+}
+
+// invoiceAPIPriced is invoiceAPIChains whose new invoices are given fees by pricing (R-227).
+func invoiceAPIPriced(t *testing.T, userBurst int, webhookKey []byte, clients send.Clients,
+	pricing invoice.Pricing) invoiceEnv {
+	t.Helper()
 	ctx := context.Background()
 	verifier, privyKey := testVerifier(t)
 	url := databasetest.Migrated(t, database.Migrate)
@@ -154,7 +162,7 @@ func invoiceAPIChains(t *testing.T, userBurst int, webhookKey []byte, clients se
 	e.srv = httptest.NewServer(httpapi.NewMux(pool, verifier, users,
 		func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
 			return big.NewInt(2500000), 100, nil
-		}, clients, codes, webURL, userBurst, webhookKey, true))
+		}, clients, codes, webURL, userBurst, webhookKey, true, pricing))
 	t.Cleanup(e.srv.Close)
 	return e
 }

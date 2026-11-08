@@ -25,6 +25,7 @@ import type {
   agreedValueSchema,
   createInvoiceBodySchema,
   depositSchema,
+  feeQuoteSchema,
   invoiceClientSchema,
   invoiceEventSchema,
   invoiceHistoryEventSchema,
@@ -154,6 +155,7 @@ export type SettlementWait = z.infer<typeof settlementWaitSchema>;
 export type InvoiceOption = z.infer<typeof invoiceOptionSchema>;
 
 export type Invoice = z.infer<typeof invoiceSchema>;
+export type FeeQuote = z.infer<typeof feeQuoteSchema>;
 
 export type InvoiceSend = z.infer<typeof invoiceSendSchema>;
 

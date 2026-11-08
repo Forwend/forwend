@@ -47,7 +47,8 @@ func TestCreatePayerChooses(t *testing.T) {
 	for _, o := range inv.Options {
 		var id [32]byte
 		_, _ = hex.Decode(id[:], []byte(o.ID[2:]))
-		_, want, err := buildTerms(id, o.ChainID, o.Token, inv.Recipient, o.Amount, inv.ExpiresAt, inv.SettleDeadline)
+		_, want, err := buildTerms(id, o.ChainID, o.Token, inv.Recipient, o.Amount, o.Fees.Network, o.Fees.Platform, inv.ExpiresAt,
+			inv.SettleDeadline)
 		if err != nil || o.ReceiveAddress != want || o.Amount.String() != "12500000" || o.Symbol != "USDC" {
 			t.Fatalf("option %+v: want address %s and 12500000 USDC (%v)", o, want, err)
 		}

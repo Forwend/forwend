@@ -24,6 +24,8 @@ type profileJSON struct {
 	Permissions []auth.Permission `json:"permissions"`
 	// D-120: false while the profile is in Developer mode, on the testnets.
 	Livemode bool `json:"livemode"`
+	// D-122: who pays new invoices' fees unless one says otherwise: owner (deducted) or client (on top).
+	FeesPaidBy string `json:"feesPaidBy"`
 }
 
 type meJSON struct {
@@ -169,7 +171,7 @@ func toMeJSON(list []profile.Profile, onboardedAt *time.Time) meJSON {
 
 func toProfileJSON(p profile.Profile) profileJSON {
 	out := profileJSON{ProfileID: p.ID, Kind: p.Kind, CreatedAt: p.CreatedAt.UTC().Format(time.RFC3339), Role: p.Role,
-		Permissions: auth.Access{Role: auth.Role(p.Role)}.Permissions(), Livemode: p.Livemode}
+		Permissions: auth.Access{Role: auth.Role(p.Role)}.Permissions(), Livemode: p.Livemode, FeesPaidBy: p.FeesPaidBy}
 	if p.Name != "" {
 		out.Name = &p.Name
 	}
@@ -177,6 +179,10 @@ func toProfileJSON(p profile.Profile) profileJSON {
 		out.WalletAddress = &p.WalletAddress
 	}
 	return out
+}
+
+type feesBody struct {
+	FeesPaidBy string `json:"feesPaidBy"`
 }
 
 type modeBody struct {

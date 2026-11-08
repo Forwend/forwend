@@ -37,5 +37,6 @@ type Profile struct {
 	WalletAddress string
 	CreatedAt     time.Time
 	Role          string
-	Livemode      bool // false while Developer mode is on (D-120)
+	Livemode      bool   // false while Developer mode is on (D-120)
+	FeesPaidBy    string // who pays its invoices' fees unless one says otherwise (D-122): owner or client
 }

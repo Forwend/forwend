@@ -383,6 +383,13 @@ function Summary({
         <p className={`text-sm text-muted ${picking ? "invisible" : ""}`}>
           {COPY.on(chainName(invoice.chainId))}
         </p>
+        {picking &&
+        invoice.options.some((o) => {
+          const f = optionFees(o);
+          return f.clientPays && f.total > 0n;
+        }) ? (
+          <p className="text-sm text-muted">{COPY.feeByNetwork}</p>
+        ) : null}
         {fees.clientPays && fees.total > 0n && !picking && !partial ? (
           <p className="text-sm text-muted">
             {COPY.withFees(units(fees.net), [
