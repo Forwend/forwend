@@ -11,18 +11,23 @@ import (
 var TempoFeeManager = common.HexToAddress("0xfeec000000000000000000000000000000000000")
 
 // TempoFee is the SQL test that wallet transfer t is wallet-paid send s's Tempo fee (R-224): the token's outflow from
-// the send's wallet to the fee manager in the send's own transaction, where that transaction also moves the send, and
-// its outflows to the fee manager together are at most the fee the send was signed for. The fee manager also swaps
-// and takes liquidity, so any other transfer to it is money out: it shows in Transactions and tells the owner (D-49).
+// the send's wallet to the fee manager, at most the fee the send was signed for together. The transaction is the one
+// whose hash the owner's browser reported for the send; or, until it reports one, a transaction since the send's
+// approval that moves exactly the send, as the send's own transfer is matched (D-49). Tempo blocks are final at once,
+// so the watcher may see the fee before the hash. The fee manager also swaps and takes liquidity, so any other
+// transfer to it is money out: it shows in Transactions and tells the owner.
 func TempoFee(t, s string) string {
 	feeManager := "'" + strings.ToLower(TempoFeeManager.Hex()) + "'"
 	same := `tm.chain_id = ` + t + `.chain_id AND tm.tx_hash = ` + t + `.tx_hash AND tm.wallet_address = ` + t +
 		`.wallet_address AND tm.token_contract = ` + t + `.token_contract AND tm.direction = 'out' AND ` +
 		`tm.status <> 'reorged'`
 	return t + `.direction = 'out' AND ` + t + `.counterparty = ` + feeManager + ` AND ` + s + `.gas_limit IS NOT NULL AND ` +
-		s + `.chain_id = ` + t + `.chain_id AND ` + s + `.tx_hash = ` + t + `.tx_hash AND ` + s + `.from_address = ` + t +
-		`.wallet_address AND ` + s + `.token_contract = ` + t + `.token_contract AND EXISTS (SELECT 1 FROM ` +
-		`wallet_transfers tm WHERE ` + same + ` AND tm.counterparty = ` + s + `.to_address AND tm.amount = ` + s +
-		`.amount) AND (SELECT coalesce(sum(tm.amount), 0) FROM wallet_transfers tm WHERE ` + same +
-		` AND tm.counterparty = ` + feeManager + `) <= ` + s + `.network_fee`
+		s + `.chain_id = ` + t + `.chain_id AND ` + s + `.from_address = ` + t + `.wallet_address AND ` + s +
+		`.token_contract = ` + t + `.token_contract AND (` + s + `.tx_hash = ` + t + `.tx_hash OR ` + s +
+		`.tx_hash IS NULL AND ` + s + `.approved_at IS NOT NULL AND ` + t + `.created_at >= ` + s + `.approved_at AND (` +
+		s + `.status = 'approved' OR ` + s + `.status = 'expired' AND ` + t + `.created_at < ` + s +
+		`.finished_at + interval '1 hour') AND EXISTS (SELECT 1 FROM wallet_transfers tm WHERE ` + same +
+		` AND tm.counterparty = ` + s + `.to_address AND tm.amount = ` + s + `.amount)) AND ` +
+		`(SELECT coalesce(sum(tm.amount), 0) FROM wallet_transfers tm WHERE ` + same + ` AND tm.counterparty = ` +
+		feeManager + `) <= ` + s + `.network_fee`
 }

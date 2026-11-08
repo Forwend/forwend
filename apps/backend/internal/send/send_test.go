@@ -916,6 +916,25 @@ func TestOnlyASendsOwnTempoFeeIsNotMoneySent(t *testing.T) {
 	if n := notices(); n != 3 {
 		t.Errorf("a TIP-20 transfer to the fee manager outside a send: %d notices in all, want 3", n)
 	}
+	// The chain is final before the browser reports the hash, as on Tempo: the fee of the approved send moving exactly
+	// that money tells nobody either.
+	before := notices()
+	early, err := e.prepare(t, outsider, "", 1_000_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.approve(t, early)
+	hash := e.anvil.TwoTransfers(e.token, outsider, "1000000", feeManager, early.NetworkFee.String())
+	e.anvil.Mine(3)
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if n := notices(); n != before {
+		t.Errorf("a fee final before its send's hash was reported: %d notices, want %d", n, before)
+	}
+	if _, err := e.sends.Submit(ctx, e.profile, early.ID, hash); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := e.prepare(t, chain.TempoFeeManager.Hex(), "", 1_000_000); !errors.Is(err, ErrInvalid) {
 		t.Errorf("a send to the fee manager: err = %v, want ErrInvalid", err)
 	}

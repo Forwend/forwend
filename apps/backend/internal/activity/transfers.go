@@ -60,7 +60,7 @@ var transferSQL = `
 	       coalesce(l.label, ''), coalesce(p.records_currency, ''), fx.day, fx.usd::text, fx.cur::text,
 	       (SELECT x.fee_paid::text FROM sends x WHERE t.direction = 'out' AND x.chain_id = t.chain_id
 	            AND x.tx_hash = t.tx_hash AND x.from_address = t.wallet_address AND x.token_contract = t.token_contract
-	            AND x.to_address = t.counterparty)
+	            AND x.to_address = t.counterparty AND x.amount = t.amount)
 	FROM wallet_transfers t
 	JOIN profile_wallets w ON w.chain_family = t.chain_family AND w.address = t.wallet_address
 	JOIN profiles p ON p.id = w.profile_id
