@@ -50,3 +50,12 @@ The refund-authority Safe and deploys. Design: [architecture.md](architecture.md
 - It reads the first executor from `FIRST_EXECUTOR`, never from the signing key: that address is part of the factory address.
 - Record it in `packages/contracts/deployments.json`; a replaced factory moves to `superseded`.
 - Every deploy needs Sasha's explicit yes. Results: local docs/spikes/s5-s6-testnets.md notes (`../spikes/s5-s6-testnets.md`).
+
+## Development mainnet deploys
+
+- The factory on Base, Arbitrum, Arc and Tempo mainnets (F437) uses the testnet arguments: the test EOA is its refund authority.
+- So it sits at the testnet factory's address; `deployments.json` lists it under `mainnets`.
+- This is the owner's choice for development. Production gets new contracts with the Safe above.
+- `script/deploy.sh <chain>` takes the mainnet names in `chains.json`. Each run needs Sasha's explicit yes.
+- On Tempo the executor pays fees in OUSD. It set that once with `setUserToken(OUSD)` on the fee manager.
+  - `cast send --tempo.fee-token OUSD` pays for that first call, since the executor holds no pathUSD.

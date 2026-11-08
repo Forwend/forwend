@@ -71,6 +71,65 @@
       }
     }
   },
+  "mainnets": {
+    "_note": "Development mainnet deployment, 2026-11-08 (F437): the same v1.1 code and arguments as the testnets, so the same addresses. The refund authority is the test EOA, not a Safe, by owner choice: for development only. Production gets new contracts.",
+    "chains": {
+      "base-mainnet": {
+        "chainId": 8453,
+        "explorer": "https://basescan.org",
+        "factory": "0xf93da73F1308A9B34aAB78bF6D84F0BAcc600dd2",
+        "implementation": "0x26b7DB220aF2Da25B960E7e5bCcf80a708aE630f",
+        "refundAuthority": "0x3E202009C02aBc635eE83fb5c9D1eE3F10FEEa00",
+        "executor": "0xe15800B2007EaC6Fe3f3eac3BE38207ce32d2755",
+        "probeReceiver": "0x0D25B44a9F41825f70186276e23532734D1DDfBE",
+        "deploy": {
+          "factory": "0xc4ce6567a21774b77d5b82d6f43ce4763008961a7717e3e3b3f7e31cd96e6a8c",
+          "probe": "0xf1f0367a490712488d2d7de4b28d277f1f69cd9d19c71cbe52e7724f0a7cf78e"
+        }
+      },
+      "arbitrum-one": {
+        "chainId": 42161,
+        "explorer": "https://arbiscan.io",
+        "factory": "0xf93da73F1308A9B34aAB78bF6D84F0BAcc600dd2",
+        "implementation": "0x26b7DB220aF2Da25B960E7e5bCcf80a708aE630f",
+        "refundAuthority": "0x3E202009C02aBc635eE83fb5c9D1eE3F10FEEa00",
+        "executor": "0xe15800B2007EaC6Fe3f3eac3BE38207ce32d2755",
+        "probeReceiver": "0x0D25B44a9F41825f70186276e23532734D1DDfBE",
+        "deploy": {
+          "factory": "0x1f27e0758131d58cd04100cfa9f537b33ea168b0ac673a78e4a9971954ec3e6f",
+          "probe": "0x3c05d462d60ecc5587fcce1332f4e4f8302a6b562b1bdc6ae244c3d15c62bfb2"
+        }
+      },
+      "arc-mainnet": {
+        "chainId": 5042,
+        "explorer": "https://explorer.arc.io",
+        "factory": "0xf93da73F1308A9B34aAB78bF6D84F0BAcc600dd2",
+        "implementation": "0x26b7DB220aF2Da25B960E7e5bCcf80a708aE630f",
+        "refundAuthority": "0x3E202009C02aBc635eE83fb5c9D1eE3F10FEEa00",
+        "executor": "0xe15800B2007EaC6Fe3f3eac3BE38207ce32d2755",
+        "probeReceiver": "0x0D25B44a9F41825f70186276e23532734D1DDfBE",
+        "deploy": {
+          "factory": "0x8ea63e09548782753a72f5fdc6451e852b4a30e14df49e468a933026249c6127",
+          "probe": "0xbfc32b945f3d3fa4a0f75893ff1b3344718ed29f781129bbb87f69bd9483d88c"
+        }
+      },
+      "tempo-mainnet": {
+        "chainId": 4217,
+        "explorer": "https://explore.tempo.xyz",
+        "factory": "0xf93da73F1308A9B34aAB78bF6D84F0BAcc600dd2",
+        "implementation": "0x26b7DB220aF2Da25B960E7e5bCcf80a708aE630f",
+        "refundAuthority": "0x3E202009C02aBc635eE83fb5c9D1eE3F10FEEa00",
+        "executor": "0xe15800B2007EaC6Fe3f3eac3BE38207ce32d2755",
+        "probeReceiver": "0x0D25B44a9F41825f70186276e23532734D1DDfBE",
+        "deploy": {
+          "executorFeeToken": "0x40e77104dde4dd1afa28dc1013280c6899b3b58b62b4f04cefb19d71eac4a64e",
+          "factory": "0x908e716377d86e9f98820ee838d37cee1282b935625c6b174148dd1e4cd5bbd5",
+          "probe": "0xde289efaac19d1bf9f47206f4c1933e46e0b6505fb697f872dc43b3a9b60fca1"
+        },
+        "note": "executorFeeToken: setUserToken(OUSD) in the fee manager, so the executor pays Tempo fees in OUSD."
+      }
+    }
+  },
   "superseded": [
     {
       "version": "v1",
