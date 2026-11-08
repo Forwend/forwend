@@ -67,8 +67,8 @@ func TestCheck(t *testing.T) {
 		return nil
 	})
 	// Foundry's own ABI encoder, so the test does not trust the canary's.
-	want := cast(t, "call", factory, "predict((bytes32,address,address,uint256,uint64,uint64,uint256))(address)",
-		fmt.Sprintf("(%s,%s,%s,%s,%d,%d,%d)", id, recipient, token, amount, expiresAt, deadline, chaintest.ChainID),
+	want := cast(t, "call", factory, "predict((bytes32,address,address,uint256,uint64,uint64,uint256,uint256,uint256))(address)",
+		fmt.Sprintf("(%s,%s,%s,%s,%d,%d,%d,0,0)", id, recipient, token, amount, expiresAt, deadline, chaintest.ChainID),
 		"--rpc-url", a.URL)
 	codeHash := cast(t, "codehash", factory, "--rpc-url", a.URL)
 	script, err := filepath.Abs("../../../web/scripts/canary-pay-page.ts")
@@ -124,7 +124,7 @@ func TestCheck(t *testing.T) {
 				tc.change(&s)
 			}
 			origin := serve(t, s.payToken, maps.Clone(s.api), s.pageAddress, qrPath(t, s.qrAddress), s.network)
-			cfg := config.Canary{AllowLoopback: true, APIURL: origin, WebURL: origin, Factory: factory, FactoryCodeHash: s.codeHash,
+			cfg := config.Canary{AllowLoopback: true, APIURL: origin, WebURL: origin, Factory: factory, FactoryFees: true, FactoryCodeHash: s.codeHash,
 				RPCURLs: map[uint64][2]string{s.chainKey: {a.URL, s.rpc2}}, PageScript: script}
 			alerts := canary.Check(context.Background(), cfg, []string{lineOf(s.payToken)})
 			if tc.alert == "" && len(alerts) != 0 {
@@ -237,8 +237,8 @@ func cast(t *testing.T, args ...string) string {
 func TestCheckFirstOptionOfPayerChoosesInvoice(t *testing.T) {
 	a := chaintest.Start(t)
 	factory := a.DeployFactory()
-	want := cast(t, "call", factory, "predict((bytes32,address,address,uint256,uint64,uint64,uint256))(address)",
-		fmt.Sprintf("(%s,%s,%s,%s,%d,%d,%d)", id, recipient, token, amount, expiresAt, deadline, chaintest.ChainID),
+	want := cast(t, "call", factory, "predict((bytes32,address,address,uint256,uint64,uint64,uint256,uint256,uint256))(address)",
+		fmt.Sprintf("(%s,%s,%s,%s,%d,%d,%d,0,0)", id, recipient, token, amount, expiresAt, deadline, chaintest.ChainID),
 		"--rpc-url", a.URL)
 	codeHash := cast(t, "codehash", factory, "--rpc-url", a.URL)
 	script, err := filepath.Abs("../../../web/scripts/canary-pay-page.ts")
@@ -279,7 +279,7 @@ document.querySelector('[aria-labelledby="pay-before"] button').onclick = () => 
 	}))
 	t.Cleanup(srv.Close)
 
-	cfg := config.Canary{AllowLoopback: true, APIURL: srv.URL, WebURL: srv.URL, Factory: factory, FactoryCodeHash: codeHash,
+	cfg := config.Canary{AllowLoopback: true, APIURL: srv.URL, WebURL: srv.URL, Factory: factory, FactoryFees: true, FactoryCodeHash: codeHash,
 		RPCURLs: map[uint64][2]string{chaintest.ChainID: {a.URL, a.URL}}, PageScript: script}
 	if alerts := canary.Check(context.Background(), cfg, []string{line}); len(alerts) != 0 {
 		t.Fatalf("an honest payer-chooses invoice alerts: %q", alerts)
@@ -297,7 +297,7 @@ func TestCheckSkipsInvoicesThePayPageClosed(t *testing.T) {
 	input := fmt.Sprintf("%s %d %s %s %s %d %d USDC anvil %s %d", id, chaintest.ChainID, recipient, token, amount, soon,
 		soon+86400, payToken, soon)
 	origin := serve(t, payToken, map[string]any{}, "", "", "Anvil (local)")
-	cfg := config.Canary{AllowLoopback: true, APIURL: origin, WebURL: origin, Factory: factory,
+	cfg := config.Canary{AllowLoopback: true, APIURL: origin, WebURL: origin, Factory: factory, FactoryFees: true,
 		FactoryCodeHash: cast(t, "codehash", factory, "--rpc-url", a.URL),
 		RPCURLs:         map[uint64][2]string{chaintest.ChainID: {a.URL, a.URL}}, PageScript: script}
 	if alerts := canary.Check(context.Background(), cfg, []string{input}); len(alerts) != 0 {
@@ -316,9 +316,9 @@ func TestCheckSkipsInvoicesThePayPageClosed(t *testing.T) {
 func TestEarlyCloseRequiresBothProvidersDeploymentEvidence(t *testing.T) {
 	a := chaintest.Start(t)
 	factory := a.DeployFactory()
-	args := fmt.Sprintf("(%s,%s,%s,%s,%d,%d,%d)", id, recipient, token, amount, expiresAt, deadline, chaintest.ChainID)
-	predicted := cast(t, "call", factory, "predict((bytes32,address,address,uint256,uint64,uint64,uint256))(address)", args, "--rpc-url", a.URL)
-	a.AsAuthority(factory, "deploy((bytes32,address,address,uint256,uint64,uint64,uint256))", args)
+	args := fmt.Sprintf("(%s,%s,%s,%s,%d,%d,%d,0,0)", id, recipient, token, amount, expiresAt, deadline, chaintest.ChainID)
+	predicted := cast(t, "call", factory, "predict((bytes32,address,address,uint256,uint64,uint64,uint256,uint256,uint256))(address)", args, "--rpc-url", a.URL)
+	a.AsAuthority(factory, "deploy((bytes32,address,address,uint256,uint64,uint64,uint256,uint256,uint256))", args)
 	a.Mine(2)
 	deployed := cast(t, "call", factory, "deployedAt(address)(uint256)", predicted, "--rpc-url", a.URL)
 	var timestamp uint64
@@ -334,7 +334,7 @@ func TestEarlyCloseRequiresBothProvidersDeploymentEvidence(t *testing.T) {
 		"recipient": recipient, "factory": factory, "receiveAddress": predicted, "expiresAt": "2030-01-01T00:00:00Z",
 		"settleDeadline": "2030-01-02T00:00:00Z", "options": []map[string]any{{"optionId": id, "chainId": chaintest.ChainID, "token": token, "amount": amount, "receiveAddress": predicted}}}
 	origin := serve(t, payToken, api, predicted, qrPath(t, predicted), "Anvil (local)")
-	cfg := config.Canary{AllowLoopback: true, APIURL: origin, WebURL: origin, Factory: factory, FactoryCodeHash: cast(t, "codehash", factory, "--rpc-url", a.URL),
+	cfg := config.Canary{AllowLoopback: true, APIURL: origin, WebURL: origin, Factory: factory, FactoryFees: true, FactoryCodeHash: cast(t, "codehash", factory, "--rpc-url", a.URL),
 		RPCURLs: map[uint64][2]string{chaintest.ChainID: {a.URL, a.URL}}, PageScript: script}
 	input := strings.TrimSuffix(line, fmt.Sprint(expiresAt)) + fmt.Sprint(closeAt)
 	if alerts := canary.Check(t.Context(), cfg, []string{input}); len(alerts) != 0 {

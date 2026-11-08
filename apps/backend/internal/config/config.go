@@ -125,6 +125,7 @@ type Canary struct {
 	APIURL, WebURL  string
 	Factory         string
 	FactoryCodeHash string               // keccak256 of the factory's runtime code, lowercase 0x hex
+	FactoryFees     bool                 // its terms carry the fees (factory v2 on, R-226)
 	RPCURLs         map[uint64][2]string // two RPCs on different hosts per chain ID; may hold keys: never log
 	PageScript      string               // apps/web/scripts/canary-pay-page.ts, run with node
 }
@@ -206,7 +207,8 @@ func LoadCanary() (Canary, error) {
 	allowLoopback := r.flag("RPC_ALLOW_LOOPBACK")
 	c := Canary{AllowLoopback: allowLoopback, APIURL: r.origin("CANARY_API_URL"), WebURL: r.origin("CANARY_WEB_URL"),
 		Factory: r.hex("CANARY_FACTORY", 20), FactoryCodeHash: r.hex("CANARY_FACTORY_CODE_HASH", 32),
-		RPCURLs: r.rpcPairs("CANARY_RPC_URLS", allowLoopback), PageScript: r.get("CANARY_PAGE_SCRIPT")}
+		FactoryFees: r.flag("CANARY_FACTORY_FEES"),
+		RPCURLs:     r.rpcPairs("CANARY_RPC_URLS", allowLoopback), PageScript: r.get("CANARY_PAGE_SCRIPT")}
 	return c, r.err()
 }
 

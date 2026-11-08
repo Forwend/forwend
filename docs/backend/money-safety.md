@@ -8,6 +8,9 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
   init-code hash differs per invoice: the clone's init code contains the terms. Never read it from the database or an RPC.
   - New invoices use the newest factory. An invoice keeps the factory it was made with.
   - `address.Known` lists every factory an invoice may still use, with its implementation; the web holds the same list.
+  - Each entry says whether its terms carry the fees (v2 on, R-226). Encoding, calls and Safe arguments follow it
+    (`address.Encode`, `Call`, `Signature`, `Args`), so no caller writes a terms tuple itself.
+  - The canary keeps its own setting, `CANARY_FACTORY_FEES`, and never reads that list (R-51).
   - Settle, returns and stray recovery accept only an invoice's own factory from that list. Drop an old factory from
     it only once none of its invoices can hold money.
 - `(chain_id, receive_address)` is unique. The signer refuses to settle when the stored terms do not recompute the
@@ -27,6 +30,7 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
   - It allows reopen rows only between the first expiry and a second.
 - Go address code and `predict` share test vectors: `packages/contracts/vectors/receive-address.json`, written by
   `pnpm vectors` in `packages/contracts`. `forge test` fails while the file is stale.
+  - `receive-address-v1.1.json` keeps the v1.1 factory's vectors, without fees, for the invoices that still use it.
 - The recipient is the profile wallet read from Privy, never from the request. The contract can't tell a wrong one.
 - The recipient wallet must exist on the invoice's chain before the invoice is created.
 - Receivers are deployed only when settling, refunding or recovering.

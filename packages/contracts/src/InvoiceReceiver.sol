@@ -15,7 +15,8 @@ import {
     tryBalanceOf
 } from "./InvoiceTypes.sol";
 
-/// Can only pay `amount` to `recipient`, or return money through the refund authority. Rules: ../AGENTS.md.
+/// Can only pay `amount` to `recipient` less the fees in the terms, which go to the settler and the refund authority,
+/// or return money through the refund authority. Rules: ../AGENTS.md.
 /// Deliberately has no receive/fallback, approve, signature validation, delegatecall or selfdestruct.
 contract InvoiceReceiver is ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -25,7 +26,10 @@ contract InvoiceReceiver is ReentrancyGuard {
 
     bool public settled;
 
+    /// `amount` is what the recipient got: the terms' amount less the fees.
     event Settled(bytes32 indexed invoiceId, address indexed recipient, uint256 amount);
+    /// Only when a fee is above 0.
+    event FeesPaid(bytes32 indexed invoiceId, address indexed settler, uint256 networkFee, uint256 platformFee);
     event Refunded(bytes32 indexed invoiceId, address indexed to, uint256 amount);
     event Recovered(bytes32 indexed invoiceId, address indexed token, address indexed to, uint256 amount);
 
@@ -90,10 +94,17 @@ contract InvoiceReceiver is ReentrancyGuard {
         if (token.balanceOf(address(this)) < t.amount) revert NotPaid();
 
         settled = true;
+        // safeToSettle held, so the fees are within a tenth of the amount.
+        uint256 net = t.amount - t.networkFee - t.platformFee;
         uint256 before = token.balanceOf(t.recipient);
-        token.safeTransfer(t.recipient, t.amount);
-        if (token.balanceOf(t.recipient) - before != t.amount) revert RecipientMismatch();
-        emit Settled(t.invoiceId, t.recipient, t.amount);
+        token.safeTransfer(t.recipient, net);
+        if (token.balanceOf(t.recipient) - before != net) revert RecipientMismatch();
+        if (t.networkFee != 0) token.safeTransfer(msg.sender, t.networkFee);
+        if (t.platformFee != 0) token.safeTransfer(factory.refundAuthority(), t.platformFee);
+        emit Settled(t.invoiceId, t.recipient, net);
+        if (t.networkFee != 0 || t.platformFee != 0) {
+            emit FeesPaid(t.invoiceId, msg.sender, t.networkFee, t.platformFee);
+        }
     }
 
     function refund(address to, uint256 amount) external nonReentrant onlyClone {

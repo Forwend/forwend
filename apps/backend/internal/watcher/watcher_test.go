@@ -538,8 +538,8 @@ func TestReceiverWithAQueuedReturnStaysWatchedPastTheWindow(t *testing.T) {
 	defer func(window time.Duration) { watchedAfterDeadline = window }(watchedAfterDeadline)
 	watchedAfterDeadline = time.Since(time.Unix(int64(terms.SettleDeadline), 0)) - time.Hour // past the window
 
-	e.anvil.AsAuthority(factory, "deploy((bytes32,address,address,uint256,uint64,uint64,uint256))",
-		fmt.Sprintf("(0x%s,0x1111111111111111111111111111111111111111,%s,5000000,%d,%d,%d)", strings.Repeat("05", 32),
+	e.anvil.AsAuthority(factory, "deploy((bytes32,address,address,uint256,uint64,uint64,uint256,uint256,uint256))",
+		fmt.Sprintf("(0x%s,0x1111111111111111111111111111111111111111,%s,5000000,%d,%d,%d,0,0)", strings.Repeat("05", 32),
 			e.token, terms.ExpiresAt, terms.SettleDeadline, chaintest.ChainID))
 	e.anvil.Wait(200)
 	e.anvil.AsAuthority(held, "refund(address,uint256)", chaintest.Sender, "5000000")

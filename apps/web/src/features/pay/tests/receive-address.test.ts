@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { Invoice } from "@/features/invoices/types/invoices";
-import { FACTORY, IMPLEMENTATION } from "@/features/pay/constants/receive-address";
+import { FACTORY, IMPLEMENTATION, KNOWN_FACTORIES } from "@/features/pay/constants/receive-address";
 import {
   checkedReceiveAddress,
   invoiceIdOf,
@@ -9,11 +9,12 @@ import {
   receiveAddress,
 } from "@/features/pay/lib/receive-address";
 
-// Written by Foundry from factory.predict (R-15); see packages/contracts/script/ReceiveAddressVectors.s.sol.
-const vectors: {
+// Written by Foundry from factory.predict (R-15); see packages/contracts/script/ReceiveAddressVectors.s.sol. The v1.1
+// file keeps the vectors of the factory before the fees (R-226), which its invoices still use.
+type Vectors = {
   factory: string;
   implementation: string;
-  vectors: Record<
+  vectors: (Record<
     | "invoiceId"
     | "recipient"
     | "token"
@@ -23,25 +24,26 @@ const vectors: {
     | "intendedChainId"
     | "receiver",
     string
-  >[];
-} = JSON.parse(
-  readFileSync(
-    new URL("../../../../../../packages/contracts/vectors/receive-address.json", import.meta.url),
-    "utf8",
-  ),
-);
+  > &
+    Partial<Record<"networkFee" | "platformFee", string>>)[];
+};
+const readVectors = (file: string): Vectors =>
+  JSON.parse(
+    readFileSync(
+      new URL(`../../../../../../packages/contracts/vectors/${file}`, import.meta.url),
+      "utf8",
+    ),
+  );
+const vectors = readVectors("receive-address.json");
+const v1_1 = readVectors("receive-address-v1.1.json");
 
-describe("receiveAddress", () => {
-  it("builds in the factory and implementation the vectors were made with", () => {
-    expect(`0x${FACTORY}`).toBe(vectors.factory.toLowerCase());
-    expect(`0x${IMPLEMENTATION}`).toBe(vectors.implementation.toLowerCase());
-  });
-
-  it("matches factory.predict for every R-15 vector", () => {
-    expect(vectors.vectors.length).toBeGreaterThanOrEqual(20);
-    for (const v of vectors.vectors) {
-      expect(
-        receiveAddress({
+const expectVectors = (file: Vectors) => {
+  expect(file.vectors.length).toBeGreaterThanOrEqual(20);
+  const factory = file.factory.toLowerCase().slice(2);
+  for (const v of file.vectors) {
+    expect(
+      receiveAddress(
+        {
           invoiceId: v.invoiceId,
           recipient: v.recipient,
           token: v.token,
@@ -49,9 +51,50 @@ describe("receiveAddress", () => {
           expiresAt: BigInt(v.expiresAt),
           settleDeadline: BigInt(v.settleDeadline),
           intendedChainId: BigInt(v.intendedChainId),
-        }),
-      ).toBe(v.receiver.toLowerCase());
-    }
+          ...(v.networkFee === undefined
+            ? {}
+            : { networkFee: BigInt(v.networkFee), platformFee: BigInt(v.platformFee ?? "0") }),
+        },
+        factory,
+      ),
+    ).toBe(v.receiver.toLowerCase());
+  }
+};
+
+describe("receiveAddress", () => {
+  it("builds in the factory and implementation the vectors were made with", () => {
+    expect(`0x${FACTORY}`).toBe(vectors.factory.toLowerCase());
+    expect(`0x${IMPLEMENTATION}`).toBe(vectors.implementation.toLowerCase());
+    expect(KNOWN_FACTORIES[FACTORY]?.fees).toBe(true);
+  });
+
+  it("matches factory.predict for every R-15 vector, fees included", () => {
+    expectVectors(vectors);
+  });
+
+  it("keeps the v1.1 factory's addresses, whose terms have no fees", () => {
+    const factory = v1_1.factory.toLowerCase().slice(2);
+    expect(KNOWN_FACTORIES[factory]).toEqual({
+      implementation: v1_1.implementation.toLowerCase().slice(2),
+      fees: false,
+    });
+    expectVectors(v1_1);
+    const v = v1_1.vectors[0];
+    expect(() =>
+      receiveAddress(
+        {
+          invoiceId: v?.invoiceId ?? "",
+          recipient: v?.recipient ?? "",
+          token: v?.token ?? "",
+          amount: 1n,
+          expiresAt: 0n,
+          settleDeadline: 0n,
+          intendedChainId: 1n,
+          networkFee: 1n,
+        },
+        factory,
+      ),
+    ).toThrow();
   });
 });
 

@@ -31,7 +31,9 @@ contract SymbolicTest is Test {
             amount: AMOUNT,
             expiresAt: DEADLINE - 1 days,
             settleDeadline: DEADLINE,
-            intendedChainId: block.chainid
+            intendedChainId: block.chainid,
+            networkFee: 0,
+            platformFee: 0
         });
         vm.prank(executor);
         receiver = InvoiceReceiver(factory.deploy(t));
@@ -52,6 +54,39 @@ contract SymbolicTest is Test {
             assert(token.balanceOf(address(receiver)) == deposit - AMOUNT);
         } else {
             assert(token.balanceOf(recipient) == 0);
+        }
+    }
+
+    /// With any fees, settle() succeeds only when they fit a tenth of AMOUNT, and then splits AMOUNT exactly: the
+    /// recipient the rest, the executor the network fee, the authority the platform fee.
+    function check_settleWithFees(uint256 networkFee, uint256 platformFee, uint256 deposit) public {
+        vm.assume(deposit <= type(uint128).max);
+        InvoiceTerms memory t = InvoiceTerms({
+            invoiceId: bytes32(uint256(2)),
+            recipient: recipient,
+            token: address(token),
+            amount: AMOUNT,
+            expiresAt: DEADLINE - 1 days,
+            settleDeadline: DEADLINE,
+            intendedChainId: block.chainid,
+            networkFee: networkFee,
+            platformFee: platformFee
+        });
+        vm.prank(executor);
+        InvoiceReceiver r = InvoiceReceiver(factory.deploy(t));
+        token.mint(address(r), deposit);
+        vm.warp(DEADLINE);
+        vm.prank(executor);
+        (bool ok,) = address(r).call(abi.encodeCall(InvoiceReceiver.settle, ()));
+        if (ok) {
+            assert(networkFee <= AMOUNT / 10 && platformFee <= AMOUNT / 10 - networkFee);
+            assert(token.balanceOf(recipient) == AMOUNT - networkFee - platformFee);
+            assert(token.balanceOf(executor) == networkFee);
+            assert(token.balanceOf(authority) == platformFee);
+            assert(token.balanceOf(address(r)) == deposit - AMOUNT);
+        } else {
+            assert(token.balanceOf(recipient) == 0 && token.balanceOf(executor) == 0);
+            assert(token.balanceOf(address(r)) == deposit);
         }
     }
 

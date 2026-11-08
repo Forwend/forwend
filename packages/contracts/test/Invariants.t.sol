@@ -115,26 +115,35 @@ contract InvariantsTest is Test {
             amount: 500e6,
             expiresAt: 1_000_000 + 1 hours,
             settleDeadline: 1_000_000 + 1 hours + 1 days,
-            intendedChainId: block.chainid
+            intendedChainId: block.chainid,
+            networkFee: 1e6,
+            platformFee: 2e6
         });
         handler = new Handler(factory, token, t);
         targetContract(address(handler));
     }
 
-    function invariant_recipientGetsZeroOrExactlyAmount() public view {
+    function invariant_recipientGetsZeroOrExactlyAmountLessFees() public view {
         uint256 got = token.balanceOf(t.recipient);
-        assertTrue(got == 0 || got == t.amount);
+        assertTrue(got == 0 || got == t.amount - t.networkFee - t.platformFee);
     }
 
     function invariant_conservation() public view {
         assertEq(
-            token.balanceOf(t.recipient) + handler.totalRefunded() + token.balanceOf(handler.receiver()),
+            token.balanceOf(t.recipient) + handler.totalRefunded() + token.balanceOf(handler.receiver())
+                + token.balanceOf(handler.executor()) + token.balanceOf(handler.authority()),
             handler.totalIn()
         );
     }
 
-    function invariant_executorNeverReceives() public view {
-        assertEq(token.balanceOf(handler.executor()), 0);
+    /// The executor and the authority get the fees once, at settlement, and nothing else.
+    function invariant_feesOnlyAtSettlement() public view {
+        uint256 fees = token.balanceOf(handler.executor()) + token.balanceOf(handler.authority());
+        address receiver = handler.receiver();
+        bool settled = receiver.code.length != 0 && InvoiceReceiver(receiver).settled();
+        assertEq(fees, settled ? t.networkFee + t.platformFee : 0);
+        uint256 toExecutor = token.balanceOf(handler.executor());
+        assertTrue(toExecutor == 0 || toExecutor == t.networkFee);
     }
 
     function invariant_refundsNeverTakeOwedAmountBeforeDeadline() public view {

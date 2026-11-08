@@ -938,7 +938,7 @@
       "type": "feat",
       "behavior": "Invoice receiver v2 takes a network fee and a platform fee at settlement, capped at 10% of the amount",
       "acceptance": [
-        "InvoiceTerms gains networkFee and platformFee; settle pays the recipient the amount less both, the network fee to the settler and the platform fee to the refund authority, and Settled carries both (R-226).",
+        "InvoiceTerms gains networkFee and platformFee; settle pays the recipient the amount less both, the network fee to the settler and the platform fee to the refund authority; Settled carries what the recipient got and FeesPaid both fees (R-226).",
         "The contract refuses terms whose fees pass 10% of the amount, and a refund takes no fee; unit, fuzz, invariant and symbolic tests cover fees 0, 1 and the ceiling.",
         "New R-15 vectors with fees; Go and the pay page's receive-address check compute the same address as factory.predict.",
         "The backend writes fees of 0 on v2 for now, and invoices on the v1 factory keep settling and refunding as before.",
@@ -947,7 +947,7 @@
       "dependsOn": [
         "F441"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "contracts",
         "symbolic",
@@ -962,14 +962,127 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
-      "blockedReason": null
+      "notes": [
+        "2026-11-08 review pass by reviewer: Contract: feesWithinCeiling keeps networkFee + platformFee at or below amount/10 with no overflow, so net never underflows. settle sets settled first, checks the recipient's balance before paying the fees, and is nonReentrant, so recipient equal to the executor or the authority still settles. status.settleable and settle share safeToSettle. Refunds take no fee. Go and web pick the tuple per factory from Known/KNOWN_FACTORIES. Settle, status, returns, stray and canary encode v2 with fees 0 and v1.1 with seven fields. No hand-written tuple is left outside tests and deploy.sh. The v1.1 vector fixture equals main's vectors. v2 vectors cover fees 0, 1 and 2^256-1. deployments.json has v2 on all eight enabled chains, so FactoryDeployed holds. The canary filters by CANARY_FACTORY and fails loud if CANARY_FACTORY_FEES is wrong. Non-blocking: docs/contracts/architecture.md:15 still says the executor cannot send money anywhere else, but it now gets the network fee. address.Encode (address.go:92) is exported but used only in its package. No test covers recipient equal to the refund authority with a platform fee; the code handles it. The watcher and ledger still expect Settled to equal the full amount; this is safe only while fees are 0, and F443 accept 1 covers it. I did not check the v2 canary code hash against a chain."
+      ],
+      "blockedReason": null,
+      "branch": "feat/f442-invoice-receiver-v2-takes-a-network-fee",
+      "baseCommit": "821f522dbdc57e385c6fd26e13c43615902a4822",
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-08T19:43:31Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.1,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.8,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 72.8,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 6.5,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 46.5,
+            "log": ""
+          },
+          {
+            "id": "contracts",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": ""
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 66.7,
+            "log": ""
+          },
+          {
+            "id": "symbolic",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 7.7,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.8,
+            "log": ""
+          }
+        ],
+        "taskHash": "34629d40a60825d2",
+        "filesHash": "1bf0bdb899c5a391",
+        "proof": {
+          "1": "contracts: Fees.t.sol test_settlePaysTheRecipientTheAmountLessTheFees (Settled carries the net, FeesPaid both fees), test_noFeesPayTheWholeAmountAndLogNoFees, test_aLateSettleByTheAuthorityTakesTheNetworkFee; symbolic: check_settleWithFees",
+          "2": "contracts: test_feesAboveTheCeilingAreRefusedAndRefundable, test_feesAtTheCeilingSettle, test_refundsTakeNoFee, testFuzz_settleSplitsTheAmountExactly, testFuzz_ceilingOverTheWholeRange, the fee-aware invariants; symbolic: check_settleWithFees for any fees",
+          "3": "backend: TestReceiveMatchesFactoryPredict (v2 vectors with fees), TestV1_1InvoicesKeepTheirAddresses, TestCallsUseTheFactorysTerms; web-unit: receive-address.test.ts for both factories",
+          "4": "backend: the full suite settles, refunds and recovers on the v2 factory on Anvil with fees 0, and TestV1_1InvoicesKeepTheirAddresses keeps v1.1 terms",
+          "5": "docs-check: deployments.json records v2 on the four testnets (fee flow on three) and four mainnets with v1.1 superseded, and docs/contracts/operations.md the runs; each deploy had the owner's yes in chat on 2026-11-08"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Contract: feesWithinCeiling keeps networkFee + platformFee at or below amount/10 with no overflow, so net never underflows. settle sets settled first, checks the recipient's balance before paying the fees, and is nonReentrant, so recipient equal to the executor or the authority still settles. status.settleable and settle share safeToSettle. Refunds take no fee. Go and web pick the tuple per factory from Known/KNOWN_FACTORIES. Settle, status, returns, stray and canary encode v2 with fees 0 and v1.1 with seven fields. No hand-written tuple is left outside tests and deploy.sh. The v1.1 vector fixture equals main's vectors. v2 vectors cover fees 0, 1 and 2^256-1. deployments.json has v2 on all eight enabled chains, so FactoryDeployed holds. The canary filters by CANARY_FACTORY and fails loud if CANARY_FACTORY_FEES is wrong. Non-blocking: docs/contracts/architecture.md:15 still says the executor cannot send money anywhere else, but it now gets the network fee. address.Encode (address.go:92) is exported but used only in its package. No test covers recipient equal to the refund authority with a platform fee; the code handles it. The watcher and ledger still expect Settled to equal the full amount; this is safe only while fees are 0, and F443 accept 1 covers it. I did not check the v2 canary code hash against a chain.",
+          "at": "2026-11-08T19:51:52Z",
+          "filesHash": "1bf0bdb899c5a391"
+        },
+        "commit": "0a53f9a9",
+        "doneAt": "2026-11-08T19:52:26Z"
+      },
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f442-invoice-receiver-v2-takes-a-network-fee",
+        "base": "main"
+      }
     },
     {
       "id": "F443",
       "type": "feat",
       "behavior": "Each invoice quotes a network fee and a platform fee, the owner chooses who pays them, and every reader shows them",
       "acceptance": [
+        "Before any invoice carries a fee, the watcher and ledger book a v2 settlement with fees: Settled is checked against the amount less the fees (watcher/outflows.go, ledger/outflows.go), and the fee transfers out of the receiver (FeesPaid) are their own outflow kind, booked to the fee accounts, so the settle intent finishes.",
         "A fee plan (rate in basis points, USD minimum and cap) sets the platform fee, 0% at launch; changing it reaches new invoices only (R-227).",
         "Each option's network fee is quoted from its deploy and settle gas at the fee cap, priced by ETH/USD on Base and Arbitrum, with a margin, rounded up to 0.01 USD.",
         "Profiles get a Fees paid by default (you or your client) in settings; the invoice and link forms show the fee and what the client pays and the owner receives, with a per-invoice override; the API takes feesPaidBy.",

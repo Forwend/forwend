@@ -39,7 +39,9 @@ abstract contract Base is Test {
             amount: AMOUNT,
             expiresAt: EXPIRES,
             settleDeadline: DEADLINE,
-            intendedChainId: block.chainid
+            intendedChainId: block.chainid,
+            networkFee: 0,
+            platformFee: 0
         });
     }
 

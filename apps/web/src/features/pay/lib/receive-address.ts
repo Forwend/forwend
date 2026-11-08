@@ -15,11 +15,17 @@ const UINT64_MAX = 2n ** 64n - 1n;
 const UINT256_MAX = 2n ** 256n - 1n;
 
 // As apps/backend/internal/address: a CREATE2 clone (OpenZeppelin Clones.cloneDeterministicWithImmutableArgs)
-// with args = abi.encode(terms) and salt = keccak256(args). Throws on a term outside its type or an unknown factory.
+// with args = abi.encode(terms) and salt = keccak256(args). Throws on a term outside its type, an unknown factory, or
+// a fee in terms that have no place for one.
 export function receiveAddress(t: InvoiceTerms, factory: string = FACTORY): string {
-  const implementation = KNOWN_FACTORIES[factory];
-  if (!implementation) throw new Error("not a Forwend factory");
-  const args = [
+  const spec = KNOWN_FACTORIES[factory];
+  if (!spec) throw new Error("not a Forwend factory");
+  const { implementation } = spec;
+  const networkFee = t.networkFee ?? 0n;
+  const platformFee = t.platformFee ?? 0n;
+  if (!spec.fees && (networkFee !== 0n || platformFee !== 0n))
+    throw new Error("this factory's terms carry no fees");
+  const words = [
     fixedBytes(t.invoiceId, 32),
     fixedBytes(t.recipient, 20),
     fixedBytes(t.token, 20),
@@ -27,7 +33,9 @@ export function receiveAddress(t: InvoiceTerms, factory: string = FACTORY): stri
     uint(t.expiresAt, UINT64_MAX),
     uint(t.settleDeadline, UINT64_MAX),
     uint(t.intendedChainId, UINT256_MAX),
-  ].join("");
+  ];
+  if (spec.fees) words.push(uint(networkFee, UINT256_MAX), uint(platformFee, UINT256_MAX));
+  const args = words.join("");
   // Clones._cloneCodeWithImmutableArgs: 0x61 <uint16 len(args)+0x2d> <prefix> <implementation> <suffix> <args>.
   const size = (args.length / 2 + 0x2d).toString(16).padStart(4, "0");
   const code = `61${size}3d81600a3d39f3363d3d373d3d3d363d73${implementation}5af43d82803e903d91602b57fd5bf3${args}`;
@@ -57,6 +65,7 @@ export function checkedReceiveAddress(inv: Invoice, payToken: string): string | 
       option !== optionIdOf(inv.invoiceId, BigInt(inv.chainId), inv.token)
     )
       return null;
+    // Fees are 0 until the API gives an option's fees (F443): an address with fees then doesn't compute, so it hides.
     const terms = {
       invoiceId: inv.optionId,
       recipient: inv.recipient,
@@ -69,7 +78,7 @@ export function checkedReceiveAddress(inv: Invoice, payToken: string): string | 
     const recipient = terms.recipient.toLowerCase().replace(/^0x/, "");
     // The invoice's own factory, which must be one Forwend deployed: the API can't name another.
     const factory = inv.factory.toLowerCase().replace(/^0x/, "");
-    const ours = Object.entries(KNOWN_FACTORIES).flat();
+    const ours = Object.entries(KNOWN_FACTORIES).flatMap(([f, s]) => [f, s.implementation]);
     const invalid =
       !(factory in KNOWN_FACTORIES) ||
       terms.amount <= 0n ||

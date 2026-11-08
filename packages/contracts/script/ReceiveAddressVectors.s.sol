@@ -5,8 +5,9 @@ import {Script} from "forge-std/Script.sol";
 import {InvoiceReceiverFactory} from "../src/InvoiceReceiverFactory.sol";
 import {InvoiceTerms} from "../src/InvoiceTypes.sol";
 
-/// Writes vectors/receive-address.json for the Go address tests; regenerate with `pnpm vectors`. Reads no environment
-/// variables: forge runs test suites in parallel and Deploy.t.sol sets them.
+/// Writes vectors/receive-address.json for the Go and web address tests; regenerate with `pnpm vectors`. Reads no
+/// environment variables: forge runs test suites in parallel and Deploy.t.sol sets them. The v1.1 factory's vectors,
+/// for invoices made before the fees, stay in vectors/receive-address-v1.1.json.
 contract ReceiveAddressVectors is Script {
     address internal constant CREATE2_DEPLOYER = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
     bytes32 internal constant SALT = keccak256("forwend.invoice-receiver-factory.v1");
@@ -28,6 +29,7 @@ contract ReceiveAddressVectors is Script {
         uint256[4] memory chainIds = [uint256(84532), 421614, 5042002, 42431];
         uint256[3] memory amounts = [uint256(1), type(uint256).max, 123_456_789];
         uint64[2] memory expiries = [uint64(0), type(uint64).max];
+        uint256[3] memory fees = [uint256(0), 1, type(uint256).max];
 
         out = string.concat(
             "{\n  \"factory\": \"",
@@ -44,7 +46,9 @@ contract ReceiveAddressVectors is Script {
                 amount: amounts[(i / 4) % 3],
                 expiresAt: expiries[i / 12],
                 settleDeadline: uint64(uint256(keccak256(abi.encode("deadline", i)))),
-                intendedChainId: chainIds[i % 4]
+                intendedChainId: chainIds[i % 4],
+                networkFee: fees[i % 3],
+                platformFee: fees[(i / 3) % 3]
             });
             out = string.concat(out, i == 0 ? "" : ",\n", vector(t, factory.predict(t)));
         }
@@ -70,6 +74,10 @@ contract ReceiveAddressVectors is Script {
                 vm.toString(t.settleDeadline),
                 "\", \"intendedChainId\": \"",
                 vm.toString(t.intendedChainId),
+                "\", \"networkFee\": \"",
+                vm.toString(t.networkFee),
+                "\", \"platformFee\": \"",
+                vm.toString(t.platformFee),
                 "\", \"receiver\": \"",
                 vm.toString(receiver),
                 "\"}"

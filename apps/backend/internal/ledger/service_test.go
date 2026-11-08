@@ -288,8 +288,8 @@ func TestDeployedFromReadsTheFactory(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The refund authority deploys early, as a recovery does.
-	a.AsAuthority(factory, "deploy((bytes32,address,address,uint256,uint64,uint64,uint256))",
-		fmt.Sprintf("(0x%x,0x%x,0x%x,5,1800000000,1800086400,%d)", terms.InvoiceID, terms.Recipient, terms.Token,
+	a.AsAuthority(factory, "deploy((bytes32,address,address,uint256,uint64,uint64,uint256,uint256,uint256))",
+		fmt.Sprintf("(0x%x,0x%x,0x%x,5,1800000000,1800086400,%d,0,0)", terms.InvoiceID, terms.Recipient, terms.Token,
 			chaintest.ChainID))
 	at := a.Now()
 	client, err := ethclient.Dial(a.URL)

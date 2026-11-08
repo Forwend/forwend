@@ -156,7 +156,7 @@ func (s *Signer) settle(ctx context.Context, id int64, release func()) error {
 	var after uint64      // the executor's next nonce after a deploy sent in this attempt
 	var deployed *big.Int // that deploy's block
 	if !st.Deployed {
-		data, _ := callData(deploySelector, terms)
+		data, _ := address.Call([20]byte(factory), "deploy", terms)
 		tx, err := s.sign(ctx, client, in.chainID, factory, data, 0, 0, nil)
 		if err != nil {
 			return err
