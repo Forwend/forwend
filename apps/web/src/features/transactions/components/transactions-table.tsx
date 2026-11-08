@@ -34,6 +34,7 @@ import {
 import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transactions-copy";
 import {
   type DayGroup,
+  feeText,
   groupByDay,
   sendingRows,
   transactionKey,
@@ -476,6 +477,9 @@ function Amount({ t }: { t: Transaction }) {
         />
       </span>
       {t.recordsValue ? <RecordsValue value={t.recordsValue} /> : null}
+      {feeText(t) ? (
+        <span className="text-xs whitespace-nowrap text-muted tabular-nums">{feeText(t)}</span>
+      ) : null}
     </span>
   );
 }

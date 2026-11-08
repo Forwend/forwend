@@ -12,6 +12,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/forwend/forwend/apps/backend/internal/settlement"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -123,6 +125,10 @@ func (s *Service) recipient(ctx context.Context, out *Send, req Request) error {
 	out.To = to
 	if to == out.From {
 		return fmt.Errorf("%w: this is the profile's own wallet", ErrInvalid)
+	}
+	// Money sent there is a Tempo fee, which the watcher doesn't record as a transfer (R-224): the send would never end.
+	if common.HexToAddress(to) == chain.TempoFeeManager {
+		return fmt.Errorf("%w: this address takes network fees, not payments", ErrInvalid)
 	}
 	var token bool
 	var own *string
@@ -257,7 +263,32 @@ func (s *Service) estimate(ctx context.Context, client *ethclient.Client, out *S
 	if err != nil {
 		return err
 	}
-	held, err := client.BalanceAt(ctx, common.HexToAddress(out.From), nil)
+	// Tempo has no gas coin: a transfer of a USD token pays its fee in that token unless the wallet chose another, and
+	// its native balance is a placeholder (R-223).
+	from := common.HexToAddress(out.From)
+	chosen, tempo, err := settlement.UserFeeToken(ctx, client, from)
+	if err != nil {
+		return errors.Join(ErrUnavailable, err)
+	}
+	if tempo {
+		if chosen != (common.Address{}) && chosen != common.HexToAddress(out.Token) {
+			return fmt.Errorf("%w: this wallet pays Tempo fees in another token", ErrInvalid)
+		}
+		block, err := client.BlockNumber(ctx)
+		if err != nil {
+			return errors.Join(ErrUnavailable, fmt.Errorf("read the latest block: %w", err))
+		}
+		held, err := ledger.BalanceAt(ctx, client, out.ChainID, out.Token, out.From, block)
+		if err != nil {
+			return errors.Join(ErrUnavailable, fmt.Errorf("read token balance: %w", err))
+		}
+		if need := new(big.Int).Add(out.Amount, fee); held.Cmp(need) < 0 {
+			return fmt.Errorf("%w: amount plus the network fee is more than the wallet holds", ErrInvalid)
+		}
+		out.NetworkFee, out.Gas = fee, &gas
+		return nil
+	}
+	held, err := client.BalanceAt(ctx, from, nil)
 	if err != nil {
 		return errors.Join(ErrUnavailable, fmt.Errorf("read gas balance: %w", err))
 	}

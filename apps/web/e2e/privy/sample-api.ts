@@ -197,6 +197,8 @@ export const sampleTransfer = (i: number) => {
         }
       : null,
     recordsValue: null as { currency: string; amount: string; rateDate: string } | null,
+    // R-224: the first send paid its own fee, as on Arc; the rest show none.
+    feePaid: i === 3 ? "3908" : null,
   };
 };
 export const TRANSFERS = Array.from({ length: 30 }, (_, i) => sampleTransfer(i));

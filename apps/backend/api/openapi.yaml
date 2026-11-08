@@ -5098,7 +5098,7 @@ components:
     Transaction:
       type: object
       required: [chainId, token, symbol, decimals, direction, amount, counterparty, txHash, logIndex, blockNumber, at,
-        status, usdValue, classification, labelable, invoice, recordsValue]
+        status, usdValue, classification, labelable, invoice, recordsValue, feePaid]
       properties:
         chainId: { type: integer }
         token: { $ref: "#/components/schemas/Address" }
@@ -5166,6 +5166,11 @@ components:
             currency: { type: string, pattern: "^[A-Z]{3}$" }
             amount: { type: string }
             rateDate: { type: string, format: date }
+        feePaid:
+          type: [string, "null"]
+          description: |
+            R-224. The gas the wallet paid for the Forwend send behind an outgoing transfer, in the token's base units: "0"
+            where Forwend paid. Null for other transfers, and until the send's receipt was read.
     RecordsCurrency:
       type: object
       additionalProperties: false
@@ -5976,9 +5981,14 @@ components:
     Send:
       type: object
       required: [sendId, chainId, token, symbol, decimals, from, to, toProfileId, amount, status, final, txHash, failure,
-        networkFee, gas, warnings, createdAt]
+        networkFee, feePaid, gas, warnings, createdAt]
       properties:
         sendId: { type: string, format: uuid }
+        feePaid:
+          type: [string, "null"]
+          description: |
+            R-224. What the wallet really paid for gas once the send was mined or reverted, in the token's base units, from
+            its receipt: "0" where Forwend paid. Null until then, or when the receipt could not be read.
         chainId: { type: integer }
         token: { type: string }
         symbol: { type: string }

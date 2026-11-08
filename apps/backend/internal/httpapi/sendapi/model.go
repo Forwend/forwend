@@ -34,23 +34,25 @@ type gasJSON struct {
 }
 
 type sendJSON struct {
-	SendID      string         `json:"sendId"`
-	ChainID     uint64         `json:"chainId"`
-	Token       string         `json:"token"`
-	Symbol      string         `json:"symbol"`
-	Decimals    int            `json:"decimals"`
-	From        string         `json:"from"`
-	To          string         `json:"to"`
-	ToProfileID *string        `json:"toProfileId"`
-	Amount      string         `json:"amount"`
-	Status      string         `json:"status"`
-	Final       bool           `json:"final"`
-	TxHash      *string        `json:"txHash"`
-	Failure     *string        `json:"failure"`
-	NetworkFee  feeJSON        `json:"networkFee"`
-	Gas         *gasJSON       `json:"gas"`
-	Warnings    []send.Warning `json:"warnings"`
-	CreatedAt   string         `json:"createdAt"`
+	SendID      string  `json:"sendId"`
+	ChainID     uint64  `json:"chainId"`
+	Token       string  `json:"token"`
+	Symbol      string  `json:"symbol"`
+	Decimals    int     `json:"decimals"`
+	From        string  `json:"from"`
+	To          string  `json:"to"`
+	ToProfileID *string `json:"toProfileId"`
+	Amount      string  `json:"amount"`
+	Status      string  `json:"status"`
+	Final       bool    `json:"final"`
+	TxHash      *string `json:"txHash"`
+	Failure     *string `json:"failure"`
+	NetworkFee  feeJSON `json:"networkFee"`
+	// FeePaid is what the wallet really paid once mined, in the token's base units; null until known (R-224).
+	FeePaid   *string        `json:"feePaid"`
+	Gas       *gasJSON       `json:"gas"`
+	Warnings  []send.Warning `json:"warnings"`
+	CreatedAt string         `json:"createdAt"`
 }
 
 func toSendJSON(s send.Send) sendJSON {
@@ -69,6 +71,10 @@ func toSendJSON(s send.Send) sendJSON {
 		Amount: s.Amount.String(), Status: status, Final: s.Status == send.Sent, TxHash: s.TxHash, Failure: s.Failure,
 		NetworkFee: feeJSON{Amount: s.NetworkFee.String(), PaidBy: paidByForwend}, Warnings: warnings,
 		CreatedAt: s.CreatedAt.UTC().Format(time.RFC3339)}
+	if s.FeePaid != nil {
+		paid := s.FeePaid.String()
+		out.FeePaid = &paid
+	}
 	if g := s.Gas; g != nil {
 		out.NetworkFee.PaidBy = paidByWallet
 		out.Gas = &gasJSON{Limit: strconv.FormatUint(g.Limit, 10), MaxFeePerGas: g.MaxFeePerGas.String(),

@@ -23,7 +23,8 @@ export const PRIVY_CHAINS: Chain[] = [
   chain(42161, ether, "https://arb1.arbitrum.io/rpc"),
   // Arc has no sponsorship: the wallet pays in USDC, and Privy uses this RPC from the browser (R-216).
   chain(5042, arcUsdc, WALLET_PAID_RPCS[5042] ?? ""),
-  chain(4217, tempoUsd, "https://rpc.mainnet.tempo.xyz"),
+  // Tempo mainnet has no sponsorship either: the wallet pays in the token it sends (R-223).
+  chain(4217, tempoUsd, WALLET_PAID_RPCS[4217] ?? ""),
   chain(84532, ether, "https://sepolia.base.org"),
   chain(421614, ether, "https://sepolia-rollup.arbitrum.io/rpc"),
   chain(5042002, arcUsdc, WALLET_PAID_RPCS[5042002] ?? ""),

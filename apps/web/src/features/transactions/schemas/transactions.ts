@@ -51,6 +51,9 @@ export const transactionSchema = z.object({
   recordsValue: z
     .object({ currency: z.string().regex(/^[A-Z]{3}$/), amount: usdAmount, rateDate: apiDate })
     .nullable(),
+  // R-224: the gas the wallet paid for the Forwend send behind an outgoing transfer, in the token's base units: "0"
+  // where Forwend paid, null for other transfers or a fee not known yet.
+  feePaid: baseUnits.nullable(),
 });
 
 export const recordsCurrencySchema = z.object({

@@ -1017,10 +1017,15 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
   - A token revert is `transfer_refused`; a chain that can't be read is 503 `network_unavailable`.
   - Warnings: `contract` (the recipient has code that isn't an EIP-7702 delegation) and `newRecipient`.
   - `networkFee` is the most the wallet pays. Where `gas_sponsored`, it is 0, paid by Forwend.
-  - Elsewhere only a `native_gas` token offers Send (Arc's USDC, R-216); the wallet pays its gas from that token.
+  - Elsewhere only a `native_gas` token offers Send (Arc's USDC, Tempo mainnet OUSD; R-216, R-223); the wallet pays its gas from that token.
     - The server estimates the gas and a fifth more, at the fee cap of `settlement.Fees` (R-189).
-    - Amount plus fee must fit the wallet's gas-coin balance.
+    - Amount plus fee must fit the wallet's gas-coin balance; on Tempo, its token balance (its native balance is a placeholder).
+    - On Tempo a wallet that chose another fee token in the fee manager can't send: its fee would leave in that token.
     - `gas` gives the limit and fee caps the browser signs with, so the fee never exceeds `networkFee`.
+  - Tempo's fee manager is refused as a recipient: a TIP-20 transfer there is a Tempo fee, which the watcher doesn't record.
+  - `feePaid` is what the wallet really paid once the send is mined or reverted, from its receipt (R-224).
+    - It is 0 where Forwend pays, and null until the receipt is read.
+    - A transactions row of an outgoing transfer carries its send's `feePaid`.
   - `GET .../sends/fee?chainId=&token=&to=` is that fee now, for the amount step's fee and Max.
     - It prices every amount byte as non-zero, so it covers a send of any amount, Max too.
 - `POST .../sends/{sendId}/approve` needs a fresh sign-in (D-49) and approves a `prepared` send once: it answers `approved`.

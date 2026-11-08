@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 )
 
 // tokens holds, as false, each disabled token with detected rows (R-38): its logs are read until those rows
@@ -112,6 +113,11 @@ func (w wallets) transfers(logs []types.Log, open []pending, headers map[uint64]
 			continue
 		}
 		from, to := common.BytesToAddress(l.Topics[1].Bytes()), common.BytesToAddress(l.Topics[2].Bytes())
+		// A Tempo wallet's own gas fee, in a TIP-20 token: its send records it as the fee paid (R-224), not as money sent.
+		if to == chain.TempoFeeManager && w.addresses[from] && chain.TIP20(l.Address) {
+			seen[logKey{hexutil.Encode(l.BlockHash[:]), uint64(l.Index)}] = true
+			continue
+		}
 		t := walletTransfer{
 			token: hexutil.Encode(l.Address[:]), txHash: hexutil.Encode(l.TxHash[:]),
 			blockHash: hexutil.Encode(l.BlockHash[:]), logIndex: uint64(l.Index), blockNumber: l.BlockNumber,
