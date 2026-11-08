@@ -1103,7 +1103,8 @@
       "keep": [],
       "review": true,
       "notes": [
-        "2026-11-08 review pass by reviewer: Reviewed 5abd21ad (same code as the uncommitted diff). No defects. Watcher: FeesPaid becomes one row per fee above 0; the network fee matches the first transfer to the settler, the platform fee the next to the refund authority, both inside (settlement transfer, Settled); the unique key with kind, the HAVING bool_and recorded filter and the completion UPDATE work for fee rows. Ledger: settlement checked against amount less fees, each fee against the invoice fee, payable first then held; fee rows at the same position don't block each other; the intent confirms on the settlement booking. Migration ceiling matches feesWithinCeiling; Down refuses when fees exist and rollback test passes. Every address.Terms builder from stored rows (signer check, returns termsOf, stray) reads both fees; invoice.buildTerms still writes 0 until F446. Extra checks run through a go test overlay, not committed: a full-amount Settled with fees is refused invalid_terms; settlement booked before FeesPaid is recorded, then fees booked, ends verified at 0; the refund authority settling with equal fees matches transfers 1 and 2; network fee only; FeesPaid recorded before Settled completes later. Package tests pass. Notes, not failures: no kept test for a wrong net refused as invalid_terms, or for the ledger refusing an invalid_terms fee row (the watcher test covers a wrong fee at record time); canary.go:277 and web receive-address.ts:68 still say fees are 0 until F443 (the pay page is F445; the canary is in no task); F445 readers: PDF Received and web receivedAmount (payable+held+settled+refunded) understate by the fees, the movements export shows fee rows with no source amount or addresses and verified false, Settled amount in the API and webhooks is the net."
+        "2026-11-08 review pass by reviewer: Reviewed 5abd21ad (same code as the uncommitted diff). No defects. Watcher: FeesPaid becomes one row per fee above 0; the network fee matches the first transfer to the settler, the platform fee the next to the refund authority, both inside (settlement transfer, Settled); the unique key with kind, the HAVING bool_and recorded filter and the completion UPDATE work for fee rows. Ledger: settlement checked against amount less fees, each fee against the invoice fee, payable first then held; fee rows at the same position don't block each other; the intent confirms on the settlement booking. Migration ceiling matches feesWithinCeiling; Down refuses when fees exist and rollback test passes. Every address.Terms builder from stored rows (signer check, returns termsOf, stray) reads both fees; invoice.buildTerms still writes 0 until F446. Extra checks run through a go test overlay, not committed: a full-amount Settled with fees is refused invalid_terms; settlement booked before FeesPaid is recorded, then fees booked, ends verified at 0; the refund authority settling with equal fees matches transfers 1 and 2; network fee only; FeesPaid recorded before Settled completes later. Package tests pass. Notes, not failures: no kept test for a wrong net refused as invalid_terms, or for the ledger refusing an invalid_terms fee row (the watcher test covers a wrong fee at record time); canary.go:277 and web receive-address.ts:68 still say fees are 0 until F443 (the pay page is F445; the canary is in no task); F445 readers: PDF Received and web receivedAmount (payable+held+settled+refunded) understate by the fees, the movements export shows fee rows with no source amount or addresses and verified false, Settled amount in the API and webhooks is the net.",
+        "2026-11-08 review pass by reviewer: Re-reviewed through 3c053464. Production code is unchanged since 5abd21ad, which passed review with no defects. The new TestSettlementAndFeesMustMatchTheTerms inserts outflows marked awaiting_booking, so it checks the ledger's own checks: a full-amount settlement on an option with fees, and a network fee other than the option's, both stay unbooked as invalid_terms, while the correct net books. It passes (go test -run TestSettlementAndFeesMustMatchTheTerms ./internal/ledger). This closes the earlier test gap for acceptance 3. F446 now carries the canary acceptance line. Notes for F445 still stand: PDF Received and web receivedAmount understate by the fees; the movements export shows fee rows with no source amount or addresses; the API and webhook settled amount is the net."
       ],
       "blockedReason": null,
       "branch": "feat/f443-a-settlement-that-pays-fees-is-booked-in",
@@ -1111,7 +1112,7 @@
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-08T20:24:42Z",
+        "at": "2026-11-08T20:39:29Z",
         "checks": [
           {
             "id": "docs-check",
@@ -1124,38 +1125,38 @@
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 63.4,
+            "seconds": 63.2,
             "log": ""
           },
           {
             "id": "backend-affected",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 63.3,
+            "seconds": 64.2,
             "log": ""
           },
           {
             "id": "backend-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 29.1,
+            "seconds": 29.4,
             "log": ""
           }
         ],
         "taskHash": "607ad84d77cadeff",
-        "filesHash": "1dad73926248368f",
+        "filesHash": "895a875dc532f64a",
         "proof": {
-          "1": "backend: migration 00110 adds network_fee/platform_fee (default 0, ceiling check, fixed by trigger); TestInvoiceFeesAreFixedTermsWithinATenth; settle, status, returns and stray terms read both fees (settlement/signer.go, returns.go, stray.go)",
-          "2": "backend: TestFeesPaidIsAnOutflowPerFee records network_fee and platform_fee rows matched to transfers 1 and 2 between the net transfer and Settled, completes them on a later read, refuses a wrong fee; Settled checked against amount less fees",
-          "3": "backend: TestSettlementWithFeesIsBookedInFull: recipient 4950000, executor +30000, refund authority +20000; settlement, network_fee, platform_fee booked; receiver, payable, held 0, verified; intent confirmed. Fails on the old watcher/ledger with 'waiting for its settle to be booked'",
-          "4": "backend: TestSettlementWithFeesIsBookedInFull runs signer, watcher and ledger on Anvil with the v2 factory; TestSettlesAPaidInvoiceOnce and the rest of the suite pass for invoices without fees"
+          "1": "backend: migration 00110 adds network_fee/platform_fee (default 0, ceiling check, fixed by trigger); TestInvoiceFeesAreFixedTermsWithinATenth; settle, status, returns and stray terms read both fees",
+          "2": "backend: TestFeesPaidIsAnOutflowPerFee records network_fee and platform_fee rows matched to their transfers between the net transfer and Settled, completes them on a later read, refuses a wrong fee",
+          "3": "backend: TestSettlementWithFeesIsBookedInFull books net and both fees, receiver 0, verified, intent confirmed; TestSettlementAndFeesMustMatchTheTerms refuses a full-amount settlement and a wrong network fee as invalid_terms (both fail on the old ledger)",
+          "4": "backend: TestSettlementWithFeesIsBookedInFull runs signer, watcher and ledger on Anvil with the v2 factory; the rest of the suite passes for invoices without fees"
         },
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "Reviewed 5abd21ad (same code as the uncommitted diff). No defects. Watcher: FeesPaid becomes one row per fee above 0; the network fee matches the first transfer to the settler, the platform fee the next to the refund authority, both inside (settlement transfer, Settled); the unique key with kind, the HAVING bool_and recorded filter and the completion UPDATE work for fee rows. Ledger: settlement checked against amount less fees, each fee against the invoice fee, payable first then held; fee rows at the same position don't block each other; the intent confirms on the settlement booking. Migration ceiling matches feesWithinCeiling; Down refuses when fees exist and rollback test passes. Every address.Terms builder from stored rows (signer check, returns termsOf, stray) reads both fees; invoice.buildTerms still writes 0 until F446. Extra checks run through a go test overlay, not committed: a full-amount Settled with fees is refused invalid_terms; settlement booked before FeesPaid is recorded, then fees booked, ends verified at 0; the refund authority settling with equal fees matches transfers 1 and 2; network fee only; FeesPaid recorded before Settled completes later. Package tests pass. Notes, not failures: no kept test for a wrong net refused as invalid_terms, or for the ledger refusing an invalid_terms fee row (the watcher test covers a wrong fee at record time); canary.go:277 and web receive-address.ts:68 still say fees are 0 until F443 (the pay page is F445; the canary is in no task); F445 readers: PDF Received and web receivedAmount (payable+held+settled+refunded) understate by the fees, the movements export shows fee rows with no source amount or addresses and verified false, Settled amount in the API and webhooks is the net.",
-          "at": "2026-11-08T20:38:04Z",
-          "filesHash": "1dad73926248368f"
+          "summary": "Re-reviewed through 3c053464. Production code is unchanged since 5abd21ad, which passed review with no defects. The new TestSettlementAndFeesMustMatchTheTerms inserts outflows marked awaiting_booking, so it checks the ledger's own checks: a full-amount settlement on an option with fees, and a network fee other than the option's, both stay unbooked as invalid_terms, while the correct net books. It passes (go test -run TestSettlementAndFeesMustMatchTheTerms ./internal/ledger). This closes the earlier test gap for acceptance 3. F446 now carries the canary acceptance line. Notes for F445 still stand: PDF Received and web receivedAmount understate by the fees; the movements export shows fee rows with no source amount or addresses; the API and webhook settled amount is the net.",
+          "at": "2026-11-08T20:42:42Z",
+          "filesHash": "895a875dc532f64a"
         }
       },
       "failedVerifies": 0
