@@ -53,7 +53,7 @@ func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, 
 	paymentapi.Routes(mux, guards, invoices, webURL)
 	jobapi.Routes(mux, guards, job.NewService(pool, invoices))
 	moneyapi.Routes(mux, guards, balance.NewService(pool, balances), activity.NewService(pool), profiles)
-	sendapi.Routes(mux, guards, send.NewService(pool, sendClients))
+	sendapi.Routes(mux, guards, send.NewService(pool, sendClients, wallets))
 	reauthapi.Routes(mux, guards, codes, wallets)
 	teamapi.Routes(mux, guards, team.NewService(pool, wallets))
 	linkapi.Routes(mux, guards, link.NewService(pool, invoices))

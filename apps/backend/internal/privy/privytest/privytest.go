@@ -1,11 +1,12 @@
 // Package privytest is a fake Privy wallet API for tests: create and list wallets, unique external_id per app,
-// owner filter, and cached errors replayed per idempotency key like Privy.
+// owner filter, and cached errors replayed per idempotency key like Privy; wallet RPC requests and their transactions.
 package privytest
 
 import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -57,11 +58,30 @@ type Fake struct {
 	Freezes       []string
 	FailFreezes   int
 	FailUnfreezes int
+	// RPCs are the wallet RPC requests in order. Each answers transaction "tx-" plus its idempotency key, whose hash is
+	// Hashes' entry, else none yet; Statuses' entry is its status, else broadcasted. A transaction names the wallet,
+	// caip2 and reference_id of its request, unless Owners overrides its wallet. FailTransactions answers every read
+	// with 500.
+	RPCs             []RPC
+	Hashes           map[string]string
+	Statuses         map[string]string
+	Owners           map[string]string
+	FailTransactions bool
+	sent             map[string]map[string]any
+}
+
+// RPC is a wallet RPC request as Privy got it.
+type RPC struct {
+	Path    string
+	Body    []byte
+	Headers http.Header
 }
 
 func New(t *testing.T) *Fake {
 	f := &Fake{t: t, wallets: map[string]map[string]any{}, failedKeys: map[string]bool{}, Emails: map[string]string{},
-		SignedInAt: map[string]int64{}, LinkedAt: map[string]int64{}, Mfa: map[string]map[string]int64{}}
+		SignedInAt: map[string]int64{}, LinkedAt: map[string]int64{}, Mfa: map[string]map[string]int64{},
+		Hashes: map[string]string{}, Statuses: map[string]string{}, Owners: map[string]string{},
+		sent: map[string]map[string]any{}}
 	srv := httptest.NewServer(f)
 	t.Cleanup(srv.Close)
 	f.URL = srv.URL
@@ -192,6 +212,42 @@ func (f *Fake) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"id": id, "created_at": created, "has_accepted_terms": true,
 			"is_guest": false, "linked_accounts": accounts, "mfa_methods": mfa})
+	case r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/v1/wallets/") && strings.HasSuffix(r.URL.Path, "/rpc"):
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			f.t.Error(err)
+		}
+		f.RPCs = append(f.RPCs, RPC{Path: r.URL.Path, Body: body, Headers: r.Header.Clone()})
+		id := "tx-" + r.Header.Get("privy-idempotency-key")
+		var req map[string]any
+		_ = json.Unmarshal(body, &req)
+		f.sent[id] = map[string]any{"wallet_id": strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v1/wallets/"), "/rpc"),
+			"caip2": req["caip2"], "reference_id": req["reference_id"]}
+		_ = json.NewEncoder(w).Encode(map[string]any{"method": "eth_sendTransaction",
+			"data": map[string]any{"caip2": "eip155:1", "hash": "", "transaction_id": id}})
+	case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v1/transactions/"):
+		if f.FailTransactions {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		id := strings.TrimPrefix(r.URL.Path, "/v1/transactions/")
+		sent := f.sent[id]
+		if sent == nil {
+			sent = map[string]any{}
+		}
+		if owner, ok := f.Owners[id]; ok {
+			sent["wallet_id"] = owner
+		}
+		status := f.Statuses[id]
+		if status == "" {
+			status = "broadcasted"
+		}
+		var hash any
+		if h, ok := f.Hashes[id]; ok {
+			hash = h
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": id, "caip2": sent["caip2"], "created_at": 1, "status": status,
+			"transaction_hash": hash, "wallet_id": sent["wallet_id"], "reference_id": sent["reference_id"]})
 	default:
 		w.WriteHeader(http.StatusNotFound)
 	}

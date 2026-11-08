@@ -59,6 +59,7 @@ export const SEND_COPY = {
   failed: "Not sent",
   reverted: "The network refused this send. Nothing left your wallet.",
   dropped: "This send never reached the network. Nothing left your wallet.",
+  notSent: "This send didn't go out. Nothing left your wallet.",
   viewOn: (explorer: string) => `View on ${explorer}`,
   done: "Done",
 } as const;

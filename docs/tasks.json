@@ -808,28 +808,217 @@
     {
       "id": "F441",
       "type": "feat",
-      "behavior": "Base and Arbitrum mainnet wallets pay send fees in USDC through Circle Paymaster",
+      "behavior": "Every send pays its own fee: Base and Arbitrum wallets, testnets too, pay USDC through Privy's paymaster, and Tempo Moderato pays in OUSD",
       "acceptance": [
-        "The owner picks the bundler and approves any paid account before it is used.",
-        "The server builds the EIP-7702 delegated user operation with Circle Paymaster v0.8, quotes the most the fee costs in USDC, caps it with the permit, and sends it to the bundler; the browser only signs with Privy (R-225).",
-        "Send shows the fee in USDC before sending and Max leaves room for it; the wallet holds no ETH.",
-        "feePaid is the USDC the paymaster took; the paymaster's prefund and refund are not recorded as money sent (R-224).",
-        "Proven end to end on Base Sepolia and Arbitrum Sepolia with Paymaster v0.8, then once on mainnet with the owner's yes; the testnets keep Privy's sponsorship for users."
+        "Forwend sponsors no send: chains.gas_sponsored goes, and Base, Arbitrum and their testnets' USDC have fee_asset usdc (D-121).",
+        "Approve answers the Privy eth_sendTransaction request for the review's transfer; the browser checks it and signs it with the user's key, and submit sends it to Privy once (R-225).",
+        "Send shows Forwend's USDC estimate of the paymaster's fee before sending and Max leaves room for it; the wallet holds no ETH.",
+        "The hash comes only from Privy; feePaid is the USDC the paymaster took, and its fee Transfer is neither money sent nor an outflow notice (R-224).",
+        "Tempo Moderato OUSD pays its own fee as Tempo mainnet does (R-223).",
+        "Proven live on Base Sepolia and Arbitrum Sepolia once the owner sets the Privy dashboard to User pays, then once on mainnet with the owner's yes."
       ],
       "dependsOn": [
         "F440"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend",
         "unit",
         "e2e",
-        "docs-check"
+        "docs-check",
+        "send-live-e2e"
       ],
       "refs": [
         "D-121",
         "R-225",
-        "R-224"
+        "R-224",
+        "D-46"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-11-08 review pass by reviewer: No blocking defect. Merge points hold: the watcher outflow notice ORs TempoFee and PaymasterFee at the right precedence, notFee wraps both, and records.go reuses notFee. Hiding is bounded: Submit and unreported refuse a hash for a fee_asset send, rehash checks wallet, reference id and caip2, and the server rebuilds the exact signed body from the row. The browser checks every key of the Privy request against the reviewed send. Migration 00109 keeps old sponsored, wallet-paid and Tempo sends valid; Arc and Tempo paths are unchanged apart from Moderato now paying in OUSD with its RPC in the CSP. Every open state ends: approved after the hold, relayed with no hash by 30 min or 24 h. Notes, not blocking: (1) track.go:401 ends a relayed send as reverted on the first receipt without the transfer and never asks Privy again, so if Privy re-sends the user operation under a new hash, the transfer raises a D-49 notice and the sheet says nothing left. Ask Privy (rehash) before finishing a relayed send as reverted. (2) watcher.go:636 PaymasterFee needs the send's hash at finality; if Relay's 10 s wait misses it and no client reads the send before the block is final, the fee raises a false notice. (3) prepare.go:318 userOpGas is a guess; a fee above 3x the estimate (chain/paymaster.go:7) shows as money out with feePaid 0. Set it from live receipts. (4) If Privy accepts but the answer is lost past the hold, the send ends expired and send-progress.tsx:154 says nothing left. (5) paymasterTook (track.go:531) nets refunds, but a refund still shows as its own incoming row. (6) chain/prices.go does not check the feed's updatedAt."
+      ],
+      "blockedReason": null,
+      "branch": "feat/f441-base-and-arbitrum-mainnet-wallets-pay-se",
+      "baseCommit": "ab0db4d014835c08050a9af50fd74c4ac1acc6e2",
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-08T19:28:42Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.6,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 68.6,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 48.9,
+            "log": ""
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "send-live-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 131.9,
+            "log": ""
+          }
+        ],
+        "taskHash": "60b2e9dead18d186",
+        "filesHash": "073daf45955c77a4",
+        "proof": {
+          "1": "backend: migration 00109 drops gas_sponsored and sets fee_asset usdc on Base, Arbitrum and their testnets; TestPrepareRefusesWhatWouldLoseMoney and TestGetBalances (sendable)",
+          "2": "backend: TestAPaymasterSendIsSignedByTheUserAndSentByTheServer and TestTheOwnerSignsAndReadsASend (approve gives the Privy request, submit relays the signed request once); unit: matchesPrivyRequest and the resend tests in send.test.ts and send-lock.test.tsx",
+          "3": "backend: TestAPaymasterSendIsSignedByTheUserAndSentByTheServer (USDC fee estimate, the whole balance leaves no room for the fee); unit: roomForFee",
+          "4": "backend: TestATheftShapedLikeARelayedSendStillTellsTheOwner, TestAnOutflowTooBigForAFeeInPrivysTransactionTellsTheOwner, TestPrivysAnswerCountsOnlyForItsSend, TestPrivyTellsARelayedSendsHashOrFailure, TestPaymasterTookIsWhatElseLeftTheWallet",
+          "5": "backend: migration 00109 and testnets.go make Tempo Moderato OUSD native_gas; TestATempoWalletPaysItsFeeInTheTokenItSends; send-live-e2e sent on Tempo Moderato with its OUSD fee shown",
+          "6": "send-live-e2e: the live Privy send suite passes on the testnets with the dashboard on User pays, the paymaster Transfer reaching Sent; the owner sent on Base and Arbitrum mainnet by hand on 2026-11-08 and both worked"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "No blocking defect. Merge points hold: the watcher outflow notice ORs TempoFee and PaymasterFee at the right precedence, notFee wraps both, and records.go reuses notFee. Hiding is bounded: Submit and unreported refuse a hash for a fee_asset send, rehash checks wallet, reference id and caip2, and the server rebuilds the exact signed body from the row. The browser checks every key of the Privy request against the reviewed send. Migration 00109 keeps old sponsored, wallet-paid and Tempo sends valid; Arc and Tempo paths are unchanged apart from Moderato now paying in OUSD with its RPC in the CSP. Every open state ends: approved after the hold, relayed with no hash by 30 min or 24 h. Notes, not blocking: (1) track.go:401 ends a relayed send as reverted on the first receipt without the transfer and never asks Privy again, so if Privy re-sends the user operation under a new hash, the transfer raises a D-49 notice and the sheet says nothing left. Ask Privy (rehash) before finishing a relayed send as reverted. (2) watcher.go:636 PaymasterFee needs the send's hash at finality; if Relay's 10 s wait misses it and no client reads the send before the block is final, the fee raises a false notice. (3) prepare.go:318 userOpGas is a guess; a fee above 3x the estimate (chain/paymaster.go:7) shows as money out with feePaid 0. Set it from live receipts. (4) If Privy accepts but the answer is lost past the hold, the send ends expired and send-progress.tsx:154 says nothing left. (5) paymasterTook (track.go:531) nets refunds, but a refund still shows as its own incoming row. (6) chain/prices.go does not check the feed's updatedAt.",
+          "at": "2026-11-08T19:41:42Z",
+          "filesHash": "073daf45955c77a4"
+        },
+        "commit": "580a1930",
+        "doneAt": "2026-11-08T19:42:21Z"
+      },
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f441-base-and-arbitrum-mainnet-wallets-pay-se",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F442",
+      "type": "feat",
+      "behavior": "Invoice receiver v2 takes a network fee and a platform fee at settlement, capped at 10% of the amount",
+      "acceptance": [
+        "InvoiceTerms gains networkFee and platformFee; settle pays the recipient the amount less both, the network fee to the settler and the platform fee to the refund authority, and Settled carries both (R-226).",
+        "The contract refuses terms whose fees pass 10% of the amount, and a refund takes no fee; unit, fuzz, invariant and symbolic tests cover fees 0, 1 and the ceiling.",
+        "New R-15 vectors with fees; Go and the pay page's receive-address check compute the same address as factory.predict.",
+        "The backend writes fees of 0 on v2 for now, and invoices on the v1 factory keep settling and refunding as before.",
+        "Deployed on the four testnets, then the four mainnets, each chain only after the owner's yes in chat; deployments.json and docs/contracts/operations.md record v2."
+      ],
+      "dependsOn": [
+        "F441"
+      ],
+      "state": "not_started",
+      "verification": [
+        "contracts",
+        "symbolic",
+        "backend",
+        "web-unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-226",
+        "D-122",
+        "R-15"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null
+    },
+    {
+      "id": "F443",
+      "type": "feat",
+      "behavior": "Each invoice quotes a network fee and a platform fee, the owner chooses who pays them, and every reader shows them",
+      "acceptance": [
+        "A fee plan (rate in basis points, USD minimum and cap) sets the platform fee, 0% at launch; changing it reaches new invoices only (R-227).",
+        "Each option's network fee is quoted from its deploy and settle gas at the fee cap, priced by ETH/USD on Base and Arbitrum, with a margin, rounded up to 0.01 USD.",
+        "Profiles get a Fees paid by default (you or your client) in settings; the invoice and link forms show the fee and what the client pays and the owner receives, with a per-invoice override; the API takes feesPaidBy.",
+        "The ledger books the net and each fee; the pay page, payment and invoice detail, receipts, PDFs, Transactions, exports, records, API, webhooks and packages show the fees and the net (R-228).",
+        "A platform fee of 0 shows no line; every money reader is checked for the new amounts, and old invoices without fees read as before."
+      ],
+      "dependsOn": [
+        "F442"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "web-unit",
+        "e2e",
+        "browser-packages",
+        "node-unit",
+        "docs-check"
+      ],
+      "refs": [
+        "R-227",
+        "R-228",
+        "D-122"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null
+    },
+    {
+      "id": "F444",
+      "type": "feat",
+      "behavior": "The executor tops up its own gas from the network fees it is paid, so settlement never stalls for want of ether",
+      "acceptance": [
+        "The executor is paid the network fees, which pay its gas directly on Arc and Tempo (R-229).",
+        "On Base and Arbitrum, below GasAlertSettlements settlements' worth of ether, the signer swaps USDC for ether on Uniswap v3 and unwraps it, accepting at least the Chainlink price less 1%; tested on a mainnet fork.",
+        "A failed or refused swap leaves settlement waiting and alerting as today, never losing money; the first swap on each mainnet runs only after the owner's yes."
+      ],
+      "dependsOn": [
+        "F443"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "docs-check"
+      ],
+      "refs": [
+        "R-229",
+        "R-189",
+        "D-122"
       ],
       "keep": [],
       "review": true,

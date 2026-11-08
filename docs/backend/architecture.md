@@ -259,8 +259,14 @@ with a test.
   unsigned send per wallet and chain, and one send per hash. `wallet_transfers` decides sent; the hash only links them.
 - `fresh_sign_ins` (R-137, D-49): an emailed Confirm it's you code per Privy session, hashed, with tries and expiry.
   A confirmed row makes its session fresh for 15 minutes.
-- `chains.gas_sponsored`: Privy pays the gas there, so the chain offers Send (D-119). Set to match the Privy dashboard.
 - `tokens.native_gas`: the token is its chain's gas coin (Arc USDC), so a send of it can pay its own gas (R-216).
+- `tokens.fee_asset`: the Privy user-pays asset a send of the token pays its fee in, through Privy's paymaster (R-225).
+  - Set to match the Privy dashboard's custom gas payment tokens: `usdc` on Base, Arbitrum and their testnets.
+- `sends.fee_asset` and `sends.privy_transaction_id`: a paymaster send, and the Privy transaction that carries it.
+  - Its hash is NULL until Privy gives it; nothing else sets it (D-49).
+  - A paymaster's fee Transfer in a send's transaction is not money sent: activity hides it and it tells nobody (R-224).
+    - Only within 3 times the quoted fee all together, in a transaction that also moves the send (`chain.PaymasterFee`).
+  - The balance history still counts it, as the balance does.
 - `transfer_labels` (R-108): the user's label for money in that Forwend can't classify, one per profile and transfer
   log (chain, transaction, log index).
 - `ecb_rates` (R-110, D-82): the ECB's daily euro reference rates, units per 1 EUR, one per currency and day.

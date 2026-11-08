@@ -11,6 +11,15 @@ export type Send = z.infer<typeof sendSchema>;
 
 export type SendFee = z.infer<typeof sendFeeSchema>;
 
+/** What signing gives the server: a wallet-paid send's hash, or the signature over a paymaster send's request. */
+export type Signed = { txHash: string } | { signature: string };
+
+/** A paymaster send's signature, which may be sent again until its Privy request expires (Unix ms). */
+export interface Relay {
+  signature: string;
+  until: number;
+}
+
 /** What the owner asks to send: to an outside address, or to another of their profiles. */
 export interface SendRequest {
   profileId: string;

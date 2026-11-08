@@ -5,7 +5,7 @@ import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import type { Balances } from "@/features/balances/types/balances";
 import { ROLES } from "@/features/profiles/constants/profile";
 import type { Profile } from "@/features/profiles/types/profile";
-import { FEE_DECIMALS, NATIVE_DECIMALS } from "@/features/send/constants/send";
+import { FEE_DECIMALS, FEE_PAYERS, NATIVE_DECIMALS } from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
 import type { Send, SendOption, SendRequest } from "@/features/send/types/send";
 import { evmAddress } from "@/shared/schemas/api";
@@ -89,14 +89,75 @@ export function matchesRequest(
   );
 }
 
-/** The gas caps Privy signs with can cost at most the fee the review shows (R-216); a sponsored send has none. */
+/** The gas caps Privy signs with can cost at most the fee the review shows (R-216). A paymaster send has none and an
+ * estimated fee (R-225); a send Forwend sponsored had neither. */
 function gasWithinFee(send: Send): boolean {
   const fee = BigInt(send.networkFee.amount);
   const gas = send.gas;
+  if (send.networkFee.paidBy === FEE_PAYERS.paymaster) return gas === null && fee > 0n;
   if (!gas) return fee === 0n;
   if (fee === 0n || BigInt(gas.maxPriorityFeePerGas) > BigInt(gas.maxFeePerGas)) return false;
   const scale = 10n ** BigInt(NATIVE_DECIMALS - send.decimals);
   return BigInt(gas.limit) * BigInt(gas.maxFeePerGas) <= fee * scale;
+}
+
+const PRIVY_RPC_URL = /^https:\/\/api\.privy\.io\/v1\/wallets\/[^/]+\/rpc$/;
+
+/** The latest a signed Privy request may expire: the approval's hold is 2 minutes, and a device clock may be off. */
+const PRIVY_REQUEST_LIFE_MS = 15 * 60_000;
+
+const sameKeys = (o: unknown, keys: string[]) =>
+  typeof o === "object" &&
+  o !== null &&
+  Object.keys(o).length === keys.length &&
+  keys.every((k) => k in o);
+
+/** The server's Privy request for a paymaster send is the review's transfer and nothing else (R-225): the token's
+ * transfer(to, amount) from the wallet, its fee in the token, to Privy's wallet API, once (the send is its
+ * idempotency key and reference) and soon (it can't be sent again after Privy's idempotency window). The URL's
+ * wallet is the server's, as the body is: it reads it from the same row as the sending address. */
+export function matchesPrivyRequest(
+  send: Send,
+  request: NonNullable<Send["privyRequest"]>,
+  now = Date.now(),
+): boolean {
+  const { body, headers } = request;
+  const params = body.params as { transaction?: Record<string, unknown> } | undefined;
+  const tx = params?.transaction ?? {};
+  const asset = (body.sponsor_options as { asset?: unknown } | undefined)?.asset;
+  const expiry = Number(headers["privy-request-expiry"]);
+  return (
+    PRIVY_RPC_URL.test(request.url) &&
+    sameKeys(headers, ["privy-app-id", "privy-idempotency-key", "privy-request-expiry"]) &&
+    headers["privy-idempotency-key"] === send.sendId &&
+    Number.isSafeInteger(expiry) &&
+    expiry <= now + PRIVY_REQUEST_LIFE_MS &&
+    sameKeys(body, [
+      "method",
+      "caip2",
+      "chain_type",
+      "sponsor",
+      "sponsor_options",
+      "reference_id",
+      "params",
+    ]) &&
+    body.method === "eth_sendTransaction" &&
+    body.caip2 === `eip155:${send.chainId}` &&
+    body.chain_type === "ethereum" &&
+    body.sponsor === true &&
+    sameKeys(body.sponsor_options, ["asset"]) &&
+    asset === send.symbol.toLowerCase() &&
+    body.reference_id === send.sendId &&
+    sameKeys(params, ["transaction"]) &&
+    sameKeys(tx, ["from", "to", "data", "value", "chain_id"]) &&
+    typeof tx.from === "string" &&
+    tx.from.toLowerCase() === send.from.toLowerCase() &&
+    typeof tx.to === "string" &&
+    tx.to.toLowerCase() === send.token.toLowerCase() &&
+    tx.data === transferCalldata(send.to, BigInt(send.amount)) &&
+    tx.value === "0x0" &&
+    tx.chain_id === `0x${send.chainId.toString(16)}`
+  );
 }
 
 /** An estimated fee rounded up to 4 decimals, so the figure shown is never below what the wallet can pay (R-216). */

@@ -1,5 +1,6 @@
 // Package send checks a send out of a profile wallet before the browser signs it, and follows it to the chain
-// (R-211, R-212, D-119). The server never signs for a user's wallet (D-46).
+// (R-211, R-212, D-119). The server never signs for a user's wallet (D-46): a send whose fee a paymaster takes is a
+// Privy request the user's key signs, which the server only sends on (R-225).
 package send
 
 import (
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/forwend/forwend/apps/backend/internal/privy"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -55,6 +57,10 @@ const (
 	ApproveHold = 2 * time.Minute
 	// A reported hash with no transaction on the chain after this is given up as dropped.
 	DropAfter = 30 * time.Minute
+	// RelayGiveUp: a relayed send Privy can't be read for, and that has no hash, ends after this.
+	RelayGiveUp = 24 * time.Hour
+	// relayBudget bounds Relay: Privy's answer, then the wait for its hash.
+	relayBudget = 25 * time.Second
 	// Before this the chain is not asked for the receipt: the watcher usually records the transfer first.
 	receiptAfter = 15 * time.Second
 )
@@ -79,12 +85,21 @@ type Send struct {
 	ApprovedAt  *time.Time
 	SubmittedAt *time.Time
 	FinishedAt  *time.Time
-	// NetworkFee is the most the wallet pays for gas, in the token's base units: 0 where Forwend pays (D-119).
+	// NetworkFee is what the wallet pays for gas, in the token's base units (D-119): the most it pays where it signs
+	// with Gas, Forwend's estimate where a paymaster takes it, 0 for a send Forwend sponsored before D-121.
 	NetworkFee *big.Int
-	// Gas is what the browser signs with when the wallet pays; nil where Forwend pays.
+	// Gas is what the browser signs with when the wallet pays its gas coin; nil otherwise.
 	Gas *Gas
-	// FeePaid is what the wallet really paid for gas once the send was mined, in the token's base units: 0 where
-	// Forwend pays, nil until known (R-224).
+	// FeeAsset is the Privy asset a paymaster takes the fee in (R-225); nil otherwise.
+	FeeAsset *string
+	// RelayID is Privy's transaction id for a send it carries; only Privy gives its hash.
+	RelayID *string
+	// Relay is set by Approve where FeeAsset is: the request the user's key signs.
+	Relay *privy.Request
+	// walletID is the wallet's Privy id.
+	walletID string
+	// FeePaid is what the wallet really paid for gas once the send was mined, in the token's base units: 0 for a send
+	// Forwend sponsored, nil until known (R-224).
 	FeePaid *big.Int
 	// Warnings are set by Prepare only.
 	Warnings []Warning
@@ -103,11 +118,14 @@ type Clients func(chainID uint64) (*ethclient.Client, error)
 type Service struct {
 	pool    *pgxpool.Pool
 	clients Clients
+	privy   *privy.Client
 	now     func() time.Time
+	// relayWait is how long Relay asks Privy for the hash before it answers.
+	relayWait time.Duration
 }
 
-func NewService(pool *pgxpool.Pool, clients Clients) *Service {
-	return &Service{pool: pool, clients: clients, now: time.Now}
+func NewService(pool *pgxpool.Pool, clients Clients, privy *privy.Client) *Service {
+	return &Service{pool: pool, clients: clients, privy: privy, now: time.Now, relayWait: 10 * time.Second}
 }
 
 func (s *Service) client(chainID uint64) (*ethclient.Client, error) {

@@ -65,12 +65,14 @@ features own product behavior, and shared UI components are grouped by purpose. 
   - Send (R-211–R-214) asks the api to prepare the send, and the Summary shows it. Holding Send approves it, which
     needs a fresh sign-in (Confirm it's you, its own step). Then it signs the token transfer in the browser with Privy's
     `useSendTransaction`, with Privy's screens off (D-46).
-    - It is sponsored where Forwend pays the gas; on Arc the wallet pays, with the server's gas caps (R-216).
+    - On Arc and Tempo the wallet pays, with the server's gas caps (R-216).
+    - A paymaster send (Base, Arbitrum) signs the approve's `privyRequest` with `useAuthorizationSignature` instead.
+    - It signs that request only if it is the review's transfer (`matchesPrivyRequest`), then submits the signature (R-225).
     - The approve answer is the send brought up to date: it signs only one still prepared.
     - It signs only once `useWallets` lists the profile's wallet: before that Privy refuses at once (S-9).
     - Every enabled chain is in `PrivyProvider` `supportedChains` (`features/auth/constants/privy-chains.ts`); a
       missing one never returns.
-    - The hash goes to the api, and the sheet reads the send every 1.5 s until the watcher says Sent.
+    - The hash or the signature goes to the api, and the sheet reads the send every 1.5 s until the watcher says Sent.
   - Receive's choice is keyed by chain family (`features/receive/lib/receive-choice.ts`), so non-EVM families fit
     later; the address never shows without its exact network and token warning.
   - Balances and activity are read again every 15 s while the tab is visible and when it comes back. Money sent

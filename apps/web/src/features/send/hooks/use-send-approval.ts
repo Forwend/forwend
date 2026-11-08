@@ -11,12 +11,12 @@ import { SEND_STATUSES } from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
 import { useSignSend } from "@/features/send/hooks/use-sign-send";
 import { sendError } from "@/features/send/lib/send";
-import type { Send } from "@/features/send/types/send";
+import type { Relay, Send } from "@/features/send/types/send";
 
 const CANCELLED = "cancelled";
 
 /** After the owner holds Send: two-step (set up first when needed), approve (Confirm it's you when the server asks),
- * sign with Privy, report the hash. Each ask is the sheet's one confirm step, never a dialog over it.
+ * sign with Privy, report the hash or the signed request. Each ask is the sheet's one confirm step, never a dialog over it.
  * It lives in the sheet, not the Summary, so the Summary may give way to the confirm step and come back while one
  * send is under way, and a second hold can't start another. */
 export function useSendApproval({
@@ -27,9 +27,10 @@ export function useSendApproval({
 }: {
   profileId: string;
   send: Send | null;
-  /** True from Privy's signing until the server holds the hash: the sheet can't close then. */
+  /** True from Privy's signing until the server holds the hash or the signed request: the sheet can't close then. */
   onSigning: (signing: boolean) => void;
-  onSubmitted: (send: Send) => void;
+  /** relay: a paymaster send's signature, which the progress step sends again if the server never got it. */
+  onSubmitted: (send: Send, relay: Relay | null) => void;
 }) {
   const { sign, canSign } = useSignSend(send?.from ?? null);
   const [approve] = useApproveSendMutation();
@@ -100,9 +101,9 @@ export function useSendApproval({
       return;
     }
     onSigning(true);
-    let hash: string;
+    let signed: Awaited<ReturnType<typeof sign>>;
     try {
-      hash = await sign(send);
+      signed = await sign(send, latest.privyRequest);
     } catch {
       setError(SEND_COPY.signFailed);
       setWorking(false);
@@ -110,11 +111,24 @@ export function useSendApproval({
       return;
     }
     // The money is moving now. The progress step holds the lock until the server has the hash, which it reports again
-    // if this report is lost, so the sheet never opens in between.
-    const reported = await submit({ profileId, sendId: send.sendId, txHash: hash })
+    // if this report is lost, so the sheet never opens in between. A signed request the server never got sends
+    // nothing; the approval ends after its hold.
+    const reported = await submit({ profileId, sendId: send.sendId, ...signed })
       .unwrap()
       .catch(() => null);
-    onSubmitted(reported ?? { ...send, status: SEND_STATUSES.sending, txHash: hash });
+    onSubmitted(
+      reported ?? {
+        ...send,
+        status: SEND_STATUSES.sending,
+        txHash: "txHash" in signed ? signed.txHash : null,
+      },
+      "signature" in signed
+        ? {
+            signature: signed.signature,
+            until: Number(latest.privyRequest?.headers["privy-request-expiry"] ?? 0),
+          }
+        : null,
+    );
     setWorking(false);
   };
 

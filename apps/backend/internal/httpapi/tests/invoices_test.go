@@ -126,8 +126,8 @@ func invoiceAPIChains(t *testing.T, userBurst int, webhookKey []byte, clients se
 		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true) ON CONFLICT (chain_id) DO UPDATE SET enabled = true
 		            RETURNING chain_id),
 		     cur AS (INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block) SELECT chain_id, 0, 0 FROM c),
-		     t1 AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
-		            VALUES (84532, 'evm', $1, 'USDC', 6, true)),
+		     t1 AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled, fee_asset)
+		            VALUES (84532, 'evm', $1, 'USDC', 6, true, 'usdc')),
 		     t2 AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
 		            VALUES (84532, 'evm', '0x2222222222222222222222222222222222222222', 'OLD', 6, false)),
 		     a AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:alice') RETURNING id),

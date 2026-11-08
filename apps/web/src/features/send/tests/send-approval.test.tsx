@@ -10,7 +10,7 @@ const api = vi.hoisted(() => ({
   record: vi.fn(),
   emailedCode: false,
   submit: vi.fn(async (): Promise<unknown> => ({})),
-  sign: vi.fn(async () => "0xhash"),
+  sign: vi.fn(async () => ({ txHash: "0xhash" })),
   mfa: {
     needed: false,
     enrolled: false,

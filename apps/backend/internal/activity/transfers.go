@@ -86,9 +86,11 @@ var transferSQL = `
 	                   ORDER BY u.day DESC LIMIT 1) fx ON true
 	WHERE w.profile_id = $1 AND t.status <> 'reorged' AND ` + inMode("t.chain_id") + " AND " + notFee
 
-// notFee leaves out a send's Tempo fee: the send's row shows it as the fee paid (R-224), not as money sent. The
-// balance history still counts it, as the balance does.
-var notFee = `NOT EXISTS (SELECT 1 FROM sends fs WHERE ` + chain.TempoFee("t", "fs") + `)`
+// notFee leaves out a send's network fee: a Tempo send's fee to the fee manager, or a paymaster's for a relayed send.
+// The send's row shows it as the fee paid (R-224), not as money sent. The balance history still counts it, as the
+// balance does.
+var notFee = `NOT EXISTS (SELECT 1 FROM sends fs WHERE (` + chain.TempoFee("t", "fs") + `) OR (` +
+	chain.PaymasterFee("t", "fs") + `))`
 
 // inMode keeps the rows on a chain of profile $1's mode: the dashboard shows one mode at a time (D-120, R-221).
 func inMode(chainID string) string {

@@ -1,16 +1,21 @@
 // Package privy wraps the official Privy Go SDK (D-12) for what the backend needs: one user-owned EVM wallet per
-// profile (R-31, D-21). The server never signs for these wallets (D-46).
+// profile (R-31, D-21). The server never signs for these wallets (D-46): it only sends on a request the user's own key
+// signed in the browser.
 package privy
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
 	privyclient "github.com/privy-io/go-sdk"
+	"github.com/privy-io/go-sdk/option"
 )
 
 // ErrNoWallet means the profile has no Privy wallet yet.
@@ -28,11 +33,83 @@ type Wallet struct {
 
 type Client struct {
 	sdk *privyclient.PrivyClient
+	// raw sends a body as given: the user's signature covers its exact JSON.
+	raw     privyclient.Client
+	appID   string
+	baseURL string
 }
 
 // NewClient uses Privy's production API unless apiURL is set (tests point it at a fake).
 func NewClient(appID, appSecret, apiURL string) *Client {
-	return &Client{sdk: privyclient.NewPrivyClient(privyclient.PrivyClientOptions{AppID: appID, AppSecret: appSecret, APIUrl: apiURL})}
+	base := apiURL
+	if base == "" {
+		base = "https://api.privy.io"
+	}
+	return &Client{
+		sdk: privyclient.NewPrivyClient(privyclient.PrivyClientOptions{AppID: appID, AppSecret: appSecret, APIUrl: apiURL}),
+		raw: privyclient.NewClient(option.WithAppID(appID), option.WithAppSecret(appSecret),
+			option.WithHeader("privy-app-id", appID), option.WithBaseURL(base)),
+		appID: appID, baseURL: strings.TrimSuffix(base, "/"),
+	}
+}
+
+// Request is a wallet API request for the user's key to sign: the browser signs it as Privy's authorization signature
+// payload (version 1, POST), and Send sends exactly this body and these headers.
+type Request struct {
+	URL     string            `json:"url"`
+	Body    json.RawMessage   `json:"body"`
+	Headers map[string]string `json:"headers"`
+}
+
+// RPC is the wallet RPC request with body. The idempotency key makes a second send of it a no-op at Privy, and Privy
+// refuses it after expires.
+func (c *Client) RPC(walletID string, body json.RawMessage, idempotencyKey string, expires time.Time) Request {
+	return Request{URL: c.baseURL + "/v1/wallets/" + url.PathEscape(walletID) + "/rpc", Body: body,
+		Headers: map[string]string{"privy-app-id": c.appID, "privy-idempotency-key": idempotencyKey,
+			"privy-request-expiry": strconv.FormatInt(expires.UnixMilli(), 10)}}
+}
+
+// Send sends the request with the user's signature over it, and returns Privy's transaction id.
+func (c *Client) Send(ctx context.Context, req Request, signature string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, Timeout)
+	defer cancel()
+	path, ok := strings.CutPrefix(req.URL, c.baseURL+"/")
+	if !ok {
+		return "", fmt.Errorf("send Privy request: %s is not a Privy URL", req.URL)
+	}
+	opts := []option.RequestOption{option.WithHeader("privy-authorization-signature", signature),
+		option.WithRequestBody("application/json", []byte(req.Body))}
+	for k, v := range req.Headers {
+		opts = append(opts, option.WithHeader(k, v))
+	}
+	var out struct {
+		Data struct {
+			TransactionID string `json:"transaction_id"`
+		} `json:"data"`
+	}
+	if err := c.raw.Post(ctx, path, nil, &out, opts...); err != nil {
+		return "", fmt.Errorf("send Privy request: %w", err)
+	}
+	if out.Data.TransactionID == "" {
+		return "", errors.New("send Privy request: no transaction id in the answer")
+	}
+	return out.Data.TransactionID, nil
+}
+
+// Transaction is a transaction Privy sent: its hash once known, else "", Privy's status for it, and what it was for.
+type Transaction struct {
+	Hash, Status, WalletID, Caip2, ReferenceID string
+}
+
+func (c *Client) Transaction(ctx context.Context, id string) (Transaction, error) {
+	ctx, cancel := context.WithTimeout(ctx, Timeout)
+	defer cancel()
+	t, err := c.raw.Transactions.Get(ctx, id)
+	if err != nil {
+		return Transaction{}, fmt.Errorf("read Privy transaction %s: %w", id, err)
+	}
+	return Transaction{Hash: strings.ToLower(t.TransactionHash), Status: string(t.Status), WalletID: t.WalletID,
+		Caip2: t.Caip2, ReferenceID: t.ReferenceID}, nil
 }
 
 // ProfileWallet finds the wallet by external_id = profile id and owner, else creates it. No idempotency key: Privy

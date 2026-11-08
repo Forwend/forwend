@@ -1009,6 +1009,7 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
 
 - Only the owner sends: `money.move` belongs to no role and no key (D-61).
 - The browser signs with Privy; the server never signs for a user wallet (D-46).
+  - A paymaster send's browser signs a Privy request, which the server only sends on (R-225).
 - `POST /v1/profiles/{profileId}/sends` checks a send for the review. It needs no fresh sign-in: nothing moves yet.
   - `to` is an outside address; `toProfileId` is another of the owner's profiles. The server finds that wallet itself.
   - A pasted address of another of the owner's profiles counts as a transfer.
@@ -1016,19 +1017,26 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
   - It reads the wallet's balance and dry-runs the token transfer from the wallet at the latest block.
   - A token revert is `transfer_refused`; a chain that can't be read is 503 `network_unavailable`.
   - Warnings: `contract` (the recipient has code that isn't an EIP-7702 delegation) and `newRecipient`.
-  - `networkFee` is the most the wallet pays. Where `gas_sponsored`, it is 0, paid by Forwend.
-  - Elsewhere only a `native_gas` token offers Send (Arc's USDC, Tempo mainnet OUSD; R-216, R-223); the wallet pays its gas from that token.
+  - The wallet pays its fee from the token it sends (D-121). Only a `native_gas` or `fee_asset` token offers Send.
+  - `networkFee.paidBy` says how: `wallet` for a `native_gas` token, `paymaster` for a `fee_asset` token.
+    - `forwend`, with 0, is a send Forwend sponsored before D-121.
+  - A `native_gas` token is its chain's gas coin (Arc USDC, Tempo OUSD; R-216, R-223).
     - The server estimates the gas and a fifth more, at the fee cap of `settlement.Fees` (R-189).
     - Amount plus fee must fit the wallet's gas-coin balance; on Tempo, its token balance (its native balance is a placeholder).
     - On Tempo a wallet that chose another fee token in the fee manager can't send: its fee would leave in that token.
     - `gas` gives the limit and fee caps the browser signs with, so the fee never exceeds `networkFee`.
+  - A `fee_asset` token pays through Privy's paymaster, in that Privy asset (USDC on Base and Arbitrum, testnets too; R-225).
+    - `networkFee` is Forwend's estimate: the transfer's gas plus 400,000 for the user operation, at the fee cap.
+    - It is priced in dollars by the chain's Chainlink ETH/USD feed (`chain.EthUSD`). Privy quotes none.
+    - Amount plus that fee must fit the token balance. `gas` is null.
   - Tempo's fee manager is refused as a recipient: a send there would read as its own fee.
     - The watcher records every transfer to the fee manager; it also swaps and takes liquidity.
     - Only a send's own fee is no money out (`chain.TempoFee`): at most the fee it was signed for, in the
       transaction whose hash the browser reported for it. Until it reports one, a transaction since the approval
       that moves exactly the send counts: Tempo blocks are final at once. It hides from Transactions and tells nobody (D-49).
   - `feePaid` is what the wallet really paid once the send is mined or reverted, from its receipt (R-224).
-    - It is 0 where Forwend pays, and null until the receipt is read.
+    - For a paymaster send it is what else of the token left the wallet in that transaction, less what came back.
+    - It is 0 for a send Forwend sponsored before D-121, and null until the receipt is read.
     - A transactions row of an outgoing transfer carries its send's `feePaid`.
   - `GET .../sends/fee?chainId=&token=&to=` is that fee now, for the amount step's fee and Max.
     - It prices every amount byte as non-zero, so it covers a send of any amount, Max too.
@@ -1037,6 +1045,10 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
   - Recorded means each of Privy's `mfa_methods`, as `type:verified_at`, is in `users.two_step_methods`.
   - The browser asks it after the owner holds Send, and signs only a send it answered `approved`.
   - A second approve answers 409 `send_approved`: the first may have been signed though its answer was lost.
+  - A paymaster send's answer carries `privyRequest`: Privy's `eth_sendTransaction` for the review's transfer.
+    - Its body has `sponsor` and `sponsor_options.asset`. Its headers have the send's id as idempotency key.
+    - It expires with the approval's 2-minute hold, so Privy refuses it once the wallet may have moved on.
+    - The browser checks it moves what the review showed, then signs it with `useAuthorizationSignature`.
   - A send no longer prepared, such as one past its 10 minutes, comes back as it is.
 - `PUT /v1/me/two-step` records the user's MFA methods at Privy, behind a fresh sign-in (R-219).
   - Its body names the types the user just set up: `{"methods": ["passkey", "totp"]}` (passkey, totp or sms).
@@ -1050,10 +1062,26 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
     its hash.
   - It holds until the watcher has read the chain past those 2 minutes, so a transfer it hasn't read yet still counts.
   - It also holds while the wallet has a transaction no block holds yet: a new send would go out after it.
-  - That check reads the wallet's nonce, so it may not see a sponsored transaction a relayer sends.
+  - That check reads the wallet's nonce, so it may not see a paymaster transaction a bundler sends.
 - `GET .../sends` lists the signed sends the watcher hasn't recorded yet (R-215). It needs `money.read`.
   - The money lists show them first, until the transfer's own row takes their place.
-- `POST .../sends/{sendId}/submit` takes the hash Privy returned. `POST .../cancel` gives up an unsigned send.
+- `POST .../sends/{sendId}/submit` takes `txHash`, the hash Privy returned, or `signature` for a paymaster send.
+  - A paymaster send refuses a hash. With a signature the server sends the approve's request to Privy once.
+  - Privy answers a transaction id. The hash comes only from `GET /v1/transactions/{id}`: submit asks for 10 s, then each read.
+    - Privy's answer counts only when its wallet, `caip2` and `reference_id` are the send's.
+    - A transfer on the chain never gives it: one with the same amount and recipient may be a theft's (D-49).
+    - Until it has a hash, the send explains its own transfer to the outflow notice for 30 minutes, as an approved one does.
+    - Submit finishes within 25 s even if the browser goes away: once Privy has it, the money moves.
+  - Privy's `failed` or `provider_error` with no hash, or no hash 30 minutes after Privy last answered, fails it as `dropped`.
+    - While Privy can't be read it may still have sent it, so the wallet waits 24 hours (`RelayGiveUp`) instead.
+    - Reads keep asking Privy: a hash that comes later, or one that replaced the first, makes it a send mined late.
+    - A replacing hash gets its own 30 minutes on the chain.
+  - A paymaster fee is an outflow to anyone but the recipient in the send's transaction (`chain.PaymasterFee`).
+    - All such outflows together must be at most 3 times its quoted fee, and the transaction must also move the send.
+    - Anything else is no fee: it shows in Transactions and tells the owner. A reverted send counts no fee.
+  - The browser keeps the signature and sends it again, one try at a time, while the send reads approved or expired.
+    - Submit refuses it with 422 once the request expired by the server's clock, which ends the tries.
+- `POST .../cancel` gives up an unsigned send.
 - `GET .../sends/{sendId}` brings the status up to date on each read:
   - `sending` until the watcher records a wallet transfer that matches hash, wallet, token, recipient and amount.
   - `sent` once it does: the transfer is in a block. `final` once that transfer is confirmed and can't change.

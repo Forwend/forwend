@@ -16,6 +16,8 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
+	"github.com/forwend/forwend/apps/backend/internal/privy"
+	"github.com/forwend/forwend/apps/backend/internal/privy/privytest"
 	"github.com/forwend/forwend/apps/backend/internal/search"
 	"github.com/forwend/forwend/apps/backend/internal/watcher"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -32,9 +34,11 @@ type env struct {
 	merchant string // Alice's merchant profile
 	bob      string // Bob's profile
 	watch    *watcher.Chain
+	privy    *privytest.Fake
 }
 
-// newEnv: Alice's wallet holds 100 tokens on a sponsored Anvil chain.
+// newEnv: Alice's wallet holds 100 tokens on an Anvil chain where the wallet pays its own gas, Anvil's ether standing
+// in for Arc's USDC. Privy is a fake.
 func newEnv(t *testing.T) env {
 	t.Helper()
 	ctx := context.Background()
@@ -47,10 +51,9 @@ func newEnv(t *testing.T) env {
 	t.Cleanup(pool.Close)
 	e.pool = pool
 	err = pool.QueryRow(ctx, `
-		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled, gas_sponsored)
-		           VALUES ($1, 'evm', 'anvil', true, true)),
-		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
-		            VALUES ($1, 'evm', $2, 'USDC', 6, true)),
+		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES ($1, 'evm', 'anvil', true)),
+		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled, native_gas)
+		            VALUES ($1, 'evm', $2, 'USDC', 6, true, true)),
 		     a AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:alice') RETURNING id),
 		     b AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:bob') RETURNING id),
 		     ap AS (INSERT INTO profiles (user_id, kind) SELECT id, 'personal' FROM a RETURNING id),
@@ -67,7 +70,10 @@ func newEnv(t *testing.T) env {
 	}
 	e.anvil.Mint(e.token, "100000000")
 	client := ethclient.NewClient(e.anvil.RPC)
-	e.sends = NewService(pool, func(uint64) (*ethclient.Client, error) { return client, nil })
+	e.privy = privytest.New(t)
+	e.sends = NewService(pool, func(uint64) (*ethclient.Client, error) { return client, nil },
+		privy.NewClient(privytest.AppID, privytest.AppSecret, e.privy.URL))
+	e.sends.relayWait = 0
 	e.watch = watcher.NewChain(pool, chaintest.ChainID, e.anvil.RPC)
 	if err := e.watch.Scan(ctx); err != nil {
 		t.Fatal(err)
@@ -115,11 +121,11 @@ func TestPrepareRefusesWhatWouldLoseMoney(t *testing.T) {
 	if _, err := e.prepare(t, outsider, "", 100_000_001); !errors.Is(err, ErrInvalid) {
 		t.Errorf("more than the balance: err = %v, want ErrInvalid", err)
 	}
-	if _, err := e.pool.Exec(context.Background(), "UPDATE chains SET gas_sponsored = false"); err != nil {
+	if _, err := e.pool.Exec(context.Background(), "UPDATE tokens SET native_gas = false"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := e.prepare(t, outsider, "", 1_000_000); !errors.Is(err, ErrInvalid) {
-		t.Errorf("unsponsored chain: err = %v, want ErrInvalid", err)
+		t.Errorf("gas in another coin and no paymaster: err = %v, want ErrInvalid", err)
 	}
 }
 
@@ -316,24 +322,9 @@ func TestASendFailsWhenItsTransactionMovesSomethingElse(t *testing.T) {
 	if s, _ = e.sends.Get(ctx, e.profile, s.ID); s.Status != Failed || s.Failure == nil || *s.Failure != "reverted" {
 		t.Errorf("status = %s failure %v, want failed reverted", s.Status, s.Failure)
 	}
-	if s.FeePaid == nil || s.FeePaid.Sign() != 0 {
-		t.Errorf("a sponsored reverted send paid %v, want 0", s.FeePaid)
-	}
-
-	// A wallet-paid one still paid for its gas, and keeps that fee (R-224).
-	if _, err := e.pool.Exec(ctx, "UPDATE chains SET gas_sponsored = false; UPDATE tokens SET native_gas = true"); err != nil {
-		t.Fatal(err)
-	}
-	s, err = e.prepare(t, outsider, "", 3_000_000)
-	if err != nil {
-		t.Fatal(err)
-	}
-	e.approve(t, s)
-	if _, err = e.sends.Submit(ctx, e.profile, s.ID, e.anvil.Transfer(e.token, outsider, "1")); err != nil {
-		t.Fatal(err)
-	}
-	if s, _ = e.sends.Get(ctx, e.profile, s.ID); s.Status != Failed || s.FeePaid == nil || s.FeePaid.Sign() <= 0 {
-		t.Errorf("a wallet-paid reverted send = %s, fee %v; want failed with its fee", s.Status, s.FeePaid)
+	// It still paid for its gas, and keeps that fee (R-224).
+	if s.FeePaid == nil || s.FeePaid.Sign() <= 0 {
+		t.Errorf("a reverted send paid %v, want its fee", s.FeePaid)
 	}
 }
 
@@ -402,26 +393,14 @@ func TestPendingListsSignedSendsUntilTheWatcherRecordsThem(t *testing.T) {
 	}
 }
 
-// R-216: where nobody sponsors gas and the token is the chain's gas coin (here Anvil's ether stands in for Arc's
-// USDC), the wallet pays: the send carries the fee and the gas caps it was estimated at.
-func TestAWalletPaysItsOwnGasWhereNotSponsored(t *testing.T) {
+// R-216: where the token is the chain's gas coin (here Anvil's ether stands in for Arc's USDC), the wallet pays: the
+// send carries the fee and the gas caps it was estimated at.
+func TestAWalletPaysItsOwnGas(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
-	if fee, err := e.sends.Fee(ctx, e.profile, chaintest.ChainID, e.token, ""); err != nil || fee.Sign() != 0 {
-		t.Fatalf("sponsored fee = %v, %v, want 0", fee, err)
-	}
-	if _, err := e.pool.Exec(ctx, "UPDATE chains SET gas_sponsored = false"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := e.prepare(t, outsider, "", 1_000_000); !errors.Is(err, ErrInvalid) {
-		t.Errorf("gas in another coin: err = %v, want ErrInvalid", err)
-	}
-	if _, err := e.pool.Exec(ctx, "UPDATE tokens SET native_gas = true"); err != nil {
-		t.Fatal(err)
-	}
-	fee, err := e.sends.Fee(ctx, e.profile, chaintest.ChainID, e.token, outsider)
-	if err != nil || fee.Sign() <= 0 {
-		t.Fatalf("self-paid fee = %v, %v", fee, err)
+	fee, paymaster, err := e.sends.Fee(ctx, e.profile, chaintest.ChainID, e.token, outsider)
+	if err != nil || fee.Sign() <= 0 || paymaster {
+		t.Fatalf("self-paid fee = %v, paymaster %v, %v", fee, paymaster, err)
 	}
 	s, err := e.prepare(t, outsider, "", 1_000_000)
 	if err != nil {
@@ -449,12 +428,6 @@ func TestAWalletPaysItsOwnGasWhereNotSponsored(t *testing.T) {
 func TestMaxFitsTheFeeShown(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
-	if _, err := e.pool.Exec(ctx, "UPDATE chains SET gas_sponsored = false"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := e.pool.Exec(ctx, "UPDATE tokens SET native_gas = true"); err != nil {
-		t.Fatal(err)
-	}
 	// A busy chain makes each calldata byte dear; the gas coin is exactly the 100 tokens held, as on Arc.
 	for _, call := range [][]any{{"anvil_setNextBlockBaseFeePerGas", "0x2E90EDD000"}, {"evm_mine"},
 		{"anvil_setBalance", chaintest.Sender, "0x56BC75E2D63100000"}} {
@@ -462,7 +435,7 @@ func TestMaxFitsTheFeeShown(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	fee, err := e.sends.Fee(ctx, e.profile, chaintest.ChainID, e.token, outsider)
+	fee, _, err := e.sends.Fee(ctx, e.profile, chaintest.ChainID, e.token, outsider)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -727,7 +700,7 @@ func TestMoneyLeavingAWalletWithoutASendTellsItsOwner(t *testing.T) {
 	}
 }
 
-// R-224: a sent send keeps what its wallet really paid for gas, from the receipt; 0 where Forwend pays.
+// R-224: a sent send keeps what its wallet really paid for gas, from the receipt.
 func TestASentSendRecordsTheFeeItsWalletPaid(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
@@ -751,12 +724,6 @@ func TestASentSendRecordsTheFeeItsWalletPaid(t *testing.T) {
 			t.Fatalf("send %s, %v; want sent", got.Status, err)
 		}
 		return got
-	}
-	if s := sent("1000000"); s.FeePaid == nil || s.FeePaid.Sign() != 0 {
-		t.Errorf("sponsored send paid %v, want 0", s.FeePaid)
-	}
-	if _, err := e.pool.Exec(ctx, "UPDATE chains SET gas_sponsored = false; UPDATE tokens SET native_gas = true"); err != nil {
-		t.Fatal(err)
 	}
 	s := sent("1000000")
 	receipt, err := ethclient.NewClient(e.anvil.RPC).TransactionReceipt(ctx, common.HexToHash(*s.TxHash))
@@ -788,9 +755,6 @@ func TestASentSendRecordsTheFeeItsWalletPaid(t *testing.T) {
 func TestATempoWalletPaysItsFeeInTheTokenItSends(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
-	if _, err := e.pool.Exec(ctx, "UPDATE chains SET gas_sponsored = false; UPDATE tokens SET native_gas = true"); err != nil {
-		t.Fatal(err)
-	}
 	// userTokens(address) answers this word whatever the account.
 	feeManager := func(word string) {
 		t.Helper()
@@ -826,9 +790,6 @@ func TestATempoWalletPaysItsFeeInTheTokenItSends(t *testing.T) {
 func TestOnlyASendsOwnTempoFeeIsNotMoneySent(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
-	if _, err := e.pool.Exec(ctx, "UPDATE chains SET gas_sponsored = false; UPDATE tokens SET native_gas = true"); err != nil {
-		t.Fatal(err)
-	}
 	feeManager := strings.ToLower(chain.TempoFeeManager.Hex())
 	// send moves 1 token to outsider and, in the same transaction, the send's quoted fee plus extra to the fee manager.
 	send := func(extra int64) Send {

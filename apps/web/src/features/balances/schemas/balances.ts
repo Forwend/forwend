@@ -17,7 +17,7 @@ export const tokenBalanceSchema = z.object({
   confirming: baseUnits.optional(),
   partial: baseUnits.optional(),
   livemode: z.boolean().optional(),
-  // Send offers it: Forwend pays the gas, or the token is the gas coin the wallet pays with (D-119, R-216).
+  // Send offers it: the token is the gas coin the wallet pays with, or a paymaster takes the fee in it (R-216, R-225).
   sendable: z.boolean().optional(),
 });
 

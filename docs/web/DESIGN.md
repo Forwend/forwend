@@ -1150,9 +1150,9 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
   - Amount: a one-line chip with the token's mark, symbol and network, then the amount large and centered, no box,
     with the symbol as a muted suffix (`AmountField bare`).
     - Under it "1.2665 USDC available" (cut to 4 decimals, never rounded up) and a Max button.
-    - Then one ruled line: Network fee, "Free" where Forwend pays, else "≈ 0.0025 USDC". Max leaves room for that fee, and waits until it is read.
+    - Then one ruled line: Network fee, "≈ 0.0025 USDC" (D-121). Max leaves room for that fee, and waits until it is read.
   - Summary: the amount large and centered, then a ruled box: From, To, Network, Network fee.
-    - Total (≈ amount plus fee) follows only when the wallet pays the fee from the same token (R-216).
+    - Total (≈ amount plus fee) follows when the wallet pays the fee from the same token, as every send does (R-216, R-225).
   - An estimated fee rounds up to 4 decimals and leads with ≈. No "Up to", no "They receive": the amount says it.
   - A pasted To address shows whole, in groups of four, first and last groups in ink (`FullAddress`).
     - A look-alike made to match only the start and end shows different middle characters.
