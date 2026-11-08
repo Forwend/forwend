@@ -1208,7 +1208,7 @@
       "dependsOn": [
         "F443"
       ],
-      "state": "not_started",
+      "state": "active",
       "verification": [
         "backend",
         "web-unit",
@@ -1226,7 +1226,9 @@
       "review": true,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": null,
+      "branch": "feat/f445-every-reader-shows-an-invoice-option-s-f",
+      "baseCommit": "525e9c3388c72ffbcb1692c5d87742c12bde2208"
     },
     {
       "id": "F446",
