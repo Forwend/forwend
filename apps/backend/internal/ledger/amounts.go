@@ -17,11 +17,13 @@ const (
 	ReconciliationReview   ReconciliationStatus = "review"
 )
 
+// Amounts are an option's booked balances and outflows. Settled is what the recipient got; Fees, what settlement paid
+// the settler and the refund authority (R-230).
 type Amounts struct {
-	ReconciliationStatus                                         ReconciliationStatus
-	Receiver, Payable, Held, Settled, Refunded, ObservedRefunded *big.Int
-	LastReturnTxHash                                             string
-	Unreconciled, HasPolicyException                             bool
+	ReconciliationStatus                                               ReconciliationStatus
+	Receiver, Payable, Held, Settled, Fees, Refunded, ObservedRefunded *big.Int
+	LastReturnTxHash                                                   string
+	Unreconciled, HasPolicyException                                   bool
 }
 
 func ReadAmounts(ctx context.Context, db interface {
@@ -46,11 +48,12 @@ func ReadAmountsFor(ctx context.Context, db interface {
         -sum(e.amount) FILTER (WHERE e.account = 'recipient_payable') AS payable,
         -sum(e.amount) FILTER (WHERE e.account = 'payer_held') AS held,
         -sum(e.amount) FILTER (WHERE e.account = 'receiver' AND t.kind = 'settlement') AS settled,
+        -sum(e.amount) FILTER (WHERE e.account = 'receiver' AND t.kind IN ('network_fee', 'platform_fee')) AS fees,
         -sum(e.amount) FILTER (WHERE e.account = 'receiver' AND t.kind = 'refund') AS refunded
       FROM ledger_transactions t JOIN ledger_entries e ON e.transaction_id = t.id
       WHERE t.invoice_id = ANY($1::text[]) GROUP BY t.invoice_id
     ) SELECT i.id,coalesce(e.receiver,0)::text,coalesce(e.payable,0)::text,coalesce(e.held,0)::text,
-      coalesce(e.settled,0)::text,coalesce(e.refunded,0)::text,
+      coalesce(e.settled,0)::text,coalesce(e.fees,0)::text,coalesce(e.refunded,0)::text,
       coalesce((SELECT sum(amount) FROM receiver_outflows WHERE invoice_id = i.id AND kind = 'refund'),0)::text,
       coalesce((SELECT tx_hash FROM receiver_outflows WHERE invoice_id = i.id AND kind = 'refund'
         ORDER BY block_number DESC,log_index DESC LIMIT 1),''),
@@ -64,16 +67,17 @@ func ReadAmountsFor(ctx context.Context, db interface {
 	defer rows.Close()
 	result := make(map[string]*Amounts, len(invoiceIDs))
 	for rows.Next() {
-		var id, receiver, payable, held, settled, refunded, observed string
+		var id, receiver, payable, held, settled, fees, refunded, observed string
 		a := &Amounts{}
 		var review bool
-		if err := rows.Scan(&id, &receiver, &payable, &held, &settled, &refunded, &observed, &a.LastReturnTxHash, &a.Unreconciled, &a.HasPolicyException, &review); err != nil {
+		if err := rows.Scan(&id, &receiver, &payable, &held, &settled, &fees, &refunded, &observed, &a.LastReturnTxHash, &a.Unreconciled, &a.HasPolicyException, &review); err != nil {
 			return nil, err
 		}
 		a.Receiver, _ = new(big.Int).SetString(receiver, 10)
 		a.Payable, _ = new(big.Int).SetString(payable, 10)
 		a.Held, _ = new(big.Int).SetString(held, 10)
 		a.Settled, _ = new(big.Int).SetString(settled, 10)
+		a.Fees, _ = new(big.Int).SetString(fees, 10)
 		a.Refunded, _ = new(big.Int).SetString(refunded, 10)
 		a.ObservedRefunded, _ = new(big.Int).SetString(observed, 10)
 		a.ReconciliationStatus = ReconciliationVerified

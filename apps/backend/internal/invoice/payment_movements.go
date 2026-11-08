@@ -102,18 +102,18 @@ const paymentMovementRows = `, journal AS (
  SELECT 'ledger:' || j.id::text AS id,'booked' AS state,j.created_at AS recorded_at,p.id AS payment_id,i.id AS option_id,
    coalesce(p.store_id::text,'') AS store_id,p.store_name,p.source,p.livemode,p.document_kind,p.number,p.reference,p.title,
    i.chain_id,(SELECT name FROM chains WHERE chain_id = i.chain_id) AS network,i.token_contract AS token,tk.symbol,tk.decimals,j.kind,
-   CASE WHEN j.kind IN ('deposit','refund','settlement') THEN coalesce(d.amount,o.amount) END AS source_amount,
+   CASE WHEN j.kind IN ('deposit','refund','settlement','network_fee','platform_fee') THEN coalesce(d.amount,o.amount) END AS source_amount,
    abs(j.receiver) AS booked_amount,j.receiver,j.payable,j.held,
    coalesce(d.tx_hash,o.tx_hash,'') AS tx_hash,
    coalesce(d.log_index,o.log_index) AS log_index,coalesce(d.log_index,o.transfer_log_index) AS transfer_log_index,coalesce(d.block_hash,o.block_hash,'') AS block_hash,
    coalesce(d.block_number,o.block_number) AS block_number,coalesce(d.block_time,o.block_time) AS block_time,
-   CASE WHEN j.kind = 'deposit' THEN d.from_address WHEN j.kind IN ('refund','settlement') THEN coalesce(o.receiver_address,'') ELSE '' END AS from_address,
-   CASE WHEN j.kind = 'deposit' THEN d.to_address WHEN j.kind IN ('refund','settlement') THEN coalesce(o.destination,'') ELSE '' END AS to_address,
-   CASE WHEN j.kind = 'deposit' OR o.id IS NOT NULL THEN 'confirmed' WHEN j.kind IN ('refund','settlement') THEN 'unmatched' ELSE 'internal' END AS status,
-   CASE WHEN j.kind = 'deposit' THEN d.id IS NOT NULL WHEN j.kind IN ('refund','settlement') THEN o.id IS NOT NULL ELSE false END AS verified,
+   CASE WHEN j.kind = 'deposit' THEN d.from_address WHEN j.kind IN ('refund','settlement','network_fee','platform_fee') THEN coalesce(o.receiver_address,'') ELSE '' END AS from_address,
+   CASE WHEN j.kind = 'deposit' THEN d.to_address WHEN j.kind IN ('refund','settlement','network_fee','platform_fee') THEN coalesce(o.destination,'') ELSE '' END AS to_address,
+   CASE WHEN j.kind = 'deposit' OR o.id IS NOT NULL THEN 'confirmed' WHEN j.kind IN ('refund','settlement','network_fee','platform_fee') THEN 'unmatched' ELSE 'internal' END AS status,
+   CASE WHEN j.kind = 'deposit' THEN d.id IS NOT NULL WHEN j.kind IN ('refund','settlement','network_fee','platform_fee') THEN o.id IS NOT NULL ELSE false END AS verified,
    coalesce(d.block_number,o.block_number) AS verified_block,coalesce(d.block_hash,o.block_hash,'') AS verified_hash,
    coalesce(o.policy_exception,'') AS policy_exception,
-   CASE WHEN j.kind IN ('refund','settlement') AND o.id IS NULL
+   CASE WHEN j.kind IN ('refund','settlement','network_fee','platform_fee') AND o.id IS NULL
       THEN 'source_evidence_missing' ELSE coalesce(o.reconciliation_error,'') END AS reconciliation_error
  FROM journal j JOIN invoices i ON i.id = j.invoice_id JOIN payment_scope p ON p.id = coalesce(i.main_id,i.id)
  JOIN tokens tk ON tk.chain_id = i.chain_id AND tk.contract = i.token_contract

@@ -14,6 +14,9 @@ export const PAYMENT_PURPOSES = {
 } as const;
 export const DOCUMENT_KINDS = { invoice: "invoice", request: "request", none: "none" } as const;
 
+/** Who pays an invoice's fees (D-122): the owner, deducted at settlement, or the client, on top of the price. */
+export const FEES_PAID_BY = { owner: "owner", client: "client" } as const;
+
 /** In seconds, within the API's bounds. */
 export const EXPIRY_CHOICES = {
   hour: 3_600,

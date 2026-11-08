@@ -18,7 +18,7 @@ type ReconciliationAsset struct {
 	chain.Asset
 	Livemode                                                                                                                      bool
 	Opening, Changes, Closing                                                                                                     PaymentBalances
-	Settled, Refunded                                                                                                             *big.Int
+	Settled, Fees, Refunded                                                                                                       *big.Int
 	CheckpointBalance, CheckpointDifference                                                                                       *big.Int
 	ReceiverCount, VerifiedReceivers, UnreconciledReceivers                                                                       int64
 	PendingDeposits, UnbookedDeposits, UnprovedDeposits, UnbookedOutflows, OtherAssetMovements, PolicyExceptions, BookedMovements int64
@@ -105,6 +105,7 @@ func reconciliationSQL(scope string, from, to int) string {
  -coalesce(sum(e.amount) FILTER (WHERE e.account = 'recipient_payable'),0) AS closing_payable,
  -coalesce(sum(e.amount) FILTER (WHERE e.account = 'payer_held'),0) AS closing_held,
  -coalesce(sum(e.amount) FILTER (WHERE e.account = 'receiver' AND t.kind = 'settlement' AND t.created_at >= ` + lower + `),0) AS settled,
+ -coalesce(sum(e.amount) FILTER (WHERE e.account = 'receiver' AND t.kind IN ('network_fee','platform_fee') AND t.created_at >= ` + lower + `),0) AS fees,
  -coalesce(sum(e.amount) FILTER (WHERE e.account = 'receiver' AND t.kind = 'refund' AND t.created_at >= ` + lower + `),0) AS refunded,
  count(DISTINCT t.id) FILTER (WHERE t.created_at >= ` + lower + `) AS movements
  FROM ledger_transactions t JOIN ledger_entries e ON e.transaction_id = t.id JOIN options receiver ON receiver.id = t.invoice_id
@@ -122,7 +123,7 @@ func reconciliationSQL(scope string, from, to int) string {
  coalesce(sum(e.opening_receiver),0)::text,coalesce(sum(e.opening_payable),0)::text,coalesce(sum(e.opening_held),0)::text,
  coalesce(sum(e.receiver_change),0)::text,coalesce(sum(e.payable_change),0)::text,coalesce(sum(e.held_change),0)::text,
  coalesce(sum(e.closing_receiver),0)::text,coalesce(sum(e.closing_payable),0)::text,coalesce(sum(e.closing_held),0)::text,
- coalesce(sum(e.settled),0)::text,coalesce(sum(e.refunded),0)::text,
+ coalesce(sum(e.settled),0)::text,coalesce(sum(e.fees),0)::text,coalesce(sum(e.refunded),0)::text,
  NULL::text,
  count(*),count(*),count(*) FILTER (WHERE proof.unreconciled),
  coalesce(sum(proof.pending),0)::bigint,coalesce(sum(proof.unbooked),0)::bigint,0::bigint,
@@ -136,17 +137,17 @@ func reconciliationSQL(scope string, from, to int) string {
 
 func scanReconciliationAsset(row pgx.CollectableRow) (ReconciliationAsset, error) {
 	var asset ReconciliationAsset
-	var texts [11]string
+	var texts [12]string
 	var checkpoint *string
 	err := row.Scan(&asset.StoreID, &asset.StoreName, &asset.ChainID, &asset.Token, &asset.Symbol, &asset.Decimals, &asset.Livemode,
-		&texts[0], &texts[1], &texts[2], &texts[3], &texts[4], &texts[5], &texts[6], &texts[7], &texts[8], &texts[9], &texts[10], &checkpoint,
+		&texts[0], &texts[1], &texts[2], &texts[3], &texts[4], &texts[5], &texts[6], &texts[7], &texts[8], &texts[9], &texts[10], &texts[11], &checkpoint,
 		&asset.ReceiverCount, &asset.VerifiedReceivers, &asset.UnreconciledReceivers, &asset.PendingDeposits, &asset.UnbookedDeposits, &asset.UnprovedDeposits,
 		&asset.UnbookedOutflows, &asset.OtherAssetMovements, &asset.PolicyExceptions, &asset.BookedMovements, &asset.MinVerifiedBlock, &asset.MaxVerifiedBlock, &asset.ChainFinalizedBlock)
 	if err != nil {
 		return ReconciliationAsset{}, err
 	}
 	targets := []**big.Int{&asset.Opening.Receiver, &asset.Opening.Payable, &asset.Opening.Held, &asset.Changes.Receiver, &asset.Changes.Payable, &asset.Changes.Held,
-		&asset.Closing.Receiver, &asset.Closing.Payable, &asset.Closing.Held, &asset.Settled, &asset.Refunded}
+		&asset.Closing.Receiver, &asset.Closing.Payable, &asset.Closing.Held, &asset.Settled, &asset.Fees, &asset.Refunded}
 	for i, target := range targets {
 		*target, _ = new(big.Int).SetString(texts[i], 10)
 	}

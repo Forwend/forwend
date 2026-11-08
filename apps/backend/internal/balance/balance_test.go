@@ -141,23 +141,23 @@ func TestPendingParts(t *testing.T) {
 	ctx := context.Background()
 	// Each option's status, amount and one booked deposit: its part for the creator and its part held for the payer.
 	for i, o := range []struct {
-		status              string
-		amount, owner, held int64
+		status                   string
+		amount, owner, held, fee int64
 	}{
-		{"paid", 3000000, 3000000, 500000},      // settling
-		{"paid", 1000000, 1000000, 0},           // settling
-		{"partially_paid", 5000000, 700000, 0},  // partial: it can still close and be held
-		{"partially_paid", 2000000, 2000000, 0}, // paid in full after a part, waiting for the balance check: confirming
-		{"expired_partially_paid", 5000000, 0, 1500000},
+		{"paid", 3000000, 3000000, 500000, 30000},  // settling; its network fee never reaches the wallet (R-228)
+		{"paid", 1000000, 1000000, 0, 0},           // settling
+		{"partially_paid", 5000000, 700000, 0, 0},  // partial: it can still close and be held
+		{"partially_paid", 2000000, 2000000, 0, 0}, // paid in full after a part, waiting for the balance check: confirming
+		{"expired_partially_paid", 5000000, 0, 1500000, 0},
 	} {
 		id := fmt.Sprintf("0xab%062x", i+2)
 		if err := pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 			if _, err := tx.Exec(ctx, `INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount,
 			        expires_at, settle_deadline, recipient_address, receive_method, factory_address, receive_address,
-			        idempotency_key, request_hash)
+			        idempotency_key, request_hash, network_fee)
 			    VALUES ($1, $2, $3, 'evm', $4, $5, 1800000000, 1800086400, $6, 'evm_create2',
-			        '0x4444444444444444444444444444444444444444', $7, $1, decode(repeat('00', 32), 'hex'))`,
-				id, profile, chaintest.ChainID, token, o.amount, wallet, fmt.Sprintf("0x33%038x", i+2)); err != nil {
+			        '0x4444444444444444444444444444444444444444', $7, $1, decode(repeat('00', 32), 'hex'), $8)`,
+				id, profile, chaintest.ChainID, token, o.amount, wallet, fmt.Sprintf("0x33%038x", i+2), o.fee); err != nil {
 				return err
 			}
 			_, err := tx.Exec(ctx, `
@@ -201,7 +201,7 @@ func TestPendingParts(t *testing.T) {
 		}
 		return out
 	}
-	want := []string{fmt.Sprintf("%d live=false pending=9700000 settling=4000000 confirming=5000000 partial=700000 held=3000000",
+	want := []string{fmt.Sprintf("%d live=false pending=9670000 settling=3970000 confirming=5000000 partial=700000 held=3000000",
 		chaintest.ChainID)}
 	if got := lines(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("test mode: got\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))

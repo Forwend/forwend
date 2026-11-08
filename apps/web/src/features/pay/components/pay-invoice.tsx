@@ -60,6 +60,8 @@ import {
   invoicePdfUrl,
   invoiceProgress,
   isReturnLink,
+  linesFigures,
+  optionFees,
 } from "@/features/invoices/lib/invoices";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import { Backdrop } from "@/features/pay/components/backdrop";
@@ -341,6 +343,9 @@ function Summary({
   const done = pay.state === PAY_STATES.paid || pay.state === PAY_STATES.settled;
   const partial = pay.canSend && pay.received > 0n;
   const shown = partial ? pay.remaining : amount;
+  const fees = optionFees(invoice);
+  const units = (n: bigint) =>
+    `${formatTokenAmount({ baseUnits: n, decimals: token.decimals, fractionDigits: exactDigits(n, token.decimals) })} ${token.symbol}`;
   return (
     <section aria-labelledby="pay-amount" className="order-1 flex min-w-0 flex-col gap-5 lg:gap-6">
       <div className="flex items-center justify-between gap-3">
@@ -378,6 +383,14 @@ function Summary({
         <p className={`text-sm text-muted ${picking ? "invisible" : ""}`}>
           {COPY.on(chainName(invoice.chainId))}
         </p>
+        {fees.clientPays && fees.total > 0n && !picking && !partial ? (
+          <p className="text-sm text-muted">
+            {COPY.withFees(units(fees.net), [
+              ...(fees.network > 0n ? [COPY.networkFee(units(fees.network))] : []),
+              ...(fees.platform > 0n ? [COPY.platformFee(units(fees.platform))] : []),
+            ])}
+          </p>
+        ) : null}
       </div>
     </section>
   );
@@ -388,6 +401,7 @@ function Terms({ invoice, linkToken }: { invoice: Invoice; linkToken: string }) 
   const lineToken = main
     ? payToken({ ...invoice, chainId: main.chainId, token: main.token })
     : null;
+  const shownToken = payToken(invoice);
   return (
     <div className="order-3 flex min-w-0 flex-col items-start gap-4 lg:gap-5">
       {invoice.title ? (
@@ -403,7 +417,11 @@ function Terms({ invoice, linkToken }: { invoice: Invoice; linkToken: string }) 
                 ? MONEY_COPY.usd
                 : lineToken.symbol
             }
-            total={BigInt(main.amount)}
+            // The shown option's terms, which the page checked against its address, when their units match.
+            {...linesFigures(
+              { ...main, decimals: lineToken.decimals },
+              shownToken ? { ...invoice, decimals: shownToken.decimals } : undefined,
+            )}
             plain
           />
         </div>

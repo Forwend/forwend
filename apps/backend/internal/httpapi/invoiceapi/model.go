@@ -74,26 +74,27 @@ type invoiceJSON struct {
 	Client         *clientJSON          `json:"client,omitempty"` // owner routes only
 	Store          *storeJSON           `json:"store,omitempty"`  // owner routes only; a merchant invoice's (R-134)
 	// Owner routes only; {} when none was sent (R-151).
-	Metadata         *map[string]string `json:"metadata,omitempty"`
-	Brand            *brandJSON         `json:"brand"` // a merchant invoice's store branding (R-135)
-	Issuer           *issuerJSON        `json:"issuer"`
-	SenderName       *string            `json:"senderName"`
-	ReturnURL        *string            `json:"returnUrl"`
-	ChainID          uint64             `json:"chainId"`
-	Livemode         bool               `json:"livemode"` // false on a testnet: test mode, whose tokens have no value (D-87)
-	Token            string             `json:"token"`
-	Amount           string             `json:"amount"`
-	Recipient        string             `json:"recipient"`
-	Factory          string             `json:"factory"`
-	ReceiveAddress   string             `json:"receiveAddress"`
-	ExpiresAt        string             `json:"expiresAt"`
-	ClosesAt         string             `json:"closesAt"` // expiresAt, or the reopened close (R-130)
-	SettleDeadline   string             `json:"settleDeadline"`
-	PaymentStatus    string             `json:"paymentStatus"`
-	SettlementStatus string             `json:"settlementStatus"`
-	RefundStatus     string             `json:"refundStatus"`
-	SettlementTxHash *string            `json:"settlementTxHash"`
-	CreatedAt        string             `json:"createdAt"`
+	Metadata   *map[string]string `json:"metadata,omitempty"`
+	Brand      *brandJSON         `json:"brand"` // a merchant invoice's store branding (R-135)
+	Issuer     *issuerJSON        `json:"issuer"`
+	SenderName *string            `json:"senderName"`
+	ReturnURL  *string            `json:"returnUrl"`
+	ChainID    uint64             `json:"chainId"`
+	Livemode   bool               `json:"livemode"` // false on a testnet: test mode, whose tokens have no value (D-87)
+	Token      string             `json:"token"`
+	Amount     string             `json:"amount"`
+	paymentio.Fees
+	Recipient        string  `json:"recipient"`
+	Factory          string  `json:"factory"`
+	ReceiveAddress   string  `json:"receiveAddress"`
+	ExpiresAt        string  `json:"expiresAt"`
+	ClosesAt         string  `json:"closesAt"` // expiresAt, or the reopened close (R-130)
+	SettleDeadline   string  `json:"settleDeadline"`
+	PaymentStatus    string  `json:"paymentStatus"`
+	SettlementStatus string  `json:"settlementStatus"`
+	RefundStatus     string  `json:"refundStatus"`
+	SettlementTxHash *string `json:"settlementTxHash"`
+	CreatedAt        string  `json:"createdAt"`
 }
 
 type clientJSON struct {
@@ -205,8 +206,9 @@ type optionJSON struct {
 	Symbol         string              `json:"symbol"`
 	Decimals       int                 `json:"decimals"`
 	Amount         string              `json:"amount"`
-	ReceiveAddress string              `json:"receiveAddress"`
-	Deposits       []depositJSON       `json:"deposits"`
+	paymentio.Fees
+	ReceiveAddress string        `json:"receiveAddress"`
+	Deposits       []depositJSON `json:"deposits"`
 }
 
 // Owner reads only; settlementWait is null when the money is not waiting.
@@ -298,7 +300,7 @@ func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 		Purpose: inv.Purpose, DocumentKind: inv.DocumentKind,
 		InvoiceID: inv.ID, PayToken: httpio.OrNull(inv.PayToken), OptionID: inv.OptionID, OptionLocked: inv.OptionLocked, PickedOptionID: httpio.OrNull(inv.PickedOptionID), OptionCount: inv.OptionCount, Confirming: inv.Confirming, Closed: inv.Closed, Number: inv.Number, Title: httpio.OrNull(inv.Title), Note: httpio.OrNull(inv.Note),
 		DueDate: httpio.OrNull(inv.DueDate), SupplyDate: httpio.OrNull(inv.SupplyDate), Reference: httpio.OrNull(inv.Reference), SenderName: httpio.OrNull(inv.SenderName), ReturnURL: httpio.OrNull(inv.ReturnURL), ChainID: inv.ChainID, Livemode: inv.Livemode, Token: inv.Token, Amount: inv.Amount.String(),
-		Recipient: inv.Recipient, Factory: inv.Factory, ReceiveAddress: inv.ReceiveAddress,
+		Fees: paymentio.FromFees(inv.Amount, inv.Fees), Recipient: inv.Recipient, Factory: inv.Factory, ReceiveAddress: inv.ReceiveAddress,
 		ExpiresAt: inv.ExpiresAt.Format(time.RFC3339), SettleDeadline: inv.SettleDeadline.Format(time.RFC3339),
 		PaymentStatus: inv.PaymentStatus, SettlementStatus: inv.SettlementStatus, RefundStatus: inv.RefundStatus,
 		ClosesAt:         inv.ClosesAt.Format(time.RFC3339),
@@ -347,7 +349,7 @@ func toInvoiceDetailJSON(inv invoice.Invoice, withClient bool) invoiceDetailJSON
 	}
 	for _, o := range inv.Options {
 		out.Options = append(out.Options, optionJSON{ClosesAt: o.ClosesAt.Format(time.RFC3339), Amounts: paymentio.FromAmounts(o.Amounts), OptionID: o.ID, ChainID: o.ChainID, Network: o.Network,
-			Token: o.Token, Symbol: o.Symbol, Decimals: o.Decimals, Amount: o.Amount.String(),
+			Token: o.Token, Symbol: o.Symbol, Decimals: o.Decimals, Amount: o.Amount.String(), Fees: paymentio.FromFees(o.Amount, o.Fees),
 			ReceiveAddress: o.ReceiveAddress, Deposits: toDepositsJSON(o.Deposits), DepositSummary: toDepositSummaryJSON(o.DepositSummary)})
 	}
 	for _, l := range inv.Lines {

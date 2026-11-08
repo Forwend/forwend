@@ -250,6 +250,10 @@ func TestCreateInvoice(t *testing.T) {
 	if b["recipient"] != aliceWallet || b["amount"] != "5000000" || b["token"] != usdc || b["chainId"] != float64(84532) {
 		t.Fatalf("terms %v", b)
 	}
+	// R-228: the fees in the terms, who pays them and what the owner receives; the public GET below gives them too.
+	if b["networkFee"] != "0" || b["platformFee"] != "0" || b["netAmount"] != "5000000" || b["feesPaidBy"] != "owner" {
+		t.Fatalf("fees %v %v %v %v", b["networkFee"], b["platformFee"], b["netAmount"], b["feesPaidBy"])
+	}
 	if b["paymentStatus"] != "open" || b["settlementStatus"] != "none" || b["refundStatus"] != "none" ||
 		b["settlementTxHash"] != nil {
 		t.Fatalf("statuses %v", b)

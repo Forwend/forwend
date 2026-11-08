@@ -106,7 +106,7 @@ func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 			if currency != "" {
 				header = append(header, currency+" value", "ECB rate date")
 			}
-			header = append(header, "Payment ID")
+			header = append(header, "Payment ID", "Settlement fees")
 			return out.Write(header)
 		}, func(t activity.Transfer) error {
 			invoice, client := "", ""
@@ -125,11 +125,14 @@ func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 					row = append(row, "", "")
 				}
 			}
-			paymentID := ""
+			paymentID, fees := "", ""
 			if t.Payment != nil {
 				paymentID = t.Payment.ID
+				if t.Payment.Fees != nil {
+					fees = units(t.Payment.Fees, t.Decimals)
+				}
 			}
-			row = append(row, paymentID)
+			row = append(row, paymentID, fees)
 			for i, cell := range row {
 				row[i] = httpio.CSVText(cell)
 			}

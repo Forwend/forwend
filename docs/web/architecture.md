@@ -158,7 +158,8 @@ features own product behavior, and shared UI components are grouped by purpose. 
   store whose requests carry no token (`providers/public-store-provider.tsx`). The browser recomputes the receive
   address from the terms with the factory and implementation built into the page (`features/pay/lib/receive-address.ts`,
   keccak256 from `@noble/hashes`, tested against the R-15 vectors) and shows no address on a mismatch. The terms'
-  `invoiceId` must be keccak256 of the link's token (D-86). Token symbol and
+  `invoiceId` must be keccak256 of the link's token (D-86). The terms include the option's fees, and fees over a tenth of
+  the amount show no address, as `settle()` would refuse them (R-226). Token symbol and
   decimals come from `PAY_TOKENS` in the build, never the API; another token is refused, so enabling a token in the
   API also needs an entry there. The address and QR show only after the payer picks the network and presses Show
   address, with one line naming the exact token and network. A payer-chooses invoice (R-57) lists its `options`: until

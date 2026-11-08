@@ -7,6 +7,7 @@ import {
   DUE_GRACE_DAYS,
   EXPIRY_BOUNDS_S,
   EXPIRY_CHOICES,
+  FEES_PAID_BY,
   INVOICE_EXCEPTIONS,
   INVOICE_FIELDS,
   INVOICE_TIMELINE,
@@ -21,6 +22,7 @@ import type {
   AmountError,
   Deposit,
   ExpiryChoice,
+  FeeTerms,
   Invoice,
   InvoiceClient,
   InvoiceException,
@@ -32,6 +34,7 @@ import type {
   LineDraft,
   LineError,
   LineField,
+  OptionFees,
   Owed,
 } from "@/features/invoices/types/invoices";
 import type { TokenRef } from "@/features/profiles/types/tokens";
@@ -279,6 +282,30 @@ const EXCEPTIONS: Partial<Record<PaymentStatus, InvoiceException["kind"]>> = {
   [PAYMENT_STATUS.expired]: INVOICE_EXCEPTIONS.closedUnpaid,
   [PAYMENT_STATUS.expiredPartiallyPaid]: INVOICE_EXCEPTIONS.closedPartial,
 };
+
+/** An option's fees and what the owner receives of its amount (R-228): the amount less both fees. */
+export function optionFees(o: FeeTerms): OptionFees {
+  const network = BigInt(o.networkFee ?? "0");
+  const platform = BigInt(o.platformFee ?? "0");
+  return {
+    network,
+    platform,
+    total: network + platform,
+    net: BigInt(o.amount) - network - platform,
+    clientPays: o.feesPaidBy === FEES_PAID_BY.client,
+  };
+}
+
+/** The line table's total and fees: the shown option's when its units are the lines', since each option has its own
+ * fees (R-228); else the main option's amount, whose units the lines are in (R-88), without fee rows. */
+export function linesFigures(
+  main: FeeTerms & { decimals: number },
+  shown: (FeeTerms & { decimals: number }) | undefined,
+): { total: bigint; fees?: OptionFees } {
+  return shown && shown.decimals === main.decimals
+    ? { total: BigInt(shown.amount), fees: optionFees(shown) }
+    : { total: BigInt(main.amount) };
+}
 
 /** Totals cover every transfer even when the API returns a bounded preview. */
 export function depositAmount(

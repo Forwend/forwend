@@ -13,7 +13,7 @@ import (
 const MaxEvents = 50
 
 // Event is a paid, settled or held-money event of one of the profile's invoices (R-81), the same as the owner's email
-// (R-80). Amount is the option's amount, or for held money the amount newly held.
+// (R-80). Amount is the option's amount; for a settlement, what reached the wallet; for held money, the amount newly held.
 type Event struct {
 	Purpose      Purpose
 	DocumentKind DocumentKind

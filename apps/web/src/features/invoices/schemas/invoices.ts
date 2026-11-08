@@ -7,6 +7,7 @@ import type {
 import { clientBodySchema } from "@/features/clients/schemas/clients";
 import {
   DOCUMENT_KINDS,
+  FEES_PAID_BY,
   PAY_TOKEN_PATTERN,
   PAYMENT_PURPOSES,
   RECONCILIATION_STATES,
@@ -32,6 +33,14 @@ import {
   pageOf,
   usdAmount,
 } from "@/shared/schemas/api";
+
+/** An option's fees, in its contract terms, and who pays them (R-228). An answer without them has none: read them
+ * with optionFees. */
+export const optionFeesShape = {
+  networkFee: baseUnits.optional(),
+  platformFee: baseUnits.optional(),
+  feesPaidBy: z.enum(FEES_PAID_BY).optional(),
+};
 
 export const invoiceClientSchema = z.object({
   name: z.string().nullable(),
@@ -123,6 +132,7 @@ export const invoiceSummarySchema = z.object({
   livemode: z.boolean(),
   token: evmAddress,
   amount: baseUnits,
+  ...optionFeesShape,
   // The profile wallet that settlement pays.
   recipient: evmAddress,
   // The factory the receive address comes from: the one the invoice was made with.
@@ -153,6 +163,8 @@ export const paymentAmountsSchema = z.object({
   payable: z.string().regex(/^-?\d+$/),
   held: z.string().regex(/^-?\d+$/),
   settled: baseUnits,
+  // The network and platform fees settlement paid (R-230).
+  fees: baseUnits.optional(),
   refunded: baseUnits,
   observedRefunded: baseUnits,
   lastReturnTxHash: hash32.nullable(),
@@ -177,6 +189,7 @@ export const invoiceOptionSchema = z.object({
   symbol: z.string(),
   decimals: count,
   amount: baseUnits,
+  ...optionFeesShape,
   receiveAddress: evmAddress,
   // On an option other than the shown one, these are held for the payer (D-76).
   deposits: z.array(depositSchema),
@@ -354,7 +367,7 @@ export const invoiceEventSchema = z.object({
   token: evmAddress,
   symbol: z.string(),
   decimals: count,
-  // The option's amount; for held money, the amount newly held for the payer.
+  // The option's amount; settled: what reached the wallet, less any fees; held: the amount newly held for the payer.
   amount: baseUnits,
   at: apiTime,
 });

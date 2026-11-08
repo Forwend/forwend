@@ -131,13 +131,31 @@ func TestStatusAsksForMoneyOnlyWhilePayable(t *testing.T) {
 	}
 }
 
+// R-228: when the client pays the fees, the PDF shows the price and each fee above 0 before the total; when the owner
+// pays, the client sees only the total.
+func TestFeesShowWhenTheClientPaysThem(t *testing.T) {
+	now := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)
+	inv := func(paidBy string) invoice.Invoice {
+		return invoice.Invoice{Asset: chain.Asset{ChainID: 84532, Symbol: "USDC", Decimals: 6}, Amount: big.NewInt(10_050000),
+			Fees:     invoice.Fees{Network: big.NewInt(50000), Platform: new(big.Int), PaidBy: paidBy},
+			ClosesAt: now.Add(time.Hour), PaymentStatus: ledger.Open,
+			Amounts: &ledger.Amounts{ReconciliationStatus: ledger.ReconciliationVerified, Payable: new(big.Int), Held: new(big.Int)}}
+	}
+	if got := fmt.Sprint(statusOf(inv(invoice.FeesPaidByClient), now).totals); got != "[[Subtotal 10.00 USDC] [Network fee 0.05 USDC] [Total 10.05 USDC]]" {
+		t.Errorf("client pays: %s", got)
+	}
+	if got := fmt.Sprint(statusOf(inv(invoice.FeesPaidByOwner), now).totals); got != "[[Total 10.05 USDC]]" {
+		t.Errorf("owner pays: %s", got)
+	}
+}
+
 // R-195: one transfer applied whole says it all in its row, with no Applied column and no totals under it.
 func TestReceiptOfOneWholeTransfer(t *testing.T) {
 	paidAt := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)
 	ten := big.NewInt(10_000000)
 	usdc := chain.Asset{ChainID: 84532, Symbol: "USDC", Decimals: 6}
 	amounts := &ledger.Amounts{ReconciliationStatus: ledger.ReconciliationVerified, Payable: ten, Held: new(big.Int),
-		Settled: new(big.Int), Refunded: new(big.Int)}
+		Settled: new(big.Int), Fees: new(big.Int), Refunded: new(big.Int)}
 	tx := "0x" + strings.Repeat("ab", 32)
 	inv := invoice.Invoice{Asset: usdc, Amount: ten, PaymentStatus: ledger.Paid, PaidAt: paidAt, CreatedAt: paidAt,
 		ClosesAt: paidAt.Add(time.Hour), OptionID: "o", Amounts: amounts, Options: []invoice.Option{{ID: "o",

@@ -42,6 +42,8 @@ export const transactionSchema = z.object({
       documentKind: z.enum(DOCUMENT_KINDS),
       policyException: z.string().nullable(),
       unreconciled: z.boolean(),
+      // What the settlement paid out of the payment before the rest reached the wallet (R-228).
+      fees: baseUnits.nullable().optional(),
     })
     .optional(),
   invoice: z

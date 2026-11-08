@@ -3,6 +3,7 @@ import { DOCUMENT_KINDS, PAYMENT_PURPOSES } from "@/features/invoices/constants/
 import {
   depositSchema,
   invoiceLineSchema,
+  optionFeesShape,
   paymentAmountsSchema,
 } from "@/features/invoices/schemas/invoices";
 import { PAYMENT_SOURCES } from "@/features/payments/constants/payments";
@@ -46,6 +47,7 @@ export const paymentSchema = z.object({
   symbol: z.string(),
   decimals: count,
   amount: baseUnits,
+  ...optionFeesShape,
   paymentStatus: z.string(),
   settlementStatus: z.string(),
   refundStatus: z.string(),
@@ -105,6 +107,7 @@ export const paymentDetailSchema = paymentSchema.extend({
       symbol: z.string(),
       decimals: count,
       amount: baseUnits,
+      ...optionFeesShape,
       receiveAddress: evmAddress,
       closesAt: apiTime,
       paymentStatus: z.string(),
@@ -191,6 +194,7 @@ export const reconciliationSchema = z.object({
       changes: balancesSchema,
       closing: balancesSchema,
       settled: signedUnits,
+      fees: signedUnits.optional(),
       refunded: signedUnits,
       checkpointBalance: signedUnits.nullable(),
       checkpointDifference: signedUnits.nullable(),

@@ -263,6 +263,7 @@ type Invoice struct {
 	chain.Asset                // Symbol and Decimals set by Get
 	Amounts          *ledger.Amounts
 	Amount           *big.Int
+	Fees             Fees
 	Recipient        string
 	Factory          string
 	ReceiveAddress   string
@@ -331,12 +332,38 @@ type SettlementWait struct {
 	TimeLeft time.Duration
 }
 
+// Who pays an invoice's fees (D-122).
+const (
+	FeesPaidByOwner  = "owner"  // deducted at settlement
+	FeesPaidByClient = "client" // added on top of the price
+)
+
+// Fees are an option's contract fees (R-226) and who pays them: the payer sends the amount, the owner receives the
+// amount less both fees.
+type Fees struct {
+	Network, Platform *big.Int
+	PaidBy            string
+}
+
+// Net is what the owner receives of amount.
+func (f Fees) Net(amount *big.Int) *big.Int {
+	return new(big.Int).Sub(amount, new(big.Int).Add(f.Network, f.Platform))
+}
+
+func scanFees(network, platform, paidBy string) Fees {
+	f := Fees{PaidBy: paidBy}
+	f.Network, _ = new(big.Int).SetString(network, 10)
+	f.Platform, _ = new(big.Int).SetString(platform, 10)
+	return f
+}
+
 // Option is one accepted token and network; recipient, expiry and settle deadline are the invoice's.
 type Option struct {
 	ID string
 	chain.Asset
 	Network        string
 	Amount         *big.Int
+	Fees           Fees
 	ReceiveAddress string
 	Deposits       []Deposit // set by Get
 	DepositSummary *DepositSummary

@@ -25,6 +25,9 @@ export function withOption(inv: Invoice, optionId: string | undefined): Invoice 
         chainId: o.chainId,
         token: o.token,
         amount: o.amount,
+        networkFee: o.networkFee,
+        platformFee: o.platformFee,
+        feesPaidBy: o.feesPaidBy,
         receiveAddress: o.receiveAddress,
       }
     : inv;

@@ -103,7 +103,8 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   only. The address is the account's verified login email (email account, else Google), read from Privy once on
   `POST /v1/me` and kept in `users.login_email` (`''` when the account has none, so it is not read again); a request
   can never set it, so nobody can point another person's notifications at an inbox.
-- The ledger and the signer queue `invoice.paid`, `invoice.held` (with the amount newly held) and `invoice.settled` in
+- The ledger and the signer queue `invoice.paid`, `invoice.held` (with the amount newly held) and `invoice.settled` (with the
+  amount that reached the wallet, less any fees) in
   `outbox_events`, in the transaction that makes the change (`internal/outbox`). The worker sends them through Resend
   (`internal/notify`) with `forwend-<invoiceId>-<eventId>-<hash of the address and the message>` as the Idempotency-Key, one at a time with `FOR UPDATE SKIP
   LOCKED`; a failed send is retried after 1 min doubling to 1 h, given up after 10 tries.
@@ -178,7 +179,8 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   it was sent, the email settings link on owner emails, and `SUPPORT_EMAIL` and `EMAIL_POSTAL_ADDRESS` when set.
   Tables, inline styles and a dark-mode block; no scripts, tracking pixels or other remote assets.
 - `GET /v1/profiles/{profileId}/events?limit=` (R-81, at most 50): the same events for the bell, newest first, with the
-  document number when present, the option's token and the amount (newly held for `invoice.held`).
+  document number when present, the option's token and the amount (newly held for `invoice.held`; for `invoice.settled`, what
+  reached the wallet, less any fees).
 - Events include purpose, document kind and title; document-free checkout events have `number: null` and open payment details.
 - Existing invoice and request event numbers remain unchanged; no document number is invented for checkout.
 - Owner checkout emails open Payments; customer receipt links remain public.
@@ -665,8 +667,13 @@ R-19 and R-42; the full schema is in openapi.yaml.
 - An invoice read alone also has `paidAt` and `settledAt`, null until reached.
   - `paidAt` identifies the completed payment; `settledAt` uses the actual settlement block time.
   - Legacy settlement records without source evidence retain their recorded ledger time.
+- Invoices, payments and each option carry the option's fees (R-228), in its token's base units.
+  - `networkFee` and `platformFee` are in its contract terms; settlement pays them out of `amount` (R-226).
+  - `netAmount` is `amount` less both fees: what the owner receives.
+  - `feesPaidBy` is `owner` (deducted at settlement) or `client` (added on top of the price, D-122).
 - Detail reads and payment reads expose `amounts` in the selected option's base units.
-  - `receiver`, `payable` and `held` are current net balances; `settled` and `refunded` are booked outflow totals.
+  - `receiver`, `payable` and `held` are current net balances; `settled`, `fees` and `refunded` are booked outflow totals.
+  - `settled` is what the recipient got; `fees` is what settlement paid the settler and the refund authority.
   - `observedRefunded` and `lastReturnTxHash` expose confirmed returns, including returns still awaiting financial attribution.
   - `unreconciled` means a movement waits for booking, an outflow was refused, or a balance can't be explained.
   - Negative legacy balances remain visible.
@@ -965,6 +972,7 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   - Rows go into the file as the database sends them; the request never holds every transfer.
   - Columns: date (UTC), direction, amount, token, network, counterparty, transaction, status, USD value.
   - Then the classification, invoice number and client; `Payment ID` follows any optional currency columns.
+  - `Settlement fees` last: what the settlement behind an incoming transfer paid out of the payment (R-228), else empty.
   - A cell starting like a formula gets a leading apostrophe.
   - So does a formula start right after a `;`, also after quotes: a spreadsheet set for a `;` list separator (de-DE,
     fr-FR) starts a cell there.

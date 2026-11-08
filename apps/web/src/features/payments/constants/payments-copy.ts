@@ -86,6 +86,8 @@ export const PAYMENT_DETAIL_COPY = {
   },
   chips: { source: "From", network: "Network", tx: "Tx" },
   receivedOf: "Received",
+  fees: "Fees",
+  youReceive: "You receive",
   nothing: "Nothing yet",
   extra: "Held for the customer",
   // D-118: support returns held money by hand, so the owner has nothing to do.
@@ -175,6 +177,7 @@ export const RECONCILIATION_COPY = {
   pending: "Pending deposits",
   unbookedIn: "Unbooked deposits",
   unbookedOut: "Unbooked outflows",
+  feesPaid: "Fees paid at settlement",
   otherAssets: "Other-token movements",
   exceptions: "Policy exceptions",
   unverified: "Addresses still checking",

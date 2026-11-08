@@ -9,7 +9,7 @@ Product requirements and money policy live in [PROJECT](../PROJECT.md); future s
 - Partial, overpaid, expired, late and wrong-network payments need explicit next steps. Refunds follow approved claims;
   never promise automatic recovery or payment timing.
 - Pay page: show who is asking (issuer name, or a request's sender name, and invoice number). The site's host name,
-  the short refund rule and "Forwend never asks you to pay a different address or an extra fee." live under Need help
+  the short refund rule and "Forwend never asks you to pay a different address or a fee this page doesn't show." live under Need help
   (R-45, R-68), never in the pay box. An attached invoice PDF is linked at any time; once paid the page is the payer's receipt
   (R-48), with the receipt PDF, and it never mentions the settlement, which is the creator's business (R-68).
 - Personal profiles can request money: amount, note, expiry and a private link. Call it a request, not an invoice.

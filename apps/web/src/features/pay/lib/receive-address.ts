@@ -11,6 +11,7 @@ const MAX_EXPIRY_S = 365n * 86_400n;
 const CLOCK_SKEW_S = 300n;
 const ZERO = "0".repeat(40);
 
+const MAX_FEE_DIVISOR = 10n;
 const UINT64_MAX = 2n ** 64n - 1n;
 const UINT256_MAX = 2n ** 256n - 1n;
 
@@ -65,7 +66,6 @@ export function checkedReceiveAddress(inv: Invoice, payToken: string): string | 
       option !== optionIdOf(inv.invoiceId, BigInt(inv.chainId), inv.token)
     )
       return null;
-    // Fees are 0 until the API gives an option's fees (F443): an address with fees then doesn't compute, so it hides.
     const terms = {
       invoiceId: inv.optionId,
       recipient: inv.recipient,
@@ -74,6 +74,8 @@ export function checkedReceiveAddress(inv: Invoice, payToken: string): string | 
       expiresAt: unixSeconds(inv.expiresAt),
       settleDeadline: unixSeconds(inv.settleDeadline),
       intendedChainId: BigInt(inv.chainId),
+      networkFee: BigInt(inv.networkFee ?? "0"),
+      platformFee: BigInt(inv.platformFee ?? "0"),
     };
     const recipient = terms.recipient.toLowerCase().replace(/^0x/, "");
     // The invoice's own factory, which must be one Forwend deployed: the API can't name another.
@@ -82,6 +84,8 @@ export function checkedReceiveAddress(inv: Invoice, payToken: string): string | 
     const invalid =
       !(factory in KNOWN_FACTORIES) ||
       terms.amount <= 0n ||
+      // settle() refuses fees over a tenth of the amount (feesWithinCeiling).
+      terms.networkFee + terms.platformFee > terms.amount / MAX_FEE_DIVISOR ||
       !SETTLE_WINDOWS_S.includes(terms.settleDeadline - terms.expiresAt) ||
       terms.expiresAt > unixSeconds(inv.createdAt) + MAX_EXPIRY_S + CLOCK_SKEW_S ||
       [ZERO, terms.token.toLowerCase().replace(/^0x/, ""), ...ours].includes(recipient);

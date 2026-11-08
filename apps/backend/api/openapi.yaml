@@ -3742,14 +3742,15 @@ components:
     PaymentAmounts:
       type: object
       description: Exact net balances and actual outflows in the option token's base units. Review unresolved evidence before acting.
-      required: [receiver, payable, held, settled, refunded, observedRefunded, lastReturnTxHash, unreconciled, hasPolicyException, reconciliationStatus]
+      required: [receiver, payable, held, settled, fees, refunded, observedRefunded, lastReturnTxHash, unreconciled, hasPolicyException, reconciliationStatus]
       properties:
         reconciliationStatus: { type: string, enum: [verified, pending, review], description: Pending verification differs from evidence requiring manual review. }
         hasPolicyException: { type: boolean, description: An authority outflow consumed merchant payable or payer-held funds outside ordinary policy. }
         receiver: { type: string, pattern: "^-?[0-9]+$" }
         payable: { type: string, pattern: "^-?[0-9]+$" }
         held: { type: string, pattern: "^-?[0-9]+$" }
-        settled: { type: string, pattern: "^-?[0-9]+$" }
+        settled: { type: string, pattern: "^-?[0-9]+$", description: What settlement paid the recipient, the amount less the fees. }
+        fees: { type: string, pattern: "^-?[0-9]+$", description: The network and platform fees settlement paid. }
         refunded: { type: string, pattern: "^-?[0-9]+$" }
         observedRefunded: { type: string, pattern: "^[0-9]+$" }
         lastReturnTxHash: { type: [string, "null"], pattern: "^0x[0-9a-f]{64}$" }
@@ -3774,7 +3775,7 @@ components:
     Payment:
       type: object
       required: [receipts, customerName, customerEmail, paymentId, optionId, optionLocked, optionCount, source, symbol, decimals, purpose, documentKind, number, storeId, storeName, linkId, livemode, title,
-        reference, chainId, token, amount, paymentStatus, settlementStatus, refundStatus, state, wallet, dueDate, confirming,
+        reference, chainId, token, amount, networkFee, platformFee, netAmount, feesPaidBy, paymentStatus, settlementStatus, refundStatus, state, wallet, dueDate, confirming,
         closed, createdAt, closesAt, hostedUrl, payToken]
       properties:
         receipts: { type: array, items: { $ref: "#/components/schemas/PaymentReceipt" } }
@@ -3800,6 +3801,19 @@ components:
         chainId: { type: integer }
         token: { $ref: "#/components/schemas/Address" }
         amount: { $ref: "#/components/schemas/Uint256" }
+        networkFee:
+          allOf: [{ $ref: "#/components/schemas/Uint256" }]
+          description: Paid at settlement to the settler for its gas (R-226). Part of the amount.
+        platformFee:
+          allOf: [{ $ref: "#/components/schemas/Uint256" }]
+          description: Paid at settlement to Forwend. Part of the amount; 0 at launch.
+        netAmount:
+          allOf: [{ $ref: "#/components/schemas/Uint256" }]
+          description: What the owner receives, the amount less both fees.
+        feesPaidBy:
+          type: string
+          enum: [owner, client]
+          description: owner, deducted at settlement; client, added on top of the price, so amount is price plus fees (D-122).
         paymentStatus: { type: string, enum: [open, detected, partially_paid, paid, expired, expired_partially_paid, canceled] }
         settlementStatus: { type: string, enum: [none, pending, settled] }
         refundStatus: { type: string, enum: [none, held, refund_pending, refunded], description: The current option's only. }
@@ -3872,7 +3886,7 @@ components:
             - type: "null"
     PaymentOption:
       type: "object"
-      required: ["optionId", "chainId", "token", "symbol", "decimals", "amount", "receiveAddress", "closesAt", "paymentStatus", "settlementStatus", "refundStatus", "amounts", "coverage", "settlement", "returns", "deposits", "depositsTruncated"]
+      required: ["optionId", "chainId", "token", "symbol", "decimals", "amount", "networkFee", "platformFee", "netAmount", "feesPaidBy", "receiveAddress", "closesAt", "paymentStatus", "settlementStatus", "refundStatus", "amounts", "coverage", "settlement", "returns", "deposits", "depositsTruncated"]
       properties:
         optionId: { type: "string" }
         chainId: { type: "integer" }
@@ -3880,6 +3894,19 @@ components:
         symbol: { type: "string" }
         decimals: { type: "integer" }
         amount: { type: "string" }
+        networkFee:
+          allOf: [{ $ref: "#/components/schemas/Uint256" }]
+          description: Paid at settlement to the settler for its gas (R-226). Part of the amount.
+        platformFee:
+          allOf: [{ $ref: "#/components/schemas/Uint256" }]
+          description: Paid at settlement to Forwend. Part of the amount; 0 at launch.
+        netAmount:
+          allOf: [{ $ref: "#/components/schemas/Uint256" }]
+          description: What the owner receives, the amount less both fees.
+        feesPaidBy:
+          type: string
+          enum: [owner, client]
+          description: owner, deducted at settlement; client, added on top of the price, so amount is price plus fees (D-122).
         receiveAddress: { type: "string" }
         closesAt: { type: "string" }
         paymentStatus: { type: "string" }
@@ -4180,7 +4207,7 @@ components:
         held: { type: "string" }
     PaymentReconciliationAsset:
       type: "object"
-      required: ["storeId", "storeName", "chainId", "token", "symbol", "decimals", "livemode", "opening", "changes", "closing", "settled", "refunded", "checkpointBalance", "checkpointDifference", "receiverCount", "verifiedReceivers", "unreconciledReceivers", "pendingDeposits", "unbookedDeposits", "unprovedDeposits", "unbookedOutflows", "otherAssetMovements", "policyExceptions", "bookedMovements", "minVerifiedBlock", "maxVerifiedBlock", "chainFinalizedBlock"]
+      required: ["storeId", "storeName", "chainId", "token", "symbol", "decimals", "livemode", "opening", "changes", "closing", "settled", "fees", "refunded", "checkpointBalance", "checkpointDifference", "receiverCount", "verifiedReceivers", "unreconciledReceivers", "pendingDeposits", "unbookedDeposits", "unprovedDeposits", "unbookedOutflows", "otherAssetMovements", "policyExceptions", "bookedMovements", "minVerifiedBlock", "maxVerifiedBlock", "chainFinalizedBlock"]
       properties:
         storeId:
           anyOf:
@@ -4199,6 +4226,7 @@ components:
         changes: { $ref: "#/components/schemas/PaymentBalances" }
         closing: { $ref: "#/components/schemas/PaymentBalances" }
         settled: { type: "string" }
+        fees: { type: "string" }
         refunded: { type: "string" }
         checkpointBalance:
           anyOf:
@@ -4858,7 +4886,7 @@ components:
         decimals: { type: integer, minimum: 0 }
         amount:
           allOf: [{ $ref: "#/components/schemas/Uint256" }]
-          description: The option's amount; for invoice.held, the amount newly held for the payer.
+          description: The option's amount; for invoice.settled, what reached the wallet, less any fees; for invoice.held, the amount newly held for the payer.
         at:
           type: string
           format: date-time
@@ -5155,13 +5183,17 @@ components:
             clientName: { type: [string, "null"] }
         payment:
           type: object
-          required: [paymentId, purpose, documentKind, policyException, unreconciled]
+          required: [paymentId, purpose, documentKind, policyException, unreconciled, fees]
           properties:
             paymentId: { $ref: "#/components/schemas/InvoiceId" }
             purpose: { type: string, enum: [invoice, checkout, request] }
             documentKind: { type: string, enum: [invoice, request, none] }
             policyException: { type: [string, "null"] }
             unreconciled: { type: boolean }
+            fees:
+              type: [string, "null"]
+              pattern: "^[0-9]+$"
+              description: What the settlement behind the transfer paid out of the payment before the rest reached the wallet (R-228); null when none.
         recordsValue:
           type: [object, "null"]
           description: |
@@ -5605,7 +5637,7 @@ components:
                 expiresAt and settleDeadline are the invoice's.
               items:
                 type: object
-                required: [optionId, chainId, network, token, symbol, decimals, amount, receiveAddress, closesAt, deposits]
+                required: [optionId, chainId, network, token, symbol, decimals, amount, networkFee, platformFee, netAmount, feesPaidBy, receiveAddress, closesAt, deposits]
                 properties:
                   amounts: { $ref: "#/components/schemas/PaymentAmounts" }
                   closesAt: { type: string, format: date-time, description: This receiver option's effective close. }
@@ -5616,6 +5648,19 @@ components:
                   symbol: { type: string }
                   decimals: { type: integer, minimum: 0 }
                   amount: { $ref: "#/components/schemas/Uint256" }
+                  networkFee:
+                    allOf: [{ $ref: "#/components/schemas/Uint256" }]
+                    description: Paid at settlement to the settler for its gas (R-226). Part of the amount.
+                  platformFee:
+                    allOf: [{ $ref: "#/components/schemas/Uint256" }]
+                    description: Paid at settlement to Forwend. Part of the amount; 0 at launch.
+                  netAmount:
+                    allOf: [{ $ref: "#/components/schemas/Uint256" }]
+                    description: What the owner receives, the amount less both fees.
+                  feesPaidBy:
+                    type: string
+                    enum: [owner, client]
+                    description: owner, deducted at settlement; client, added on top of the price, so amount is price plus fees (D-122).
                   receiveAddress: { $ref: "#/components/schemas/Address" }
                   depositSummary: { $ref: "#/components/schemas/DepositSummary" }
                   deposits:
@@ -5772,7 +5817,7 @@ components:
     InvoiceSummary:
       type: object
       required: [purpose, documentKind, invoiceId, payToken, optionId, optionLocked, optionCount, confirming, closed, number, title, note, dueDate, supplyDate, reference, agreedValue, senderName, returnUrl, issuer, chainId,
-        livemode, token, amount, recipient, factory, receiveAddress, expiresAt, closesAt, settleDeadline, paymentStatus,
+        livemode, token, amount, networkFee, platformFee, netAmount, feesPaidBy, recipient, factory, receiveAddress, expiresAt, closesAt, settleDeadline, paymentStatus,
         settlementStatus, refundStatus, settlementTxHash, createdAt, brand]
       description: |
         With several options (payer chooses), the terms and statuses are the current option's: the one that received
@@ -5909,6 +5954,19 @@ components:
           description: The chain's mode (D-87, R-143). False on a testnet, whose tokens have no value.
         token: { $ref: "#/components/schemas/Address" }
         amount: { $ref: "#/components/schemas/Uint256" }
+        networkFee:
+          allOf: [{ $ref: "#/components/schemas/Uint256" }]
+          description: Paid at settlement to the settler for its gas (R-226). Part of the amount.
+        platformFee:
+          allOf: [{ $ref: "#/components/schemas/Uint256" }]
+          description: Paid at settlement to Forwend. Part of the amount; 0 at launch.
+        netAmount:
+          allOf: [{ $ref: "#/components/schemas/Uint256" }]
+          description: What the owner receives, the amount less both fees.
+        feesPaidBy:
+          type: string
+          enum: [owner, client]
+          description: owner, deducted at settlement; client, added on top of the price, so amount is price plus fees (D-122).
         recipient:
           allOf: [{ $ref: "#/components/schemas/Address" }]
           description: The profile wallet that settlement pays.

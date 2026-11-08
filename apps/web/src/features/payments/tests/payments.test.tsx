@@ -10,6 +10,7 @@ import {
   paymentState,
   paymentWallet,
   problemLabel,
+  receivedAmount,
 } from "@/features/payments/lib/payments";
 import type { PaymentDetail } from "@/features/payments/types/payments";
 
@@ -36,6 +37,24 @@ describe("merchant payment money", () => {
       paymentState({ paymentStatus: "paid", closed: false, amounts: { held: "1" } as never }),
     ).toBe("Overpaid");
     expect(paymentState({ paymentStatus: "partially_paid", closed: true })).not.toBe("Paid");
+  });
+});
+
+describe("receivedAmount", () => {
+  // R-228: settlement pays the recipient the net and the fees elsewhere; both were received.
+  it("counts the fees settlement paid, so a settled payment with fees still shows all it received", () => {
+    const settled = {
+      receiver: "0",
+      payable: "0",
+      held: "1000000",
+      settled: "4950000",
+      fees: "50000",
+      refunded: "0",
+      observedRefunded: "0",
+      lastReturnTxHash: null,
+      unreconciled: false,
+    };
+    expect(receivedAmount(settled)).toBe("6000000");
   });
 });
 
