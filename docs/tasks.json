@@ -1208,7 +1208,7 @@
       "dependsOn": [
         "F443"
       ],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "backend",
         "web-unit",
@@ -1224,11 +1224,111 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-08 review pass by reviewer: Pass. The fee math holds everywhere: net is amount less both fees, so it matches the contract's settle order and its tenth ceiling (receive-address.ts:87). Balances and the To wallet row subtract the fees from what is owed, received totals and PDF booked() add the fees paid, invoice.settled carries the net, and Transactions, CSV, movements and reconciliation read the booked fee outflows. Zero fees show no row, and the API, webhook invoice body and node types carry networkFee, platformFee, netAmount and feesPaidBy. Non-blocking: the owner fee rows (invoice-lines.tsx:82-98, payment-detail.tsx:221) and non-zero fees through the API, Transactions SQL and movements have no test (the Transactions one is queued in F446); unbooked confirming deposits stay gross in balance.go:105."
+      ],
       "blockedReason": null,
-      "evidence": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-08T23:46:20Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 75.5,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 68.1,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.2,
+            "log": ""
+          },
+          {
+            "id": "node-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "browser-packages",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          }
+        ],
+        "taskHash": "a5bff2c01b3d3091",
+        "filesHash": "975cce1fe57ed2ad",
+        "proof": {
+          "1": "e2e: pay.spec.ts shows the price, the network fee and the total when the client pays; receive-address.test.ts (web-unit) computes the receive address with the option's fees and refuses fees over a tenth",
+          "2": "backend: TestFeesShowWhenTheClientPaysThem (PDF fee rows), TestTransactionRecords (a settlement's fees on its Transactions row and the CSV), money_test and balance_test (fees left out of what is owed); payments.test.tsx and fee-text.test.ts (web-unit) show the fees and what the owner received",
+          "3": "backend: TestCreateInvoice reads networkFee, platformFee, netAmount and feesPaidBy from the API; node-unit and browser-packages build the packages' fee types",
+          "4": "web-unit: fee-text.test.ts shows nothing for a settlement without fees and payments.test.tsx counts received money as before; TestFeesShowWhenTheClientPaysThem shows only the total when the owner pays"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass. The fee math holds everywhere: net is amount less both fees, so it matches the contract's settle order and its tenth ceiling (receive-address.ts:87). Balances and the To wallet row subtract the fees from what is owed, received totals and PDF booked() add the fees paid, invoice.settled carries the net, and Transactions, CSV, movements and reconciliation read the booked fee outflows. Zero fees show no row, and the API, webhook invoice body and node types carry networkFee, platformFee, netAmount and feesPaidBy. Non-blocking: the owner fee rows (invoice-lines.tsx:82-98, payment-detail.tsx:221) and non-zero fees through the API, Transactions SQL and movements have no test (the Transactions one is queued in F446); unbooked confirming deposits stay gross in balance.go:105.",
+          "at": "2026-11-08T23:57:49Z",
+          "filesHash": "975cce1fe57ed2ad"
+        }
+      },
       "branch": "feat/f445-every-reader-shows-an-invoice-option-s-f",
-      "baseCommit": "525e9c3388c72ffbcb1692c5d87742c12bde2208"
+      "baseCommit": "525e9c3388c72ffbcb1692c5d87742c12bde2208",
+      "failedVerifies": 0
     },
     {
       "id": "F446",
