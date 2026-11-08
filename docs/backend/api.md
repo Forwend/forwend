@@ -1022,7 +1022,10 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
     - Amount plus fee must fit the wallet's gas-coin balance; on Tempo, its token balance (its native balance is a placeholder).
     - On Tempo a wallet that chose another fee token in the fee manager can't send: its fee would leave in that token.
     - `gas` gives the limit and fee caps the browser signs with, so the fee never exceeds `networkFee`.
-  - Tempo's fee manager is refused as a recipient: a TIP-20 transfer there is a Tempo fee, which the watcher doesn't record.
+  - Tempo's fee manager is refused as a recipient: a send there would read as its own fee.
+    - The watcher records every transfer to the fee manager; it also swaps and takes liquidity.
+    - Only a send's own fee is no money out: in the send's transaction, at most the fee it was signed for, in a
+      transaction that also moves the send (`chain.TempoFee`). It hides from Transactions and tells nobody (D-49).
   - `feePaid` is what the wallet really paid once the send is mined or reverted, from its receipt (R-224).
     - It is 0 where Forwend pays, and null until the receipt is read.
     - A transactions row of an outgoing transfer carries its send's `feePaid`.

@@ -126,7 +126,7 @@ func (s *Service) recipient(ctx context.Context, out *Send, req Request) error {
 	if to == out.From {
 		return fmt.Errorf("%w: this is the profile's own wallet", ErrInvalid)
 	}
-	// Money sent there is a Tempo fee, which the watcher doesn't record as a transfer (R-224): the send would never end.
+	// The fee manager is no payee, and money sent there in a send would read as that send's Tempo fee (chain.TempoFee).
 	if common.HexToAddress(to) == chain.TempoFeeManager {
 		return fmt.Errorf("%w: this address takes network fees, not payments", ErrInvalid)
 	}

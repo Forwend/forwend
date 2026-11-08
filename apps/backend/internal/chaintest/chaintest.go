@@ -194,6 +194,31 @@ func (a *Anvil) Transfer(token, to, amount string) string {
 	return a.Send(token, "transfer(address,uint256)", to, amount)
 }
 
+// TwoTransfers moves token out of the sender twice in one transaction, as a bundler or a Tempo fee does: a contract the
+// sender allowed calls transferFrom for each. It returns the transaction hash.
+func (a *Anvil) TwoTransfers(token, to1, amount1, to2, amount2 string) string {
+	a.t.Helper()
+	batcher := "0x00000000000000000000000000000000000000dd"
+	// Copy both calls' data, make each and revert if it fails (so the gas estimate covers both), then stop.
+	call := func(argsOffset string) string {
+		return "600060006064" + "60" + argsOffset + "6000" + "73" + strings.TrimPrefix(token, "0x") + "5af1" + "15605257"
+	}
+	if err := a.RPC.Call(nil, "anvil_setCode", batcher,
+		"0x60c86000600037"+call("00")+call("64")+"00"+"5b60006000fd"); err != nil {
+		a.t.Fatal(err)
+	}
+	a.Send(token, "approve(address,uint256)", batcher, "115792089237316195423570985008687907853269984665640564039457584007913129639935")
+	first, err := calldata("transferFrom(address,address,uint256)", Sender, to1, amount1)
+	if err != nil {
+		a.t.Fatal(err)
+	}
+	second, err := calldata("transferFrom(address,address,uint256)", Sender, to2, amount2)
+	if err != nil {
+		a.t.Fatal(err)
+	}
+	return a.transact(Sender, batcher, append(first, second...)).TransactionHash
+}
+
 // Send calls a contract from the sender, waits for the receipt and returns the transaction hash.
 func (a *Anvil) Send(to, sig string, args ...string) string {
 	a.t.Helper()
