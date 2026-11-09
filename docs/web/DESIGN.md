@@ -874,6 +874,27 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
       It shows under the payments while confirming and on the receipt once paid (D-24).
     - Each payment with its amount, time, short hash and explorer link.
     - The address stays only while money is still due.
+  - Pay with another token (D-123, R-236 to R-238), on a live invoice with an open Base USDC option:
+    - Under Show address, a quiet link "Pay with another token" with one muted line about NEAR Intents.
+    - It turns the Pay with section into the cross-chain panel; "Pay with USDC instead" at its foot goes back.
+    - Choose a token opens a wide sheet: chains on the left with a search, the chosen chain's tokens on the right.
+      - The first chain is chosen; popular chains come first. A token search looks across every chain.
+      - On phones the chains are one scrolling row of chips above the tokens.
+      - Each token row shows its first letter as a mark, the symbol over the chain, and "About …" at the right.
+    - After a pick: the token row with Change, a "You send" box (amount, conversion cost and time), the refund
+      address field with "Your own wallet, not an exchange", then Show address.
+    - The deposit address shows as the direct one does: QR, exact amount, "Send only USDT on Tron.", the address.
+      - Under it, the extra-back line with where refunds go, then "Price held mm:ss".
+    - When the window ends, the address and QR blur behind a card: "This price expired" and Get new price.
+      - The card says "Already sent? Wait here": a deposit seen later still shows its progress.
+      - The blurred part is inert, so its Copy buttons can't be reached.
+      - A changed amount shows a warning strip "The price changed" with both amounts and Understood; the QR waits.
+      - The same amount shows "New address. Send only to this one."
+    - Once 1Click saw the deposit: "Payment seen on Tron. Don't pay again.", the steps Detected, Converting,
+      Confirming and Paid, one status line, and View your transaction.
+      - Less than needed, refunded and failed leave one line above Pay with, with the quote ID for support, and the
+        invoice can be paid again.
+    - The receipt adds a Paid with row: the amount sent and its chain.
   - Receipt email, once money is seen and once paid:
     - The panel's last row is "Email me a receipt" with a mail icon.
     - Pressing it opens the optional field there, with Send inside its row and a line that the address is used for this

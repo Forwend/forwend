@@ -1896,7 +1896,7 @@
       "dependsOn": [
         "F449"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "web-unit",
         "e2e"
@@ -1910,9 +1910,102 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-09 Built on feat/f450-the-pay-page-lets-a-payer-pay-with-anoth, stacked on F449. Checks passed via harness check: docs-check, lint, typecheck, unit, build, e2e, web-e2e. Screenshots (desktop 1280 and phone 390, light and dark, five steps each) in local docs/runs/f450/.",
+        "2026-11-09 Review 1 FAIL (subagent): reload trusted the api's refundTo when this tab typed none; after REFUNDED/FAILED/INCOMPLETE the box stayed on 'Payment seen' and the invoice could not be paid again; expired address focusable behind aria-hidden; tests missed New address, problem lines, Paid with, phone chips, chain search, cost/time, refund hint, reload re-check, loopback guard; weak expired and Detected assertions. Non-blocking: slippage bound, old address flash on renew, 'Already sent?' copy, retry, focus, orphan comment, hint wording, hardcoded decimals.",
+        "2026-11-09 Review PASS (subagent) at cdb12575 after two fix rounds: reload shows a kept quote only for this tab's token and refund address, slippage bound, returned payments leave one line and can be paid again (direct or another token), expired part inert; breaks on every acceptance line caught. Not caught (non-blocking): dropping setDeposit(null) on renew, a one-render flash.",
+        "2026-11-09 review pass by subagent: Same code as the subagent review that passed at cdb12575 (only docs/tasks.json changed since): reload shows a kept quote only for this tab's token and refund address, slippage bound, returned payments leave one line and can be paid again, the expired part is inert; breaks on every acceptance line caught."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-09T18:53:12Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 6.3,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 87.7,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 7.4,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 51.3,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 9.1,
+            "log": ""
+          }
+        ],
+        "taskHash": "3f6549ef0b62ef10",
+        "filesHash": "93d47ce0d15a0fb7",
+        "proof": {
+          "1": "e2e: crosschain.spec shows a verified deposit address; lists chains as chips on a phone and beside the tokens",
+          "2": "e2e: crosschain.spec price, cost, time and the refund address hint",
+          "3": "web-unit: crosschain.test verifyQuote; e2e crosschain.spec shows only the address 1Click signed",
+          "4": "e2e: crosschain.spec 15-minute price, Get new price, The price changed and Understood, New address",
+          "5": "e2e: crosschain.spec follows a seen deposit through Converting; a returned payment leaves one line; the receipt names what the payer paid with"
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "Same code as the subagent review that passed at cdb12575 (only docs/tasks.json changed since): reload shows a kept quote only for this tab's token and refund address, slippage bound, returned payments leave one line and can be paid again, the expired part is inert; breaks on every acceptance line caught.",
+          "at": "2026-11-09T18:56:06Z",
+          "filesHash": "93d47ce0d15a0fb7"
+        },
+        "commit": "4099863c",
+        "doneAt": "2026-11-09T18:56:07Z"
+      },
+      "branch": "feat/f450-the-pay-page-lets-a-payer-pay-with-anoth-2",
+      "baseCommit": "180bf411d3b28eb0e554771481048859b0e4f867",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f450-the-pay-page-lets-a-payer-pay-with-anoth-2",
+        "base": "main"
+      }
     },
     {
       "id": "F451",

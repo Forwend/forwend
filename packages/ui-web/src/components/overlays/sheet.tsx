@@ -15,6 +15,8 @@ export interface SheetProps {
   backLabel?: string;
   /** Work that closing would not stop is running, such as a signature: Escape, the backdrop and Close do nothing. */
   locked?: boolean;
+  /** lg: a two-column picker from small screens up, such as chains beside their tokens; phones keep the full width. */
+  size?: "md" | "lg";
   children: ReactNode;
 }
 
@@ -26,6 +28,7 @@ export function Sheet({
   onBack,
   backLabel = "Back",
   locked = false,
+  size = "md",
   children,
 }: SheetProps) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -62,7 +65,8 @@ export function Sheet({
       }}
       className={cx(
         // A column: the body takes what the header leaves and is the one part that scrolls.
-        "mx-0 mt-auto mb-0 max-h-[92dvh] overflow-hidden open:flex open:flex-col outline-none w-full max-w-none rounded-t-lg border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[var(--fw-scrim)] sm:m-auto sm:max-w-md sm:rounded-lg",
+        "mx-0 mt-auto mb-0 max-h-[92dvh] overflow-hidden open:flex open:flex-col outline-none w-full max-w-none rounded-t-lg border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[var(--fw-scrim)] sm:m-auto sm:rounded-lg",
+        size === "lg" ? "sm:max-w-2xl" : "sm:max-w-md",
         // Phones only: the bottom sheet slides up. Closing stays instant: an exit transition needs a discrete
         // display/overlay transition, which only Chromium supports, so other browsers flash the closing sheet.
         "max-sm:transition-[translate] max-sm:duration-[var(--fw-duration-base)] max-sm:ease-out max-sm:starting:open:translate-y-full",

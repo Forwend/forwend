@@ -4,25 +4,21 @@ import {
   BUTTON_VARIANTS,
   Button,
   buttonClasses,
-  COPY_STATUS,
   DetailList,
   DetailRow,
   EmptyState,
   formatTokenAmount,
-  IconButton,
   Money,
   QrCode,
   ReceiveAddress,
   Skeleton,
   shortAddress,
-  useCopy,
 } from "@forwend/ui-web";
 import {
   Ban,
   CalendarDays,
   Check,
   Clock,
-  Copy,
   ExternalLink,
   FileDown,
   Handshake,
@@ -65,14 +61,26 @@ import {
 } from "@/features/invoices/lib/invoices";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import { Backdrop } from "@/features/pay/components/backdrop";
+import {
+  CrossChainEnded,
+  CrossChainPay,
+  crossChainEnded,
+} from "@/features/pay/components/crosschain-pay";
+import { ExactAmount } from "@/features/pay/components/exact-amount";
 import { NeedHelp } from "@/features/pay/components/need-help";
 import { type Choice, OptionPicker } from "@/features/pay/components/option-picker";
 import { Payee } from "@/features/pay/components/payee";
 import { ReceiptEmail } from "@/features/pay/components/receipt-email";
 import { TestnetBadge } from "@/features/pay/components/testnet-badge";
+import { CROSS_CHAIN_LEAST_MS, CROSS_CHAIN_STATUSES } from "@/features/pay/constants/crosschain";
 import { EMBED_LAYOUTS } from "@/features/pay/constants/embed";
 import { ENTER, LEFT_PAD, PAY_STATES, RIGHT_PAD } from "@/features/pay/constants/pay";
 import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
+import {
+  blockchainName,
+  type CrossChainTarget,
+  crossChainTarget,
+} from "@/features/pay/lib/crosschain";
 import {
   checkoutClosesAt,
   clockRuns,
@@ -260,6 +268,8 @@ function Loaded({
   // The shown option's clock: late money on a picked option is checked though the invoice itself has closed.
   const now = useNow(clockRuns(invoice));
   const address = useMemo(() => checkedReceiveAddress(invoice, linkToken), [invoice, linkToken]);
+  // D-123: what a payer may pay into from another chain; null where the invoice can't take it.
+  const crossTarget = useMemo(() => crossChainTarget(answer, linkToken), [answer, linkToken]);
   const token = payToken(invoice);
   const pickedOption = choosing ? answer.options.find((o) => o.optionId === picked) : undefined;
   const choice: Choice | null = choosing
@@ -315,6 +325,7 @@ function Loaded({
             kept={kept}
             keep={keep}
             embed={embed}
+            crossTarget={preview ? null : crossTarget}
           />
         </div>
       </div>
@@ -509,6 +520,7 @@ function PayBox({
   kept,
   keep,
   embed,
+  crossTarget,
 }: {
   invoice: Invoice;
   linkToken: string;
@@ -526,6 +538,8 @@ function PayBox({
   /** Keeps the shown option on the invoice for the payer's next visit (R-57). */
   keep?: (optionId: string) => void;
   embed?: EmbedLayout;
+  /** The Base USDC option a payer may pay into from another chain (D-123); null where it can't. */
+  crossTarget: CrossChainTarget | null;
 }) {
   // A canceled invoice takes no money on any option; invoice.closed is only the checkout's time.
   const canChoose =
@@ -580,11 +594,29 @@ function PayBox({
   };
   const money = (units: bigint) => formatMoney(units, token);
   const done = pay.state === PAY_STATES.paid || pay.state === PAY_STATES.settled;
+  // Another token through NEAR Intents (R-236): a kept quote still in its window, or a deposit 1Click saw, opens it.
+  const crossKept = invoice.crossChain;
+  const [crossOpen, setCrossOpen] = useState(
+    () =>
+      crossKept?.status === CROSS_CHAIN_STATUSES.pending &&
+      Date.parse(crossKept.shownUntil) > Date.now(),
+  );
   const sending = (shown ?? kept) === optionId && !picking;
   const seen =
     pay.state === PAY_STATES.confirming ||
     pay.state === PAY_STATES.checking ||
     pay.state === PAY_STATES.partial;
+  // A deposit 1Click converts leads the box; one it returned leaves a line, and the invoice can be paid again.
+  const crossEnded = crossKept ? crossChainEnded(crossKept) : false;
+  const crossSeen = Boolean(crossKept?.depositSeenAt) && !crossEnded;
+  // The conversion must land before the close: no new quote in its last 20 minutes (R-231).
+  const crossOffered =
+    crossTarget !== null &&
+    pay.canSend &&
+    found === 0n &&
+    !seen &&
+    crossTarget.closesAt - now >= CROSS_CHAIN_LEAST_MS;
+  const crossing = crossTarget !== null && !done && (crossSeen || (crossOpen && crossOffered));
   // Once the token and network are settled they fold into one row, so the address or the status leads.
   const folded = choice ? sending : sending || !pay.canSend;
   // Nothing more to send: what was seen leads the panel, and the option it went to follows.
@@ -605,8 +637,18 @@ function PayBox({
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <div className={PANEL}>
+        {crossEnded && crossKept && !done ? <CrossChainEnded crossChain={crossKept} /> : null}
         {done ? (
           <Paid invoice={invoice} linkToken={linkToken} token={token} embed={embed} />
+        ) : crossing && crossTarget ? (
+          <CrossChainPay
+            invoice={invoice}
+            linkToken={linkToken}
+            receive={crossTarget.receive}
+            due={crossTarget.due}
+            now={now}
+            onDirect={() => setCrossOpen(false)}
+          />
         ) : (
           <>
             {statusFirst ? received : null}
@@ -659,6 +701,14 @@ function PayBox({
                     </Button>
                   </div>
                 )}
+                {crossOffered ? (
+                  <div className="flex flex-col items-start gap-0.5 border-t border-line pt-3">
+                    <Button variant="link" size="sm" onClick={() => setCrossOpen(true)}>
+                      {COPY.crossChain.other}
+                    </Button>
+                    <span className="text-xs text-muted">{COPY.crossChain.otherHint}</span>
+                  </div>
+                ) : null}
               </section>
             ) : null}
             {pay.canSend && sending ? (
@@ -1095,6 +1145,18 @@ function Paid({
           <span className="font-medium tabular-nums">{formatMoney(amount, token)}</span>
         </DetailRow>
         {name ? <DetailRow term={COPY.receiptRows.to}>{name}</DetailRow> : null}
+        {/* R-238: what the payer sent on its own chain, which NEAR Intents converted. */}
+        {invoice.crossChain?.depositSeenAt ? (
+          <DetailRow term={COPY.crossChain.paidWith}>
+            {COPY.crossChain.paidWithValue(
+              formatMoney(
+                BigInt(invoice.crossChain.deposited ?? invoice.crossChain.amountIn),
+                invoice.crossChain,
+              ),
+              blockchainName(invoice.crossChain.blockchain),
+            )}
+          </DetailRow>
+        ) : null}
         {invoice.paidAt ? (
           <DetailRow term={COPY.receiptRows.date}>
             <time dateTime={invoice.paidAt}>{TIME.format(Date.parse(invoice.paidAt))}</time>
@@ -1140,47 +1202,6 @@ function Paid({
           {COPY.receiptPdf}
         </a>
       </div>
-    </div>
-  );
-}
-
-// Wallets and exchanges reject "1,250.50": the copy is the plain decimal, exact to the base unit.
-function ExactAmount({ amount, token }: { amount: bigint; token: PayToken }) {
-  const fractionDigits = exactDigits(amount, token.decimals);
-  const plain = formatTokenAmount({
-    baseUnits: amount,
-    decimals: token.decimals,
-    fractionDigits,
-  }).replaceAll(",", "");
-  const [status, copy] = useCopy(plain);
-  const label =
-    status === COPY_STATUS.copied
-      ? COPY.amountCopied
-      : status === COPY_STATUS.failed
-        ? COPY.copyAmountFailed
-        : COPY.copyAmount;
-  return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <span className="text-xs text-muted">{COPY.exactAmount}</span>
-      <div className="flex items-center justify-between gap-2 rounded-md border border-field bg-surface py-1 pr-1 pl-3">
-        <Money
-          baseUnits={amount}
-          decimals={token.decimals}
-          fractionDigits={fractionDigits}
-          token={token.symbol}
-          className="min-w-0 text-base font-semibold break-all text-ink"
-        />
-        <IconButton label={label} title={label} onClick={copy}>
-          {status === COPY_STATUS.copied ? (
-            <Check aria-hidden className="size-[var(--fw-icon-sm)] text-success" />
-          ) : (
-            <Copy aria-hidden className="size-[var(--fw-icon-sm)]" />
-          )}
-        </IconButton>
-      </div>
-      <span role="status" className="sr-only">
-        {status === COPY_STATUS.idle ? "" : label}
-      </span>
     </div>
   );
 }

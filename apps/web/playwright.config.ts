@@ -9,6 +9,7 @@ import {
   EXAMPLE_WEBHOOK_SECRET,
   KIT_PORT,
   KIT_URL,
+  ONECLICK_TEST_KEY,
   PUBLIC_PORT,
   PUBLIC_URL,
   SUPPORT_EMAIL,
@@ -31,7 +32,12 @@ export default defineConfig({
   webServer: [
     {
       command: `pnpm --workspace-root exec turbo run build --filter=@forwend/web && pnpm start -p ${PUBLIC_PORT}`,
-      env: { NEXT_PUBLIC_SUPPORT_EMAIL: SUPPORT_EMAIL, API_URL },
+      // The fake 1Click's key (e2e/oneclick.ts): the page takes it only on loopback, as these tests run (D-124).
+      env: {
+        NEXT_PUBLIC_SUPPORT_EMAIL: SUPPORT_EMAIL,
+        API_URL,
+        NEXT_PUBLIC_ONECLICK_TEST_KEY: ONECLICK_TEST_KEY,
+      },
       url: PUBLIC_URL,
       reuseExistingServer: false,
       timeout: 240_000,

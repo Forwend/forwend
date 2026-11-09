@@ -20,6 +20,7 @@ import type {
   OwedKind,
   ReminderStep,
 } from "@/features/invoices/types/invoices";
+import type { CrossChainStatus } from "@/features/pay/types/crosschain";
 import { FEES_PAID_BY } from "@/features/profiles/constants/profile";
 import { storeBrandSchema } from "@/features/stores/schemas/stores";
 import {
@@ -271,6 +272,35 @@ export const stoppedRemindersSchema = z.object({
   from: z.string().nullable(),
 });
 
+/** A payment through NEAR Intents (R-235): the shown quote, 1Click's status and what the payer sent and got back. */
+export const crossChainTxSchema = z.object({ hash: z.string(), explorerUrl: z.string() });
+export const crossChainSchema = z.object({
+  quoteId: z.string(),
+  assetId: z.string(),
+  blockchain: z.string(),
+  symbol: z.string(),
+  decimals: count,
+  depositAddress: z.string(),
+  refundTo: z.string(),
+  amountIn: baseUnits,
+  minAmountIn: baseUnits,
+  amountOut: baseUnits,
+  status: openEnum<CrossChainStatus>(),
+  deposited: baseUnits.nullable(),
+  delivered: baseUnits.nullable(),
+  refunded: baseUnits.nullable(),
+  refundReason: z.string().nullable(),
+  originTxs: z.array(crossChainTxSchema),
+  destinationTxs: z.array(crossChainTxSchema),
+  shownUntil: apiTime,
+  deadline: apiTime,
+  createdAt: apiTime,
+  depositSeenAt: apiTime.nullable(),
+  convertedAt: apiTime.nullable(),
+  // 1Click's signed answer: the pay page checks it again before it shows the address (D-124).
+  signed: z.unknown(),
+});
+
 export const invoiceSchema = invoiceSummarySchema.extend({
   amounts: paymentAmountsSchema.optional(),
   // Every accepted option, the shown one included: one for a fixed invoice.
@@ -291,6 +321,8 @@ export const invoiceSchema = invoiceSummarySchema.extend({
   updates: z.array(invoiceUpdateSchema),
   // The invoice a Revise replaced it with (R-129).
   replacedBy: revisionSchema.nullable(),
+  // A payment through NEAR Intents, in an invoice's own read (R-235).
+  crossChain: crossChainSchema.nullable().optional(),
   // Only in the owner's reads: the invoice it replaced.
   replaces: revisionSchema.nullable().optional(),
   // Only in the owner's reads: null while not paid or once settled.

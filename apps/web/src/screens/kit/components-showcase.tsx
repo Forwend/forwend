@@ -183,6 +183,7 @@ export function ComponentsShowcase() {
   const [status, setStatus] = useState("All");
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [wideOpen, setWideOpen] = useState(false);
   const [dueDate, setDueDate] = useState<string | null>("2026-11-02");
   const [period, setPeriod] = useState<DateRange>({ from: null, to: null });
   const [code, setCode] = useState("826");
@@ -359,6 +360,14 @@ export function ComponentsShowcase() {
         </Button>
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen} title="Receive">
           <p className="text-muted">A bottom sheet on phones, a centered panel from sm up.</p>
+        </Sheet>
+        <Button variant={BUTTON_VARIANTS.secondary} onClick={() => setWideOpen(true)}>
+          Open wide sheet
+        </Button>
+        <Sheet open={wideOpen} onOpenChange={setWideOpen} title="Pay with another token" size="lg">
+          <p className="text-muted">
+            Size lg: two columns from sm up, such as chains beside their tokens.
+          </p>
         </Sheet>
         <StepsDemo />
       </KitGroup>
