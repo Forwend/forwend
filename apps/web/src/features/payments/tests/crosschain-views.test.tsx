@@ -225,6 +225,26 @@ describe("cross-chain payment views", () => {
     );
   });
 
+  // R-243: where 1Click gives no link, the owner gets the same known explorer as the payer.
+  it("links the customer's transaction on a known explorer when 1Click gives none", () => {
+    const solana =
+      "4jBcpDL3KfBipWFqRBT5gVwZZoGogMBv5FWi6hi6a45CmPg6CcPJmD5Pr8jTxJGehtDrh3vmq8Tr7Q1UU6GLxoxj";
+    render(
+      <dl>
+        <CrossChainFigure
+          crossChain={{
+            ...crossChain,
+            blockchain: "sol",
+            originTxs: [{ hash: solana, explorerUrl: "" }],
+          }}
+        />
+      </dl>,
+    );
+    expect(screen.getByRole("link", { name: "Customer's transaction" }).getAttribute("href")).toBe(
+      `https://solscan.io/tx/${solana}`,
+    );
+  });
+
   // jsdom has no layout: the class is what lets a long 18-decimal amount wrap in a half-width card on a phone.
   it("wraps a long amount instead of clipping it", () => {
     render(

@@ -320,11 +320,12 @@ test.describe("pay with another token (R-236 to R-238)", () => {
         amountOut: q.amountOut,
         status: "PROCESSING",
         deposited: "1263000000",
-        delivered: null,
+        // 1Click can name its plan while converting: nothing has arrived on Base until it succeeds.
+        delivered: "1250000000",
         refunded: null,
         refundReason: null,
         originTxs: [{ hash: "abc123", explorerUrl: "https://tronscan.org/#/transaction/abc123" }],
-        destinationTxs: [],
+        destinationTxs: [{ hash: `0x${"9".repeat(64)}`, explorerUrl: "" }],
         shownUntil: q.shownUntil,
         deadline: q.deadline,
         createdAt: q.createdAt,
@@ -348,6 +349,8 @@ test.describe("pay with another token (R-236 to R-238)", () => {
         "href",
         "https://tronscan.org/#/transaction/abc123",
       );
+      await expect(page.getByText("Arrived on Base")).toHaveCount(0);
+      await expect(page.getByRole("link", { name: /Basescan/ })).toHaveCount(0);
       // No address to pay again, and no way to switch.
       await expect(page.getByText(DEPOSIT_ADDRESS)).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Show address" })).toHaveCount(0);
@@ -357,8 +360,8 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     page,
   }) => {
     await page.clock.install({ time: NOW });
-    const solanaTx =
-      "4jBcpDL3KfBipWFqRBT5gVwZZoGogMBv5FWi6hi6a45CmPg6CcPJmD5Pr8jTxJGehtDrh3vmq8Tr7Q1UU6GLxoxj";
+    // ETH has 18 decimals, so the payer's amounts can't pass for Base USDC's 6.
+    const ethTx = `0x${"7".repeat(64)}`;
     const baseTx = `0x${"9".repeat(64)}`;
     const onBase = {
       txHash: baseTx,
@@ -381,13 +384,14 @@ test.describe("pay with another token (R-236 to R-238)", () => {
       deposits: [onBase],
       options: [{ ...LIVE.options[0], deposits: [onBase] }],
       crossChain: kept(quote("1263000000"), {
-        blockchain: "sol",
-        symbol: "USDC",
+        blockchain: "eth",
+        symbol: "ETH",
+        decimals: 18,
         status: "SUCCESS",
-        deposited: "1265309000",
+        deposited: "583161106420370517",
         delivered: "1250000000",
-        refunded: "2650000",
-        originTxs: [{ hash: solanaTx, explorerUrl: "" }],
+        refunded: "1000000000000000",
+        originTxs: [{ hash: ethTx, explorerUrl: "" }],
         destinationTxs: [{ hash: baseTx, explorerUrl: "" }],
         depositSeenAt: "2026-10-10T12:01:00Z",
         convertedAt: "2026-10-10T12:02:00Z",
@@ -402,18 +406,16 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     ).toBeVisible();
     await expect(page.getByRole("button", { name: "About 10 min left" })).toBeVisible();
     await expect(page.getByText(/^Final around /)).toBeVisible();
-    await expect(page.getByText("1,265.309 USDC on Solana")).toBeVisible();
-    await expect(page.getByRole("link", { name: "View transaction on Solscan" })).toHaveAttribute(
-      "href",
-      `https://solscan.io/tx/${solanaTx}`,
-    );
-    await expect(page.getByText("Arrived on Base")).toBeVisible();
-    await expect(page.getByRole("link", { name: "View transaction on Basescan" })).toHaveAttribute(
-      "href",
-      `https://basescan.org/tx/${baseTx}`,
-    );
-    await expect(page.getByText("Returned to you")).toBeVisible();
-    await expect(page.getByText("2.65 USDC", { exact: true })).toBeVisible();
+    const row = (label: string) => page.getByRole("listitem").filter({ hasText: label });
+    await expect(row("You sent")).toContainText("0.583161106420370517 ETH on Ethereum");
+    await expect(
+      row("You sent").getByRole("link", { name: "View transaction on Etherscan" }),
+    ).toHaveAttribute("href", `https://etherscan.io/tx/${ethTx}`);
+    await expect(row("Arrived on Base")).toContainText("1,250.00 USDC");
+    await expect(
+      row("Arrived on Base").getByRole("link", { name: "View transaction on Basescan" }),
+    ).toHaveAttribute("href", `https://basescan.org/tx/${baseTx}`);
+    await expect(row("Returned to you")).toContainText("0.001 ETH");
   });
 
   test("once an address shows, Change takes two presses (R-243, R-68)", async ({ page }) => {
@@ -433,9 +435,17 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await page.getByLabel("Refund address on Tron").fill(REFUND);
     await page.getByRole("button", { name: "Show address" }).click();
     await expect(page.getByText(DEPOSIT_ADDRESS)).toBeVisible();
-    await page.getByRole("button", { name: "Change" }).click();
+    const change = page.getByRole("button", { name: "Change" });
+    await change.click();
     await expect(picker).toHaveCount(0);
-    await page.getByRole("button", { name: "Confirm change" }).click();
+    // As the direct Change: moving away puts it back, and the address stays.
+    const confirm = page.getByRole("button", { name: "Confirm change" });
+    await expect(confirm).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(change).toBeVisible();
+    await expect(page.getByText(DEPOSIT_ADDRESS)).toBeVisible();
+    await change.click();
+    await confirm.click();
     await expect(picker).toBeVisible();
   });
 

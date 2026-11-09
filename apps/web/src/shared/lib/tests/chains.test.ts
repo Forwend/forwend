@@ -101,7 +101,8 @@ describe("blockchainTxLink", () => {
   });
 
   it("links nothing for a hash or a link it can't trust", () => {
-    expect(blockchainTxLink("sol", { hash: "../../evil?x=1", explorerUrl: "" })).toBeNull();
+    // Long enough to pass the length rule: only the characters keep it out of the url.
+    expect(blockchainTxLink("sol", { hash: "../../../evil?x=1&y=2", explorerUrl: "" })).toBeNull();
     expect(blockchainTxLink("zec", { hash: "ab", explorerUrl: "javascript:alert(1)" })).toBeNull();
   });
 });

@@ -475,8 +475,9 @@ function CrossChainProgress({
   const sent = BigInt(crossChain.deposited ?? crossChain.amountIn);
   const refunded = BigInt(crossChain.refunded ?? "0");
   const origin = crossChain.originTxs[0];
-  const base =
-    crossChain.status === CROSS_CHAIN_STATUSES.success ? crossChain.destinationTxs[0] : undefined;
+  // Only 1Click's success says the USDC left for Base: an amount it names while converting is still its plan.
+  const success = crossChain.status === CROSS_CHAIN_STATUSES.success;
+  const base = success ? crossChain.destinationTxs[0] : undefined;
   return (
     <section
       aria-labelledby="pay-cross-progress"
@@ -512,7 +513,7 @@ function CrossChainProgress({
             </TxHash>
           ) : null}
         </Fact>
-        {crossChain.delivered ? (
+        {success && crossChain.delivered ? (
           <Fact
             label={COPY.arrived}
             value={amountText(BigInt(crossChain.delivered), CROSS_CHAIN_TARGET)}

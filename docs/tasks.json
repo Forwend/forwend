@@ -2294,7 +2294,9 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-09 Review 1 FAIL (subagent) at 75258138: no test failed for the Arrived amount, the refund's token, the Base tx before success, the hash's characters or the two-press blur reset; the owner's Details still linked the customer's tx only through 1Click's link. Non-blocking taken: Arrived only on success, the not-available line still said Pay with USDC instead. Left: TwoPress could replace PickedOption's button; crosschain-pay.tsx holds quote and progress (~680 lines); the direct flow's Final around has no test of its own; the Paid receipt drops the returned part."
+      ],
       "blockedReason": null,
       "evidence": null
     }
