@@ -9,11 +9,14 @@ import (
 	"math/big"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
@@ -223,5 +226,146 @@ func TestEveryChainHasAFeeCeiling(t *testing.T) {
 		if maxFeePerGas[uint64(id)] == nil {
 			t.Errorf("chain %d has no fee ceiling: switched on, it would not be served", id)
 		}
+	}
+}
+
+// At 2,000 USD an ether: one ether costs 2,000 USDC and must buy at least 0.99 ether; a wei costs a whole USDC unit;
+// short of USDC, all of it buys what it can.
+func TestSwapAmounts(t *testing.T) {
+	price := big.NewInt(2000e8)
+	for _, c := range []struct {
+		wei, held, in, least string
+	}{
+		{"1000000000000000000", "5000000000", "2000000000", "990000000000000000"},
+		{"1", "5000000000", "1", "495000000"},
+		{"1000000000000000000", "1000000", "1000000", "495000000000000"},
+		{"1000000000000000000", "0", "0", "0"},
+	} {
+		wei, _ := new(big.Int).SetString(c.wei, 10)
+		held, _ := new(big.Int).SetString(c.held, 10)
+		in, least := swapAmounts(wei, held, price)
+		if in.String() != c.in || least.String() != c.least {
+			t.Errorf("%s wei with %s USDC units: in %s, least %s; want %s, %s", c.wei, c.held, in, least, c.in, c.least)
+		}
+	}
+}
+
+// Where the signer buys its gas, a buy that fails still alerts and names why: this Anvil has Base's id, not its feed.
+func TestSignerAlertsWhenItCantBuyGas(t *testing.T) {
+	ctx := t.Context()
+	pool, err := database.Open(ctx, databasetest.Migrated(t, database.Migrate))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	a := chaintest.StartChain(t, 8453)
+	client := ethclient.NewClient(a.RPC)
+	key, err := crypto.HexToECDSA(strings.TrimPrefix(chaintest.Key, "0x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := NewSigner(pool, key, map[uint64]*ethclient.Client{8453: client})
+	_, feeCap, err := Fees(ctx, client, 8453)
+	if err != nil {
+		t.Fatal(err)
+	}
+	low := new(big.Int).Mul(feeCap, big.NewInt(MinGas*2))
+	if err := a.RPC.Call(nil, "anvil_setBalance", s.sender, hexutil.EncodeBig(low)); err != nil {
+		t.Fatal(err)
+	}
+	var logs strings.Builder
+	defer slog.SetDefault(slog.Default())
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(logs.String(), "ALERT executor gas runs low") ||
+		!strings.Contains(logs.String(), "no ether bought: chain 8453 ETH/USD feed answered 0 bytes") {
+		t.Fatalf("logs lack the low gas alert with the failed buy:\n%s", logs.String())
+	}
+}
+
+// Dust anyone can send to the executor buys less gas than a swap costs, so it is never approved: an approve of it would
+// cap every later swap at the dust. This Anvil has Base's id, a stand-in USDC and a stand-in ETH/USD feed.
+func TestSignerSwapsNoDust(t *testing.T) {
+	ctx := t.Context()
+	pool, err := database.Open(ctx, databasetest.Migrated(t, database.Migrate))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	a := chaintest.StartChain(t, 8453)
+	client := ethclient.NewClient(a.RPC)
+	key, err := crypto.HexToECDSA(strings.TrimPrefix(chaintest.Key, "0x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := NewSigner(pool, key, map[uint64]*ethclient.Client{8453: client})
+	setCode := func(at common.Address, from common.Address) {
+		t.Helper()
+		code, err := client.CodeAt(ctx, from, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := a.RPC.Call(nil, "anvil_setCode", at, hexutil.Encode(code)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	route := swapRoutes[8453]
+	setCode(chain.EthUSD[8453], a.PriceFeed(big.NewInt(2000e8)))
+	setCode(route.usdc, common.HexToAddress(a.DeployToken()))
+	slot := crypto.Keccak256Hash(common.LeftPadBytes(s.sender.Bytes(), 32), make([]byte, 32)) // _balances, slot 0
+	if err := a.RPC.Call(nil, "anvil_setStorageAt", route.usdc, slot, common.BigToHash(big.NewInt(100))); err != nil {
+		t.Fatal(err)
+	}
+	_, feeCap, err := Fees(ctx, client, 8453)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.RPC.Call(nil, "anvil_setBalance", s.sender, hexutil.EncodeBig(new(big.Int).Mul(feeCap, big.NewInt(MinGas*2)))); err != nil {
+		t.Fatal(err)
+	}
+	before, err := client.NonceAt(ctx, s.sender, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var logs strings.Builder
+	defer slog.SetDefault(slog.Default())
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if after, err := client.NonceAt(ctx, s.sender, nil); err != nil || after != before {
+		t.Fatalf("dust sent %d transactions (%v), want none", after-before, err)
+	}
+	if !strings.Contains(logs.String(), "ALERT executor gas runs low") ||
+		!strings.Contains(logs.String(), "no ether bought: 0.0001 USDC to swap buys less than one deploy and settle") {
+		t.Fatalf("logs lack the low gas alert naming the dust:\n%s", logs.String())
+	}
+
+	// An allowance too small to buy enough on its own, as a smaller swap can leave one, is replaced, never kept.
+	a.Send(route.usdc.Hex(), "approve(address,uint256)", route.router.Hex(), "50")
+	if err := a.RPC.Call(nil, "anvil_setStorageAt", route.usdc, slot, common.BigToHash(big.NewInt(100_000000))); err != nil {
+		t.Fatal(err)
+	}
+	_, feeCap, err = Fees(ctx, client, 8453)
+	if err != nil {
+		t.Fatal(err)
+	}
+	low := new(big.Int).Mul(feeCap, big.NewInt(MinGas*2))
+	if err := a.RPC.Call(nil, "anvil_setBalance", s.sender, hexutil.EncodeBig(low)); err != nil {
+		t.Fatal(err)
+	}
+	in, _ := swapAmounts(new(big.Int).Sub(new(big.Int).Mul(feeCap, big.NewInt(MinGas*topUpSettlements)), low),
+		big.NewInt(100_000000), big.NewInt(2000e8))
+	s.gasCheckedAt = time.Time{}
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	allowance, err := client.CallContract(ctx, ethereum.CallMsg{To: &route.usdc, Data: append(append(
+		selector("allowance(address,address)"), common.LeftPadBytes(s.sender.Bytes(), 32)...),
+		common.LeftPadBytes(route.router.Bytes(), 32)...)}, nil)
+	if err != nil || new(big.Int).SetBytes(allowance).Cmp(in) != 0 {
+		t.Fatalf("allowance %x (%v), want this swap's %s USDC units approved in place of the 50 left", allowance, err, in)
 	}
 }

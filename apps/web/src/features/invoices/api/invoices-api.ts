@@ -20,6 +20,7 @@ import type {
   Recheck,
   StoppedReminders,
 } from "@/features/invoices/types/invoices";
+import type { FeesPaidBy } from "@/features/profiles/types/profile";
 import { apiSlice } from "@/shared/api/api-slice";
 import type { ApiPaymentState } from "@/shared/types/payment-state";
 
@@ -83,7 +84,7 @@ export const invoicesApi = apiSlice
       /** R-227: the fees each option of a price would carry, so a form shows them before it saves. */
       getFees: build.query<
         FeeQuote,
-        { profileId: string } & (
+        { profileId: string; storeId?: string; feesPaidBy: FeesPaidBy } & (
           | { amountUsd: string }
           | { chainId: number; token: string; amount: string }
         )

@@ -1,5 +1,6 @@
 // Package settlement is the signer: it settles each paid invoice once with the executor key, after checking the terms
-// against the database and the chain (R-22). It signs only deploy, settle and a self-transfer that fills a nonce gap.
+// against the database and the chain (R-22). It signs only deploy, settle, a self-transfer that fills a nonce gap, and
+// the USDC approve and Uniswap swap that buy its own gas (R-229).
 package settlement
 
 import (
@@ -80,7 +81,21 @@ func (s *Signer) Run(ctx context.Context) error {
 		s.gasCheckedAt = time.Now()
 		for id, client := range s.clients {
 			checkCtx, cancel := context.WithTimeout(ctx, s.attemptTimeout) // a hanging RPC must not stall the round
-			if err := checkGas(checkCtx, client, id, s.sender, GasAlertSettlements); errors.Is(err, errFundIt) {
+			err := checkGas(checkCtx, client, id, s.sender, GasAlertSettlements)
+			if route, swaps := swapRoutes[id]; swaps && errors.Is(err, errFundIt) {
+				if s.held != nil {
+					if err := s.held(checkCtx); err != nil {
+						cancel()
+						return err
+					}
+				}
+				if buyErr := s.buyGas(checkCtx, client, id, route); buyErr != nil {
+					err = fmt.Errorf("%w; no ether bought: %w", err, buyErr)
+				} else {
+					err = checkGas(checkCtx, client, id, s.sender, GasAlertSettlements)
+				}
+			}
+			if errors.Is(err, errFundIt) {
 				slog.Error("ALERT executor gas runs low", "chain", id, "err", err.Error())
 			}
 			cancel()

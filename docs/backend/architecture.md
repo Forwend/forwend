@@ -55,7 +55,8 @@ Read only the sections your task touches:
     - A coin the answer gives no price keeps its last one, which turns stale.
     - Only tests set `COINGECKO_API_URL`: the e2e gate points the worker at a fake CoinGecko.
 - `signer`: separate process, own credentials, no public routes, no user sessions. Accepts only
-  typed intents ("settle invoice X") and signs only `factory.deploy` and `receiver.settle`. Refunds are never signed
+  typed intents ("settle invoice X") and signs only `factory.deploy` and `receiver.settle`, plus the USDC approve and
+  Uniswap swap that buy its own gas (R-229). Refunds are never signed
   here: they will be Safe transactions the multisig owners approve (PLAN 11.10.3). Re-reads the ledger and the chain
   itself before signing, and settles at most `SponsoredPerDay` (50) invoices per user a day on the executor's gas.
   Writes settlement intents, the settlement ledger transaction and `settlement_status`. Every process uses one
@@ -108,6 +109,19 @@ D-71); a chain whose RPCs don't answer is logged and skipped:
   v1 testnet deploy and settle used 1,305,758 and 572,845 gas.
   - Every 5 minutes the signer checks again for `GasAlertSettlements` (20) deploys and settles (R-189).
     - Below that it logs `ALERT executor gas runs low`, long before it can't pay a settle.
+  - On Arc and Tempo the network fees the executor is paid are its gas (R-229).
+    - Arc's gas coin is its USDC; the executor's Tempo fee token is OUSD, set in Tempo's fee manager.
+  - On Base and Arbitrum, below the 20, the signer first buys ether with the USDC fees it holds (R-229).
+    - It swaps in Uniswap v3's USDC/WETH 0.05% pool through SwapRouter02 (`settlement.swapRoutes`).
+    - It tops up to 40 deploys and settles' worth at the current fee cap, or spends all its USDC if that buys less.
+    - One router `multicall` swaps and unwraps the WETH; it reverts unless it pays the Chainlink price less 1%.
+    - The approve allows only that swap's USDC.
+    - An allowance a refused swap left is swapped first if it buys enough alone; a smaller one is replaced.
+    - It skips a swap that buys less than one deploy and settle, so dust sent to the executor is never approved.
+    - A swap its gas estimate refuses is never sent. One that reverts after the estimate costs its gas.
+    - It buys nothing while one of the executor's transactions waits to be mined.
+    - A failed or refused swap adds its reason to the alert; settlement waits as before.
+    - `go test -tags mainnetfork` runs it on forks of both mainnets through their public RPCs.
   - No fee it signs exceeds the chain's ceiling per gas unit (`settlement.maxFeePerGas`), whatever a provider suggests.
     - Base and Arbitrum Sepolia: 1 gwei. Arc: 1,000 gwei. Tempo: 100 gwei (attodollars). Fees in October 2026 were far below.
     - Replacements and stuck-deploy replacements stop at it too; above it a settlement waits and its delay alert fires.
@@ -532,7 +546,7 @@ settle is signed, so the invoice API can tell the owner why the money waits (R-5
 - Receipt waits start with one second, double to four seconds, and stop after one minute.
 - Advisory-lock checks are serialized on their dedicated connection.
 - The signer checks that lock before each intent and again after waiting for the user's turn.
-It signs only `factory.deploy(terms)` and `receiver.settle()`, and only for chains enabled in the database: a chain
+It signs only `factory.deploy(terms)` and `receiver.settle()`, besides the gas swap above, and only for chains enabled in the database: a chain
 disabled there is dropped next round, and a round whose enabled list can't be read sends nothing. A receiver settled
 outside our signer (the refund authority after the deadline) still confirms its intent, with no tx hash: a saved
 settle keeps its hash only if its receipt succeeded with the `Settled` log. `retry` and `refuse` only change an intent still in the status

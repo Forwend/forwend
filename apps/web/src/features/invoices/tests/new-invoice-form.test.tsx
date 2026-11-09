@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ClientSearch } from "@/features/clients/hooks/use-client-search";
@@ -20,8 +20,9 @@ const found = (clients: Client[]): ClientSearch => ({
 // The preview beside the form repeats its values, so value checks look inside the form itself.
 const form = () => within(document.querySelector("form") as HTMLElement);
 
-/** Steps to Review and presses Create invoice; a step whose check fails stops there, as a person would. */
-function create() {
+/** Steps to Review and presses Create invoice; a step whose check fails stops there, as a person would. Continue
+ * waits for the fee quote of a typed price (R-227). */
+async function create() {
   for (let i = 0; i < 4; i++) {
     const button = screen.queryByRole("button", { name: "Create invoice" });
     if (button) {
@@ -30,9 +31,33 @@ function create() {
     }
     const at = () => document.querySelector('[aria-current="step"]')?.textContent;
     const before = at();
-    fireEvent.click(screen.getByRole("button", { name: /^Continue/ }));
+    const next = screen.getByRole("button", { name: /^Continue/ });
+    await waitFor(() => expect(next.hasAttribute("disabled")).toBe(false), { timeout: 2000 });
+    fireEvent.click(next);
     if (at() === before) return;
   }
+}
+
+/** Answers the fee quote with no fees for the typed price, and leaves every other request to send. */
+function stubFetch(send: (request: Request) => unknown) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (request: Request) => {
+      const url = new URL(request.url);
+      if (request.method !== "GET" || !url.pathname.endsWith("/fees")) return send(request);
+      const usd = url.searchParams.get("amountUsd");
+      const price = usd
+        ? String(Math.round(Number(usd) * 10 ** TOKEN.decimals))
+        : (url.searchParams.get("amount") ?? "0");
+      return new Response(
+        JSON.stringify({
+          feesPaidBy: "owner",
+          options: [{ ...TOKEN, price, networkFee: "0", platformFee: "0" }],
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    }),
+  );
 }
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
@@ -68,8 +93,7 @@ describe("new invoice form", () => {
     vi.setSystemTime(new Date("2026-10-14T10:00:00Z"));
     const keys: (string | null)[] = [];
     const bodies: string[] = [];
-    vi.stubGlobal(
-      "fetch",
+    stubFetch(
       vi.fn(async (request: Request) => {
         keys.push(request.headers.get("Idempotency-Key"));
         bodies.push(await request.text());
@@ -93,12 +117,12 @@ describe("new invoice form", () => {
       .filter((b) => b.getAttribute("aria-disabled") !== "true");
     fireEvent.click(days[3] as HTMLElement);
 
-    create();
+    await create();
     await settle();
     expect(screen.getByText("We could not create the invoice. Try again.")).toBeTruthy();
 
     vi.setSystemTime(new Date("2026-10-14T10:00:02Z"));
-    create();
+    await create();
     await settle();
 
     expect(keys).toHaveLength(2);
@@ -144,7 +168,7 @@ describe("new invoice form", () => {
     );
     expect(row("Your client pays")).toBe("100.05 USDC");
     expect(row("You receive")).toBe("100.00 USDC");
-    create();
+    await create();
     await settle();
     expect(created.at(-1)?.feesPaidBy).toBe("client");
   });
@@ -152,8 +176,7 @@ describe("new invoice form", () => {
   // R-86.
   it("fills the client from a saved client and sends its details", async () => {
     const bodies: Record<string, unknown>[] = [];
-    vi.stubGlobal(
-      "fetch",
+    stubFetch(
       vi.fn(async (request: Request) => {
         bodies.push(JSON.parse(await request.text()));
         throw new TypeError("Failed to fetch");
@@ -194,7 +217,7 @@ describe("new invoice form", () => {
       "PO-4500012345",
     );
 
-    create();
+    await create();
     await settle();
     expect(bodies[0]?.client).toEqual({
       name: "Bob Ltd",
@@ -209,8 +232,7 @@ describe("new invoice form", () => {
   // R-88.
   it("sends items whose total is the amount, unit prices in the amount's own unit", async () => {
     const bodies: Record<string, unknown>[] = [];
-    vi.stubGlobal(
-      "fetch",
+    stubFetch(
       vi.fn(async (request: Request) => {
         bodies.push(JSON.parse(await request.text()));
         throw new TypeError("Failed to fetch");
@@ -244,7 +266,7 @@ describe("new invoice form", () => {
 
     fill([TOKEN]);
     expect(form().getByText("750.50 USDC")).toBeTruthy();
-    create();
+    await create();
     await settle();
     expect(bodies[0]).toMatchObject({
       amount: "750500000",
@@ -261,7 +283,7 @@ describe("new invoice form", () => {
     fireEvent.change(screen.getAllByLabelText(/^Price/)[1] as HTMLElement, {
       target: { value: "0.000001" },
     });
-    create();
+    await create();
     await settle();
     expect(screen.getByText("Qty × price needs more decimals than USDC has.")).toBeTruthy();
     expect(bodies).toHaveLength(1);
@@ -269,7 +291,7 @@ describe("new invoice form", () => {
 
     // Client chooses: the amount and unit prices are USD.
     fill([TOKEN, other]);
-    create();
+    await create();
     await settle();
     expect(bodies[1]).toMatchObject({
       amountUsd: "750.5",
@@ -295,8 +317,7 @@ describe("new invoice form", () => {
   });
 
   it("shows a refused amount under the items", async () => {
-    vi.stubGlobal(
-      "fetch",
+    stubFetch(
       vi.fn(async () =>
         Response.json(
           {
@@ -320,7 +341,7 @@ describe("new invoice form", () => {
     fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "5" } });
     fireEvent.click(screen.getByRole("button", { name: "Add item" }));
     fireEvent.change(screen.getByLabelText("Item 1"), { target: { value: "Design" } });
-    create();
+    await create();
     await settle();
     expect(screen.getAllByRole("alert").map((a) => a.textContent)).toContain(
       "Enter at least 1.00 in an amount every accepted token can hold.",
@@ -330,8 +351,7 @@ describe("new invoice form", () => {
   // R-129.
   it("sends the invoice it replaces, and says when that one can no longer be replaced", async () => {
     const bodies: { replaces?: string }[] = [];
-    vi.stubGlobal(
-      "fetch",
+    stubFetch(
       vi.fn(async (request: Request) => {
         bodies.push(await request.json());
         return Response.json(
@@ -355,12 +375,70 @@ describe("new invoice form", () => {
       target: { value: "Mara Ilić" },
     });
     fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "5" } });
-    create();
+    await create();
     await settle();
     expect(bodies.map((b) => b.replaces)).toEqual([old]);
     expect(screen.getAllByRole("alert").some((a) => a.textContent?.includes("INV-0007"))).toBe(
       true,
     );
+  });
+
+  // R-227: what the client pays and the owner receives are known before the items step is left.
+  it("keeps Continue off on the items until the fee quote arrives", async () => {
+    stubFetch(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    render(
+      <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+        <NewInvoiceForm profileId={PROFILE} testnet tokens={[TOKEN]} />
+      </Provider>,
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }), {
+      target: { value: "Mara Ilić" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^Continue/ }));
+    fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "100" } });
+    const next = screen.getByRole("button", { name: /^Continue/ });
+    expect(next.hasAttribute("disabled")).toBe(true);
+    await waitFor(() => expect(next.hasAttribute("disabled")).toBe(false), { timeout: 2000 });
+  });
+
+  // A quote refused after who pays changes shows no figures from the one before it, and leaves Continue on.
+  it("drops the last figures when a new quote is refused", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (request: Request) => {
+        const url = new URL(request.url);
+        if (url.searchParams.get("feesPaidBy") === "owner")
+          return new Response(
+            JSON.stringify({ error: { code: "invalid_value", message: "too small for its fees" } }),
+            { status: 422, headers: { "Content-Type": "application/json" } },
+          );
+        return new Response(
+          JSON.stringify({
+            feesPaidBy: "client",
+            options: [{ ...TOKEN, price: "100000000", networkFee: "50000", platformFee: "0" }],
+          }),
+          { headers: { "Content-Type": "application/json" } },
+        );
+      }),
+    );
+    render(
+      <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+        <NewInvoiceForm profileId={PROFILE} testnet tokens={[TOKEN]} feesPaidBy="client" />
+      </Provider>,
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }), {
+      target: { value: "Mara Ilić" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^Continue/ }));
+    fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "100" } });
+    await form().findByText("Network fee", undefined, { timeout: 2000 });
+    fireEvent.click(
+      form().getByRole("switch", { name: "Add the network fee to what your client pays" }),
+    );
+    await waitFor(() => expect(form().queryByText("Network fee")).toBeNull());
+    expect(screen.getByRole("button", { name: /^Continue/ }).hasAttribute("disabled")).toBe(false);
   });
 
   it("clears the missing-client error once a name or an email is typed", () => {
@@ -442,8 +520,7 @@ describe("new invoice form", () => {
   // R-91.
   it("fills from another invoice without moving focus", async () => {
     const bodies: Record<string, unknown>[] = [];
-    vi.stubGlobal(
-      "fetch",
+    stubFetch(
       vi.fn(async (request: Request) => {
         bodies.push(JSON.parse(await request.text()));
         throw new TypeError("Failed to fetch");
@@ -477,7 +554,7 @@ describe("new invoice form", () => {
     await settle();
     expect(document.activeElement).toBe(document.body);
     expect((screen.getByLabelText("Item 2") as HTMLInputElement).value).toBe("Hosting");
-    create();
+    await create();
     await settle();
     expect(bodies[0]).toMatchObject({
       amount: "5000000",
@@ -498,8 +575,7 @@ describe("new invoice form", () => {
   // R-93.
   it("adds an agreed value and names what is missing", async () => {
     const bodies: Record<string, unknown>[] = [];
-    vi.stubGlobal(
-      "fetch",
+    stubFetch(
       vi.fn(async (request: Request) => {
         bodies.push(JSON.parse(await request.text()));
         throw new TypeError("Failed to fetch");
@@ -517,7 +593,7 @@ describe("new invoice form", () => {
     fireEvent.change(screen.getByLabelText(/^Amount/), { target: { value: "100" } });
     fireEvent.click(screen.getByRole("button", { name: "Add agreed value" }));
     expect(document.activeElement).toBe(screen.getByRole("button", { name: /^Agreed in/ }));
-    create();
+    await create();
     await settle();
     expect(screen.getByText("Choose a currency.")).toBeTruthy();
 
@@ -527,13 +603,13 @@ describe("new invoice form", () => {
     });
     fireEvent.click(await screen.findByRole("option", { name: /^JPY/ }));
     fireEvent.change(screen.getByLabelText("Agreed amount"), { target: { value: "1.5" } });
-    create();
+    await create();
     await settle();
     expect(screen.getByText("Enter a whole amount above 0.")).toBeTruthy();
     expect(bodies).toHaveLength(0);
 
     fireEvent.change(screen.getByLabelText("Agreed amount"), { target: { value: "15000" } });
-    create();
+    await create();
     await settle();
     expect(bodies[0]?.agreedValue).toMatchObject({
       currency: "JPY",
@@ -547,8 +623,7 @@ describe("new invoice form", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-10-14T10:00:00Z"));
     const bodies: Record<string, unknown>[] = [];
-    vi.stubGlobal(
-      "fetch",
+    stubFetch(
       vi.fn(async (request: Request) => {
         bodies.push(JSON.parse(await request.text()));
         throw new TypeError("Failed to fetch");
@@ -562,7 +637,7 @@ describe("new invoice form", () => {
     fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "100" } });
     const repeat = screen.getByRole("checkbox", { name: "Repeat every month" });
     fireEvent.click(repeat);
-    create();
+    await create();
     await settle();
     // The customer is the first step, so its missing name stops the form there.
     expect(bodies).toHaveLength(0);
@@ -572,7 +647,7 @@ describe("new invoice form", () => {
     fireEvent.change(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }), {
       target: { value: "Bob Ltd" },
     });
-    create();
+    await create();
     await settle();
     expect(bodies).toHaveLength(0);
     expect(screen.getByText("Repeating needs a due date and a client email.")).toBeTruthy();
@@ -592,7 +667,7 @@ describe("new invoice form", () => {
     const due = (document.querySelector('input[name="dueDate"]') as HTMLInputElement).value;
     const end = (document.querySelector('input[name="repeatEndDate"]') as HTMLInputElement).value;
     expect(end > due).toBe(true);
-    create();
+    await create();
     await settle();
     expect(bodies[0]?.dueDate).toBe(due);
     expect(bodies[0]?.repeat).toEqual({ endDate: end });
@@ -603,14 +678,14 @@ it("requires an invoice recipient while accepting an individual without business
   const send = vi.fn(async () => {
     throw new TypeError("Failed to fetch");
   });
-  vi.stubGlobal("fetch", send);
+  stubFetch(send);
   render(
     <Provider store={makeStore({ getAccessToken: async () => "token" })}>
       <NewInvoiceForm profileId={PROFILE} testnet tokens={[TOKEN]} />
     </Provider>,
   );
   fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "10" } });
-  create();
+  await create();
   await settle();
   expect(send).not.toHaveBeenCalled();
   expect(
@@ -619,7 +694,7 @@ it("requires an invoice recipient while accepting an individual without business
   fireEvent.change(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }), {
     target: { value: "Mara Ilić" },
   });
-  create();
+  await create();
   await settle();
   expect(send).toHaveBeenCalledOnce();
 });

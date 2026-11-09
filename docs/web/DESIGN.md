@@ -1154,7 +1154,8 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
   - Summary: the amount large and centered, then a ruled box: From, To, Network, Network fee.
     - Total (≈ amount plus fee) follows when the wallet pays the fee from the same token, as every send does (R-216, R-225).
   - An estimated fee rounds up to 4 decimals and leads with ≈. No "Up to", no "They receive": the amount says it.
-  - A pasted To address shows whole, in groups of four, first and last groups in ink (`FullAddress`).
+  - A pasted To address reads as From does: "Another wallet", then the address in small text under it.
+    - It shows whole, in groups of four, first and last groups in ink (`FullAddress`).
     - A look-alike made to match only the start and end shows different middle characters.
   - From, and To for a transfer to the owner's other profile, read shortened (`0x4edd…81fc`) under the profile name.
     - The full address is in a tooltip (`TruncatedAddress`, `mono={false}`).

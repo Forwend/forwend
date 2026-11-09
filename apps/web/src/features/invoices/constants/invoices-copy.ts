@@ -694,7 +694,6 @@ export const FEES_FORM_COPY = {
   fees: "Network and platform fees",
   clientTotal: "Your client pays",
   youReceive: "You receive",
-  range: (low: string, high: string) => `${low} to ${high}, by network`,
   pricing: "Pricing the network fee…",
-  failed: "The network fee can't be priced right now. It is set when you save.",
+  failed: "The network fee can't be priced right now. Try again in a moment.",
 } as const;

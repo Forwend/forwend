@@ -199,36 +199,11 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		return Invoice{}, false, fmt.Errorf("%w: this invoice must be %s mode, and no token of that mode is enabled",
 			ErrInvalid, modeName(live))
 	}
-	// D-122: the fees are on the price. The client pays them on top, or the owner has them deducted at settlement;
-	// either way settle() takes at most a tenth of the amount.
-	// A payer-chooses invoice leaves out a network it can't price now, or whose fees the price can't carry, as it does an
-	// unscanned one; a fixed invoice has no other to offer.
+	// D-122: the fees are on the price. The client pays them on top, or the owner has them deducted at settlement.
 	r.FeesPaidBy = cmp.Or(r.FeesPaidBy, feesPaidBy)
-	var feeErr error
-	priced := options[:0]
-	for _, o := range options {
-		network, platform, err := s.optionFees(ctx, o.chainID, o.decimals, o.amount)
-		if err == nil {
-			fees := new(big.Int).Add(network, platform)
-			if r.FeesPaidBy == FeesPaidByClient {
-				o.amount = new(big.Int).Add(o.amount, fees)
-			}
-			if new(big.Int).Mul(fees, big.NewInt(10)).Cmp(o.amount) > 0 {
-				err = fmt.Errorf("%w: the amount is too small for its fees of %s base units on chain %d", ErrInvalid,
-					fees, o.chainID)
-			}
-		}
-		if err != nil {
-			feeErr = err
-			continue
-		}
-		o.networkFee, o.platformFee = network, platform
-		priced = append(priced, o)
+	if options, err = s.withFees(ctx, options, usd != nil, r.FeesPaidBy == FeesPaidByClient); err != nil {
+		return Invoice{}, false, err
 	}
-	if feeErr != nil && (usd == nil || len(priced) == 0) {
-		return Invoice{}, false, feeErr
-	}
-	options = priced
 	// Payers on payment links and shoppers behind the checkout API each have their own quota, so strangers can't use
 	// up what the owner's own invoices need (R-188).
 	source, whose, has, creates := "invoice", "a profile", "has", "creates"

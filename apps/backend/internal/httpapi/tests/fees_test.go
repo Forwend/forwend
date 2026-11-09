@@ -16,16 +16,21 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/ledger/ledgertest"
 )
 
-// quote is a chain's network fee in USD, or err for a chain that can't be priced: every chain, or failing alone.
+// quote is a chain's network fee in USD, or err for a chain that can't be priced: every chain, or failing alone. per
+// quotes a chain apart from the others.
 type quote struct {
 	usd     *big.Rat
 	err     error
 	failing uint64
+	per     map[uint64]*big.Rat
 }
 
 func (q *quote) NetworkFee(_ context.Context, chainID uint64) (*big.Rat, error) {
 	if chainID == q.failing {
 		return nil, errors.New("rpc down")
+	}
+	if usd, ok := q.per[chainID]; ok {
+		return usd, nil
 	}
 	return q.usd, q.err
 }
@@ -179,5 +184,66 @@ func TestAChainThatCantBePricedLeavesThePayerTheOthers(t *testing.T) {
 	if r := e.post(t, alice, e.aliceProfile, "fee-2", `{"chainId": 421614, "token": "`+arbitrum+`", "amount": "5000000"}`); r.status != http.StatusServiceUnavailable ||
 		errorCode(r) != "network_fee_unavailable" {
 		t.Fatalf("fixed on the chain that can't be priced: %d %v, want 503", r.status, r.body)
+	}
+}
+
+// D-122: every option of a payer-chooses invoice carries the highest fee its networks quote, so one amount pays the
+// fee on whichever network the client picks. The quote a form shows prices it the same way.
+func TestEveryOptionCarriesTheHighestNetworkFee(t *testing.T) {
+	q := &quote{usd: big.NewRat(1, 100), per: map[uint64]*big.Rat{421614: big.NewRat(6, 100)}}
+	e := invoiceAPIPriced(t, 0, webhookKey, nil, invoice.Pricing{Quotes: q})
+	const alice, arbitrum = "did:privy:alice", "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d"
+	e.exec(t, `WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (421614, 'evm', 'arbitrum-sepolia', true)
+		    ON CONFLICT (chain_id) DO UPDATE SET enabled = true RETURNING chain_id),
+		  cur AS (INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block) SELECT chain_id, 0, 0 FROM c)
+		INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled) VALUES (421614, 'evm', $1, 'USDC', 6, true)
+		ON CONFLICT (chain_id, contract) DO UPDATE SET enabled = true`, arbitrum)
+	made := e.post(t, alice, e.aliceProfile, "fee-1", `{"amountUsd": "45", "feesPaidBy": "client"}`)
+	options, _ := made.body["options"].([]any)
+	if made.status != http.StatusCreated || len(options) != 2 {
+		t.Fatalf("payer chooses: %d %v, want two options", made.status, made.body)
+	}
+	for _, o := range options {
+		o := o.(map[string]any)
+		if o["amount"] != "45060000" || o["networkFee"] != "60000" {
+			t.Fatalf("option on chain %v: amount %v, network fee %v; want 45060000 and 60000", o["chainId"], o["amount"],
+				o["networkFee"])
+		}
+	}
+	quoted := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/fees?amountUsd=45&feesPaidBy=client", alice, "", "")
+	options, _ = quoted.body["options"].([]any)
+	if quoted.status != http.StatusOK || len(options) != 2 {
+		t.Fatalf("quote: %d %v", quoted.status, quoted.body)
+	}
+	for _, o := range options {
+		if o := o.(map[string]any); o["networkFee"] != "60000" || o["price"] != "45000000" {
+			t.Fatalf("quoted option: %v, want a 60000 fee on a 45000000 price", o)
+		}
+	}
+	if r := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/fees?amountUsd=45&feesPaidBy=payer", alice, "", ""); r.status != http.StatusUnprocessableEntity {
+		t.Fatalf("quote for feesPaidBy payer: %d %v, want 422", r.status, r.body)
+	}
+
+	// A store that turns the costlier network off gets the other's fee, in the quote as in the invoice.
+	shop := e.merchant(t)
+	store := storeIDs(t, e, shop)[0]
+	if r := e.call(t, "PUT", "/v1/profiles/"+shop+"/stores/"+store, alice, "", `{"name": "Shop", "defaultExpiresIn": 3600,
+		"tokensOff": [{"chainId": 421614, "token": "`+arbitrum+`"}]}`); r.status != http.StatusOK {
+		t.Fatalf("turn Arbitrum off for the store: %d %v", r.status, r.body)
+	}
+	for _, query := range []string{"", "&storeId=" + store} {
+		quoted := e.call(t, "GET", "/v1/profiles/"+shop+"/fees?amountUsd=45"+query, alice, "", "")
+		options, _ := quoted.body["options"].([]any)
+		if quoted.status != http.StatusOK || len(options) != 1 || options[0].(map[string]any)["networkFee"] != "10000" {
+			t.Fatalf("the store's quote%s: %d %v, want Base alone at 10000", query, quoted.status, quoted.body)
+		}
+	}
+	made = e.post(t, alice, shop, "fee-2", `{"amountUsd": "45", "storeId": "`+store+`"}`)
+	options, _ = made.body["options"].([]any)
+	if made.status != http.StatusCreated || len(options) != 1 || options[0].(map[string]any)["networkFee"] != "10000" {
+		t.Fatalf("the store's invoice: %d %v, want Base alone at 10000", made.status, made.body)
+	}
+	if r := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/fees?amountUsd=45&storeId="+store, alice, "", ""); r.status != http.StatusUnprocessableEntity {
+		t.Fatalf("a store on a profile that has none: %d %v, want 422", r.status, r.body)
 	}
 }

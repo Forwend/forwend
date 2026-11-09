@@ -1191,15 +1191,20 @@ paths:
       summary: The fees a new invoice of a price would carry on each option
       description: |
         R-227, D-122. Give chainId, token and amount in base units, or amountUsd. Each option the invoice would accept in
-        the profile's mode gets its network fee (a deploy and a settle at the chain's fee cap, with a margin, rounded up
-        to 0.01 USD) and its platform fee, in its base units. feesPaidBy is the profile's default. The invoice gets its
-        own quote when it is made, so it may differ a little. 503 network_fee_unavailable when a chain can't be priced.
+        the profile's mode gets the network fee (a deploy and a settle at the chain's fee cap, with a margin, rounded up
+        to 0.01 USD, the highest over the options, so one amount covers any network) and its platform fee, in its base
+        units. The response's feesPaidBy is the profile's default; the feesPaidBy parameter prices as an invoice with
+        that choice, since a client's fees on top let a smaller price carry them. storeId names a merchant's store, whose
+        turned-off tokens leave networks out as a create does; a merchant's first store serves when none is named. The
+        invoice gets its own quote when it is made, so it may differ a little. 503 network_fee_unavailable when a chain can't be priced.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
         - { name: chainId, in: query, schema: { type: integer } }
         - { name: token, in: query, schema: { $ref: "#/components/schemas/Address" } }
         - { name: amount, in: query, schema: { $ref: "#/components/schemas/Uint256" } }
         - { name: amountUsd, in: query, schema: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" } }
+        - { name: feesPaidBy, in: query, schema: { type: string, enum: [owner, client] } }
+        - { name: storeId, in: query, schema: { type: string, format: uuid } }
       responses:
         "200":
           description: Each option's fees

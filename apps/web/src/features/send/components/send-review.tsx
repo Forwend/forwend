@@ -82,15 +82,18 @@ export function SendReview({
           <TruncatedAddress address={send.from} mono={false} className="text-xs text-muted" />
         </Row>
         <Row term={SEND_COPY.to}>
-          {/* The server finds the other profile's wallet itself, so it reads short like From. A pasted address shows
-              whole: the owner ticks that they checked it, and a look-alike copies only its start and end. */}
+          {/* Laid out as From. The server finds the other profile's wallet itself, so it reads short like From. A pasted
+              address shows whole: the owner ticks that they checked it, and a look-alike copies only its start and end. */}
           {"profile" in recipient ? (
             <>
               <span className="block text-ink">{profileLabel(recipient.profile)}</span>
               <TruncatedAddress address={send.to} mono={false} className="text-xs text-muted" />
             </>
           ) : (
-            <FullAddress address={send.to} />
+            <>
+              <span className="block text-ink">{SEND_COPY.anotherWallet}</span>
+              <FullAddress address={send.to} className="block text-xs" />
+            </>
           )}
         </Row>
         <Row term={SEND_COPY.network}>{chainName(send.chainId)}</Row>

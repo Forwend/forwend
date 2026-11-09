@@ -228,8 +228,9 @@ Stdin holds one open invoice or accepted option per line. A line has its terms a
 token's symbol and its chain's name. Then come the pay link's token of its invoice (D-86), its close (`closes_at`,
 later than `expires_at` after a reopen, R-130) and its fees (R-226):
 `id chain_id recipient_address token_contract amount expires_at settle_deadline symbol network pay_token closes_at network_fee platform_fee`.
-A line whose terms break create's rules is an alert: amount 0, a recipient that is zero or the token, another settle
-window, or fees over a tenth of the amount. So are fees in the terms of a factory whose terms have none (`CANARY_FACTORY_FEES`). So is a close before expiry or at the settle deadline. A line within 6 minutes of its close is skipped: the
+A line whose terms break create's rules is an alert: amount 0, a recipient that is zero or the token, or another settle
+window. So are fees over a tenth of the amount, and fees in the terms of a factory whose terms have none
+(`CANARY_FACTORY_FEES`). So is a close before expiry or at the settle deadline. A line within 6 minutes of its close is skipped: the
 pay page stops showing the address 5 minutes before the close. The canary then:
 
 1. On both RPCs of every configured chain, requires `eth_chainId` to equal the chain ID and the keccak256 of the
@@ -287,6 +288,9 @@ Limits:
 - Extra endpoints provide failover; operational payments do not require agreement between independent providers.
 - The selected provider supplies gas-price suggestions; no independent provider checks its suggested tip.
   - A per-chain ceiling per gas unit bounds what a wrong or lying suggestion can cost (R-189).
+- The executor's gas swap takes USDC at 1 USD and trusts Chainlink's ETH/USD feed for its floor (R-229).
+  - A feed lagging a falling ether price loosens the floor: a swap may then get up to that lag less ether.
+  - One swap buys at most 40 deploys and settles' gas at the fee ceiling: about 30 USD on Base or Arbitrum.
 
 - The executor can settle money the backend would hold (late, cancelled) before the deadline. It still goes only to
   the recipient.

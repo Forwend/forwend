@@ -91,7 +91,6 @@ export const TOKENS_COPY = {
   savedAll: "Changes saved.",
 } as const;
 
-/** R-221. */
 /** D-122: who pays new invoices' fees. */
 export const FEES_COPY = {
   title: "Network fees",
@@ -108,6 +107,7 @@ export const FEES_COPY = {
   saveFailed: "We could not save who pays the fees. Try again.",
 } as const;
 
+/** R-221. */
 export const DEVELOPER_MODE_COPY = {
   title: "Developer mode",
   intro: "Try Forwend on test networks with free testnet tokens before you take real money.",
