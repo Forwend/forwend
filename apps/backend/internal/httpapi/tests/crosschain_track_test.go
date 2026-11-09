@@ -277,4 +277,12 @@ func TestSeenDepositPicksTheBaseOption(t *testing.T) {
 	if got := e.get(t, pay).body["pickedOptionId"]; got != base {
 		t.Fatalf("picked %v, want the Base option %s", got, base)
 	}
+	// A destination hash that isn't a Base transaction stays out of the history's txHash.
+	fake.SetStatus(quote["depositAddress"].(string), intents.Success, map[string]any{"depositedAmount": "101120000",
+		"amountOut": "100000000", "originChainTxHashes": []any{},
+		"destinationChainTxHashes": []any{map[string]any{"hash": originTx}}})
+	checkAt(t, e, worker, quote["quoteId"].(string), time.Now().Add(time.Minute))
+	if converted, ok := historyKinds(t, e, pay)["crosschain.converted"]; !ok || converted["txHash"] != nil {
+		t.Fatalf("converted history %v", converted)
+	}
 }
