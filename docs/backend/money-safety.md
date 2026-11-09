@@ -228,8 +228,9 @@ Stdin holds one open invoice or accepted option per line. A line has its terms a
 token's symbol and its chain's name. Then come the pay link's token of its invoice (D-86), its close (`closes_at`,
 later than `expires_at` after a reopen, R-130) and its fees (R-226):
 `id chain_id recipient_address token_contract amount expires_at settle_deadline symbol network pay_token closes_at network_fee platform_fee`.
-A line whose terms break create's rules is an alert: amount 0, a recipient that is zero or the token, another settle
-window, or fees over a tenth of the amount. So are fees in the terms of a factory whose terms have none (`CANARY_FACTORY_FEES`). So is a close before expiry or at the settle deadline. A line within 6 minutes of its close is skipped: the
+A line whose terms break create's rules is an alert: amount 0, a recipient that is zero or the token, or another settle
+window. So are fees over a tenth of the amount, and fees in the terms of a factory whose terms have none
+(`CANARY_FACTORY_FEES`). So is a close before expiry or at the settle deadline. A line within 6 minutes of its close is skipped: the
 pay page stops showing the address 5 minutes before the close. The canary then:
 
 1. On both RPCs of every configured chain, requires `eth_chainId` to equal the chain ID and the keccak256 of the

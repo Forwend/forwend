@@ -14,7 +14,7 @@ import (
 type Service struct {
 	pool   *pgxpool.Pool
 	now    func() time.Time
-	quotes Quoter // nil: no fees (SetFees)
+	quotes Quoter // nil: no fees (SetPricing)
 	plan   FeePlan
 }
 

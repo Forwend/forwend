@@ -323,7 +323,6 @@ export const recheckSchema = z.object({
 
 export const invoicesPageSchema = pageOf(invoiceSummarySchema);
 
-/** Fixed: chainId, token and amount; payer chooses: amountUsd alone (R-56). */
 /** GET /v1/profiles/{profileId}/fees: each option's fees for a price, before the invoice is made (R-227). */
 export const feeQuoteSchema = z.object({
   feesPaidBy: z.enum(FEES_PAID_BY),
@@ -339,6 +338,7 @@ export const feeQuoteSchema = z.object({
   ),
 });
 
+/** Fixed: chainId, token and amount; payer chooses: amountUsd alone (R-56). */
 export const createInvoiceBodySchema = z.object({
   // R-129: the invoice it replaces.
   replaces: hash32.optional(),
