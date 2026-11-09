@@ -250,8 +250,7 @@ func (s *Signer) buyGas(ctx context.Context, client *ethclient.Client, chainID u
 	if err != nil || len(out) != 32 {
 		return fmt.Errorf("read the router's USDC allowance: %d bytes, %v", len(out), err)
 	}
-	// Less than one deploy and settle's gas costs more than it buys, and the pool's rounding can refuse it. Approved,
-	// dust anyone sent the executor would cap every later swap.
+	// Less than one deploy and settle's gas costs more than it buys, and the pool's rounding can refuse it.
 	floor := new(big.Int).Mul(feeCap, big.NewInt(MinGas))
 	// An allowance a refused swap left is swapped before any new approve, when it buys enough on its own; a smaller one
 	// is replaced.
