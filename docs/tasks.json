@@ -1801,7 +1801,8 @@
       "review": true,
       "notes": [
         "2026-11-09 Built on feat/f449-the-worker-follows-each-cross-chain-quot, stacked on F448's branch (owner asked for stacked branches, no merge until the end). Checks passed via harness check: docs-check, lint, typecheck, unit, backend-e2e, node-unit.",
-        "2026-11-09 Review 1 FAIL (subagent): history txHash of a non-EVM origin chain breaks the web's history schema; no tests for the edit lock, the canary's Check wiring, the stop hour and alert windows; non-blocking: errors retried forever, seen deposits stop being read, REFUNDED without amount writes no row, duplicate history untested, lock doesn't move the pick to Base, docs wording, canary key guard."
+        "2026-11-09 Review 1 FAIL (subagent): history txHash of a non-EVM origin chain breaks the web's history schema; no tests for the edit lock, the canary's Check wiring, the stop hour and alert windows; non-blocking: errors retried forever, seen deposits stop being read, REFUNDED without amount writes no row, duplicate history untested, lock doesn't move the pick to Base, docs wording, canary key guard.",
+        "2026-11-09 Review 2 PASS (subagent) at 715143fc: the web history schema reads every row; edit lock, canary wiring, stop hour, alert windows, duplicate history, pick move, failing-read stop and REFUNDED-without-amount breaks are all caught. Its one non-blocking gap (non-Base destination hash) got a test."
       ],
       "blockedReason": null,
       "evidence": null
