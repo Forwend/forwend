@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/history"
@@ -64,8 +66,14 @@ func (s *Service) TrackCrossChain(ctx context.Context, now time.Time) error {
 		status, err := s.crossChain.Status(ctx, q.address)
 		if err != nil {
 			slog.Warn("read cross-chain status", "quote", q.id, "err", err)
+			// A read that keeps failing ends when the quote would have: an answer 1Click never gives can't hold a slot.
+			var next *time.Time
+			if nextCheck(q, q.status, q.convertedAt, now) != nil {
+				retry := now.Add(trackRetry)
+				next = &retry
+			}
 			if _, err := s.pool.Exec(ctx, "UPDATE crosschain_quotes SET next_check_at = $2 WHERE id = $1", q.id,
-				now.Add(trackRetry)); err != nil {
+				next); err != nil {
 				return fmt.Errorf("delay cross-chain quote %s: %w", q.id, err)
 			}
 			continue
@@ -110,28 +118,37 @@ func (s *Service) statusHistory(ctx context.Context, tx pgx.Tx, q trackedQuote, 
 	add := func(kind string, data history.Data) error {
 		return history.Add(ctx, tx, q.optionID, kind, history.System, data)
 	}
-	first := func(txs []intents.Tx) string {
-		if len(txs) == 0 {
+	// History's txHash is a Base transaction, as every reader expects; the payer's chain's own is in crossChain.
+	baseTx := func(txs []intents.Tx) string {
+		if len(txs) == 0 || !baseTxHash.MatchString(strings.ToLower(txs[0].Hash)) {
 			return ""
 		}
-		return txs[0].Hash
+		return strings.ToLower(txs[0].Hash)
 	}
 	// Each event once, also if 1Click's status ever moves back.
 	if q.depositSeenAt == nil && intents.DepositSeen(st.Status) {
-		if err := add(history.CrossChainDeposit, history.Data{Asset: q.origin, Amount: st.Deposited,
-			TxHash: first(st.OriginTxs)}); err != nil {
+		if err := add(history.CrossChainDeposit, history.Data{Asset: q.origin, Amount: st.Deposited}); err != nil {
+			return err
+		}
+		// The USDC is on its way to the Base option, so the pay link opens on it (R-233).
+		if err := s.pickTracked(ctx, tx, q); err != nil {
 			return err
 		}
 	}
 	if q.convertedAt == nil && st.Status == intents.Success {
-		if err := add(history.CrossChainConverted, history.Data{Amount: st.Delivered, TxHash: first(st.DestinationTxs)}); err != nil {
+		if err := add(history.CrossChainConverted, history.Data{Amount: st.Delivered, TxHash: baseTx(st.DestinationTxs)}); err != nil {
 			return err
 		}
 	}
-	// A refund of a short deposit ends the swap; one of the unused slippage or an extra comes after it converted.
-	if refunded, ok := new(big.Int).SetString(st.Refunded, 10); ok && refunded.Cmp(q.refunded) > 0 {
-		if err := add(history.CrossChainRefunded, history.Data{Asset: q.origin, Amount: refunded.String(),
-			Reason: st.RefundReason}); err != nil {
+	// A refund of a short deposit ends the swap; one of the unused slippage or an extra comes after it converted. A
+	// refund 1Click names no amount for still gets its row, once.
+	refunded, ok := new(big.Int).SetString(st.Refunded, 10)
+	if more := ok && refunded.Cmp(q.refunded) > 0; more || (q.status != intents.Refunded && st.Status == intents.Refunded) {
+		data := history.Data{Asset: q.origin, Reason: st.RefundReason}
+		if more {
+			data.Amount = refunded.String()
+		}
+		if err := add(history.CrossChainRefunded, data); err != nil {
 			return err
 		}
 	}
@@ -143,7 +160,8 @@ func (s *Service) statusHistory(ctx context.Context, tx pgx.Tx, q trackedQuote, 
 	return nil
 }
 
-// nextCheck is when the worker reads the quote again, nil for never.
+// nextCheck is when the worker reads the quote again, nil for never. A seen deposit is read until it ends, past its
+// deadline too: its alert then says it holds a payer's money (R-234).
 func nextCheck(q trackedQuote, status string, converted *time.Time, now time.Time) *time.Time {
 	at := func(d time.Duration) *time.Time { t := now.Add(d); return &t }
 	switch {
@@ -155,10 +173,25 @@ func nextCheck(q trackedQuote, status string, converted *time.Time, now time.Tim
 		return at(trackConverting)
 	case now.Before(q.shownUntil):
 		return at(trackWaiting)
-	case now.Before(q.deadline.Add(trackAfter)):
+	case now.Before(q.deadline.Add(trackAfter)) || intents.DepositSeen(status):
 		return at(trackLate)
 	}
 	return nil
+}
+
+var baseTxHash = regexp.MustCompile(`^0x[0-9a-f]{64}$`)
+
+// pickTracked keeps the quote's option, the Base one, as the payer's pick once 1Click saw their deposit.
+func (s *Service) pickTracked(ctx context.Context, tx pgx.Tx, q trackedQuote) error {
+	tag, err := tx.Exec(ctx, `UPDATE invoices SET picked_id = $2 WHERE id = $1 AND picked_id IS DISTINCT FROM $2
+		AND (SELECT count(*) FROM invoices o WHERE o.main_id = $1) > 0`, q.invoiceID, q.optionID)
+	if err != nil {
+		return fmt.Errorf("pick invoice %s Base option: %w", q.invoiceID, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return nil
+	}
+	return history.Add(ctx, tx, q.optionID, history.OptionPicked, history.System, history.Data{Option: q.optionID})
 }
 
 func orNil(s string) *string {

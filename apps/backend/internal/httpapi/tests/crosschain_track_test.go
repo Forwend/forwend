@@ -70,17 +70,22 @@ func TestWorkerFollowsAQuoteFromDepositToConversion(t *testing.T) {
 	if next := checkAt(t, e, worker, id, at); next == nil || next.Sub(at) != 10*time.Second {
 		t.Fatalf("converting: next %v", next)
 	}
+	// History's txHash is a Base transaction: Tron's own is in crossChain only, so every reader can read the row.
 	seen := historyKinds(t, e, pay)["crosschain.deposit_seen"]
-	if seen == nil || seen["asset"] != tronUSDT || seen["amount"] != "101120000" || seen["txHash"] != originTx {
+	if seen == nil || seen["asset"] != tronUSDT || seen["amount"] != "101120000" || seen["txHash"] != nil {
 		t.Fatalf("deposit history %v", seen)
 	}
 	options := e.get(t, pay).body["options"].([]any)
 	arbitrum := options[0].(map[string]any)["optionId"].(string)
+	main := e.get(t, pay).body["invoiceId"].(string)
+	if r := e.call(t, "PUT", "/v1/profiles/"+e.aliceProfile+"/invoices/"+main+"/details", "did:privy:alice", "",
+		`{"reference": "PO-9", "note": "Changed"}`); r.status != http.StatusConflict || errorCode(r) != "invoice_not_editable" {
+		t.Fatalf("edit while converting: %d %v", r.status, r.body)
+	}
 	if r := e.call(t, "PUT", crossPath+pay+"/pick", "", "", `{"optionId": "`+arbitrum+`"}`); r.status != http.StatusConflict ||
 		errorCode(r) != "pick_locked" {
 		t.Fatalf("pick while converting: %d %v", r.status, r.body)
 	}
-	main := e.get(t, pay).body["invoiceId"].(string)
 	if r := e.call(t, "POST", "/v1/profiles/"+e.aliceProfile+"/invoices/"+main+"/cancel", "did:privy:alice", "", ""); r.status == http.StatusOK {
 		t.Fatalf("canceled while converting: %v", r.body)
 	}
@@ -110,6 +115,27 @@ func TestWorkerFollowsAQuoteFromDepositToConversion(t *testing.T) {
 	if refunded := historyKinds(t, e, pay)["crosschain.refunded"]; refunded == nil || refunded["amount"] != "1000000" ||
 		refunded["asset"] != tronUSDT {
 		t.Fatalf("refund history %v", refunded)
+	}
+	// The same status again writes nothing: each event is in the history once.
+	checkAt(t, e, worker, id, start.Add(20*time.Minute))
+	var rows map[string]int
+	rows = map[string]int{}
+	counted, err := e.pool.Query(context.Background(), `SELECT kind, count(*) FROM history_events
+		WHERE invoice_id = $1 AND kind LIKE 'crosschain.%' GROUP BY kind`, main)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for counted.Next() {
+		var kind string
+		var n int
+		if err := counted.Scan(&kind, &n); err != nil {
+			t.Fatal(err)
+		}
+		rows[kind] = n
+	}
+	counted.Close()
+	if rows["crosschain.deposit_seen"] != 1 || rows["crosschain.converted"] != 1 || rows["crosschain.refunded"] != 1 {
+		t.Fatalf("history rows %v, want each once", rows)
 	}
 	if next := checkAt(t, e, worker, id, start.Add(2*time.Hour+time.Minute)); next != nil {
 		t.Fatalf("an hour after the conversion: next %v", next)
@@ -172,9 +198,11 @@ func TestWorkerStopsAQuoteNobodyPaidAndRecordsAFailure(t *testing.T) {
 	id := quote["quoteId"].(string)
 	shown, _ := time.Parse(time.RFC3339, quote["shownUntil"].(string))
 	deadline, _ := time.Parse(time.RFC3339, quote["deadline"].(string))
-	// After the price window every 2 minutes, then none from an hour past the deadline.
-	if next := checkAt(t, e, worker, id, shown.Add(time.Second)); next == nil || next.Sub(shown.Add(time.Second)) != 2*time.Minute {
-		t.Fatalf("after the window: next %v", next)
+	// After the price window every 2 minutes, still 30 minutes past the deadline, then none from an hour past it.
+	for _, at := range []time.Time{shown.Add(time.Second), deadline.Add(30 * time.Minute)} {
+		if next := checkAt(t, e, worker, id, at); next == nil || next.Sub(at) != 2*time.Minute {
+			t.Fatalf("at %s: next %v", at, next)
+		}
 	}
 	if next := checkAt(t, e, worker, id, deadline.Add(time.Hour+time.Second)); next != nil {
 		t.Fatalf("an hour past the deadline: next %v", next)
@@ -195,11 +223,58 @@ func TestWorkerStopsAQuoteNobodyPaidAndRecordsAFailure(t *testing.T) {
 		t.Fatalf("status %v", got)
 	}
 
-	// 1Click down: the quote is read again a minute later, nothing else changes.
+	// 1Click down: the quote is read again a minute later, until it would have ended anyway.
 	e3, fake3, worker3, _, quote3 := tracked(t)
 	fake3.Down = true
 	now := time.Now()
 	if next := checkAt(t, e3, worker3, quote3["quoteId"].(string), now); next == nil || next.Sub(now) != time.Minute {
 		t.Fatalf("down: next %v", next)
+	}
+	deadline3, _ := time.Parse(time.RFC3339, quote3["deadline"].(string))
+	if next := checkAt(t, e3, worker3, quote3["quoteId"].(string), deadline3.Add(time.Hour+time.Second)); next != nil {
+		t.Fatalf("down past the end: next %v", next)
+	}
+}
+
+// A seen deposit is read until it ends, past its deadline too; a refund 1Click names no amount for still has its row.
+func TestWorkerReadsASeenDepositUntilItEnds(t *testing.T) {
+	e, fake, worker, pay, quote := tracked(t)
+	id, address := quote["quoteId"].(string), quote["depositAddress"].(string)
+	deadline, _ := time.Parse(time.RFC3339, quote["deadline"].(string))
+	short := map[string]any{"depositedAmount": "50000000", "originChainTxHashes": []any{}, "destinationChainTxHashes": []any{}}
+	fake.SetStatus(address, intents.IncompleteDeposit, short)
+	at := deadline.Add(2 * time.Hour)
+	if next := checkAt(t, e, worker, id, at); next == nil || next.Sub(at) != 2*time.Minute {
+		t.Fatalf("incomplete past the deadline: next %v", next)
+	}
+	fake.SetStatus(address, intents.Refunded, short)
+	if next := checkAt(t, e, worker, id, at.Add(3*time.Minute)); next != nil {
+		t.Fatalf("refunded: next %v", next)
+	}
+	if refunded, ok := historyKinds(t, e, pay)["crosschain.refunded"]; !ok || refunded["amount"] != nil || refunded["asset"] != tronUSDT {
+		t.Fatalf("refund history %v", refunded)
+	}
+}
+
+// The pick the payer last made moves to the Base option once 1Click saw their deposit (R-233).
+func TestSeenDepositPicksTheBaseOption(t *testing.T) {
+	e, fake, worker, pay, quote := tracked(t)
+	var arbitrum, base string
+	for _, o := range e.get(t, pay).body["options"].([]any) {
+		option := o.(map[string]any)
+		if option["chainId"] == float64(intents.BaseChainID) {
+			base = option["optionId"].(string)
+		} else {
+			arbitrum = option["optionId"].(string)
+		}
+	}
+	if r := e.call(t, "PUT", crossPath+pay+"/pick", "", "", `{"optionId": "`+arbitrum+`"}`); r.status != http.StatusNoContent {
+		t.Fatalf("pick: %d %v", r.status, r.body)
+	}
+	fake.SetStatus(quote["depositAddress"].(string), intents.Processing, map[string]any{"depositedAmount": "101120000",
+		"originChainTxHashes": []any{}, "destinationChainTxHashes": []any{}})
+	checkAt(t, e, worker, quote["quoteId"].(string), time.Now())
+	if got := e.get(t, pay).body["pickedOptionId"]; got != base {
+		t.Fatalf("picked %v, want the Base option %s", got, base)
 	}
 }

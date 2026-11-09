@@ -39,6 +39,9 @@ func parseQuote(line string) (quote, error) {
 // checkQuote reads 1Click's status of the deposit address and requires its signed quote to pay exactly AmountOut of
 // the option's token, USDC on Base, into receive, the address the factory predicts for the option.
 func checkQuote(ctx context.Context, c config.Canary, t terms, receive string, q quote) error {
+	if t.ChainID != 8453 {
+		return fmt.Errorf("quote on chain %d: only Base takes cross-chain payments", t.ChainID)
+	}
 	client := outbound.Client(c.AllowLoopback)
 	defer client.CloseIdleConnections()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
@@ -72,8 +75,6 @@ func checkQuote(ctx context.Context, c config.Canary, t terms, receive string, q
 		}
 	}
 	switch {
-	case t.ChainID != 8453:
-		return fmt.Errorf("quote on chain %d: only Base takes cross-chain payments", t.ChainID)
 	case text(answer["depositAddress"]) != q.DepositAddress:
 		return fmt.Errorf("1Click quote address %s, want %s", text(answer["depositAddress"]), q.DepositAddress)
 	case text(answer["amountOut"]) != q.AmountOut || text(answer["minAmountOut"]) != q.AmountOut:

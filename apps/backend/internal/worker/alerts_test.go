@@ -135,6 +135,9 @@ func TestAlertsNameCrossChainPaymentsThatHoldMoney(t *testing.T) {
 		             ('booked-addr', 'SUCCESS', interval '2 hours', now(), now() - interval '1 hour',
 		              jsonb_build_array(jsonb_build_object('hash', upper('0x' || repeat('0b', 32))))),
 		             ('unpaid-addr', 'PENDING_DEPOSIT', interval '3 hours', NULL, NULL, '[]'),
+		             -- just inside each window: not yet an hour past the deadline, delivered under 30 minutes ago
+		             ('soon-stuck-addr', 'PROCESSING', interval '50 minutes', now(), NULL, '[]'),
+		             ('soon-lost-addr', 'SUCCESS', interval '50 minutes', now(), now() - interval '20 minutes', '[{"hash": "0xeeee"}]'),
 		             ('old-failed-addr', 'FAILED', interval '8 days', now(), NULL, '[]'))
 		     AS q (a, s, d, seen, conv, txs)`); err != nil {
 		t.Fatal(err)
@@ -165,7 +168,7 @@ func TestAlertsNameCrossChainPaymentsThatHoldMoney(t *testing.T) {
 			t.Fatalf("logs lack %q:\n%s", want, logs.String())
 		}
 	}
-	for _, quiet := range []string{"booked-addr", "unpaid-addr", "old-failed-addr"} {
+	for _, quiet := range []string{"booked-addr", "unpaid-addr", "old-failed-addr", "soon-stuck-addr", "soon-lost-addr"} {
 		if strings.Contains(logs.String(), ids[quiet]) {
 			t.Fatalf("%s alerts:\n%s", quiet, logs.String())
 		}

@@ -6035,7 +6035,7 @@ components:
                 invoice.reopened (R-130), whose until is the new close, invoice.numbered (R-141), when a payment-link
                 invoice took its number with its first deposit, invoice.return_queued and invoice.return_released,
                 when support queues or drops a return of held money (PLAN 11.10.3), or a payment through NEAR Intents
-                (R-234): crosschain.deposit_seen (asset, amount and txHash on the payer's chain), crosschain.converted
+                (R-234): crosschain.deposit_seen (asset and amount on the payer's chain), crosschain.converted
                 (amount of the option's USDC and the Base txHash), crosschain.refunded (asset and amount back to the
                 refund address) and crosschain.failed.
                 actor system is Forwend. optionId names the option chosen, or the one money is held on, when the payer
@@ -6055,10 +6055,7 @@ components:
                   optionId: { type: [string, "null"], pattern: "^0x[0-9a-f]{64}$" }
                   amount: { type: [string, "null"], pattern: "^[0-9]+$", description: "In asset's base units when asset is set." }
                   asset: { type: [string, "null"], description: "The 1Click asset a cross-chain amount is in." }
-                  txHash:
-                    type: [string, "null"]
-                    pattern: "^[A-Za-z0-9:_-]{1,200}$"
-                    description: A transaction on its chain; on crosschain.deposit_seen, the payer's chain's own form.
+                  txHash: { type: [string, "null"], pattern: "^0x[0-9a-f]{64}$" }
                   step: { type: [string, "null"], enum: [before, due, after, null] }
                   field: { type: [string, "null"], enum: [memo, clientEmail, returnUrl, reference, note, dueDate, null] }
                   from: { type: [string, "null"], format: date }

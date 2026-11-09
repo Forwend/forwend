@@ -257,6 +257,13 @@ func LoadCanary() (Canary, error) {
 	if c.OneClickURL == "" {
 		c.OneClickURL = CanaryOneClickURL
 	}
+	// Another key only for a test's fake on loopback, as the api's ONECLICK_SIGNER_KEY (D-124).
+	if u, err := url.Parse(c.OneClickURL); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+		r.invalid = append(r.invalid, "CANARY_ONECLICK_URL (an http or https URL)")
+	} else if ip, err := netip.ParseAddr(u.Hostname()); c.OneClickKey != "" && u.Hostname() != "localhost" &&
+		(err != nil || !ip.IsLoopback()) {
+		r.invalid = append(r.invalid, "CANARY_ONECLICK_KEY (only with a test's fake 1Click on a loopback CANARY_ONECLICK_URL)")
+	}
 	if c.OneClickKey == "" {
 		c.OneClickKey = CanaryOneClickKey
 	}
