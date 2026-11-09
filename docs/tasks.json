@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 447,
+  "nextId": 448,
   "tasks": [
     {
       "id": "F332",
@@ -1565,6 +1565,34 @@
         "branch": "feat/f446-each-invoice-option-quotes-a-network-fee",
         "base": "main"
       }
+    },
+    {
+      "id": "F447",
+      "type": "fix",
+      "behavior": "A stale Chainlink ETH/USD price, or one read while the L2 sequencer is down, prices no fee and floors no swap",
+      "acceptance": [
+        "The ETH/USD price is refused when its round is older than its feed's heartbeat and a half; each feed's heartbeat is Chainlink's (R-227, R-229).",
+        "On Base and Arbitrum the price is refused while the L2 sequencer uptime feed says down, or for an hour after it comes back.",
+        "A refused price makes the fee quote fall back on its last good quote for up to an hour, then refuse; the executor's swap is not sent and the low gas alert names why."
+      ],
+      "dependsOn": [],
+      "state": "active",
+      "verification": [
+        "backend",
+        "docs-check"
+      ],
+      "refs": [
+        "R-229",
+        "R-227",
+        "D-122"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null,
+      "branch": "fix/f447-a-stale-chainlink-eth-usd-price-or-one-r",
+      "baseCommit": "fb24425001c3dded72f1addbd67d20d50eaba4e3"
     }
   ],
   "lastWrapup": {
