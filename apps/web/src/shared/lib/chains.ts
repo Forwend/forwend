@@ -79,7 +79,9 @@ export function blockchainTxLink(
   blockchain: string,
   tx: { hash: string; explorerUrl: string },
 ): { name: string; href: string } | null {
-  const explorer = BLOCKCHAIN_EXPLORERS[blockchain];
+  const explorer = Object.hasOwn(BLOCKCHAIN_EXPLORERS, blockchain)
+    ? BLOCKCHAIN_EXPLORERS[blockchain]
+    : undefined;
   if (explorer && /^[0-9A-Za-z]{16,128}$/.test(tx.hash))
     return { name: explorer.name, href: explorer.url + tx.hash };
   return tx.explorerUrl.startsWith("https://")

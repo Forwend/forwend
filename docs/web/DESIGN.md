@@ -908,7 +908,9 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - Once 1Click saw the deposit: "Payment seen on Tron. Don't pay again.", the steps Detected, Converting,
       Confirming and Paid, and one status line (R-243).
       - On Base, Confirming shows the block count with its time-left hint and "Final around", as a direct payment.
-      - A bordered list follows: You sent, Arrived on Base and Returned to you, each with its transaction link.
+      - A bordered list follows: You sent and Arrived on Base, each with its transaction link.
+      - Returned to you names the refund address: 1Click names no refund transaction.
+      - Once final but not booked it says what the direct box says, such as "Awaiting confirmation."
       - The payer's chain links to a known explorer, else to 1Click's own https link.
       - Less than needed, refunded and failed leave one line above Pay with, with the quote ID for support, and the
         invoice can be paid again.

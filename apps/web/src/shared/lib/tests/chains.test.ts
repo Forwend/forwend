@@ -88,10 +88,12 @@ describe("blockchainTxLink", () => {
     "4jBcpDL3KfBipWFqRBT5gVwZZoGogMBv5FWi6hi6a45CmPg6CcPJmD5Pr8jTxJGehtDrh3vmq8Tr7Q1UU6GLxoxj";
 
   it("links a known explorer, else 1Click's own https link", () => {
-    expect(blockchainTxLink("sol", { hash: solana, explorerUrl: "" })).toEqual({
-      name: "Solscan",
-      href: `https://solscan.io/tx/${solana}`,
-    });
+    // The known explorer comes first, even beside 1Click's own link.
+    for (const explorerUrl of ["", "https://explorer.example/tx/x"])
+      expect(blockchainTxLink("sol", { hash: solana, explorerUrl })).toEqual({
+        name: "Solscan",
+        href: `https://solscan.io/tx/${solana}`,
+      });
     expect(blockchainTxLink("zec", { hash: "ab", explorerUrl: "https://x.example/tx/ab" })).toEqual(
       {
         name: "Zcash",

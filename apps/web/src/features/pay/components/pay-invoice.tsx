@@ -658,6 +658,8 @@ function PayBox({
             due={crossTarget.due}
             now={now}
             readAt={readAt}
+            confirming={pay.state === PAY_STATES.confirming}
+            stateLine={COPY.states[pay.state](values(invoice, pay, money))}
             onDirect={() => setCrossOpen(false)}
           />
         ) : (

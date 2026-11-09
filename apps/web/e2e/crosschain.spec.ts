@@ -418,24 +418,70 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await expect(row("Returned to you")).toContainText("0.001 ETH");
   });
 
-  test("once an address shows, Change takes two presses (R-243, R-68)", async ({ page }) => {
+  test("on Base, final but not yet booked, it says what the direct box says (R-243)", async ({
+    page,
+  }) => {
+    await page.clock.install({ time: NOW });
+    const booked = {
+      txHash: `0x${"9".repeat(64)}`,
+      logIndex: 0,
+      from: "0x8ba1f109551bd432803012645ac136ddd64dba72",
+      amount: "1250000000",
+      blockNumber: 100,
+      blockTime: "2026-10-10T12:03:00Z",
+      status: "confirmed",
+      late: false,
+      paid: null,
+      blocksLeft: 0,
+      blocksTotal: 0,
+      secondsLeft: 0,
+    };
+    await mockInvoice(page, {
+      ...LIVE,
+      paymentStatus: "detected",
+      deposits: [booked],
+      options: [{ ...LIVE.options[0], deposits: [booked] }],
+      crossChain: kept(quote("1263000000"), {
+        status: "SUCCESS",
+        delivered: "1250000000",
+        destinationTxs: [{ hash: booked.txHash, explorerUrl: "" }],
+        depositSeenAt: "2026-10-10T12:01:00Z",
+        convertedAt: "2026-10-10T12:02:00Z",
+      }),
+    });
+    await page.goto(`/pay/${PAY}`);
+    await expect(
+      page.getByRole("status").filter({ hasText: "Awaiting confirmation." }),
+    ).toBeVisible();
+    // No time is promised while the ledger books it.
+    await expect(page.getByText(/left$/)).toHaveCount(0);
+    await expect(page.getByText(/^Final around /)).toHaveCount(0);
+  });
+
+  test("once an address shows, Change and Pay directly instead take two presses (R-243, R-68)", async ({
+    page,
+  }) => {
     await page.clock.install({ time: NOW });
     await mockInvoice(page, LIVE);
     await routeCrossChain(page, [quote("1263000000")]);
     await page.goto(`/pay/${PAY}`);
+    // Before an address, the way back takes one press.
+    await page.getByRole("button", { name: "Pay with another token" }).click();
+    await page.getByRole("button", { name: "Pay directly instead" }).click();
+    await expect(page.getByRole("button", { name: "Pay with another token" })).toBeVisible();
     await page.getByRole("button", { name: "Pay with another token" }).click();
     await page.getByRole("button", { name: "Choose a token" }).click();
     const picker = page.getByRole("dialog", { name: "Pay with another token" });
     await picker.getByRole("button", { name: "Tron", exact: true }).click();
     await picker.getByRole("button", { name: /USDT.*Tron/ }).click();
     // Before an address, one press opens the picker.
-    await page.getByRole("button", { name: "Change" }).click();
+    await page.getByRole("button", { name: "Change", exact: true }).click();
     await expect(picker).toBeVisible();
     await page.keyboard.press("Escape");
     await page.getByLabel("Refund address on Tron").fill(REFUND);
     await page.getByRole("button", { name: "Show address" }).click();
     await expect(page.getByText(DEPOSIT_ADDRESS)).toBeVisible();
-    const change = page.getByRole("button", { name: "Change" });
+    const change = page.getByRole("button", { name: "Change", exact: true });
     await change.click();
     await expect(picker).toHaveCount(0);
     // As the direct Change: moving away puts it back, and the address stays.
@@ -611,7 +657,7 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     });
     await page.goto(`/pay/${PAY}`);
     await expect(page.getByText(DEPOSIT_ADDRESS)).toBeVisible();
-    // Once its price ends, a new one is refused: the payer is told to pay with USDC, not to try again.
+    // Once its price ends, a new one is refused: the payer is told to pay directly, not to try again.
     await page.route(`**/api/v1/invoices/${PAY}/crosschain/quotes`, (route) =>
       route.fulfill({
         status: 422,

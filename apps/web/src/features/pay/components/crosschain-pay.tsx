@@ -59,6 +59,9 @@ export interface CrossChainPayProps {
   now: number;
   /** When the invoice was last read, for when a payment on Base is final. */
   readAt: number | null;
+  /** The money on Base is confirming, and what the direct box says of it otherwise: it is a payment like any other. */
+  confirming: boolean;
+  stateLine: string;
   /** Back to the tokens the invoice takes directly. */
   onDirect: () => void;
 }
@@ -79,6 +82,8 @@ export function CrossChainPay({
   due,
   now,
   readAt,
+  confirming,
+  stateLine,
   onDirect,
 }: CrossChainPayProps) {
   const kept = invoice.crossChain ?? null;
@@ -170,7 +175,15 @@ export function CrossChainPay({
 
   // Once 1Click saw the deposit, the payer follows it to Paid (R-238).
   if (kept?.depositSeenAt && !crossChainEnded(kept)) {
-    return <CrossChainProgress invoice={invoice} crossChain={kept} readAt={readAt} />;
+    return (
+      <CrossChainProgress
+        invoice={invoice}
+        crossChain={kept}
+        readAt={readAt}
+        confirming={confirming}
+        stateLine={stateLine}
+      />
+    );
   }
 
   const chain = token ? blockchainName(token.blockchain) : "";
@@ -444,10 +457,14 @@ function CrossChainProgress({
   invoice,
   crossChain,
   readAt,
+  confirming,
+  stateLine,
 }: {
   invoice: Invoice;
   crossChain: CrossChain;
   readAt: number | null;
+  confirming: boolean;
+  stateLine: string;
 }) {
   const chain = blockchainName(crossChain.blockchain);
   const onBase = invoice.deposits.length > 0 || invoice.options.some((o) => o.deposits.length > 0);
@@ -468,10 +485,10 @@ function CrossChainProgress({
           ? STEP_STATES.current
           : STEP_STATES.upcoming,
   }));
-  // On Base it confirms as a direct payment does: the blocks left, the time left and when it is final (R-243).
+  // On Base it is a payment like a direct one: the blocks left, the time left and when it is final while it confirms,
+  // then the same line, as "Awaiting confirmation." while the ledger books it (R-243).
   const { blocksLeft, blocksTotal, secondsLeft } = invoiceProgress(invoice);
-  const confirming = onBase && !paid;
-  const final = useFinalTime(confirming, secondsLeft, readAt);
+  const final = useFinalTime(onBase && confirming, secondsLeft, readAt);
   const sent = BigInt(crossChain.deposited ?? crossChain.amountIn);
   const refunded = BigInt(crossChain.refunded ?? "0");
   const origin = crossChain.originTxs[0];
@@ -491,10 +508,12 @@ function CrossChainProgress({
         <p role="status" className="text-sm text-muted">
           {reached === 1 ? (
             COPY.converting
+          ) : !onBase ? (
+            PAY_COPY.updatesItself
           ) : confirming ? (
             <ConfirmingStatus blocks={blocksLeft} total={blocksTotal} seconds={secondsLeft} />
           ) : (
-            PAY_COPY.updatesItself
+            stateLine
           )}
         </p>
         {final ? (

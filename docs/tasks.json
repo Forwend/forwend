@@ -2277,9 +2277,9 @@
       "type": "feat",
       "behavior": "The cross-chain pay box says what happened to the payer's money, as the direct one does",
       "acceptance": [
-        "After a deposit 1Click saw, the box lists what was sent on the payer's chain, what arrived on Base and any part returned, each with its transaction link (R-243).",
-        "Confirming shows Base's block count, its time-left hint and when the payment is final, as a direct payment does (R-243).",
-        "Once an address shows, Change and Pay directly instead each take two presses (R-243, R-68)."
+        "After a deposit 1Click saw, the box lists what was sent on the payer's chain and what arrived on Base, each with its transaction link, and any part returned with its refund address (R-243).",
+        "Confirming shows Base's block count, its time-left hint and when the payment is final, then the direct box's line while the ledger books it (R-243).",
+        "Once an address shows, Change and Pay directly instead each take two presses; before one, one press (R-243, R-68)."
       ],
       "dependsOn": [
         "F453"
@@ -2295,7 +2295,8 @@
       "keep": [],
       "review": true,
       "notes": [
-        "2026-11-09 Review 1 FAIL (subagent) at 75258138: no test failed for the Arrived amount, the refund's token, the Base tx before success, the hash's characters or the two-press blur reset; the owner's Details still linked the customer's tx only through 1Click's link. Non-blocking taken: Arrived only on success, the not-available line still said Pay with USDC instead. Left: TwoPress could replace PickedOption's button; crosschain-pay.tsx holds quote and progress (~680 lines); the direct flow's Final around has no test of its own; the Paid receipt drops the returned part."
+        "2026-11-09 Review 1 FAIL (subagent) at 75258138: no test failed for the Arrived amount, the refund's token, the Base tx before success, the hash's characters or the two-press blur reset; the owner's Details still linked the customer's tx only through 1Click's link. Non-blocking taken: Arrived only on success, the not-available line still said Pay with USDC instead. Left: TwoPress could replace PickedOption's button; crosschain-pay.tsx holds quote and progress (~680 lines); the direct flow's Final around has no test of its own; the Paid receipt drops the returned part.",
+        "2026-11-09 Review 2 FAIL (subagent) at 1a585144: after Base finality but before booking the cross box said Confirming with 'Under a minute left' where the direct box says 'Awaiting confirmation.'; no test for which link wins (known explorer over 1Click's) or for the one-press way back before an address; the docs promised a link on Returned to you that 1Click can't give. Non-blocking taken: exact Change locator, Object.hasOwn for the explorer map, R-240 and an e2e comment said pay with USDC."
       ],
       "blockedReason": null,
       "evidence": null
