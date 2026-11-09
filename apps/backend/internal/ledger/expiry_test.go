@@ -201,6 +201,17 @@ func TestPaidInvoiceWithUnbookedMoneyAlerts(t *testing.T) {
 		t.Fatalf("with a deposit seen, not booked yet: %s, alert %v; want paid and none", payment, alert(seen))
 	}
 
+	// The balance is read at block 1000; the scan has finalized only up to 100, so the extra may be a deposit it
+	// will still record.
+	ahead, receive := s.invoice()
+	s.transfer(ahead, receive, 5_000_000, 500, "confirmed")
+	s.answer[receive].Add(s.answer[receive], big.NewInt(2_000_000))
+	s.process(ahead)
+	if payment, _ := s.payment(ahead); payment != Paid || alert(ahead) {
+		t.Fatalf("read past the scan: %s, alert %v; want paid and none", payment, alert(ahead))
+	}
+
+	s.exec("UPDATE chain_cursors SET last_scanned_block = 1000, last_finalized_block = 1000 WHERE chain_id = 1")
 	missed, receive := s.invoice()
 	s.transfer(missed, receive, 5_000_000, 500, "confirmed")
 	s.answer[receive].Add(s.answer[receive], big.NewInt(2_000_000))

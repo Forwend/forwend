@@ -1913,10 +1913,17 @@ func TestUnbookedMoneyAlertsButHoldsNeitherPaidNorTheSettle(t *testing.T) {
 	if err := e.watch.Scan(ctx); err != nil {
 		t.Fatal(err)
 	}
-	// Never scanned: one before the invoice is paid, one after.
+	// Missed: the scan passes their blocks without recording them, one before the invoice is paid, one after.
 	e.anvil.Transfer(e.token, missedFirst, "2000000")
 	e.anvil.Transfer(e.token, missedLater, "2000000")
 	e.anvil.Mine(2)
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.pool.Exec(ctx, `DELETE FROM chain_transfers WHERE invoice_id IN ($1, $2) AND amount = 2000000`,
+		atPaid, afterPaid); err != nil {
+		t.Fatal(err)
+	}
 	if err := e.ledger.ProcessChain(ctx, e.chainID); err != nil {
 		t.Fatal(err)
 	}

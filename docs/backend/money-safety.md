@@ -201,6 +201,7 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
   - The ledger only re-checks an option that can still expire. On a paid or settled one, `ops return` refuses instead.
   - The same check runs when an invoice turns paid, and in the signer before it signs a settle.
     - It skips while a transfer the scan saw waits to be booked: that one explains the money.
+    - It also skips a balance read at a block the scan hasn't finalized: a deposit there may still be recorded.
     - It writes the same `ALERT` and excess alert, so the payment reads `review`.
     - It holds neither paid nor the settle: settle pays out only the amount, and the rest stays in the receiver.
 - Less on chain than booked at expiry logs `ALERT receive address holds less than booked; not expiring`, with the same backoff.

@@ -650,6 +650,7 @@ R-148, D-98. `cmd/webhooks` sends each delivery as a `POST` of the event's body,
 - A failure retries after 5 s, 5 min, 30 min, 2 h and 5 h, then every 10 h: 12 attempts in about 3 days.
   - Every retry sends the body built for the first attempt, signed again with its own timestamp.
   - A request Forwend can't prepare is a failed attempt with no status code, such as an event body it can't build.
+    - It follows the retry schedule, but its last failure doesn't turn the endpoint off: the endpoint isn't to blame.
     - So it never holds its endpoint's queue for good.
 - A `410`, or a delivery's last failure, turns the endpoint off (`enabled` false).
   - The profile owner gets one email naming the endpoint's host, whatever the profile's email setting.

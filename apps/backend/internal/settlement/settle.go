@@ -132,7 +132,7 @@ func (s *Signer) settle(ctx context.Context, id int64, release func()) error {
 		return s.postpone(ctx, in, waitUnresolved, "the receive address holds less than the ledger booked")
 	}
 	if err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
-		return ledger.Unbooked(ctx, tx, in.invoiceID, booked, held)
+		return ledger.Unbooked(ctx, tx, in.invoiceID, booked, held, head.Number.Uint64())
 	}); err != nil {
 		return err
 	}

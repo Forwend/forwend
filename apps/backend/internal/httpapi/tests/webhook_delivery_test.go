@@ -181,6 +181,11 @@ func TestADeliveryThatCantBeBuiltFailsOnTheSchedule(t *testing.T) {
 	if state, _ := h.delivery(t, h.endpoint, broken); state != "failed "+strconv.Itoa(len(webhook.Retries)+1) {
 		t.Fatalf("after its last attempt: %s", state)
 	}
+	var enabled bool
+	if err := h.pool.QueryRow(context.Background(), "SELECT enabled FROM webhook_endpoints WHERE id = $1", h.endpoint).
+		Scan(&enabled); err != nil || !enabled {
+		t.Fatalf("Forwend's own failure turned the merchant's endpoint off: enabled=%v (%v)", enabled, err)
+	}
 }
 
 func TestWebhookManualQueueBudgetPreservesFinancialEvents(t *testing.T) {
