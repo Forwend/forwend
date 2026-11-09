@@ -548,6 +548,8 @@ function quoteProblem(error: unknown): string {
     case "too_many_quotes":
     case "rate_limited":
       return COPY.tooMany;
+    case "crosschain_unavailable":
+      return COPY.closed;
     default:
       return COPY.unavailable;
   }

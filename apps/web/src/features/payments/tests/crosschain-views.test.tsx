@@ -225,6 +225,25 @@ describe("cross-chain payment views", () => {
     );
   });
 
+  // jsdom has no layout: the class is what lets a long 18-decimal amount wrap in a half-width card on a phone.
+  it("wraps a long amount instead of clipping it", () => {
+    render(
+      <CrossChainFigure
+        crossChain={{
+          ...crossChain,
+          decimals: 18,
+          symbol: "ETH",
+          blockchain: "eth",
+          deposited: "1263123456789012345678",
+        }}
+        chainId={8453}
+      />,
+    );
+    expect(screen.getByText("1,263.123456789012345678 ETH on Ethereum").className).toContain(
+      "break-words",
+    );
+  });
+
   it("shows no Details figure for a deposit 1Click returned", () => {
     const { container } = render(
       <CrossChainFigure crossChain={{ ...crossChain, status: "REFUNDED" }} chainId={8453} />,

@@ -408,6 +408,18 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     });
     await page.goto(`/pay/${PAY}`);
     await expect(page.getByText(DEPOSIT_ADDRESS)).toBeVisible();
+    // Once its price ends, a new one is refused: the payer is told to pay with USDC, not to try again.
+    await page.route(`**/api/v1/invoices/${PAY}/crosschain/quotes`, (route) =>
+      route.fulfill({
+        status: 422,
+        json: { error: { code: "crosschain_unavailable", message: "the payee turned it off" } },
+      }),
+    );
+    await page.clock.runFor(15 * 60_000);
+    await page.getByRole("button", { name: "Get new price" }).click();
+    await expect(
+      page.getByRole("alert").filter({ hasText: "isn't available for this payment now" }),
+    ).toBeVisible();
     // Back to the Base option, the switch offers no new quote.
     await page.getByRole("button", { name: "Pay with USDC instead" }).click();
     await expect(page.getByRole("button", { name: "Pay with another token" })).toHaveCount(0);
