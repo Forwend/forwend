@@ -89,7 +89,8 @@ export const PAYMENT_DETAIL_COPY = {
   chips: { source: "From", network: "Network", tx: "Tx", sent: "Sent", via: "Via" },
   // R-239: what the customer sent on its own chain, which NEAR Intents converted.
   crossChain: {
-    sentWith: "Sent through NEAR Intents",
+    // R-246: NEAR Intents' logo follows it, named by nearIntents.
+    sentThrough: "Sent through",
     value: (amount: string, chain: string) => `${amount} on ${chain}`,
     nearIntents: "NEAR Intents",
     refunded: (amount: string) => `${amount} returned to the customer's refund address`,

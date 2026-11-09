@@ -1,3 +1,4 @@
+import { formatTokenAmount } from "@forwend/ui-web";
 import { sha256 } from "@noble/hashes/sha2.js";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import {
@@ -10,6 +11,7 @@ import { withOption } from "@/features/pay/lib/pay";
 import { checkedReceiveAddress } from "@/features/pay/lib/receive-address";
 import { CROSS_CHAIN_TARGET } from "@/shared/constants/chains";
 import { blockchainName, isCrossChainTarget } from "@/shared/lib/chains";
+import { exactDigits } from "@/shared/lib/money";
 
 /** What a payer pays into from another chain (D-123): the open Base USDC option of a live invoice. */
 export interface CrossChainTarget {
@@ -170,10 +172,12 @@ export async function verifyQuote(
   }
 }
 
-/** The deposit address and amount inside a signed answer: after verifyQuote, the only ones the page may show. */
+/** The deposit address and amount inside a signed answer: after verifyQuote, the only ones the page may show. send
+ * is the amount the payer is asked for: amountIn rounded up at the price 1Click signed (R-244). */
 export function signedDeposit(
   signed: unknown,
-): { depositAddress: string; amountIn: bigint } | null {
+  decimals: number,
+): { depositAddress: string; amountIn: bigint; send: bigint } | null {
   const quote = record(record(signed)?.quote);
   if (
     typeof quote?.depositAddress !== "string" ||
@@ -181,7 +185,50 @@ export function signedDeposit(
     !/^\d+$/.test(quote.amountIn)
   )
     return null;
-  return { depositAddress: quote.depositAddress, amountIn: BigInt(quote.amountIn) };
+  const amountIn = BigInt(quote.amountIn);
+  const usd = typeof quote.amountInUsd === "string" ? quote.amountInUsd : "";
+  return {
+    depositAddress: quote.depositAddress,
+    amountIn,
+    send: sendUnits(amountIn, decimals, usdPerToken(usd, amountIn, decimals)),
+  };
+}
+
+/** An amount of a token as the pay box writes it: every digit it has, at least two. */
+export const amountText = (units: bigint, token: { decimals: number; symbol: string }) =>
+  `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`;
+
+/** USD for one whole token, at the price 1Click valued amountIn at. */
+export function usdPerToken(amountInUsd: string, amountIn: bigint, decimals: number): number {
+  return Number(amountInUsd) / (Number(amountIn) / 10 ** decimals);
+}
+
+const SEND_DIGITS = 5;
+
+/**
+ * R-244: what a payer is asked to send, rounded up so it reads like money: a USD stablecoin (priced within 2% of 1 USD,
+ * as the api orders them) to the cent, any other token to 5 significant digits. The few units it adds come back with
+ * the unused slippage, as 1Click refunds any deposit over what the conversion takes.
+ */
+export function sendUnits(units: bigint, decimals: number, usdPerWholeToken: number): bigint {
+  const stable = usdPerWholeToken >= 0.98 && usdPerWholeToken <= 1.02;
+  const dropped = stable
+    ? Math.max(decimals - 2, 0)
+    : Math.max(units.toString().length - SEND_DIGITS, 0);
+  const step = 10n ** BigInt(dropped);
+  return ((units + step - 1n) / step) * step;
+}
+
+/** R-244: NEAR Intents' fee and Base's network fee in USD, at 1Click's prices: what the least it converts is worth
+ * over what arrives. The slippage on top comes back, so it is no fee. */
+export function crossChainFeeUsd(q: {
+  amountIn: string;
+  minAmountIn: string;
+  amountInUsd: string;
+  amountOutUsd: string;
+}): number {
+  const perUnit = Number(q.amountInUsd) / Number(q.amountIn);
+  return Math.max(0, Number(q.minAmountIn) * perUnit - Number(q.amountOutUsd));
 }
 
 /** 1Click's key; a test build's fake key only on a page served from loopback, never on a real host. */

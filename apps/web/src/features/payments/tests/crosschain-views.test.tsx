@@ -201,12 +201,12 @@ describe("cross-chain payment views", () => {
       await screen.findByText("Timeline");
     };
     await show(crossChain);
-    expect(screen.getByText("Sent through NEAR Intents").nextElementSibling?.textContent).toContain(
-      "101.62 USDT on Tron",
-    );
+    const sentThrough = screen.getByRole("img", { name: "NEAR Intents" }).closest("dt");
+    expect(sentThrough?.textContent).toBe("Sent through");
+    expect(sentThrough?.nextElementSibling?.textContent).toContain("101.62 USDT on Tron");
     cleanup();
     await show({ ...crossChain, status: "REFUNDED" });
-    expect(screen.queryByText("Sent through NEAR Intents")).toBeNull();
+    expect(screen.queryByRole("img", { name: "NEAR Intents" })).toBeNull();
   });
 
   it("names what was sent, the part returned and both transactions in Details", () => {

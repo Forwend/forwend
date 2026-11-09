@@ -193,12 +193,15 @@ export const PAY_COPY = {
       `Greyed tokens need more than this payment of ${due}. NEAR Intents sets the minimum for each.`,
     youSend: "You send",
     gettingPrice: "Getting a price",
-    cost: (usd: string) => `Conversion cost about ${usd} USD`,
+    fee: "Fee",
+    feeHint: "NEAR Intents fee + network fee",
+    feeValue: (usd: string) => `${usd} USD`,
+    // R-244: what You send adds; the refund field says where the unused part goes.
+    slippage: (percent: number) => `Slippage ${percent}%`,
     time: (minutes: number) =>
       minutes <= 1 ? "Arrives in about a minute" : `Arrives in about ${minutes} minutes`,
     refund: (chain: string) => `Refund address on ${chain}`,
-    refundHint:
-      "Use your own wallet, not an exchange. Extra, short or failed money goes back here.",
+    refundHint: "Unused slippage is refunded here. Use your own wallet, not an exchange.",
     refundNeeded: "Enter your address on this chain.",
     showAddress: "Show address",
     sendOnly: (symbol: string, chain: string) => `Send only ${symbol} on ${chain}.`,

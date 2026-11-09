@@ -25,6 +25,8 @@ var (
 	errUnavailable = errors.New("1Click unavailable")
 	// ErrRefused: 1Click refused the request, as for a refund address it can't use.
 	ErrRefused = errors.New("1Click refused the quote")
+	// ErrNoLiquidity: a refusal for want of liquidity on the token's route (R-245); it is an ErrRefused too.
+	ErrNoLiquidity = errors.New("no liquidity")
 )
 
 // BelowMinimum: the route needs at least Minimum of the destination asset, more than was asked.
@@ -54,6 +56,8 @@ var (
 	minimum = regexp.MustCompile(`try at least ([0-9]{1,78})`)
 	// 1Click's temporary limits name dollars; the destination is Base USDC (D-123), a dollar for each 10^6 units.
 	minimumUSD = regexp.MustCompile(`minimum swap amount is \$([0-9][0-9,]{0,30}(?:\.[0-9]{1,6})?)`)
+	// 1Click's answer when no solver quotes the route: "No liquidity available".
+	noLiquidity = regexp.MustCompile(`(?i)no liquidity`)
 )
 
 // call sends body (nil for a GET) and returns the answer's bytes, exactly as 1Click sent them.
@@ -98,6 +102,9 @@ func (c *Client) call(ctx context.Context, method, path string, body any) ([]byt
 		if m := minimumUSD.FindStringSubmatch(refusal.Message); m != nil {
 			usd, _ := new(big.Rat).SetString(strings.ReplaceAll(m[1], ",", ""))
 			return nil, &BelowMinimum{Minimum: new(big.Rat).Mul(usd, big.NewRat(1_000_000, 1)).FloatString(0)}
+		}
+		if noLiquidity.MatchString(refusal.Message) {
+			return nil, fmt.Errorf("%w, %w: %.200s", ErrRefused, ErrNoLiquidity, refusal.Message)
 		}
 		return nil, fmt.Errorf("%w: %.200s", ErrRefused, refusal.Message)
 	default:

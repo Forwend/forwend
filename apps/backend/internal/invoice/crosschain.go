@@ -41,7 +41,7 @@ var (
 )
 
 // CrossToken is a token a payer can pay with through 1Click; Estimate is about what they send, in its base units, at
-// 1Click's listed price. The quote is the real amount.
+// 1Click's listed price with its slippage on top, as a quote asks (R-244). The quote is the real amount.
 type CrossToken struct {
 	intents.Token
 	Estimate *big.Int
@@ -56,6 +56,7 @@ type CrossQuote struct {
 	MinAmountIn    *big.Int
 	AmountOut      *big.Int
 	AmountInUSD    string
+	AmountOutUSD   string
 	RefundFee      string
 	TimeEstimate   int64
 	RefundTo       string
@@ -122,8 +123,8 @@ func (s *Service) crossTarget(ctx context.Context, payToken string, now time.Tim
 	return crossTarget{invoice: inv, option: option, due: due}, nil
 }
 
-// CrossChainTokens lists what the payer can pay with through 1Click (R-232): no memo chain, unpriced token or token
-// the invoice takes directly. due is what is still due, in the Base option's base units.
+// CrossChainTokens lists what the payer can pay with through 1Click (R-232): no memo chain, unpriced token, token the
+// invoice takes directly or token without liquidity (R-245). due is what is still due, in the Base option's base units.
 func (s *Service) CrossChainTokens(ctx context.Context, payToken string) (due *big.Int, decimals int, tokens []CrossToken, err error) {
 	target, err := s.crossTarget(ctx, payToken, s.currentTime())
 	if err != nil {
@@ -134,7 +135,7 @@ func (s *Service) CrossChainTokens(ctx context.Context, payToken string) (due *b
 		return nil, 0, nil, err
 	}
 	for _, t := range list {
-		if offered(t, target.invoice.Options) {
+		if !t.NoLiquidity && offered(t, target.invoice.Options) {
 			tokens = append(tokens, CrossToken{Token: t, Estimate: estimate(target.due, target.option.Decimals, t)})
 		}
 	}
@@ -150,7 +151,8 @@ func offered(t intents.Token, direct []Option) bool {
 	}) && t.AssetID != intents.BaseUSDCAsset
 }
 
-// estimate is due (USD stablecoin base units at 1 USD, D-75) in t's base units at its listed price, rounded up.
+// estimate is due (USD stablecoin base units at 1 USD, D-75) in t's base units at its listed price, with 1Click's
+// slippage on top, rounded up.
 func estimate(due *big.Int, decimals int, t intents.Token) *big.Int {
 	price, ok := new(big.Rat).SetString(t.USD)
 	if !ok || price.Sign() <= 0 {
@@ -158,6 +160,7 @@ func estimate(due *big.Int, decimals int, t intents.Token) *big.Int {
 	}
 	r := new(big.Rat).SetFrac(new(big.Int).Mul(due, pow10(t.Decimals)), pow10(decimals))
 	r.Quo(r, price)
+	r.Mul(r, big.NewRat(10_000+intents.Slippage, 10_000))
 	q, m := new(big.Int).QuoRem(r.Num(), r.Denom(), new(big.Int))
 	if m.Sign() > 0 {
 		q.Add(q, big.NewInt(1))
@@ -283,7 +286,7 @@ func (s *Service) openQuote(ctx context.Context, target crossTarget, token inten
 func crossQuote(quote intents.Quote, token intents.Token, refundTo string) CrossQuote {
 	return CrossQuote{Token: token, DepositAddress: quote.DepositAddress, AmountIn: quote.AmountIn,
 		MinAmountIn: quote.MinAmountIn, AmountOut: quote.AmountOut, AmountInUSD: quote.AmountInUSD,
-		RefundFee: quote.RefundFee, TimeEstimate: quote.TimeEstimate, RefundTo: refundTo, Deadline: quote.Deadline,
+		AmountOutUSD: quote.AmountOutUSD, RefundFee: quote.RefundFee, TimeEstimate: quote.TimeEstimate, RefundTo: refundTo, Deadline: quote.Deadline,
 		Signed: quote.Signed}
 }
 

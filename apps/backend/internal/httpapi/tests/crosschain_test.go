@@ -82,15 +82,44 @@ func TestCrossChainTokensLeaveOutDirectMemoAndDestinationTokens(t *testing.T) {
 	if !slices.Equal(assets, []string{tronUSDT, ethAsset}) {
 		t.Fatalf("assets %v", assets)
 	}
-	// 100 USD at 2143.49 USD an ETH, rounded up to a wei: 100e18 / 2143.49.
-	want := new(big.Int).Mul(big.NewInt(100), new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil))
-	want.Mul(want, big.NewInt(100))
+	// 100 USD at 2143.49 USD an ETH with 1Click's 1% slippage on top, rounded up to a wei: 100e18 * 1.01 / 2143.49.
+	want := new(big.Int).Mul(big.NewInt(100*101), new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil))
 	q, m := new(big.Int).QuoRem(want, big.NewInt(214349), new(big.Int))
 	if m.Sign() > 0 {
 		q.Add(q, big.NewInt(1))
 	}
 	if estimates[ethAsset] != q.String() {
 		t.Fatalf("ETH estimate %s, want %s", estimates[ethAsset], q)
+	}
+}
+
+// R-245: a token 1Click has no liquidity for leaves the list until a later dry quote is answered.
+func TestCrossChainTokensLeaveOutATokenWithoutLiquidity(t *testing.T) {
+	e, fake := crossChainEnv(t)
+	pay, _ := liveInvoice(t, e, "key-1", 86400)
+	keeper := &intents.Keeper{Pool: e.pool, Client: fake.Client(), Every: time.Hour}
+	listed := func(at time.Time) []string {
+		t.Helper()
+		for i := range 3 { // Arbitrum USDC, Tron USDT and ETH, 5 seconds apart
+			if err := keeper.Probe(context.Background(), at.Add(time.Duration(i)*5*time.Second)); err != nil {
+				t.Fatal(err)
+			}
+		}
+		r := e.call(t, "GET", crossPath+pay+"/crosschain/tokens", "", "", "")
+		var assets []string
+		for _, tok := range r.body["tokens"].([]any) {
+			assets = append(assets, tok.(map[string]any)["assetId"].(string))
+		}
+		return assets
+	}
+	fake.Dry = map[string]bool{ethAsset: true}
+	start := time.Now()
+	if got := listed(start); !slices.Equal(got, []string{tronUSDT}) {
+		t.Fatalf("listed without ETH's liquidity %v", got)
+	}
+	fake.Dry = nil
+	if got := listed(start.Add(time.Hour)); !slices.Equal(got, []string{tronUSDT, ethAsset}) {
+		t.Fatalf("listed once ETH is quoted again %v", got)
 	}
 }
 
@@ -102,7 +131,7 @@ func TestCrossChainQuotePaysExactlyWhatIsDueIntoTheBaseOption(t *testing.T) {
 	// What the payer sends, the cost and the time, with no address.
 	price := e.call(t, "GET", crossPath+pay+"/crosschain/price?originAsset="+url.QueryEscape(tronUSDT), "", "", "")
 	if price.status != http.StatusOK || price.body["amountIn"] != "101120000" || price.body["amountOut"] != "100000000" ||
-		price.body["amountInUsd"] != "101120000" || price.body["refundFee"] != "5300" ||
+		price.body["amountInUsd"] != "101120000" || price.body["amountOutUsd"] != "100000000" || price.body["refundFee"] != "5300" ||
 		price.body["timeEstimate"] != float64(27) || price.body["depositAddress"] != nil || price.body["signed"] != nil ||
 		price.body["quoteId"] != nil {
 		t.Fatalf("price: %d %v", price.status, price.body)

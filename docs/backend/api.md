@@ -169,6 +169,8 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
     `crosschain_unavailable` with the reason. A payment still confirming refuses it too: what is due isn't known.
   - `GET .../crosschain/tokens` (R-232): 1Click's tokens from `intents_tokens`, without memo chains, unpriced tokens,
     Base USDC or the invoice's other direct options; stablecoins first. Each has an `estimate` at its listed price.
+    - The `estimate` adds 1Click's 1% slippage, as a quote's `amountIn` does (R-244).
+    - A token whose last check 1Click answered "No liquidity" is left out until a check is answered (R-245).
     - Each has the `minimum` 1Click last needed from it, in Base USDC base units, or null (D-126).
     - The worker checks each token with a dry quote for 0.01 USDC, one every 5 seconds, each at most once an hour.
     - A payer's refused price or quote updates it at once. 1Click names some minimums in dollars; they count 1:1.
@@ -176,6 +178,7 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
     - A refusal naming no minimum keeps the token's minimum, or the one this round named, and is logged.
     - A check 1Click can't answer keeps it too and waits 2 minutes. Either way the next token follows.
   - `GET .../crosschain/price?originAsset=` (R-232): a dry quote, kept 30 s per token and amount in each replica.
+    - A quote carries `amountInUsd` and `amountOutUsd` at 1Click's prices; the pay page's fee comes from them (R-244).
   - `POST .../crosschain/quotes` (R-231, R-233): a quote with a deposit address, kept in `crosschain_quotes`.
     - It is `EXACT_OUTPUT` to the Base option's receive address, refunds go to the payer's `refundTo`.
     - Its deadline is the earlier of an hour and 10 minutes before the close; its price shows for 15 minutes (D-125).

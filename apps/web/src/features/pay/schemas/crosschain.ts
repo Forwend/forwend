@@ -30,6 +30,7 @@ export const crossQuoteSchema = z.object({
   minAmountIn: baseUnits,
   amountOut: baseUnits,
   amountInUsd: z.string(),
+  amountOutUsd: z.string(),
   refundFee: z.string(),
   timeEstimate: z.number().nonnegative(),
   refundTo: z.string().nullable(),

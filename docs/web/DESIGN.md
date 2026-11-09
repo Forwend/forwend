@@ -482,7 +482,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A notice under the header names each problem no other part shows, once (R-192).
     - Payment records to review, an unexpected transfer, a webhook that fails.
     - The wallet transfer and what is still due are never repeated.
-  - A payment through NEAR Intents (R-239): the Amount card adds "Sent through NEAR Intents".
+  - A payment through NEAR Intents (R-239): the Amount card adds "Sent through" with NEAR Intents' logo (R-246).
     - It shows the amount and chain, any refund, and links to the customer's and the Base transaction.
     - Its Timeline reads Created, Payment detected on the customer's chain, Converting via NEAR Intents, Paid
       with the Base transaction, and In your wallet.
@@ -833,6 +833,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - "Invoice INV-0001" under the name; a payment-link invoice before its first deposit reads "Invoice" alone (R-141).
     - A test-mode invoice (R-143) starts the column with a warning box: its testnet tokens have no value.
     - The amount (tabular figures, featured size) and "on <network>". USD until the payer picks.
+      - When the client pays fees, a muted line says "1,250.00 USD plus 0.05 USD network fee" (R-228).
+      - Before a pick it holds the place "on <network>" takes, in USD; after a pick it sits under that line.
   - Left, then, as a hosted invoice page lists them:
     - Title, reference (R-90), agreed value (R-93) and due date: quiet rows with a small icon, no rules.
     - The note.
@@ -891,13 +893,18 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - Choose a token opens a wide sheet: chains on the left with a search, the chosen chain's tokens on the right.
       - The first chain is chosen; popular chains come first. A token search looks across every chain.
       - On phones the chains are one scrolling row of chips above the tokens.
-      - Each token row shows its first letter as a mark, the symbol over the chain, and "About …" at the right.
+      - Each row shows its logo, the symbol over the chain, and "About …" at the right (R-246).
+        - Popular chains and their own tokens have logos; any other shows its first letter in the logo's place.
+        - "About" rounds up as You send does and adds 1Click's 1% slippage, so the two read alike (R-244).
       - A token NEAR Intents needs more from than is due is greyed and can't be picked (R-242).
         - Its row says "Tron · Needs at least 100.00 USDC" and drops "About …"; it sits under the tokens that fit.
         - A note at the sheet's foot says greyed tokens need more than this payment, and that NEAR Intents sets it.
     - A price NEAR Intents refuses says it can't convert this token now; a refund-address line is only for a quote.
-    - After a pick: the token row with Change, a "You send" box (amount, conversion cost and time), the refund
-      address field with "Your own wallet, not an exchange", then Show address.
+    - After a pick: the token row with Change, a "You send" box, the refund address field, then Show address.
+      - You send: the amount, then one line: "Fee", a question icon, the USD fee, "Slippage 1%" and the time (R-244).
+      - The question icon's tooltip says "NEAR Intents fee + network fee".
+      - The refund field's hint: "Unused slippage is refunded here. Use your own wallet, not an exchange."
+      - Amounts a payer sends round up: a stablecoin to the cent, another token to 5 significant digits.
     - The deposit address shows as the direct one does: QR, exact amount, "Send only USDT on Tron.", the address.
       - Under it, the extra-back line with where refunds go, then "Price held mm:ss".
     - When the window ends, the address and QR blur behind a card: "This price expired" and Get new price.

@@ -2625,8 +2625,9 @@ paths:
       description: |
         R-232, D-123. What NEAR Intents 1Click can convert into the invoice's open Base USDC option, from the list the
         worker reads every 10 minutes. Memo chains (Stellar, XRP, TON), tokens without a price, Base USDC and the
-        invoice's other direct options are left out. Stablecoins (a price within 2% of 1 USD) come first. estimate is
-        about what the payer sends at the listed price; the quote is the real amount. Only a live invoice with an open
+        invoice's other direct options are left out, and so is a token 1Click last found no liquidity for (R-245).
+        Stablecoins (a price within 2% of 1 USD) come first. estimate is about what the payer sends at the listed price,
+        with 1Click's 1% slippage on top (R-244); the quote is the real amount. Only a live invoice with an open
         Base USDC option that closes in 20 minutes or more; 422 crosschain_unavailable says why not. Limited per
         invoice; per IP at the edge (Q-8).
       security: []
@@ -6422,8 +6423,8 @@ components:
             named none, and in a quote. A token whose minimum is above `due` can't be quoted.
     CrossChainQuote:
       type: object
-      required: [quoteId, token, depositAddress, amountIn, minAmountIn, amountOut, amountInUsd, refundFee, timeEstimate,
-        refundTo, shownUntil, deadline, createdAt, signed]
+      required: [quoteId, token, depositAddress, amountIn, minAmountIn, amountOut, amountInUsd, amountOutUsd, refundFee,
+        timeEstimate, refundTo, shownUntil, deadline, createdAt, signed]
       properties:
         quoteId: { type: [string, "null"], format: uuid, description: Null for a price. }
         token: { $ref: "#/components/schemas/CrossChainToken" }
@@ -6431,7 +6432,12 @@ components:
         amountIn: { allOf: [{ $ref: "#/components/schemas/Uint256" }], description: What the payer sends, slippage included. }
         minAmountIn: { allOf: [{ $ref: "#/components/schemas/Uint256" }], description: The least 1Click converts; less is refunded. }
         amountOut: { allOf: [{ $ref: "#/components/schemas/Uint256" }], description: Exactly what reaches the Base option. }
-        amountInUsd: { type: string }
+        amountInUsd: { type: string, description: "amountIn in USD at 1Click's price." }
+        amountOutUsd:
+          type: string
+          description: |
+            amountOut in USD at 1Click's price. The fee is minAmountIn's worth less this: NEAR Intents' fee and Base's
+            network fee (R-244).
         refundFee: { type: string, description: "What a refund costs, in the token's base units." }
         timeEstimate: { type: integer, description: Seconds 1Click expects after the deposit confirms. }
         refundTo: { type: [string, "null"] }

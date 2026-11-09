@@ -223,6 +223,34 @@ test.describe("pay page", () => {
     await expect(page.getByText(receive, { exact: true })).toBeVisible();
   });
 
+  // R-228: every option carries the same fees (D-122), so they read in USD before a token is picked.
+  test("before a token is picked, the amount says the price and the fees in USD", async ({
+    page,
+  }) => {
+    const fees = {
+      amount: "1250050000",
+      networkFee: "50000",
+      platformFee: "0",
+      feesPaidBy: "client",
+    };
+    // Before a pick only the shown option's terms are checked: the fee test's predicted address for them.
+    const receiveAddress = "0xf1d8352d510b68a825152dca4582582aeb9486b3";
+    await openPay(page, {
+      ...CHOOSING,
+      ...fees,
+      factory: "0xe917ce63865f8cf91a0038136e496b25ece2a54e",
+      receiveAddress,
+      options: [
+        { ...MAIN_OPTION, ...fees, receiveAddress },
+        { ...CHOOSING.options[1], ...fees },
+      ],
+    });
+    await expect(page.locator("[data-money]")).toHaveText("1,250.05 USD");
+    await expect(
+      page.getByText("1,250.00 USD plus 0.05 USD network fee", { exact: true }),
+    ).toBeVisible();
+  });
+
   test("a payment-link invoice before its first deposit shows no number (R-141)", async ({
     page,
   }) => {

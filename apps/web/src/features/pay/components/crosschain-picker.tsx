@@ -1,9 +1,18 @@
 "use client";
 
-import { formatTokenAmount, RowButton, SearchField, Sheet, Skeleton } from "@forwend/ui-web";
+import {
+  BrandIcon,
+  type BrandIconName,
+  formatTokenAmount,
+  RowButton,
+  SearchField,
+  Sheet,
+  Skeleton,
+} from "@forwend/ui-web";
 import { useMemo, useState } from "react";
+import { BLOCKCHAIN_ICONS, CROSS_CHAIN_TOKEN_ICONS } from "@/features/pay/constants/crosschain";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
-import { orderBlockchains } from "@/features/pay/lib/crosschain";
+import { amountText, orderBlockchains, sendUnits } from "@/features/pay/lib/crosschain";
 import type { CrossToken } from "@/features/pay/types/crosschain";
 import { blockchainName } from "@/shared/lib/chains";
 
@@ -90,7 +99,7 @@ export function CrossChainPicker({
                       }}
                       className="flex w-full items-center gap-2 rounded-pill border border-line px-3 py-1.5 text-sm text-ink outline-none transition-colors hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-focus aria-pressed:border-ink aria-pressed:bg-surface-2 sm:rounded-md sm:border-transparent sm:px-2 sm:py-2 sm:aria-pressed:border-transparent"
                     >
-                      <Mark text={blockchainName(c)} />
+                      <Mark text={blockchainName(c)} icon={iconOf(BLOCKCHAIN_ICONS, c)} />
                       {blockchainName(c)}
                     </button>
                   </li>
@@ -125,9 +134,13 @@ export function CrossChainPicker({
                             onOpenChange(false);
                           }}
                         >
-                          <Mark text={t.symbol} />
+                          <Mark
+                            text={t.symbol}
+                            icon={iconOf(CROSS_CHAIN_TOKEN_ICONS, t.symbol)}
+                            greyed={minimum !== null}
+                          />
                           <span className="flex min-w-0 flex-1 flex-col">
-                            <span className="font-medium">{t.symbol}</span>
+                            <span className="truncate font-medium">{t.symbol}</span>
                             <span className="text-xs text-muted">
                               {minimum === null
                                 ? blockchainName(t.blockchain)
@@ -137,15 +150,10 @@ export function CrossChainPicker({
                           {minimum === null && t.estimate ? (
                             <span className="shrink-0 text-sm text-muted tabular-nums">
                               {COPY.estimate(
-                                `${formatTokenAmount({
-                                  baseUnits: BigInt(t.estimate),
-                                  decimals: t.decimals,
-                                  // An estimate: cents for a whole token or more, a few digits below one.
-                                  fractionDigits:
-                                    BigInt(t.estimate) >= 10n ** BigInt(t.decimals)
-                                      ? 2
-                                      : Math.min(t.decimals, 6),
-                                })} ${t.symbol}`,
+                                amountText(
+                                  sendUnits(BigInt(t.estimate), t.decimals, Number(t.priceUsd)),
+                                  t,
+                                ),
                               )}
                             </span>
                           ) : null}
@@ -168,8 +176,23 @@ export function CrossChainPicker({
   );
 }
 
-// 1Click lists hundreds of tokens Forwend has no logo for: its first letter stands in, in the place a logo takes.
-function Mark({ text }: { text: string }) {
+// 1Click's names are outside data: "constructor" must not find Object's own property.
+const iconOf = (icons: Readonly<Record<string, BrandIconName>>, name: string) =>
+  Object.hasOwn(icons, name) ? icons[name] : undefined;
+
+// 1Click's list names no logos, and Forwend draws only the popular ones: any other shows its first letter in the place
+// a logo takes (R-246). A token that can't be picked greys its logo as its row does (R-242).
+function Mark({
+  text,
+  icon,
+  greyed = false,
+}: {
+  text: string;
+  icon: BrandIconName | undefined;
+  greyed?: boolean;
+}) {
+  if (icon)
+    return <BrandIcon name={icon} className={`size-6 ${greyed ? "opacity-50 grayscale" : ""}`} />;
   return (
     <span
       aria-hidden

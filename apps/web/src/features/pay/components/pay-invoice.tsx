@@ -361,7 +361,15 @@ function Summary({
   const shown = partial ? pay.remaining : amount;
   const fees = optionFees(invoice);
   const units = (n: bigint) =>
-    `${formatTokenAmount({ baseUnits: n, decimals: token.decimals, fractionDigits: exactDigits(n, token.decimals) })} ${token.symbol}`;
+    `${formatTokenAmount({ baseUnits: n, decimals: token.decimals, fractionDigits: exactDigits(n, token.decimals) })} ${picking ? MONEY_COPY.usd : token.symbol}`;
+  // Every option carries the same fees (D-122), so they read in USD before a token is picked too.
+  const feeLine =
+    fees.clientPays && fees.total > 0n && !partial
+      ? COPY.withFees(units(fees.net), [
+          ...(fees.network > 0n ? [COPY.networkFee(units(fees.network))] : []),
+          ...(fees.platform > 0n ? [COPY.platformFee(units(fees.platform))] : []),
+        ])
+      : null;
   return (
     <section aria-labelledby="pay-amount" className="order-1 flex min-w-0 flex-col gap-5 lg:gap-6">
       <div className="flex items-center justify-between gap-3">
@@ -395,18 +403,12 @@ function Summary({
           token={picking ? MONEY_COPY.usd : token.symbol}
           className="min-w-0 text-amount-lg text-ink"
         />
-        {/* Kept in place while the payer picks, so the network's line arriving moves nothing below it. */}
-        <p className={`text-sm text-muted ${picking ? "invisible" : ""}`}>
-          {COPY.on(chainName(invoice.chainId))}
+        {/* Kept in place while the payer picks, so the network's line arriving moves nothing below it; the fees
+            hold its place meanwhile. */}
+        <p className={`text-sm text-muted ${picking && !feeLine ? "invisible" : ""}`}>
+          {picking && feeLine ? feeLine : COPY.on(chainName(invoice.chainId))}
         </p>
-        {fees.clientPays && fees.total > 0n && !picking && !partial ? (
-          <p className="text-sm text-muted">
-            {COPY.withFees(units(fees.net), [
-              ...(fees.network > 0n ? [COPY.networkFee(units(fees.network))] : []),
-              ...(fees.platform > 0n ? [COPY.platformFee(units(fees.platform))] : []),
-            ])}
-          </p>
-        ) : null}
+        {feeLine && !picking ? <p className="text-sm text-muted">{feeLine}</p> : null}
       </div>
     </section>
   );

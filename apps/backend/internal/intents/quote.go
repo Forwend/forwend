@@ -19,9 +19,9 @@ const (
 	BaseUSDCAsset = "nep141:base-" + BaseUSDC + ".omft.near"
 )
 
-// slippage is what the payer's amount may cover beyond today's price, in basis points; what isn't used comes back to
+// Slippage is what the payer's amount may cover beyond today's price, in basis points; what isn't used comes back to
 // the refund address.
-const slippage = 100
+const Slippage = 100
 
 // Ask is what a payer's quote asks of 1Click: exactly Amount of Base USDC to Recipient, from Origin.
 type Ask struct {
@@ -40,6 +40,7 @@ type Quote struct {
 	MinAmountIn    *big.Int
 	AmountOut      *big.Int
 	AmountInUSD    string
+	AmountOutUSD   string
 	TimeEstimate   int64
 	RefundFee      string
 	Deadline       time.Time // the request's: refunds of what hasn't converted begin
@@ -63,7 +64,7 @@ func request(ask Ask, dry bool) map[string]any {
 		refundTo, refundType = ask.Recipient, "INTENTS"
 	}
 	return map[string]any{
-		"dry": dry, "swapType": "EXACT_OUTPUT", "slippageTolerance": slippage, "originAsset": ask.Origin,
+		"dry": dry, "swapType": "EXACT_OUTPUT", "slippageTolerance": Slippage, "originAsset": ask.Origin,
 		"depositType": "ORIGIN_CHAIN", "destinationAsset": BaseUSDCAsset, "amount": ask.Amount.String(),
 		"refundTo": refundTo, "refundType": refundType, "recipient": ask.Recipient, "recipientType": "DESTINATION_CHAIN",
 		"deadline": ask.Deadline.UTC().Format("2006-01-02T15:04:05.000Z"),
@@ -105,7 +106,8 @@ func Check(answer []byte, ask Ask, dry bool, key string) (Quote, error) {
 	var estimate float64
 	_ = json.Unmarshal(a.quote["timeEstimate"], &estimate)
 	q := Quote{DepositAddress: text(a.quote, "depositAddress"), DepositMemo: text(a.quote, "depositMemo"),
-		AmountInUSD: text(a.quote, "amountInUsd"), RefundFee: text(a.quote, "refundFee"), TimeEstimate: int64(estimate),
+		AmountInUSD: text(a.quote, "amountInUsd"), AmountOutUSD: text(a.quote, "amountOutUsd"),
+		RefundFee: text(a.quote, "refundFee"), TimeEstimate: int64(estimate),
 		Deadline: ask.Deadline, Signed: answer}
 	var ok1, ok2, ok3 bool
 	q.AmountIn, ok1 = new(big.Int).SetString(text(a.quote, "amountIn"), 10)

@@ -2,7 +2,7 @@
 
 import {
   Button,
-  formatTokenAmount,
+  IconButton,
   Notice,
   PaymentTimeline,
   QrCode,
@@ -11,8 +11,9 @@ import {
   shortAddress,
   TextField,
   type TimelineStep,
+  Tooltip,
 } from "@forwend/ui-web";
-import { TriangleAlert } from "lucide-react";
+import { CircleHelp, TriangleAlert } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ConfirmingStatus } from "@/features/invoices/components/invoice-progress";
 import { invoiceProgress } from "@/features/invoices/lib/invoices";
@@ -24,15 +25,22 @@ import {
 } from "@/features/pay/api/crosschain-api";
 import { CrossChainPicker } from "@/features/pay/components/crosschain-picker";
 import { ExactAmount } from "@/features/pay/components/exact-amount";
+import { ONECLICK_SLIPPAGE_BPS } from "@/features/pay/constants/crosschain";
 import { ENTER } from "@/features/pay/constants/pay";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import { useFinalTime } from "@/features/pay/hooks/use-final-time";
-import { signedDeposit, verifyQuote } from "@/features/pay/lib/crosschain";
-import type { CrossToken } from "@/features/pay/types/crosschain";
+import {
+  amountText,
+  crossChainFeeUsd,
+  sendUnits,
+  signedDeposit,
+  usdPerToken,
+  verifyQuote,
+} from "@/features/pay/lib/crosschain";
+import type { CrossQuote, CrossToken } from "@/features/pay/types/crosschain";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { CROSS_CHAIN_STATUSES, CROSS_CHAIN_TARGET } from "@/shared/constants/chains";
 import { blockchainName, blockchainTxLink, crossChainEnded } from "@/shared/lib/chains";
-import { exactDigits } from "@/shared/lib/money";
 
 const COPY = PAY_COPY.crossChain;
 type CrossChain = NonNullable<Invoice["crossChain"]>;
@@ -70,9 +78,6 @@ const left = (ms: number) => {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 };
-
-const amountText = (units: bigint, token: { decimals: number; symbol: string }) =>
-  `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`;
 
 /** Pay from another chain and token (R-236, R-237): a price, a refund address, then a verified deposit address. */
 export function CrossChainPay({
@@ -129,7 +134,7 @@ export function CrossChainPay({
       originAsset: shown.token.assetId,
       refundTo: shown.refundTo,
     }).then((ok) => {
-      if (current) setDeposit((ok && signedDeposit(shown.signed)) || false);
+      if (current) setDeposit((ok && signedDeposit(shown.signed, shown.token.decimals)) || false);
     });
     return () => {
       current = false;
@@ -155,11 +160,11 @@ export function CrossChainPay({
       setProblem(COPY.unavailable);
       return;
     }
-    // A new price is told apart by what its signed answer says the payer sends.
-    const next = signedDeposit(q.signed);
+    // A new price is told apart by what the payer is asked to send, from its signed answer.
+    const next = signedDeposit(q.signed, token.decimals);
     if (renewing && before && next) {
-      setChangedFrom(next.amountIn === before.amountIn ? null : before.amountIn);
-      setRenewed(next.amountIn === before.amountIn);
+      setChangedFrom(next.send === before.send ? null : before.send);
+      setRenewed(next.send === before.send);
     }
     // The old address must not show beside the new quote while it is checked.
     setDeposit(null);
@@ -290,7 +295,7 @@ export function CrossChainPay({
           <span className="font-medium">{COPY.changed}.</span>{" "}
           {COPY.changedNote(
             amountText(changedFrom, shown.token),
-            amountText(deposit.amountIn, shown.token),
+            amountText(deposit.send, shown.token),
           )}
         </Notice>
       ) : null}
@@ -327,15 +332,7 @@ function PricePreview({
   error,
   token,
 }: {
-  price:
-    | {
-        amountIn: string;
-        minAmountIn: string;
-        amountInUsd: string;
-        amountOut: string;
-        timeEstimate: number;
-      }
-    | undefined;
+  price: CrossQuote | undefined;
   loading: boolean;
   error: unknown;
   token: Shown["token"];
@@ -354,12 +351,12 @@ function PricePreview({
       </p>
     );
   }
-  const sends = BigInt(price.amountIn);
-  // The cost is the least 1Click converts over what arrives, at 1Click's price: the slippage on top comes back unused.
-  const usdPerUnit = Number(price.amountInUsd) / Number(sends);
-  const cost = Math.max(
-    0,
-    Number(price.minAmountIn) * usdPerUnit - Number(price.amountOut) / 10 ** 6,
+  const amountIn = BigInt(price.amountIn);
+  // Rounded as the deposit address's amount is (R-244).
+  const sends = sendUnits(
+    amountIn,
+    token.decimals,
+    usdPerToken(price.amountInUsd, amountIn, token.decimals),
   );
   return (
     <div className="flex flex-col gap-1 rounded-md bg-surface-2 px-3 py-2.5">
@@ -367,8 +364,20 @@ function PricePreview({
       <span className="text-base font-semibold text-ink tabular-nums">
         {amountText(sends, token)}
       </span>
-      <span className="text-xs text-muted">
-        {COPY.cost(cost.toFixed(2))} · {COPY.time(Math.max(1, Math.round(price.timeEstimate / 60)))}
+      <span className="flex flex-wrap items-center gap-x-1 text-xs text-muted">
+        <span className="inline-flex items-center">
+          {COPY.fee}
+          <Tooltip content={COPY.feeHint}>
+            <IconButton label={COPY.feeHint} size="xs">
+              <CircleHelp aria-hidden className="size-3.5" />
+            </IconButton>
+          </Tooltip>
+        </span>
+        <span className="tabular-nums">{COPY.feeValue(crossChainFeeUsd(price).toFixed(2))}</span>
+        <span aria-hidden>·</span>
+        <span>{COPY.slippage(ONECLICK_SLIPPAGE_BPS / 100)}</span>
+        <span aria-hidden>·</span>
+        <span>{COPY.time(Math.max(1, Math.round(price.timeEstimate / 60)))}</span>
       </span>
     </div>
   );
@@ -413,7 +422,7 @@ function Send({
               className="w-26 border border-line p-1 sm:w-32"
             />
             <div className="flex min-w-0 flex-col gap-2">
-              <ExactAmount amount={deposit.amountIn} token={shown.token} />
+              <ExactAmount amount={deposit.send} token={shown.token} />
               <p role="note" className="flex items-start gap-1.5 text-xs font-medium text-warning">
                 <TriangleAlert aria-hidden className="mt-px size-3.5 shrink-0" />
                 {COPY.sendOnly(shown.token.symbol, chain)}

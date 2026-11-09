@@ -3,10 +3,13 @@ import { describe, expect, it } from "vitest";
 import { ONECLICK_KEY } from "@/features/pay/constants/crosschain";
 import {
   base58,
+  crossChainFeeUsd,
   crossChainKey,
   fromBase58,
   type QuoteAsk,
   quoteMessage,
+  sendUnits,
+  signedDeposit,
   verifyQuote,
 } from "@/features/pay/lib/crosschain";
 import answer from "@/features/pay/tests/fixtures/oneclick-quote.json";
@@ -126,5 +129,49 @@ describe("crossChainKey", () => {
       expect(crossChainKey(host, TEST_KEY)).toBe(ONECLICK_KEY);
     }
     expect(crossChainKey("localhost", "")).toBe(ONECLICK_KEY);
+  });
+});
+
+// R-244: what a payer is asked to send reads like money, and never less than 1Click asked for.
+describe("sendUnits", () => {
+  it("rounds a stablecoin up to the cent", () => {
+    expect(sendUnits(15_154_472_423n, 6, 0.9995)).toBe(15_154_480_000n);
+    expect(sendUnits(2_500_000n, 6, 1)).toBe(2_500_000n);
+    // 18 decimals, as USD1 on Ethereum has.
+    expect(sendUnits(15_000_060_000_000_000_000_001n, 18, 0.998)).toBe(
+      15_000_070_000_000_000_000_000n,
+    );
+  });
+
+  it("counts 0.98 and 1.02 USD as stablecoins, as the api orders them", () => {
+    expect(sendUnits(1_000_001n, 6, 0.98)).toBe(1_010_000n);
+    expect(sendUnits(1_000_001n, 6, 1.02)).toBe(1_010_000n);
+    expect(sendUnits(1_000_001n, 6, 1.03)).toBe(1_000_100n);
+  });
+
+  it("rounds any other token up to 5 significant digits", () => {
+    expect(sendUnits(20_310_888n, 8, 74_760)).toBe(20_311_000n); // 0.20310888 cbBTC is 0.20311
+    expect(sendUnits(22_124_908_065_441_173_327n, 18, 687.35)).toBe(22_125_000_000_000_000_000n); // 22.125 BNB
+    expect(sendUnits(4_285_100_000_000_000_000n, 18, 3_500)).toBe(4_285_100_000_000_000_000n); // already 5 digits
+    expect(sendUnits(999n, 0, 0.2)).toBe(999n);
+  });
+});
+
+describe("signedDeposit", () => {
+  it("asks for the signed amount rounded up at the price 1Click signed", () => {
+    // 2.527977 USDC at 2.526427350099 USD: a stablecoin, so 2.53 USDC.
+    expect(signedDeposit(answer, 6)).toEqual({
+      depositAddress: answer.quote.depositAddress,
+      amountIn: 2_527_977n,
+      send: 2_530_000n,
+    });
+  });
+});
+
+describe("crossChainFeeUsd", () => {
+  it("is the least 1Click converts, at its price, over what arrives: the slippage comes back", () => {
+    // 2.502697 USDC at 0.999387 USD each is 2.501163 USD; 2.5 USDC arrive, worth 2.498468 USD.
+    expect(crossChainFeeUsd(answer.quote)).toBeCloseTo(0.002695, 6);
+    expect(crossChainFeeUsd({ ...answer.quote, amountOutUsd: "3" })).toBe(0);
   });
 });
