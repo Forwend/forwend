@@ -238,7 +238,8 @@ func check(in intent) (address.Terms, string) {
 
 // sign trusts the chain's own gas estimate (Tempo prices storage differently, S-5/S-6), with minGas as a floor.
 // The nonce is never below after or the nonce after the last sent settle: a lagging node may miss our latest ones.
-// A confirmed settle's own transaction is final or never used its nonce (another settler settled), so it sets no floor.
+// A confirmed settle sets no floor: its own transaction is final, or another settler settled and ours may never mine.
+// If ours still mines, it takes its nonce and reverts; a deploy given the same nonce fails and is signed again.
 func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uint64, to common.Address, data []byte,
 	after, minGas uint64, block *big.Int) (*types.Transaction, error) {
 	nonce, err := client.PendingNonceAt(ctx, s.sender)

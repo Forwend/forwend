@@ -400,7 +400,7 @@
         "money-safety.md and PROJECT.md describe the new return and missed-deposit steps"
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "backend",
         "docs-check"
@@ -414,9 +414,80 @@
       "review": true,
       "notes": [],
       "blockedReason": null,
-      "evidence": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-09T22:15:24Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.6,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 75.7,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 70.7,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 29.8,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 9.5,
+            "log": ""
+          }
+        ],
+        "taskHash": "7931ea390b56fafe",
+        "filesHash": "66d9a85077cea6d0",
+        "proof": {
+          "1": "backend: TestSupportReturnOfACrossChainPaymentNeedsThePayersAddress, TestSupportReturnFromNEARIntentsAddressNeedsThePayersAddressBeforeAQuoteNamesIt and cmd/ops TestCrossChainPaymentNamesThePayersQuote refuse a default destination and name the quote",
+          "2": "backend: TestRefundOfAMissedDepositWaitsForThatDeposit, TestMissedDepositIsRecordedFromItsReceiptOnce, TestBalanceAlertEndsWhenTheBalanceAgreesAgain and the ErrMissedDeposit step of TestSupportWaitsForEveryPaymentToBeBooked",
+          "3": "backend: TestNonceOfASettleTheRefundAuthorityReplacedIsUsedAgain mines invoice B's deploy and settle with no filler",
+          "4": "docs-check: money-safety.md Returns through support and Deciding paid, architecture.md Signer nonce, PROJECT.md R-247 and D-118"
+        }
+      },
       "branch": "fix/f457-support-returns-go-to-the-payer-a-deposi",
-      "baseCommit": "fcb5cace4d2d6ee5ae36039e19812b7546b2288e"
+      "baseCommit": "fcb5cace4d2d6ee5ae36039e19812b7546b2288e",
+      "failedVerifies": 0
     },
     {
       "id": "F458",

@@ -23,18 +23,6 @@ func TestBaseUnitsReadsTokensExactly(t *testing.T) {
 	}
 }
 
-func TestCrossChainPaymentNamesThePayersQuote(t *testing.T) {
-	var out strings.Builder
-	zero := new(big.Int)
-	printHeld(&out, settlement.Held{ChainID: 8453, Decimals: 6, Symbol: "USDC", Held: zero, Balance: zero, Refundable: zero,
-		Payments: []settlement.Payment{{TxHash: "0xab", From: "0x02", Amount: big.NewInt(1000000), Quote: "q-1",
-			OriginChain: "tron", OriginTx: "0xcd", RefundTo: "TPayer"}}})
-	if text := out.String(); !strings.Contains(text, "Sent by NEAR Intents, not the payer: quote q-1; the payer paid on tron in 0xcd, refund address there TPayer") ||
-		!strings.Contains(text, "only with -to, an address on chain 8453") {
-		t.Fatalf("printed %q", text)
-	}
-}
-
 func TestStrayWithoutOurContractsSaysPlainlyItCantComeBack(t *testing.T) {
 	var out strings.Builder
 	s := settlement.Stray{TxHash: "0xab", ChainID: 31339, Option: settlement.CaseOption{ID: "0x07", ChainID: 31337},

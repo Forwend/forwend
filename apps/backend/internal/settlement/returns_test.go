@@ -329,6 +329,24 @@ func TestSupportReturnFromNEARIntentsAddressNeedsThePayersAddressBeforeAQuoteNam
 	}
 }
 
+// A quote that saw the payer's deposit but names no Base transaction yet: any payment to its option may be the delivery.
+func TestSupportReturnOfAnOptionWithAnUnnamedDeliveryNeedsThePayersAddress(t *testing.T) {
+	e := setup(t)
+	ctx := t.Context()
+	id, _ := e.paidInvoice(t)
+	if _, err := e.pool.Exec(ctx, `INSERT INTO crosschain_quotes (invoice_id, option_id, origin_asset, refund_to,
+		    deposit_address, amount_in, min_amount_in, amount_out, time_estimate, shown_until, deadline, signed, status,
+		    origin_blockchain, origin_symbol, origin_decimals, deposit_seen_at)
+		VALUES ($1, $1, 'nep141:tron-d28a265909efecdcee7c5028585214ea0b96f015.omft.near', 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
+		    'TDepositAddress', 6060000, 6000000, 6000000, 30, now(), now(), '{}', 'PROCESSING', 'tron', 'USDT', 6, now())`,
+		id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := QueueReturn(ctx, e.pool, e.client, id, e.paymentHash(t, id), nil, nil); !errors.Is(err, ErrCrossChain) {
+		t.Fatalf("with no destination: %v, want ErrCrossChain", err)
+	}
+}
+
 // Two support returns overlap: one read 1 USDC held, and another return was booked before it locked the money. It
 // must not queue more than is still held, or the refund takes the creator's money.
 func TestSupportReturnRechecksTheHeldMoneyOnceItLocks(t *testing.T) {

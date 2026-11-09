@@ -96,8 +96,9 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
   - A payment NEAR Intents delivered has its sender, never the payer: it needs `-to`.
     - `-to` is an address on the invoice's chain that the payer proves is theirs; it warns with the origin transaction.
     - It refuses any address that delivered such a payment.
-    - A payment from an address that delivered another NEAR Intents payment on that chain needs `-to` too.
-    - So a delivery whose quote isn't read yet is never returned to NEAR Intents.
+    - A payment no quote names needs `-to` too when NEAR Intents may have sent it:
+      - its sender delivered another NEAR Intents payment on that chain; or
+      - a quote of the option saw a deposit and names no Base transaction yet.
   - A destination that made no payment warns: check the payer's proof that it is theirs.
   - A contract destination warns: it may be an exchange, an app or a smart wallet.
   - It refuses the zero address, the receiver, the token, the factory and any invoice's receive address.
@@ -187,6 +188,10 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
   - While the alert says more on chain (`excess`), the ledger refuses a refund of that option as `unrecorded_deposit`.
     - Booked, it would take the money of a payer the ledger did book.
     - It retries every round and books once the missed deposit is booked: that clears the alert.
+    - A refund mined before a recorded deposit can't have returned it, so it books first.
+  - A missed deposit recorded after later money was booked is booked against today's balances.
+    - The total is right, but the earliest-payer order of D-27 may not hold for it.
+  - The ledger only re-checks an option that can still expire. On a paid or settled one, `ops return` refuses instead.
 - Less on chain than booked at expiry logs `ALERT receive address holds less than booked; not expiring`, with the same backoff.
   - That alert doesn't hold refunds.
 - A balance check that agrees again deletes the alert, so the option no longer reads as in review.

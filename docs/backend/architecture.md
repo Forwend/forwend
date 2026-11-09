@@ -532,7 +532,8 @@ signer:
        `SettleGasFloor` (`TempoSettleGasFloor`, 580,000, on Tempo), plus a fifth;
      - nonce: the node's pending nonce, but never below the one after the deploy it just sent or after the last settle
        still `sent` on this chain (a lagging node may not count them).
-       - A confirmed intent sets no floor: its own settle is final, or never used its nonce (another settler settled).
+       - A confirmed intent sets no floor: its own settle is final, or another settler settled first.
+       - Our settle may still mine then and revert. A deploy given its nonce fails, and is signed again next round.
        - Else a settle saved but never sent, then settled by the refund authority, would leave a nonce gap for good.
    - Saves sender, nonce, hash and signed bytes, then sends. After a crash it sends the same saved bytes again (same
      nonce, so at most one settle can be mined). The contract's `AlreadySettled` is a last guard.
