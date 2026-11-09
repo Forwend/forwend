@@ -200,7 +200,8 @@ export interface Payment extends OptionFees {
   hostedUrl: string | null;
   /** The hosted page's token, the last part of hostedUrl: what @forwend/js and @forwend/react take. */
   payToken: string | null;
-  /** A payment through NEAR Intents; a list fills it only while the deposit pays the payment. */
+  /** A payment through NEAR Intents; a list fills it only while the deposit pays the payment. With status SUCCESS it
+   * paid the payment if optionLocked is false or optionId is the Base USDC option; if not, the USDC is held. */
   crossChain: CrossChain | null;
 }
 
