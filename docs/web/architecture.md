@@ -169,6 +169,16 @@ features own product behavior, and shared UI components are grouped by purpose. 
   pick on the invoice (`PUT /v1/invoices/{payToken}/pick`), so the link opens on it and its address again; the URL
   carries no query. Session storage keeps a shown address for a reload in the same tab (R-68). Paid and settled come only from the API (D-29). It loads no
   third-party scripts ([money-safety.md](../backend/money-safety.md)).
+- Pay with another token (D-123, R-236 to R-238), `features/pay/components/crosschain-pay.tsx`:
+  - It shows on a live invoice whose Base USDC option is open and closes in 20 minutes or more.
+  - The page computes that option's receive address from the terms (`crossChainTarget` in `features/pay/lib/crosschain.ts`).
+  - Tokens, prices and quotes come from the api's `crosschain` routes, never from 1Click itself.
+  - A deposit address shows only after `verifyQuote` passes (D-124):
+    - 1Click's ed25519 signature, checked with WebCrypto against the key built into the page;
+    - the signed request: that receive address, Base USDC, `EXACT_OUTPUT`, the amount due, the token and the refund address.
+  - The address and amount shown are read from the signed answer, never from the api's own fields.
+  - A reload checks the kept quote again, against the refund address this tab typed (session storage).
+  - A test build's `NEXT_PUBLIC_ONECLICK_TEST_KEY` counts only when the page itself runs on loopback.
 
 ## Tests
 

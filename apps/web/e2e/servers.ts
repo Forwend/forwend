@@ -18,3 +18,7 @@ export const EXAMPLE_URL = `http://localhost:${EXAMPLE_PORT}`;
 export const EXAMPLE_WEBHOOK_SECRET = `whsec_${Buffer.alloc(32, 5).toString("base64")}`;
 // The web build's support inbox, so a test sees the address came from config.
 export const SUPPORT_EMAIL = "help@example.test";
+
+// The fake 1Click's public key for the e2e build (e2e/oneclick.ts signs with its private half): a test key with no
+// value anywhere, which the page takes only on loopback (D-124).
+export const ONECLICK_TEST_KEY = "ed25519:GuUpL8G3s3fCZAin42h8rNrbdJwSgvEjVcuc9Xfrbdxm";
