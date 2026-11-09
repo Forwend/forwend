@@ -192,11 +192,11 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
       transactions and the signed answer.
     - The payments list fills it only while the deposit pays the payment (converting or converted), so it can tag it.
     - The receipt PDF, the owner's paid email and the payer's receipt email name what was paid with.
+    - A movement of a Base transfer 1Click made carries `paidWith`; the CSV adds "Paid with" and "Paid with
+      transaction".
   - A profile turns it off with `crossChain: false` on `PUT /v1/profiles/{id}/tokens` (R-240); `GET` returns it.
     - Off, new quotes for its invoices, links and checkouts are 422 `crosschain_unavailable`; an open quote finishes.
     - The invoice read's `crossChainOn` tells the pay page whether to offer it.
-    - A movement of a Base transfer 1Click made carries `paidWith`; the CSV adds "Paid with" and "Paid with
-      transaction".
 - Payment reminders (R-96): `invoice.QueueReminders` queues `invoice.reminder` rows.
   - It runs on the worker's loop beside the chain rounds, at the same interval.
   - Steps: `before` 3 days before the due date, `due` on it, `after` 7 days after, in UTC days.

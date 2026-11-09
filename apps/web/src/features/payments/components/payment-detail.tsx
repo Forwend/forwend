@@ -639,7 +639,7 @@ export function CrossChainFigure({
     <div className="flex flex-col gap-1 px-4 py-4 sm:px-5">
       <dt className="text-sm text-muted">{COPY.crossChain.sentWith}</dt>
       <dd className="flex flex-col gap-1">
-        <span className="text-base font-medium text-ink tabular-nums">
+        <span className="text-base font-medium break-words text-ink tabular-nums">
           {COPY.crossChain.value(money(sent), blockchainName(crossChain.blockchain))}
         </span>
         {refunded > 0n ? (

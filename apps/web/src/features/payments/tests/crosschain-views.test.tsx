@@ -6,10 +6,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { LatestPayments } from "@/features/payments/components/latest-payments";
 import {
   CrossChainFigure,
+  PaymentDetail,
   paidThroughIntents,
 } from "@/features/payments/components/payment-detail";
 import { PaymentsTable } from "@/features/payments/components/payments-table";
-import type { Payment, PaymentDetail } from "@/features/payments/types/payments";
+import type { PaymentDetail as Detail, Payment } from "@/features/payments/types/payments";
 import { makeStore } from "@/store/store";
 
 const NodeRequest = globalThis.Request;
@@ -27,7 +28,7 @@ vi.stubGlobal("matchMedia", () => ({
   removeEventListener() {},
 }));
 
-type CrossChain = NonNullable<PaymentDetail["crossChain"]>;
+type CrossChain = NonNullable<Detail["crossChain"]>;
 
 const crossChain = {
   quoteId: "q",
@@ -129,6 +130,83 @@ describe("cross-chain payment views", () => {
       </Provider>,
     );
     expect(await screen.findByText("via NEAR Intents")).toBeTruthy();
+  });
+
+  it("shows what was sent through NEAR Intents on the payment page, and nothing for a deposit 1Click returned", async () => {
+    const AT = "2026-10-10T12:05:00Z";
+    const base = row({ crossChain });
+    const detail = (c: CrossChain) => ({
+      ...base,
+      crossChain: c,
+      snapshotAt: AT,
+      customer: { name: null, email: null },
+      metadata: {},
+      problems: [],
+      deliveries: [],
+      deliveryCount: 0,
+      deliveriesTruncated: false,
+      options: [
+        {
+          optionId: base.optionId,
+          chainId: base.chainId,
+          token: base.token,
+          symbol: base.symbol,
+          decimals: base.decimals,
+          amount: base.amount,
+          receiveAddress: `0x${"c".repeat(40)}`,
+          closesAt: base.closesAt,
+          paymentStatus: "paid",
+          settlementStatus: "none",
+          refundStatus: "none",
+          amounts: base.amounts,
+          coverage: {
+            historyComplete: true,
+            verifiedBlock: 100,
+            verifiedHash: null,
+            verifiedTime: AT,
+            observedBalance: "100000000",
+            balanceDifference: "0",
+            reconciliationError: null,
+            bookingError: null,
+            retryAt: null,
+            updatedAt: AT,
+            chainFinalizedBlock: 100,
+            pendingDeposits: 0,
+            unbookedDeposits: 0,
+            unprovedDeposits: 0,
+            unbookedOutflows: 0,
+          },
+          settlement: null,
+          deposits: [],
+          depositsTruncated: false,
+          returns: [],
+        },
+      ],
+    });
+    const show = async (c: CrossChain) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => Response.json(detail(c))),
+      );
+      render(
+        <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+          <TooltipProvider>
+            <PaymentDetail
+              profileId="6f9619ff-8b86-4011-b42d-00c04fc964ff"
+              paymentId={base.paymentId}
+            />
+          </TooltipProvider>
+        </Provider>,
+      );
+      await screen.findByText("Timeline");
+    };
+    await show(crossChain);
+    expect(screen.getByText("Sent through NEAR Intents").nextElementSibling?.textContent).toContain(
+      "101.62 USDT on Tron",
+    );
+    cleanup();
+    await show({ ...crossChain, status: "REFUNDED" });
+    expect(screen.queryByText("Sent through NEAR Intents")).toBeNull();
   });
 
   it("names what was sent, the part returned and both transactions in Details", () => {

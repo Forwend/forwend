@@ -486,7 +486,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - It shows the amount and chain, any refund, and links to the customer's and the Base transaction.
     - Its Timeline reads Created, Payment detected on the customer's chain, Converting via NEAR Intents, Paid
       with the Base transaction, and In your wallet.
-    - Converting is done only once 1Click delivered. A deposit 1Click returned leaves a direct payment's steps.
+    - Converting is done once 1Click delivered or the payment is paid. A returned deposit leaves a direct payment's steps.
   - Held money is the customer's, not the owner's problem: no notice, no warning color (D-118).
     - Hovering or tapping the status badge shows one sentence per held amount: how much, why, and who handles any return.
     - Example: "0.50 USDC over the amount is held for the customer, and Forwend support handles any return."

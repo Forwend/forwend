@@ -559,10 +559,10 @@ export const INVOICE_COPY = {
     done: "Stopped repeating",
     error: "We could not stop it. Try again.",
   },
-  // R-124.
   // R-239: a payment through NEAR Intents.
   paidThrough: "Paid through NEAR Intents",
   paidThroughValue: (amount: string, chain: string) => `${amount} on ${chain}`,
+  // R-124.
   history: {
     title: "History",
     filter: "Show",

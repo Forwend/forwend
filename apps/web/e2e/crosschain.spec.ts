@@ -424,6 +424,8 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     });
     await page.goto(`/pay/${PAY}`);
     await expect(page.getByRole("button", { name: "Show address" })).toBeVisible();
+    // The other-token box stays shut: it would ask for a price this tab can't get.
+    await expect(page.getByRole("button", { name: "Pay with USDC instead" })).toHaveCount(0);
     await expect(page.getByText(DEPOSIT_ADDRESS)).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Pay with another token" })).toHaveCount(0);
   });
