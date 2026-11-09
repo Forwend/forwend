@@ -6328,10 +6328,14 @@ components:
         symbol: { type: string }
         decimals: { type: integer }
         contract: { type: [string, "null"], description: The token's contract on its chain; null for a chain's coin. }
-        priceUsd: { type: string, pattern: "^[0-9]+(\\.[0-9]+)?$", description: "1Click's listed price, for display." }
+        priceUsd:
+          type: [string, "null"]
+          pattern: "^[0-9]+(\\.[0-9]+)?$"
+          description: "1Click's listed price, for display; null in a kept quote whose token left the list."
         estimate:
-          allOf: [{ $ref: "#/components/schemas/Uint256" }]
-          description: About what the payer sends, in the token's base units, rounded up.
+          type: [string, "null"]
+          pattern: "^[0-9]+$"
+          description: In the tokens list, about what the payer sends in the token's base units, rounded up; null in a quote.
     CrossChainQuote:
       type: object
       required: [quoteId, token, depositAddress, amountIn, minAmountIn, amountOut, amountInUsd, refundFee, timeEstimate,

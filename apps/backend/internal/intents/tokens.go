@@ -30,7 +30,7 @@ const (
 
 var (
 	blockchain = regexp.MustCompile(`^[a-z0-9_-]{1,32}$`)
-	usdValue   = regexp.MustCompile(`^[0-9]{1,9}(\.[0-9]{1,18})?$`)
+	usdValue   = regexp.MustCompile(`^[0-9]{1,9}(\.[0-9]{1,30})?$`)
 )
 
 // Tokens reads 1Click's list. A malformed entry is left out; a list without any usable entry fails.
@@ -48,7 +48,12 @@ func (c *Client) Tokens(ctx context.Context) ([]Token, error) {
 		return nil, fmt.Errorf("%w: token list: %v", ErrUnavailable, err)
 	}
 	var out []Token
+	seen := map[string]bool{}
 	for _, t := range list {
+		if seen[t.AssetID] { // twice in one list would fail the upsert of the whole list
+			continue
+		}
+		seen[t.AssetID] = true
 		if t.AssetID == "" || len(t.AssetID) > 200 || !blockchain.MatchString(t.Blockchain) || t.Symbol == "" ||
 			len(t.Symbol) > 32 || t.Decimals < 0 || t.Decimals > 36 || len(t.ContractAddress) > 200 {
 			continue

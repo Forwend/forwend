@@ -40,11 +40,6 @@ var (
 	ErrProvider = errors.New("cross-chain provider unavailable")
 )
 
-// BelowMinimum: the chosen route delivers at least Minimum, in the Base option's base units, above the amount due.
-type BelowMinimum struct{ Minimum string }
-
-func (e *BelowMinimum) Error() string { return "below the route's minimum of " + e.Minimum }
-
 // CrossToken is a token a payer can pay with through 1Click; Estimate is about what they send, in its base units, at
 // 1Click's listed price. The quote is the real amount.
 type CrossToken struct {
@@ -207,13 +202,15 @@ func (s *Service) QuoteCrossChain(ctx context.Context, payToken, origin, refundT
 	if dry {
 		return s.dryQuote(ctx, ask, token, now)
 	}
+	// ponytail: the reuse and the hourly limit read, then insert, without a lock, so two requests at once can make one
+	// quote more; the per-invoice request limit keeps that small.
 	q, err := s.openQuote(ctx, target, origin, refundTo, now)
 	if err != nil || q.ID != "" {
 		return q, err
 	}
 	quote, err := s.crossChain.Quote(ctx, ask, false)
 	if err != nil {
-		return CrossQuote{}, providerError(err, target.invoice.ID)
+		return CrossQuote{}, providerError(err, target.invoice.ID, false)
 	}
 	q = crossQuote(quote, token, refundTo)
 	q.ShownUntil = earlier(now.Add(CrossChainShown), deadline.Add(-5*time.Minute))
@@ -261,7 +258,7 @@ func (s *Service) openQuote(ctx context.Context, target crossTarget, origin, ref
 	quote, err := intents.Check([]byte(signed), intents.Ask{Origin: origin, Amount: target.due,
 		Recipient: target.option.ReceiveAddress, RefundTo: refundTo, Deadline: *deadline}, false, s.crossChain.Signer)
 	if err != nil {
-		return CrossQuote{}, providerError(err, target.invoice.ID)
+		return CrossQuote{}, providerError(err, target.invoice.ID, false)
 	}
 	list, err := intents.List(ctx, s.pool)
 	if err != nil {
@@ -284,15 +281,17 @@ func crossQuote(quote intents.Quote, token intents.Token, refundTo string) Cross
 		Signed: quote.Signed}
 }
 
-// providerError maps 1Click's answer to the payer's: a too-small amount or refused address is the request's, the
-// rest is 1Click's. A quote that fails its checks is logged: it means 1Click, or something between, changed it.
-func providerError(err error, invoiceID string) error {
+// providerError maps 1Click's answer to the payer's: a route's minimum (an *intents.BelowMinimum) or a refusal is the
+// request's, the rest is 1Click's. A quote that fails its checks is logged: 1Click, or something between, changed it.
+func providerError(err error, invoiceID string, dry bool) error {
 	var below *intents.BelowMinimum
 	switch {
 	case errors.As(err, &below):
-		return &BelowMinimum{Minimum: below.Minimum}
+		return err
+	case errors.Is(err, intents.ErrRefused) && dry:
+		return fmt.Errorf("%w: originAsset: 1Click can't convert this token now", ErrInvalid)
 	case errors.Is(err, intents.ErrRefused):
-		return fmt.Errorf("%w: refundTo: 1Click can't refund to this address on the token's chain", ErrInvalid)
+		return fmt.Errorf("%w: refundTo: 1Click refused the quote; check this is your address on the token's chain", ErrInvalid)
 	case errors.Is(err, intents.ErrSignature) || errors.Is(err, intents.ErrMismatch):
 		slog.Error("ALERT cross-chain quote failed its checks", "invoice", invoiceID, "err", err)
 	}
@@ -316,7 +315,7 @@ func (s *Service) dryQuote(ctx context.Context, ask intents.Ask, token intents.T
 	s.dry.mu.Unlock()
 	quote, err := s.crossChain.Quote(ctx, ask, true)
 	if err != nil {
-		return CrossQuote{}, providerError(err, "")
+		return CrossQuote{}, providerError(err, "", true)
 	}
 	q := crossQuote(quote, token, "")
 	q.Signed, q.Deadline = nil, time.Time{}

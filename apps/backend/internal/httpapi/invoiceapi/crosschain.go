@@ -30,13 +30,13 @@ type crossTokenJSON struct {
 	Symbol     string  `json:"symbol"`
 	Decimals   int     `json:"decimals"`
 	Contract   *string `json:"contract"`
-	PriceUSD   string  `json:"priceUsd"`
-	Estimate   string  `json:"estimate"`
+	PriceUSD   *string `json:"priceUsd"`
+	Estimate   *string `json:"estimate"` // in the list only
 }
 
 func toCrossToken(t intents.Token) crossTokenJSON {
 	return crossTokenJSON{AssetID: t.AssetID, Blockchain: t.Blockchain, Symbol: t.Symbol, Decimals: t.Decimals,
-		Contract: httpio.OrNull(t.Contract), PriceUSD: t.USD}
+		Contract: httpio.OrNull(t.Contract), PriceUSD: httpio.OrNull(t.USD)}
 }
 
 type crossQuoteJSON struct {
@@ -80,7 +80,7 @@ func getCrossTokens(invoices *invoice.Service) http.HandlerFunc {
 		for _, t := range tokens {
 			j := toCrossToken(t.Token)
 			if t.Estimate != nil {
-				j.Estimate = t.Estimate.String()
+				j.Estimate = httpio.OrNull(t.Estimate.String())
 			}
 			out.Tokens = append(out.Tokens, j)
 		}
@@ -113,7 +113,7 @@ func postCrossQuote(invoices *invoice.Service) http.HandlerFunc {
 }
 
 func writeCrossQuote(w http.ResponseWriter, r *http.Request, q invoice.CrossQuote, err error, status int) {
-	var below *invoice.BelowMinimum
+	var below *intents.BelowMinimum
 	if errors.As(err, &below) {
 		httpio.WriteJSON(w, http.StatusUnprocessableEntity, map[string]map[string]string{"error": {
 			"code": "below_minimum", "message": "this token's route needs a larger amount: choose another token",

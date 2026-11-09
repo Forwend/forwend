@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -72,42 +73,39 @@ func request(ask Ask, dry bool) map[string]any {
 var ErrMismatch = errors.New("1Click quote is not the one asked for")
 
 // Check verifies answer's signature by key, then that its signed request is ask's and its quote delivers exactly the
-// amount (D-124). The pay page runs the same checks before it shows the address.
+// amount (D-124). The pay page runs the same checks before it shows the address. A real quote's request deadline is not
+// signed (1Click signs the address's own deadline in its place), so it is checked as 1Click's echo of what was asked.
 func Check(answer []byte, ask Ask, dry bool, key string) (Quote, error) {
-	if err := Verify(answer, key); err != nil {
+	a, err := verified(answer, key)
+	if err != nil {
 		return Quote{}, err
 	}
-	var a struct {
-		QuoteRequest map[string]any
-		Quote        struct {
-			DepositAddress, DepositMemo, AmountIn, MinAmountIn, AmountOut, MinAmountOut, AmountInUsd, RefundFee string
-			TimeEstimate                                                                                        float64
-		}
-	}
-	if err := json.Unmarshal(answer, &a); err != nil {
-		return Quote{}, fmt.Errorf("%w: %v", ErrMismatch, err)
-	}
 	for k, want := range request(ask, dry) {
-		got := a.QuoteRequest[k]
-		if s, ok := got.(string); ok && (k == "recipient" || k == "refundTo") {
-			got = strings.ToLower(s) // 1Click may echo an address in another case
-			want = strings.ToLower(want.(string))
+		var got any
+		if err := json.Unmarshal(a.request[k], &got); err != nil {
+			return Quote{}, fmt.Errorf("%w: %s missing", ErrMismatch, k)
+		}
+		if s, ok := got.(string); ok && evmAddress.MatchString(s) && evmAddress.MatchString(fmt.Sprint(want)) {
+			got, want = strings.ToLower(s), strings.ToLower(want.(string)) // 1Click may echo a 0x address in another case
 		}
 		if fmt.Sprint(got) != fmt.Sprint(want) {
 			return Quote{}, fmt.Errorf("%w: %s is %v", ErrMismatch, k, got)
 		}
 	}
-	q := Quote{DepositAddress: a.Quote.DepositAddress, DepositMemo: a.Quote.DepositMemo, AmountInUSD: a.Quote.AmountInUsd,
-		RefundFee: a.Quote.RefundFee, TimeEstimate: int64(a.Quote.TimeEstimate), Deadline: ask.Deadline, Signed: answer}
+	var estimate float64
+	_ = json.Unmarshal(a.quote["timeEstimate"], &estimate)
+	q := Quote{DepositAddress: text(a.quote, "depositAddress"), DepositMemo: text(a.quote, "depositMemo"),
+		AmountInUSD: text(a.quote, "amountInUsd"), RefundFee: text(a.quote, "refundFee"), TimeEstimate: int64(estimate),
+		Deadline: ask.Deadline, Signed: answer}
 	var ok1, ok2, ok3 bool
-	q.AmountIn, ok1 = new(big.Int).SetString(a.Quote.AmountIn, 10)
-	q.MinAmountIn, ok2 = new(big.Int).SetString(a.Quote.MinAmountIn, 10)
-	q.AmountOut, ok3 = new(big.Int).SetString(a.Quote.AmountOut, 10)
+	q.AmountIn, ok1 = new(big.Int).SetString(text(a.quote, "amountIn"), 10)
+	q.MinAmountIn, ok2 = new(big.Int).SetString(text(a.quote, "minAmountIn"), 10)
+	q.AmountOut, ok3 = new(big.Int).SetString(text(a.quote, "amountOut"), 10)
 	switch {
 	case !ok1 || !ok2 || !ok3 || q.AmountIn.Sign() <= 0 || q.MinAmountIn.Sign() <= 0 || q.MinAmountIn.Cmp(q.AmountIn) > 0:
 		return Quote{}, fmt.Errorf("%w: amounts", ErrMismatch)
-	case q.AmountOut.Cmp(ask.Amount) != 0 || a.Quote.MinAmountOut != ask.Amount.String():
-		return Quote{}, fmt.Errorf("%w: delivers %s, not exactly %s", ErrMismatch, a.Quote.MinAmountOut, ask.Amount)
+	case q.AmountOut.Cmp(ask.Amount) != 0 || text(a.quote, "minAmountOut") != ask.Amount.String():
+		return Quote{}, fmt.Errorf("%w: delivers %s, not exactly %s", ErrMismatch, text(a.quote, "minAmountOut"), ask.Amount)
 	case !dry && q.DepositAddress == "":
 		return Quote{}, fmt.Errorf("%w: no deposit address", ErrMismatch)
 	case q.DepositMemo != "": // memo chains are left out: a forgotten memo loses the money (D-123)
@@ -115,3 +113,5 @@ func Check(answer []byte, ask Ask, dry bool, key string) (Quote, error) {
 	}
 	return q, nil
 }
+
+var evmAddress = regexp.MustCompile(`^0x[0-9a-fA-F]{40}$`)

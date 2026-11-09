@@ -26,66 +26,103 @@ var (
 	optionalQuote   = []string{"depositAddress", "depositMemo", "deadline", "timeWhenInactive", "timeEstimate", "refundFee", "withdrawFee"}
 )
 
+// answer is a quote answer read with exact keys. Go's struct decoding matches keys in any case, so a "DepositAddress"
+// beside 1Click's "depositAddress" would win; every value checked comes from these maps, as the signature covers them.
+type answer struct {
+	top, request, quote map[string]json.RawMessage
+}
+
+func parseAnswer(b []byte) (answer, error) {
+	var a answer
+	if err := json.Unmarshal(b, &a.top); err != nil {
+		return a, fmt.Errorf("%w: %v", ErrSignature, err)
+	}
+	if err := json.Unmarshal(a.top["quoteRequest"], &a.request); err != nil {
+		return a, fmt.Errorf("%w: quoteRequest: %v", ErrSignature, err)
+	}
+	if err := json.Unmarshal(a.top["quote"], &a.quote); err != nil {
+		return a, fmt.Errorf("%w: quote: %v", ErrSignature, err)
+	}
+	return a, nil
+}
+
+// text is the string at key in m, "" when it is missing or not a string.
+func text(m map[string]json.RawMessage, key string) string {
+	var s string
+	_ = json.Unmarshal(m[key], &s)
+	return s
+}
+
 // Verify checks that signed, a quote answer exactly as 1Click sent it, carries key's signature.
 func Verify(signed []byte, key string) error {
+	_, err := verified(signed, key)
+	return err
+}
+
+func verified(signed []byte, key string) (answer, error) {
 	pub, err := decodeKey(key)
 	if err != nil || len(pub) != ed25519.PublicKeySize {
-		return fmt.Errorf("%w: bad key", ErrSignature)
+		return answer{}, fmt.Errorf("%w: bad key", ErrSignature)
 	}
-	var answer struct{ Signature string }
-	if err := json.Unmarshal(signed, &answer); err != nil {
-		return fmt.Errorf("%w: %v", ErrSignature, err)
-	}
-	sig, err := decodeKey(answer.Signature)
-	if err != nil || len(sig) != ed25519.SignatureSize {
-		return fmt.Errorf("%w: bad signature", ErrSignature)
-	}
-	message, err := SignedMessage(signed)
+	a, err := parseAnswer(signed)
 	if err != nil {
-		return err
+		return answer{}, err
+	}
+	sig, err := decodeKey(text(a.top, "signature"))
+	if err != nil || len(sig) != ed25519.SignatureSize {
+		return answer{}, fmt.Errorf("%w: bad signature", ErrSignature)
+	}
+	message, err := a.message()
+	if err != nil {
+		return answer{}, err
 	}
 	if !ed25519.Verify(pub, []byte(message), sig) {
-		return ErrSignature
+		return answer{}, ErrSignature
 	}
-	return nil
+	return a, nil
 }
 
 // SignedMessage is the text 1Click signs for a quote answer: the base58 SHA-256 of the signed fields as sorted-key
 // JSON, the way json-stable-stringify writes it. A test's fake 1Click signs it with its own key.
-func SignedMessage(answer []byte) (string, error) {
-	var a struct {
-		Timestamp    string
-		QuoteRequest map[string]json.RawMessage
-		Quote        map[string]json.RawMessage
+func SignedMessage(b []byte) (string, error) {
+	a, err := parseAnswer(b)
+	if err != nil {
+		return "", err
 	}
-	if err := json.Unmarshal(answer, &a); err != nil {
-		return "", fmt.Errorf("%w: %v", ErrSignature, err)
-	}
+	return a.message()
+}
+
+func (a answer) message() (string, error) {
 	fields := map[string]json.RawMessage{}
 	for _, k := range signedRequest {
-		if v, ok := a.QuoteRequest[k]; ok {
+		if v, ok := a.request[k]; ok {
 			fields[k] = v
 		}
 	}
 	for _, k := range optionalRequest {
-		if v := a.QuoteRequest[k]; truthy(v) {
+		if v := a.request[k]; truthy(v) {
 			fields[k] = v
 		}
 	}
 	for _, k := range signedAmounts {
-		if v, ok := a.Quote[k]; ok {
+		if v, ok := a.quote[k]; ok {
 			fields[k] = v
 		}
 	}
-	if !bytes.Equal(a.QuoteRequest["dry"], []byte("true")) {
+	// A real quote's fields are spread over the request's: its deadline (when the address goes inactive) replaces the
+	// request's, which is then not signed, and drops it when it has none.
+	if !bytes.Equal(a.request["dry"], []byte("true")) {
 		for _, k := range optionalQuote {
-			if v := a.Quote[k]; truthy(v) {
+			if v := a.quote[k]; truthy(v) {
 				fields[k] = v
+			} else {
+				delete(fields, k)
 			}
 		}
 	}
-	timestamp, _ := json.Marshal(a.Timestamp)
-	fields["timestamp"] = timestamp
+	if v, ok := a.top["timestamp"]; ok {
+		fields["timestamp"] = v
+	}
 	message, err := stableJSON(fields)
 	if err != nil {
 		return "", fmt.Errorf("%w: %v", ErrSignature, err)

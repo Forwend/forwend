@@ -8,12 +8,14 @@ import (
 	"net/url"
 	"slices"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/intents"
 	"github.com/forwend/forwend/apps/backend/internal/intents/intentstest"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
 const (
@@ -246,5 +248,133 @@ func TestCrossChainQuoteNot1ClickSignedIsRefused(t *testing.T) {
 	var kept int
 	if err := e.pool.QueryRow(context.Background(), "SELECT count(*) FROM crosschain_quotes").Scan(&kept); err != nil || kept != 0 {
 		t.Fatalf("kept %d quotes (%v)", kept, err)
+	}
+}
+
+// baseDeposit books a confirmed transfer of amount to an invoice's Base option, as the watcher and the ledger would.
+func baseDeposit(t *testing.T, e invoiceEnv, main, option, amount string) {
+	t.Helper()
+	e.exec(t, `UPDATE chain_cursors SET last_scanned_block = 100, last_finalized_block = 100,
+		last_finalized_time = extract(epoch FROM now())::bigint WHERE chain_id = 8453`)
+	e.exec(t, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
+		    block_hash, block_number, block_time, from_address, to_address, amount, status)
+		SELECT 8453, 'evm', token_contract, id, $1, 0, $1, 90, extract(epoch FROM now())::bigint, $2, receive_address,
+		    $3::numeric, 'confirmed' FROM invoices WHERE id = $1`, option, aliceWallet, amount)
+	balances := func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
+		return big.NewInt(0), 100, nil
+	}
+	notDeployed := func(context.Context, uint64, string, string) (uint64, error) { return 0, nil }
+	if err := ledger.NewService(e.pool, balances, notDeployed).Process(context.Background(), main); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCrossChainQuoteAsksForWhatIsLeftAndEndsBeforeTheClose(t *testing.T) {
+	e, _ := crossChainEnv(t)
+	quote := func(pay string) reply {
+		return e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "`+refundTo+`"}`)
+	}
+	// 40 USDC paid on Base leaves 60 to convert.
+	pay, options := liveInvoice(t, e, "key-1", 86400)
+	main := e.get(t, pay).body["invoiceId"].(string)
+	baseDeposit(t, e, main, options[intents.BaseChainID]["optionId"].(string), "40000000")
+	if r := quote(pay); r.status != http.StatusCreated || r.body["amountOut"] != "60000000" {
+		t.Fatalf("partly paid: %d %v", r.status, r.body)
+	}
+	if r := e.call(t, "GET", crossPath+pay+"/crosschain/tokens", "", "", ""); r.body["due"] != "60000000" {
+		t.Fatalf("tokens due: %v", r.body)
+	}
+
+	// Closing in 25 minutes: refunds start 10 minutes before the close, and the price shows until 5 minutes before that.
+	start := time.Now()
+	soon, _ := liveInvoice(t, e, "key-2", 1500)
+	r := quote(soon)
+	if r.status != http.StatusCreated {
+		t.Fatalf("closing soon: %d %v", r.status, r.body)
+	}
+	deadline, _ := time.Parse(time.RFC3339, r.body["deadline"].(string))
+	shown, _ := time.Parse(time.RFC3339, r.body["shownUntil"].(string))
+	if d := deadline.Sub(start); d < 14*time.Minute || d > 16*time.Minute {
+		t.Fatalf("deadline in %s, want 15 minutes", d)
+	}
+	if d := deadline.Sub(shown); d != 5*time.Minute {
+		t.Fatalf("price window ends %s before the deadline, want 5 minutes", d)
+	}
+}
+
+func TestCrossChainNeedsAnOpenBaseOptionWithNothingConfirming(t *testing.T) {
+	e, _ := crossChainEnv(t)
+	quote := func(pay string) reply {
+		return e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "`+refundTo+`"}`)
+	}
+	arbitrum := e.post(t, "did:privy:alice", e.aliceProfile, "key-1",
+		`{"chainId": 42161, "token": "0xaf88d065e77c8cc2239327c5edb3a432268e5831", "amount": "5000000"}`)
+	if arbitrum.status != http.StatusCreated {
+		t.Fatalf("create: %d %v", arbitrum.status, arbitrum.body)
+	}
+	if r := quote(e.link(t, arbitrum.body["invoiceId"].(string))); r.status != 422 || errorCode(r) != "crosschain_unavailable" {
+		t.Fatalf("no Base option: %d %v", r.status, r.body)
+	}
+
+	pay, options := liveInvoice(t, e, "key-2", 86400)
+	base := options[intents.BaseChainID]["optionId"].(string)
+	e.exec(t, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
+		    block_hash, block_number, block_time, from_address, to_address, amount, status)
+		SELECT 8453, 'evm', token_contract, id, $1, 0, $1, 1, extract(epoch FROM now())::bigint, $2, receive_address,
+		    1000000, 'detected' FROM invoices WHERE id = $1`, base, aliceWallet)
+	if r := quote(pay); r.status != 422 || errorCode(r) != "crosschain_unavailable" {
+		t.Fatalf("confirming: %d %v", r.status, r.body)
+	}
+
+	paid, options := liveInvoice(t, e, "key-3", 86400)
+	baseDeposit(t, e, e.get(t, paid).body["invoiceId"].(string), options[intents.BaseChainID]["optionId"].(string), "100000000")
+	if r := quote(paid); r.status != 422 || errorCode(r) != "crosschain_unavailable" {
+		t.Fatalf("paid: %d %v", r.status, r.body)
+	}
+}
+
+func TestCrossChainQuoteRefusesWhat1ClickSignedForAnotherPayment(t *testing.T) {
+	e, fake := crossChainEnv(t)
+	quote := func(pay, refund string) reply {
+		return e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "`+refund+`"}`)
+	}
+	for name, tamper := range map[string]func(map[string]any){
+		"recipient": func(a map[string]any) {
+			a["quoteRequest"].(map[string]any)["recipient"] = "0x0000000000000000000000000000000000000bad"
+		},
+		// Tron addresses are case-sensitive: another case is another address.
+		"refund case": func(a map[string]any) {
+			a["quoteRequest"].(map[string]any)["refundTo"] = strings.ToLower(refundTo)
+		},
+		"less out": func(a map[string]any) { a["quote"].(map[string]any)["minAmountOut"] = "99000000" },
+		"memo":     func(a map[string]any) { a["quote"].(map[string]any)["depositMemo"] = "7" },
+	} {
+		fake.Tamper = tamper
+		pay, _ := liveInvoice(t, e, "key-"+name, 86400)
+		if r := quote(pay, refundTo); r.status != http.StatusServiceUnavailable || errorCode(r) != "provider_unavailable" {
+			t.Fatalf("%s: %d %v", name, r.status, r.body)
+		}
+	}
+	fake.Tamper = nil
+
+	// A kept quote is checked again before it is given: a changed row never reaches a payer.
+	pay, _ := liveInvoice(t, e, "key-kept", 86400)
+	first := quote(pay, refundTo)
+	if first.status != http.StatusCreated {
+		t.Fatalf("first: %d %v", first.status, first.body)
+	}
+	e.exec(t, `UPDATE crosschain_quotes SET signed = replace(signed, deposit_address, '0x000000000000000000000000000000000000beef')`)
+	if r := quote(pay, refundTo); r.status != http.StatusServiceUnavailable || errorCode(r) != "provider_unavailable" {
+		t.Fatalf("changed row: %d %v", r.status, r.body)
+	}
+
+	// 1Click down: the payer is told to try again.
+	fake.Down = true
+	down, _ := liveInvoice(t, e, "key-down", 86400)
+	if r := quote(down, refundTo); r.status != http.StatusServiceUnavailable || errorCode(r) != "provider_unavailable" {
+		t.Fatalf("down: %d %v", r.status, r.body)
+	}
+	if r := e.call(t, "GET", crossPath+down+"/crosschain/price?originAsset="+url.QueryEscape(tronUSDT), "", "", ""); r.status != http.StatusServiceUnavailable {
+		t.Fatalf("down price: %d %v", r.status, r.body)
 	}
 }

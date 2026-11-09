@@ -207,6 +207,10 @@ D-123: NEAR Intents 1Click converts a payer's token on another chain into USDC o
   - its ed25519 signature verifies with `intents.ManagerKey`, the key the 1Click SDK pins;
   - its signed request names the Base option's receive address, Base USDC, `EXACT_OUTPUT`, the due amount and `refundTo`;
   - it delivers exactly that amount, has a deposit address and needs no memo.
+  - every value is read with exact keys: Go's struct decoding would let a `DepositAddress` key replace `depositAddress`.
+  - The request's deadline is not signed in a real quote; 1Click signs the address's own deadline in its place.
+    - So the D-125 deadline is 1Click's echo of what was asked. A wrong one can only make money late and held for the
+      payer, never send it elsewhere: the recipient is signed.
 - The api checks this before it keeps a quote and again before it gives a kept one. The pay page checks it before it
   shows the address.
 - Test mode has no cross-chain: 1Click has no testnet.

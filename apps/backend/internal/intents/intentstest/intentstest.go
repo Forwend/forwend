@@ -28,6 +28,8 @@ type Fake struct {
 	quotes  int
 	// Down makes every call answer 503.
 	Down bool
+	// Tamper changes a quote's answer before the fake signs it, as a 1Click that quotes something else would.
+	Tamper func(answer map[string]any)
 }
 
 // Tokens is the fake's default list: Base and Arbitrum USDC, Tron USDT, Ethereum ETH and Stellar USDC (a memo chain).
@@ -121,6 +123,9 @@ func (f *Fake) quote(w http.ResponseWriter, r *http.Request) {
 	}
 	answer := map[string]any{"quote": quote, "quoteRequest": req, "timestamp": time.Now().UTC().Format(time.RFC3339Nano),
 		"correlationId": fmt.Sprint(n)}
+	if f.Tamper != nil {
+		f.Tamper(answer)
+	}
 	unsigned, _ := json.Marshal(answer)
 	message, err := intents.SignedMessage(unsigned)
 	if err != nil {

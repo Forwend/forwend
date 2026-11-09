@@ -42,7 +42,9 @@ type Client struct {
 // NewClient refuses non-public addresses, as every client to a third party does; allowLoopback is for a test's fake.
 func NewClient(url, key string, allowLoopback bool) *Client {
 	c := outbound.Client(allowLoopback)
-	c.Timeout = 20 * time.Second // a quote waits for solvers' answers
+	// A quote waits for solvers' answers before 1Click sends its headers.
+	c.Transport.(*http.Transport).ResponseHeaderTimeout = 20 * time.Second
+	c.Timeout = 25 * time.Second
 	return &Client{HTTP: c, URL: url, Key: key, Signer: ManagerKey}
 }
 
