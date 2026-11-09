@@ -94,8 +94,12 @@ func TestCheck(t *testing.T) {
 		name   string
 		change func(*setup)
 		alert  string
+		quote  string // a quote line for the option (R-235)
 	}{
 		{name: "addresses match"},
+		// Anvil is not Base, so the quote's check runs and alerts once the option's own check passed.
+		{name: "quote checked", quote: "quote " + id + " 0xdeposit 2500000", alert: "quote 0xdeposit: quote on chain 31337"},
+		{name: "quote line malformed", quote: "quote " + id + " 0xdeposit 0", alert: "input line"},
 		{name: "api address changed", change: func(s *setup) { s.option()["receiveAddress"] = wrong },
 			alert: "api shows " + wrong},
 		{name: "api amount changed", change: func(s *setup) { s.option()["amount"] = "1" }, alert: "api amount 1"},
@@ -140,7 +144,11 @@ func TestCheck(t *testing.T) {
 			origin := serve(t, s.payToken, maps.Clone(s.api), s.pageAddress, qrPath(t, s.qrAddress), s.network)
 			cfg := config.Canary{AllowLoopback: true, APIURL: origin, WebURL: origin, Factory: factory, FactoryFees: true, FactoryCodeHash: s.codeHash,
 				RPCURLs: map[uint64][2]string{s.chainKey: {a.URL, s.rpc2}}, PageScript: script}
-			alerts := canary.Check(context.Background(), cfg, []string{lineOf(s.payToken)})
+			lines := []string{lineOf(s.payToken)}
+			if tc.quote != "" {
+				lines = append(lines, tc.quote)
+			}
+			alerts := canary.Check(context.Background(), cfg, lines)
 			if tc.alert == "" && len(alerts) != 0 {
 				t.Fatalf("got alerts %q", alerts)
 			}

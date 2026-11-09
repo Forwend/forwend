@@ -83,6 +83,9 @@ func (s *Service) get(ctx context.Context, profileID, id string, summary bool) (
 		JOIN invoices n ON n.id = o.replaced_by WHERE o.id = $1`, inv.ID); err != nil {
 		return Invoice{}, err
 	}
+	if inv.CrossChain, err = readCrossChain(ctx, s.pool, inv.ID); err != nil {
+		return Invoice{}, err
+	}
 	// The last deposit that booked money to the creator is the one that completed the amount: later ones are held.
 	var paidAt *int64
 	var settledAt *time.Time

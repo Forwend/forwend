@@ -37,7 +37,19 @@ export const LIST_STATUSES = [
 /** Why money is held for the payer. */
 export const HELD_REASONS = ["overpaid", "late", "expired", "canceled", "other_option"] as const;
 
+/** 1Click's statuses of a payment through NEAR Intents (D-123); SUCCESS, REFUNDED and FAILED are final. */
+export const CROSS_CHAIN_STATUSES = [
+  "PENDING_DEPOSIT",
+  "KNOWN_DEPOSIT_TX",
+  "INCOMPLETE_DEPOSIT",
+  "PROCESSING",
+  "SUCCESS",
+  "REFUNDED",
+  "FAILED",
+] as const;
+
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+export type CrossChainStatus = (typeof CROSS_CHAIN_STATUSES)[number];
 export type SettlementStatus = (typeof SETTLEMENT_STATUSES)[number];
 export type RefundStatus = (typeof REFUND_STATUSES)[number];
 export type ListStatus = (typeof LIST_STATUSES)[number];
@@ -112,6 +124,45 @@ export interface PaymentReceipt {
   held: string;
 }
 
+/** A transaction 1Click names; explorerUrl is "" when 1Click gave no https link. */
+export interface CrossChainTx {
+  hash: string;
+  explorerUrl: string;
+}
+
+/**
+ * How a payment through NEAR Intents went (R-235). The payer sent the token on its own chain; 1Click delivered exactly
+ * amountOut of the option's USDC on Base. amountIn, deposited and refunded are in the token's base units; amounts are
+ * null until 1Click says.
+ */
+export interface CrossChain {
+  provider: "near_intents";
+  quoteId: string;
+  assetId: string;
+  blockchain: string;
+  symbol: string;
+  decimals: number;
+  depositAddress: string;
+  refundTo: string;
+  amountIn: string;
+  minAmountIn: string;
+  amountOut: string;
+  status: CrossChainStatus;
+  deposited: string | null;
+  delivered: string | null;
+  refunded: string | null;
+  refundReason: string | null;
+  originTxs: CrossChainTx[];
+  destinationTxs: CrossChainTx[];
+  shownUntil: string;
+  deadline: string;
+  createdAt: string;
+  depositSeenAt: string | null;
+  convertedAt: string | null;
+  /** 1Click's signed answer, as the pay page checks it (D-124). */
+  signed: Record<string, unknown>;
+}
+
 export interface Payment extends OptionFees {
   receipts: PaymentReceipt[];
   customerName: string | null;
@@ -149,6 +200,8 @@ export interface Payment extends OptionFees {
   hostedUrl: string | null;
   /** The hosted page's token, the last part of hostedUrl: what @forwend/js and @forwend/react take. */
   payToken: string | null;
+  /** A payment through NEAR Intents; payments.get fills it, lists leave it null. */
+  crossChain: CrossChain | null;
 }
 
 /** One payment with its line items, options and open problems, as payments.get returns it. */
@@ -303,6 +356,8 @@ export interface Invoice extends OptionFees {
   closesAt: string;
   createdAt: string;
   metadata: Record<string, string>;
+  /** A payment through NEAR Intents; an invoice's own read and webhooks fill it, lists leave it out. */
+  crossChain?: CrossChain | null;
   [field: string]: unknown;
 }
 

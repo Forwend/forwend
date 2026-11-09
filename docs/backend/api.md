@@ -179,6 +179,19 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
     - Twenty quotes an invoice an hour (429 `too_many_quotes`); a quote 1Click is converting makes it 409 `pick_locked`.
     - A route's minimum above the amount is 422 `below_minimum`, whose error also carries `minimum`.
     - It keeps the Base option as the payer's pick (R-57).
+  - The worker reads each quote's 1Click status (R-234, `invoice/crosschain_track.go`).
+    - Every 10 s while converting, 30 s in its price window, then 2 minutes until an hour past its deadline.
+    - A seen deposit is read until it ends, past its deadline too. A read that keeps failing stops when the quote
+      would have.
+    - After a conversion, every 2 minutes for an hour: 1Click refunds the unused slippage afterwards.
+    - History: `crosschain.deposit_seen`, `crosschain.converted`, `crosschain.refunded`, `crosschain.failed`.
+      - Each once. Its `txHash` is a Base transaction; the payer's chain's own is in `crossChain`.
+    - A seen deposit moves the pick to the Base option. While it converts, pick and cancel are 409 and edit is refused.
+  - Reads (R-235): the invoice's own reads, the payment's read and webhooks carry `crossChain`.
+    - It is the newest quote 1Click saw a deposit for, else the newest: status, what was sent and refunded, both chains'
+      transactions and the signed answer. Lists leave it null.
+    - A movement of a Base transfer 1Click made carries `paidWith`; the CSV adds "Paid with" and "Paid with
+      transaction".
 - Payment reminders (R-96): `invoice.QueueReminders` queues `invoice.reminder` rows.
   - It runs on the worker's loop beside the chain rounds, at the same interval.
   - Steps: `before` 3 days before the due date, `due` on it, `after` 7 days after, in UTC days.

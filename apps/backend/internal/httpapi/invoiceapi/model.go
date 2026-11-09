@@ -158,6 +158,8 @@ type invoiceDetailJSON struct {
 	Updates []updateJSON `json:"updates"`
 	// R-129: null unless a Revise replaced it.
 	ReplacedBy *revisionJSON `json:"replacedBy"`
+	// R-235: the shown payment through NEAR Intents; null without one.
+	CrossChain *paymentio.CrossChain `json:"crossChain"`
 }
 
 // R-129: payToken is the replacement's pay link; null for the invoice it replaced.
@@ -234,7 +236,8 @@ type viewsJSON struct {
 	LastAt  *string `json:"lastAt"`
 }
 
-// R-124: optionId, amount, txHash, step, field, from, to, until and related are null when the row has none.
+// R-124: optionId, amount, asset, txHash, step, field, from, to, until and related are null when the row has none.
+// asset is the 1Click asset a cross-chain amount is in (R-234); amount is otherwise in the invoice token.
 type historyJSON struct {
 	ID       int64         `json:"id"`
 	Kind     string        `json:"kind"`
@@ -242,6 +245,7 @@ type historyJSON struct {
 	At       string        `json:"at"`
 	OptionID *string       `json:"optionId"`
 	Amount   *string       `json:"amount"`
+	Asset    *string       `json:"asset"`
 	TxHash   *string       `json:"txHash"`
 	Step     *string       `json:"step"`
 	Field    *string       `json:"field"`
@@ -344,7 +348,8 @@ func toInvoiceDetailJSON(inv invoice.Invoice, withClient bool) invoiceDetailJSON
 	out := invoiceDetailJSON{invoiceJSON: toInvoiceJSON(inv, withClient), PaidAt: httpio.OrNullTime(inv.PaidAt),
 		SettledAt: httpio.OrNullTime(inv.SettledAt), CanceledAt: httpio.OrNullTime(inv.CanceledAt), Deposits: []depositJSON{}, Options: []optionJSON{},
 		Lines:       []lineJSON{},
-		NextCheckAt: httpio.OrNullTime(inv.NextCheckAt), Updates: []updateJSON{}, ReplacedBy: toRevisionJSON(inv.ReplacedBy)}
+		NextCheckAt: httpio.OrNullTime(inv.NextCheckAt), Updates: []updateJSON{}, ReplacedBy: toRevisionJSON(inv.ReplacedBy),
+		CrossChain: paymentio.FromCrossChain(inv.CrossChain)}
 	for _, u := range inv.Updates {
 		out.Updates = append(out.Updates, updateJSON{At: u.At.UTC().Format(time.RFC3339), Field: u.Field,
 			From: httpio.OrNull(u.From), To: httpio.OrNull(u.To)})
@@ -380,7 +385,7 @@ func toOwnerInvoiceJSON(inv invoice.Invoice) ownerInvoiceJSON {
 	for _, e := range inv.History {
 		h := historyJSON{ID: e.ID, Kind: e.Kind, Actor: string(e.Actor),
 			At: e.At.UTC().Format(time.RFC3339), OptionID: httpio.OrNull(e.Option), Amount: httpio.OrNull(e.Amount),
-			TxHash: httpio.OrNull(e.TxHash), Step: httpio.OrNull(e.Step), Field: httpio.OrNull(e.Field),
+			Asset: httpio.OrNull(e.Asset), TxHash: httpio.OrNull(e.TxHash), Step: httpio.OrNull(e.Step), Field: httpio.OrNull(e.Field),
 			From: httpio.OrNull(e.From), To: httpio.OrNull(e.To), Until: httpio.OrNull(e.Until)}
 		if e.Invoice != "" {
 			h.Related = &revisionJSON{InvoiceID: e.Invoice, Number: e.Number}

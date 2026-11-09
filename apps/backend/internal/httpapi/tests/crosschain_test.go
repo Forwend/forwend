@@ -275,12 +275,18 @@ func TestCrossChainQuoteNot1ClickSignedIsRefused(t *testing.T) {
 // baseDeposit books a confirmed transfer of amount to an invoice's Base option, as the watcher and the ledger would.
 func baseDeposit(t *testing.T, e invoiceEnv, main, option, amount string) {
 	t.Helper()
+	baseTransfer(t, e, main, option, option, amount)
+}
+
+// baseTransfer is baseDeposit in the transaction txHash.
+func baseTransfer(t *testing.T, e invoiceEnv, main, option, txHash, amount string) {
+	t.Helper()
 	e.exec(t, `UPDATE chain_cursors SET last_scanned_block = 100, last_finalized_block = 100,
 		last_finalized_time = extract(epoch FROM now())::bigint WHERE chain_id = 8453`)
 	e.exec(t, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
 		    block_hash, block_number, block_time, from_address, to_address, amount, status)
-		SELECT 8453, 'evm', token_contract, id, $1, 0, $1, 90, extract(epoch FROM now())::bigint, $2, receive_address,
-		    $3::numeric, 'confirmed' FROM invoices WHERE id = $1`, option, aliceWallet, amount)
+		SELECT 8453, 'evm', token_contract, id, $4, 0, $4, 90, extract(epoch FROM now())::bigint, $2, receive_address,
+		    $3::numeric, 'confirmed' FROM invoices WHERE id = $1`, option, aliceWallet, amount, txHash)
 	balances := func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
 		return big.NewInt(0), 100, nil
 	}

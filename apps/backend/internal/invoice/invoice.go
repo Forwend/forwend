@@ -307,6 +307,8 @@ type Invoice struct {
 	LogoAt     *time.Time
 	// Livemode is false on a testnet: test mode, whose tokens have no value (D-87).
 	Livemode bool
+	// CrossChain is the shown quote of a payment through NEAR Intents (R-235), nil without one. Set by Get.
+	CrossChain *CrossChainPayment
 	// State and Wallet are the merchant's reading of the statuses (D-114): PaymentStates and WalletStates.
 	State, Wallet string
 }

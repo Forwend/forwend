@@ -52,8 +52,9 @@ func (s *Service) cancel(ctx context.Context, tx pgx.Tx, profileID, id, replaced
 		}
 	}
 	var seen bool
-	// Dust chooses nothing and is the payer's (R-119), so a stranger's 0.01 can't stop the owner canceling.
-	if err := tx.QueryRow(ctx, "SELECT "+ledger.ChoosingSeenSQL, id).Scan(&seen); err != nil {
+	// Dust chooses nothing and is the payer's (R-119), so a stranger's 0.01 can't stop the owner canceling. A deposit
+	// 1Click converts is on its way, as money seen is (R-233).
+	if err := tx.QueryRow(ctx, "SELECT "+ledger.ChoosingSeenSQL+" OR "+ConvertingSQL, id).Scan(&seen); err != nil {
 		return fmt.Errorf("read invoice %s transfers: %w", id, err)
 	}
 	if seen {

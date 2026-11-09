@@ -100,3 +100,77 @@ func TestAlertsNameAStalledChainAndPaidMoneyNotSettled(t *testing.T) {
 		t.Fatalf("an intent waiting at the daily cap, days before its deadline, alerts:\n%s", logs.String())
 	}
 }
+
+// R-234: a cross-chain payment holding a payer's money alerts: a failed swap, a seen deposit unfinished an hour past its
+// deadline, and a delivery whose Base transfer never came. One that delivered and booked, or one nobody paid, doesn't.
+func TestAlertsNameCrossChainPaymentsThatHoldMoney(t *testing.T) {
+	ctx := context.Background()
+	pool, err := database.Open(ctx, databasetest.Migrated(t, database.Migrate))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	if _, err := pool.Exec(ctx, `
+		WITH u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:alice') RETURNING id),
+		     p AS (INSERT INTO profiles (user_id, kind) SELECT id, 'freelancer' FROM u RETURNING id)
+		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
+		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
+		SELECT '0x' || repeat('01', 32), id, 8453, 'evm', '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', 5000000,
+		    extract(epoch FROM now())::bigint + 600, extract(epoch FROM now())::bigint + 3600,
+		    '0x1111111111111111111111111111111111111111', 'evm_create2', '0x2222222222222222222222222222222222222222',
+		    '0x00000000000000000000000000000000000000aa', 'key-1', decode(repeat('00', 32), 'hex') FROM p;
+		INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index, block_hash,
+		    block_number, block_time, from_address, to_address, amount, status)
+		VALUES (8453, 'evm', '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', '0x' || repeat('01', 32), '0x' || repeat('0b', 32), 0,
+		    '0x' || repeat('08', 32), 95, 1, '0x00000000000000000000000000000000000000ff', '0x00000000000000000000000000000000000000aa',
+		    5000000, 'confirmed');
+		INSERT INTO crosschain_quotes (invoice_id, option_id, origin_asset, refund_to, deposit_address, amount_in,
+		    min_amount_in, amount_out, time_estimate, shown_until, deadline, signed, status, deposit_seen_at, converted_at,
+		    destination_txs, created_at)
+		SELECT '0x' || repeat('01', 32), '0x' || repeat('01', 32), 'nep141:x', 'x', a, 1, 1, 1, 0, now() - d, now() - d, '{}', s,
+		    seen, conv, txs, now() - d
+		FROM (VALUES ('failed-addr', 'FAILED', interval '1 hour', now(), NULL::timestamptz, '[]'::jsonb),
+		             ('stuck-addr', 'PROCESSING', interval '2 hours', now(), NULL, '[]'),
+		             ('lost-addr', 'SUCCESS', interval '2 hours', now(), now() - interval '1 hour', '[{"hash": "0xffff"}]'),
+		             ('booked-addr', 'SUCCESS', interval '2 hours', now(), now() - interval '1 hour',
+		              jsonb_build_array(jsonb_build_object('hash', upper('0x' || repeat('0b', 32))))),
+		             ('unpaid-addr', 'PENDING_DEPOSIT', interval '3 hours', NULL, NULL, '[]'),
+		             -- just inside each window: not yet an hour past the deadline, delivered under 30 minutes ago
+		             ('soon-stuck-addr', 'PROCESSING', interval '50 minutes', now(), NULL, '[]'),
+		             ('soon-lost-addr', 'SUCCESS', interval '50 minutes', now(), now() - interval '20 minutes', '[{"hash": "0xeeee"}]'),
+		             ('old-failed-addr', 'FAILED', interval '8 days', now(), NULL, '[]'))
+		     AS q (a, s, d, seen, conv, txs)`); err != nil {
+		t.Fatal(err)
+	}
+	ids := map[string]string{}
+	rows, err := pool.Query(ctx, "SELECT deposit_address, id::text FROM crosschain_quotes")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for rows.Next() {
+		var a, id string
+		if err := rows.Scan(&a, &id); err != nil {
+			t.Fatal(err)
+		}
+		ids[a] = id
+	}
+	rows.Close()
+	var logs bytes.Buffer
+	defer slog.SetDefault(slog.Default())
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	if err := New(pool, nil, 1).alertCrossChain(ctx); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"ALERT cross-chain swap failed: check 1Click returned the deposit\" quote=" + ids["failed-addr"],
+		"ALERT cross-chain deposit unfinished an hour past its deadline\" quote=" + ids["stuck-addr"],
+		"ALERT cross-chain swap delivered, but no Base deposit with its transaction came in\" quote=" + ids["lost-addr"]} {
+		if !strings.Contains(logs.String(), want) {
+			t.Fatalf("logs lack %q:\n%s", want, logs.String())
+		}
+	}
+	for _, quiet := range []string{"booked-addr", "unpaid-addr", "old-failed-addr", "soon-stuck-addr", "soon-lost-addr"} {
+		if strings.Contains(logs.String(), ids[quiet]) {
+			t.Fatalf("%s alerts:\n%s", quiet, logs.String())
+		}
+	}
+}

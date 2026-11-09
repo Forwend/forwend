@@ -3973,7 +3973,7 @@ components:
       type: object
       required: [receipts, customerName, customerEmail, paymentId, optionId, optionLocked, optionCount, source, symbol, decimals, purpose, documentKind, number, storeId, storeName, linkId, livemode, title,
         reference, chainId, token, amount, networkFee, platformFee, netAmount, feesPaidBy, paymentStatus, settlementStatus, refundStatus, state, wallet, dueDate, confirming,
-        closed, createdAt, closesAt, hostedUrl, payToken]
+        closed, createdAt, closesAt, hostedUrl, payToken, crossChain]
       properties:
         receipts: { type: array, items: { $ref: "#/components/schemas/PaymentReceipt" } }
         customerName: { type: [string, "null"] }
@@ -4034,6 +4034,55 @@ components:
           type: [string, "null"]
           pattern: "^[0-9a-f]{64}$"
           description: The hosted page's token, the last part of hostedUrl, for @forwend/js and @forwend/react. Null with hostedUrl.
+        crossChain:
+          description: R-235. A payment through NEAR Intents; a payment's own read fills it, lists leave it null.
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/CrossChainPayment"
+    CrossChainPayment:
+      type: object
+      description: |
+        R-234, R-235. The newest quote 1Click saw a deposit for, else the newest one. The payer sent the token on its
+        chain; 1Click delivered exactly amountOut of the option's USDC on Base. amountIn, deposited and refunded are in
+        the token's base units; deposited, delivered and refunded are null until 1Click says. Paid still comes only
+        from the Base balance (R-119).
+      required: [provider, quoteId, assetId, blockchain, symbol, decimals, depositAddress, refundTo, amountIn, minAmountIn,
+        amountOut, status, deposited, delivered, refunded, refundReason, originTxs, destinationTxs, shownUntil, deadline,
+        createdAt, depositSeenAt, convertedAt, signed]
+      properties:
+        provider: { type: string, enum: [near_intents] }
+        quoteId: { type: string, format: uuid }
+        assetId: { type: string }
+        blockchain: { type: string }
+        symbol: { type: string }
+        decimals: { type: integer }
+        depositAddress: { type: string }
+        refundTo: { type: string }
+        amountIn: { $ref: "#/components/schemas/Uint256" }
+        minAmountIn: { $ref: "#/components/schemas/Uint256" }
+        amountOut: { $ref: "#/components/schemas/Uint256" }
+        status:
+          type: string
+          enum: [PENDING_DEPOSIT, KNOWN_DEPOSIT_TX, INCOMPLETE_DEPOSIT, PROCESSING, SUCCESS, REFUNDED, FAILED]
+          description: "1Click's status as the worker last read it; SUCCESS, REFUNDED and FAILED are final."
+        deposited: { type: [string, "null"], pattern: "^[0-9]+$" }
+        delivered: { type: [string, "null"], pattern: "^[0-9]+$" }
+        refunded: { type: [string, "null"], pattern: "^[0-9]+$" }
+        refundReason: { type: [string, "null"] }
+        originTxs: { type: array, items: { $ref: "#/components/schemas/CrossChainTx" } }
+        destinationTxs: { type: array, items: { $ref: "#/components/schemas/CrossChainTx" } }
+        shownUntil: { type: string, format: date-time }
+        deadline: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        depositSeenAt: { type: [string, "null"], format: date-time }
+        convertedAt: { type: [string, "null"], format: date-time }
+        signed: { type: object, description: "1Click's signed answer, which the pay page checks (D-124)." }
+    CrossChainTx:
+      type: object
+      required: [hash, explorerUrl]
+      properties:
+        hash: { type: string }
+        explorerUrl: { type: string, description: "1Click's explorer link, https only; empty without one." }
     PaymentDetails:
       allOf:
         - $ref: "#/components/schemas/Payment"
@@ -4275,7 +4324,7 @@ components:
             - type: "null"
     PaymentMovement:
       type: "object"
-      required: ["livemode", "network", "id", "state", "recordedAt", "paymentId", "optionId", "storeId", "storeName", "source", "documentKind", "number", "reference", "title", "chainId", "token", "symbol", "decimals", "kind", "sourceAmount", "bookedAmount", "receiverDelta", "payableDelta", "heldDelta", "receiverUsdDelta", "txHash", "logIndex", "transferLogIndex", "blockHash", "blockNumber", "blockTime", "from", "to", "status", "verified", "verifiedBlock", "verifiedHash", "policyException", "reconciliationError"]
+      required: ["livemode", "network", "id", "state", "recordedAt", "paymentId", "optionId", "storeId", "storeName", "source", "documentKind", "number", "reference", "title", "chainId", "token", "symbol", "decimals", "kind", "sourceAmount", "bookedAmount", "receiverDelta", "payableDelta", "heldDelta", "receiverUsdDelta", "txHash", "logIndex", "transferLogIndex", "blockHash", "blockNumber", "blockTime", "from", "to", "status", "verified", "verifiedBlock", "verifiedHash", "policyException", "reconciliationError", "paidWith"]
       properties:
         livemode: { type: "boolean" }
         network: { type: "string" }
@@ -4395,6 +4444,19 @@ components:
           anyOf:
             - type: "string"
             - type: "null"
+        paidWith:
+          description: R-235. What the payer sent through NEAR Intents for this Base transfer; null for any other row.
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [provider, symbol, blockchain, decimals, amount, txHash]
+              properties:
+                provider: { type: string, enum: [near_intents] }
+                symbol: { type: string }
+                blockchain: { type: string }
+                decimals: { type: integer }
+                amount: { $ref: "#/components/schemas/Uint256" }
+                txHash: { type: [string, "null"], description: "The payer's transaction on its chain." }
     PaymentBalances:
       type: "object"
       required: ["receiver", "payable", "held"]
@@ -5792,7 +5854,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/InvoiceSummary"
         - type: object
-          required: [paidAt, settledAt, deposits, options, nextCheckAt, lines, updates, replacedBy]
+          required: [paidAt, settledAt, deposits, options, nextCheckAt, lines, updates, replacedBy, crossChain]
           properties:
             paidAt:
               type: [string, "null"]
@@ -5883,6 +5945,11 @@ components:
               oneOf:
                 - type: "null"
                 - $ref: "#/components/schemas/Revision"
+            crossChain:
+              description: R-235. The shown payment through NEAR Intents; null without one.
+              oneOf:
+                - type: "null"
+                - $ref: "#/components/schemas/CrossChainPayment"
             updates:
               type: array
               description: |
@@ -5966,8 +6033,11 @@ components:
                 reminders.on, reminders.off, reminders.stopped, repeat.stopped, email.invoice_, email.reminder_ or
                 email.receipt_ and sent or failed (R-126), invoice.edited (R-127), invoice.replaced (R-129),
                 invoice.reopened (R-130), whose until is the new close, invoice.numbered (R-141), when a payment-link
-                invoice took its number with its first deposit, or invoice.return_queued and invoice.return_released,
-                when support queues or drops a return of held money (PLAN 11.10.3).
+                invoice took its number with its first deposit, invoice.return_queued and invoice.return_released,
+                when support queues or drops a return of held money (PLAN 11.10.3), or a payment through NEAR Intents
+                (R-234): crosschain.deposit_seen (asset and amount on the payer's chain), crosschain.converted
+                (amount of the option's USDC and the Base txHash), crosschain.refunded (asset and amount back to the
+                refund address) and crosschain.failed.
                 actor system is Forwend. optionId names the option chosen, or the one money is held on, when the payer
                 chooses; amount is the base units held, in that option's token, else the shown option's; txHash is the
                 settle transaction; step is a reminder email's step; field is the edited field, and from and to
@@ -5976,14 +6046,15 @@ components:
                 the new one, on the new one's invoice.created the old one.
               items:
                 type: object
-                required: [id, kind, actor, at, optionId, amount, txHash, step, field, from, to, until, related]
+                required: [id, kind, actor, at, optionId, amount, asset, txHash, step, field, from, to, until, related]
                 properties:
                   id: { type: integer, minimum: 1, description: Ascending in the order the rows were written. }
                   kind: { type: string, pattern: "^[a-z]+\\.[a-z_]+$" }
                   actor: { type: string, enum: [owner, payer, system] }
                   at: { type: string, format: date-time }
                   optionId: { type: [string, "null"], pattern: "^0x[0-9a-f]{64}$" }
-                  amount: { type: [string, "null"], pattern: "^[0-9]+$" }
+                  amount: { type: [string, "null"], pattern: "^[0-9]+$", description: "In asset's base units when asset is set." }
+                  asset: { type: [string, "null"], description: "The 1Click asset a cross-chain amount is in." }
                   txHash: { type: [string, "null"], pattern: "^0x[0-9a-f]{64}$" }
                   step: { type: [string, "null"], enum: [before, due, after, null] }
                   field: { type: [string, "null"], enum: [memo, clientEmail, returnUrl, reference, note, dueDate, null] }

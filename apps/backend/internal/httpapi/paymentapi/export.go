@@ -14,7 +14,7 @@ import (
 
 var movementCSVHeader = []string{"Recorded at (UTC)", "Record state", "Movement ID", "Payment ID", "Option ID", "Store ID", "Store", "Source", "Live mode", "Document kind", "Invoice number", "Order reference", "Title",
 	"Chain ID", "Network", "Token contract", "Token", "Decimals", "Movement kind", "Source amount (base units)", "Booked receiver movement (base units)", "Receiver delta (base units)", "Merchant payable delta (base units)", "Payer held delta (base units)",
-	"Receiver USD delta", "Transaction hash", "Event log index", "Token transfer log index", "Block number", "Block hash", "Block time (UTC)", "From", "To", "Source status", "Source verified", "Verified block", "Verified block hash", "Policy exception", "Reconciliation status"}
+	"Receiver USD delta", "Transaction hash", "Event log index", "Token transfer log index", "Block number", "Block hash", "Block time (UTC)", "From", "To", "Source status", "Source verified", "Verified block", "Verified block hash", "Policy exception", "Reconciliation status", "Paid with", "Paid with transaction"}
 
 func exportMovements(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -68,7 +68,23 @@ func movementCSV(movement invoice.PaymentMovement) []string {
 	return []string{text(movement.RecordedAt.UTC().Format(time.RFC3339Nano)), text(movement.State), text(movement.ID), text(movement.PaymentID), text(movement.OptionID), text(movement.StoreID), text(movement.StoreName), text(string(movement.Source)), strconv.FormatBool(movement.Livemode),
 		text(string(movement.DocumentKind)), number, text(movement.Reference), text(movement.Title), strconv.FormatUint(movement.ChainID, 10), text(movement.Network), text(movement.Token), text(movement.Symbol), decimals, text(movement.Kind),
 		amountCSV(movement.SourceAmount), amountCSV(movement.BookedAmount), amountCSV(movement.ReceiverDelta), amountCSV(movement.PayableDelta), amountCSV(movement.HeldDelta), usd, text(movement.TxHash), uintCSV(movement.LogIndex), uintCSV(movement.TransferLogIndex),
-		uintCSV(movement.BlockNumber), text(movement.BlockHash), timeCSV(movement.BlockTime), text(movement.From), text(movement.To), text(movement.Status), strconv.FormatBool(movement.Verified), uintCSV(movement.VerifiedBlock), text(movement.VerifiedHash), text(movement.PolicyException), text(movement.ReconciliationError)}
+		uintCSV(movement.BlockNumber), text(movement.BlockHash), timeCSV(movement.BlockTime), text(movement.From), text(movement.To), text(movement.Status), strconv.FormatBool(movement.Verified), uintCSV(movement.VerifiedBlock), text(movement.VerifiedHash), text(movement.PolicyException), text(movement.ReconciliationError),
+		paidWithCSV(movement.PaidWith), text(paidWithTx(movement.PaidWith))}
+}
+
+// paidWithCSV names what the payer sent through NEAR Intents (R-235), as "101.12 USDT on tron through NEAR Intents".
+func paidWithCSV(p *invoice.MovementPaidWith) string {
+	if p == nil || p.Amount == nil {
+		return ""
+	}
+	return httpio.CSVText(invoice.PaymentUSDValue(p.Amount, p.Decimals) + " " + p.Symbol + " on " + p.Blockchain + " through NEAR Intents")
+}
+
+func paidWithTx(p *invoice.MovementPaidWith) string {
+	if p == nil {
+		return ""
+	}
+	return p.TxHash
 }
 
 func amountCSV(amount *big.Int) string {

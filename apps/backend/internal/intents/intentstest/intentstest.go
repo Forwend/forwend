@@ -6,6 +6,7 @@ import (
 	"crypto/ed25519"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -30,6 +31,21 @@ type Fake struct {
 	Down bool
 	// Tamper changes a quote's answer before the fake signs it, as a 1Click that quotes something else would.
 	Tamper func(answer map[string]any)
+	// statuses is what /v0/status answers per deposit address; PENDING_DEPOSIT without one. Each carries the
+	// quote's signed answer, as 1Click's does.
+	statuses map[string]map[string]any
+	answers  map[string]map[string]any
+}
+
+// SetStatus makes the fake answer status with swapDetails for depositAddress, as 1Click's /v0/status does.
+func (f *Fake) SetStatus(depositAddress, status string, swapDetails map[string]any) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.statuses == nil {
+		f.statuses = map[string]map[string]any{}
+	}
+	f.statuses[depositAddress] = map[string]any{"status": status, "updatedAt": time.Now().UTC().Format(time.RFC3339),
+		"correlationId": "status", "swapDetails": swapDetails}
 }
 
 // Tokens is the fake's default list: Base and Arbitrum USDC, Tron USDT, Ethereum ETH, Stellar USDC (a memo chain) and
@@ -83,6 +99,20 @@ func (f *Fake) serve(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(f.Tokens)
 	case "/v0/quote":
 		f.quote(w, r)
+	case "/v0/status":
+		f.mu.Lock()
+		answer, ok := f.statuses[r.URL.Query().Get("depositAddress")]
+		answer = maps.Clone(answer)
+		f.mu.Unlock()
+		if !ok {
+			answer = map[string]any{"status": "PENDING_DEPOSIT", "updatedAt": time.Now().UTC().Format(time.RFC3339),
+				"correlationId": "status", "swapDetails": map[string]any{"originChainTxHashes": []any{},
+					"destinationChainTxHashes": []any{}, "refundedAmount": "0"}}
+		}
+		f.mu.Lock()
+		answer["quoteResponse"] = f.answers[r.URL.Query().Get("depositAddress")]
+		f.mu.Unlock()
+		_ = json.NewEncoder(w).Encode(answer)
 	default:
 		http.NotFound(w, r)
 	}
@@ -135,5 +165,13 @@ func (f *Fake) quote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	answer["signature"] = intents.EncodeKey(ed25519.Sign(f.private, []byte(message)))
+	if address, ok := quote["depositAddress"].(string); ok {
+		f.mu.Lock()
+		if f.answers == nil {
+			f.answers = map[string]map[string]any{}
+		}
+		f.answers[address] = answer
+		f.mu.Unlock()
+	}
 	_ = json.NewEncoder(w).Encode(answer)
 }

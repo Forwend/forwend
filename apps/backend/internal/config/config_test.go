@@ -157,9 +157,20 @@ func TestCanary(t *testing.T) {
 	if err != nil || got.APIURL != "https://api.forwend.app" || got.WebURL != "https://forwend.app" ||
 		got.Factory != "0xf93da73f1308a9b34aab78bf6d84f0bacc600dd2" || got.FactoryCodeHash != "0x"+strings.Repeat("ab", 32) ||
 		got.RPCURLs[84532] != [2]string{"https://a.example/v3/secret", "https://b.example"} ||
-		got.PageScript != "../web/scripts/canary-pay-page.ts" {
+		got.PageScript != "../web/scripts/canary-pay-page.ts" || got.OneClickURL != config.CanaryOneClickURL ||
+		got.OneClickKey != config.CanaryOneClickKey {
 		t.Fatalf("got %+v, %v", got, err)
 	}
+	// 1Click's key is the canary's own; another only for a test's fake on loopback (D-124).
+	t.Setenv("CANARY_ONECLICK_KEY", "ed25519:test")
+	for url, ok := range map[string]bool{"http://127.0.0.1:4100": true, "": false, "https://1click.example": false, "ftp://x": false} {
+		t.Setenv("CANARY_ONECLICK_URL", url)
+		if _, err := config.LoadCanary(); ok != (err == nil) || (!ok && !strings.Contains(err.Error(), "CANARY_ONECLICK")) {
+			t.Fatalf("CANARY_ONECLICK_URL=%q: %v", url, err)
+		}
+	}
+	t.Setenv("CANARY_ONECLICK_KEY", "")
+	t.Setenv("CANARY_ONECLICK_URL", "")
 	// One RPC host twice is not a second opinion; a bad value is named, never shown.
 	for _, bad := range []string{`{"84532": ["https://a.example/v3/secret", "https://a.example/v3/other"]}`,
 		`{"84532": ["https://a.example/v3/secret"]}`,

@@ -2,9 +2,12 @@
 package paymentio
 
 import (
+	"encoding/json"
+	"math/big"
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/forwend/forwend/apps/backend/internal/intents"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
 
@@ -56,6 +59,65 @@ type Payment struct {
 	ClosesAt         string  `json:"closesAt"`
 	HostedURL        *string `json:"hostedUrl"`
 	PayToken         *string `json:"payToken"`
+	// R-235: only a payment's own read fills it; lists leave it null.
+	CrossChain *CrossChain `json:"crossChain"`
+}
+
+// CrossChain is how a payment through NEAR Intents went (R-235): the quote, 1Click's status, what the payer sent and
+// got back, and both chains' transactions. signed is 1Click's answer, which the pay page checks (D-124).
+type CrossChain struct {
+	Provider       string          `json:"provider"`
+	QuoteID        string          `json:"quoteId"`
+	AssetID        string          `json:"assetId"`
+	Blockchain     string          `json:"blockchain"`
+	Symbol         string          `json:"symbol"`
+	Decimals       int             `json:"decimals"`
+	DepositAddress string          `json:"depositAddress"`
+	RefundTo       string          `json:"refundTo"`
+	AmountIn       string          `json:"amountIn"`
+	MinAmountIn    string          `json:"minAmountIn"`
+	AmountOut      string          `json:"amountOut"`
+	Status         string          `json:"status"`
+	Deposited      *string         `json:"deposited"`
+	Delivered      *string         `json:"delivered"`
+	Refunded       *string         `json:"refunded"`
+	RefundReason   *string         `json:"refundReason"`
+	OriginTxs      []intents.Tx    `json:"originTxs"`
+	DestinationTxs []intents.Tx    `json:"destinationTxs"`
+	ShownUntil     string          `json:"shownUntil"`
+	Deadline       string          `json:"deadline"`
+	CreatedAt      string          `json:"createdAt"`
+	DepositSeenAt  *string         `json:"depositSeenAt"`
+	ConvertedAt    *string         `json:"convertedAt"`
+	Signed         json.RawMessage `json:"signed"`
+}
+
+// FromCrossChain is nil without a quote.
+func FromCrossChain(c *invoice.CrossChainPayment) *CrossChain {
+	if c == nil {
+		return nil
+	}
+	amount := func(n *big.Int) *string {
+		if n == nil {
+			return nil
+		}
+		s := n.String()
+		return &s
+	}
+	at := func(t *time.Time) *string {
+		if t == nil {
+			return nil
+		}
+		return httpio.OrNullTime(*t)
+	}
+	return &CrossChain{Provider: "near_intents", QuoteID: c.QuoteID, AssetID: c.Asset, Blockchain: c.Blockchain,
+		Symbol: c.Symbol, Decimals: c.Decimals, DepositAddress: c.DepositAddress, RefundTo: c.RefundTo,
+		AmountIn: c.AmountIn.String(), MinAmountIn: c.MinAmountIn.String(), AmountOut: c.AmountOut.String(),
+		Status: c.Status, Deposited: amount(c.Deposited), Delivered: amount(c.Delivered), Refunded: amount(c.Refunded),
+		RefundReason: httpio.OrNull(c.RefundReason), OriginTxs: c.OriginTxs, DestinationTxs: c.DestinationTxs,
+		ShownUntil: c.ShownUntil.Format(time.RFC3339), Deadline: c.Deadline.Format(time.RFC3339),
+		CreatedAt: c.CreatedAt.Format(time.RFC3339), DepositSeenAt: at(c.DepositSeenAt), ConvertedAt: at(c.ConvertedAt),
+		Signed: c.Signed}
 }
 
 func FromInvoice(inv invoice.Invoice, webURL string) Payment {
@@ -64,7 +126,8 @@ func FromInvoice(inv invoice.Invoice, webURL string) Payment {
 		Livemode: inv.Livemode, Title: httpio.OrNull(inv.Title), Reference: httpio.OrNull(inv.Reference),
 		ChainID: inv.ChainID, Token: inv.Token, Amount: inv.Amount.String(), Fees: FromFees(inv.Amount, inv.Fees), PaymentStatus: inv.PaymentStatus,
 		SettlementStatus: inv.SettlementStatus, RefundStatus: inv.RefundStatus, State: inv.State, Wallet: inv.Wallet, Confirming: inv.Confirming,
-		Closed: inv.Closed, CreatedAt: inv.CreatedAt.UTC().Format(time.RFC3339Nano), ClosesAt: inv.ClosesAt.UTC().Format(time.RFC3339)}
+		Closed: inv.Closed, CreatedAt: inv.CreatedAt.UTC().Format(time.RFC3339Nano), ClosesAt: inv.ClosesAt.UTC().Format(time.RFC3339),
+		CrossChain: FromCrossChain(inv.CrossChain)}
 	p.Receipts = []Receipt{}
 	for _, r := range inv.Receipts {
 		p.Receipts = append(p.Receipts, Receipt{OptionID: r.OptionID, ChainID: r.ChainID, Token: r.Token, Symbol: r.Symbol, Decimals: r.Decimals, Received: r.Received.String(), Pending: r.Pending.String(), Held: r.Held.String()})

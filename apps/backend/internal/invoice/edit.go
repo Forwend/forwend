@@ -95,8 +95,9 @@ func (s *Service) Edit(ctx context.Context, profileID, id string, e Editable) (I
 				}
 			}
 			var seen bool
-			// Dust chooses nothing and is the payer's (R-119), so a stranger's 0.01 can't stop the owner editing.
-			if err := tx.QueryRow(ctx, "SELECT "+ledger.ChoosingSeenSQL, main.ID).Scan(&seen); err != nil {
+			// Dust chooses nothing and is the payer's (R-119), so a stranger's 0.01 can't stop the owner editing. A
+			// deposit 1Click converts is on its way, as money seen is (R-233).
+			if err := tx.QueryRow(ctx, "SELECT "+ledger.ChoosingSeenSQL+" OR "+ConvertingSQL, main.ID).Scan(&seen); err != nil {
 				return fmt.Errorf("read invoice %s transfers: %w", main.ID, err)
 			}
 			if seen {
