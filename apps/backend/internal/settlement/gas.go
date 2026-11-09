@@ -250,23 +250,24 @@ func (s *Signer) buyGas(ctx context.Context, client *ethclient.Client, chainID u
 	if err != nil || len(out) != 32 {
 		return fmt.Errorf("read the router's USDC allowance: %d bytes, %v", len(out), err)
 	}
-	// An allowance left by a refused swap is swapped before any new approve.
-	allowed, spendable := new(big.Int).SetBytes(out), held
-	if allowed.Sign() > 0 {
-		spendable = minBig(held, allowed)
-	}
-	in, least := swapAmounts(want, spendable, price)
 	// Less than one deploy and settle's gas costs more than it buys, and the pool's rounding can refuse it. Approved,
 	// dust anyone sent the executor would cap every later swap.
-	if least.Cmp(new(big.Int).Mul(feeCap, big.NewInt(MinGas))) < 0 {
-		return fmt.Errorf("%s USDC to swap buys less than one deploy and settle", usd(spendable))
+	floor := new(big.Int).Mul(feeCap, big.NewInt(MinGas))
+	// An allowance a refused swap left is swapped before any new approve, when it buys enough on its own; a smaller one
+	// is replaced.
+	in, least := swapAmounts(want, minBig(held, new(big.Int).SetBytes(out)), price)
+	approve := least.Cmp(floor) < 0
+	if approve {
+		if in, least = swapAmounts(want, held, price); least.Cmp(floor) < 0 {
+			return fmt.Errorf("%s USDC to swap buys less than one deploy and settle", usd(held))
+		}
 	}
 	var after uint64
-	if allowed.Sign() == 0 {
+	if approve {
 		// Only what this swap takes: a router bug or a swap never sent can't reach more of the executor's USDC.
-		approve := append(append(selector("approve(address,uint256)"), common.LeftPadBytes(route.router.Bytes(), 32)...),
+		data := append(append(selector("approve(address,uint256)"), common.LeftPadBytes(route.router.Bytes(), 32)...),
 			common.LeftPadBytes(in.Bytes(), 32)...)
-		tx, err := s.sendAndWait(ctx, client, chainID, route.usdc, approve, 0)
+		tx, err := s.sendAndWait(ctx, client, chainID, route.usdc, data, 0)
 		if err != nil {
 			return fmt.Errorf("approve the router: %w", err)
 		}

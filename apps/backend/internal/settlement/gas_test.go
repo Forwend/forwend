@@ -9,7 +9,9 @@ import (
 	"math/big"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -339,5 +341,31 @@ func TestSignerSwapsNoDust(t *testing.T) {
 	if !strings.Contains(logs.String(), "ALERT executor gas runs low") ||
 		!strings.Contains(logs.String(), "no ether bought: 0.0001 USDC to swap buys less than one deploy and settle") {
 		t.Fatalf("logs lack the low gas alert naming the dust:\n%s", logs.String())
+	}
+
+	// An allowance too small to buy enough on its own, as a smaller swap can leave one, is replaced, never kept.
+	a.Send(route.usdc.Hex(), "approve(address,uint256)", route.router.Hex(), "50")
+	if err := a.RPC.Call(nil, "anvil_setStorageAt", route.usdc, slot, common.BigToHash(big.NewInt(100_000000))); err != nil {
+		t.Fatal(err)
+	}
+	_, feeCap, err = Fees(ctx, client, 8453)
+	if err != nil {
+		t.Fatal(err)
+	}
+	low := new(big.Int).Mul(feeCap, big.NewInt(MinGas*2))
+	if err := a.RPC.Call(nil, "anvil_setBalance", s.sender, hexutil.EncodeBig(low)); err != nil {
+		t.Fatal(err)
+	}
+	in, _ := swapAmounts(new(big.Int).Sub(new(big.Int).Mul(feeCap, big.NewInt(MinGas*topUpSettlements)), low),
+		big.NewInt(100_000000), big.NewInt(2000e8))
+	s.gasCheckedAt = time.Time{}
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	allowance, err := client.CallContract(ctx, ethereum.CallMsg{To: &route.usdc, Data: append(append(
+		selector("allowance(address,address)"), common.LeftPadBytes(s.sender.Bytes(), 32)...),
+		common.LeftPadBytes(route.router.Bytes(), 32)...)}, nil)
+	if err != nil || new(big.Int).SetBytes(allowance).Cmp(in) != 0 {
+		t.Fatalf("allowance %x (%v), want this swap's %s USDC units approved in place of the 50 left", allowance, err, in)
 	}
 }
