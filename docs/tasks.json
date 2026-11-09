@@ -2162,7 +2162,7 @@
       "dependsOn": [
         "F451"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "web-unit",
@@ -2258,11 +2258,18 @@
           "summary": "Same code as the fourth subagent review that passed at 060e5b15; after it only one docs/backend/api.md line changed, to the reviewer's wording. Probe pace, hourly bound, highest limit, refusals kept and logged, one bad token, learning from a payer's refusal, the picker's greyed rows, rounding and the price message all have tests that fail without them.",
           "at": "2026-11-09T19:03:57Z",
           "filesHash": "0156533219b16bf4"
-        }
+        },
+        "commit": "6a21b4ec",
+        "doneAt": "2026-11-09T19:03:57Z"
       },
       "branch": "feat/f453-the-token-picker-shows-each-token-s-mini",
       "baseCommit": "a5b97b6befc72e44ed4a6157d3e1c6a096187f68",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f453-the-token-picker-shows-each-token-s-mini",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
