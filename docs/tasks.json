@@ -103,9 +103,9 @@
     }
   ],
   "lastWrapup": {
-    "at": "2026-11-07T23:45:34Z",
+    "at": "2026-11-09T01:10:11Z",
     "clean": true,
     "problems": [],
-    "note": "F436 verified and reviewed (pass), not committed; next: on the owner's yes commit and run done F436, then F437 deploy with per-chain approval (Tempo needs setUserToken(OUSD) first)"
+    "note": "Fee system merged: F443 #451, F445 #452, F446 #453, F444 #454, F447 #455; archive of the 13 merged tasks is PR #456, waiting for the owner's merge. Next: F435 or F439; follow-ups: fee line on the public link and job quote pages, flaky backend e2e duplicate held email (exceptions_test.go:183)."
   }
 }
