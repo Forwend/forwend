@@ -4042,7 +4042,7 @@ components:
           pattern: "^[0-9a-f]{64}$"
           description: The hosted page's token, the last part of hostedUrl, for @forwend/js and @forwend/react. Null with hostedUrl.
         crossChain:
-          description: R-235. A payment through NEAR Intents; a list fills it only while 1Click converts or converted the deposit, so it tags those.
+          description: R-235. A payment through NEAR Intents; a list fills it only while 1Click converts or converted the deposit and no other option's money was booked first, so it tags those.
           oneOf:
             - type: "null"
             - $ref: "#/components/schemas/CrossChainPayment"

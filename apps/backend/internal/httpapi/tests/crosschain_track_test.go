@@ -150,7 +150,7 @@ func TestWorkerFollowsAQuoteFromDepositToConversion(t *testing.T) {
 			base = option["optionId"].(string)
 		}
 	}
-	baseTransfer(t, e, main, base, baseTx, "100000000")
+	baseTransfer(t, e, base, baseTx, "100000000")
 	movements := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/payments/"+main+"/movements", "did:privy:alice", "", "")
 	var paidWith map[string]any
 	for _, m := range movements.body["items"].([]any) {
@@ -278,6 +278,43 @@ func TestWorkerReadsASeenDepositUntilItEnds(t *testing.T) {
 		if c := item.(map[string]any)["crossChain"]; c != nil {
 			t.Fatalf("payments list tags a returned deposit: %v", c)
 		}
+	}
+}
+
+// R-239: when the payer also pays directly on another option and that money is booked first, 1Click's USDC is held
+// on Base: the payments list and the receipt don't say the payment went through NEAR Intents.
+func TestADirectPaymentBookedFirstIsNotPaidThroughNEARIntents(t *testing.T) {
+	e, fake, worker, pay, quote := tracked(t)
+	id, address := quote["quoteId"].(string), quote["depositAddress"].(string)
+	main := e.get(t, pay).body["invoiceId"].(string)
+	var base, arbitrum string
+	for _, o := range e.get(t, pay).body["options"].([]any) {
+		option := o.(map[string]any)
+		if option["chainId"] == float64(intents.BaseChainID) {
+			base = option["optionId"].(string)
+		} else {
+			arbitrum = option["optionId"].(string)
+		}
+	}
+	direct, baseTx := "0x"+strings.Repeat("ab", 32), "0x"+originTx
+	chainTransfer(t, e, 42161, arbitrum, direct, "100000000")
+	fake.SetStatus(address, intents.Success, map[string]any{"depositedAmount": "101120000", "amountOut": "100000000",
+		"originChainTxHashes":      []any{map[string]any{"hash": originTx}},
+		"destinationChainTxHashes": []any{map[string]any{"hash": baseTx}}})
+	checkAt(t, e, worker, id, time.Now())
+	baseTransfer(t, e, base, baseTx, "100000000")
+
+	if got := e.get(t, pay).body["paymentStatus"]; got != "paid" {
+		t.Fatalf("status %v, want paid", got)
+	}
+	list := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/payments", "did:privy:alice", "", "")
+	for _, item := range list.body["items"].([]any) {
+		if c := item.(map[string]any)["crossChain"]; c != nil {
+			t.Fatalf("payments list tags a payment made on Arbitrum: %v", c)
+		}
+	}
+	if text := pdfText(t, e.pdf(t, main, "receipt.pdf", "").body); strings.Contains(text, "NEAR Intents") {
+		t.Fatalf("the receipt says the payment went through NEAR Intents:\n%s", text)
 	}
 }
 

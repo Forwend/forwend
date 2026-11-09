@@ -63,7 +63,7 @@ import { APP_ROUTES } from "@/shared/config/routes";
 import { CROSS_CHAIN_STATUSES } from "@/shared/constants/chains";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
-import { blockchainName, chainName } from "@/shared/lib/chains";
+import { blockchainName, chainName, crossChainOptionRecorded } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 import { walletStateOf } from "@/shared/lib/payment-state";
 
@@ -505,7 +505,8 @@ function Loaded({
               </Row>
               <Row term={COPY.created}>{TIME.format(new Date(invoice.createdAt))}</Row>
               {/* R-239: what the client sent on its own chain, which NEAR Intents converted. */}
-              {invoice.crossChain?.status === CROSS_CHAIN_STATUSES.success ? (
+              {invoice.crossChain?.status === CROSS_CHAIN_STATUSES.success &&
+              crossChainOptionRecorded(invoice) ? (
                 <Row term={COPY.paidThrough}>
                   {COPY.paidThroughValue(
                     `${formatTokenAmount({

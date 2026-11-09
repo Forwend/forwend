@@ -1,4 +1,9 @@
-import { BLOCKCHAIN_NAMES, CHAINS, CROSS_CHAIN_STATUSES } from "@/shared/constants/chains";
+import {
+  BLOCKCHAIN_NAMES,
+  CHAINS,
+  CROSS_CHAIN_STATUSES,
+  CROSS_CHAIN_TARGET,
+} from "@/shared/constants/chains";
 import { foldText } from "@/shared/lib/search";
 
 export function chainName(chainId: number): string {
@@ -49,4 +54,21 @@ export function crossChainEnded(c: { status: string }): boolean {
     c.status === CROSS_CHAIN_STATUSES.failed ||
     c.status === CROSS_CHAIN_STATUSES.incomplete
   );
+}
+
+/** The option a cross-chain payment delivers to (D-123). */
+export function isCrossChainTarget(o: { chainId: number; token: string } | undefined): boolean {
+  return (
+    o?.chainId === CROSS_CHAIN_TARGET.chainId && o.token.toLowerCase() === CROSS_CHAIN_TARGET.token
+  );
+}
+
+/** No money recorded yet, or recorded on the option 1Click delivers to. Money booked first on another option pays the
+ * payment instead, and 1Click's USDC is then held for the customer (R-239). */
+export function crossChainOptionRecorded(x: {
+  optionLocked: boolean;
+  optionId: string;
+  options: readonly { optionId: string; chainId: number; token: string }[];
+}): boolean {
+  return !x.optionLocked || isCrossChainTarget(x.options.find((o) => o.optionId === x.optionId));
 }

@@ -102,6 +102,7 @@ import {
   blockchainName,
   chainName,
   crossChainEnded,
+  crossChainOptionRecorded,
   lookalikeOf,
   txLink,
 } from "@/shared/lib/chains";
@@ -1155,7 +1156,8 @@ function Paid({
         </DetailRow>
         {name ? <DetailRow term={COPY.receiptRows.to}>{name}</DetailRow> : null}
         {/* R-238: what the payer sent on its own chain, which NEAR Intents converted. */}
-        {invoice.crossChain?.status === CROSS_CHAIN_STATUSES.success ? (
+        {invoice.crossChain?.status === CROSS_CHAIN_STATUSES.success &&
+        crossChainOptionRecorded(invoice) ? (
           <DetailRow term={COPY.crossChain.paidWith}>
             {COPY.crossChain.paidWithValue(
               formatMoney(

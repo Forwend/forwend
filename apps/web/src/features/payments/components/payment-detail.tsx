@@ -58,10 +58,15 @@ import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
-import { CROSS_CHAIN_STATUSES } from "@/shared/constants/chains";
+import { CROSS_CHAIN_STATUSES, CROSS_CHAIN_TARGET } from "@/shared/constants/chains";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
-import { blockchainName, crossChainEnded, txLink } from "@/shared/lib/chains";
+import {
+  blockchainName,
+  crossChainEnded,
+  crossChainOptionRecorded,
+  txLink,
+} from "@/shared/lib/chains";
 import { dateTime } from "@/shared/lib/dates";
 import { exactDigits } from "@/shared/lib/money";
 
@@ -269,7 +274,7 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
                   />
                 </Figure>
               ) : null}
-              <CrossChainFigure crossChain={payment.crossChain} chainId={payment.chainId} />
+              <CrossChainFigure crossChain={payment.crossChain} />
               {/* Before any money it says what the customer may pay with, never "Paid with". */}
               <Figure term={lead ? COPY.paidWith : paidWith ? COPY.payingWith : COPY.accepts}>
                 {paidWith ? (
@@ -480,7 +485,10 @@ export function timeline(
   const ended = !paid && (payment.closed || payment.paymentStatus === "canceled");
   // R-239: through NEAR Intents the payment is seen on the customer's chain first, then converted into this one. A
   // deposit 1Click returned didn't pay it, so the steps are a direct payment's.
-  const cross = paidThroughIntents(payment.crossChain) ? payment.crossChain : null;
+  const cross =
+    paidThroughIntents(payment.crossChain) && crossChainOptionRecorded(payment)
+      ? payment.crossChain
+      : null;
   const crossSent = cross ? BigInt(cross.deposited ?? cross.amountIn) : 0n;
   const crossTx = cross?.originTxs[0];
   // The USDC 1Click delivered on Base: never the first deposit, which may be an earlier direct one.
@@ -615,13 +623,11 @@ export function paidThroughIntents(
   return c != null && c.depositSeenAt !== null && !crossChainEnded(c);
 }
 
-/** R-239: what the customer sent on its own chain, what came back, and both transactions; on chainId, the Base one. */
+/** R-239: what the customer sent on its own chain, what came back, and both transactions. */
 export function CrossChainFigure({
   crossChain,
-  chainId,
 }: {
   crossChain: PaymentDetailType["crossChain"] | undefined;
-  chainId: number;
 }) {
   if (!paidThroughIntents(crossChain)) return null;
   const sent = BigInt(crossChain.deposited ?? crossChain.amountIn);
@@ -633,7 +639,10 @@ export function CrossChainFigure({
     crossChain.status === CROSS_CHAIN_STATUSES.success ? crossChain.destinationTxs[0] : undefined;
   const links = [
     { href: origin?.explorerUrl, label: COPY.crossChain.originTx },
-    { href: base ? txLink(chainId, base.hash)?.href : undefined, label: COPY.crossChain.baseTx },
+    {
+      href: base ? txLink(CROSS_CHAIN_TARGET.chainId, base.hash)?.href : undefined,
+      label: COPY.crossChain.baseTx,
+    },
   ];
   return (
     <div className="flex flex-col gap-1 px-4 py-4 sm:px-5">

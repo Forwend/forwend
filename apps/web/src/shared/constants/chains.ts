@@ -113,3 +113,11 @@ export const CROSS_CHAIN_STATUSES = {
   refunded: "REFUNDED",
   failed: "FAILED",
 } as const;
+
+/** The one chain and token a cross-chain payment delivers: USDC on Base, as 1Click names it. */
+export const CROSS_CHAIN_TARGET = {
+  chainId: 8453,
+  token: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+  decimals: 6,
+  asset: "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+} as const;

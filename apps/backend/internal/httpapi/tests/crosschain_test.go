@@ -273,27 +273,33 @@ func TestCrossChainQuoteNot1ClickSignedIsRefused(t *testing.T) {
 }
 
 // baseDeposit books a confirmed transfer of amount to an invoice's Base option, as the watcher and the ledger would.
-func baseDeposit(t *testing.T, e invoiceEnv, main, option, amount string) {
+func baseDeposit(t *testing.T, e invoiceEnv, option, amount string) {
 	t.Helper()
-	baseTransfer(t, e, main, option, option, amount)
+	baseTransfer(t, e, option, option, amount)
 }
 
 // baseTransfer is baseDeposit in the transaction txHash.
-func baseTransfer(t *testing.T, e invoiceEnv, main, option, txHash, amount string) {
+func baseTransfer(t *testing.T, e invoiceEnv, option, txHash, amount string) {
+	t.Helper()
+	chainTransfer(t, e, intents.BaseChainID, option, txHash, amount)
+}
+
+// chainTransfer books amount sent to option on chainID in the transaction txHash.
+func chainTransfer(t *testing.T, e invoiceEnv, chainID uint64, option, txHash, amount string) {
 	t.Helper()
 	e.exec(t, `UPDATE chain_cursors SET last_scanned_block = 100, last_finalized_block = 100,
-		last_finalized_time = extract(epoch FROM now())::bigint WHERE chain_id = 8453`)
+		last_finalized_time = extract(epoch FROM now())::bigint WHERE chain_id = $1`, chainID)
 	e.exec(t, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
 		    block_hash, block_number, block_time, from_address, to_address, amount, status)
-		SELECT 8453, 'evm', token_contract, id, $4, 0, $4, 90, extract(epoch FROM now())::bigint, $2, receive_address,
-		    $3::numeric, 'confirmed' FROM invoices WHERE id = $1`, option, aliceWallet, amount, txHash)
+		SELECT $5, 'evm', token_contract, id, $4, 0, $4, 90, extract(epoch FROM now())::bigint, $2, receive_address,
+		    $3::numeric, 'confirmed' FROM invoices WHERE id = $1`, option, aliceWallet, amount, txHash, chainID)
 	// The finalized balance holds what was sent, so a full payment becomes paid.
 	balances := func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
 		n, _ := new(big.Int).SetString(amount, 10)
 		return n, 100, nil
 	}
 	notDeployed := func(context.Context, uint64, string, string) (uint64, error) { return 0, nil }
-	if err := ledger.NewService(e.pool, balances, notDeployed).Process(context.Background(), main); err != nil {
+	if err := ledger.NewService(e.pool, balances, notDeployed).Process(context.Background(), option); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -305,8 +311,7 @@ func TestCrossChainQuoteAsksForWhatIsLeftAndEndsBeforeTheClose(t *testing.T) {
 	}
 	// 40 USDC paid on Base leaves 60 to convert.
 	pay, options := liveInvoice(t, e, "key-1", 86400)
-	main := e.get(t, pay).body["invoiceId"].(string)
-	baseDeposit(t, e, main, options[intents.BaseChainID]["optionId"].(string), "40000000")
+	baseDeposit(t, e, options[intents.BaseChainID]["optionId"].(string), "40000000")
 	if r := quote(pay); r.status != http.StatusCreated || r.body["amountOut"] != "60000000" {
 		t.Fatalf("partly paid: %d %v", r.status, r.body)
 	}
@@ -356,7 +361,7 @@ func TestCrossChainNeedsAnOpenBaseOptionWithNothingConfirming(t *testing.T) {
 	}
 
 	paid, options := liveInvoice(t, e, "key-3", 86400)
-	baseDeposit(t, e, e.get(t, paid).body["invoiceId"].(string), options[intents.BaseChainID]["optionId"].(string), "100000000")
+	baseDeposit(t, e, options[intents.BaseChainID]["optionId"].(string), "100000000")
 	if r := quote(paid); r.status != 422 || errorCode(r) != "crosschain_unavailable" {
 		t.Fatalf("paid: %d %v", r.status, r.body)
 	}

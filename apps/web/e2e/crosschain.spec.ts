@@ -317,14 +317,40 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     }
   });
 
-  // A quote 1Click returned didn't pay: the payer paid on Base after it, and the receipt says nothing of it.
-  for (const status of ["SUCCESS", "REFUNDED"])
-    test(`the receipt names what the payer paid with only once 1Click delivered (${status})`, async ({
+  // A quote 1Click returned didn't pay: the payer paid on Base after it, and the receipt says nothing of it. Nor did
+  // one whose USDC came after money on another option was recorded: that USDC is held for the payer.
+  // The second option pay.spec.ts derives from these terms, so the page's address check passes.
+  const ARBITRUM = {
+    ...MAIN_OPTION,
+    optionId: "0x285391c5b8b001b41a459f4011b40661d4c83c871d3f0d7881682bbced83a1c1",
+    chainId: 421614,
+    network: "arbitrum-sepolia",
+    token: "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d",
+    receiveAddress: "0x1109f4fabb1748c2ce1858b2aaf8442523cfeeb0",
+  };
+  for (const [name, status, recorded] of [
+    ["SUCCESS", "SUCCESS", LIVE.optionId],
+    ["REFUNDED", "REFUNDED", LIVE.optionId],
+    ["paid on another option first", "SUCCESS", ARBITRUM.optionId],
+  ] as const)
+    test(`the receipt names what the payer paid with only once 1Click delivered (${name})`, async ({
       page,
     }) => {
+      const named = name === "SUCCESS";
       await page.clock.install({ time: NOW });
       await mockInvoice(page, {
         ...LIVE,
+        options: [...LIVE.options, ARBITRUM],
+        optionLocked: true,
+        // The invoice reads as the option money was recorded on.
+        ...(recorded === ARBITRUM.optionId
+          ? {
+              chainId: ARBITRUM.chainId,
+              token: ARBITRUM.token,
+              receiveAddress: ARBITRUM.receiveAddress,
+            }
+          : {}),
+        optionId: recorded,
         paymentStatus: "paid",
         settlementStatus: "pending",
         paidAt: "2026-10-10T12:05:00Z",
@@ -352,10 +378,8 @@ test.describe("pay with another token (R-236 to R-238)", () => {
       });
       await page.goto(`/pay/${PAY}`);
       await expect(page.getByRole("link", { name: "Download receipt" })).toBeVisible();
-      await expect(page.getByText("Paid with")).toHaveCount(status === "SUCCESS" ? 1 : 0);
-      await expect(page.getByText("1,263.00 USDT on Tron")).toHaveCount(
-        status === "SUCCESS" ? 1 : 0,
-      );
+      await expect(page.getByText("Paid with")).toHaveCount(named ? 1 : 0);
+      await expect(page.getByText("1,263.00 USDT on Tron")).toHaveCount(named ? 1 : 0);
     });
 
   test("a reload shows a kept quote only against the refund address this tab typed", async ({

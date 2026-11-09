@@ -178,8 +178,8 @@ func TestReceiptOfOneWholeTransfer(t *testing.T) {
 	}
 }
 
-// R-239: the receipt names a payment 1Click delivered on a line of its own, wide enough for the longest amount, and
-// none for a deposit it returned.
+// R-239: the receipt names a payment 1Click delivered on a line of its own, wide enough for the longest amount; none
+// for a deposit it returned, or one money on another option beat.
 func TestReceiptNamesWhatWasPaidThroughNEARIntents(t *testing.T) {
 	paidAt := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)
 	ten := big.NewInt(10_000000)
@@ -187,11 +187,12 @@ func TestReceiptNamesWhatWasPaidThroughNEARIntents(t *testing.T) {
 	amounts := &ledger.Amounts{ReconciliationStatus: ledger.ReconciliationVerified, Payable: ten, Held: new(big.Int),
 		Settled: new(big.Int), Fees: new(big.Int), Refunded: new(big.Int)}
 	sent, _ := new(big.Int).SetString("1263120000000000000000", 10)
-	receipt := func(status string) []byte {
+	receipt := func(status, option string) []byte {
 		inv := invoice.Invoice{Asset: usdc, Amount: ten, PaymentStatus: ledger.Paid, PaidAt: paidAt, CreatedAt: paidAt,
 			ClosesAt: paidAt.Add(time.Hour), SupplyDate: "2026-10-27", OptionID: "o", Amounts: amounts,
-			Options:    []invoice.Option{{ID: "o", Asset: usdc, Amount: ten, Amounts: amounts}},
-			CrossChain: &invoice.CrossChainPayment{Status: status, Symbol: "USDT", Blockchain: "bsc", Decimals: 18, AmountIn: sent}}
+			Options: []invoice.Option{{ID: "o", Asset: usdc, Amount: ten, Amounts: amounts}},
+			CrossChain: &invoice.CrossChainPayment{Status: status, OptionID: option, Symbol: "USDT", Blockchain: "bsc",
+				Decimals: 18, AmountIn: sent}}
 		pdf, err := Receipt(inv, "https://example.com/pay/x", nil)
 		if err != nil {
 			t.Fatal(err)
@@ -199,7 +200,7 @@ func TestReceiptNamesWhatWasPaidThroughNEARIntents(t *testing.T) {
 		return pdf
 	}
 	want := "1,263.12 USDT on BNB Chain through NEAR Intents"
-	x, ok := drawnAt(t, receipt(intents.Success), want)
+	x, ok := drawnAt(t, receipt(intents.Success, "o"), want)
 	if !ok {
 		t.Fatalf("receipt doesn't say %q", want)
 	}
@@ -208,8 +209,11 @@ func TestReceiptNamesWhatWasPaidThroughNEARIntents(t *testing.T) {
 	if end := x + measure.GetStringWidth(want); end > margin+width {
 		t.Errorf("%q ends at %.1f mm, past the right margin at %.0f mm", want, end, margin+width)
 	}
-	if _, ok := drawnAt(t, receipt(intents.Refunded), "through NEAR Intents"); ok {
+	if _, ok := drawnAt(t, receipt(intents.Refunded, "o"), "through NEAR Intents"); ok {
 		t.Error("a refunded quote's receipt says Paid with")
+	}
+	if _, ok := drawnAt(t, receipt(intents.Success, "base"), "through NEAR Intents"); ok {
+		t.Error("the receipt of an invoice paid on another option says Paid with")
 	}
 }
 

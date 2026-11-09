@@ -191,7 +191,9 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
     - It is the newest quote 1Click saw a deposit for, else the newest: status, what was sent and refunded, both chains'
       transactions and the signed answer.
     - The payments list fills it only while the deposit pays the payment (converting or converted), so it can tag it.
+      - Not once money on another option was booked first: 1Click's USDC is then held for the payer.
     - The receipt PDF, the owner's paid email and the payer's receipt email name what was paid with.
+      - Only for a quote on the option the money was booked on.
     - A movement of a Base transfer 1Click made carries `paidWith`; the CSV adds "Paid with" and "Paid with
       transaction".
   - A profile turns it off with `crossChain: false` on `PUT /v1/profiles/{id}/tokens` (R-240); `GET` returns it.

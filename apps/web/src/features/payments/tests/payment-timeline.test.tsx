@@ -28,6 +28,7 @@ const crossChain = {
   convertedAt: null,
   signed: {},
 };
+const BASE_USDC = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913";
 const payment = (change: Partial<PaymentDetail>) =>
   ({
     paymentStatus: "open",
@@ -80,6 +81,27 @@ describe("payment timeline", () => {
     expect(timeline(payment({}), [baseDeposit]).find((s) => s.id === "converting")?.state).toBe(
       "current",
     );
+  });
+
+  it("leaves the steps a direct payment's once money on another option was recorded first", () => {
+    const delivered = {
+      ...crossChain,
+      status: "SUCCESS",
+      destinationTxs: [{ hash: `0x${"9".repeat(64)}`, explorerUrl: "https://basescan.org/tx/0x9" }],
+    };
+    const options = [
+      { optionId: "0xbase", chainId: 8453, token: BASE_USDC, returns: [] },
+      { optionId: "0xarb", chainId: 42161, token: `0x${"a".repeat(40)}`, returns: [] },
+    ];
+    const recorded = (optionId: string) =>
+      timeline(
+        payment({ crossChain: delivered, optionLocked: true, optionId, options } as never),
+        [],
+      )
+        .map((s) => s.id)
+        .includes("converting");
+    expect(recorded("0xbase")).toBe(true);
+    expect(recorded("0xarb")).toBe(false);
   });
 
   it("leaves the steps a direct payment's without a cross-chain payment, or for a deposit 1Click returned", () => {

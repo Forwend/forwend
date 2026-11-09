@@ -290,16 +290,17 @@ func Receipt(inv invoice.Invoice, payLink string, logo []byte) ([]byte, error) {
 	d := start(inv, "Receipt", logo, s)
 	d.facts([2]string{"Issued", day(inv.CreatedAt)}, [2]string{"Supply date", DateText(inv.SupplyDate)},
 		[2]string{"Paid", stamp(inv.PaidAt)})
-	d.fact("Paid with", paidWith(inv.CrossChain))
+	d.fact("Paid with", paidWith(inv))
 	d.items(inv, s.totals, "For reference only: the token amount above was paid.")
 	d.payments(inv)
 	d.code(payLink, "Check this receipt", "A PDF can be edited. The pay page shows what the chain recorded.")
 	return d.output()
 }
 
-// paidWith is "" when 1Click didn't deliver the payment.
-func paidWith(c *invoice.CrossChainPayment) string {
-	if c == nil || c.Status != intents.Success {
+// paidWith is "" when 1Click didn't deliver the payment, or delivered to an option the money of another beat (R-239).
+func paidWith(inv invoice.Invoice) string {
+	c := inv.CrossChain
+	if c == nil || c.Status != intents.Success || c.OptionID != inv.OptionID {
 		return ""
 	}
 	sent := c.Deposited

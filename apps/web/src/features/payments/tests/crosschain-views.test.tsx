@@ -212,7 +212,7 @@ describe("cross-chain payment views", () => {
   it("names what was sent, the part returned and both transactions in Details", () => {
     render(
       <dl>
-        <CrossChainFigure crossChain={crossChain} chainId={8453} />
+        <CrossChainFigure crossChain={crossChain} />
       </dl>,
     );
     expect(screen.getByText("101.62 USDT on Tron")).toBeTruthy();
@@ -236,7 +236,6 @@ describe("cross-chain payment views", () => {
           blockchain: "eth",
           deposited: "1263123456789012345678",
         }}
-        chainId={8453}
       />,
     );
     expect(screen.getByText("1,263.123456789012345678 ETH on Ethereum").className).toContain(
@@ -246,7 +245,7 @@ describe("cross-chain payment views", () => {
 
   it("shows no Details figure for a deposit 1Click returned", () => {
     const { container } = render(
-      <CrossChainFigure crossChain={{ ...crossChain, status: "REFUNDED" }} chainId={8453} />,
+      <CrossChainFigure crossChain={{ ...crossChain, status: "REFUNDED" }} />,
     );
     expect(container.textContent).toBe("");
   });

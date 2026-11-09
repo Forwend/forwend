@@ -314,6 +314,12 @@ describe("owner's invoice page", () => {
     show();
     await settle();
     expect(screen.queryByText(INVOICE_COPY.paidThrough)).toBeNull();
+    // Money on this testnet option was recorded first: 1Click's USDC on Base is held, and didn't pay it.
+    cleanup();
+    serve({ ...OPEN, optionLocked: true, crossChain });
+    show();
+    await settle();
+    expect(screen.queryByText(INVOICE_COPY.paidThrough)).toBeNull();
   });
 
   // R-88: even once the payer locked another option.
