@@ -61,7 +61,11 @@ import {
 } from "@/features/invoices/lib/invoices";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import { Backdrop } from "@/features/pay/components/backdrop";
-import { CrossChainEnded, CrossChainPay } from "@/features/pay/components/crosschain-pay";
+import {
+  CrossChainEnded,
+  CrossChainPay,
+  readAsked,
+} from "@/features/pay/components/crosschain-pay";
 import { ExactAmount } from "@/features/pay/components/exact-amount";
 import { NeedHelp } from "@/features/pay/components/need-help";
 import { type Choice, OptionPicker } from "@/features/pay/components/option-picker";
@@ -599,7 +603,10 @@ function PayBox({
   const [crossOpen, setCrossOpen] = useState(
     () =>
       crossKept?.status === CROSS_CHAIN_STATUSES.pending &&
-      Date.parse(crossKept.shownUntil) > Date.now(),
+      Date.parse(crossKept.shownUntil) > Date.now() &&
+      // Turned off, a kept quote opens again only in the tab that asked for it: another can't get a quote (R-240).
+      (invoice.crossChainOn !== false ||
+        readAsked(invoice.invoiceId)?.assetId === crossKept.assetId),
   );
   const sending = (shown ?? kept) === optionId && !picking;
   const seen =

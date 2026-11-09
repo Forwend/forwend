@@ -480,13 +480,13 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Payment details use `DetailHeader` with the source's icon tile, the status and wallet badges by the title, and
     the requested amount as the header's figure beside Open checkout or Open receipt and Export (both 40px).
   - A notice under the header names each problem no other part shows, once (R-192).
+    - Payment records to review, an unexpected transfer, a webhook that fails.
+    - The wallet transfer and what is still due are never repeated.
   - A payment through NEAR Intents (R-239): the Amount card adds "Sent through NEAR Intents".
     - It shows the amount and chain, any refund, and links to the customer's and the Base transaction.
     - Its Timeline reads Created, Payment detected on the customer's chain, Converting via NEAR Intents, Paid
       with the Base transaction, and In your wallet.
     - Converting is done only once 1Click delivered. A deposit 1Click returned leaves a direct payment's steps.
-    - Payment records to review, an unexpected transfer, a webhook that fails.
-    - The wallet transfer and what is still due are never repeated.
   - Held money is the customer's, not the owner's problem: no notice, no warning color (D-118).
     - Hovering or tapping the status badge shows one sentence per held amount: how much, why, and who handles any return.
     - Example: "0.50 USDC over the amount is held for the customer, and Forwend support handles any return."

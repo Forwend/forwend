@@ -2012,9 +2012,9 @@
       "type": "feat",
       "behavior": "The owner sees how each cross-chain payment was paid, and can turn cross-chain payments off",
       "acceptance": [
-        "A payment's Timeline shows Detected (chain, token, amount sent, origin transaction), Converting (NEAR Intents), Paid (the Base transaction) and Wallet; Details show Paid with, any refunded part and both explorer links (R-239).",
+        "A payment's Timeline shows Detected (chain, token, amount sent, origin transaction), Converting (NEAR Intents), Paid (the Base transaction) and Wallet; Details show what was sent through NEAR Intents, any refunded part and both explorer links; a deposit 1Click returned shows none of it (R-239).",
         "The payments list tags it via NEAR Intents; the receipt PDF, CSV export, paid email and developer docs name it (R-239).",
-        "Networks settings has Accept other tokens through NEAR Intents, on by default; off, no new quote is made and an open quote still finishes; the tokens API carries it (R-240)."
+        "Networks settings has Accept other tokens through NEAR Intents, on by default; off, no new quote is made, and an open quote and a seen deposit still show and finish; the tokens API carries it (R-240)."
       ],
       "dependsOn": [
         "F450"
@@ -2031,7 +2031,10 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-09 Review 1 FAIL (subagent) at 897a0063: the switch hid a kept quote and a seen deposit on the pay page, so a payer could pay twice; owner views (Timeline, Details, invoice row, list tag, pay receipt) treated a returned deposit as paid and took the Base hash from the first deposit; no tests for Details, list tag, invoice row or the Networks switch. Non-blocking: switch endpoints without schemas, switch sent the whole off list (stale save, two writes), switch not optimistic, wording vs R-239, latest payments and phone rows untagged, three Paid with texts, stale model comment, duplicate GET /tokens.",
+        "2026-11-09 Review 2 FAIL (subagent) at cf51246c: the receipt PDF cut off long Paid with text in a quarter-width facts column; the pay receipt, Details wiring, PDF status check and email status check had no test that fails without them. Non-blocking: double JSDoc, DESIGN.md nesting, docs-guides wording, latest-payments tag untested, CrossChainStatus type still in pay, chain-name copies without a drift test, Base link from 1Click's URL, a new tab opening a kept quote while off, accept wording."
+      ],
       "blockedReason": null,
       "evidence": null
     },

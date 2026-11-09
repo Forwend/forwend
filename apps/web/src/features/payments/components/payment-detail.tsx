@@ -61,7 +61,7 @@ import { APP_ROUTES } from "@/shared/config/routes";
 import { CROSS_CHAIN_STATUSES } from "@/shared/constants/chains";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
-import { blockchainName, crossChainEnded } from "@/shared/lib/chains";
+import { blockchainName, crossChainEnded, txLink } from "@/shared/lib/chains";
 import { dateTime } from "@/shared/lib/dates";
 import { exactDigits } from "@/shared/lib/money";
 
@@ -269,9 +269,7 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
                   />
                 </Figure>
               ) : null}
-              {payment.crossChain && paidThroughIntents(payment.crossChain) ? (
-                <CrossChainFigure crossChain={payment.crossChain} />
-              ) : null}
+              <CrossChainFigure crossChain={payment.crossChain} chainId={payment.chainId} />
               {/* Before any money it says what the customer may pay with, never "Paid with". */}
               <Figure term={lead ? COPY.paidWith : paidWith ? COPY.payingWith : COPY.accepts}>
                 {paidWith ? (
@@ -610,7 +608,6 @@ export function timeline(
   }));
 }
 
-/** R-239: what the customer sent on its own chain, what came back, and its transaction there. */
 /** A deposit 1Click saw and converts or converted: one it returned didn't pay the payment (R-239). */
 export function paidThroughIntents(
   c: PaymentDetailType["crossChain"] | undefined,
@@ -618,11 +615,15 @@ export function paidThroughIntents(
   return c != null && c.depositSeenAt !== null && !crossChainEnded(c);
 }
 
+/** R-239: what the customer sent on its own chain, what came back, and both transactions; on chainId, the Base one. */
 export function CrossChainFigure({
   crossChain,
+  chainId,
 }: {
-  crossChain: NonNullable<PaymentDetailType["crossChain"]>;
+  crossChain: PaymentDetailType["crossChain"] | undefined;
+  chainId: number;
 }) {
+  if (!paidThroughIntents(crossChain)) return null;
   const sent = BigInt(crossChain.deposited ?? crossChain.amountIn);
   const money = (units: bigint) =>
     `${formatTokenAmount({ baseUnits: units, decimals: crossChain.decimals, fractionDigits: exactDigits(units, crossChain.decimals) })} ${crossChain.symbol}`;
@@ -631,8 +632,8 @@ export function CrossChainFigure({
   const base =
     crossChain.status === CROSS_CHAIN_STATUSES.success ? crossChain.destinationTxs[0] : undefined;
   const links = [
-    { tx: origin, label: COPY.crossChain.originTx },
-    { tx: base, label: COPY.crossChain.baseTx },
+    { href: origin?.explorerUrl, label: COPY.crossChain.originTx },
+    { href: base ? txLink(chainId, base.hash)?.href : undefined, label: COPY.crossChain.baseTx },
   ];
   return (
     <div className="flex flex-col gap-1 px-4 py-4 sm:px-5">
@@ -644,11 +645,11 @@ export function CrossChainFigure({
         {refunded > 0n ? (
           <span className="text-xs text-muted">{COPY.crossChain.refunded(money(refunded))}</span>
         ) : null}
-        {links.map(({ tx, label }) =>
-          tx?.explorerUrl ? (
+        {links.map(({ href, label }) =>
+          href ? (
             <a
               key={label}
-              href={tx.explorerUrl}
+              href={href}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs text-ink underline decoration-line-strong underline-offset-4"

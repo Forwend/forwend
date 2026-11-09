@@ -484,7 +484,7 @@ function CrossChainProgress({ invoice, crossChain }: { invoice: Invoice; crossCh
 const askedKey = (invoiceId: string) => `forwend:cross:${invoiceId}`;
 
 /** What this tab asked a quote with; null without, or when storage is off. */
-function readAsked(invoiceId: string): { assetId: string; refundTo: string } | null {
+export function readAsked(invoiceId: string): { assetId: string; refundTo: string } | null {
   try {
     const value: unknown = JSON.parse(sessionStorage.getItem(askedKey(invoiceId)) ?? "null");
     const asked = value as { assetId?: unknown; refundTo?: unknown } | null;

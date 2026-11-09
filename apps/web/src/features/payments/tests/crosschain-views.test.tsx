@@ -1,14 +1,26 @@
 // @vitest-environment jsdom
 import { TooltipProvider } from "@forwend/ui-web";
 import { cleanup, render, screen } from "@testing-library/react";
+import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { LatestPayments } from "@/features/payments/components/latest-payments";
 import {
   CrossChainFigure,
   paidThroughIntents,
 } from "@/features/payments/components/payment-detail";
 import { PaymentsTable } from "@/features/payments/components/payments-table";
 import type { Payment, PaymentDetail } from "@/features/payments/types/payments";
+import { makeStore } from "@/store/store";
 
+const NodeRequest = globalThis.Request;
+vi.stubGlobal(
+  "Request",
+  class extends NodeRequest {
+    constructor(input: RequestInfo | URL, init?: RequestInit) {
+      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
+    }
+  },
+);
 vi.stubGlobal("matchMedia", () => ({
   matches: false,
   addEventListener() {},
@@ -106,10 +118,23 @@ describe("cross-chain payment views", () => {
     expect(document.body.textContent).not.toContain("via NEAR Intents");
   });
 
+  it("tags it in the overview's latest payments too", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ items: [row({ crossChain })], nextCursor: null })),
+    );
+    render(
+      <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+        <LatestPayments profileId="6f9619ff-8b86-4011-b42d-00c04fc964ff" />
+      </Provider>,
+    );
+    expect(await screen.findByText("via NEAR Intents")).toBeTruthy();
+  });
+
   it("names what was sent, the part returned and both transactions in Details", () => {
     render(
       <dl>
-        <CrossChainFigure crossChain={crossChain} />
+        <CrossChainFigure crossChain={crossChain} chainId={8453} />
       </dl>,
     );
     expect(screen.getByText("101.62 USDT on Tron")).toBeTruthy();
@@ -118,8 +143,15 @@ describe("cross-chain payment views", () => {
       crossChain.originTxs[0]?.explorerUrl,
     );
     expect(screen.getByRole("link", { name: "Base transaction" }).getAttribute("href")).toBe(
-      crossChain.destinationTxs[0]?.explorerUrl,
+      `https://basescan.org/tx/0x${"9".repeat(64)}`,
     );
+  });
+
+  it("shows no Details figure for a deposit 1Click returned", () => {
+    const { container } = render(
+      <CrossChainFigure crossChain={{ ...crossChain, status: "REFUNDED" }} chainId={8453} />,
+    );
+    expect(container.textContent).toBe("");
   });
 
   it("counts a deposit 1Click converts or converted, and none it returned", () => {

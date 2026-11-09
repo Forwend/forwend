@@ -20,7 +20,6 @@ import type {
   OwedKind,
   ReminderStep,
 } from "@/features/invoices/types/invoices";
-import type { CrossChainStatus } from "@/features/pay/types/crosschain";
 import { FEES_PAID_BY } from "@/features/profiles/constants/profile";
 import { storeBrandSchema } from "@/features/stores/schemas/stores";
 import {
@@ -34,6 +33,7 @@ import {
   pageOf,
   usdAmount,
 } from "@/shared/schemas/api";
+import type { CrossChainStatus } from "@/shared/types/chains";
 
 /** An option's fees, in its contract terms, and who pays them (R-228). An answer without them has none: read them
  * with optionFees. */

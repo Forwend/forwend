@@ -503,7 +503,7 @@ export const GUIDE_PAGES: readonly DocsArticle[] = [
             name: "crossChain",
             type: "object | null",
             description:
-              "On an invoice's and a payment's own read and in webhooks: status, the token and chain the customer paid from, what was sent and refunded, and both chains' transactions. A payments list carries it once a deposit was seen.",
+              "On an invoice's and a payment's own read and in webhooks: status, the token and chain the customer paid from, what was sent and refunded, and both chains' transactions. A payments list carries it only while NEAR Intents converts or converted the deposit, never for one it returned.",
           },
         ],
       },

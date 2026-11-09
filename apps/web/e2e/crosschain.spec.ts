@@ -317,39 +317,46 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     }
   });
 
-  test("the receipt names what the payer paid with", async ({ page }) => {
-    await page.clock.install({ time: NOW });
-    await mockInvoice(page, {
-      ...LIVE,
-      paymentStatus: "paid",
-      settlementStatus: "pending",
-      paidAt: "2026-10-10T12:05:00Z",
-      deposits: [
-        {
-          txHash: `0x${"3".repeat(64)}`,
-          logIndex: 0,
-          from: "0x8ba1f109551bd432803012645ac136ddd64dba72",
-          amount: "1250000000",
-          blockNumber: 100,
-          blockTime: "2026-10-10T12:04:00Z",
-          status: "confirmed",
-          late: false,
-          paid: "1250000000",
-          blocksLeft: 0,
-          blocksTotal: 0,
-          secondsLeft: 0,
-        },
-      ],
-      crossChain: kept(quote("1263000000"), {
-        status: "SUCCESS",
-        depositSeenAt: "2026-10-10T12:01:00Z",
-        convertedAt: "2026-10-10T12:03:00Z",
-      }),
+  // A quote 1Click returned didn't pay: the payer paid on Base after it, and the receipt says nothing of it.
+  for (const status of ["SUCCESS", "REFUNDED"])
+    test(`the receipt names what the payer paid with only once 1Click delivered (${status})`, async ({
+      page,
+    }) => {
+      await page.clock.install({ time: NOW });
+      await mockInvoice(page, {
+        ...LIVE,
+        paymentStatus: "paid",
+        settlementStatus: "pending",
+        paidAt: "2026-10-10T12:05:00Z",
+        deposits: [
+          {
+            txHash: `0x${"3".repeat(64)}`,
+            logIndex: 0,
+            from: "0x8ba1f109551bd432803012645ac136ddd64dba72",
+            amount: "1250000000",
+            blockNumber: 100,
+            blockTime: "2026-10-10T12:04:00Z",
+            status: "confirmed",
+            late: false,
+            paid: "1250000000",
+            blocksLeft: 0,
+            blocksTotal: 0,
+            secondsLeft: 0,
+          },
+        ],
+        crossChain: kept(quote("1263000000"), {
+          status,
+          depositSeenAt: "2026-10-10T12:01:00Z",
+          convertedAt: status === "SUCCESS" ? "2026-10-10T12:03:00Z" : null,
+        }),
+      });
+      await page.goto(`/pay/${PAY}`);
+      await expect(page.getByRole("link", { name: "Download receipt" })).toBeVisible();
+      await expect(page.getByText("Paid with")).toHaveCount(status === "SUCCESS" ? 1 : 0);
+      await expect(page.getByText("1,263.00 USDT on Tron")).toHaveCount(
+        status === "SUCCESS" ? 1 : 0,
+      );
     });
-    await page.goto(`/pay/${PAY}`);
-    await expect(page.getByText("Paid with")).toBeVisible();
-    await expect(page.getByText("1,263.00 USDT on Tron")).toBeVisible();
-  });
 
   test("a reload shows a kept quote only against the refund address this tab typed", async ({
     page,
@@ -403,6 +410,21 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await expect(page.getByText(DEPOSIT_ADDRESS)).toBeVisible();
     // Back to the Base option, the switch offers no new quote.
     await page.getByRole("button", { name: "Pay with USDC instead" }).click();
+    await expect(page.getByRole("button", { name: "Pay with another token" })).toHaveCount(0);
+  });
+
+  test("a new tab doesn't open a kept quote once the payee turned new quotes off (R-240)", async ({
+    page,
+  }) => {
+    await page.clock.install({ time: NOW });
+    await mockInvoice(page, {
+      ...LIVE,
+      crossChainOn: false,
+      crossChain: kept(quote("1263000000"), {}),
+    });
+    await page.goto(`/pay/${PAY}`);
+    await expect(page.getByRole("button", { name: "Show address" })).toBeVisible();
+    await expect(page.getByText(DEPOSIT_ADDRESS)).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Pay with another token" })).toHaveCount(0);
   });
 
