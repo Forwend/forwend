@@ -1571,12 +1571,12 @@
       "type": "fix",
       "behavior": "A stale Chainlink ETH/USD price, or one read while the L2 sequencer is down, prices no fee and floors no swap",
       "acceptance": [
-        "The ETH/USD price is refused when its round is older than its feed's heartbeat and a half; each feed's heartbeat is Chainlink's (R-227, R-229).",
+        "The ETH/USD price is refused when its round is older than its feed's heartbeat plus 10 minutes; each feed's heartbeat is Chainlink's (R-227, R-229).",
         "On Base and Arbitrum the price is refused while the L2 sequencer uptime feed says down, or for an hour after it comes back.",
         "A refused price makes the fee quote fall back on its last good quote for up to an hour, then refuse; the executor's swap is not sent and the low gas alert names why."
       ],
       "dependsOn": [],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "backend",
         "docs-check"
@@ -1588,11 +1588,62 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-09 review pass by reviewer: EthPrice refuses a price older than 1.5x its feed's heartbeat and, on Base and Arbitrum, one read while the sequencer uptime feed is down, has no valid round, or came back under an hour ago, as Chainlink advises. Addresses and heartbeats match Chainlink's directory (Base 0x71041ddd is the listed secondary proxy of aggregator 0x05c84a58), and live reads show each feed updating within its limit. The quote fallback, the swap alert with no transaction and the send 503 all come from the one shared check; every chain.EthUSD reader, the mainnetfork test included, was updated."
+      ],
       "blockedReason": null,
-      "evidence": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-09T00:49:38Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 70.8,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 66.3,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 30.9,
+            "log": ""
+          }
+        ],
+        "taskHash": "cc818dc993095c0e",
+        "filesHash": "f5e19635695484a0",
+        "proof": {
+          "1": "backend: TestEthPriceRefusesAStaleOrUntrustedPrice accepts a price 80 minutes old on a 1-hour heartbeat and refuses one 100 minutes old; TestEveryEthUSDFeedHasAHeartbeat; heartbeats are Chainlink's feed directory's (Base and Base Sepolia 1200 s, Arbitrum 1755 s, Arbitrum Sepolia 120 s)",
+          "2": "backend: TestEthPriceRefusesAStaleOrUntrustedPrice refuses a down sequencer and one back ten minutes ago, and accepts one up for a day; the opt-in mainnet fork run read the real Base and Arbitrum sequencer feeds and passed",
+          "3": "backend: TestAStalePriceKeepsTheLastGoodQuote serves the kept quote, then refuses past QuoteStale naming the heartbeat; TestSignerAlertsWhenItCantBuyGas sends nothing and alerts naming a stale price or a down sequencer; paymaster send tests still price with a fresh stand-in feed"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "EthPrice refuses a price older than 1.5x its feed's heartbeat and, on Base and Arbitrum, one read while the sequencer uptime feed is down, has no valid round, or came back under an hour ago, as Chainlink advises. Addresses and heartbeats match Chainlink's directory (Base 0x71041ddd is the listed secondary proxy of aggregator 0x05c84a58), and live reads show each feed updating within its limit. The quote fallback, the swap alert with no transaction and the send 503 all come from the one shared check; every chain.EthUSD reader, the mainnetfork test included, was updated.",
+          "at": "2026-11-09T00:57:44Z",
+          "filesHash": "f5e19635695484a0"
+        }
+      },
       "branch": "fix/f447-a-stale-chainlink-eth-usd-price-or-one-r",
-      "baseCommit": "fb24425001c3dded72f1addbd67d20d50eaba4e3"
+      "baseCommit": "fb24425001c3dded72f1addbd67d20d50eaba4e3",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

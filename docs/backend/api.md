@@ -103,7 +103,7 @@ R-227, D-122; the full schema is in openapi.yaml.
   - A network's fee is a receiver deploy and settle at the chain's current fee cap, twice over, rounded up to 0.01 USD.
   - Every option carries the highest fee its networks quote, so one amount covers whichever network the client picks.
   - ETH/USD prices it on Base and Arbitrum; Tempo's gas unit and Arc's native USDC are already dollars.
-  - A price older than its feed's heartbeat and a half fails the read (`chain.EthUSD`).
+  - A price older than its feed's heartbeat plus 10 minutes fails the read (`chain.EthUSD`).
   - So does one read while the L2 sequencer is down, or back for under an hour (`chain.SequencerUptime`).
   - One quote serves a chain's new invoices for a minute (`settlement.QuoteAge`).
   - A read that fails falls back on the chain's last quote for an hour (`settlement.QuoteStale`).

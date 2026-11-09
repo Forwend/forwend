@@ -289,7 +289,8 @@ Limits:
 - The selected provider supplies gas-price suggestions; no independent provider checks its suggested tip.
   - A per-chain ceiling per gas unit bounds what a wrong or lying suggestion can cost (R-189).
 - The executor's gas swap takes USDC at 1 USD and trusts Chainlink's ETH/USD feed for its floor (R-229).
-  - A price older than its feed's heartbeat and a half, or read while the L2 sequencer is down, sends no swap.
+  - A price older than its feed's heartbeat plus 10 minutes sends no swap.
+  - Nor does one read while the L2 sequencer is down, or back for under an hour.
   - Within that window, a feed lagging a falling ether price loosens the floor by the lag.
   - One swap buys at most 40 deploys and settles' gas at the fee ceiling: about 30 USD on Base or Arbitrum.
 

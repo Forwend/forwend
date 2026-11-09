@@ -17,9 +17,8 @@ type PriceFeed struct {
 	Heartbeat time.Duration
 }
 
-// EthUSD is each paymaster chain's Chainlink ETH/USD feed, 8 decimals, with its heartbeat in Chainlink's feed directory,
-// checked on 2026-11-09. Base's proxy is no longer listed, but reads the same aggregator as the listed
-// eth-usd-shared-svr-2 feed.
+// EthUSD is each paymaster chain's Chainlink ETH/USD feed, 8 decimals, with its heartbeat in Chainlink's feed directory.
+// Base's proxy is the directory's second proxy of the eth-usd-shared-svr-2 feed.
 var EthUSD = map[uint64]PriceFeed{
 	8453:   {common.HexToAddress("0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70"), 1200 * time.Second},
 	42161:  {common.HexToAddress("0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612"), 1755 * time.Second},
@@ -37,13 +36,17 @@ var SequencerUptime = map[uint64]common.Address{
 // SequencerGrace: once the sequencer is back, prices wait this long for the feeds to catch up.
 const SequencerGrace = time.Hour
 
+// PriceSlack is how much later than its heartbeat a feed may answer: its update is a transaction that can wait for a
+// block, and a testnet oracle with a short heartbeat runs late now and then.
+const PriceSlack = 10 * time.Minute
+
 // EthUSDDecimals is the decimals of every EthUSD feed's answer.
 const EthUSDDecimals = 8
 
 var latestRoundData = common.Hex2Bytes("feaf968c")
 
 // EthPrice reads the chain's ETH/USD feed: the dollars one ether costs, with EthUSDDecimals decimals. It refuses a
-// price older than its heartbeat and a half, or read while the L2 sequencer is down or back for under SequencerGrace:
+// price older than its heartbeat and PriceSlack, or read while the L2 sequencer is down or back for under SequencerGrace:
 // such a price sets network fees and the floor of the executor's swap (R-227, R-229).
 func EthPrice(ctx context.Context, client *ethclient.Client, chainID uint64) (*big.Int, error) {
 	feed, ok := EthUSD[chainID]
@@ -57,7 +60,7 @@ func EthPrice(ctx context.Context, client *ethclient.Client, chainID uint64) (*b
 	if price.Sign() <= 0 {
 		return nil, fmt.Errorf("chain %d ETH/USD feed answered no price", chainID)
 	}
-	if age := time.Since(updated); age > feed.Heartbeat*3/2 {
+	if age := time.Since(updated); age > feed.Heartbeat+PriceSlack {
 		return nil, fmt.Errorf("chain %d ETH/USD feed last answered %s ago, past its %s heartbeat", chainID,
 			age.Round(time.Second), feed.Heartbeat)
 	}

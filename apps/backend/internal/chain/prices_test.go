@@ -11,7 +11,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 )
 
-// R-227, R-229: a price past its heartbeat and a half, or read while the L2 sequencer is down or just back, sets no
+// R-227, R-229: a price past its heartbeat and PriceSlack, or read while the L2 sequencer is down or just back, sets no
 // fee and no swap floor.
 func TestEthPriceRefusesAStaleOrUntrustedPrice(t *testing.T) {
 	a := chaintest.Start(t)
@@ -27,14 +27,14 @@ func TestEthPriceRefusesAStaleOrUntrustedPrice(t *testing.T) {
 	if got, err := EthPrice(t.Context(), client, chaintest.ChainID); err != nil || got.Cmp(price) != 0 {
 		t.Fatalf("a fresh price: %v (%v), want %s", got, err, price)
 	}
-	a.Feed(feed, price, ago(2*time.Hour), ago(80*time.Minute))
+	a.Feed(feed, price, ago(2*time.Hour), ago(65*time.Minute))
 	if got, err := EthPrice(t.Context(), client, chaintest.ChainID); err != nil || got.Cmp(price) != 0 {
-		t.Fatalf("a price within its heartbeat and a half: %v (%v), want %s", got, err, price)
+		t.Fatalf("a price within its heartbeat and PriceSlack: %v (%v), want %s", got, err, price)
 	}
-	a.Feed(feed, price, ago(2*time.Hour), ago(100*time.Minute))
+	a.Feed(feed, price, ago(2*time.Hour), ago(75*time.Minute))
 	if _, err := EthPrice(t.Context(), client, chaintest.ChainID); err == nil ||
 		!strings.Contains(err.Error(), "past its 1h0m0s heartbeat") {
-		t.Fatalf("a price past its heartbeat and a half: %v, want refused", err)
+		t.Fatalf("a price past its heartbeat and PriceSlack: %v, want refused", err)
 	}
 
 	a.Feed(feed, price, 0, 0)
