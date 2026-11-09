@@ -114,6 +114,19 @@ func run() error {
 			}
 		}
 	})
+	// So do the minimum checks (D-126): a dry quote can take seconds.
+	housekeeping.Go(func() {
+		for {
+			if err := tokens.Probe(ctx, time.Now()); err != nil {
+				slog.Warn("check 1Click minimums", "err", err)
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(cfg.Chains.PollInterval):
+			}
+		}
+	})
 	// 1Click's status reads have their own loop: a slow answer never delays a chain round or an email.
 	housekeeping.Go(func() {
 		for {

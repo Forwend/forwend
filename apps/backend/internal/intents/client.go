@@ -8,8 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/outbound"
@@ -48,7 +50,11 @@ func NewClient(url, key string, allowLoopback bool) *Client {
 	return &Client{HTTP: c, URL: url, Key: key, Signer: ManagerKey}
 }
 
-var minimum = regexp.MustCompile(`try at least ([0-9]{1,78})`)
+var (
+	minimum = regexp.MustCompile(`try at least ([0-9]{1,78})`)
+	// 1Click's temporary limits name dollars; the destination is Base USDC (D-123), a dollar for each 10^6 units.
+	minimumUSD = regexp.MustCompile(`minimum swap amount is \$([0-9][0-9,]{0,30}(?:\.[0-9]{1,6})?)`)
+)
 
 // call sends body (nil for a GET) and returns the answer's bytes, exactly as 1Click sent them.
 func (c *Client) call(ctx context.Context, method, path string, body any) ([]byte, error) {
@@ -88,6 +94,10 @@ func (c *Client) call(ctx context.Context, method, path string, body any) ([]byt
 		_ = json.Unmarshal(answer, &refusal)
 		if m := minimum.FindStringSubmatch(refusal.Message); m != nil {
 			return nil, &BelowMinimum{Minimum: m[1]}
+		}
+		if m := minimumUSD.FindStringSubmatch(refusal.Message); m != nil {
+			usd, _ := new(big.Rat).SetString(strings.ReplaceAll(m[1], ",", ""))
+			return nil, &BelowMinimum{Minimum: new(big.Rat).Mul(usd, big.NewRat(1_000_000, 1)).FloatString(0)}
 		}
 		return nil, fmt.Errorf("%w: %.200s", ErrRefused, refusal.Message)
 	default:

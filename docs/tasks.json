@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 453,
+  "nextId": 454,
   "tasks": [
     {
       "id": "F332",
@@ -2148,6 +2148,34 @@
         "2026-11-09 blocked: Spends real mainnet money: needs the owner's approval and a funded payer wallet."
       ],
       "blockedReason": "Spends real mainnet money: needs the owner's approval and a funded payer wallet.",
+      "evidence": null
+    },
+    {
+      "id": "F453",
+      "type": "feat",
+      "behavior": "The token picker shows each token's minimum and blocks one that needs more than is due",
+      "acceptance": [
+        "The worker learns each token's 1Click minimum with a dry quote, at most once an hour per token, and a payer's refused price or quote updates it at once (D-126).",
+        "The tokens route gives each token's minimum; the picker greys a token needing more than is due, shows its minimum, and it can't be picked (R-242).",
+        "A price 1Click refuses says the token can't be converted now, never a refund-address problem (R-242)."
+      ],
+      "dependsOn": [
+        "F451"
+      ],
+      "state": "not_started",
+      "verification": [
+        "backend",
+        "web-unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-242",
+        "D-126"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
       "evidence": null
     }
   ],

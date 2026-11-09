@@ -891,6 +891,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
       - The first chain is chosen; popular chains come first. A token search looks across every chain.
       - On phones the chains are one scrolling row of chips above the tokens.
       - Each token row shows its first letter as a mark, the symbol over the chain, and "About …" at the right.
+      - A token NEAR Intents needs more from than is due is greyed and can't be picked (R-242).
+        - Its row says "Tron · Needs at least 100.00 USDC" and drops "About …"; it sits under the tokens that fit.
+        - A note at the sheet's foot says greyed tokens need more than this payment, and that NEAR Intents sets it.
+    - A price NEAR Intents refuses says it can't convert this token now; a refund-address line is only for a quote.
     - After a pick: the token row with Change, a "You send" box (amount, conversion cost and time), the refund
       address field with "Your own wallet, not an exchange", then Show address.
     - The deposit address shows as the direct one does: QR, exact amount, "Send only USDT on Tron.", the address.

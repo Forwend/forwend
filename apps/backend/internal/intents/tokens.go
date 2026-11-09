@@ -3,13 +3,17 @@ package intents
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"maps"
 	"math/big"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -21,6 +25,8 @@ type Token struct {
 	Decimals   int
 	Contract   string
 	USD        string
+	// Minimum is the Base USDC base units 1Click needs at least from it; "" when it named none (D-126).
+	Minimum string
 }
 
 // TokensEvery is how often the worker reads the list; retry, the wait after a failed read.
@@ -77,10 +83,11 @@ func usd(price json.Number) string {
 
 // Keeper keeps 1Click's token list in Postgres for every api replica (R-232).
 type Keeper struct {
-	Pool   *pgxpool.Pool
-	Client *Client
-	Every  time.Duration
-	due    time.Time
+	Pool     *pgxpool.Pool
+	Client   *Client
+	Every    time.Duration
+	due      time.Time
+	probeDue time.Time
 }
 
 func (k *Keeper) Tick(ctx context.Context, now time.Time) error {
@@ -132,19 +139,81 @@ func (k *Keeper) refresh(ctx context.Context, now time.Time) error {
 func List(ctx context.Context, db interface {
 	Query(context.Context, string, ...any) (pgx.Rows, error)
 }) ([]Token, error) {
-	rows, err := db.Query(ctx, `SELECT asset_id, blockchain, symbol, decimals, coalesce(contract, ''), coalesce(usd::text, '')
+	rows, err := db.Query(ctx, `SELECT asset_id, blockchain, symbol, decimals, coalesce(contract, ''), coalesce(usd::text, ''),
+		    coalesce(minimum::text, '')
 		FROM intents_tokens ORDER BY coalesce(usd BETWEEN 0.98 AND 1.02, false) DESC, symbol, blockchain, asset_id`)
 	if err != nil {
 		return nil, fmt.Errorf("list 1Click tokens: %w", err)
 	}
 	list, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (Token, error) {
 		var t Token
-		return t, row.Scan(&t.AssetID, &t.Blockchain, &t.Symbol, &t.Decimals, &t.Contract, &t.USD)
+		return t, row.Scan(&t.AssetID, &t.Blockchain, &t.Symbol, &t.Decimals, &t.Contract, &t.USD, &t.Minimum)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list 1Click tokens: %w", err)
 	}
 	return list, nil
+}
+
+// D-126: a dry quote for so little names any route's minimum above it. One goes out every probeGap, and each token is
+// checked again after ProbeEvery.
+const (
+	ProbeEvery = time.Hour
+	probeGap   = 5 * time.Second
+)
+
+var probeAmount = big.NewInt(10_000) // 0.01 USDC
+
+// A dry quote moves nothing, so any Base address will do as its recipient.
+const probeRecipient = "0x000000000000000000000000000000000000dead"
+
+// Probe asks one dry quote for the token whose minimum was checked longest ago, so payers see which tokens fit before
+// they pick (D-126). Base USDC, memo chains and unpriced tokens are never offered, so never checked.
+func (k *Keeper) Probe(ctx context.Context, now time.Time) error {
+	if now.Before(k.probeDue) {
+		return nil
+	}
+	k.probeDue = now.Add(probeGap)
+	memo := slices.Collect(maps.Keys(MemoChains))
+	var asset string
+	err := k.Pool.QueryRow(ctx, `SELECT asset_id FROM intents_tokens WHERE asset_id <> $1 AND usd IS NOT NULL
+		    AND NOT blockchain = ANY($2) AND (minimum_checked_at IS NULL OR minimum_checked_at <= $3)
+		ORDER BY minimum_checked_at NULLS FIRST, asset_id LIMIT 1`, BaseUSDCAsset, memo, now.Add(-ProbeEvery)).Scan(&asset)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("pick a 1Click token to check: %w", err)
+	}
+	_, err = k.Client.Quote(ctx, Ask{Origin: asset, Amount: probeAmount, Recipient: probeRecipient,
+		Deadline: now.Add(time.Hour)}, true)
+	var below *BelowMinimum
+	switch {
+	case errors.As(err, &below):
+		minimum, _ := new(big.Int).SetString(below.Minimum, 10)
+		return SetMinimum(ctx, k.Pool, asset, minimum, now)
+	case err == nil, errors.Is(err, ErrRefused): // a refusal for another reason names no minimum
+		return SetMinimum(ctx, k.Pool, asset, nil, now)
+	default:
+		k.probeDue = now.Add(retry)
+		return err
+	}
+}
+
+// SetMinimum keeps what 1Click said asset needs at least, in Base USDC base units; nil when it named none (D-126).
+func SetMinimum(ctx context.Context, db interface {
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+}, asset string, minimum *big.Int, at time.Time) error {
+	var units *string
+	if minimum != nil && minimum.Sign() > 0 {
+		s := minimum.String()
+		units = &s
+	}
+	if _, err := db.Exec(ctx, `UPDATE intents_tokens SET minimum = $2::numeric, minimum_checked_at = $3 WHERE asset_id = $1`,
+		asset, units, at); err != nil {
+		return fmt.Errorf("keep 1Click minimum of %s: %w", asset, err)
+	}
+	return nil
 }
 
 // MemoChains need a memo beside the address, which a payer can forget and lose the money; they are left out (D-123).

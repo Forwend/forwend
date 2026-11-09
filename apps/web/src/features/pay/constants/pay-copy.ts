@@ -187,6 +187,10 @@ export const PAY_COPY = {
     change: "Change",
     direct: "Pay with USDC instead",
     estimate: (amount: string) => `About ${amount}`,
+    // D-126: a token whose minimum is above what is due can't be picked.
+    needsAtLeast: (amount: string) => `Needs at least ${amount}`,
+    tooSmall: (due: string) =>
+      `Greyed tokens need more than this payment of ${due}. NEAR Intents sets the minimum for each.`,
     youSend: "You send",
     gettingPrice: "Getting a price",
     cost: (usd: string) => `Conversion cost about ${usd} USD`,
@@ -212,6 +216,7 @@ export const PAY_COPY = {
     newAddress: "New address. Send only to this one.",
     unverified: "We could not check this address with NEAR Intents, so it is not shown. Try again.",
     belowMinimum: "This token needs a larger payment. Choose another token.",
+    cantConvert: "NEAR Intents can't convert this token now. Choose another token.",
     unavailable: "NEAR Intents is not answering. Try again in a minute.",
     // The payee turned it off, or the invoice can't take it now: trying again won't help (R-240).
     closed:

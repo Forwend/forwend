@@ -221,6 +221,21 @@ func TestCrossChainQuoteRefusals(t *testing.T) {
 		t.Fatalf("price below minimum: %d %v", price.status, price.body)
 	}
 	fake.Minimum = big.NewInt(5301)
+	// A temporary limit 1Click names in dollars is a minimum too, in Base USDC units (D-126).
+	fake.Limits = map[string]int64{tronUSDT: 1000}
+	price = e.call(t, "GET", crossPath+pay+"/crosschain/price?originAsset="+url.QueryEscape(tronUSDT), "", "", "")
+	if price.status != 422 || errorCode(price) != "below_minimum" || price.body["error"].(map[string]any)["minimum"] != "1000000000" {
+		t.Fatalf("price below a temporary limit: %d %v", price.status, price.body)
+	}
+	fake.Limits = nil
+	// The next payer's list already names both minimums.
+	minimums := map[string]any{}
+	for _, tok := range e.call(t, "GET", crossPath+pay+"/crosschain/tokens", "", "", "").body["tokens"].([]any) {
+		minimums[tok.(map[string]any)["assetId"].(string)] = tok.(map[string]any)["minimum"]
+	}
+	if minimums[tronUSDT] != "1000000000" || minimums[ethAsset] != "200000000" {
+		t.Fatalf("listed minimums %v", minimums)
+	}
 
 	// Twenty quotes an hour, then none: nineteen kept already, the twentieth made, the next refused. Quotes older than
 	// an hour don't count.
