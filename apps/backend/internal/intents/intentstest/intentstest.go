@@ -32,7 +32,8 @@ type Fake struct {
 	Tamper func(answer map[string]any)
 }
 
-// Tokens is the fake's default list: Base and Arbitrum USDC, Tron USDT, Ethereum ETH and Stellar USDC (a memo chain).
+// Tokens is the fake's default list: Base and Arbitrum USDC, Tron USDT, Ethereum ETH, Stellar USDC (a memo chain) and
+// Solana SOL without a price.
 var Tokens = []map[string]any{
 	{"assetId": intents.BaseUSDCAsset, "blockchain": "base", "symbol": "USDC", "decimals": 6, "price": 0.9998,
 		"contractAddress": intents.BaseUSDC},
@@ -42,6 +43,7 @@ var Tokens = []map[string]any{
 		"decimals": 6, "price": 0.9991, "contractAddress": "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"},
 	{"assetId": "nep141:eth.omft.near", "blockchain": "eth", "symbol": "ETH", "decimals": 18, "price": 2143.49},
 	{"assetId": "nep141:stellar-usdc.omft.near", "blockchain": "stellar", "symbol": "USDC", "decimals": 7, "price": 1},
+	{"assetId": "nep141:sol.omft.near", "blockchain": "sol", "symbol": "SOL", "decimals": 9, "price": nil},
 }
 
 func New(t *testing.T) *Fake {

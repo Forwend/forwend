@@ -7,7 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / 'apps/backend/scripts/with-env.sh'
-SECRETS = ['RESEND_API_KEY', 'EXECUTOR_PRIVATE_KEY', 'PRIVY_APP_SECRET']
+SECRETS = ['RESEND_API_KEY', 'EXECUTOR_PRIVATE_KEY', 'PRIVY_APP_SECRET', 'ONECLICK_API_KEY']
 
 
 def held(program):
@@ -31,6 +31,13 @@ class ProcessSecretsTests(unittest.TestCase):
         self.assertIn('RESEND_API_KEY', held('worker'))
         self.assertNotIn('RESEND_API_KEY', held('signer'))
         self.assertIn('EXECUTOR_PRIVATE_KEY', held('signer'))
+
+    def test_only_the_api_and_the_worker_hold_the_1click_key(self):
+        # D-123: the api asks for quotes and the worker reads the token list; nothing else, tests included, needs it.
+        for program in ('api', 'worker'):
+            self.assertIn('ONECLICK_API_KEY', held(program))
+        for program in ('signer', 'webhooks', 'go'):
+            self.assertNotIn('ONECLICK_API_KEY', held(program))
 
 
 if __name__ == '__main__':

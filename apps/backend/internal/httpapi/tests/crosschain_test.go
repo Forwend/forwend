@@ -23,6 +23,7 @@ const (
 	ethAsset  = "nep141:eth.omft.near"
 	arbAsset  = "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near"
 	xlmAsset  = "nep141:stellar-usdc.omft.near"
+	solAsset  = "nep141:sol.omft.near" // listed without a price
 	refundTo  = "TJRabPrwbZy45sbavfcjinPJC18kjpRTv8"
 	crossPath = "/v1/invoices/"
 )
@@ -76,7 +77,8 @@ func TestCrossChainTokensLeaveOutDirectMemoAndDestinationTokens(t *testing.T) {
 		assets = append(assets, token["assetId"].(string))
 		estimates[token["assetId"].(string)] = token["estimate"].(string)
 	}
-	// Tron USDT is a stablecoin and comes before ETH; Base and Arbitrum USDC are taken directly; Stellar needs a memo.
+	// Tron USDT is a stablecoin and comes before ETH; Base and Arbitrum USDC are taken directly; Stellar needs a memo;
+	// SOL has no price.
 	if !slices.Equal(assets, []string{tronUSDT, ethAsset}) {
 		t.Fatalf("assets %v", assets)
 	}
@@ -97,9 +99,12 @@ func TestCrossChainQuotePaysExactlyWhatIsDueIntoTheBaseOption(t *testing.T) {
 	pay, options := liveInvoice(t, e, "key-1", 86400)
 	base := options[intents.BaseChainID]
 
+	// What the payer sends, the cost and the time, with no address.
 	price := e.call(t, "GET", crossPath+pay+"/crosschain/price?originAsset="+url.QueryEscape(tronUSDT), "", "", "")
 	if price.status != http.StatusOK || price.body["amountIn"] != "101120000" || price.body["amountOut"] != "100000000" ||
-		price.body["depositAddress"] != nil || price.body["signed"] != nil || price.body["quoteId"] != nil {
+		price.body["amountInUsd"] != "101120000" || price.body["refundFee"] != "5300" ||
+		price.body["timeEstimate"] != float64(27) || price.body["depositAddress"] != nil || price.body["signed"] != nil ||
+		price.body["quoteId"] != nil {
 		t.Fatalf("price: %d %v", price.status, price.body)
 	}
 	// A second pick of the same token is the kept dry quote, not another call to 1Click.
@@ -171,6 +176,7 @@ func TestCrossChainQuoteRefusals(t *testing.T) {
 		status              int
 	}{
 		"memo chain":       {xlmAsset, refundTo, "invalid_value", 422},
+		"no price":         {solAsset, refundTo, "invalid_value", 422},
 		"direct token":     {arbAsset, refundTo, "invalid_value", 422},
 		"destination":      {intents.BaseUSDCAsset, refundTo, "invalid_value", 422},
 		"unknown token":    {"nep141:nothing", refundTo, "invalid_value", 422},

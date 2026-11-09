@@ -17,15 +17,15 @@ import (
 
 // Cross-chain payments through NEAR Intents (D-123, D-125).
 const (
-	// CrossChainLeast: no quote for a checkout closing sooner, so the conversion lands before the close.
-	CrossChainLeast = 20 * time.Minute
-	// A quote's deadline is the earlier of CrossChainDeadline from now and CrossChainBeforeClose before the close; its
-	// price shows for CrossChainShown, ending at least 5 minutes before that deadline.
-	CrossChainDeadline    = time.Hour
-	CrossChainBeforeClose = 10 * time.Minute
-	CrossChainShown       = 15 * time.Minute
-	// An open quote is given again while at least CrossChainReuse of its price window is left.
-	CrossChainReuse = 5 * time.Minute
+	// crossChainLeast: no quote for a checkout closing sooner, so the conversion lands before the close.
+	crossChainLeast = 20 * time.Minute
+	// A quote's deadline is the earlier of crossChainDeadline from now and crossChainBeforeClose before the close; its
+	// price shows for crossChainShown, ending at least 5 minutes before that deadline.
+	crossChainDeadline    = time.Hour
+	crossChainBeforeClose = 10 * time.Minute
+	crossChainShown       = 15 * time.Minute
+	// An open quote is given again while at least crossChainReuse of its price window is left.
+	crossChainReuse = 5 * time.Minute
 	// CrossChainPerHour bounds one invoice's quotes, as each one is a 1Click call and a deposit address.
 	CrossChainPerHour = 20
 	dryQuoteTTL       = 30 * time.Second
@@ -98,8 +98,8 @@ func (s *Service) crossTarget(ctx context.Context, payToken string, now time.Tim
 		return crossTarget{}, ErrPickLocked
 	case inv.Confirming: // a payment still confirming isn't booked yet, so what is due can't be known
 		return crossTarget{}, fmt.Errorf("%w: a payment is confirming", ErrCrossChainOff)
-	case inv.Options[i].ClosesAt.Sub(now) < CrossChainLeast:
-		return crossTarget{}, fmt.Errorf("%w: closes in under %s", ErrCrossChainOff, CrossChainLeast)
+	case inv.Options[i].ClosesAt.Sub(now) < crossChainLeast:
+		return crossTarget{}, fmt.Errorf("%w: closes in under %s", ErrCrossChainOff, crossChainLeast)
 	}
 	option := inv.Options[i]
 	var converting bool
@@ -196,7 +196,7 @@ func (s *Service) QuoteCrossChain(ctx context.Context, payToken, origin, refundT
 	if !dry && !refundAddress.MatchString(refundTo) {
 		return CrossQuote{}, fmt.Errorf("%w: refundTo: an address on the token's chain", ErrInvalid)
 	}
-	deadline := earlier(now.Add(CrossChainDeadline), target.option.ClosesAt.Add(-CrossChainBeforeClose)).Truncate(time.Second)
+	deadline := earlier(now.Add(crossChainDeadline), target.option.ClosesAt.Add(-crossChainBeforeClose)).Truncate(time.Second)
 	ask := intents.Ask{Origin: origin, Amount: target.due, Recipient: target.option.ReceiveAddress, RefundTo: refundTo,
 		Deadline: deadline}
 	if dry {
@@ -220,7 +220,7 @@ func (s *Service) QuoteCrossChain(ctx context.Context, payToken, origin, refundT
 		return CrossQuote{}, providerError(err, target.invoice.ID, false)
 	}
 	q = crossQuote(quote, token, refundTo)
-	q.ShownUntil = earlier(now.Add(CrossChainShown), deadline.Add(-5*time.Minute))
+	q.ShownUntil = earlier(now.Add(crossChainShown), deadline.Add(-5*time.Minute))
 	if err := s.pool.QueryRow(ctx, `INSERT INTO crosschain_quotes (invoice_id, option_id, origin_asset, refund_to,
 		    deposit_address, amount_in, min_amount_in, amount_out, time_estimate, shown_until, deadline, signed, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`, target.invoice.ID, target.option.ID,
@@ -247,7 +247,7 @@ func (s *Service) openQuote(ctx context.Context, target crossTarget, token inten
 		    WHERE invoice_id = $1 AND origin_asset = $2 AND refund_to = $3 AND amount_out = $4::numeric
 		      AND status = 'PENDING_DEPOSIT' AND shown_until > $5::timestamptz + $6::interval
 		    ORDER BY created_at DESC LIMIT 1) q ON true`, target.invoice.ID, origin, refundTo, target.due.String(), now,
-		CrossChainReuse).Scan(&q.ID, &signed, &shown, &deadline, &created, &recent); err != nil {
+		crossChainReuse).Scan(&q.ID, &signed, &shown, &deadline, &created, &recent); err != nil {
 		return CrossQuote{}, fmt.Errorf("read open cross-chain quote for %s: %w", target.invoice.ID, err)
 	}
 	if q.ID == "" {

@@ -19,9 +19,9 @@ const (
 	BaseUSDCAsset = "nep141:base-" + BaseUSDC + ".omft.near"
 )
 
-// Slippage is what the payer's amount may cover beyond today's price, in basis points; what isn't used comes back to
+// slippage is what the payer's amount may cover beyond today's price, in basis points; what isn't used comes back to
 // the refund address.
-const Slippage = 100
+const slippage = 100
 
 // Ask is what a payer's quote asks of 1Click: exactly Amount of Base USDC to Recipient, from Origin.
 type Ask struct {
@@ -63,7 +63,7 @@ func request(ask Ask, dry bool) map[string]any {
 		refundTo, refundType = ask.Recipient, "INTENTS"
 	}
 	return map[string]any{
-		"dry": dry, "swapType": "EXACT_OUTPUT", "slippageTolerance": Slippage, "originAsset": ask.Origin,
+		"dry": dry, "swapType": "EXACT_OUTPUT", "slippageTolerance": slippage, "originAsset": ask.Origin,
 		"depositType": "ORIGIN_CHAIN", "destinationAsset": BaseUSDCAsset, "amount": ask.Amount.String(),
 		"refundTo": refundTo, "refundType": refundType, "recipient": ask.Recipient, "recipientType": "DESTINATION_CHAIN",
 		"deadline": ask.Deadline.UTC().Format("2006-01-02T15:04:05.000Z"),
