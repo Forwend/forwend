@@ -1665,7 +1665,7 @@
         "Deterministic tests use a fake 1Click with its own key, which startup accepts only on loopback; the 1Click key stays in the backend .env of the api and the worker."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit"
       ],
@@ -1758,11 +1758,18 @@
           "summary": "Same code as the subagent review that passed at 1b9743ed (05:42): only docs/tasks.json changed since. Signature check reads exact keys and binds recipient, asset, swap type, origin, amount and refund address; every acceptance line's break is caught by tests.",
           "at": "2026-11-09T18:48:21Z",
           "filesHash": "ee65412416b8f13f"
-        }
+        },
+        "commit": "8f220927",
+        "doneAt": "2026-11-09T18:48:22Z"
       },
       "branch": "feat/f448-a-payer-gets-a-verified-near-intents-quo",
       "baseCommit": "816876fbce564d3635a1868e2e4089ffe95b4842",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f448-a-payer-gets-a-verified-near-intents-quo",
+        "base": "main"
+      }
     },
     {
       "id": "F449",
