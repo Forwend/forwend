@@ -212,7 +212,11 @@ D-123: NEAR Intents 1Click converts a payer's token on another chain into USDC o
     - So the D-125 deadline is 1Click's echo of what was asked. A wrong one can only make money late and held for the
       payer, never send it elsewhere: the recipient is signed.
 - The api checks this before it keeps a quote and again before it gives a kept one. The pay page checks it before it
-  shows the address.
+  shows the address. The canary checks each shown quote against 1Click's own record (R-235).
+- The worker reads each quote's status from 1Click only to show progress (R-234). Paid still comes from the Base balance.
+  - While 1Click converts a deposit, the pick, an edit and a cancel wait as for money seen (`invoice.ConvertingSQL`).
+  - It logs an `ALERT` for a failed swap, a seen deposit unfinished an hour past its deadline, and a delivery with no
+    Base transfer of its transaction 30 minutes later.
 - Test mode has no cross-chain: 1Click has no testnet.
 
 ## Money out of a profile wallet
@@ -271,6 +275,11 @@ pay page stops showing the address 5 minutes before the close. The canary then:
    `base-sepolia`). A page that shows no address (the invoice is no longer open, or the page refused the
    terms) is an alert too.
 
+5. A `quote <option id> <deposit address> <amount out>` line is a cross-chain quote the pay page may show (R-235).
+   - Once the option's own line passed, the canary reads 1Click's status of the address (`CANARY_ONECLICK_URL`).
+   - It verifies the signed quote there with its own copy of 1Click's key (`CANARY_ONECLICK_KEY`) and its own code.
+   - The quote must pay exactly the amount, as USDC on Base, to the address the factory predicts, with no memo.
+
 Any difference or failed read logs `canary alert` with the problem and exits 1; otherwise `canary passed`, exit 0.
 Empty stdin is an alert as well, because it usually means the query failed; pass `-allow-empty` only for a one-off
 run by hand. Run it on its own host with Node, `pnpm install` and `pnpm --filter @forwend/web exec playwright install
@@ -278,14 +287,16 @@ chromium`, from cron or a scheduler. Page on a non-zero exit, and also when a sc
 check on the last `canary passed`):
 
 ```sh
-psql "$READONLY_DATABASE_URL" -At -F ' ' -c "SELECT i.id, i.chain_id, i.recipient_address, i.token_contract,
+{ psql "$READONLY_DATABASE_URL" -At -F ' ' -c "SELECT i.id, i.chain_id, i.recipient_address, i.token_contract,
   i.amount, i.expires_at, i.settle_deadline, t.symbol, c.name, m.pay_token, i.closes_at, i.network_fee, i.platform_fee
   FROM invoices i
   JOIN invoices m ON m.id = coalesce(i.main_id, i.id)
   JOIN tokens t ON t.chain_id = i.chain_id AND t.contract = i.token_contract JOIN chains c ON c.chain_id = i.chain_id
   WHERE i.payment_status IN ('open', 'partially_paid') AND i.closes_at > extract(epoch FROM now()) + 60
     AND (m.chosen_id IS NULL OR m.chosen_id = i.id) AND m.pay_token IS NOT NULL
-    AND i.factory_address = lower('$CANARY_FACTORY')" |
+    AND i.factory_address = lower('$CANARY_FACTORY')"
+  psql "$READONLY_DATABASE_URL" -At -F ' ' -c "SELECT 'quote', option_id, deposit_address, amount_out
+  FROM crosschain_quotes WHERE status = 'PENDING_DEPOSIT' AND shown_until > now()"; } |
   pnpm --silent --filter @forwend/backend canary
 ```
 

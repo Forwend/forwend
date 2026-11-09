@@ -93,9 +93,10 @@ func run() error {
 		// The key's header would follow a redirect to any host.
 		Client: &http.Client{Timeout: 10 * time.Second,
 			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
-	// The token list payers pick from (R-232); quotes are the api's.
-	tokens := &intents.Keeper{Pool: pool, Client: intents.NewClient(cfg.OneClick.URL, cfg.OneClick.Key,
-		cfg.Chains.AllowLoopback), Every: intents.TokensEvery}
+	// The token list payers pick from (R-232) and each quote's status (R-234); quotes are the api's.
+	oneClick := intents.NewClient(cfg.OneClick.URL, cfg.OneClick.Key, cfg.Chains.AllowLoopback)
+	tokens := &intents.Keeper{Pool: pool, Client: oneClick, Every: intents.TokensEvery}
+	invoices.SetCrossChain(oneClick)
 	slog.Info("worker ready", "every", cfg.Chains.PollInterval, "email", sender != nil)
 	// Housekeeping calls Resend, the ECB and CoinGecko: on its own loop, a slow answer never delays a chain round. It
 	// stops with the chain loop, before the pool closes.
@@ -106,6 +107,19 @@ func run() error {
 	housekeeping.Go(func() {
 		for {
 			keepHouse(ctx, cfg, invoices, rates, prices, tokens, sender, pool)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(cfg.Chains.PollInterval):
+			}
+		}
+	})
+	// 1Click's status reads have their own loop: a slow answer never delays a chain round or an email.
+	housekeeping.Go(func() {
+		for {
+			if err := invoices.TrackCrossChain(ctx, time.Now()); err != nil {
+				slog.Error("track cross-chain quotes", "err", err)
+			}
 			select {
 			case <-ctx.Done():
 				return

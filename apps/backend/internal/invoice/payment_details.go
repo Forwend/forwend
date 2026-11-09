@@ -85,6 +85,9 @@ func (s *Service) PaymentDetails(ctx context.Context, profileID, id string, q Pa
 	if err := tx.QueryRow(ctx, "SELECT transaction_timestamp()").Scan(&result.SnapshotAt); err != nil {
 		return PaymentDetails{}, err
 	}
+	if result.Invoice.CrossChain, err = readCrossChain(ctx, tx, result.Invoice.ID); err != nil {
+		return PaymentDetails{}, err
+	}
 	optionGroups, err := readOperationOptions(ctx, tx, []Invoice{result.Invoice}, q.Summary)
 	if err != nil {
 		return PaymentDetails{}, err

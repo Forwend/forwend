@@ -1777,10 +1777,10 @@
       "behavior": "The worker follows each cross-chain quote to its end, and every API reader carries how it was paid",
       "acceptance": [
         "The worker reads each open quote's 1Click status every 10 s while converting, every 30 s in its price window, then every 2 minutes until an hour past its deadline, and keeps status, amounts sent, delivered and refunded, refund reason and both chains' transactions (R-234).",
-        "History records a deposit seen, converted, refunded and failed; once 1Click sees a deposit the pick locks to the Base option; paid still comes only from the Base balance (R-234, R-233).",
-        "The worker logs an ALERT for FAILED, for a quote unfinished an hour past its deadline, and for a delivery with no Base deposit after 30 minutes (R-234).",
-        "The public invoice read carries the shown quote and its status; owner payment and invoice reads, webhooks and CSV exports carry paidWith; openapi and the node, js and react packages match (R-235).",
-        "The canary checks each open quote's signature and recipient from 1Click's own status (R-235)."
+        "History records a deposit seen, converted, refunded and failed; while 1Click converts a deposit the pick, an edit and a cancel wait; paid still comes only from the Base balance (R-234, R-233).",
+        "The worker logs an ALERT for FAILED, for a seen deposit unfinished an hour past its deadline, and for a delivery with no Base deposit after 30 minutes (R-234).",
+        "The invoice's own reads, the payment's read and webhooks carry crossChain; a movement of the Base transfer carries paidWith and the CSV names it; openapi and the node package match (R-235).",
+        "The canary checks each shown quote's signature and recipient from 1Click's own status (R-235)."
       ],
       "dependsOn": [
         "F448"
@@ -1789,7 +1789,7 @@
       "verification": [
         "unit",
         "node-unit",
-        "browser-packages"
+        "backend-e2e"
       ],
       "refs": [
         "R-234",

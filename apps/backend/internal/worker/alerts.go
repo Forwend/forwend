@@ -101,5 +101,42 @@ func (w *Worker) alert(ctx context.Context) error {
 		slog.Error(message, "invoice", invoice, "chain", chainID, "intent", status, "reason", reason,
 			"waited", time.Duration(waited)*time.Second, "deadlineIn", time.Duration(left)*time.Second)
 	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	return w.alertCrossChain(ctx)
+}
+
+// alertCrossChain logs an ALERT for a cross-chain payment that holds a payer's money (R-234): 1Click failed it in the
+// last week, a deposit it saw is unfinished an hour past the deadline, or it delivered and no Base deposit with its
+// transaction came in 30 minutes.
+func (w *Worker) alertCrossChain(ctx context.Context) error {
+	rows, err := w.pool.Query(ctx, `SELECT q.id::text, q.invoice_id, q.status FROM crosschain_quotes q
+		WHERE (q.status = 'FAILED' AND q.created_at > now() - interval '7 days')
+		   OR (q.deposit_seen_at IS NOT NULL AND q.status NOT IN ('SUCCESS', 'REFUNDED', 'FAILED')
+		       AND q.deadline < now() - $1 * interval '1 second')
+		   OR (q.status = 'SUCCESS' AND q.converted_at < now() - $2 * interval '1 second'
+		       AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(q.destination_txs) d
+		           JOIN chain_transfers t ON t.tx_hash = lower(d->>'hash') AND t.invoice_id = q.option_id
+		           WHERE t.status <> 'reorged'))
+		ORDER BY q.created_at LIMIT 20`, int64(time.Hour/time.Second), int64(UnsettledAfter/time.Second))
+	if err != nil {
+		return fmt.Errorf("read cross-chain quotes to alert on: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var quote, invoice, status string
+		if err := rows.Scan(&quote, &invoice, &status); err != nil {
+			return err
+		}
+		message := "ALERT cross-chain deposit unfinished an hour past its deadline"
+		switch status {
+		case "FAILED":
+			message = "ALERT cross-chain swap failed: check 1Click returned the deposit"
+		case "SUCCESS":
+			message = "ALERT cross-chain swap delivered, but no Base deposit with its transaction came in"
+		}
+		slog.Error(message, "quote", quote, "invoice", invoice, "status", status)
+	}
 	return rows.Err()
 }

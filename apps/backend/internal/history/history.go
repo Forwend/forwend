@@ -34,6 +34,12 @@ const (
 	Replaced             = "invoice.replaced" // canceled by a Revise; data names the new invoice (R-129)
 	Reopened             = "invoice.reopened" // data has the new close in until (R-130)
 	Numbered             = "invoice.numbered" // a link invoice took its number with its first deposit (R-141)
+	// A cross-chain payment through NEAR Intents (R-234): 1Click saw the payer's deposit on its chain, delivered the
+	// USDC on Base, returned money to the refund address, or failed. Data has the asset an amount is in.
+	CrossChainDeposit   = "crosschain.deposit_seen"
+	CrossChainConverted = "crosschain.converted"
+	CrossChainRefunded  = "crosschain.refunded"
+	CrossChainFailed    = "crosschain.failed"
 )
 
 // Emails the worker sent to the client or payer, or gave up on (R-126); a reminder's data has its step.
@@ -57,7 +63,8 @@ const (
 // Data has only these fields, so a row can never take a secret, a request body or an email.
 type Data struct {
 	Option string `json:"option,omitempty"` // the option chosen, or the one money is held on, when there are several
-	Amount string `json:"amount,omitempty"` // base units of the invoice token
+	Amount string `json:"amount,omitempty"` // base units of the invoice token, or of Asset when set
+	Asset  string `json:"asset,omitempty"`  // the 1Click asset a cross-chain amount is in (R-234)
 	Reason string `json:"reason,omitempty"` // why held money is the payer's: one of the ledger's Held reasons
 	TxHash string `json:"txHash,omitempty"`
 	Step   string `json:"step,omitempty"` // a reminder's step (R-96)

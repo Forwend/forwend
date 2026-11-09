@@ -45,6 +45,15 @@ type PaymentMovement struct {
 	From, To, Status                                                   string
 	Verified                                                           bool
 	PolicyException, ReconciliationError                               string
+	// PaidWith is what the payer sent through NEAR Intents for this Base transfer (R-235); nil for any other row.
+	PaidWith *MovementPaidWith
+}
+
+// MovementPaidWith is the payer's side of a cross-chain payment: Amount of Symbol on Blockchain, in TxHash.
+type MovementPaidWith struct {
+	Symbol, Blockchain, TxHash string
+	Amount                     *big.Int
+	Decimals                   int
 }
 
 type MovementPage struct {
@@ -140,7 +149,11 @@ const paymentMovementRows = `, journal AS (
 
 const movementColumns = `id,state,recorded_at,payment_id,option_id,store_id,store_name,source,livemode,document_kind,number,reference,title,
  chain_id,network,token,symbol,decimals,kind,source_amount::text,booked_amount::text,receiver::text,payable::text,held::text,
- tx_hash,log_index,transfer_log_index,block_hash,block_number,block_time,from_address,to_address,status,verified,verified_block,verified_hash,policy_exception,reconciliation_error`
+ tx_hash,log_index,transfer_log_index,block_hash,block_number,block_time,from_address,to_address,status,verified,verified_block,verified_hash,policy_exception,reconciliation_error,
+ (SELECT ARRAY[q.origin_symbol, q.origin_blockchain, coalesce(q.deposited_amount, q.amount_in)::text, q.origin_decimals::text,
+         coalesce(q.origin_txs->0->>'hash', '')]
+  FROM crosschain_quotes q WHERE q.option_id = movements.option_id AND EXISTS (SELECT 1
+      FROM jsonb_array_elements(q.destination_txs) d WHERE lower(d->>'hash') = movements.tx_hash) LIMIT 1)`
 
 func movementWhere(q MovementQuery, args []any) ([]any, string, error) {
 	if !q.From.Before(q.To) {
@@ -208,12 +221,19 @@ func scanPaymentMovement(row pgx.CollectableRow) (PaymentMovement, error) {
 	var movement PaymentMovement
 	var source, booked, receiver, payable, held *string
 	var blockTime *int64
+	var paidWith []string
 	err := row.Scan(&movement.ID, &movement.State, &movement.RecordedAt, &movement.PaymentID, &movement.OptionID, &movement.StoreID, &movement.StoreName,
 		&movement.Source, &movement.Livemode, &movement.DocumentKind, &movement.Number, &movement.Reference, &movement.Title, &movement.ChainID, &movement.Network, &movement.Token, &movement.Symbol, &movement.Decimals,
 		&movement.Kind, &source, &booked, &receiver, &payable, &held, &movement.TxHash, &movement.LogIndex, &movement.TransferLogIndex, &movement.BlockHash, &movement.BlockNumber, &blockTime,
-		&movement.From, &movement.To, &movement.Status, &movement.Verified, &movement.VerifiedBlock, &movement.VerifiedHash, &movement.PolicyException, &movement.ReconciliationError)
+		&movement.From, &movement.To, &movement.Status, &movement.Verified, &movement.VerifiedBlock, &movement.VerifiedHash, &movement.PolicyException, &movement.ReconciliationError, &paidWith)
 	if err != nil {
 		return PaymentMovement{}, err
+	}
+	if len(paidWith) == 5 {
+		amount, _ := new(big.Int).SetString(paidWith[2], 10)
+		decimals, _ := strconv.Atoi(paidWith[3])
+		movement.PaidWith = &MovementPaidWith{Symbol: paidWith[0], Blockchain: paidWith[1], Amount: amount,
+			Decimals: decimals, TxHash: paidWith[4]}
 	}
 	for target, text := range map[**big.Int]*string{&movement.SourceAmount: source, &movement.BookedAmount: booked, &movement.ReceiverDelta: receiver, &movement.PayableDelta: payable, &movement.HeldDelta: held} {
 		if text != nil {

@@ -48,6 +48,17 @@ type movementJSON struct {
 	VerifiedHash        *string               `json:"verifiedHash"`
 	PolicyException     *string               `json:"policyException"`
 	ReconciliationError *string               `json:"reconciliationError"`
+	// R-235: what the payer sent through NEAR Intents for this Base transfer; null for any other row.
+	PaidWith *paidWithJSON `json:"paidWith"`
+}
+
+type paidWithJSON struct {
+	Provider   string  `json:"provider"`
+	Symbol     string  `json:"symbol"`
+	Blockchain string  `json:"blockchain"`
+	Decimals   int     `json:"decimals"`
+	Amount     string  `json:"amount"`
+	TxHash     *string `json:"txHash"`
 }
 
 func toMovement(row invoice.PaymentMovement) movementJSON {
@@ -63,7 +74,16 @@ func toMovement(row invoice.PaymentMovement) movementJSON {
 		PayableDelta: optionalAmount(row.PayableDelta), HeldDelta: optionalAmount(row.HeldDelta), ReceiverUSDDelta: usd, TxHash: httpio.OrNull(row.TxHash), LogIndex: row.LogIndex,
 		TransferLogIndex: row.TransferLogIndex, BlockHash: httpio.OrNull(row.BlockHash), BlockNumber: row.BlockNumber, BlockTime: optionalTime(row.BlockTime),
 		From: httpio.OrNull(row.From), To: httpio.OrNull(row.To), Status: row.Status, Verified: row.Verified, VerifiedBlock: row.VerifiedBlock, VerifiedHash: httpio.OrNull(row.VerifiedHash),
-		PolicyException: httpio.OrNull(row.PolicyException), ReconciliationError: httpio.OrNull(row.ReconciliationError)}
+		PolicyException: httpio.OrNull(row.PolicyException), ReconciliationError: httpio.OrNull(row.ReconciliationError),
+		PaidWith: toPaidWith(row.PaidWith)}
+}
+
+func toPaidWith(p *invoice.MovementPaidWith) *paidWithJSON {
+	if p == nil || p.Amount == nil {
+		return nil
+	}
+	return &paidWithJSON{Provider: "near_intents", Symbol: p.Symbol, Blockchain: p.Blockchain, Decimals: p.Decimals,
+		Amount: p.Amount.String(), TxHash: httpio.OrNull(p.TxHash)}
 }
 
 func readMovementQuery(r *http.Request) (invoice.MovementQuery, error) {

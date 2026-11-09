@@ -98,7 +98,17 @@ func Check(ctx context.Context, c config.Canary, lines []string) []string {
 
 	var invoices []terms
 	var ids []string
+	quotes := map[string][]quote{}
 	for _, line := range lines {
+		if strings.HasPrefix(line, "quote ") {
+			q, err := parseQuote(line)
+			if err != nil {
+				alerts = append(alerts, fmt.Sprintf("input line %q: %v", line, err))
+				continue
+			}
+			quotes[q.OptionID] = append(quotes[q.OptionID], q)
+			continue
+		}
 		t, err := parseTerms(line)
 		if err != nil {
 			alerts = append(alerts, fmt.Sprintf("input line %q: %v", line, err))
@@ -120,8 +130,17 @@ func Check(ctx context.Context, c config.Canary, lines []string) []string {
 			page.Error = "no result from the page script"
 		}
 		ictx, cancel := context.WithTimeout(ctx, timeout)
-		if err := checkInvoice(ictx, c, rpcs, t, page); err != nil {
+		receive, err := checkInvoice(ictx, c, rpcs, t, page)
+		if err != nil {
 			alerts = append(alerts, fmt.Sprintf("invoice %s: %v", t.ID, err))
+		}
+		// A quote is checked against the address the factory predicts, once the api and the page showed that one.
+		for _, q := range quotes[t.ID] {
+			if err == nil {
+				if err := checkQuote(ictx, c, t, receive, q); err != nil {
+					alerts = append(alerts, fmt.Sprintf("invoice %s quote %s: %v", t.ID, q.DepositAddress, err))
+				}
+			}
 		}
 		cancel()
 	}
@@ -148,17 +167,18 @@ func checkFactory(ctx context.Context, c config.Canary, cl *rpc.Client, chainID 
 	return nil
 }
 
-func checkInvoice(ctx context.Context, c config.Canary, rpcs map[uint64][2]*rpc.Client, t terms, page payPage) error {
+// checkInvoice returns the receive address the factory predicts, once the api and the pay page show that one.
+func checkInvoice(ctx context.Context, c config.Canary, rpcs map[uint64][2]*rpc.Client, t terms, page payPage) (string, error) {
 	if !c.FactoryFees && (t.NetworkFee != "0" || t.PlatformFee != "0") {
-		return errors.New("the terms carry fees, but the factory's terms have none")
+		return "", errors.New("the terms carry fees, but the factory's terms have none")
 	}
 	api, err := readAPI(ctx, c.APIURL+"/v1/invoices/"+t.PayToken)
 	if err != nil {
-		return fmt.Errorf("api: %w", err)
+		return "", fmt.Errorf("api: %w", err)
 	}
 	// The link's invoice id is keccak256 of its pay token.
 	if want := crypto.Keccak256Hash(common.FromHex(t.PayToken)).Hex(); api.InvoiceID != want {
-		return fmt.Errorf("api invoiceId %s, want %s", api.InvoiceID, want)
+		return "", fmt.Errorf("api invoiceId %s, want %s", api.InvoiceID, want)
 	}
 	// The option's own terms overwrite the invoice's; the others are shared.
 	found := false
@@ -171,59 +191,59 @@ func checkInvoice(ctx context.Context, c config.Canary, rpcs map[uint64][2]*rpc.
 		}
 	}
 	if !found {
-		return fmt.Errorf("api lists no option %s", t.ID)
+		return "", fmt.Errorf("api lists no option %s", t.ID)
 	}
 	if err := sameTerms(c, t, api); err != nil {
-		return err
+		return "", err
 	}
 	pair, ok := rpcs[t.ChainID]
 	if !ok {
-		return fmt.Errorf("no RPCs configured for chain %d", t.ChainID)
+		return "", fmt.Errorf("no RPCs configured for chain %d", t.ChainID)
 	}
 	var got [2]string
 	for i, cl := range pair {
 		if cl == nil {
-			return fmt.Errorf("rpc %d unavailable", i+1)
+			return "", fmt.Errorf("rpc %d unavailable", i+1)
 		}
 		var out hexutil.Bytes
 		err := cl.CallContext(ctx, &out, "eth_call", map[string]any{"to": c.Factory, "data": hexutil.Bytes(t.predictCall(c.FactoryFees))},
 			"latest")
 		if err != nil {
-			return fmt.Errorf("rpc %d predict: %w", i+1, redact(err))
+			return "", fmt.Errorf("rpc %d predict: %w", i+1, redact(err))
 		}
 		if len(out) != 32 {
-			return fmt.Errorf("rpc %d predict: %d bytes, want 32", i+1, len(out))
+			return "", fmt.Errorf("rpc %d predict: %d bytes, want 32", i+1, len(out))
 		}
 		got[i] = strings.ToLower(common.BytesToAddress(out).Hex())
 		if t.ClosesAt < t.ExpiresAt {
 			data := append(crypto.Keccak256([]byte("deployedAt(address)"))[:4], common.LeftPadBytes(common.HexToAddress(got[i]).Bytes(), 32)...)
 			if err := cl.CallContext(ctx, &out, "eth_call", map[string]any{"to": c.Factory, "data": hexutil.Bytes(data)}, "finalized"); err != nil {
-				return fmt.Errorf("rpc %d deploy time: %w", i+1, redact(err))
+				return "", fmt.Errorf("rpc %d deploy time: %w", i+1, redact(err))
 			}
 			deployed := new(big.Int).SetBytes(out)
 			if len(out) != 32 || !deployed.IsUint64() || deployed.Sign() == 0 ||
 				min(t.SettleDeadline, deployed.Uint64()+30*86400) < 86400 ||
 				t.ClosesAt != min(t.SettleDeadline, deployed.Uint64()+30*86400)-86400 {
-				return fmt.Errorf("rpc %d early close disagrees with receiver deployment", i+1)
+				return "", fmt.Errorf("rpc %d early close disagrees with receiver deployment", i+1)
 			}
 		}
 	}
 	switch {
 	case got[0] != got[1]:
-		return fmt.Errorf("RPCs disagree: rpc 1 predicts %s, rpc 2 %s", got[0], got[1])
+		return "", fmt.Errorf("RPCs disagree: rpc 1 predicts %s, rpc 2 %s", got[0], got[1])
 	case strings.ToLower(api.ReceiveAddress) != got[0]:
-		return fmt.Errorf("api shows %s, factory predicts %s", api.ReceiveAddress, got[0])
+		return "", fmt.Errorf("api shows %s, factory predicts %s", api.ReceiveAddress, got[0])
 	case page.Error != "":
-		return fmt.Errorf("pay page: %s", page.Error)
+		return "", fmt.Errorf("pay page: %s", page.Error)
 	case len(page.Addresses) != 1 || page.Addresses[0] != got[0]:
-		return fmt.Errorf("pay page shows %v, factory predicts %s", page.Addresses, got[0])
+		return "", fmt.Errorf("pay page shows %v, factory predicts %s", page.Addresses, got[0])
 	case !page.QRMatches:
-		return fmt.Errorf("pay page QR code does not encode the shown address %s", got[0])
+		return "", fmt.Errorf("pay page QR code does not encode the shown address %s", got[0])
 	case !strings.Contains(page.AmountText, t.Symbol) ||
 		!strings.Contains(strings.ReplaceAll(strings.ToLower(page.AmountText), " ", "-"), t.Network):
-		return fmt.Errorf("pay page amount reads %q, want %s on %s", page.AmountText, t.Symbol, t.Network)
+		return "", fmt.Errorf("pay page amount reads %q, want %s on %s", page.AmountText, t.Symbol, t.Network)
 	}
-	return nil
+	return got[0], nil
 }
 
 // sameTerms requires the api to show the database's terms, so predict runs on terms the api did not choose.

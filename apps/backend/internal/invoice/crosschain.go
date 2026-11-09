@@ -103,8 +103,7 @@ func (s *Service) crossTarget(ctx context.Context, payToken string, now time.Tim
 	}
 	option := inv.Options[i]
 	var converting bool
-	if err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM crosschain_quotes WHERE invoice_id = $1
-		AND status IN ('KNOWN_DEPOSIT_TX', 'PROCESSING', 'SUCCESS'))`, inv.ID).Scan(&converting); err != nil {
+	if err := s.pool.QueryRow(ctx, "SELECT "+ConvertingSQL, inv.ID).Scan(&converting); err != nil {
 		return crossTarget{}, fmt.Errorf("read invoice %s quotes: %w", inv.ID, err)
 	}
 	if converting { // a deposit 1Click saw pays the invoice: another would pay it twice
@@ -218,10 +217,12 @@ func (s *Service) QuoteCrossChain(ctx context.Context, payToken, origin, refundT
 	q = crossQuote(quote, token, refundTo)
 	q.ShownUntil = earlier(now.Add(crossChainShown), deadline.Add(-5*time.Minute))
 	if err := s.pool.QueryRow(ctx, `INSERT INTO crosschain_quotes (invoice_id, option_id, origin_asset, refund_to,
-		    deposit_address, amount_in, min_amount_in, amount_out, time_estimate, shown_until, deadline, signed, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`, target.invoice.ID, target.option.ID,
-		origin, refundTo, q.DepositAddress, q.AmountIn.String(), q.MinAmountIn.String(), q.AmountOut.String(),
-		q.TimeEstimate, q.ShownUntil, q.Deadline, string(q.Signed), now).Scan(&q.ID); err != nil {
+		    deposit_address, amount_in, min_amount_in, amount_out, time_estimate, shown_until, deadline, signed, created_at,
+		    origin_blockchain, origin_symbol, origin_decimals)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`, target.invoice.ID,
+		target.option.ID, origin, refundTo, q.DepositAddress, q.AmountIn.String(), q.MinAmountIn.String(),
+		q.AmountOut.String(), q.TimeEstimate, q.ShownUntil, q.Deadline, string(q.Signed), now, token.Blockchain,
+		token.Symbol, token.Decimals).Scan(&q.ID); err != nil {
 		return CrossQuote{}, fmt.Errorf("save cross-chain quote for %s: %w", target.invoice.ID, err)
 	}
 	q.CreatedAt = now
