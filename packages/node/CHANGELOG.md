@@ -6,7 +6,8 @@
 - Payment amounts carry fees: what settlement paid the settler and Forwend. settled is what reached the wallet.
 - Invoice and checkout session creates take feesPaidBy.
 - An invoice's and a payment's own read, and webhooks, carry crossChain: a payment through NEAR Intents, with 1Click's
-  status, what the payer sent and got back, and both chains' transactions.
+  status, what the payer sent and got back, and both chains' transactions. A payments list carries it only while
+  1Click converts or converted the deposit, and an invoice's own read carries crossChainOn.
 
 ## 0.2.0 (2026-11-08)
 

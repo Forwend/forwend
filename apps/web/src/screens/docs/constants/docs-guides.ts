@@ -491,6 +491,22 @@ export const GUIDE_PAGES: readonly DocsArticle[] = [
           "A network reorganization can remove an observed transfer. Late payments and excess money can be held for the payer instead of credited to the business.",
         ],
       },
+      {
+        id: "other-chains",
+        title: "Payments from other chains",
+        paragraphs: [
+          "On a live invoice that accepts USDC on Base, a customer can pay with another token on another chain. NEAR Intents converts it and sends exactly the amount due to the invoice's Base address.",
+          "Nothing changes for your server: paid still comes only from the USDC arriving on Base, and the same webhooks follow. Read crossChain to see what the customer sent.",
+        ],
+        fields: [
+          {
+            name: "crossChain",
+            type: "object | null",
+            description:
+              "On an invoice's and a payment's own read and in webhooks: status, the token and chain the customer sent from, what was sent and refunded, and both chains' transactions. When status is SUCCESS, it paid the payment if optionLocked is false or optionId is the Base USDC option; if not, money on another option was booked first and the USDC is held for the customer. A payments list carries it only while NEAR Intents converts or converted the deposit and no other option's money was booked first.",
+          },
+        ],
+      },
     ],
   },
   {

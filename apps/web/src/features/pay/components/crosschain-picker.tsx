@@ -3,8 +3,9 @@
 import { formatTokenAmount, RowButton, SearchField, Sheet, Skeleton } from "@forwend/ui-web";
 import { useMemo, useState } from "react";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
-import { blockchainName, orderBlockchains } from "@/features/pay/lib/crosschain";
+import { orderBlockchains } from "@/features/pay/lib/crosschain";
 import type { CrossToken } from "@/features/pay/types/crosschain";
+import { blockchainName } from "@/shared/lib/chains";
 
 const COPY = PAY_COPY.crossChain;
 

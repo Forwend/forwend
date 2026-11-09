@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"math/big"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -224,6 +225,7 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 		decimals, options    int
 		chainID              uint64
 		live                 bool
+		paidWith             []string // a payment through NEAR Intents: symbol, chain, amount sent, decimals (R-239)
 	)
 	if err := tx.QueryRow(ctx, `SELECT p.email_notifications, u.login_email, m.payer_email, m.number,
 		    coalesce(m.issuer_name, ''), coalesce(m.sender_name, ''), t.symbol, t.decimals, o.chain_id, o.amount::text,
@@ -233,11 +235,14 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 		              WHERE d.invoice_id = o.id ORDER BY d.block_number DESC, d.log_index DESC LIMIT 1), ''),
 		    coalesce(m.client_email, ''), coalesce(m.issuer_email, ''), coalesce(m.due_date::text, ''),
 		    (SELECT count(*) FROM invoices x WHERE coalesce(x.main_id, x.id) = m.id), coalesce(m.pay_token, ''),
-		    (SELECT livemode FROM chains c WHERE c.chain_id = o.chain_id)
+		    (SELECT livemode FROM chains c WHERE c.chain_id = o.chain_id),
+		    (SELECT ARRAY[q.origin_symbol, q.origin_blockchain, coalesce(q.deposited_amount, q.amount_in)::text,
+		                  q.origin_decimals::text]
+		     FROM crosschain_quotes q WHERE q.option_id = o.id AND q.status = 'SUCCESS' ORDER BY q.converted_at DESC LIMIT 1)
 		FROM invoices m JOIN profiles p ON p.id = m.profile_id JOIN users u ON u.id = p.user_id
 		JOIN invoices o ON o.id = $2 JOIN tokens t ON t.chain_id = o.chain_id AND t.contract = o.token_contract
 		WHERE m.id = $1`, invoice, p.Option).Scan(&on, &to, &payer, &number, &issuer, &typed, &symbol, &decimals, &chainID,
-		&amount, &hash, &client, &replyTo, &due, &options, &pay, &live); err != nil {
+		&amount, &hash, &client, &replyTo, &due, &options, &pay, &live, &paidWith); err != nil {
 		return view{}, nil, false, fmt.Errorf("invoice: %w", err)
 	}
 	// An invoice made before D-86 has no pay link: the client's and the payer's emails would link nowhere.
@@ -281,6 +286,12 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 	}
 	if number == nil {
 		v.Details[0].Label = "Payment"
+	}
+	if len(paidWith) == 4 && (kind == outbox.Receipt || kind == outbox.Paid) {
+		sent, _ := new(big.Int).SetString(paidWith[2], 10)
+		places, _ := strconv.Atoi(paidWith[3])
+		v.Details = append(v.Details, row{Label: "Paid with",
+			Value: document.PaidWith(sent, places, paidWith[0], paidWith[1])})
 	}
 	// The payer's receipt and the owner's own emails say test mode too: testnet tokens never read as real money.
 	return marked(v, live), to, on, nil

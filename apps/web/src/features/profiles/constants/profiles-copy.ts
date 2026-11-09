@@ -89,6 +89,11 @@ export const TOKENS_COPY = {
   saveFailed: "We could not save this setting. Try again.",
   saving: "Saving…",
   savedAll: "Changes saved.",
+  // R-240: payments from other chains through NEAR Intents, into a live invoice's Base USDC option.
+  crossChain: "Accept other tokens through NEAR Intents",
+  crossChainHint:
+    "Clients can pay a live invoice from another chain and token. NEAR Intents converts it to USDC on Base, " +
+    "so Base USDC must stay on. Clients pay the conversion cost.",
 } as const;
 
 /** D-122: who pays new invoices' fees. */

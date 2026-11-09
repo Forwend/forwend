@@ -276,6 +276,52 @@ describe("owner's invoice page", () => {
     expect(summary.getByText("Still due").nextElementSibling?.textContent).toBe("0.00 USDC");
   });
 
+  // R-239: only once 1Click delivered; money it returned didn't pay the invoice.
+  it("names what the client paid through NEAR Intents, and nothing for a deposit 1Click returned", async () => {
+    const crossChain = {
+      quoteId: "q",
+      assetId: "nep141:tron-usdt",
+      blockchain: "tron",
+      symbol: "USDT",
+      decimals: 6,
+      depositAddress: "T1",
+      refundTo: "T2",
+      amountIn: "101120000",
+      minAmountIn: "100120000",
+      amountOut: "100000000",
+      status: "SUCCESS",
+      deposited: "101120000",
+      delivered: "100000000",
+      refunded: null,
+      refundReason: null,
+      originTxs: [],
+      destinationTxs: [],
+      shownUntil: "2026-10-10T12:15:00Z",
+      deadline: "2026-10-10T13:00:00Z",
+      createdAt: "2026-10-10T12:00:00Z",
+      depositSeenAt: "2026-10-10T12:03:00Z",
+      convertedAt: "2026-10-10T12:05:00Z",
+      signed: {},
+    };
+    serve({ ...OPEN, crossChain });
+    show();
+    await settle();
+    expect(screen.getByText(INVOICE_COPY.paidThrough).nextElementSibling?.textContent).toBe(
+      "101.12 USDT on Tron",
+    );
+    cleanup();
+    serve({ ...OPEN, crossChain: { ...crossChain, status: "REFUNDED", convertedAt: null } });
+    show();
+    await settle();
+    expect(screen.queryByText(INVOICE_COPY.paidThrough)).toBeNull();
+    // Money on this testnet option was recorded first: 1Click's USDC on Base is held, and didn't pay it.
+    cleanup();
+    serve({ ...OPEN, optionLocked: true, crossChain });
+    show();
+    await settle();
+    expect(screen.queryByText(INVOICE_COPY.paidThrough)).toBeNull();
+  });
+
   // R-88: even once the payer locked another option.
   it("lists the items in the invoice's own option", async () => {
     const dai = "0x00000000000000000000000000000000000000da";

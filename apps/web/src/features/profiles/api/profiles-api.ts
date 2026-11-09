@@ -173,6 +173,36 @@ export const profilesApi = apiSlice.injectEndpoints({
       transformResponse: (data: { tokens: TokenSwitch[] }) => data.tokens,
       responseSchema: profileTokensSchema.shape.tokens,
     }),
+    /** R-240: whether payers may pay from other chains through NEAR Intents; on by default. */
+    getCrossChainSwitch: build.query<boolean, string>({
+      query: (profileId) => tokensUrl(profileId),
+      transformResponse: (data: { crossChain: boolean }) => data.crossChain,
+      responseSchema: z.boolean(),
+    }),
+    /** Saves only the switch: the tokens off stay as the API has them. */
+    saveCrossChainSwitch: build.mutation<boolean, { profileId: string; on: boolean }>({
+      query: ({ profileId, on }) => ({
+        url: tokensUrl(profileId),
+        method: "PUT",
+        body: { crossChain: on },
+      }),
+      argSchema: z.object({ profileId: z.guid(), on: z.boolean() }),
+      transformResponse: (data: { crossChain: boolean }) => data.crossChain,
+      responseSchema: z.boolean(),
+      // The switch moves at once, as the token boxes do; a refusal puts it back.
+      async onQueryStarted({ profileId, on }, { dispatch, queryFulfilled }) {
+        const guess = dispatch(
+          profilesApi.util.updateQueryData("getCrossChainSwitch", profileId, () => on),
+        );
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(profilesApi.util.upsertQueryData("getCrossChainSwitch", profileId, data));
+        } catch {
+          // The page shows the error.
+          guess.undo();
+        }
+      },
+    }),
     saveProfileTokens: build.mutation<TokenSwitch[], { profileId: string; off: TokenRef[] }>({
       query: ({ profileId, off }) => ({ url: tokensUrl(profileId), method: "PUT", body: { off } }),
       transformResponse: (data: { tokens: TokenSwitch[] }) => data.tokens,
@@ -206,6 +236,8 @@ export const {
   useSaveNotificationsMutation,
   useGetProfileTokensQuery,
   useSaveProfileTokensMutation,
+  useGetCrossChainSwitchQuery,
+  useSaveCrossChainSwitchMutation,
   useSaveProfileModeMutation,
   useSaveProfileFeesMutation,
 } = profilesApi;

@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -26,6 +27,19 @@ func tracked(t *testing.T) (invoiceEnv, *intentstest.Fake, *invoice.Service, str
 		t.Fatalf("quote: %d %v", r.status, r.body)
 	}
 	return e, fake, worker, pay, r.body
+}
+
+// listTagged counts the payments list's rows that carry quote.
+func listTagged(t *testing.T, e invoiceEnv, quote string) int {
+	t.Helper()
+	list := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/payments", "did:privy:alice", "", "")
+	tagged := 0
+	for _, item := range list.body["items"].([]any) {
+		if c, ok := item.(map[string]any)["crossChain"].(map[string]any); ok && c["quoteId"] == quote {
+			tagged++
+		}
+	}
+	return tagged
 }
 
 // checkAt runs the worker's round as if at, and returns the quote's next check (nil for none).
@@ -92,6 +106,10 @@ func TestWorkerFollowsAQuoteFromDepositToConversion(t *testing.T) {
 	if r := e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+ethAsset+`", "refundTo": "0x6fd1c6b3f0b7a5b4e5d6a3c2b1a0f9e8d7c6b5a4"}`); r.status != http.StatusConflict {
 		t.Fatalf("second quote while converting: %d %v", r.status, r.body)
 	}
+	// Nothing is booked yet, so the list already tags it.
+	if n := listTagged(t, e, id); n != 1 {
+		t.Fatalf("payments list while converting: %d tagged, want 1", n)
+	}
 
 	// Converted: the Base transaction, then every 2 minutes for an hour for a refund of the unused slippage.
 	baseTx := "0x" + originTx
@@ -149,7 +167,7 @@ func TestWorkerFollowsAQuoteFromDepositToConversion(t *testing.T) {
 			base = option["optionId"].(string)
 		}
 	}
-	baseTransfer(t, e, main, base, baseTx, "100000000")
+	baseTransfer(t, e, base, baseTx, "100000000")
 	movements := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/payments/"+main+"/movements", "did:privy:alice", "", "")
 	var paidWith map[string]any
 	for _, m := range movements.body["items"].([]any) {
@@ -163,8 +181,18 @@ func TestWorkerFollowsAQuoteFromDepositToConversion(t *testing.T) {
 	}
 	csv := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/payments/"+main+"/movements.csv", "did:privy:alice", "", "")
 	if !strings.Contains(csv.raw, "Paid with,Paid with transaction") ||
-		!strings.Contains(csv.raw, "101.120000 USDT on tron through NEAR Intents,"+originTx) {
+		!strings.Contains(csv.raw, "101.12 USDT on Tron through NEAR Intents,"+originTx) {
 		t.Fatalf("csv: %d %s", csv.status, csv.raw)
+	}
+
+	// Paid: the receipt names what the payer paid with, and the payments list tags it (R-239).
+	if got := e.get(t, pay).body["paymentStatus"]; got != "paid" {
+		t.Fatalf("status %v, want paid", got)
+	}
+	mustContain(t, strings.Join(strings.Fields(pdfText(t, e.pdf(t, main, "receipt.pdf", "").body)), " "),
+		"Paid with", "101.12 USDT on Tron through NEAR Intents")
+	if n := listTagged(t, e, id); n != 1 {
+		t.Fatalf("payments list: %d tagged, want 1", n)
 	}
 
 	// Every reader carries it: the pay page, the owner, the payment.
@@ -254,6 +282,50 @@ func TestWorkerReadsASeenDepositUntilItEnds(t *testing.T) {
 	if refunded, ok := historyKinds(t, e, pay)["crosschain.refunded"]; !ok || refunded["amount"] != nil || refunded["asset"] != tronUSDT {
 		t.Fatalf("refund history %v", refunded)
 	}
+	// Returned money didn't pay the invoice, so the payments list doesn't tag it (R-239).
+	list := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/payments", "did:privy:alice", "", "")
+	for _, item := range list.body["items"].([]any) {
+		if c := item.(map[string]any)["crossChain"]; c != nil {
+			t.Fatalf("payments list tags a returned deposit: %v", c)
+		}
+	}
+}
+
+// R-239: when the payer also pays directly on another option and that money is booked first, 1Click's USDC is held
+// on Base: the payments list and the receipt don't say the payment went through NEAR Intents.
+func TestADirectPaymentBookedFirstIsNotPaidThroughNEARIntents(t *testing.T) {
+	e, fake, worker, pay, quote := tracked(t)
+	id, address := quote["quoteId"].(string), quote["depositAddress"].(string)
+	main := e.get(t, pay).body["invoiceId"].(string)
+	var base, arbitrum string
+	for _, o := range e.get(t, pay).body["options"].([]any) {
+		option := o.(map[string]any)
+		if option["chainId"] == float64(intents.BaseChainID) {
+			base = option["optionId"].(string)
+		} else {
+			arbitrum = option["optionId"].(string)
+		}
+	}
+	direct, baseTx := "0x"+strings.Repeat("ab", 32), "0x"+originTx
+	chainTransfer(t, e, 42161, arbitrum, direct, "100000000")
+	fake.SetStatus(address, intents.Success, map[string]any{"depositedAmount": "101120000", "amountOut": "100000000",
+		"originChainTxHashes":      []any{map[string]any{"hash": originTx}},
+		"destinationChainTxHashes": []any{map[string]any{"hash": baseTx}}})
+	checkAt(t, e, worker, id, time.Now())
+	baseTransfer(t, e, base, baseTx, "100000000")
+
+	if got := e.get(t, pay).body["paymentStatus"]; got != "paid" {
+		t.Fatalf("status %v, want paid", got)
+	}
+	list := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/payments", "did:privy:alice", "", "")
+	for _, item := range list.body["items"].([]any) {
+		if c := item.(map[string]any)["crossChain"]; c != nil {
+			t.Fatalf("payments list tags a payment made on Arbitrum: %v", c)
+		}
+	}
+	if text := pdfText(t, e.pdf(t, main, "receipt.pdf", "").body); strings.Contains(text, "NEAR Intents") {
+		t.Fatalf("the receipt says the payment went through NEAR Intents:\n%s", text)
+	}
 }
 
 // The pick the payer last made moves to the Base option once 1Click saw their deposit (R-233).
@@ -284,5 +356,53 @@ func TestSeenDepositPicksTheBaseOption(t *testing.T) {
 	checkAt(t, e, worker, quote["quoteId"].(string), time.Now().Add(time.Minute))
 	if converted, ok := historyKinds(t, e, pay)["crosschain.converted"]; !ok || converted["txHash"] != nil {
 		t.Fatalf("converted history %v", converted)
+	}
+}
+
+// R-240: a profile turns payments from other chains off for new quotes; an open quote still finishes.
+func TestProfileTurnsCrossChainOff(t *testing.T) {
+	e, fake, worker, pay, quote := tracked(t)
+	path := "/v1/profiles/" + e.aliceProfile + "/tokens"
+	if r := e.call(t, "GET", path, "did:privy:alice", "", ""); r.status != http.StatusOK || r.body["crossChain"] != true {
+		t.Fatalf("default: %d %v", r.status, r.body)
+	}
+	if got := e.get(t, pay).body["crossChainOn"]; got != true {
+		t.Fatalf("invoice read crossChainOn %v", got)
+	}
+	if r := e.call(t, "PUT", path, "did:privy:alice", "", `{"off": [], "crossChain": false}`); r.status != http.StatusOK ||
+		r.body["crossChain"] != false {
+		t.Fatalf("turn off: %d %v", r.status, r.body)
+	}
+	// Each part saves alone and keeps the other as it is.
+	tokens := e.call(t, "GET", path, "did:privy:alice", "", "").body["tokens"].([]any)
+	other := tokens[len(tokens)-1].(map[string]any)
+	off := fmt.Sprintf(`{"off": [{"chainId": %v, "token": %q}]}`, other["chainId"], other["token"])
+	if r := e.call(t, "PUT", path, "did:privy:alice", "", off); r.body["crossChain"] != false {
+		t.Fatalf("save without the switch: %v", r.body)
+	}
+	r := e.call(t, "PUT", path, "did:privy:alice", "", `{"crossChain": true}`)
+	if last := r.body["tokens"].([]any)[len(tokens)-1].(map[string]any); r.body["crossChain"] != true || last["on"] != false {
+		t.Fatalf("save the switch alone: %v", r.body)
+	}
+	if r := e.call(t, "PUT", path, "did:privy:alice", "", `{}`); r.status != http.StatusUnprocessableEntity {
+		t.Fatalf("empty save: %d %v", r.status, r.body)
+	}
+	if r := e.call(t, "PUT", path, "did:privy:alice", "", `{"crossChain": false}`); r.body["crossChain"] != false {
+		t.Fatalf("turn off again: %v", r.body)
+	}
+	if got := e.get(t, pay).body["crossChainOn"]; got != false {
+		t.Fatalf("invoice read crossChainOn %v", got)
+	}
+	r = e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+ethAsset+`", "refundTo": "0x6fd1c6b3f0b7a5b4e5d6a3c2b1a0f9e8d7c6b5a4"}`)
+	if r.status != 422 || errorCode(r) != "crosschain_unavailable" ||
+		!strings.Contains(r.body["error"].(map[string]any)["message"].(string), "turned it off") {
+		t.Fatalf("quote while off: %d %v", r.status, r.body)
+	}
+	// The quote made before still finishes.
+	fake.SetStatus(quote["depositAddress"].(string), intents.Processing, map[string]any{"depositedAmount": "101120000",
+		"originChainTxHashes": []any{}, "destinationChainTxHashes": []any{}})
+	checkAt(t, e, worker, quote["quoteId"].(string), time.Now())
+	if got := e.get(t, pay).body["crossChain"].(map[string]any)["status"]; got != "PROCESSING" {
+		t.Fatalf("open quote status %v", got)
 	}
 }

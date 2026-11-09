@@ -4,6 +4,7 @@ import {
   buttonClasses,
   DetailList,
   DetailRow,
+  formatTokenAmount,
   PAYMENT_STATUS,
   PAYMENT_STATUSES,
   Skeleton,
@@ -57,9 +58,17 @@ import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { CROSS_CHAIN_STATUSES, CROSS_CHAIN_TARGET } from "@/shared/constants/chains";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
+import {
+  blockchainName,
+  crossChainEnded,
+  crossChainOptionRecorded,
+  txLink,
+} from "@/shared/lib/chains";
 import { dateTime } from "@/shared/lib/dates";
+import { exactDigits } from "@/shared/lib/money";
 
 const NOT_FOUND = 404;
 
@@ -265,6 +274,7 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
                   />
                 </Figure>
               ) : null}
+              <CrossChainFigure crossChain={payment.crossChain} />
               {/* Before any money it says what the customer may pay with, never "Paid with". */}
               <Figure term={lead ? COPY.paidWith : paidWith ? COPY.payingWith : COPY.accepts}>
                 {paidWith ? (
@@ -460,7 +470,7 @@ function DepositState({ deposit }: { deposit: Deposit }) {
 }
 
 /** The payment's life so far and what comes next, from the facts the API gave: never a step ahead of them. */
-function timeline(
+export function timeline(
   payment: PaymentDetailType,
   deposits: readonly { deposit: Deposit; option: Option }[],
 ): TimelineEntry[] {
@@ -473,6 +483,17 @@ function timeline(
   // The option the payment is recorded on is the one settled.
   const settledBy = payment.options.find((option) => option.optionId === payment.optionId);
   const ended = !paid && (payment.closed || payment.paymentStatus === "canceled");
+  // R-239: through NEAR Intents the payment is seen on the customer's chain first, then converted into this one. A
+  // deposit 1Click returned didn't pay it, so the steps are a direct payment's.
+  const cross =
+    paidThroughIntents(payment.crossChain) && crossChainOptionRecorded(payment)
+      ? payment.crossChain
+      : null;
+  const crossSent = cross ? BigInt(cross.deposited ?? cross.amountIn) : 0n;
+  const crossTx = cross?.originTxs[0];
+  // The USDC 1Click delivered on Base: never the first deposit, which may be an earlier direct one.
+  const baseTx =
+    cross?.status === CROSS_CHAIN_STATUSES.success ? cross.destinationTxs[0] : undefined;
   const steps: Omit<TimelineEntry, "state">[] = [
     {
       id: "created",
@@ -480,24 +501,70 @@ function timeline(
       time: dateTime(payment.createdAt),
       chips: [{ label: COPY.chips.source, value: SOURCE_LABELS[payment.source] }],
     },
-    {
-      id: "detected",
-      title: COPY.steps.detected,
-      time: first ? dateTime(first.deposit.blockTime) : undefined,
-      chips: first
-        ? [
-            { label: COPY.chips.network, value: <NetworkName chainId={first.option.chainId} /> },
+    cross?.depositSeenAt
+      ? {
+          id: "detected",
+          title: COPY.steps.detected,
+          time: dateTime(cross.depositSeenAt),
+          chips: [
+            { label: COPY.chips.network, value: blockchainName(cross.blockchain) },
             {
-              label: COPY.chips.tx,
-              value: <span className="font-mono">{shortAddress(first.deposit.txHash)}</span>,
+              label: COPY.chips.sent,
+              value: `${formatTokenAmount({ baseUnits: crossSent, decimals: cross.decimals, fractionDigits: exactDigits(crossSent, cross.decimals) })} ${cross.symbol}`,
             },
-          ]
-        : undefined,
-    },
+            ...(crossTx
+              ? [
+                  {
+                    label: COPY.chips.tx,
+                    value: <span className="font-mono">{shortAddress(crossTx.hash)}</span>,
+                  },
+                ]
+              : []),
+          ],
+        }
+      : {
+          id: "detected",
+          title: COPY.steps.detected,
+          time: first ? dateTime(first.deposit.blockTime) : undefined,
+          chips: first
+            ? [
+                {
+                  label: COPY.chips.network,
+                  value: <NetworkName chainId={first.option.chainId} />,
+                },
+                {
+                  label: COPY.chips.tx,
+                  value: <span className="font-mono">{shortAddress(first.deposit.txHash)}</span>,
+                },
+              ]
+            : undefined,
+        },
+    ...(cross
+      ? [
+          {
+            id: "converting",
+            title: COPY.steps.converting,
+            time: cross.convertedAt ? dateTime(cross.convertedAt) : undefined,
+            chips: [{ label: COPY.chips.via, value: COPY.crossChain.nearIntents }],
+          },
+        ]
+      : []),
     {
       id: "paid",
       title: COPY.steps.paid,
       time: paid && paidBy ? dateTime(paidBy.deposit.blockTime) : undefined,
+      chips: baseTx
+        ? [
+            {
+              label: COPY.chips.network,
+              value: <NetworkName chainId={CROSS_CHAIN_TARGET.chainId} />,
+            },
+            {
+              label: COPY.chips.tx,
+              value: <span className="font-mono">{shortAddress(baseTx.hash)}</span>,
+            },
+          ]
+        : undefined,
     },
     ...(ended
       ? [{ id: "closed", title: COPY.steps.closed, time: dateTime(payment.closesAt) }]
@@ -512,7 +579,13 @@ function timeline(
           },
         ]),
   ];
-  const done = [true, Boolean(first), paid, ended || settled];
+  const done = [
+    true,
+    Boolean(first) || Boolean(cross),
+    ...(cross ? [cross.status === CROSS_CHAIN_STATUSES.success || paid] : []),
+    paid,
+    ended || settled,
+  ];
   // The last return to a payer, when support sent one (PLAN 11.10.3).
   const returned = payment.options
     .flatMap((o) => o.returns)
@@ -543,6 +616,63 @@ function timeline(
         ? TIMELINE_STATES.current
         : TIMELINE_STATES.upcoming,
   }));
+}
+
+/** A deposit 1Click saw and converts or converted: one it returned didn't pay the payment (R-239). */
+export function paidThroughIntents(
+  c: PaymentDetailType["crossChain"] | undefined,
+): c is NonNullable<PaymentDetailType["crossChain"]> {
+  return c != null && c.depositSeenAt !== null && !crossChainEnded(c);
+}
+
+/** R-239: what the customer sent on its own chain, what came back, and both transactions. */
+export function CrossChainFigure({
+  crossChain,
+}: {
+  crossChain: PaymentDetailType["crossChain"] | undefined;
+}) {
+  if (!paidThroughIntents(crossChain)) return null;
+  const sent = BigInt(crossChain.deposited ?? crossChain.amountIn);
+  const money = (units: bigint) =>
+    `${formatTokenAmount({ baseUnits: units, decimals: crossChain.decimals, fractionDigits: exactDigits(units, crossChain.decimals) })} ${crossChain.symbol}`;
+  const refunded = crossChain.refunded ? BigInt(crossChain.refunded) : 0n;
+  const origin = crossChain.originTxs[0];
+  const base =
+    crossChain.status === CROSS_CHAIN_STATUSES.success ? crossChain.destinationTxs[0] : undefined;
+  const links = [
+    { href: origin?.explorerUrl, label: COPY.crossChain.originTx },
+    {
+      href: base ? txLink(CROSS_CHAIN_TARGET.chainId, base.hash)?.href : undefined,
+      label: COPY.crossChain.baseTx,
+    },
+  ];
+  return (
+    <div className="flex flex-col gap-1 px-4 py-4 sm:px-5">
+      <dt className="text-sm text-muted">{COPY.crossChain.sentWith}</dt>
+      <dd className="flex flex-col gap-1">
+        <span className="text-base font-medium break-words text-ink tabular-nums">
+          {COPY.crossChain.value(money(sent), blockchainName(crossChain.blockchain))}
+        </span>
+        {refunded > 0n ? (
+          <span className="text-xs text-muted">{COPY.crossChain.refunded(money(refunded))}</span>
+        ) : null}
+        {links.map(({ href, label }) =>
+          href ? (
+            <a
+              key={label}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-ink underline decoration-line-strong underline-offset-4"
+            >
+              {label}
+              <ExternalLink aria-hidden className="size-3" />
+            </a>
+          ) : null,
+        )}
+      </dd>
+    </div>
+  );
 }
 
 /** A labelled figure in the Amount card. */

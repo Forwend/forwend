@@ -472,6 +472,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     dot, the problem in ink with its full text as the title, and "+n" for more.
     - Source and Store show only on the widest tables; the phone row and the payment page still name them.
     - Testnet is a neutral badge on each row, so it never outshouts a status that needs action.
+    - "via NEAR Intents" is a neutral badge beside it on a payment the customer sent from another chain (R-239).
+      The phone row and the overview's latest payments say it too. A deposit 1Click returned gets none.
   - The payment status and the wallet transfer are separate (D-114): a status badge, then quiet wallet text
     (Pending, In wallet, Delayed, Needs review, or a dash before anything is due).
   - Unpaid attempts stay visible; requested amounts never imply received or settled money.
@@ -480,6 +482,12 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A notice under the header names each problem no other part shows, once (R-192).
     - Payment records to review, an unexpected transfer, a webhook that fails.
     - The wallet transfer and what is still due are never repeated.
+  - A payment through NEAR Intents (R-239): the Amount card adds "Sent through NEAR Intents".
+    - It shows the amount and chain, any refund, and links to the customer's and the Base transaction.
+    - Its Timeline reads Created, Payment detected on the customer's chain, Converting via NEAR Intents, Paid
+      with the Base transaction, and In your wallet.
+    - Converting is done once 1Click delivered or the payment is paid. A returned deposit leaves a direct payment's steps.
+    - So does money booked first on another option; 1Click's USDC is then held. The Base link always opens Basescan.
   - Held money is the customer's, not the owner's problem: no notice, no warning color (D-118).
     - Hovering or tapping the status badge shows one sentence per held amount: how much, why, and who handles any return.
     - Example: "0.50 USDC over the amount is held for the customer, and Forwend support handles any return."
@@ -551,6 +559,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Settings opens from the account menu, and on phones from More (see App shell); its sections share one frame.
   - Developers keeps the full content width: its tables need the room.
 - Accepted assets (R-136) uses the accepted-assets selector: one row per asset, its networks under it.
+  - Under it, a `SwitchCard` "Accept other tokens through NEAR Intents" (R-240), on by default.
+    - It follows the box rules below, with its own status line, and saves only the switch.
   - A change saves at once; one quiet status line says Saving or Changes saved, never a toast per box.
   - A box changes the moment it is pressed, and every box stays usable while it saves. A refused save puts it back.
   - The last token on can't be turned off; a quiet line under it says one stays on.

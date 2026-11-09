@@ -80,6 +80,11 @@ export const HISTORY_KINDS = {
   returnReleased: "invoice.return_released",
   receiverSettled: "receiver.settled",
   checkoutCloseChanged: "checkout.close_changed",
+  // R-234: a payment through NEAR Intents.
+  crossChainDeposit: "crosschain.deposit_seen",
+  crossChainConverted: "crosschain.converted",
+  crossChainRefunded: "crosschain.refunded",
+  crossChainFailed: "crosschain.failed",
 } as const;
 
 /** The fields an invoice.edited row names (R-127, R-128), as the API calls them. */
@@ -131,6 +136,10 @@ export const HISTORY_CATEGORY_OF = {
   [HISTORY_KINDS.returnReleased]: HISTORY_CATEGORIES.payment,
   [HISTORY_KINDS.receiverSettled]: HISTORY_CATEGORIES.payment,
   [HISTORY_KINDS.checkoutCloseChanged]: HISTORY_CATEGORIES.change,
+  [HISTORY_KINDS.crossChainDeposit]: HISTORY_CATEGORIES.payment,
+  [HISTORY_KINDS.crossChainConverted]: HISTORY_CATEGORIES.payment,
+  [HISTORY_KINDS.crossChainRefunded]: HISTORY_CATEGORIES.payment,
+  [HISTORY_KINDS.crossChainFailed]: HISTORY_CATEGORIES.payment,
 } as const satisfies Record<HistoryKind, HistoryCategory>;
 
 /** The History panel's filter: every row, or one category. */

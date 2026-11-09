@@ -309,6 +309,8 @@ type Invoice struct {
 	Livemode bool
 	// CrossChain is the shown quote of a payment through NEAR Intents (R-235), nil without one. Set by Get.
 	CrossChain *CrossChainPayment
+	// CrossChainOn: its profile takes payments from other chains (R-240). Set by Get.
+	CrossChainOn bool
 	// State and Wallet are the merchant's reading of the statuses (D-114): PaymentStates and WalletStates.
 	State, Wallet string
 }

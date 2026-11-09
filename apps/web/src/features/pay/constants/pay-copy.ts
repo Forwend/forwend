@@ -213,6 +213,9 @@ export const PAY_COPY = {
     unverified: "We could not check this address with NEAR Intents, so it is not shown. Try again.",
     belowMinimum: "This token needs a larger payment. Choose another token.",
     unavailable: "NEAR Intents is not answering. Try again in a minute.",
+    // The payee turned it off, or the invoice can't take it now: trying again won't help (R-240).
+    closed:
+      "Paying with another token isn't available for this payment now. Pay with USDC instead.",
     refused: "NEAR Intents can't refund to this address. Check it is yours on this chain.",
     tooMany: "Too many prices asked for this payment. Try again later.",
     steps: {

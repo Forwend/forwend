@@ -60,9 +60,10 @@ import { Party } from "@/shared/components/party";
 import { RecordLink } from "@/shared/components/record-link";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { CROSS_CHAIN_STATUSES } from "@/shared/constants/chains";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
-import { chainName } from "@/shared/lib/chains";
+import { blockchainName, chainName, crossChainOptionRecorded } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 import { walletStateOf } from "@/shared/lib/payment-state";
 
@@ -503,6 +504,25 @@ function Loaded({
                 {TIME.format(new Date(invoice.closesAt))}
               </Row>
               <Row term={COPY.created}>{TIME.format(new Date(invoice.createdAt))}</Row>
+              {/* R-239: what the client sent on its own chain, which NEAR Intents converted. */}
+              {invoice.crossChain?.status === CROSS_CHAIN_STATUSES.success &&
+              crossChainOptionRecorded(invoice) ? (
+                <Row term={COPY.paidThrough}>
+                  {COPY.paidThroughValue(
+                    `${formatTokenAmount({
+                      baseUnits: BigInt(
+                        invoice.crossChain.deposited ?? invoice.crossChain.amountIn,
+                      ),
+                      decimals: invoice.crossChain.decimals,
+                      fractionDigits: exactDigits(
+                        BigInt(invoice.crossChain.deposited ?? invoice.crossChain.amountIn),
+                        invoice.crossChain.decimals,
+                      ),
+                    })} ${invoice.crossChain.symbol}`,
+                    blockchainName(invoice.crossChain.blockchain),
+                  )}
+                </Row>
+              ) : null}
               {invoice.supplyDate ? (
                 <Row term={COPY.supplyDate}>{formatDueDate(invoice.supplyDate)}</Row>
               ) : null}

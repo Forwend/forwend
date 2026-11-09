@@ -22,11 +22,12 @@ import {
 } from "@/features/pay/api/crosschain-api";
 import { CrossChainPicker } from "@/features/pay/components/crosschain-picker";
 import { ExactAmount } from "@/features/pay/components/exact-amount";
-import { CROSS_CHAIN_STATUSES, CROSS_CHAIN_TARGET } from "@/features/pay/constants/crosschain";
 import { ENTER } from "@/features/pay/constants/pay";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
-import { blockchainName, signedDeposit, verifyQuote } from "@/features/pay/lib/crosschain";
+import { signedDeposit, verifyQuote } from "@/features/pay/lib/crosschain";
 import type { CrossToken } from "@/features/pay/types/crosschain";
+import { CROSS_CHAIN_STATUSES } from "@/shared/constants/chains";
+import { blockchainName, crossChainEnded } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 
 const COPY = PAY_COPY.crossChain;
@@ -483,7 +484,7 @@ function CrossChainProgress({ invoice, crossChain }: { invoice: Invoice; crossCh
 const askedKey = (invoiceId: string) => `forwend:cross:${invoiceId}`;
 
 /** What this tab asked a quote with; null without, or when storage is off. */
-function readAsked(invoiceId: string): { assetId: string; refundTo: string } | null {
+export function readAsked(invoiceId: string): { assetId: string; refundTo: string } | null {
   try {
     const value: unknown = JSON.parse(sessionStorage.getItem(askedKey(invoiceId)) ?? "null");
     const asked = value as { assetId?: unknown; refundTo?: unknown } | null;
@@ -501,15 +502,6 @@ function keepAsked(invoiceId: string, asked: { assetId: string; refundTo: string
   } catch {
     // Storage may be off: a reload asks for the refund address again.
   }
-}
-
-/** 1Click returned the payer's money, or will: the invoice can be paid again (R-238). */
-export function crossChainEnded(c: Pick<CrossChain, "status">): boolean {
-  return (
-    c.status === CROSS_CHAIN_STATUSES.refunded ||
-    c.status === CROSS_CHAIN_STATUSES.failed ||
-    c.status === CROSS_CHAIN_STATUSES.incomplete
-  );
 }
 
 /** The one line a returned cross-chain payment leaves above the pay box, with the quote's ID for support. */
@@ -556,6 +548,8 @@ function quoteProblem(error: unknown): string {
     case "too_many_quotes":
     case "rate_limited":
       return COPY.tooMany;
+    case "crosschain_unavailable":
+      return COPY.closed;
     default:
       return COPY.unavailable;
   }

@@ -47,6 +47,23 @@ func (s *Service) Tokens(ctx context.Context, profileID string) ([]TokenSwitch, 
 	return list, nil
 }
 
+// CrossChain reports whether the profile takes payments from other chains through NEAR Intents (R-240).
+func (s *Service) CrossChain(ctx context.Context, profileID string) (bool, error) {
+	var off bool
+	if err := s.pool.QueryRow(ctx, "SELECT crosschain_off FROM profiles WHERE id = $1", profileID).Scan(&off); err != nil {
+		return false, fmt.Errorf("read cross-chain switch: %w", err)
+	}
+	return !off, nil
+}
+
+// SetCrossChain turns payments from other chains on or off for new quotes; an open quote still finishes (R-240).
+func (s *Service) SetCrossChain(ctx context.Context, profileID string, on bool) error {
+	if _, err := s.pool.Exec(ctx, "UPDATE profiles SET crosschain_off = $2 WHERE id = $1", profileID, !on); err != nil {
+		return fmt.Errorf("save cross-chain switch: %w", err)
+	}
+	return nil
+}
+
 // SetTokensOff replaces the available tokens of the profile's mode it has off, preserving the other mode's and
 // unavailable tokens' preferences.
 func (s *Service) SetTokensOff(ctx context.Context, profileID string, off []TokenPair) ([]TokenSwitch, error) {

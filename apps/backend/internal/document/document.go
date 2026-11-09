@@ -16,6 +16,7 @@ import (
 	"codeberg.org/go-pdf/fpdf"
 	"github.com/boombuler/barcode/qr"
 
+	"github.com/forwend/forwend/apps/backend/internal/intents"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
@@ -289,10 +290,30 @@ func Receipt(inv invoice.Invoice, payLink string, logo []byte) ([]byte, error) {
 	d := start(inv, "Receipt", logo, s)
 	d.facts([2]string{"Issued", day(inv.CreatedAt)}, [2]string{"Supply date", DateText(inv.SupplyDate)},
 		[2]string{"Paid", stamp(inv.PaidAt)})
+	d.fact("Paid with", paidWith(inv))
 	d.items(inv, s.totals, "For reference only: the token amount above was paid.")
 	d.payments(inv)
 	d.code(payLink, "Check this receipt", "A PDF can be edited. The pay page shows what the chain recorded.")
 	return d.output()
+}
+
+// paidWith is "" when 1Click didn't deliver the payment, or the money was booked on another option first (R-239).
+func paidWith(inv invoice.Invoice) string {
+	c := inv.CrossChain
+	if c == nil || c.Status != intents.Success || c.OptionID != inv.OptionID {
+		return ""
+	}
+	sent := c.Deposited
+	if sent == nil {
+		sent = c.AmountIn
+	}
+	return PaidWith(sent, c.Decimals, c.Symbol, c.Blockchain)
+}
+
+// PaidWith is what the payer sent through NEAR Intents (R-239), as "1,263.00 USDT on Tron through NEAR Intents". The
+// receipt, the paid email and the payments export all say it this way.
+func PaidWith(sent *big.Int, decimals int, symbol, blockchain string) string {
+	return Amount(sent, decimals, symbol) + " on " + intents.ChainName(blockchain) + " through NEAR Intents"
 }
 
 // payments lists every transfer on any option of the invoice, with the part the ledger applied to it (R-121); the
@@ -715,6 +736,22 @@ func (d doc) facts(pairs ...[2]string) {
 		x += w
 	}
 	d.SetXY(margin, y+2*lineHeight+6)
+}
+
+// fact is one label and value across the page, for a value too long for a facts column; none when value is "".
+func (d doc) fact(label, value string) {
+	if value == "" {
+		return
+	}
+	d.text(subtle)
+	d.SetFont(font, "", 8)
+	d.CellFormat(width, lineHeight, label, "", 2, "L", false, 0, "")
+	d.text(ink)
+	d.SetFont(font, "", 9.5)
+	for _, l := range d.fit(value, width, 3) {
+		d.CellFormat(width, lineHeight, l, "", 2, "L", false, 0, "")
+	}
+	d.Ln(6)
 }
 
 // table draws rows under a header that repeats on every page the table continues on. Columns from right on are
