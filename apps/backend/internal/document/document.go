@@ -297,7 +297,7 @@ func Receipt(inv invoice.Invoice, payLink string, logo []byte) ([]byte, error) {
 	return d.output()
 }
 
-// paidWith is "" when 1Click didn't deliver the payment, or delivered to an option the money of another beat (R-239).
+// paidWith is "" when 1Click didn't deliver the payment, or the money was booked on another option first (R-239).
 func paidWith(inv invoice.Invoice) string {
 	c := inv.CrossChain
 	if c == nil || c.Status != intents.Success || c.OptionID != inv.OptionID {

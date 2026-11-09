@@ -29,6 +29,19 @@ func tracked(t *testing.T) (invoiceEnv, *intentstest.Fake, *invoice.Service, str
 	return e, fake, worker, pay, r.body
 }
 
+// listTagged counts the payments list's rows that carry quote.
+func listTagged(t *testing.T, e invoiceEnv, quote string) int {
+	t.Helper()
+	list := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/payments", "did:privy:alice", "", "")
+	tagged := 0
+	for _, item := range list.body["items"].([]any) {
+		if c, ok := item.(map[string]any)["crossChain"].(map[string]any); ok && c["quoteId"] == quote {
+			tagged++
+		}
+	}
+	return tagged
+}
+
 // checkAt runs the worker's round as if at, and returns the quote's next check (nil for none).
 func checkAt(t *testing.T, e invoiceEnv, worker *invoice.Service, quote string, at time.Time) *time.Time {
 	t.Helper()
@@ -92,6 +105,10 @@ func TestWorkerFollowsAQuoteFromDepositToConversion(t *testing.T) {
 	}
 	if r := e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+ethAsset+`", "refundTo": "0x6fd1c6b3f0b7a5b4e5d6a3c2b1a0f9e8d7c6b5a4"}`); r.status != http.StatusConflict {
 		t.Fatalf("second quote while converting: %d %v", r.status, r.body)
+	}
+	// Nothing is booked yet, so the list already tags it.
+	if n := listTagged(t, e, id); n != 1 {
+		t.Fatalf("payments list while converting: %d tagged, want 1", n)
 	}
 
 	// Converted: the Base transaction, then every 2 minutes for an hour for a refund of the unused slippage.
@@ -174,15 +191,8 @@ func TestWorkerFollowsAQuoteFromDepositToConversion(t *testing.T) {
 	}
 	mustContain(t, strings.Join(strings.Fields(pdfText(t, e.pdf(t, main, "receipt.pdf", "").body)), " "),
 		"Paid with", "101.12 USDT on Tron through NEAR Intents")
-	list := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/payments", "did:privy:alice", "", "")
-	tagged := 0
-	for _, item := range list.body["items"].([]any) {
-		if c, ok := item.(map[string]any)["crossChain"].(map[string]any); ok && c["quoteId"] == id {
-			tagged++
-		}
-	}
-	if tagged != 1 {
-		t.Fatalf("payments list: %d tagged, want 1: %v", tagged, list.body)
+	if n := listTagged(t, e, id); n != 1 {
+		t.Fatalf("payments list: %d tagged, want 1", n)
 	}
 
 	// Every reader carries it: the pay page, the owner, the payment.

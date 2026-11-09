@@ -553,16 +553,18 @@ export function timeline(
       id: "paid",
       title: COPY.steps.paid,
       time: paid && paidBy ? dateTime(paidBy.deposit.blockTime) : undefined,
-      chips:
-        baseTx && settledBy
-          ? [
-              { label: COPY.chips.network, value: <NetworkName chainId={settledBy.chainId} /> },
-              {
-                label: COPY.chips.tx,
-                value: <span className="font-mono">{shortAddress(baseTx.hash)}</span>,
-              },
-            ]
-          : undefined,
+      chips: baseTx
+        ? [
+            {
+              label: COPY.chips.network,
+              value: <NetworkName chainId={CROSS_CHAIN_TARGET.chainId} />,
+            },
+            {
+              label: COPY.chips.tx,
+              value: <span className="font-mono">{shortAddress(baseTx.hash)}</span>,
+            },
+          ]
+        : undefined,
     },
     ...(ended
       ? [{ id: "closed", title: COPY.steps.closed, time: dateTime(payment.closesAt) }]

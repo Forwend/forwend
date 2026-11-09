@@ -77,6 +77,17 @@ describe("payment timeline", () => {
     const paid = steps.find((s) => s.id === "paid");
     expect(paid?.chips?.map((c) => c.label)).toEqual(["Network", "Tx"]);
     expect(renderToStaticMarkup(paid?.chips?.[1]?.value)).toContain("0x9999");
+    // Before the USDC is booked, the payment still reads as its first option: Paid names Base, where 1Click delivered.
+    const onArbitrum = payment({
+      crossChain: delivered,
+      optionId: "0xarb",
+      options: [
+        { optionId: "0xarb", chainId: 42161, returns: [] },
+        { optionId: "0xbase", chainId: 8453, returns: [] },
+      ],
+    } as never);
+    const network = timeline(onArbitrum, []).find((s) => s.id === "paid")?.chips?.[0]?.value;
+    expect(renderToStaticMarkup(network)).toContain(">Base</span>");
     // Still converting, a Base deposit is someone's direct one: Converting waits for 1Click.
     expect(timeline(payment({}), [baseDeposit]).find((s) => s.id === "converting")?.state).toBe(
       "current",
