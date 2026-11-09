@@ -86,6 +86,10 @@ func (s *Service) get(ctx context.Context, profileID, id string, summary bool) (
 	if inv.CrossChain, err = readCrossChain(ctx, s.pool, inv.ID); err != nil {
 		return Invoice{}, err
 	}
+	if err := s.pool.QueryRow(ctx, `SELECT NOT p.crosschain_off FROM invoices i JOIN profiles p ON p.id = i.profile_id
+		WHERE i.id = $1`, inv.ID).Scan(&inv.CrossChainOn); err != nil {
+		return Invoice{}, fmt.Errorf("read invoice %s cross-chain switch: %w", inv.ID, err)
+	}
 	// The last deposit that booked money to the creator is the one that completed the amount: later ones are held.
 	var paidAt *int64
 	var settledAt *time.Time

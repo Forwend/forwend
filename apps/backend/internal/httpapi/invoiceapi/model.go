@@ -160,6 +160,8 @@ type invoiceDetailJSON struct {
 	ReplacedBy *revisionJSON `json:"replacedBy"`
 	// R-235: the shown payment through NEAR Intents; null without one.
 	CrossChain *paymentio.CrossChain `json:"crossChain"`
+	// R-240: the payee takes payments from other chains; the pay page offers it only on a live Base USDC option too.
+	CrossChainOn bool `json:"crossChainOn"`
 }
 
 // R-129: payToken is the replacement's pay link; null for the invoice it replaced.
@@ -349,7 +351,7 @@ func toInvoiceDetailJSON(inv invoice.Invoice, withClient bool) invoiceDetailJSON
 		SettledAt: httpio.OrNullTime(inv.SettledAt), CanceledAt: httpio.OrNullTime(inv.CanceledAt), Deposits: []depositJSON{}, Options: []optionJSON{},
 		Lines:       []lineJSON{},
 		NextCheckAt: httpio.OrNullTime(inv.NextCheckAt), Updates: []updateJSON{}, ReplacedBy: toRevisionJSON(inv.ReplacedBy),
-		CrossChain: paymentio.FromCrossChain(inv.CrossChain)}
+		CrossChain: paymentio.FromCrossChain(inv.CrossChain), CrossChainOn: inv.CrossChainOn}
 	for _, u := range inv.Updates {
 		out.Updates = append(out.Updates, updateJSON{At: u.At.UTC().Format(time.RFC3339), Field: u.Field,
 			From: httpio.OrNull(u.From), To: httpio.OrNull(u.To)})

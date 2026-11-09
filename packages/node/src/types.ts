@@ -200,7 +200,7 @@ export interface Payment extends OptionFees {
   hostedUrl: string | null;
   /** The hosted page's token, the last part of hostedUrl: what @forwend/js and @forwend/react take. */
   payToken: string | null;
-  /** A payment through NEAR Intents; payments.get fills it, lists leave it null. */
+  /** A payment through NEAR Intents; a list fills it only once 1Click saw a deposit. */
   crossChain: CrossChain | null;
 }
 
@@ -358,6 +358,8 @@ export interface Invoice extends OptionFees {
   metadata: Record<string, string>;
   /** A payment through NEAR Intents; an invoice's own read and webhooks fill it, lists leave it out. */
   crossChain?: CrossChain | null;
+  /** The payee takes payments from other chains (R-240), in an invoice's own read. */
+  crossChainOn?: boolean;
   [field: string]: unknown;
 }
 

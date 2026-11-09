@@ -266,6 +266,14 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await expect(page.getByRole("button", { name: "Show address" })).toHaveCount(0);
   });
 
+  test("is not offered when the payee turned it off (R-240)", async ({ page }) => {
+    await page.clock.install({ time: NOW });
+    await mockInvoice(page, { ...LIVE, crossChainOn: false });
+    await page.goto(`/pay/${PAY}`);
+    await expect(page.getByRole("button", { name: "Show address" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Pay with another token" })).toHaveCount(0);
+  });
+
   test("is not offered on a test-mode invoice", async ({ page }) => {
     await page.clock.install({ time: NOW });
     await mockInvoice(page, OPEN);

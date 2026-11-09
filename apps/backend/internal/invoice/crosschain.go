@@ -90,6 +90,8 @@ func (s *Service) crossTarget(ctx context.Context, payToken string, now time.Tim
 	switch {
 	case !inv.Livemode: // 1Click has no testnet (D-123)
 		return crossTarget{}, fmt.Errorf("%w: test mode", ErrCrossChainOff)
+	case !inv.CrossChainOn:
+		return crossTarget{}, fmt.Errorf("%w: the payee turned it off", ErrCrossChainOff)
 	case i < 0:
 		return crossTarget{}, fmt.Errorf("%w: no Base USDC option", ErrCrossChainOff)
 	case inv.Closed || (inv.PaymentStatus != ledger.Open && inv.PaymentStatus != ledger.PartiallyPaid):

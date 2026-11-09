@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/forwend/forwend/apps/backend/internal/intents"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
 
@@ -77,7 +78,8 @@ func paidWithCSV(p *invoice.MovementPaidWith) string {
 	if p == nil || p.Amount == nil {
 		return ""
 	}
-	return httpio.CSVText(invoice.PaymentUSDValue(p.Amount, p.Decimals) + " " + p.Symbol + " on " + p.Blockchain + " through NEAR Intents")
+	return httpio.CSVText(invoice.PaymentUSDValue(p.Amount, p.Decimals) + " " + p.Symbol + " on " +
+		intents.ChainName(p.Blockchain) + " through NEAR Intents")
 }
 
 func paidWithTx(p *invoice.MovementPaidWith) string {

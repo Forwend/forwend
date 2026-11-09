@@ -1448,6 +1448,11 @@ paths:
                 off:
                   type: array
                   items: { $ref: "#/components/schemas/TokenRef" }
+                crossChain:
+                  type: boolean
+                  description: |
+                    R-240. Payers may pay from other chains through NEAR Intents. Off, no new quote is made for the
+                    profile's invoices, links and checkouts; an open quote still finishes. Left out, it stays as it is.
       responses:
         "200": { $ref: "#/components/responses/ProfileTokens" }
         "400": { $ref: "#/components/responses/MalformedRequest" }
@@ -4035,7 +4040,7 @@ components:
           pattern: "^[0-9a-f]{64}$"
           description: The hosted page's token, the last part of hostedUrl, for @forwend/js and @forwend/react. Null with hostedUrl.
         crossChain:
-          description: R-235. A payment through NEAR Intents; a payment's own read fills it, lists leave it null.
+          description: R-235. A payment through NEAR Intents; a list fills it only once 1Click saw a deposit, so it tags those.
           oneOf:
             - type: "null"
             - $ref: "#/components/schemas/CrossChainPayment"
@@ -5854,7 +5859,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/InvoiceSummary"
         - type: object
-          required: [paidAt, settledAt, deposits, options, nextCheckAt, lines, updates, replacedBy, crossChain]
+          required: [paidAt, settledAt, deposits, options, nextCheckAt, lines, updates, replacedBy, crossChain, crossChainOn]
           properties:
             paidAt:
               type: [string, "null"]
@@ -5950,6 +5955,9 @@ components:
               oneOf:
                 - type: "null"
                 - $ref: "#/components/schemas/CrossChainPayment"
+            crossChainOn:
+              type: boolean
+              description: R-240. The payee takes payments from other chains; the pay page also needs a live Base USDC option.
             updates:
               type: array
               description: |
@@ -6576,11 +6584,14 @@ components:
         application/json:
           schema:
             type: object
-            required: [tokens]
+            required: [tokens, crossChain]
             properties:
               tokens:
                 type: array
                 items: { $ref: "#/components/schemas/TokenSwitch" }
+              crossChain:
+                type: boolean
+                description: R-240. Payers may pay from other chains through NEAR Intents; on by default.
     LogoNotFound:
       description: No store with this id has a logo (logo_not_found)
       content:

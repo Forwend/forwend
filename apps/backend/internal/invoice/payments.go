@@ -146,6 +146,14 @@ func readPaymentPage(ctx context.Context, db paymentReader, profileID string, q 
 	for i := range page.Items {
 		page.Items[i].Receipts = receipts[page.Items[i].ID]
 	}
+	// R-239: the list tags a payment 1Click saw a deposit for.
+	crossChain, err := readCrossChainFor(ctx, db, mains, true)
+	if err != nil {
+		return Page{}, err
+	}
+	for i := range page.Items {
+		page.Items[i].CrossChain = crossChain[page.Items[i].ID]
+	}
 
 	return page, nil
 }

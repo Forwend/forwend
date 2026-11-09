@@ -3,7 +3,10 @@ import type { ReactNode } from "react";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
 import { PaymentReceived } from "@/features/payments/components/payment-received";
 import { SOURCE_ICONS, SOURCE_LABELS } from "@/features/payments/constants/payments";
-import { PAYMENTS_COPY as COPY } from "@/features/payments/constants/payments-copy";
+import {
+  PAYMENTS_COPY as COPY,
+  PAYMENT_DETAIL_COPY,
+} from "@/features/payments/constants/payments-copy";
 import {
   heldHint,
   paymentDisplayStatus,
@@ -39,6 +42,8 @@ export function PaymentsTable({ rows, attention, showStore, footer }: PaymentsTa
           <span className="truncate font-medium text-ink">{paymentLabel(p)}</span>
           {/* Quiet on every row, so it doesn't outshout the statuses that need action. */}
           {p.livemode ? null : <Badge tone="neutral">{COPY.testnet}</Badge>}
+          {/* R-239: paid from another chain; the payment page says from which. */}
+          {p.crossChain ? <Badge tone="neutral">{PAYMENT_DETAIL_COPY.crossChain.tag}</Badge> : null}
         </span>
       ),
     },

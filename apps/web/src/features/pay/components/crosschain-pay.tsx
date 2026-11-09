@@ -22,11 +22,12 @@ import {
 } from "@/features/pay/api/crosschain-api";
 import { CrossChainPicker } from "@/features/pay/components/crosschain-picker";
 import { ExactAmount } from "@/features/pay/components/exact-amount";
-import { CROSS_CHAIN_STATUSES, CROSS_CHAIN_TARGET } from "@/features/pay/constants/crosschain";
+import { CROSS_CHAIN_STATUSES } from "@/features/pay/constants/crosschain";
 import { ENTER } from "@/features/pay/constants/pay";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
-import { blockchainName, signedDeposit, verifyQuote } from "@/features/pay/lib/crosschain";
+import { signedDeposit, verifyQuote } from "@/features/pay/lib/crosschain";
 import type { CrossToken } from "@/features/pay/types/crosschain";
+import { blockchainName } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 
 const COPY = PAY_COPY.crossChain;

@@ -163,8 +163,25 @@ func TestWorkerFollowsAQuoteFromDepositToConversion(t *testing.T) {
 	}
 	csv := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/payments/"+main+"/movements.csv", "did:privy:alice", "", "")
 	if !strings.Contains(csv.raw, "Paid with,Paid with transaction") ||
-		!strings.Contains(csv.raw, "101.120000 USDT on tron through NEAR Intents,"+originTx) {
+		!strings.Contains(csv.raw, "101.120000 USDT on Tron through NEAR Intents,"+originTx) {
 		t.Fatalf("csv: %d %s", csv.status, csv.raw)
+	}
+
+	// Paid: the receipt names what the payer paid with, and the payments list tags it (R-239).
+	if got := e.get(t, pay).body["paymentStatus"]; got != "paid" {
+		t.Fatalf("status %v, want paid", got)
+	}
+	mustContain(t, strings.Join(strings.Fields(pdfText(t, e.pdf(t, main, "receipt.pdf", "").body)), " "),
+		"Paid with", "101.12 USDT on Tron")
+	list := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/payments", "did:privy:alice", "", "")
+	tagged := 0
+	for _, item := range list.body["items"].([]any) {
+		if c, ok := item.(map[string]any)["crossChain"].(map[string]any); ok && c["quoteId"] == id {
+			tagged++
+		}
+	}
+	if tagged != 1 {
+		t.Fatalf("payments list: %d tagged, want 1: %v", tagged, list.body)
 	}
 
 	// Every reader carries it: the pay page, the owner, the payment.
@@ -284,5 +301,40 @@ func TestSeenDepositPicksTheBaseOption(t *testing.T) {
 	checkAt(t, e, worker, quote["quoteId"].(string), time.Now().Add(time.Minute))
 	if converted, ok := historyKinds(t, e, pay)["crosschain.converted"]; !ok || converted["txHash"] != nil {
 		t.Fatalf("converted history %v", converted)
+	}
+}
+
+// R-240: a profile turns payments from other chains off for new quotes; an open quote still finishes.
+func TestProfileTurnsCrossChainOff(t *testing.T) {
+	e, fake, worker, pay, quote := tracked(t)
+	path := "/v1/profiles/" + e.aliceProfile + "/tokens"
+	if r := e.call(t, "GET", path, "did:privy:alice", "", ""); r.status != http.StatusOK || r.body["crossChain"] != true {
+		t.Fatalf("default: %d %v", r.status, r.body)
+	}
+	if got := e.get(t, pay).body["crossChainOn"]; got != true {
+		t.Fatalf("invoice read crossChainOn %v", got)
+	}
+	if r := e.call(t, "PUT", path, "did:privy:alice", "", `{"off": [], "crossChain": false}`); r.status != http.StatusOK ||
+		r.body["crossChain"] != false {
+		t.Fatalf("turn off: %d %v", r.status, r.body)
+	}
+	// A save without it keeps the switch.
+	if r := e.call(t, "PUT", path, "did:privy:alice", "", `{"off": []}`); r.body["crossChain"] != false {
+		t.Fatalf("save without the switch: %v", r.body)
+	}
+	if got := e.get(t, pay).body["crossChainOn"]; got != false {
+		t.Fatalf("invoice read crossChainOn %v", got)
+	}
+	r := e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+ethAsset+`", "refundTo": "0x6fd1c6b3f0b7a5b4e5d6a3c2b1a0f9e8d7c6b5a4"}`)
+	if r.status != 422 || errorCode(r) != "crosschain_unavailable" ||
+		!strings.Contains(r.body["error"].(map[string]any)["message"].(string), "turned it off") {
+		t.Fatalf("quote while off: %d %v", r.status, r.body)
+	}
+	// The quote made before still finishes.
+	fake.SetStatus(quote["depositAddress"].(string), intents.Processing, map[string]any{"depositedAmount": "101120000",
+		"originChainTxHashes": []any{}, "destinationChainTxHashes": []any{}})
+	checkAt(t, e, worker, quote["quoteId"].(string), time.Now())
+	if got := e.get(t, pay).body["crossChain"].(map[string]any)["status"]; got != "PROCESSING" {
+		t.Fatalf("open quote status %v", got)
 	}
 }

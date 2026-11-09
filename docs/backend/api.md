@@ -189,7 +189,12 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
     - A seen deposit moves the pick to the Base option. While it converts, pick and cancel are 409 and edit is refused.
   - Reads (R-235): the invoice's own reads, the payment's read and webhooks carry `crossChain`.
     - It is the newest quote 1Click saw a deposit for, else the newest: status, what was sent and refunded, both chains'
-      transactions and the signed answer. Lists leave it null.
+      transactions and the signed answer.
+    - The payments list fills it only once 1Click saw a deposit, so the list can tag it.
+    - The receipt PDF, the owner's paid email and the payer's receipt email name what was paid with.
+  - A profile turns it off with `crossChain: false` on `PUT /v1/profiles/{id}/tokens` (R-240); `GET` returns it.
+    - Off, new quotes for its invoices, links and checkouts are 422 `crosschain_unavailable`; an open quote finishes.
+    - The invoice read's `crossChainOn` tells the pay page whether to offer it.
     - A movement of a Base transfer 1Click made carries `paidWith`; the CSV adds "Paid with" and "Paid with
       transaction".
 - Payment reminders (R-96): `invoice.QueueReminders` queues `invoice.reminder` rows.

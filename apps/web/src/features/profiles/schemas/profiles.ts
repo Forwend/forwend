@@ -63,6 +63,8 @@ export const profileTokensSchema = z.object({
       on: z.boolean(),
     }),
   ),
+  // R-240: payers may pay from other chains through NEAR Intents; an older api leaves it out.
+  crossChain: z.boolean().optional(),
 });
 
 /** GET and PUT /v1/profiles/{id}/notifications (R-80); a null address means none. */

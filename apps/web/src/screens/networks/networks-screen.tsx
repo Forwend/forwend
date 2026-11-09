@@ -2,6 +2,7 @@
 
 import { Skeleton } from "@forwend/ui-web";
 import { useGetProfileTokensQuery } from "@/features/profiles/api/profiles-api";
+import { CrossChainSwitch } from "@/features/profiles/components/crosschain-switch";
 import { TokenSwitches } from "@/features/profiles/components/token-switches";
 import { TOKENS_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
@@ -32,11 +33,14 @@ export function NetworksScreen() {
           ))}
         </ul>
       ) : (
-        <TokenSwitches
-          key={profile.profileId}
-          profileId={profile.profileId}
-          saved={tokens.currentData}
-        />
+        <>
+          <TokenSwitches
+            key={profile.profileId}
+            profileId={profile.profileId}
+            saved={tokens.currentData}
+          />
+          <CrossChainSwitch profileId={profile.profileId} saved={tokens.currentData} />
+        </>
       )}
     </div>
   );

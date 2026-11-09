@@ -32,37 +32,6 @@ export const CROSS_CHAIN_STATUSES = {
   failed: "FAILED",
 } as const;
 
-/** 1Click's chain names for the chains payers use most; any other shows its own name in capitals. */
-export const BLOCKCHAIN_NAMES: Record<string, string> = {
-  eth: "Ethereum",
-  base: "Base",
-  arb: "Arbitrum",
-  op: "Optimism",
-  pol: "Polygon",
-  bsc: "BNB Chain",
-  avax: "Avalanche",
-  gnosis: "Gnosis",
-  sol: "Solana",
-  tron: "Tron",
-  btc: "Bitcoin",
-  near: "NEAR",
-  sui: "Sui",
-  aptos: "Aptos",
-  doge: "Dogecoin",
-  ltc: "Litecoin",
-  bch: "Bitcoin Cash",
-  zec: "Zcash",
-  cardano: "Cardano",
-  starknet: "Starknet",
-  bera: "Berachain",
-  scroll: "Scroll",
-  monad: "Monad",
-  xlayer: "X Layer",
-  plasma: "Plasma",
-  hypercore: "Hyperliquid",
-  abs: "Abstract",
-};
-
 /** The chains listed first, in this order; the rest follow by name. */
 export const POPULAR_BLOCKCHAINS = [
   "eth",

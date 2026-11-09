@@ -83,8 +83,19 @@ export const PAYMENT_DETAIL_COPY = {
     wallet: "In your wallet",
     closed: "Checkout closed",
     returned: "Returned to the payer",
+    // R-239: a payment through NEAR Intents.
+    converting: "Converted to USDC",
   },
-  chips: { source: "From", network: "Network", tx: "Tx" },
+  chips: { source: "From", network: "Network", tx: "Tx", sent: "Sent", via: "Via" },
+  // R-239: what the customer sent on its own chain, which NEAR Intents converted.
+  crossChain: {
+    sentWith: "Sent through NEAR Intents",
+    value: (amount: string, chain: string) => `${amount} on ${chain}`,
+    nearIntents: "NEAR Intents",
+    refunded: (amount: string) => `${amount} returned to the customer's refund address`,
+    originTx: "Customer's transaction",
+    tag: "via NEAR Intents",
+  },
   receivedOf: "Received",
   fees: "Fees",
   youReceive: "You receive",

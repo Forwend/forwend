@@ -560,6 +560,9 @@ export const INVOICE_COPY = {
     error: "We could not stop it. Try again.",
   },
   // R-124.
+  // R-239: a payment through NEAR Intents.
+  paidThrough: "Paid through NEAR Intents",
+  paidThroughValue: (amount: string, chain: string) => `${amount} on ${chain}`,
   history: {
     title: "History",
     filter: "Show",
@@ -612,6 +615,10 @@ export const INVOICE_COPY = {
       [HISTORY_KINDS.replaced]: "Replaced",
       [HISTORY_KINDS.reopened]: "Reopened",
       [HISTORY_KINDS.numbered]: "Number given",
+      [HISTORY_KINDS.crossChainDeposit]: "Seen on another chain",
+      [HISTORY_KINDS.crossChainConverted]: "Converted by NEAR Intents",
+      [HISTORY_KINDS.crossChainRefunded]: "Returned by NEAR Intents",
+      [HISTORY_KINDS.crossChainFailed]: "NEAR Intents conversion failed",
     } satisfies Record<HistoryKind, string>,
     fields: {
       [HISTORY_FIELDS.memo]: "Memo",

@@ -173,6 +173,31 @@ export const profilesApi = apiSlice.injectEndpoints({
       transformResponse: (data: { tokens: TokenSwitch[] }) => data.tokens,
       responseSchema: profileTokensSchema.shape.tokens,
     }),
+    /** R-240: whether payers may pay from other chains through NEAR Intents; on by default. */
+    getCrossChainSwitch: build.query<boolean, string>({
+      query: (profileId) => tokensUrl(profileId),
+      transformResponse: (data: { crossChain?: boolean }) => data.crossChain ?? true,
+    }),
+    /** Saves the switch with the tokens the profile has off, as the route takes both. */
+    saveCrossChainSwitch: build.mutation<
+      boolean,
+      { profileId: string; off: TokenRef[]; on: boolean }
+    >({
+      query: ({ profileId, off, on }) => ({
+        url: tokensUrl(profileId),
+        method: "PUT",
+        body: { off, crossChain: on },
+      }),
+      transformResponse: (data: { crossChain?: boolean }) => data.crossChain ?? true,
+      async onQueryStarted({ profileId }, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(profilesApi.util.upsertQueryData("getCrossChainSwitch", profileId, data));
+        } catch {
+          // The page shows the error, and the switch keeps the saved value.
+        }
+      },
+    }),
     saveProfileTokens: build.mutation<TokenSwitch[], { profileId: string; off: TokenRef[] }>({
       query: ({ profileId, off }) => ({ url: tokensUrl(profileId), method: "PUT", body: { off } }),
       transformResponse: (data: { tokens: TokenSwitch[] }) => data.tokens,
@@ -206,6 +231,8 @@ export const {
   useSaveNotificationsMutation,
   useGetProfileTokensQuery,
   useSaveProfileTokensMutation,
+  useGetCrossChainSwitchQuery,
+  useSaveCrossChainSwitchMutation,
   useSaveProfileModeMutation,
   useSaveProfileFeesMutation,
 } = profilesApi;

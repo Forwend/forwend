@@ -76,11 +76,7 @@ import { CROSS_CHAIN_LEAST_MS, CROSS_CHAIN_STATUSES } from "@/features/pay/const
 import { EMBED_LAYOUTS } from "@/features/pay/constants/embed";
 import { ENTER, LEFT_PAD, PAY_STATES, RIGHT_PAD } from "@/features/pay/constants/pay";
 import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
-import {
-  blockchainName,
-  type CrossChainTarget,
-  crossChainTarget,
-} from "@/features/pay/lib/crosschain";
+import { type CrossChainTarget, crossChainTarget } from "@/features/pay/lib/crosschain";
 import {
   checkoutClosesAt,
   clockRuns,
@@ -100,7 +96,7 @@ import { TokenMark } from "@/shared/components/chains/token-mark";
 import { ServerStrip } from "@/shared/components/server-strip";
 import { LIVE_QUERY, REFRESH_MS } from "@/shared/config/refresh";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
-import { addressLink, chainName, lookalikeOf, txLink } from "@/shared/lib/chains";
+import { addressLink, blockchainName, chainName, lookalikeOf, txLink } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 
 const NOT_FOUND = 404;

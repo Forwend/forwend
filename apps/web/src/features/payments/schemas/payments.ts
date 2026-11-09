@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { DOCUMENT_KINDS, PAYMENT_PURPOSES } from "@/features/invoices/constants/invoices";
 import {
+  crossChainSchema,
   depositSchema,
   invoiceLineSchema,
   optionFeesShape,
@@ -58,6 +59,8 @@ export const paymentSchema = z.object({
   hostedUrl: z.url().nullable(),
   /** hostedUrl's last part; an API from before it leaves it out. */
   payToken: z.string().nullable().optional(),
+  /** A payment through NEAR Intents (R-235); a list carries it once 1Click saw a deposit. */
+  crossChain: crossChainSchema.nullable().optional(),
   amounts: paymentAmountsSchema,
   /** Derived by the API (D-114); older reads leave them out and the raw facts decide. */
   state: z.string().optional(),

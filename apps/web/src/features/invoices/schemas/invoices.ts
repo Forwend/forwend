@@ -323,6 +323,8 @@ export const invoiceSchema = invoiceSummarySchema.extend({
   replacedBy: revisionSchema.nullable(),
   // A payment through NEAR Intents, in an invoice's own read (R-235).
   crossChain: crossChainSchema.nullable().optional(),
+  // The payee takes payments from other chains (R-240), in an invoice's own read.
+  crossChainOn: z.boolean().optional(),
   // Only in the owner's reads: the invoice it replaced.
   replaces: revisionSchema.nullable().optional(),
   // Only in the owner's reads: null while not paid or once settled.

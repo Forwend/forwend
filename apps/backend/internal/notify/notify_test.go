@@ -827,3 +827,34 @@ func TestTheCodeEmailCarriesItsCode(t *testing.T) {
 			strings.Contains(m.HTML, "042517"))
 	}
 }
+
+// R-239: the owner's paid email and the payer's receipt name what was sent through NEAR Intents.
+func TestPaidEmailsNameWhatWasPaidWith(t *testing.T) {
+	pool, id := setup(t, "owner@example.com")
+	exec(t, pool, "UPDATE invoices SET payer_email = 'payer@example.com' WHERE id = $1", id)
+	exec(t, pool, `INSERT INTO crosschain_quotes (invoice_id, option_id, origin_asset, refund_to, deposit_address,
+		    amount_in, min_amount_in, amount_out, time_estimate, shown_until, deadline, signed, status, origin_blockchain,
+		    origin_symbol, origin_decimals, deposited_amount, deposit_seen_at, converted_at)
+		VALUES ($1, $1, 'nep141:tron-usdt', 'T1', 'T2', 5060000, 5010000, 5000000, 27, now(), now(), '{}', 'SUCCESS', 'tron',
+		    'USDT', 6, 5060000, now(), now())`, id)
+	if err := pgx.BeginFunc(context.Background(), pool, func(tx pgx.Tx) error {
+		if err := outbox.Queue(context.Background(), tx, outbox.Paid, id, nil); err != nil {
+			return err
+		}
+		return outbox.QueueReceipt(context.Background(), tx, id)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	f := &fake{}
+	if err := Deliver(context.Background(), pool, f, site); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.sent) != 2 {
+		t.Fatalf("sent %d, want the paid email and the receipt", len(f.sent))
+	}
+	for _, m := range f.sent {
+		if !strings.Contains(m.Text, "Paid with: 5.06 USDT on Tron through NEAR Intents") {
+			t.Fatalf("%s lacks what was paid with:\n%s", m.Subject, m.Text)
+		}
+	}
+}

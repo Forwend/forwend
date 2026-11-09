@@ -287,8 +287,10 @@ func baseTransfer(t *testing.T, e invoiceEnv, main, option, txHash, amount strin
 		    block_hash, block_number, block_time, from_address, to_address, amount, status)
 		SELECT 8453, 'evm', token_contract, id, $4, 0, $4, 90, extract(epoch FROM now())::bigint, $2, receive_address,
 		    $3::numeric, 'confirmed' FROM invoices WHERE id = $1`, option, aliceWallet, amount, txHash)
+	// The finalized balance holds what was sent, so a full payment becomes paid.
 	balances := func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
-		return big.NewInt(0), 100, nil
+		n, _ := new(big.Int).SetString(amount, 10)
+		return n, 100, nil
 	}
 	notDeployed := func(context.Context, uint64, string, string) (uint64, error) { return 0, nil }
 	if err := ledger.NewService(e.pool, balances, notDeployed).Process(context.Background(), main); err != nil {

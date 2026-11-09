@@ -1,7 +1,6 @@
 import { sha256 } from "@noble/hashes/sha2.js";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import {
-  BLOCKCHAIN_NAMES,
   CROSS_CHAIN_TARGET,
   ONECLICK_KEY,
   ONECLICK_SLIPPAGE_BPS,
@@ -10,6 +9,7 @@ import {
 } from "@/features/pay/constants/crosschain";
 import { withOption } from "@/features/pay/lib/pay";
 import { checkedReceiveAddress } from "@/features/pay/lib/receive-address";
+import { blockchainName } from "@/shared/lib/chains";
 
 /** What a payer pays into from another chain (D-123): the open Base USDC option of a live invoice. */
 export interface CrossChainTarget {
@@ -28,7 +28,7 @@ export function crossChainTarget(inv: Invoice, payToken: string): CrossChainTarg
       o.chainId === CROSS_CHAIN_TARGET.chainId &&
       o.token.toLowerCase() === CROSS_CHAIN_TARGET.token,
   );
-  if (!inv.livemode || !base) return null;
+  if (!inv.livemode || !base || inv.crossChainOn === false) return null;
   const shown = withOption(inv, base.optionId);
   if (shown.optionId !== base.optionId) return null; // money chose another option
   const receive = checkedReceiveAddress(shown, payToken);
@@ -195,11 +195,6 @@ export function crossChainKey(
 ): string {
   const loopback = host === "localhost" || host === "127.0.0.1" || host === "[::1]";
   return testKey && loopback ? testKey : ONECLICK_KEY;
-}
-
-/** 1Click's name of a chain as payers know it. */
-export function blockchainName(blockchain: string): string {
-  return BLOCKCHAIN_NAMES[blockchain] ?? blockchain.toUpperCase();
 }
 
 /** Chains in the picker's order: the popular ones first, then by name. */
