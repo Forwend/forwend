@@ -171,6 +171,7 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
     Base USDC or the invoice's other direct options; stablecoins first. Each has an `estimate` at its listed price.
     - The `estimate` adds 1Click's 1% slippage, as a quote's `amountIn` does (R-244).
     - A token whose last check 1Click answered "No liquidity" is left out until a check is answered (R-245).
+    - A payer's price or quote 1Click refuses for no liquidity is 422 `no_liquidity`: the token's, not the refund address's.
     - Each has the `minimum` 1Click last needed from it, in Base USDC base units, or null (D-126).
     - The worker checks each token with a dry quote for 0.01 USDC, one every 5 seconds, each at most once an hour.
     - A payer's refused price or quote updates it at once. 1Click names some minimums in dollars; they count 1:1.

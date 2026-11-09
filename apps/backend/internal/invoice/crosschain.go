@@ -38,6 +38,8 @@ var (
 	ErrTooManyQuotes = errors.New("too many cross-chain quotes")
 	// ErrProvider: 1Click didn't give a quote that checks out (D-124); the same request may try again.
 	ErrProvider = errors.New("cross-chain provider unavailable")
+	// ErrNoLiquidity: 1Click has no liquidity for the token now (R-245); another token may convert.
+	ErrNoLiquidity = errors.New("1Click has no liquidity for this token now")
 )
 
 // CrossToken is a token a payer can pay with through 1Click; Estimate is about what they send, in its base units, at
@@ -309,6 +311,8 @@ func providerError(err error, invoiceID string, dry bool) error {
 	switch {
 	case errors.As(err, &below):
 		return err
+	case errors.Is(err, intents.ErrNoLiquidity): // the token's, never the refund address's
+		return ErrNoLiquidity
 	case errors.Is(err, intents.ErrRefused) && dry:
 		return fmt.Errorf("%w: originAsset: 1Click can't convert this token now", ErrInvalid)
 	case errors.Is(err, intents.ErrRefused):

@@ -279,6 +279,31 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await expect(page.getByText(/refund to this address/)).toHaveCount(0);
   });
 
+  test("a quote refused for no liquidity says the token can't be converted, not the refund address (R-245)", async ({
+    page,
+  }) => {
+    await page.clock.install({ time: NOW });
+    await mockInvoice(page, LIVE);
+    await routeCrossChain(page, [quote("1263000000")]);
+    await page.route(`**/api/v1/invoices/${PAY}/crosschain/quotes`, (route) =>
+      route.fulfill({
+        status: 422,
+        json: {
+          error: {
+            code: "no_liquidity",
+            message: "NEAR Intents has no liquidity for this token now: choose another token",
+          },
+        },
+      }),
+    );
+    await page.goto(`/pay/${PAY}`);
+    await pickTronUSDT(page);
+    await expect(
+      page.getByRole("alert").filter({ hasText: "NEAR Intents can't convert this token now" }),
+    ).toBeVisible();
+    await expect(page.getByText(/refund to this address/)).toHaveCount(0);
+  });
+
   test("shows only the address 1Click signed, and none for an answer changed after it signed", async ({
     page,
   }) => {
