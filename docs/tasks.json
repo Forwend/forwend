@@ -1175,12 +1175,16 @@
       "acceptance": [
         "The executor is paid the network fees, which pay its gas directly on Arc and Tempo (R-229).",
         "On Base and Arbitrum, below GasAlertSettlements settlements' worth of ether, the signer swaps USDC for ether on Uniswap v3 and unwraps it, accepting at least the Chainlink price less 1%; tested on a mainnet fork.",
-        "A failed or refused swap leaves settlement waiting and alerting as today, never losing money; the first swap on each mainnet runs only after the owner's yes."
+        "A failed or refused swap leaves settlement waiting and alerting as today, never losing money; the first swap on each mainnet runs only after the owner's yes.",
+        "Every option of an invoice carries the highest network fee its networks quote, so a client-pays invoice asks one amount on any network; the quote prices with who pays and the store, as the create does (D-122, R-227).",
+        "The new invoice form's Continue waits for the fee quote on the items step; a refused or failed quote shows its answer, never the last figures (R-227).",
+        "The payment page's Items show the fee and what the owner receives, before payment too (R-228).",
+        "The Send summary lays out a pasted To address as From: a name line over the full address."
       ],
       "dependsOn": [
         "F446"
       ],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "backend",
         "docs-check"
@@ -1188,14 +1192,104 @@
       "refs": [
         "R-229",
         "R-189",
-        "D-122"
+        "D-122",
+        "R-227",
+        "R-228"
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-09 review pass by reviewer: All 7 acceptance lines hold. The swap is nonce-safe and money-safe: decimals, rounding, floor, deadline, exact approve, pending and lock guards are right, and every failed or refused buy still alerts. Every option takes the highest network fee, and the quote matches the create's mode, store, payer and tenth ceiling; no reader still assumes per-network fees. Non-blocking: a dust allowance left by a refused tiny swap is reused forever (gas.go:255), and the Chainlink floor has no staleness check, which money-safety.md documents.",
+        "2026-11-09 review pass by reviewer: ac84843c is correct: buyGas refuses a swap whose floor buys less than one deploy and settle (about 0.01 USD on Base today) before any approve, so dust is never approved. TestSignerSwapsNoDust checks it with a stand-in USDC and feed and would fail without the guard. The docs bullet is short and true. Non-blocking: a leftover allowance that a later, smaller swap leaves below that floor still blocks every later buy, since buyGas approves only at zero allowance (gas.go:255-265); it still alerts, and it needs an in within that floor of the refused one.",
+        "2026-11-09 review pass by reviewer: 6035934b closes the leftover-allowance gap: buyGas reuses an allowance only when it buys at least one deploy and settle on its own, and otherwise approves this swap's in from held, which replaces the leftover; dust held is still refused before any approve. Zero, too-small, large and held-capped allowances all behave correctly, and TestSignerSwapsNoDust checks the replacement. Non-blocking: the second sentence of the comment at gas.go:253-254 says approved dust would cap every later swap, which is no longer true now that it is replaced.",
+        "2026-11-09 review pass by reviewer: 1a29e9ee only removes the stale second sentence of the swap floor comment in gas.go; the comment now matches the code. The earlier findings stand: every acceptance line holds, the swap is nonce- and money-safe, a dust or too-small allowance is refused or replaced, and every failed buy alerts."
+      ],
       "blockedReason": null,
       "branch": "feat/f444-the-executor-tops-up-its-own-gas-from-th",
-      "baseCommit": "7c3ae36a2673281f8b179bb2ccb8c05602dc8084"
+      "baseCommit": "7c3ae36a2673281f8b179bb2ccb8c05602dc8084",
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-09T00:34:09Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 72.8,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.7,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 49.6,
+            "log": ""
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 65.6,
+            "log": ""
+          }
+        ],
+        "taskHash": "6088b62e960c31df",
+        "filesHash": "6a10ea0bd8dbb6f5",
+        "proof": {
+          "1": "backend: TestCheckGasInFeeToken reads the executor's Tempo fee token for its gas; on chain on 2026-11-09 the mainnet executor's Tempo fee token is OUSD and its Arc native balance equals its USDC, so the fees it is paid are its gas",
+          "2": "backend: TestSwapAmounts (USDC in rounded up, ether floor at the Chainlink price less 1%) runs in the suite; the opt-in fork run (go test -tags mainnetfork -run TestExecutorBuysGasOnAMainnetFork) passed on Base and Arbitrum after the allowance fixes (25.55 USDC bought 0.011946 ether on Base, floor 0.011850)",
+          "3": "backend: TestSignerAlertsWhenItCantBuyGas and TestSignerSwapsNoDust keep the low gas alert, name why, approve no dust and replace a too-small allowance; on the forks a refused swap moved no USDC and a second refused round sent nothing; no mainnet swap has run, which waits for the owner",
+          "4": "backend: TestEveryOptionTakesTheHighestNetworkFee (drops, highest, tenth) and TestEveryOptionCarriesTheHighestNetworkFee (invoice and quote with feesPaidBy and a store with a network off)",
+          "5": "unit: new-invoice-form 'keeps Continue off on the items until the fee quote arrives' and 'drops the last figures when a new quote is refused'",
+          "6": "unit: invoice-lines.test.tsx shows the fee and You receive from the main option before payment, for owner and client pays",
+          "7": "typecheck: a layout change without logic in send-review.tsx (a name line over FullAddress), checked against DESIGN.md's Send summary rule; lint and typecheck pass"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "1a29e9ee only removes the stale second sentence of the swap floor comment in gas.go; the comment now matches the code. The earlier findings stand: every acceptance line holds, the swap is nonce- and money-safe, a dust or too-small allowance is refused or replaced, and every failed buy alerts.",
+          "at": "2026-11-09T00:37:43Z",
+          "filesHash": "6a10ea0bd8dbb6f5"
+        }
+      },
+      "failedVerifies": 0
     },
     {
       "id": "F445",
