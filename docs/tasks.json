@@ -521,7 +521,7 @@
       "dependsOn": [
         "F457"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "docs-check",
@@ -586,11 +586,11 @@
         "taskHash": "47faec217a434bad",
         "filesHash": "41ff6a2c14a86b6e",
         "proof": {
-          "1": "unit: TestCheckGas, TestSettlesThatPayTheirNetworkFeeAreNotCapped, TestAlertsNameAStalledChainAndPaidMoneyNotSettled, TestMinedSettleWaitsForFinalityBeforeItIsReadAgain, TestUnbookedMoneyAlertsButHoldsNeitherPaidNorTheSettle, TestPaidInvoiceWithUnbookedMoneyAlerts",
-          "2": "unit: TestSupportReturnsAPayerAtMostWhatTheyPaid, TestPaymentReconciliationVerifiesOnlyReceiversWithNothingUnexplained, TestADeliveryThatCantBeBuiltFailsOnTheSchedule, TestLimitedLinkHoldsAnUnpaidSlotOnlyUntilADepositIsSeen",
-          "3": "unit: TestWorkerFollowsADepositMadeAfterTheDeadline, TestWorkerStopsAQuoteNobodyPaidAndRecordsAFailure, TestWorkerAlertsOnAStatusItDoesNotKnow, TestAShortDepositHoldsTheInvoice, TestAlertsNameCrossChainPaymentsThatHoldMoney, TestSlowChainQuoteGetsALongerDeadline, TestOneRoundReadsDepositsFirstAndManyAtOnce, TestCrossChainCallsShareOneBudgetAcrossInvoices; e2e crosschain.spec.ts short deposit",
-          "4": "unit: TestAPIReadsCannotTakeTheMoneyPathsBudget, TestAPolledSendReadsItsReceiptAtMostOnceEveryFewSeconds",
-          "5": "unit: TestRoundReadsInvoicesThroughTheirIndexes, TestUnchangedStatusIsNotWrittenAgain, TestPaymentAttentionReadsProblemsThroughIndexes, TestCreateCapsReadOnlyOpenAndRecentInvoices, TestBalancesReadOnlyInvoicesThatCanHoldMoney, TestFilterColumnTestsKeepEveryMatch"
+          "1": "unit",
+          "2": "unit",
+          "3": "unit",
+          "4": "unit",
+          "5": "unit"
         },
         "review": {
           "result": "pass",
@@ -598,11 +598,18 @@
           "summary": "Independent review, three rounds. Round 1 PASS with notes; the lead fixed 1, 2, 4, 5: the 00121 backfill skips an invalid quote deadline, the nine indexes build CONCURRENTLY outside a transaction (dropped first, so a failed run rebuilds them), a delivery Forwend can't build no longer turns the merchant's endpoint off, and the unbooked-money check no longer alerts on a read past the scan. Round 2 FAIL: both callers read at their node's head, so a real missed deposit could go unalerted; fixed by reading the signer's balance at min(finalized head, scan cursor), with a test that fails at the head. Round 3 PASS: reading at the cursor neither wrongly refuses nor passes a settle (deposits book at or below the cursor; an unscanned refund is caught by funded's unbooked-outflow check and settle() reverts on a short balance). Checked across the merge: ProcessChain still picks every row its filter can pick, skipped no-op updates are safe, SettleWaitsSQL is right since settle pays exactly the amount, the per-payer return cap can't be bypassed with -to, M5 filters are necessary conditions of their CASEs, tracker concurrency is safe, 1Click budgets are spent only on real calls. Deferred: redundant invoices_profile index and the holding predicate (task F459), per-process budgets, tracker capacity, alertCrossChain full read (F459), historyComplete (F459).",
           "at": "2026-11-09T23:28:56Z",
           "filesHash": "41ff6a2c14a86b6e"
-        }
+        },
+        "commit": "6970c53e",
+        "doneAt": "2026-11-09T23:28:56Z"
       },
       "branch": "fix/f458-the-medium-findings-of-the-2026-11-09-au",
       "baseCommit": "c488dce3f4da38aba2c138600f26726d0f85c45d",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f458-the-medium-findings-of-the-2026-11-09-au",
+        "base": "main"
+      }
     },
     {
       "id": "F459",
