@@ -2,6 +2,7 @@ package intents_test
 
 import (
 	"context"
+	"errors"
 	"math/big"
 	"testing"
 	"time"
@@ -132,6 +133,10 @@ func TestKeeperProbesEachTokensMinimum(t *testing.T) {
 	if n := checkedSince(start); n != 3 {
 		t.Fatalf("checked %d, want 3", n)
 	}
+	// One answered quote per token, and Tron's again at its limit: an answer ends the asking.
+	if n := fake.QuoteCount(); n != 3 {
+		t.Fatalf("quotes %d, want 3", n)
+	}
 	if got := minimums(); got[tron] != "1000000000" || got[eth] != "" || got[arb] != "" {
 		t.Fatalf("minimums %v", got)
 	}
@@ -146,11 +151,21 @@ func TestKeeperProbesEachTokensMinimum(t *testing.T) {
 	if got := minimums(); got[tron] != "1000000000" || got[eth] != "4800000" || got[arb] != "4800000" {
 		t.Fatalf("minimums an hour on %v", got)
 	}
-	// Limits lifted clear them; a refusal for another reason names none, and the next token follows 5 seconds later.
+	// Limits lifted clear them. A refusal naming none could be our request's fault: the token keeps its minimum, the
+	// refusal is told, and the next token follows 5 seconds later.
 	fake.Minimum, fake.Limits, fake.Refuse = big.NewInt(5301), nil, map[string]bool{arb: true}
-	sweep(start.Add(2*time.Hour), 3)
-	if got := minimums(); got[tron] != "" || got[eth] != "" || got[arb] != "" {
-		t.Fatalf("minimums once lifted %v", got)
+	refused := 0
+	for i := range 3 {
+		if err := keeper.Probe(ctx, start.Add(2*time.Hour+time.Duration(i)*5*time.Second)); err != nil {
+			if !errors.Is(err, intents.ErrRefused) {
+				t.Fatal(err)
+			}
+			refused++
+		}
+	}
+	got := minimums()
+	if refused != 1 || checkedSince(start.Add(2*time.Hour)) != 3 || got[tron] != "" || got[eth] != "" || got[arb] != "4800000" {
+		t.Fatalf("refused %d, checked %d, minimums %v", refused, checkedSince(start.Add(2*time.Hour)), got)
 	}
 	// 1Click unreachable: it waits 2 minutes, and the token keeps its minimum.
 	fake.Refuse = nil

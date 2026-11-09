@@ -209,7 +209,11 @@ test.describe("pay with another token (R-236 to R-238)", () => {
       route.fulfill({
         json: {
           ...TOKENS,
-          tokens: [{ ...TRON_TOKEN, minimum: "1999995000" }, TRX, TOKENS.tokens[1]],
+          tokens: [
+            { ...TRON_TOKEN, minimum: "1999995000" },
+            TRX,
+            { ...TOKENS.tokens[1], minimum: TOKENS.due },
+          ],
         },
       }),
     );
@@ -217,7 +221,7 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await page.getByRole("button", { name: "Pay with another token" }).click();
     await page.getByRole("button", { name: "Choose a token" }).click();
     const picker = page.getByRole("dialog", { name: "Pay with another token" });
-    // Ethereum's ETH fits: nothing is greyed, so no note.
+    // Ethereum's ETH needs exactly what is due, so it fits: nothing is greyed, so no note.
     await expect(picker.getByRole("button", { name: /ETH/ })).toBeEnabled();
     await expect(picker.getByText(/Greyed tokens/)).toHaveCount(0);
     await picker.getByRole("button", { name: "Tron", exact: true }).click();

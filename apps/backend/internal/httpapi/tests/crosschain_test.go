@@ -287,7 +287,6 @@ func TestCrossChainQuoteNot1ClickSignedIsRefused(t *testing.T) {
 	}
 }
 
-// baseDeposit books a confirmed transfer of amount to an invoice's Base option, as the watcher and the ledger would.
 // listedMinimums is each token's minimum in the pay page's list, by asset id.
 func listedMinimums(t *testing.T, e invoiceEnv, pay string) map[string]any {
 	t.Helper()
@@ -298,6 +297,7 @@ func listedMinimums(t *testing.T, e invoiceEnv, pay string) map[string]any {
 	return minimums
 }
 
+// baseDeposit books a confirmed transfer of amount to an invoice's Base option, as the watcher and the ledger would.
 func baseDeposit(t *testing.T, e invoiceEnv, option, amount string) {
 	t.Helper()
 	baseTransfer(t, e, option, option, amount)

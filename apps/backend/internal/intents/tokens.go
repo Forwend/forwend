@@ -207,17 +207,22 @@ func (k *Keeper) Probe(ctx context.Context, now time.Time) error {
 		}
 		minimum, amount = next, next
 	}
-	if err == nil || errors.Is(err, ErrRefused) { // a refusal for another reason names no minimum
+	if err == nil {
 		return SetMinimum(ctx, k.Pool, asset, minimum, now)
 	}
-	// 1Click unreachable, or an answer that failed its checks: the token keeps its minimum and waits its next turn, so
-	// one token can't hold up the rest.
-	k.probeDue = now.Add(retry)
-	if _, markErr := k.Pool.Exec(ctx, "UPDATE intents_tokens SET minimum_checked_at = $2 WHERE asset_id = $1", asset,
-		now); markErr != nil {
-		return errors.Join(err, markErr)
+	// Any other answer keeps the token's minimum, or the one this round named, and is returned to be logged: a refusal
+	// naming none can be our own request's fault, as a recipient 1Click stops taking. The token waits its next turn, so
+	// it can't hold up the rest; only 1Click unreachable, or an answer failing its checks, slows the next one.
+	var kept error
+	if minimum != nil {
+		kept = SetMinimum(ctx, k.Pool, asset, minimum, now)
+	} else {
+		_, kept = k.Pool.Exec(ctx, "UPDATE intents_tokens SET minimum_checked_at = $2 WHERE asset_id = $1", asset, now)
 	}
-	return err
+	if !errors.Is(err, ErrRefused) {
+		k.probeDue = now.Add(retry)
+	}
+	return errors.Join(err, kept)
 }
 
 // SetMinimum keeps what 1Click said asset needs at least, in Base USDC base units; nil when it named none (D-126).
