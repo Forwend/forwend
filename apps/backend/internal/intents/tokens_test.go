@@ -27,6 +27,7 @@ func TestKeeperKeepsTheListAndDropsWhat1ClickDropped(t *testing.T) {
 		{"assetId": "nep141:tiny.omft.near", "blockchain": "eth", "symbol": "TINY", "decimals": 18, "price": 1.9e-7},
 	}
 	keeper := &intents.Keeper{Pool: pool, Client: fake.Client(), Every: intents.TokensEvery}
+	every := 10 * time.Minute // R-232
 	start := time.Now()
 	if err := keeper.Tick(ctx, start); err != nil {
 		t.Fatal(err)
@@ -48,7 +49,7 @@ func TestKeeperKeepsTheListAndDropsWhat1ClickDropped(t *testing.T) {
 
 	// Not due yet: nothing is read, so the dropped token is still there.
 	fake.Tokens = []map[string]any{intentstest.Tokens[0]}
-	if err := keeper.Tick(ctx, start.Add(intents.TokensEvery-time.Second)); err != nil {
+	if err := keeper.Tick(ctx, start.Add(every-time.Second)); err != nil {
 		t.Fatal(err)
 	}
 	if list, _ := intents.List(ctx, pool); len(list) != 4 {
@@ -56,17 +57,17 @@ func TestKeeperKeepsTheListAndDropsWhat1ClickDropped(t *testing.T) {
 	}
 	// A failed read keeps the last list and tries again 2 minutes later.
 	fake.Down = true
-	if err := keeper.Tick(ctx, start.Add(intents.TokensEvery)); err == nil {
+	if err := keeper.Tick(ctx, start.Add(every)); err == nil {
 		t.Fatal("a failed read reported no error")
 	}
 	fake.Down = false
-	if err := keeper.Tick(ctx, start.Add(intents.TokensEvery+time.Minute)); err != nil {
+	if err := keeper.Tick(ctx, start.Add(every+time.Minute)); err != nil {
 		t.Fatal(err)
 	}
 	if list, _ := intents.List(ctx, pool); len(list) != 4 {
 		t.Fatalf("read again before the retry: %+v", list)
 	}
-	if err := keeper.Tick(ctx, start.Add(intents.TokensEvery+2*time.Minute)); err != nil {
+	if err := keeper.Tick(ctx, start.Add(every+2*time.Minute)); err != nil {
 		t.Fatal(err)
 	}
 	if list, _ := intents.List(ctx, pool); len(list) != 1 || list[0].AssetID != intents.BaseUSDCAsset {

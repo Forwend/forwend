@@ -157,7 +157,12 @@ func TestCrossChainQuotePaysExactlyWhatIsDueIntoTheBaseOption(t *testing.T) {
 	if other.status != http.StatusCreated || other.body["quoteId"] == r.body["quoteId"] {
 		t.Fatalf("other refund address: %d %v", other.status, other.body)
 	}
-	// A quote whose window has less than 5 minutes left is not given again.
+	// A quote is given again while 5 minutes of its window are left, and not once fewer are.
+	e.exec(t, `UPDATE crosschain_quotes SET shown_until = now() + interval '6 minutes'`)
+	if kept := e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "`+refundTo+`"}`); kept.status != http.StatusCreated ||
+		kept.body["quoteId"] != r.body["quoteId"] {
+		t.Fatalf("6 minutes left: %d %v", kept.status, kept.body)
+	}
 	e.exec(t, `UPDATE crosschain_quotes SET shown_until = now() + interval '4 minutes'`)
 	if late := e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "`+refundTo+`"}`); late.status != http.StatusCreated ||
 		late.body["quoteId"] == r.body["quoteId"] {
@@ -199,7 +204,8 @@ func TestCrossChainQuoteRefusals(t *testing.T) {
 	// Test mode has no 1Click (D-123).
 	e.exec(t, `UPDATE profiles SET livemode = false WHERE id = $1`, e.aliceProfile)
 	test := e.post(t, "did:privy:alice", e.aliceProfile, "key-3", basicBody)
-	if r := quote(e.link(t, test.body["invoiceId"].(string)), tronUSDT, refundTo); r.status != 422 || errorCode(r) != "crosschain_unavailable" {
+	if r := quote(e.link(t, test.body["invoiceId"].(string)), tronUSDT, refundTo); r.status != 422 || errorCode(r) != "crosschain_unavailable" ||
+		!strings.Contains(r.body["error"].(map[string]any)["message"].(string), "test mode") {
 		t.Fatalf("test mode: %d %v", r.status, r.body)
 	}
 	e.exec(t, `UPDATE profiles SET livemode = true WHERE id = $1`, e.aliceProfile)
@@ -210,13 +216,22 @@ func TestCrossChainQuoteRefusals(t *testing.T) {
 		r.body["error"].(map[string]any)["minimum"] != "200000000" {
 		t.Fatalf("below minimum: %d %v", r.status, r.body)
 	}
+	price := e.call(t, "GET", crossPath+pay+"/crosschain/price?originAsset="+url.QueryEscape(ethAsset), "", "", "")
+	if price.status != 422 || errorCode(price) != "below_minimum" || price.body["error"].(map[string]any)["minimum"] != "200000000" {
+		t.Fatalf("price below minimum: %d %v", price.status, price.body)
+	}
 	fake.Minimum = big.NewInt(5301)
 
-	// Twenty quotes an hour, then none: nineteen kept already, the twentieth made, the next refused.
-	e.exec(t, `INSERT INTO crosschain_quotes (invoice_id, option_id, origin_asset, refund_to, deposit_address, amount_in,
-		    min_amount_in, amount_out, time_estimate, shown_until, deadline, signed)
-		SELECT id, id, 'x', 'x', 'kept-' || n, 1, 1, 1, 0, now(), now(), '{}' FROM invoices, generate_series(1, $2) n
-		WHERE pay_token = $1`, pay, invoice.CrossChainPerHour-1)
+	// Twenty quotes an hour, then none: nineteen kept already, the twentieth made, the next refused. Quotes older than
+	// an hour don't count.
+	kept := func(n int, age string) {
+		e.exec(t, `INSERT INTO crosschain_quotes (invoice_id, option_id, origin_asset, refund_to, deposit_address, amount_in,
+			    min_amount_in, amount_out, time_estimate, shown_until, deadline, signed, created_at)
+			SELECT id, id, 'x', 'x', 'kept-' || $3 || n, 1, 1, 1, 0, now(), now(), '{}', now() - $3::interval
+			FROM invoices, generate_series(1, $2) n WHERE pay_token = $1`, pay, n, age)
+	}
+	kept(30, "61 minutes")
+	kept(19, "1 minute")
 	if r := quote(pay, tronUSDT, "Tlast"); r.status != http.StatusCreated {
 		t.Fatalf("twentieth: %d %v", r.status, r.body)
 	}
@@ -358,6 +373,11 @@ func TestCrossChainQuoteRefusesWhat1ClickSignedForAnotherPayment(t *testing.T) {
 		"virtual recipient": func(a map[string]any) {
 			a["quoteRequest"].(map[string]any)["virtualChainRecipient"] = "0x0000000000000000000000000000000000000bad"
 		},
+		// Another asset to the same address would pay the receiver in a token the invoice doesn't take.
+		"destination": func(a map[string]any) {
+			a["quoteRequest"].(map[string]any)["destinationAsset"] = "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near"
+		},
+		"swap type": func(a map[string]any) { a["quoteRequest"].(map[string]any)["swapType"] = "EXACT_INPUT" },
 		// Typed: the slippage asked for is the number 100, not the text.
 		"typed": func(a map[string]any) { a["quoteRequest"].(map[string]any)["slippageTolerance"] = "100" },
 	} {

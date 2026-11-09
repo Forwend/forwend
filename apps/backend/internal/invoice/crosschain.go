@@ -202,18 +202,14 @@ func (s *Service) QuoteCrossChain(ctx context.Context, payToken, origin, refundT
 	if dry {
 		return s.dryQuote(ctx, ask, token, now)
 	}
-	// The pick shows only what the payer chose; the deposit on Base still chooses the option (R-56). It comes first, so
-	// a kept quote never misses it.
-	if target.invoice.OptionCount > 1 && target.invoice.PickedOptionID != target.option.ID {
-		if err := s.PickOption(ctx, payToken, target.option.ID); err != nil && !errors.Is(err, ErrPickLocked) {
-			return CrossQuote{}, err
-		}
-	}
 	// ponytail: the reuse and the hourly limit read, then insert, without a lock, so two requests at once can make one
 	// quote more; the per-invoice request limit keeps that small.
 	q, err := s.openQuote(ctx, target, token, refundTo, now)
-	if err != nil || q.ID != "" {
-		return q, err
+	if err != nil {
+		return CrossQuote{}, err
+	}
+	if q.ID != "" {
+		return q, s.pickBase(ctx, payToken, target)
 	}
 	quote, err := s.crossChain.Quote(ctx, ask, false)
 	if err != nil {
@@ -229,7 +225,19 @@ func (s *Service) QuoteCrossChain(ctx context.Context, payToken, origin, refundT
 		return CrossQuote{}, fmt.Errorf("save cross-chain quote for %s: %w", target.invoice.ID, err)
 	}
 	q.CreatedAt = now
-	return q, nil
+	return q, s.pickBase(ctx, payToken, target)
+}
+
+// pickBase keeps the Base option as the payer's pick, once a quote to it is given, kept or new. It shows only what the
+// payer chose; the deposit on Base still chooses the option (R-56).
+func (s *Service) pickBase(ctx context.Context, payToken string, target crossTarget) error {
+	if target.invoice.OptionCount < 2 || target.invoice.PickedOptionID == target.option.ID {
+		return nil
+	}
+	if err := s.PickOption(ctx, payToken, target.option.ID); err != nil && !errors.Is(err, ErrPickLocked) {
+		return err
+	}
+	return nil
 }
 
 // openQuote is the payer's quote for the same token, refund address and amount while enough of its window is left,
