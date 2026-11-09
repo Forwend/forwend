@@ -1,5 +1,6 @@
-// Command ops is support's tool for money held for payers (PLAN 11.10.3, D-118). It reads a case, queues a return
-// and prints the calls for the refund authority to send; it holds no key and sends nothing.
+// Command ops is support's tool for money held for payers (PLAN 11.10.3, D-118). It reads a case, records a deposit
+// the scan missed, queues a return and prints the calls for the refund authority to send; it holds no key and sends
+// nothing.
 package main
 
 import (
@@ -18,17 +19,20 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/config"
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/document"
 	"github.com/forwend/forwend/apps/backend/internal/settlement"
+	"github.com/forwend/forwend/apps/backend/internal/watcher"
 )
 
 const usage = `usage, where <case> is a pay link, a receive address, a payment's transaction or an invoice id:
   ops case [-to <address>] <case>      (a transaction also finds another token or chain)
   ops return -tx <payment transaction> [-to <address>] [-amount <tokens>] <case>
-  ops release <case>                    (a stray's transaction: only once no recover for its address waits in the Safe)`
+  ops release <case>                    (a stray's transaction: only once no recover for its address waits in the Safe)
+  ops deposit -tx <transaction> <case>  (records a deposit the scan missed; the ledger books it in its next round)`
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -85,16 +89,20 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	client := func(chainID uint64) (*ethclient.Client, error) {
+	rpcClient := func(chainID uint64) (*rpc.Client, error) {
 		spec, ok := specs[chainID]
 		if !ok {
 			return nil, fmt.Errorf("chain %d is not enabled", chainID)
 		}
 		rpcs, err := chain.NewRPCs(spec, cfg.Chains.RPCRate)
+		return rpcs.Client, err
+	}
+	client := func(chainID uint64) (*ethclient.Client, error) {
+		c, err := rpcClient(chainID)
 		if err != nil {
 			return nil, err
 		}
-		return ethclient.NewClient(rpcs.Client), nil
+		return ethclient.NewClient(c), nil
 	}
 	every := func() (map[uint64]*ethclient.Client, error) {
 		clients := map[uint64]*ethclient.Client{}
@@ -229,6 +237,39 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 			return settlement.ErrNoReturnQueued
 		}
 		return nil
+	case "deposit":
+		if !hashShape.MatchString(*tx) || *to != "" || *amount != "" {
+			return errors.New(usage)
+		}
+		byChain := map[uint64][]string{}
+		for _, o := range options {
+			byChain[o.ChainID] = append(byChain[o.ChainID], o.ID)
+		}
+		found := false
+		for chainID, ids := range byChain {
+			c, err := rpcClient(chainID)
+			if err != nil {
+				return err
+			}
+			n, err := watcher.NewChain(pool, chainID, c).RecordDeposits(ctx, common.HexToHash(*tx), ids)
+			if errors.Is(err, watcher.ErrNoDeposit) {
+				continue
+			}
+			if err != nil {
+				return err
+			}
+			found = true
+			if n == 0 {
+				fmt.Fprintf(out, "Chain %d: its deposits are already recorded. Nothing new.\n", chainID)
+				continue
+			}
+			fmt.Fprintf(out, "Chain %d: recorded %d deposit(s). The ledger books them in its next round; "+
+				"then ops case shows them and ops return returns them.\n", chainID, n)
+		}
+		if !found {
+			return watcher.ErrNoDeposit
+		}
+		return nil
 	}
 	return errors.New(usage)
 }
@@ -275,6 +316,14 @@ func printHeld(out io.Writer, h settlement.Held) {
 	for _, p := range h.Payments {
 		fmt.Fprintf(out, "    %s from %s: %s, %s\n", p.TxHash, p.From, money(p.Amount),
 			time.Unix(p.BlockTime, 0).UTC().Format("2 Jan 2006, 15:04 UTC"))
+		if p.Quote != "" {
+			fmt.Fprintf(out, "      Sent by NEAR Intents, not the payer: quote %s; the payer paid on %s in %s, refund address "+
+				"there %s.\n      Return it only with -to, an address on chain %d the payer proves is theirs.\n",
+				p.Quote, p.OriginChain, p.OriginTx, p.RefundTo, h.ChainID)
+		} else if p.Relayed {
+			fmt.Fprintf(out, "      Sent by NEAR Intents, not the payer; no quote names it yet.\n      Return it only "+
+				"with -to, an address on chain %d the payer proves is theirs.\n", h.ChainID)
+		}
 	}
 	deployed := "not deployed"
 	if h.Deployed {

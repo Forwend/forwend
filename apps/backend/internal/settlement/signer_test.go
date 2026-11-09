@@ -957,6 +957,47 @@ func TestSettledByTheRefundAuthorityAfterOurSettleFailedRecordsActualTxHash(t *t
 	}
 }
 
+// A's settle is saved at nonce N and never sent; the refund authority settles A, so N stays unused. B's deploy and
+// settle must take N and N+1, with no filler.
+func TestNonceOfASettleTheRefundAuthorityReplacedIsUsedAgain(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	idA, receiveA := e.paidInvoice(t)
+	idB, receiveB := e.createFor(t, 8, 30*86400)
+	e.anvil.Transfer(e.token, receiveB, "5000000")
+	saving := e.signer(t)
+	saving.stopAfter = "save"
+	if err := saving.Run(ctx); !errors.Is(err, errStopped) {
+		t.Fatalf("got %v", err)
+	}
+	gap := e.nonce(t)
+	e.anvil.Wait(3600 + 86400 + 60)
+	e.anvil.AsAuthority(receiveA, "settle()")
+	s := e.signer(t)
+	s.attemptTimeout = 3 * time.Second // a deploy behind the gap would wait the full attempt
+	for range 3 {
+		e.anvil.Mine(2)
+		if err := e.watch.Scan(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if err := e.ledger.ProcessChain(ctx, e.chainID); err != nil {
+			t.Fatal(err)
+		}
+		e.dueNow(t)
+		if err := s.Run(ctx); err != nil {
+			t.Logf("signer round: %v", err)
+		}
+	}
+	if status, settlement, _ := e.intent(t, idA); status != "confirmed" || settlement != "settled" {
+		t.Fatalf("A after the authority settled: intent %s, invoice %s", status, settlement)
+	}
+	status, settlement, reason := e.intent(t, idB)
+	if status != "confirmed" || settlement != "settled" || e.nonce(t) != gap+2 {
+		t.Fatalf("B's settlement is stuck behind the unused nonce %d: intent %s (%q), invoice %s, executor nonce %d",
+			gap, status, reason, settlement, e.nonce(t))
+	}
+}
+
 func TestHangingRPCDoesNotStallTheSigner(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()

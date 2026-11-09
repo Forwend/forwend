@@ -491,9 +491,15 @@ func (c *Chain) logs(ctx context.Context, lo, hi uint64, invoices map[common.Add
 		}
 		logs = append(logs, found...)
 	}
+	return invoiceLogs(logs, invoices), nil
+}
+
+// invoiceLogs keeps the non-zero Transfer logs of each invoice's own token to its receive address.
+func invoiceLogs(logs []types.Log, invoices map[common.Address]receiver) []types.Log {
 	var out []types.Log
 	for _, l := range logs {
-		if l.Removed || len(l.Topics) != 3 || len(l.Data) != 32 || new(big.Int).SetBytes(l.Data).Sign() == 0 {
+		if l.Removed || len(l.Topics) != 3 || l.Topics[0] != transferTopic || len(l.Data) != 32 ||
+			new(big.Int).SetBytes(l.Data).Sign() == 0 {
 			continue
 		}
 		inv, ok := invoices[common.BytesToAddress(l.Topics[2].Bytes())]
@@ -502,7 +508,7 @@ func (c *Chain) logs(ctx context.Context, lo, hi uint64, invoices map[common.Add
 			out = append(out, l)
 		}
 	}
-	return nativeSends(out), nil
+	return nativeSends(out)
 }
 
 // table is chain_transfers or wallet_transfers.

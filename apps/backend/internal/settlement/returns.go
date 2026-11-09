@@ -42,13 +42,20 @@ var (
 	ErrTooMuch        = errors.New("more than is both held and refundable")
 	ErrTooLittle      = errors.New("under 0.10 USD is not returned (D-90)")
 	ErrUnbooked       = errors.New("money moved that the ledger hasn't booked yet: wait for a worker round, then try again")
+	ErrCrossChain     = errors.New("NEAR Intents sent that payment from its own address: give -to, an address on this chain the payer proves is theirs")
+	ErrMissedDeposit  = errors.New("the receiver holds more than the ledger booked: wait for a worker round; if it stays, record the missed deposit with ops deposit")
 )
 
-// Payment is a final payment to an invoice option.
+// Payment is a final payment to an invoice option. Quote is set when NEAR Intents delivered it: From is then NEAR
+// Intents' address, and the payer paid OriginTx on OriginChain with RefundTo as their own address there. Relayed is
+// set when no quote names it but NEAR Intents may have sent it: From delivered another NEAR Intents payment on this
+// chain, or a quote of the option that did not fail or refund saw a deposit and names no delivery yet.
 type Payment struct {
-	TxHash, From string
-	Amount       *big.Int
-	BlockTime    int64
+	TxHash, From                           string
+	Amount                                 *big.Int
+	BlockTime                              int64
+	Quote, OriginChain, OriginTx, RefundTo string
+	Relayed                                bool
 }
 
 // Held is one invoice option's money held for the payer, as the ledger and the chain see it now.
@@ -159,15 +166,25 @@ func ReadHeld(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client, i
 		return Held{}, fmt.Errorf("read invoice %s amounts: %w", invoiceID, err)
 	}
 	h.Held, h.Booked = amounts.Held, amounts.Receiver
-	rows, err := db.Query(ctx, `SELECT tx_hash, from_address, amount::text, block_time FROM chain_transfers
-		WHERE invoice_id = $1 AND status = 'confirmed' AND booked ORDER BY block_number, log_index`, invoiceID)
+	rows, err := db.Query(ctx, `SELECT t.tx_hash, t.from_address, t.amount::text, t.block_time, coalesce(q.id::text, ''),
+		    coalesce(q.origin_blockchain, ''), coalesce(q.origin_txs->0->>'hash', ''), coalesce(q.refund_to, ''),
+		    EXISTS (SELECT 1 FROM chain_transfers d JOIN crosschain_quotes dq ON dq.option_id = d.invoice_id
+		        WHERE d.chain_id = t.chain_id AND d.from_address = t.from_address AND EXISTS (SELECT 1
+		        FROM jsonb_array_elements(dq.destination_txs) x WHERE lower(x->>'hash') = d.tx_hash))
+		    OR EXISTS (SELECT 1 FROM crosschain_quotes pq WHERE pq.option_id = t.invoice_id
+		        AND pq.deposit_seen_at IS NOT NULL AND pq.destination_txs = '[]'
+		        AND pq.status NOT IN ('FAILED', 'REFUNDED'))
+		FROM chain_transfers t LEFT JOIN LATERAL (SELECT * FROM crosschain_quotes q WHERE q.option_id = t.invoice_id
+		    AND EXISTS (SELECT 1 FROM jsonb_array_elements(q.destination_txs) d WHERE lower(d->>'hash') = t.tx_hash)
+		    LIMIT 1) q ON true
+		WHERE t.invoice_id = $1 AND t.status = 'confirmed' AND t.booked ORDER BY t.block_number, t.log_index`, invoiceID)
 	if err != nil {
 		return Held{}, fmt.Errorf("read invoice %s payments: %w", invoiceID, err)
 	}
 	h.Payments, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (Payment, error) {
 		var p Payment
 		var amount string
-		err := row.Scan(&p.TxHash, &p.From, &amount, &p.BlockTime)
+		err := row.Scan(&p.TxHash, &p.From, &amount, &p.BlockTime, &p.Quote, &p.OriginChain, &p.OriginTx, &p.RefundTo, &p.Relayed)
 		p.Amount, _ = new(big.Int).SetString(amount, 10)
 		return p, err
 	})
@@ -216,8 +233,8 @@ func termsOf(factory [20]byte, invoiceID, recipient, token string, amount [3]str
 }
 
 // QueueReturn checks a return of held money against the ledger and the chain, locks the money and gives the calls
-// for the refund authority. The destination defaults to the address that made the payment (D-118); the amount, to
-// everything held and refundable when one address made every payment.
+// for the refund authority. The destination defaults to the address that made the payment (D-118), except for one NEAR
+// Intents delivered; the amount, to everything held and refundable when one payer made every payment.
 func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client, invoiceID, txHash string,
 	to *common.Address, amount *big.Int) (Return, error) {
 	h, err := ReadHeld(ctx, db, client, invoiceID)
@@ -238,10 +255,22 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 	if err := checkBooked(ctx, db, invoiceID); err != nil {
 		return Return{}, err
 	}
+	// More on chain than every recorded payment: a deposit the scan missed. Until it is booked, the ledger would book
+	// this refund against the wrong payer's money.
+	if new(big.Int).Sub(h.Balance, h.Booked).Cmp(big.NewInt(ledger.DustExcess)) >= 0 {
+		return Return{}, ErrMissedDeposit
+	}
 	var paid *Payment
-	senders := map[string]bool{}
+	senders, relays := map[string]bool{}, map[string]bool{}
 	for i, p := range h.Payments {
-		senders[p.From] = true
+		switch { // NEAR Intents sends every cross-chain payer's money from one address: each quote is its own payer
+		case p.Quote != "":
+			senders["quote "+p.Quote], relays[p.From] = true, true
+		case p.Relayed:
+			senders["payment "+p.TxHash], relays[p.From] = true, true
+		default:
+			senders[p.From] = true
+		}
 		if strings.EqualFold(p.TxHash, txHash) {
 			paid = &h.Payments[i]
 		}
@@ -250,11 +279,15 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 		return Return{}, ErrUnknownPayment
 	}
 	r := Return{To: common.HexToAddress(paid.From)}
-	if to != nil {
+	switch {
+	case to != nil:
 		r.To = *to
+	case paid.Quote != "" || paid.Relayed:
+		return Return{}, ErrCrossChain
 	}
 	receive, token := common.HexToAddress(h.Receive), common.HexToAddress(h.Token)
-	if r.To == (common.Address{}) || r.To == receive || r.To == token || address.Ours(r.To) {
+	if r.To == (common.Address{}) || r.To == receive || r.To == token || address.Ours(r.To) ||
+		relays[strings.ToLower(r.To.Hex())] {
 		return Return{}, ErrDestination
 	}
 	var invoiceAddress bool
@@ -287,7 +320,14 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 	if r.Amount.Cmp(limit) > 0 {
 		return Return{}, ErrTooMuch
 	}
-	if !senders[strings.ToLower(r.To.Hex())] {
+	switch {
+	case paid.Quote != "":
+		r.Warnings = append(r.Warnings, fmt.Sprintf("The payer paid through NEAR Intents on %s (transaction %s): check "+
+			"their proof that this address is theirs.", paid.OriginChain, paid.OriginTx))
+	case paid.Relayed:
+		r.Warnings = append(r.Warnings, "NEAR Intents delivered this payment and no quote names it yet: find the payer's "+
+			"quote and check their proof that this address is theirs.")
+	case !senders[strings.ToLower(r.To.Hex())]:
 		r.Warnings = append(r.Warnings, "No payment came from this address: check the payer's proof that it is theirs.")
 	}
 	code, err := client.CodeAt(ctx, r.To, nil)
