@@ -1184,7 +1184,7 @@
       "dependsOn": [
         "F446"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "docs-check"
@@ -1287,9 +1287,16 @@
           "summary": "1a29e9ee only removes the stale second sentence of the swap floor comment in gas.go; the comment now matches the code. The earlier findings stand: every acceptance line holds, the swap is nonce- and money-safe, a dust or too-small allowance is refused or replaced, and every failed buy alerts.",
           "at": "2026-11-09T00:37:43Z",
           "filesHash": "6a10ea0bd8dbb6f5"
-        }
+        },
+        "commit": "64b8398e",
+        "doneAt": "2026-11-09T00:37:58Z"
       },
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f444-the-executor-tops-up-its-own-gas-from-th",
+        "base": "main"
+      }
     },
     {
       "id": "F445",
