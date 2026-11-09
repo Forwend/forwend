@@ -518,7 +518,7 @@
       "dependsOn": [
         "F457"
       ],
-      "state": "not_started",
+      "state": "active",
       "verification": [
         "unit",
         "docs-check"
@@ -528,7 +528,9 @@
       "review": true,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": null,
+      "branch": "fix/f458-the-medium-findings-of-the-2026-11-09-au",
+      "baseCommit": "c488dce3f4da38aba2c138600f26726d0f85c45d"
     },
     {
       "id": "F459",
