@@ -622,7 +622,7 @@
       "dependsOn": [
         "F458"
       ],
-      "state": "not_started",
+      "state": "active",
       "verification": [
         "unit",
         "docs-check"
@@ -632,7 +632,9 @@
       "review": true,
       "notes": [],
       "blockedReason": null,
-      "evidence": null
+      "evidence": null,
+      "branch": "fix/f459-the-low-findings-of-the-2026-11-09-audit",
+      "baseCommit": "869c4e1932752cb7b52a307c6c720a4661c0088b"
     }
   ],
   "lastWrapup": {
