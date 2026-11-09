@@ -429,7 +429,25 @@ func (s *Service) funded(ctx context.Context, tx pgx.Tx, invoiceID string, chain
 			"booked", booked.String(), "onChain", onChain.String())
 		return false, nil
 	}
-	return true, nil
+	return true, Unbooked(ctx, tx, invoiceID, booked, onChain)
+}
+
+// Unbooked alerts when the receive address holds at least DustExcess more than booked while every transfer the scan saw
+// is booked: a deposit the scan missed. Its excess alert holds the invoice's refunds (bookOutflow), never "paid" or the
+// settle: settle pays out only the amount, and the rest stays held for its payer.
+func Unbooked(ctx context.Context, tx pgx.Tx, invoiceID string, booked, onChain *big.Int) error {
+	if new(big.Int).Sub(onChain, booked).Cmp(big.NewInt(DustExcess)) < 0 {
+		return nil
+	}
+	var seen bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM chain_transfers WHERE invoice_id = $1
+		AND status <> 'reorged' AND NOT booked)`, invoiceID).Scan(&seen); err != nil || seen {
+		return err
+	}
+	slog.Error("ALERT receive address holds money with no booked transfer", "invoice", invoiceID,
+		"booked", booked.String(), "onChain", onChain.String(),
+		"next", "record the deposit with ops deposit -tx <transaction> <invoice>, then return it with ops return")
+	return alertAgainLater(ctx, tx, invoiceID, true)
 }
 
 // DustExcess: an unexplained balance under this many base units (0.01 of a 6-decimal token) doesn't stop expiry. Arc

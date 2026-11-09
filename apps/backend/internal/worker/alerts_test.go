@@ -39,7 +39,8 @@ func TestAlertsNameAStalledChainAndPaidMoneyNotSettled(t *testing.T) {
 		    expires_at, settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
 		SELECT '0x' || repeat('02', 32), profile_id, chain_id, chain_family, token_contract, amount,
 		    extract(epoch FROM now())::bigint - 7200, extract(epoch FROM now())::bigint - 3600, recipient_address, receive_method,
-		    factory_address, '0x00000000000000000000000000000000000000bb', 'key-2', request_hash FROM invoices`); err != nil {
+		    '0xe917ce63865f8cf91a0038136e496b25ece2a54e', '0x00000000000000000000000000000000000000bb', 'key-2', request_hash
+		FROM invoices`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount,
@@ -93,8 +94,9 @@ func TestAlertsNameAStalledChainAndPaidMoneyNotSettled(t *testing.T) {
 			t.Fatalf("logs lack %q:\n%s", want, logs.String())
 		}
 	}
-	if strings.Contains(logs.String(), strings.Repeat("02", 32)) {
-		t.Fatalf("an intent past its settle deadline, which only the refund authority can act on, still alerts:\n%s", logs.String())
+	if !strings.Contains(logs.String(), `ALERT paid invoice not settled past its settle deadline: only the refund authority can settle it" invoice=0x`+
+		strings.Repeat("02", 32)) || !strings.Contains(logs.String(), "refundAuthority=0x3E202009C02aBc635eE83fb5c9D1eE3F10FEEa00") {
+		t.Fatalf("an intent past its settle deadline does not alert naming the refund authority Safe:\n%s", logs.String())
 	}
 	if strings.Contains(logs.String(), strings.Repeat("03", 32)) {
 		t.Fatalf("an intent waiting at the daily cap, days before its deadline, alerts:\n%s", logs.String())

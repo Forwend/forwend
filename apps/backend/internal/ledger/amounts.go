@@ -98,9 +98,16 @@ func ReadAmountsFor(ctx context.Context, db interface {
 // UnreconciledSQL: a movement the ledger has not booked yet, an outflow it refused, a balance it can't explain, or a
 // negative balance. invoiceID is a trusted SQL expression, never request text.
 func UnreconciledSQL(invoiceID string) string {
+	return SettleWaitsSQL(invoiceID) + `
+ OR EXISTS (SELECT 1 FROM invoice_balance_alerts WHERE invoice_id = ` + invoiceID + ` AND excess)`
+}
+
+// SettleWaitsSQL is UnreconciledSQL less money on chain the ledger did not book: settle pays out only the amount, so
+// that money stays held for its payer.
+func SettleWaitsSQL(invoiceID string) string {
 	return `EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = ` + invoiceID + ` AND kind <> 'recovery' AND ledger_transaction_id IS NULL)
  OR EXISTS (SELECT 1 FROM chain_transfers d WHERE d.invoice_id = ` + invoiceID + ` AND d.status = 'confirmed' AND NOT d.booked)
- OR EXISTS (SELECT 1 FROM invoice_balance_alerts WHERE invoice_id = ` + invoiceID + `)
+ OR EXISTS (SELECT 1 FROM invoice_balance_alerts WHERE invoice_id = ` + invoiceID + ` AND NOT excess)
  OR ` + negativeBalancesSQL(invoiceID)
 }
 

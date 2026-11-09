@@ -199,6 +199,10 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
   - A missed deposit recorded after later money was booked is booked against today's balances.
     - The total is right, but the earliest-payer order of D-27 may not hold for it.
   - The ledger only re-checks an option that can still expire. On a paid or settled one, `ops return` refuses instead.
+  - The same check runs when an invoice turns paid, and in the signer before it signs a settle.
+    - It skips while a transfer the scan saw waits to be booked: that one explains the money.
+    - It writes the same `ALERT` and excess alert, so the payment reads `review`.
+    - It holds neither paid nor the settle: settle pays out only the amount, and the rest stays in the receiver.
 - Less on chain than booked at expiry logs `ALERT receive address holds less than booked; not expiring`, with the same backoff.
   - That alert doesn't hold refunds.
 - A balance check that agrees again deletes the alert, so the option no longer reads as in review.

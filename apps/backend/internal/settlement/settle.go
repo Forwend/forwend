@@ -19,6 +19,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/forwend/forwend/apps/backend/internal/outbox"
+	"github.com/jackc/pgx/v5"
 )
 
 // ReceiptWait is how long one run waits for a sent transaction; an unmined one is reconciled on the next run.
@@ -102,7 +103,7 @@ func (s *Signer) settle(ctx context.Context, id int64, release func()) error {
             WHERE t.invoice_id = $1 AND e.account = 'recipient_payable'), 0) >= $2
   AND NOT EXISTS (SELECT 1 FROM receiver_outflows o WHERE o.invoice_id = $1 AND o.kind = 'refund'
                   AND o.ledger_transaction_id IS NULL)
-  AND NOT (`+ledger.UnreconciledSQL("$1")+`)`, in.invoiceID, in.amount.String()).Scan(&funded); err != nil {
+  AND NOT (`+ledger.SettleWaitsSQL("$1")+`)`, in.invoiceID, in.amount.String()).Scan(&funded); err != nil {
 		return err
 	}
 	if !funded {
@@ -130,12 +131,22 @@ func (s *Signer) settle(ctx context.Context, id int64, release func()) error {
 			"booked", booked.String(), "onChain", held.String())
 		return s.postpone(ctx, in, waitUnresolved, "the receive address holds less than the ledger booked")
 	}
+	if err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		return ledger.Unbooked(ctx, tx, in.invoiceID, booked, held)
+	}); err != nil {
+		return err
+	}
+	// The cap guards the executor's gas: an invoice with a network fee pays its own (R-226), so it neither waits nor
+	// counts. The count starts from the day's settles: a user's whole history can be 100,000 invoices.
 	var used int
-	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id
-		JOIN profiles p ON p.id = i.profile_id
-		WHERE p.user_id = (SELECT p.user_id FROM invoices i JOIN profiles p ON p.id = i.profile_id WHERE i.id = $1)
-		  AND si.signed_at > now() - interval '24 hours'`, in.invoiceID).Scan(&used); err != nil {
-		return fmt.Errorf("count the user's settlements: %w", err)
+	if in.fees[0].Sign() == 0 {
+		if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id
+			WHERE si.signed_at > now() - interval '24 hours' AND i.network_fee = 0
+			  AND (SELECT p.user_id FROM profiles p WHERE p.id = i.profile_id) =
+			      (SELECT p.user_id FROM invoices i JOIN profiles p ON p.id = i.profile_id WHERE i.id = $1)`,
+			in.invoiceID).Scan(&used); err != nil {
+			return fmt.Errorf("count the user's settlements: %w", err)
+		}
 	}
 	if used >= SponsoredPerDay {
 		slog.Error("ALERT a user's settlements in 24 hours reached the sponsored limit", "invoice", in.invoiceID,

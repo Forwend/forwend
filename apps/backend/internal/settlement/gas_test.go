@@ -23,7 +23,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// One wei short of one deploy and settle is refused, naming the chain, the executor and its balance in whole coins.
+// One wei short of one deploy and settle alerts, naming the chain, the executor and its balance in whole coins, and the
+// signer starts: its rounds can buy gas, and other chains settle (D-71).
 func TestCheckGas(t *testing.T) {
 	ctx := context.Background()
 	a := chaintest.Start(t)
@@ -41,14 +42,18 @@ func TestCheckGas(t *testing.T) {
 		}
 	}
 
+	var logs strings.Builder
+	defer slog.SetDefault(slog.Default())
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
 	short := new(big.Int).Sub(need, big.NewInt(1))
 	fund(short)
 	err = CheckGas(ctx, chaintest.ChainID, executor, client)
-	if err == nil || !strings.Contains(err.Error(), fmt.Sprintf("chain %d: executor %s holds %s of the native coin",
-		chaintest.ChainID, executor.Hex(), ether(short))) {
-		t.Fatalf("one wei short: got %v", err)
+	if err != nil || !strings.Contains(logs.String(), "ALERT executor gas runs low") ||
+		!strings.Contains(logs.String(), fmt.Sprintf("chain %d: executor %s holds %s of the native coin",
+			chaintest.ChainID, executor.Hex(), ether(short))) {
+		t.Fatalf("one wei short: %v, logs %s; want a start and an alert naming the shortfall", err, logs.String())
 	}
-	t.Log(err)
+	t.Log(logs.String())
 	rich := a.Proxy()
 	rich.Stale(func(c chaintest.Call) json.RawMessage {
 		if c.Method == "eth_getBalance" {
@@ -61,12 +66,14 @@ func TestCheckGas(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer lagging.Close()
-	if err := CheckGas(ctx, chaintest.ChainID, executor, client, lagging); err == nil || !strings.Contains(err.Error(), "fund it") {
-		t.Fatalf("short on the first RPC, rich on a lagging second: %v, want the shortfall", err)
+	logs.Reset()
+	if err := CheckGas(ctx, chaintest.ChainID, executor, client, lagging); err != nil || !strings.Contains(logs.String(), "fund it") {
+		t.Fatalf("short on the first RPC, rich on a lagging second: %v, logs %s; want the shortfall alerted", err, logs.String())
 	}
 	fund(need)
-	if err := CheckGas(ctx, chaintest.ChainID, executor, client); err != nil {
-		t.Fatalf("funded: %v", err)
+	logs.Reset()
+	if err := CheckGas(ctx, chaintest.ChainID, executor, client); err != nil || logs.Len() > 0 {
+		t.Fatalf("funded: %v, logs %s", err, logs.String())
 	}
 	broken := a.Proxy()
 	broken.Fail(func(chaintest.Call) chaintest.Fault { return chaintest.InternalError })
@@ -134,8 +141,8 @@ func TestCheckGasInFeeToken(t *testing.T) {
 			need := new(big.Int).Div(new(big.Int).Add(attodollars, big.NewInt(1e12-1)), big.NewInt(1e12))
 			short := new(big.Int).Sub(need, big.NewInt(1))
 			hold(short)
-			err = CheckGas(ctx, chaintest.ChainID, executor, client)
-			if err == nil || !strings.Contains(err.Error(), fmt.Sprintf("holds %s of fee token %s", usd(short), c.pays.Hex())) {
+			err = checkGas(ctx, client, chaintest.ChainID, executor, 1)
+			if !errors.Is(err, errFundIt) || !strings.Contains(err.Error(), fmt.Sprintf("holds %s of fee token %s", usd(short), c.pays.Hex())) {
 				t.Fatalf("one unit short: got %v", err)
 			}
 			t.Log(err)

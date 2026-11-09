@@ -100,6 +100,8 @@ func (e env) signer(t *testing.T) *Signer {
 	s := NewSigner(e.pool, key, clients)
 	// Anvil mines at once, so a test reads receipts and code again within milliseconds (the backoff has its own test).
 	s.receiptPoll, s.codePoll = 10*time.Millisecond, 10*time.Millisecond
+	// Anvil finalizes two blocks later, when a test mines them: a mined settle is read again next round.
+	s.finalWait = 0
 	return s
 }
 
@@ -1514,21 +1516,21 @@ func TestSettlementIsBookedOnlyWhenTheFinalizedReceiverIsSettled(t *testing.T) {
 }
 
 // SEC-03: the next one waits, unsent, with the reason.
-func (e env) sponsoredHistory(t *testing.T, count int, sender string) {
+func (e env) sponsoredHistory(t *testing.T, count int, sender string, networkFee int64) {
 	t.Helper()
 	ctx := context.Background()
 	if _, err := e.pool.Exec(ctx, `
 		WITH i AS (
 		    INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at,
 		        settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
-		        request_hash)
-		    SELECT '0x' || lpad(to_hex(1000 + n), 64, '0'), w.profile_id, $1, 'evm', $2, 1, 4000000000, 4000086400, $3,
+		        request_hash, network_fee)
+		    SELECT '0x' || lpad(to_hex(1000 + n), 64, '0'), w.profile_id, $1, 'evm', $2, 10, 4000000000, 4000086400, $3,
 		        'evm_create2', '0x2222222222222222222222222222222222222222', '0x' || lpad(to_hex(1000 + n), 40, '0'),
-		        'used-' || n, decode(repeat('00', 32), 'hex')
+		        'used-' || n, decode(repeat('00', 32), 'hex'), $6
 		    FROM generate_series(1, $4::int) n, profile_wallets w RETURNING id)
 		INSERT INTO settlement_intents (invoice_id, status, sender, nonce, tx_hash, raw_tx, signed_at)
 		SELECT id, 'confirmed', $5, row_number() OVER (), '0x' || repeat('ab', 32), '\x00', now() FROM i`,
-		chaintest.ChainID, e.token, wallet, count, sender); err != nil {
+		chaintest.ChainID, e.token, wallet, count, sender, networkFee); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -1536,7 +1538,7 @@ func (e env) sponsoredHistory(t *testing.T, count int, sender string) {
 func TestSponsoredSettlementsPerUserAreCapped(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
-	e.sponsoredHistory(t, SponsoredPerDay, strings.ToLower(chaintest.Sender))
+	e.sponsoredHistory(t, SponsoredPerDay, strings.ToLower(chaintest.Sender), 0)
 	id, _ := e.paidInvoice(t)
 	before := e.nonce(t)
 	if err := e.signer(t).Run(ctx); err != nil {
@@ -1560,6 +1562,44 @@ func TestSponsoredSettlementsPerUserAreCapped(t *testing.T) {
 		outbox.SettleWaiting).Scan(&notices, &about); err != nil || notices != 1 || about != id {
 		t.Errorf("owner notices = %d about %s, %v; want 1 about %s", notices, about, err, id)
 	}
+}
+
+// The cap guards the executor's gas (SEC-03). An invoice that pays its network fee (R-226) pays that gas: it neither
+// waits at the cap nor counts toward it.
+func TestSettlesThatPayTheirNetworkFeeAreNotCapped(t *testing.T) {
+	sender := strings.ToLower(chaintest.Sender)
+	t.Run("one that pays its fee settles past the cap", func(t *testing.T) {
+		e := setup(t)
+		ctx := context.Background()
+		e.sponsoredHistory(t, SponsoredPerDay, sender, 0)
+		id, receive := e.createWithFees(t, 7, 3600, 30000, 0)
+		e.anvil.Transfer(e.token, receive, "5000000")
+		e.anvil.Mine(2)
+		if err := e.watch.Scan(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if err := e.ledger.ProcessChain(ctx, e.chainID); err != nil {
+			t.Fatal(err)
+		}
+		if err := e.signer(t).Run(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if status, _, reason := e.intent(t, id); status != "sent" {
+			t.Fatalf("after %d sponsored settles: intent %s (%s), want sent", SponsoredPerDay, status, reason)
+		}
+	})
+	t.Run("ones that paid their fee are not counted", func(t *testing.T) {
+		e := setup(t)
+		ctx := context.Background()
+		e.sponsoredHistory(t, SponsoredPerDay, sender, 1)
+		id, _ := e.paidInvoice(t)
+		if err := e.signer(t).Run(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if status, _, reason := e.intent(t, id); status != "sent" {
+			t.Fatalf("after %d settles that paid their fee: intent %s (%s), want sent", SponsoredPerDay, status, reason)
+		}
+	})
 }
 
 func TestSignerStopsWhenItLosesItsLock(t *testing.T) {
@@ -1830,5 +1870,84 @@ func TestSettlesTheOptionPaidFirst(t *testing.T) {
 	}
 	if held := got.Options[0].Deposits; len(held) != 1 || held[0].Amount.Int64() != 5000000 || held[0].Status != "confirmed" {
 		t.Fatalf("USDC option deposits %+v, want the held 5000000", held)
+	}
+}
+
+// A mined settle is read again about when its block turns final, at most FinalWait later, not every round.
+func TestMinedSettleWaitsForFinalityBeforeItIsReadAgain(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, _ := e.paidInvoice(t)
+	s := e.signer(t)
+	s.finalWait = FinalWait
+	e.anvil.Wait(90) // the settle's block is about 90 s newer than the finalized one
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var status string
+	var due float64
+	if err := e.pool.QueryRow(ctx, `SELECT status, extract(epoch FROM next_attempt_at - now())::float8
+		FROM settlement_intents WHERE invoice_id = $1`, id).Scan(&status, &due); err != nil {
+		t.Fatal(err)
+	}
+	if status != "sent" || due < 60 || due > FinalWait.Seconds() {
+		t.Fatalf("mined, not final: intent %s due in %.0f s; want sent and due in about 90 s", status, due)
+	}
+	e.dueNow(t)
+	e.final(t, s)
+	if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" {
+		t.Fatalf("once due and final: intent %s, invoice settlement %s", status, settlement)
+	}
+}
+
+// Money on chain the ledger did not book is held for its payer: a deposit the scan missed. The ledger alerts when the
+// invoice turns paid, the signer when it comes later, before the settle. Neither holds paid or the settle: settle pays
+// out only the amount.
+func TestUnbookedMoneyAlertsButHoldsNeitherPaidNorTheSettle(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	afterPaid, missedLater := e.pay(t, 8)
+	atPaid, missedFirst := e.create(t, 7)
+	e.anvil.Transfer(e.token, missedFirst, "5000000")
+	e.anvil.Mine(2)
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	// Never scanned: one before the invoice is paid, one after.
+	e.anvil.Transfer(e.token, missedFirst, "2000000")
+	e.anvil.Transfer(e.token, missedLater, "2000000")
+	e.anvil.Mine(2)
+	if err := e.ledger.ProcessChain(ctx, e.chainID); err != nil {
+		t.Fatal(err)
+	}
+	excess := func(id, when string) {
+		t.Helper()
+		var excess bool
+		if err := e.pool.QueryRow(ctx, "SELECT excess FROM invoice_balance_alerts WHERE invoice_id = $1", id).
+			Scan(&excess); err != nil || !excess {
+			t.Fatalf("%s: invoice %s excess alert %v (%v), want one", when, id, excess, err)
+		}
+	}
+	if got := e.invoice(t, atPaid); got.PaymentStatus != ledger.Paid {
+		t.Fatalf("with 2000000 unbooked: invoice %s, want paid", got.PaymentStatus)
+	}
+	excess(atPaid, "paid")
+	s := e.signer(t)
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	excess(afterPaid, "signed")
+	e.final(t, s)
+	for _, id := range []string{atPaid, afterPaid} {
+		if status, settlement, reason := e.intent(t, id); status != "confirmed" || settlement != "settled" {
+			t.Fatalf("invoice %s: intent %s, settlement %s (%s); want confirmed, settled", id, status, settlement, reason)
+		}
+		excess(id, "settled")
+	}
+	if paid, held := e.balance(t, wallet), e.balance(t, missedFirst); paid != 2*5000000 || held != 2000000 {
+		t.Fatalf("recipient got %d, receiver keeps %d; want 10000000 and the unbooked 2000000", paid, held)
+	}
+	if held := e.balance(t, missedLater); held != 1000000+2000000 {
+		t.Fatalf("receiver keeps %d; want the 1000000 excess and the unbooked 2000000", held)
 	}
 }

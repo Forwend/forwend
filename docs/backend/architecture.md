@@ -41,8 +41,10 @@ Read only the sections your task touches:
     - a deposit still detected below the finalized block after 45 minutes;
     - a receiver's settle or refund the ledger hasn't booked after 30 minutes, with the reason (R-184);
     - an invoice owed in full but not paid 45 minutes after its last booking: its finalized balance check keeps failing;
-    - a paid invoice not settled within 30 minutes, or within a day of its settle deadline, until that deadline.
+    - a paid invoice not settled within 30 minutes, or within a day of its settle deadline.
       - One waiting at its user's daily settlement cap alerts only within that day.
+      - Past the deadline it keeps alerting and names the factory's refund authority: only that Safe can settle it then.
+      - Those before their deadline come first among the 20 listed: the executor can still settle them.
   - A round books money already recorded even when its own scan fails (R-184).
   - Each round checks the finalized balance of every invoice owed in full and not yet paid.
   - It also keeps the ECB's reference rates (`internal/ecb`, R-110): at start, every 6 hours, 10 minutes after a failure.
@@ -64,6 +66,7 @@ Read only the sections your task touches:
   Uniswap swap that buy its own gas (R-229). Refunds are never signed
   here: they will be Safe transactions the multisig owners approve (PLAN 11.10.3). Re-reads the ledger and the chain
   itself before signing, and settles at most `SponsoredPerDay` (50) invoices per user a day on the executor's gas.
+  An invoice with a network fee pays that gas itself (R-226), so it is not counted or held back.
   Writes settlement intents, the settlement ledger transaction and `settlement_status`. Every process uses one
   `DATABASE_URL` today; a separate signer database role is planned for deployment (Q-8).
 - `webhooks`: runs 16 independent delivery workers (R-148, R-175).
@@ -104,9 +107,11 @@ D-71); a chain whose RPCs don't answer is logged and skipped:
 - The signer: `EXECUTOR_PRIVATE_KEY` is a hex secp256k1 key (the error never shows it), and on every enabled chain the
   executor holds `settlement.MinGas` at the fee cap it would sign with now (twice the base fee plus the tip). `MinGas`
   is one receiver deploy (159,990 gas on Anvil) and one settle (at least `SettleGasFloor`), each plus a fifth: 342,000
-  gas, 0.001026 ETH on Anvil (1 gwei base fee and tip). Below it the node would refuse the next deploy and settle. The
-  message names the chain, the executor's address and its balance in whole coins. A read that fails on the primary is
-  retried through the endpoint pool; a shortfall stops it at once. It is a floor derived from each chain's own price, not a
+  gas, 0.001026 ETH on Anvil (1 gwei base fee and tip). Below it the node would refuse the next deploy and settle. A
+  shortfall is not a setup mistake (D-71): the signer logs `ALERT executor gas runs low` and starts. Other chains
+  settle, and its first round checks the gas again and buys some (below). The message names the chain, the executor's
+  address and its balance in whole coins. A read that fails on the primary is retried through the endpoint pool; a
+  shortfall ends the check at once. A chain with no fee ceiling stops the signer. It is a floor derived from each chain's own price, not a
   budget: Arbitrum's L1 data cost is not in it. Tempo has no native coin and its RPC reports a placeholder balance:
   where Tempo's fee manager precompile exists, the check reads the executor's fee token instead (its choice in the fee
   manager, else PathUSD) and needs ceil(fee cap × `TempoMinGas` / 10^12) of its 6-decimal units, since Tempo prices
@@ -510,6 +515,10 @@ signer:
 2. Otherwise it signs new settlement bytes only when all of these hold:
    - the merchant payable covers the amount and every movement of the invoice is booked;
    - the finalized balance is at least the ledger's booked receiver balance (else an `ALERT`).
+     - At least `ledger.DustExcess` more, with every scanned transfer booked, is a deposit the scan missed.
+     - It logs `ALERT receive address holds money with no booked transfer` and writes an excess balance alert.
+     - It still settles: settle pays out only the amount, and the rest stays held for its payer
+       ([money safety](money-safety.md)).
    It re-reads the terms and refuses for good (`refused` with a reason, nothing sent) unless the invoice is
    `paid`, the recipient is the profile's wallet, the factory is the compiled one and the terms recompute the stored
    receive address; also when `factory.status` predicts another address.
@@ -522,6 +531,7 @@ signer:
      settle);
    - the invoice's user already had `SponsoredPerDay` (50) settlements signed in 24 hours, across all their profiles.
      Tiny invoices paid back and forth would otherwise drain the executor's gas for everyone. This logs an `ALERT`.
+     - Only invoices without a network fee count and wait: one with a fee pays its own gas (R-226).
      The owner gets one email a day (`settlement.waiting`): their paid money waits, and past the deadline only the
      refund authority can settle it. Who pays for more is the business-model question (Q-10).
 4. Deploys the receiver if needed (`deploy` is idempotent).
@@ -546,6 +556,10 @@ signer:
    - `settled()` is true at the finalized block (D-45);
    - for our settle, its receipt's block is final too;
    - the selected RPC reads `settled()` true at its finalized block (D-15, as for paid).
+
+   Our settle mined above the finalized block is not read again every round.
+   - It waits as long as the finalized block now trails it, at most `FinalWait` (10 minutes).
+   - The finalized block keeps pace with the clock, so it is about final then.
 
    Then it records the receipt's `Settled` and `FeesPaid` events as receiver movements and books the invoice.
    - Booking the settlement confirms the intent and sets the invoice's `settlement_status` `settled`.

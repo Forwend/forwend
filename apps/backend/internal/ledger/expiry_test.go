@@ -180,6 +180,41 @@ func TestUnexplainedBalanceDelaysExpiry(t *testing.T) {
 	}
 }
 
+// A deposit the scan missed beside a paid invoice alerts and holds refunds, and the invoice is still paid. One the scan
+// saw but has not booked yet does not alert.
+func TestPaidInvoiceWithUnbookedMoneyAlerts(t *testing.T) {
+	s := newSim(t)
+	ctx := context.Background()
+	alert := func(id string) (excess bool) {
+		t.Helper()
+		err := s.pool.QueryRow(ctx, "SELECT excess FROM invoice_balance_alerts WHERE invoice_id = $1", id).Scan(&excess)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			t.Fatal(err)
+		}
+		return excess
+	}
+	seen, receive := s.invoice()
+	s.transfer(seen, receive, 5_000_000, 500, "confirmed")
+	s.transfer(seen, receive, 2_000_000, 600, "detected")
+	s.process(seen)
+	if payment, _ := s.payment(seen); payment != Paid || alert(seen) {
+		t.Fatalf("with a deposit seen, not booked yet: %s, alert %v; want paid and none", payment, alert(seen))
+	}
+
+	missed, receive := s.invoice()
+	s.transfer(missed, receive, 5_000_000, 500, "confirmed")
+	s.answer[receive].Add(s.answer[receive], big.NewInt(2_000_000))
+	s.process(missed)
+	a, err := ReadAmounts(ctx, s.pool, missed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if payment, _ := s.payment(missed); payment != Paid || !alert(missed) || a.ReconciliationStatus != ReconciliationReview {
+		t.Fatalf("with a deposit the scan missed: %s, excess alert %v, reconciliation %s; want paid, an alert, review",
+			payment, alert(missed), a.ReconciliationStatus)
+	}
+}
+
 // Arc floors each native transfer to micro-USDC but balanceOf floors their sum, so two sends under a micro each leave
 // 1 on chain that no transfer explains. Dust like that must not keep an invoice open past its close for good.
 func TestDustNoTransferExplainsDoesNotDelayExpiry(t *testing.T) {

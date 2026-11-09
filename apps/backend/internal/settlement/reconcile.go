@@ -164,6 +164,9 @@ func (s *Signer) fillGap(ctx context.Context, client *ethclient.Client, chainID 
 	return nil
 }
 
+// FinalWait bounds how long a mined settle waits before its block is read again for finality.
+const FinalWait = 10 * time.Minute
+
 // Records only once the receiver is settled at the finalized block (D-45) and r's block, if any, is final.
 // A reorg that drops our settle first leaves it without a receipt, handled like an unsent one.
 func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, in intent, r *types.Receipt) error {
@@ -183,12 +186,18 @@ func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, i
 		block = header.Time
 		// This observation is display-only; finality and the booked settlement decide settled.
 		if _, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET receipt_tx_hash = $2,
- receipt_block = $3, receipt_time = $4 WHERE id = $1`, in.id, r.TxHash.Hex(), r.BlockNumber.Uint64(), block); err != nil {
+ receipt_block = $3, receipt_time = $4 WHERE id = $1
+ AND (receipt_tx_hash, receipt_block, receipt_time) IS DISTINCT FROM ($2, $3, $4)`, in.id, r.TxHash.Hex(),
+			r.BlockNumber.Uint64(), block); err != nil {
 			return err
 		}
 	}
 	if r != nil && r.BlockNumber.Cmp(head.Number) > 0 {
-		return nil
+		// The finalized block keeps pace with the clock: it reaches r's block about as far ahead as it trails it now.
+		wait := min(time.Duration(block-min(head.Time, block))*time.Second, s.finalWait)
+		_, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET next_attempt_at = now() + $2 * interval '1 second'
+			WHERE id = $1 AND status = 'sent'`, in.id, wait.Seconds())
+		return err
 	}
 	final, err := receiverSettled(ctx, client, common.HexToAddress(in.receive), head.Number)
 	if err != nil || !final {

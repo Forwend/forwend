@@ -40,6 +40,7 @@ type Signer struct {
 	attemptTimeout time.Duration
 	codeWait       time.Duration
 	replaceAfter   time.Duration
+	finalWait      time.Duration
 	receiptPoll    time.Duration
 	codePoll       time.Duration
 	// held reports whether this signer still holds its lock (D-71): checked before each intent, since a round can
@@ -52,8 +53,8 @@ type Signer struct {
 
 func NewSigner(pool *pgxpool.Pool, key *ecdsa.PrivateKey, clients map[uint64]*ethclient.Client) *Signer {
 	return &Signer{pool: pool, key: key, sender: crypto.PubkeyToAddress(key.PublicKey), clients: clients,
-		attemptTimeout: AttemptTimeout, codeWait: CodeWait, replaceAfter: ReplaceAfter, receiptPoll: ReceiptPoll,
-		codePoll: CodePoll, users: &userTurns{}}
+		attemptTimeout: AttemptTimeout, codeWait: CodeWait, replaceAfter: ReplaceAfter, finalWait: FinalWait,
+		receiptPoll: ReceiptPoll, codePoll: CodePoll, users: &userTurns{}}
 }
 
 type intent struct {
