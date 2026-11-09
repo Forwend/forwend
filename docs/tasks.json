@@ -284,7 +284,7 @@
         "A dry price refused for no liquidity answers 422 no_liquidity with the same pay page message (R-245)"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "e2e",
@@ -367,8 +367,8 @@
         "taskHash": "16c6dc046a1074b8",
         "filesHash": "e59fd759adaf3af0",
         "proof": {
-          "1": "e2e: crosschain.spec 'a quote refused for no liquidity says the token can't be converted, not the refund address' fails before the fix and passes now; the backend API test gets 422 no_liquidity for a real quote",
-          "2": "backend: TestCrossChainTokensLeaveOutATokenWithoutLiquidity gets 422 no_liquidity for a dry price (invalid_value before the fix); the pay page maps it through quoteProblem to can't convert"
+          "1": "e2e: crosschain.spec 'a quote refused for no liquidity says the token can't be converted, not the refund address'; backend API test gets 422 no_liquidity for a real quote",
+          "2": "backend: TestCrossChainTokensLeaveOutATokenWithoutLiquidity gets 422 no_liquidity for a dry price"
         },
         "review": {
           "result": "pass",
@@ -376,11 +376,18 @@
           "summary": "providerError order is right: BelowMinimum, then intents.ErrNoLiquidity, then other refusals (dry, then refund address). learnMinimum still runs before providerError in QuoteCrossChain and dryQuote; it acts only on BelowMinimum, so it is unaffected. WriteError maps invoice.ErrNoLiquidity to 422 no_liquidity; no earlier case catches it. Readers: priceProblem delegates no_liquidity to quoteProblem, which shows cantConvert; packages/node, js, react and example-merchant read no cross-chain error codes; openapi enum, CrossChainRefused (used by price and quotes), api.md and R-245 updated. Proof: TestCrossChainTokensLeaveOutATokenWithoutLiquidity passes, and fails with the providerError case removed via go -overlay (price answers invalid_value). The new e2e expects cantConvert; without the quoteProblem case it would show 'NEAR Intents is not answering'. Notes, not blocking: no web test drives a price answered no_liquidity (shared switch case covers it); a payer's no-liquidity refusal does not hide the token at once, only the worker's hourly check does (pre-existing); the api.md bullet sits under the tokens endpoint, not price/quotes.",
           "at": "2026-11-09T20:52:20Z",
           "filesHash": "e59fd759adaf3af0"
-        }
+        },
+        "commit": "4b427f58",
+        "doneAt": "2026-11-09T20:52:55Z"
       },
       "branch": "fix/f456-a-price-or-quote-1click-refuses-for-no-l",
       "baseCommit": "77fc69e9aa6634dc8f6e3f6af63da16a51ce3186",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f456-a-price-or-quote-1click-refuses-for-no-l",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
