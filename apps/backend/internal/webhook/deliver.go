@@ -71,20 +71,26 @@ func (s *Service) Deliver(ctx context.Context, client *http.Client, body Body) e
 	return errors.Join(errs...)
 }
 
-// attempt sends one delivery and records the answer. An error before the request leaves the delivery to its lease.
+// attempt sends one delivery and records the answer.
 func (s *Service) attempt(ctx context.Context, client *http.Client, body Body, d delivery) error {
+	// An error before the request is a failed attempt too, so it follows the retry schedule and ends failed instead of
+	// holding its endpoint's queue for good. It is recorded past the attempt's own deadline.
+	parent := ctx
+	unsent := func(err error) error {
+		return errors.Join(err, s.record(parent, d, 0, "not sent: Forwend could not prepare the request", 0))
+	}
 	// Body construction and network I/O must end before another sender can reclaim the lease.
 	ctx, cancel := context.WithDeadline(ctx, d.leasedUntil.Add(-AttemptTimeout))
 	defer cancel()
 	// Secrets first: the body is built when it can be sent (D-97).
 	secrets, err := s.secrets(ctx, s.pool, d.profileID, d.endpointID)
 	if err != nil {
-		return fmt.Errorf("read endpoint %s secrets: %w", d.endpointID, err)
+		return unsent(fmt.Errorf("read endpoint %s secrets: %w", d.endpointID, err))
 	}
 	if d.body == "" {
 		e, err := s.Event(ctx, d.eventID)
 		if err != nil {
-			return err
+			return unsent(err)
 		}
 		var b []byte
 		if e.Type == Test {
@@ -99,13 +105,13 @@ func (s *Service) attempt(ctx context.Context, client *http.Client, body Body, d
 			b, err = body(ctx, e)
 		}
 		if err != nil {
-			return fmt.Errorf("build webhook event %s: %w", d.eventID, err)
+			return unsent(fmt.Errorf("build webhook event %s: %w", d.eventID, err))
 		}
 		// Another round may have built it first: every attempt sends the first body.
 		if err := s.pool.QueryRow(ctx, `UPDATE webhook_deliveries SET body = coalesce(body, $3)
 			WHERE endpoint_id = $1 AND event_id = $2 RETURNING body`, d.endpointID, d.eventID, string(b)).
 			Scan(&d.body); err != nil {
-			return fmt.Errorf("keep webhook event %s body: %w", d.eventID, err)
+			return unsent(fmt.Errorf("keep webhook event %s body: %w", d.eventID, err))
 		}
 	}
 	texts := make([]string, len(secrets))
@@ -115,7 +121,7 @@ func (s *Service) attempt(ctx context.Context, client *http.Client, body Body, d
 	start := time.Now()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, d.url, bytes.NewReader([]byte(d.body)))
 	if err != nil {
-		return fmt.Errorf("webhook request for endpoint %s: %w", d.endpointID, err)
+		return unsent(fmt.Errorf("webhook request for endpoint %s: %w", d.endpointID, err))
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "Forwend-Webhooks/1")

@@ -145,6 +145,44 @@ func TestWebhookBodyBuildEndsBeforeItsLeaseExpires(t *testing.T) {
 	}
 }
 
+// One endpoint sends one delivery at a time: a delivery whose body can't be built must still move on the retry
+// schedule, or every later delivery to its endpoint waits behind it for good.
+func TestADeliveryThatCantBeBuiltFailsOnTheSchedule(t *testing.T) {
+	h := newHookEnv(t)
+	broken := h.canceled(t, "unbuildable")
+	time.Sleep(10 * time.Millisecond)
+	healthy := h.canceled(t, "healthy")
+	body := func(ctx context.Context, ev webhook.Event) ([]byte, error) {
+		if ev.ID == broken {
+			return nil, context.DeadlineExceeded
+		}
+		return h.body(ctx, ev)
+	}
+	if err := h.hooks.Deliver(context.Background(), h.client, body); err == nil {
+		t.Fatal("the failed body build was not reported")
+	}
+	if state, next := h.delivery(t, h.endpoint, broken); state != "pending 1" || next <= 0 || next > webhook.Retries[0] {
+		t.Fatalf("the unbuildable delivery: %s, next in %v; want pending 1 on the schedule", state, next)
+	}
+	if got := h.attempts(t, h.endpoint); !slices.Equal(got, []string{"- not sent: Forwend could not prepare the request"}) {
+		t.Fatalf("attempts %q", got)
+	}
+	if err := h.hooks.Deliver(context.Background(), h.client, body); err != nil {
+		t.Fatal(err)
+	}
+	if state, _ := h.delivery(t, h.endpoint, healthy); state != "succeeded 1" || h.recv.requests() != 1 {
+		t.Fatalf("the delivery behind it: %s, %d requests", state, h.recv.requests())
+	}
+	h.exec(t, "UPDATE webhook_deliveries SET attempts = $3, next_attempt_at = now() WHERE endpoint_id = $1 AND event_id = $2",
+		h.endpoint, broken, len(webhook.Retries))
+	if err := h.hooks.Deliver(context.Background(), h.client, body); err == nil {
+		t.Fatal("the failed body build was not reported")
+	}
+	if state, _ := h.delivery(t, h.endpoint, broken); state != "failed "+strconv.Itoa(len(webhook.Retries)+1) {
+		t.Fatalf("after its last attempt: %s", state)
+	}
+}
+
 func TestWebhookManualQueueBudgetPreservesFinancialEvents(t *testing.T) {
 	h := newHookEnv(t)
 	path := "/v1/profiles/" + h.shop + "/webhooks/" + h.endpoint + "/test"

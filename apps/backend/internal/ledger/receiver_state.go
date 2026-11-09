@@ -10,6 +10,8 @@ import (
 
 // ReceiverState is what the chain's scan has verified for a receive address. The scan reads every watched address
 // together, so its coverage is the chain's finalized cursor; a balance the ledger can't explain has a balance alert.
+// HistoryComplete holds while the scan still reads the address's deposits: until 30 days after its settle deadline
+// (watcher.watchedAfterDeadline). UnprovedDeposits is 1 while the chain holds money no recorded deposit explains.
 type ReceiverState struct {
 	InvoiceID                                                                            string
 	PaymentStatus, SettlementStatus, RefundStatus                                        string
@@ -34,7 +36,9 @@ func ReadReceiverStates(ctx context.Context, db interface {
    (SELECT count(*) FROM chain_transfers d WHERE d.invoice_id = i.id AND d.status <> 'reorged'),
    (SELECT count(*) FROM chain_transfers d WHERE d.invoice_id = i.id AND d.status = 'detected'),
    (SELECT count(*) FROM chain_transfers d WHERE d.invoice_id = i.id AND d.status = 'confirmed' AND NOT d.booked),
-   (SELECT count(*) FROM receiver_outflows o WHERE o.invoice_id = i.id AND o.kind <> 'recovery' AND o.ledger_transaction_id IS NULL)
+   (SELECT count(*) FROM receiver_outflows o WHERE o.invoice_id = i.id AND o.kind <> 'recovery' AND o.ledger_transaction_id IS NULL),
+   (a.excess IS TRUE)::int,
+   i.settle_deadline > extract(epoch FROM now())::bigint - 2592000
    FROM invoices i LEFT JOIN chain_cursors c ON c.chain_id = i.chain_id
    LEFT JOIN invoice_balance_alerts a ON a.invoice_id = i.id
    WHERE i.id = ANY($1::text[])`, ids)
@@ -44,12 +48,13 @@ func ReadReceiverStates(ctx context.Context, db interface {
 	defer rows.Close()
 	result := make(map[string]*ReceiverState, len(ids))
 	for rows.Next() {
-		state := &ReceiverState{HistoryComplete: true}
+		state := &ReceiverState{}
 		var at *int64
 		var unexplained bool
 		if err := rows.Scan(&state.InvoiceID, &state.PaymentStatus, &state.SettlementStatus, &state.RefundStatus,
 			&state.VerifiedBlock, &at, &state.UpdatedAt, &unexplained, &state.RetryAt, &state.TotalDeposits,
-			&state.PendingDeposits, &state.UnbookedDeposits, &state.UnbookedOutflows); err != nil {
+			&state.PendingDeposits, &state.UnbookedDeposits, &state.UnbookedOutflows, &state.UnprovedDeposits,
+			&state.HistoryComplete); err != nil {
 			return nil, err
 		}
 		state.ChainFinalizedBlock = state.VerifiedBlock

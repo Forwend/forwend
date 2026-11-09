@@ -103,7 +103,12 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
   - A contract destination warns: it may be an exchange, an app or a smart wallet.
   - It refuses the zero address, the receiver, the token, the factory and any invoice's receive address.
   - The amount is at most what is both held and refundable; at least 0.10 USD (D-90). Before the deadline that can be 0.
+  - It is also at most what the payment's payer paid, less the refunds booked to them, with or without `-to`.
+    - A receive address is public: anyone can pay a little to it and ask support for the held money.
+    - Refunds booked to a payer are those to the address they paid from directly.
+    - They also include those to a destination a return of one of their payments was queued to.
   - When several payers paid, the amount must be given. Each NEAR Intents quote counts as its own payer.
+    - So does each payment NEAR Intents may have relayed.
   - It dry-runs the token transfer from the receiver, and the refund when the receiver is deployed.
     A blocklisted address, a paused token or a short balance fails here, not at the Safe.
   - It sets `refund_status = 'refund_pending'`, then prints the calls: the receiver's deploy when needed, then `refund`.
@@ -121,7 +126,7 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
   - The block must be finalized, with the same hash. Otherwise it records nothing and says to try later.
   - A second run records nothing and says so. The ledger books the deposit in its next round, like any deposit.
   - Then `ops return` returns it.
-- Queuing writes `invoice.return_queued` to the invoice's history with the amount and destination; release writes
+- Queuing writes `invoice.return_queued` to the invoice's history with the amount, destination and payment; release writes
   `invoice.return_released`. The owner sees them as Return queued and Return released.
 - The owner's payment page lists each booked return as a Transfers row and ends its timeline with it.
 - While a return is queued:
@@ -366,7 +371,15 @@ Limits:
 
 ## Reusable-link capacity
 
-- Paid purchases consume slots; canonical open, detected and partly paid purchases reserve slots.
+- Paid purchases consume slots; canonical detected and partly paid purchases reserve slots.
+- An open purchase reserves its slot for 15 minutes from creation, or once a deposit is seen.
+  - Anyone can start a purchase, so a longer hold lets strangers fill a link without paying (D-108).
+  - 15 minutes is `invoice.MinExpiresIn`, the shortest checkout close any store allows.
+  - A deposit is a transfer to any option, or a NEAR Intents quote that saw the payer's deposit.
+  - The checkout itself stays open until its own close.
+- A slow payer who pays after the hold ended is a normal sale, even when others took the slot.
+  - The link can then sell over its cap; it reads `full` and takes no new purchases.
+  - The payer's money is never held or refused for the cap.
 - Expiry releases unused slots only after ledger reconciliation; late held deposits do not count as sales.
 - Creation and legacy reopening lock the link before reading fresh capacity in a separate READ COMMITTED statement.
 - Profile coordination uses `FOR NO KEY UPDATE` in creation, link saves and invoice sending.

@@ -392,3 +392,40 @@ func TestSupportReturnRechecksTheHeldMoneyOnceItLocks(t *testing.T) {
 		t.Fatalf("a refused return locked the money: %s", got)
 	}
 }
+
+// A receive address is public: a stranger who pays 0.10 to an overpaid invoice and asks for "the held money" gets back
+// only what they paid, whatever the destination.
+func TestSupportReturnsAPayerAtMostWhatTheyPaid(t *testing.T) {
+	e := setup(t)
+	ctx := t.Context()
+	id, receive := e.paidInvoice(t) // 6 paid on an invoice of 5: 1 held for the first payer
+	first := e.paymentHash(t, id)
+	const stranger = "0x70997970c51812dc3a010c7e01a50d79c8c4d3bc"
+	e.anvil.Transfer(e.token, stranger, "100000")
+	e.anvil.As(stranger, e.token, "transfer(address,uint256)", receive, "100000")
+	e.round(t)
+	var dust string
+	if err := e.pool.QueryRow(ctx, `SELECT tx_hash FROM chain_transfers WHERE invoice_id = $1 AND from_address = $2`,
+		id, stranger).Scan(&dust); err != nil {
+		t.Fatal(err)
+	}
+	other := common.HexToAddress("0x000000000000000000000000000000000000beef")
+	for _, to := range []*common.Address{nil, &other} {
+		if _, err := QueueReturn(ctx, e.pool, e.client, id, dust, to, big.NewInt(1100000)); !errors.Is(err, ErrMoreThanPaid) {
+			t.Fatalf("all the held money to %v: %v, want ErrMoreThanPaid", to, err)
+		}
+	}
+	r, err := QueueReturn(ctx, e.pool, e.client, id, dust, nil, big.NewInt(100000))
+	if err != nil || r.To != common.HexToAddress(stranger) {
+		t.Fatalf("what the stranger paid: %+v, %v", r, err)
+	}
+	e.send(r)
+	e.round(t)
+	if _, err := QueueReturn(ctx, e.pool, e.client, id, dust, &other, big.NewInt(100000)); !errors.Is(err, ErrMoreThanPaid) {
+		t.Fatalf("a second return of the stranger's payment: %v, want ErrMoreThanPaid", err)
+	}
+	if r, err := QueueReturn(ctx, e.pool, e.client, id, first, &other, big.NewInt(1000000)); err != nil ||
+		r.Amount.Int64() != 1000000 {
+		t.Fatalf("the first payer's held money: %+v, %v", r, err)
+	}
+}

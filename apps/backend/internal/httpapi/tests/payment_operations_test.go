@@ -518,6 +518,45 @@ func TestPaymentVerificationWaitsForExplainedSourcesAndAutomaticRescans(t *testi
 	check("review")
 }
 
+// The report counts a receiver as verified only with nothing unbooked or unexplained, and says when the chain holds a
+// deposit no record explains or the scan no longer reads the address's deposits.
+func TestPaymentReconciliationVerifiesOnlyReceiversWithNothingUnexplained(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	shop := e.merchant(t)
+	made := e.post(t, alice, shop, "report-proof", `{"chainId":84532,"token":"`+usdc+`","amount":"2000000"}`)
+	if made.status != http.StatusCreated {
+		t.Fatalf("create: %d %v", made.status, made.body)
+	}
+	id := made.body["invoiceId"].(string)
+	path := "/v1/profiles/" + shop + "/payments/" + id
+	read := func() (asset, coverage map[string]any) {
+		t.Helper()
+		report := e.call(t, "GET", path+"/reconciliation", alice, "", "")
+		detail := e.call(t, "GET", path, alice, "", "")
+		if report.status != http.StatusOK || detail.status != http.StatusOK {
+			t.Fatalf("report %d %v, detail %d %v", report.status, report.body, detail.status, detail.body)
+		}
+		return report.body["assets"].([]any)[0].(map[string]any),
+			detail.body["options"].([]any)[0].(map[string]any)["coverage"].(map[string]any)
+	}
+	asset, coverage := read()
+	if asset["receiverCount"] != float64(1) || asset["verifiedReceivers"] != float64(1) || asset["unprovedDeposits"] != float64(0) ||
+		coverage["historyComplete"] != true || coverage["unprovedDeposits"] != float64(0) {
+		t.Fatalf("a quiet receiver: %v, coverage %v", asset, coverage)
+	}
+	e.exec(t, "INSERT INTO invoice_balance_alerts (invoice_id, alerts, next_check_at, excess) VALUES ($1, 1, now(), true)", id)
+	e.exec(t, "ALTER TABLE invoices DISABLE TRIGGER invoices_guard")
+	e.exec(t, `UPDATE invoices SET expires_at = extract(epoch FROM now())::bigint - 41 * 86400,
+		settle_deadline = extract(epoch FROM now())::bigint - 40 * 86400 WHERE id = $1`, id)
+	e.exec(t, "ALTER TABLE invoices ENABLE TRIGGER invoices_guard")
+	asset, coverage = read()
+	if asset["verifiedReceivers"] != float64(0) || asset["unreconciledReceivers"] != float64(1) || asset["unprovedDeposits"] != float64(1) ||
+		coverage["historyComplete"] != false || coverage["unprovedDeposits"] != float64(1) {
+		t.Fatalf("a receiver holding a deposit the scan missed, past its watch window: %v, coverage %v", asset, coverage)
+	}
+}
+
 func TestPaymentSummaryOmitsUnusedOptionsWithoutCertifyingTheirHistory(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
