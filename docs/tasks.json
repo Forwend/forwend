@@ -417,14 +417,15 @@
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-09T22:15:24Z",
+        "at": "2026-11-09T22:24:00Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 5.6,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "docs-check",
@@ -437,7 +438,7 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.4,
+            "seconds": 0.3,
             "log": ""
           },
           {
@@ -451,36 +452,37 @@
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 75.7,
+            "seconds": 72.5,
             "log": ""
           },
           {
             "id": "backend-affected",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 70.7,
+            "seconds": 68.9,
             "log": ""
           },
           {
             "id": "backend-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 29.8,
+            "seconds": 28.8,
             "log": ""
           },
           {
             "id": "web-unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 9.5,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           }
         ],
         "taskHash": "7931ea390b56fafe",
-        "filesHash": "66d9a85077cea6d0",
+        "filesHash": "7cdc6b1d811c48d3",
         "proof": {
-          "1": "backend: TestSupportReturnOfACrossChainPaymentNeedsThePayersAddress, TestSupportReturnFromNEARIntentsAddressNeedsThePayersAddressBeforeAQuoteNamesIt and cmd/ops TestCrossChainPaymentNamesThePayersQuote refuse a default destination and name the quote",
-          "2": "backend: TestRefundOfAMissedDepositWaitsForThatDeposit, TestMissedDepositIsRecordedFromItsReceiptOnce, TestBalanceAlertEndsWhenTheBalanceAgreesAgain and the ErrMissedDeposit step of TestSupportWaitsForEveryPaymentToBeBooked",
+          "1": "backend: TestSupportReturnOfACrossChainPaymentNeedsThePayersAddress, TestSupportReturnFromNEARIntentsAddressNeedsThePayersAddressBeforeAQuoteNamesIt and TestSupportReturnOfAnOptionWithAnUnnamedDeliveryNeedsThePayersAddress refuse a default destination; ops case names the quote",
+          "2": "backend: TestRefundOfAMissedDepositWaitsForThatDeposit, TestRefundBeforeTheMissedDepositBooksOnceItIsRecorded, TestMissedDepositIsRecordedFromItsReceiptOnce, TestBalanceAlertEndsWhenTheBalanceAgreesAgain and the ErrMissedDeposit step of TestSupportWaitsForEveryPaymentToBeBooked",
           "3": "backend: TestNonceOfASettleTheRefundAuthorityReplacedIsUsedAgain mines invoice B's deploy and settle with no filler",
           "4": "docs-check: money-safety.md Returns through support and Deciding paid, architecture.md Signer nonce, PROJECT.md R-247 and D-118"
         }

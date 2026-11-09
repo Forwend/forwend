@@ -98,7 +98,7 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
     - It refuses any address that delivered such a payment.
     - A payment no quote names needs `-to` too when NEAR Intents may have sent it:
       - its sender delivered another NEAR Intents payment on that chain; or
-      - a quote of the option saw a deposit and names no Base transaction yet.
+      - a quote of the option saw a deposit, names no Base transaction yet, and did not fail or refund.
   - A destination that made no payment warns: check the payer's proof that it is theirs.
   - A contract destination warns: it may be an exchange, an app or a smart wallet.
   - It refuses the zero address, the receiver, the token, the factory and any invoice's receive address.
@@ -189,6 +189,8 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
     - Booked, it would take the money of a payer the ledger did book.
     - It retries every round and books once the missed deposit is booked: that clears the alert.
     - A refund mined before a recorded deposit can't have returned it, so it books first.
+    - Any recorded deposit after it lifts the wait, even another payer's.
+    - So a Safe refund sent outside `ops return` before the missed deposit is recorded can still take the wrong money.
   - A missed deposit recorded after later money was booked is booked against today's balances.
     - The total is right, but the earliest-payer order of D-27 may not hold for it.
   - The ledger only re-checks an option that can still expire. On a paid or settled one, `ops return` refuses instead.

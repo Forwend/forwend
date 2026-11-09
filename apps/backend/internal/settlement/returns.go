@@ -49,7 +49,7 @@ var (
 // Payment is a final payment to an invoice option. Quote is set when NEAR Intents delivered it: From is then NEAR
 // Intents' address, and the payer paid OriginTx on OriginChain with RefundTo as their own address there. Relayed is
 // set when no quote names it but NEAR Intents may have sent it: From delivered another NEAR Intents payment on this
-// chain, or a quote of the option saw a deposit and names no delivery yet.
+// chain, or a quote of the option that did not fail or refund saw a deposit and names no delivery yet.
 type Payment struct {
 	TxHash, From                           string
 	Amount                                 *big.Int
@@ -172,7 +172,8 @@ func ReadHeld(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client, i
 		        WHERE d.chain_id = t.chain_id AND d.from_address = t.from_address AND EXISTS (SELECT 1
 		        FROM jsonb_array_elements(dq.destination_txs) x WHERE lower(x->>'hash') = d.tx_hash))
 		    OR EXISTS (SELECT 1 FROM crosschain_quotes pq WHERE pq.option_id = t.invoice_id
-		        AND pq.deposit_seen_at IS NOT NULL AND pq.destination_txs = '[]')
+		        AND pq.deposit_seen_at IS NOT NULL AND pq.destination_txs = '[]'
+		        AND pq.status NOT IN ('FAILED', 'REFUNDED'))
 		FROM chain_transfers t LEFT JOIN LATERAL (SELECT * FROM crosschain_quotes q WHERE q.option_id = t.invoice_id
 		    AND EXISTS (SELECT 1 FROM jsonb_array_elements(q.destination_txs) d WHERE lower(d->>'hash') = t.tx_hash)
 		    LIMIT 1) q ON true
