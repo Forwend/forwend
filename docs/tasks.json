@@ -142,7 +142,7 @@
         "The pay page shows the price plus fees line in USD before a token is picked (R-228)"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "web-unit",
@@ -249,12 +249,12 @@
         "taskHash": "657d7ec293884ed8",
         "filesHash": "9ad816e837cb2eef",
         "proof": {
-          "1": "e2e: crosschain.spec prices and signs amounts between cents (1,262.996 and 1,265.496 USDT); You send and the deposit box show 1,263.00 USDT, the changed note '1,265.50, not 1,263.00', and 1,265.496 then 1,265.50 count as the same price. web-unit sendUnits and the picker test check the rounding",
-          "2": "e2e: crosschain.spec shows 'Slippage 1%' and the refund hint 'Unused slippage is refunded here. Use your own wallet, not an exchange.'; the backend API test checks estimate = due x 1.01 / price",
-          "3": "e2e: crosschain.spec shows Fee 2.00 USD with the 'NEAR Intents fee + network fee' button; web-unit crossChainFeeUsd on a real signed quote",
-          "4": "backend: TestCrossChainTokensLeaveOutATokenWithoutLiquidity drops ETH after 'No liquidity available' and lists it again after an answered dry quote",
-          "5": "web-unit: crosschain-picker.test checks chain and token logos, the first-letter fallback and a greyed logo; crosschain-views.test finds the NEAR Intents logo in Sent through",
-          "6": "e2e: pay.spec 'before a token is picked, the amount says the price and the fees in USD' fails on the old page and passes now"
+          "1": "e2e: crosschain.spec rounds signed 1,262.996 and 1,265.496 USDT to 1,263.00 and 1,265.50 in You send, the deposit box and the changed note; web-unit sendUnits and the picker test",
+          "2": "e2e: crosschain.spec shows Slippage 1% and the refund hint; backend API test checks the estimate adds 1%",
+          "3": "e2e: crosschain.spec shows Fee 2.00 USD with the NEAR Intents fee + network fee button; web-unit crossChainFeeUsd",
+          "4": "backend: TestCrossChainTokensLeaveOutATokenWithoutLiquidity",
+          "5": "web-unit: crosschain-picker.test and crosschain-views.test",
+          "6": "e2e: pay.spec 'before a token is picked, the amount says the price and the fees in USD'"
         },
         "review": {
           "result": "pass",
@@ -262,11 +262,18 @@
           "summary": "Earlier gaps closed and the new one too. crosschain-picker.test.tsx fails if Mark ignores its icon, a logo map entry goes, the greyed logo loses grayscale, or About drops sendUnits. The e2e signs 1262996000/1265496000/1265500000, so ExactAmount, the changed note and the changed-price comparison fail on raw amountIn. The price route now uses amountIn 1262996000, so the exact '1,263.00 USDT' check pins You send's rounding (fee 2.004 still reads 2.00 USD). Money is safe: sendUnits only rounds up, from the signed amountIn and amountInUsd after verifyQuote; the QR holds only the address. Fee formula, no-liquidity flag lifecycle (set by Probe, cleared by SetMinimum, kept by the list upsert), migration 00117, estimate slippage and amountOutUsd readers are correct. Logo lookups use Object.hasOwn; OUSD no longer gets Open USD's logo; R-232 says fee. Non-blocking, left out on purpose: the picker's listed price and the signed price can disagree on the stablecoin band near 0.98/1.02; a real quote refused for no liquidity still says to check the refund address. The PLAN.md roadmap bullets ride on this branch at the owner's request.",
           "at": "2026-11-09T20:41:04Z",
           "filesHash": "9ad816e837cb2eef"
-        }
+        },
+        "commit": "f021299d",
+        "doneAt": "2026-11-09T20:41:43Z"
       },
       "branch": "fix/f455-the-cross-chain-pay-box-asks-for-one-rou",
       "baseCommit": "6462f7241f1407a97429a45d9d29afcaa4e9f02a",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f455-the-cross-chain-pay-box-asks-for-one-rou",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
