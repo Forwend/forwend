@@ -241,16 +241,31 @@ func (a *Anvil) TwoTransfers(token, to1, amount1, to2, amount2 string) string {
 	return a.transact(Sender, batcher, append(first, second...)).TransactionHash
 }
 
-// PriceFeed puts a Chainlink-style feed on the chain whose latestRoundData answers price, and returns its address.
+// PriceFeed puts a Chainlink-style feed on the chain whose latestRoundData answers price, started and updated in the
+// block it is read at, and returns its address.
 func (a *Anvil) PriceFeed(price *big.Int) common.Address {
 	a.t.Helper()
 	feed := common.HexToAddress("0x00000000000000000000000000000000000000fd")
-	// Five words, the second the price.
-	code := "0x7f" + common.Bytes2Hex(common.LeftPadBytes(price.Bytes(), 32)) + "60205260a06000f3"
-	if err := a.RPC.Call(nil, "anvil_setCode", feed.Hex(), code); err != nil {
+	a.Feed(feed, price, 0, 0)
+	return feed
+}
+
+// Feed puts a Chainlink-style feed at an address whose latestRoundData answers answer, started and updated at the
+// given Unix times; 0 is the time of the block it is read at.
+func (a *Anvil) Feed(at common.Address, answer *big.Int, started, updated int64) {
+	a.t.Helper()
+	// Five words: round, answer, started, updated, answered-in round. TIMESTAMP (42) stands for 0.
+	word := func(n int64) string {
+		if n == 0 {
+			return "42"
+		}
+		return "7f" + common.Bytes2Hex(common.LeftPadBytes(big.NewInt(n).Bytes(), 32))
+	}
+	code := "0x7f" + common.Bytes2Hex(common.LeftPadBytes(answer.Bytes(), 32)) + "602052" + word(started) + "604052" +
+		word(updated) + "606052" + "60a06000f3"
+	if err := a.RPC.Call(nil, "anvil_setCode", at.Hex(), code); err != nil {
 		a.t.Fatal(err)
 	}
-	return feed
 }
 
 // Send calls a contract from the sender, waits for the receipt and returns the transaction hash.

@@ -283,6 +283,35 @@ func TestSignerAlertsWhenItCantBuyGas(t *testing.T) {
 		!strings.Contains(logs.String(), "no ether bought: chain 8453 ETH/USD feed answered 0 bytes") {
 		t.Fatalf("logs lack the low gas alert with the failed buy:\n%s", logs.String())
 	}
+
+	// A price past its heartbeat, or one read while the sequencer is down, floors no swap: nothing is sent.
+	before, err := client.NonceAt(ctx, s.sender, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ago := func(d time.Duration) int64 { return time.Now().Add(-d).Unix() }
+	for _, c := range []struct {
+		name          string
+		updated, down int64
+		says          string
+	}{
+		{"stale", ago(time.Hour), 0, "ETH/USD feed last answered"},
+		{"sequencer down", 0, 1, "sequencer is down"},
+	} {
+		a.Feed(chain.EthUSD[8453].Address, big.NewInt(2000e8), ago(2*time.Hour), c.updated)
+		a.Feed(chain.SequencerUptime[8453], big.NewInt(c.down), ago(24*time.Hour), 0)
+		logs.Reset()
+		s.gasCheckedAt = time.Time{}
+		if err := s.Run(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(logs.String(), "ALERT executor gas runs low") || !strings.Contains(logs.String(), c.says) {
+			t.Fatalf("%s: logs lack the low gas alert naming %q:\n%s", c.name, c.says, logs.String())
+		}
+	}
+	if after, err := client.NonceAt(ctx, s.sender, nil); err != nil || after != before {
+		t.Fatalf("a refused price sent %d transactions (%v), want none", after-before, err)
+	}
 }
 
 // Dust anyone can send to the executor buys less gas than a swap costs, so it is never approved: an approve of it would
@@ -312,7 +341,9 @@ func TestSignerSwapsNoDust(t *testing.T) {
 		}
 	}
 	route := swapRoutes[8453]
-	setCode(chain.EthUSD[8453], a.PriceFeed(big.NewInt(2000e8)))
+	setCode(chain.EthUSD[8453].Address, a.PriceFeed(big.NewInt(2000e8)))
+	// The sequencer has been up for a day.
+	a.Feed(chain.SequencerUptime[8453], new(big.Int), time.Now().Add(-24*time.Hour).Unix(), 0)
 	setCode(route.usdc, common.HexToAddress(a.DeployToken()))
 	slot := crypto.Keccak256Hash(common.LeftPadBytes(s.sender.Bytes(), 32), make([]byte, 32)) // _balances, slot 0
 	if err := a.RPC.Call(nil, "anvil_setStorageAt", route.usdc, slot, common.BigToHash(big.NewInt(100))); err != nil {

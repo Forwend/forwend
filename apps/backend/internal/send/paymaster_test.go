@@ -28,7 +28,7 @@ func (e env) paymaster(t *testing.T) {
 	if _, err := e.pool.Exec(context.Background(), "UPDATE tokens SET native_gas = false, fee_asset = 'usdc'"); err != nil {
 		t.Fatal(err)
 	}
-	chain.EthUSD[chaintest.ChainID] = e.anvil.PriceFeed(big.NewInt(2000e8))
+	chain.EthUSD[chaintest.ChainID] = chain.PriceFeed{Address: e.anvil.PriceFeed(big.NewInt(2000e8)), Heartbeat: time.Hour}
 	t.Cleanup(func() { delete(chain.EthUSD, chaintest.ChainID) })
 }
 
