@@ -2019,7 +2019,7 @@
       "dependsOn": [
         "F450"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "web-unit",
@@ -2110,11 +2110,18 @@
           "summary": "Subagent reviews passed at 2a29fc57 (fifth round) and, for the double-payment follow-up, at 735d4b97 and b22ba28f. After b22ba28f only the developer-docs sentence and a node type comment changed, to the reviewer's own wording. Every acceptance line's break is caught by tests.",
           "at": "2026-11-09T18:59:22Z",
           "filesHash": "38cac32321d4ab6d"
-        }
+        },
+        "commit": "0df7d6b3",
+        "doneAt": "2026-11-09T18:59:23Z"
       },
       "branch": "feat/f451-the-owner-sees-how-each-cross-chain-paym-2",
       "baseCommit": "9cfa379a648b52d0ca6d3e8f5f981c6122808330",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f451-the-owner-sees-how-each-cross-chain-paym-2",
+        "base": "main"
+      }
     },
     {
       "id": "F452",
