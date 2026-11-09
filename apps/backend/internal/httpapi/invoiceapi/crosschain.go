@@ -32,6 +32,8 @@ type crossTokenJSON struct {
 	Contract   *string `json:"contract"`
 	PriceUSD   string  `json:"priceUsd"`
 	Estimate   *string `json:"estimate"` // in the list only
+	// In the list only: the Base USDC base units 1Click needs at least from it (D-126).
+	Minimum *string `json:"minimum"`
 }
 
 func toCrossToken(t intents.Token) crossTokenJSON {
@@ -82,6 +84,7 @@ func getCrossTokens(invoices *invoice.Service) http.HandlerFunc {
 			if t.Estimate != nil {
 				j.Estimate = httpio.OrNull(t.Estimate.String())
 			}
+			j.Minimum = httpio.OrNull(t.Minimum)
 			out.Tokens = append(out.Tokens, j)
 		}
 		httpio.WriteJSON(w, http.StatusOK, out)

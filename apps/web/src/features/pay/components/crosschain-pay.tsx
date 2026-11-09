@@ -26,7 +26,7 @@ import { ENTER } from "@/features/pay/constants/pay";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import { signedDeposit, verifyQuote } from "@/features/pay/lib/crosschain";
 import type { CrossToken } from "@/features/pay/types/crosschain";
-import { CROSS_CHAIN_STATUSES } from "@/shared/constants/chains";
+import { CROSS_CHAIN_STATUSES, CROSS_CHAIN_TARGET } from "@/shared/constants/chains";
 import { blockchainName, crossChainEnded } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 
@@ -199,6 +199,8 @@ export function CrossChainPay({
         open={picking}
         onOpenChange={setPicking}
         tokens={tokens.data?.tokens}
+        due={tokens.data ? BigInt(tokens.data.due) : undefined}
+        dueDecimals={tokens.data?.decimals ?? CROSS_CHAIN_TARGET.decimals}
         onPick={(picked) => {
           setToken(picked);
           setShown(null);
@@ -322,7 +324,7 @@ function PricePreview({
   if (error) {
     return (
       <p role="alert" className="text-sm text-danger">
-        {quoteProblem(error)}
+        {priceProblem(error)}
       </p>
     );
   }
@@ -535,6 +537,12 @@ function fromKept(c: CrossChain): Shown {
     shownUntil: Date.parse(c.shownUntil),
     signed: c.signed,
   };
+}
+
+// A price has no refund address yet: a refused one is the token's, never the address's.
+function priceProblem(error: unknown): string {
+  const code = (error as { data?: { error?: { code?: string } } } | undefined)?.data?.error?.code;
+  return code === "invalid_value" ? COPY.cantConvert : quoteProblem(error);
 }
 
 // The api's error codes for a quote (docs/backend/api.md); anything else is 1Click not answering.

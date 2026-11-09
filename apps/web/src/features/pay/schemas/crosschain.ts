@@ -11,6 +11,8 @@ export const crossTokenSchema = z.object({
   priceUsd: z.string(),
   // In the list only: about what the payer sends at the listed price.
   estimate: baseUnits.nullable(),
+  // In the list only: the Base USDC base units NEAR Intents last needed at least (D-126); an older api leaves it out.
+  minimum: baseUnits.nullable().optional(),
 });
 
 export const crossTokensSchema = z.object({

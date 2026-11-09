@@ -189,6 +189,87 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     }
   });
 
+  test("greys a token that needs more than is due, with its minimum, and it can't be picked (R-242)", async ({
+    page,
+  }) => {
+    await page.clock.install({ time: NOW });
+    await mockInvoice(page, LIVE);
+    await routeCrossChain(page, [quote("1263000000")]);
+    const TRX = {
+      assetId: "nep141:tron.omft.near",
+      blockchain: "tron",
+      symbol: "TRX",
+      decimals: 6,
+      contract: null,
+      priceUsd: "0.3",
+      estimate: "4170000000",
+      minimum: null,
+    };
+    await page.route(`**/api/v1/invoices/${PAY}/crosschain/tokens`, (route) =>
+      route.fulfill({
+        json: {
+          ...TOKENS,
+          tokens: [
+            { ...TRON_TOKEN, minimum: "1999995000" },
+            TRX,
+            { ...TOKENS.tokens[1], minimum: TOKENS.due },
+          ],
+        },
+      }),
+    );
+    await page.goto(`/pay/${PAY}`);
+    await page.getByRole("button", { name: "Pay with another token" }).click();
+    await page.getByRole("button", { name: "Choose a token" }).click();
+    const picker = page.getByRole("dialog", { name: "Pay with another token" });
+    // Ethereum's ETH needs exactly what is due, so it fits: nothing is greyed, so no note.
+    await expect(picker.getByRole("button", { name: /ETH/ })).toBeEnabled();
+    await expect(picker.getByText(/Greyed tokens/)).toHaveCount(0);
+    await picker.getByRole("button", { name: "Tron", exact: true }).click();
+    const rows = picker.getByRole("region", { name: "Tokens on Tron" }).getByRole("listitem");
+    // The token that fits comes first; the other stays listed with what it needs.
+    await expect(rows.nth(0)).toContainText("TRX");
+    const usdt = rows.nth(1).getByRole("button");
+    await expect(usdt).toContainText("Tron · Needs at least 2,000.00 USDC");
+    await expect(usdt).toBeDisabled();
+    await expect(
+      picker.getByText(
+        "Greyed tokens need more than this payment of 1,250.00 USDC. NEAR Intents sets the minimum for each.",
+      ),
+    ).toBeVisible();
+    await rows.nth(0).getByRole("button").click();
+    await expect(picker).toHaveCount(0);
+    await expect(page.getByLabel("Refund address on Tron")).toBeVisible();
+  });
+
+  test("a price NEAR Intents refuses says the token can't be converted, not the refund address (R-242)", async ({
+    page,
+  }) => {
+    await page.clock.install({ time: NOW });
+    await mockInvoice(page, LIVE);
+    await routeCrossChain(page, [quote("1263000000")]);
+    await page.route(/\/api\/v1\/invoices\/[0-9a-f]{64}\/crosschain\/price/, (route) =>
+      route.fulfill({
+        status: 422,
+        json: {
+          error: {
+            code: "invalid_value",
+            message: "invalid invoice request: originAsset: 1Click can't convert this token now",
+          },
+        },
+      }),
+    );
+    await page.goto(`/pay/${PAY}`);
+    await page.getByRole("button", { name: "Pay with another token" }).click();
+    await page.getByRole("button", { name: "Choose a token" }).click();
+    const picker = page.getByRole("dialog", { name: "Pay with another token" });
+    await picker.getByRole("button", { name: "Tron", exact: true }).click();
+    await picker.getByRole("button", { name: /USDT.*Tron/ }).click();
+    await expect(
+      page.getByRole("alert").filter({ hasText: "NEAR Intents can't convert this token now" }),
+    ).toBeVisible();
+    await expect(page.getByText(/refund to this address/)).toHaveCount(0);
+  });
+
   test("shows only the address 1Click signed, and none for an answer changed after it signed", async ({
     page,
   }) => {

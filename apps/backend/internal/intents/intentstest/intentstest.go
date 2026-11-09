@@ -10,6 +10,8 @@ import (
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -24,6 +26,10 @@ type Fake struct {
 	Key     string
 	Tokens  []map[string]any
 	Minimum *big.Int
+	// Limits gives a token, by asset id, 1Click's temporary USD minimum, which it names in dollars.
+	Limits map[string]int64
+	// Refuse makes 1Click refuse a token's quotes, by asset id, for a reason that names no minimum.
+	Refuse  map[string]bool
 	private ed25519.PrivateKey
 	mu      sync.Mutex
 	quotes  int
@@ -125,10 +131,27 @@ func (f *Fake) quote(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	// As 1Click does: a burn address is no recipient.
+	if strings.EqualFold(fmt.Sprint(req["recipient"]), "0x000000000000000000000000000000000000dead") {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"message": "recipient is not valid"})
+		return
+	}
 	amount, ok := new(big.Int).SetString(fmt.Sprint(req["amount"]), 10)
 	if !ok || amount.Cmp(f.Minimum) < 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		_ = json.NewEncoder(w).Encode(map[string]string{"message": "Amount is too low for bridge, try at least " + f.Minimum.String()})
+		return
+	}
+	if f.Refuse[fmt.Sprint(req["originAsset"])] {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"message": "This route is not supported"})
+		return
+	}
+	if limit, ok := f.Limits[fmt.Sprint(req["originAsset"])]; ok && amount.Cmp(big.NewInt(limit*1_000_000)) < 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"message": fmt.Sprintf("Temporary swap limits: minimum swap amount is $%s", commas(limit))})
 		return
 	}
 	if req["refundTo"] == "refused" {
@@ -174,4 +197,13 @@ func (f *Fake) quote(w http.ResponseWriter, r *http.Request) {
 		f.mu.Unlock()
 	}
 	_ = json.NewEncoder(w).Encode(answer)
+}
+
+// commas writes n as 1Click does in its limits: 1,000.
+func commas(n int64) string {
+	s := strconv.FormatInt(n, 10)
+	for i := len(s) - 3; i > 0; i -= 3 {
+		s = s[:i] + "," + s[i:]
+	}
+	return s
 }

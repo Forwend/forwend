@@ -214,6 +214,7 @@ func (s *Service) QuoteCrossChain(ctx context.Context, payToken, origin, refundT
 	}
 	quote, err := s.crossChain.Quote(ctx, ask, false)
 	if err != nil {
+		s.learnMinimum(ctx, origin, err, now)
 		return CrossQuote{}, providerError(err, target.invoice.ID, false)
 	}
 	q = crossQuote(quote, token, refundTo)
@@ -286,6 +287,18 @@ func crossQuote(quote intents.Quote, token intents.Token, refundTo string) Cross
 		Signed: quote.Signed}
 }
 
+// learnMinimum keeps a minimum 1Click just named, so the picker shows it to the next payer at once (D-126).
+func (s *Service) learnMinimum(ctx context.Context, origin string, err error, now time.Time) {
+	var below *intents.BelowMinimum
+	if !errors.As(err, &below) {
+		return
+	}
+	minimum, _ := new(big.Int).SetString(below.Minimum, 10)
+	if err := intents.SetMinimum(ctx, s.pool, origin, minimum, now); err != nil {
+		slog.Warn("keep a 1Click minimum", "err", err)
+	}
+}
+
 // providerError maps 1Click's answer to the payer's: a route's minimum (an *intents.BelowMinimum) or a refusal is the
 // request's, the rest is 1Click's. A quote that fails its checks is logged: 1Click, or something between, changed it.
 func providerError(err error, invoiceID string, dry bool) error {
@@ -322,6 +335,7 @@ func (s *Service) dryQuote(ctx context.Context, ask intents.Ask, token intents.T
 	s.dry.mu.Unlock()
 	quote, err := s.crossChain.Quote(ctx, ask, true)
 	if err != nil {
+		s.learnMinimum(ctx, ask.Origin, err, now)
 		return CrossQuote{}, providerError(err, "", true)
 	}
 	q := crossQuote(quote, token, "")

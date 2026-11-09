@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 453,
+  "nextId": 454,
   "tasks": [
     {
       "id": "F332",
@@ -2149,6 +2149,127 @@
       ],
       "blockedReason": "Spends real mainnet money: needs the owner's approval and a funded payer wallet.",
       "evidence": null
+    },
+    {
+      "id": "F453",
+      "type": "feat",
+      "behavior": "The token picker shows each token's minimum and blocks one that needs more than is due",
+      "acceptance": [
+        "The worker learns each token's 1Click minimum with a dry quote, at most once an hour per token, and a payer's refused price or quote updates it at once (D-126).",
+        "The tokens route gives each token's minimum; the picker greys a token needing more than is due, shows its minimum, and it can't be picked (R-242).",
+        "A price 1Click refuses says the token can't be converted now, never a refund-address problem (R-242)."
+      ],
+      "dependsOn": [
+        "F451"
+      ],
+      "state": "passing",
+      "verification": [
+        "backend",
+        "web-unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-242",
+        "D-126"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-11-09 Review 1 FAIL (subagent) at 2d7d17c5: one token whose dry quote errors stopped the probe for every other token, with no end; no test failed without the hourly bound, learning from a refused real quote, or a lifted limit clearing. Non-blocking taken: a bridge's least could hide a higher dollar limit, the minimum shown rounded down, the D-126 row had four cells, a moved comment. Left: no refetch of the token list after a refused price; dollar decimals tested only as whole dollars.",
+        "2026-11-09 Review 2 FAIL (subagent) at 77cca835: a refusal of the probe's own request was stored as no minimum with no log line (the burn-address recipient bug hid this way); stop-after-an-answer had no test. Non-blocking taken: a minimum equal to the amount due untested, a moved doc comment, a later failed ask dropped the round's minimum. Left: learnMinimum can swap a payer's higher limit for a lower one from a direct API call; the 3-ask cap and a lower later minimum are untested (the fake can't produce them).",
+        "2026-11-09 Review 3 FAIL (subagent) at 3ffcb3c5: keeping the minimum a round already named when a later ask is refused had no test. Non-blocking taken: api.md said up to three re-asks (it is three asks in all). Left: the note's amount due is cut to the cent; a token answering 5xx costs a 2-minute pause each.",
+        "2026-11-09 Review 4 PASS (subagent) at 060e5b15: the round's minimum on a later refusal is tested; every other behavior's break is caught. Left: the 3-ask cap could be 2 untested (same result for a bridge minimum plus a dollar limit); an error after a lower named minimum can lower a higher stored one for up to an hour (a payer's refusal restores it); greyed rows skip Tab.",
+        "2026-11-09 review pass by subagent: Same code as the fourth subagent review that passed at 060e5b15; after it only one docs/backend/api.md line changed, to the reviewer's wording. Probe pace, hourly bound, highest limit, refusals kept and logged, one bad token, learning from a payer's refusal, the picker's greyed rows, rounding and the price message all have tests that fail without them."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-09T19:00:12Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 53.5,
+            "log": ""
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 71.1,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 71.9,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 9.7,
+            "log": ""
+          }
+        ],
+        "taskHash": "06f9bc8aaa0a8dcf",
+        "filesHash": "0156533219b16bf4",
+        "proof": {
+          "1": "backend: TestKeeperProbesEachTokensMinimum (pace, hourly bound, highest limit, refusals, one bad token) and TestCrossChainQuoteRefusals (learning from a refused price and quote)",
+          "2": "e2e: crosschain.spec greys a token that needs more than is due, with its minimum, and it can't be picked",
+          "3": "e2e: crosschain.spec a price NEAR Intents refuses says the token can't be converted"
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "Same code as the fourth subagent review that passed at 060e5b15; after it only one docs/backend/api.md line changed, to the reviewer's wording. Probe pace, hourly bound, highest limit, refusals kept and logged, one bad token, learning from a payer's refusal, the picker's greyed rows, rounding and the price message all have tests that fail without them.",
+          "at": "2026-11-09T19:03:57Z",
+          "filesHash": "0156533219b16bf4"
+        },
+        "commit": "6a21b4ec",
+        "doneAt": "2026-11-09T19:03:57Z"
+      },
+      "branch": "feat/f453-the-token-picker-shows-each-token-s-mini",
+      "baseCommit": "a5b97b6befc72e44ed4a6157d3e1c6a096187f68",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f453-the-token-picker-shows-each-token-s-mini",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
