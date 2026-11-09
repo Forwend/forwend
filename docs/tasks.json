@@ -2145,7 +2145,8 @@
       "keep": [],
       "review": true,
       "notes": [
-        "2026-11-09 blocked: Spends real mainnet money: needs the owner's approval and a funded payer wallet."
+        "2026-11-09 blocked: Spends real mainnet money: needs the owner's approval and a funded payer wallet.",
+        "2026-11-09 2026-11-09 owner's live payment, local stack on mainnet: INV-0002 (1.25 USD, options Arc, Base, Arbitrum) paid with 1.265309 USDC on Solana through NEAR Intents. 1Click saw it 17:06:01 UTC, delivered 1.25 USDC on Base 17:06:31 (tx 0x6c9ee966…47fc), returned 0.00265 USDC of slippage; booked paid on the Base option after Base finality (~20 min); receipt shows Paid with. Settlement still pending at the time. Left of R-241: Arbitrum USDT, Ethereum ETH, settlement and the owner's pages."
       ],
       "blockedReason": "Spends real mainnet money: needs the owner's approval and a funded payer wallet.",
       "evidence": null
