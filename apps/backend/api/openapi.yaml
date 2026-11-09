@@ -2611,6 +2611,116 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/invoices/{payToken}/crosschain/tokens:
+    get:
+      operationId: listCrossChainTokens
+      summary: Tokens the payer can pay with from another chain (public, like the checkout)
+      description: |
+        R-232, D-123. What NEAR Intents 1Click can convert into the invoice's open Base USDC option, from the list the
+        worker reads every 10 minutes. Memo chains (Stellar, XRP, TON), tokens without a price, Base USDC and the
+        invoice's other direct options are left out. Stablecoins (a price within 2% of 1 USD) come first. estimate is
+        about what the payer sends at the listed price; the quote is the real amount. Only a live invoice with an open
+        Base USDC option that closes in 20 minutes or more; 422 crosschain_unavailable says why not. Limited per
+        invoice; per IP at the edge (Q-8).
+      security: []
+      parameters:
+        - name: payToken
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/PayToken" }
+      responses:
+        "200":
+          description: The tokens
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [due, decimals, tokens]
+                properties:
+                  due:
+                    allOf: [{ $ref: "#/components/schemas/Uint256" }]
+                    description: What is still due on the Base USDC option, in its base units.
+                  decimals: { type: integer, description: The Base option's decimals (6). }
+                  tokens:
+                    type: array
+                    items: { $ref: "#/components/schemas/CrossChainToken" }
+        "404": { $ref: "#/components/responses/InvoiceNotFound" }
+        "409": { $ref: "#/components/responses/PickLocked" }
+        "422": { $ref: "#/components/responses/CrossChainUnavailable" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/invoices/{payToken}/crosschain/price:
+    get:
+      operationId: priceCrossChain
+      summary: Price a token the payer picked, without an address (public, like the checkout)
+      description: |
+        R-232. A dry 1Click quote for exactly what is due on the Base USDC option: what the payer would send, the
+        least 1Click converts, and the time. quoteId, depositAddress, refundTo, shownUntil, deadline, createdAt and
+        signed are null. Kept 30 seconds per token and amount. Limited per invoice, apart from quotes.
+      security: []
+      parameters:
+        - name: payToken
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/PayToken" }
+        - name: originAsset
+          in: query
+          required: true
+          schema: { type: string, example: "nep141:tron-d28a265909efecdcee7c5028585214ea0b96f015.omft.near" }
+      responses:
+        "200":
+          description: The price
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CrossChainQuote" }
+        "404": { $ref: "#/components/responses/InvoiceNotFound" }
+        "409": { $ref: "#/components/responses/PickLocked" }
+        "422": { $ref: "#/components/responses/CrossChainRefused" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/ProviderUnavailable" }
+        "500": { $ref: "#/components/responses/Internal" }
+  /v1/invoices/{payToken}/crosschain/quotes:
+    post:
+      operationId: quoteCrossChain
+      summary: Get a deposit address that pays the invoice from another chain (public, like the checkout)
+      description: |
+        R-231, R-233, D-124, D-125. A 1Click EXACT_OUTPUT quote: exactly what is due arrives as USDC at the Base
+        option's receive address, and 1Click returns extra, short or failed money to refundTo, the payer's address on
+        the token's chain. Its deadline is the earlier of an hour and 10 minutes before the close; the page holds its
+        price until shownUntil (15 minutes). The api keeps it only when 1Click's signature and these fields check
+        out, and the pay page checks signed again before it shows depositAddress. The same token and refund address
+        get the open quote back while 5 minutes of its window are left (201 again). It keeps the Base option as the
+        payer's pick. An invoice gets 20 quotes an hour (429 too_many_quotes); one 1Click is converting is 409.
+      security: []
+      parameters:
+        - name: payToken
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/PayToken" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [originAsset, refundTo]
+              properties:
+                originAsset: { type: string, description: A token's assetId from the tokens list. }
+                refundTo: { type: string, maxLength: 200, description: "The payer's own address on the token's chain." }
+      responses:
+        "201":
+          description: The quote
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CrossChainQuote" }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "404": { $ref: "#/components/responses/InvoiceNotFound" }
+        "409": { $ref: "#/components/responses/PickLocked" }
+        "422": { $ref: "#/components/responses/CrossChainRefused" }
+        "429": { $ref: "#/components/responses/TooManyQuotes" }
+        "503": { $ref: "#/components/responses/ProviderUnavailable" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/invoices/{payToken}/embed:
     get:
       operationId: checkEmbedOrigin
@@ -6209,6 +6319,40 @@ components:
             Forwend's estimate of what Privy's paymaster takes from the token (R-225). forwend: 0, a send sponsored
             before D-121.
         paidBy: { type: string, enum: [forwend, wallet, paymaster] }
+    CrossChainToken:
+      type: object
+      required: [assetId, blockchain, symbol, decimals, contract, priceUsd, estimate]
+      properties:
+        assetId: { type: string, description: "1Click's id of the token, as nep141:tron-….omft.near." }
+        blockchain: { type: string, description: "1Click's name of its chain, as tron, eth or sol." }
+        symbol: { type: string }
+        decimals: { type: integer }
+        contract: { type: [string, "null"], description: The token's contract on its chain; null for a chain's coin. }
+        priceUsd: { type: string, pattern: "^[0-9]+(\\.[0-9]+)?$", description: "1Click's listed price, for display." }
+        estimate:
+          allOf: [{ $ref: "#/components/schemas/Uint256" }]
+          description: About what the payer sends, in the token's base units, rounded up.
+    CrossChainQuote:
+      type: object
+      required: [quoteId, token, depositAddress, amountIn, minAmountIn, amountOut, amountInUsd, refundFee, timeEstimate,
+        refundTo, shownUntil, deadline, createdAt, signed]
+      properties:
+        quoteId: { type: [string, "null"], format: uuid, description: Null for a price. }
+        token: { $ref: "#/components/schemas/CrossChainToken" }
+        depositAddress: { type: [string, "null"], description: "Where the payer sends amountIn of the token; null for a price." }
+        amountIn: { allOf: [{ $ref: "#/components/schemas/Uint256" }], description: What the payer sends, slippage included. }
+        minAmountIn: { allOf: [{ $ref: "#/components/schemas/Uint256" }], description: The least 1Click converts; less is refunded. }
+        amountOut: { allOf: [{ $ref: "#/components/schemas/Uint256" }], description: Exactly what reaches the Base option. }
+        amountInUsd: { type: string }
+        refundFee: { type: string, description: "What a refund costs, in the token's base units." }
+        timeEstimate: { type: integer, description: Seconds 1Click expects after the deposit confirms. }
+        refundTo: { type: [string, "null"] }
+        shownUntil: { type: [string, "null"], format: date-time, description: The end of the price window (D-125). }
+        deadline: { type: [string, "null"], format: date-time, description: "1Click refunds what hasn't converted by then." }
+        createdAt: { type: [string, "null"], format: date-time }
+        signed:
+          type: [object, "null"]
+          description: "1Click's answer as it signed it (D-124): the pay page verifies it before showing the address."
     Error:
       type: object
       required: [error]
@@ -6227,7 +6371,8 @@ components:
                 endpoint_not_found, webhooks_not_configured, delivery_not_found, send_not_found, send_in_progress, send_approved,
                 transfer_refused, wrong_code, code_sent_recently, too_many_codes, no_login_email, code_unavailable, two_step_not_set_up,
                 payment_not_found, checkout_not_found, checkout_not_expirable, too_many_movements, link_not_ready, link_changed,
-                pick_locked, webhook_queue_full, payment_reconciliation_pending,
+                pick_locked, webhook_queue_full, payment_reconciliation_pending, crosschain_unavailable, below_minimum,
+                too_many_quotes, provider_unavailable,
                 invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
             message: { type: string }
   responses:
@@ -6416,6 +6561,29 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     BillingDetailsNotFound:
       description: The profile has not saved billing details yet (billing_details_not_found)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    CrossChainUnavailable:
+      description: "Not a live invoice with an open Base USDC option closing in 20 minutes or more, or a payment is confirming (crosschain_unavailable)"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    CrossChainRefused:
+      description: |
+        crosschain_unavailable as for the tokens; invalid_value for a token not in the list or a refund address 1Click
+        refuses; below_minimum, whose error also carries minimum, the least the route delivers, in the Base option's
+        base units
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    TooManyQuotes:
+      description: Twenty quotes for this invoice in the last hour (too_many_quotes), or too many requests (rate_limited)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    ProviderUnavailable:
+      description: "1Click didn't answer, or gave a quote that failed its checks (provider_unavailable); try again"
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

@@ -48,6 +48,8 @@ Read only the sections your task touches:
   - It also keeps the ECB's reference rates (`internal/ecb`, R-110): at start, every 6 hours, 10 minutes after a failure.
   - It reads the ECB's 90-day file only, so rates from before its first read, or gaps over 90 days, never arrive.
   - Only tests set `ECB_RATES_URL`: the e2e gate points the worker at a fake ECB.
+  - It keeps NEAR Intents 1Click's token list in `intents_tokens` (`internal/intents`, R-232): at start, every 10
+    minutes, 2 minutes after a failure. A token 1Click drops is removed. Only tests set `ONECLICK_API_URL`.
   - It keeps CoinGecko's USD prices of the stablecoins for display (`internal/price`, R-178, D-115).
     - It reads them at start, every 15 minutes (`COINGECKO_INTERVAL`), and 2 minutes after a failure.
     - A read times out after 10 s; a redirect or an answer over 64 KiB fails it.

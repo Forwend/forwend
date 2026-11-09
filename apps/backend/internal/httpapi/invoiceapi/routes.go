@@ -58,6 +58,13 @@ func Routes(mux *http.ServeMux, g mid.Guards, invoices *invoice.Service, profile
 	mux.Handle("PUT /v1/invoices/{payToken}/payer-email",
 		mid.Limit(mid.NewBuckets(PayerEmailRate, PayerEmailBurst), perInvoice, putPayerEmail(invoices, emails)))
 	mux.Handle("PUT /v1/invoices/{payToken}/pick", mid.Limit(mid.NewBuckets(PickRate, PickBurst), perInvoice, putPick(invoices)))
+	mux.Handle("GET /v1/invoices/{payToken}/crosschain/tokens",
+		mid.Limit(mid.NewBuckets(CrossTokensRate, CrossTokensBurst), perInvoice, getCrossTokens(invoices)))
+	// Dry and real quotes spend from their own budgets, so browsing tokens never uses up Show address.
+	mux.Handle("GET /v1/invoices/{payToken}/crosschain/price",
+		mid.Limit(mid.NewBuckets(DryQuoteRate, DryQuoteBurst), perInvoice, getCrossPrice(invoices)))
+	mux.Handle("POST /v1/invoices/{payToken}/crosschain/quotes",
+		mid.Limit(mid.NewBuckets(QuoteRate, QuoteBurst), perInvoice, postCrossQuote(invoices)))
 	mux.Handle("POST /v1/invoices/{payToken}/views", mid.Limit(mid.NewBuckets(ViewRate, ViewBurst), perInvoice,
 		countView(invoices)))
 	mux.Handle("POST /v1/reminders/{token}/stop", stopReminders(invoices)) // the client's stop link: no sign-in

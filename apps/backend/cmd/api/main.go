@@ -21,6 +21,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/email"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi"
+	"github.com/forwend/forwend/apps/backend/internal/intents"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/notify"
 	"github.com/forwend/forwend/apps/backend/internal/privy"
@@ -98,11 +99,15 @@ func run() error {
 	codes := reauth.NewService(pool, sender, func(code string) (email.Message, error) {
 		return notify.CodeMessage(site, code, reauth.CodeTTL)
 	}, cfg.CodesPerHour)
+	crossChain := intents.NewClient(cfg.OneClick.URL, cfg.OneClick.Key, cfg.RPCAllowLoopback)
+	if cfg.OneClick.Signer != "" {
+		crossChain.Signer = cfg.OneClick.Signer // a test's fake 1Click
+	}
 	server := &http.Server{
 		Addr: cfg.Addr,
 		Handler: httpapi.NewMux(pool, verifier, users, balances.Read, balances.Client, codes, cfg.PublicWebURL,
 			cfg.UserBurst, cfg.WebhookKey, cfg.TrustProxyHeader, invoice.Pricing{Quotes: settlement.NewQuotes(balances.Client),
-				Plan: invoice.FeePlan{RateBps: cfg.Fees.RateBps, MinUSD: cfg.Fees.MinUSD, CapUSD: cfg.Fees.CapUSD}}),
+				Plan: invoice.FeePlan{RateBps: cfg.Fees.RateBps, MinUSD: cfg.Fees.MinUSD, CapUSD: cfg.Fees.CapUSD}}, crossChain),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

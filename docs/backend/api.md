@@ -163,6 +163,22 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   - Once money is seen on any option it is 409 `pick_locked`.
   - It locks the options, then the main row, as cancel and the ledger do.
   - Limited per invoice (10, then one per 5 s); per IP belongs to the edge (Q-8).
+- Cross-chain payment (D-123, `invoice/crosschain.go`, public like the checkout): NEAR Intents 1Click converts a token
+  on another chain into exactly what is due on the invoice's Base USDC option.
+  - Only a live invoice with an open Base USDC option that closes in 20 minutes or more; otherwise 422
+    `crosschain_unavailable` with the reason. A payment still confirming refuses it too: what is due isn't known.
+  - `GET .../crosschain/tokens` (R-232): 1Click's tokens from `intents_tokens`, without memo chains, unpriced tokens,
+    Base USDC or the invoice's other direct options; stablecoins first. Each has an `estimate` at its listed price.
+  - `GET .../crosschain/price?originAsset=` (R-232): a dry quote, kept 30 s per token and amount in each replica.
+  - `POST .../crosschain/quotes` (R-231, R-233): a quote with a deposit address, kept in `crosschain_quotes`.
+    - It is `EXACT_OUTPUT` to the Base option's receive address, refunds go to the payer's `refundTo`.
+    - Its deadline is the earlier of an hour and 10 minutes before the close; its price shows for 15 minutes (D-125).
+    - It is kept only when 1Click's signature and the signed fields check out (D-124); otherwise 503
+      `provider_unavailable`, and an `ALERT` is logged.
+    - The same token, refund address and amount get the open quote back while 5 minutes of its window are left.
+    - Twenty quotes an invoice an hour (429 `too_many_quotes`); a quote 1Click is converting makes it 409 `pick_locked`.
+    - A route's minimum above the amount is 422 `below_minimum`, whose error also carries `minimum`.
+    - It keeps the Base option as the payer's pick (R-57).
 - Payment reminders (R-96): `invoice.QueueReminders` queues `invoice.reminder` rows.
   - It runs on the worker's loop beside the chain rounds, at the same interval.
   - Steps: `before` 3 days before the due date, `due` on it, `after` 7 days after, in UTC days.
@@ -748,6 +764,8 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - true only for an origin exactly as a browser writes it, on the list of the store the invoice records.
   - A live invoice takes https origins only; a test-mode invoice also takes the store's loopback http origins.
   - An invoice without a store is never framed. An unknown token is 404; the store's origins are never listed.
+- Cross-chain (D-123), per invoice in `invoiceapi/crosschain.go`: tokens 10 at once, then one every 2 s; prices 20
+  at once, then one a second; quotes 5 at once, then one every 10 s, apart from the 20 an hour kept in Postgres.
 - `POST /v1/invoices/{payToken}/views` (R-125) counts one pay page load and answers 204.
   - The page sends it once per load, not with each status refresh.
   - The pay page links on the owner's invoice and payment pages add `?preview=1`; the page then sends none (R-125).

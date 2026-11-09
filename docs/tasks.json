@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 448,
+  "nextId": 453,
   "tasks": [
     {
       "id": "F332",
@@ -1652,6 +1652,194 @@
         "branch": "fix/f447-a-stale-chainlink-eth-usd-price-or-one-r",
         "base": "main"
       }
+    },
+    {
+      "id": "F448",
+      "type": "feat",
+      "behavior": "A payer gets a verified NEAR Intents quote that pays a live invoice's Base USDC option",
+      "acceptance": [
+        "The api asks 1Click for an EXACT_OUTPUT quote of Base USDC to the Base option's receive address, for the amount still due, refunds to the payer's refund address; its deadline is the earlier of 60 minutes and 10 minutes before close, and under 20 minutes to close there is none (R-231).",
+        "The api keeps a quote only when 1Click's ed25519 signature verifies with the pinned key and the signed request names that receive address, Base USDC, EXACT_OUTPUT, the amount and the refund address; a changed field is refused (D-124).",
+        "The worker keeps 1Click's token list in Postgres, read at start and every 10 minutes; the public list leaves out memo chains, unpriced tokens and the invoice's direct options, stablecoins first; a dry quote gives what the payer sends, the cost and the time; a route minimum above the due is 422 below_minimum (R-232).",
+        "The same token and refund address get the open quote back until 5 minutes before its price window ends; an invoice gets at most 20 quotes an hour; a test-mode invoice, one without an open Base USDC option, a direct or memo-chain token or a refused refund address is 422 (R-233).",
+        "Tests use a fake 1Click server; no test reaches the real API, and the 1Click key stays in the backend .env."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "unit"
+      ],
+      "refs": [
+        "R-231",
+        "R-232",
+        "R-233",
+        "D-123",
+        "D-124",
+        "D-125"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-09T02:30:51Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 67.6,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 29.1,
+            "log": ""
+          }
+        ],
+        "taskHash": "c251de3320c448c4",
+        "filesHash": "86317ea66eabfa21",
+        "proof": {
+          "1": "unit: crosschain_test TestCrossChainQuotePaysExactlyWhatIsDueIntoTheBaseOption checks EXACT_OUTPUT, recipient = Base option receive address, amount due, refundTo, deadline 60 min and 15-min window; TestCrossChainQuoteRefusals refuses a checkout closing in 15 min",
+          "2": "unit: intents TestVerifyAcceptsOnlyWhat1ClickSigned verifies two real 1Click answers with the pinned key and refuses changed address, recipient, amount, refund, slippage; TestCheckRefusesAQuoteForAnotherPaymentThanAsked; TestCrossChainQuoteNot1ClickSignedIsRefused keeps nothing",
+          "3": "unit: TestCrossChainTokensLeaveOutDirectMemoAndDestinationTokens (stablecoins first, Base/Arbitrum USDC and Stellar left out, ETH estimate rounded up); dry price test; below_minimum with minimum in TestCrossChainQuoteRefusals",
+          "4": "unit: reuse of the same quote (same id, no new 1Click call), new quote under 5 min left, 20 an hour then 429, test mode / memo / direct / refused refund 422 in TestCrossChainQuoteRefusals",
+          "5": "backend-e2e: the gate's worker reads the fake 1Click (ONECLICK_API_URL); unit tests use intentstest; ONECLICK_API_KEY only in apps/backend/.env(.example)"
+        }
+      },
+      "branch": "feat/f448-a-payer-gets-a-verified-near-intents-quo",
+      "baseCommit": "816876fbce564d3635a1868e2e4089ffe95b4842",
+      "failedVerifies": 0
+    },
+    {
+      "id": "F449",
+      "type": "feat",
+      "behavior": "The worker follows each cross-chain quote to its end, and every API reader carries how it was paid",
+      "acceptance": [
+        "The worker reads each open quote's 1Click status every 10 s while converting, every 30 s in its price window, then every 2 minutes until an hour past its deadline, and keeps status, amounts sent, delivered and refunded, refund reason and both chains' transactions (R-234).",
+        "History records a deposit seen, converted, refunded and failed; once 1Click sees a deposit the pick locks to the Base option; paid still comes only from the Base balance (R-234, R-233).",
+        "The worker logs an ALERT for FAILED, for a quote unfinished an hour past its deadline, and for a delivery with no Base deposit after 30 minutes (R-234).",
+        "The public invoice read carries the shown quote and its status; owner payment and invoice reads, webhooks and CSV exports carry paidWith; openapi and the node, js and react packages match (R-235).",
+        "The canary checks each open quote's signature and recipient from 1Click's own status (R-235)."
+      ],
+      "dependsOn": [
+        "F448"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "node-unit",
+        "browser-packages"
+      ],
+      "refs": [
+        "R-234",
+        "R-235",
+        "R-233",
+        "D-124"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F450",
+      "type": "feat",
+      "behavior": "The pay page lets a payer pay with another token: picker, verified deposit address, 15-minute price and Converting",
+      "acceptance": [
+        "Pay with shows Pay with another token on a live invoice with an open Base USDC option; it opens chains on the left and tokens on the right, each with a search, the first chain chosen; a 390 px phone shows chain chips above the tokens (R-236).",
+        "A pick shows a dry quote (you send, conversion cost, time) and a refund address field warning against exchange addresses (R-236).",
+        "Show address verifies the quote in the browser (D-124) or shows no address; the QR, address and exact amount show with Price held mm:ss for 15 minutes (R-237).",
+        "After 15 minutes with no deposit the QR blurs behind Get new price; a changed amount shows The price changed with both amounts and Understood before the QR; the same amount shows a New address note (R-237).",
+        "A seen deposit shows Detected, Converting, Confirming and Paid with the origin transaction; less than needed, refunded and failed each get one line with the quote ID; the receipt adds Paid with (R-238)."
+      ],
+      "dependsOn": [
+        "F449"
+      ],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-236",
+        "R-237",
+        "R-238",
+        "D-124",
+        "D-125"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F451",
+      "type": "feat",
+      "behavior": "The owner sees how each cross-chain payment was paid, and can turn cross-chain payments off",
+      "acceptance": [
+        "A payment's Timeline shows Detected (chain, token, amount sent, origin transaction), Converting (NEAR Intents), Paid (the Base transaction) and Wallet; Details show Paid with, any refunded part and both explorer links (R-239).",
+        "The payments list tags it via NEAR Intents; the receipt PDF, CSV export, paid email and developer docs name it (R-239).",
+        "Networks settings has Accept other tokens through NEAR Intents, on by default; off, no new quote is made and an open quote still finishes; the tokens API carries it (R-240)."
+      ],
+      "dependsOn": [
+        "F450"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "web-unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-239",
+        "R-240"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F452",
+      "type": "test",
+      "behavior": "Real payments prove the cross-chain loop on mainnet",
+      "acceptance": [
+        "Small live invoices paid with Arbitrum USDT, Ethereum ETH and Solana USDC each convert, become paid and settle, and the owner's pages show Paid with (R-241).",
+        "An overpayment's extra returns to the refund address, and a deposit after the price window still converts or is refunded (R-241, A-4)."
+      ],
+      "dependsOn": [
+        "F451"
+      ],
+      "state": "blocked",
+      "verification": [
+        "live-e2e"
+      ],
+      "refs": [
+        "R-241",
+        "A-4"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-11-09 blocked: Spends real mainnet money: needs the owner's approval and a funded payer wallet."
+      ],
+      "blockedReason": "Spends real mainnet money: needs the owner's approval and a funded payer wallet.",
+      "evidence": null
     }
   ],
   "lastWrapup": {

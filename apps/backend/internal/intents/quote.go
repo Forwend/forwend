@@ -1,0 +1,117 @@
+package intents
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"math/big"
+	"strings"
+	"time"
+)
+
+// BaseUSDC is the one asset a cross-chain payment delivers (D-123): USDC on Base, the 1Click id of its contract.
+const (
+	BaseChainID   = 8453
+	BaseUSDC      = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+	BaseUSDCAsset = "nep141:base-" + BaseUSDC + ".omft.near"
+)
+
+// Slippage is what the payer's amount may cover beyond today's price, in basis points; what isn't used comes back to
+// the refund address.
+const Slippage = 100
+
+// Ask is what a payer's quote asks of 1Click: exactly Amount of Base USDC to Recipient, from Origin.
+type Ask struct {
+	Origin    string
+	Amount    *big.Int
+	Recipient string // the Base option's receive address
+	RefundTo  string // the payer's address on Origin's chain; "" for a dry quote
+	Deadline  time.Time
+}
+
+// Quote is what 1Click answered. Signed is its answer byte for byte, which its signature covers (D-124).
+type Quote struct {
+	DepositAddress string
+	DepositMemo    string
+	AmountIn       *big.Int
+	MinAmountIn    *big.Int
+	AmountOut      *big.Int
+	AmountInUSD    string
+	TimeEstimate   int64
+	RefundFee      string
+	Deadline       time.Time // the request's: refunds of what hasn't converted begin
+	Signed         []byte
+}
+
+// Quote asks 1Click for an EXACT_OUTPUT quote and checks it is the one asked for, signed by c.Signer. A dry quote
+// has no address, and refunds to 1Click's own ledger since no money is sent to it.
+func (c *Client) Quote(ctx context.Context, ask Ask, dry bool) (Quote, error) {
+	body := request(ask, dry)
+	answer, err := c.call(ctx, "POST", "/v0/quote", body)
+	if err != nil {
+		return Quote{}, err
+	}
+	return Check(answer, ask, dry, c.Signer)
+}
+
+func request(ask Ask, dry bool) map[string]any {
+	refundTo, refundType := ask.RefundTo, "ORIGIN_CHAIN"
+	if dry {
+		refundTo, refundType = ask.Recipient, "INTENTS"
+	}
+	return map[string]any{
+		"dry": dry, "swapType": "EXACT_OUTPUT", "slippageTolerance": Slippage, "originAsset": ask.Origin,
+		"depositType": "ORIGIN_CHAIN", "destinationAsset": BaseUSDCAsset, "amount": ask.Amount.String(),
+		"refundTo": refundTo, "refundType": refundType, "recipient": ask.Recipient, "recipientType": "DESTINATION_CHAIN",
+		"deadline": ask.Deadline.UTC().Format("2006-01-02T15:04:05.000Z"),
+	}
+}
+
+// ErrMismatch: a signed quote that isn't what was asked, as one for another recipient or amount.
+var ErrMismatch = errors.New("1Click quote is not the one asked for")
+
+// Check verifies answer's signature by key, then that its signed request is ask's and its quote delivers exactly the
+// amount (D-124). The pay page runs the same checks before it shows the address.
+func Check(answer []byte, ask Ask, dry bool, key string) (Quote, error) {
+	if err := Verify(answer, key); err != nil {
+		return Quote{}, err
+	}
+	var a struct {
+		QuoteRequest map[string]any
+		Quote        struct {
+			DepositAddress, DepositMemo, AmountIn, MinAmountIn, AmountOut, MinAmountOut, AmountInUsd, RefundFee string
+			TimeEstimate                                                                                        float64
+		}
+	}
+	if err := json.Unmarshal(answer, &a); err != nil {
+		return Quote{}, fmt.Errorf("%w: %v", ErrMismatch, err)
+	}
+	for k, want := range request(ask, dry) {
+		got := a.QuoteRequest[k]
+		if s, ok := got.(string); ok && (k == "recipient" || k == "refundTo") {
+			got = strings.ToLower(s) // 1Click may echo an address in another case
+			want = strings.ToLower(want.(string))
+		}
+		if fmt.Sprint(got) != fmt.Sprint(want) {
+			return Quote{}, fmt.Errorf("%w: %s is %v", ErrMismatch, k, got)
+		}
+	}
+	q := Quote{DepositAddress: a.Quote.DepositAddress, DepositMemo: a.Quote.DepositMemo, AmountInUSD: a.Quote.AmountInUsd,
+		RefundFee: a.Quote.RefundFee, TimeEstimate: int64(a.Quote.TimeEstimate), Deadline: ask.Deadline, Signed: answer}
+	var ok1, ok2, ok3 bool
+	q.AmountIn, ok1 = new(big.Int).SetString(a.Quote.AmountIn, 10)
+	q.MinAmountIn, ok2 = new(big.Int).SetString(a.Quote.MinAmountIn, 10)
+	q.AmountOut, ok3 = new(big.Int).SetString(a.Quote.AmountOut, 10)
+	switch {
+	case !ok1 || !ok2 || !ok3 || q.AmountIn.Sign() <= 0 || q.MinAmountIn.Sign() <= 0 || q.MinAmountIn.Cmp(q.AmountIn) > 0:
+		return Quote{}, fmt.Errorf("%w: amounts", ErrMismatch)
+	case q.AmountOut.Cmp(ask.Amount) != 0 || a.Quote.MinAmountOut != ask.Amount.String():
+		return Quote{}, fmt.Errorf("%w: delivers %s, not exactly %s", ErrMismatch, a.Quote.MinAmountOut, ask.Amount)
+	case !dry && q.DepositAddress == "":
+		return Quote{}, fmt.Errorf("%w: no deposit address", ErrMismatch)
+	case q.DepositMemo != "": // memo chains are left out: a forgotten memo loses the money (D-123)
+		return Quote{}, fmt.Errorf("%w: needs a memo", ErrMismatch)
+	}
+	return q, nil
+}

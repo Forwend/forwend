@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/forwend/forwend/apps/backend/internal/intents"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -16,6 +17,9 @@ type Service struct {
 	now    func() time.Time
 	quotes Quoter // nil: no fees (SetPricing)
 	plan   FeePlan
+	// crossChain is 1Click (D-123); nil leaves cross-chain off (SetCrossChain).
+	crossChain *intents.Client
+	dry        dryQuotes
 }
 
 func NewService(pool *pgxpool.Pool) *Service {

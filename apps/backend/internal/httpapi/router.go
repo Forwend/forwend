@@ -22,6 +22,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/sendapi"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/teamapi"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/webhookapi"
+	"github.com/forwend/forwend/apps/backend/internal/intents"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/job"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
@@ -37,10 +38,11 @@ import (
 
 // balances reads each chain's RPC pool (D-15), and sendClients gives its clients (nil leaves sends unable to read a
 // chain); webURL is the pay links' origin; userBurst 0 keeps mid.UserBurst;
-// webhookKey seals webhook secrets, and nil leaves webhooks off (R-146); pricing gives new invoices their fees (R-227).
+// webhookKey seals webhook secrets, and nil leaves webhooks off (R-146); pricing gives new invoices their fees (R-227);
+// crossChain is 1Click for payers paying from other chains (D-123), nil for none.
 func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, balances ledger.BalanceOf,
 	sendClients send.Clients, codes *reauth.Service, webURL string, userBurst int, webhookKey []byte,
-	trustProxy bool, pricing invoice.Pricing) http.Handler {
+	trustProxy bool, pricing invoice.Pricing, crossChain *intents.Client) http.Handler {
 	keys := apikey.NewService(pool)
 	guards := mid.NewGuards(verifier, auth.NewService(pool), keys, wallets, codes, userBurst, trustProxy)
 	mux := http.NewServeMux()
@@ -49,6 +51,7 @@ func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, 
 	profileapi.Routes(mux, guards, profiles)
 	invoices, hooks := invoice.NewService(pool), webhook.NewService(pool, webhookKey)
 	invoices.SetPricing(pricing)
+	invoices.SetCrossChain(crossChain)
 	invoiceapi.Routes(mux, guards, invoices, profiles, balances, webURL, hooks)
 	checkoutapi.Routes(mux, guards, invoices, webURL)
 	paymentapi.Routes(mux, guards, invoices, webURL)

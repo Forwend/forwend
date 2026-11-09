@@ -52,6 +52,24 @@ type API struct {
 	// WebhookKey seals webhook signing secrets (R-146): 32 bytes, or nil to leave webhooks off. Never log it.
 	WebhookKey []byte
 	Fees       Fees
+	OneClick   OneClick
+}
+
+// OneClick is NEAR Intents' 1Click API for cross-chain payments (D-123). URL is its root, DefaultOneClickURL when unset;
+// Signer is the key its quotes must carry, 1Click's own when unset. Only tests that run a fake set ONECLICK_API_URL and
+// ONECLICK_SIGNER_KEY. Key is the optional partner key (Q-18): never log it.
+type OneClick struct {
+	URL, Key, Signer string
+}
+
+const DefaultOneClickURL = "https://1click.chaindefuser.com"
+
+func oneClick() OneClick {
+	c := OneClick{URL: os.Getenv("ONECLICK_API_URL"), Key: os.Getenv("ONECLICK_API_KEY"), Signer: os.Getenv("ONECLICK_SIGNER_KEY")}
+	if c.URL == "" {
+		c.URL = DefaultOneClickURL
+	}
+	return c
 }
 
 // Fees is the platform fee plan (D-122) the api and the worker quote new invoices with: PLATFORM_FEE_BPS of the price,
@@ -69,6 +87,7 @@ type Worker struct {
 	RatesURL string
 	Prices   Prices
 	Fees     Fees // for a retainer's later months
+	OneClick OneClick
 }
 
 // Prices is CoinGecko for the stablecoins' display prices (R-178). URL is its API root; COINGECKO_API_URL is set only
@@ -149,7 +168,7 @@ func LoadAPI() (API, error) {
 		TrustProxyHeader:  r.flag("TRUST_PROXY_HEADER"),
 		CodesPerHour:      r.count("API_CODES_PER_HOUR"),
 		EnableTestnetUSDC: r.flag("ENABLE_TESTNET_USDC"), EnableMainnets: r.chainIDs("ENABLE_MAINNETS"),
-		WebhookKey: r.base64Key("WEBHOOK_SECRET_KEY"), Email: email(), Fees: r.fees()}
+		WebhookKey: r.base64Key("WEBHOOK_SECRET_KEY"), Email: email(), Fees: r.fees(), OneClick: oneClick()}
 	c.Email.PublicWebURL = c.PublicWebURL
 	return c, r.err()
 }
@@ -166,7 +185,7 @@ func email() Email {
 
 func LoadWorker() (Worker, error) {
 	var r reader
-	c := Worker{DatabaseURL: r.get("DATABASE_URL"), Chains: r.chains(), Email: email(), Fees: r.fees()}
+	c := Worker{DatabaseURL: r.get("DATABASE_URL"), Chains: r.chains(), Email: email(), Fees: r.fees(), OneClick: oneClick()}
 	if c.RatesURL = os.Getenv("ECB_RATES_URL"); c.RatesURL == "" {
 		c.RatesURL = DefaultRatesURL
 	}

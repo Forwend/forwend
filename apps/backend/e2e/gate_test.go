@@ -32,6 +32,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
+	"github.com/forwend/forwend/apps/backend/internal/intents/intentstest"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/forwend/forwend/apps/backend/internal/webhook"
 	"github.com/golang-jwt/jwt/v5"
@@ -324,7 +325,9 @@ func newStack(t *testing.T, singleRPC bool, apiEnv ...string) *stack {
 	return &stack{anvil: anvil, limited: limited, privy: privy, conn: conn, bin: bin, api: api, db: dbURL, token: token,
 		// Clipped: an append for one binary must never write into another's environment.
 		profile: profile, loop: slices.Clip(append(append(common, rpcs...), "POLL_INTERVAL=200ms",
-			"ECB_RATES_URL="+ecbFake.URL, "COINGECKO_API_URL="+coinGeckoFake.URL)),
+			"ECB_RATES_URL="+ecbFake.URL, "COINGECKO_API_URL="+coinGeckoFake.URL,
+			// The worker reads 1Click's token list (R-232); no test reaches the real API.
+			"ONECLICK_API_URL="+intentstest.New(t).URL)),
 		hooks: slices.Clip(append(common, "WEBHOOK_SECRET_KEY="+webhookKey))}
 }
 
