@@ -2284,7 +2284,7 @@
       "dependsOn": [
         "F453"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "e2e"
@@ -2364,11 +2364,18 @@
           "summary": "Same code as the fourth subagent review that passed at e0b63213. Sent, arrived and returned rows (18-decimal ETH, refund address), Base row only on success, known explorers before 1Click's link, the direct Confirming count and Awaiting confirmation line, and two presses once an address shows all have tests that fail without them; a fresh Turbopack build passes.",
           "at": "2026-11-09T19:06:08Z",
           "filesHash": "de1fdb9e64000fc0"
-        }
+        },
+        "commit": "49e7d54d",
+        "doneAt": "2026-11-09T19:06:08Z"
       },
       "branch": "feat/f454-the-cross-chain-pay-box-says-what-happen",
       "baseCommit": "694a55d9bc32ea3134d42a7683a122c112e9deb9",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f454-the-cross-chain-pay-box-says-what-happen",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
