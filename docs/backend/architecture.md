@@ -115,6 +115,7 @@ D-71); a chain whose RPCs don't answer is logged and skipped:
     - It swaps in Uniswap v3's USDC/WETH 0.05% pool through SwapRouter02 (`settlement.swapRoutes`).
     - It tops up to 40 deploys and settles' worth at the current fee cap, or spends all its USDC if that buys less.
     - One router `multicall` swaps and unwraps the WETH; it reverts unless it pays the Chainlink price less 1%.
+    - A stale price, or one read while the L2 sequencer is down or just back, sends no swap (`chain.EthPrice`).
     - The approve allows only that swap's USDC.
     - An allowance a refused swap left is swapped first if it buys enough alone; a smaller one is replaced.
     - It skips a swap that buys less than one deploy and settle, so dust sent to the executor is never approved.

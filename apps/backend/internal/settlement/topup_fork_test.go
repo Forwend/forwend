@@ -157,7 +157,7 @@ func TestExecutorBuysGasOnAMainnetFork(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := a.RPC.Call(nil, "anvil_setCode", chain.EthUSD[c.id], hexutil.Encode(code)); err != nil {
+				if err := a.RPC.Call(nil, "anvil_setCode", chain.EthUSD[c.id].Address, hexutil.Encode(code)); err != nil {
 					t.Fatal(err)
 				}
 				usdcBefore, etherBefore := usdcHeld(), etherHeld()

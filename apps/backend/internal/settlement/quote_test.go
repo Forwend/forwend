@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"strings"
 	"testing"
 	"time"
 
@@ -37,7 +38,7 @@ func TestNetworkFeeIsADeployAndSettleAtTheFeeCap(t *testing.T) {
 		t.Fatal(err)
 	}
 	// At 20 USD an ether Anvil's gas makes a fee above a cent, so the margin and the price both show.
-	chain.EthUSD[chaintest.ChainID] = a.PriceFeed(big.NewInt(20e8))
+	chain.EthUSD[chaintest.ChainID] = chain.PriceFeed{Address: a.PriceFeed(big.NewInt(20e8)), Heartbeat: time.Hour}
 	t.Cleanup(func() { delete(chain.EthUSD, chaintest.ChainID) })
 	want := new(big.Rat).SetFrac(new(big.Int).Mul(feeCap, big.NewInt(MinGas*NetworkFeeMargin*20)), big.NewInt(1e18))
 	q := NewQuotes(func(uint64) (*ethclient.Client, error) { return client, nil })
@@ -101,9 +102,35 @@ func TestNetworkFeeInDollarsTempoCapAndStaleQuote(t *testing.T) {
 	}
 	// A feed price that makes a settlement cost over NetworkFeeMax is refused.
 	reachable = true
-	chain.EthUSD[chaintest.ChainID] = a.PriceFeed(new(big.Int).Mul(big.NewInt(1e15), big.NewInt(1e8)))
+	chain.EthUSD[chaintest.ChainID] = chain.PriceFeed{Address: a.PriceFeed(new(big.Int).Mul(big.NewInt(1e15), big.NewInt(1e8))),
+		Heartbeat: time.Hour}
 	t.Cleanup(func() { delete(chain.EthUSD, chaintest.ChainID) })
 	if got, err := NewQuotes(q.client).NetworkFee(ctx, chaintest.ChainID); err == nil {
 		t.Fatalf("a lying feed: %v, want refused", got.FloatString(2))
+	}
+}
+
+// R-227: a stale ETH/USD price prices no fee: the chain's last good quote serves until QuoteStale, then none.
+func TestAStalePriceKeepsTheLastGoodQuote(t *testing.T) {
+	a := chaintest.Start(t)
+	client := ethclient.NewClient(a.RPC)
+	ctx := context.Background()
+	chain.EthUSD[chaintest.ChainID] = chain.PriceFeed{Address: a.PriceFeed(big.NewInt(20e8)), Heartbeat: time.Hour}
+	t.Cleanup(func() { delete(chain.EthUSD, chaintest.ChainID) })
+	q := NewQuotes(func(uint64) (*ethclient.Client, error) { return client, nil })
+	good, err := q.NetworkFee(ctx, chaintest.ChainID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The feed last answered two hours ago.
+	a.Feed(chain.EthUSD[chaintest.ChainID].Address, big.NewInt(20e8), time.Now().Add(-3*time.Hour).Unix(),
+		time.Now().Add(-2*time.Hour).Unix())
+	q.kept[chaintest.ChainID] = quote{usd: good, at: time.Now().Add(-QuoteAge)}
+	if got, err := q.NetworkFee(ctx, chaintest.ChainID); err != nil || got.Cmp(good) != 0 {
+		t.Fatalf("a stale price with a recent quote: %v (%v), want the kept %s", got, err, good.FloatString(2))
+	}
+	q.kept[chaintest.ChainID] = quote{usd: good, at: time.Now().Add(-QuoteStale)}
+	if _, err := q.NetworkFee(ctx, chaintest.ChainID); err == nil || !strings.Contains(err.Error(), "past its 1h0m0s heartbeat") {
+		t.Fatalf("a stale price past QuoteStale: %v, want refused naming the heartbeat", err)
 	}
 }

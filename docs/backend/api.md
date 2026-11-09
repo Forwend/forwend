@@ -103,6 +103,8 @@ R-227, D-122; the full schema is in openapi.yaml.
   - A network's fee is a receiver deploy and settle at the chain's current fee cap, twice over, rounded up to 0.01 USD.
   - Every option carries the highest fee its networks quote, so one amount covers whichever network the client picks.
   - ETH/USD prices it on Base and Arbitrum; Tempo's gas unit and Arc's native USDC are already dollars.
+  - A price older than its feed's heartbeat plus 10 minutes fails the read (`chain.EthUSD`).
+  - So does one read while the L2 sequencer is down, or back for under an hour (`chain.SequencerUptime`).
   - One quote serves a chain's new invoices for a minute (`settlement.QuoteAge`).
   - A read that fails falls back on the chain's last quote for an hour (`settlement.QuoteStale`).
   - A quote over 5.00 USD (`settlement.NetworkFeeMax`) is a lying RPC or feed and is refused.
@@ -1065,6 +1067,7 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
   - A `fee_asset` token pays through Privy's paymaster, in that Privy asset (USDC on Base and Arbitrum, testnets too; R-225).
     - `networkFee` is Forwend's estimate: the transfer's gas plus 400,000 for the user operation, at the fee cap.
     - It is priced in dollars by the chain's Chainlink ETH/USD feed (`chain.EthUSD`). Privy quotes none.
+    - A price the fee quote refuses (stale, or the sequencer down) makes the send 503 `network_unavailable`.
     - Amount plus that fee must fit the token balance. `gas` is null.
   - Tempo's fee manager is refused as a recipient: a send there would read as its own fee.
     - The watcher records every transfer to the fee manager; it also swaps and takes liquidity.

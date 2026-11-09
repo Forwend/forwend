@@ -27,7 +27,7 @@ func sendsAPI(t *testing.T) (invoiceEnv, string) {
 		chaintest.ChainID)
 	e.exec(t, `INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled, fee_asset)
 		VALUES ($1, 'evm', $2, 'USDC', 6, true, 'usdc')`, chaintest.ChainID, token)
-	chain.EthUSD[chaintest.ChainID] = anvil.PriceFeed(big.NewInt(2000e8))
+	chain.EthUSD[chaintest.ChainID] = chain.PriceFeed{Address: anvil.PriceFeed(big.NewInt(2000e8)), Heartbeat: time.Hour}
 	t.Cleanup(func() { delete(chain.EthUSD, chaintest.ChainID) })
 	e.exec(t, `INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)
 		VALUES ($1, 'privy', 'merchant-wallet', 'evm', '0x00000000000000000000000000000000000000aa')`, e.walletless)
