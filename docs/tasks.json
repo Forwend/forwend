@@ -1690,15 +1690,14 @@
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-09T03:36:17Z",
+        "at": "2026-11-09T18:45:34Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
+            "seconds": 7.1,
+            "log": ""
           },
           {
             "id": "docs-check",
@@ -1711,7 +1710,7 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.5,
+            "seconds": 0.4,
             "log": ""
           },
           {
@@ -1725,39 +1724,32 @@
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 71.5,
+            "seconds": 71.4,
             "log": ""
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 3.2,
+            "seconds": 1.3,
             "log": ""
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 46.7,
+            "seconds": 47.7,
             "log": ""
           }
         ],
         "taskHash": "f2cda0c5df642ab6",
         "filesHash": "ee65412416b8f13f",
         "proof": {
-          "1": "unit: crosschain_test checks EXACT_OUTPUT to the Base option's receive address for the due (full, and 60 of 100 after a 40 USDC partial), refundTo, deadline 60 min and 10 min before the close (25-min checkout), the 15-min window and a 15-min checkout refused",
-          "2": "unit: intents tests verify two real 1Click answers with the pinned key, refuse changed fields and a changed quote deadline, ignore case-variant keys; API tests refuse signed quotes for another recipient, destination asset, swap type, refund case, amount, typed field, virtual recipient or with a memo, a dry answer with an address and a changed kept row",
-          "3": "unit: tokens test leaves out direct, memo, destination and unpriced tokens, stablecoins first, ETH estimate; price test checks amountIn, amountInUsd, refundFee, timeEstimate, no address, its cache and below_minimum; keeper test with a literal 10-min refresh and 2-min retry, dropped, duplicate, Tron case",
-          "4": "unit: reuse with 6 min left, a new quote with 4 min left, 19 recent plus 30 older than an hour then the 20th made and the 21st 429, test mode by reason, Arbitrum-only, paid, confirming, memo, unpriced, direct and refused refund refusals",
-          "5": "harness: tests/test_process_secrets.py gives ONECLICK_API_KEY to the api and worker only; unit: TestOneClickSignerKeyOnlyForAFakeOnLoopback for LoadAPI and LoadWorker; backend-e2e: the gate's worker reads intentstest via ONECLICK_API_URL"
-        },
-        "review": {
-          "result": "pass",
-          "by": "subagent",
-          "summary": "After four failed rounds, all findings fixed. The signature check matches the 1Click SDK line by line and reads exact keys; the signed request's recipient, destination asset, swap type, origin, amount and refund address and the quote's amountOut and minAmountOut are bound; memo, virtual-chain and custom-message quotes and dry answers with an address are refused; the test signer key works only on loopback, for the api and the worker. Breaks tried with go test -overlay on every acceptance line (deadlines, due, limits, windows, compares, refusals, keeper timing, signer guard, pick) are caught by tests. Non-blocking: a pick that fails after a new quote is saved errors once and is retried with the kept quote.",
-          "at": "2026-11-09T03:42:12Z",
-          "filesHash": "ee65412416b8f13f"
+          "1": "unit: TestCrossChainQuotePaysExactlyWhatIsDueIntoTheBaseOption and TestCrossChainQuoteAsksForWhatIsLeftAndEndsBeforeTheClose",
+          "2": "unit: intents signature tests on real 1Click answers and TestCrossChainQuoteNot1ClickSignedIsRefused, TestCrossChainQuoteRefusesWhat1ClickSignedForAnotherPayment",
+          "3": "unit: TestKeeperKeepsTheListAndDropsWhat1ClickDropped and TestCrossChainTokensLeaveOutDirectMemoAndDestinationTokens",
+          "4": "unit: TestCrossChainQuoteRefusals and TestCrossChainNeedsAnOpenBaseOptionWithNothingConfirming",
+          "5": "unit: intentstest fake with its own key; config loopback guard tests"
         }
       },
       "branch": "feat/f448-a-payer-gets-a-verified-near-intents-quo",
