@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
@@ -279,5 +280,64 @@ func TestSignerAlertsWhenItCantBuyGas(t *testing.T) {
 	if !strings.Contains(logs.String(), "ALERT executor gas runs low") ||
 		!strings.Contains(logs.String(), "no ether bought: chain 8453 ETH/USD feed answered 0 bytes") {
 		t.Fatalf("logs lack the low gas alert with the failed buy:\n%s", logs.String())
+	}
+}
+
+// Dust anyone can send to the executor buys less gas than a swap costs, so it is never approved: an approve of it would
+// cap every later swap at the dust. This Anvil has Base's id, a stand-in USDC and a stand-in ETH/USD feed.
+func TestSignerSwapsNoDust(t *testing.T) {
+	ctx := t.Context()
+	pool, err := database.Open(ctx, databasetest.Migrated(t, database.Migrate))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	a := chaintest.StartChain(t, 8453)
+	client := ethclient.NewClient(a.RPC)
+	key, err := crypto.HexToECDSA(strings.TrimPrefix(chaintest.Key, "0x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := NewSigner(pool, key, map[uint64]*ethclient.Client{8453: client})
+	setCode := func(at common.Address, from common.Address) {
+		t.Helper()
+		code, err := client.CodeAt(ctx, from, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := a.RPC.Call(nil, "anvil_setCode", at, hexutil.Encode(code)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	route := swapRoutes[8453]
+	setCode(chain.EthUSD[8453], a.PriceFeed(big.NewInt(2000e8)))
+	setCode(route.usdc, common.HexToAddress(a.DeployToken()))
+	slot := crypto.Keccak256Hash(common.LeftPadBytes(s.sender.Bytes(), 32), make([]byte, 32)) // _balances, slot 0
+	if err := a.RPC.Call(nil, "anvil_setStorageAt", route.usdc, slot, common.BigToHash(big.NewInt(100))); err != nil {
+		t.Fatal(err)
+	}
+	_, feeCap, err := Fees(ctx, client, 8453)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.RPC.Call(nil, "anvil_setBalance", s.sender, hexutil.EncodeBig(new(big.Int).Mul(feeCap, big.NewInt(MinGas*2)))); err != nil {
+		t.Fatal(err)
+	}
+	before, err := client.NonceAt(ctx, s.sender, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var logs strings.Builder
+	defer slog.SetDefault(slog.Default())
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if after, err := client.NonceAt(ctx, s.sender, nil); err != nil || after != before {
+		t.Fatalf("dust sent %d transactions (%v), want none", after-before, err)
+	}
+	if !strings.Contains(logs.String(), "ALERT executor gas runs low") ||
+		!strings.Contains(logs.String(), "no ether bought: 0.0001 USDC to swap buys less than one deploy and settle") {
+		t.Fatalf("logs lack the low gas alert naming the dust:\n%s", logs.String())
 	}
 }

@@ -256,8 +256,10 @@ func (s *Signer) buyGas(ctx context.Context, client *ethclient.Client, chainID u
 		spendable = minBig(held, allowed)
 	}
 	in, least := swapAmounts(want, spendable, price)
-	if least.Sign() == 0 {
-		return fmt.Errorf("%s USDC to swap: too little to buy ether", usd(spendable))
+	// Less than one deploy and settle's gas costs more than it buys, and the pool's rounding can refuse it. Approved,
+	// dust anyone sent the executor would cap every later swap.
+	if least.Cmp(new(big.Int).Mul(feeCap, big.NewInt(MinGas))) < 0 {
+		return fmt.Errorf("%s USDC to swap buys less than one deploy and settle", usd(spendable))
 	}
 	var after uint64
 	if allowed.Sign() == 0 {
