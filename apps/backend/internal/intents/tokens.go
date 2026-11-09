@@ -155,11 +155,11 @@ func List(ctx context.Context, db interface {
 	return list, nil
 }
 
-// D-126: a dry quote for so little names any route's minimum above it. One goes out every probeGap, and each token is
+// D-126: a dry quote for so little names any route's minimum above it. One goes out every ProbeGap, and each token is
 // checked again after ProbeEvery.
 const (
 	ProbeEvery = time.Hour
-	probeGap   = 5 * time.Second
+	ProbeGap   = 5 * time.Second
 )
 
 var probeAmount = big.NewInt(10_000) // 0.01 USDC
@@ -173,7 +173,7 @@ func (k *Keeper) Probe(ctx context.Context, now time.Time) error {
 	if now.Before(k.probeDue) {
 		return nil
 	}
-	k.probeDue = now.Add(probeGap)
+	k.probeDue = now.Add(ProbeGap)
 	memo := slices.Collect(maps.Keys(MemoChains))
 	var asset string
 	err := k.Pool.QueryRow(ctx, `SELECT asset_id FROM intents_tokens WHERE asset_id <> $1 AND usd IS NOT NULL

@@ -114,7 +114,7 @@ func run() error {
 			}
 		}
 	})
-	// So do the minimum checks (D-126): a dry quote can take seconds.
+	// So do the minimum checks (D-126): a dry quote can take seconds. They keep their own pace, not the chains' poll.
 	housekeeping.Go(func() {
 		for {
 			if err := tokens.Probe(ctx, time.Now()); err != nil {
@@ -123,7 +123,7 @@ func run() error {
 			select {
 			case <-ctx.Done():
 				return
-			case <-time.After(cfg.Chains.PollInterval):
+			case <-time.After(intents.ProbeGap):
 			}
 		}
 	})
