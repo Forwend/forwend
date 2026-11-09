@@ -115,6 +115,18 @@ func bookOutflow(ctx context.Context, tx pgx.Tx, invoiceID string, m movement, a
 	if later {
 		return outflowRefusal(ctx, tx, m.ID, "historical_order")
 	}
+	// While the chain holds more than booked, a refund may return a deposit the scan missed: booked now, it would take
+	// another payer's money. It books once that deposit is recorded (ops deposit), which clears the alert.
+	if m.Kind == "refund" {
+		var excess bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM invoice_balance_alerts WHERE invoice_id = $1 AND excess)`,
+			invoiceID).Scan(&excess); err != nil {
+			return false, err
+		}
+		if excess {
+			return outflowRefusal(ctx, tx, m.ID, "unrecorded_deposit")
+		}
+	}
 	// Movements are booked in chain order, so the current balances are the ones just before this movement.
 	receiver, err := accountBalance(ctx, tx, invoiceID, "receiver")
 	if err != nil {

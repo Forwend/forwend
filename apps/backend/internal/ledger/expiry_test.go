@@ -193,6 +193,77 @@ func TestDustNoTransferExplainsDoesNotDelayExpiry(t *testing.T) {
 	}
 }
 
+// A refund of money the scan missed waits until that deposit is recorded: booked before, it would take the money of
+// the payer the ledger did book.
+func TestRefundOfAMissedDepositWaitsForThatDeposit(t *testing.T) {
+	s := newSim(t)
+	ctx := context.Background()
+	id, receive := s.invoice()
+	s.transfer(id, receive, 3_000_000, 500, "confirmed")            // payer A, on time
+	s.answer[receive].Add(s.answer[receive], big.NewInt(1_000_000)) // payer B's deposit: on chain, never recorded
+	s.finalizedAt(simExpires + 1)
+	s.process(id)
+	// The Safe refunds B's money, and the scan records the receiver's Refunded event.
+	s.exec(`INSERT INTO receiver_outflows (invoice_id, chain_id, receiver_address, token_contract, kind, destination,
+		amount, tx_hash, log_index, block_hash, block_number, block_time, verified_block, transfer_log_index)
+		VALUES ($1, 1, $2, $3, 'refund', '0x00000000000000000000000000000000000000bb', 1000000,
+		'0x' || repeat('a', 64), 1, '0x' || repeat('b', 64), 900, 200000, 1000, 0)`, id, receive, simToken)
+	s.answer[receive].Sub(s.answer[receive], big.NewInt(1_000_000))
+	s.finalizedAt(200001)
+	s.process(id)
+	var reason string
+	var booked bool
+	if err := s.pool.QueryRow(ctx, `SELECT reconciliation_error, ledger_transaction_id IS NOT NULL FROM receiver_outflows
+		WHERE invoice_id = $1`, id).Scan(&reason, &booked); err != nil || booked || reason != "unrecorded_deposit" {
+		t.Fatalf("refund before B's deposit is recorded: booked=%v reason=%q (%v)", booked, reason, err)
+	}
+	// ops deposit records B's deposit; it is earlier in chain order than the refund.
+	s.transfer(id, receive, 1_000_000, simExpires+500, "confirmed")
+	s.answer[receive].Sub(s.answer[receive], big.NewInt(1_000_000)) // already counted above
+	s.process(id)
+	s.process(id)
+	a, err := ReadAmounts(ctx, s.pool, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Held.Cmp(big.NewInt(3_000_000)) != 0 || a.Receiver.Cmp(s.answer[receive]) != 0 ||
+		a.Refunded.Cmp(big.NewInt(1_000_000)) != 0 {
+		t.Fatalf("ledger receiver %s, held %s, refunded %s; the chain holds %s, all of it payer A's 3000000",
+			a.Receiver, a.Held, a.Refunded, s.answer[receive])
+	}
+}
+
+// An alert that ends without a new deposit, as when one answer lagged at the close, must not keep the option in review
+// and block its reopen for good.
+func TestBalanceAlertEndsWhenTheBalanceAgreesAgain(t *testing.T) {
+	s := newSim(t)
+	ctx := context.Background()
+	id, receive := s.invoice()
+	s.transfer(id, receive, 3_000_000, 500, "confirmed")
+	s.process(id)
+	s.answer[receive].SetInt64(2_000_000) // one answer short of the booked money at the close
+	s.finalizedAt(simExpires + 1)
+	s.process(id)
+	s.answer[receive].SetInt64(3_000_000)
+	s.exec("UPDATE invoice_balance_alerts SET next_check_at = now() - interval '1 second' WHERE invoice_id = $1", id)
+	s.process(id)
+	if payment, refund := s.payment(id); payment != ExpiredPartiallyPaid || refund != "held" {
+		t.Fatalf("invoice is %s/%s, want expired_partially_paid/held", payment, refund)
+	}
+	ready, err := ReopenReady(ctx, s.pool, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := ReadAmounts(ctx, s.pool, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ready || a.Unreconciled {
+		t.Fatalf("chain and ledger agree, yet reopenReady=%v unreconciled=%v status=%s", ready, a.Unreconciled,
+			a.ReconciliationStatus)
+	}
+}
+
 // R-120: stuck invoices can't use up a chain's round, and an honest invoice in the same round is still paid.
 func TestUnexplainedBalanceWaitsLongerEachTime(t *testing.T) {
 	s := newSim(t)

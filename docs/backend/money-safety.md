@@ -88,15 +88,19 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
 - `ops case <pay link | receive address | payment transaction | invoice id>` prints each invoice option:
   - its held money and why it is held, from the ledger and its history;
   - each final payment: transaction, sender, amount and time;
+  - for a payment NEAR Intents delivered: its quote, the payer's origin chain and transaction, and their refund address;
   - the receiver from `factory.status`: deployed, balance, refundable now, and the deadline after which all of it is.
 - `ops return -tx <payment> [-to <address>] [-amount <tokens>] <case>` checks a return, locks the money and prints
   the calls.
   - The destination is the payment's sender unless `-to` names another.
+  - A payment NEAR Intents delivered has its sender, never the payer: it needs `-to`.
+    - `-to` is an address on the invoice's chain that the payer proves is theirs; it warns with the origin transaction.
+    - It refuses any address that delivered such a payment.
   - A destination that made no payment warns: check the payer's proof that it is theirs.
   - A contract destination warns: it may be an exchange, an app or a smart wallet.
   - It refuses the zero address, the receiver, the token, the factory and any invoice's receive address.
   - The amount is at most what is both held and refundable; at least 0.10 USD (D-90). Before the deadline that can be 0.
-  - When several addresses paid, the amount must be given.
+  - When several payers paid, the amount must be given. Each NEAR Intents quote counts as its own payer.
   - It dry-runs the token transfer from the receiver, and the refund when the receiver is deployed.
     A blocklisted address, a paused token or a short balance fails here, not at the Safe.
   - It sets `refund_status = 'refund_pending'`, then prints the calls: the receiver's deploy when needed, then `refund`.
@@ -106,6 +110,14 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
   - Past the deadline of an invoice never settled, the contract lets the whole balance out.
   - Then a second return would take the creator's money.
 - It also refuses while a payment or a receiver event of the option is not booked: it could hide that gap.
+- It refuses while the receiver holds at least `ledger.DustExcess` more than booked: a deposit the scan missed.
+  - The ledger would book the refund against another payer's money.
+- `ops deposit -tx <transaction> <case>` records a deposit the scan missed, as the watcher would (R-247).
+  - It reads the transaction's receipt on the case's chains, with no key.
+  - It takes only `Transfer` logs of an option's own token (chain + contract) to its receive address, Arc's twins once.
+  - The block must be finalized, with the same hash. Otherwise it records nothing and says to try later.
+  - A second run records nothing and says so. The ledger books the deposit in its next round, like any deposit.
+  - Then `ops return` returns it.
 - Queuing writes `invoice.return_queued` to the invoice's history with the amount and destination; release writes
   `invoice.return_released`. The owner sees them as Return queued and Return released.
 - The owner's payment page lists each booked return as a Transfers row and ends its timeline with it.
@@ -167,12 +179,15 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
   - No contract can emit from the system emitter: it has no code.
 - When the selected RPC's `balanceOf` holds at least `ledger.DustExcess` more than is booked, the invoice never expires.
   - The worker logs `ALERT receive address holds money with no booked transfer`.
-  - An operator checks the chain and refunds the money with the refund authority.
+  - An operator finds the transaction, records it with `ops deposit`, then returns it with `ops return` (R-247).
   - The worker reads that balance again after 1 min, doubling to at most a day (`invoice_balance_alerts`, R-120).
   - So many such invoices can't use up a chain's round; a new deposit to book ends the wait.
-  - After an operator refunds the money, the invoice expires at its next check, up to a day later. Deleting its
-    `invoice_balance_alerts` row makes the worker check it in the next round.
+  - While the alert says more on chain (`excess`), the ledger refuses a refund of that option as `unrecorded_deposit`.
+    - Booked, it would take the money of a payer the ledger did book.
+    - It retries every round and books once the missed deposit is booked: that clears the alert.
 - Less on chain than booked at expiry logs `ALERT receive address holds less than booked; not expiring`, with the same backoff.
+  - That alert doesn't hold refunds.
+- A balance check that agrees again deletes the alert, so the option no longer reads as in review.
 - Deposits are booked in chain order: one waits while an earlier one is still detected, so the earliest payers are
   paid to the creator first and later ones held (D-27). An empty `balanceOf` answer is an error, never 0.
 - Before signing a new settle, the signer reads the finalized balance of the receive address.

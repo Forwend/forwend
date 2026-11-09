@@ -449,10 +449,11 @@ func (s *Service) balanced(ctx context.Context, tx pgx.Tx, invoiceID string, cha
 		return false, err
 	}
 	if excess := new(big.Int).Sub(onChain, booked); excess.Cmp(big.NewInt(DustExcess)) >= 0 {
-		// A deposit the watcher never saw: an operator refunds it (money-safety.md).
+		// A deposit the watcher never saw: an operator records it, then returns it (money-safety.md).
 		slog.Error("ALERT receive address holds money with no booked transfer; not expiring", "invoice", invoiceID,
-			"booked", booked.String(), "onChain", onChain.String())
-		return false, alertAgainLater(ctx, tx, invoiceID)
+			"booked", booked.String(), "onChain", onChain.String(),
+			"next", "record the deposit with ops deposit -tx <transaction> <invoice>, then return it with ops return")
+		return false, alertAgainLater(ctx, tx, invoiceID, true)
 	} else if excess.Sign() > 0 {
 		slog.Warn("receive address holds dust no transfer explains; expiring", "invoice", invoiceID,
 			"booked", booked.String(), "onChain", onChain.String())
@@ -460,20 +461,24 @@ func (s *Service) balanced(ctx context.Context, tx pgx.Tx, invoiceID string, cha
 	if onChain.Cmp(booked) < 0 {
 		slog.Error("ALERT receive address holds less than booked; not expiring", "invoice", invoiceID,
 			"booked", booked.String(), "onChain", onChain.String())
-		return false, alertAgainLater(ctx, tx, invoiceID)
+		return false, alertAgainLater(ctx, tx, invoiceID, false)
+	}
+	if _, err := tx.Exec(ctx, "DELETE FROM invoice_balance_alerts WHERE invoice_id = $1", invoiceID); err != nil {
+		return false, fmt.Errorf("clear invoice %s balance alert: %w", invoiceID, err)
 	}
 	return true, nil
 }
 
 // Backs off 1 min, doubling to at most a day, so unexplained balances can't use up the round's RPC calls (R-120).
-// The exponent stops at 11 (34 h, over the cap): a larger one overflows Postgres's interval.
-func alertAgainLater(ctx context.Context, tx pgx.Tx, invoiceID string) error {
-	if _, err := tx.Exec(ctx, `INSERT INTO invoice_balance_alerts (invoice_id, alerts, next_check_at)
-		VALUES ($1, 1, now() + interval '1 minute')
-		ON CONFLICT (invoice_id) DO UPDATE SET alerts = invoice_balance_alerts.alerts + 1,
+// The exponent stops at 11 (34 h, over the cap): a larger one overflows Postgres's interval. excess is more on chain
+// than booked: refunds of the invoice wait while it lasts (bookOutflow).
+func alertAgainLater(ctx context.Context, tx pgx.Tx, invoiceID string, excess bool) error {
+	if _, err := tx.Exec(ctx, `INSERT INTO invoice_balance_alerts (invoice_id, alerts, next_check_at, excess)
+		VALUES ($1, 1, now() + interval '1 minute', $2)
+		ON CONFLICT (invoice_id) DO UPDATE SET alerts = invoice_balance_alerts.alerts + 1, excess = excluded.excess,
 		    next_check_at = now() + least(interval '1 minute' * power(2, least(invoice_balance_alerts.alerts, 11)),
 		        interval '1 day')`,
-		invoiceID); err != nil {
+		invoiceID, excess); err != nil {
 		return fmt.Errorf("record invoice %s balance alert: %w", invoiceID, err)
 	}
 	return nil
