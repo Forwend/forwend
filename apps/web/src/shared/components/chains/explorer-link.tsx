@@ -1,21 +1,24 @@
 import { ExternalLink } from "lucide-react";
 import { txLink } from "@/shared/lib/chains";
 
-export interface ExplorerLinkProps {
-  chainId: number;
+export type ExplorerLinkProps = {
   txHash: string;
   named?: boolean;
   className?: string;
-}
+} & (
+  | { chainId: number }
+  /** A link made elsewhere, as for a chain 1Click names (R-243). */
+  | { link: { name: string; href: string } | null }
+);
 
 /** The transaction on its chain's explorer, in a new tab; nothing for a chain without one. */
 export function ExplorerLink({
-  chainId,
   txHash,
   named = false,
   className = "",
+  ...where
 }: ExplorerLinkProps) {
-  const link = txLink(chainId, txHash);
+  const link = "link" in where ? where.link : txLink(where.chainId, txHash);
   if (!link) return null;
   return (
     <a

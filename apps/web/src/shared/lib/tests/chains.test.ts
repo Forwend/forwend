@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addressLink,
+  blockchainTxLink,
   crossChainOptionRecorded,
   lookalikeOf,
   tokenMatches,
@@ -78,5 +79,32 @@ describe("crossChainOptionRecorded", () => {
 
   it("doesn't once money on another option was recorded first", () => {
     expect(crossChainOptionRecorded({ optionLocked: true, optionId: "a", options })).toBe(false);
+  });
+});
+
+// R-243: the payer's own transaction, on a chain 1Click names.
+describe("blockchainTxLink", () => {
+  const solana =
+    "4jBcpDL3KfBipWFqRBT5gVwZZoGogMBv5FWi6hi6a45CmPg6CcPJmD5Pr8jTxJGehtDrh3vmq8Tr7Q1UU6GLxoxj";
+
+  it("links a known explorer, else 1Click's own https link", () => {
+    // The known explorer comes first, even beside 1Click's own link.
+    for (const explorerUrl of ["", "https://explorer.example/tx/x"])
+      expect(blockchainTxLink("sol", { hash: solana, explorerUrl })).toEqual({
+        name: "Solscan",
+        href: `https://solscan.io/tx/${solana}`,
+      });
+    expect(blockchainTxLink("zec", { hash: "ab", explorerUrl: "https://x.example/tx/ab" })).toEqual(
+      {
+        name: "Zcash",
+        href: "https://x.example/tx/ab",
+      },
+    );
+  });
+
+  it("links nothing for a hash or a link it can't trust", () => {
+    // Long enough to pass the length rule: only the characters keep it out of the url.
+    expect(blockchainTxLink("sol", { hash: "../../../evil?x=1&y=2", explorerUrl: "" })).toBeNull();
+    expect(blockchainTxLink("zec", { hash: "ab", explorerUrl: "javascript:alert(1)" })).toBeNull();
   });
 });

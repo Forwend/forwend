@@ -63,6 +63,7 @@ import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
 import {
   blockchainName,
+  blockchainTxLink,
   crossChainEnded,
   crossChainOptionRecorded,
   txLink,
@@ -640,7 +641,10 @@ export function CrossChainFigure({
   const base =
     crossChain.status === CROSS_CHAIN_STATUSES.success ? crossChain.destinationTxs[0] : undefined;
   const links = [
-    { href: origin?.explorerUrl, label: COPY.crossChain.originTx },
+    {
+      href: origin ? blockchainTxLink(crossChain.blockchain, origin)?.href : undefined,
+      label: COPY.crossChain.originTx,
+    },
     {
       href: base ? txLink(CROSS_CHAIN_TARGET.chainId, base.hash)?.href : undefined,
       label: COPY.crossChain.baseTx,

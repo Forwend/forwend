@@ -185,7 +185,7 @@ export const PAY_COPY = {
     loadingTokens: "Loading tokens",
     choose: "Choose a token",
     change: "Change",
-    direct: "Pay with USDC instead",
+    direct: "Pay directly instead",
     estimate: (amount: string) => `About ${amount}`,
     // D-126: a token whose minimum is above what is due can't be picked.
     needsAtLeast: (amount: string) => `Needs at least ${amount}`,
@@ -219,8 +219,7 @@ export const PAY_COPY = {
     cantConvert: "NEAR Intents can't convert this token now. Choose another token.",
     unavailable: "NEAR Intents is not answering. Try again in a minute.",
     // The payee turned it off, or the invoice can't take it now: trying again won't help (R-240).
-    closed:
-      "Paying with another token isn't available for this payment now. Pay with USDC instead.",
+    closed: "Paying with another token isn't available for this payment now. Pay directly instead.",
     refused: "NEAR Intents can't refund to this address. Check it is yours on this chain.",
     tooMany: "Too many prices asked for this payment. Try again later.",
     steps: {
@@ -231,7 +230,12 @@ export const PAY_COPY = {
     },
     seenOn: (chain: string) => `Payment seen on ${chain}. Don't pay again.`,
     converting: "NEAR Intents is converting it to USDC on Base.",
-    originTx: "View your transaction",
+    // R-243: what happened to the payer's money, once 1Click saw it.
+    sent: "You sent",
+    arrived: "Arrived on Base",
+    returned: "Returned to you",
+    onChain: (amount: string, chain: string) => `${amount} on ${chain}`,
+    returnedTo: (address: string) => `To ${address}`,
     incomplete: "Less than needed arrived. NEAR Intents returns it to your refund address.",
     refunded: "NEAR Intents returned the money to your refund address.",
     failed: "The conversion failed. NEAR Intents returns the money to your refund address.",

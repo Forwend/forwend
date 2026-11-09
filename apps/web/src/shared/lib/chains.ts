@@ -1,4 +1,5 @@
 import {
+  BLOCKCHAIN_EXPLORERS,
   BLOCKCHAIN_NAMES,
   CHAINS,
   CROSS_CHAIN_STATUSES,
@@ -71,4 +72,19 @@ export function crossChainOptionRecorded(x: {
   options: readonly { optionId: string; chainId: number; token: string }[];
 }): boolean {
   return !x.optionLocked || isCrossChainTarget(x.options.find((o) => o.optionId === x.optionId));
+}
+
+/** A transaction on a chain 1Click names: a known explorer's link, else 1Click's own https one; null for neither. */
+export function blockchainTxLink(
+  blockchain: string,
+  tx: { hash: string; explorerUrl: string },
+): { name: string; href: string } | null {
+  const explorer = Object.hasOwn(BLOCKCHAIN_EXPLORERS, blockchain)
+    ? BLOCKCHAIN_EXPLORERS[blockchain]
+    : undefined;
+  if (explorer && /^[0-9A-Za-z]{16,128}$/.test(tx.hash))
+    return { name: explorer.name, href: explorer.url + tx.hash };
+  return tx.explorerUrl.startsWith("https://")
+    ? { name: blockchainName(blockchain), href: tx.explorerUrl }
+    : null;
 }

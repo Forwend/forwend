@@ -886,7 +886,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - The address stays only while money is still due.
   - Pay with another token (D-123, R-236 to R-238), on a live invoice with an open Base USDC option:
     - Under Show address, a quiet link "Pay with another token" with one muted line about NEAR Intents.
-    - It turns the Pay with section into the cross-chain panel; "Pay with USDC instead" at its foot goes back.
+    - It turns the Pay with section into the cross-chain panel; "Pay directly instead" at its foot goes back.
+      - Once an address shows, it and the token row's Change take two presses, as the direct Change does (R-68).
     - Choose a token opens a wide sheet: chains on the left with a search, the chosen chain's tokens on the right.
       - The first chain is chosen; popular chains come first. A token search looks across every chain.
       - On phones the chains are one scrolling row of chips above the tokens.
@@ -905,7 +906,12 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
       - A changed amount shows a warning strip "The price changed" with both amounts and Understood; the QR waits.
       - The same amount shows "New address. Send only to this one."
     - Once 1Click saw the deposit: "Payment seen on Tron. Don't pay again.", the steps Detected, Converting,
-      Confirming and Paid, one status line, and View your transaction.
+      Confirming and Paid, and one status line (R-243).
+      - On Base, Confirming shows the block count with its time-left hint and "Final around", as a direct payment.
+      - A bordered list follows: You sent and Arrived on Base, each with its transaction link.
+      - Returned to you names the refund address: 1Click names no refund transaction.
+      - Once final but not booked it says what the direct box says, such as "Awaiting confirmation."
+      - The payer's chain links to a known explorer, else to 1Click's own https link.
       - Less than needed, refunded and failed leave one line above Pay with, with the quote ID for support, and the
         invoice can be paid again.
     - The receipt adds a Paid with row: the amount sent and its chain.

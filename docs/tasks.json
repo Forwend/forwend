@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 454,
+  "nextId": 455,
   "tasks": [
     {
       "id": "F332",
@@ -2145,7 +2145,8 @@
       "keep": [],
       "review": true,
       "notes": [
-        "2026-11-09 blocked: Spends real mainnet money: needs the owner's approval and a funded payer wallet."
+        "2026-11-09 blocked: Spends real mainnet money: needs the owner's approval and a funded payer wallet.",
+        "2026-11-09 2026-11-09 owner's live payment, local stack on mainnet: INV-0002 (1.25 USD, options Arc, Base, Arbitrum) paid with 1.265309 USDC on Solana through NEAR Intents. 1Click saw it 17:06:01 UTC, delivered 1.25 USDC on Base 17:06:31 (tx 0x6c9ee966…47fc), returned 0.00265 USDC of slippage; booked paid on the Base option after Base finality (~20 min); receipt shows Paid with. Settlement still pending at the time. Left of R-241: Arbitrum USDT, Ethereum ETH, settlement and the owner's pages."
       ],
       "blockedReason": "Spends real mainnet money: needs the owner's approval and a funded payer wallet.",
       "evidence": null
@@ -2268,6 +2269,111 @@
       "delivery": {
         "mode": "pr",
         "branch": "feat/f453-the-token-picker-shows-each-token-s-mini",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F454",
+      "type": "feat",
+      "behavior": "The cross-chain pay box says what happened to the payer's money, as the direct one does",
+      "acceptance": [
+        "After a deposit 1Click saw, the box lists what was sent on the payer's chain and what arrived on Base, each with its transaction link, and any part returned with its refund address (R-243).",
+        "Confirming shows Base's block count, its time-left hint and when the payment is final, then the direct box's line while the ledger books it (R-243).",
+        "Once an address shows, Change and Pay directly instead each take two presses; before one, one press (R-243, R-68)."
+      ],
+      "dependsOn": [
+        "F453"
+      ],
+      "state": "passing",
+      "verification": [
+        "web-unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-243"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-11-09 Review 1 FAIL (subagent) at 75258138: no test failed for the Arrived amount, the refund's token, the Base tx before success, the hash's characters or the two-press blur reset; the owner's Details still linked the customer's tx only through 1Click's link. Non-blocking taken: Arrived only on success, the not-available line still said Pay with USDC instead. Left: TwoPress could replace PickedOption's button; crosschain-pay.tsx holds quote and progress (~680 lines); the direct flow's Final around has no test of its own; the Paid receipt drops the returned part.",
+        "2026-11-09 Review 2 FAIL (subagent) at 1a585144: after Base finality but before booking the cross box said Confirming with 'Under a minute left' where the direct box says 'Awaiting confirmation.'; no test for which link wins (known explorer over 1Click's) or for the one-press way back before an address; the docs promised a link on Returned to you that 1Click can't give. Non-blocking taken: exact Change locator, Object.hasOwn for the explorer map, R-240 and an e2e comment said pay with USDC.",
+        "2026-11-09 Review 3 FAIL (subagent) at 80a7f1ca: only the refund address on Returned to you had no test; every other behavior's break was caught (17 breaks).",
+        "2026-11-09 Review 4 PASS (subagent) at e0b63213: the refund-address assertion fails without its code; 21/21 cross-chain e2e, 364 web unit tests; a fresh Turbopack build passes (the earlier font failure was that reviewer's environment).",
+        "2026-11-09 review pass by subagent: Same code as the fourth subagent review that passed at e0b63213. Sent, arrived and returned rows (18-decimal ETH, refund address), Base row only on success, known explorers before 1Click's link, the direct Confirming count and Awaiting confirmation line, and two presses once an address shows all have tests that fail without them; a fresh Turbopack build passes."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-09T19:04:56Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 53.0,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 9.2,
+            "log": ""
+          }
+        ],
+        "taskHash": "905b0d7922a39932",
+        "filesHash": "de1fdb9e64000fc0",
+        "proof": {
+          "1": "e2e: crosschain.spec on Base it confirms… lists what was sent, what arrived and what came back (ETH 18 decimals, refund address); web-unit chains.test and crosschain-views (explorer links)",
+          "2": "e2e: crosschain.spec on Base it confirms (Confirming count, time-left, Final around) and final but not yet booked (Awaiting confirmation.)",
+          "3": "e2e: crosschain.spec once an address shows, Change and Pay directly instead take two presses; one before"
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "Same code as the fourth subagent review that passed at e0b63213. Sent, arrived and returned rows (18-decimal ETH, refund address), Base row only on success, known explorers before 1Click's link, the direct Confirming count and Awaiting confirmation line, and two presses once an address shows all have tests that fail without them; a fresh Turbopack build passes.",
+          "at": "2026-11-09T19:06:08Z",
+          "filesHash": "de1fdb9e64000fc0"
+        },
+        "commit": "49e7d54d",
+        "doneAt": "2026-11-09T19:06:08Z"
+      },
+      "branch": "feat/f454-the-cross-chain-pay-box-says-what-happen",
+      "baseCommit": "694a55d9bc32ea3134d42a7683a122c112e9deb9",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f454-the-cross-chain-pay-box-says-what-happen",
         "base": "main"
       }
     }
