@@ -531,7 +531,9 @@ signer:
        estimate counts the L1 data gas; a node that can't estimate at a block is asked at latest), at least
        `SettleGasFloor` (`TempoSettleGasFloor`, 580,000, on Tempo), plus a fifth;
      - nonce: the node's pending nonce, but never below the one after the deploy it just sent or after the last settle
-       saved for this chain (a lagging node may not count them).
+       still `sent` on this chain (a lagging node may not count them).
+       - A confirmed intent sets no floor: its own settle is final, or never used its nonce (another settler settled).
+       - Else a settle saved but never sent, then settled by the refund authority, would leave a nonce gap for good.
    - Saves sender, nonce, hash and signed bytes, then sends. After a crash it sends the same saved bytes again (same
      nonce, so at most one settle can be mined). The contract's `AlreadySettled` is a last guard.
 5. Confirms once all of these hold:
