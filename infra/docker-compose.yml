@@ -48,6 +48,8 @@ services:
       EMAIL_FROM: ${EMAIL_FROM:-Forwend <notifications@mail.forwend.com>}
       EMAIL_POSTAL_ADDRESS: ${EMAIL_POSTAL_ADDRESS:-}
       SUPPORT_EMAIL: ${SUPPORT_EMAIL:?set SUPPORT_EMAIL}
+      # NEAR Intents 1Click's optional partner key for cross-chain quotes (D-123, Q-18).
+      ONECLICK_API_KEY: ${ONECLICK_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -70,6 +72,7 @@ services:
       EMAIL_POSTAL_ADDRESS: ${EMAIL_POSTAL_ADDRESS:-}
       SUPPORT_EMAIL: ${SUPPORT_EMAIL:?set SUPPORT_EMAIL}
       COINGECKO_API_KEY: ${COINGECKO_API_KEY:-}
+      ONECLICK_API_KEY: ${ONECLICK_API_KEY:-}
     depends_on:
       api:
         condition: service_healthy

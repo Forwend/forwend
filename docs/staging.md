@@ -85,6 +85,7 @@
 | `TRUST_PROXY_HEADER` | `1` on staging: Traefik sets `X-Forwarded-For` to the client's address, so public Pay is limited per payer (R-188). |
 | `WALLET_MFA` | `1` once Privy dashboard > User management > Authentication > MFA allows both passkeys and the authenticator app (D-49, R-219): an owner sets up both before a first send or export. The web build reads it. Empty or `0` leaves the gate off. |
 | `COINGECKO_API_KEY` | Optional CoinGecko Demo plan key for display prices (R-178); empty calls without a key. |
+| `ONECLICK_API_KEY` | Optional NEAR Intents 1Click partner key for cross-chain payments (D-123, Q-18); empty calls without one, and each conversion costs the payer 0.25% more. The api and the worker read it. |
 | `WEBHOOK_SECRET_KEY` | 32 random bytes in base64, from `openssl rand -base64 32`. Compose refuses to deploy without it. It opens the saved signing secrets; under another key, deliveries stop. |
 
 - Compose sets `DATABASE_URL`, `API_ADDR`, `RPC_ALLOW_LOOPBACK=0`, `PRIVY_APP_ID` and `PRIVY_JWKS_URL` internally.
@@ -93,7 +94,8 @@
 - `POSTGRES_PORT` is local only. The staging database has no host port.
 - `PRIVY_TEST_EMAIL` and `PRIVY_TEST_OTP` are browser test credentials, excluded from deployment.
 - `DEPLOYER_PRIVATE_KEY` and `REFUND_AUTHORITY_PRIVATE_KEY` are contract tooling credentials, excluded from deployment.
-- `CANARY_*` belongs to the separate canary host. Test overrides `RESEND_API_URL`, `ECB_RATES_URL` and `COINGECKO_API_URL` are excluded.
+- `CANARY_*` belongs to the separate canary host. Test overrides `RESEND_API_URL`, `ECB_RATES_URL`, `COINGECKO_API_URL`, `ONECLICK_API_URL` and `ONECLICK_SIGNER_KEY` are excluded.
+- Startup refuses `ONECLICK_SIGNER_KEY` unless `ONECLICK_API_URL` is a loopback fake (D-124).
 
 ## Verification
 

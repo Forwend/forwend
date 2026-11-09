@@ -195,6 +195,14 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 			fmt.Sprintf("more than %d transactions in these days: choose a shorter period", activity.MaxExportRows)
 	case errors.Is(err, invoice.ErrNotWatched):
 		status, code, message = http.StatusServiceUnavailable, "network_not_ready", "this network is starting: try again in a minute"
+	case errors.Is(err, invoice.ErrCrossChainOff):
+		status, code, message = http.StatusUnprocessableEntity, "crosschain_unavailable", err.Error()
+	case errors.Is(err, invoice.ErrTooManyQuotes):
+		status, code, message = http.StatusTooManyRequests, "too_many_quotes",
+			"too many quotes for this invoice in the last hour: try again later"
+	case errors.Is(err, invoice.ErrProvider): // logged where it happened
+		status, code, message = http.StatusServiceUnavailable, "provider_unavailable",
+			"could not get a quote from NEAR Intents: try again shortly"
 	case errors.Is(err, invoice.ErrFeeQuote):
 		slog.Warn("could not price a network fee", "err", err)
 		status, code, message = http.StatusServiceUnavailable, "network_fee_unavailable",

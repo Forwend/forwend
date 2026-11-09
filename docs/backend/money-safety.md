@@ -194,6 +194,27 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
   - The terms must compute to the address.
 - No third-party scripts; pinned dependencies.
 
+## Cross-chain payments
+
+D-123: NEAR Intents 1Click converts a payer's token on another chain into USDC on Base.
+
+- The USDC goes to the invoice's own Base option receive address. Paid, settlement and fees work as for a direct payment.
+- Each quote is `EXACT_OUTPUT` for exactly what is due, so the invoice is never partly paid or overpaid by it.
+  - 1Click returns the unused slippage, any extra and short or failed deposits to the payer's `refundTo`.
+  - Forwend holds none of that money.
+- Its deadline is at least 10 minutes before the close: what hasn't converted by then is refunded, never late.
+- The deposit address can't be recomputed as a receive address can (R-45). Instead, a quote must pass D-124:
+  - its ed25519 signature verifies with `intents.ManagerKey`, the key the 1Click SDK pins;
+  - its signed request names the Base option's receive address, Base USDC, `EXACT_OUTPUT`, the due amount and `refundTo`;
+  - it delivers exactly that amount, has a deposit address and needs no memo.
+  - every value is read with exact keys: Go's struct decoding would let a `DepositAddress` key replace `depositAddress`.
+  - The request's deadline is not signed in a real quote; 1Click signs the address's own deadline in its place.
+    - So the D-125 deadline is 1Click's echo of what was asked. A wrong one can only make money late and held for the
+      payer, never send it elsewhere: the recipient is signed.
+- The api checks this before it keeps a quote and again before it gives a kept one. The pay page checks it before it
+  shows the address.
+- Test mode has no cross-chain: 1Click has no testnet.
+
 ## Money out of a profile wallet
 
 - Privy signs and exports on the user's session alone, so Forwend's Confirm it's you binds only its own screens (D-49).

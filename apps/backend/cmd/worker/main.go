@@ -17,6 +17,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/ecb"
 	"github.com/forwend/forwend/apps/backend/internal/email"
+	"github.com/forwend/forwend/apps/backend/internal/intents"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/notify"
 	"github.com/forwend/forwend/apps/backend/internal/price"
@@ -92,6 +93,9 @@ func run() error {
 		// The key's header would follow a redirect to any host.
 		Client: &http.Client{Timeout: 10 * time.Second,
 			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
+	// The token list payers pick from (R-232); quotes are the api's.
+	tokens := &intents.Keeper{Pool: pool, Client: intents.NewClient(cfg.OneClick.URL, cfg.OneClick.Key,
+		cfg.Chains.AllowLoopback), Every: intents.TokensEvery}
 	slog.Info("worker ready", "every", cfg.Chains.PollInterval, "email", sender != nil)
 	// Housekeeping calls Resend, the ECB and CoinGecko: on its own loop, a slow answer never delays a chain round. It
 	// stops with the chain loop, before the pool closes.
@@ -101,7 +105,7 @@ func run() error {
 	defer stopHousekeeping()
 	housekeeping.Go(func() {
 		for {
-			keepHouse(ctx, cfg, invoices, rates, prices, sender, pool)
+			keepHouse(ctx, cfg, invoices, rates, prices, tokens, sender, pool)
 			select {
 			case <-ctx.Done():
 				return
@@ -123,7 +127,7 @@ func run() error {
 }
 
 func keepHouse(ctx context.Context, cfg config.Worker, invoices *invoice.Service, rates *ecb.Keeper, prices *price.Keeper,
-	sender email.Sender, pool *pgxpool.Pool) {
+	tokens *intents.Keeper, sender email.Sender, pool *pgxpool.Pool) {
 	// Payment reminders (R-96) wait in the outbox like the other emails when there is no key.
 	if err := invoices.QueueReminders(ctx); err != nil {
 		slog.Error("queue reminders", "err", err)
@@ -138,6 +142,10 @@ func keepHouse(ctx context.Context, cfg config.Worker, invoices *invoice.Service
 	// Prices are for display only (R-178): when CoinGecko can't be read, the app shows the last ones as stale.
 	if err := prices.Tick(ctx, time.Now()); err != nil {
 		slog.Warn("keep CoinGecko prices", "err", err)
+	}
+	// Without a fresh list payers pick from the last one; 1Click's own quote is what counts.
+	if err := tokens.Tick(ctx, time.Now()); err != nil {
+		slog.Warn("keep 1Click tokens", "err", err)
 	}
 	if sender != nil {
 		if err := notify.Deliver(ctx, pool, sender, notify.Site{WebURL: cfg.Email.PublicWebURL, PostalAddress: cfg.Email.PostalAddress,
