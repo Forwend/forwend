@@ -1912,7 +1912,8 @@
       "review": true,
       "notes": [
         "2026-11-09 Built on feat/f450-the-pay-page-lets-a-payer-pay-with-anoth, stacked on F449. Checks passed via harness check: docs-check, lint, typecheck, unit, build, e2e, web-e2e. Screenshots (desktop 1280 and phone 390, light and dark, five steps each) in local docs/runs/f450/.",
-        "2026-11-09 Review 1 FAIL (subagent): reload trusted the api's refundTo when this tab typed none; after REFUNDED/FAILED/INCOMPLETE the box stayed on 'Payment seen' and the invoice could not be paid again; expired address focusable behind aria-hidden; tests missed New address, problem lines, Paid with, phone chips, chain search, cost/time, refund hint, reload re-check, loopback guard; weak expired and Detected assertions. Non-blocking: slippage bound, old address flash on renew, 'Already sent?' copy, retry, focus, orphan comment, hint wording, hardcoded decimals."
+        "2026-11-09 Review 1 FAIL (subagent): reload trusted the api's refundTo when this tab typed none; after REFUNDED/FAILED/INCOMPLETE the box stayed on 'Payment seen' and the invoice could not be paid again; expired address focusable behind aria-hidden; tests missed New address, problem lines, Paid with, phone chips, chain search, cost/time, refund hint, reload re-check, loopback guard; weak expired and Detected assertions. Non-blocking: slippage bound, old address flash on renew, 'Already sent?' copy, retry, focus, orphan comment, hint wording, hardcoded decimals.",
+        "2026-11-09 Review PASS (subagent) at cdb12575 after two fix rounds: reload shows a kept quote only for this tab's token and refund address, slippage bound, returned payments leave one line and can be paid again (direct or another token), expired part inert; breaks on every acceptance line caught. Not caught (non-blocking): dropping setDeposit(null) on renew, a one-render flash."
       ],
       "blockedReason": null,
       "evidence": null
