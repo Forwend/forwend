@@ -1,6 +1,6 @@
 import { useRef } from "react";
 
-const CLOCK = new Intl.DateTimeFormat(undefined, { timeStyle: "short" });
+export const CLOCK = new Intl.DateTimeFormat(undefined, { timeStyle: "short" });
 
 /** When a confirming payment is final, as a clock time; null while not confirming or unknown. */
 export function useFinalTime(confirming: boolean, secondsLeft: number, readAt: number | null) {

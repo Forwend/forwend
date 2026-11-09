@@ -307,7 +307,7 @@ func TestReceiptPDF(t *testing.T) {
 	}
 	notPaid("open")
 
-	// Two final deposits; the ledger books them and checks the balance (2500000 at block 100) like the worker does.
+	// Two final deposits; the ledger books them and checks the balance (2000000 at block 100) like the worker does.
 	first, second := "0x"+strings.Repeat("01", 32), "0x"+strings.Repeat("02", 32)
 	paidAt := time.Unix(expires.Unix()-100, 0).UTC()
 	if _, err := e.pool.Exec(ctx, `UPDATE chain_cursors SET last_scanned_block = 100, last_finalized_block = 100,
@@ -323,7 +323,7 @@ func TestReceiptPDF(t *testing.T) {
 			t.Fatal(err)
 		}
 		balances := func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
-			return big.NewInt(2500000), 100, nil
+			return big.NewInt(2000000), 100, nil
 		}
 		notDeployed := func(context.Context, uint64, string, string) (uint64, error) { return 0, nil }
 		if err := ledger.NewService(e.pool, balances, notDeployed).Process(ctx, id); err != nil {

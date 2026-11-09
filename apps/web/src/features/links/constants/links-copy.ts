@@ -51,7 +51,7 @@ export const LINKS_COPY = {
   openName: "Open the payment link in a new tab",
   price: "Price",
   meta: (created: string) => `Payment link · Created ${created}`,
-  stats: { visits: "Visits", paid: "Paid", reserved: "Checkouts open" },
+  stats: { visits: "Visits", paid: "Paid", reserved: "Slots held" },
   paidRate: (percent: number) => `${percent}% of visits`,
   details: "Details",
   endsOnRow: "Last day",

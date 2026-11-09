@@ -255,6 +255,11 @@ func SetMinimum(ctx context.Context, db interface {
 // MemoChains need a memo beside the address, which a payer can forget and lose the money; they are left out (D-123).
 var MemoChains = map[string]bool{"stellar": true, "xrp": true, "ton": true}
 
+// SlowChains can take about an hour to mine a deposit, and 1Click's deadline must exceed that, so their quotes get a
+// longer one (D-125).
+var SlowChains = map[string]bool{"btc": true, "ltc": true, "doge": true, "bch": true, "zec": true, "dash": true,
+	"cardano": true}
+
 // chainNames are 1Click's chains as payers know them; ChainName writes any other in capitals.
 var chainNames = map[string]string{"eth": "Ethereum", "base": "Base", "arb": "Arbitrum", "op": "Optimism",
 	"pol": "Polygon", "bsc": "BNB Chain", "avax": "Avalanche", "gnosis": "Gnosis", "sol": "Solana", "tron": "Tron",

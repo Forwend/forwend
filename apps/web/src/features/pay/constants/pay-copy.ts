@@ -239,7 +239,11 @@ export const PAY_COPY = {
     returned: "Returned to you",
     onChain: (amount: string, chain: string) => `${amount} on ${chain}`,
     returnedTo: (address: string) => `To ${address}`,
-    incomplete: "Less than needed arrived. NEAR Intents returns it to your refund address.",
+    // R-238: 1Click holds a short deposit until the deadline. Whether more sent there completes it is Q-19, so the
+    // payer is not asked to send more.
+    incomplete: (time: string) =>
+      `Less than needed arrived. NEAR Intents holds it until ${time}, then returns it to your refund address.`,
+    incompleteLate: "Less than needed arrived. NEAR Intents returns it to your refund address.",
     refunded: "NEAR Intents returned the money to your refund address.",
     failed: "The conversion failed. NEAR Intents returns the money to your refund address.",
     supportId: (id: string) => `Quote ID for support: ${id}`,

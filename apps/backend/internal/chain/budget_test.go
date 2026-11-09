@@ -20,12 +20,12 @@ func TestRPCBudgetIsSharedAcrossProcessesAndChainHosts(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	first, err := NewBudget(ctx, db, 10)
+	first, err := NewBudget(ctx, db, 10, MoneyShare)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer first.Close()
-	second, err := NewBudget(ctx, db, 10)
+	second, err := NewBudget(ctx, db, 10, MoneyShare)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,5 +81,43 @@ func TestRPCBudgetIsSharedAcrossProcessesAndChainHosts(t *testing.T) {
 	}
 	if failures, _ := health(r, r.pool.endpoints[0]); failures != 0 {
 		t.Fatal("budget failure marked the provider unhealthy")
+	}
+}
+
+func TestAPIReadsCannotTakeTheMoneyPathsBudget(t *testing.T) {
+	ctx := context.Background()
+	url := databasetest.Migrated(t, database.Migrate)
+	db, err := database.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	api, err := NewBudget(ctx, db, 10, APIShare)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer api.Close()
+	money, err := NewBudget(ctx, db, 10, MoneyShare)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer money.Close()
+	// One block-receipts read fills the api's 160 units a second for over 6 s.
+	if err := api.wait(ctx, "shared-account", []byte(`{"method":"eth_getBlockReceipts"}`)); err != nil {
+		t.Fatal(err)
+	}
+	short, cancel := context.WithTimeout(ctx, 50*time.Millisecond)
+	defer cancel()
+	if err := api.wait(short, "shared-account", []byte(`{"method":"eth_call"}`)); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("api past its share returned %v, want deadline", err)
+	}
+	bounded, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	start := time.Now()
+	if err := money.wait(bounded, "shared-account", []byte(`{"method":"eth_getLogs"}`)); err != nil {
+		t.Fatalf("worker read behind a full api share: %v", err)
+	}
+	if elapsed := time.Since(start); elapsed > 200*time.Millisecond {
+		t.Fatalf("worker read waited %v behind the api", elapsed)
 	}
 }

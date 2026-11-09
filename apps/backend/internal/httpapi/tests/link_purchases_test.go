@@ -317,6 +317,40 @@ func TestLimitedLinkReservesTheLastPurchaseSlotOnce(t *testing.T) {
 	}
 }
 
+// Anyone can start a purchase: one with no deposit holds its slot only briefly, while its checkout stays open.
+func TestLimitedLinkHoldsAnUnpaidSlotOnlyUntilADepositIsSeen(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	shop := e.merchant(t)
+	path := "/v1/profiles/" + shop + "/links/eeeeeeee-0000-4000-8000-000000000051"
+	saved := e.call(t, "PUT", path, alice, "", `{"title":"One seat","amountUsd":"2","maxPayments":1}`)
+	pay := "/v1/links/" + saved.body["slug"].(string) + "/pay"
+	first := e.call(t, "POST", pay, "", "stranger", `{}`)
+	if first.status != http.StatusCreated {
+		t.Fatalf("first purchase: %d %v", first.status, first.body)
+	}
+	if r := e.call(t, "POST", pay, "", "buyer", `{}`); r.status != http.StatusConflict || errorCode(r) != "link_full" {
+		t.Fatalf("a fresh unpaid purchase lost its slot: %d %v", r.status, r.body)
+	}
+	unpaid := first.body["paymentId"].(string)
+	e.exec(t, "ALTER TABLE invoices DISABLE TRIGGER invoices_guard")
+	e.exec(t, "UPDATE invoices SET created_at = now() - interval '16 minutes' WHERE id = $1", unpaid)
+	e.exec(t, "ALTER TABLE invoices ENABLE TRIGGER invoices_guard")
+	buyer := e.call(t, "POST", pay, "", "buyer", `{}`)
+	if buyer.status != http.StatusCreated {
+		t.Fatalf("an unpaid purchase held the slot past its hold: %d %v", buyer.status, buyer.body)
+	}
+	if state := e.call(t, "GET", "/v1/invoices/"+first.body["payToken"].(string), "", "", ""); state.body["paymentStatus"] != "open" {
+		t.Fatalf("the hold closed the checkout: %v", state.body)
+	}
+	// A slow payer's deposit takes a slot again: the link reads full, as it sold one over its cap.
+	e.exec(t, `INSERT INTO chain_transfers (chain_id,chain_family,token_contract,invoice_id,tx_hash,log_index,block_hash,block_number,block_time,from_address,to_address,amount,status)
+ SELECT chain_id,chain_family,token_contract,id,id,0,id,90,extract(epoch FROM now())::bigint,$2,receive_address,2000000,'detected' FROM invoices WHERE id=$1`, unpaid, aliceWallet)
+	if owner := e.call(t, "GET", path, alice, "", ""); owner.body["reserved"] != 2.0 {
+		t.Fatalf("a seen deposit does not hold its slot: %v", owner.body)
+	}
+}
+
 func TestLinkStoreCannotMoveAndUnreadyMerchantCannotActivate(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"

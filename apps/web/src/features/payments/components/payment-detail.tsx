@@ -620,11 +620,17 @@ export function timeline(
   }));
 }
 
-/** A deposit 1Click saw and converts or converted: one it returned didn't pay the payment (R-239). */
+/** A deposit 1Click saw and converts or converted: one it returned, or a short one it holds, didn't pay the payment
+ * (R-239). */
 export function paidThroughIntents(
   c: PaymentDetailType["crossChain"] | undefined,
 ): c is NonNullable<PaymentDetailType["crossChain"]> {
-  return c != null && c.depositSeenAt !== null && !crossChainEnded(c);
+  return (
+    c != null &&
+    c.depositSeenAt !== null &&
+    !crossChainEnded(c) &&
+    c.status !== CROSS_CHAIN_STATUSES.incomplete
+  );
 }
 
 /** R-239: what the customer sent on its own chain, what came back, and both transactions. */

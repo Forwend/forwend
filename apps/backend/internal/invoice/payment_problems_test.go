@@ -3,11 +3,14 @@ package invoice
 import (
 	"context"
 	"math/big"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
 	"github.com/forwend/forwend/apps/backend/internal/history"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // The held money's reason is the one the ledger wrote, not a guess from the status (D-26).
@@ -88,5 +91,20 @@ func TestHeldMoneyNamesTheLedgerReason(t *testing.T) {
 	// Dust held before them, with no reason written, is in the sum too: no reason fits the whole.
 	if got := reason(250_000); got != "" {
 		t.Fatalf("late money over dust says %q", got)
+	}
+}
+
+// The Needs attention list reads its problem sets through their indexes, not each payment's whole history.
+func TestPaymentAttentionReadsProblemsThroughIndexes(t *testing.T) {
+	pool, profile := open(t)
+	plans := databasetest.Plans(t, pool.Config().ConnString(), func(p *pgxpool.Pool) {
+		if _, err := NewService(p).PaymentAttention(context.Background(), profile, PaymentQuery{Limit: 10}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	for _, index := range []string{"invoices_group", "settlement_intents_open", "webhook_deliveries_failed"} {
+		if !strings.Contains(plans, index+" ") {
+			t.Errorf("no query uses %s:\n%s", index, plans)
+		}
 	}
 }

@@ -44,7 +44,9 @@ type Quote struct {
 	TimeEstimate   int64
 	RefundFee      string
 	Deadline       time.Time // the request's: refunds of what hasn't converted begin
-	Signed         []byte
+	// AddressDeadline is 1Click's, signed: its address takes deposits until then. nil when it gave none.
+	AddressDeadline *time.Time
+	Signed          []byte
 }
 
 // Quote asks 1Click for an EXACT_OUTPUT quote and checks it is the one asked for, signed by c.Signer. A dry quote
@@ -111,6 +113,9 @@ func Check(answer []byte, ask Ask, dry bool, key string) (Quote, error) {
 		Deadline: ask.Deadline, Signed: answer}
 	var ok1, ok2, ok3 bool
 	q.AmountIn, ok1 = new(big.Int).SetString(text(a.quote, "amountIn"), 10)
+	if at, err := time.Parse(time.RFC3339, text(a.quote, "deadline")); err == nil {
+		q.AddressDeadline = &at
+	}
 	q.MinAmountIn, ok2 = new(big.Int).SetString(text(a.quote, "minAmountIn"), 10)
 	q.AmountOut, ok3 = new(big.Int).SetString(text(a.quote, "amountOut"), 10)
 	switch {

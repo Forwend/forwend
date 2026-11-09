@@ -1,6 +1,9 @@
 import { generateKeyPairSync, sign } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import type { Invoice } from "@/features/invoices/types/invoices";
+import { shortDepositLine } from "@/features/pay/components/crosschain-pay";
 import { ONECLICK_KEY } from "@/features/pay/constants/crosschain";
+import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import {
   base58,
   crossChainFeeUsd,
@@ -13,6 +16,7 @@ import {
   verifyQuote,
 } from "@/features/pay/lib/crosschain";
 import answer from "@/features/pay/tests/fixtures/oneclick-quote.json";
+import { crossChainEnded } from "@/shared/lib/chains";
 
 // A quote 1Click signed on 2026-11-09 for 2.5 USDC from Arbitrum to Base (D-124). Its destination is Base USDC, its
 // recipient a made-up address.
@@ -173,5 +177,31 @@ describe("crossChainFeeUsd", () => {
     // 2.502697 USDC at 0.999387 USD each is 2.501163 USD; 2.5 USDC arrive, worth 2.498468 USD.
     expect(crossChainFeeUsd(answer.quote)).toBeCloseTo(0.002695, 6);
     expect(crossChainFeeUsd({ ...answer.quote, amountOutUsd: "3" })).toBe(0);
+  });
+});
+
+describe("a short deposit", () => {
+  const short = {
+    status: "INCOMPLETE_DEPOSIT",
+    symbol: "USDT",
+    decimals: 6,
+    amountIn: "101120000",
+    deposited: "99000000",
+    deadline: "2026-10-10T13:00:00Z",
+  } as NonNullable<Invoice["crossChain"]>;
+
+  it("hasn't ended: 1Click holds it until the deadline, and the rest may still arrive", () => {
+    expect(crossChainEnded(short)).toBe(false);
+    expect(crossChainEnded({ status: "REFUNDED" })).toBe(true);
+    expect(crossChainEnded({ status: "FAILED" })).toBe(true);
+  });
+
+  it("says 1Click holds it until the deadline, then returns it, and never asks for more", () => {
+    const line = shortDepositLine(short, Date.parse("2026-10-10T12:30:00Z"));
+    expect(line).toContain("NEAR Intents holds it until");
+    expect(line).not.toContain("Send");
+    expect(shortDepositLine(short, Date.parse(short.deadline))).toBe(
+      PAY_COPY.crossChain.incompleteLate,
+    );
   });
 });

@@ -103,7 +103,12 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
   - A contract destination warns: it may be an exchange, an app or a smart wallet.
   - It refuses the zero address, the receiver, the token, the factory and any invoice's receive address.
   - The amount is at most what is both held and refundable; at least 0.10 USD (D-90). Before the deadline that can be 0.
+  - It is also at most what the payment's payer paid, less the refunds booked to them, with or without `-to`.
+    - A receive address is public: anyone can pay a little to it and ask support for the held money.
+    - Refunds booked to a payer are those to the address they paid from directly.
+    - They also include those to a destination a return of one of their payments was queued to.
   - When several payers paid, the amount must be given. Each NEAR Intents quote counts as its own payer.
+    - So does each payment NEAR Intents may have relayed.
   - It dry-runs the token transfer from the receiver, and the refund when the receiver is deployed.
     A blocklisted address, a paused token or a short balance fails here, not at the Safe.
   - It sets `refund_status = 'refund_pending'`, then prints the calls: the receiver's deploy when needed, then `refund`.
@@ -121,7 +126,7 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
   - The block must be finalized, with the same hash. Otherwise it records nothing and says to try later.
   - A second run records nothing and says so. The ledger books the deposit in its next round, like any deposit.
   - Then `ops return` returns it.
-- Queuing writes `invoice.return_queued` to the invoice's history with the amount and destination; release writes
+- Queuing writes `invoice.return_queued` to the invoice's history with the amount, destination and payment; release writes
   `invoice.return_released`. The owner sees them as Return queued and Return released.
 - The owner's payment page lists each booked return as a Transfers row and ends its timeline with it.
 - While a return is queued:
@@ -194,12 +199,18 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
   - A missed deposit recorded after later money was booked is booked against today's balances.
     - The total is right, but the earliest-payer order of D-27 may not hold for it.
   - The ledger only re-checks an option that can still expire. On a paid or settled one, `ops return` refuses instead.
+  - The same check runs when an invoice turns paid, and in the signer before it signs a settle.
+    - It skips while a transfer the scan saw waits to be booked: that one explains the money.
+    - It also skips a balance read at a block the scan hasn't finalized: a deposit there may still be recorded.
+    - It writes the same `ALERT` and excess alert, so the payment reads `review`.
+    - It holds neither paid nor the settle: settle pays out only the amount, and the rest stays in the receiver.
 - Less on chain than booked at expiry logs `ALERT receive address holds less than booked; not expiring`, with the same backoff.
   - That alert doesn't hold refunds.
 - A balance check that agrees again deletes the alert, so the option no longer reads as in review.
 - Deposits are booked in chain order: one waits while an earlier one is still detected, so the earliest payers are
   paid to the creator first and later ones held (D-27). An empty `balanceOf` answer is an error, never 0.
-- Before signing a new settle, the signer reads the finalized balance of the receive address.
+- Before signing a new settle, the signer reads the receive address's balance where the scan finalized.
+  - It never reads past the scan: the ledger books exactly what the scan saw up to there.
   - Less than the ledger's booked receiver balance means money left unbooked; it signs nothing and logs an `ALERT`.
 - A deposit is received when seen and paid only at or below the chain's `finalized` block (D-45); show blocks and
   time left until then (`internal/finality`). Read headers, logs and receipts only, and compare block hashes the RPC
@@ -223,10 +234,16 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
 D-123: NEAR Intents 1Click converts a payer's token on another chain into USDC on Base.
 
 - The USDC goes to the invoice's own Base option receive address. Paid, settlement and fees work as for a direct payment.
-- Each quote is `EXACT_OUTPUT` for exactly what is due, so the invoice is never partly paid or overpaid by it.
+- Each quote is `EXACT_OUTPUT` for exactly what is due.
   - 1Click returns the unused slippage, any extra and short or failed deposits to the payer's `refundTo`.
-  - Forwend holds none of that money.
+  - Each deposit address delivers all that is due, and 1Click has no cancel: every address stays live until its deadline.
+  - So a second address paid too overpays the invoice. The extra is held on Base for its payer.
+  - A payer may still change token: no new quote is refused for it, so that switching stays open.
+  - The pay page tells the payer not to pay twice. The extra goes back through support to that quote's payer.
+  - The worker logs an `ALERT` when two quotes of one invoice saw deposits.
 - Its deadline is at least 10 minutes before the close: what hasn't converted by then is refunded, never late.
+  - It is an hour, or two hours for a slow chain (`intents.SlowChains`, Bitcoin-like), bounded by the close.
+  - A slow chain's deposit can take an hour to mine. Its token is offered only while its deadline is 90 minutes away.
 - The deposit address can't be recomputed as a receive address can (R-45). Instead, a quote must pass D-124:
   - its ed25519 signature verifies with `intents.ManagerKey`, the key the 1Click SDK pins;
   - its signed request names the Base option's receive address, Base USDC, `EXACT_OUTPUT`, the due amount and `refundTo`;
@@ -239,8 +256,13 @@ D-123: NEAR Intents 1Click converts a payer's token on another chain into USDC o
   shows the address. The canary checks each shown quote against 1Click's own record (R-235).
 - The worker reads each quote's status from 1Click only to show progress (R-234). Paid still comes from the Base balance.
   - While 1Click converts a deposit, the pick, an edit and a cancel wait as for money seen (`invoice.ConvertingSQL`).
+    - A short deposit waits too: 1Click holds it until the deadline, and the rest may still convert it (Q-19).
+  - An unpaid quote is read until 1Click's own address deadline (`quote.deadline`, about 72 hours): a late deposit still
+    converts or is refunded.
+  - A read that fails never ends tracking. Only a read that 1Click answers can: a deposit made meanwhile is not lost.
   - It logs an `ALERT` for a failed swap, a seen deposit unfinished an hour past its deadline, and a delivery with no
     Base transfer of its transaction 30 minutes later.
+  - It also alerts on a status it doesn't know, and on two quotes of one invoice that both saw deposits.
 - Test mode has no cross-chain: 1Click has no testnet.
 
 ## Money out of a profile wallet
@@ -366,7 +388,15 @@ Limits:
 
 ## Reusable-link capacity
 
-- Paid purchases consume slots; canonical open, detected and partly paid purchases reserve slots.
+- Paid purchases consume slots; canonical detected and partly paid purchases reserve slots.
+- An open purchase reserves its slot for 15 minutes from creation, or once a deposit is seen.
+  - Anyone can start a purchase, so a longer hold lets strangers fill a link without paying (D-108).
+  - 15 minutes is `invoice.MinExpiresIn`, the shortest checkout close any store allows.
+  - A deposit is a transfer to any option, or a NEAR Intents quote that saw the payer's deposit.
+  - The checkout itself stays open until its own close.
+- A slow payer who pays after the hold ended is a normal sale, even when others took the slot.
+  - The link can then sell over its cap; it reads `full` and takes no new purchases.
+  - The payer's money is never held or refused for the cap.
 - Expiry releases unused slots only after ledger reconciliation; late held deposits do not count as sales.
 - Creation and legacy reopening lock the link before reading fresh capacity in a separate READ COMMITTED statement.
 - Profile coordination uses `FOR NO KEY UPDATE` in creation, link saves and invoice sending.

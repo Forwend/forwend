@@ -48,13 +48,10 @@ export function blockchainName(blockchain: string): string {
   return BLOCKCHAIN_NAMES[blockchain] ?? blockchain.toUpperCase();
 }
 
-/** 1Click returned the payer's money, or will: it doesn't pay the invoice, which can be paid again (R-238). */
+/** 1Click returned the payer's money, or will: it doesn't pay the invoice, which can be paid again (R-238). A short
+ * deposit hasn't ended: 1Click holds it until the deadline, and the rest may still arrive. */
 export function crossChainEnded(c: { status: string }): boolean {
-  return (
-    c.status === CROSS_CHAIN_STATUSES.refunded ||
-    c.status === CROSS_CHAIN_STATUSES.failed ||
-    c.status === CROSS_CHAIN_STATUSES.incomplete
-  );
+  return c.status === CROSS_CHAIN_STATUSES.refunded || c.status === CROSS_CHAIN_STATUSES.failed;
 }
 
 /** The option a cross-chain payment delivers to (D-123). */

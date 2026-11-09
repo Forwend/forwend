@@ -183,7 +183,7 @@ export const RECONCILIATION_COPY = {
   moved: "Moved to wallet",
   returned: "Returned",
   addresses: (verified: number, all: number) =>
-    `${verified} of ${all} payment addresses have full history`,
+    `${verified} of ${all} payment addresses have nothing unbooked or unexplained`,
   blocks: (from: string, to: string, final: string) =>
     `Checked blocks ${from}–${to}, final block ${final}`,
   counts: "Not yet booked",
@@ -195,6 +195,6 @@ export const RECONCILIATION_COPY = {
   exceptions: "Policy exceptions",
   unverified: "Addresses still checking",
   difference: "Difference from the chain",
-  noDifference: "Not available for this range",
+  noDifference: "Not compared in this report",
   unknown: "unknown",
 } as const;

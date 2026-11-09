@@ -28,7 +28,7 @@ import { ExactAmount } from "@/features/pay/components/exact-amount";
 import { ONECLICK_SLIPPAGE_BPS } from "@/features/pay/constants/crosschain";
 import { ENTER } from "@/features/pay/constants/pay";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
-import { useFinalTime } from "@/features/pay/hooks/use-final-time";
+import { CLOCK, useFinalTime } from "@/features/pay/hooks/use-final-time";
 import {
   amountText,
   crossChainFeeUsd,
@@ -184,6 +184,7 @@ export function CrossChainPay({
       <CrossChainProgress
         invoice={invoice}
         crossChain={kept}
+        now={now}
         readAt={readAt}
         confirming={confirming}
         stateLine={stateLine}
@@ -465,12 +466,14 @@ function Send({
 function CrossChainProgress({
   invoice,
   crossChain,
+  now,
   readAt,
   confirming,
   stateLine,
 }: {
   invoice: Invoice;
   crossChain: CrossChain;
+  now: number;
   readAt: number | null;
   confirming: boolean;
   stateLine: string;
@@ -515,7 +518,9 @@ function CrossChainProgress({
       <PaymentTimeline label={PAY_COPY.progress} steps={steps} />
       <div className="-mt-1 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <p role="status" className="text-sm text-muted">
-          {reached === 1 ? (
+          {crossChain.status === CROSS_CHAIN_STATUSES.incomplete ? (
+            shortDepositLine(crossChain, now)
+          ) : reached === 1 ? (
             COPY.converting
           ) : !onBase ? (
             PAY_COPY.updatesItself
@@ -563,6 +568,12 @@ function CrossChainProgress({
       </ul>
     </section>
   );
+}
+
+/** Where a short deposit is: held by 1Click until the deadline, then returned. */
+export function shortDepositLine(c: CrossChain, now: number): string {
+  const deadline = Date.parse(c.deadline);
+  return now < deadline ? COPY.incomplete(CLOCK.format(deadline)) : COPY.incompleteLate;
 }
 
 /** One line of what happened to the payer's money, with its transaction at the end. */
@@ -656,12 +667,7 @@ function keepAsked(invoiceId: string, asked: { assetId: string; refundTo: string
 
 /** The one line a returned cross-chain payment leaves above the pay box, with the quote's ID for support. */
 export function CrossChainEnded({ crossChain }: { crossChain: CrossChain }) {
-  const line =
-    crossChain.status === CROSS_CHAIN_STATUSES.incomplete
-      ? COPY.incomplete
-      : crossChain.status === CROSS_CHAIN_STATUSES.refunded
-        ? COPY.refunded
-        : COPY.failed;
+  const line = crossChain.status === CROSS_CHAIN_STATUSES.refunded ? COPY.refunded : COPY.failed;
   return (
     <div
       role="status"

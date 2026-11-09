@@ -58,7 +58,7 @@ func (s *Service) Owed(ctx context.Context, profileID string, stores []string, l
 	args := []any{profileID}
 	where := `invoices.profile_id = $1 AND (invoices.number IS NOT NULL OR invoices.document_kind = 'none')
 		AND (invoices.due_date < (now() AT TIME ZONE 'UTC')::date OR invoices.payment_status = 'partially_paid')
-		AND ` + StatusFilterSQL + ` = 'open'`
+		AND ` + StatusColumnsSQL["open"] + ` AND ` + StatusFilterSQL + ` = 'open'`
 	if stores != nil {
 		args = append(args, stores)
 		where += fmt.Sprintf(" AND invoices.store_id = ANY($%d::uuid[])", len(args))

@@ -555,10 +555,6 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     for (const [status, line] of [
       ["REFUNDED", "NEAR Intents returned the money to your refund address."],
       ["FAILED", "The conversion failed. NEAR Intents returns the money to your refund address."],
-      [
-        "INCOMPLETE_DEPOSIT",
-        "Less than needed arrived. NEAR Intents returns it to your refund address.",
-      ],
     ] as const) {
       await page.unroute("**/api/v1/invoices/*");
       await mockInvoice(page, {
@@ -575,6 +571,33 @@ test.describe("pay with another token (R-236 to R-238)", () => {
       await page.getByRole("button", { name: "Pay with another token" }).click();
       await expect(page.getByText("You send")).toBeVisible();
     }
+  });
+
+  // 1Click holds a short deposit until the deadline: it hasn't ended, and no new address is shown (R-238, Q-19).
+  test("a short deposit keeps the steps and says 1Click holds it until the deadline (R-238)", async ({
+    page,
+  }) => {
+    const q = quote("1263000000");
+    await page.clock.install({ time: NOW });
+    await routeCrossChain(page, [q]);
+    await mockInvoice(page, {
+      ...LIVE,
+      crossChain: kept(q, {
+        status: "INCOMPLETE_DEPOSIT",
+        deposited: "1250880000",
+        depositSeenAt: "2026-10-10T11:50:00Z",
+      }),
+    });
+    await page.goto(`/pay/${PAY}`);
+    await expect(
+      page.getByRole("heading", { name: "Payment seen on Tron. Don't pay again." }),
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole("status")
+        .filter({ hasText: "Less than needed arrived. NEAR Intents holds it until" }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Show address" })).toHaveCount(0);
   });
 
   // A quote 1Click returned didn't pay: the payer paid on Base after it, and the receipt says nothing of it. Nor did

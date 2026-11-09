@@ -6,6 +6,7 @@ package send
 import (
 	"errors"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -63,6 +64,9 @@ const (
 	relayBudget = 25 * time.Second
 	// Before this the chain is not asked for the receipt: the watcher usually records the transfer first.
 	receiptAfter = 15 * time.Second
+	// A send sheet polls every 1.5 s; the chain is asked for a send's receipt at most this often, to spare the api's
+	// RPC budget.
+	receiptEvery = 5 * time.Second
 )
 
 type Send struct {
@@ -122,10 +126,30 @@ type Service struct {
 	now     func() time.Time
 	// relayWait is how long Relay asks Privy for the hash before it answers.
 	relayWait time.Duration
+	mu        sync.Mutex
+	// receiptReads holds, per send ID, when its receipt was last asked for within receiptEvery.
+	receiptReads map[string]time.Time
 }
 
 func NewService(pool *pgxpool.Pool, clients Clients, privy *privy.Client) *Service {
-	return &Service{pool: pool, clients: clients, privy: privy, now: time.Now, relayWait: 10 * time.Second}
+	return &Service{pool: pool, clients: clients, privy: privy, now: time.Now, relayWait: 10 * time.Second,
+		receiptReads: map[string]time.Time{}}
+}
+
+// receiptDue reports whether the send's receipt may be read now, and if so counts this read.
+func (s *Service) receiptDue(id string, now time.Time) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if last, ok := s.receiptReads[id]; ok && now.Sub(last) < receiptEvery {
+		return false
+	}
+	for k, last := range s.receiptReads {
+		if now.Sub(last) >= receiptEvery {
+			delete(s.receiptReads, k)
+		}
+	}
+	s.receiptReads[id] = now
+	return true
 }
 
 func (s *Service) client(chainID uint64) (*ethclient.Client, error) {

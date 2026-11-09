@@ -56,13 +56,19 @@ var (
 	userTokens      = crypto.Keccak256([]byte("userTokens(address)"))[:4]
 )
 
-// CheckGas fails unless the executor holds MinGas at the chain's current fee cap. A failed read tries the next
-// client; a shortfall stops the check, since the signer sends through the first.
+// CheckGas alerts unless the executor holds MinGas at the chain's current fee cap. A shortfall is not a setup mistake
+// (D-71): the signer starts, so other chains settle and its rounds can buy gas. It fails when no client can read the
+// gas, or the chain has no fee ceiling. A failed read tries the next client; a shortfall stops the check, since the
+// signer sends through the first.
 func CheckGas(ctx context.Context, chainID uint64, executor common.Address, clients ...*ethclient.Client) error {
 	var err error
 	for _, client := range clients {
-		if err = checkGas(ctx, client, chainID, executor, 1); err == nil || errors.Is(err, errFundIt) {
-			return err
+		if err = checkGas(ctx, client, chainID, executor, 1); errors.Is(err, errFundIt) {
+			slog.Error("ALERT executor gas runs low", "chain", chainID, "err", err.Error())
+			return nil
+		}
+		if err == nil {
+			return nil
 		}
 	}
 	return err

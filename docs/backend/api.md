@@ -183,16 +183,22 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   - `POST .../crosschain/quotes` (R-231, R-233): a quote with a deposit address, kept in `crosschain_quotes`.
     - It is `EXACT_OUTPUT` to the Base option's receive address, refunds go to the payer's `refundTo`.
     - Its deadline is the earlier of an hour and 10 minutes before the close; its price shows for 15 minutes (D-125).
+      - A slow chain's (`intents.SlowChains`) is two hours. Its token is listed only while that leaves 90 minutes.
     - It is kept only when 1Click's signature and the signed fields check out (D-124); otherwise 503
       `provider_unavailable`, and an `ALERT` is logged.
     - The same token, refund address and amount get the open quote back while 5 minutes of its window are left.
     - Twenty quotes an invoice an hour (429 `too_many_quotes`); a quote 1Click is converting makes it 409 `pick_locked`.
+      - So does a short deposit 1Click holds (`INCOMPLETE_DEPOSIT`): the rest may still convert it.
     - A route's minimum above the amount is 422 `below_minimum`, whose error also carries `minimum`.
     - It keeps the Base option as the payer's pick (R-57).
   - The worker reads each quote's 1Click status (R-234, `invoice/crosschain_track.go`).
-    - Every 10 s while converting, 30 s in its price window, then 2 minutes until an hour past its deadline.
-    - A seen deposit is read until it ends, past its deadline too. A read that keeps failing stops when the quote
-      would have.
+    - Every 10 s while converting, 30 s in its price window, then 5 minutes until an hour past its deadline.
+    - Then every 30 minutes until 1Click's own address deadline, `quote.deadline` in the signed answer (`address_deadline`).
+    - A seen deposit is read until it ends, past its deadline too, every 2 minutes.
+    - A failed read is tried again a minute later, and hourly once the quote would have ended: only an answer ends it.
+    - An unpaid quote still unread a week past its address deadline stops, with an `ALERT`: 1Click refunded any deposit.
+      - A status 1Click names that the code doesn't know logs an `ALERT` at each read.
+    - A round reads up to 64 quotes, 8 at once, each answer within 5 s; deposits 1Click saw go first.
     - After a conversion, every 2 minutes for an hour: 1Click refunds the unused slippage afterwards.
     - History: `crosschain.deposit_seen`, `crosschain.converted`, `crosschain.refunded`, `crosschain.failed`.
       - Each once. Its `txHash` is a Base transaction; the payer's chain's own is in `crossChain`.
@@ -481,8 +487,14 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
 - Opening plus changes equals closing; receiver equals merchant payable plus payer-held funds.
 - Each asset row counts pending, unbooked, exceptional and other-asset movements, and the chain's finalized block.
 - `checkpointBalance` and `checkpointDifference` are null: the scan keeps no balance per receiver (D-116).
-- `unprovedDeposits` is 0 and every receiver counts as verified.
-  - The chain's scan reads each address's deposits from its creation until 30 days after its settle deadline.
+  - The report sums the ledger. It compares no chain balance itself.
+- `verifiedReceivers` counts receivers with nothing unbooked, no balance alert and no negative balance.
+  - The others are `unreconciledReceivers`; the two add up to `receiverCount`.
+- `unprovedDeposits` counts receivers whose finalized balance holds more than every recorded deposit.
+  - That is a deposit the scan missed, until `ops deposit` records it.
+  - A payment's option `coverage.unprovedDeposits` is 1 in the same case.
+- The chain's scan reads each address's deposits from its creation until 30 days after its settle deadline.
+  - A payment's option `coverage.historyComplete` is false after that: later deposits are not read.
   - It reads the receiver's own events for as long as the receiver holds booked money.
 - Missing source evidence stays explicit; financial journals and immutable source records remain independently inspectable.
 - Every operation uses one repeatable-read database snapshot; CSV snapshot headers identify its cutoff.
@@ -500,7 +512,8 @@ R-140, R-163, D-54, D-94; openapi.yaml owns the schema. Members use `invoices.re
 - `GET /v1/profiles/{profileId}/links` lists newest first; scoped members see only their stores.
   - It reads one page: `limit` (1–100, default 50) and `cursor`, and `nextCursor` continues it.
   - `paid` counts canonically paid purchases, including settled purchases.
-  - `reserved` counts canonical open, detected and partly paid purchases.
+  - `reserved` counts canonical detected and partly paid purchases.
+  - It also counts open ones with a deposit seen or under 15 minutes old ([capacity](money-safety.md#reusable-link-capacity)).
   - `ready` requires billing details, a wallet and an accepted watched token in the link's mode.
 - `GET /v1/profiles/{profileId}/links/{linkId}` reads one; another profile's or inaccessible store's link returns 404 `link_not_found`.
 - `PUT /v1/profiles/{profileId}/links/{linkId}` saves a caller-chosen lowercase UUID: 201 on creation, otherwise 200.
@@ -528,7 +541,9 @@ R-140, R-163, D-54, D-94; openapi.yaml owns the schema. Members use `invoices.re
   - New closed requests return `link_off`, `link_ended`, `link_full` or `link_not_ready`, without creating anything.
   - Checkout keeps the link's store, mode, title, accepted tokens and store close default; no invoice number is allocated.
 - Creation reserves capacity transactionally; rejected reservations spend no shared creation budget.
-- Canonical expiry releases unused reservations; elapsed wall time alone does not release an unresolved payment.
+- Canonical expiry releases unused reservations.
+  - An open purchase with no deposit seen also releases its slot 15 minutes after creation; its checkout stays open.
+  - Elapsed wall time alone does not release a purchase with a deposit seen.
 - Reopening a legacy partly paid purchase also reserves capacity; unavailable capacity returns 409 `link_full`.
 - Deploy backend and migration before frontend; old clients remain accepted without optional quote fields.
 - Legacy requests preserve hashes and documents; supplied amounts must match original terms.
@@ -634,6 +649,9 @@ R-148, D-98. `cmd/webhooks` sends each delivery as a `POST` of the event's body,
   - That covers this machine, private networks, link-local and cloud metadata addresses, and a name that rebinds to one.
 - A failure retries after 5 s, 5 min, 30 min, 2 h and 5 h, then every 10 h: 12 attempts in about 3 days.
   - Every retry sends the body built for the first attempt, signed again with its own timestamp.
+  - A request Forwend can't prepare is a failed attempt with no status code, such as an event body it can't build.
+    - It follows the retry schedule, but its last failure doesn't turn the endpoint off: the endpoint isn't to blame.
+    - So it never holds its endpoint's queue for good.
 - A `410`, or a delivery's last failure, turns the endpoint off (`enabled` false).
   - The profile owner gets one email naming the endpoint's host, whatever the profile's email setting.
   - Its waiting deliveries go out once the owner turns it on again; events from while it was off are not sent to it.
@@ -797,6 +815,9 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - An invoice without a store is never framed. An unknown token is 404; the store's origins are never listed.
 - Cross-chain (D-123), per invoice in `invoiceapi/crosschain.go`: tokens 10 at once, then one every 2 s; prices 20
   at once, then one a second; quotes 5 at once, then one every 10 s, apart from the 20 an hour kept in Postgres.
+  - Anyone can make pay tokens from a public link, so all invoices also share a budget of 1Click calls.
+  - Prices 20 at once, then one a second; new quotes 10 at once, then one every 5 s.
+  - It is spent only when 1Click is asked: a kept price or quote costs nothing.
 - `POST /v1/invoices/{payToken}/views` (R-125) counts one pay page load and answers 204.
   - The page sends it once per load, not with each status refresh.
   - The pay page links on the owner's invoice and payment pages add `?preview=1`; the page then sends none (R-125).
@@ -1176,6 +1197,7 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
   - `sent` once it does: the transfer is in a block. `final` once that transfer is confirmed and can't change.
   - A reorged transfer goes back to `sending`; it is `sent` again when the transaction is mined again.
   - `failed` `reverted`: the receipt has no such transfer.
+  - The chain is asked for a send's receipt from 15 s after submit, at most once every 5 s per api process.
   - `failed` `dropped`: no receipt 30 minutes after submit, and the node no longer knows the transaction.
     A dropped send that is mined later becomes `sent`.
   - `expired`: never approved within 10 minutes, or approved and never reported once the hold ended.

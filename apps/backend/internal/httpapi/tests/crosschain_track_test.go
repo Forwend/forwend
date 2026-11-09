@@ -1,9 +1,13 @@
 package tests
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -226,14 +230,19 @@ func TestWorkerStopsAQuoteNobodyPaidAndRecordsAFailure(t *testing.T) {
 	id := quote["quoteId"].(string)
 	shown, _ := time.Parse(time.RFC3339, quote["shownUntil"].(string))
 	deadline, _ := time.Parse(time.RFC3339, quote["deadline"].(string))
-	// After the price window every 2 minutes, still 30 minutes past the deadline, then none from an hour past it.
+	// After the price window every 5 minutes, still 30 minutes past the deadline; every 30 minutes from an hour past
+	// it, while 1Click's address takes deposits (72 hours at the fake); then none.
 	for _, at := range []time.Time{shown.Add(time.Second), deadline.Add(30 * time.Minute)} {
-		if next := checkAt(t, e, worker, id, at); next == nil || next.Sub(at) != 2*time.Minute {
+		if next := checkAt(t, e, worker, id, at); next == nil || next.Sub(at) != 5*time.Minute {
 			t.Fatalf("at %s: next %v", at, next)
 		}
 	}
-	if next := checkAt(t, e, worker, id, deadline.Add(time.Hour+time.Second)); next != nil {
+	at := deadline.Add(time.Hour + time.Second)
+	if next := checkAt(t, e, worker, id, at); next == nil || next.Sub(at) != 30*time.Minute {
 		t.Fatalf("an hour past the deadline: next %v", next)
+	}
+	if next := checkAt(t, e, worker, id, deadline.Add(73*time.Hour)); next != nil {
+		t.Fatalf("past the address's deadline: next %v", next)
 	}
 
 	// Another invoice whose swap fails: one history row, and the worker stops.
@@ -251,16 +260,135 @@ func TestWorkerStopsAQuoteNobodyPaidAndRecordsAFailure(t *testing.T) {
 		t.Fatalf("status %v", got)
 	}
 
-	// 1Click down: the quote is read again a minute later, until it would have ended anyway.
-	e3, fake3, worker3, _, quote3 := tracked(t)
+	// 1Click down: the quote is read again a minute later, and hourly past its end: only an answer ends it, as a
+	// deposit made meanwhile would go unseen.
+	e3, fake3, worker3, pay3, quote3 := tracked(t)
+	id3 := quote3["quoteId"].(string)
 	fake3.Down = true
 	now := time.Now()
-	if next := checkAt(t, e3, worker3, quote3["quoteId"].(string), now); next == nil || next.Sub(now) != time.Minute {
+	if next := checkAt(t, e3, worker3, id3, now); next == nil || next.Sub(now) != time.Minute {
 		t.Fatalf("down: next %v", next)
 	}
 	deadline3, _ := time.Parse(time.RFC3339, quote3["deadline"].(string))
-	if next := checkAt(t, e3, worker3, quote3["quoteId"].(string), deadline3.Add(time.Hour+time.Second)); next != nil {
+	at = deadline3.Add(73 * time.Hour)
+	if next := checkAt(t, e3, worker3, id3, at); next == nil || next.Sub(at) != time.Hour {
 		t.Fatalf("down past the end: next %v", next)
+	}
+	// A quote 1Click never answers about, with no deposit seen, is not read for ever.
+	e4, fake4, worker4, _, quote4 := tracked(t)
+	fake4.Down = true
+	deadline4, _ := time.Parse(time.RFC3339, quote4["deadline"].(string))
+	if next := checkAt(t, e4, worker4, quote4["quoteId"].(string), deadline4.Add(72*time.Hour+8*24*time.Hour)); next != nil {
+		t.Fatalf("unread a week past the address deadline: next %v", next)
+	}
+	fake3.Down = false
+	fake3.SetStatus(quote3["depositAddress"].(string), intents.Failed, map[string]any{"depositedAmount": "101120000",
+		"originChainTxHashes": []any{}, "destinationChainTxHashes": []any{}, "refundedAmount": "0"})
+	if next := checkAt(t, e3, worker3, id3, at.Add(time.Hour)); next != nil {
+		t.Fatalf("failed after the outage: next %v", next)
+	}
+	if kinds := historyKinds(t, e3, pay3); kinds["crosschain.failed"] == nil || kinds["crosschain.deposit_seen"] == nil {
+		t.Fatalf("history after the outage %v", kinds)
+	}
+}
+
+// 1Click's address takes deposits until its own deadline, days past the one the quote asked for: a slow deposit that
+// arrives hours later is still followed.
+func TestWorkerFollowsADepositMadeAfterTheDeadline(t *testing.T) {
+	e, fake, worker, pay, quote := tracked(t)
+	id, address := quote["quoteId"].(string), quote["depositAddress"].(string)
+	deadline, _ := time.Parse(time.RFC3339, quote["deadline"].(string))
+	at := deadline.Add(3 * time.Hour)
+	if next := checkAt(t, e, worker, id, at); next == nil || next.Sub(at) != 30*time.Minute {
+		t.Fatalf("3 hours past the deadline: next %v", next)
+	}
+	fake.SetStatus(address, intents.Processing, map[string]any{"depositedAmount": "101120000",
+		"originChainTxHashes": []any{}, "destinationChainTxHashes": []any{}})
+	at = at.Add(30 * time.Minute)
+	if next := checkAt(t, e, worker, id, at); next == nil || next.Sub(at) != 10*time.Second {
+		t.Fatalf("converting: next %v", next)
+	}
+	if historyKinds(t, e, pay)["crosschain.deposit_seen"] == nil {
+		t.Fatal("the late deposit has no history")
+	}
+}
+
+// A status this code doesn't know may hold a payer's deposit: it alerts, and the quote is read on past its end.
+func TestWorkerAlertsOnAStatusItDoesNotKnow(t *testing.T) {
+	e, fake, worker, _, quote := tracked(t)
+	id := quote["quoteId"].(string)
+	deadline, _ := time.Parse(time.RFC3339, quote["deadline"].(string))
+	fake.SetStatus(quote["depositAddress"].(string), "PENDING_REFUND", map[string]any{"depositedAmount": "101120000",
+		"originChainTxHashes": []any{}, "destinationChainTxHashes": []any{}})
+	var logs bytes.Buffer
+	defer slog.SetDefault(slog.Default())
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	at := deadline.Add(73 * time.Hour)
+	if next := checkAt(t, e, worker, id, at); next == nil || next.Sub(at) != time.Hour {
+		t.Fatalf("unknown status past the end: next %v", next)
+	}
+	if !strings.Contains(logs.String(), "ALERT cross-chain status unknown") || !strings.Contains(logs.String(), id) {
+		t.Fatalf("logs lack the alert:\n%s", logs.String())
+	}
+}
+
+// 1Click holds a short deposit until the deadline, and the rest sent to its address may still convert it: until it
+// ends, the invoice waits as for a deposit it converts.
+func TestAShortDepositHoldsTheInvoice(t *testing.T) {
+	e, fake, worker, pay, quote := tracked(t)
+	fake.SetStatus(quote["depositAddress"].(string), intents.IncompleteDeposit, map[string]any{"depositedAmount": "99000000",
+		"originChainTxHashes": []any{}, "destinationChainTxHashes": []any{}})
+	checkAt(t, e, worker, quote["quoteId"].(string), time.Now())
+	if r := e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "`+refundTo+`"}`); r.status != http.StatusConflict ||
+		errorCode(r) != "pick_locked" {
+		t.Fatalf("a new quote beside a short deposit: %d %v", r.status, r.body)
+	}
+	main := e.get(t, pay).body["invoiceId"].(string)
+	if r := e.call(t, "POST", "/v1/profiles/"+e.aliceProfile+"/invoices/"+main+"/cancel", "did:privy:alice", "", ""); r.status == http.StatusOK {
+		t.Fatalf("canceled beside a short deposit: %v", r.body)
+	}
+}
+
+// One round reads the deposits 1Click saw first, then the rest, many at once: a slow 1Click or many idle quotes
+// can't delay a payer's conversion.
+func TestOneRoundReadsDepositsFirstAndManyAtOnce(t *testing.T) {
+	e, _ := crossChainEnv(t)
+	pay, options := liveInvoice(t, e, "key-1", 86400)
+	slow := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(100 * time.Millisecond)
+		status := intents.PendingDeposit
+		if r.URL.Query().Get("depositAddress") == "converting" {
+			status = intents.Processing
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"status": status, "swapDetails": map[string]any{}})
+	}))
+	t.Cleanup(slow.Close)
+	worker := invoice.NewService(e.pool)
+	worker.SetCrossChain(intents.NewClient(slow.URL, "", true))
+	// 70 idle quotes due, and one converting that is due last.
+	e.exec(t, `INSERT INTO crosschain_quotes (invoice_id, option_id, origin_asset, refund_to, deposit_address, amount_in,
+		    min_amount_in, amount_out, time_estimate, shown_until, deadline, signed, status, next_check_at)
+		SELECT $1, $2, 'x', 'x', a, 1, 1, 1, 0, now() + interval '15 minutes', now() + interval '1 hour', '{}', s, d
+		FROM (SELECT 'idle-' || n, 'PENDING_DEPOSIT', now() - interval '1 hour' + n * interval '1 second'
+		      FROM generate_series(1, 70) n
+		      UNION ALL SELECT 'converting', 'PROCESSING', now()) q (a, s, d)`,
+		e.get(t, pay).body["invoiceId"], options[intents.BaseChainID]["optionId"])
+	start := time.Now()
+	if err := worker.TrackCrossChain(context.Background(), start); err != nil {
+		t.Fatal(err)
+	}
+	if took := time.Since(start); took > 3*time.Second {
+		t.Fatalf("a round of 100 ms answers took %s", took)
+	}
+	var converting *time.Time
+	var due int
+	if err := e.pool.QueryRow(context.Background(), `SELECT (SELECT next_check_at FROM crosschain_quotes
+		    WHERE deposit_address = 'converting'), (SELECT count(*) FROM crosschain_quotes WHERE next_check_at <= $1)`,
+		start).Scan(&converting, &due); err != nil {
+		t.Fatal(err)
+	}
+	if converting == nil || !converting.After(start) || due != 71-64 {
+		t.Fatalf("converting next %v, still due %d", converting, due)
 	}
 }
 

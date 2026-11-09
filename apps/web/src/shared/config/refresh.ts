@@ -6,3 +6,6 @@ export const LIVE_QUERY = {
   skipPollingIfUnfocused: true,
   refetchOnFocus: true,
 } as const;
+
+/** For a read that checks every payment of a profile, such as the Payments Issues view. */
+export const SLOW_LIVE_QUERY = { ...LIVE_QUERY, pollingInterval: 60_000 } as const;

@@ -2664,7 +2664,8 @@ paths:
       description: |
         R-232. A dry 1Click quote for exactly what is due on the Base USDC option: what the payer would send, the
         least 1Click converts, and the time. quoteId, depositAddress, refundTo, shownUntil, deadline, createdAt and
-        signed are null. Kept 30 seconds per token and amount. Limited per invoice, apart from quotes.
+        signed are null. Kept 30 seconds per token and amount. Limited per invoice, apart from quotes, and by a
+        budget all invoices share, spent only when 1Click is asked (429 rate_limited).
       security: []
       parameters:
         - name: payToken
@@ -2694,11 +2695,14 @@ paths:
       description: |
         R-231, R-233, D-124, D-125. A 1Click EXACT_OUTPUT quote: exactly what is due arrives as USDC at the Base
         option's receive address, and 1Click returns extra, short or failed money to refundTo, the payer's address on
-        the token's chain. Its deadline is the earlier of an hour and 10 minutes before the close; the page holds its
-        price until shownUntil (15 minutes). The api keeps it only when 1Click's signature and these fields check
-        out, and the pay page checks signed again before it shows depositAddress. The same token and refund address
-        get the open quote back while 5 minutes of its window are left (201 again). It keeps the Base option as the
-        payer's pick. An invoice gets 20 quotes an hour (429 too_many_quotes); one 1Click is converting is 409.
+        the token's chain. Its deadline is the earlier of an hour (two for a slow chain such as Bitcoin) and 10
+        minutes before the close; the page holds its price until shownUntil (15 minutes). The api keeps it only when
+        1Click's signature and these fields check out, and the pay page checks signed again before it shows
+        depositAddress. The same token and refund address get the open quote back while 5 minutes of its window are
+        left (201 again). It keeps
+        the Base option as the payer's pick. An invoice gets 20 quotes an hour (429 too_many_quotes), and all
+        invoices share a budget of new quotes (429 rate_limited). A deposit 1Click converts, or a short one it holds,
+        is 409 pick_locked.
       security: []
       parameters:
         - name: payToken
@@ -4195,7 +4199,7 @@ components:
       type: "object"
       required: ["historyComplete", "verifiedBlock", "verifiedHash", "verifiedTime", "observedBalance", "balanceDifference", "reconciliationError", "bookingError", "retryAt", "updatedAt", "chainFinalizedBlock", "pendingDeposits", "unbookedDeposits", "unprovedDeposits", "unbookedOutflows"]
       properties:
-        historyComplete: { type: "boolean" }
+        historyComplete: { type: "boolean", description: "False once the scan no longer reads the address's deposits: 30 days after its settle deadline." }
         verifiedBlock:
           anyOf:
             - type: "integer"
@@ -4235,7 +4239,7 @@ components:
             - type: "null"
         pendingDeposits: { type: "integer" }
         unbookedDeposits: { type: "integer" }
-        unprovedDeposits: { type: "integer" }
+        unprovedDeposits: { type: "integer", description: "1 while the finalized balance holds more than every recorded deposit: a deposit the scan missed." }
         unbookedOutflows: { type: "integer" }
     PaymentSettlement:
       type: "object"
@@ -4504,11 +4508,11 @@ components:
             - type: "string"
             - type: "null"
         receiverCount: { type: "integer" }
-        verifiedReceivers: { type: "integer" }
-        unreconciledReceivers: { type: "integer" }
+        verifiedReceivers: { type: "integer", description: "Receivers with nothing unbooked, no balance alert and no negative balance." }
+        unreconciledReceivers: { type: "integer", description: "The other receivers: verifiedReceivers plus these is receiverCount." }
         pendingDeposits: { type: "integer" }
         unbookedDeposits: { type: "integer" }
-        unprovedDeposits: { type: "integer" }
+        unprovedDeposits: { type: "integer", description: "Receivers whose finalized balance holds more than every recorded deposit: a deposit the scan missed." }
         unbookedOutflows: { type: "integer" }
         otherAssetMovements: { type: "integer" }
         policyExceptions: { type: "integer" }
@@ -4824,7 +4828,7 @@ components:
         visits: { type: integer, description: Times the link's page was opened. }
         paid: { type: integer, description: Successful purchases, independent of settlement. }
         ready: { type: boolean, description: Billing details, wallet and accepted tokens are ready in this store and mode. }
-        reserved: { type: integer, description: Open attempts awaiting canonical payment or expiration. }
+        reserved: { type: integer, description: "Unpaid attempts holding a slot: detected or partly paid, or open with a deposit seen or for 15 minutes from creation." }
         livemode: { type: boolean, description: "The link's permanent mode; a key reaches only links of its mode (D-87)." }
         feesPaidBy: { type: [string, "null"], enum: [owner, client, null], description: "Null: the profile's choice." }
         createdAt: { type: string, format: date-time }
@@ -6052,8 +6056,8 @@ components:
                 actor system is Forwend. optionId names the option chosen, or the one money is held on, when the payer
                 chooses; amount is the base units held, in that option's token, else the shown option's; txHash is the
                 settle transaction; step is a reminder email's step; field is the edited field, and from and to
-                an edited due date's old and new value. On invoice.return_queued, amount is the return and to its
-                destination. related is the other invoice of a Revise: on invoice.replaced
+                an edited due date's old and new value. On invoice.return_queued, amount is the return, to its
+                destination and txHash the payment it returns. related is the other invoice of a Revise: on invoice.replaced
                 the new one, on the new one's invoice.created the old one.
               items:
                 type: object
@@ -6675,7 +6679,9 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
     TooManyQuotes:
-      description: Twenty quotes for this invoice in the last hour (too_many_quotes), or too many requests (rate_limited)
+      description: |
+        Twenty quotes for this invoice in the last hour (too_many_quotes), or too many requests for it or for all
+        invoices (rate_limited)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

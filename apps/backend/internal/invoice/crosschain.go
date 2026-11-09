@@ -24,6 +24,10 @@ const (
 	crossChainDeadline    = time.Hour
 	crossChainBeforeClose = 10 * time.Minute
 	crossChainShown       = 15 * time.Minute
+	// A slow chain's deposit can take an hour to mine (intents.SlowChains): its deadline is crossChainSlowDeadline,
+	// bounded by the close the same way, and a token is offered only while that leaves crossChainSlowLeast.
+	crossChainSlowDeadline = 2 * time.Hour
+	crossChainSlowLeast    = 90 * time.Minute
 	// An open quote is given again while at least crossChainReuse of its price window is left.
 	crossChainReuse = 5 * time.Minute
 	// CrossChainPerHour bounds one invoice's quotes, as each one is a 1Click call and a deposit address.
@@ -137,18 +141,18 @@ func (s *Service) CrossChainTokens(ctx context.Context, payToken string) (due *b
 		return nil, 0, nil, err
 	}
 	for _, t := range list {
-		if !t.NoLiquidity && offered(t, target.invoice.Options) {
+		if !t.NoLiquidity && offered(t, target, s.currentTime()) {
 			tokens = append(tokens, CrossToken{Token: t, Estimate: estimate(target.due, target.option.Decimals, t)})
 		}
 	}
 	return target.due, target.option.Decimals, tokens, nil
 }
 
-func offered(t intents.Token, direct []Option) bool {
-	if intents.MemoChains[t.Blockchain] || t.USD == "" {
+func offered(t intents.Token, target crossTarget, now time.Time) bool {
+	if _, fits := crossDeadline(t, target.option.ClosesAt, now); intents.MemoChains[t.Blockchain] || t.USD == "" || !fits {
 		return false
 	}
-	return !slices.ContainsFunc(direct, func(o Option) bool {
+	return !slices.ContainsFunc(target.invoice.Options, func(o Option) bool {
 		return intents.Chains[o.ChainID] == t.Blockchain && o.Token == t.Contract
 	}) && t.AssetID != intents.BaseUSDCAsset
 }
@@ -170,6 +174,17 @@ func estimate(due *big.Int, decimals int, t intents.Token) *big.Int {
 	return q
 }
 
+// crossDeadline is the deadline a quote for t asks for: the earlier of its chain's wait and crossChainBeforeClose
+// before the close. fits is false when a slow chain's would leave its deposit too little time.
+func crossDeadline(t intents.Token, closes, now time.Time) (deadline time.Time, fits bool) {
+	wait, least := crossChainDeadline, time.Duration(0)
+	if intents.SlowChains[t.Blockchain] {
+		wait, least = crossChainSlowDeadline, crossChainSlowLeast
+	}
+	deadline = earlier(now.Add(wait), closes.Add(-crossChainBeforeClose)).Truncate(time.Second)
+	return deadline, deadline.Sub(now) >= least
+}
+
 func earlier(a, b time.Time) time.Time {
 	if b.Before(a) {
 		return b
@@ -183,8 +198,10 @@ func pow10(n int) *big.Int { return new(big.Int).Exp(big.NewInt(10), big.NewInt(
 var refundAddress = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,200}$`)
 
 // QuoteCrossChain asks 1Click for a quote that pays exactly the amount due into the Base option (R-231). A real
-// quote is kept, given again while its window lasts (R-233), and keeps the Base option as the payer's pick.
-func (s *Service) QuoteCrossChain(ctx context.Context, payToken, origin, refundTo string, dry bool) (CrossQuote, error) {
+// quote is kept, given again while its window lasts (R-233), and keeps the Base option as the payer's pick. allow
+// spends from the budget all invoices share, only when 1Click is called; a wait over 0 refuses with *TooSoonError.
+func (s *Service) QuoteCrossChain(ctx context.Context, payToken, origin, refundTo string, dry bool,
+	allow func() time.Duration) (CrossQuote, error) {
 	now := s.currentTime()
 	target, err := s.crossTarget(ctx, payToken, now)
 	if err != nil {
@@ -195,27 +212,30 @@ func (s *Service) QuoteCrossChain(ctx context.Context, payToken, origin, refundT
 		return CrossQuote{}, err
 	}
 	i := slices.IndexFunc(list, func(t intents.Token) bool { return t.AssetID == origin })
-	if i < 0 || !offered(list[i], target.invoice.Options) {
+	if i < 0 || !offered(list[i], target, now) {
 		return CrossQuote{}, fmt.Errorf("%w: originAsset: not a token this invoice can be paid with from another chain", ErrInvalid)
 	}
 	token := list[i]
 	if !dry && !refundAddress.MatchString(refundTo) {
 		return CrossQuote{}, fmt.Errorf("%w: refundTo: an address on the token's chain", ErrInvalid)
 	}
-	deadline := earlier(now.Add(crossChainDeadline), target.option.ClosesAt.Add(-crossChainBeforeClose)).Truncate(time.Second)
+	deadline, _ := crossDeadline(token, target.option.ClosesAt, now)
 	ask := intents.Ask{Origin: origin, Amount: target.due, Recipient: target.option.ReceiveAddress, RefundTo: refundTo,
 		Deadline: deadline}
 	if dry {
-		return s.dryQuote(ctx, ask, token, now)
+		return s.dryQuote(ctx, ask, token, now, allow)
 	}
-	// ponytail: the reuse and the hourly limit read, then insert, without a lock, so two requests at once can make one
-	// quote more; the per-invoice request limit keeps that small.
+	// ponytail: the reuse and the limits read, then insert, without a lock, so two requests at the same moment can make
+	// one quote more, also for two refund addresses; the per-invoice request limit keeps that small.
 	q, err := s.openQuote(ctx, target, token, refundTo, now)
 	if err != nil {
 		return CrossQuote{}, err
 	}
 	if q.ID != "" {
 		return q, s.pickBase(ctx, payToken, target)
+	}
+	if wait := allow(); wait > 0 {
+		return CrossQuote{}, &TooSoonError{Wait: wait}
 	}
 	quote, err := s.crossChain.Quote(ctx, ask, false)
 	if err != nil {
@@ -226,11 +246,11 @@ func (s *Service) QuoteCrossChain(ctx context.Context, payToken, origin, refundT
 	q.ShownUntil = earlier(now.Add(crossChainShown), deadline.Add(-5*time.Minute))
 	if err := s.pool.QueryRow(ctx, `INSERT INTO crosschain_quotes (invoice_id, option_id, origin_asset, refund_to,
 		    deposit_address, amount_in, min_amount_in, amount_out, time_estimate, shown_until, deadline, signed, created_at,
-		    origin_blockchain, origin_symbol, origin_decimals)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`, target.invoice.ID,
+		    origin_blockchain, origin_symbol, origin_decimals, address_deadline)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id`, target.invoice.ID,
 		target.option.ID, origin, refundTo, q.DepositAddress, q.AmountIn.String(), q.MinAmountIn.String(),
 		q.AmountOut.String(), q.TimeEstimate, q.ShownUntil, q.Deadline, string(q.Signed), now, token.Blockchain,
-		token.Symbol, token.Decimals).Scan(&q.ID); err != nil {
+		token.Symbol, token.Decimals, quote.AddressDeadline).Scan(&q.ID); err != nil {
 		return CrossQuote{}, fmt.Errorf("save cross-chain quote for %s: %w", target.invoice.ID, err)
 	}
 	q.CreatedAt = now
@@ -332,7 +352,8 @@ type dryQuotes struct {
 	until map[string]time.Time
 }
 
-func (s *Service) dryQuote(ctx context.Context, ask intents.Ask, token intents.Token, now time.Time) (CrossQuote, error) {
+func (s *Service) dryQuote(ctx context.Context, ask intents.Ask, token intents.Token, now time.Time,
+	allow func() time.Duration) (CrossQuote, error) {
 	key := ask.Origin + "|" + ask.Recipient + "|" + ask.Amount.String()
 	s.dry.mu.Lock()
 	if q, ok := s.dry.kept[key]; ok && now.Before(s.dry.until[key]) {
@@ -340,6 +361,9 @@ func (s *Service) dryQuote(ctx context.Context, ask intents.Ask, token intents.T
 		return q, nil
 	}
 	s.dry.mu.Unlock()
+	if wait := allow(); wait > 0 {
+		return CrossQuote{}, &TooSoonError{Wait: wait}
+	}
 	quote, err := s.crossChain.Quote(ctx, ask, true)
 	if err != nil {
 		s.learnMinimum(ctx, ask.Origin, err, now)

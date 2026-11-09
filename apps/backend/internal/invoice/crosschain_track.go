@@ -3,11 +3,13 @@ package invoice
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math/big"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/history"
@@ -16,25 +18,35 @@ import (
 )
 
 // How often the worker reads a quote's status (R-234): often while 1Click converts a deposit, less while it waits for
-// one, rarely after the price window, and not at all once it ended or an hour past its deadline.
+// one, rarely after the price window, seldom once its deadline is an hour past, and not at all once it ended or its
+// address no longer takes deposits.
 const (
 	trackConverting = 10 * time.Second
 	trackWaiting    = 30 * time.Second
 	trackLate       = 2 * time.Minute
+	trackIdle       = 5 * time.Minute
 	trackAfter      = time.Hour // past the deadline, or past the conversion for a late refund of the extra
+	trackCold       = 30 * time.Minute
 	trackRetry      = time.Minute
-	// ponytail: one quote at a time, trackBatch a round; read them in parallel when more convert at once.
-	trackBatch = 20
+	// An unpaid quote 1Click can't be read about stops a week past its address deadline: by then 1Click has refunded
+	// any deposit, and an address it never knew (404) would otherwise be read for ever.
+	trackGiveUp = 7 * 24 * time.Hour
+	// ponytail: one worker reads trackBatch a round, trackReaders at once, each answer within trackTimeout: about
+	// 25 reads a second. Deposits 1Click saw go first, so idle quotes only wait on each other. Shard rounds when more.
+	trackBatch   = 64
+	trackReaders = 8
+	trackTimeout = 5 * time.Second
 )
 
 // ConvertingSQL is true while 1Click converts a deposit for invoice $1 or delivered it: the USDC is on its way to the
-// Base option, so the pick, an edit and a cancel wait as for money seen (R-233).
+// Base option, so the pick, an edit and a cancel wait as for money seen (R-233). A short deposit counts too: 1Click
+// holds it until the deadline, and the rest sent to its address may still convert it (Q-19).
 const ConvertingSQL = `EXISTS (SELECT 1 FROM crosschain_quotes c WHERE c.invoice_id = $1
-	AND c.status IN ('KNOWN_DEPOSIT_TX', 'PROCESSING', 'SUCCESS'))`
+	AND c.status IN ('KNOWN_DEPOSIT_TX', 'INCOMPLETE_DEPOSIT', 'PROCESSING', 'SUCCESS'))`
 
 type trackedQuote struct {
 	id, invoiceID, optionID, origin, address, status string
-	shownUntil, deadline                             time.Time
+	shownUntil, deadline, addressDeadline            time.Time
 	depositSeenAt, convertedAt                       *time.Time
 	refunded                                         *big.Int
 }
@@ -46,8 +58,9 @@ func (s *Service) TrackCrossChain(ctx context.Context, now time.Time) error {
 		return nil
 	}
 	rows, err := s.pool.Query(ctx, `SELECT id, invoice_id, option_id, origin_asset, deposit_address, status, shown_until,
-		    deadline, deposit_seen_at, converted_at, coalesce(refunded_amount, 0)::text
-		FROM crosschain_quotes WHERE next_check_at <= $1 ORDER BY next_check_at LIMIT $2`, now, trackBatch)
+		    deadline, coalesce(address_deadline, deadline), deposit_seen_at, converted_at, coalesce(refunded_amount, 0)::text
+		FROM crosschain_quotes WHERE next_check_at <= $1
+		ORDER BY status = 'PENDING_DEPOSIT', next_check_at LIMIT $2`, now, trackBatch)
 	if err != nil {
 		return fmt.Errorf("read cross-chain quotes to check: %w", err)
 	}
@@ -55,32 +68,60 @@ func (s *Service) TrackCrossChain(ctx context.Context, now time.Time) error {
 		var q trackedQuote
 		var refunded string
 		err := row.Scan(&q.id, &q.invoiceID, &q.optionID, &q.origin, &q.address, &q.status, &q.shownUntil, &q.deadline,
-			&q.depositSeenAt, &q.convertedAt, &refunded)
+			&q.addressDeadline, &q.depositSeenAt, &q.convertedAt, &refunded)
 		q.refunded, _ = new(big.Int).SetString(refunded, 10)
 		return q, err
 	})
 	if err != nil {
 		return fmt.Errorf("read cross-chain quotes to check: %w", err)
 	}
-	for _, q := range quotes {
-		status, err := s.crossChain.Status(ctx, q.address)
-		if err != nil {
-			slog.Warn("read cross-chain status", "quote", q.id, "err", err)
-			// A read that keeps failing ends when the quote would have: an answer 1Click never gives can't hold a slot.
-			var next *time.Time
-			if nextCheck(q, q.status, q.convertedAt, now) != nil {
-				retry := now.Add(trackRetry)
-				next = &retry
-			}
-			if _, err := s.pool.Exec(ctx, "UPDATE crosschain_quotes SET next_check_at = $2 WHERE id = $1", q.id,
-				next); err != nil {
-				return fmt.Errorf("delay cross-chain quote %s: %w", q.id, err)
-			}
-			continue
+	errs := make([]error, len(quotes))
+	readers := make(chan struct{}, trackReaders)
+	var wg sync.WaitGroup
+	for i, q := range quotes {
+		readers <- struct{}{}
+		wg.Go(func() {
+			defer func() { <-readers }()
+			errs[i] = s.track(ctx, q, now)
+		})
+	}
+	wg.Wait()
+	return errors.Join(errs...)
+}
+
+// track reads q's status once and keeps it.
+func (s *Service) track(ctx context.Context, q trackedQuote, now time.Time) error {
+	read, cancel := context.WithTimeout(ctx, trackTimeout)
+	status, err := s.crossChain.Status(read, q.address)
+	cancel()
+	if err == nil {
+		return s.keepStatus(ctx, q, status, now)
+	}
+	if errors.Is(err, intents.ErrUnknownStatus) {
+		slog.Error("ALERT cross-chain status unknown: what happened to a deposit can't be told", "quote", q.id,
+			"invoice", q.invoiceID, "err", err)
+	} else {
+		slog.Warn("read cross-chain status", "quote", q.id, "err", err)
+	}
+	// Only an answer ends tracking: a deposit made while 1Click can't be read would otherwise go unseen.
+	var next *time.Time
+	switch at := nextCheck(q, q.status, q.convertedAt, now); {
+	case at != nil:
+		retry := now.Add(trackRetry)
+		if at.Before(retry) {
+			at = &retry
 		}
-		if err := s.keepStatus(ctx, q, status, now); err != nil {
-			return err
-		}
+		next = at
+	case q.status == intents.PendingDeposit && now.After(q.addressDeadline.Add(trackGiveUp)):
+		slog.Error("ALERT cross-chain status unread a week past the address deadline; not reading it again",
+			"quote", q.id, "invoice", q.invoiceID, "err", err)
+	case !intents.Final(q.status):
+		later := now.Add(trackAfter)
+		next = &later
+	}
+	if _, err := s.pool.Exec(ctx, "UPDATE crosschain_quotes SET next_check_at = $2 WHERE id = $1", q.id,
+		next); err != nil {
+		return fmt.Errorf("delay cross-chain quote %s: %w", q.id, err)
 	}
 	return nil
 }
@@ -161,7 +202,8 @@ func (s *Service) statusHistory(ctx context.Context, tx pgx.Tx, q trackedQuote, 
 }
 
 // nextCheck is when the worker reads the quote again, nil for never. A seen deposit is read until it ends, past its
-// deadline too: its alert then says it holds a payer's money (R-234).
+// deadline too: its alert then says it holds a payer's money (R-234). An unpaid quote is read until its address stops
+// taking deposits, days past the deadline asked for: a slow deposit still converts or is refunded.
 func nextCheck(q trackedQuote, status string, converted *time.Time, now time.Time) *time.Time {
 	at := func(d time.Duration) *time.Time { t := now.Add(d); return &t }
 	switch {
@@ -173,8 +215,12 @@ func nextCheck(q trackedQuote, status string, converted *time.Time, now time.Tim
 		return at(trackConverting)
 	case now.Before(q.shownUntil):
 		return at(trackWaiting)
-	case now.Before(q.deadline.Add(trackAfter)) || intents.DepositSeen(status):
+	case intents.DepositSeen(status):
 		return at(trackLate)
+	case now.Before(q.deadline.Add(trackAfter)):
+		return at(trackIdle)
+	case now.Before(q.addressDeadline):
+		return at(trackCold)
 	}
 	return nil
 }

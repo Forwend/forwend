@@ -13,7 +13,7 @@ import (
 
 func TestConcurrentSignersRespectTheUserCap(t *testing.T) {
 	e := setup(t)
-	e.sponsoredHistory(t, SponsoredPerDay-1, "0x0000000000000000000000000000000000000001")
+	e.sponsoredHistory(t, SponsoredPerDay-1, "0x0000000000000000000000000000000000000001", 0)
 	e.pay(t, 71)
 	const otherChain = chaintest.ChainID + 1
 	a := chaintest.StartChain(t, otherChain)

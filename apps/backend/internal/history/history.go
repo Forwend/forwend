@@ -23,7 +23,7 @@ const (
 	ReceiverSettled      = "receiver.settled"
 	CheckoutCloseChanged = "checkout.close_changed"
 	Refunded             = "invoice.refunded"
-	ReturnQueued         = "invoice.return_queued"   // support queued a return of held money; data has its amount and To
+	ReturnQueued         = "invoice.return_queued"   // support queued a return of held money; data has amount, To and TxHash
 	ReturnReleased       = "invoice.return_released" // support dropped a queued return the refund authority won't send
 	Settled              = "invoice.settled"         // data has the settle transaction's hash
 	RemindersOn          = "reminders.on"

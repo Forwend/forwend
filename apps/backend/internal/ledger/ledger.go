@@ -53,6 +53,11 @@ func Final(status string) bool {
 	return status == Paid || status == Expired || status == ExpiredPartiallyPaid || status == Canceled
 }
 
+// MayHoldMoneySQL is true for an invoice row that can still owe its creator or hold money. A settled one holds only
+// money held for the payer, which sets its refund status; an expired one took none for its creator (Final). The
+// invoices_money_* partial indexes (migration 00120) have this predicate, so a reader that adds it reads only these rows.
+const MayHoldMoneySQL = `refund_status IN ('held', 'refund_pending') OR settlement_status <> 'settled' AND payment_status <> 'expired'`
+
 // BalanceOf reads from an RPC other than the watcher's, at its finalized block, so one bad provider can't mark an
 // invoice paid (D-15, D-45). An answer from behind the watcher's finalized block can miss deposits and is not used.
 type BalanceOf func(ctx context.Context, chainID uint64, token, holder string) (balance *big.Int, block uint64, err error)

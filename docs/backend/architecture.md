@@ -41,8 +41,10 @@ Read only the sections your task touches:
     - a deposit still detected below the finalized block after 45 minutes;
     - a receiver's settle or refund the ledger hasn't booked after 30 minutes, with the reason (R-184);
     - an invoice owed in full but not paid 45 minutes after its last booking: its finalized balance check keeps failing;
-    - a paid invoice not settled within 30 minutes, or within a day of its settle deadline, until that deadline.
+    - a paid invoice not settled within 30 minutes, or within a day of its settle deadline.
       - One waiting at its user's daily settlement cap alerts only within that day.
+      - Past the deadline it keeps alerting and names the factory's refund authority: only that Safe can settle it then.
+      - Those before their deadline come first among the 20 listed: the executor can still settle them.
   - A round books money already recorded even when its own scan fails (R-184).
   - Each round checks the finalized balance of every invoice owed in full and not yet paid.
   - It also keeps the ECB's reference rates (`internal/ecb`, R-110): at start, every 6 hours, 10 minutes after a failure.
@@ -50,7 +52,8 @@ Read only the sections your task touches:
   - Only tests set `ECB_RATES_URL`: the e2e gate points the worker at a fake ECB.
   - It keeps NEAR Intents 1Click's token list in `intents_tokens` (`internal/intents`, R-232): at start, every 10
     minutes, 2 minutes after a failure. A token 1Click drops is removed. Only tests set `ONECLICK_API_URL`.
-  - On a loop of its own it reads the 1Click status of each quote due for a check, 20 a round (R-234).
+  - On a loop of its own it reads the 1Click status of each quote due for a check (R-234).
+    - Up to 64 a round, 8 at once, each answer within 5 s. Deposits 1Click saw go first.
     - It writes what changed to `crosschain_quotes` and the history; it never decides paid.
     - The alerts every 5 minutes include cross-chain payments that hold a payer's money.
   - It keeps CoinGecko's USD prices of the stablecoins for display (`internal/price`, R-178, D-115).
@@ -64,6 +67,7 @@ Read only the sections your task touches:
   Uniswap swap that buy its own gas (R-229). Refunds are never signed
   here: they will be Safe transactions the multisig owners approve (PLAN 11.10.3). Re-reads the ledger and the chain
   itself before signing, and settles at most `SponsoredPerDay` (50) invoices per user a day on the executor's gas.
+  An invoice with a network fee pays that gas itself (R-226), so it is not counted or held back.
   Writes settlement intents, the settlement ledger transaction and `settlement_status`. Every process uses one
   `DATABASE_URL` today; a separate signer database role is planned for deployment (Q-8).
 - `webhooks`: runs 16 independent delivery workers (R-148, R-175).
@@ -104,9 +108,11 @@ D-71); a chain whose RPCs don't answer is logged and skipped:
 - The signer: `EXECUTOR_PRIVATE_KEY` is a hex secp256k1 key (the error never shows it), and on every enabled chain the
   executor holds `settlement.MinGas` at the fee cap it would sign with now (twice the base fee plus the tip). `MinGas`
   is one receiver deploy (159,990 gas on Anvil) and one settle (at least `SettleGasFloor`), each plus a fifth: 342,000
-  gas, 0.001026 ETH on Anvil (1 gwei base fee and tip). Below it the node would refuse the next deploy and settle. The
-  message names the chain, the executor's address and its balance in whole coins. A read that fails on the primary is
-  retried through the endpoint pool; a shortfall stops it at once. It is a floor derived from each chain's own price, not a
+  gas, 0.001026 ETH on Anvil (1 gwei base fee and tip). Below it the node would refuse the next deploy and settle. A
+  shortfall is not a setup mistake (D-71): the signer logs `ALERT executor gas runs low` and starts. Other chains
+  settle, and its first round checks the gas again and buys some (below). The message names the chain, the executor's
+  address and its balance in whole coins. A read that fails on the primary is retried through the endpoint pool; a
+  shortfall ends the check at once. A chain with no fee ceiling stops the signer. It is a floor derived from each chain's own price, not a
   budget: Arbitrum's L1 data cost is not in it. Tempo has no native coin and its RPC reports a placeholder balance:
   where Tempo's fee manager precompile exists, the check reads the executor's fee token instead (its choice in the fee
   manager, else PathUSD) and needs ceil(fee cap × `TempoMinGas` / 10^12) of its 6-decimal units, since Tempo prices
@@ -183,7 +189,9 @@ everything) 10,000 users gave p95 2.4 ms, 0 errors and 1,333 RPC calls/s (334 wh
 60 s). What keeps it there:
 
 - RPC demand ≈ users × tokens ÷ max(15 s, how long a finalized block stays) + chains ÷ 3 s. It has to fit
-  the endpoint limits and shared weighted budget described below. These figures exclude worker and signer traffic.
+  the endpoint limits and the api's share of the weighted budget described below. These figures exclude worker and signer traffic.
+- The test sets `RPC_RATE_PER_SECOND=100000`, so the budget never slows it down.
+  - With the default of 10, the api's share is 2 calls a second.
 - `/balances` needs the `ledger_transactions_invoice` index (migration 00011): 21.5 ms without it, 0.37 ms with it.
 - `/balances` and activity deposits find a profile's invoice rows through `invoices_profile` (migration 00088).
   - With 220,000 invoices, a profile without payments read its balances in 0.05 ms, not 19 ms.
@@ -354,7 +362,9 @@ Rules:
 - **Append-only**: UPDATE, DELETE and TRUNCATE on the ledger tables raise an error. The triggers are `ENABLE ALWAYS`, so
   `session_replication_role = replica` does not skip them. The table owner can still drop them: in deployment the
   app and signer roles must not own the tables and get only `SELECT, INSERT` on the ledger.
-- Balances are `SUM` over entries. Add a stored balance with a version column when that gets slow.
+- Balances are `SUM` over entries of the invoices that can still owe or hold money (`ledger.MayHoldMoneySQL`).
+  - A partial index (`invoices_money_profile`) finds those invoices, so the read doesn't grow with settled history.
+  - Add a stored balance with a version column when that gets slow.
 
 ## Privy
 
@@ -391,10 +401,13 @@ never holds the app's load.
 - Node-managed signing and unknown RPC methods are refused; signed transaction retries retain identical bytes.
 - Every batch stays together on one endpoint per attempt.
 - API, worker and signer also share a weighted budget in PostgreSQL (`rpc_budgets`, R-133).
-- Its rate is `RPC_RATE_PER_SECOND × 80` units per second.
+- Its rate is `RPC_RATE_PER_SECOND × 80` units per second, split in two buckets per budget group.
+  - The api gets 20% of it; the worker and signer together get 80%.
+  - So signed-in reads can never take what deposit detection and settlement need.
+  - Neither side can borrow the other's unused share.
 - Ordinary calls cost 80 units; `eth_chainId` costs 5, logs 255, gas estimates 300, and block receipts 1,000.
 - These conservative weights are pacing units, not provider billing prices.
-- Endpoints with the same configured `budget_group` share one bucket across chains and processes.
+- Endpoints with the same configured `budget_group` share one bucket per share across chains and processes.
 - Only hashed budget-group identifiers enter the budget table; URLs and credentials never enter its rows or logs.
 - Every attempt and chain-ID probe takes budget; waiting releases the database connection.
 - Budget exhaustion or a database failure stops the request without marking the provider unhealthy.
@@ -504,7 +517,11 @@ signer:
      it can mine.
 2. Otherwise it signs new settlement bytes only when all of these hold:
    - the merchant payable covers the amount and every movement of the invoice is booked;
-   - the finalized balance is at least the ledger's booked receiver balance (else an `ALERT`).
+   - the balance where the scan finalized is at least the ledger's booked receiver balance (else an `ALERT`).
+     - At least `ledger.DustExcess` more, with every scanned transfer booked, is a deposit the scan missed.
+     - It logs `ALERT receive address holds money with no booked transfer` and writes an excess balance alert.
+     - It still settles: settle pays out only the amount, and the rest stays held for its payer
+       ([money safety](money-safety.md)).
    It re-reads the terms and refuses for good (`refused` with a reason, nothing sent) unless the invoice is
    `paid`, the recipient is the profile's wallet, the factory is the compiled one and the terms recompute the stored
    receive address; also when `factory.status` predicts another address.
@@ -517,6 +534,7 @@ signer:
      settle);
    - the invoice's user already had `SponsoredPerDay` (50) settlements signed in 24 hours, across all their profiles.
      Tiny invoices paid back and forth would otherwise drain the executor's gas for everyone. This logs an `ALERT`.
+     - Only invoices without a network fee count and wait: one with a fee pays its own gas (R-226).
      The owner gets one email a day (`settlement.waiting`): their paid money waits, and past the deadline only the
      refund authority can settle it. Who pays for more is the business-model question (Q-10).
 4. Deploys the receiver if needed (`deploy` is idempotent).
@@ -541,6 +559,10 @@ signer:
    - `settled()` is true at the finalized block (D-45);
    - for our settle, its receipt's block is final too;
    - the selected RPC reads `settled()` true at its finalized block (D-15, as for paid).
+
+   Our settle mined above the finalized block is not read again every round.
+   - It waits as long as the finalized block now trails it, at most `FinalWait` (10 minutes).
+   - The finalized block keeps pace with the clock, so it is about final then.
 
    Then it records the receipt's `Settled` and `FeesPaid` events as receiver movements and books the invoice.
    - Booking the settlement confirms the intent and sets the invoice's `settlement_status` `settled`.

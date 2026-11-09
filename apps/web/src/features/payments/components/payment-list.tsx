@@ -14,7 +14,7 @@ import { DataTableSkeleton } from "@/shared/components/data-table";
 import { LoadError } from "@/shared/components/load-error";
 import { NoMatch } from "@/shared/components/no-match";
 import { SKELETON_ROWS } from "@/shared/components/rows-skeleton";
-import { LIVE_QUERY } from "@/shared/config/refresh";
+import { LIVE_QUERY, SLOW_LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 export interface PaymentListProps {
@@ -44,7 +44,11 @@ export function PaymentList({
   const all = useGetPaymentsInfiniteQuery({ profileId, filters }, { ...live, skip: attention });
   const issues = useGetPaymentAttentionInfiniteQuery(
     { profileId, filters },
-    { ...live, skip: !attention },
+    {
+      ...SLOW_LIVE_QUERY,
+      pollingInterval: pages > 1 ? 0 : SLOW_LIVE_QUERY.pollingInterval,
+      skip: !attention,
+    },
   );
   const list = attention ? issues : all;
   // A new filter keeps the last rows in place, dimmed, until its own answer arrives: no flash of a skeleton.

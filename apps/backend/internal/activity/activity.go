@@ -139,14 +139,14 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 	}
 	if status != "" {
 		filter := arg(status)
-		match := "(" + filter + " = 'paid' AND invoices.payment_status = 'paid' OR " + invoice.ListStatusFilterSQL +
-			" = " + filter + ")"
+		match := invoice.StatusColumnsSQL[status] + " AND (" + filter + " = 'paid' AND invoices.payment_status = 'paid' OR " +
+			invoice.ListStatusFilterSQL + " = " + filter + ")"
 		invoices += " AND " + match
 		deposits += " AND NOT " + heldSQL + " AND " + match
 	}
 	// D-114: the Payments list's states; a deposit takes its payment's.
 	if state != "" {
-		match := invoice.PaymentStateSQL + " = " + arg(state)
+		match := invoice.PaymentStateColumnsSQL[state] + " AND " + invoice.PaymentStateSQL + " = " + arg(state)
 		invoices += " AND " + match
 		deposits += " AND NOT " + heldSQL + " AND " + match
 	}

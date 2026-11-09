@@ -180,6 +180,52 @@ func TestUnexplainedBalanceDelaysExpiry(t *testing.T) {
 	}
 }
 
+// A deposit the scan missed beside a paid invoice alerts and holds refunds, and the invoice is still paid. One the scan
+// saw but has not booked yet does not alert.
+func TestPaidInvoiceWithUnbookedMoneyAlerts(t *testing.T) {
+	s := newSim(t)
+	ctx := context.Background()
+	alert := func(id string) (excess bool) {
+		t.Helper()
+		err := s.pool.QueryRow(ctx, "SELECT excess FROM invoice_balance_alerts WHERE invoice_id = $1", id).Scan(&excess)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			t.Fatal(err)
+		}
+		return excess
+	}
+	seen, receive := s.invoice()
+	s.transfer(seen, receive, 5_000_000, 500, "confirmed")
+	s.transfer(seen, receive, 2_000_000, 600, "detected")
+	s.process(seen)
+	if payment, _ := s.payment(seen); payment != Paid || alert(seen) {
+		t.Fatalf("with a deposit seen, not booked yet: %s, alert %v; want paid and none", payment, alert(seen))
+	}
+
+	// The balance is read at block 1000; the scan has finalized only up to 100, so the extra may be a deposit it
+	// will still record.
+	ahead, receive := s.invoice()
+	s.transfer(ahead, receive, 5_000_000, 500, "confirmed")
+	s.answer[receive].Add(s.answer[receive], big.NewInt(2_000_000))
+	s.process(ahead)
+	if payment, _ := s.payment(ahead); payment != Paid || alert(ahead) {
+		t.Fatalf("read past the scan: %s, alert %v; want paid and none", payment, alert(ahead))
+	}
+
+	s.exec("UPDATE chain_cursors SET last_scanned_block = 1000, last_finalized_block = 1000 WHERE chain_id = 1")
+	missed, receive := s.invoice()
+	s.transfer(missed, receive, 5_000_000, 500, "confirmed")
+	s.answer[receive].Add(s.answer[receive], big.NewInt(2_000_000))
+	s.process(missed)
+	a, err := ReadAmounts(ctx, s.pool, missed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if payment, _ := s.payment(missed); payment != Paid || !alert(missed) || a.ReconciliationStatus != ReconciliationReview {
+		t.Fatalf("with a deposit the scan missed: %s, excess alert %v, reconciliation %s; want paid, an alert, review",
+			payment, alert(missed), a.ReconciliationStatus)
+	}
+}
+
 // Arc floors each native transfer to micro-USDC but balanceOf floors their sum, so two sends under a micro each leave
 // 1 on chain that no transfer explains. Dust like that must not keep an invoice open past its close for good.
 func TestDustNoTransferExplainsDoesNotDelayExpiry(t *testing.T) {
@@ -541,5 +587,46 @@ func TestPaidQueuesTheReceiptWhenAsked(t *testing.T) {
 	if err := s.pool.QueryRow(context.Background(), `SELECT string_agg(kind, ',' ORDER BY id) FROM outbox_events
 		WHERE invoice_id = $1`, id).Scan(&kinds); err != nil || kinds != "invoice.paid,invoice.receipt" {
 		t.Fatalf("events %q (%v), want invoice.paid,invoice.receipt", kinds, err)
+	}
+}
+
+// An invoice's options and the chain's open invoices are read through their indexes, so a round's cost doesn't grow
+// with every invoice ever made.
+func TestRoundReadsInvoicesThroughTheirIndexes(t *testing.T) {
+	s := newSim(t)
+	id, _ := s.invoice()
+	plans := databasetest.Plans(t, s.pool.Config().ConnString(), func(pool *pgxpool.Pool) {
+		service := NewService(pool, s.service.balance, s.service.deployed)
+		if err := service.ProcessChain(context.Background(), 1); err != nil {
+			t.Fatal(err)
+		}
+		if err := service.Process(context.Background(), id); err != nil {
+			t.Fatal(err)
+		}
+	})
+	for _, index := range []string{"invoices_group", "invoices_chain_open"} {
+		if !strings.Contains(plans, index+" ") {
+			t.Errorf("no query uses %s:\n%s", index, plans)
+		}
+	}
+}
+
+// A round that changes nothing leaves the invoice's row as it was, so waiting invoices aren't rewritten every round.
+func TestUnchangedStatusIsNotWrittenAgain(t *testing.T) {
+	s := newSim(t)
+	id, _ := s.invoice()
+	version := func() (xmin string) {
+		if err := s.pool.QueryRow(context.Background(), "SELECT xmin::text FROM invoices WHERE id = $1", id).Scan(&xmin); err != nil {
+			t.Fatal(err)
+		}
+		return xmin
+	}
+	before := version()
+	s.process(id)
+	if payment, refund := s.payment(id); payment != Open || refund != "none" {
+		t.Fatalf("status %s/%s, want open/none", payment, refund)
+	}
+	if after := version(); after != before {
+		t.Fatalf("the unchanged row was written again: xmin %s, then %s", before, after)
 	}
 }

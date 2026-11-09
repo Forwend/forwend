@@ -40,6 +40,7 @@ var (
 	ErrDestination    = errors.New("money can't be returned to that address")
 	ErrAmountNeeded   = errors.New("several addresses paid: give the amount for this one")
 	ErrTooMuch        = errors.New("more than is both held and refundable")
+	ErrMoreThanPaid   = errors.New("more than this payer paid, less what was returned to them")
 	ErrTooLittle      = errors.New("under 0.10 USD is not returned (D-90)")
 	ErrUnbooked       = errors.New("money moved that the ledger hasn't booked yet: wait for a worker round, then try again")
 	ErrCrossChain     = errors.New("NEAR Intents sent that payment from its own address: give -to, an address on this chain the payer proves is theirs")
@@ -234,7 +235,8 @@ func termsOf(factory [20]byte, invoiceID, recipient, token string, amount [3]str
 
 // QueueReturn checks a return of held money against the ledger and the chain, locks the money and gives the calls
 // for the refund authority. The destination defaults to the address that made the payment (D-118), except for one NEAR
-// Intents delivered; the amount, to everything held and refundable when one payer made every payment.
+// Intents delivered; the amount, to everything held and refundable when one payer made every payment. The amount is
+// at most what the payment's payer paid, less what was returned to them.
 func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client, invoiceID, txHash string,
 	to *common.Address, amount *big.Int) (Return, error) {
 	h, err := ReadHeld(ctx, db, client, invoiceID)
@@ -263,13 +265,9 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 	var paid *Payment
 	senders, relays := map[string]bool{}, map[string]bool{}
 	for i, p := range h.Payments {
-		switch { // NEAR Intents sends every cross-chain payer's money from one address: each quote is its own payer
-		case p.Quote != "":
-			senders["quote "+p.Quote], relays[p.From] = true, true
-		case p.Relayed:
-			senders["payment "+p.TxHash], relays[p.From] = true, true
-		default:
-			senders[p.From] = true
+		senders[payer(p)] = true
+		if p.Quote != "" || p.Relayed {
+			relays[p.From] = true
 		}
 		if strings.EqualFold(p.TxHash, txHash) {
 			paid = &h.Payments[i]
@@ -277,6 +275,30 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 	}
 	if paid == nil {
 		return Return{}, ErrUnknownPayment
+	}
+	// A receive address is public: anyone can pay a little to it and ask for a return. Each payer gets back at most
+	// what they paid, so a return never takes another payer's held money.
+	var hashes []string
+	paidBy, own := new(big.Int), ""
+	for _, p := range h.Payments {
+		if payer(p) == payer(*paid) {
+			hashes = append(hashes, p.TxHash)
+			paidBy.Add(paidBy, p.Amount)
+		}
+	}
+	if paid.Quote == "" && !paid.Relayed {
+		own = paid.From
+	}
+	left := func(db querier) (*big.Int, error) {
+		returned, err := returnedTo(ctx, db, invoiceID, own, hashes)
+		if err != nil {
+			return nil, err
+		}
+		return returned.Sub(paidBy, returned), nil
+	}
+	payerLeft, err := left(db)
+	if err != nil {
+		return Return{}, err
 	}
 	r := Return{To: common.HexToAddress(paid.From)}
 	switch {
@@ -310,7 +332,7 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 		if len(senders) > 1 {
 			return Return{}, ErrAmountNeeded
 		}
-		r.Amount = limit
+		r.Amount = minInt(limit, payerLeft)
 	}
 	// 0.10 USD: every token Forwend takes is a stablecoin worth 1 USD (D-75).
 	least := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(h.Decimals)), nil)
@@ -319,6 +341,9 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 	}
 	if r.Amount.Cmp(limit) > 0 {
 		return Return{}, ErrTooMuch
+	}
+	if r.Amount.Cmp(payerLeft) > 0 {
+		return Return{}, ErrMoreThanPaid
 	}
 	switch {
 	case paid.Quote != "":
@@ -364,13 +389,20 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 	// The lock: until the refund lands, nothing settles this money to the creator and the owner can't reopen it.
 	// Another return may have been booked since the reads above: the amount must still be held once the row is ours.
 	err = setRefundStatus(ctx, db, invoiceID, "held", "refund_pending", history.ReturnQueued,
-		history.Data{Amount: r.Amount.String(), To: strings.ToLower(r.To.Hex())}, func(tx pgx.Tx) error {
+		history.Data{Amount: r.Amount.String(), To: strings.ToLower(r.To.Hex()), TxHash: paid.TxHash}, func(tx pgx.Tx) error {
 			now, err := ledger.ReadAmounts(ctx, tx, invoiceID)
 			if err != nil {
 				return fmt.Errorf("read invoice %s amounts: %w", invoiceID, err)
 			}
 			if r.Amount.Cmp(now.Held) > 0 {
 				return ErrTooMuch
+			}
+			payerLeft, err := left(tx)
+			if err != nil {
+				return err
+			}
+			if r.Amount.Cmp(payerLeft) > 0 {
+				return ErrMoreThanPaid
 			}
 			return checkBooked(ctx, tx, invoiceID)
 		})
@@ -392,10 +424,39 @@ func ReleaseReturn(ctx context.Context, db *pgxpool.Pool, invoiceID string) erro
 	return err
 }
 
-// checkBooked is ErrUnbooked while a payment or a receiver outflow of the invoice waits for the ledger.
-func checkBooked(ctx context.Context, db interface {
+// payer names who made a payment. NEAR Intents sends every cross-chain payer's money from one address: each quote,
+// and each payment it may have relayed, is its own payer.
+func payer(p Payment) string {
+	switch {
+	case p.Quote != "":
+		return "quote " + p.Quote
+	case p.Relayed:
+		return "payment " + p.TxHash
+	}
+	return p.From
+}
+
+type querier interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
-}, invoiceID string) error {
+}
+
+// returnedTo sums an option's booked refunds to a payer: to own, the address they paid from directly, or to a
+// destination support queued a return of one of their payments to.
+func returnedTo(ctx context.Context, db querier, invoiceID, own string, hashes []string) (*big.Int, error) {
+	var sum string
+	if err := db.QueryRow(ctx, `SELECT coalesce(sum(o.amount), 0)::text FROM receiver_outflows o
+		WHERE o.invoice_id = $1 AND o.kind = 'refund' AND o.ledger_transaction_id IS NOT NULL AND (o.destination = $2
+		    OR o.destination IN (SELECT e.data->>'to' FROM history_events e
+		        WHERE e.invoice_id = (SELECT coalesce(main_id, id) FROM invoices WHERE id = $1) AND e.kind = $3
+		        AND e.data->>'txHash' = ANY($4)))`, invoiceID, own, history.ReturnQueued, hashes).Scan(&sum); err != nil {
+		return nil, fmt.Errorf("read invoice %s returns to the payer: %w", invoiceID, err)
+	}
+	returned, _ := new(big.Int).SetString(sum, 10)
+	return returned, nil
+}
+
+// checkBooked is ErrUnbooked while a payment or a receiver outflow of the invoice waits for the ledger.
+func checkBooked(ctx context.Context, db querier, invoiceID string) error {
 	var unbooked bool
 	if err := db.QueryRow(ctx, `SELECT
 		EXISTS (SELECT 1 FROM chain_transfers WHERE invoice_id = $1 AND status <> 'reorged' AND NOT booked) OR

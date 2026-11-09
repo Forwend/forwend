@@ -76,7 +76,7 @@
 | `PRIVY_APP_SECRET` | That test Privy app's secret from `apps/backend/.env`. |
 | `EXECUTOR_PRIVATE_KEY` | The existing authorized testnet executor key from `apps/backend/.env`. |
 | `RPC_ENDPOINT_SECRETS` | Backend-only JSON map of secret references to complete private URLs; see [RPC operations](backend/rpc.md). |
-| `RPC_RATE_PER_SECOND` | `10` by default. Also sets the shared weighted budget to 800 units/second; see [RPC pacing](backend/architecture.md#running-the-loop). |
+| `RPC_RATE_PER_SECOND` | `10` by default. Also sets the shared weighted budget to 800 units/second, 160 for the api and 640 for worker and signer; see [RPC pacing](backend/architecture.md#running-the-loop). |
 | `POLL_INTERVAL` | `5s` by default, for the worker and signer. |
 | `RESEND_API_KEY` | Existing send-only Resend key; empty leaves emails queued without sending them. |
 | `EMAIL_FROM` | `Forwend <notifications@mail.forwend.com>` by default; use a sender verified by Resend. |

@@ -113,6 +113,7 @@ func reconciliationSQL(scope string, from, to int) string {
  ), evidence AS (
  SELECT receiver.id,cur.last_finalized_block AS scanned_block,
  (` + ledger.UnreconciledSQL("receiver.id") + `) AS unreconciled,
+ EXISTS (SELECT 1 FROM invoice_balance_alerts a WHERE a.invoice_id = receiver.id AND a.excess) AS missed,
  (SELECT count(*) FROM chain_transfers d WHERE d.invoice_id = receiver.id AND d.status = 'detected') AS pending,
  (SELECT count(*) FROM chain_transfers d WHERE d.invoice_id = receiver.id AND d.status = 'confirmed' AND NOT d.booked) AS unbooked,
  (SELECT count(*) FROM receiver_outflows flow WHERE flow.invoice_id = receiver.id AND flow.kind <> 'recovery' AND flow.ledger_transaction_id IS NULL) AS outflows,
@@ -125,8 +126,8 @@ func reconciliationSQL(scope string, from, to int) string {
  coalesce(sum(e.closing_receiver),0)::text,coalesce(sum(e.closing_payable),0)::text,coalesce(sum(e.closing_held),0)::text,
  coalesce(sum(e.settled),0)::text,coalesce(sum(e.fees),0)::text,coalesce(sum(e.refunded),0)::text,
  NULL::text,
- count(*),count(*),count(*) FILTER (WHERE proof.unreconciled),
- coalesce(sum(proof.pending),0)::bigint,coalesce(sum(proof.unbooked),0)::bigint,0::bigint,
+ count(*),count(*) FILTER (WHERE NOT proof.unreconciled),count(*) FILTER (WHERE proof.unreconciled),
+ coalesce(sum(proof.pending),0)::bigint,coalesce(sum(proof.unbooked),0)::bigint,count(*) FILTER (WHERE proof.missed),
  coalesce(sum(proof.outflows),0)::bigint,coalesce(sum(proof.other_assets),0)::bigint,coalesce(sum(proof.exceptions),0)::bigint,
  coalesce(sum(e.movements),0)::bigint,min(proof.scanned_block),max(proof.scanned_block),max(progress.last_finalized_block)
  FROM options receiver JOIN tokens token ON token.chain_id = receiver.chain_id AND token.contract = receiver.token_contract JOIN chains c ON c.chain_id = receiver.chain_id

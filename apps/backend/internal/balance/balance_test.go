@@ -215,6 +215,37 @@ func TestPendingParts(t *testing.T) {
 	}
 }
 
+// Balances read only the invoices that can still owe or hold money, through their index. A settled invoice with
+// money held for the payer is one of them.
+func TestBalancesReadOnlyInvoicesThatCanHoldMoney(t *testing.T) {
+	const token = "0x036cbd53842c5426634e7929541ec2318f3dcf7e"
+	pool, profile, _ := setup(t, token) // 2.0 owed, 1.0 held, 1.0 detected
+	ctx := context.Background()
+	// The owed 2.0 is settled; the held 1.0 stays the payer's.
+	if _, err := pool.Exec(ctx, `
+		WITH x AS (INSERT INTO ledger_transactions (invoice_id, kind) VALUES ($1, 'settlement') RETURNING id),
+		     e AS (INSERT INTO ledger_entries (transaction_id, account, amount)
+		           SELECT id, 'receiver', -2000000 FROM x UNION ALL SELECT id, 'recipient_payable', 2000000 FROM x)
+		UPDATE invoices SET payment_status = 'paid', settlement_status = 'settled', refund_status = 'held' WHERE id = $1`,
+		invoice); err != nil {
+		t.Fatal(err)
+	}
+	read := func(context.Context, uint64, string, string) (*big.Int, uint64, error) { return big.NewInt(0), 1, nil }
+	plans := databasetest.Plans(t, pool.Config().ConnString(), func(p *pgxpool.Pool) {
+		got, err := NewService(p, read).Of(ctx, profile)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if tk := got.Tokens[0]; tk.Held.Int64() != 1000000 || tk.Settling.Sign() != 0 || tk.Confirming.Int64() != 1000000 {
+			t.Fatalf("held %v settling %v confirming %v; want 1000000, 0 and the detected 1000000", tk.Held, tk.Settling,
+				tk.Confirming)
+		}
+	})
+	if !strings.Contains(plans, "invoices_money_profile ") {
+		t.Fatalf("balances don't use invoices_money_profile:\n%s", plans)
+	}
+}
+
 func TestHungChainLeavesTheOthers(t *testing.T) {
 	anvil := chaintest.Start(t)
 	token := anvil.DeployToken()

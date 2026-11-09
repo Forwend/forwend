@@ -42,7 +42,11 @@ func (s *Service) ProcessChain(ctx context.Context, chainID uint64) error {
    EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = i.id AND t.status = 'confirmed' AND NOT t.booked)
    OR EXISTS (SELECT 1 FROM receiver_outflows o WHERE o.invoice_id = i.id AND o.kind <> 'recovery'
               AND o.ledger_transaction_id IS NULL) AS money
-   FROM invoices i JOIN chain_cursors cursor ON cursor.chain_id = i.chain_id WHERE i.chain_id = $1) i
+   FROM invoices i JOIN chain_cursors cursor ON cursor.chain_id = i.chain_id WHERE i.chain_id = $1
+    -- Only open invoices and ones with money to book can match: read them from their small partial indexes.
+    AND i.id IN (SELECT id FROM invoices WHERE chain_id = $1 AND payment_status IN ('open','detected','partially_paid')
+     UNION SELECT invoice_id FROM chain_transfers WHERE status = 'confirmed' AND NOT booked
+     UNION SELECT invoice_id FROM receiver_outflows WHERE kind <> 'recovery' AND ledger_transaction_id IS NULL)) i
   WHERE money OR (payment_status IN ('open','detected','partially_paid')
    AND (observed OR payment_status = 'detected' OR closes_at < last_finalized_time
     OR payment_status = 'partially_paid' AND (SELECT -coalesce(sum(e.amount), 0) FROM ledger_entries e
@@ -346,7 +350,8 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 			refund = "none"
 		}
 	}
-	if _, err := tx.Exec(ctx, "UPDATE invoices SET payment_status = $2, refund_status = $3 WHERE id = $1",
+	if _, err := tx.Exec(ctx, `UPDATE invoices SET payment_status = $2, refund_status = $3
+		WHERE id = $1 AND (payment_status, refund_status) IS DISTINCT FROM ($2, $3)`,
 		invoiceID, next, refund); err != nil {
 		return fmt.Errorf("update invoice %s status: %w", invoiceID, err)
 	}
@@ -420,7 +425,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 
 // funded asks the selected RPC whether the receive address holds at least every booked deposit (D-15).
 func (s *Service) funded(ctx context.Context, tx pgx.Tx, invoiceID string, chainID, finalized uint64, token, receive string) (bool, error) {
-	booked, onChain, err := s.compare(ctx, tx, invoiceID, chainID, finalized, token, receive)
+	booked, onChain, block, err := s.compare(ctx, tx, invoiceID, chainID, finalized, token, receive)
 	if err != nil || onChain == nil {
 		return false, err
 	}
@@ -429,7 +434,28 @@ func (s *Service) funded(ctx context.Context, tx pgx.Tx, invoiceID string, chain
 			"booked", booked.String(), "onChain", onChain.String())
 		return false, nil
 	}
-	return true, nil
+	return true, Unbooked(ctx, tx, invoiceID, booked, onChain, block)
+}
+
+// Unbooked alerts when the receive address holds at least DustExcess more than booked while every transfer the scan saw
+// is booked: a deposit the scan missed. Its excess alert holds the invoice's refunds (bookOutflow), never "paid" or the
+// settle: settle pays out only the amount, and the rest stays held for its payer. A balance read at a block the scan
+// hasn't reached yet can show a deposit it will still record, so it says nothing.
+func Unbooked(ctx context.Context, tx pgx.Tx, invoiceID string, booked, onChain *big.Int, block uint64) error {
+	if new(big.Int).Sub(onChain, booked).Cmp(big.NewInt(DustExcess)) < 0 {
+		return nil
+	}
+	var missed bool
+	if err := tx.QueryRow(ctx, `SELECT c.last_finalized_block >= $2 AND NOT EXISTS (SELECT 1 FROM chain_transfers t
+		    WHERE t.invoice_id = i.id AND t.status <> 'reorged' AND NOT t.booked)
+		FROM invoices i JOIN chain_cursors c ON c.chain_id = i.chain_id WHERE i.id = $1`, invoiceID, int64(block)).
+		Scan(&missed); err != nil || !missed {
+		return err
+	}
+	slog.Error("ALERT receive address holds money with no booked transfer", "invoice", invoiceID,
+		"booked", booked.String(), "onChain", onChain.String(),
+		"next", "record the deposit with ops deposit -tx <transaction> <invoice>, then return it with ops return")
+	return alertAgainLater(ctx, tx, invoiceID, true)
 }
 
 // DustExcess: an unexplained balance under this many base units (0.01 of a 6-decimal token) doesn't stop expiry. Arc
@@ -444,7 +470,7 @@ func (s *Service) balanced(ctx context.Context, tx pgx.Tx, invoiceID string, cha
 		AND next_check_at > now())`, invoiceID).Scan(&waiting); err != nil || waiting {
 		return false, err
 	}
-	booked, onChain, err := s.compare(ctx, tx, invoiceID, chainID, finalized, token, receive)
+	booked, onChain, _, err := s.compare(ctx, tx, invoiceID, chainID, finalized, token, receive)
 	if err != nil || onChain == nil {
 		return false, err
 	}
@@ -486,20 +512,20 @@ func alertAgainLater(ctx context.Context, tx pgx.Tx, invoiceID string, excess bo
 
 // onChain is nil when the RPC snapshot is behind the watcher's finalized block: nothing is decided until it catches up.
 // ponytail: the RPC call runs inside the transaction holding the invoice lock, bounded by BalanceTimeout.
-func (s *Service) compare(ctx context.Context, tx pgx.Tx, invoiceID string, chainID, finalized uint64, token, receive string) (booked, onChain *big.Int, err error) {
+func (s *Service) compare(ctx context.Context, tx pgx.Tx, invoiceID string, chainID, finalized uint64, token, receive string) (booked, onChain *big.Int, block uint64, err error) {
 	if booked, err = accountBalance(ctx, tx, invoiceID, "receiver"); err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, BalanceTimeout)
 	defer cancel()
-	onChain, block, err := s.balance(ctx, chainID, token, receive)
+	onChain, block, err = s.balance(ctx, chainID, token, receive)
 	if err != nil {
-		return nil, nil, fmt.Errorf("check invoice %s balance: %w", invoiceID, err)
+		return nil, nil, 0, fmt.Errorf("check invoice %s balance: %w", invoiceID, err)
 	}
 	if block < finalized {
 		slog.Warn("RPC snapshot is behind the finalized block; deciding later", "invoice", invoiceID,
 			"rpcBlock", block, "finalized", finalized)
-		return booked, nil, nil
+		return booked, nil, block, nil
 	}
-	return booked, onChain, nil
+	return booked, onChain, block, nil
 }

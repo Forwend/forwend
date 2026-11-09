@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/forwend/forwend/apps/backend/internal/address"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
@@ -17,13 +19,13 @@ const (
 	StalledAfter = 45 * time.Minute
 	// UnsettledAfter: a paid invoice still not settled waits on something an operator must look at.
 	UnsettledAfter = 30 * time.Minute
-	// DeadlineSoon: after its settle deadline only the refund authority can move the money, so later ones stop alerting.
+	// DeadlineSoon: after its settle deadline only the refund authority can move the money, so a day before it alerts.
 	DeadlineSoon = 24 * time.Hour
 )
 
 // alert logs an ALERT for symptoms that hold money: a chain whose scan stopped, a deposit that stays detected below
 // the finalized block, a receiver's settle or refund the ledger can't book, money owed in full that never becomes
-// paid, and paid money not settled in time or close to its settle deadline.
+// paid, and paid money not settled in time, close to its settle deadline, or past it.
 func (w *Worker) alert(ctx context.Context) error {
 	rows, err := w.pool.Query(ctx, `SELECT c.chain_id, extract(epoch FROM now())::bigint - cur.last_finalized_time,
 		    (SELECT count(*) FROM chain_transfers t WHERE t.chain_id = c.chain_id AND t.status = 'detected'
@@ -76,30 +78,40 @@ func (w *Worker) alert(ctx context.Context) error {
 	for _, invoice := range owed {
 		slog.Error("ALERT invoice owed in full is not paid: its finalized balance check keeps failing", "invoice", invoice)
 	}
-	// A user at the daily settlement cap waits by design; only its deadline makes it alert.
-	rows, err = w.pool.Query(ctx, `SELECT i.id, i.chain_id, si.status, coalesce(si.reason, ''),
+	// A user at the daily settlement cap waits by design; only its deadline makes it alert. Those still before their
+	// deadline come first: the executor can still settle them.
+	rows, err = w.pool.Query(ctx, `SELECT i.id, i.chain_id, i.factory_address, si.status, coalesce(si.reason, ''),
 		    extract(epoch FROM now() - si.created_at)::bigint, i.settle_deadline - extract(epoch FROM now())::bigint
 		FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id
-		WHERE si.status <> 'confirmed' AND i.settle_deadline > extract(epoch FROM now())::bigint
+		WHERE si.status <> 'confirmed'
 		  AND (si.created_at < now() - $1 * interval '1 second' AND si.wait IS DISTINCT FROM 'cap'
 		       OR i.settle_deadline < extract(epoch FROM now())::bigint + $2)
-		ORDER BY i.settle_deadline LIMIT 20`, int64(UnsettledAfter/time.Second), int64(DeadlineSoon/time.Second))
+		ORDER BY i.settle_deadline <= extract(epoch FROM now())::bigint, i.settle_deadline LIMIT 20`,
+		int64(UnsettledAfter/time.Second), int64(DeadlineSoon/time.Second))
 	if err != nil {
 		return fmt.Errorf("read late settlements: %w", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var invoice, status, reason string
+		var invoice, factory, status, reason string
 		var chainID, waited, left int64
-		if err := rows.Scan(&invoice, &chainID, &status, &reason, &waited, &left); err != nil {
+		if err := rows.Scan(&invoice, &chainID, &factory, &status, &reason, &waited, &left); err != nil {
 			return err
 		}
 		message := "ALERT paid invoice not settled"
-		if left < int64(DeadlineSoon/time.Second) {
+		attrs := []any{"invoice", invoice, "chain", chainID, "intent", status, "reason", reason,
+			"waited", time.Duration(waited) * time.Second, "deadlineIn", time.Duration(left) * time.Second}
+		switch {
+		case left <= 0:
+			message = "ALERT paid invoice not settled past its settle deadline: only the refund authority can settle it"
+			attrs = append(attrs, "factory", factory)
+			if known, ok := address.KnownFactory(factory); ok && address.Known[known].RefundAuthority != [20]byte{} {
+				attrs = append(attrs, "refundAuthority", common.Address(address.Known[known].RefundAuthority).Hex())
+			}
+		case left < int64(DeadlineSoon/time.Second):
 			message = "ALERT paid invoice not settled close to its settle deadline"
 		}
-		slog.Error(message, "invoice", invoice, "chain", chainID, "intent", status, "reason", reason,
-			"waited", time.Duration(waited)*time.Second, "deadlineIn", time.Duration(left)*time.Second)
+		slog.Error(message, attrs...)
 	}
 	if err := rows.Err(); err != nil {
 		return err
@@ -108,11 +120,15 @@ func (w *Worker) alert(ctx context.Context) error {
 }
 
 // alertCrossChain logs an ALERT for a cross-chain payment that holds a payer's money (R-234): 1Click failed it in the
-// last week, a deposit it saw is unfinished an hour past the deadline, or it delivered and no Base deposit with its
-// transaction came in 30 minutes.
+// last week, a deposit it saw is unfinished an hour past the deadline, it delivered and no Base deposit with its
+// transaction came in 30 minutes, or in the last week another quote of the invoice saw a deposit too: each delivers
+// all that is due, so one is held for its payer.
 func (w *Worker) alertCrossChain(ctx context.Context) error {
-	rows, err := w.pool.Query(ctx, `SELECT q.id::text, q.invoice_id, q.status FROM crosschain_quotes q
-		WHERE (q.status = 'FAILED' AND q.created_at > now() - interval '7 days')
+	rows, err := w.pool.Query(ctx, `SELECT q.id::text, q.invoice_id, q.status, twice FROM crosschain_quotes q,
+		    LATERAL (SELECT coalesce(q.deposit_seen_at > now() - interval '7 days', false)
+		        AND q.status NOT IN ('REFUNDED', 'FAILED') AND EXISTS (SELECT 1 FROM crosschain_quotes o WHERE o.invoice_id = q.invoice_id AND o.id <> q.id
+		            AND o.deposit_seen_at IS NOT NULL AND o.status NOT IN ('REFUNDED', 'FAILED')) AS twice) t
+		WHERE twice OR (q.status = 'FAILED' AND q.created_at > now() - interval '7 days')
 		   OR (q.deposit_seen_at IS NOT NULL AND q.status NOT IN ('SUCCESS', 'REFUNDED', 'FAILED')
 		       AND q.deadline < now() - $1 * interval '1 second')
 		   OR (q.status = 'SUCCESS' AND q.converted_at < now() - $2 * interval '1 second'
@@ -126,14 +142,17 @@ func (w *Worker) alertCrossChain(ctx context.Context) error {
 	defer rows.Close()
 	for rows.Next() {
 		var quote, invoice, status string
-		if err := rows.Scan(&quote, &invoice, &status); err != nil {
+		var twice bool
+		if err := rows.Scan(&quote, &invoice, &status, &twice); err != nil {
 			return err
 		}
 		message := "ALERT cross-chain deposit unfinished an hour past its deadline"
-		switch status {
-		case "FAILED":
+		switch {
+		case twice:
+			message = "ALERT two cross-chain quotes of one invoice saw deposits: return the one held to its payer"
+		case status == "FAILED":
 			message = "ALERT cross-chain swap failed: check 1Click returned the deposit"
-		case "SUCCESS":
+		case status == "SUCCESS":
 			message = "ALERT cross-chain swap delivered, but no Base deposit with its transaction came in"
 		}
 		slog.Error(message, "quote", quote, "invoice", invoice, "status", status)
