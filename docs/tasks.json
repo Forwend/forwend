@@ -1785,7 +1785,7 @@
       "dependsOn": [
         "F448"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "node-unit",
@@ -1869,11 +1869,18 @@
           "summary": "Same code as the subagent review that passed at 715143fc, plus one 8-line test (a non-Base destination hash stays out of txHash). The web history schema reads every row; edit lock, canary wiring, stop hour, alert windows, duplicate history, pick move, failing-read stop and REFUNDED-without-amount breaks are all caught.",
           "at": "2026-11-09T18:52:07Z",
           "filesHash": "ba0de82b748db88f"
-        }
+        },
+        "commit": "d94cc59e",
+        "doneAt": "2026-11-09T18:52:08Z"
       },
       "branch": "feat/f449-the-worker-follows-each-cross-chain-quot-2",
       "baseCommit": "6a604d183d57e2e93e85c6c042aeb280f4b07408",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f449-the-worker-follows-each-cross-chain-quot-2",
+        "base": "main"
+      }
     },
     {
       "id": "F450",
