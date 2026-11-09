@@ -209,7 +209,7 @@ test.describe("pay with another token (R-236 to R-238)", () => {
       route.fulfill({
         json: {
           ...TOKENS,
-          tokens: [{ ...TRON_TOKEN, minimum: "2000000000" }, TRX, TOKENS.tokens[1]],
+          tokens: [{ ...TRON_TOKEN, minimum: "1999995000" }, TRX, TOKENS.tokens[1]],
         },
       }),
     );

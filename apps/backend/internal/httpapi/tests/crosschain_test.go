@@ -216,6 +216,10 @@ func TestCrossChainQuoteRefusals(t *testing.T) {
 		r.body["error"].(map[string]any)["minimum"] != "200000000" {
 		t.Fatalf("below minimum: %d %v", r.status, r.body)
 	}
+	// The refused quote alone teaches it: the next payer's list names it (D-126).
+	if got := listedMinimums(t, e, pay)[ethAsset]; got != "200000000" {
+		t.Fatalf("listed minimum after a refused quote: %v", got)
+	}
 	price := e.call(t, "GET", crossPath+pay+"/crosschain/price?originAsset="+url.QueryEscape(ethAsset), "", "", "")
 	if price.status != 422 || errorCode(price) != "below_minimum" || price.body["error"].(map[string]any)["minimum"] != "200000000" {
 		t.Fatalf("price below minimum: %d %v", price.status, price.body)
@@ -229,11 +233,7 @@ func TestCrossChainQuoteRefusals(t *testing.T) {
 	}
 	fake.Limits = nil
 	// The next payer's list already names both minimums.
-	minimums := map[string]any{}
-	for _, tok := range e.call(t, "GET", crossPath+pay+"/crosschain/tokens", "", "", "").body["tokens"].([]any) {
-		minimums[tok.(map[string]any)["assetId"].(string)] = tok.(map[string]any)["minimum"]
-	}
-	if minimums[tronUSDT] != "1000000000" || minimums[ethAsset] != "200000000" {
+	if minimums := listedMinimums(t, e, pay); minimums[tronUSDT] != "1000000000" || minimums[ethAsset] != "200000000" {
 		t.Fatalf("listed minimums %v", minimums)
 	}
 
@@ -288,6 +288,16 @@ func TestCrossChainQuoteNot1ClickSignedIsRefused(t *testing.T) {
 }
 
 // baseDeposit books a confirmed transfer of amount to an invoice's Base option, as the watcher and the ledger would.
+// listedMinimums is each token's minimum in the pay page's list, by asset id.
+func listedMinimums(t *testing.T, e invoiceEnv, pay string) map[string]any {
+	t.Helper()
+	minimums := map[string]any{}
+	for _, tok := range e.call(t, "GET", crossPath+pay+"/crosschain/tokens", "", "", "").body["tokens"].([]any) {
+		minimums[tok.(map[string]any)["assetId"].(string)] = tok.(map[string]any)["minimum"]
+	}
+	return minimums
+}
+
 func baseDeposit(t *testing.T, e invoiceEnv, option, amount string) {
 	t.Helper()
 	baseTransfer(t, e, option, option, amount)

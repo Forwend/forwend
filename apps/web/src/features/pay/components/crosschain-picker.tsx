@@ -40,6 +40,9 @@ export function CrossChainPicker({
   const shownChains = chains.filter((c) => matches(chainQuery, c, blockchainName(c)));
   const minimumOver = (t: CrossToken) =>
     due !== undefined && t.minimum != null && BigInt(t.minimum) > due ? BigInt(t.minimum) : null;
+  // A minimum shown short would invite too small a payment: it rounds up to the cent.
+  const cent = 10n ** BigInt(Math.max(dueDecimals - 2, 0));
+  const centsUp = (units: bigint) => ((units + cent - 1n) / cent) * cent;
   const usdc = (units: bigint) =>
     `${formatTokenAmount({ baseUnits: units, decimals: dueDecimals, fractionDigits: 2 })} USDC`;
   // A search names a token on any chain, so a payer who knows the token finds it without the chain. Tokens that fit
@@ -128,7 +131,7 @@ export function CrossChainPicker({
                             <span className="text-xs text-muted">
                               {minimum === null
                                 ? blockchainName(t.blockchain)
-                                : `${blockchainName(t.blockchain)} · ${COPY.needsAtLeast(usdc(minimum))}`}
+                                : `${blockchainName(t.blockchain)} · ${COPY.needsAtLeast(usdc(centsUp(minimum)))}`}
                             </span>
                           </span>
                           {minimum === null && t.estimate ? (

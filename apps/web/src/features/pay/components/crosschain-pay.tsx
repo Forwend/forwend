@@ -539,13 +539,13 @@ function fromKept(c: CrossChain): Shown {
   };
 }
 
-// The api's error codes for a quote (docs/backend/api.md); anything else is 1Click not answering.
 // A price has no refund address yet: a refused one is the token's, never the address's.
 function priceProblem(error: unknown): string {
   const code = (error as { data?: { error?: { code?: string } } } | undefined)?.data?.error?.code;
   return code === "invalid_value" ? COPY.cantConvert : quoteProblem(error);
 }
 
+// The api's error codes for a quote (docs/backend/api.md); anything else is 1Click not answering.
 function quoteProblem(error: unknown): string {
   const code = (error as { data?: { error?: { code?: string } } } | undefined)?.data?.error?.code;
   switch (code) {

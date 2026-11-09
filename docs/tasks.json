@@ -2174,7 +2174,9 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-09 Review 1 FAIL (subagent) at 2d7d17c5: one token whose dry quote errors stopped the probe for every other token, with no end; no test failed without the hourly bound, learning from a refused real quote, or a lifted limit clearing. Non-blocking taken: a bridge's least could hide a higher dollar limit, the minimum shown rounded down, the D-126 row had four cells, a moved comment. Left: no refetch of the token list after a refused price; dollar decimals tested only as whole dollars."
+      ],
       "blockedReason": null,
       "evidence": null
     }

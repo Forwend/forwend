@@ -185,19 +185,33 @@ func (k *Keeper) Probe(ctx context.Context, now time.Time) error {
 	if err != nil {
 		return fmt.Errorf("pick a 1Click token to check: %w", err)
 	}
-	_, err = k.Client.Quote(ctx, Ask{Origin: asset, Amount: probeAmount, Recipient: probeRecipient,
-		Deadline: now.Add(time.Hour)}, true)
-	var below *BelowMinimum
-	switch {
-	case errors.As(err, &below):
-		minimum, _ := new(big.Int).SetString(below.Minimum, 10)
-		return SetMinimum(ctx, k.Pool, asset, minimum, now)
-	case err == nil, errors.Is(err, ErrRefused): // a refusal for another reason names no minimum
-		return SetMinimum(ctx, k.Pool, asset, nil, now)
-	default:
-		k.probeDue = now.Add(retry)
-		return err
+	// A bridge's least can hide a higher dollar limit behind it, so a named minimum is asked again; the highest is kept.
+	amount, minimum := probeAmount, (*big.Int)(nil)
+	for range 3 {
+		_, err = k.Client.Quote(ctx, Ask{Origin: asset, Amount: amount, Recipient: probeRecipient,
+			Deadline: now.Add(time.Hour)}, true)
+		var below *BelowMinimum
+		if !errors.As(err, &below) {
+			break
+		}
+		next, ok := new(big.Int).SetString(below.Minimum, 10)
+		err = nil
+		if !ok || next.Cmp(amount) <= 0 {
+			break
+		}
+		minimum, amount = next, next
 	}
+	if err == nil || errors.Is(err, ErrRefused) { // a refusal for another reason names no minimum
+		return SetMinimum(ctx, k.Pool, asset, minimum, now)
+	}
+	// 1Click unreachable, or an answer that failed its checks: the token keeps its minimum and waits its next turn, so
+	// one token can't hold up the rest.
+	k.probeDue = now.Add(retry)
+	if _, markErr := k.Pool.Exec(ctx, "UPDATE intents_tokens SET minimum_checked_at = $2 WHERE asset_id = $1", asset,
+		now); markErr != nil {
+		return errors.Join(err, markErr)
+	}
+	return err
 }
 
 // SetMinimum keeps what 1Click said asset needs at least, in Base USDC base units; nil when it named none (D-126).
