@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -128,6 +129,12 @@ func (f *Fake) quote(w http.ResponseWriter, r *http.Request) {
 	var req map[string]any
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// As 1Click does: a burn address is no recipient.
+	if strings.EqualFold(fmt.Sprint(req["recipient"]), "0x000000000000000000000000000000000000dead") {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"message": "recipient is not valid"})
 		return
 	}
 	amount, ok := new(big.Int).SetString(fmt.Sprint(req["amount"]), 10)

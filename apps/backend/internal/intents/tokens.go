@@ -2,6 +2,7 @@ package intents
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/forwend/forwend/apps/backend/internal/address"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -164,8 +166,12 @@ const (
 
 var probeAmount = big.NewInt(10_000) // 0.01 USDC
 
-// A dry quote moves nothing, so any Base address will do as its recipient.
-const probeRecipient = "0x000000000000000000000000000000000000dead"
+// The probe's recipient is Forwend's refund authority on Base: 1Click refuses a burn address as "recipient is not
+// valid", and a dry quote moves nothing.
+var probeRecipient = func() string {
+	authority := address.Known[address.Factory].RefundAuthority
+	return "0x" + hex.EncodeToString(authority[:])
+}()
 
 // Probe asks one dry quote for the token whose minimum was checked longest ago, so payers see which tokens fit before
 // they pick (D-126). Base USDC, memo chains and unpriced tokens are never offered, so never checked.
