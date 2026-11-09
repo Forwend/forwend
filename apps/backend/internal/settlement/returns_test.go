@@ -296,6 +296,39 @@ func TestSupportReturnOfACrossChainPaymentNeedsThePayersAddress(t *testing.T) {
 	}
 }
 
+// Tracking can stop before 1Click names the Base transaction. A payment from an address that delivered another
+// payment through NEAR Intents is still not returned to that address by default.
+func TestSupportReturnFromNEARIntentsAddressNeedsThePayersAddressBeforeAQuoteNamesIt(t *testing.T) {
+	e := setup(t)
+	ctx := t.Context()
+	id, _ := e.paidInvoice(t)
+	other, _ := e.pay(t, 8) // NEAR Intents delivered this one from the same sender, and its quote names it
+	if _, err := e.pool.Exec(ctx, `INSERT INTO crosschain_quotes (invoice_id, option_id, origin_asset, refund_to,
+		    deposit_address, amount_in, min_amount_in, amount_out, time_estimate, shown_until, deadline, signed, status,
+		    origin_blockchain, origin_symbol, origin_decimals, deposit_seen_at, converted_at, origin_txs, destination_txs)
+		VALUES ($1, $1, 'nep141:tron-d28a265909efecdcee7c5028585214ea0b96f015.omft.near', 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
+		    'TDepositAddress', 6060000, 6000000, 6000000, 30, now(), now(), '{}', 'SUCCESS', 'tron', 'USDT', 6, now(), now(),
+		    '[]', jsonb_build_array(jsonb_build_object('hash', $2::text, 'explorerUrl', '')))`,
+		other, e.paymentHash(t, other)); err != nil {
+		t.Fatal(err)
+	}
+	h, err := ReadHeld(ctx, e.pool, e.client, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p := h.Payments[0]; p.Quote != "" || !p.Relayed {
+		t.Fatalf("payment %+v, want relayed with no quote", p)
+	}
+	hash := e.paymentHash(t, id)
+	if _, err := QueueReturn(ctx, e.pool, e.client, id, hash, nil, nil); !errors.Is(err, ErrCrossChain) {
+		t.Fatalf("with no destination: %v, want ErrCrossChain", err)
+	}
+	payer := common.HexToAddress("0x000000000000000000000000000000000000beef")
+	if r, err := QueueReturn(ctx, e.pool, e.client, id, hash, &payer, nil); err != nil || r.To != payer {
+		t.Fatalf("to the payer's own address: %+v, %v", r, err)
+	}
+}
+
 // Two support returns overlap: one read 1 USDC held, and another return was booked before it locked the money. It
 // must not queue more than is still held, or the refund takes the creator's money.
 func TestSupportReturnRechecksTheHeldMoneyOnceItLocks(t *testing.T) {

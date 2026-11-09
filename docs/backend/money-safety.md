@@ -96,6 +96,8 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
   - A payment NEAR Intents delivered has its sender, never the payer: it needs `-to`.
     - `-to` is an address on the invoice's chain that the payer proves is theirs; it warns with the origin transaction.
     - It refuses any address that delivered such a payment.
+    - A payment from an address that delivered another NEAR Intents payment on that chain needs `-to` too.
+    - So a delivery whose quote isn't read yet is never returned to NEAR Intents.
   - A destination that made no payment warns: check the payer's proof that it is theirs.
   - A contract destination warns: it may be an exchange, an app or a smart wallet.
   - It refuses the zero address, the receiver, the token, the factory and any invoice's receive address.

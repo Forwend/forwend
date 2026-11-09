@@ -320,6 +320,9 @@ func printHeld(out io.Writer, h settlement.Held) {
 			fmt.Fprintf(out, "      Sent by NEAR Intents, not the payer: quote %s; the payer paid on %s in %s, refund address "+
 				"there %s.\n      Return it only with -to, an address on chain %d the payer proves is theirs.\n",
 				p.Quote, p.OriginChain, p.OriginTx, p.RefundTo, h.ChainID)
+		} else if p.Relayed {
+			fmt.Fprintf(out, "      Sent by NEAR Intents, not the payer; no quote names it yet.\n      Return it only "+
+				"with -to, an address on chain %d the payer proves is theirs.\n", h.ChainID)
 		}
 	}
 	deployed := "not deployed"

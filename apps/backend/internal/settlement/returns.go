@@ -47,12 +47,14 @@ var (
 )
 
 // Payment is a final payment to an invoice option. Quote is set when NEAR Intents delivered it: From is then NEAR
-// Intents' address, and the payer paid OriginTx on OriginChain with RefundTo as their own address there.
+// Intents' address, and the payer paid OriginTx on OriginChain with RefundTo as their own address there. Relayed is
+// set when From has delivered another payment through NEAR Intents on this chain, even if no quote names this one yet.
 type Payment struct {
 	TxHash, From                           string
 	Amount                                 *big.Int
 	BlockTime                              int64
 	Quote, OriginChain, OriginTx, RefundTo string
+	Relayed                                bool
 }
 
 // Held is one invoice option's money held for the payer, as the ledger and the chain see it now.
@@ -164,7 +166,10 @@ func ReadHeld(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client, i
 	}
 	h.Held, h.Booked = amounts.Held, amounts.Receiver
 	rows, err := db.Query(ctx, `SELECT t.tx_hash, t.from_address, t.amount::text, t.block_time, coalesce(q.id::text, ''),
-		    coalesce(q.origin_blockchain, ''), coalesce(q.origin_txs->0->>'hash', ''), coalesce(q.refund_to, '')
+		    coalesce(q.origin_blockchain, ''), coalesce(q.origin_txs->0->>'hash', ''), coalesce(q.refund_to, ''),
+		    EXISTS (SELECT 1 FROM chain_transfers d JOIN crosschain_quotes dq ON dq.option_id = d.invoice_id
+		        WHERE d.chain_id = t.chain_id AND d.from_address = t.from_address AND EXISTS (SELECT 1
+		        FROM jsonb_array_elements(dq.destination_txs) x WHERE lower(x->>'hash') = d.tx_hash))
 		FROM chain_transfers t LEFT JOIN LATERAL (SELECT * FROM crosschain_quotes q WHERE q.option_id = t.invoice_id
 		    AND EXISTS (SELECT 1 FROM jsonb_array_elements(q.destination_txs) d WHERE lower(d->>'hash') = t.tx_hash)
 		    LIMIT 1) q ON true
@@ -175,7 +180,7 @@ func ReadHeld(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client, i
 	h.Payments, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (Payment, error) {
 		var p Payment
 		var amount string
-		err := row.Scan(&p.TxHash, &p.From, &amount, &p.BlockTime, &p.Quote, &p.OriginChain, &p.OriginTx, &p.RefundTo)
+		err := row.Scan(&p.TxHash, &p.From, &amount, &p.BlockTime, &p.Quote, &p.OriginChain, &p.OriginTx, &p.RefundTo, &p.Relayed)
 		p.Amount, _ = new(big.Int).SetString(amount, 10)
 		return p, err
 	})
@@ -254,10 +259,13 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 	var paid *Payment
 	senders, relays := map[string]bool{}, map[string]bool{}
 	for i, p := range h.Payments {
-		if p.Quote == "" {
-			senders[p.From] = true
-		} else { // NEAR Intents sends every cross-chain payer's money from one address: each quote is its own payer
+		switch { // NEAR Intents sends every cross-chain payer's money from one address: each quote is its own payer
+		case p.Quote != "":
 			senders["quote "+p.Quote], relays[p.From] = true, true
+		case p.Relayed:
+			senders["payment "+p.TxHash], relays[p.From] = true, true
+		default:
+			senders[p.From] = true
 		}
 		if strings.EqualFold(p.TxHash, txHash) {
 			paid = &h.Payments[i]
@@ -270,7 +278,7 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 	switch {
 	case to != nil:
 		r.To = *to
-	case paid.Quote != "":
+	case paid.Quote != "" || paid.Relayed:
 		return Return{}, ErrCrossChain
 	}
 	receive, token := common.HexToAddress(h.Receive), common.HexToAddress(h.Token)
@@ -312,6 +320,9 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 	case paid.Quote != "":
 		r.Warnings = append(r.Warnings, fmt.Sprintf("The payer paid through NEAR Intents on %s (transaction %s): check "+
 			"their proof that this address is theirs.", paid.OriginChain, paid.OriginTx))
+	case paid.Relayed:
+		r.Warnings = append(r.Warnings, "NEAR Intents delivered this payment and no quote names it yet: find the payer's "+
+			"quote and check their proof that this address is theirs.")
 	case !senders[strings.ToLower(r.To.Hex())]:
 		r.Warnings = append(r.Warnings, "No payment came from this address: check the payer's proof that it is theirs.")
 	}
