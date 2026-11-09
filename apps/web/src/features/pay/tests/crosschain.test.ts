@@ -1,7 +1,9 @@
+import { generateKeyPairSync, sign } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { ONECLICK_KEY } from "@/features/pay/constants/crosschain";
 import {
   base58,
+  crossChainKey,
   fromBase58,
   type QuoteAsk,
   quoteMessage,
@@ -96,5 +98,33 @@ describe("base58", () => {
       expect(fromBase58(base58(bytes))).toEqual(bytes);
     }
     expect(quoteMessage(answer)).toMatch(/^[1-9A-HJ-NP-Za-km-z]{43,44}$/);
+  });
+});
+
+// A key of the test's own, to sign answers 1Click never would.
+const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+const TEST_KEY = `ed25519:${base58(new Uint8Array(publicKey.export({ format: "der", type: "spki" }).subarray(-32)))}`;
+const resigned = (copy: Record<string, unknown>) => ({
+  ...copy,
+  signature: `ed25519:${base58(new Uint8Array(sign(null, Buffer.from(quoteMessage(copy)), privateKey)))}`,
+});
+
+describe("verifyQuote on answers a key signed", () => {
+  it("refuses more slippage than the api asks for, which would go back to the refund address", async () => {
+    expect(await verifyQuote(resigned(structuredClone(answer)), ASK, TEST_KEY)).toBe(true);
+    const more: Record<string, unknown> = structuredClone(answer);
+    (more.quoteRequest as Record<string, unknown>).slippageTolerance = 500;
+    expect(await verifyQuote(resigned(more), ASK, TEST_KEY)).toBe(false);
+  });
+});
+
+describe("crossChainKey", () => {
+  it("takes a test build's key only on loopback", () => {
+    for (const host of ["localhost", "127.0.0.1", "[::1]"])
+      expect(crossChainKey(host, TEST_KEY)).toBe(TEST_KEY);
+    for (const host of ["pay.forwend.com", "127.0.0.1.example.com", ""]) {
+      expect(crossChainKey(host, TEST_KEY)).toBe(ONECLICK_KEY);
+    }
+    expect(crossChainKey("localhost", "")).toBe(ONECLICK_KEY);
   });
 });

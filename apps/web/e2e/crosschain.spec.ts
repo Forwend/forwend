@@ -84,7 +84,13 @@ async function routeCrossChain(page: Page, quotes: object[]) {
   );
   await page.route(/\/api\/v1\/invoices\/[0-9a-f]{64}\/crosschain\/price/, (route) =>
     route.fulfill({
-      json: { ...quote("1263000000"), quoteId: null, depositAddress: null, signed: null },
+      json: {
+        ...quote("1263000000"),
+        minAmountIn: "1252000000",
+        quoteId: null,
+        depositAddress: null,
+        signed: null,
+      },
     }),
   );
   let made = 0;
@@ -105,6 +111,11 @@ async function pickTronUSDT(page: Page) {
   await picker.getByRole("button", { name: /USDT.*Tron/ }).click();
   await expect(picker).toBeHidden();
   await expect(page.getByText("1,263.00 USDT")).toBeVisible();
+  // The cost is the least 1Click converts over what arrives: the slippage on top comes back unused.
+  await expect(
+    page.getByText("Conversion cost about 2.00 USD · Arrives in about a minute"),
+  ).toBeVisible();
+  await expect(page.getByText(/^Use your own wallet, not an exchange\./)).toBeVisible();
   await page.getByLabel("Refund address on Tron").fill(REFUND);
   await page.getByRole("button", { name: "Show address" }).click();
 }
@@ -115,9 +126,12 @@ test.describe("pay with another token (R-236 to R-238)", () => {
   }) => {
     await page.clock.install({ time: NOW });
     await mockInvoice(page, LIVE);
+    const second = "TNewAddress11111111111111111111111";
+    const third = "TThirdAddress111111111111111111111";
     await routeCrossChain(page, [
       quote("1263000000"),
-      quote("1265500000", "TNewAddress11111111111111111111111"),
+      quote("1265500000", second, "2026-10-10T12:30:00Z"),
+      quote("1265500000", third, "2026-10-10T12:45:00Z"),
     ]);
     await page.goto(`/pay/${PAY}`);
     await pickTronUSDT(page);
@@ -128,15 +142,51 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     expect(await sidewaysScroll(page)).toBe(0);
     expect(await blockingViolations(page)).toEqual([]);
 
-    // The price ends: the address blurs behind Get new price, and a changed amount needs Understood first (D-125).
+    // The price ends: the address blurs behind Get new price and can't be reached or copied (D-125).
     await page.clock.runFor(15 * 60_000);
     await expect(page.getByRole("alert").filter({ hasText: "This price expired" })).toBeVisible();
+    const copy = page.getByRole("button", { name: /Copy/ }).first();
+    await copy.focus();
+    await expect(copy).not.toBeFocused();
+    expect(await blockingViolations(page)).toEqual([]);
+    // A changed amount needs Understood before its address shows.
     await page.getByRole("button", { name: "Get new price" }).click();
     const changed = page.getByRole("alert").filter({ hasText: "The price changed" });
     await expect(changed).toContainText("You now send 1,265.50 USDT, not 1,263.00 USDT.");
-    await expect(page.getByText("TNewAddress11111111111111111111111")).toHaveCount(0);
+    await expect(page.getByText(second)).toHaveCount(0);
     await page.getByRole("button", { name: "Understood" }).click();
-    await expect(page.getByText("TNewAddress11111111111111111111111")).toBeVisible();
+    await expect(page.getByText(second)).toBeVisible();
+    await expect(page.getByText("This price expired")).toHaveCount(0);
+    // The same amount again shows its new address at once, and says it is new.
+    await page.clock.runFor(15 * 60_000);
+    await page.getByRole("button", { name: "Get new price" }).click();
+    await expect(page.getByText(third)).toBeVisible();
+    await expect(page.getByText("New address. Send only to this one.")).toBeVisible();
+    await expect(page.getByText(second)).toHaveCount(0);
+  });
+
+  test("lists chains as chips on a phone and beside the tokens on a large screen", async ({
+    page,
+  }) => {
+    await page.clock.install({ time: NOW });
+    await mockInvoice(page, LIVE);
+    await routeCrossChain(page, [quote("1263000000")]);
+    for (const [width, direction, search] of [
+      [390, "row", false],
+      [1280, "column", true],
+    ] as const) {
+      await page.setViewportSize({ width, height: 860 });
+      await page.goto(`/pay/${PAY}`);
+      await page.getByRole("button", { name: "Pay with another token" }).click();
+      await page.getByRole("button", { name: "Choose a token" }).click();
+      const picker = page.getByRole("dialog", { name: "Pay with another token" });
+      const chains = picker.getByRole("region", { name: "Chains" }).getByRole("list");
+      await expect(chains).toHaveCSS("flex-direction", direction);
+      await expect(picker.getByRole("searchbox", { name: "Search chains" })).toBeVisible({
+        visible: search,
+      });
+      expect(await sidewaysScroll(page)).toBe(0);
+    }
   });
 
   test("shows only the address 1Click signed, and none for an answer changed after it signed", async ({
@@ -202,9 +252,10 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await expect(
       page.getByRole("heading", { name: "Payment seen on Tron. Don't pay again." }),
     ).toBeVisible();
-    const steps = page.getByRole("list", { name: "Payment progress" });
-    await expect(steps).toContainText("Detected");
-    await expect(steps).toContainText("Converting");
+    const steps = page.getByRole("list", { name: "Payment progress" }).getByRole("listitem");
+    await expect(steps.nth(0)).toContainText("Detected, done");
+    await expect(steps.nth(1)).toHaveAttribute("aria-current", "step");
+    await expect(steps.nth(1)).toContainText("Converting");
     await expect(page.getByText("NEAR Intents is converting it to USDC on Base.")).toBeVisible();
     await expect(page.getByRole("link", { name: /View your transaction/ })).toHaveAttribute(
       "href",
@@ -222,4 +273,144 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await expect(page.getByRole("button", { name: "Show address" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Pay with another token" })).toHaveCount(0);
   });
+
+  test("a returned payment leaves one line, and the invoice can be paid again", async ({
+    page,
+  }) => {
+    const q = quote("1263000000");
+    await page.clock.install({ time: NOW });
+    for (const [status, line] of [
+      ["REFUNDED", "NEAR Intents returned the money to your refund address."],
+      ["FAILED", "The conversion failed. NEAR Intents returns the money to your refund address."],
+      [
+        "INCOMPLETE_DEPOSIT",
+        "Less than needed arrived. NEAR Intents returns it to your refund address.",
+      ],
+    ] as const) {
+      await page.unroute("**/api/v1/invoices/*");
+      await mockInvoice(page, {
+        ...LIVE,
+        crossChain: kept(q, { status, depositSeenAt: "2026-10-10T11:50:00Z" }),
+      });
+      await page.goto(`/pay/${PAY}`);
+      await expect(page.getByRole("status").filter({ hasText: line })).toContainText(
+        `Quote ID for support: ${q.quoteId}`,
+      );
+      await expect(page.getByText("Don't pay again")).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Show address" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Pay with another token" })).toBeVisible();
+    }
+  });
+
+  test("the receipt names what the payer paid with", async ({ page }) => {
+    await page.clock.install({ time: NOW });
+    await mockInvoice(page, {
+      ...LIVE,
+      paymentStatus: "paid",
+      settlementStatus: "pending",
+      paidAt: "2026-10-10T12:05:00Z",
+      deposits: [
+        {
+          txHash: `0x${"3".repeat(64)}`,
+          logIndex: 0,
+          from: "0x8ba1f109551bd432803012645ac136ddd64dba72",
+          amount: "1250000000",
+          blockNumber: 100,
+          blockTime: "2026-10-10T12:04:00Z",
+          status: "confirmed",
+          late: false,
+          paid: "1250000000",
+          blocksLeft: 0,
+          blocksTotal: 0,
+          secondsLeft: 0,
+        },
+      ],
+      crossChain: kept(quote("1263000000"), {
+        status: "SUCCESS",
+        depositSeenAt: "2026-10-10T12:01:00Z",
+        convertedAt: "2026-10-10T12:03:00Z",
+      }),
+    });
+    await page.goto(`/pay/${PAY}`);
+    await expect(page.getByText("Paid with")).toBeVisible();
+    await expect(page.getByText("1,263.00 USDT on Tron")).toBeVisible();
+  });
+
+  test("a reload shows a kept quote only against the refund address this tab typed", async ({
+    page,
+  }) => {
+    await page.clock.install({ time: NOW });
+    await page.addInitScript(([key, value]) => sessionStorage.setItem(key, value), [
+      `forwend:cross:${LIVE.invoiceId}`,
+      JSON.stringify({ assetId: TRON_USDT, refundTo: REFUND }),
+    ] as const);
+    // This tab asked with REFUND: the kept quote shows again after a reload, checked again.
+    await mockInvoice(page, { ...LIVE, crossChain: kept(quote("1263000000"), {}) });
+    await page.goto(`/pay/${PAY}`);
+    await expect(page.getByText(DEPOSIT_ADDRESS)).toBeVisible();
+
+    // The api keeps a quote 1Click signed with another refund address: it never shows.
+    const attacker = "TAttackerRefund11111111111111111111";
+    const theirs = signedQuote({
+      recipient: BASE_RECEIVE,
+      amount: "1250000000",
+      amountIn: "1263000000",
+      originAsset: TRON_USDT,
+      refundTo: attacker,
+      depositAddress: DEPOSIT_ADDRESS,
+    });
+    await page.unroute("**/api/v1/invoices/*");
+    await mockInvoice(page, {
+      ...LIVE,
+      crossChain: kept(quote("1263000000"), { refundTo: attacker, signed: theirs }),
+    });
+    await page.reload();
+    await expect(
+      page.getByRole("alert").filter({ hasText: "We could not check this address" }),
+    ).toBeVisible();
+    await expect(page.getByText(DEPOSIT_ADDRESS)).toHaveCount(0);
+  });
+
+  test("a new tab asks for the refund address before it shows a kept quote", async ({ page }) => {
+    await page.clock.install({ time: NOW });
+    await mockInvoice(page, { ...LIVE, crossChain: kept(quote("1263000000"), {}) });
+    await routeCrossChain(page, [quote("1263000000")]);
+    await page.goto(`/pay/${PAY}`);
+    await expect(page.getByLabel("Refund address on Tron")).toHaveValue("");
+    await expect(page.getByText(DEPOSIT_ADDRESS)).toHaveCount(0);
+    await page.getByLabel("Refund address on Tron").fill(REFUND);
+    await page.getByRole("button", { name: "Show address" }).click();
+    await expect(page.getByText(DEPOSIT_ADDRESS)).toBeVisible();
+  });
 });
+
+/** The invoice read's crossChain for quote q, as the api keeps it (R-235). */
+function kept(q: ReturnType<typeof quote>, change: Record<string, unknown>) {
+  return {
+    provider: "near_intents",
+    quoteId: q.quoteId,
+    assetId: TRON_USDT,
+    blockchain: "tron",
+    symbol: "USDT",
+    decimals: 6,
+    depositAddress: q.depositAddress,
+    refundTo: REFUND,
+    amountIn: q.amountIn,
+    minAmountIn: q.minAmountIn,
+    amountOut: q.amountOut,
+    status: "PENDING_DEPOSIT",
+    deposited: "1263000000",
+    delivered: null,
+    refunded: null,
+    refundReason: null,
+    originTxs: [],
+    destinationTxs: [],
+    shownUntil: q.shownUntil,
+    deadline: q.deadline,
+    createdAt: q.createdAt,
+    depositSeenAt: null,
+    convertedAt: null,
+    signed: q.signed,
+    ...change,
+  };
+}

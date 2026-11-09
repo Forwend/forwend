@@ -13,7 +13,7 @@ import {
   type TimelineStep,
 } from "@forwend/ui-web";
 import { ExternalLink, TriangleAlert } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import {
   useCreateCrossQuoteMutation,
@@ -22,7 +22,7 @@ import {
 } from "@/features/pay/api/crosschain-api";
 import { CrossChainPicker } from "@/features/pay/components/crosschain-picker";
 import { ExactAmount } from "@/features/pay/components/exact-amount";
-import { CROSS_CHAIN_STATUSES } from "@/features/pay/constants/crosschain";
+import { CROSS_CHAIN_STATUSES, CROSS_CHAIN_TARGET } from "@/features/pay/constants/crosschain";
 import { ENTER } from "@/features/pay/constants/pay";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import { blockchainName, signedDeposit, verifyQuote } from "@/features/pay/lib/crosschain";
@@ -75,17 +75,23 @@ export function CrossChainPay({
 }: CrossChainPayProps) {
   const kept = invoice.crossChain ?? null;
   const [picking, setPicking] = useState(false);
+  // The token and refund address this tab asked with. A reload shows the kept quote again only against them: the
+  // api's copy of the refund address could be anyone's (D-124).
+  const [asked] = useState(() => readAsked(invoice.invoiceId));
   const [token, setToken] = useState<Shown["token"] | null>(kept ? keptToken(kept) : null);
-  // The refund address the payer typed in this tab: a reload checks the kept quote against it, not the api's copy.
-  const [typed] = useState(() => {
-    try {
-      return sessionStorage.getItem(refundKey(invoice.invoiceId));
-    } catch {
-      return null; // Storage may be off: the page shows where refunds go, so the payer can check it.
-    }
-  });
-  const [refundTo, setRefundTo] = useState(typed ?? kept?.refundTo ?? "");
-  const [shown, setShown] = useState<Shown | null>(null);
+  const [refundTo, setRefundTo] = useState(asked?.refundTo ?? "");
+  const heading = useRef<HTMLHeadingElement>(null);
+  // A reload shows the kept quote again, checked as a new one is, for the token and refund address this tab asked
+  // with. Without them the payer types the refund address again, and Show address gives the same open quote (R-233).
+  const [shown, setShown] = useState<Shown | null>(() =>
+    kept &&
+    asked &&
+    kept.status === CROSS_CHAIN_STATUSES.pending &&
+    kept.assetId === asked.assetId &&
+    Date.parse(kept.shownUntil) > Date.now()
+      ? { ...fromKept(kept), refundTo: asked.refundTo }
+      : null,
+  );
   // null while checking; false when the answer isn't 1Click's for this invoice.
   const [deposit, setDeposit] = useState<Deposit | false | null>(null);
   // A new price whose amount differs waits for Understood before its QR shows (D-125).
@@ -100,12 +106,6 @@ export function CrossChainPay({
   );
   const [createQuote, creating] = useCreateCrossQuoteMutation();
 
-  // A reload shows the kept quote again, checked as a new one is.
-  useEffect(() => {
-    if (!kept || shown || kept.status !== CROSS_CHAIN_STATUSES.pending) return;
-    if (Date.parse(kept.shownUntil) <= Date.now()) return;
-    setShown({ ...fromKept(kept), refundTo: typed ?? kept.refundTo });
-  }, [kept, shown, typed]);
   useEffect(() => {
     if (!shown) return;
     let current = true;
@@ -137,11 +137,7 @@ export function CrossChainPay({
     }
     const q = result.data;
     const before = deposit || null;
-    try {
-      sessionStorage.setItem(refundKey(invoice.invoiceId), refundTo.trim());
-    } catch {
-      // Storage may be off: the address shows where refunds go.
-    }
+    keepAsked(invoice.invoiceId, { assetId: token.assetId, refundTo: refundTo.trim() });
     if (!q.quoteId || !q.shownUntil) {
       setProblem(COPY.unavailable);
       return;
@@ -152,6 +148,9 @@ export function CrossChainPay({
       setChangedFrom(next.amountIn === before.amountIn ? null : before.amountIn);
       setRenewed(next.amountIn === before.amountIn);
     }
+    // The old address must not show beside the new quote while it is checked.
+    setDeposit(null);
+    heading.current?.focus();
     setShown({
       quoteId: q.quoteId,
       token,
@@ -162,13 +161,20 @@ export function CrossChainPay({
   };
 
   // Once 1Click saw the deposit, the payer follows it to Paid (R-238).
-  if (kept?.depositSeenAt) return <CrossChainProgress invoice={invoice} crossChain={kept} />;
+  if (kept?.depositSeenAt && !crossChainEnded(kept)) {
+    return <CrossChainProgress invoice={invoice} crossChain={kept} />;
+  }
 
   const chain = token ? blockchainName(token.blockchain) : "";
   const expired = shown !== null && now >= shown.shownUntil;
   return (
     <section aria-labelledby="pay-cross" className={`flex flex-col gap-4 p-4 sm:p-5 ${ENTER}`}>
-      <h2 id="pay-cross" className="text-sm font-medium text-ink">
+      <h2
+        id="pay-cross"
+        ref={heading}
+        tabIndex={-1}
+        className="text-sm font-medium text-ink outline-none"
+      >
         {COPY.other}
       </h2>
       {token ? (
@@ -196,6 +202,7 @@ export function CrossChainPay({
           setToken(picked);
           setShown(null);
           setProblem(null);
+          heading.current?.focus();
         }}
       />
       {token && !shown ? (
@@ -227,7 +234,20 @@ export function CrossChainPay({
         </>
       ) : null}
       {shown && deposit === false ? (
-        <Notice tone="danger" role="alert">
+        <Notice
+          tone="danger"
+          role="alert"
+          action={
+            <Button
+              size="sm"
+              variant="secondary"
+              loading={creating.isLoading}
+              onClick={() => ask(false)}
+            >
+              {PAY_COPY.retry}
+            </Button>
+          }
+        >
           {COPY.unverified}
         </Notice>
       ) : null}
@@ -236,7 +256,14 @@ export function CrossChainPay({
           tone="warning"
           role="alert"
           action={
-            <Button size="sm" variant="secondary" onClick={() => setChangedFrom(null)}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setChangedFrom(null);
+                heading.current?.focus();
+              }}
+            >
               {COPY.understood}
             </Button>
           }
@@ -354,8 +381,8 @@ function Send({
       <div className="relative">
         {/* An expired price must not be paid: its address and QR blur behind the way to a new one (D-125). */}
         <div
-          aria-hidden={expired}
-          className={`flex flex-col gap-4 ${expired ? "pointer-events-none select-none blur-sm" : ""}`}
+          inert={expired}
+          className={`flex flex-col gap-4 ${expired ? "select-none blur-sm" : ""}`}
         >
           <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 sm:gap-4">
             <QrCode
@@ -408,11 +435,7 @@ function CrossChainProgress({ invoice, crossChain }: { invoice: Invoice; crossCh
   const chain = blockchainName(crossChain.blockchain);
   const onBase = invoice.deposits.length > 0 || invoice.options.some((o) => o.deposits.length > 0);
   const paid = invoice.paymentStatus === "paid";
-  const ended =
-    crossChain.status === CROSS_CHAIN_STATUSES.refunded ||
-    crossChain.status === CROSS_CHAIN_STATUSES.failed ||
-    crossChain.status === CROSS_CHAIN_STATUSES.incomplete;
-  const reached = paid ? 4 : onBase ? 2 : crossChain.convertedAt ? 2 : 1;
+  const reached = paid ? 4 : onBase || crossChain.convertedAt ? 2 : 1;
   const labels = [
     COPY.steps.detected,
     COPY.steps.converting,
@@ -424,18 +447,10 @@ function CrossChainProgress({ invoice, crossChain }: { invoice: Invoice; crossCh
     state:
       i < reached
         ? STEP_STATES.complete
-        : i === reached && !ended
+        : i === reached
           ? STEP_STATES.current
           : STEP_STATES.upcoming,
   }));
-  const problem =
-    crossChain.status === CROSS_CHAIN_STATUSES.incomplete
-      ? COPY.incomplete
-      : crossChain.status === CROSS_CHAIN_STATUSES.refunded
-        ? COPY.refunded
-        : crossChain.status === CROSS_CHAIN_STATUSES.failed
-          ? COPY.failed
-          : null;
   const origin = crossChain.originTxs[0];
   return (
     <section
@@ -447,9 +462,8 @@ function CrossChainProgress({ invoice, crossChain }: { invoice: Invoice; crossCh
       </h2>
       <PaymentTimeline label={PAY_COPY.progress} steps={steps} />
       <p role="status" className="text-sm text-muted">
-        {problem ?? (reached === 1 ? COPY.converting : PAY_COPY.updatesItself)}
+        {reached === 1 ? COPY.converting : PAY_COPY.updatesItself}
       </p>
-      {problem ? <p className="text-xs text-muted">{COPY.supportId(crossChain.quoteId)}</p> : null}
       {origin?.explorerUrl ? (
         <a
           href={origin.explorerUrl}
@@ -466,7 +480,56 @@ function CrossChainProgress({ invoice, crossChain }: { invoice: Invoice; crossCh
   );
 }
 
-const refundKey = (invoiceId: string) => `forwend:refund:${invoiceId}`;
+const askedKey = (invoiceId: string) => `forwend:cross:${invoiceId}`;
+
+/** What this tab asked a quote with; null without, or when storage is off. */
+function readAsked(invoiceId: string): { assetId: string; refundTo: string } | null {
+  try {
+    const value: unknown = JSON.parse(sessionStorage.getItem(askedKey(invoiceId)) ?? "null");
+    const asked = value as { assetId?: unknown; refundTo?: unknown } | null;
+    return typeof asked?.assetId === "string" && typeof asked.refundTo === "string"
+      ? { assetId: asked.assetId, refundTo: asked.refundTo }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function keepAsked(invoiceId: string, asked: { assetId: string; refundTo: string }) {
+  try {
+    sessionStorage.setItem(askedKey(invoiceId), JSON.stringify(asked));
+  } catch {
+    // Storage may be off: a reload asks for the refund address again.
+  }
+}
+
+/** 1Click returned the payer's money, or will: the invoice can be paid again (R-238). */
+export function crossChainEnded(c: Pick<CrossChain, "status">): boolean {
+  return (
+    c.status === CROSS_CHAIN_STATUSES.refunded ||
+    c.status === CROSS_CHAIN_STATUSES.failed ||
+    c.status === CROSS_CHAIN_STATUSES.incomplete
+  );
+}
+
+/** The one line a returned cross-chain payment leaves above the pay box, with the quote's ID for support. */
+export function CrossChainEnded({ crossChain }: { crossChain: CrossChain }) {
+  const line =
+    crossChain.status === CROSS_CHAIN_STATUSES.incomplete
+      ? COPY.incomplete
+      : crossChain.status === CROSS_CHAIN_STATUSES.refunded
+        ? COPY.refunded
+        : COPY.failed;
+  return (
+    <div
+      role="status"
+      className="flex flex-col gap-1 border-b border-line px-4 py-3 text-sm sm:px-5"
+    >
+      <span className="text-ink">{line}</span>
+      <span className="text-xs text-muted">{COPY.supportId(crossChain.quoteId)}</span>
+    </div>
+  );
+}
 
 function keptToken(c: CrossChain): Shown["token"] {
   return { assetId: c.assetId, blockchain: c.blockchain, symbol: c.symbol, decimals: c.decimals };

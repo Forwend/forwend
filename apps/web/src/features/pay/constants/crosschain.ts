@@ -10,8 +10,13 @@ export const ONECLICK_TEST_KEY = process.env.NEXT_PUBLIC_ONECLICK_TEST_KEY ?? ""
 export const CROSS_CHAIN_TARGET = {
   chainId: 8453,
   token: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+  decimals: 6,
   asset: "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
 } as const;
+
+/** The slippage the api asks 1Click for, in basis points (apps/backend/internal/intents): a quote with more lets the
+ * payer send more than the price needs, which then goes back to whoever the refund address is. */
+export const ONECLICK_SLIPPAGE_BPS = 100;
 
 /** No quote for a checkout closing sooner (R-231): the conversion must land before the close. */
 export const CROSS_CHAIN_LEAST_MS = 20 * 60_000;

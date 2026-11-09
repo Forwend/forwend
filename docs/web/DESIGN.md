@@ -886,11 +886,14 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - The deposit address shows as the direct one does: QR, exact amount, "Send only USDT on Tron.", the address.
       - Under it, the extra-back line with where refunds go, then "Price held mm:ss".
     - When the window ends, the address and QR blur behind a card: "This price expired" and Get new price.
+      - The card says "Already sent? Wait here": a deposit seen later still shows its progress.
+      - The blurred part is inert, so its Copy buttons can't be reached.
       - A changed amount shows a warning strip "The price changed" with both amounts and Understood; the QR waits.
       - The same amount shows "New address. Send only to this one."
     - Once 1Click saw the deposit: "Payment seen on Tron. Don't pay again.", the steps Detected, Converting,
       Confirming and Paid, one status line, and View your transaction.
-      - Less than needed, refunded and failed take the status line, with the quote ID for support under it.
+      - Less than needed, refunded and failed leave one line above Pay with, with the quote ID for support, and the
+        invoice can be paid again.
     - The receipt adds a Paid with row: the amount sent and its chain.
   - Receipt email, once money is seen and once paid:
     - The panel's last row is "Email me a receipt" with a mail icon.

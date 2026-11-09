@@ -61,7 +61,11 @@ import {
 } from "@/features/invoices/lib/invoices";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import { Backdrop } from "@/features/pay/components/backdrop";
-import { CrossChainPay } from "@/features/pay/components/crosschain-pay";
+import {
+  CrossChainEnded,
+  CrossChainPay,
+  crossChainEnded,
+} from "@/features/pay/components/crosschain-pay";
 import { ExactAmount } from "@/features/pay/components/exact-amount";
 import { NeedHelp } from "@/features/pay/components/need-help";
 import { type Choice, OptionPicker } from "@/features/pay/components/option-picker";
@@ -602,7 +606,9 @@ function PayBox({
     pay.state === PAY_STATES.confirming ||
     pay.state === PAY_STATES.checking ||
     pay.state === PAY_STATES.partial;
-  const crossSeen = Boolean(crossKept?.depositSeenAt);
+  // A deposit 1Click converts leads the box; one it returned leaves a line, and the invoice can be paid again.
+  const crossEnded = crossKept ? crossChainEnded(crossKept) : false;
+  const crossSeen = Boolean(crossKept?.depositSeenAt) && !crossEnded;
   // The conversion must land before the close: no new quote in its last 20 minutes (R-231).
   const crossOffered =
     crossTarget !== null &&
@@ -631,6 +637,7 @@ function PayBox({
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <div className={PANEL}>
+        {crossEnded && crossKept && !done ? <CrossChainEnded crossChain={crossKept} /> : null}
         {done ? (
           <Paid invoice={invoice} linkToken={linkToken} token={token} embed={embed} />
         ) : crossing && crossTarget ? (
@@ -1198,8 +1205,6 @@ function Paid({
     </div>
   );
 }
-
-// Wallets and exchanges reject "1,250.50": the copy is the plain decimal, exact to the base unit.
 
 function useNow(running: boolean): number {
   const [now, setNow] = useState(Date.now);

@@ -4,6 +4,7 @@ import {
   BLOCKCHAIN_NAMES,
   CROSS_CHAIN_TARGET,
   ONECLICK_KEY,
+  ONECLICK_SLIPPAGE_BPS,
   ONECLICK_TEST_KEY,
   POPULAR_BLOCKCHAINS,
 } from "@/features/pay/constants/crosschain";
@@ -138,6 +139,7 @@ export async function verifyQuote(
   const asked =
     request.dry === false &&
     request.swapType === "EXACT_OUTPUT" &&
+    request.slippageTolerance === ONECLICK_SLIPPAGE_BPS &&
     request.depositType === "ORIGIN_CHAIN" &&
     request.destinationAsset === CROSS_CHAIN_TARGET.asset &&
     request.recipientType === "DESTINATION_CHAIN" &&
@@ -187,10 +189,12 @@ export function signedDeposit(
 }
 
 /** 1Click's key; a test build's fake key only on a page served from loopback, never on a real host. */
-export function crossChainKey(): string {
-  const host = typeof location === "undefined" ? "" : location.hostname;
+export function crossChainKey(
+  host = typeof location === "undefined" ? "" : location.hostname,
+  testKey: string = ONECLICK_TEST_KEY,
+): string {
   const loopback = host === "localhost" || host === "127.0.0.1" || host === "[::1]";
-  return ONECLICK_TEST_KEY && loopback ? ONECLICK_TEST_KEY : ONECLICK_KEY;
+  return testKey && loopback ? testKey : ONECLICK_KEY;
 }
 
 /** 1Click's name of a chain as payers know it. */

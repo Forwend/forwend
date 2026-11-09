@@ -177,8 +177,11 @@ features own product behavior, and shared UI components are grouped by purpose. 
     - 1Click's ed25519 signature, checked with WebCrypto against the key built into the page;
     - the signed request: that receive address, Base USDC, `EXACT_OUTPUT`, the amount due, the token and the refund address.
   - The address and amount shown are read from the signed answer, never from the api's own fields.
-  - A reload checks the kept quote again, against the refund address this tab typed (session storage).
+  - A slippage above the api's 1% is refused: the extra it lets a payer send goes back to the refund address.
+  - A reload shows the kept quote only for the token and refund address this tab asked with (session storage).
+    - Without them the payer types the refund address again; Show address then gives the same open quote.
   - A test build's `NEXT_PUBLIC_ONECLICK_TEST_KEY` counts only when the page itself runs on loopback.
+  - WebCrypto Ed25519 needs a current browser; an older one shows no address and says so.
 
 ## Tests
 

@@ -193,7 +193,8 @@ export const PAY_COPY = {
     time: (minutes: number) =>
       minutes <= 1 ? "Arrives in about a minute" : `Arrives in about ${minutes} minutes`,
     refund: (chain: string) => `Refund address on ${chain}`,
-    refundHint: "Your own wallet, not an exchange. Extra, short or failed money goes back here.",
+    refundHint:
+      "Use your own wallet, not an exchange. Extra, short or failed money goes back here.",
     refundNeeded: "Enter your address on this chain.",
     showAddress: "Show address",
     sendOnly: (symbol: string, chain: string) => `Send only ${symbol} on ${chain}.`,
@@ -202,7 +203,8 @@ export const PAY_COPY = {
     extraBack: "Sent more? The extra goes back to your refund address.",
     refundsTo: (address: string) => `Refunds go to ${address}`,
     expired: "This price expired",
-    expiredNote: "Don't send to this address. Get a new price first.",
+    expiredNote:
+      "Don't send to this address. Already sent? Wait here: this page updates on its own.",
     newPrice: "Get new price",
     changed: "The price changed",
     changedNote: (before: string, now: string) => `You now send ${now}, not ${before}.`,

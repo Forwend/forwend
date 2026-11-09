@@ -11,6 +11,7 @@ export interface ExactAmountProps {
   token: PayToken;
 }
 
+// Wallets and exchanges reject "1,250.50": the copy is the plain decimal, exact to the base unit.
 export function ExactAmount({ amount, token }: ExactAmountProps) {
   const fractionDigits = exactDigits(amount, token.decimals);
   const plain = formatTokenAmount({
