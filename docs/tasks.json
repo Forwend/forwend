@@ -512,25 +512,88 @@
       "type": "fix",
       "behavior": "The medium findings of the 2026-11-09 audit are fixed: no stuck settlement, cross-chain tracking ends at 1Click's final state, public routes share budgets, and the hot queries use indexes",
       "acceptance": [
-        "Each medium finding marked FIXED in the local audit report has a test that fails before its fix and passes after, or a measured query plan",
-        "Existing backend, web and contract checks pass unchanged"
+        "Settlement never stalls: the signer starts short of gas and buys it, fee-paying invoices skip the daily cap, unsettled intents past their deadline alert, mined settles wait for finality, and unbooked money on a paid invoice alerts without blocking it (audit A3-02, A1-06, A3-05, A5-03, A1-03)",
+        "Returns are capped at what that payer paid, the reconciliation report counts only what it checked, an unbuildable webhook follows the retry schedule, and an unpaid link checkout holds its slot for 15 minutes (audit A2-02, A1-05, A3-04, A2-04)",
+        "Cross-chain quotes are followed to 1Click's own address deadline through outages and unknown statuses, a short deposit holds the invoice, slow chains get a long enough deadline, two delivering addresses alert, status reads run in parallel, and 1Click calls share one budget (audit A4-03, A3-03, A4-07, A4-05, A4-02, A4-04, A4-06, A2-01)",
+        "The api's RPC reads can't take the worker's and signer's share, and a send's receipt is read at most every 5 s (audit A3-06, A5-05)",
+        "Worker rounds, dashboard reads and the attention list use indexes and return the same rows (audit A5-01, A5-02, A5-06, A5-07, A5-08)"
       ],
       "dependsOn": [
         "F457"
       ],
-      "state": "active",
+      "state": "verified",
       "verification": [
         "unit",
-        "docs-check"
+        "docs-check",
+        "e2e"
       ],
       "refs": [],
       "keep": [],
       "review": true,
       "notes": [],
       "blockedReason": null,
-      "evidence": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-09T23:20:55Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 77.1,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 51.2,
+            "log": ""
+          }
+        ],
+        "taskHash": "47faec217a434bad",
+        "filesHash": "707ce184ed62e02b",
+        "proof": {
+          "1": "unit: TestCheckGas, TestSettlesThatPayTheirNetworkFeeAreNotCapped, TestAlertsNameAStalledChainAndPaidMoneyNotSettled, TestMinedSettleWaitsForFinalityBeforeItIsReadAgain, TestUnbookedMoneyAlertsButHoldsNeitherPaidNorTheSettle, TestPaidInvoiceWithUnbookedMoneyAlerts",
+          "2": "unit: TestSupportReturnsAPayerAtMostWhatTheyPaid, TestPaymentReconciliationVerifiesOnlyReceiversWithNothingUnexplained, TestADeliveryThatCantBeBuiltFailsOnTheSchedule, TestLimitedLinkHoldsAnUnpaidSlotOnlyUntilADepositIsSeen",
+          "3": "unit: TestWorkerFollowsADepositMadeAfterTheDeadline, TestWorkerStopsAQuoteNobodyPaidAndRecordsAFailure, TestWorkerAlertsOnAStatusItDoesNotKnow, TestAShortDepositHoldsTheInvoice, TestAlertsNameCrossChainPaymentsThatHoldMoney, TestSlowChainQuoteGetsALongerDeadline, TestOneRoundReadsDepositsFirstAndManyAtOnce, TestCrossChainCallsShareOneBudgetAcrossInvoices; e2e crosschain.spec.ts short deposit",
+          "4": "unit: TestAPIReadsCannotTakeTheMoneyPathsBudget, TestAPolledSendReadsItsReceiptAtMostOnceEveryFewSeconds",
+          "5": "unit: TestRoundReadsInvoicesThroughTheirIndexes, TestUnchangedStatusIsNotWrittenAgain, TestPaymentAttentionReadsProblemsThroughIndexes, TestCreateCapsReadOnlyOpenAndRecentInvoices, TestBalancesReadOnlyInvoicesThatCanHoldMoney, TestFilterColumnTestsKeepEveryMatch"
+        }
+      },
       "branch": "fix/f458-the-medium-findings-of-the-2026-11-09-au",
-      "baseCommit": "c488dce3f4da38aba2c138600f26726d0f85c45d"
+      "baseCommit": "c488dce3f4da38aba2c138600f26726d0f85c45d",
+      "failedVerifies": 0
     },
     {
       "id": "F459",

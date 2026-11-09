@@ -109,8 +109,9 @@ func (s *Signer) settle(ctx context.Context, id int64, release func()) error {
 	if !funded {
 		return s.postpone(ctx, in, waitUnresolved, "merchant payable was returned or a movement is not booked")
 	}
-	// Less at the finalized block than the ledger booked means money left the receiver unbooked: settling could take
-	// what is held for payers.
+	// Less than the ledger booked means money left the receiver unbooked: settling could take what is held for payers.
+	// The balance is read where the scan finalized, never past it: what the ledger booked covers exactly that, so a
+	// deposit or refund the scan hasn't reached can't read as missed.
 	var bookedText string
 	if err := s.pool.QueryRow(ctx, `SELECT coalesce(sum(e.amount), 0)::text FROM ledger_entries e
 		JOIN ledger_transactions t ON t.id = e.transaction_id WHERE t.invoice_id = $1 AND e.account = 'receiver'`,
@@ -122,7 +123,13 @@ func (s *Signer) settle(ctx context.Context, id int64, release func()) error {
 	if err != nil {
 		return fmt.Errorf("read finalized block: %w", err)
 	}
-	held, err := chain.TokenBalanceAt(ctx, client, in.chainID, in.token, in.receive, head.Number.Uint64())
+	var scanned int64
+	if err := s.pool.QueryRow(ctx, "SELECT last_finalized_block FROM chain_cursors WHERE chain_id = $1",
+		int64(in.chainID)).Scan(&scanned); err != nil {
+		return fmt.Errorf("read chain %d scan cursor: %w", in.chainID, err)
+	}
+	at := min(head.Number.Uint64(), uint64(scanned))
+	held, err := chain.TokenBalanceAt(ctx, client, in.chainID, in.token, in.receive, at)
 	if err != nil {
 		return err
 	}
@@ -132,7 +139,7 @@ func (s *Signer) settle(ctx context.Context, id int64, release func()) error {
 		return s.postpone(ctx, in, waitUnresolved, "the receive address holds less than the ledger booked")
 	}
 	if err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
-		return ledger.Unbooked(ctx, tx, in.invoiceID, booked, held, head.Number.Uint64())
+		return ledger.Unbooked(ctx, tx, in.invoiceID, booked, held, at)
 	}); err != nil {
 		return err
 	}

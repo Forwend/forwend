@@ -1939,10 +1939,16 @@ func TestUnbookedMoneyAlertsButHoldsNeitherPaidNorTheSettle(t *testing.T) {
 		t.Fatalf("with 2000000 unbooked: invoice %s, want paid", got.PaymentStatus)
 	}
 	excess(atPaid, "paid")
+	// The worker's read can land past the scan and say nothing; the signer reads where the scan finalized.
+	if _, err := e.pool.Exec(ctx, "DELETE FROM invoice_balance_alerts"); err != nil {
+		t.Fatal(err)
+	}
+	e.anvil.Mine(3)
 	s := e.signer(t)
 	if err := s.Run(ctx); err != nil {
 		t.Fatal(err)
 	}
+	excess(atPaid, "signed")
 	excess(afterPaid, "signed")
 	e.final(t, s)
 	for _, id := range []string{atPaid, afterPaid} {

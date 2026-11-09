@@ -517,7 +517,7 @@ signer:
      it can mine.
 2. Otherwise it signs new settlement bytes only when all of these hold:
    - the merchant payable covers the amount and every movement of the invoice is booked;
-   - the finalized balance is at least the ledger's booked receiver balance (else an `ALERT`).
+   - the balance where the scan finalized is at least the ledger's booked receiver balance (else an `ALERT`).
      - At least `ledger.DustExcess` more, with every scanned transfer booked, is a deposit the scan missed.
      - It logs `ALERT receive address holds money with no booked transfer` and writes an excess balance alert.
      - It still settles: settle pays out only the amount, and the rest stays held for its payer

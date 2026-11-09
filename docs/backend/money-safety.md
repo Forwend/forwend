@@ -209,7 +209,8 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
 - A balance check that agrees again deletes the alert, so the option no longer reads as in review.
 - Deposits are booked in chain order: one waits while an earlier one is still detected, so the earliest payers are
   paid to the creator first and later ones held (D-27). An empty `balanceOf` answer is an error, never 0.
-- Before signing a new settle, the signer reads the finalized balance of the receive address.
+- Before signing a new settle, the signer reads the receive address's balance where the scan finalized.
+  - It never reads past the scan: the ledger books exactly what the scan saw up to there.
   - Less than the ledger's booked receiver balance means money left unbooked; it signs nothing and logs an `ALERT`.
 - A deposit is received when seen and paid only at or below the chain's `finalized` block (D-45); show blocks and
   time left until then (`internal/finality`). Read headers, logs and receipts only, and compare block hashes the RPC
