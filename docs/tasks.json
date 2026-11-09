@@ -1576,7 +1576,7 @@
         "A refused price makes the fee quote fall back on its last good quote for up to an hour, then refuse; the executor's swap is not sent and the low gas alert names why."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "docs-check"
@@ -1640,11 +1640,18 @@
           "summary": "Commit aa037846 refuses a price older than its heartbeat plus PriceSlack (10 minutes): 30 min on Base and Base Sepolia, about 39 min on Arbitrum and 12 min on Arbitrum Sepolia, all well above the update gaps seen on chain. Tests accept 65 min and refuse 75 min on a 1-hour heartbeat, and the stale cases in the gas and quote tests are still past the limit. R-227, api.md, money-safety.md and acceptance line 1 match the code, and no wording from the old 1.5x rule is left. The Base proxy comment is now correct and has no date.",
           "at": "2026-11-09T01:01:46Z",
           "filesHash": "bc33ca3e32d76cf1"
-        }
+        },
+        "commit": "593c5c25",
+        "doneAt": "2026-11-09T01:03:16Z"
       },
       "branch": "fix/f447-a-stale-chainlink-eth-usd-price-or-one-r",
       "baseCommit": "fb24425001c3dded72f1addbd67d20d50eaba4e3",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f447-a-stale-chainlink-eth-usd-price-or-one-r",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
