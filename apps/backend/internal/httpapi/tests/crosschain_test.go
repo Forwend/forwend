@@ -195,8 +195,8 @@ func TestCrossChainQuotePaysExactlyWhatIsDueIntoTheBaseOption(t *testing.T) {
 	// Another refund address waits until this quote's deadline: each address delivers all that is due, so both paid
 	// would pay the invoice twice.
 	other := e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "TOther"}`)
-	if other.status != http.StatusConflict || errorCode(other) != "quote_open" {
-		t.Fatalf("another refund address while a quote can be paid: %d %v", other.status, other.body)
+	if other.status != http.StatusCreated || other.body["quoteId"] == r.body["quoteId"] {
+		t.Fatalf("other refund address: %d %v", other.status, other.body)
 	}
 	// A quote is given again while 5 minutes of its window are left, and not once fewer are.
 	e.exec(t, `UPDATE crosschain_quotes SET shown_until = now() + interval '6 minutes'`)

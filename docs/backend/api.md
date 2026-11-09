@@ -187,7 +187,6 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
     - It is kept only when 1Click's signature and the signed fields check out (D-124); otherwise 503
       `provider_unavailable`, and an `ALERT` is logged.
     - The same token, refund address and amount get the open quote back while 5 minutes of its window are left.
-    - Another token or refund address is 409 `quote_open` until that quote's deadline: each address delivers all due.
     - Twenty quotes an invoice an hour (429 `too_many_quotes`); a quote 1Click is converting makes it 409 `pick_locked`.
       - So does a short deposit 1Click holds (`INCOMPLETE_DEPOSIT`): the rest may still convert it.
     - A route's minimum above the amount is 422 `below_minimum`, whose error also carries `minimum`.

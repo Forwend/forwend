@@ -2699,7 +2699,7 @@ paths:
         minutes before the close; the page holds its price until shownUntil (15 minutes). The api keeps it only when
         1Click's signature and these fields check out, and the pay page checks signed again before it shows
         depositAddress. The same token and refund address get the open quote back while 5 minutes of its window are
-        left (201 again). Another token or refund address is 409 quote_open until that quote's deadline. It keeps
+        left (201 again). It keeps
         the Base option as the payer's pick. An invoice gets 20 quotes an hour (429 too_many_quotes), and all
         invoices share a budget of new quotes (429 rate_limited). A deposit 1Click converts, or a short one it holds,
         is 409 pick_locked.
@@ -2728,13 +2728,7 @@ paths:
               schema: { $ref: "#/components/schemas/CrossChainQuote" }
         "400": { $ref: "#/components/responses/MalformedRequest" }
         "404": { $ref: "#/components/responses/InvoiceNotFound" }
-        "409":
-          description: |
-            1Click saw a deposit for this invoice (pick_locked), or a quote with another token or refund address can
-            still be paid (quote_open): each delivers all that is due
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "409": { $ref: "#/components/responses/PickLocked" }
         "422": { $ref: "#/components/responses/CrossChainRefused" }
         "429": { $ref: "#/components/responses/TooManyQuotes" }
         "503": { $ref: "#/components/responses/ProviderUnavailable" }
@@ -6476,7 +6470,7 @@ components:
                 transfer_refused, wrong_code, code_sent_recently, too_many_codes, no_login_email, code_unavailable, two_step_not_set_up,
                 payment_not_found, checkout_not_found, checkout_not_expirable, too_many_movements, link_not_ready, link_changed,
                 pick_locked, webhook_queue_full, payment_reconciliation_pending, crosschain_unavailable, below_minimum,
-                too_many_quotes, quote_open, provider_unavailable, no_liquidity,
+                too_many_quotes, provider_unavailable, no_liquidity,
                 invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
             message: { type: string }
   responses:

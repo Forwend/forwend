@@ -236,8 +236,8 @@ D-123: NEAR Intents 1Click converts a payer's token on another chain into USDC o
   - 1Click returns the unused slippage, any extra and short or failed deposits to the payer's `refundTo`.
   - Each deposit address delivers all that is due, and 1Click has no cancel: every address stays live until its deadline.
   - So a second address paid too overpays the invoice. The extra is held on Base for its payer.
-  - Only one token and refund address has a live quote at a time: another is refused until that quote's deadline.
-  - The same payer can still pay an old and a new address of one token. The pay page tells them not to.
+  - A payer may still change token: no new quote is refused for it, so that switching stays open.
+  - The pay page tells the payer not to pay twice. The extra goes back through support to that quote's payer.
   - The worker logs an `ALERT` when two quotes of one invoice saw deposits.
 - Its deadline is at least 10 minutes before the close: what hasn't converted by then is refunded, never late.
   - It is an hour, or two hours for a slow chain (`intents.SlowChains`, Bitcoin-like), bounded by the close.

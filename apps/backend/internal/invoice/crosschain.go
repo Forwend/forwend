@@ -44,9 +44,6 @@ var (
 	ErrProvider = errors.New("cross-chain provider unavailable")
 	// ErrNoLiquidity: 1Click has no liquidity for the token now (R-245); another token may convert.
 	ErrNoLiquidity = errors.New("1Click has no liquidity for this token now")
-	// ErrQuoteOpen: another token's or refund address's quote for the invoice can still be paid. Each delivers all
-	// that is due, so a second address could pay the invoice twice.
-	ErrQuoteOpen = errors.New("another cross-chain quote for this invoice can still be paid")
 )
 
 // CrossToken is a token a payer can pay with through 1Click; Estimate is about what they send, in its base units, at
@@ -273,32 +270,26 @@ func (s *Service) pickBase(ctx context.Context, payToken string, target crossTar
 }
 
 // openQuote is the payer's quote for the same token, refund address and amount while enough of its window is left,
-// or none (an empty ID). It refuses the next quote once the invoice had CrossChainPerHour in an hour, and while a
-// quote with another token or refund address is before its deadline: another payer's, as far as the api can tell.
+// or none (an empty ID). It refuses the next quote once the invoice had CrossChainPerHour in an hour.
 func (s *Service) openQuote(ctx context.Context, target crossTarget, token intents.Token, refundTo string, now time.Time) (CrossQuote, error) {
 	origin := token.AssetID
 	var q CrossQuote
 	var signed string
 	var shown, deadline, created *time.Time // none without an open quote
-	var recent, others int
+	var recent int
 	if err := s.pool.QueryRow(ctx, `SELECT coalesce(q.id::text, ''), coalesce(q.signed, ''), q.shown_until, q.deadline,
 		    q.created_at, (SELECT count(*) FROM crosschain_quotes r WHERE r.invoice_id = $1
-		        AND r.created_at > $5::timestamptz - interval '1 hour'),
-		    (SELECT count(*) FROM crosschain_quotes o WHERE o.invoice_id = $1 AND o.status = 'PENDING_DEPOSIT'
-		        AND o.deadline > $5 AND (o.origin_asset <> $2 OR o.refund_to <> $3))
+		        AND r.created_at > $5::timestamptz - interval '1 hour')
 		FROM (SELECT 1) one LEFT JOIN LATERAL (SELECT id, signed, shown_until, deadline, created_at FROM crosschain_quotes
 		    WHERE invoice_id = $1 AND origin_asset = $2 AND refund_to = $3 AND amount_out = $4::numeric
 		      AND status = 'PENDING_DEPOSIT' AND shown_until > $5::timestamptz + $6::interval
 		    ORDER BY created_at DESC LIMIT 1) q ON true`, target.invoice.ID, origin, refundTo, target.due.String(), now,
-		crossChainReuse).Scan(&q.ID, &signed, &shown, &deadline, &created, &recent, &others); err != nil {
+		crossChainReuse).Scan(&q.ID, &signed, &shown, &deadline, &created, &recent); err != nil {
 		return CrossQuote{}, fmt.Errorf("read open cross-chain quote for %s: %w", target.invoice.ID, err)
 	}
 	if q.ID == "" {
-		switch {
-		case recent >= CrossChainPerHour:
+		if recent >= CrossChainPerHour {
 			return CrossQuote{}, ErrTooManyQuotes
-		case others > 0:
-			return CrossQuote{}, ErrQuoteOpen
 		}
 		return CrossQuote{}, nil
 	}

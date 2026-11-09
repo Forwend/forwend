@@ -573,8 +573,8 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     }
   });
 
-  // 1Click holds a short deposit until the deadline, and the rest may still convert it: it hasn't ended (Q-19).
-  test("a short deposit asks for the rest at the same address before the deadline (R-238)", async ({
+  // 1Click holds a short deposit until the deadline: it hasn't ended, and no new address is shown (R-238, Q-19).
+  test("a short deposit keeps the steps and says 1Click holds it until the deadline (R-238)", async ({
     page,
   }) => {
     const q = quote("1263000000");
@@ -595,7 +595,7 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await expect(
       page
         .getByRole("status")
-        .filter({ hasText: "Send 12.12 USDT more to the same address before" }),
+        .filter({ hasText: "Less than needed arrived. NEAR Intents holds it until" }),
     ).toBeVisible();
     await expect(page.getByRole("button", { name: "Show address" })).toHaveCount(0);
   });

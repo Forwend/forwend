@@ -570,13 +570,10 @@ function CrossChainProgress({
   );
 }
 
-/** What a payer whose deposit came short can do: send the rest before the deadline, or wait for the refund. */
+/** Where a short deposit is: held by 1Click until the deadline, then returned. */
 export function shortDepositLine(c: CrossChain, now: number): string {
   const deadline = Date.parse(c.deadline);
-  const rest = BigInt(c.amountIn) - BigInt(c.deposited ?? "0");
-  return now < deadline && rest > 0n
-    ? COPY.incomplete(amountText(rest, c), CLOCK.format(deadline))
-    : COPY.incompleteLate;
+  return now < deadline ? COPY.incomplete(CLOCK.format(deadline)) : COPY.incompleteLate;
 }
 
 /** One line of what happened to the payer's money, with its transaction at the end. */
@@ -715,8 +712,6 @@ function quoteProblem(error: unknown): string {
     case "too_many_quotes":
     case "rate_limited":
       return COPY.tooMany;
-    case "quote_open":
-      return COPY.quoteOpen;
     case "crosschain_unavailable":
       return COPY.closed;
     default:

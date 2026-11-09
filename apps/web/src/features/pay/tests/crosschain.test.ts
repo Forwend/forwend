@@ -196,10 +196,10 @@ describe("a short deposit", () => {
     expect(crossChainEnded({ status: "FAILED" })).toBe(true);
   });
 
-  it("asks for the rest at the same address before the deadline, then says it goes back", () => {
+  it("says 1Click holds it until the deadline, then returns it, and never asks for more", () => {
     const line = shortDepositLine(short, Date.parse("2026-10-10T12:30:00Z"));
-    expect(line).toContain("Send 2.12 USDT more to the same address before");
-    expect(line).toContain("or NEAR Intents returns it to your refund address");
+    expect(line).toContain("NEAR Intents holds it until");
+    expect(line).not.toContain("Send");
     expect(shortDepositLine(short, Date.parse(short.deadline))).toBe(
       PAY_COPY.crossChain.incompleteLate,
     );
