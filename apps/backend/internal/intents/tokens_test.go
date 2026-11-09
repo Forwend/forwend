@@ -167,11 +167,22 @@ func TestKeeperProbesEachTokensMinimum(t *testing.T) {
 	if refused != 1 || checkedSince(start.Add(2*time.Hour)) != 3 || got[tron] != "" || got[eth] != "" || got[arb] != "4800000" {
 		t.Fatalf("refused %d, checked %d, minimums %v", refused, checkedSince(start.Add(2*time.Hour)), got)
 	}
-	// 1Click unreachable: it waits 2 minutes, and the token keeps its minimum.
-	fake.Refuse = nil
-	if err := keeper.Probe(ctx, start.Add(3*time.Hour)); err != nil {
-		t.Fatal(err)
+	// A later ask refused keeps the minimum the round already named: ETH needs 6 USDC, then 6 USDC is refused.
+	fake.Minimum, fake.Refuse = big.NewInt(6_000_000), map[string]bool{eth: true}
+	refused = 0
+	for i := range 3 {
+		if err := keeper.Probe(ctx, start.Add(3*time.Hour+time.Duration(i)*5*time.Second)); err != nil {
+			if !errors.Is(err, intents.ErrRefused) {
+				t.Fatal(err)
+			}
+			refused++
+		}
 	}
+	if got := minimums(); refused != 1 || got[eth] != "6000000" {
+		t.Fatalf("refused %d, minimums after a later refusal %v", refused, got)
+	}
+	// 1Click unreachable: it waits 2 minutes, and the token keeps its minimum.
+	fake.Minimum, fake.Refuse = big.NewInt(5301), nil
 	fake.Down = true
 	at := start.Add(4 * time.Hour)
 	if err := keeper.Probe(ctx, at); err == nil {
