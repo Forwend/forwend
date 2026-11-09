@@ -42,7 +42,11 @@ func (s *Service) ProcessChain(ctx context.Context, chainID uint64) error {
    EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = i.id AND t.status = 'confirmed' AND NOT t.booked)
    OR EXISTS (SELECT 1 FROM receiver_outflows o WHERE o.invoice_id = i.id AND o.kind <> 'recovery'
               AND o.ledger_transaction_id IS NULL) AS money
-   FROM invoices i JOIN chain_cursors cursor ON cursor.chain_id = i.chain_id WHERE i.chain_id = $1) i
+   FROM invoices i JOIN chain_cursors cursor ON cursor.chain_id = i.chain_id WHERE i.chain_id = $1
+    -- Only open invoices and ones with money to book can match: read them from their small partial indexes.
+    AND i.id IN (SELECT id FROM invoices WHERE chain_id = $1 AND payment_status IN ('open','detected','partially_paid')
+     UNION SELECT invoice_id FROM chain_transfers WHERE status = 'confirmed' AND NOT booked
+     UNION SELECT invoice_id FROM receiver_outflows WHERE kind <> 'recovery' AND ledger_transaction_id IS NULL)) i
   WHERE money OR (payment_status IN ('open','detected','partially_paid')
    AND (observed OR payment_status = 'detected' OR closes_at < last_finalized_time
     OR payment_status = 'partially_paid' AND (SELECT -coalesce(sum(e.amount), 0) FROM ledger_entries e
@@ -346,7 +350,8 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 			refund = "none"
 		}
 	}
-	if _, err := tx.Exec(ctx, "UPDATE invoices SET payment_status = $2, refund_status = $3 WHERE id = $1",
+	if _, err := tx.Exec(ctx, `UPDATE invoices SET payment_status = $2, refund_status = $3
+		WHERE id = $1 AND (payment_status, refund_status) IS DISTINCT FROM ($2, $3)`,
 		invoiceID, next, refund); err != nil {
 		return fmt.Errorf("update invoice %s status: %w", invoiceID, err)
 	}

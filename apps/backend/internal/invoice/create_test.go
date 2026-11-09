@@ -120,6 +120,36 @@ func TestCreateLosesTheInsertRaceToTheSameKey(t *testing.T) {
 	}
 }
 
+// The caps count only open and recent invoices, through their indexes, not every invoice the profile made.
+func TestCreateCapsReadOnlyOpenAndRecentInvoices(t *testing.T) {
+	pool, profile := open(t)
+	ctx := context.Background()
+	// Enough closed, older invoices that reading them all costs more than the indexes, as for a real profile.
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
+		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash, created_at)
+		SELECT '0x' || md5(i::text) || md5(i::text), $1, 84532, 'evm', $2, 5000000, 1000, 87400,
+		    '0x1111111111111111111111111111111111111111', 'evm_create2', '0x2222222222222222222222222222222222222222',
+		    '0x' || left(md5('r' || i) || md5('s' || i), 40), 'key-' || i, sha256(i::text::bytea), now() - interval '7 days'
+		FROM generate_series(1, 2000) i`, profile, usdc); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, "VACUUM ANALYZE invoices"); err != nil {
+		t.Fatal(err)
+	}
+	plans := databasetest.Plans(t, pool.Config().ConnString(), func(p *pgxpool.Pool) {
+		req := Request{ChainID: 84532, Token: usdc, Amount: "5000000"}
+		if _, _, err := NewService(p).Create(ctx, profile, "key-new", req); err != nil {
+			t.Fatal(err)
+		}
+	})
+	for _, index := range []string{"invoices_profile_closes", "invoices_profile_created"} {
+		if !strings.Contains(plans, index+" ") {
+			t.Errorf("no query uses %s:\n%s", index, plans)
+		}
+	}
+}
+
 // No gaps, and a repeat with the same key returns the same number.
 func TestCreateNumbersInvoicesAtOnce(t *testing.T) {
 	ctx := context.Background()

@@ -362,7 +362,9 @@ Rules:
 - **Append-only**: UPDATE, DELETE and TRUNCATE on the ledger tables raise an error. The triggers are `ENABLE ALWAYS`, so
   `session_replication_role = replica` does not skip them. The table owner can still drop them: in deployment the
   app and signer roles must not own the tables and get only `SELECT, INSERT` on the ledger.
-- Balances are `SUM` over entries. Add a stored balance with a version column when that gets slow.
+- Balances are `SUM` over entries of the invoices that can still owe or hold money (`ledger.MayHoldMoneySQL`).
+  - A partial index (`invoices_money_profile`) finds those invoices, so the read doesn't grow with settled history.
+  - Add a stored balance with a version column when that gets slow.
 
 ## Privy
 

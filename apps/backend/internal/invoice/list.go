@@ -47,6 +47,17 @@ const ConfirmingSQL = `(EXISTS (SELECT 1 FROM chain_transfers t JOIN invoices ca
 const ListStatusFilterSQL = `CASE WHEN invoices.payment_status IN ('open','detected','partially_paid') AND NOT ` + ClosedSQL + `
  AND (invoices.payment_status = 'detected' OR ` + ConfirmingSQL + `) THEN 'confirming' ELSE ` + StatusFilterSQL + ` END`
 
+// StatusColumnsSQL is what each list status needs of the raw status columns. A filter tests it before the costly CASE,
+// so the rows that can't match skip it.
+var StatusColumnsSQL = map[string]string{
+	"open":       "invoices.payment_status IN ('open', 'detected', 'partially_paid')",
+	"confirming": "invoices.payment_status IN ('open', 'detected', 'partially_paid')",
+	"paid":       "invoices.payment_status = 'paid'",
+	"settled":    "invoices.payment_status = 'paid' AND invoices.settlement_status = 'settled'",
+	"expired":    "invoices.payment_status NOT IN ('paid', 'canceled')",
+	"canceled":   "invoices.payment_status = 'canceled'",
+}
+
 // Must stay the expression of the invoices_search trigram index (migration 00032) on the main row's columns.
 const searchText = `('INV-' || lpad(number::text, greatest(length(number::text), 4), '0') || ' ' || coalesce(title, '')
 	|| ' ' || coalesce(note, '') || ' ' || coalesce(client_name, '') || ' ' || coalesce(client_email, '') || ' '
@@ -86,12 +97,13 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 	where := "profile_id = $1 AND number IS NOT NULL AND ($2::bigint IS NULL OR number < $2)"
 	if status != "" {
 		args = append(args, status)
-		where += fmt.Sprintf(" AND ($%d = 'paid' AND invoices.payment_status = 'paid' OR %s = $%d)", len(args), ListStatusFilterSQL, len(args))
+		where += fmt.Sprintf(" AND %s AND ($%d = 'paid' AND invoices.payment_status = 'paid' OR %s = $%d)",
+			StatusColumnsSQL[status], len(args), ListStatusFilterSQL, len(args))
 	}
 	// D-114: the same states the Payments list filters by, so both lists name a payment alike.
 	if state != "" {
 		args = append(args, state)
-		where += fmt.Sprintf(" AND %s = $%d", PaymentStateSQL, len(args))
+		where += fmt.Sprintf(" AND %s AND %s = $%d", PaymentStateColumnsSQL[state], PaymentStateSQL, len(args))
 	}
 	if stores != nil {
 		args = append(args, stores)

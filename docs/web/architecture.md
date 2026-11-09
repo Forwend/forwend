@@ -77,6 +77,7 @@ features own product behavior, and shared UI components are grouped by purpose. 
     later; the address never shows without its exact network and token warning.
   - Balances and activity are read again every 15 s while the tab is visible and when it comes back. Money sent
     straight to the wallet shows in the balance once final, not in activity.
+  - The Payments Issues view is read again every minute (`SLOW_LIVE_QUERY`): it checks each payment's ledger.
   - Display prices (`features/prices`, R-178, D-115) are one cache entry for the whole app.
     - Pass `PRICES_QUERY`: they are read every 5 minutes while visible and on focus, and kept an hour unused.
     - A value is bigint math on base units at the latest known price, cut to cents. Without any price there is no

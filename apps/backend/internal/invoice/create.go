@@ -218,7 +218,8 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	var open, today int
 	if err := tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE closes_at > $2),
 		count(*) FILTER (WHERE created_at > now() - interval '1 day' AND NOT ($3 <> 'invoice' AND payment_status = 'expired'))
-		FROM invoices WHERE profile_id = $1 AND CASE WHEN link_id IS NOT NULL THEN 'link'
+		FROM invoices WHERE profile_id = $1 AND (closes_at > $2 OR created_at > now() - interval '1 day')
+		  AND CASE WHEN link_id IS NOT NULL THEN 'link'
 		    WHEN purpose = 'checkout' THEN 'checkout' ELSE 'invoice' END = $3`,
 		profileID, s.currentTime().Unix(), source).Scan(&open, &today); err != nil {
 		return Invoice{}, false, fmt.Errorf("count open invoices: %w", err)

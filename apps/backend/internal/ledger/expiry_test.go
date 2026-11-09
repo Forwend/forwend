@@ -578,3 +578,44 @@ func TestPaidQueuesTheReceiptWhenAsked(t *testing.T) {
 		t.Fatalf("events %q (%v), want invoice.paid,invoice.receipt", kinds, err)
 	}
 }
+
+// An invoice's options and the chain's open invoices are read through their indexes, so a round's cost doesn't grow
+// with every invoice ever made.
+func TestRoundReadsInvoicesThroughTheirIndexes(t *testing.T) {
+	s := newSim(t)
+	id, _ := s.invoice()
+	plans := databasetest.Plans(t, s.pool.Config().ConnString(), func(pool *pgxpool.Pool) {
+		service := NewService(pool, s.service.balance, s.service.deployed)
+		if err := service.ProcessChain(context.Background(), 1); err != nil {
+			t.Fatal(err)
+		}
+		if err := service.Process(context.Background(), id); err != nil {
+			t.Fatal(err)
+		}
+	})
+	for _, index := range []string{"invoices_group", "invoices_chain_open"} {
+		if !strings.Contains(plans, index+" ") {
+			t.Errorf("no query uses %s:\n%s", index, plans)
+		}
+	}
+}
+
+// A round that changes nothing leaves the invoice's row as it was, so waiting invoices aren't rewritten every round.
+func TestUnchangedStatusIsNotWrittenAgain(t *testing.T) {
+	s := newSim(t)
+	id, _ := s.invoice()
+	version := func() (xmin string) {
+		if err := s.pool.QueryRow(context.Background(), "SELECT xmin::text FROM invoices WHERE id = $1", id).Scan(&xmin); err != nil {
+			t.Fatal(err)
+		}
+		return xmin
+	}
+	before := version()
+	s.process(id)
+	if payment, refund := s.payment(id); payment != Open || refund != "none" {
+		t.Fatalf("status %s/%s, want open/none", payment, refund)
+	}
+	if after := version(); after != before {
+		t.Fatalf("the unchanged row was written again: xmin %s, then %s", before, after)
+	}
+}

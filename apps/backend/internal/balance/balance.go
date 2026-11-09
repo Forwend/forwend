@@ -87,7 +87,7 @@ func (s *Service) of(ctx context.Context, profileID string, records bool) (Balan
 		            - (i.network_fee + i.platform_fee), 0) AS payable,
 		        -coalesce(sum(e.amount) FILTER (WHERE e.account = 'payer_held'), 0) AS held
 		    FROM invoices i JOIN ledger_transactions x ON x.invoice_id = i.id JOIN ledger_entries e ON e.transaction_id = x.id
-		    WHERE i.profile_id = $1 AND e.account IN ('recipient_payable', 'payer_held')
+		    WHERE i.profile_id = $1 AND (`+ledger.MayHoldMoneySQL+`) AND e.account IN ('recipient_payable', 'payer_held')
 		    GROUP BY i.id
 		), booked AS (
 		    SELECT chain_id, token_contract, sum(payable) FILTER (WHERE part = 'settling') AS settling,

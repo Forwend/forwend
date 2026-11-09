@@ -354,9 +354,12 @@ func (c *Chain) insertDeposits(ctx context.Context, tx pgx.Tx, deposits []deposi
 func (c *Chain) invoices(ctx context.Context) (map[common.Address]receiver, error) {
 	// Past MAX_HOLD (30 days after the settle deadline) only the refund authority moves the money: not watching those
 	// keeps topic lists bounded. One with a detected deposit stays, or that row would hold every scan's start for good.
-	rows, err := c.pool.Query(ctx, `SELECT receive_address, id, token_contract FROM invoices i
-		WHERE chain_id = $1 AND (settle_deadline > extract(epoch FROM now())::bigint - $2
-		    OR EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = i.id AND t.status = 'detected'))`,
+	// Two disjoint parts, so each reads only its rows from an index.
+	rows, err := c.pool.Query(ctx, `SELECT receive_address, id, token_contract FROM invoices
+		WHERE chain_id = $1 AND settle_deadline > extract(epoch FROM now())::bigint - $2
+		UNION ALL SELECT receive_address, id, token_contract FROM invoices
+		WHERE chain_id = $1 AND settle_deadline <= extract(epoch FROM now())::bigint - $2
+		  AND id IN (SELECT invoice_id FROM chain_transfers WHERE status = 'detected')`,
 		c.chainID, int64(watchedAfterDeadline/time.Second))
 	if err != nil {
 		return nil, fmt.Errorf("read chain %d invoices: %w", c.chainID, err)
