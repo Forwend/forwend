@@ -699,6 +699,8 @@ function quoteProblem(error: unknown): string {
   switch (code) {
     case "below_minimum":
       return COPY.belowMinimum;
+    case "no_liquidity":
+      return COPY.cantConvert;
     case "invalid_value":
       return COPY.refused;
     case "too_many_quotes":

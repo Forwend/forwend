@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 456,
+  "nextId": 457,
   "tasks": [
     {
       "id": "F332",
@@ -274,12 +274,131 @@
         "branch": "fix/f455-the-cross-chain-pay-box-asks-for-one-rou",
         "base": "main"
       }
+    },
+    {
+      "id": "F456",
+      "type": "fix",
+      "behavior": "A price or quote 1Click refuses for no liquidity tells the payer the token can't be converted now, not to check the refund address",
+      "acceptance": [
+        "A real quote 1Click refuses for no liquidity answers 422 no_liquidity, and the pay page says NEAR Intents can't convert this token now (R-245)",
+        "A dry price refused for no liquidity answers 422 no_liquidity with the same pay page message (R-245)"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend",
+        "e2e",
+        "lint",
+        "typecheck",
+        "docs-check"
+      ],
+      "refs": [
+        "R-245",
+        "R-242"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-11-09 review pass by reviewer: providerError order is right: BelowMinimum, then intents.ErrNoLiquidity, then other refusals (dry, then refund address). learnMinimum still runs before providerError in QuoteCrossChain and dryQuote; it acts only on BelowMinimum, so it is unaffected. WriteError maps invoice.ErrNoLiquidity to 422 no_liquidity; no earlier case catches it. Readers: priceProblem delegates no_liquidity to quoteProblem, which shows cantConvert; packages/node, js, react and example-merchant read no cross-chain error codes; openapi enum, CrossChainRefused (used by price and quotes), api.md and R-245 updated. Proof: TestCrossChainTokensLeaveOutATokenWithoutLiquidity passes, and fails with the providerError case removed via go -overlay (price answers invalid_value). The new e2e expects cantConvert; without the quoteProblem case it would show 'NEAR Intents is not answering'. Notes, not blocking: no web test drives a price answered no_liquidity (shared switch case covers it); a payer's no-liquidity refusal does not hide the token at once, only the worker's hourly check does (pre-existing); the api.md bullet sits under the tokens endpoint, not price/quotes."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-09T20:45:54Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.8,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.6,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 51.4,
+            "log": ""
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 77.4,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 75.0,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 9.3,
+            "log": ""
+          }
+        ],
+        "taskHash": "16c6dc046a1074b8",
+        "filesHash": "e59fd759adaf3af0",
+        "proof": {
+          "1": "e2e: crosschain.spec 'a quote refused for no liquidity says the token can't be converted, not the refund address'; backend API test gets 422 no_liquidity for a real quote",
+          "2": "backend: TestCrossChainTokensLeaveOutATokenWithoutLiquidity gets 422 no_liquidity for a dry price"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "providerError order is right: BelowMinimum, then intents.ErrNoLiquidity, then other refusals (dry, then refund address). learnMinimum still runs before providerError in QuoteCrossChain and dryQuote; it acts only on BelowMinimum, so it is unaffected. WriteError maps invoice.ErrNoLiquidity to 422 no_liquidity; no earlier case catches it. Readers: priceProblem delegates no_liquidity to quoteProblem, which shows cantConvert; packages/node, js, react and example-merchant read no cross-chain error codes; openapi enum, CrossChainRefused (used by price and quotes), api.md and R-245 updated. Proof: TestCrossChainTokensLeaveOutATokenWithoutLiquidity passes, and fails with the providerError case removed via go -overlay (price answers invalid_value). The new e2e expects cantConvert; without the quoteProblem case it would show 'NEAR Intents is not answering'. Notes, not blocking: no web test drives a price answered no_liquidity (shared switch case covers it); a payer's no-liquidity refusal does not hide the token at once, only the worker's hourly check does (pre-existing); the api.md bullet sits under the tokens endpoint, not price/quotes.",
+          "at": "2026-11-09T20:52:20Z",
+          "filesHash": "e59fd759adaf3af0"
+        },
+        "commit": "4b427f58",
+        "doneAt": "2026-11-09T20:52:55Z"
+      },
+      "branch": "fix/f456-a-price-or-quote-1click-refuses-for-no-l",
+      "baseCommit": "77fc69e9aa6634dc8f6e3f6af63da16a51ce3186",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f456-a-price-or-quote-1click-refuses-for-no-l",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
-    "at": "2026-11-07T23:45:34Z",
-    "clean": true,
-    "problems": [],
-    "note": "F436 verified and reviewed (pass), not committed; next: on the owner's yes commit and run done F436, then F437 deploy with per-chain approval (Tempo needs setUserToken(OUSD) first)"
+    "at": "2026-11-09T20:42:13Z",
+    "clean": false,
+    "problems": [
+      "F332: depends on unknown task F335",
+      "F332: depends on unknown task F412",
+      "F439: depends on unknown task F438",
+      "F452: depends on unknown task F451"
+    ],
+    "note": "F455 merged in #464; next: start F435"
   }
 }

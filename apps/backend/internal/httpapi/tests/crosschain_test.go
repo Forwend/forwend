@@ -117,6 +117,15 @@ func TestCrossChainTokensLeaveOutATokenWithoutLiquidity(t *testing.T) {
 	if got := listed(start); !slices.Equal(got, []string{tronUSDT}) {
 		t.Fatalf("listed without ETH's liquidity %v", got)
 	}
+	// A price or quote refused for want of liquidity is the token's, never the refund address's.
+	price := e.call(t, "GET", crossPath+pay+"/crosschain/price?originAsset="+url.QueryEscape(ethAsset), "", "", "")
+	made := e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "",
+		`{"originAsset": "`+ethAsset+`", "refundTo": "0x6fd1c6b3f0b7a5b4e5d6a3c2b1a0f9e8d7c6b5a4"}`)
+	for name, r := range map[string]reply{"price": price, "quote": made} {
+		if r.status != http.StatusUnprocessableEntity || errorCode(r) != "no_liquidity" {
+			t.Fatalf("%s without liquidity: %d %v", name, r.status, r.body)
+		}
+	}
 	fake.Dry = nil
 	if got := listed(start.Add(time.Hour)); !slices.Equal(got, []string{tronUSDT, ethAsset}) {
 		t.Fatalf("listed once ETH is quoted again %v", got)

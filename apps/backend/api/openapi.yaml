@@ -6466,7 +6466,7 @@ components:
                 transfer_refused, wrong_code, code_sent_recently, too_many_codes, no_login_email, code_unavailable, two_step_not_set_up,
                 payment_not_found, checkout_not_found, checkout_not_expirable, too_many_movements, link_not_ready, link_changed,
                 pick_locked, webhook_queue_full, payment_reconciliation_pending, crosschain_unavailable, below_minimum,
-                too_many_quotes, provider_unavailable,
+                too_many_quotes, provider_unavailable, no_liquidity,
                 invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
             message: { type: string }
   responses:
@@ -6670,7 +6670,7 @@ components:
       description: |
         crosschain_unavailable as for the tokens; invalid_value for a token not in the list or a refund address 1Click
         refuses; below_minimum, whose error also carries minimum, the least the route delivers, in the Base option's
-        base units
+        base units; no_liquidity when 1Click has no liquidity for the token now (R-245)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
