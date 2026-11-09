@@ -2,6 +2,7 @@ archive/
 research/
 spikes/
 docs/runs/
+docs/audit/
 docs/.harness.lock
 node_modules/
 .next/

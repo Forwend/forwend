@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 457,
+  "nextId": 460,
   "tasks": [
     {
       "id": "F332",
@@ -388,6 +388,81 @@
         "branch": "fix/f456-a-price-or-quote-1click-refuses-for-no-l",
         "base": "main"
       }
+    },
+    {
+      "id": "F457",
+      "type": "fix",
+      "behavior": "Support returns go to the payer, a deposit the scan missed can be recorded before it is returned, and a settle the Safe sends itself frees the executor's nonce",
+      "acceptance": [
+        "ops return refuses a default destination for a payment NEAR Intents delivered and names the quote, origin chain and refund address; ops case shows them (audit A4-01)",
+        "ops deposit records a deposit the scan missed from its finalized receipt; while the receiver holds money the ledger has not booked, a refund is not booked and ops return refuses (audit A1-01)",
+        "After the refund authority settles an invoice whose saved settle never mined, the next receiver deploy on that chain mines (audit A3-01)",
+        "money-safety.md and PROJECT.md describe the new return and missed-deposit steps"
+      ],
+      "dependsOn": [],
+      "state": "active",
+      "verification": [
+        "backend",
+        "docs-check"
+      ],
+      "refs": [
+        "D-118",
+        "R-120",
+        "R-22"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null,
+      "branch": "fix/f457-support-returns-go-to-the-payer-a-deposi",
+      "baseCommit": "fcb5cace4d2d6ee5ae36039e19812b7546b2288e"
+    },
+    {
+      "id": "F458",
+      "type": "fix",
+      "behavior": "The medium findings of the 2026-11-09 audit are fixed: no stuck settlement, cross-chain tracking ends at 1Click's final state, public routes share budgets, and the hot queries use indexes",
+      "acceptance": [
+        "Each medium finding marked FIXED in the local audit report has a test that fails before its fix and passes after, or a measured query plan",
+        "Existing backend, web and contract checks pass unchanged"
+      ],
+      "dependsOn": [
+        "F457"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "docs-check"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F459",
+      "type": "fix",
+      "behavior": "The low findings of the 2026-11-09 audit worth fixing are fixed",
+      "acceptance": [
+        "Each low finding marked FIXED in the local audit report has a test or a check that proves it; the rest are listed for the owner to consider",
+        "Existing backend, web and contract checks pass unchanged"
+      ],
+      "dependsOn": [
+        "F458"
+      ],
+      "state": "not_started",
+      "verification": [
+        "unit",
+        "docs-check"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {
