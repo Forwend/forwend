@@ -183,7 +183,9 @@ everything) 10,000 users gave p95 2.4 ms, 0 errors and 1,333 RPC calls/s (334 wh
 60 s). What keeps it there:
 
 - RPC demand ≈ users × tokens ÷ max(15 s, how long a finalized block stays) + chains ÷ 3 s. It has to fit
-  the endpoint limits and shared weighted budget described below. These figures exclude worker and signer traffic.
+  the endpoint limits and the api's share of the weighted budget described below. These figures exclude worker and signer traffic.
+- The test sets `RPC_RATE_PER_SECOND=100000`, so the budget never slows it down.
+  - With the default of 10, the api's share is 2 calls a second.
 - `/balances` needs the `ledger_transactions_invoice` index (migration 00011): 21.5 ms without it, 0.37 ms with it.
 - `/balances` and activity deposits find a profile's invoice rows through `invoices_profile` (migration 00088).
   - With 220,000 invoices, a profile without payments read its balances in 0.05 ms, not 19 ms.
@@ -391,10 +393,13 @@ never holds the app's load.
 - Node-managed signing and unknown RPC methods are refused; signed transaction retries retain identical bytes.
 - Every batch stays together on one endpoint per attempt.
 - API, worker and signer also share a weighted budget in PostgreSQL (`rpc_budgets`, R-133).
-- Its rate is `RPC_RATE_PER_SECOND × 80` units per second.
+- Its rate is `RPC_RATE_PER_SECOND × 80` units per second, split in two buckets per budget group.
+  - The api gets 20% of it; the worker and signer together get 80%.
+  - So signed-in reads can never take what deposit detection and settlement need.
+  - Neither side can borrow the other's unused share.
 - Ordinary calls cost 80 units; `eth_chainId` costs 5, logs 255, gas estimates 300, and block receipts 1,000.
 - These conservative weights are pacing units, not provider billing prices.
-- Endpoints with the same configured `budget_group` share one bucket across chains and processes.
+- Endpoints with the same configured `budget_group` share one bucket per share across chains and processes.
 - Only hashed budget-group identifiers enter the budget table; URLs and credentials never enter its rows or logs.
 - Every attempt and chain-ID probe takes budget; waiting releases the database connection.
 - Budget exhaustion or a database failure stops the request without marking the provider unhealthy.

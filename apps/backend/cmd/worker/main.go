@@ -61,7 +61,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	budget, err := chain.NewBudget(ctx, pool, cfg.Chains.RPCRate)
+	budget, err := chain.NewBudget(ctx, pool, cfg.Chains.RPCRate, chain.MoneyShare)
 	if err != nil {
 		return err
 	}

@@ -373,7 +373,7 @@ func (s *Service) refresh(ctx context.Context, out Send) (Send, error) {
 	case seen != nil:
 		out.OnChain = true
 		return out, nil
-	case now.Sub(*out.SubmittedAt) < receiptAfter:
+	case now.Sub(*out.SubmittedAt) < receiptAfter, !s.receiptDue(out.ID, now):
 		return out, nil
 	}
 	client, err := s.client(out.ChainID)

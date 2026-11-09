@@ -15,11 +15,24 @@ import (
 
 // Budget shares weighted pacing across processes. One ordinary read is 80 units.
 type Budget struct {
-	db   *pgxpool.Pool
-	rate float64
+	db    *pgxpool.Pool
+	rate  float64
+	share string
 }
 
-func NewBudget(ctx context.Context, db *pgxpool.Pool, rate float64) (*Budget, error) {
+// Share is a process role's part of each budget group's rate, kept in its own bucket. Signed-in api reads can
+// then never take what deposit detection and settlement (worker and signer) need.
+type Share struct {
+	name string
+	part float64
+}
+
+var (
+	APIShare   = Share{"api", 0.2}
+	MoneyShare = Share{"money", 0.8}
+)
+
+func NewBudget(ctx context.Context, db *pgxpool.Pool, rate float64, share Share) (*Budget, error) {
 	// Ledger reads hold invoice transactions. A separate small pool avoids waiting for a connection they own.
 	cfg := db.Config()
 	cfg.MaxConns, cfg.MinConns = 2, 0
@@ -27,7 +40,7 @@ func NewBudget(ctx context.Context, db *pgxpool.Pool, rate float64) (*Budget, er
 	if err != nil {
 		return nil, fmt.Errorf("open RPC budget pool: %w", err)
 	}
-	return &Budget{db: pool, rate: rate * 80}, nil
+	return &Budget{db: pool, rate: rate * 80 * share.part, share: share.name}, nil
 }
 
 func (b *Budget) Close() { b.db.Close() }
@@ -49,7 +62,7 @@ func (b *Budget) wait(ctx context.Context, endpoint string, body []byte) error {
 		SET next_at = greatest(rpc_budgets.next_at, clock_timestamp()) + $2 * interval '1 second'
 		WHERE rpc_budgets.next_at <= clock_timestamp() + $3 * interval '1 second'
 		RETURNING greatest(0, extract(epoch FROM next_at - $2 * interval '1 second' - clock_timestamp()))::float8`,
-		budgetKey(endpoint), seconds, remaining).Scan(&delay)
+		budgetKey(b.share+":"+endpoint), seconds, remaining).Scan(&delay)
 	if errors.Is(err, pgx.ErrNoRows) {
 		err = context.DeadlineExceeded
 	}

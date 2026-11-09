@@ -363,6 +363,52 @@ func TestUnreportedAndDroppedSendsAreGivenUp(t *testing.T) {
 	}
 }
 
+func TestAPolledSendReadsItsReceiptAtMostOnceEveryFewSeconds(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	proxy := e.anvil.Proxy()
+	client, err := ethclient.Dial(proxy.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(client.Close)
+	e.sends.clients = func(uint64) (*ethclient.Client, error) { return client, nil }
+	s, err := e.prepare(t, outsider, "", 1_000_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.approve(t, s)
+	if _, err = e.sends.Submit(ctx, e.profile, s.ID, "0x"+strings.Repeat("ab", 32)); err != nil {
+		t.Fatal(err)
+	}
+	receipts := func() int {
+		n := 0
+		for _, c := range proxy.Calls() {
+			if c.Method == "eth_getTransactionReceipt" {
+				n++
+			}
+		}
+		return n
+	}
+	start := receipts()
+	e.sends.now = func() time.Time { return time.Now().Add(receiptAfter) }
+	for range 3 {
+		if _, err := e.sends.Get(ctx, e.profile, s.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n := receipts() - start; n != 1 {
+		t.Fatalf("three polls read the receipt %d times, want 1", n)
+	}
+	e.sends.now = func() time.Time { return time.Now().Add(receiptAfter + receiptEvery) }
+	if _, err := e.sends.Get(ctx, e.profile, s.ID); err != nil {
+		t.Fatal(err)
+	}
+	if n := receipts() - start; n != 2 {
+		t.Fatalf("a poll after %v read the receipt %d times in all, want 2", receiptEvery, n)
+	}
+}
+
 func TestPendingListsSignedSendsUntilTheWatcherRecordsThem(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
@@ -581,7 +627,7 @@ func TestAWaitingSendIsNotDroppedAndADroppedOneMinedLaterIsSent(t *testing.T) {
 	if err := e.anvil.RPC.Call(nil, "anvil_dropTransaction", hash); err != nil {
 		t.Fatal(err)
 	}
-	e.sends.now = func() time.Time { return time.Now().Add(DropAfter) }
+	e.sends.now = func() time.Time { return time.Now().Add(DropAfter + receiptEvery) }
 	if got, _ := e.sends.Get(ctx, e.profile, s.ID); got.Status != Failed {
 		t.Fatalf("forgotten by the node = %s, want failed dropped", got.Status)
 	}

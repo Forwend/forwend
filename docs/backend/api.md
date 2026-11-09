@@ -1176,6 +1176,7 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
   - `sent` once it does: the transfer is in a block. `final` once that transfer is confirmed and can't change.
   - A reorged transfer goes back to `sending`; it is `sent` again when the transaction is mined again.
   - `failed` `reverted`: the receipt has no such transfer.
+  - The chain is asked for a send's receipt from 15 s after submit, at most once every 5 s per api process.
   - `failed` `dropped`: no receipt 30 minutes after submit, and the node no longer knows the transaction.
     A dropped send that is mined later becomes `sent`.
   - `expired`: never approved within 10 minutes, or approved and never reported once the hold ended.
