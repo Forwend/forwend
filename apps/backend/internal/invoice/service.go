@@ -19,7 +19,10 @@ type Service struct {
 	plan   FeePlan
 	// crossChain is 1Click (D-123); nil leaves cross-chain off (SetCrossChain).
 	crossChain *intents.Client
-	dry        dryQuotes
+	// crossChainOff: SetCrossChain(nil) turned it off, so reads say the pay page can't offer it. A service that never
+	// set it, as the webhook sender's, reads the profile's switch alone.
+	crossChainOff bool
+	dry           dryQuotes
 }
 
 func NewService(pool *pgxpool.Pool) *Service {

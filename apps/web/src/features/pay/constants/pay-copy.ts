@@ -201,13 +201,18 @@ export const PAY_COPY = {
     time: (minutes: number) =>
       minutes <= 1 ? "Arrives in about a minute" : `Arrives in about ${minutes} minutes`,
     refund: (chain: string) => `Refund address on ${chain}`,
-    refundHint: "Unused slippage is refunded here. Use your own wallet, not an exchange.",
+    refundHint:
+      "Unused slippage comes back here, less the refund fee. Use your own wallet, not an exchange.",
+    // 1Click's spec doesn't say whether a refund at or under its fee is sent at all.
+    refundFee: (amount: string) => `Refund fee ${amount}`,
+    slippageUnderFee: "The unused slippage is less than the refund fee, so it may not come back.",
     refundNeeded: "Enter your address on this chain.",
     showAddress: "Show address",
     sendOnly: (symbol: string, chain: string) => `Send only ${symbol} on ${chain}.`,
     sendTo: (symbol: string, chain: string) => `Send ${symbol} on ${chain} to`,
     priceHeld: (left: string) => `Price held ${left}`,
-    extraBack: "Sent more? The extra goes back to your refund address.",
+    extraBack: (fee: string) =>
+      `Sent more? The extra goes back to your refund address, less the refund fee of ${fee}.`,
     refundsTo: (address: string) => `Refunds go to ${address}`,
     expired: "This price expired",
     expiredNote:
@@ -224,6 +229,8 @@ export const PAY_COPY = {
     // The payee turned it off, or the invoice can't take it now: trying again won't help (R-240).
     closed: "Paying with another token isn't available for this payment now. Pay directly instead.",
     refused: "NEAR Intents can't refund to this address. Check it is yours on this chain.",
+    // A refusal that names no refund address: NEAR Intents' own reason, so the address isn't blamed.
+    quoteRefused: "NEAR Intents refused this quote. Try again later or choose another token.",
     tooMany: "Too many prices asked for this payment. Try again later.",
     steps: {
       detected: "Detected",

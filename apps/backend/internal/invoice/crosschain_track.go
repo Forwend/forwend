@@ -41,14 +41,25 @@ const (
 // ConvertingSQL is true while 1Click converts a deposit for invoice $1 or delivered it: the USDC is on its way to the
 // Base option, so the pick, an edit and a cancel wait as for money seen (R-233). A short deposit counts too: 1Click
 // holds it until the deadline, and the rest sent to its address may still convert it (Q-19).
+//   - A delivery stops counting once it came in on Base: the ledger holds it from then.
+//   - Any quote stops an hour past its deadline or seen deposit, when its alert fires: one 1Click never finishes would
+//     otherwise hold the invoice for good.
 const ConvertingSQL = `EXISTS (SELECT 1 FROM crosschain_quotes c WHERE c.invoice_id = $1
-	AND c.status IN ('KNOWN_DEPOSIT_TX', 'INCOMPLETE_DEPOSIT', 'PROCESSING', 'SUCCESS'))`
+	AND c.status IN ('KNOWN_DEPOSIT_TX', 'INCOMPLETE_DEPOSIT', 'PROCESSING', 'SUCCESS')
+	AND greatest(c.deadline, c.deposit_seen_at) > now() - interval '1 hour'
+	AND NOT (c.status = 'SUCCESS' AND ` + DeliveredSQL + `))`
+
+// DeliveredSQL is true once quote c's delivery came in on its Base option: a deposit in a transaction 1Click names, or,
+// should it name it in another form, one of at least the amount delivered made after the quote.
+const DeliveredSQL = `EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = c.option_id AND t.status <> 'reorged'
+	AND (t.tx_hash IN (SELECT lower(d->>'hash') FROM jsonb_array_elements(c.destination_txs) d)
+	     OR t.amount >= c.amount_out AND t.created_at >= c.created_at))`
 
 type trackedQuote struct {
 	id, invoiceID, optionID, origin, address, status string
 	shownUntil, deadline, addressDeadline            time.Time
 	depositSeenAt, convertedAt                       *time.Time
-	refunded                                         *big.Int
+	refunded, amountOut                              *big.Int
 }
 
 // TrackCrossChain reads 1Click's status of the quotes due for a check and keeps what changed. It decides nothing
@@ -58,7 +69,8 @@ func (s *Service) TrackCrossChain(ctx context.Context, now time.Time) error {
 		return nil
 	}
 	rows, err := s.pool.Query(ctx, `SELECT id, invoice_id, option_id, origin_asset, deposit_address, status, shown_until,
-		    deadline, coalesce(address_deadline, deadline), deposit_seen_at, converted_at, coalesce(refunded_amount, 0)::text
+		    deadline, coalesce(address_deadline, deadline), deposit_seen_at, converted_at, coalesce(refunded_amount, 0)::text,
+		    amount_out::text
 		FROM crosschain_quotes WHERE next_check_at <= $1
 		ORDER BY status = 'PENDING_DEPOSIT', next_check_at LIMIT $2`, now, trackBatch)
 	if err != nil {
@@ -66,10 +78,11 @@ func (s *Service) TrackCrossChain(ctx context.Context, now time.Time) error {
 	}
 	quotes, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (trackedQuote, error) {
 		var q trackedQuote
-		var refunded string
+		var refunded, amountOut string
 		err := row.Scan(&q.id, &q.invoiceID, &q.optionID, &q.origin, &q.address, &q.status, &q.shownUntil, &q.deadline,
-			&q.addressDeadline, &q.depositSeenAt, &q.convertedAt, &refunded)
+			&q.addressDeadline, &q.depositSeenAt, &q.convertedAt, &refunded, &amountOut)
 		q.refunded, _ = new(big.Int).SetString(refunded, 10)
+		q.amountOut, _ = new(big.Int).SetString(amountOut, 10)
 		return q, err
 	})
 	if err != nil {
@@ -177,6 +190,11 @@ func (s *Service) statusHistory(ctx context.Context, tx pgx.Tx, q trackedQuote, 
 		}
 	}
 	if q.convertedAt == nil && st.Status == intents.Success {
+		// EXACT_OUTPUT delivers the quote's amount: another leaves the invoice short or overpaid.
+		if delivered, ok := new(big.Int).SetString(st.Delivered, 10); ok && delivered.Cmp(q.amountOut) != 0 {
+			slog.Error("ALERT cross-chain swap delivered another amount than its quote", "quote", q.id,
+				"invoice", q.invoiceID, "delivered", st.Delivered, "quoted", q.amountOut.String())
+		}
 		if err := add(history.CrossChainConverted, history.Data{Amount: st.Delivered, TxHash: baseTx(st.DestinationTxs)}); err != nil {
 			return err
 		}

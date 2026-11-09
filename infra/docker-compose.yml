@@ -50,6 +50,8 @@ services:
       SUPPORT_EMAIL: ${SUPPORT_EMAIL:?set SUPPORT_EMAIL}
       # NEAR Intents 1Click's optional partner key for cross-chain quotes (D-123, Q-18).
       ONECLICK_API_KEY: ${ONECLICK_API_KEY:-}
+      # 1 stops new cross-chain quotes on the whole platform (R-240); the worker still reads open ones.
+      CROSSCHAIN_OFF: ${CROSSCHAIN_OFF:-0}
     depends_on:
       postgres:
         condition: service_healthy

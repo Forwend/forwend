@@ -99,9 +99,12 @@ func run() error {
 	codes := reauth.NewService(pool, sender, func(code string) (email.Message, error) {
 		return notify.CodeMessage(site, code, reauth.CodeTTL)
 	}, cfg.CodesPerHour)
-	crossChain := intents.NewClient(cfg.OneClick.URL, cfg.OneClick.Key, cfg.RPCAllowLoopback)
-	if cfg.OneClick.Signer != "" {
-		crossChain.Signer = cfg.OneClick.Signer // a test's fake 1Click
+	var crossChain *intents.Client // none with CROSSCHAIN_OFF: no new quote
+	if !cfg.CrossChainOff {
+		crossChain = intents.NewClient(cfg.OneClick.URL, cfg.OneClick.Key, cfg.RPCAllowLoopback)
+		if cfg.OneClick.Signer != "" {
+			crossChain.Signer = cfg.OneClick.Signer // a test's fake 1Click
+		}
 	}
 	server := &http.Server{
 		Addr: cfg.Addr,

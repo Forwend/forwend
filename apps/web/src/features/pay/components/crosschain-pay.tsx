@@ -34,6 +34,7 @@ import {
   crossChainFeeUsd,
   sendUnits,
   signedDeposit,
+  slippageCoversRefundFee,
   usdPerToken,
   verifyQuote,
 } from "@/features/pay/lib/crosschain";
@@ -359,6 +360,7 @@ function PricePreview({
     token.decimals,
     usdPerToken(price.amountInUsd, amountIn, token.decimals),
   );
+  const refundFee = /^\d+$/.test(price.refundFee) ? BigInt(price.refundFee) : 0n;
   return (
     <div className="flex flex-col gap-1 rounded-md bg-surface-2 px-3 py-2.5">
       <span className="text-xs text-muted">{COPY.youSend}</span>
@@ -379,7 +381,16 @@ function PricePreview({
         <span>{COPY.slippage(ONECLICK_SLIPPAGE_BPS / 100)}</span>
         <span aria-hidden>·</span>
         <span>{COPY.time(Math.max(1, Math.round(price.timeEstimate / 60)))}</span>
+        {refundFee > 0n ? (
+          <>
+            <span aria-hidden>·</span>
+            <span className="tabular-nums">{COPY.refundFee(amountText(refundFee, token))}</span>
+          </>
+        ) : null}
       </span>
+      {slippageCoversRefundFee(sends, BigInt(price.minAmountIn), refundFee) ? null : (
+        <span className="text-xs text-warning">{COPY.slippageUnderFee}</span>
+      )}
     </div>
   );
 }
@@ -435,7 +446,11 @@ function Send({
             label={COPY.sendTo(shown.token.symbol, chain)}
           />
           <p className="text-xs text-muted">
-            {COPY.extraBack} {COPY.refundsTo(shortAddress(shown.refundTo))}
+            {slippageCoversRefundFee(deposit.send, deposit.minAmountIn, deposit.refundFee)
+              ? null
+              : `${COPY.slippageUnderFee} `}
+            {COPY.extraBack(amountText(deposit.refundFee, shown.token))}{" "}
+            {COPY.refundsTo(shortAddress(shown.refundTo))}
           </p>
         </div>
         {expired ? (
@@ -700,7 +715,7 @@ function priceProblem(error: unknown): string {
 }
 
 // The api's error codes for a quote (docs/backend/api.md); anything else is 1Click not answering.
-function quoteProblem(error: unknown): string {
+export function quoteProblem(error: unknown): string {
   const code = (error as { data?: { error?: { code?: string } } } | undefined)?.data?.error?.code;
   switch (code) {
     case "below_minimum":
@@ -709,6 +724,8 @@ function quoteProblem(error: unknown): string {
       return COPY.cantConvert;
     case "invalid_value":
       return COPY.refused;
+    case "quote_refused":
+      return COPY.quoteRefused;
     case "too_many_quotes":
     case "rate_limited":
       return COPY.tooMany;

@@ -6,6 +6,8 @@ import {
   ONECLICK_SLIPPAGE_BPS,
   ONECLICK_TEST_KEY,
   POPULAR_BLOCKCHAINS,
+  QUOTE_ADDRESS_LEAST_MS,
+  QUOTE_PRICE_WINDOW_MS,
 } from "@/features/pay/constants/crosschain";
 import { withOption } from "@/features/pay/lib/pay";
 import { checkedReceiveAddress } from "@/features/pay/lib/receive-address";
@@ -119,13 +121,14 @@ export interface QuoteAsk {
 }
 
 /**
- * Whether signed is a quote 1Click signed with key that pays exactly ask (D-124): the page shows a deposit address only
- * then. A hacked api can't pass another address, recipient, amount or refund address.
+ * Whether signed is a quote 1Click signed with key that pays exactly ask, fresh at now (D-124): the page shows a deposit
+ * address only then. A hacked api can't pass another address, recipient, amount or refund address, or an old quote.
  */
 export async function verifyQuote(
   signed: unknown,
   ask: QuoteAsk,
   key = crossChainKey(),
+  now = Date.now(),
 ): Promise<boolean> {
   const answer = record(signed);
   const request = record(answer?.quoteRequest);
@@ -152,7 +155,11 @@ export async function verifyQuote(
     typeof quote.depositAddress === "string" &&
     quote.depositAddress !== "" &&
     !quote.depositMemo;
-  if (!asked) return false;
+  const signedAt = typeof answer.timestamp === "string" ? Date.parse(answer.timestamp) : NaN;
+  const addressUntil = typeof quote.deadline === "string" ? Date.parse(quote.deadline) : NaN;
+  const fresh =
+    now - signedAt <= QUOTE_PRICE_WINDOW_MS && addressUntil >= now + QUOTE_ADDRESS_LEAST_MS;
+  if (!asked || !fresh) return false;
   try {
     const publicKey = await crypto.subtle.importKey(
       "raw",
@@ -172,26 +179,43 @@ export async function verifyQuote(
   }
 }
 
-/** The deposit address and amount inside a signed answer: after verifyQuote, the only ones the page may show. send
- * is the amount the payer is asked for: amountIn rounded up at the price 1Click signed (R-244). */
+/** The deposit address and amounts inside a signed answer: after verifyQuote, the only ones the page may show. send
+ * is the amount the payer is asked for: amountIn rounded up at the price 1Click signed (R-244). refundFee is what
+ * 1Click takes from a refund, in the token's base units. */
 export function signedDeposit(
   signed: unknown,
   decimals: number,
-): { depositAddress: string; amountIn: bigint; send: bigint } | null {
+): {
+  depositAddress: string;
+  amountIn: bigint;
+  minAmountIn: bigint;
+  refundFee: bigint;
+  send: bigint;
+} | null {
   const quote = record(record(signed)?.quote);
-  if (
-    typeof quote?.depositAddress !== "string" ||
-    typeof quote.amountIn !== "string" ||
-    !/^\d+$/.test(quote.amountIn)
-  )
+  const units = (v: unknown) => (typeof v === "string" && /^\d+$/.test(v) ? BigInt(v) : null);
+  const amountIn = units(quote?.amountIn);
+  const minAmountIn = units(quote?.minAmountIn);
+  if (typeof quote?.depositAddress !== "string" || amountIn === null || minAmountIn === null)
     return null;
-  const amountIn = BigInt(quote.amountIn);
   const usd = typeof quote.amountInUsd === "string" ? quote.amountInUsd : "";
   return {
     depositAddress: quote.depositAddress,
     amountIn,
+    minAmountIn,
+    refundFee: units(quote.refundFee) ?? 0n,
     send: sendUnits(amountIn, decimals, usdPerToken(usd, amountIn, decimals)),
   };
+}
+
+/** Whether what may come back of send, the unused slippage and the rounding up, is more than 1Click's refund fee. At
+ * or under it, 1Click's spec doesn't say the refund is sent at all. */
+export function slippageCoversRefundFee(
+  send: bigint,
+  minAmountIn: bigint,
+  refundFee: bigint,
+): boolean {
+  return send - minAmountIn > refundFee;
 }
 
 /** An amount of a token as the pay box writes it: every digit it has, at least two. */

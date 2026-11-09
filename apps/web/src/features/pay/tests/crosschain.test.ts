@@ -1,7 +1,7 @@
 import { generateKeyPairSync, sign } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import type { Invoice } from "@/features/invoices/types/invoices";
-import { shortDepositLine } from "@/features/pay/components/crosschain-pay";
+import { quoteProblem, shortDepositLine } from "@/features/pay/components/crosschain-pay";
 import { ONECLICK_KEY } from "@/features/pay/constants/crosschain";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import {
@@ -13,6 +13,7 @@ import {
   quoteMessage,
   sendUnits,
   signedDeposit,
+  slippageCoversRefundFee,
   verifyQuote,
 } from "@/features/pay/lib/crosschain";
 import answer from "@/features/pay/tests/fixtures/oneclick-quote.json";
@@ -27,6 +28,9 @@ const ASK: QuoteAsk = {
   refundTo: "0x6fd1c6b3f0b7a5b4e5d6a3c2b1a0f9e8d7c6b5a4",
 };
 
+// A minute after 1Click signed the answer.
+const AT = Date.parse(answer.timestamp) + 60_000;
+
 const changed = (path: [string] | [string, string], value: unknown): Record<string, unknown> => {
   const copy: Record<string, unknown> = structuredClone(answer);
   const [outer, inner] = path;
@@ -37,13 +41,14 @@ const changed = (path: [string] | [string, string], value: unknown): Record<stri
 
 describe("verifyQuote", () => {
   it("shows the address of a quote 1Click signed for exactly what the page asked", async () => {
-    expect(await verifyQuote(answer, ASK, ONECLICK_KEY)).toBe(true);
+    expect(await verifyQuote(answer, ASK, ONECLICK_KEY, AT)).toBe(true);
     // An address in another case is the same EVM address.
     expect(
       await verifyQuote(
         answer,
         { ...ASK, recipient: ASK.recipient.toUpperCase().replace("0X", "0x") },
         ONECLICK_KEY,
+        AT,
       ),
     ).toBe(true);
   });
@@ -55,7 +60,7 @@ describe("verifyQuote", () => {
       { ...ASK, refundTo: "0x0000000000000000000000000000000000000002" },
       { ...ASK, originAsset: "nep141:eth.omft.near" },
     ]) {
-      expect(await verifyQuote(answer, ask, ONECLICK_KEY)).toBe(false);
+      expect(await verifyQuote(answer, ask, ONECLICK_KEY, AT)).toBe(false);
     }
   });
 
@@ -66,31 +71,37 @@ describe("verifyQuote", () => {
       changed(["quoteRequest", "slippageTolerance"], 101),
       changed(["timestamp"], "2026-11-09T02:11:35.240Z"),
     ]) {
-      expect(await verifyQuote(copy, ASK, ONECLICK_KEY)).toBe(false);
+      expect(await verifyQuote(copy, ASK, ONECLICK_KEY, AT)).toBe(false);
     }
-    expect(await verifyQuote(answer, ASK, `ed25519:${base58(new Uint8Array(32).fill(7))}`)).toBe(
-      false,
-    );
-    expect(await verifyQuote(null, ASK, ONECLICK_KEY)).toBe(false);
+    expect(
+      await verifyQuote(answer, ASK, `ed25519:${base58(new Uint8Array(32).fill(7))}`, AT),
+    ).toBe(false);
+    expect(await verifyQuote(null, ASK, ONECLICK_KEY, AT)).toBe(false);
   });
 
   it("refuses a signed quote that needs a memo, delivers less or names another recipient chain", async () => {
     // Re-signing is impossible without 1Click's key, so these fail on the fields before the signature.
-    expect(await verifyQuote(changed(["quote", "depositMemo"], "7"), ASK, ONECLICK_KEY)).toBe(
+    expect(await verifyQuote(changed(["quote", "depositMemo"], "7"), ASK, ONECLICK_KEY, AT)).toBe(
       false,
     );
     expect(
-      await verifyQuote(changed(["quote", "minAmountOut"], "2499999"), ASK, ONECLICK_KEY),
+      await verifyQuote(changed(["quote", "minAmountOut"], "2499999"), ASK, ONECLICK_KEY, AT),
     ).toBe(false);
     expect(
       await verifyQuote(
         changed(["quoteRequest", "virtualChainRecipient"], ASK.recipient),
         ASK,
         ONECLICK_KEY,
+        AT,
       ),
     ).toBe(false);
     expect(
-      await verifyQuote(changed(["quoteRequest", "swapType"], "EXACT_INPUT"), ASK, ONECLICK_KEY),
+      await verifyQuote(
+        changed(["quoteRequest", "swapType"], "EXACT_INPUT"),
+        ASK,
+        ONECLICK_KEY,
+        AT,
+      ),
     ).toBe(false);
   });
 });
@@ -118,10 +129,24 @@ const resigned = (copy: Record<string, unknown>) => ({
 
 describe("verifyQuote on answers a key signed", () => {
   it("refuses more slippage than the api asks for, which would go back to the refund address", async () => {
-    expect(await verifyQuote(resigned(structuredClone(answer)), ASK, TEST_KEY)).toBe(true);
+    expect(await verifyQuote(resigned(structuredClone(answer)), ASK, TEST_KEY, AT)).toBe(true);
     const more: Record<string, unknown> = structuredClone(answer);
     (more.quoteRequest as Record<string, unknown>).slippageTolerance = 500;
-    expect(await verifyQuote(resigned(more), ASK, TEST_KEY)).toBe(false);
+    expect(await verifyQuote(resigned(more), ASK, TEST_KEY, AT)).toBe(false);
+  });
+
+  it("refuses a quote signed over 15 minutes ago, or whose address takes deposits for under an hour", async () => {
+    const signedAt = Date.parse(answer.timestamp);
+    expect(await verifyQuote(answer, ASK, ONECLICK_KEY, signedAt + 15 * 60_000)).toBe(true);
+    expect(await verifyQuote(answer, ASK, ONECLICK_KEY, signedAt + 16 * 60_000)).toBe(false);
+    const soon: Record<string, unknown> = structuredClone(answer);
+    (soon.quote as Record<string, unknown>).deadline = new Date(
+      signedAt + 50 * 60_000,
+    ).toISOString();
+    expect(await verifyQuote(resigned(soon), ASK, TEST_KEY, AT)).toBe(false);
+    const none: Record<string, unknown> = structuredClone(answer);
+    delete (none.quote as Record<string, unknown>).deadline;
+    expect(await verifyQuote(resigned(none), ASK, TEST_KEY, AT)).toBe(false);
   });
 });
 
@@ -167,8 +192,35 @@ describe("signedDeposit", () => {
     expect(signedDeposit(answer, 6)).toEqual({
       depositAddress: answer.quote.depositAddress,
       amountIn: 2_527_977n,
+      minAmountIn: 2_502_697n,
+      refundFee: 5300n,
       send: 2_530_000n,
     });
+  });
+});
+
+// What comes back pays 1Click's refund fee first: the page says so, and warns when the unused slippage is under it.
+describe("the refund fee", () => {
+  it("is named wherever money is said to come back", () => {
+    expect(PAY_COPY.crossChain.extraBack("0.0053 USDC")).toContain(
+      "less the refund fee of 0.0053 USDC",
+    );
+    expect(PAY_COPY.crossChain.refundHint).toContain("less the refund fee");
+  });
+
+  it("warns only when the unused slippage is not above it", () => {
+    // 2.53 USDC sent, at least 2.502697 converted: up to 0.027303 comes back.
+    expect(slippageCoversRefundFee(2_530_000n, 2_502_697n, 5300n)).toBe(true);
+    expect(slippageCoversRefundFee(2_530_000n, 2_502_697n, 27_303n)).toBe(false);
+  });
+});
+
+describe("quoteProblem", () => {
+  it("blames the refund address only for a refusal that names it", () => {
+    const answered = (code: string) => quoteProblem({ data: { error: { code } } });
+    expect(answered("quote_refused")).toBe(PAY_COPY.crossChain.quoteRefused);
+    expect(answered("quote_refused")).not.toContain("address");
+    expect(answered("invalid_value")).toBe(PAY_COPY.crossChain.refused);
   });
 });
 

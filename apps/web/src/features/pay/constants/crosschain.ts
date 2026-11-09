@@ -12,6 +12,11 @@ export const ONECLICK_TEST_KEY = process.env.NEXT_PUBLIC_ONECLICK_TEST_KEY ?? ""
  * payer send more than the price needs, which then goes back to whoever the refund address is. */
 export const ONECLICK_SLIPPAGE_BPS = 100;
 
+/** A signed quote shows only while fresh (D-124): signed within the price window, and its address takes deposits for
+ * an hour more. An older one replayed could send money to an address 1Click no longer serves (intents.PriceWindow). */
+export const QUOTE_PRICE_WINDOW_MS = 15 * 60_000;
+export const QUOTE_ADDRESS_LEAST_MS = 60 * 60_000;
+
 /** No quote for a checkout closing sooner (R-231): the conversion must land before the close. */
 export const CROSS_CHAIN_LEAST_MS = 20 * 60_000;
 

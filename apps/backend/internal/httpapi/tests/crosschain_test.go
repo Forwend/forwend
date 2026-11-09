@@ -1,8 +1,10 @@
 package tests
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"log/slog"
 	"math/big"
 	"net/http"
 	"net/url"
@@ -589,5 +591,46 @@ func TestCrossChainQuoteRefusesWhat1ClickSignedForAnotherPayment(t *testing.T) {
 	}
 	if r := e.call(t, "GET", crossPath+down+"/crosschain/price?originAsset="+url.QueryEscape(tronUSDT), "", "", ""); r.status != http.StatusServiceUnavailable {
 		t.Fatalf("down price: %d %v", r.status, r.body)
+	}
+}
+
+// An old signed quote replayed, or one whose address soon stops taking deposits, could take money to an address
+// 1Click no longer serves: it is refused.
+func TestCrossChainQuoteThatIsNotFreshIsRefused(t *testing.T) {
+	e, fake := crossChainEnv(t)
+	for name, tamper := range map[string]func(map[string]any){
+		"old": func(a map[string]any) {
+			a["timestamp"] = time.Now().Add(-16 * time.Minute).UTC().Format(time.RFC3339Nano)
+		},
+		"address ends soon": func(a map[string]any) {
+			a["quote"].(map[string]any)["deadline"] = time.Now().Add(30 * time.Minute).UTC().Format(time.RFC3339)
+		},
+		"no address deadline": func(a map[string]any) { delete(a["quote"].(map[string]any), "deadline") },
+	} {
+		fake.Tamper = tamper
+		pay, _ := liveInvoice(t, e, "key-"+name, 86400)
+		r := e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "`+refundTo+`"}`)
+		if r.status != http.StatusServiceUnavailable || errorCode(r) != "provider_unavailable" {
+			t.Fatalf("%s: %d %v", name, r.status, r.body)
+		}
+	}
+}
+
+// A refusal that doesn't name the refund address is NEAR Intents' own: the payer isn't told to check their address,
+// and the log keeps 1Click's words, so a reworded answer shows.
+func TestCrossChainQuoteRefusedForAnotherReasonDoesNotBlameTheRefundAddress(t *testing.T) {
+	e, fake := crossChainEnv(t)
+	pay, _ := liveInvoice(t, e, "key-1", 86400)
+	fake.Refuse = map[string]bool{tronUSDT: true}
+	var logs bytes.Buffer
+	defer slog.SetDefault(slog.Default())
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	r := e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "`+refundTo+`"}`)
+	if r.status != 422 || errorCode(r) != "quote_refused" ||
+		strings.Contains(r.body["error"].(map[string]any)["message"].(string), "refundTo") {
+		t.Fatalf("refused: %d %v", r.status, r.body)
+	}
+	if !strings.Contains(logs.String(), "This route is not supported") || !strings.Contains(logs.String(), "level=WARN") {
+		t.Fatalf("logs lack 1Click's refusal:\n%s", logs.String())
 	}
 }

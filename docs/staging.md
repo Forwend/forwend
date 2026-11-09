@@ -86,6 +86,7 @@
 | `WALLET_MFA` | `1` once Privy dashboard > User management > Authentication > MFA allows both passkeys and the authenticator app (D-49, R-219): an owner sets up both before a first send or export. The web build reads it. Empty or `0` leaves the gate off. |
 | `COINGECKO_API_KEY` | Optional CoinGecko Demo plan key for display prices (R-178); empty calls without a key. |
 | `ONECLICK_API_KEY` | Optional NEAR Intents 1Click partner key for cross-chain payments (D-123, Q-18); empty calls without one, and each conversion costs the payer 0.25% more. The api and the worker read it. |
+| `CROSSCHAIN_OFF` | `0` by default. `1` stops new cross-chain quotes for every profile, as during an incident at NEAR Intents (R-240). The api reads it; the worker still follows open quotes. |
 | `WEBHOOK_SECRET_KEY` | 32 random bytes in base64, from `openssl rand -base64 32`. Compose refuses to deploy without it. It opens the saved signing secrets; under another key, deliveries stop. |
 
 - Compose sets `DATABASE_URL`, `API_ADDR`, `RPC_ALLOW_LOOPBACK=0`, `PRIVY_APP_ID` and `PRIVY_JWKS_URL` internally.

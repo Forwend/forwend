@@ -249,6 +249,8 @@ D-123: NEAR Intents 1Click converts a payer's token on another chain into USDC o
   - its signed request names the Base option's receive address, Base USDC, `EXACT_OUTPUT`, the due amount and `refundTo`;
   - it delivers exactly that amount, has a deposit address and needs no memo.
   - every value is read with exact keys: Go's struct decoding would let a `DepositAddress` key replace `depositAddress`.
+  - it is fresh: signed in the last 15 minutes (`intents.PriceWindow`), its address taking deposits an hour more.
+    - An old quote replayed by a hacked api could send money to an address 1Click no longer serves.
   - The request's deadline is not signed in a real quote; 1Click signs the address's own deadline in its place.
     - So the D-125 deadline is 1Click's echo of what was asked. A wrong one can only make money late and held for the
       payer, never send it elsewhere: the recipient is signed.
@@ -257,12 +259,21 @@ D-123: NEAR Intents 1Click converts a payer's token on another chain into USDC o
 - The worker reads each quote's status from 1Click only to show progress (R-234). Paid still comes from the Base balance.
   - While 1Click converts a deposit, the pick, an edit and a cancel wait as for money seen (`invoice.ConvertingSQL`).
     - A short deposit waits too: 1Click holds it until the deadline, and the rest may still convert it (Q-19).
+    - A delivery stops waiting once it came in on Base (`invoice.DeliveredSQL`): the ledger holds it from then.
+    - Any quote stops waiting an hour past its deadline or seen deposit, when its alert fires.
+      - One 1Click never finishes would otherwise hold the invoice for good.
   - An unpaid quote is read until 1Click's own address deadline (`quote.deadline`, about 72 hours): a late deposit still
     converts or is refunded.
   - A read that fails never ends tracking. Only a read that 1Click answers can: a deposit made meanwhile is not lost.
   - It logs an `ALERT` for a failed swap, a seen deposit unfinished an hour past its deadline, and a delivery with no
     Base transfer of its transaction 30 minutes later.
   - It also alerts on a status it doesn't know, and on two quotes of one invoice that both saw deposits.
+  - It alerts when 1Click delivers another amount than the quote: the invoice is then short or overpaid.
+  - A delivery alert ends once the option holds a deposit of at least that amount, made after the quote.
+    - That covers a transaction 1Click names in another form than the Base transfer's hash.
+  - Alerts read only quotes seen in the last week or still read, newest first.
+- The api's `CROSSCHAIN_OFF=1` turns new quotes off on the whole platform; the worker still reads open ones.
+- A partner key 1Click rejects (401) logs one `ALERT` until a call works again.
 - Test mode has no cross-chain: 1Click has no testnet.
 
 ## Money out of a profile wallet

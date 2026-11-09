@@ -186,9 +186,13 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
       - A slow chain's (`intents.SlowChains`) is two hours. Its token is listed only while that leaves 90 minutes.
     - It is kept only when 1Click's signature and the signed fields check out (D-124); otherwise 503
       `provider_unavailable`, and an `ALERT` is logged.
+      - So is a quote signed over 15 minutes ago, or whose address takes deposits for under an hour more.
+    - A refusal naming `refundTo` is 422 `invalid_value`; another is 422 `quote_refused`, which blames no address.
+      - Each refusal is logged at Warn with 1Click's first 200 characters, so a reworded message shows.
     - The same token, refund address and amount get the open quote back while 5 minutes of its window are left.
     - Twenty quotes an invoice an hour (429 `too_many_quotes`); a quote 1Click is converting makes it 409 `pick_locked`.
       - So does a short deposit 1Click holds (`INCOMPLETE_DEPOSIT`): the rest may still convert it.
+      - A delivered quote counts until its Base deposit came in. Any quote stops an hour past its deadline or deposit.
     - A route's minimum above the amount is 422 `below_minimum`, whose error also carries `minimum`.
     - It keeps the Base option as the payer's pick (R-57).
   - The worker reads each quote's 1Click status (R-234, `invoice/crosschain_track.go`).
@@ -203,6 +207,7 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
     - History: `crosschain.deposit_seen`, `crosschain.converted`, `crosschain.refunded`, `crosschain.failed`.
       - Each once. Its `txHash` is a Base transaction; the payer's chain's own is in `crossChain`.
     - A seen deposit moves the pick to the Base option. While it converts, pick and cancel are 409 and edit is refused.
+    - A delivery of another amount than the quote logs an `ALERT`.
   - Reads (R-235): the invoice's own reads, the payment's read and webhooks carry `crossChain`.
     - It is the newest quote 1Click saw a deposit for, else the newest: status, what was sent and refunded, both chains'
       transactions and the signed answer.
@@ -215,6 +220,8 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   - A profile turns it off with `crossChain: false` on `PUT /v1/profiles/{id}/tokens` (R-240); `GET` returns it.
     - Off, new quotes for its invoices, links and checkouts are 422 `crosschain_unavailable`; an open quote finishes.
     - The invoice read's `crossChainOn` tells the pay page whether to offer it.
+  - The api's `CROSSCHAIN_OFF=1` turns new quotes off for every profile: 422 `crosschain_unavailable`, `crossChainOn` false.
+    - The worker still reads open quotes. Webhooks carry the profile's own switch.
 - Payment reminders (R-96): `invoice.QueueReminders` queues `invoice.reminder` rows.
   - It runs on the worker's loop beside the chain rounds, at the same interval.
   - Steps: `before` 3 days before the due date, `due` on it, `after` 7 days after, in UTC days.
