@@ -279,6 +279,7 @@ test.describe("pay with another token (R-236 to R-238)", () => {
   }) => {
     const q = quote("1263000000");
     await page.clock.install({ time: NOW });
+    await routeCrossChain(page, [q]);
     for (const [status, line] of [
       ["REFUNDED", "NEAR Intents returned the money to your refund address."],
       ["FAILED", "The conversion failed. NEAR Intents returns the money to your refund address."],
@@ -298,7 +299,9 @@ test.describe("pay with another token (R-236 to R-238)", () => {
       );
       await expect(page.getByText("Don't pay again")).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Show address" })).toBeVisible();
-      await expect(page.getByRole("button", { name: "Pay with another token" })).toBeVisible();
+      // Another token again: a price for the kept token, then the refund address.
+      await page.getByRole("button", { name: "Pay with another token" }).click();
+      await expect(page.getByText("You send")).toBeVisible();
     }
   });
 
@@ -368,6 +371,21 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await expect(
       page.getByRole("alert").filter({ hasText: "We could not check this address" }),
     ).toBeVisible();
+    await expect(page.getByText(DEPOSIT_ADDRESS)).toHaveCount(0);
+  });
+
+  test("a reload shows no kept quote for another token than this tab asked for", async ({
+    page,
+  }) => {
+    await page.clock.install({ time: NOW });
+    await page.addInitScript(([key, value]) => sessionStorage.setItem(key, value), [
+      `forwend:cross:${LIVE.invoiceId}`,
+      JSON.stringify({ assetId: "nep141:eth.omft.near", refundTo: REFUND }),
+    ] as const);
+    await mockInvoice(page, { ...LIVE, crossChain: kept(quote("1263000000"), {}) });
+    await routeCrossChain(page, [quote("1263000000")]);
+    await page.goto(`/pay/${PAY}`);
+    await expect(page.getByLabel("Refund address on Tron")).toBeVisible();
     await expect(page.getByText(DEPOSIT_ADDRESS)).toHaveCount(0);
   });
 

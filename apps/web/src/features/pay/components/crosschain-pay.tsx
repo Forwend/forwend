@@ -101,8 +101,8 @@ export function CrossChainPay({
   const tokens = useGetCrossTokensQuery(linkToken, { skip: !picking && token !== null });
   const price = useGetCrossPriceQuery(
     { payToken: linkToken, originAsset: token?.assetId ?? "" },
-    // No price once a quote shows, or once 1Click saw the deposit: nothing is left to price.
-    { skip: !token || shown !== null || Boolean(kept?.depositSeenAt) },
+    // No price once a quote shows, or while 1Click converts a deposit; one it returned can be paid again.
+    { skip: !token || shown !== null || Boolean(kept?.depositSeenAt && !crossChainEnded(kept)) },
   );
   const [createQuote, creating] = useCreateCrossQuoteMutation();
 
