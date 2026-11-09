@@ -232,10 +232,16 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
 D-123: NEAR Intents 1Click converts a payer's token on another chain into USDC on Base.
 
 - The USDC goes to the invoice's own Base option receive address. Paid, settlement and fees work as for a direct payment.
-- Each quote is `EXACT_OUTPUT` for exactly what is due, so the invoice is never partly paid or overpaid by it.
+- Each quote is `EXACT_OUTPUT` for exactly what is due.
   - 1Click returns the unused slippage, any extra and short or failed deposits to the payer's `refundTo`.
-  - Forwend holds none of that money.
+  - Each deposit address delivers all that is due, and 1Click has no cancel: every address stays live until its deadline.
+  - So a second address paid too overpays the invoice. The extra is held on Base for its payer.
+  - Only one token and refund address has a live quote at a time: another is refused until that quote's deadline.
+  - The same payer can still pay an old and a new address of one token. The pay page tells them not to.
+  - The worker logs an `ALERT` when two quotes of one invoice saw deposits.
 - Its deadline is at least 10 minutes before the close: what hasn't converted by then is refunded, never late.
+  - It is an hour, or two hours for a slow chain (`intents.SlowChains`, Bitcoin-like), bounded by the close.
+  - A slow chain's deposit can take an hour to mine. Its token is offered only while its deadline is 90 minutes away.
 - The deposit address can't be recomputed as a receive address can (R-45). Instead, a quote must pass D-124:
   - its ed25519 signature verifies with `intents.ManagerKey`, the key the 1Click SDK pins;
   - its signed request names the Base option's receive address, Base USDC, `EXACT_OUTPUT`, the due amount and `refundTo`;
@@ -248,8 +254,13 @@ D-123: NEAR Intents 1Click converts a payer's token on another chain into USDC o
   shows the address. The canary checks each shown quote against 1Click's own record (R-235).
 - The worker reads each quote's status from 1Click only to show progress (R-234). Paid still comes from the Base balance.
   - While 1Click converts a deposit, the pick, an edit and a cancel wait as for money seen (`invoice.ConvertingSQL`).
+    - A short deposit waits too: 1Click holds it until the deadline, and the rest may still convert it (Q-19).
+  - An unpaid quote is read until 1Click's own address deadline (`quote.deadline`, about 72 hours): a late deposit still
+    converts or is refunded.
+  - A read that fails never ends tracking. Only a read that 1Click answers can: a deposit made meanwhile is not lost.
   - It logs an `ALERT` for a failed swap, a seen deposit unfinished an hour past its deadline, and a delivery with no
     Base transfer of its transaction 30 minutes later.
+  - It also alerts on a status it doesn't know, and on two quotes of one invoice that both saw deposits.
 - Test mode has no cross-chain: 1Click has no testnet.
 
 ## Money out of a profile wallet

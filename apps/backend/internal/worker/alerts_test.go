@@ -104,7 +104,8 @@ func TestAlertsNameAStalledChainAndPaidMoneyNotSettled(t *testing.T) {
 }
 
 // R-234: a cross-chain payment holding a payer's money alerts: a failed swap, a seen deposit unfinished an hour past its
-// deadline, and a delivery whose Base transfer never came. One that delivered and booked, or one nobody paid, doesn't.
+// deadline, a delivery whose Base transfer never came, and two quotes of one invoice that both saw deposits. One that
+// delivered and booked, or one nobody paid, doesn't; nor does a deposit beside one 1Click returned.
 func TestAlertsNameCrossChainPaymentsThatHoldMoney(t *testing.T) {
 	ctx := context.Background()
 	pool, err := database.Open(ctx, databasetest.Migrated(t, database.Migrate))
@@ -117,31 +118,34 @@ func TestAlertsNameCrossChainPaymentsThatHoldMoney(t *testing.T) {
 		     p AS (INSERT INTO profiles (user_id, kind) SELECT id, 'freelancer' FROM u RETURNING id)
 		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
 		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
-		SELECT '0x' || repeat('01', 32), id, 8453, 'evm', '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', 5000000,
+		SELECT '0x' || lpad(n::text, 64, '0'), id, 8453, 'evm', '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', 5000000,
 		    extract(epoch FROM now())::bigint + 600, extract(epoch FROM now())::bigint + 3600,
 		    '0x1111111111111111111111111111111111111111', 'evm_create2', '0x2222222222222222222222222222222222222222',
-		    '0x00000000000000000000000000000000000000aa', 'key-1', decode(repeat('00', 32), 'hex') FROM p;
+		    '0x' || lpad(n::text, 40, '0'), 'key-' || n, decode(repeat('00', 32), 'hex') FROM p, generate_series(1, 9) n;
 		INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index, block_hash,
 		    block_number, block_time, from_address, to_address, amount, status)
-		VALUES (8453, 'evm', '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', '0x' || repeat('01', 32), '0x' || repeat('0b', 32), 0,
-		    '0x' || repeat('08', 32), 95, 1, '0x00000000000000000000000000000000000000ff', '0x00000000000000000000000000000000000000aa',
+		VALUES (8453, 'evm', '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', '0x' || lpad('1', 64, '0'), '0x' || repeat('0b', 32), 0,
+		    '0x' || repeat('08', 32), 95, 1, '0x00000000000000000000000000000000000000ff', '0x' || lpad('1', 40, '0'),
 		    5000000, 'confirmed');
 		INSERT INTO crosschain_quotes (invoice_id, option_id, origin_asset, refund_to, deposit_address, amount_in,
 		    min_amount_in, amount_out, time_estimate, shown_until, deadline, signed, status, deposit_seen_at, converted_at,
 		    destination_txs, created_at)
-		SELECT '0x' || repeat('01', 32), '0x' || repeat('01', 32), 'nep141:x', 'x', a, 1, 1, 1, 0, now() - d, now() - d, '{}', s,
-		    seen, conv, txs, now() - d
-		FROM (VALUES ('failed-addr', 'FAILED', interval '1 hour', now(), NULL::timestamptz, '[]'::jsonb),
-		             ('stuck-addr', 'PROCESSING', interval '2 hours', now(), NULL, '[]'),
-		             ('lost-addr', 'SUCCESS', interval '2 hours', now(), now() - interval '1 hour', '[{"hash": "0xffff"}]'),
+		SELECT '0x' || lpad(n::text, 64, '0'), '0x' || lpad(n::text, 64, '0'), 'nep141:x', 'x', a, 1, 1, 1, 0, now() - d,
+		    now() - d, '{}', s, seen, conv, txs, now() - d
+		FROM (VALUES ('failed-addr', 'FAILED', interval '1 hour', now(), NULL::timestamptz, '[]'::jsonb, 2),
+		             ('stuck-addr', 'PROCESSING', interval '2 hours', now(), NULL, '[]', 3),
+		             ('lost-addr', 'SUCCESS', interval '2 hours', now(), now() - interval '1 hour', '[{"hash": "0xffff"}]', 4),
 		             ('booked-addr', 'SUCCESS', interval '2 hours', now(), now() - interval '1 hour',
-		              jsonb_build_array(jsonb_build_object('hash', upper('0x' || repeat('0b', 32))))),
-		             ('unpaid-addr', 'PENDING_DEPOSIT', interval '3 hours', NULL, NULL, '[]'),
+		              jsonb_build_array(jsonb_build_object('hash', upper('0x' || repeat('0b', 32)))), 1),
+		             ('unpaid-addr', 'PENDING_DEPOSIT', interval '3 hours', NULL, NULL, '[]', 5),
 		             -- just inside each window: not yet an hour past the deadline, delivered under 30 minutes ago
-		             ('soon-stuck-addr', 'PROCESSING', interval '50 minutes', now(), NULL, '[]'),
-		             ('soon-lost-addr', 'SUCCESS', interval '50 minutes', now(), now() - interval '20 minutes', '[{"hash": "0xeeee"}]'),
-		             ('old-failed-addr', 'FAILED', interval '8 days', now(), NULL, '[]'))
-		     AS q (a, s, d, seen, conv, txs)`); err != nil {
+		             ('soon-stuck-addr', 'PROCESSING', interval '50 minutes', now(), NULL, '[]', 6),
+		             ('returned-addr', 'REFUNDED', interval '50 minutes', now(), NULL, '[]', 6),
+		             ('soon-lost-addr', 'SUCCESS', interval '50 minutes', now(), now() - interval '20 minutes', '[{"hash": "0xeeee"}]', 7),
+		             ('old-failed-addr', 'FAILED', interval '8 days', now(), NULL, '[]', 8),
+		             ('twice-a-addr', 'PROCESSING', interval '10 minutes', now(), NULL, '[]', 9),
+		             ('twice-b-addr', 'SUCCESS', interval '10 minutes', now(), now(), '[]', 9))
+		     AS q (a, s, d, seen, conv, txs, n)`); err != nil {
 		t.Fatal(err)
 	}
 	ids := map[string]string{}
@@ -165,12 +169,15 @@ func TestAlertsNameCrossChainPaymentsThatHoldMoney(t *testing.T) {
 	}
 	for _, want := range []string{"ALERT cross-chain swap failed: check 1Click returned the deposit\" quote=" + ids["failed-addr"],
 		"ALERT cross-chain deposit unfinished an hour past its deadline\" quote=" + ids["stuck-addr"],
-		"ALERT cross-chain swap delivered, but no Base deposit with its transaction came in\" quote=" + ids["lost-addr"]} {
+		"ALERT cross-chain swap delivered, but no Base deposit with its transaction came in\" quote=" + ids["lost-addr"],
+		"ALERT two cross-chain quotes of one invoice saw deposits: return the one held to its payer\" quote=" + ids["twice-a-addr"],
+		"ALERT two cross-chain quotes of one invoice saw deposits: return the one held to its payer\" quote=" + ids["twice-b-addr"]} {
 		if !strings.Contains(logs.String(), want) {
 			t.Fatalf("logs lack %q:\n%s", want, logs.String())
 		}
 	}
-	for _, quiet := range []string{"booked-addr", "unpaid-addr", "old-failed-addr", "soon-stuck-addr", "soon-lost-addr"} {
+	for _, quiet := range []string{"booked-addr", "unpaid-addr", "old-failed-addr", "soon-stuck-addr", "returned-addr",
+		"soon-lost-addr"} {
 		if strings.Contains(logs.String(), ids[quiet]) {
 			t.Fatalf("%s alerts:\n%s", quiet, logs.String())
 		}

@@ -3,19 +3,26 @@ package invoiceapi
 import (
 	"encoding/json"
 	"errors"
+	"math"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/mid"
 	"github.com/forwend/forwend/apps/backend/internal/intents"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
 
 // Each pick asks for a dry quote, so a payer browsing tokens spends from this; a real quote also counts in the
-// database (invoice.CrossChainPerHour).
+// database (invoice.CrossChainPerHour). Anyone can make pay tokens from a public link, so all invoices also share a
+// budget of 1Click calls made with Forwend's key, spent only when 1Click is called: a kept price or quote is free.
 const (
 	CrossTokensRate, CrossTokensBurst = 0.5, 10
 	DryQuoteRate, DryQuoteBurst       = 1, 20
 	QuoteRate, QuoteBurst             = 0.1, 5
+	DryQuoteAllRate, DryQuoteAllBurst = 1, 20
+	QuoteAllRate, QuoteAllBurst       = 0.2, 10
 )
 
 type crossTokensJSON struct {
@@ -94,15 +101,17 @@ func getCrossTokens(invoices *invoice.Service) http.HandlerFunc {
 }
 
 // R-232: a dry quote prices a pick, without an address.
-func getCrossPrice(invoices *invoice.Service) http.HandlerFunc {
+func getCrossPrice(invoices *invoice.Service, all *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		q, err := invoices.QuoteCrossChain(r.Context(), r.PathValue("payToken"), r.URL.Query().Get("originAsset"), "", true)
+		allow := func() time.Duration { return all.Wait(mid.Everyone(r)) }
+		q, err := invoices.QuoteCrossChain(r.Context(), r.PathValue("payToken"), r.URL.Query().Get("originAsset"), "", true,
+			allow)
 		writeCrossQuote(w, r, q, err, http.StatusOK)
 	}
 }
 
 // R-231, R-233: the deposit address for the payer's token and refund address, signed by 1Click (D-124).
-func postCrossQuote(invoices *invoice.Service) http.HandlerFunc {
+func postCrossQuote(invoices *invoice.Service, all *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			OriginAsset string `json:"originAsset"`
@@ -112,13 +121,21 @@ func postCrossQuote(invoices *invoice.Service) http.HandlerFunc {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		q, err := invoices.QuoteCrossChain(r.Context(), r.PathValue("payToken"), body.OriginAsset, body.RefundTo, false)
+		allow := func() time.Duration { return all.Wait(mid.Everyone(r)) }
+		q, err := invoices.QuoteCrossChain(r.Context(), r.PathValue("payToken"), body.OriginAsset, body.RefundTo, false,
+			allow)
 		writeCrossQuote(w, r, q, err, http.StatusCreated)
 	}
 }
 
 func writeCrossQuote(w http.ResponseWriter, r *http.Request, q invoice.CrossQuote, err error, status int) {
 	var below *intents.BelowMinimum
+	var soon *invoice.TooSoonError
+	if errors.As(err, &soon) {
+		w.Header().Set("Retry-After", strconv.Itoa(max(1, int(math.Ceil(soon.Wait.Seconds())))))
+		httpio.WriteError(w, r, httpio.ErrRateLimited)
+		return
+	}
 	if errors.As(err, &below) {
 		httpio.WriteJSON(w, http.StatusUnprocessableEntity, map[string]map[string]string{"error": {
 			"code": "below_minimum", "message": "this token's route needs a larger amount: choose another token",

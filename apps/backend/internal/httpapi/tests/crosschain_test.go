@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/invoiceapi"
 	"github.com/forwend/forwend/apps/backend/internal/intents"
 	"github.com/forwend/forwend/apps/backend/internal/intents/intentstest"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
@@ -184,16 +185,18 @@ func TestCrossChainQuotePaysExactlyWhatIsDueIntoTheBaseOption(t *testing.T) {
 		t.Fatalf("picked %v, want the Base option %v", got, base["optionId"])
 	}
 
-	// The same token and refund address get the same quote back; another refund address gets its own.
+	// The same token and refund address get the same quote back.
 	made := fake.QuoteCount()
 	again := e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "`+refundTo+`"}`)
 	if again.status != http.StatusCreated || again.body["quoteId"] != r.body["quoteId"] ||
 		again.body["depositAddress"] != r.body["depositAddress"] || fake.QuoteCount() != made {
 		t.Fatalf("again: %d %v", again.status, again.body)
 	}
+	// Another refund address waits until this quote's deadline: each address delivers all that is due, so both paid
+	// would pay the invoice twice.
 	other := e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "TOther"}`)
-	if other.status != http.StatusCreated || other.body["quoteId"] == r.body["quoteId"] {
-		t.Fatalf("other refund address: %d %v", other.status, other.body)
+	if other.status != http.StatusConflict || errorCode(other) != "quote_open" {
+		t.Fatalf("another refund address while a quote can be paid: %d %v", other.status, other.body)
 	}
 	// A quote is given again while 5 minutes of its window are left, and not once fewer are.
 	e.exec(t, `UPDATE crosschain_quotes SET shown_until = now() + interval '6 minutes'`)
@@ -205,6 +208,100 @@ func TestCrossChainQuotePaysExactlyWhatIsDueIntoTheBaseOption(t *testing.T) {
 	if late := e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "`+refundTo+`"}`); late.status != http.StatusCreated ||
 		late.body["quoteId"] == r.body["quoteId"] {
 		t.Fatalf("late: %d %v", late.status, late.body)
+	}
+	// Past its deadline another refund address gets its own.
+	next, _ := liveInvoice(t, e, "key-2", 86400)
+	if r := e.call(t, "POST", crossPath+next+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "`+refundTo+`"}`); r.status != http.StatusCreated {
+		t.Fatalf("first: %d %v", r.status, r.body)
+	}
+	e.exec(t, `UPDATE crosschain_quotes SET shown_until = now() - interval '1 second', deadline = now() - interval '1 second'`)
+	if other := e.call(t, "POST", crossPath+next+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "TOther"}`); other.status != http.StatusCreated {
+		t.Fatalf("other refund address past the deadline: %d %v", other.status, other.body)
+	}
+}
+
+// A slow chain's deposit can take an hour to mine, and 1Click refunds what isn't done by the deadline: its quote gets a
+// longer deadline, and isn't offered when the close leaves too little time.
+func TestSlowChainQuoteGetsALongerDeadline(t *testing.T) {
+	e, fake := crossChainEnv(t)
+	btc := "nep141:btc.omft.near"
+	fake.Tokens = append(slices.Clone(intentstest.Tokens), map[string]any{"assetId": btc, "blockchain": "btc",
+		"symbol": "BTC", "decimals": 8, "price": 66093})
+	if err := (&intents.Keeper{Pool: e.pool, Client: fake.Client(), Every: time.Hour}).Tick(context.Background(), time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	quote := func(pay string) reply {
+		return e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "",
+			`{"originAsset": "`+btc+`", "refundTo": "bc1qp42j7hn3lup7gck6y6eks6x2lmnp800t6gy7sk"}`)
+	}
+	soon, _ := liveInvoice(t, e, "key-1", 1500) // closes in 25 minutes
+	for _, tok := range e.call(t, "GET", crossPath+soon+"/crosschain/tokens", "", "", "").body["tokens"].([]any) {
+		if tok.(map[string]any)["assetId"] == btc {
+			t.Fatal("BTC offered 25 minutes before the close")
+		}
+	}
+	if r := quote(soon); r.status != http.StatusUnprocessableEntity || errorCode(r) != "invalid_value" {
+		t.Fatalf("BTC 25 minutes before the close: %d %v", r.status, r.body)
+	}
+	day, _ := liveInvoice(t, e, "key-2", 86400)
+	start := time.Now()
+	r := quote(day)
+	if r.status != http.StatusCreated {
+		t.Fatalf("BTC: %d %v", r.status, r.body)
+	}
+	deadline, _ := time.Parse(time.RFC3339, r.body["deadline"].(string))
+	if d := deadline.Sub(start); d < 119*time.Minute || d > 121*time.Minute {
+		t.Fatalf("BTC deadline in %s, want two hours", d)
+	}
+}
+
+// Anyone can make pay tokens from a public link, so 1Click calls made with Forwend's key share one budget across
+// invoices, prices apart from quotes. A kept price or quote spends none.
+func TestCrossChainCallsShareOneBudgetAcrossInvoices(t *testing.T) {
+	e, fake := crossChainEnv(t)
+	var pays []string
+	for i := range invoiceapi.QuoteAllBurst + 1 {
+		pay, _ := liveInvoice(t, e, "key-"+strconv.Itoa(i), 86400)
+		pays = append(pays, pay)
+	}
+	price := func(pay, asset string) reply {
+		return e.call(t, "GET", crossPath+pay+"/crosschain/price?originAsset="+url.QueryEscape(asset), "", "", "")
+	}
+	var prices []reply
+	for _, pay := range pays {
+		for _, asset := range []string{tronUSDT, ethAsset} {
+			prices = append(prices, price(pay, asset))
+		}
+	}
+	for i, r := range prices[:invoiceapi.DryQuoteAllBurst] {
+		if r.status != http.StatusOK {
+			t.Fatalf("price %d: %d %v", i, r.status, r.body)
+		}
+	}
+	if last := prices[len(prices)-1]; last.status != http.StatusTooManyRequests || errorCode(last) != "rate_limited" {
+		t.Fatalf("a price over the shared budget: %d %v", last.status, last.body)
+	}
+	if r := price(pays[0], tronUSDT); r.status != http.StatusOK {
+		t.Fatalf("a kept price: %d %v", r.status, r.body)
+	}
+	made := fake.QuoteCount()
+	quote := func(pay string) reply {
+		return e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "`+refundTo+`"}`)
+	}
+	var quotes []reply
+	for i, pay := range pays[:invoiceapi.QuoteAllBurst] {
+		if quotes = append(quotes, quote(pay)); quotes[i].status != http.StatusCreated {
+			t.Fatalf("quote %d: %d %v", i, quotes[i].status, quotes[i].body)
+		}
+	}
+	if r := quote(pays[invoiceapi.QuoteAllBurst]); r.status != http.StatusTooManyRequests || errorCode(r) != "rate_limited" {
+		t.Fatalf("a quote over the shared budget: %d %v", r.status, r.body)
+	}
+	if again := quote(pays[0]); again.status != http.StatusCreated || again.body["quoteId"] != quotes[0].body["quoteId"] {
+		t.Fatalf("a kept quote: %d %v", again.status, again.body)
+	}
+	if got := fake.QuoteCount() - made; got != invoiceapi.QuoteAllBurst {
+		t.Fatalf("1Click quotes %d, want %d", got, invoiceapi.QuoteAllBurst)
 	}
 }
 

@@ -225,6 +225,9 @@ export const PAY_COPY = {
     closed: "Paying with another token isn't available for this payment now. Pay directly instead.",
     refused: "NEAR Intents can't refund to this address. Check it is yours on this chain.",
     tooMany: "Too many prices asked for this payment. Try again later.",
+    // Each open address delivers all that is due, so a second one could pay twice (R-233).
+    quoteOpen:
+      "An address for this payment with another token or refund address can still be paid. Use it, or try again after its deadline.",
     steps: {
       detected: "Detected",
       converting: "Converting",
@@ -239,7 +242,10 @@ export const PAY_COPY = {
     returned: "Returned to you",
     onChain: (amount: string, chain: string) => `${amount} on ${chain}`,
     returnedTo: (address: string) => `To ${address}`,
-    incomplete: "Less than needed arrived. NEAR Intents returns it to your refund address.",
+    // R-238: 1Click holds a short deposit until the deadline; whether more sent to the address completes it is Q-19.
+    incomplete: (rest: string, time: string) =>
+      `Less than needed arrived. Send ${rest} more to the same address before ${time}, or NEAR Intents returns it to your refund address.`,
+    incompleteLate: "Less than needed arrived. NEAR Intents returns it to your refund address.",
     refunded: "NEAR Intents returned the money to your refund address.",
     failed: "The conversion failed. NEAR Intents returns the money to your refund address.",
     supportId: (id: string) => `Quote ID for support: ${id}`,

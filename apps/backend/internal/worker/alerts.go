@@ -120,11 +120,15 @@ func (w *Worker) alert(ctx context.Context) error {
 }
 
 // alertCrossChain logs an ALERT for a cross-chain payment that holds a payer's money (R-234): 1Click failed it in the
-// last week, a deposit it saw is unfinished an hour past the deadline, or it delivered and no Base deposit with its
-// transaction came in 30 minutes.
+// last week, a deposit it saw is unfinished an hour past the deadline, it delivered and no Base deposit with its
+// transaction came in 30 minutes, or in the last week another quote of the invoice saw a deposit too: each delivers
+// all that is due, so one is held for its payer.
 func (w *Worker) alertCrossChain(ctx context.Context) error {
-	rows, err := w.pool.Query(ctx, `SELECT q.id::text, q.invoice_id, q.status FROM crosschain_quotes q
-		WHERE (q.status = 'FAILED' AND q.created_at > now() - interval '7 days')
+	rows, err := w.pool.Query(ctx, `SELECT q.id::text, q.invoice_id, q.status, twice FROM crosschain_quotes q,
+		    LATERAL (SELECT coalesce(q.deposit_seen_at > now() - interval '7 days', false)
+		        AND q.status NOT IN ('REFUNDED', 'FAILED') AND EXISTS (SELECT 1 FROM crosschain_quotes o WHERE o.invoice_id = q.invoice_id AND o.id <> q.id
+		            AND o.deposit_seen_at IS NOT NULL AND o.status NOT IN ('REFUNDED', 'FAILED')) AS twice) t
+		WHERE twice OR (q.status = 'FAILED' AND q.created_at > now() - interval '7 days')
 		   OR (q.deposit_seen_at IS NOT NULL AND q.status NOT IN ('SUCCESS', 'REFUNDED', 'FAILED')
 		       AND q.deadline < now() - $1 * interval '1 second')
 		   OR (q.status = 'SUCCESS' AND q.converted_at < now() - $2 * interval '1 second'
@@ -138,14 +142,17 @@ func (w *Worker) alertCrossChain(ctx context.Context) error {
 	defer rows.Close()
 	for rows.Next() {
 		var quote, invoice, status string
-		if err := rows.Scan(&quote, &invoice, &status); err != nil {
+		var twice bool
+		if err := rows.Scan(&quote, &invoice, &status, &twice); err != nil {
 			return err
 		}
 		message := "ALERT cross-chain deposit unfinished an hour past its deadline"
-		switch status {
-		case "FAILED":
+		switch {
+		case twice:
+			message = "ALERT two cross-chain quotes of one invoice saw deposits: return the one held to its payer"
+		case status == "FAILED":
 			message = "ALERT cross-chain swap failed: check 1Click returned the deposit"
-		case "SUCCESS":
+		case status == "SUCCESS":
 			message = "ALERT cross-chain swap delivered, but no Base deposit with its transaction came in"
 		}
 		slog.Error(message, "quote", quote, "invoice", invoice, "status", status)

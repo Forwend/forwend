@@ -200,6 +200,9 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, invoice.ErrNoLiquidity):
 		status, code, message = http.StatusUnprocessableEntity, "no_liquidity",
 			"NEAR Intents has no liquidity for this token now: choose another token"
+	case errors.Is(err, invoice.ErrQuoteOpen):
+		status, code, message = http.StatusConflict, "quote_open",
+			"a quote for this invoice with another token or refund address can still be paid: pay it, or try after its deadline"
 	case errors.Is(err, invoice.ErrTooManyQuotes):
 		status, code, message = http.StatusTooManyRequests, "too_many_quotes",
 			"too many quotes for this invoice in the last hour: try again later"

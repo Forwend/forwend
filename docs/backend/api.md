@@ -183,16 +183,22 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   - `POST .../crosschain/quotes` (R-231, R-233): a quote with a deposit address, kept in `crosschain_quotes`.
     - It is `EXACT_OUTPUT` to the Base option's receive address, refunds go to the payer's `refundTo`.
     - Its deadline is the earlier of an hour and 10 minutes before the close; its price shows for 15 minutes (D-125).
+      - A slow chain's (`intents.SlowChains`) is two hours. Its token is listed only while that leaves 90 minutes.
     - It is kept only when 1Click's signature and the signed fields check out (D-124); otherwise 503
       `provider_unavailable`, and an `ALERT` is logged.
     - The same token, refund address and amount get the open quote back while 5 minutes of its window are left.
+    - Another token or refund address is 409 `quote_open` until that quote's deadline: each address delivers all due.
     - Twenty quotes an invoice an hour (429 `too_many_quotes`); a quote 1Click is converting makes it 409 `pick_locked`.
+      - So does a short deposit 1Click holds (`INCOMPLETE_DEPOSIT`): the rest may still convert it.
     - A route's minimum above the amount is 422 `below_minimum`, whose error also carries `minimum`.
     - It keeps the Base option as the payer's pick (R-57).
   - The worker reads each quote's 1Click status (R-234, `invoice/crosschain_track.go`).
-    - Every 10 s while converting, 30 s in its price window, then 2 minutes until an hour past its deadline.
-    - A seen deposit is read until it ends, past its deadline too. A read that keeps failing stops when the quote
-      would have.
+    - Every 10 s while converting, 30 s in its price window, then 5 minutes until an hour past its deadline.
+    - Then every 30 minutes until 1Click's own address deadline, `quote.deadline` in the signed answer (`address_deadline`).
+    - A seen deposit is read until it ends, past its deadline too, every 2 minutes.
+    - A failed read is tried again a minute later, and hourly once the quote would have ended: only an answer ends it.
+      - A status 1Click names that the code doesn't know logs an `ALERT` at each read.
+    - A round reads up to 64 quotes, 8 at once, each answer within 5 s; deposits 1Click saw go first.
     - After a conversion, every 2 minutes for an hour: 1Click refunds the unused slippage afterwards.
     - History: `crosschain.deposit_seen`, `crosschain.converted`, `crosschain.refunded`, `crosschain.failed`.
       - Each once. Its `txHash` is a Base transaction; the payer's chain's own is in `crossChain`.
@@ -808,6 +814,9 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - An invoice without a store is never framed. An unknown token is 404; the store's origins are never listed.
 - Cross-chain (D-123), per invoice in `invoiceapi/crosschain.go`: tokens 10 at once, then one every 2 s; prices 20
   at once, then one a second; quotes 5 at once, then one every 10 s, apart from the 20 an hour kept in Postgres.
+  - Anyone can make pay tokens from a public link, so all invoices also share a budget of 1Click calls.
+  - Prices 20 at once, then one a second; new quotes 10 at once, then one every 5 s.
+  - It is spent only when 1Click is asked: a kept price or quote costs nothing.
 - `POST /v1/invoices/{payToken}/views` (R-125) counts one pay page load and answers 204.
   - The page sends it once per load, not with each status refresh.
   - The pay page links on the owner's invoice and payment pages add `?preview=1`; the page then sends none (R-125).

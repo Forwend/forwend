@@ -3,6 +3,7 @@ package intents
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -22,6 +23,9 @@ const (
 )
 
 var statuses = []string{PendingDeposit, KnownDepositTx, IncompleteDeposit, Processing, Success, Refunded, Failed}
+
+// ErrUnknownStatus: 1Click answered with a status this code doesn't know, so what happened to a deposit is unknown.
+var ErrUnknownStatus = errors.New("1Click status unknown")
 
 // Tx is a transaction 1Click names, with its explorer link: https only, so an owner's page never opens another scheme.
 type Tx struct {
@@ -63,8 +67,11 @@ func (c *Client) Status(ctx context.Context, depositAddress string) (Status, err
 			DestinationChainTxHashes []Tx    `json:"destinationChainTxHashes"`
 		} `json:"swapDetails"`
 	}
-	if err := json.Unmarshal(answer, &a); err != nil || !slices.Contains(statuses, a.Status) {
+	if err := json.Unmarshal(answer, &a); err != nil {
 		return Status{}, fmt.Errorf("%w: status answer", errUnavailable)
+	}
+	if !slices.Contains(statuses, a.Status) {
+		return Status{}, fmt.Errorf("%w: %.64q", ErrUnknownStatus, a.Status)
 	}
 	d := a.SwapDetails
 	s := Status{Status: a.Status, UpdatedAt: a.UpdatedAt, Deposited: amount(d.DepositedAmount),

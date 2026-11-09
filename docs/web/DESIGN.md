@@ -919,8 +919,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
       - Returned to you names the refund address: 1Click names no refund transaction.
       - Once final but not booked it says what the direct box says, such as "Awaiting confirmation."
       - The payer's chain links to a known explorer, else to 1Click's own https link.
-      - Less than needed, refunded and failed leave one line above Pay with, with the quote ID for support, and the
-        invoice can be paid again.
+      - Less than needed keeps the steps; its status line asks for the rest at the same address before the deadline.
+        - Past the deadline it says the money goes back to the refund address.
+      - Refunded and failed leave one line above Pay with, with the quote ID for support, and the invoice can be paid
+        again.
     - The receipt adds a Paid with row: the amount sent and its chain.
   - Receipt email, once money is seen and once paid:
     - The panel's last row is "Email me a receipt" with a mail icon.

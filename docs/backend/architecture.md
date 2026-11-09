@@ -52,7 +52,8 @@ Read only the sections your task touches:
   - Only tests set `ECB_RATES_URL`: the e2e gate points the worker at a fake ECB.
   - It keeps NEAR Intents 1Click's token list in `intents_tokens` (`internal/intents`, R-232): at start, every 10
     minutes, 2 minutes after a failure. A token 1Click drops is removed. Only tests set `ONECLICK_API_URL`.
-  - On a loop of its own it reads the 1Click status of each quote due for a check, 20 a round (R-234).
+  - On a loop of its own it reads the 1Click status of each quote due for a check (R-234).
+    - Up to 64 a round, 8 at once, each answer within 5 s. Deposits 1Click saw go first.
     - It writes what changed to `crosschain_quotes` and the history; it never decides paid.
     - The alerts every 5 minutes include cross-chain payments that hold a payer's money.
   - It keeps CoinGecko's USD prices of the stablecoins for display (`internal/price`, R-178, D-115).
