@@ -200,7 +200,7 @@ export interface Payment extends OptionFees {
   hostedUrl: string | null;
   /** The hosted page's token, the last part of hostedUrl: what @forwend/js and @forwend/react take. */
   payToken: string | null;
-  /** A payment through NEAR Intents; a list fills it only once 1Click saw a deposit. */
+  /** A payment through NEAR Intents; a list fills it only while the deposit pays the payment. */
   crossChain: CrossChain | null;
 }
 

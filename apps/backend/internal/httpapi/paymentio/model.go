@@ -59,7 +59,7 @@ type Payment struct {
 	ClosesAt         string  `json:"closesAt"`
 	HostedURL        *string `json:"hostedUrl"`
 	PayToken         *string `json:"payToken"`
-	// R-235: only a payment's own read fills it; lists leave it null.
+	// R-235: a payment's own read gives its shown quote; a list only one whose deposit pays it (R-239).
 	CrossChain *CrossChain `json:"crossChain"`
 }
 

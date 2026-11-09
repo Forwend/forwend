@@ -58,9 +58,10 @@ import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { CROSS_CHAIN_STATUSES } from "@/shared/constants/chains";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
-import { blockchainName } from "@/shared/lib/chains";
+import { blockchainName, crossChainEnded } from "@/shared/lib/chains";
 import { dateTime } from "@/shared/lib/dates";
 import { exactDigits } from "@/shared/lib/money";
 
@@ -268,7 +269,7 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
                   />
                 </Figure>
               ) : null}
-              {payment.crossChain?.depositSeenAt ? (
+              {payment.crossChain && paidThroughIntents(payment.crossChain) ? (
                 <CrossChainFigure crossChain={payment.crossChain} />
               ) : null}
               {/* Before any money it says what the customer may pay with, never "Paid with". */}
@@ -479,10 +480,14 @@ export function timeline(
   // The option the payment is recorded on is the one settled.
   const settledBy = payment.options.find((option) => option.optionId === payment.optionId);
   const ended = !paid && (payment.closed || payment.paymentStatus === "canceled");
-  // R-239: through NEAR Intents the payment is seen on the customer's chain first, then converted into this one.
-  const cross = payment.crossChain?.depositSeenAt ? payment.crossChain : null;
+  // R-239: through NEAR Intents the payment is seen on the customer's chain first, then converted into this one. A
+  // deposit 1Click returned didn't pay it, so the steps are a direct payment's.
+  const cross = paidThroughIntents(payment.crossChain) ? payment.crossChain : null;
   const crossSent = cross ? BigInt(cross.deposited ?? cross.amountIn) : 0n;
   const crossTx = cross?.originTxs[0];
+  // The USDC 1Click delivered on Base: never the first deposit, which may be an earlier direct one.
+  const baseTx =
+    cross?.status === CROSS_CHAIN_STATUSES.success ? cross.destinationTxs[0] : undefined;
   const steps: Omit<TimelineEntry, "state">[] = [
     {
       id: "created",
@@ -534,23 +539,7 @@ export function timeline(
             id: "converting",
             title: COPY.steps.converting,
             time: cross.convertedAt ? dateTime(cross.convertedAt) : undefined,
-            chips: [
-              { label: COPY.chips.via, value: COPY.crossChain.nearIntents },
-              ...(first
-                ? [
-                    {
-                      label: COPY.chips.network,
-                      value: <NetworkName chainId={first.option.chainId} />,
-                    },
-                    {
-                      label: COPY.chips.tx,
-                      value: (
-                        <span className="font-mono">{shortAddress(first.deposit.txHash)}</span>
-                      ),
-                    },
-                  ]
-                : []),
-            ],
+            chips: [{ label: COPY.chips.via, value: COPY.crossChain.nearIntents }],
           },
         ]
       : []),
@@ -558,6 +547,16 @@ export function timeline(
       id: "paid",
       title: COPY.steps.paid,
       time: paid && paidBy ? dateTime(paidBy.deposit.blockTime) : undefined,
+      chips:
+        baseTx && settledBy
+          ? [
+              { label: COPY.chips.network, value: <NetworkName chainId={settledBy.chainId} /> },
+              {
+                label: COPY.chips.tx,
+                value: <span className="font-mono">{shortAddress(baseTx.hash)}</span>,
+              },
+            ]
+          : undefined,
     },
     ...(ended
       ? [{ id: "closed", title: COPY.steps.closed, time: dateTime(payment.closesAt) }]
@@ -575,7 +574,7 @@ export function timeline(
   const done = [
     true,
     Boolean(first) || Boolean(cross),
-    ...(cross ? [Boolean(cross.convertedAt) || Boolean(first)] : []),
+    ...(cross ? [cross.status === CROSS_CHAIN_STATUSES.success || paid] : []),
     paid,
     ended || settled,
   ];
@@ -612,7 +611,14 @@ export function timeline(
 }
 
 /** R-239: what the customer sent on its own chain, what came back, and its transaction there. */
-function CrossChainFigure({
+/** A deposit 1Click saw and converts or converted: one it returned didn't pay the payment (R-239). */
+export function paidThroughIntents(
+  c: PaymentDetailType["crossChain"] | undefined,
+): c is NonNullable<PaymentDetailType["crossChain"]> {
+  return c != null && c.depositSeenAt !== null && !crossChainEnded(c);
+}
+
+export function CrossChainFigure({
   crossChain,
 }: {
   crossChain: NonNullable<PaymentDetailType["crossChain"]>;
@@ -622,6 +628,12 @@ function CrossChainFigure({
     `${formatTokenAmount({ baseUnits: units, decimals: crossChain.decimals, fractionDigits: exactDigits(units, crossChain.decimals) })} ${crossChain.symbol}`;
   const refunded = crossChain.refunded ? BigInt(crossChain.refunded) : 0n;
   const origin = crossChain.originTxs[0];
+  const base =
+    crossChain.status === CROSS_CHAIN_STATUSES.success ? crossChain.destinationTxs[0] : undefined;
+  const links = [
+    { tx: origin, label: COPY.crossChain.originTx },
+    { tx: base, label: COPY.crossChain.baseTx },
+  ];
   return (
     <div className="flex flex-col gap-1 px-4 py-4 sm:px-5">
       <dt className="text-sm text-muted">{COPY.crossChain.sentWith}</dt>
@@ -632,17 +644,20 @@ function CrossChainFigure({
         {refunded > 0n ? (
           <span className="text-xs text-muted">{COPY.crossChain.refunded(money(refunded))}</span>
         ) : null}
-        {origin?.explorerUrl ? (
-          <a
-            href={origin.explorerUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-ink underline decoration-line-strong underline-offset-4"
-          >
-            {COPY.crossChain.originTx}
-            <ExternalLink aria-hidden className="size-3" />
-          </a>
-        ) : null}
+        {links.map(({ tx, label }) =>
+          tx?.explorerUrl ? (
+            <a
+              key={label}
+              href={tx.explorerUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-ink underline decoration-line-strong underline-offset-4"
+            >
+              {label}
+              <ExternalLink aria-hidden className="size-3" />
+            </a>
+          ) : null,
+        )}
       </dd>
     </div>
   );

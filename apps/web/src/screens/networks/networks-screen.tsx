@@ -39,7 +39,7 @@ export function NetworksScreen() {
             profileId={profile.profileId}
             saved={tokens.currentData}
           />
-          <CrossChainSwitch profileId={profile.profileId} saved={tokens.currentData} />
+          <CrossChainSwitch profileId={profile.profileId} />
         </>
       )}
     </div>

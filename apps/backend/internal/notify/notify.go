@@ -19,7 +19,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/document"
 	"github.com/forwend/forwend/apps/backend/internal/email"
 	"github.com/forwend/forwend/apps/backend/internal/history"
-	"github.com/forwend/forwend/apps/backend/internal/intents"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/outbox"
 	"github.com/forwend/forwend/apps/backend/internal/webhook"
@@ -292,7 +291,7 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 		sent, _ := new(big.Int).SetString(paidWith[2], 10)
 		places, _ := strconv.Atoi(paidWith[3])
 		v.Details = append(v.Details, row{Label: "Paid with",
-			Value: document.Amount(sent, places, paidWith[0]) + " on " + intents.ChainName(paidWith[1]) + " through NEAR Intents"})
+			Value: document.PaidWith(sent, places, paidWith[0], paidWith[1])})
 	}
 	// The payer's receipt and the owner's own emails say test mode too: testnet tokens never read as real money.
 	return marked(v, live), to, on, nil

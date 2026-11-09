@@ -28,7 +28,7 @@ export function crossChainTarget(inv: Invoice, payToken: string): CrossChainTarg
       o.chainId === CROSS_CHAIN_TARGET.chainId &&
       o.token.toLowerCase() === CROSS_CHAIN_TARGET.token,
   );
-  if (!inv.livemode || !base || inv.crossChainOn === false) return null;
+  if (!inv.livemode || !base) return null;
   const shown = withOption(inv, base.optionId);
   if (shown.optionId !== base.optionId) return null; // money chose another option
   const receive = checkedReceiveAddress(shown, payToken);

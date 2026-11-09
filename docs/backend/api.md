@@ -190,7 +190,7 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   - Reads (R-235): the invoice's own reads, the payment's read and webhooks carry `crossChain`.
     - It is the newest quote 1Click saw a deposit for, else the newest: status, what was sent and refunded, both chains'
       transactions and the signed answer.
-    - The payments list fills it only once 1Click saw a deposit, so the list can tag it.
+    - The payments list fills it only while the deposit pays the payment (converting or converted), so it can tag it.
     - The receipt PDF, the owner's paid email and the payer's receipt email name what was paid with.
   - A profile turns it off with `crossChain: false` on `PUT /v1/profiles/{id}/tokens` (R-240); `GET` returns it.
     - Off, new quotes for its invoices, links and checkouts are 422 `crosschain_unavailable`; an open quote finishes.
@@ -293,6 +293,7 @@ R-136; the full schema is in openapi.yaml. Members reach it with `tokens.read` a
 - `GET /v1/profiles/{profileId}/tokens` lists the enabled tokens with `on`, by chain id.
 - `PUT /v1/profiles/{profileId}/tokens` takes `{"off": [{chainId, token}]}` and replaces the list.
   - An unknown or disabled token is 422. Each available mode keeps at least one token on; otherwise nothing changes.
+  - It also takes `crossChain` (R-240). A part left out stays as it is; a body with neither is 422.
 - A store's `tokensOff` combines with its profile preferences, keeping one token on per available mode.
   - Profile changes that would leave any store without a token in a mode are refused.
   - Reads list only enabled tokens. Saving preserves preferences for unavailable tokens.

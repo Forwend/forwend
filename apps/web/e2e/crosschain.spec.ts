@@ -218,53 +218,57 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await expect(page.getByText("TAttacker1111111111111111111111111")).toHaveCount(0);
   });
 
-  test("follows a seen deposit through Converting", async ({ page }) => {
-    await page.clock.install({ time: NOW });
-    const q = quote("1263000000");
-    const crossChain = {
-      provider: "near_intents",
-      quoteId: q.quoteId,
-      assetId: TRON_USDT,
-      blockchain: "tron",
-      symbol: "USDT",
-      decimals: 6,
-      depositAddress: DEPOSIT_ADDRESS,
-      refundTo: REFUND,
-      amountIn: q.amountIn,
-      minAmountIn: q.minAmountIn,
-      amountOut: q.amountOut,
-      status: "PROCESSING",
-      deposited: "1263000000",
-      delivered: null,
-      refunded: null,
-      refundReason: null,
-      originTxs: [{ hash: "abc123", explorerUrl: "https://tronscan.org/#/transaction/abc123" }],
-      destinationTxs: [],
-      shownUntil: q.shownUntil,
-      deadline: q.deadline,
-      createdAt: q.createdAt,
-      depositSeenAt: "2026-10-10T12:03:00Z",
-      convertedAt: null,
-      signed: q.signed,
-    };
-    await mockInvoice(page, { ...LIVE, crossChain });
-    await page.goto(`/pay/${PAY}`);
-    await expect(
-      page.getByRole("heading", { name: "Payment seen on Tron. Don't pay again." }),
-    ).toBeVisible();
-    const steps = page.getByRole("list", { name: "Payment progress" }).getByRole("listitem");
-    await expect(steps.nth(0)).toContainText("Detected, done");
-    await expect(steps.nth(1)).toHaveAttribute("aria-current", "step");
-    await expect(steps.nth(1)).toContainText("Converting");
-    await expect(page.getByText("NEAR Intents is converting it to USDC on Base.")).toBeVisible();
-    await expect(page.getByRole("link", { name: /View your transaction/ })).toHaveAttribute(
-      "href",
-      "https://tronscan.org/#/transaction/abc123",
-    );
-    // No address to pay again, and no way to switch.
-    await expect(page.getByText(DEPOSIT_ADDRESS)).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Show address" })).toHaveCount(0);
-  });
+  // R-240: the payee's switch stops only new quotes, so a seen deposit leads the box either way.
+  for (const crossChainOn of [true, false])
+    test(`follows a seen deposit through Converting, the payee's switch ${crossChainOn ? "on" : "off"}`, async ({
+      page,
+    }) => {
+      await page.clock.install({ time: NOW });
+      const q = quote("1263000000");
+      const crossChain = {
+        provider: "near_intents",
+        quoteId: q.quoteId,
+        assetId: TRON_USDT,
+        blockchain: "tron",
+        symbol: "USDT",
+        decimals: 6,
+        depositAddress: DEPOSIT_ADDRESS,
+        refundTo: REFUND,
+        amountIn: q.amountIn,
+        minAmountIn: q.minAmountIn,
+        amountOut: q.amountOut,
+        status: "PROCESSING",
+        deposited: "1263000000",
+        delivered: null,
+        refunded: null,
+        refundReason: null,
+        originTxs: [{ hash: "abc123", explorerUrl: "https://tronscan.org/#/transaction/abc123" }],
+        destinationTxs: [],
+        shownUntil: q.shownUntil,
+        deadline: q.deadline,
+        createdAt: q.createdAt,
+        depositSeenAt: "2026-10-10T12:03:00Z",
+        convertedAt: null,
+        signed: q.signed,
+      };
+      await mockInvoice(page, { ...LIVE, crossChain, crossChainOn });
+      await page.goto(`/pay/${PAY}`);
+      await expect(
+        page.getByRole("heading", { name: "Payment seen on Tron. Don't pay again." }),
+      ).toBeVisible();
+      const steps = page.getByRole("list", { name: "Payment progress" }).getByRole("listitem");
+      await expect(steps.nth(0)).toContainText("Detected, done");
+      await expect(steps.nth(1)).toHaveAttribute("aria-current", "step");
+      await expect(steps.nth(1)).toContainText("Converting");
+      await expect(page.getByText("NEAR Intents is converting it to USDC on Base.")).toBeVisible();
+      await expect(page.getByRole("link", { name: /View your transaction/ })).toHaveAttribute(
+        "href",
+        "https://tronscan.org/#/transaction/abc123",
+      );
+      // No address to pay again, and no way to switch.
+      await expect(page.getByText(DEPOSIT_ADDRESS)).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Show address" })).toHaveCount(0);
+    });
 
   test("is not offered when the payee turned it off (R-240)", async ({ page }) => {
     await page.clock.install({ time: NOW });
@@ -380,6 +384,26 @@ test.describe("pay with another token (R-236 to R-238)", () => {
       page.getByRole("alert").filter({ hasText: "We could not check this address" }),
     ).toBeVisible();
     await expect(page.getByText(DEPOSIT_ADDRESS)).toHaveCount(0);
+  });
+
+  test("a quote this tab kept still shows after the payee turned new quotes off (R-240)", async ({
+    page,
+  }) => {
+    await page.clock.install({ time: NOW });
+    await page.addInitScript(([key, value]) => sessionStorage.setItem(key, value), [
+      `forwend:cross:${LIVE.invoiceId}`,
+      JSON.stringify({ assetId: TRON_USDT, refundTo: REFUND }),
+    ] as const);
+    await mockInvoice(page, {
+      ...LIVE,
+      crossChainOn: false,
+      crossChain: kept(quote("1263000000"), {}),
+    });
+    await page.goto(`/pay/${PAY}`);
+    await expect(page.getByText(DEPOSIT_ADDRESS)).toBeVisible();
+    // Back to the Base option, the switch offers no new quote.
+    await page.getByRole("button", { name: "Pay with USDC instead" }).click();
+    await expect(page.getByRole("button", { name: "Pay with another token" })).toHaveCount(0);
   });
 
   test("a reload shows no kept quote for another token than this tab asked for", async ({

@@ -102,3 +102,14 @@ export const BLOCKCHAIN_NAMES: Record<string, string> = {
   hypercore: "Hyperliquid",
   abs: "Abstract",
 };
+
+/** 1Click's statuses; SUCCESS, REFUNDED and FAILED are final. */
+export const CROSS_CHAIN_STATUSES = {
+  pending: "PENDING_DEPOSIT",
+  knownDeposit: "KNOWN_DEPOSIT_TX",
+  incomplete: "INCOMPLETE_DEPOSIT",
+  processing: "PROCESSING",
+  success: "SUCCESS",
+  refunded: "REFUNDED",
+  failed: "FAILED",
+} as const;

@@ -61,18 +61,14 @@ import {
 } from "@/features/invoices/lib/invoices";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import { Backdrop } from "@/features/pay/components/backdrop";
-import {
-  CrossChainEnded,
-  CrossChainPay,
-  crossChainEnded,
-} from "@/features/pay/components/crosschain-pay";
+import { CrossChainEnded, CrossChainPay } from "@/features/pay/components/crosschain-pay";
 import { ExactAmount } from "@/features/pay/components/exact-amount";
 import { NeedHelp } from "@/features/pay/components/need-help";
 import { type Choice, OptionPicker } from "@/features/pay/components/option-picker";
 import { Payee } from "@/features/pay/components/payee";
 import { ReceiptEmail } from "@/features/pay/components/receipt-email";
 import { TestnetBadge } from "@/features/pay/components/testnet-badge";
-import { CROSS_CHAIN_LEAST_MS, CROSS_CHAIN_STATUSES } from "@/features/pay/constants/crosschain";
+import { CROSS_CHAIN_LEAST_MS } from "@/features/pay/constants/crosschain";
 import { EMBED_LAYOUTS } from "@/features/pay/constants/embed";
 import { ENTER, LEFT_PAD, PAY_STATES, RIGHT_PAD } from "@/features/pay/constants/pay";
 import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
@@ -95,8 +91,16 @@ import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { ServerStrip } from "@/shared/components/server-strip";
 import { LIVE_QUERY, REFRESH_MS } from "@/shared/config/refresh";
+import { CROSS_CHAIN_STATUSES } from "@/shared/constants/chains";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
-import { addressLink, blockchainName, chainName, lookalikeOf, txLink } from "@/shared/lib/chains";
+import {
+  addressLink,
+  blockchainName,
+  chainName,
+  crossChainEnded,
+  lookalikeOf,
+  txLink,
+} from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 
 const NOT_FOUND = 404;
@@ -606,13 +610,15 @@ function PayBox({
   const crossEnded = crossKept ? crossChainEnded(crossKept) : false;
   const crossSeen = Boolean(crossKept?.depositSeenAt) && !crossEnded;
   // The conversion must land before the close: no new quote in its last 20 minutes (R-231).
-  const crossOffered =
+  const crossAllowed =
     crossTarget !== null &&
     pay.canSend &&
     found === 0n &&
     !seen &&
     crossTarget.closesAt - now >= CROSS_CHAIN_LEAST_MS;
-  const crossing = crossTarget !== null && !done && (crossSeen || (crossOpen && crossOffered));
+  // The payee's switch stops only new quotes: one kept or seen still shows, so the payer never pays twice (R-240).
+  const crossOffered = crossAllowed && invoice.crossChainOn !== false;
+  const crossing = crossTarget !== null && !done && (crossSeen || (crossOpen && crossAllowed));
   // Once the token and network are settled they fold into one row, so the address or the status leads.
   const folded = choice ? sending : sending || !pay.canSend;
   // Nothing more to send: what was seen leads the panel, and the option it went to follows.
@@ -1142,7 +1148,7 @@ function Paid({
         </DetailRow>
         {name ? <DetailRow term={COPY.receiptRows.to}>{name}</DetailRow> : null}
         {/* R-238: what the payer sent on its own chain, which NEAR Intents converted. */}
-        {invoice.crossChain?.depositSeenAt ? (
+        {invoice.crossChain?.status === CROSS_CHAIN_STATUSES.success ? (
           <DetailRow term={COPY.crossChain.paidWith}>
             {COPY.crossChain.paidWithValue(
               formatMoney(

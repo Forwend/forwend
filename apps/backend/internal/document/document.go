@@ -289,16 +289,15 @@ func Receipt(inv invoice.Invoice, payLink string, logo []byte) ([]byte, error) {
 	s := statusOf(inv, inv.PaidAt)
 	d := start(inv, "Receipt", logo, s)
 	d.facts([2]string{"Issued", day(inv.CreatedAt)}, [2]string{"Supply date", DateText(inv.SupplyDate)},
-		[2]string{"Paid", stamp(inv.PaidAt)}, [2]string{"Paid with", PaidWith(inv.CrossChain)})
+		[2]string{"Paid", stamp(inv.PaidAt)}, [2]string{"Paid with", paidWith(inv.CrossChain)})
 	d.items(inv, s.totals, "For reference only: the token amount above was paid.")
 	d.payments(inv)
 	d.code(payLink, "Check this receipt", "A PDF can be edited. The pay page shows what the chain recorded.")
 	return d.output()
 }
 
-// PaidWith is what the payer sent through NEAR Intents (R-239), as "1,263.00 USDT on Tron"; "" when 1Click didn't
-// deliver it.
-func PaidWith(c *invoice.CrossChainPayment) string {
+// paidWith is "" when 1Click didn't deliver the payment.
+func paidWith(c *invoice.CrossChainPayment) string {
 	if c == nil || c.Status != intents.Success {
 		return ""
 	}
@@ -306,7 +305,13 @@ func PaidWith(c *invoice.CrossChainPayment) string {
 	if sent == nil {
 		sent = c.AmountIn
 	}
-	return Amount(sent, c.Decimals, c.Symbol) + " on " + intents.ChainName(c.Blockchain)
+	return PaidWith(sent, c.Decimals, c.Symbol, c.Blockchain)
+}
+
+// PaidWith is what the payer sent through NEAR Intents (R-239), as "1,263.00 USDT on Tron through NEAR Intents". The
+// receipt, the paid email and the payments export all say it this way.
+func PaidWith(sent *big.Int, decimals int, symbol, blockchain string) string {
+	return Amount(sent, decimals, symbol) + " on " + intents.ChainName(blockchain) + " through NEAR Intents"
 }
 
 // payments lists every transfer on any option of the invoice, with the part the ledger applied to it (R-121); the

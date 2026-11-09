@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/forwend/forwend/apps/backend/internal/document"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
-	"github.com/forwend/forwend/apps/backend/internal/intents"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
 
@@ -73,13 +73,12 @@ func movementCSV(movement invoice.PaymentMovement) []string {
 		paidWithCSV(movement.PaidWith), text(paidWithTx(movement.PaidWith))}
 }
 
-// paidWithCSV names what the payer sent through NEAR Intents (R-235), as "101.12 USDT on tron through NEAR Intents".
+// paidWithCSV names what the payer sent through NEAR Intents (R-235).
 func paidWithCSV(p *invoice.MovementPaidWith) string {
 	if p == nil || p.Amount == nil {
 		return ""
 	}
-	return httpio.CSVText(invoice.PaymentUSDValue(p.Amount, p.Decimals) + " " + p.Symbol + " on " +
-		intents.ChainName(p.Blockchain) + " through NEAR Intents")
+	return httpio.CSVText(document.PaidWith(p.Amount, p.Decimals, p.Symbol, p.Blockchain))
 }
 
 func paidWithTx(p *invoice.MovementPaidWith) string {

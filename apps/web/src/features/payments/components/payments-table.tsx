@@ -134,7 +134,12 @@ export function PaymentsTable({ rows, attention, showStore, footer }: PaymentsTa
       columns={columns}
       phone={(p) => ({
         title: paymentLabel(p),
-        detail: [customer(p), SOURCE_LABELS[p.source], shortDate(p.createdAt)]
+        detail: [
+          customer(p),
+          SOURCE_LABELS[p.source],
+          p.crossChain ? PAYMENT_DETAIL_COPY.crossChain.tag : null,
+          shortDate(p.createdAt),
+        ]
           .filter(Boolean)
           .join(" · "),
         value: <Requested payment={p} />,

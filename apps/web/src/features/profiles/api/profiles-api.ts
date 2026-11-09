@@ -176,25 +176,30 @@ export const profilesApi = apiSlice.injectEndpoints({
     /** R-240: whether payers may pay from other chains through NEAR Intents; on by default. */
     getCrossChainSwitch: build.query<boolean, string>({
       query: (profileId) => tokensUrl(profileId),
-      transformResponse: (data: { crossChain?: boolean }) => data.crossChain ?? true,
+      transformResponse: (data: { crossChain: boolean }) => data.crossChain,
+      responseSchema: z.boolean(),
     }),
-    /** Saves the switch with the tokens the profile has off, as the route takes both. */
-    saveCrossChainSwitch: build.mutation<
-      boolean,
-      { profileId: string; off: TokenRef[]; on: boolean }
-    >({
-      query: ({ profileId, off, on }) => ({
+    /** Saves only the switch: the tokens off stay as the API has them. */
+    saveCrossChainSwitch: build.mutation<boolean, { profileId: string; on: boolean }>({
+      query: ({ profileId, on }) => ({
         url: tokensUrl(profileId),
         method: "PUT",
-        body: { off, crossChain: on },
+        body: { crossChain: on },
       }),
-      transformResponse: (data: { crossChain?: boolean }) => data.crossChain ?? true,
-      async onQueryStarted({ profileId }, { dispatch, queryFulfilled }) {
+      argSchema: z.object({ profileId: z.guid(), on: z.boolean() }),
+      transformResponse: (data: { crossChain: boolean }) => data.crossChain,
+      responseSchema: z.boolean(),
+      // The switch moves at once, as the token boxes do; a refusal puts it back.
+      async onQueryStarted({ profileId, on }, { dispatch, queryFulfilled }) {
+        const guess = dispatch(
+          profilesApi.util.updateQueryData("getCrossChainSwitch", profileId, () => on),
+        );
         try {
           const { data } = await queryFulfilled;
           dispatch(profilesApi.util.upsertQueryData("getCrossChainSwitch", profileId, data));
         } catch {
-          // The page shows the error, and the switch keeps the saved value.
+          // The page shows the error.
+          guess.undo();
         }
       },
     }),

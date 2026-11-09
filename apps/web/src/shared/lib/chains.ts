@@ -1,4 +1,4 @@
-import { BLOCKCHAIN_NAMES, CHAINS } from "@/shared/constants/chains";
+import { BLOCKCHAIN_NAMES, CHAINS, CROSS_CHAIN_STATUSES } from "@/shared/constants/chains";
 import { foldText } from "@/shared/lib/search";
 
 export function chainName(chainId: number): string {
@@ -40,4 +40,13 @@ export function txLink(chainId: number, txHash: string): { name: string; href: s
 /** NEAR Intents 1Click's name of a chain as payers know it: "tron" is Tron (D-123). */
 export function blockchainName(blockchain: string): string {
   return BLOCKCHAIN_NAMES[blockchain] ?? blockchain.toUpperCase();
+}
+
+/** 1Click returned the payer's money, or will: it doesn't pay the invoice, which can be paid again (R-238). */
+export function crossChainEnded(c: { status: string }): boolean {
+  return (
+    c.status === CROSS_CHAIN_STATUSES.refunded ||
+    c.status === CROSS_CHAIN_STATUSES.failed ||
+    c.status === CROSS_CHAIN_STATUSES.incomplete
+  );
 }

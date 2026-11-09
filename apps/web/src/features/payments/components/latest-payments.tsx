@@ -13,7 +13,10 @@ import Link from "next/link";
 import { useGetPaymentsInfiniteQuery } from "@/features/payments/api/payments-api";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
 import { SOURCE_ICONS, SOURCE_LABELS } from "@/features/payments/constants/payments";
-import { PAYMENTS_COPY as COPY } from "@/features/payments/constants/payments-copy";
+import {
+  PAYMENTS_COPY as COPY,
+  PAYMENT_DETAIL_COPY,
+} from "@/features/payments/constants/payments-copy";
 import { paymentDisplayStatus, paymentLabel } from "@/features/payments/lib/payments";
 import type { Payment } from "@/features/payments/types/payments";
 import { LoadError } from "@/shared/components/load-error";
@@ -76,6 +79,10 @@ export function LatestPayments({ profileId }: { profileId: string }) {
                   <span className="flex min-w-0 items-center gap-2">
                     <span className="truncate text-sm font-medium text-ink">{paymentLabel(p)}</span>
                     {p.livemode ? null : <Badge tone="neutral">{COPY.testnet}</Badge>}
+                    {/* R-239: paid from another chain, as the payments list tags it. */}
+                    {p.crossChain ? (
+                      <Badge tone="neutral">{PAYMENT_DETAIL_COPY.crossChain.tag}</Badge>
+                    ) : null}
                   </span>
                   <span className="block truncate text-xs text-muted">
                     {[

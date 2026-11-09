@@ -1434,6 +1434,7 @@ paths:
       description: |
         A new invoice of the profile offers only the tokens on. Each one listed must be an enabled token, and one must
         stay on; otherwise 422 and nothing changes. Invoices made earlier keep their options.
+        Give `off`, `crossChain` or both; a part left out stays as it is. Neither is a 422.
       parameters:
         - $ref: "#/components/parameters/ProfileId"
       requestBody:
@@ -1443,11 +1444,12 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [off]
+              minProperties: 1
               properties:
                 off:
                   type: array
                   items: { $ref: "#/components/schemas/TokenRef" }
+                  description: Left out, the tokens off stay as they are.
                 crossChain:
                   type: boolean
                   description: |
@@ -4040,7 +4042,7 @@ components:
           pattern: "^[0-9a-f]{64}$"
           description: The hosted page's token, the last part of hostedUrl, for @forwend/js and @forwend/react. Null with hostedUrl.
         crossChain:
-          description: R-235. A payment through NEAR Intents; a list fills it only once 1Click saw a deposit, so it tags those.
+          description: R-235. A payment through NEAR Intents; a list fills it only while 1Click converts or converted the deposit, so it tags those.
           oneOf:
             - type: "null"
             - $ref: "#/components/schemas/CrossChainPayment"

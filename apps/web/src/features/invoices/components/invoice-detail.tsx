@@ -60,6 +60,7 @@ import { Party } from "@/shared/components/party";
 import { RecordLink } from "@/shared/components/record-link";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { CROSS_CHAIN_STATUSES } from "@/shared/constants/chains";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
 import { blockchainName, chainName } from "@/shared/lib/chains";
@@ -504,7 +505,7 @@ function Loaded({
               </Row>
               <Row term={COPY.created}>{TIME.format(new Date(invoice.createdAt))}</Row>
               {/* R-239: what the client sent on its own chain, which NEAR Intents converted. */}
-              {invoice.crossChain?.depositSeenAt ? (
+              {invoice.crossChain?.status === CROSS_CHAIN_STATUSES.success ? (
                 <Row term={COPY.paidThrough}>
                   {COPY.paidThroughValue(
                     `${formatTokenAmount({

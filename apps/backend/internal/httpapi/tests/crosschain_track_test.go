@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -163,7 +164,7 @@ func TestWorkerFollowsAQuoteFromDepositToConversion(t *testing.T) {
 	}
 	csv := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/payments/"+main+"/movements.csv", "did:privy:alice", "", "")
 	if !strings.Contains(csv.raw, "Paid with,Paid with transaction") ||
-		!strings.Contains(csv.raw, "101.120000 USDT on Tron through NEAR Intents,"+originTx) {
+		!strings.Contains(csv.raw, "101.12 USDT on Tron through NEAR Intents,"+originTx) {
 		t.Fatalf("csv: %d %s", csv.status, csv.raw)
 	}
 
@@ -172,7 +173,7 @@ func TestWorkerFollowsAQuoteFromDepositToConversion(t *testing.T) {
 		t.Fatalf("status %v, want paid", got)
 	}
 	mustContain(t, strings.Join(strings.Fields(pdfText(t, e.pdf(t, main, "receipt.pdf", "").body)), " "),
-		"Paid with", "101.12 USDT on Tron")
+		"Paid with", "101.12 USDT on Tron through NEAR Intents")
 	list := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/payments", "did:privy:alice", "", "")
 	tagged := 0
 	for _, item := range list.body["items"].([]any) {
@@ -271,6 +272,13 @@ func TestWorkerReadsASeenDepositUntilItEnds(t *testing.T) {
 	if refunded, ok := historyKinds(t, e, pay)["crosschain.refunded"]; !ok || refunded["amount"] != nil || refunded["asset"] != tronUSDT {
 		t.Fatalf("refund history %v", refunded)
 	}
+	// Returned money didn't pay the invoice, so the payments list doesn't tag it (R-239).
+	list := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/payments", "did:privy:alice", "", "")
+	for _, item := range list.body["items"].([]any) {
+		if c := item.(map[string]any)["crossChain"]; c != nil {
+			t.Fatalf("payments list tags a returned deposit: %v", c)
+		}
+	}
 }
 
 // The pick the payer last made moves to the Base option once 1Click saw their deposit (R-233).
@@ -318,14 +326,27 @@ func TestProfileTurnsCrossChainOff(t *testing.T) {
 		r.body["crossChain"] != false {
 		t.Fatalf("turn off: %d %v", r.status, r.body)
 	}
-	// A save without it keeps the switch.
-	if r := e.call(t, "PUT", path, "did:privy:alice", "", `{"off": []}`); r.body["crossChain"] != false {
+	// Each part saves alone and keeps the other as it is.
+	tokens := e.call(t, "GET", path, "did:privy:alice", "", "").body["tokens"].([]any)
+	other := tokens[len(tokens)-1].(map[string]any)
+	off := fmt.Sprintf(`{"off": [{"chainId": %v, "token": %q}]}`, other["chainId"], other["token"])
+	if r := e.call(t, "PUT", path, "did:privy:alice", "", off); r.body["crossChain"] != false {
 		t.Fatalf("save without the switch: %v", r.body)
+	}
+	r := e.call(t, "PUT", path, "did:privy:alice", "", `{"crossChain": true}`)
+	if last := r.body["tokens"].([]any)[len(tokens)-1].(map[string]any); r.body["crossChain"] != true || last["on"] != false {
+		t.Fatalf("save the switch alone: %v", r.body)
+	}
+	if r := e.call(t, "PUT", path, "did:privy:alice", "", `{}`); r.status != http.StatusUnprocessableEntity {
+		t.Fatalf("empty save: %d %v", r.status, r.body)
+	}
+	if r := e.call(t, "PUT", path, "did:privy:alice", "", `{"crossChain": false}`); r.body["crossChain"] != false {
+		t.Fatalf("turn off again: %v", r.body)
 	}
 	if got := e.get(t, pay).body["crossChainOn"]; got != false {
 		t.Fatalf("invoice read crossChainOn %v", got)
 	}
-	r := e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+ethAsset+`", "refundTo": "0x6fd1c6b3f0b7a5b4e5d6a3c2b1a0f9e8d7c6b5a4"}`)
+	r = e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+ethAsset+`", "refundTo": "0x6fd1c6b3f0b7a5b4e5d6a3c2b1a0f9e8d7c6b5a4"}`)
 	if r.status != 422 || errorCode(r) != "crosschain_unavailable" ||
 		!strings.Contains(r.body["error"].(map[string]any)["message"].(string), "turned it off") {
 		t.Fatalf("quote while off: %d %v", r.status, r.body)

@@ -1,3 +1,4 @@
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { timeline } from "@/features/payments/components/payment-detail";
 import type { PaymentDetail } from "@/features/payments/types/payments";
@@ -36,7 +37,7 @@ const payment = (change: Partial<PaymentDetail>) =>
     createdAt: "2026-10-10T11:00:00Z",
     source: "invoice",
     optionId: "0xbase",
-    options: [{ optionId: "0xbase", returns: [] }],
+    options: [{ optionId: "0xbase", chainId: 8453, returns: [] }],
     crossChain,
     ...change,
   }) as unknown as PaymentDetail;
@@ -63,15 +64,31 @@ describe("payment timeline", () => {
     ]);
   });
 
-  it("marks Converting done once the USDC arrived on Base, and leaves the steps alone without a cross-chain payment", () => {
+  it("marks Converting done once 1Click delivered, with its Base transaction on Paid, not an earlier deposit's", () => {
+    const delivered = {
+      ...crossChain,
+      status: "SUCCESS",
+      convertedAt: "2026-10-10T12:05:00Z",
+      destinationTxs: [{ hash: `0x${"9".repeat(64)}`, explorerUrl: "https://basescan.org/tx/0x9" }],
+    };
+    const steps = timeline(payment({ crossChain: delivered }), [baseDeposit]);
+    expect(steps.find((s) => s.id === "converting")?.state).toBe("done");
+    const paid = steps.find((s) => s.id === "paid");
+    expect(paid?.chips?.map((c) => c.label)).toEqual(["Network", "Tx"]);
+    expect(renderToStaticMarkup(paid?.chips?.[1]?.value)).toContain("0x9999");
+    // Still converting, a Base deposit is someone's direct one: Converting waits for 1Click.
     expect(timeline(payment({}), [baseDeposit]).find((s) => s.id === "converting")?.state).toBe(
-      "done",
+      "current",
     );
-    expect(timeline(payment({ crossChain: null }), []).map((s) => s.id)).toEqual([
-      "created",
-      "detected",
-      "paid",
-      "wallet",
-    ]);
+  });
+
+  it("leaves the steps a direct payment's without a cross-chain payment, or for a deposit 1Click returned", () => {
+    const direct = ["created", "detected", "paid", "wallet"];
+    expect(timeline(payment({ crossChain: null }), []).map((s) => s.id)).toEqual(direct);
+    for (const status of ["REFUNDED", "FAILED", "INCOMPLETE_DEPOSIT"]) {
+      const steps = timeline(payment({ crossChain: { ...crossChain, status } }), [baseDeposit]);
+      expect(steps.map((s) => s.id)).toEqual(direct);
+      expect(steps[1]?.chips?.[0]?.label).toBe("Network");
+    }
   });
 });

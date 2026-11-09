@@ -21,17 +21,6 @@ export const ONECLICK_SLIPPAGE_BPS = 100;
 /** No quote for a checkout closing sooner (R-231): the conversion must land before the close. */
 export const CROSS_CHAIN_LEAST_MS = 20 * 60_000;
 
-/** 1Click's statuses; SUCCESS, REFUNDED and FAILED are final. */
-export const CROSS_CHAIN_STATUSES = {
-  pending: "PENDING_DEPOSIT",
-  knownDeposit: "KNOWN_DEPOSIT_TX",
-  incomplete: "INCOMPLETE_DEPOSIT",
-  processing: "PROCESSING",
-  success: "SUCCESS",
-  refunded: "REFUNDED",
-  failed: "FAILED",
-} as const;
-
 /** The chains listed first, in this order; the rest follow by name. */
 export const POPULAR_BLOCKCHAINS = [
   "eth",

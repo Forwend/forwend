@@ -27,15 +27,15 @@ func readCrossChain(ctx context.Context, db paymentReader, mainID string) (*Cros
 	return found[mainID], err
 }
 
-// readCrossChainFor reads each invoice's shown quote, by main invoice id; seenOnly keeps those 1Click saw a deposit
-// for, as a list needs.
-func readCrossChainFor(ctx context.Context, db paymentReader, mainIDs []string, seenOnly bool) (map[string]*CrossChainPayment, error) {
+// readCrossChainFor reads each invoice's shown quote, by main invoice id; paying keeps only a deposit 1Click converts
+// or converted, as a list needs: one it returned didn't pay the invoice.
+func readCrossChainFor(ctx context.Context, db paymentReader, mainIDs []string, paying bool) (map[string]*CrossChainPayment, error) {
 	rows, err := db.Query(ctx, `SELECT DISTINCT ON (invoice_id) invoice_id, id::text, origin_asset, origin_blockchain,
 		    origin_symbol, origin_decimals, deposit_address, refund_to, status, amount_in::text, min_amount_in::text,
 		    amount_out::text, deposited_amount::text, delivered_amount::text, refunded_amount::text, refund_reason,
 		    shown_until, deadline, created_at, deposit_seen_at, converted_at, origin_txs, destination_txs, signed
-		FROM crosschain_quotes WHERE invoice_id = ANY($1::text[]) AND (NOT $2 OR deposit_seen_at IS NOT NULL)
-		ORDER BY invoice_id, deposit_seen_at IS NOT NULL DESC, created_at DESC`, mainIDs, seenOnly)
+		FROM crosschain_quotes WHERE invoice_id = ANY($1::text[]) AND (NOT $2 OR status IN ('KNOWN_DEPOSIT_TX', 'PROCESSING', 'SUCCESS'))
+		ORDER BY invoice_id, deposit_seen_at IS NOT NULL DESC, created_at DESC`, mainIDs, paying)
 	if err != nil {
 		return nil, fmt.Errorf("read cross-chain quotes: %w", err)
 	}
