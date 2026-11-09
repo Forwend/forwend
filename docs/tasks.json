@@ -1896,7 +1896,7 @@
       "dependsOn": [
         "F449"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "e2e"
@@ -1994,11 +1994,18 @@
           "summary": "Same code as the subagent review that passed at cdb12575 (only docs/tasks.json changed since): reload shows a kept quote only for this tab's token and refund address, slippage bound, returned payments leave one line and can be paid again, the expired part is inert; breaks on every acceptance line caught.",
           "at": "2026-11-09T18:56:06Z",
           "filesHash": "93d47ce0d15a0fb7"
-        }
+        },
+        "commit": "4099863c",
+        "doneAt": "2026-11-09T18:56:07Z"
       },
       "branch": "feat/f450-the-pay-page-lets-a-payer-pay-with-anoth-2",
       "baseCommit": "180bf411d3b28eb0e554771481048859b0e4f867",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f450-the-pay-page-lets-a-payer-pay-with-anoth-2",
+        "base": "main"
+      }
     },
     {
       "id": "F451",
