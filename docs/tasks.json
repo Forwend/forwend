@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 454,
+  "nextId": 455,
   "tasks": [
     {
       "id": "F332",
@@ -2270,6 +2270,32 @@
         "branch": "feat/f453-the-token-picker-shows-each-token-s-mini",
         "base": "main"
       }
+    },
+    {
+      "id": "F454",
+      "type": "feat",
+      "behavior": "The cross-chain pay box says what happened to the payer's money, as the direct one does",
+      "acceptance": [
+        "After a deposit 1Click saw, the box lists what was sent on the payer's chain, what arrived on Base and any part returned, each with its transaction link (R-243).",
+        "Confirming shows Base's block count, its time-left hint and when the payment is final, as a direct payment does (R-243).",
+        "Once an address shows, Change and Pay directly instead each take two presses (R-243, R-68)."
+      ],
+      "dependsOn": [
+        "F453"
+      ],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-243"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

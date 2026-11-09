@@ -76,6 +76,7 @@ import { CROSS_CHAIN_LEAST_MS } from "@/features/pay/constants/crosschain";
 import { EMBED_LAYOUTS } from "@/features/pay/constants/embed";
 import { ENTER, LEFT_PAD, PAY_STATES, RIGHT_PAD } from "@/features/pay/constants/pay";
 import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
+import { useFinalTime } from "@/features/pay/hooks/use-final-time";
 import { type CrossChainTarget, crossChainTarget } from "@/features/pay/lib/crosschain";
 import {
   checkoutClosesAt,
@@ -110,7 +111,6 @@ import { exactDigits } from "@/shared/lib/money";
 
 const NOT_FOUND = 404;
 const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
-const CLOCK = new Intl.DateTimeFormat(undefined, { timeStyle: "short" });
 const PANEL = "fw-panel sm:rounded-lg";
 const ICON = "size-[var(--fw-icon-md)] shrink-0";
 const CLOSING_SOON_MS = 30 * 60_000;
@@ -657,6 +657,7 @@ function PayBox({
             receive={crossTarget.receive}
             due={crossTarget.due}
             now={now}
+            readAt={readAt}
             onDirect={() => setCrossOpen(false)}
           />
         ) : (
@@ -1004,15 +1005,7 @@ function Received({
 }) {
   const { blocksLeft, blocksTotal, secondsLeft } = invoiceProgress(invoice);
   const confirming = pay.state === PAY_STATES.confirming;
-  // secondsLeft changes only when the network's final block moves, every few minutes; each poll reads it again. So
-  // count from the read that first gave this value, or the time would creep later with every poll, then jump back.
-  const seen = useRef({ seconds: -1, at: 0 });
-  if (readAt !== null && seen.current.seconds !== secondsLeft)
-    seen.current = { seconds: secondsLeft, at: readAt };
-  const final =
-    confirming && readAt !== null && secondsLeft > 0
-      ? CLOCK.format(seen.current.at + secondsLeft * 1000)
-      : null;
+  const final = useFinalTime(confirming, secondsLeft, readAt);
   return (
     <section
       aria-labelledby="pay-progress"

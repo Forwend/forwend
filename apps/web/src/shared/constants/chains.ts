@@ -120,4 +120,21 @@ export const CROSS_CHAIN_TARGET = {
   token: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
   decimals: 6,
   asset: "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+  symbol: "USDC",
 } as const;
+
+/** Explorers of chains 1Click names, by its name of the chain; a transaction's hash follows the url (R-243). */
+export const BLOCKCHAIN_EXPLORERS: Record<string, { name: string; url: string }> = {
+  eth: { name: "Etherscan", url: "https://etherscan.io/tx/" },
+  base: { name: "Basescan", url: "https://basescan.org/tx/" },
+  arb: { name: "Arbiscan", url: "https://arbiscan.io/tx/" },
+  op: { name: "Optimism Explorer", url: "https://optimistic.etherscan.io/tx/" },
+  pol: { name: "PolygonScan", url: "https://polygonscan.com/tx/" },
+  bsc: { name: "BscScan", url: "https://bscscan.com/tx/" },
+  avax: { name: "Snowtrace", url: "https://snowtrace.io/tx/" },
+  gnosis: { name: "Gnosisscan", url: "https://gnosisscan.io/tx/" },
+  sol: { name: "Solscan", url: "https://solscan.io/tx/" },
+  tron: { name: "Tronscan", url: "https://tronscan.org/#/transaction/" },
+  btc: { name: "mempool.space", url: "https://mempool.space/tx/" },
+  near: { name: "NearBlocks", url: "https://nearblocks.io/txns/" },
+};

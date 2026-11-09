@@ -342,7 +342,9 @@ test.describe("pay with another token (R-236 to R-238)", () => {
       await expect(steps.nth(1)).toHaveAttribute("aria-current", "step");
       await expect(steps.nth(1)).toContainText("Converting");
       await expect(page.getByText("NEAR Intents is converting it to USDC on Base.")).toBeVisible();
-      await expect(page.getByRole("link", { name: /View your transaction/ })).toHaveAttribute(
+      // What was sent, with 1Click's own link where no known explorer takes the hash.
+      await expect(page.getByText("1,263.00 USDT on Tron")).toBeVisible();
+      await expect(page.getByRole("link", { name: "View transaction on Tron" })).toHaveAttribute(
         "href",
         "https://tronscan.org/#/transaction/abc123",
       );
@@ -350,6 +352,92 @@ test.describe("pay with another token (R-236 to R-238)", () => {
       await expect(page.getByText(DEPOSIT_ADDRESS)).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Show address" })).toHaveCount(0);
     });
+
+  test("on Base it confirms as a direct payment does, and lists what was sent, what arrived and what came back (R-243)", async ({
+    page,
+  }) => {
+    await page.clock.install({ time: NOW });
+    const solanaTx =
+      "4jBcpDL3KfBipWFqRBT5gVwZZoGogMBv5FWi6hi6a45CmPg6CcPJmD5Pr8jTxJGehtDrh3vmq8Tr7Q1UU6GLxoxj";
+    const baseTx = `0x${"9".repeat(64)}`;
+    const onBase = {
+      txHash: baseTx,
+      logIndex: 0,
+      from: "0x8ba1f109551bd432803012645ac136ddd64dba72",
+      amount: "1250000000",
+      blockNumber: 100,
+      blockTime: "2026-10-10T12:03:00Z",
+      status: "detected",
+      late: false,
+      paid: null,
+      blocksLeft: 1200,
+      blocksTotal: 4400,
+      secondsLeft: 600,
+    };
+    await mockInvoice(page, {
+      ...LIVE,
+      paymentStatus: "detected",
+      confirming: true,
+      deposits: [onBase],
+      options: [{ ...LIVE.options[0], deposits: [onBase] }],
+      crossChain: kept(quote("1263000000"), {
+        blockchain: "sol",
+        symbol: "USDC",
+        status: "SUCCESS",
+        deposited: "1265309000",
+        delivered: "1250000000",
+        refunded: "2650000",
+        originTxs: [{ hash: solanaTx, explorerUrl: "" }],
+        destinationTxs: [{ hash: baseTx, explorerUrl: "" }],
+        depositSeenAt: "2026-10-10T12:01:00Z",
+        convertedAt: "2026-10-10T12:02:00Z",
+      }),
+    });
+    await page.goto(`/pay/${PAY}`);
+    const steps = page.getByRole("list", { name: "Payment progress" }).getByRole("listitem");
+    await expect(steps.nth(1)).toContainText("Converting, done");
+    await expect(steps.nth(2)).toHaveAttribute("aria-current", "step");
+    await expect(
+      page.getByRole("status").filter({ hasText: "Confirming (3,200/4,400)" }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "About 10 min left" })).toBeVisible();
+    await expect(page.getByText(/^Final around /)).toBeVisible();
+    await expect(page.getByText("1,265.309 USDC on Solana")).toBeVisible();
+    await expect(page.getByRole("link", { name: "View transaction on Solscan" })).toHaveAttribute(
+      "href",
+      `https://solscan.io/tx/${solanaTx}`,
+    );
+    await expect(page.getByText("Arrived on Base")).toBeVisible();
+    await expect(page.getByRole("link", { name: "View transaction on Basescan" })).toHaveAttribute(
+      "href",
+      `https://basescan.org/tx/${baseTx}`,
+    );
+    await expect(page.getByText("Returned to you")).toBeVisible();
+    await expect(page.getByText("2.65 USDC", { exact: true })).toBeVisible();
+  });
+
+  test("once an address shows, Change takes two presses (R-243, R-68)", async ({ page }) => {
+    await page.clock.install({ time: NOW });
+    await mockInvoice(page, LIVE);
+    await routeCrossChain(page, [quote("1263000000")]);
+    await page.goto(`/pay/${PAY}`);
+    await page.getByRole("button", { name: "Pay with another token" }).click();
+    await page.getByRole("button", { name: "Choose a token" }).click();
+    const picker = page.getByRole("dialog", { name: "Pay with another token" });
+    await picker.getByRole("button", { name: "Tron", exact: true }).click();
+    await picker.getByRole("button", { name: /USDT.*Tron/ }).click();
+    // Before an address, one press opens the picker.
+    await page.getByRole("button", { name: "Change" }).click();
+    await expect(picker).toBeVisible();
+    await page.keyboard.press("Escape");
+    await page.getByLabel("Refund address on Tron").fill(REFUND);
+    await page.getByRole("button", { name: "Show address" }).click();
+    await expect(page.getByText(DEPOSIT_ADDRESS)).toBeVisible();
+    await page.getByRole("button", { name: "Change" }).click();
+    await expect(picker).toHaveCount(0);
+    await page.getByRole("button", { name: "Confirm change" }).click();
+    await expect(picker).toBeVisible();
+  });
 
   test("is not offered when the payee turned it off (R-240)", async ({ page }) => {
     await page.clock.install({ time: NOW });
@@ -525,8 +613,10 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await expect(
       page.getByRole("alert").filter({ hasText: "isn't available for this payment now" }),
     ).toBeVisible();
-    // Back to the Base option, the switch offers no new quote.
-    await page.getByRole("button", { name: "Pay with USDC instead" }).click();
+    // Back to the Base option, the switch offers no new quote. An address showed: leaving takes two presses (R-68).
+    await page.getByRole("button", { name: "Pay directly instead" }).click();
+    await expect(page.getByText(DEPOSIT_ADDRESS)).toBeVisible();
+    await page.getByRole("button", { name: "Confirm change" }).click();
     await expect(page.getByRole("button", { name: "Pay with another token" })).toHaveCount(0);
   });
 
@@ -542,7 +632,7 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await page.goto(`/pay/${PAY}`);
     await expect(page.getByRole("button", { name: "Show address" })).toBeVisible();
     // The other-token box stays shut: it would ask for a price this tab can't get.
-    await expect(page.getByRole("button", { name: "Pay with USDC instead" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Pay directly instead" })).toHaveCount(0);
     await expect(page.getByText(DEPOSIT_ADDRESS)).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Pay with another token" })).toHaveCount(0);
   });

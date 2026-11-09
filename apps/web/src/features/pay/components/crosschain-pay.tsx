@@ -12,8 +12,10 @@ import {
   TextField,
   type TimelineStep,
 } from "@forwend/ui-web";
-import { ExternalLink, TriangleAlert } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { TriangleAlert } from "lucide-react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { ConfirmingStatus } from "@/features/invoices/components/invoice-progress";
+import { invoiceProgress } from "@/features/invoices/lib/invoices";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import {
   useCreateCrossQuoteMutation,
@@ -24,10 +26,12 @@ import { CrossChainPicker } from "@/features/pay/components/crosschain-picker";
 import { ExactAmount } from "@/features/pay/components/exact-amount";
 import { ENTER } from "@/features/pay/constants/pay";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
+import { useFinalTime } from "@/features/pay/hooks/use-final-time";
 import { signedDeposit, verifyQuote } from "@/features/pay/lib/crosschain";
 import type { CrossToken } from "@/features/pay/types/crosschain";
+import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { CROSS_CHAIN_STATUSES, CROSS_CHAIN_TARGET } from "@/shared/constants/chains";
-import { blockchainName, crossChainEnded } from "@/shared/lib/chains";
+import { blockchainName, blockchainTxLink, crossChainEnded } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 
 const COPY = PAY_COPY.crossChain;
@@ -53,6 +57,8 @@ export interface CrossChainPayProps {
   /** What is due on the Base option, in its base units: exactly what the quote must deliver. */
   due: bigint;
   now: number;
+  /** When the invoice was last read, for when a payment on Base is final. */
+  readAt: number | null;
   /** Back to the tokens the invoice takes directly. */
   onDirect: () => void;
 }
@@ -72,6 +78,7 @@ export function CrossChainPay({
   receive,
   due,
   now,
+  readAt,
   onDirect,
 }: CrossChainPayProps) {
   const kept = invoice.crossChain ?? null;
@@ -163,7 +170,7 @@ export function CrossChainPay({
 
   // Once 1Click saw the deposit, the payer follows it to Paid (R-238).
   if (kept?.depositSeenAt && !crossChainEnded(kept)) {
-    return <CrossChainProgress invoice={invoice} crossChain={kept} />;
+    return <CrossChainProgress invoice={invoice} crossChain={kept} readAt={readAt} />;
   }
 
   const chain = token ? blockchainName(token.blockchain) : "";
@@ -184,11 +191,7 @@ export function CrossChainPay({
             <span className="font-medium text-ink">{token.symbol}</span>
             <span className="text-xs text-muted">{chain}</span>
           </span>
-          {shown ? null : (
-            <Button variant="link" size="sm" onClick={() => setPicking(true)}>
-              {COPY.change}
-            </Button>
-          )}
+          <TwoPress needed={shown !== null} label={COPY.change} onPress={() => setPicking(true)} />
         </div>
       ) : (
         <Button variant="secondary" size="lg" className="w-full" onClick={() => setPicking(true)}>
@@ -295,9 +298,12 @@ export function CrossChainPay({
           {problem}
         </p>
       ) : null}
-      <Button variant="link" size="sm" className="self-start" onClick={onDirect}>
-        {COPY.direct}
-      </Button>
+      <TwoPress
+        needed={shown !== null}
+        label={COPY.direct}
+        onPress={onDirect}
+        className="self-start"
+      />
     </section>
   );
 }
@@ -434,7 +440,15 @@ function Send({
 }
 
 /** Detected on the payer's chain, Converting, Confirming on Base, Paid (R-238). */
-function CrossChainProgress({ invoice, crossChain }: { invoice: Invoice; crossChain: CrossChain }) {
+function CrossChainProgress({
+  invoice,
+  crossChain,
+  readAt,
+}: {
+  invoice: Invoice;
+  crossChain: CrossChain;
+  readAt: number | null;
+}) {
   const chain = blockchainName(crossChain.blockchain);
   const onBase = invoice.deposits.length > 0 || invoice.options.some((o) => o.deposits.length > 0);
   const paid = invoice.paymentStatus === "paid";
@@ -454,7 +468,15 @@ function CrossChainProgress({ invoice, crossChain }: { invoice: Invoice; crossCh
           ? STEP_STATES.current
           : STEP_STATES.upcoming,
   }));
+  // On Base it confirms as a direct payment does: the blocks left, the time left and when it is final (R-243).
+  const { blocksLeft, blocksTotal, secondsLeft } = invoiceProgress(invoice);
+  const confirming = onBase && !paid;
+  const final = useFinalTime(confirming, secondsLeft, readAt);
+  const sent = BigInt(crossChain.deposited ?? crossChain.amountIn);
+  const refunded = BigInt(crossChain.refunded ?? "0");
   const origin = crossChain.originTxs[0];
+  const base =
+    crossChain.status === CROSS_CHAIN_STATUSES.success ? crossChain.destinationTxs[0] : undefined;
   return (
     <section
       aria-labelledby="pay-cross-progress"
@@ -464,22 +486,119 @@ function CrossChainProgress({ invoice, crossChain }: { invoice: Invoice; crossCh
         {COPY.seenOn(chain)}
       </h2>
       <PaymentTimeline label={PAY_COPY.progress} steps={steps} />
-      <p role="status" className="text-sm text-muted">
-        {reached === 1 ? COPY.converting : PAY_COPY.updatesItself}
-      </p>
-      {origin?.explorerUrl ? (
-        <a
-          href={origin.explorerUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 self-start text-sm text-ink underline decoration-line-strong decoration-1 underline-offset-4 hover:decoration-2"
-        >
-          {COPY.originTx}
-          <ExternalLink aria-hidden className="size-3.5" />
-          <span className="sr-only">{PAY_COPY.newTab}</span>
-        </a>
-      ) : null}
+      <div className="-mt-1 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <p role="status" className="text-sm text-muted">
+          {reached === 1 ? (
+            COPY.converting
+          ) : confirming ? (
+            <ConfirmingStatus blocks={blocksLeft} total={blocksTotal} seconds={secondsLeft} />
+          ) : (
+            PAY_COPY.updatesItself
+          )}
+        </p>
+        {final ? (
+          <p className="text-sm text-muted tabular-nums">{PAY_COPY.finalAround(final)}</p>
+        ) : null}
+      </div>
+      <ul className="divide-y divide-line rounded-md border border-line">
+        <Fact label={COPY.sent} value={COPY.onChain(amountText(sent, crossChain), chain)}>
+          {origin ? (
+            <TxHash hash={origin.hash}>
+              <ExplorerLink
+                txHash={origin.hash}
+                link={blockchainTxLink(crossChain.blockchain, origin)}
+                named
+              />
+            </TxHash>
+          ) : null}
+        </Fact>
+        {crossChain.delivered ? (
+          <Fact
+            label={COPY.arrived}
+            value={amountText(BigInt(crossChain.delivered), CROSS_CHAIN_TARGET)}
+          >
+            {base ? (
+              <TxHash hash={base.hash}>
+                <ExplorerLink chainId={CROSS_CHAIN_TARGET.chainId} txHash={base.hash} named />
+              </TxHash>
+            ) : null}
+          </Fact>
+        ) : null}
+        {refunded > 0n ? (
+          <Fact
+            label={COPY.returned}
+            value={amountText(refunded, crossChain)}
+            detail={COPY.returnedTo(shortAddress(crossChain.refundTo))}
+          />
+        ) : null}
+      </ul>
     </section>
+  );
+}
+
+/** One line of what happened to the payer's money, with its transaction at the end. */
+function Fact({
+  label,
+  value,
+  detail,
+  children,
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2.5 text-sm">
+      <span className="flex min-w-0 flex-col">
+        <span className="text-xs text-muted">{label}</span>
+        <span className="break-words text-ink tabular-nums">{value}</span>
+        {detail ? <span className="text-xs text-muted">{detail}</span> : null}
+      </span>
+      {children}
+    </li>
+  );
+}
+
+function TxHash({ hash, children }: { hash: string; children: ReactNode }) {
+  return (
+    <span className="flex items-center gap-1">
+      <span className="font-mono text-xs text-muted" title={hash}>
+        {shortAddress(hash)}
+      </span>
+      {children}
+    </span>
+  );
+}
+
+/** Once an address shows, leaving it takes two presses, so a payer who sent can't switch by accident and pay twice
+ * (R-68). One button whose label changes keeps focus between them. */
+function TwoPress({
+  needed,
+  label,
+  onPress,
+  className,
+}: {
+  needed: boolean;
+  label: string;
+  onPress: () => void;
+  className?: string;
+}) {
+  const [asking, setAsking] = useState(false);
+  return (
+    <Button
+      variant={asking ? "secondary" : "link"}
+      size="sm"
+      className={className}
+      onBlur={() => setAsking(false)}
+      onClick={() => {
+        if (needed && !asking) return setAsking(true);
+        setAsking(false);
+        onPress();
+      }}
+    >
+      {asking ? PAY_COPY.confirmChange : label}
+    </Button>
   );
 }
 
