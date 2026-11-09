@@ -61,6 +61,7 @@ function quote(amountIn: string, address = DEPOSIT_ADDRESS, shownUntil = "2026-1
     minAmountIn: amountIn,
     amountOut: "1250000000",
     amountInUsd: "1263.00",
+    amountOutUsd: "1250.00",
     refundFee: "5300",
     timeEstimate: 27,
     refundTo: REFUND,
@@ -84,8 +85,9 @@ async function routeCrossChain(page: Page, quotes: object[]) {
   );
   await page.route(/\/api\/v1\/invoices\/[0-9a-f]{64}\/crosschain\/price/, (route) =>
     route.fulfill({
+      // Between cents, so You send must round it up as the deposit box does (R-244).
       json: {
-        ...quote("1263000000"),
+        ...quote("1262996000"),
         minAmountIn: "1252000000",
         quoteId: null,
         depositAddress: null,
@@ -110,12 +112,15 @@ async function pickTronUSDT(page: Page) {
   await picker.getByRole("button", { name: "Tron", exact: true }).click();
   await picker.getByRole("button", { name: /USDT.*Tron/ }).click();
   await expect(picker).toBeHidden();
-  await expect(page.getByText("1,263.00 USDT")).toBeVisible();
-  // The cost is the least 1Click converts over what arrives: the slippage on top comes back unused.
+  await expect(page.getByText("1,263.00 USDT", { exact: true })).toBeVisible();
+  // The fee is the least 1Click converts over what arrives; the slippage on top is refunded (R-244).
+  await expect(page.getByText("2.00 USD", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "NEAR Intents fee + network fee" })).toBeVisible();
+  await expect(page.getByText("Slippage 1%", { exact: true })).toBeVisible();
+  await expect(page.getByText("Arrives in about a minute")).toBeVisible();
   await expect(
-    page.getByText("Conversion cost about 2.00 USD · Arrives in about a minute"),
+    page.getByText("Unused slippage is refunded here. Use your own wallet, not an exchange."),
   ).toBeVisible();
-  await expect(page.getByText(/^Use your own wallet, not an exchange\./)).toBeVisible();
   await page.getByLabel("Refund address on Tron").fill(REFUND);
   await page.getByRole("button", { name: "Show address" }).click();
 }
@@ -128,15 +133,19 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await mockInvoice(page, LIVE);
     const second = "TNewAddress11111111111111111111111";
     const third = "TThirdAddress111111111111111111111";
+    // Signed amounts between cents: the payer is asked for them rounded up to the cent (R-244).
     await routeCrossChain(page, [
-      quote("1263000000"),
-      quote("1265500000", second, "2026-10-10T12:30:00Z"),
+      quote("1262996000"),
+      quote("1265496000", second, "2026-10-10T12:30:00Z"),
       quote("1265500000", third, "2026-10-10T12:45:00Z"),
     ]);
     await page.goto(`/pay/${PAY}`);
     await pickTronUSDT(page);
 
     await expect(page.getByText(DEPOSIT_ADDRESS)).toBeVisible();
+    await expect(page.locator("[data-money]").filter({ hasText: "USDT" })).toHaveText(
+      /^1,263\.00\s*USDT$/,
+    );
     await expect(page.getByText("Send only USDT on Tron.")).toBeVisible();
     await expect(page.getByText("Price held 15:00")).toBeVisible();
     expect(await sidewaysScroll(page)).toBe(0);
@@ -157,7 +166,7 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await page.getByRole("button", { name: "Understood" }).click();
     await expect(page.getByText(second)).toBeVisible();
     await expect(page.getByText("This price expired")).toHaveCount(0);
-    // The same amount again shows its new address at once, and says it is new.
+    // The same rounded amount again (1,265.50) shows its new address at once, and says it is new.
     await page.clock.runFor(15 * 60_000);
     await page.getByRole("button", { name: "Get new price" }).click();
     await expect(page.getByText(third)).toBeVisible();

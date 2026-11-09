@@ -49,6 +49,7 @@ type crossQuoteJSON struct {
 	MinAmountIn    string          `json:"minAmountIn"`
 	AmountOut      string          `json:"amountOut"`
 	AmountInUSD    string          `json:"amountInUsd"`
+	AmountOutUSD   string          `json:"amountOutUsd"`
 	RefundFee      string          `json:"refundFee"`
 	TimeEstimate   int64           `json:"timeEstimate"`
 	RefundTo       *string         `json:"refundTo"`
@@ -65,8 +66,9 @@ func toCrossQuote(q invoice.CrossQuote) crossQuoteJSON {
 	}
 	return crossQuoteJSON{QuoteID: httpio.OrNull(q.ID), Token: toCrossToken(q.Token),
 		DepositAddress: httpio.OrNull(q.DepositAddress), AmountIn: q.AmountIn.String(), MinAmountIn: q.MinAmountIn.String(),
-		AmountOut: q.AmountOut.String(), AmountInUSD: q.AmountInUSD, RefundFee: q.RefundFee, TimeEstimate: q.TimeEstimate,
-		RefundTo: httpio.OrNull(q.RefundTo), ShownUntil: httpio.OrNullTime(q.ShownUntil),
+		AmountOut: q.AmountOut.String(), AmountInUSD: q.AmountInUSD, AmountOutUSD: q.AmountOutUSD, RefundFee: q.RefundFee,
+		TimeEstimate: q.TimeEstimate,
+		RefundTo:     httpio.OrNull(q.RefundTo), ShownUntil: httpio.OrNullTime(q.ShownUntil),
 		Deadline: httpio.OrNullTime(q.Deadline), CreatedAt: httpio.OrNullTime(q.CreatedAt), Signed: signed}
 }
 

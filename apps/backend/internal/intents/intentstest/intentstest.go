@@ -29,7 +29,9 @@ type Fake struct {
 	// Limits gives a token, by asset id, 1Click's temporary USD minimum, which it names in dollars.
 	Limits map[string]int64
 	// Refuse makes 1Click refuse a token's quotes, by asset id, for a reason that names no minimum.
-	Refuse  map[string]bool
+	Refuse map[string]bool
+	// Dry makes 1Click refuse a token's quotes, by asset id, as it does when no solver quotes the route.
+	Dry     map[string]bool
 	private ed25519.PrivateKey
 	mu      sync.Mutex
 	quotes  int
@@ -146,6 +148,11 @@ func (f *Fake) quote(w http.ResponseWriter, r *http.Request) {
 	if f.Refuse[fmt.Sprint(req["originAsset"])] {
 		w.WriteHeader(http.StatusBadRequest)
 		_ = json.NewEncoder(w).Encode(map[string]string{"message": "This route is not supported"})
+		return
+	}
+	if f.Dry[fmt.Sprint(req["originAsset"])] {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"message": "No liquidity available"})
 		return
 	}
 	if limit, ok := f.Limits[fmt.Sprint(req["originAsset"])]; ok && amount.Cmp(big.NewInt(limit*1_000_000)) < 0 {

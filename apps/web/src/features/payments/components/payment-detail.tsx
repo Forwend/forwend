@@ -1,6 +1,7 @@
 "use client";
 import {
   Badge,
+  BrandIcon,
   buttonClasses,
   DetailList,
   DetailRow,
@@ -652,7 +653,14 @@ export function CrossChainFigure({
   ];
   return (
     <div className="flex flex-col gap-1 px-4 py-4 sm:px-5">
-      <dt className="text-sm text-muted">{COPY.crossChain.sentWith}</dt>
+      <dt className="flex items-center gap-1.5 text-sm text-muted">
+        {COPY.crossChain.sentThrough}
+        <BrandIcon
+          name="nearIntents"
+          label={COPY.crossChain.nearIntents}
+          className="h-3.5 w-auto text-ink"
+        />
+      </dt>
       <dd className="flex flex-col gap-1">
         <span className="text-base font-medium break-words text-ink tabular-nums">
           {COPY.crossChain.value(money(sent), blockchainName(crossChain.blockchain))}

@@ -29,6 +29,8 @@ type Token struct {
 	USD        string
 	// Minimum is the Base USDC base units 1Click needs at least from it; "" when it named none (D-126).
 	Minimum string
+	// NoLiquidity: the last dry quote found no liquidity for it, so payers aren't offered it (R-245).
+	NoLiquidity bool
 }
 
 // TokensEvery is how often the worker reads the list; retry, the wait after a failed read.
@@ -142,14 +144,15 @@ func List(ctx context.Context, db interface {
 	Query(context.Context, string, ...any) (pgx.Rows, error)
 }) ([]Token, error) {
 	rows, err := db.Query(ctx, `SELECT asset_id, blockchain, symbol, decimals, coalesce(contract, ''), coalesce(usd::text, ''),
-		    coalesce(minimum::text, '')
+		    coalesce(minimum::text, ''), no_liquidity_at IS NOT NULL
 		FROM intents_tokens ORDER BY coalesce(usd BETWEEN 0.98 AND 1.02, false) DESC, symbol, blockchain, asset_id`)
 	if err != nil {
 		return nil, fmt.Errorf("list 1Click tokens: %w", err)
 	}
 	list, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (Token, error) {
 		var t Token
-		return t, row.Scan(&t.AssetID, &t.Blockchain, &t.Symbol, &t.Decimals, &t.Contract, &t.USD, &t.Minimum)
+		return t, row.Scan(&t.AssetID, &t.Blockchain, &t.Symbol, &t.Decimals, &t.Contract, &t.USD, &t.Minimum,
+			&t.NoLiquidity)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list 1Click tokens: %w", err)
@@ -210,6 +213,13 @@ func (k *Keeper) Probe(ctx context.Context, now time.Time) error {
 	if err == nil {
 		return SetMinimum(ctx, k.Pool, asset, minimum, now)
 	}
+	if errors.Is(err, ErrNoLiquidity) { // R-245: an answer of its own, not a fault to log
+		if _, err := k.Pool.Exec(ctx, "UPDATE intents_tokens SET no_liquidity_at = $2, minimum_checked_at = $2 WHERE asset_id = $1",
+			asset, now); err != nil {
+			return fmt.Errorf("keep 1Click's no liquidity for %s: %w", asset, err)
+		}
+		return nil
+	}
 	// Any other answer keeps the token's minimum, or the one this round named, and is returned to be logged: a refusal
 	// naming none can be our own request's fault, as a recipient 1Click stops taking. The token waits its next turn, so
 	// it can't hold up the rest; only 1Click unreachable, or an answer failing its checks, slows the next one.
@@ -225,7 +235,8 @@ func (k *Keeper) Probe(ctx context.Context, now time.Time) error {
 	return errors.Join(err, kept)
 }
 
-// SetMinimum keeps what 1Click said asset needs at least, in Base USDC base units; nil when it named none (D-126).
+// SetMinimum keeps what 1Click said asset needs at least, in Base USDC base units; nil when it named none (D-126). An
+// answer that quotes or names a minimum has a route, so the token is offered again (R-245).
 func SetMinimum(ctx context.Context, db interface {
 	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
 }, asset string, minimum *big.Int, at time.Time) error {
@@ -234,8 +245,8 @@ func SetMinimum(ctx context.Context, db interface {
 		s := minimum.String()
 		units = &s
 	}
-	if _, err := db.Exec(ctx, `UPDATE intents_tokens SET minimum = $2::numeric, minimum_checked_at = $3 WHERE asset_id = $1`,
-		asset, units, at); err != nil {
+	if _, err := db.Exec(ctx, `UPDATE intents_tokens SET minimum = $2::numeric, minimum_checked_at = $3, no_liquidity_at = NULL
+		WHERE asset_id = $1`, asset, units, at); err != nil {
 		return fmt.Errorf("keep 1Click minimum of %s: %w", asset, err)
 	}
 	return nil

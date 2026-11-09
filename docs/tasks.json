@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 455,
+  "nextId": 456,
   "tasks": [
     {
       "id": "F332",
@@ -128,6 +128,145 @@
       ],
       "blockedReason": "Spends real mainnet money: needs the owner's approval and a funded payer wallet.",
       "evidence": null
+    },
+    {
+      "id": "F455",
+      "type": "fix",
+      "behavior": "The cross-chain pay box asks for one rounded amount that matches the picker, shows its fee, hides tokens without liquidity and shows logos",
+      "acceptance": [
+        "The picker's About, You send, the exact amount and a changed price round up the same way: a stablecoin to the cent, another token to 5 significant digits (R-244)",
+        "About adds 1Click's slippage; You send shows Slippage 1%, and the refund field says unused slippage is refunded there (R-244)",
+        "Fee shows NEAR Intents' fee plus Base's network fee in USD from 1Click's quote, with a question icon that says so (R-244)",
+        "A token 1Click answers has no liquidity leaves the picker until a later dry quote succeeds (R-245)",
+        "Popular chains and their own tokens show logos in the picker, and Sent through shows the NEAR Intents logo (R-246)",
+        "The pay page shows the price plus fees line in USD before a token is picked (R-228)"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "backend",
+        "web-unit",
+        "e2e",
+        "lint",
+        "typecheck",
+        "docs-check"
+      ],
+      "refs": [
+        "R-244",
+        "R-245",
+        "R-246",
+        "R-228",
+        "D-123",
+        "D-126"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-11-09 review fail by reviewer: Money safe: sendUnits only rounds up, so the asked amount is never below the signed amountIn; it comes from the signed amountIn and amountInUsd after verifyQuote, and the changed-price note shows verified values. Backend flag lifecycle, error wrapping, migration, estimate and amountOutUsd readers are correct. FAIL for missing tests on new behavior: (1) R-246 picker logos (acceptance 5, web-unit) have no test; only the Sent through logo is tested. (2) No test pins the wiring of the rounded amount: Send/ExactAmount (crosschain-pay.tsx:425) and the changed note (:298) could go back to deposit.amountIn with no failure, because every e2e amountIn is already a whole cent. The picker About rounding (crosschain-picker.tsx:150) is also untested. Non-blocking: a real quote refused for no liquidity still says to check the refund address (invoice/crosschain.go:314); the fallback deposited ?? amountIn shows the unrounded amount (crosschain-pay.tsx:501, pay-invoice, payment/invoice detail); the stable band check misses exactly 0.98 and 1.02 by float error (lib/crosschain.ts:214); duplicate SVG ids in the new eth/btc/sol icons; greyed rows keep full-color logos; the logo maps sit in shared/ with one consumer.",
+        "2026-11-09 review pass by reviewer: Earlier gaps closed and the new one too. crosschain-picker.test.tsx fails if Mark ignores its icon, a logo map entry goes, the greyed logo loses grayscale, or About drops sendUnits. The e2e signs 1262996000/1265496000/1265500000, so ExactAmount, the changed note and the changed-price comparison fail on raw amountIn. The price route now uses amountIn 1262996000, so the exact '1,263.00 USDT' check pins You send's rounding (fee 2.004 still reads 2.00 USD). Money is safe: sendUnits only rounds up, from the signed amountIn and amountInUsd after verifyQuote; the QR holds only the address. Fee formula, no-liquidity flag lifecycle (set by Probe, cleared by SetMinimum, kept by the list upsert), migration 00117, estimate slippage and amountOutUsd readers are correct. Logo lookups use Object.hasOwn; OUSD no longer gets Open USD's logo; R-232 says fee. Non-blocking, left out on purpose: the picker's listed price and the signed price can disagree on the stablecoin band near 0.98/1.02; a real quote refused for no liquidity still says to check the refund address. The PLAN.md roadmap bullets ride on this branch at the owner's request."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-09T20:38:16Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 50.1,
+            "log": ""
+          },
+          {
+            "id": "tokens-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 75.9,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.9,
+            "log": ""
+          }
+        ],
+        "taskHash": "657d7ec293884ed8",
+        "filesHash": "9ad816e837cb2eef",
+        "proof": {
+          "1": "e2e: crosschain.spec prices and signs amounts between cents (1,262.996 and 1,265.496 USDT); You send and the deposit box show 1,263.00 USDT, the changed note '1,265.50, not 1,263.00', and 1,265.496 then 1,265.50 count as the same price. web-unit sendUnits and the picker test check the rounding",
+          "2": "e2e: crosschain.spec shows 'Slippage 1%' and the refund hint 'Unused slippage is refunded here. Use your own wallet, not an exchange.'; the backend API test checks estimate = due x 1.01 / price",
+          "3": "e2e: crosschain.spec shows Fee 2.00 USD with the 'NEAR Intents fee + network fee' button; web-unit crossChainFeeUsd on a real signed quote",
+          "4": "backend: TestCrossChainTokensLeaveOutATokenWithoutLiquidity drops ETH after 'No liquidity available' and lists it again after an answered dry quote",
+          "5": "web-unit: crosschain-picker.test checks chain and token logos, the first-letter fallback and a greyed logo; crosschain-views.test finds the NEAR Intents logo in Sent through",
+          "6": "e2e: pay.spec 'before a token is picked, the amount says the price and the fees in USD' fails on the old page and passes now"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Earlier gaps closed and the new one too. crosschain-picker.test.tsx fails if Mark ignores its icon, a logo map entry goes, the greyed logo loses grayscale, or About drops sendUnits. The e2e signs 1262996000/1265496000/1265500000, so ExactAmount, the changed note and the changed-price comparison fail on raw amountIn. The price route now uses amountIn 1262996000, so the exact '1,263.00 USDT' check pins You send's rounding (fee 2.004 still reads 2.00 USD). Money is safe: sendUnits only rounds up, from the signed amountIn and amountInUsd after verifyQuote; the QR holds only the address. Fee formula, no-liquidity flag lifecycle (set by Probe, cleared by SetMinimum, kept by the list upsert), migration 00117, estimate slippage and amountOutUsd readers are correct. Logo lookups use Object.hasOwn; OUSD no longer gets Open USD's logo; R-232 says fee. Non-blocking, left out on purpose: the picker's listed price and the signed price can disagree on the stablecoin band near 0.98/1.02; a real quote refused for no liquidity still says to check the refund address. The PLAN.md roadmap bullets ride on this branch at the owner's request.",
+          "at": "2026-11-09T20:41:04Z",
+          "filesHash": "9ad816e837cb2eef"
+        }
+      },
+      "branch": "fix/f455-the-cross-chain-pay-box-asks-for-one-rou",
+      "baseCommit": "6462f7241f1407a97429a45d9d29afcaa4e9f02a",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

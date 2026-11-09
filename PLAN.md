@@ -218,6 +218,11 @@ The owner moved these out of the MVP on 2026-10-31:
   - a wrong-network lookup by transaction hash;
   - status emails to the payer;
   - a private support console in place of `cmd/ops`, with roles and an audit log.
+- A better fee model (owner request 2026-11-09), planned with the business model (D-56, Q-10).
+  - Today every option carries its invoice's highest network fee (D-122).
+  - A payer on a cheaper network, such as Arc or Tempo, pays more than its gas; the extra goes to the settler.
+- Code refactoring (owner request 2026-11-09): make the code cleaner and easier to scale.
+  - Each refactor keeps behavior and public contracts, as the workflow's refactor rule asks.
 
 Mobile; optional BNB and non-EVM networks; HD-wallet receive methods; cross-chain sends; automatic wallet billing;
 full accounting page and Koinly export; opt-in escrow; bank/card on-ramp; public developer sandbox; custom checkout
