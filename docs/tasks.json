@@ -1589,13 +1589,14 @@
       "keep": [],
       "review": true,
       "notes": [
-        "2026-11-09 review pass by reviewer: EthPrice refuses a price older than 1.5x its feed's heartbeat and, on Base and Arbitrum, one read while the sequencer uptime feed is down, has no valid round, or came back under an hour ago, as Chainlink advises. Addresses and heartbeats match Chainlink's directory (Base 0x71041ddd is the listed secondary proxy of aggregator 0x05c84a58), and live reads show each feed updating within its limit. The quote fallback, the swap alert with no transaction and the send 503 all come from the one shared check; every chain.EthUSD reader, the mainnetfork test included, was updated."
+        "2026-11-09 review pass by reviewer: EthPrice refuses a price older than 1.5x its feed's heartbeat and, on Base and Arbitrum, one read while the sequencer uptime feed is down, has no valid round, or came back under an hour ago, as Chainlink advises. Addresses and heartbeats match Chainlink's directory (Base 0x71041ddd is the listed secondary proxy of aggregator 0x05c84a58), and live reads show each feed updating within its limit. The quote fallback, the swap alert with no transaction and the send 503 all come from the one shared check; every chain.EthUSD reader, the mainnetfork test included, was updated.",
+        "2026-11-09 review pass by reviewer: Commit aa037846 refuses a price older than its heartbeat plus PriceSlack (10 minutes): 30 min on Base and Base Sepolia, about 39 min on Arbitrum and 12 min on Arbitrum Sepolia, all well above the update gaps seen on chain. Tests accept 65 min and refuse 75 min on a 1-hour heartbeat, and the stale cases in the gas and quote tests are still past the limit. R-227, api.md, money-safety.md and acceptance line 1 match the code, and no wording from the old 1.5x rule is left. The Base proxy comment is now correct and has no date."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-09T00:49:38Z",
+        "at": "2026-11-09T00:58:39Z",
         "checks": [
           {
             "id": "docs-check",
@@ -1608,37 +1609,37 @@
             "id": "backend",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 70.8,
+            "seconds": 64.6,
             "log": ""
           },
           {
             "id": "backend-affected",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 66.3,
+            "seconds": 59.6,
             "log": ""
           },
           {
             "id": "backend-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 30.9,
+            "seconds": 30.1,
             "log": ""
           }
         ],
-        "taskHash": "cc818dc993095c0e",
-        "filesHash": "f5e19635695484a0",
+        "taskHash": "d91a35c6f24d3c97",
+        "filesHash": "bc33ca3e32d76cf1",
         "proof": {
-          "1": "backend: TestEthPriceRefusesAStaleOrUntrustedPrice accepts a price 80 minutes old on a 1-hour heartbeat and refuses one 100 minutes old; TestEveryEthUSDFeedHasAHeartbeat; heartbeats are Chainlink's feed directory's (Base and Base Sepolia 1200 s, Arbitrum 1755 s, Arbitrum Sepolia 120 s)",
+          "1": "backend: TestEthPriceRefusesAStaleOrUntrustedPrice accepts a price 65 minutes old on a 1-hour heartbeat and refuses one 75 minutes old; TestEveryEthUSDFeedHasAHeartbeat; heartbeats are Chainlink's feed directory's (Base and Base Sepolia 1200 s, Arbitrum 1755 s, Arbitrum Sepolia 120 s)",
           "2": "backend: TestEthPriceRefusesAStaleOrUntrustedPrice refuses a down sequencer and one back ten minutes ago, and accepts one up for a day; the opt-in mainnet fork run read the real Base and Arbitrum sequencer feeds and passed",
-          "3": "backend: TestAStalePriceKeepsTheLastGoodQuote serves the kept quote, then refuses past QuoteStale naming the heartbeat; TestSignerAlertsWhenItCantBuyGas sends nothing and alerts naming a stale price or a down sequencer; paymaster send tests still price with a fresh stand-in feed"
+          "3": "backend: TestAStalePriceKeepsTheLastGoodQuote serves the kept quote, then refuses past QuoteStale naming the heartbeat; TestSignerAlertsWhenItCantBuyGas alerts naming a stale price or a down sequencer with no transaction; paymaster send tests still price with a fresh stand-in feed"
         },
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "EthPrice refuses a price older than 1.5x its feed's heartbeat and, on Base and Arbitrum, one read while the sequencer uptime feed is down, has no valid round, or came back under an hour ago, as Chainlink advises. Addresses and heartbeats match Chainlink's directory (Base 0x71041ddd is the listed secondary proxy of aggregator 0x05c84a58), and live reads show each feed updating within its limit. The quote fallback, the swap alert with no transaction and the send 503 all come from the one shared check; every chain.EthUSD reader, the mainnetfork test included, was updated.",
-          "at": "2026-11-09T00:57:44Z",
-          "filesHash": "f5e19635695484a0"
+          "summary": "Commit aa037846 refuses a price older than its heartbeat plus PriceSlack (10 minutes): 30 min on Base and Base Sepolia, about 39 min on Arbitrum and 12 min on Arbitrum Sepolia, all well above the update gaps seen on chain. Tests accept 65 min and refuse 75 min on a 1-hour heartbeat, and the stale cases in the gas and quote tests are still past the limit. R-227, api.md, money-safety.md and acceptance line 1 match the code, and no wording from the old 1.5x rule is left. The Base proxy comment is now correct and has no date.",
+          "at": "2026-11-09T01:01:46Z",
+          "filesHash": "bc33ca3e32d76cf1"
         }
       },
       "branch": "fix/f447-a-stale-chainlink-eth-usd-price-or-one-r",
