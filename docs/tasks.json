@@ -400,7 +400,7 @@
         "money-safety.md and PROJECT.md describe the new return and missed-deposit steps"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend",
         "docs-check"
@@ -483,10 +483,10 @@
         "taskHash": "7931ea390b56fafe",
         "filesHash": "3f885b03f85fc856",
         "proof": {
-          "1": "backend: TestSupportReturnOfACrossChainPaymentNeedsThePayersAddress, TestSupportReturnFromNEARIntentsAddressNeedsThePayersAddressBeforeAQuoteNamesIt and TestSupportReturnOfAnOptionWithAnUnnamedDeliveryNeedsThePayersAddress refuse a default destination; ops case names the quote",
-          "2": "backend: TestRefundOfAMissedDepositWaitsForThatDeposit, TestRefundBeforeTheMissedDepositBooksOnceItIsRecorded, TestMissedDepositIsRecordedFromItsReceiptOnce, TestBalanceAlertEndsWhenTheBalanceAgreesAgain and the ErrMissedDeposit step of TestSupportWaitsForEveryPaymentToBeBooked",
-          "3": "backend: TestNonceOfASettleTheRefundAuthorityReplacedIsUsedAgain mines invoice B's deploy and settle with no filler",
-          "4": "docs-check: money-safety.md Returns through support and Deciding paid, architecture.md Signer nonce, PROJECT.md R-247 and D-118"
+          "1": "backend",
+          "2": "backend",
+          "3": "backend",
+          "4": "docs-check"
         },
         "review": {
           "result": "pass",
@@ -494,11 +494,18 @@
           "summary": "Independent review, two rounds. Round 1 FAIL: a Safe refund mined before a missed deposit was refused and blocked that deposit for good (proved with an overlay test); fixed in f3338667 with TestRefundBeforeTheMissedDepositBooksOnceItIsRecorded. Round 2 PASS. Checked: RecordDeposits uses the scan's own filters (token, Transfer topic, Arc twins, finalized block with the same hash, only the case's invoices), reruns insert nothing; the nonce floor change cannot cause a double on-chain action; the relay SQL lowercases hashes and matches the chain; alert readers only test row existence. Accepted limits, documented in money-safety.md: a later recorded deposit lifts the refund wait even if it is another payer's; only options that can still expire are re-checked, ops return refuses on paid ones; old alert rows keep excess=false.",
           "at": "2026-11-09T22:30:59Z",
           "filesHash": "3f885b03f85fc856"
-        }
+        },
+        "commit": "9562dc1c",
+        "doneAt": "2026-11-09T22:31:11Z"
       },
       "branch": "fix/f457-support-returns-go-to-the-payer-a-deposi",
       "baseCommit": "fcb5cace4d2d6ee5ae36039e19812b7546b2288e",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f457-support-returns-go-to-the-payer-a-deposi",
+        "base": "main"
+      }
     },
     {
       "id": "F458",
