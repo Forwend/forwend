@@ -416,6 +416,7 @@ test.describe("pay with another token (R-236 to R-238)", () => {
       row("Arrived on Base").getByRole("link", { name: "View transaction on Basescan" }),
     ).toHaveAttribute("href", `https://basescan.org/tx/${baseTx}`);
     await expect(row("Returned to you")).toContainText("0.001 ETH");
+    await expect(row("Returned to you")).toContainText("To TJRabP…RTv8");
   });
 
   test("on Base, final but not yet booked, it says what the direct box says (R-243)", async ({
