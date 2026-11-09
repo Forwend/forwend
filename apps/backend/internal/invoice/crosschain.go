@@ -202,9 +202,16 @@ func (s *Service) QuoteCrossChain(ctx context.Context, payToken, origin, refundT
 	if dry {
 		return s.dryQuote(ctx, ask, token, now)
 	}
+	// The pick shows only what the payer chose; the deposit on Base still chooses the option (R-56). It comes first, so
+	// a kept quote never misses it.
+	if target.invoice.OptionCount > 1 && target.invoice.PickedOptionID != target.option.ID {
+		if err := s.PickOption(ctx, payToken, target.option.ID); err != nil && !errors.Is(err, ErrPickLocked) {
+			return CrossQuote{}, err
+		}
+	}
 	// ponytail: the reuse and the hourly limit read, then insert, without a lock, so two requests at once can make one
 	// quote more; the per-invoice request limit keeps that small.
-	q, err := s.openQuote(ctx, target, origin, refundTo, now)
+	q, err := s.openQuote(ctx, target, token, refundTo, now)
 	if err != nil || q.ID != "" {
 		return q, err
 	}
@@ -222,18 +229,13 @@ func (s *Service) QuoteCrossChain(ctx context.Context, payToken, origin, refundT
 		return CrossQuote{}, fmt.Errorf("save cross-chain quote for %s: %w", target.invoice.ID, err)
 	}
 	q.CreatedAt = now
-	// The pick shows only what the payer chose; the deposit on Base still chooses the option (R-56).
-	if target.invoice.OptionCount > 1 && target.invoice.PickedOptionID != target.option.ID {
-		if err := s.PickOption(ctx, payToken, target.option.ID); err != nil && !errors.Is(err, ErrPickLocked) {
-			return CrossQuote{}, err
-		}
-	}
 	return q, nil
 }
 
 // openQuote is the payer's quote for the same token, refund address and amount while enough of its window is left,
 // or none (an empty ID). It refuses the next quote once the invoice had CrossChainPerHour in an hour.
-func (s *Service) openQuote(ctx context.Context, target crossTarget, origin, refundTo string, now time.Time) (CrossQuote, error) {
+func (s *Service) openQuote(ctx context.Context, target crossTarget, token intents.Token, refundTo string, now time.Time) (CrossQuote, error) {
+	origin := token.AssetID
 	var q CrossQuote
 	var signed string
 	var shown, deadline, created *time.Time // none without an open quote
@@ -259,14 +261,6 @@ func (s *Service) openQuote(ctx context.Context, target crossTarget, origin, ref
 		Recipient: target.option.ReceiveAddress, RefundTo: refundTo, Deadline: *deadline}, false, s.crossChain.Signer)
 	if err != nil {
 		return CrossQuote{}, providerError(err, target.invoice.ID, false)
-	}
-	list, err := intents.List(ctx, s.pool)
-	if err != nil {
-		return CrossQuote{}, err
-	}
-	var token intents.Token
-	if i := slices.IndexFunc(list, func(t intents.Token) bool { return t.AssetID == origin }); i >= 0 {
-		token = list[i]
 	}
 	id := q.ID
 	q = crossQuote(quote, token, refundTo)
@@ -294,6 +288,8 @@ func providerError(err error, invoiceID string, dry bool) error {
 		return fmt.Errorf("%w: refundTo: 1Click refused the quote; check this is your address on the token's chain", ErrInvalid)
 	case errors.Is(err, intents.ErrSignature) || errors.Is(err, intents.ErrMismatch):
 		slog.Error("ALERT cross-chain quote failed its checks", "invoice", invoiceID, "err", err)
+	default:
+		slog.Warn("cross-chain quote failed", "invoice", invoiceID, "err", err)
 	}
 	return fmt.Errorf("%w: %v", ErrProvider, err)
 }

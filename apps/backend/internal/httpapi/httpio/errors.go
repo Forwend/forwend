@@ -200,8 +200,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, invoice.ErrTooManyQuotes):
 		status, code, message = http.StatusTooManyRequests, "too_many_quotes",
 			"too many quotes for this invoice in the last hour: try again later"
-	case errors.Is(err, invoice.ErrProvider):
-		slog.Warn("cross-chain quote failed", "err", err)
+	case errors.Is(err, invoice.ErrProvider): // logged where it happened
 		status, code, message = http.StatusServiceUnavailable, "provider_unavailable",
 			"could not get a quote from NEAR Intents: try again shortly"
 	case errors.Is(err, invoice.ErrFeeQuote):

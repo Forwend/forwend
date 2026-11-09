@@ -1,6 +1,7 @@
 package intents
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -81,15 +82,24 @@ func Check(answer []byte, ask Ask, dry bool, key string) (Quote, error) {
 		return Quote{}, err
 	}
 	for k, want := range request(ask, dry) {
-		var got any
-		if err := json.Unmarshal(a.request[k], &got); err != nil {
-			return Quote{}, fmt.Errorf("%w: %s missing", ErrMismatch, k)
+		wanted, _ := json.Marshal(want)
+		got := a.request[k]
+		var gotText, wantText string
+		if json.Unmarshal(got, &gotText) == nil && json.Unmarshal(wanted, &wantText) == nil &&
+			evmAddress.MatchString(gotText) && evmAddress.MatchString(wantText) {
+			if !strings.EqualFold(gotText, wantText) { // 1Click may echo a 0x address in another case
+				return Quote{}, fmt.Errorf("%w: %s is %s", ErrMismatch, k, gotText)
+			}
+			continue
 		}
-		if s, ok := got.(string); ok && evmAddress.MatchString(s) && evmAddress.MatchString(fmt.Sprint(want)) {
-			got, want = strings.ToLower(s), strings.ToLower(want.(string)) // 1Click may echo a 0x address in another case
+		if !bytes.Equal(compact(got), wanted) { // typed: "100" is not 100, nor "false" false
+			return Quote{}, fmt.Errorf("%w: %s is %.100s", ErrMismatch, k, got)
 		}
-		if fmt.Sprint(got) != fmt.Sprint(want) {
-			return Quote{}, fmt.Errorf("%w: %s is %v", ErrMismatch, k, got)
+	}
+	// Signed when set, but Forwend never asks for them: a quote carrying one was asked by someone else.
+	for _, k := range []string{"virtualChainRecipient", "virtualChainRefundRecipient", "customRecipientMsg"} {
+		if truthy(a.request[k]) {
+			return Quote{}, fmt.Errorf("%w: %s is set", ErrMismatch, k)
 		}
 	}
 	var estimate float64
@@ -108,6 +118,8 @@ func Check(answer []byte, ask Ask, dry bool, key string) (Quote, error) {
 		return Quote{}, fmt.Errorf("%w: delivers %s, not exactly %s", ErrMismatch, text(a.quote, "minAmountOut"), ask.Amount)
 	case !dry && q.DepositAddress == "":
 		return Quote{}, fmt.Errorf("%w: no deposit address", ErrMismatch)
+	case dry && q.DepositAddress != "": // a dry answer's address is not signed
+		return Quote{}, fmt.Errorf("%w: a dry quote with an address", ErrMismatch)
 	case q.DepositMemo != "": // memo chains are left out: a forgotten memo loses the money (D-123)
 		return Quote{}, fmt.Errorf("%w: needs a memo", ErrMismatch)
 	}
@@ -115,3 +127,11 @@ func Check(answer []byte, ask Ask, dry bool, key string) (Quote, error) {
 }
 
 var evmAddress = regexp.MustCompile(`^0x[0-9a-fA-F]{40}$`)
+
+func compact(raw json.RawMessage) []byte {
+	var b bytes.Buffer
+	if json.Compact(&b, raw) != nil {
+		return nil
+	}
+	return b.Bytes()
+}

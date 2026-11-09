@@ -30,13 +30,13 @@ type crossTokenJSON struct {
 	Symbol     string  `json:"symbol"`
 	Decimals   int     `json:"decimals"`
 	Contract   *string `json:"contract"`
-	PriceUSD   *string `json:"priceUsd"`
+	PriceUSD   string  `json:"priceUsd"`
 	Estimate   *string `json:"estimate"` // in the list only
 }
 
 func toCrossToken(t intents.Token) crossTokenJSON {
 	return crossTokenJSON{AssetID: t.AssetID, Blockchain: t.Blockchain, Symbol: t.Symbol, Decimals: t.Decimals,
-		Contract: httpio.OrNull(t.Contract), PriceUSD: httpio.OrNull(t.USD)}
+		Contract: httpio.OrNull(t.Contract), PriceUSD: t.USD}
 }
 
 type crossQuoteJSON struct {

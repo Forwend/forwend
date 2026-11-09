@@ -19,9 +19,14 @@ func fixture(t *testing.T, name string) []byte {
 	return b
 }
 
+func verify(signed []byte, key string) error {
+	_, err := verified(signed, key)
+	return err
+}
+
 func TestVerifyAcceptsOnlyWhat1ClickSigned(t *testing.T) {
 	for _, name := range []string{"quote-dry.json", "quote.json"} {
-		if err := Verify(fixture(t, name), ManagerKey); err != nil {
+		if err := verify(fixture(t, name), ManagerKey); err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
 	}
@@ -37,13 +42,13 @@ func TestVerifyAcceptsOnlyWhat1ClickSigned(t *testing.T) {
 		if bytes.Equal(changed, signed) {
 			t.Fatalf("%s is not in the answer", change[0])
 		}
-		if err := Verify(changed, ManagerKey); !errors.Is(err, ErrSignature) {
+		if err := verify(changed, ManagerKey); !errors.Is(err, ErrSignature) {
 			t.Fatalf("changing %s: %v, want ErrSignature", change[0], err)
 		}
 	}
 	// 1Click spreads a real quote's fields over its request's, so the address's deadline is signed and the request's
 	// is not.
-	if err := Verify(bytes.Replace(signed, []byte(`"deadline":"2026-11-12T02:41:33.000Z"`), []byte(`"deadline":"2026-11-13T02:41:33.000Z"`), 1), ManagerKey); !errors.Is(err, ErrSignature) {
+	if err := verify(bytes.Replace(signed, []byte(`"deadline":"2026-11-12T02:41:33.000Z"`), []byte(`"deadline":"2026-11-13T02:41:33.000Z"`), 1), ManagerKey); !errors.Is(err, ErrSignature) {
 		t.Fatalf("changed quote deadline: %v", err)
 	}
 	// A key in another case beside a signed one must not take its place: Go's struct decoding would read either.
@@ -58,7 +63,7 @@ func TestVerifyAcceptsOnlyWhat1ClickSigned(t *testing.T) {
 		}
 	}
 	// A key other than 1Click's refuses even 1Click's own answer.
-	if err := Verify(signed, EncodeKey(make([]byte, 32))); !errors.Is(err, ErrSignature) {
+	if err := verify(signed, EncodeKey(make([]byte, 32))); !errors.Is(err, ErrSignature) {
 		t.Fatalf("other key: %v", err)
 	}
 }

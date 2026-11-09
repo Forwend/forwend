@@ -11,6 +11,7 @@ import (
 	"math"
 	"math/big"
 	"net"
+	"net/netip"
 	"net/url"
 	"os"
 	"regexp"
@@ -55,19 +56,24 @@ type API struct {
 	OneClick   OneClick
 }
 
-// OneClick is NEAR Intents' 1Click API for cross-chain payments (D-123). URL is its root, DefaultOneClickURL when unset;
-// Signer is the key its quotes must carry, 1Click's own when unset. Only tests that run a fake set ONECLICK_API_URL and
-// ONECLICK_SIGNER_KEY. Key is the optional partner key (Q-18): never log it.
+// OneClick is NEAR Intents' 1Click API for cross-chain payments (D-123). URL is its root, DefaultOneClickURL when unset.
+// Signer replaces the key its quotes must carry, 1Click's own pinned one (D-124), only for a test's fake on a loopback
+// URL: startup refuses it with any other. Key is the optional partner key (Q-18): never log it.
 type OneClick struct {
 	URL, Key, Signer string
 }
 
 const DefaultOneClickURL = "https://1click.chaindefuser.com"
 
-func oneClick() OneClick {
+func (r *reader) oneClick() OneClick {
 	c := OneClick{URL: os.Getenv("ONECLICK_API_URL"), Key: os.Getenv("ONECLICK_API_KEY"), Signer: os.Getenv("ONECLICK_SIGNER_KEY")}
 	if c.URL == "" {
 		c.URL = DefaultOneClickURL
+	}
+	if u, err := url.Parse(c.URL); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+		r.invalid = append(r.invalid, "ONECLICK_API_URL (an http or https URL)")
+	} else if ip, err := netip.ParseAddr(u.Hostname()); c.Signer != "" && u.Hostname() != "localhost" && (err != nil || !ip.IsLoopback()) {
+		r.invalid = append(r.invalid, "ONECLICK_SIGNER_KEY (only with a test's fake 1Click on a loopback ONECLICK_API_URL)")
 	}
 	return c
 }
@@ -168,7 +174,7 @@ func LoadAPI() (API, error) {
 		TrustProxyHeader:  r.flag("TRUST_PROXY_HEADER"),
 		CodesPerHour:      r.count("API_CODES_PER_HOUR"),
 		EnableTestnetUSDC: r.flag("ENABLE_TESTNET_USDC"), EnableMainnets: r.chainIDs("ENABLE_MAINNETS"),
-		WebhookKey: r.base64Key("WEBHOOK_SECRET_KEY"), Email: email(), Fees: r.fees(), OneClick: oneClick()}
+		WebhookKey: r.base64Key("WEBHOOK_SECRET_KEY"), Email: email(), Fees: r.fees(), OneClick: r.oneClick()}
 	c.Email.PublicWebURL = c.PublicWebURL
 	return c, r.err()
 }
@@ -185,7 +191,7 @@ func email() Email {
 
 func LoadWorker() (Worker, error) {
 	var r reader
-	c := Worker{DatabaseURL: r.get("DATABASE_URL"), Chains: r.chains(), Email: email(), Fees: r.fees(), OneClick: oneClick()}
+	c := Worker{DatabaseURL: r.get("DATABASE_URL"), Chains: r.chains(), Email: email(), Fees: r.fees(), OneClick: r.oneClick()}
 	if c.RatesURL = os.Getenv("ECB_RATES_URL"); c.RatesURL == "" {
 		c.RatesURL = DefaultRatesURL
 	}

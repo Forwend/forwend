@@ -6328,10 +6328,7 @@ components:
         symbol: { type: string }
         decimals: { type: integer }
         contract: { type: [string, "null"], description: The token's contract on its chain; null for a chain's coin. }
-        priceUsd:
-          type: [string, "null"]
-          pattern: "^[0-9]+(\\.[0-9]+)?$"
-          description: "1Click's listed price, for display; null in a kept quote whose token left the list."
+        priceUsd: { type: string, pattern: "^[0-9]+(\\.[0-9]+)?$", description: "1Click's listed price, for display." }
         estimate:
           type: [string, "null"]
           pattern: "^[0-9]+$"

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"regexp"
 	"strings"
 	"time"
@@ -22,16 +23,13 @@ type Token struct {
 	USD        string
 }
 
-// TokensEvery is how often the worker reads the list; Retry, the wait after a failed read.
+// TokensEvery is how often the worker reads the list; retry, the wait after a failed read.
 const (
 	TokensEvery = 10 * time.Minute
-	Retry       = 2 * time.Minute
+	retry       = 2 * time.Minute
 )
 
-var (
-	blockchain = regexp.MustCompile(`^[a-z0-9_-]{1,32}$`)
-	usdValue   = regexp.MustCompile(`^[0-9]{1,9}(\.[0-9]{1,30})?$`)
-)
+var blockchain = regexp.MustCompile(`^[a-z0-9_-]{1,32}$`)
 
 // Tokens reads 1Click's list. A malformed entry is left out; a list without any usable entry fails.
 func (c *Client) Tokens(ctx context.Context) ([]Token, error) {
@@ -45,31 +43,36 @@ func (c *Client) Tokens(ctx context.Context) ([]Token, error) {
 		Price                                        json.Number
 	}
 	if err := json.Unmarshal(answer, &list); err != nil {
-		return nil, fmt.Errorf("%w: token list: %v", ErrUnavailable, err)
+		return nil, fmt.Errorf("%w: token list: %v", errUnavailable, err)
 	}
 	var out []Token
 	seen := map[string]bool{}
 	for _, t := range list {
-		if seen[t.AssetID] { // twice in one list would fail the upsert of the whole list
+		if seen[t.AssetID] || t.AssetID == "" || len(t.AssetID) > 200 || !blockchain.MatchString(t.Blockchain) ||
+			t.Symbol == "" || len(t.Symbol) > 32 || t.Decimals < 0 || t.Decimals > 36 || len(t.ContractAddress) > 200 {
 			continue
 		}
-		seen[t.AssetID] = true
-		if t.AssetID == "" || len(t.AssetID) > 200 || !blockchain.MatchString(t.Blockchain) || t.Symbol == "" ||
-			len(t.Symbol) > 32 || t.Decimals < 0 || t.Decimals > 36 || len(t.ContractAddress) > 200 {
-			continue
-		}
-		usd := ""
-		// A price is a decimal string above 0; JSON's exponent form, which 1Click doesn't send, is left out with it.
-		if p := t.Price.String(); usdValue.MatchString(p) && strings.Trim(p, "0.") != "" {
-			usd = p
+		seen[t.AssetID] = true // twice in one list would fail the upsert of the whole list
+		contract := t.ContractAddress
+		if evmAddress.MatchString(contract) { // other chains' contracts, as Tron's, are case-sensitive
+			contract = strings.ToLower(contract)
 		}
 		out = append(out, Token{AssetID: t.AssetID, Blockchain: t.Blockchain, Symbol: t.Symbol, Decimals: t.Decimals,
-			Contract: strings.ToLower(t.ContractAddress), USD: usd})
+			Contract: contract, USD: usd(t.Price)})
 	}
 	if len(out) == 0 {
-		return nil, fmt.Errorf("%w: empty token list", ErrUnavailable)
+		return nil, fmt.Errorf("%w: empty token list", errUnavailable)
 	}
 	return out, nil
+}
+
+// usd is a listed price as a plain decimal, exponent form included; "" for none, 0 or over the table's bound.
+func usd(price json.Number) string {
+	r, ok := new(big.Rat).SetString(price.String())
+	if !ok || r.Sign() <= 0 || r.Cmp(big.NewRat(1e9, 1)) >= 0 {
+		return ""
+	}
+	return strings.TrimRight(strings.TrimRight(r.FloatString(30), "0"), ".")
 }
 
 // Keeper keeps 1Click's token list in Postgres for every api replica (R-232).
@@ -85,7 +88,7 @@ func (k *Keeper) Tick(ctx context.Context, now time.Time) error {
 		return nil
 	}
 	if err := k.refresh(ctx, now); err != nil {
-		k.due = now.Add(Retry)
+		k.due = now.Add(retry)
 		return err
 	}
 	k.due = now.Add(k.Every)

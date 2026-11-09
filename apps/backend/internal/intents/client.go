@@ -19,8 +19,8 @@ import (
 const maxAnswer = 1 << 20
 
 var (
-	// ErrUnavailable: 1Click didn't answer, or answered with something other than a quote or a refusal.
-	ErrUnavailable = errors.New("1Click unavailable")
+	// errUnavailable: 1Click didn't answer, or answered with something other than a quote or a refusal.
+	errUnavailable = errors.New("1Click unavailable")
 	// ErrRefused: 1Click refused the request, as for a refund address it can't use.
 	ErrRefused = errors.New("1Click refused the quote")
 )
@@ -62,7 +62,7 @@ func (c *Client) call(ctx context.Context, method, path string, body any) ([]byt
 	}
 	req, err := http.NewRequestWithContext(ctx, method, c.URL+path, reader)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrUnavailable, err)
+		return nil, fmt.Errorf("%w: %v", errUnavailable, err)
 	}
 	req.Header.Set("Accept", "application/json")
 	if body != nil {
@@ -73,12 +73,12 @@ func (c *Client) call(ctx context.Context, method, path string, body any) ([]byt
 	}
 	res, err := c.HTTP.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrUnavailable, err)
+		return nil, fmt.Errorf("%w: %v", errUnavailable, err)
 	}
 	defer res.Body.Close()
 	answer, err := io.ReadAll(io.LimitReader(res.Body, maxAnswer+1))
 	if err != nil || len(answer) > maxAnswer {
-		return nil, fmt.Errorf("%w: answer unreadable or over %d bytes", ErrUnavailable, maxAnswer)
+		return nil, fmt.Errorf("%w: answer unreadable or over %d bytes", errUnavailable, maxAnswer)
 	}
 	switch {
 	case res.StatusCode == http.StatusOK || res.StatusCode == http.StatusCreated:
@@ -91,6 +91,6 @@ func (c *Client) call(ctx context.Context, method, path string, body any) ([]byt
 		}
 		return nil, fmt.Errorf("%w: %.200s", ErrRefused, refusal.Message)
 	default:
-		return nil, fmt.Errorf("%w: status %d", ErrUnavailable, res.StatusCode)
+		return nil, fmt.Errorf("%w: status %d", errUnavailable, res.StatusCode)
 	}
 }

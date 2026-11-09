@@ -223,3 +223,32 @@ func TestPlatformFeePlan(t *testing.T) {
 		}
 	}
 }
+
+// D-124: 1Click's pinned key is replaced only for a test's fake on loopback, never by a copied test .env elsewhere.
+func TestOneClickSignerKeyOnlyForAFakeOnLoopback(t *testing.T) {
+	t.Setenv("RESEND_API_KEY", "")
+	t.Setenv("DATABASE_URL", "postgres://x")
+	t.Setenv("RPC_ALLOW_LOOPBACK", "1")
+	t.Setenv("RPC_RATE_PER_SECOND", "10")
+	t.Setenv("POLL_INTERVAL", "3s")
+	t.Setenv("ONECLICK_SIGNER_KEY", "ed25519:test")
+	for url, ok := range map[string]bool{"http://127.0.0.1:4100": true, "http://localhost:4100": true,
+		"http://[::1]:4100": true, "": false, "https://1click.chaindefuser.com": false, "http://10.0.0.5": false} {
+		t.Setenv("ONECLICK_API_URL", url)
+		w, err := config.LoadWorker()
+		if ok != (err == nil) {
+			t.Fatalf("%q: %v", url, err)
+		}
+		if !ok && !strings.Contains(err.Error(), "ONECLICK_SIGNER_KEY") {
+			t.Fatalf("%q: %v", url, err)
+		}
+		if ok && w.OneClick.Signer != "ed25519:test" {
+			t.Fatalf("%q: %+v", url, w.OneClick)
+		}
+	}
+	t.Setenv("ONECLICK_SIGNER_KEY", "")
+	t.Setenv("ONECLICK_API_URL", "")
+	if w, err := config.LoadWorker(); err != nil || w.OneClick.URL != config.DefaultOneClickURL || w.OneClick.Signer != "" {
+		t.Fatalf("default: %+v, %v", w.OneClick, err)
+	}
+}

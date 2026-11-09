@@ -53,12 +53,7 @@ func text(m map[string]json.RawMessage, key string) string {
 	return s
 }
 
-// Verify checks that signed, a quote answer exactly as 1Click sent it, carries key's signature.
-func Verify(signed []byte, key string) error {
-	_, err := verified(signed, key)
-	return err
-}
-
+// verified checks that signed, a quote answer exactly as 1Click sent it, carries key's signature, and returns it read.
 func verified(signed []byte, key string) (answer, error) {
 	pub, err := decodeKey(key)
 	if err != nil || len(pub) != ed25519.PublicKeySize {

@@ -1662,7 +1662,7 @@
         "The api keeps a quote only when 1Click's ed25519 signature verifies with the pinned key and the signed request names that receive address, Base USDC, EXACT_OUTPUT, the amount and the refund address; a changed field is refused (D-124).",
         "The worker keeps 1Click's token list in Postgres, read at start and every 10 minutes; the public list leaves out memo chains, unpriced tokens and the invoice's direct options, stablecoins first; a dry quote gives what the payer sends, the cost and the time; a route minimum above the due is 422 below_minimum (R-232).",
         "The same token and refund address get the open quote back until 5 minutes before its price window ends; an invoice gets at most 20 quotes an hour; a test-mode invoice, one without an open Base USDC option, a direct or memo-chain token or a refused refund address is 422 (R-233).",
-        "Tests use a fake 1Click server; no test reaches the real API, and the 1Click key stays in the backend .env."
+        "Deterministic tests use a fake 1Click with its own key, which startup accepts only on loopback; the 1Click key stays in the backend .env of the api and the worker."
       ],
       "dependsOn": [],
       "state": "verified",
@@ -1680,14 +1680,23 @@
       "keep": [],
       "review": true,
       "notes": [
-        "2026-11-09 review fail by subagent: Blocking: Check read the quote through a case-insensitive Go struct, so a case-variant key (DepositAddress) replaced the signed depositAddress, memo or amounts and still verified. Blocking: no tests for the due after a partial payment, the 10-minutes-before-close deadline, an invoice without an open Base USDC option, a confirming payment, the re-check of a kept quote or 1Click down. Medium: quoteRequest.deadline is not signed in a non-dry quote (quote.deadline replaces it); the 5 s response-header timeout cut the 20 s quote timeout; refundTo was compared case-insensitively on case-sensitive chains. Low: estimate and priceUsd sent as empty strings; every 1Click 400 blamed refundTo; duplicate assetIds broke the token upsert; prices over 18 decimals counted as unpriced; count-then-insert limit is approximate."
+        "2026-11-09 review fail by subagent: Blocking: Check read the quote through a case-insensitive Go struct, so a case-variant key (DepositAddress) replaced the signed depositAddress, memo or amounts and still verified. Blocking: no tests for the due after a partial payment, the 10-minutes-before-close deadline, an invoice without an open Base USDC option, a confirming payment, the re-check of a kept quote or 1Click down. Medium: quoteRequest.deadline is not signed in a non-dry quote (quote.deadline replaces it); the 5 s response-header timeout cut the 20 s quote timeout; refundTo was compared case-insensitively on case-sensitive chains. Low: estimate and priceUsd sent as empty strings; every 1Click 400 blamed refundTo; duplicate assetIds broke the token upsert; prices over 18 decimals counted as unpriced; count-then-insert limit is approximate.",
+        "2026-11-09 review fail by subagent: Earlier fixes hold. Blocking: no test for the token keeper (unpriced token left out, refresh, dropped token, duplicates); ONECLICK_SIGNER_KEY could replace the pinned 1Click key in any process. Medium: every token contract lowercased, which breaks Tron and Solana contracts. Non-blocking: typed comparison in Check, refuse virtual-chain and custom-message fields, dry answers with an address, openQuote's second list read, pick after insert, the live send spec reading the real token list, with-env and staging docs, exports, double log, exponent prices."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-09T02:47:42Z",
+        "at": "2026-11-09T03:07:56Z",
         "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
           {
             "id": "docs-check",
             "outcome": "passed",
@@ -1696,28 +1705,49 @@
             "log": ""
           },
           {
-            "id": "unit",
+            "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 67.2,
+            "seconds": 0.3,
             "log": ""
           },
           {
-            "id": "backend-e2e",
+            "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 31.0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 70.4,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 3.0,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 47.4,
             "log": ""
           }
         ],
-        "taskHash": "c251de3320c448c4",
-        "filesHash": "40bb0a42f32552e1",
+        "taskHash": "f2cda0c5df642ab6",
+        "filesHash": "b89bbbc385fa7e01",
         "proof": {
           "1": "unit: crosschain_test checks EXACT_OUTPUT to the Base option's receive address for the due (full, and 60 of 100 after a 40 USDC partial), refundTo, deadline 60 min and 10 min before the close (25-min checkout), the 15-min window and a 15-min checkout refused",
-          "2": "unit: intents tests verify two real 1Click answers with the pinned key, refuse changed fields and a changed quote deadline, and ignore case-variant keys (DepositAddress, DepositMemo, AmountIn); API tests refuse signed quotes for another recipient, refund case, amount or with a memo, and a changed kept row",
-          "3": "unit: TestCrossChainTokensLeaveOutDirectMemoAndDestinationTokens, the dry price and its cache, below_minimum with minimum, 1Click down 503",
+          "2": "unit: intents tests verify two real 1Click answers with the pinned key, refuse changed fields and a changed quote deadline, ignore case-variant keys; API tests refuse signed quotes for another recipient, refund case, amount, typed field, virtual recipient or with a memo, a dry answer with an address and a changed kept row",
+          "3": "unit: TestKeeperKeepsTheListAndDropsWhat1ClickDropped (unpriced, duplicate, Tron case, exponent price, 10-min refresh, 2-min retry, dropped token); token filter and estimate test; dry price and its cache; below_minimum with minimum; 1Click down 503",
           "4": "unit: reuse, a new quote under 5 min left, 20 an hour then 429, test mode, Arbitrum-only, paid, confirming, memo, direct and refused refund refusals",
-          "5": "backend-e2e: the gate worker reads the fake 1Click via ONECLICK_API_URL; unit tests use intentstest; ONECLICK_API_KEY only in apps/backend/.env"
+          "5": "unit: TestOneClickSignerKeyOnlyForAFakeOnLoopback; e2e: the backend gate's worker reads intentstest via ONECLICK_API_URL; with-env.sh keeps ONECLICK_API_KEY for the api and worker only"
         }
       },
       "branch": "feat/f448-a-payer-gets-a-verified-near-intents-quo",

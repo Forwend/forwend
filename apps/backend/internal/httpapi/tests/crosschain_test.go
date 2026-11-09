@@ -348,12 +348,26 @@ func TestCrossChainQuoteRefusesWhat1ClickSignedForAnotherPayment(t *testing.T) {
 		},
 		"less out": func(a map[string]any) { a["quote"].(map[string]any)["minAmountOut"] = "99000000" },
 		"memo":     func(a map[string]any) { a["quote"].(map[string]any)["depositMemo"] = "7" },
+		// Signed when set, but never asked for: another recipient on a virtual chain.
+		"virtual recipient": func(a map[string]any) {
+			a["quoteRequest"].(map[string]any)["virtualChainRecipient"] = "0x0000000000000000000000000000000000000bad"
+		},
+		// Typed: the slippage asked for is the number 100, not the text.
+		"typed": func(a map[string]any) { a["quoteRequest"].(map[string]any)["slippageTolerance"] = "100" },
 	} {
 		fake.Tamper = tamper
 		pay, _ := liveInvoice(t, e, "key-"+name, 86400)
 		if r := quote(pay, refundTo); r.status != http.StatusServiceUnavailable || errorCode(r) != "provider_unavailable" {
 			t.Fatalf("%s: %d %v", name, r.status, r.body)
 		}
+	}
+	// A dry answer's address is not signed, so a price that has one is refused.
+	fake.Tamper = func(a map[string]any) {
+		a["quote"].(map[string]any)["depositAddress"] = "0x000000000000000000000000000000000000beef"
+	}
+	dry, _ := liveInvoice(t, e, "key-dry", 86400)
+	if r := e.call(t, "GET", crossPath+dry+"/crosschain/price?originAsset="+url.QueryEscape(tronUSDT), "", "", ""); r.status != http.StatusServiceUnavailable {
+		t.Fatalf("dry with an address: %d %v", r.status, r.body)
 	}
 	fake.Tamper = nil
 
