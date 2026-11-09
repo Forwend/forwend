@@ -1180,7 +1180,7 @@
       "dependsOn": [
         "F446"
       ],
-      "state": "not_started",
+      "state": "active",
       "verification": [
         "backend",
         "docs-check"
@@ -1193,7 +1193,9 @@
       "keep": [],
       "review": true,
       "notes": [],
-      "blockedReason": null
+      "blockedReason": null,
+      "branch": "feat/f444-the-executor-tops-up-its-own-gas-from-th",
+      "baseCommit": "7c3ae36a2673281f8b179bb2ccb8c05602dc8084"
     },
     {
       "id": "F445",
