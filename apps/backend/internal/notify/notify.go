@@ -224,6 +224,7 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 		decimals, options    int
 		chainID              uint64
 		live                 bool
+		clientFees           string // the fees the client pays on top, "0" when the owner pays them (D-122)
 	)
 	if err := tx.QueryRow(ctx, `SELECT p.email_notifications, u.login_email, m.payer_email, m.number,
 		    coalesce(m.issuer_name, ''), coalesce(m.sender_name, ''), t.symbol, t.decimals, o.chain_id, o.amount::text,
@@ -233,11 +234,12 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 		              WHERE d.invoice_id = o.id ORDER BY d.block_number DESC, d.log_index DESC LIMIT 1), ''),
 		    coalesce(m.client_email, ''), coalesce(m.issuer_email, ''), coalesce(m.due_date::text, ''),
 		    (SELECT count(*) FROM invoices x WHERE coalesce(x.main_id, x.id) = m.id), coalesce(m.pay_token, ''),
-		    (SELECT livemode FROM chains c WHERE c.chain_id = o.chain_id)
+		    (SELECT livemode FROM chains c WHERE c.chain_id = o.chain_id),
+		    (CASE WHEN o.fees_paid_by = 'client' THEN o.network_fee + o.platform_fee ELSE 0 END)::text
 		FROM invoices m JOIN profiles p ON p.id = m.profile_id JOIN users u ON u.id = p.user_id
 		JOIN invoices o ON o.id = $2 JOIN tokens t ON t.chain_id = o.chain_id AND t.contract = o.token_contract
 		WHERE m.id = $1`, invoice, p.Option).Scan(&on, &to, &payer, &number, &issuer, &typed, &symbol, &decimals, &chainID,
-		&amount, &hash, &client, &replyTo, &due, &options, &pay, &live); err != nil {
+		&amount, &hash, &client, &replyTo, &due, &options, &pay, &live, &clientFees); err != nil {
 		return view{}, nil, false, fmt.Errorf("invoice: %w", err)
 	}
 	// An invoice made before D-86 has no pay link: the client's and the payer's emails would link nowhere.
@@ -261,10 +263,16 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 	if kind == outbox.Sent {
 		// The owner sent it, so the owner's setting doesn't apply (R-94).
 		network := document.NetworkName(chainID)
+		text := document.Amount(units, decimals, symbol)
 		if options > 1 { // the client chooses the token and network, each at 1 USD (D-75)
 			symbol, network = "USD", ""
+			text = document.Amount(units, decimals, symbol)
+			// Each network adds its own fee on top of the price (R-227).
+			if fees, _ := new(big.Int).SetString(clientFees, 10); fees.Sign() > 0 {
+				text = document.Amount(new(big.Int).Sub(units, fees), decimals, symbol) + " plus the network fee"
+			}
 		}
-		return marked(sent(reference, document.Amount(units, decimals, symbol), network, issuer, typed,
+		return marked(sent(reference, text, network, issuer, typed,
 				document.DateText(due), replyTo, webURL+"/pay/"+pay, webURL+"/api/v1/invoices/"+pay+"/invoice.pdf"), live),
 			&client, true, nil
 	}
@@ -542,6 +550,7 @@ func reminderEmail(ctx context.Context, tx pgx.Tx, id string, p outbox.Payload, 
 		on, locked                       bool
 		to, issuer, sender, replyTo, due string
 		symbol, left, token, pay         string
+		clientFees                       string // the fees the client pays on top (D-122)
 		number                           int64
 		decimals, options                int
 		chainID                          uint64
@@ -553,11 +562,12 @@ func reminderEmail(ctx context.Context, tx pgx.Tx, id string, p outbox.Payload, 
 		    coalesce(m.issuer_email, ''), coalesce(to_char(m.due_date, 'YYYY-MM-DD'), ''), m.number, t.symbol, t.decimals,
 		    o.chain_id, (o.amount + `+invoice.PaidToOwnerSQL("o.id")+`)::text,
 		    (SELECT count(*) FROM invoices c WHERE c.id = m.id OR c.main_id = m.id), m.chosen_id IS NOT NULL, r.stop_token,
-		    coalesce(m.pay_token, ''), (SELECT livemode FROM chains c WHERE c.chain_id = o.chain_id)
+		    coalesce(m.pay_token, ''), (SELECT livemode FROM chains c WHERE c.chain_id = o.chain_id),
+		    (CASE WHEN o.fees_paid_by = 'client' THEN o.network_fee + o.platform_fee ELSE 0 END)::text
 		FROM invoices m JOIN invoice_reminders r ON r.invoice_id = m.id JOIN invoices o ON o.id = $2
 		JOIN tokens t ON t.chain_id = o.chain_id AND t.contract = o.token_contract
 		WHERE m.id = $1`, id, p.Option).Scan(&on, &to, &issuer, &sender, &replyTo, &due, &number, &symbol, &decimals,
-		&chainID, &left, &options, &locked, &token, &pay, &live); err != nil {
+		&chainID, &left, &options, &locked, &token, &pay, &live, &clientFees); err != nil {
 		return view{}, nil, false, fmt.Errorf("reminder: %w", err)
 	}
 	units, _ := new(big.Int).SetString(left, 10)
@@ -565,10 +575,16 @@ func reminderEmail(ctx context.Context, tx pgx.Tx, id string, p outbox.Payload, 
 		on = false
 	}
 	network := document.NetworkName(chainID)
+	text := document.Amount(units, decimals, symbol)
 	if options > 1 && !locked { // the client still chooses the token and network, each at 1 USD (D-75)
 		symbol, network = "USD", ""
+		text = document.Amount(units, decimals, symbol)
+		// Each network adds its own fee on top of the price (R-227).
+		if fees, _ := new(big.Int).SetString(clientFees, 10); fees.Sign() > 0 {
+			text = document.Amount(new(big.Int).Sub(units, fees), decimals, symbol) + " plus the network fee"
+		}
 	}
-	v := marked(reminder(p.Step, document.Number(number), document.Amount(units, decimals, symbol), network, issuer, sender,
+	v := marked(reminder(p.Step, document.Number(number), text, network, issuer, sender,
 		document.DateText(due), replyTo, webURL+"/pay/"+pay, webURL+"/api/v1/invoices/"+pay+"/invoice.pdf"), live)
 	v.Stop, v.Unsubscribe = webURL+"/reminders/"+token, webURL+"/api/v1/reminders/"+token+"/stop"
 	return v, &to, on, nil

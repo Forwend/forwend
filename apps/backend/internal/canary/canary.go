@@ -42,19 +42,21 @@ var (
 // pay link's token of the invoice the line belongs to (D-86); ClosesAt is when its checkout closes (R-130).
 type terms struct {
 	ID, PayToken, Recipient, Token, Amount, Symbol, Network string
+	NetworkFee, PlatformFee                                 string // in its terms with a v2 factory (R-226)
 	ChainID, ExpiresAt, SettleDeadline, ClosesAt            uint64
 }
 
 // apiInvoice is the part of GET /v1/invoices/{payToken} the canary compares.
 type apiInvoice struct {
 	InvoiceID, Recipient, Token, Amount, ExpiresAt, SettleDeadline, Factory, ReceiveAddress string
+	NetworkFee, PlatformFee                                                                 string
 	ChainID                                                                                 uint64
 	Options                                                                                 []apiOption
 }
 
 type apiOption struct {
-	OptionID, Token, Amount, ReceiveAddress string
-	ChainID                                 uint64
+	OptionID, Token, Amount, ReceiveAddress, NetworkFee, PlatformFee string
+	ChainID                                                          uint64
 }
 
 // page always names the option: without it a payer-chooses link shows no address, also for its first option.
@@ -147,6 +149,9 @@ func checkFactory(ctx context.Context, c config.Canary, cl *rpc.Client, chainID 
 }
 
 func checkInvoice(ctx context.Context, c config.Canary, rpcs map[uint64][2]*rpc.Client, t terms, page payPage) error {
+	if !c.FactoryFees && (t.NetworkFee != "0" || t.PlatformFee != "0") {
+		return errors.New("the terms carry fees, but the factory's terms have none")
+	}
 	api, err := readAPI(ctx, c.APIURL+"/v1/invoices/"+t.PayToken)
 	if err != nil {
 		return fmt.Errorf("api: %w", err)
@@ -161,6 +166,7 @@ func checkInvoice(ctx context.Context, c config.Canary, rpcs map[uint64][2]*rpc.
 		if o.OptionID == t.ID {
 			api.InvoiceID, api.ChainID, api.Token, api.Amount, api.ReceiveAddress = o.OptionID, o.ChainID, o.Token,
 				o.Amount, o.ReceiveAddress
+			api.NetworkFee, api.PlatformFee = o.NetworkFee, o.PlatformFee
 			found = true
 		}
 	}
@@ -234,6 +240,8 @@ func sameTerms(c config.Canary, t terms, api apiInvoice) error {
 		{"recipient", api.Recipient, t.Recipient, !strings.EqualFold(api.Recipient, t.Recipient)},
 		{"token", api.Token, t.Token, !strings.EqualFold(api.Token, t.Token)},
 		{"amount", api.Amount, t.Amount, api.Amount != t.Amount},
+		{"networkFee", api.NetworkFee, t.NetworkFee, api.NetworkFee != t.NetworkFee},
+		{"platformFee", api.PlatformFee, t.PlatformFee, api.PlatformFee != t.PlatformFee},
 		{"expiresAt", api.ExpiresAt, t.ExpiresAt, err1 != nil || expires.Unix() != int64(t.ExpiresAt)},
 		{"settleDeadline", api.SettleDeadline, t.SettleDeadline, err2 != nil || deadline.Unix() != int64(t.SettleDeadline)},
 		{"factory", api.Factory, c.Factory, !strings.EqualFold(api.Factory, c.Factory)},
@@ -247,20 +255,29 @@ func sameTerms(c config.Canary, t terms, api apiInvoice) error {
 
 func parseTerms(line string) (terms, error) {
 	f := strings.Fields(line)
-	if len(f) != 11 {
-		return terms{}, errors.New("want: id chain_id recipient token amount expires_at settle_deadline symbol network pay_token closes_at")
+	if len(f) != 13 {
+		return terms{}, errors.New("want: id chain_id recipient token amount expires_at settle_deadline symbol network pay_token " +
+			"closes_at network_fee platform_fee")
 	}
 	t := terms{ID: f[0], PayToken: f[9], Recipient: strings.ToLower(f[2]), Token: strings.ToLower(f[3]), Amount: f[4],
-		Symbol: f[7], Network: f[8]}
+		Symbol: f[7], Network: f[8], NetworkFee: f[11], PlatformFee: f[12]}
 	var err1, err2, err3, err4 error
 	t.ChainID, err1 = strconv.ParseUint(f[1], 10, 64)
 	t.ExpiresAt, err2 = strconv.ParseUint(f[5], 10, 64)
 	t.SettleDeadline, err3 = strconv.ParseUint(f[6], 10, 64)
 	t.ClosesAt, err4 = strconv.ParseUint(f[10], 10, 64)
 	amount, ok := new(big.Int).SetString(t.Amount, 10)
+	network, okNetwork := new(big.Int).SetString(t.NetworkFee, 10)
+	platform, okPlatform := new(big.Int).SetString(t.PlatformFee, 10)
 	if !invoiceID.MatchString(t.ID) || !payToken.MatchString(t.PayToken) || !common.IsHexAddress(t.Recipient) || !common.IsHexAddress(t.Token) || !ok ||
-		amount.Sign() < 0 || amount.BitLen() > 256 || amount.String() != t.Amount || errors.Join(err1, err2, err3, err4) != nil {
+		amount.Sign() < 0 || amount.BitLen() > 256 || amount.String() != t.Amount || errors.Join(err1, err2, err3, err4) != nil ||
+		!okNetwork || !okPlatform || network.Sign() < 0 || platform.Sign() < 0 || network.String() != t.NetworkFee ||
+		platform.String() != t.PlatformFee {
 		return terms{}, errors.New("a value is malformed")
+	}
+	// settle() takes at most a tenth of the amount in fees: past it the money could only be refunded.
+	if fees := new(big.Int).Add(network, platform); new(big.Int).Mul(fees, big.NewInt(10)).Cmp(amount) > 0 {
+		return terms{}, errors.New("the fees pass a tenth of the amount")
 	}
 	// The rules create applies: terms that break them leave a payer's money refundable only.
 	switch zero := "0x0000000000000000000000000000000000000000"; {
@@ -274,7 +291,8 @@ func parseTerms(line string) (terms, error) {
 // Seconds from expiry to the settle deadline that create used: 7 days (invoice.SettleWindow), 1 day before it (D-18).
 var settleWindows = []uint64{604800, 86400}
 
-// predictCall is factory.predict(terms). Fees are 0 until invoices carry them (F443).
+// predictCall is factory.predict(terms). A factory whose terms have no fees gets none; fees on such terms are an
+// alert before this is called.
 func (t terms) predictCall(fees bool) []byte {
 	word := func(n *big.Int) []byte { return n.FillBytes(make([]byte, 32)) }
 	address := func(s string) []byte { return word(new(big.Int).SetBytes(common.HexToAddress(s).Bytes())) }
@@ -291,7 +309,10 @@ func (t terms) predictCall(fees bool) []byte {
 	data = append(data, word(new(big.Int).SetUint64(t.SettleDeadline))...)
 	data = append(data, word(new(big.Int).SetUint64(t.ChainID))...)
 	if fees {
-		data = append(data, make([]byte, 64)...)
+		network, _ := new(big.Int).SetString(t.NetworkFee, 10)
+		platform, _ := new(big.Int).SetString(t.PlatformFee, 10)
+		data = append(data, word(network)...)
+		data = append(data, word(platform)...)
 	}
 	return data
 }

@@ -153,7 +153,7 @@ func TestReturnsThroughSupport(t *testing.T) {
 	waitFor(t, "A settled", func() bool { st.anvil.Mine(1); _, s, _ := read(a); return s == "settled" })
 	matches(a, aReceive, 1000000)
 	_, _, refund := read(a)
-	if got := onChain(st.token, wallet); refund != "refund_pending" || got != 5000000 {
+	if got := onChain(st.token, wallet); refund != "refund_pending" || got != 5000000-networkFee {
 		t.Fatalf("A while its return waits: refund %s, creator wallet %d", refund, got)
 	}
 	before := payer()
@@ -251,7 +251,7 @@ func TestReturnsThroughSupport(t *testing.T) {
 	if err := st.conn.QueryRow(ctx, "SELECT count(*) FROM settlement_intents").Scan(&settles); err != nil || settles != 1 {
 		t.Fatalf("%d settlement intents (%v), want A's alone", settles, err)
 	}
-	if got := onChain(st.token, wallet); got != 5000000 {
-		t.Fatalf("creator wallet %d, want A's 5.00 alone", got)
+	if got := onChain(st.token, wallet); got != 5000000-networkFee {
+		t.Fatalf("creator wallet %d, want A's 5.00 alone, less its network fee", got)
 	}
 }

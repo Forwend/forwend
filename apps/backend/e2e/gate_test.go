@@ -42,6 +42,10 @@ const (
 	appID  = "gate-app"
 	wallet = "0x1111111111111111111111111111111111111111" // the creator's profile wallet
 	amount = "5000000"
+	// networkFee is each invoice's network fee: Anvil's gas, priced as dollars, rounds up to 0.01 USD (R-227). The
+	// owner pays it by default, so a settlement pays the creator the amount less it.
+	networkFee = 10000
+	netAmount  = "4990000"
 )
 
 // TestMoneyLoop pays an invoice on Anvil and follows it to settled through the worker and signer; the ledger then
@@ -84,6 +88,11 @@ func TestMoneyLoop(t *testing.T) {
 		t.Fatalf("create invoice: %d %v", status, created)
 	}
 	id, pay, receive := created["invoiceId"].(string), created["payToken"].(string), created["receiveAddress"].(string)
+	// R-227: the API quoted the network fee into the terms; the owner pays it.
+	if created["networkFee"] != fmt.Sprint(networkFee) || created["netAmount"] != netAmount || created["feesPaidBy"] != "owner" {
+		t.Fatalf("fees %v %v %v, want the 0.01 network fee taken from the owner's 5.00", created["networkFee"],
+			created["netAmount"], created["feesPaidBy"])
+	}
 
 	var seen, deposit []string
 	note := func(list *[]string, state string) {
@@ -186,7 +195,7 @@ func TestMoneyLoop(t *testing.T) {
 	}
 
 	balance := ledger.BalanceFrom(map[uint64]*ethclient.Client{chaintest.ChainID: ethclient.NewClient(anvil.RPC)})
-	for holder, want := range map[string]int64{receive: 0, wallet: 5000000} {
+	for holder, want := range map[string]int64{receive: 0, wallet: 5000000 - networkFee} {
 		got, _, err := balance(ctx, chaintest.ChainID, token, holder)
 		if err != nil || got.Int64() != want {
 			t.Fatalf("balance of %s: %v %v, want %d", holder, got, err, want)
@@ -206,11 +215,11 @@ func TestMoneyLoop(t *testing.T) {
 	anvil.Mine(2)
 	money := authed(t, api+"/v1/profiles/"+profile+"/balances", privy)
 	tokens, _ := money["tokens"].([]any)
-	if len(tokens) != 1 || money["estimatedUsdTotal"] != "5.00" {
-		t.Fatalf("balances %v, want the one token and an estimated 5.00 USD", money)
+	if len(tokens) != 1 || money["estimatedUsdTotal"] != "4.99" {
+		t.Fatalf("balances %v, want the one token and an estimated 4.99 USD: 5.00 less its network fee", money)
 	}
-	if tk := tokens[0].(map[string]any); tk["wallet"] != amount || tk["pending"] != "0" || tk["held"] != "0" {
-		t.Fatalf("balance %v, want wallet %s and nothing pending or held", tk, amount)
+	if tk := tokens[0].(map[string]any); tk["wallet"] != netAmount || tk["pending"] != "0" || tk["held"] != "0" {
+		t.Fatalf("balance %v, want wallet %s and nothing pending or held", tk, netAmount)
 	}
 	items, _ := authed(t, api+"/v1/profiles/"+profile+"/activity", privy)["items"].([]any)
 	if len(items) != 2 || items[0].(map[string]any)["kind"] != "deposit" || items[1].(map[string]any)["kind"] != "invoice" {

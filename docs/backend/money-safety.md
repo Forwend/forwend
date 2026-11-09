@@ -225,11 +225,11 @@ DOM and imports nothing from `src/`. It reads only its own `CANARY_*` variables 
 different hosts per chain ID and the script path.
 
 Stdin holds one open invoice or accepted option per line. A line has its terms as the database stores them, then its
-token's symbol and its chain's name. Then come the pay link's token of its invoice (D-86) and its close (`closes_at`,
-later than `expires_at` after a reopen, R-130):
-`id chain_id recipient_address token_contract amount expires_at settle_deadline symbol network pay_token closes_at`.
-A line whose terms break create's rules is an alert: amount 0, a recipient that is zero or the token, or another settle
-window. So is a close before expiry or at the settle deadline. A line within 6 minutes of its close is skipped: the
+token's symbol and its chain's name. Then come the pay link's token of its invoice (D-86), its close (`closes_at`,
+later than `expires_at` after a reopen, R-130) and its fees (R-226):
+`id chain_id recipient_address token_contract amount expires_at settle_deadline symbol network pay_token closes_at network_fee platform_fee`.
+A line whose terms break create's rules is an alert: amount 0, a recipient that is zero or the token, another settle
+window, or fees over a tenth of the amount. So are fees in the terms of a factory whose terms have none (`CANARY_FACTORY_FEES`). So is a close before expiry or at the settle deadline. A line within 6 minutes of its close is skipped: the
 pay page stops showing the address 5 minutes before the close. The canary then:
 
 1. On both RPCs of every configured chain, requires `eth_chainId` to equal the chain ID and the keccak256 of the
@@ -237,7 +237,7 @@ pay page stops showing the address 5 minutes before the close. The canary then:
    code holds the terms), so the canary pins the factory's runtime code instead: with its immutables it fixes
    `predict`, the receiver implementation and the refund authority.
 2. Reads `GET <api>/v1/invoices/<pay_token>`, requires its `invoiceId` to be keccak256 of the token, and requires the
-   listed option with this `id` (its `optionId`, chain, token, amount and address) and the invoice's shared terms and
+   listed option with this `id` (its `optionId`, chain, token, amount, fees and address) and the invoice's shared terms and
    `factory` to equal the database's terms and `CANARY_FACTORY`.
 3. Calls `predict` with the database's terms on both RPCs and requires both to agree and to equal the api's
    `receiveAddress`.
@@ -257,7 +257,8 @@ check on the last `canary passed`):
 
 ```sh
 psql "$READONLY_DATABASE_URL" -At -F ' ' -c "SELECT i.id, i.chain_id, i.recipient_address, i.token_contract,
-  i.amount, i.expires_at, i.settle_deadline, t.symbol, c.name, m.pay_token, i.closes_at FROM invoices i
+  i.amount, i.expires_at, i.settle_deadline, t.symbol, c.name, m.pay_token, i.closes_at, i.network_fee, i.platform_fee
+  FROM invoices i
   JOIN invoices m ON m.id = coalesce(i.main_id, i.id)
   JOIN tokens t ON t.chain_id = i.chain_id AND t.contract = i.token_contract JOIN chains c ON c.chain_id = i.chain_id
   WHERE i.payment_status IN ('open', 'partially_paid') AND i.closes_at > extract(epoch FROM now()) + 60

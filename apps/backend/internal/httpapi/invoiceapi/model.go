@@ -12,11 +12,13 @@ import (
 )
 
 type createInvoiceBody struct {
-	ChainID    uint64 `json:"chainId"`
-	Token      string `json:"token"`
-	Amount     string `json:"amount"`
-	AmountUSD  string `json:"amountUsd"`
-	ExpiresIn  *int64 `json:"expiresIn"`
+	ChainID   uint64 `json:"chainId"`
+	Token     string `json:"token"`
+	Amount    string `json:"amount"`
+	AmountUSD string `json:"amountUsd"`
+	ExpiresIn *int64 `json:"expiresIn"`
+	// owner or client (D-122); left out: the profile's choice.
+	FeesPaidBy string `json:"feesPaidBy"`
 	Title      string `json:"title"`
 	Note       string `json:"note"`
 	DueDate    string `json:"dueDate"`

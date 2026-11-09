@@ -380,7 +380,7 @@ export const INVOICE_COPY = {
     [SETTLEMENT_WAITS.retrying]: (_network: string, _seconds: number, at: string) =>
       `Sending to your wallet · trying again at ${at}`,
     [SETTLEMENT_WAITS.dailyLimit]: (_network: string, _seconds: number, at: string) =>
-      `Paused: today's settlements that Forwend pays the network fee for are used up. Next try at ${at}`,
+      `Paused: your profile's settlements for today are used up. Next try at ${at}`,
     [SETTLEMENT_WAITS.refused]: () =>
       "Stopped for a manual check. The money stays at the invoice's address until Forwend resolves it",
   } satisfies Record<SettlementWaitKind, (network: string, seconds: number, at: string) => string>,
@@ -684,4 +684,17 @@ export const OWED_COPY = {
   checkout: "Checkout",
   more: (n: number) => (n === 1 ? "1 more is unpaid." : `${n} more are unpaid.`),
   inPayments: "Open Payments",
+} as const;
+
+/** R-227: the fees a new invoice or link would carry, before it is saved. */
+export const FEES_FORM_COPY = {
+  clientPays: "Add the network fee to what your client pays",
+  subtotal: "Subtotal",
+  networkFee: "Network fee",
+  fees: "Network and platform fees",
+  clientTotal: "Your client pays",
+  youReceive: "You receive",
+  range: (low: string, high: string) => `${low} to ${high}, by network`,
+  pricing: "Pricing the network fee…",
+  failed: "The network fee can't be priced right now. It is set when you save.",
 } as const;

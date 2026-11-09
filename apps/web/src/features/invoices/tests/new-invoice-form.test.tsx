@@ -106,6 +106,49 @@ describe("new invoice form", () => {
     expect(bodies[1]).toBe(bodies[0]);
   });
 
+  // R-227: the form prices the network fee before it saves, and the owner chooses who pays it.
+  it("shows the network fee, what the client pays and what the owner receives, and sends who pays", async () => {
+    const created: Record<string, unknown>[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (request: Request) => {
+        if (request.method === "GET" && new URL(request.url).pathname.endsWith("/fees"))
+          return new Response(
+            JSON.stringify({
+              feesPaidBy: "owner",
+              options: [{ ...TOKEN, price: "100000000", networkFee: "50000", platformFee: "0" }],
+            }),
+            { headers: { "Content-Type": "application/json" } },
+          );
+        created.push(JSON.parse(await request.text()));
+        throw new TypeError("Failed to fetch");
+      }),
+    );
+    render(
+      <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+        <NewInvoiceForm profileId={PROFILE} testnet tokens={[TOKEN]} />
+      </Provider>,
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }), {
+      target: { value: "Mara Ilić" },
+    });
+    fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "100" } });
+    // The quote waits for typing to stop.
+    await form().findByText("Network fee", undefined, { timeout: 2000 });
+    const row = (term: string) => form().getByText(term).nextElementSibling?.textContent;
+    expect(row("Network fee")).toBe("0.05 USDC");
+    expect(row("Your client pays")).toBe("100.00 USDC");
+    expect(row("You receive")).toBe("99.95 USDC");
+    fireEvent.click(
+      form().getByRole("switch", { name: "Add the network fee to what your client pays" }),
+    );
+    expect(row("Your client pays")).toBe("100.05 USDC");
+    expect(row("You receive")).toBe("100.00 USDC");
+    create();
+    await settle();
+    expect(created.at(-1)?.feesPaidBy).toBe("client");
+  });
+
   // R-86.
   it("fills the client from a saved client and sends its details", async () => {
     const bodies: Record<string, unknown>[] = [];

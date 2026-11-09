@@ -7,7 +7,6 @@ import {
   DUE_GRACE_DAYS,
   EXPIRY_BOUNDS_S,
   EXPIRY_CHOICES,
-  FEES_PAID_BY,
   INVOICE_EXCEPTIONS,
   INVOICE_FIELDS,
   INVOICE_TIMELINE,
@@ -22,6 +21,7 @@ import type {
   AmountError,
   Deposit,
   ExpiryChoice,
+  FeeQuote,
   FeeTerms,
   Invoice,
   InvoiceClient,
@@ -37,6 +37,7 @@ import type {
   OptionFees,
   Owed,
 } from "@/features/invoices/types/invoices";
+import { FEES_PAID_BY } from "@/features/profiles/constants/profile";
 import type { TokenRef } from "@/features/profiles/types/tokens";
 import { API_BASE } from "@/shared/config/api";
 import { APP_ROUTES } from "@/shared/config/routes";
@@ -296,6 +297,37 @@ export function optionFees(o: FeeTerms): OptionFees {
   };
 }
 
+/** What the client pays and the owner receives of a quoted price (R-227), lowest and highest over the options in the
+ * form's units: on a payer-chooses invoice each network adds its own fee. Null before a quote. */
+export function feeFigures(
+  quote: FeeQuote | undefined,
+  decimals: number,
+  clientPays: boolean,
+): {
+  fee: [bigint, bigint];
+  pays: [bigint, bigint];
+  receives: [bigint, bigint];
+  /** A platform fee is part of fee. */
+  platform: boolean;
+} | null {
+  const options = quote?.options.filter((o) => o.decimals === decimals) ?? [];
+  const first = options[0];
+  if (!first) return null;
+  // bigint has no Math.min: the sorted ends instead.
+  const fees = options
+    .map((o) => BigInt(o.networkFee) + BigInt(o.platformFee))
+    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const low = fees[0] ?? 0n;
+  const high = fees[fees.length - 1] ?? 0n;
+  const price = BigInt(first.price);
+  return {
+    fee: [low, high],
+    pays: clientPays ? [price + low, price + high] : [price, price],
+    receives: clientPays ? [price, price] : [price - high, price - low],
+    platform: options.some((o) => BigInt(o.platformFee) > 0n),
+  };
+}
+
 /** The line table's total and fees: the shown option's when its units are the lines', since each option has its own
  * fees (R-228); else the main option's amount, whose units the lines are in (R-88), without fee rows. */
 export function linesFigures(
@@ -366,7 +398,10 @@ export function restartFrom(
 ): InvoiceStart {
   const decimals = inv.options.find((o) => o.optionId === inv.optionId)?.decimals ?? 0;
   const { received, left } = invoiceException(inv, PAYMENT_STATUS.expiredPartiallyPaid);
-  const units = rest ? left : BigInt(inv.amount);
+  // The price, without the fees a client paid on top: the new invoice adds its own (R-227).
+  const fees = optionFees(inv);
+  const onTop = fees.clientPays ? fees.total : 0n;
+  const units = rest ? (left > onTop ? left - onTop : 0n) : BigInt(inv.amount) - onTop;
   // Lines are in the base units of the invoice's own option (R-88).
   const lineDecimals = inv.options.find((o) => o.optionId === inv.invoiceId)?.decimals ?? decimals;
   return {
@@ -383,6 +418,7 @@ export function restartFrom(
         })),
     title: inv.title ?? "",
     note: inv.note ?? "",
+    feesPaidBy: inv.feesPaidBy ?? FEES_PAID_BY.owner,
     returnUrl: inv.returnUrl ?? "",
     reference: inv.reference ?? "",
     // The price agreed for the whole amount (R-93): it does not describe the rest.

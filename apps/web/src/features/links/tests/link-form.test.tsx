@@ -97,3 +97,14 @@ it("opens a one-payment link with Reusable off", () => {
     "false",
   );
 });
+
+// D-122: the link saves who pays its fees: the profile's choice to start, and the client once the switch is on.
+it("saves who pays the network fee", async () => {
+  const bodies = edit(LINK);
+  await save();
+  fireEvent.click(
+    screen.getByRole("switch", { name: "Add the network fee to what your client pays" }),
+  );
+  await save();
+  expect(bodies.map((body) => body.feesPaidBy)).toEqual(["owner", "client"]);
+});

@@ -35,13 +35,15 @@ type Link struct {
 	MaxPayments int // 0 for no cap
 	Active      bool
 	Livemode    bool
-	Visits      int64
-	Paid        int64
-	Reserved    int64
-	Ready       bool
-	Revision    int64
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	// FeesPaidBy is who pays its invoices' fees (D-122): "" for the profile's choice.
+	FeesPaidBy string
+	Visits     int64
+	Paid       int64
+	Reserved   int64
+	Ready      bool
+	Revision   int64
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 // Details are what the owner sets; the amounts are USD decimals like "12.50", "" for none.
@@ -55,6 +57,7 @@ type Details struct {
 	EndsAt      *time.Time
 	MaxPayments *int // nil for no cap
 	Active      bool
+	FeesPaidBy  string // "", invoice.FeesPaidByOwner or invoice.FeesPaidByClient
 }
 
 type Service struct {

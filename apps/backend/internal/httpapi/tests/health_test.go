@@ -10,6 +10,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
 
 func TestHealthz(t *testing.T) {
@@ -17,7 +18,7 @@ func TestHealthz(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := httptest.NewServer(httpapi.NewMux(pool, nil, nil, nil, nil, nil, "", 0, nil, false))
+	server := httptest.NewServer(httpapi.NewMux(pool, nil, nil, nil, nil, nil, "", 0, nil, false, invoice.Pricing{}))
 	defer server.Close()
 
 	res, err := http.Get(server.URL + "/healthz")

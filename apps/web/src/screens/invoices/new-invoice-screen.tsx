@@ -148,6 +148,7 @@ export function NewInvoiceScreen() {
             key={`${profile.profileId}:${from ?? ""}:${clientId ?? ""}`}
             profileId={profile.profileId}
             testnet={!profile.livemode}
+            feesPaidBy={profile.feesPaidBy}
             issuer={billing.currentData}
             tokens={tokens}
             start={start}

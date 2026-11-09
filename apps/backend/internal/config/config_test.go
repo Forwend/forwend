@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -189,6 +190,36 @@ func TestRPCSecretsRejectMalformedInputWithoutEchoingIt(t *testing.T) {
 		_, err := config.LoadWorker()
 		if err == nil || !strings.Contains(err.Error(), "RPC_ENDPOINT_SECRETS") || strings.Contains(err.Error(), "SECRET\"") {
 			t.Fatalf("unsafe secret validation error: %v", err)
+		}
+	}
+}
+
+// D-122: the platform fee plan is 0% when unset, and a plan the contract's tenth can't carry or a minimum over the cap
+// stops startup.
+func TestPlatformFeePlan(t *testing.T) {
+	for _, name := range []string{"DATABASE_URL", "API_ADDR", "PRIVY_APP_ID", "PRIVY_APP_SECRET"} {
+		t.Setenv(name, "x")
+	}
+	t.Setenv("PRIVY_JWKS_URL", "https://jwks")
+	t.Setenv("PUBLIC_WEB_URL", "https://forwend.app")
+	t.Setenv("RPC_RATE_PER_SECOND", "2")
+	for _, c := range []struct{ bps, low, high, want string }{
+		{"", "", "", "0 <nil> <nil>"},
+		{"50", "0.10", "25", "50 1/10 25/1"},
+		{"501", "", "", "invalid"},
+		{"50", "1.005", "", "invalid"},
+		{"50", "5", "1", "invalid"},
+	} {
+		t.Setenv("PLATFORM_FEE_BPS", c.bps)
+		t.Setenv("PLATFORM_FEE_MIN_USD", c.low)
+		t.Setenv("PLATFORM_FEE_CAP_USD", c.high)
+		got, err := config.LoadAPI()
+		plan := fmt.Sprintf("%d %v %v", got.Fees.RateBps, got.Fees.MinUSD, got.Fees.CapUSD)
+		if err != nil {
+			plan = "invalid"
+		}
+		if plan != c.want {
+			t.Errorf("bps %q min %q cap %q: %s (%v), want %s", c.bps, c.low, c.high, plan, err, c.want)
 		}
 	}
 }

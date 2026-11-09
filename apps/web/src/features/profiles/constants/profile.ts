@@ -37,6 +37,7 @@ export const PERMISSIONS = {
   // Sending out of the wallet: the owner's alone (D-61).
   moneyMove: "money.move",
   billingRead: "billing.read",
+  billingWrite: "billing.write",
   tokensRead: "tokens.read",
   tokensWrite: "tokens.write",
   jobs: "jobs",
@@ -63,3 +64,7 @@ export const PROFILE_NAME_MAX = 64;
 
 /** The most profiles one user can own (profile.MaxProfiles). */
 export const PROFILES_MAX = 10;
+
+/** Who pays an invoice's fees (D-122): the owner, deducted at settlement, or the client, on top of the price. The
+ * profile chooses for its invoices unless one chooses otherwise. */
+export const FEES_PAID_BY = { owner: "owner", client: "client" } as const;

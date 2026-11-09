@@ -195,6 +195,10 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 			fmt.Sprintf("more than %d transactions in these days: choose a shorter period", activity.MaxExportRows)
 	case errors.Is(err, invoice.ErrNotWatched):
 		status, code, message = http.StatusServiceUnavailable, "network_not_ready", "this network is starting: try again in a minute"
+	case errors.Is(err, invoice.ErrFeeQuote):
+		slog.Warn("could not price a network fee", "err", err)
+		status, code, message = http.StatusServiceUnavailable, "network_fee_unavailable",
+			"could not price the network fee: try again shortly"
 	case errors.Is(err, invoice.ErrChainUnavailable):
 		slog.Warn("recheck could not read the chain", "err", err)
 		status, code, message = http.StatusServiceUnavailable, "network_unavailable", "could not read the network: try again shortly"

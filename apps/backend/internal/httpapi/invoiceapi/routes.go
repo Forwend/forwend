@@ -38,6 +38,7 @@ func Routes(mux *http.ServeMux, g mid.Guards, invoices *invoice.Service, profile
 	emails := mid.NewBuckets(PayerEmailAllRate, PayerEmailAllBurst)
 	mux.Handle("POST /v1/profiles/{profileId}/invoices", g.Can(auth.InvoicesWrite)(createInvoice(invoices)))
 	mux.Handle("GET /v1/profiles/{profileId}/invoices", g.Can(auth.InvoicesRead)(listInvoices(invoices)))
+	mux.Handle("GET /v1/profiles/{profileId}/fees", g.Can(auth.InvoicesRead)(getFees(invoices)))
 	mux.Handle("GET /v1/profiles/{profileId}/invoices/{invoiceId}", g.Can(auth.InvoicesRead)(numbered(invoices, getProfileInvoice(invoices))))
 	mux.Handle("POST /v1/profiles/{profileId}/invoices/{invoiceId}/cancel", g.Can(auth.InvoicesWrite)(numbered(invoices, cancelInvoice(invoices))))
 	mux.Handle("POST /v1/profiles/{profileId}/invoices/{invoiceId}/reopen", g.Can(auth.InvoicesWrite)(numbered(invoices, reopenInvoice(invoices))))

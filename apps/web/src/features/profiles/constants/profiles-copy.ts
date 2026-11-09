@@ -92,6 +92,22 @@ export const TOKENS_COPY = {
 } as const;
 
 /** R-221. */
+/** D-122: who pays new invoices' fees. */
+export const FEES_COPY = {
+  title: "Network fees",
+  note: "Each invoice carries the fee for sending its payment to your wallet. Choose who pays it on new invoices.",
+  legend: "Who pays the network fee",
+  owner: "You",
+  ownerHint:
+    "Taken from what you receive when the payment reaches your wallet. Your client pays the price.",
+  client: "Your client",
+  clientHint: "Added to what your client pays. You receive the full price.",
+  kept: "Each invoice and link can choose otherwise. Invoices you already sent keep theirs.",
+  ownersOnly: "Only the owner or an Admin can change it.",
+  saved: "Saved: new invoices follow it",
+  saveFailed: "We could not save who pays the fees. Try again.",
+} as const;
+
 export const DEVELOPER_MODE_COPY = {
   title: "Developer mode",
   intro: "Try Forwend on test networks with free testnet tokens before you take real money.",

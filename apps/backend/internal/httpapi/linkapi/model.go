@@ -19,6 +19,8 @@ type linkBody struct {
 	MaxPayments *int       `json:"maxPayments"`
 	// Left out: on.
 	Active *bool `json:"active"`
+	// Who pays its invoices' fees (D-122); null or left out: the profile's choice.
+	FeesPaidBy *string `json:"feesPaidBy"`
 }
 
 type linkJSON struct {
@@ -33,6 +35,7 @@ type linkJSON struct {
 	MaxPayments *int    `json:"maxPayments"`
 	Active      bool    `json:"active"`
 	Livemode    bool    `json:"livemode"`
+	FeesPaidBy  *string `json:"feesPaidBy"` // null: the profile's choice
 	Visits      int64   `json:"visits"`
 	Paid        int64   `json:"paid"`
 	Reserved    int64   `json:"reserved"`
@@ -53,7 +56,8 @@ func usd(cents int64) *string {
 func toLinkJSON(l link.Link) linkJSON {
 	out := linkJSON{LinkID: l.ID, Slug: l.Slug, Title: l.Title, AmountUSD: usd(l.AmountCents), MinUSD: usd(l.MinCents),
 		MaxUSD: usd(l.MaxCents), Active: l.Active, Visits: l.Visits, Paid: l.Paid, Reserved: l.Reserved, Ready: l.Ready, Livemode: l.Livemode,
-		CreatedAt: l.CreatedAt.UTC().Format(time.RFC3339), UpdatedAt: l.UpdatedAt.UTC().Format(time.RFC3339)}
+		CreatedAt: l.CreatedAt.UTC().Format(time.RFC3339), UpdatedAt: l.UpdatedAt.UTC().Format(time.RFC3339),
+		FeesPaidBy: httpio.OrNull(l.FeesPaidBy)}
 	if l.StoreID != "" {
 		out.StoreID = &l.StoreID
 	}

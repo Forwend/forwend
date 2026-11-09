@@ -32,6 +32,7 @@ import {
 import type { Client, ClientBody, ClientKind } from "@/features/clients/types/clients";
 import { useCreateInvoiceMutation } from "@/features/invoices/api/invoices-api";
 import { AgreedValueFields } from "@/features/invoices/components/agreed-value";
+import { FeeSummary } from "@/features/invoices/components/fee-summary";
 import { type LineFieldErrors, LineItems } from "@/features/invoices/components/line-items";
 import {
   NewInvoicePreview,
@@ -49,6 +50,7 @@ import {
   STEP_IDS,
 } from "@/features/invoices/constants/invoices";
 import {
+  FEES_FORM_COPY,
   INVOICES_COPY,
   NEW_INVOICE_COPY,
   NEW_REQUEST_COPY,
@@ -62,6 +64,7 @@ import {
   dueCheckoutDate,
   dueCheckoutTarget,
   expiryChoice,
+  feeFigures,
   formatDueDate,
   invalidField,
   isReturnLink,
@@ -76,6 +79,7 @@ import type {
   AgreedDraft,
   CreateInvoiceBody,
   ExpiryChoice,
+  FeeQuote,
   Invoice,
   InvoiceField,
   InvoiceStart,
@@ -84,6 +88,8 @@ import type {
   LineError,
   PayWith,
 } from "@/features/invoices/types/invoices";
+import { FEES_PAID_BY } from "@/features/profiles/constants/profile";
+import type { FeesPaidBy } from "@/features/profiles/types/profile";
 import { allowsReturnLink, returnLinkOrigins } from "@/features/stores/lib/stores";
 import type { Store } from "@/features/stores/types/stores";
 import { AssetIcon } from "@/shared/components/chains/asset-icon";
@@ -133,6 +139,8 @@ export interface NewInvoiceFormProps {
   } | null;
   /** Developer mode (D-120): the preview is marked as a testnet invoice. */
   testnet: boolean;
+  /** D-122: who pays the fees unless this invoice says otherwise, the profile's choice. */
+  feesPaidBy?: FeesPaidBy;
 }
 
 const NO_CLIENT: ClientBody = { name: "", email: "", address: "", country: "", taxId: "" };
@@ -150,8 +158,13 @@ export function NewInvoiceForm({
   stores,
   issuer,
   testnet,
+  feesPaidBy = FEES_PAID_BY.owner,
 }: NewInvoiceFormProps) {
   const COPY = request ? NEW_REQUEST_COPY : NEW_INVOICE_COPY;
+  const [clientPays, setClientPays] = useState(
+    (start?.feesPaidBy ?? feesPaidBy) === FEES_PAID_BY.client,
+  );
+  const [quote, setQuote] = useState<FeeQuote>();
   const [createInvoice] = useCreateInvoiceMutation();
   const router = useRouter();
   const keys = useRef(new Map<string, { key: string; body: CreateInvoiceBody }>());
@@ -391,6 +404,7 @@ export function NewInvoiceForm({
       return;
     }
     const body: CreateInvoiceBody = {
+      feesPaidBy: clientPays ? FEES_PAID_BY.client : FEES_PAID_BY.owner,
       ...(any
         ? { amountUsd: decimalText(units, decimals) }
         : { chainId: token.chainId, token: token.token, amount: units.toString() }),
@@ -580,6 +594,11 @@ export function NewInvoiceForm({
   const money = (units: bigint) =>
     `${formatTokenAmount({ baseUnits: units, decimals, fractionDigits: Math.max(2, exactDigits(units, decimals)) })} ${unit}`;
   const total = typeof typedUnits === "string" ? 0n : typedUnits;
+  // R-227: when the client pays the fees, the client's documents ask for the price plus them.
+  const fees = clientPays ? feeFigures(quote, decimals, true) : null;
+  const span = ([low, high]: [bigint, bigint]) =>
+    low === high ? money(low) : FEES_FORM_COPY.range(money(low), money(high));
+  const due = fees && fees.fee[1] > 0n ? span(fees.pays) : money(total);
   const closes =
     expiry === CUSTOM_EXPIRY ? (closesOn ? formatDueDate(closesOn) : "") : COPY.expiry[expiry];
   const docKind = request ? "Request" : "Invoice";
@@ -595,7 +614,7 @@ export function NewInvoiceForm({
         label: COPY.preview.waiting,
         detail: "",
         figure: COPY.preview.amountDue,
-        amount: money(total),
+        amount: due,
       },
       from: request
         ? sender
@@ -639,25 +658,32 @@ export function NewInvoiceForm({
           amount: typeof line === "string" ? "—" : money(line.units),
         };
       }),
-      totals: [[COPY.preview.total, money(total)]],
+      totals:
+        fees && fees.fee[1] > 0n
+          ? [
+              [FEES_FORM_COPY.subtotal, money(total)],
+              [FEES_FORM_COPY.networkFee, span(fees.fee)],
+              [COPY.preview.total, due],
+            ]
+          : [[COPY.preview.total, money(total)]],
       note: typed.note,
       pay: any
-        ? [COPY.preview.payAny(money(total)), COPY.preview.payPick]
+        ? [COPY.preview.payAny(due), COPY.preview.payPick]
         : [
-            COPY.preview.payExact(money(total), network, token.chainId),
+            COPY.preview.payExact(due, network, token.chainId),
             COPY.preview.payContract(token.symbol, token.token),
           ],
     },
     payer: {
       name: sender,
-      amount: money(total),
+      amount: due,
       network: any ? COPY.preview.any : COPY.preview.on(network),
     },
     email: {
       subject: sender
         ? COPY.preview.emailSubject(docKind, sender)
         : `${docKind} ${COPY.preview.draft}`,
-      lead: COPY.preview.emailLead(sender || COPY.preview.someone, money(total)),
+      lead: COPY.preview.emailLead(sender || COPY.preview.someone, due),
       details: [
         [docKind, COPY.preview.draft],
         ...(dueDate ? [[COPY.preview.due, formatDueDate(dueDate)] as const] : []),
@@ -996,6 +1022,18 @@ export function NewInvoiceForm({
                       {COPY.items.add}
                     </Button>
                   )}
+                  <FeeSummary
+                    profileId={profileId}
+                    any={any}
+                    chainId={token.chainId}
+                    token={token.token}
+                    units={typeof typedUnits === "string" ? 0n : typedUnits}
+                    decimals={decimals}
+                    clientPays={clientPays}
+                    onClientPays={setClientPays}
+                    onQuote={setQuote}
+                    money={money}
+                  />
                   {request ? null : agreed ? (
                     <AgreedValueFields
                       id={agreedId}

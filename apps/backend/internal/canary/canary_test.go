@@ -42,8 +42,22 @@ var (
 func idOf(pay string) string { return crypto.Keccak256Hash(common.FromHex(pay)).Hex() }
 
 func lineOf(pay string) string {
-	return fmt.Sprintf("%s %d %s %s %s %d %d USDC anvil %s %d", id, chaintest.ChainID, recipient, token, amount,
+	return fmt.Sprintf("%s %d %s %s %s %d %d USDC anvil %s %d 0 0", id, chaintest.ChainID, recipient, token, amount,
 		expiresAt, deadline, pay, expiresAt)
+}
+
+// withFees is line with its network_fee and platform_fee fields set.
+func withFees(line, network, platform string) string {
+	f := strings.Fields(line)
+	f[11], f[12] = network, platform
+	return strings.Join(f, " ")
+}
+
+// withClose is line with its closes_at field set to at.
+func withClose[T int | int64 | uint64](line string, at T) string {
+	f := strings.Fields(line)
+	f[10] = fmt.Sprint(at)
+	return strings.Join(f, " ")
 }
 
 type setup struct {
@@ -119,7 +133,7 @@ func TestCheck(t *testing.T) {
 					"recipient": recipient, "factory": factory, "receiveAddress": want,
 					"expiresAt": "2030-01-01T00:00:00Z", "settleDeadline": "2030-01-02T00:00:00Z",
 					"options": []map[string]any{{"optionId": id, "chainId": chaintest.ChainID, "token": token,
-						"amount": amount, "receiveAddress": want}}}}
+						"amount": amount, "receiveAddress": want, "networkFee": "0", "platformFee": "0"}}}}
 			if tc.change != nil {
 				tc.change(&s)
 			}
@@ -139,12 +153,14 @@ func TestCheck(t *testing.T) {
 
 func TestCheckRejectsMalformedInput(t *testing.T) {
 	// The line ends with its close (R-130).
-	closing := func(at int) string { return strings.TrimSuffix(line, fmt.Sprint(expiresAt)) + fmt.Sprint(at) }
+	closing := func(at int) string { return withClose(line, at) }
 	for _, bad := range []string{id, closing(0), closing(deadline), strings.Replace(line, recipient, "0x11", 1), strings.Replace(line, amount, "-1", 1),
 		strings.Replace(line, amount, "0", 1), strings.Replace(line, fmt.Sprint(deadline), fmt.Sprint(deadline+1), 1),
 		strings.Replace(line, fmt.Sprint(deadline), fmt.Sprint(expiresAt+2*86400), 1),
 		strings.Replace(line, recipient, "0x0000000000000000000000000000000000000000", 1),
-		strings.Replace(line, recipient, token, 1)} {
+		strings.Replace(line, recipient, token, 1),
+		// R-226: fees over a tenth of the amount, which settle() refuses.
+		withFees(line, "200000", "50001")} {
 		alerts := canary.Check(context.Background(), config.Canary{AllowLoopback: true}, []string{bad})
 		if len(alerts) != 1 || !strings.Contains(alerts[0], "input line") {
 			t.Errorf("%q: got alerts %q", bad, alerts)
@@ -152,12 +168,17 @@ func TestCheckRejectsMalformedInput(t *testing.T) {
 	}
 	// D-18: invoices made before the 7-day window settle 1 day after expiry; both are create's rules.
 	week := strings.Replace(line, fmt.Sprint(deadline), fmt.Sprint(expiresAt+7*86400), 1)
-	for _, good := range []string{week, closing(deadline - 1), closing(expiresAt - 1)} {
+	for _, good := range []string{week, closing(deadline - 1), closing(expiresAt - 1), withFees(line, "200000", "50000")} {
 		for _, alert := range canary.Check(context.Background(), config.Canary{AllowLoopback: true}, []string{good}) {
 			if strings.Contains(alert, "input line") {
 				t.Errorf("%q: %q", good, alert)
 			}
 		}
+	}
+	// A factory whose terms have no fees can't have made terms with them.
+	alerts := canary.Check(context.Background(), config.Canary{AllowLoopback: true}, []string{withFees(line, "1", "0")})
+	if !slices.ContainsFunc(alerts, func(a string) bool { return strings.Contains(a, "factory's terms have none") }) {
+		t.Errorf("fees on a factory without them: %q", alerts)
 	}
 }
 
@@ -249,7 +270,8 @@ func TestCheckFirstOptionOfPayerChoosesInvoice(t *testing.T) {
 		"recipient": recipient, "factory": factory, "receiveAddress": want,
 		"expiresAt": "2030-01-01T00:00:00Z", "settleDeadline": "2030-01-02T00:00:00Z", "optionLocked": false,
 		"options": []map[string]any{
-			{"optionId": id, "chainId": chaintest.ChainID, "token": token, "amount": amount, "receiveAddress": want},
+			{"optionId": id, "chainId": chaintest.ChainID, "token": token, "amount": amount, "receiveAddress": want,
+				"networkFee": "0", "platformFee": "0"},
 			{"optionId": otherID, "chainId": 84532, "token": wrong, "amount": amount, "receiveAddress": wrong},
 		}}
 	qr := qrPath(t, want)
@@ -294,7 +316,7 @@ func TestCheckSkipsInvoicesThePayPageClosed(t *testing.T) {
 		t.Fatal(err)
 	}
 	soon := time.Now().Add(2 * time.Minute).Unix()
-	input := fmt.Sprintf("%s %d %s %s %s %d %d USDC anvil %s %d", id, chaintest.ChainID, recipient, token, amount, soon,
+	input := fmt.Sprintf("%s %d %s %s %s %d %d USDC anvil %s %d 0 0", id, chaintest.ChainID, recipient, token, amount, soon,
 		soon+86400, payToken, soon)
 	origin := serve(t, payToken, map[string]any{}, "", "", "Anvil (local)")
 	cfg := config.Canary{AllowLoopback: true, APIURL: origin, WebURL: origin, Factory: factory, FactoryFees: true,
@@ -305,7 +327,7 @@ func TestCheckSkipsInvoicesThePayPageClosed(t *testing.T) {
 	}
 	// R-130: a reopened invoice is checked until its new close, so this empty answer alerts.
 	past := time.Now().Add(-time.Hour).Unix()
-	reopened := fmt.Sprintf("%s %d %s %s %s %d %d USDC anvil %s %d", id, chaintest.ChainID, recipient, token, amount,
+	reopened := fmt.Sprintf("%s %d %s %s %s %d %d USDC anvil %s %d 0 0", id, chaintest.ChainID, recipient, token, amount,
 		past, past+604800, payToken, past+518400)
 	alerts := canary.Check(context.Background(), cfg, []string{reopened})
 	if len(alerts) == 0 || slices.ContainsFunc(alerts, func(a string) bool { return strings.Contains(a, "input line") }) {
@@ -332,15 +354,16 @@ func TestEarlyCloseRequiresBothProvidersDeploymentEvidence(t *testing.T) {
 	}
 	api := map[string]any{"invoiceId": id, "chainId": chaintest.ChainID, "token": token, "amount": amount,
 		"recipient": recipient, "factory": factory, "receiveAddress": predicted, "expiresAt": "2030-01-01T00:00:00Z",
-		"settleDeadline": "2030-01-02T00:00:00Z", "options": []map[string]any{{"optionId": id, "chainId": chaintest.ChainID, "token": token, "amount": amount, "receiveAddress": predicted}}}
+		"settleDeadline": "2030-01-02T00:00:00Z", "options": []map[string]any{{"optionId": id, "chainId": chaintest.ChainID, "token": token, "amount": amount, "receiveAddress": predicted,
+			"networkFee": "0", "platformFee": "0"}}}
 	origin := serve(t, payToken, api, predicted, qrPath(t, predicted), "Anvil (local)")
 	cfg := config.Canary{AllowLoopback: true, APIURL: origin, WebURL: origin, Factory: factory, FactoryFees: true, FactoryCodeHash: cast(t, "codehash", factory, "--rpc-url", a.URL),
 		RPCURLs: map[uint64][2]string{chaintest.ChainID: {a.URL, a.URL}}, PageScript: script}
-	input := strings.TrimSuffix(line, fmt.Sprint(expiresAt)) + fmt.Sprint(closeAt)
+	input := withClose(line, closeAt)
 	if alerts := canary.Check(t.Context(), cfg, []string{input}); len(alerts) != 0 {
 		t.Fatalf("verified early close: %v", alerts)
 	}
-	wrongClose := strings.TrimSuffix(line, fmt.Sprint(expiresAt)) + fmt.Sprint(closeAt+1)
+	wrongClose := withClose(line, closeAt+1)
 	if alerts := canary.Check(t.Context(), cfg, []string{wrongClose}); !slices.ContainsFunc(alerts, func(s string) bool { return strings.Contains(s, "early close disagrees") }) {
 		t.Fatalf("unproved early close accepted: %v", alerts)
 	}

@@ -37,10 +37,10 @@ import (
 
 // balances reads each chain's RPC pool (D-15), and sendClients gives its clients (nil leaves sends unable to read a
 // chain); webURL is the pay links' origin; userBurst 0 keeps mid.UserBurst;
-// webhookKey seals webhook secrets, and nil leaves webhooks off (R-146).
+// webhookKey seals webhook secrets, and nil leaves webhooks off (R-146); pricing gives new invoices their fees (R-227).
 func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, balances ledger.BalanceOf,
 	sendClients send.Clients, codes *reauth.Service, webURL string, userBurst int, webhookKey []byte,
-	trustProxy bool) http.Handler {
+	trustProxy bool, pricing invoice.Pricing) http.Handler {
 	keys := apikey.NewService(pool)
 	guards := mid.NewGuards(verifier, auth.NewService(pool), keys, wallets, codes, userBurst, trustProxy)
 	mux := http.NewServeMux()
@@ -48,6 +48,7 @@ func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, 
 	profiles := profile.NewService(pool, wallets)
 	profileapi.Routes(mux, guards, profiles)
 	invoices, hooks := invoice.NewService(pool), webhook.NewService(pool, webhookKey)
+	invoices.SetPricing(pricing)
 	invoiceapi.Routes(mux, guards, invoices, profiles, balances, webURL, hooks)
 	checkoutapi.Routes(mux, guards, invoices, webURL)
 	paymentapi.Routes(mux, guards, invoices, webURL)

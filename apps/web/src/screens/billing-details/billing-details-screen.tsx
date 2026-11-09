@@ -4,6 +4,7 @@ import { Skeleton } from "@forwend/ui-web";
 import { useSearchParams } from "next/navigation";
 import { useGetBillingDetailsQuery } from "@/features/profiles/api/profiles-api";
 import { BillingDetailsForm } from "@/features/profiles/components/billing-details-form";
+import { FeesPaidBySetting } from "@/features/profiles/components/fees-paid-by";
 import { BILLING_THEN, PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { BILLING_DETAILS_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
@@ -47,6 +48,7 @@ export function BillingDetailsScreen() {
           business={profile.kind === PROFILE_KINDS.merchant}
         />
       )}
+      <FeesPaidBySetting profile={profile} />
     </div>
   );
 }

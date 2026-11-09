@@ -226,7 +226,8 @@ with a test.
   - A trigger starts a new profile live when a mainnet is switched on, else in test mode.
 - `invoices`: immutable terms (`id` = the on-chain invoice id, profile, chain, token, `amount`, `expires_at` and
   `settle_deadline` as the contract's uint64 seconds, recipient, factory and receive address, `receive_method` (D-44),
-  `network_fee` and `platform_fee`, 0 by default and at most a tenth of the amount together (R-226)),
+  `network_fee` and `platform_fee`, 0 by default and at most a tenth of the amount together (R-226), and `fees_paid_by`,
+  `owner` or `client` (D-122)),
   separate **payment**, **settlement** and **refund** status columns, `idempotency_key` unique per profile with a
   SHA-256 `request_hash` of the create request. `number` is unique per profile, taken from `profiles.invoice_seq` by
   the insert trigger (D-50). A payment-link invoice has a null `number` until the ledger books its first deposit (R-141).
@@ -274,6 +275,8 @@ with a test.
   - A rate the ECB corrects replaces the kept one.
 - `coin_prices` (R-178, D-115): CoinGecko's USD price per coin, with its source time and the worker's read time.
 - `profiles.records_currency` is the profile's other records currency (R-110), null for none.
+- `profiles.fees_paid_by` is who pays new invoices' fees unless one says otherwise (D-122); `payment_links.fees_paid_by`
+  overrides it for a link's invoices, null keeping the profile's.
 - `ledger_transactions` + `ledger_entries`: double-entry, append-only (below).
 - `settlement_intents` (unique per invoice): nonce and tx hash tracked, with the hashes a fee replacement replaced;
   reconcile before any retry.

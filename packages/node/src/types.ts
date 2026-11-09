@@ -252,6 +252,8 @@ export interface CreateCheckoutSession {
   reference?: string;
   title?: string;
   expiresIn?: number;
+  /** Who pays the fees; left out, the profile's choice. client adds them to the price. */
+  feesPaidBy?: FeesPaidBy;
   returnUrl?: string;
   metadata?: CreateInvoice["metadata"];
   customer?: Pick<NonNullable<CreateInvoice["client"]>, "name" | "email">;
@@ -313,6 +315,8 @@ export interface CreateInvoice {
   /** Or a USD amount the payer pays in any accepted stablecoin. */
   amountUsd?: string;
   expiresIn?: number;
+  /** Who pays the fees; left out, the profile's choice. client adds them to the price. */
+  feesPaidBy?: FeesPaidBy;
   title?: string;
   note?: string;
   dueDate?: string;

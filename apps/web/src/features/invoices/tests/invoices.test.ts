@@ -6,6 +6,7 @@ import {
   confirmingProgress,
   decimalText,
   dueCheckoutDate,
+  feeFigures,
   invoiceException,
   invoiceProgress,
   invoiceStatus,
@@ -338,6 +339,7 @@ describe("restartFrom", () => {
       reference: "PO-4500012345",
       client: { name: "Bob Ltd", email: "bob@example.com", address: "", country: "", taxId: "" },
       reminders: false,
+      feesPaidBy: "owner",
     };
     // R-93: the agreed price does not describe the rest.
     const agreed = { currency: "EUR", amount: "4.6", date: "2026-10-01" };
@@ -357,6 +359,21 @@ describe("restartFrom", () => {
       amount: "5",
       items: [],
     });
+  });
+
+  // R-227: a copy asks the price again; the fees the client paid on top are the new invoice's own to add.
+  it("copies the price of an invoice whose client paid the fees, and who pays them", () => {
+    const onTop = {
+      ...open,
+      amount: "5050000",
+      networkFee: "50000",
+      platformFee: "0",
+      feesPaidBy: "client" as const,
+      options: [option],
+    };
+    const copy = restartFrom(onTop, undefined, false, undefined);
+    expect(copy.amount).toBe("5");
+    expect(copy.feesPaidBy).toBe("client");
   });
 
   // R-97.
@@ -470,5 +487,41 @@ describe("tokensOn", () => {
 
   it("never restores disabled tokens when acceptance is empty", () => {
     expect(tokensOn([base], [{ chainId: 84532, token: base.token.toLowerCase() }])).toEqual([]);
+  });
+});
+
+// R-227: a payer-chooses invoice's networks each add their own fee, so the form says the lowest and highest.
+describe("feeFigures", () => {
+  const option = (networkFee: string, decimals = 6) => ({
+    chainId: 84532,
+    token: `0x${"1".repeat(40)}`,
+    decimals,
+    price: "5000000",
+    networkFee,
+    platformFee: "0",
+  });
+  const quote = {
+    feesPaidBy: "owner" as const,
+    options: [option("50000"), option("20000"), option("9", 18)],
+  };
+
+  it("adds the fees to what the client pays, or takes them from what the owner receives", () => {
+    expect(feeFigures(quote, 6, true)).toEqual({
+      fee: [20000n, 50000n],
+      pays: [5020000n, 5050000n],
+      receives: [5000000n, 5000000n],
+      platform: false,
+    });
+    expect(feeFigures(quote, 6, false)).toEqual({
+      fee: [20000n, 50000n],
+      pays: [5000000n, 5000000n],
+      receives: [4950000n, 4980000n],
+      platform: false,
+    });
+  });
+
+  it("has nothing to say before a quote, or for options in other units", () => {
+    expect(feeFigures(undefined, 6, true)).toBeNull();
+    expect(feeFigures(quote, 2, true)).toBeNull();
   });
 });

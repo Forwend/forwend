@@ -42,7 +42,7 @@ func create(invoices *invoice.Service, webURL string) http.HandlerFunc {
 		}
 		inv, created, err := invoices.Create(r.Context(), r.PathValue("profileId"), key, invoice.Request{
 			Purpose: invoice.PurposeCheckout, AmountUSD: body.AmountUSD, StoreID: body.StoreID, Livemode: access.Livemode,
-			ExpiresInSeconds: body.ExpiresIn, Lines: lines,
+			ExpiresInSeconds: body.ExpiresIn, Lines: lines, FeesPaidBy: body.FeesPaidBy,
 			Details: invoice.Details{Title: body.Title, Reference: body.Reference, ReturnURL: body.ReturnURL,
 				ClientName: body.Customer.Name, ClientEmail: body.Customer.Email, Metadata: metadata},
 		})

@@ -1353,7 +1353,7 @@
       "dependsOn": [
         "F445"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "backend",
         "web-unit",
@@ -1367,9 +1367,101 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-09 review pass by reviewer: The fee math is correct and tested: gas times fee cap times 2, priced by ETH/USD on Base and Arbitrum and as dollars on Tempo and Arc, rounded up to a cent, capped at 5 USD; the platform rate is rounded up within its minimum and cap; client pays means price plus fees, and nothing passes the tenth ceiling. Migration 00112 Up and Down are safe, and the profile, link, API, retainer, canary, email, PDF and pay page readers follow who pays. Not blocking: .env.example says PLATFORM_FEE_BPS goes up to 1000 but config allows 500. Not blocking: no test covers the payer-chooses copy on the pay page, the PDF or the emails."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-08T23:59:07Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 46.0,
+            "log": ""
+          },
+          {
+            "id": "backend",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 63.3,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 62.7,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.8,
+            "log": ""
+          },
+          {
+            "id": "node-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.9,
+            "log": ""
+          }
+        ],
+        "taskHash": "0be0c5a189a4c1ab",
+        "filesHash": "6fc596705b63cd7f",
+        "proof": {
+          "1": "backend: TestPlatformFeePlan reads PLATFORM_FEE_BPS, MIN and CAP (0% default); TestOptionFeesFollowTheQuoteAndThePlan applies the rate, minimum and cap to new invoices",
+          "2": "backend: TestNetworkFeeIsADeployAndSettleAtTheFeeCap (gas x fee cap x margin, ETH/USD on Base and Arbitrum), TestCeilCentsRoundsUpToACent, TestNetworkFeeInDollarsTempoCapAndStaleQuote",
+          "3": "web-unit: new-invoice-form 'shows the network fee, what the client pays and what the owner receives, and sends who pays', billing details 'saves who pays the network fee', the link form sends feesPaidBy; backend TestInvoicesCarryTheirNetworkFee and TestAPaymentLinkChoosesWhoPaysTheFees take feesPaidBy",
+          "4": "backend: TestInvoicesCarryTheirNetworkFee: the client's amount is price plus fees (5050000), the owner's is the price, and fees over a tenth are 422",
+          "5": "backend: canary TestCheck and TestPredictCallMatchesEachFactorysTerms build each option's terms with its network and platform fee",
+          "6": "typecheck: no dedicated test; document.go payment() names the per-network amount on the PDF Pay line, pay-invoice.tsx says each network adds its own fee before a pick, and the daily-limit copy no longer says Forwend pays the fee (F444 later gives every option one fee)",
+          "7": "backend: TestTransactionsShowASettlementsFees reads a settled invoice with fees through Transactions JSON and CSV"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "The fee math is correct and tested: gas times fee cap times 2, priced by ETH/USD on Base and Arbitrum and as dollars on Tempo and Arc, rounded up to a cent, capped at 5 USD; the platform rate is rounded up within its minimum and cap; client pays means price plus fees, and nothing passes the tenth ceiling. Migration 00112 Up and Down are safe, and the profile, link, API, retainer, canary, email, PDF and pay page readers follow who pays. Not blocking: .env.example says PLATFORM_FEE_BPS goes up to 1000 but config allows 500. Not blocking: no test covers the payer-chooses copy on the pay page, the PDF or the emails.",
+          "at": "2026-11-09T00:08:52Z",
+          "filesHash": "6fc596705b63cd7f"
+        },
+        "commit": "39279b01",
+        "doneAt": "2026-11-09T00:09:19Z"
+      },
+      "branch": "feat/f446-each-invoice-option-quotes-a-network-fee",
+      "baseCommit": "d2b79356405931ee2e25e338deb7ab6d4639c55e",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f446-each-invoice-option-quotes-a-network-fee",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {

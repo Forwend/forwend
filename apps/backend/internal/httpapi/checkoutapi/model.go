@@ -8,14 +8,16 @@ import (
 )
 
 type createBody struct {
-	StoreID   string          `json:"storeId"`
-	AmountUSD string          `json:"amountUsd"`
-	Reference string          `json:"reference"`
-	Title     string          `json:"title"`
-	ExpiresIn *int64          `json:"expiresIn"`
-	ReturnURL string          `json:"returnUrl"`
-	Metadata  json.RawMessage `json:"metadata"`
-	Customer  struct {
+	StoreID   string `json:"storeId"`
+	AmountUSD string `json:"amountUsd"`
+	Reference string `json:"reference"`
+	Title     string `json:"title"`
+	ExpiresIn *int64 `json:"expiresIn"`
+	// owner or client (D-122); left out: the profile's choice.
+	FeesPaidBy string          `json:"feesPaidBy"`
+	ReturnURL  string          `json:"returnUrl"`
+	Metadata   json.RawMessage `json:"metadata"`
+	Customer   struct {
 		Name  string `json:"name"`
 		Email string `json:"email"`
 	} `json:"customer"`

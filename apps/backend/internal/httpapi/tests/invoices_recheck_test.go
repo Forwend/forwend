@@ -13,6 +13,7 @@ import (
 
 	"github.com/forwend/forwend/apps/backend/internal/httpapi"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/invoiceapi"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
 
 func (e invoiceEnv) recheck(t *testing.T, srv *httptest.Server, id string) reply {
@@ -85,7 +86,7 @@ func TestRecheckLimitsAndChainErrors(t *testing.T) {
 	failing := httptest.NewServer(httpapi.NewMux(e.pool, nil, nil,
 		func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
 			return nil, 0, errors.New(`Post "https://base-sepolia.infura.io/v3/sekretkey123": dial tcp: refused`)
-		}, nil, nil, webURL, 0, nil, false))
+		}, nil, nil, webURL, 0, nil, false, invoice.Pricing{}))
 	t.Cleanup(failing.Close)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-0", basicBody).body["invoiceId"].(string)
 	r := e.recheck(t, failing, id)

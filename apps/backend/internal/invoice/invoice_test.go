@@ -21,12 +21,12 @@ func TestBuildTermsRefusesWhatSettleRefuses(t *testing.T) {
 		"implementation": hexAddress(address.Implementation),
 		"token":          usdc,
 	} {
-		_, _, err := buildTerms([32]byte{1}, 84532, usdc, recipient, big.NewInt(1), expires, expires.Add(SettleWindow))
+		_, _, err := buildTerms([32]byte{1}, 84532, usdc, recipient, big.NewInt(1), nil, nil, expires, expires.Add(SettleWindow))
 		if !errors.Is(err, ErrInvalid) {
 			t.Errorf("recipient = %s: got %v, want ErrInvalid", name, err)
 		}
 	}
-	if _, _, err := buildTerms([32]byte{1}, 84532, usdc, "0x1111111111111111111111111111111111111111", big.NewInt(1),
+	if _, _, err := buildTerms([32]byte{1}, 84532, usdc, "0x1111111111111111111111111111111111111111", big.NewInt(1), nil, nil,
 		expires, expires.Add(SettleWindow)); err != nil {
 		t.Fatalf("ordinary wallet: %v", err)
 	}

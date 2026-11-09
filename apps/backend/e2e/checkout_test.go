@@ -59,7 +59,7 @@ func TestCheckoutPurchaseSettlesWithOneRPCWithoutIssuingAnInvoice(t *testing.T) 
 		t.Fatalf("receiver ledger %s, invoice sequence %s, error %v", booked, sequence, err)
 	}
 	balances := ledger.BalanceFrom(map[uint64]*ethclient.Client{chaintest.ChainID: ethclient.NewClient(st.anvil.RPC)})
-	for holder, want := range map[string]string{receive: "0", merchantWallet: amount} {
+	for holder, want := range map[string]string{receive: "0", merchantWallet: netAmount} {
 		got, _, err := balances(ctx, chaintest.ChainID, st.token, holder)
 		if err != nil || got.String() != want {
 			t.Fatalf("chain balance %s: %v, %v; want %s", holder, got, err, want)
@@ -71,7 +71,9 @@ func TestCheckoutPurchaseSettlesWithOneRPCWithoutIssuingAnInvoice(t *testing.T) 
 		t.Fatalf("reconciliation assets: %v", summary)
 	}
 	asset := assets[0].(map[string]any)
-	if asset["closing"].(map[string]any)["receiver"] != "0" || asset["settled"] != amount || asset["unbookedOutflows"] != float64(0) || asset["unreconciledReceivers"] != float64(0) {
+	// R-230: the settlement paid the merchant the net and the settler the network fee.
+	if asset["closing"].(map[string]any)["receiver"] != "0" || asset["settled"] != netAmount ||
+		asset["fees"] != strconv.Itoa(networkFee) || asset["unbookedOutflows"] != float64(0) || asset["unreconciledReceivers"] != float64(0) {
 		t.Fatalf("reconciliation differs from chain and ledger: %v", asset)
 	}
 	req, err := http.NewRequest("GET", base+"/payments/"+id+"/movements.csv", nil)
@@ -87,8 +89,9 @@ func TestCheckoutPurchaseSettlesWithOneRPCWithoutIssuingAnInvoice(t *testing.T) 
 	if response.StatusCode != http.StatusOK {
 		t.Fatalf("export status: %d", response.StatusCode)
 	}
+	// The deposit, the settlement and its network fee (R-230), under the header.
 	rows, err := csv.NewReader(response.Body).ReadAll()
-	if err != nil || len(rows) != 3 {
+	if err != nil || len(rows) != 4 {
 		t.Fatalf("export rows: %v, %v", rows, err)
 	}
 	columns := map[string]int{}
@@ -111,7 +114,7 @@ func TestCheckoutPurchaseSettlesWithOneRPCWithoutIssuingAnInvoice(t *testing.T) 
 		if field("Movement kind") == "deposit" {
 			err = st.conn.QueryRow(ctx, "SELECT amount::text,block_hash,log_index FROM chain_transfers WHERE invoice_id = $1 AND tx_hash = $2", id, field("Transaction hash")).Scan(&sourceAmount, &sourceHash, &sourceIndex)
 		} else {
-			err = st.conn.QueryRow(ctx, "SELECT amount::text,block_hash,transfer_log_index FROM receiver_outflows WHERE invoice_id = $1 AND tx_hash = $2", id, field("Transaction hash")).Scan(&sourceAmount, &sourceHash, &sourceIndex)
+			err = st.conn.QueryRow(ctx, "SELECT amount::text,block_hash,transfer_log_index FROM receiver_outflows WHERE invoice_id = $1 AND tx_hash = $2 AND kind = $3", id, field("Transaction hash"), field("Movement kind")).Scan(&sourceAmount, &sourceHash, &sourceIndex)
 		}
 		if err != nil || sourceAmount != field("Source amount (base units)") || sourceHash != field("Block hash") || strconv.FormatUint(sourceIndex, 10) != field("Token transfer log index") {
 			t.Fatalf("export differs from observer source: %v, %v", row, err)

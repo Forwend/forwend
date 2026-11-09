@@ -4,7 +4,6 @@ import type { ClientBody } from "@/features/clients/types/clients";
 import type {
   AMOUNT_ERRORS,
   EXPIRY_CHOICES,
-  FEES_PAID_BY,
   HISTORY_ACTORS,
   HISTORY_CATEGORIES,
   HISTORY_FIELDS,
@@ -25,6 +24,7 @@ import type {
   agreedValueSchema,
   createInvoiceBodySchema,
   depositSchema,
+  feeQuoteSchema,
   invoiceClientSchema,
   invoiceEventSchema,
   invoiceHistoryEventSchema,
@@ -46,9 +46,9 @@ import type {
   settlementWaitSchema,
   stoppedRemindersSchema,
 } from "@/features/invoices/schemas/invoices";
+import type { FeesPaidBy } from "@/features/profiles/types/profile";
 
 export type PayWith = (typeof PAY_WITH)[keyof typeof PAY_WITH];
-export type FeesPaidBy = (typeof FEES_PAID_BY)[keyof typeof FEES_PAID_BY];
 /** An option's amount and the fees in its terms (R-228). */
 export interface FeeTerms {
   amount: string;
@@ -96,7 +96,10 @@ export interface InvoiceException {
 export interface InvoiceStart {
   payWith: PayWith;
   picked: string;
+  /** The price: what the client pays less any fees they paid on top. */
   amount: string;
+  /** Who paid the fees of the invoice it starts from (D-122). */
+  feesPaidBy?: FeesPaidBy;
   items: LineDraft[];
   title: string;
   note: string;
@@ -154,6 +157,7 @@ export type SettlementWait = z.infer<typeof settlementWaitSchema>;
 export type InvoiceOption = z.infer<typeof invoiceOptionSchema>;
 
 export type Invoice = z.infer<typeof invoiceSchema>;
+export type FeeQuote = z.infer<typeof feeQuoteSchema>;
 
 export type InvoiceSend = z.infer<typeof invoiceSendSchema>;
 

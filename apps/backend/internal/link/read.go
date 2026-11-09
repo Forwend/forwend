@@ -21,12 +21,13 @@ const linkColumns = `l.id::text, coalesce(l.store_id::text, ''), l.slug, l.title
 	coalesce(l.min_cents, 0), coalesce(l.max_cents, 0), l.ends_at, coalesce(l.max_payments, 0), l.active, l.visits,
 	(SELECT paid FROM payment_link_usage u WHERE u.link_id = l.id),
 	(SELECT reserved FROM payment_link_usage u WHERE u.link_id = l.id),
-	l.created_at, l.updated_at, l.livemode, l.revision`
+	l.created_at, l.updated_at, l.livemode, l.revision, coalesce(l.fees_paid_by, '')`
 
 func scanLink(row pgx.CollectableRow) (Link, error) {
 	var l Link
 	err := row.Scan(&l.ID, &l.StoreID, &l.Slug, &l.Title, &l.AmountCents, &l.MinCents, &l.MaxCents, &l.EndsAt,
-		&l.MaxPayments, &l.Active, &l.Visits, &l.Paid, &l.Reserved, &l.CreatedAt, &l.UpdatedAt, &l.Livemode, &l.Revision)
+		&l.MaxPayments, &l.Active, &l.Visits, &l.Paid, &l.Reserved, &l.CreatedAt, &l.UpdatedAt, &l.Livemode, &l.Revision,
+		&l.FeesPaidBy)
 	return l, err
 }
 

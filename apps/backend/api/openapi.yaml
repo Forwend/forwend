@@ -1185,6 +1185,84 @@ paths:
         "422": { $ref: "#/components/responses/InvalidValue" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/Internal" }
+  /v1/profiles/{profileId}/fees:
+    get:
+      operationId: getFees
+      summary: The fees a new invoice of a price would carry on each option
+      description: |
+        R-227, D-122. Give chainId, token and amount in base units, or amountUsd. Each option the invoice would accept in
+        the profile's mode gets its network fee (a deploy and a settle at the chain's fee cap, with a margin, rounded up
+        to 0.01 USD) and its platform fee, in its base units. feesPaidBy is the profile's default. The invoice gets its
+        own quote when it is made, so it may differ a little. 503 network_fee_unavailable when a chain can't be priced.
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - { name: chainId, in: query, schema: { type: integer } }
+        - { name: token, in: query, schema: { $ref: "#/components/schemas/Address" } }
+        - { name: amount, in: query, schema: { $ref: "#/components/schemas/Uint256" } }
+        - { name: amountUsd, in: query, schema: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" } }
+      responses:
+        "200":
+          description: Each option's fees
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [feesPaidBy, options]
+                properties:
+                  feesPaidBy: { type: string, enum: [owner, client] }
+                  options:
+                    type: array
+                    items:
+                      type: object
+                      required: [chainId, token, decimals, price, networkFee, platformFee]
+                      properties:
+                        chainId: { type: integer }
+                        token: { $ref: "#/components/schemas/Address" }
+                        decimals: { type: integer, minimum: 0 }
+                        price: { $ref: "#/components/schemas/Uint256" }
+                        networkFee: { $ref: "#/components/schemas/Uint256" }
+                        platformFee: { $ref: "#/components/schemas/Uint256" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+        "503": { $ref: "#/components/responses/NetworkNotReady" }
+    put:
+      operationId: putProfileFees
+      summary: Choose who pays new invoices' fees
+      description: |
+        D-122. owner: the fees are deducted from what the owner receives at settlement. client: they are added on top of
+        the price. An invoice, link or checkout session can choose otherwise; invoices made before keep theirs. Owners
+        and Admins only (billing.write).
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [feesPaidBy]
+              properties:
+                feesPaidBy: { type: string, enum: [owner, client] }
+      responses:
+        "200":
+          description: The saved choice
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [feesPaidBy]
+                properties:
+                  feesPaidBy: { type: string, enum: [owner, client] }
+        "400": { $ref: "#/components/responses/MalformedRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/InvalidValue" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/billing-details:
     get:
       operationId: getBillingDetails
@@ -3720,6 +3798,10 @@ components:
         reference: { type: string, maxLength: 100, description: Immutable external order reference. }
         title: { type: string, maxLength: 200 }
         expiresIn: { type: integer, minimum: 900, maximum: 31536000 }
+        feesPaidBy:
+          type: string
+          enum: [owner, client]
+          description: Who pays the fees (D-122); left out, the profile's choice. client adds them to the price.
         returnUrl: { type: string, format: uri, description: HTTPS URL on a store's allowed origin. }
         metadata: { type: object, additionalProperties: { type: string }, maxProperties: 20 }
         customer:
@@ -4340,6 +4422,10 @@ components:
           maximum: 1000000
           description: The most paid invoices the link takes.
         active: { type: boolean, description: "The on or off switch; left out: on." }
+        feesPaidBy:
+          type: [string, "null"]
+          enum: [owner, client, null]
+          description: Who pays its invoices' fees (D-122); null or left out, the profile's choice.
     WebhookEndpoint:
       type: object
       required: [endpointId, url, description, storeId, events, enabled, livemode, createdAt, updatedAt]
@@ -4555,6 +4641,7 @@ components:
         ready: { type: boolean, description: Billing details, wallet and accepted tokens are ready in this store and mode. }
         reserved: { type: integer, description: Open attempts awaiting canonical payment or expiration. }
         livemode: { type: boolean, description: "The link's permanent mode; a key reaches only links of its mode (D-87)." }
+        feesPaidBy: { type: [string, "null"], enum: [owner, client, null], description: "Null: the profile's choice." }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
     GrantRequest:
@@ -4654,9 +4741,10 @@ components:
         expiresAt: { type: string, format: date-time }
     Profile:
       type: object
-      required: [profileId, kind, name, walletAddress, createdAt, role, permissions, livemode]
+      required: [profileId, kind, name, walletAddress, createdAt, role, permissions, livemode, feesPaidBy]
       properties:
         profileId: { type: string, format: uuid }
+        feesPaidBy: { type: string, enum: [owner, client], description: "Who pays new invoices' fees unless one says otherwise (D-122)." }
         livemode:
           type: boolean
           description: |
@@ -5308,6 +5396,10 @@ components:
         amount:
           allOf: [{ $ref: "#/components/schemas/Uint256" }]
           description: Base units of the token, at least one whole token (1.00 USD).
+        feesPaidBy:
+          type: string
+          enum: [owner, client]
+          description: Who pays the fees (D-122); left out, the profile's choice. client adds them to the amount, which the lines still add up to.
         expiresIn:
           type: integer
           description: |
@@ -6387,7 +6479,7 @@ components:
     NetworkNotReady:
       description: |
         The network is starting (network_not_ready): the worker has not scanned it yet, so a payment made now could be
-        missed. Try again in a minute.
+        missed. Or its network fee can't be priced now (network_fee_unavailable, R-227). Try again in a minute.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

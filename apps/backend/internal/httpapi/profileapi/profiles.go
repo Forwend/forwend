@@ -173,6 +173,22 @@ func putMode(profiles *profile.Service) http.HandlerFunc {
 	}
 }
 
+// R-227: who pays the fees of the profile's new invoices.
+func putFees(profiles *profile.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body feesBody
+		if err := httpio.DecodeJSON(w, r, &body); err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		if err := profiles.SetFeesPaidBy(r.Context(), r.PathValue("profileId"), body.FeesPaidBy); err != nil {
+			httpio.WriteError(w, r, err)
+			return
+		}
+		httpio.WriteJSON(w, http.StatusOK, body)
+	}
+}
+
 // R-137: every session ends, this one too; the web signs out.
 func signOutEverywhere(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

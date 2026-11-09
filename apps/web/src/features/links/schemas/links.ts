@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { PAY_TOKEN_PATTERN } from "@/features/invoices/constants/invoices";
 import { LINK_SLUG_PATTERN, LINK_STATES } from "@/features/links/constants/links";
+import { FEES_PAID_BY } from "@/features/profiles/constants/profile";
 import { storeBrandSchema } from "@/features/stores/schemas/stores";
 import { apiTime, count, usdAmount } from "@/shared/schemas/api";
 
@@ -14,6 +15,8 @@ export const linkBodySchema = z.object({
   endsAt: apiTime.nullable(),
   maxPayments: count.nullable(),
   active: z.boolean(),
+  // D-122: who pays its invoices' fees; null is the profile's choice.
+  feesPaidBy: z.enum(FEES_PAID_BY).nullable().optional(),
 });
 
 /** One payment link (apps/backend/api/openapi.yaml, PaymentLink); storeId is null for a freelancer. */
