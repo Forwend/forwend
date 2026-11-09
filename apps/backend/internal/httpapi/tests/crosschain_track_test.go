@@ -274,6 +274,13 @@ func TestWorkerStopsAQuoteNobodyPaidAndRecordsAFailure(t *testing.T) {
 	if next := checkAt(t, e3, worker3, id3, at); next == nil || next.Sub(at) != time.Hour {
 		t.Fatalf("down past the end: next %v", next)
 	}
+	// A quote 1Click never answers about, with no deposit seen, is not read for ever.
+	e4, fake4, worker4, _, quote4 := tracked(t)
+	fake4.Down = true
+	deadline4, _ := time.Parse(time.RFC3339, quote4["deadline"].(string))
+	if next := checkAt(t, e4, worker4, quote4["quoteId"].(string), deadline4.Add(72*time.Hour+8*24*time.Hour)); next != nil {
+		t.Fatalf("unread a week past the address deadline: next %v", next)
+	}
 	fake3.Down = false
 	fake3.SetStatus(quote3["depositAddress"].(string), intents.Failed, map[string]any{"depositedAmount": "101120000",
 		"originChainTxHashes": []any{}, "destinationChainTxHashes": []any{}, "refundedAmount": "0"})

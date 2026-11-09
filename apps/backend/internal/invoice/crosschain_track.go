@@ -28,6 +28,9 @@ const (
 	trackAfter      = time.Hour // past the deadline, or past the conversion for a late refund of the extra
 	trackCold       = 30 * time.Minute
 	trackRetry      = time.Minute
+	// An unpaid quote 1Click can't be read about stops a week past its address deadline: by then 1Click has refunded
+	// any deposit, and an address it never knew (404) would otherwise be read for ever.
+	trackGiveUp = 7 * 24 * time.Hour
 	// ponytail: one worker reads trackBatch a round, trackReaders at once, each answer within trackTimeout: about
 	// 25 reads a second. Deposits 1Click saw go first, so idle quotes only wait on each other. Shard rounds when more.
 	trackBatch   = 64
@@ -109,6 +112,9 @@ func (s *Service) track(ctx context.Context, q trackedQuote, now time.Time) erro
 			at = &retry
 		}
 		next = at
+	case q.status == intents.PendingDeposit && now.After(q.addressDeadline.Add(trackGiveUp)):
+		slog.Error("ALERT cross-chain status unread a week past the address deadline; not reading it again",
+			"quote", q.id, "invoice", q.invoiceID, "err", err)
 	case !intents.Final(q.status):
 		later := now.Add(trackAfter)
 		next = &later

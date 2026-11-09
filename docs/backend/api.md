@@ -196,6 +196,7 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
     - Then every 30 minutes until 1Click's own address deadline, `quote.deadline` in the signed answer (`address_deadline`).
     - A seen deposit is read until it ends, past its deadline too, every 2 minutes.
     - A failed read is tried again a minute later, and hourly once the quote would have ended: only an answer ends it.
+    - An unpaid quote still unread a week past its address deadline stops, with an `ALERT`: 1Click refunded any deposit.
       - A status 1Click names that the code doesn't know logs an `ALERT` at each read.
     - A round reads up to 64 quotes, 8 at once, each answer within 5 s; deposits 1Click saw go first.
     - After a conversion, every 2 minutes for an hour: 1Click refunds the unused slippage afterwards.
