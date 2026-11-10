@@ -15,8 +15,7 @@ export function StopRemindersScreen({ token }: { token: string }) {
           <Logo />
         </Link>
       </header>
-      {/* Phones: the panel sits under the logo at full width, like the pay panel; it centers from small screens up.
-          `*:w-auto` lets the full-width panel reach the screen edges over the page gutter. */}
+      {/* Phones: the panel sits under the logo, like the pay panel; it centers from small screens up. */}
       <main className="flex flex-1 flex-col sm:items-center sm:justify-center sm:pb-24">
         <StopReminders token={token} />
       </main>

@@ -53,7 +53,6 @@ export function TokensStep({
           selected={selected}
           onChange={onChange}
           lockedReason={() => (selected.size === 1 ? COPY.lastOn : null)}
-          boxed
         />
       ) : failed ? (
         <LoadError message={COPY.failed} onRetry={onRetry} inline />

@@ -123,7 +123,7 @@ import { exactDigits } from "@/shared/lib/money";
 
 const NOT_FOUND = 404;
 const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
-const PANEL = "fw-panel sm:rounded-lg";
+const PANEL = "fw-panel";
 const ICON = "size-[var(--fw-icon-md)] shrink-0";
 const CLOSING_SOON_MS = 30 * 60_000;
 
@@ -697,7 +697,7 @@ function PayBox({
         <StepTransition
           step={phase}
           label={COPY.payBox}
-          // The box already reaches the panel's edge: a wider band would scroll the page sideways on a phone.
+          // The box already reaches the panel's edge: a wider band would stick out past its border.
           className="mx-0 px-0"
         >
           {done ? (

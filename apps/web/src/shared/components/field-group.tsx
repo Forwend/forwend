@@ -30,14 +30,12 @@ export function FieldGroup({ title, children, description }: FieldGroupProps) {
           <p className="text-base font-semibold text-ink">{title}</p>
           <p className="mt-1 text-sm text-muted">{description}</p>
         </div>
-        <div className="fw-panel flex min-w-0 flex-col gap-5 p-4 sm:rounded-lg sm:p-5">
-          {children}
-        </div>
+        <div className="fw-panel flex min-w-0 flex-col gap-5 p-4 sm:p-5">{children}</div>
       </fieldset>
     );
   }
   return (
-    <fieldset className="fw-panel flex min-w-0 flex-col sm:rounded-lg">
+    <fieldset className="fw-panel flex min-w-0 flex-col">
       <legend className="sr-only">{title}</legend>
       <p aria-hidden className="fw-panel-head text-base font-semibold text-ink">
         {title}

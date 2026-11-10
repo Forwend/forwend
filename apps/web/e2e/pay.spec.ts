@@ -4,7 +4,7 @@ import { readPayPage } from "../scripts/canary-pay-page";
 import { ID, MAIN_OPTION, mockInvoice, NOW, OPEN, PAY, RECEIVE } from "./pay-invoice";
 import { blockingViolations } from "./privy/axe";
 import { API_PORT, PUBLIC_URL, SUPPORT_EMAIL } from "./servers";
-import { sidewaysScroll } from "./sideways";
+import { panelsOffMargin, sidewaysScroll } from "./sideways";
 
 // A second option of a payer-chooses invoice (R-56): USDC on Arbitrum Sepolia, its id derived from ID as the API does
 // (keccak256(abi.encode(ID, 421614, token))) and the address predict gives for the same terms with that id.
@@ -1241,10 +1241,13 @@ test.describe("pay page", () => {
     await expect(page.getByText(RECEIVE)).toBeVisible();
     const overflow = () => sidewaysScroll(page);
     expect(await overflow()).toBeLessThanOrEqual(0);
+    // The pay panel is a card inside the page's margin, never edge to edge.
+    expect(await panelsOffMargin(page)).toBe(0);
     await mockInvoice(page, PAID);
     await page.reload();
     await expect(page.getByRole("status").filter({ hasText: /^Paid$/ })).toBeVisible();
     expect(await overflow()).toBeLessThanOrEqual(0);
+    expect(await panelsOffMargin(page)).toBe(0);
   });
 
   for (const colorScheme of ["light", "dark"] as const) {
