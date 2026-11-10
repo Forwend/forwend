@@ -452,7 +452,11 @@ describe("withOption", () => {
     };
     const shown = withOption(provisional, choosing.options[0]?.optionId);
     expect(shown.optionId).toBe(provisional.options[1]?.optionId);
-    expect(payState(shown, before)).toMatchObject({ canSend: false, state: PAY_STATES.checking });
+    // Still confirming on chain: the payer sees its blocks and time left (R-73), and can't send more yet.
+    expect(payState(shown, before)).toMatchObject({ canSend: false, state: PAY_STATES.confirming });
+    // Final on chain, the option not yet chosen: awaiting confirmation, no blocks left to count.
+    const final = { ...shown, deposits: [deposit("1000", { paid: null })] };
+    expect(payState(final, before)).toMatchObject({ canSend: false, state: PAY_STATES.checking });
     const canonical = {
       ...provisional,
       optionLocked: true,

@@ -118,10 +118,11 @@ export function payState(inv: Invoice, now: number) {
             ? PAY_STATES.canceled
             : checking
               ? PAY_STATES.checking
-              : awaitingChoice
-                ? PAY_STATES.checking
-                : confirming
-                  ? PAY_STATES.confirming
+              : // A payment still confirming counts its blocks (R-73), even while it decides the option.
+                confirming
+                ? PAY_STATES.confirming
+                : awaitingChoice
+                  ? PAY_STATES.checking
                   : closing
                     ? PAY_STATES.closing
                     : received >= amount
