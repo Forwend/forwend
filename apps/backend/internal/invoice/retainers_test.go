@@ -385,3 +385,56 @@ func TestRetainerMonthsKeepWhoPaysTheFees(t *testing.T) {
 		t.Fatalf("who pays each month: %q (%v), want the first month's owner twice", paidBy, err)
 	}
 }
+
+// R-98: a month that can't be made waits longer after each failure, and the owner is emailed once.
+func TestRetainerMonthThatFailsBacksOffAndTellsTheOwnerOnce(t *testing.T) {
+	ctx := context.Background()
+	pool, profile := open(t)
+	s := NewService(pool)
+	now, _ := time.Parse(time.DateOnly, "2027-01-10")
+	s.now = func() time.Time { return now }
+	if _, _, err := s.Create(ctx, profile, "k1", Request{AmountUSD: "5", ExpiresInSeconds: new(int64(86400)),
+		Repeat: &Repeat{}, Details: Details{DueDate: "2027-01-31", ClientEmail: "ap@bob.example"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO profile_tokens_off (profile_id, chain_id, token_contract)
+		VALUES ($1, 84532, $2)`, profile, usdc); err != nil {
+		t.Fatal(err)
+	}
+	state := func() (failures, told int) {
+		t.Helper()
+		if err := pool.QueryRow(ctx, `SELECT (SELECT failures FROM retainers),
+			(SELECT count(*) FROM outbox_events WHERE kind = 'retainer.failed' AND payload->>'due' = '2027-02-28')`).
+			Scan(&failures, &told); err != nil {
+			t.Fatal(err)
+		}
+		return failures, told
+	}
+	now, _ = time.Parse(time.DateOnly, "2027-02-21")
+	for i, wait := range []time.Duration{0, time.Minute, 2 * time.Minute, 4 * time.Minute} {
+		now = now.Add(wait)
+		if err := s.MakeRetainerInvoices(ctx); !errors.Is(err, ErrInvalid) {
+			t.Fatalf("try %d: %v, want ErrInvalid", i+1, err)
+		}
+		if err := s.MakeRetainerInvoices(ctx); err != nil { // before its wait is over: not tried
+			t.Fatalf("try %d again at once: %v", i+1, err)
+		}
+		if failures, told := state(); failures != i+1 || told != min(max(i-1, 0), 1) {
+			t.Fatalf("after try %d: %d failures, %d emails", i+1, failures, told)
+		}
+	}
+	if _, err := pool.Exec(ctx, "DELETE FROM profile_tokens_off"); err != nil {
+		t.Fatal(err)
+	}
+	now = now.Add(8 * time.Minute)
+	if err := s.MakeRetainerInvoices(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var months int
+	var waiting bool
+	if err := pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM retainer_invoices),
+		(SELECT failures <> 0 OR retry_at IS NOT NULL FROM retainers)`).Scan(&months, &waiting); err != nil ||
+		months != 2 || waiting {
+		t.Fatalf("%d months, still waiting %v (%v); want February made and the failures cleared", months, waiting, err)
+	}
+}

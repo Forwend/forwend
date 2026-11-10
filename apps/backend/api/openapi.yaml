@@ -3912,7 +3912,7 @@ components:
       name: Idempotency-Key
       in: header
       required: true
-      description: 1 to 255 bytes of UTF-8.
+      description: 1 to 255 bytes of UTF-8, not starting with job:, link: or retainer:, which Forwend keeps for itself.
       schema: { type: string, minLength: 1, maxLength: 255 }
   schemas:
     CreateCheckoutSession:
@@ -6471,7 +6471,7 @@ components:
                 payment_not_found, checkout_not_found, checkout_not_expirable, too_many_movements, link_not_ready, link_changed,
                 pick_locked, webhook_queue_full, payment_reconciliation_pending, crosschain_unavailable, below_minimum,
                 too_many_quotes, provider_unavailable, no_liquidity, quote_refused,
-                invalid_value, rate_limited, network_not_ready, network_unavailable, internal]
+                invalid_value, rate_limited, network_not_ready, network_unavailable, network_fee_unavailable, internal]
             message: { type: string }
   responses:
     SendNotFound:

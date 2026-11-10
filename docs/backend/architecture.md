@@ -4,7 +4,9 @@ The Go backend in `apps/backend`. Code rules: [rules.md](rules.md).
 Requirements: the task's rows in [PROJECT.md](../PROJECT.md). Whole system: [architecture.md](../architecture.md).
 
 Built: signup and profiles API, billing details, saved clients, balances, activity, wallet transactions and balance history API, invoice API, invoice and receipt PDFs (`internal/document`, drawn in Go from the stored invoice), Privy auth, watcher, ledger and signer, run by `api`, `worker` and `signer`; the gate
-(`apps/backend/e2e`, R-23) runs the whole loop. Not built yet: refunds, webhooks, merchants.
+(`apps/backend/e2e`, R-23) runs the whole loop. Merchant profiles, stores, teams, API keys, payment links and checkout
+sessions are built; `webhooks` sends their webhooks. Support returns held money with `cmd/ops` (PLAN 11.10). Not built
+yet: refund claims by payers.
 
 Read only the sections your task touches:
 
@@ -175,9 +177,13 @@ Redis is the next step when more than a few replicas run: the cache sits behind 
 - The RPC pool keeps up to 100 idle connections per host. With net/http's default of 2, each call beyond 2 at once
   opened a new connection (and TLS session), and under load the api ran out of local ports ([load test](#load-test)).
 - Postgres: `pool_max_conns` in `DATABASE_URL` sets each process's pool (without it pgxpool takes the larger of 4 and
-  the CPU count; `.env.example` sets 20). Keep the replicas' pools plus the worker's and signer's (each one more for
-  its lock) under Postgres `max_connections` (100 by default). `database.Migrate` parses the URL as the pool does,
-  so `pool_` parameters never reach Postgres as settings.
+  the CPU count; `.env.example` sets 20). `database.Migrate` parses the URL as the pool does, so `pool_` parameters
+  never reach Postgres as settings.
+  - Each api replica, the worker and the signer also open a 2-connection pool for the RPC budget.
+  - The worker and the signer each hold one more connection for their lock.
+  - Keep every process's connections under Postgres `max_connections` (100 by default).
+  - At 20 each, one api, worker, signer and webhooks use 22 + 23 + 23 + 20 = 88.
+  - A second api replica would make 110. Lower each replica's pool first (12 each: 94), or raise `max_connections`.
 - Rate limits per user; public routes are limited at the edge: [api.md](api.md#rate-limits). On 429 the web waits and backs off.
 
 ## Load test
@@ -322,6 +328,7 @@ with a test.
   after welcome emails existed.
   - `wallet.outflow` rows name a `wallet_transfer_id`: money left a profile wallet with no approved send (D-49).
   - `settlement.waiting` rows name one invoice the daily settle cap holds back: one email a day per user (SEC-03).
+  - `retainer.failed` rows name a retainer's first invoice and carry the failing month's `due` (R-98).
 - `history_events` (R-123, D-92): what happened to each invoice, one row per change.
   - `history.Add` writes it in the transaction that makes the change.
   - A row has the main invoice, `kind`, `actor` (`owner`, `payer` or `system`), `at` and small `data`.
@@ -339,8 +346,9 @@ with a test.
   Each payment row gets its `invoice_id` once that invoice is made.
 - `retainers` (R-98): an invoice that repeats every month, with the create `request` as JSON, `first_due`, `end_date`
   and `stopped_at`. `retainer_invoices` numbers each month's invoice from 0, so each month is made once.
-- Planned (PLAN 11.5, 11.10): `refund_intents` (one per approved claim), `refund_claims`, `support_cases` (wrong chain,
-  late), `webhook_endpoints`, `webhook_deliveries`.
+  - `failures` counts a month's failed tries in a row; `retry_at` is when the next try may run.
+- Planned (PLAN 11.10): `refund_intents` (one per approved claim), `refund_claims`, `support_cases` (wrong chain,
+  late).
 - `chain_cursors(chain_id, last_scanned_block, last_finalized_block)`.
 
 Rules:

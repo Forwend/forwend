@@ -387,6 +387,11 @@ Limits:
   the recipient.
 - Testnet invoices are never shown to real payers: the testnet refund key could `recover` real money at the same
   address on mainnet.
+- The development factory on Base, Arbitrum, Arc and Tempo mainnet has one test EOA as its refund authority, not the
+  Safe ([operations](../contracts/operations.md#development-mainnet-deploys)).
+  - That key can pause, change the executor, refund after a deadline and recover, and it gets every platform fee.
+  - A leak of it would let its holder take the money waiting in mainnet receivers.
+  - So live mode takes no real volume until the Safe factory is deployed.
 - A payer-chooses invoice picks its option as soon as that option's final payments add up to 1.00 USD (R-119); no
   other chain is waited for.
   - A smaller deposit chooses nothing, so a stranger with the pay link can't decide the option with dust.

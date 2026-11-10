@@ -21,6 +21,8 @@ const (
 	MaxRetainers = 50
 	// DueGraceDays is how long past its due date a checkout stays open (D-80), as the web form sets it.
 	DueGraceDays = 60
+	// RetainerFailuresTold is the failures in a row after which the owner gets one email that a month can't be made.
+	RetainerFailuresTold = 3
 )
 
 var errRetainerStopped = errors.New("retainer stopped")
@@ -88,11 +90,11 @@ func (s *Service) startRetainer(ctx context.Context, tx pgx.Tx, profileID, invoi
 }
 
 // The client email is skipped when the user's client emails are used up for the day (R-116). A retainer stopped
-// in the meantime makes nothing: the row lock orders this after StopRetainer.
+// in the meantime makes nothing: the row lock orders this after StopRetainer. A month made ends a run of failures.
 func addCycle(ctx context.Context, tx pgx.Tx, c cycle, profileID, invoiceID, key string) error {
 	var stopped bool
-	if err := tx.QueryRow(ctx, "SELECT stopped_at IS NOT NULL FROM retainers WHERE id = $1 FOR UPDATE",
-		c.retainer).Scan(&stopped); err != nil {
+	if err := tx.QueryRow(ctx, `UPDATE retainers SET failures = 0, retry_at = NULL WHERE id = $1
+		RETURNING stopped_at IS NOT NULL`, c.retainer).Scan(&stopped); err != nil {
 		return fmt.Errorf("lock retainer %s: %w", c.retainer, err)
 	}
 	if stopped {
@@ -135,8 +137,9 @@ func (s *Service) MakeRetainerInvoices(ctx context.Context) error {
 		    coalesce((SELECT i.fees_paid_by FROM retainer_invoices x JOIN invoices i ON i.id = x.invoice_id
 		              WHERE x.retainer_id = r.id ORDER BY x.cycle LIMIT 1), '')
 		FROM retainers r `+nextMonthSQL("$1::date")+`
-		WHERE r.stopped_at IS NULL AND c.due - $2::int <= $1::date AND (r.end_date IS NULL OR c.due <= r.end_date)`,
-		s.currentTime().UTC().Format(time.DateOnly), RetainerLead)
+		WHERE r.stopped_at IS NULL AND c.due - $2::int <= $1::date AND (r.end_date IS NULL OR c.due <= r.end_date)
+		  AND (r.retry_at IS NULL OR r.retry_at <= $3)`,
+		s.currentTime().UTC().Format(time.DateOnly), RetainerLead, s.currentTime())
 	if err != nil {
 		return fmt.Errorf("read due retainers: %w", err)
 	}
@@ -151,7 +154,7 @@ func (s *Service) MakeRetainerInvoices(ctx context.Context) error {
 	for _, m := range months {
 		var r Request
 		if err := json.Unmarshal(m.request, &r); err != nil {
-			errs = append(errs, fmt.Errorf("retainer %s: %w", m.retainer, err))
+			errs = append(errs, fmt.Errorf("retainer %s: %w", m.retainer, err), s.retainerFailed(ctx, m.retainer, m.due))
 			continue
 		}
 		// A Revise belongs only to the first month, including templates saved with that action.
@@ -165,10 +168,30 @@ func (s *Service) MakeRetainerInvoices(ctx context.Context) error {
 		r.cycle, r.By = &cycle{retainer: m.retainer, n: m.n}, history.System
 		key := fmt.Sprintf("retainer:%s:%d", m.retainer, m.n)
 		if _, _, err := s.Create(ctx, m.profile, key, r); err != nil && !errors.Is(err, errRetainerStopped) {
-			errs = append(errs, fmt.Errorf("retainer %s month %d: %w", m.retainer, m.n, err))
+			errs = append(errs, fmt.Errorf("retainer %s month %d: %w", m.retainer, m.n, err),
+				s.retainerFailed(ctx, m.retainer, m.due))
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// retainerFailed makes the retainer wait before its next try, twice as long after each failure in a row up to an hour,
+// and emails the owner once when the run reaches RetainerFailuresTold.
+func (s *Service) retainerFailed(ctx context.Context, id string, due time.Time) error {
+	payload, err := json.Marshal(outbox.Payload{Due: due.Format(time.DateOnly)})
+	if err != nil {
+		return fmt.Errorf("record retainer %s failure: %w", id, err)
+	}
+	if _, err := s.pool.Exec(ctx, `WITH r AS (
+		    UPDATE retainers SET failures = failures + 1,
+		        retry_at = $2::timestamptz + least(interval '1 minute' * 2 ^ least(failures, 6), interval '1 hour')
+		    WHERE id = $1 RETURNING failures)
+		INSERT INTO outbox_events (kind, invoice_id, payload)
+		SELECT $3, x.invoice_id, $4 FROM r JOIN retainer_invoices x ON x.retainer_id = $1 AND x.cycle = 0
+		WHERE r.failures = $5`, id, s.currentTime(), outbox.RetainerFailed, payload, RetainerFailuresTold); err != nil {
+		return fmt.Errorf("record retainer %s failure: %w", id, err)
+	}
+	return nil
 }
 
 // StopRetainer (R-98): invoices already made stay; it answers the same when already stopped or not repeating.

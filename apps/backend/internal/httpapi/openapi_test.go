@@ -94,6 +94,54 @@ func TestOpenAPINamesEveryRoute(t *testing.T) {
 	}
 }
 
+// The spec's Error.code enum is the codes the API writes: through httpio.WriteError, or a module's own error body.
+func TestOpenAPIErrorCodesMatchTheAPI(t *testing.T) {
+	files, err := filepath.Glob("*/*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	written := regexp.MustCompile(`(?:http\.Status\w+, |"code": )"([a-z_]+)"`)
+	var api []string
+	for _, file := range files {
+		if strings.HasSuffix(file, "_test.go") {
+			continue
+		}
+		src, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, m := range written.FindAllStringSubmatch(string(src), -1) {
+			api = append(api, m[1])
+		}
+	}
+	spec, err := os.ReadFile("../../api/openapi.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	enum := regexp.MustCompile(`required: \[code, message\]\s+properties:\s+code:\s+type: string\s+enum: \[([^\]]*)\]`).
+		FindSubmatch(spec)
+	if enum == nil {
+		t.Fatal("no Error.code enum read from openapi.yaml")
+	}
+	var codes []string
+	for code := range strings.SplitSeq(string(enum[1]), ",") {
+		codes = append(codes, strings.TrimSpace(code))
+	}
+	if len(api) == 0 {
+		t.Fatal("no error codes read from the API")
+	}
+	for _, code := range api {
+		if !slices.Contains(codes, code) {
+			t.Errorf("the API writes %s, missing from openapi.yaml's Error.code enum", code)
+		}
+	}
+	for _, code := range codes {
+		if !slices.Contains(api, code) {
+			t.Errorf("openapi.yaml's Error.code enum has %s, which the API never writes", code)
+		}
+	}
+}
+
 // D-114: the spec's state and wallet enums, on the filters and on Payment, are the values the API filters and returns.
 func TestOpenAPIPaymentStatesMatchTheAPI(t *testing.T) {
 	spec, err := os.ReadFile("../../api/openapi.yaml")

@@ -13,6 +13,7 @@ import (
 
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func dispatchFixture(t *testing.T, count int) (*Service, []string, []string) {
@@ -79,6 +80,25 @@ func TestSlowWebhookTenantLeavesOtherProfilesCapacity(t *testing.T) {
 	}
 	cancel()
 	<-done
+}
+
+// A claim reads each endpoint's first due delivery, so its cost does not grow with the backlog.
+func TestWebhookClaimReadsEachEndpointsFirstDueDelivery(t *testing.T) {
+	s, profiles, endpoints := dispatchFixture(t, 1)
+	for range 3 {
+		if _, err := s.SendTest(t.Context(), profiles[0], endpoints[0]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	url, _, _ := strings.Cut(s.pool.Config().ConnString(), "&pool_max_conns") // Plans also opens a plain connection
+	plans := databasetest.Plans(t, url, func(pool *pgxpool.Pool) {
+		if d, err := NewService(pool, make([]byte, 32)).claim(t.Context()); err != nil || d == nil {
+			t.Fatalf("claim: %v %v", d, err)
+		}
+	})
+	if strings.Count(plans, "webhook_deliveries_endpoint_due ") < 2 || strings.Contains(plans, "webhook_deliveries_due ") {
+		t.Fatalf("the claim does not read each endpoint's due deliveries from webhook_deliveries_endpoint_due:\n%s", plans)
+	}
 }
 
 func TestWebhookRunnerAcceptsNewProfilesDuringSlowAttempt(t *testing.T) {

@@ -140,6 +140,7 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   LOCKED`; a failed send is retried after 1 min doubling to 1 h, given up after 10 tries.
   - A failed send ends that round, except when Resend refused the message as sent (400 or 422, such as a bad
     address). Then the round goes on, so one bad address can't hold up the other emails (R-115).
+  - An event that can't be read or rendered counts as a failed try too, and the round goes on.
 - The watcher queues `wallet.outflow` when money leaves a profile wallet with no approved send (D-49).
   - It goes to the owner whatever the email setting: it may be a theft.
 - The signer queues `settlement.waiting` while the daily settle cap holds paid money back: one email a day per user.
@@ -251,6 +252,8 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   - In the same transaction it queues one `invoice.sent` row, so the client gets it as from Send to client.
   - That send counts toward the client email cap (R-116); past it the month is made without its email.
   - One month per retainer per round; a stop that lands first makes nothing (a row lock on the retainer).
+  - A month that fails waits 1 min, doubling to 1 h, before its next try; a month made clears the wait.
+  - The third failure in a row queues one `retainer.failed` email to the owner, whatever the email setting.
 - Client email cap (R-116): a user's profiles queue at most 20 emails to clients in any 24 hours, all kinds together.
   - It counts `invoice.sent` (Send to client and retainer months), `invoice.reminder` and `job.change` rows.
   - `outbox.ClientEmailsLeft` counts them under a lock on the user's row, so two profiles can't both pass it.
@@ -1225,6 +1228,7 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
 - Keys are unique per profile (per user for `POST /v1/profiles`), 1–255 bytes of UTF-8; a missing or longer key is 400. The server stores a SHA-256 of the
   normalized values, never the body, so field order, spacing and address letter case don't matter. A request that
   fails validation stores nothing. Two requests with one key at once get one resource.
+- A key starting `job:`, `link:` or `retainer:` is 400: Forwend makes invoices under those keys in the profile's key space.
 
 ## Auth
 
@@ -1290,8 +1294,9 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
 ## Errors
 
 - One shape: `{ "error": { "code": "invoice_not_found", "message": "…" } }`. Codes are snake_case and listed in the spec.
+  - `TestOpenAPIErrorCodesMatchTheAPI` keeps the spec's `Error.code` enum to the codes the API writes.
 - 400 malformed, 401 no or bad token, 403 not yours, 404 missing, 409 conflict, 422 invalid value, 429 too many
-  requests, 503 a network the worker has not scanned yet (`network_not_ready` on invoice create, `network_unavailable` when a recheck cannot read it), 500 anything else.
+  requests, 503 a network the worker has not scanned yet (`network_not_ready` on invoice create, `network_unavailable` when a recheck cannot read it), or a network fee that can't be priced (`network_fee_unavailable`), 500 anything else.
   A profile has at most 1,000 invoices open for payment at once and creates at most 500 a day: 422 above.
   Invoices payers make on its payment links, and its checkout sessions, have the same limits, each counted apart, so
   that traffic never blocks the owner (R-188). A link checkout or session that expired unpaid leaves the day's count.

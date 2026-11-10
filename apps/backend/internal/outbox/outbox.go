@@ -31,6 +31,8 @@ const (
 	SettleWaiting = "settlement.waiting"
 	// WalletOutflow: money left a profile wallet with no send its owner approved in Forwend, to the owner (D-49).
 	WalletOutflow = "wallet.outflow"
+	// RetainerFailed: a retainer's month could not be made several times in a row, to the owner; payload has its due date.
+	RetainerFailed = "retainer.failed"
 )
 
 // MaxClientEmails caps a user's client emails (Sent, reminders, job changes, invites) in any 24 hours (R-116), so one
@@ -72,6 +74,7 @@ type Payload struct {
 	Token string `json:"token,omitempty"`
 	// Why Forwend turned a webhook endpoint off: webhook.Gone or webhook.Failing.
 	Reason string `json:"reason,omitempty"`
+	Due    string `json:"due,omitempty"` // the retainer month's due date, YYYY-MM-DD
 }
 
 // QueueReceipt queues at most one receipt, and only once the payer gave an address (R-82).
