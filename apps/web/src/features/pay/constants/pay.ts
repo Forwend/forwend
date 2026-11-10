@@ -33,10 +33,7 @@ export const PAY_STATES = {
 export const LEFT_PAD = "lg:pr-16 lg:pl-[max(2.5rem,calc(50vw-30rem))]";
 export const RIGHT_PAD = "lg:pr-[max(2.5rem,calc(50vw-32rem))]";
 
-/** A part of the checkout that a payer's step puts on screen rises a little and fades in; what it replaced goes at
- * once. Tailwind's translate-y sets `translate`, so that is the property that transitions. */
-export const ENTER =
-  "transition-[opacity,translate] duration-[var(--fw-duration-base)] ease-out starting:translate-y-1 starting:opacity-0";
+export { ENTER } from "@/shared/constants/motion";
 
 /** The two ways to pay: a token the invoice takes itself, or another one through NEAR Intents (R-236). */
 export const PAY_WAYS = { direct: "direct", cross: "cross" } as const;

@@ -17,7 +17,10 @@ import {
   restartFrom,
   tokensOn,
 } from "@/features/invoices/lib/invoices";
-import { invoiceSummarySchema } from "@/features/invoices/schemas/invoices";
+import {
+  invoiceHistoryEventSchema,
+  invoiceSummarySchema,
+} from "@/features/invoices/schemas/invoices";
 import type { Deposit, Invoice, Owed } from "@/features/invoices/types/invoices";
 import { FACTORY } from "@/features/pay/constants/receive-address";
 
@@ -207,6 +210,39 @@ describe("invoiceSummarySchema", () => {
       const { [field]: _, ...without } = open;
       expect(invoiceSummarySchema.safeParse(without).success, field).toBe(false);
     }
+  });
+});
+
+describe("invoiceHistoryEventSchema", () => {
+  const row = {
+    id: 2,
+    kind: "invoice.return_queued",
+    actor: "system",
+    at: "2026-11-10T18:04:00Z",
+    optionId: null,
+    amount: "50000",
+    txHash: `0x${"7".repeat(64)}`,
+    step: null,
+    field: null,
+    from: null,
+    to: null,
+    until: null,
+    related: null,
+  };
+
+  it("reads a queued return, whose to is the address the money goes back to", () => {
+    const queued = { ...row, to: `0x${"a".repeat(40)}` };
+    expect(invoiceHistoryEventSchema.safeParse(queued).success).toBe(true);
+    // An edited due date keeps its day there, and anything else is still refused.
+    const moved = {
+      ...row,
+      kind: "invoice.updated",
+      field: "dueDate",
+      from: "2026-11-20",
+      to: "2026-11-27",
+    };
+    expect(invoiceHistoryEventSchema.safeParse(moved).success).toBe(true);
+    expect(invoiceHistoryEventSchema.safeParse({ ...row, to: "soon" }).success).toBe(false);
   });
 });
 

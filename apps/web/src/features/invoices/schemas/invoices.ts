@@ -248,7 +248,8 @@ export const invoiceHistoryEventSchema = z.object({
   step: openEnum<ReminderStep>().nullable(),
   field: openEnum<HistoryField>().nullable(),
   from: apiDate.nullable(),
-  to: apiDate.nullable(),
+  // An edited due date's new day; on a queued return, the address the money goes back to.
+  to: z.union([apiDate, evmAddress]).nullable(),
   until: apiTime.nullable(),
   related: revisionSchema.nullable(),
 });

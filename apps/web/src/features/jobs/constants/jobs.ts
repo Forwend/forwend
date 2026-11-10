@@ -22,9 +22,6 @@ export const JOB_FIELDS = {
   payments: "payments",
 } as const;
 
-/** An email as the forms check it before sending; the API checks it again. */
-export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 /** What a job's record lists (R-104), in the order events at the same time happened. */
 export const RECORD_EVENTS = {
   created: "created",

@@ -109,6 +109,15 @@ export function lineUnits(
   return { price: units, units: (units * hundredths) / 100n };
 }
 
+/** What a row adds to the total as it is typed: its price counts before its description is written. Continue and
+ * Create still check the description with lineUnits. */
+export function lineFigure(
+  line: Pick<LineDraft, "description" | "quantity" | "price">,
+  decimals: number,
+): ReturnType<typeof lineUnits> {
+  return lineUnits({ ...line, description: line.description.trim() || "-" }, decimals);
+}
+
 export function lineErrorField(error: LineError): LineField {
   return error === LINE_ERRORS.exact ? LINE_ERRORS.price : error;
 }

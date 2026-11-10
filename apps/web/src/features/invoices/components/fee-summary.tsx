@@ -1,6 +1,6 @@
 "use client";
 
-import { SegmentedControl, Switch } from "@forwend/ui-web";
+import { SegmentedControl, Skeleton, Switch } from "@forwend/ui-web";
 import { skipToken } from "@reduxjs/toolkit/query";
 import { useEffect, useState } from "react";
 import { useGetFeesQuery } from "@/features/invoices/api/invoices-api";
@@ -98,6 +98,11 @@ export function FeeSummary({
   if (totals) {
     const ROW = "flex min-h-10 items-center justify-between gap-4 px-4 py-2";
     const VALUE = "text-right font-medium whitespace-nowrap text-ink tabular-nums";
+    // While the fee is priced, each figure that waits on it keeps its place as a placeholder of its own width.
+    const pricingNow = pricing && !failed;
+    const later = (width: string) => (
+      <Skeleton className={`inline-block h-4 align-middle ${width}`} />
+    );
     return (
       <dl className="flex flex-col bg-surface-2 text-sm">
         <div className={ROW}>
@@ -124,23 +129,35 @@ export function FeeSummary({
               <span className="whitespace-nowrap">
                 {(clientPays ? COPY.feeAdded : COPY.feeTaken)(money(figures.fee))}
               </span>
+            ) : pricingNow ? (
+              later("w-20")
             ) : waiting ? null : (
               "—"
             )}
-            {/* Always mounted, so a screen reader hears the line when it appears. */}
-            <span role="status">{figures ? null : waiting}</span>
+            {/* Always mounted, so a screen reader hears the line when it appears. Only a failure is shown. */}
+            <span role="status" className={pricingNow ? "sr-only" : "block text-xs"}>
+              {figures ? null : waiting}
+            </span>
           </dd>
         </div>
         <div className={`${ROW} border-t border-line`}>
           <dt className="font-semibold text-ink">{COPY.clientPaysTotal}</dt>
           <dd className="text-right text-lg font-semibold whitespace-nowrap text-ink tabular-nums">
             {/* With the fee on the client's side and no quote, what the client pays is not known yet. */}
-            {figures ? money(figures.pays) : clientPays && units > 0n ? "—" : money(units)}
+            {figures
+              ? money(figures.pays)
+              : clientPays && units > 0n
+                ? pricingNow
+                  ? later("h-5 w-24")
+                  : "—"
+                : money(units)}
           </dd>
         </div>
         <div className={ROW}>
           <dt className="text-muted">{COPY.youReceive}</dt>
-          <dd className={VALUE}>{figures ? money(figures.receives) : "—"}</dd>
+          <dd className={VALUE}>
+            {figures ? money(figures.receives) : pricingNow ? later("w-20") : "—"}
+          </dd>
         </div>
       </dl>
     );

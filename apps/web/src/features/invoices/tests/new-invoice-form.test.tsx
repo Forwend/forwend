@@ -765,7 +765,7 @@ it("starts billed to the saved client a client page opened it for", () => {
   expect((screen.getByLabelText(/PO or reference/) as HTMLInputElement).value).toBe("PO-7");
 });
 
-it("names the next step, counts the steps and leads to the field that needs fixing", () => {
+it("names the next step, counts the steps, and stops on a missing customer or a wrong email", () => {
   stubFetch(() => new Response("{}"));
   render(
     <Provider store={makeStore({ getAccessToken: async () => "token" })}>
@@ -774,12 +774,20 @@ it("names the next step, counts the steps and leads to the field that needs fixi
   );
   expect(form().getAllByText("Step 1 of 4").length).toBeGreaterThan(0);
   fireEvent.click(screen.getByRole("button", { name: "Continue to Items" }));
-  // No customer yet: the footer says so and its line goes to the field.
-  const fixing = screen.getByRole("button", { name: "1 field needs fixing" });
-  fireEvent.click(fixing);
-  expect(document.activeElement).toBe(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }));
-  fireEvent.change(document.activeElement as HTMLElement, { target: { value: "Mara Ilić" } });
-  expect(screen.queryByRole("button", { name: /needs fixing/ })).toBeNull();
+  const name = screen.getByRole("textbox", { name: /^(Legal|Full) name$/ });
+  expect(document.activeElement).toBe(name);
+  expect(screen.getByText("Enter a customer name or email")).toBeTruthy();
+  // The footer says where the owner is, never how many fields are wrong.
+  expect(screen.queryByRole("button", { name: /needs? fixing/ })).toBeNull();
+  // An email is optional, but one typed must look like one.
+  const email = screen.getByRole("textbox", { name: /^Email/ });
+  fireEvent.change(email, { target: { value: "mara@" } });
+  fireEvent.click(screen.getByRole("button", { name: "Continue to Items" }));
+  expect(document.activeElement).toBe(email);
+  expect(screen.getByText("Enter an email like name@example.com.")).toBeTruthy();
+  fireEvent.change(email, { target: { value: "mara@example.com" } });
+  fireEvent.click(screen.getByRole("button", { name: "Continue to Items" }));
+  expect(document.querySelector('[aria-current="step"]')?.textContent).toContain("Items");
 });
 
 it("reviews who is billed, what the client pays and what the owner receives", async () => {
@@ -814,7 +822,7 @@ it("reviews who is billed, what the client pays and what the owner receives", as
   expect(row("Items")).toContain("1 item · 100.00 USDC");
   expect(row("Client pays")).toContain("100.00 USDC on Base Sepolia");
   expect(row("You receive")).toContain("100.00 USDC");
-  expect(form().getByText(/can email it to mara@example.com/)).toBeTruthy();
+  expect(form().getByText(/email to mara@example.com/)).toBeTruthy();
 });
 
 it("zooms the preview by its levels and comes back to fit", () => {
@@ -839,7 +847,7 @@ it("zooms the preview by its levels and comes back to fit", () => {
   expect(preview.queryByText("Page 1 of 1")).toBeNull();
 });
 
-it("the footer's line opens the step that holds the error and focuses it", async () => {
+it("Create opens the step that holds an error and focuses the field", async () => {
   stubFetch(() => new Response("{}"));
   render(
     <Provider store={makeStore({ getAccessToken: async () => "token" })}>
@@ -857,14 +865,12 @@ it("the footer's line opens the step that holds the error and focuses it", async
   const link = screen.getByLabelText(/^Return link/) as HTMLInputElement;
   fireEvent.change(link, { target: { value: "ftp://example.com" } });
   fireEvent.click(screen.getByRole("button", { name: "Continue to Review" }));
-  // Create finds the link wrong and opens its step; going elsewhere, the line still leads back to it.
+  // Create finds the link wrong: it opens Details, unfolds More options and focuses the link.
   fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
-  const at = () => document.querySelector('[aria-current="step"]')?.textContent;
-  expect(at()).toContain("Details");
-  fireEvent.click(screen.getByRole("button", { name: /Customer/ }));
-  expect(at()).toContain("Customer");
-  fireEvent.click(screen.getByRole("button", { name: "1 field needs fixing" }));
-  expect(at()).toContain("Details");
+  expect(document.querySelector('[aria-current="step"]')?.textContent).toContain("Details");
+  expect(screen.getByRole("button", { name: "More options" }).getAttribute("aria-expanded")).toBe(
+    "true",
+  );
   expect(document.activeElement).toBe(link);
 });
 
@@ -887,7 +893,61 @@ it("a request drops its name error once a name is typed, and names its first ste
   await waitFor(() => expect(next.hasAttribute("disabled")).toBe(false), { timeout: 2000 });
   fireEvent.click(next);
   fireEvent.click(screen.getByRole("button", { name: /^Continue/ }));
-  expect(screen.getByRole("button", { name: "1 field needs fixing" })).toBeTruthy();
+  expect(screen.getByText("Enter the name the payer will see.")).toBeTruthy();
   fireEvent.change(screen.getByLabelText(/^Your name/), { target: { value: "Mara" } });
-  expect(screen.queryByRole("button", { name: /needs fixing/ })).toBeNull();
+  expect(screen.queryByText("Enter the name the payer will see.")).toBeNull();
+});
+
+it("counts an item's price at once, and asks for its description on Continue", async () => {
+  stubFetch(() => new Response("{}"));
+  render(
+    <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+      <NewInvoiceForm profileId={PROFILE} testnet tokens={[TOKEN]} />
+    </Provider>,
+  );
+  fireEvent.change(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }), {
+    target: { value: "Mara Ilić" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Continue to Items" }));
+  // Items opens on the amount; Add item makes the first row.
+  expect(screen.queryByLabelText("Item 1")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Add item" }));
+  fireEvent.change(screen.getByLabelText(/^Price/), { target: { value: "12" } });
+  expect(form().getByText("Subtotal").nextElementSibling?.textContent).toBe("12.00 USDC");
+  const next = screen.getByRole("button", { name: "Continue to Details" });
+  await waitFor(() => expect(next.hasAttribute("disabled")).toBe(false), { timeout: 2000 });
+  fireEvent.click(next);
+  expect(document.querySelector('[aria-current="step"]')?.textContent).toContain("Items");
+  expect(document.activeElement).toBe(screen.getByLabelText("Item 1"));
+});
+
+it("keeps More options open while a field it opened for is fixed", async () => {
+  stubFetch(() => new Response("{}"));
+  render(
+    <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+      <NewInvoiceForm profileId={PROFILE} testnet tokens={[TOKEN]} />
+    </Provider>,
+  );
+  fireEvent.change(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }), {
+    target: { value: "Mara Ilić" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Continue to Items" }));
+  fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "100" } });
+  const toDetails = screen.getByRole("button", { name: "Continue to Details" });
+  await waitFor(() => expect(toDetails.hasAttribute("disabled")).toBe(false), { timeout: 2000 });
+  fireEvent.click(toDetails);
+  const more = screen.getByRole("button", { name: "More options" });
+  fireEvent.click(more);
+  const link = screen.getByLabelText(/^Return link/) as HTMLInputElement;
+  fireEvent.change(link, { target: { value: "http://x" } });
+  fireEvent.click(more);
+  expect(more.getAttribute("aria-expanded")).toBe("false");
+  fireEvent.click(screen.getByRole("button", { name: "Continue to Review" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+  expect(more.getAttribute("aria-expanded")).toBe("true");
+  expect(document.activeElement).toBe(link);
+  // The first keystroke clears the error; the section stays open around the field.
+  fireEvent.change(link, { target: { value: "https://x" } });
+  expect(more.getAttribute("aria-expanded")).toBe("true");
+  expect(link.closest("[inert]")).toBeNull();
 });

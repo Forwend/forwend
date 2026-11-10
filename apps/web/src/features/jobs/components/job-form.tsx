@@ -18,12 +18,7 @@ import type { ClientSearch } from "@/features/clients/hooks/use-client-search";
 import { clientBody, clientCountryOptions, clientOptions } from "@/features/clients/lib/clients";
 import type { ClientBody } from "@/features/clients/types/clients";
 import { useCreateJobMutation } from "@/features/jobs/api/jobs-api";
-import {
-  EMAIL_PATTERN,
-  JOB_FIELDS,
-  JOB_LIMITS,
-  PAYMENT_FIELDS,
-} from "@/features/jobs/constants/jobs";
+import { JOB_FIELDS, JOB_LIMITS, PAYMENT_FIELDS } from "@/features/jobs/constants/jobs";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
 import { dueDays, invalidJobField, paymentCents } from "@/features/jobs/lib/jobs";
 import type {
@@ -35,6 +30,7 @@ import type {
 import { FieldGroup } from "@/shared/components/field-group";
 import { FormPreview, StepForm, useFormSteps } from "@/shared/components/step-form";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { EMAIL_PATTERN } from "@/shared/constants/email";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { usdFromCents } from "@/shared/lib/money";
 

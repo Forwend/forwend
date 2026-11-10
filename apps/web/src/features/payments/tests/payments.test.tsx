@@ -27,7 +27,7 @@ describe("merchant payment money", () => {
   });
   it("keeps confirmed payment separate from settlement into a wallet", () => {
     expect(paymentState({ paymentStatus: "paid", closed: false })).toBe("Paid");
-    expect(paymentState({ paymentStatus: "detected", closed: true })).toBe("Expired");
+    expect(paymentState({ paymentStatus: "detected", closed: true })).toBe("Closed unpaid");
     expect(paymentWallet({ settlementStatus: "pending" })).toBe("pending");
     expect(paymentWallet({ settlementStatus: "settled" })).toBe("inWallet");
     expect(paymentWallet({ settlementStatus: "none" })).toBe("none");
