@@ -399,10 +399,15 @@ Limits:
   - That key can pause, change the executor, refund after a deadline and recover, and it gets every platform fee.
   - A leak of it would let its holder take the money waiting in mainnet receivers.
   - So live mode takes no real volume until the Safe factory is deployed.
-- A payer-chooses invoice picks its option as soon as that option's final payments add up to 1.00 USD (R-119); no
-  other chain is waited for.
+- A payer-chooses invoice picks its option once that option's final payments add up to a tenth of the amount, at most
+  1.00 USD (R-119); no other chain is waited for.
   - A smaller deposit chooses nothing, so a stranger with the pay link can't decide the option with dust.
-  - It is held for the payer; on the chosen option, so is a payment before the one that brought it to 1.00 USD.
+  - It is held for the payer while nothing is chosen.
+  - Once its option is chosen, the held part of each on-time deposit goes to the creator, as a `chosen` booking.
+    - Not after a cancel or a settle, nor while a return of it is queued: then it stays the payer's.
+    - Nor once the option has any refund: a refund names no deposit, so a held part may already be returned.
+    - A later reopen gives back only what is still held, so no part reaches the creator twice.
+  - So a payment sent in parts counts in full, however small its first part.
   - On-time dust on an open invoice is not announced to the owner; late money and money after a cancel always is.
   - Dust never makes the invoice confirming or partly paid, and never stops the owner canceling or editing it.
   - Before a choice the invoice closes only once every option chain was read past its close.

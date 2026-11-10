@@ -1,7 +1,6 @@
 package ledger
 
 import (
-	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -16,13 +15,13 @@ import (
 
 const BalanceTimeout = 10 * time.Second
 
-// leastAmount is the least an option's payments must add up to before they choose it: 1.00 USD, one whole token of
-// a stablecoin (D-75, invoice.MinUSDCents), or the whole amount of an older, smaller invoice.
-const leastAmount = `least(i.amount, (10::numeric ^ tk.decimals)::numeric(78, 0))`
+// leastAmount is the least an option's payments must add up to before they choose it (D-76): a tenth of the amount, at
+// most 1.00 USD (one whole token of a stablecoin, D-75). A partial payment then chooses, and a stranger's dust can't.
+const leastAmount = `least(greatest(div(i.amount, 10), 1), (10::numeric ^ tk.decimals)::numeric(78, 0))`
 
 // optionTotals are the on-time payments of the options of invoice $1, each with its option's running total; the caller
 // adds the status it counts.
-const optionTotals = `SELECT t.invoice_id, t.block_time, t.chain_id, t.block_number, t.log_index,
+const optionTotals = `SELECT t.invoice_id, t.block_time, t.chain_id, t.block_number, t.log_index, t.booked,
 	    sum(t.amount) OVER (PARTITION BY t.invoice_id ORDER BY t.block_time, t.block_number, t.log_index) AS total,
 	    ` + leastAmount + ` AS least
 	FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id
@@ -111,7 +110,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	// Payer chooses (R-56, D-76): the first option whose final payments add up to its least amount is the invoice's,
 	// under the main row's lock so two options can't both win; money on any other option is held for the payer.
 	superseded, noneChosen := false, false
-	var crossing *movement
+	applyEarlier := false
 	shown := true // the row invoices_current shows: the chosen option, or the main row until one is chosen
 	closedEverywhere := true
 	if options {
@@ -147,19 +146,10 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 			}
 		}
 		noneChosen = chosen == nil
-		if chosen != nil && *chosen == invoiceID {
-			// The deposit that brought this option to its least amount: the parts before it are held, in every round.
-			var at, block, index uint64
-			err := tx.QueryRow(ctx, `SELECT block_time, block_number, log_index FROM (`+optionTotals+`
-				AND t.status = 'confirmed') s WHERE invoice_id = $2 AND total >= least
-				ORDER BY block_time, block_number, log_index LIMIT 1`, group, invoiceID).Scan(&at, &block, &index)
-			switch {
-			case err == nil:
-				crossing = &movement{BlockTime: int64(at), BlockNumber: block, LogIndex: index}
-			case !errors.Is(err, pgx.ErrNoRows): // none: an option chosen by its first payment, before this rule
-				return fmt.Errorf("read invoice %s choosing payment: %w", invoiceID, err)
-			}
-		}
+		// The chosen option's parts held while nothing was chosen pay the creator (applyHeldParts), unless it takes no
+		// more money (a cancel, D-26) or a return of it is under way.
+		applyEarlier = chosen != nil && *chosen == invoiceID && refund != "refund_pending" && !Final(current) &&
+			settlementState != "settled"
 		if chosen == nil && finalizedTime > closesAt {
 			// A payment made before the close may still come on an option chain not final past it.
 			if err := tx.QueryRow(ctx, `SELECT NOT EXISTS (SELECT 1 FROM invoices o
@@ -186,6 +176,13 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	movements, more, err := pendingMovements(ctx, tx, invoiceID)
 	if err != nil {
 		return err
+	}
+	if applyEarlier {
+		moved, err := applyHeldParts(ctx, tx, invoiceID, closesAt, new(big.Int).Sub(amount, owed))
+		if err != nil {
+			return err
+		}
+		owed.Add(owed, moved)
 	}
 	depositsBooked := 0
 	// A return support queued (PLAN 11.10.3) holds the money until a refund lands.
@@ -255,10 +252,8 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		}
 		value, _ := new(big.Int).SetString(d.Amount, 10)
 		late := d.BlockTime > closesAt
-		// A payment before the one that brought its option to the least amount chose nothing: it is the payer's,
-		// whichever round books it.
-		early := noneChosen || crossing != nil && cmp.Or(cmp.Compare(d.BlockTime, crossing.BlockTime),
-			cmp.Compare(d.BlockNumber, crossing.BlockNumber), cmp.Compare(d.LogIndex, crossing.LogIndex)) < 0
+		// While no option is chosen a payment is the payer's; applyHeldParts gives it to the creator once its option is.
+		early := noneChosen
 		toCreator, toHeld := split(amount, owed, value, late, final || superseded || early)
 		if err := book(ctx, tx, invoiceID, "deposit", &d.ID, value, toCreator, toHeld); err != nil {
 			return err
@@ -421,6 +416,56 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		}
 	}
 	return tx.Commit(ctx)
+}
+
+// applyHeldParts moves the held parts of option's on-time deposits, booked while no option was chosen, to the creator,
+// at most up to; each part names its transfer, so readers see which deposits paid the creator. It returns what moved.
+func applyHeldParts(ctx context.Context, tx pgx.Tx, option string, closesAt int64, up *big.Int) (*big.Int, error) {
+	// A refund names no deposit, so after one, booked or not, a held deposit row may be money already returned: nothing
+	// moves, and what is held stays the payer's.
+	var refunded bool
+	if err := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = $1 AND kind = 'refund')",
+		option).Scan(&refunded); err != nil || refunded {
+		return new(big.Int), err
+	}
+	held, err := accountBalance(ctx, tx, option, "payer_held")
+	if err != nil {
+		return nil, err
+	}
+	left := minInt(new(big.Int).Set(up), held.Neg(held)) // a part already returned to its payer stays returned
+	// Each deposit's held part net of what a reopen already gave the creator; one with a chosen booking is done.
+	rows, err := tx.Query(ctx, `SELECT x.chain_transfer_id, (-sum(e.amount))::text
+		FROM ledger_transactions x JOIN ledger_entries e ON e.transaction_id = x.id AND e.account = 'payer_held'
+		JOIN chain_transfers t ON t.id = x.chain_transfer_id
+		WHERE x.invoice_id = $1 AND x.kind IN ('deposit', 'reopen') AND t.block_time <= $2
+		  AND NOT EXISTS (SELECT 1 FROM ledger_transactions c WHERE c.chain_transfer_id = x.chain_transfer_id
+		                  AND c.kind = 'chosen')
+		GROUP BY x.chain_transfer_id, t.block_number, t.log_index HAVING sum(e.amount) < 0
+		ORDER BY t.block_number, t.log_index`, option, closesAt)
+	if err != nil {
+		return nil, fmt.Errorf("read invoice %s held parts: %w", option, err)
+	}
+	type part struct {
+		Transfer int64
+		Amount   string
+	}
+	parts, err := pgx.CollectRows(rows, pgx.RowToStructByPos[part])
+	if err != nil {
+		return nil, fmt.Errorf("read invoice %s held parts: %w", option, err)
+	}
+	moved := new(big.Int)
+	for _, p := range parts {
+		move, _ := new(big.Int).SetString(p.Amount, 10)
+		move = minInt(move, new(big.Int).Sub(left, moved))
+		if move.Sign() <= 0 {
+			break
+		}
+		if err := book(ctx, tx, option, "chosen", &p.Transfer, new(big.Int), move, new(big.Int).Neg(move)); err != nil {
+			return nil, err
+		}
+		moved.Add(moved, move)
+	}
+	return moved, nil
 }
 
 // funded asks the selected RPC whether the receive address holds at least every booked deposit (D-15).

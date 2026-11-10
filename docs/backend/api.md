@@ -158,7 +158,8 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   - A bad body or an unknown link answers before it, so junk can't block Send to client, which shares it.
 - `PUT /v1/invoices/{payToken}/pick` (R-57, public like the checkout): the option the payer showed the address for,
   kept on the main row's `picked_id`, so the pay link opens on it again. The read returns it as `pickedOptionId`.
-  - It decides nothing: payments that add up to 1.00 USD still make an option the invoice's (R-56, R-119).
+  - It decides nothing: payments that add up to a tenth of the amount, at most 1.00 USD, still make an option the invoice's
+    (R-56, R-119).
   - It is refused once an option is chosen, or a payment that can choose one is seen; dust doesn't stop it.
   - A changed pick adds one `payer.option_picked` row to the history; the same pick again adds none.
   - An id that isn't one of the invoice's options is 422, and so is any pick on a Fixed invoice.
@@ -912,11 +913,11 @@ R-19 and R-42; the full schema is in openapi.yaml.
   `{optionId, chainId, network, token, symbol, decimals, amount, receiveAddress, deposits}`; deposits on an option
   other than the shown one are held for the payer). Until an option has money the
   terms shown are the first option's.
-  - The first option whose final payments add up to 1.00 USD becomes the invoice's for good (`chosen_id`, R-119).
-  - A smaller deposit before the choice is held for the payer, and on the chosen option a payment before the one
-    that brought it to 1.00 USD is held too. On-time dust on an open invoice sends no email or webhook.
+  - The first option whose final payments add up to a tenth of the amount, at most 1.00 USD, becomes the invoice's for
+    good (`chosen_id`, R-119).
+  - A smaller deposit before the choice is held for the payer. Once its option is chosen, it pays the creator too.
+  - On-time dust on an open invoice sends no email or webhook.
   - Dust doesn't stop cancel or the edits the payer sees: only a payment that can choose an option does.
-  - An older invoice under 1.00 USD needs its whole amount to choose.
   - No other chain is waited for. Money on any other option is booked to `payer_held`.
   - The owner's GET with an option's id answers its invoice; the public routes don't take ids.
   - Lists, activity and search show each invoice once, with the current option (`invoices_current` view).

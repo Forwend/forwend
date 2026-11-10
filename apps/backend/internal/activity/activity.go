@@ -85,10 +85,10 @@ func NewService(pool *pgxpool.Pool) *Service {
 // heldSQL says whether the owner gets none of chain transfer t, on option row i.
 // Booked: held when none went to the owner, or after a partly paid expiry moved it to the payer.
 // Not booked yet: the ledger's split rule (ledger.Final, late, money on an option the client didn't pay with).
-// Only deposit and reopen rows name a transfer; saying so lets the lookup use their index.
+// Only deposit, reopen and chosen rows name a transfer; saying so lets the lookup use their index.
 const heldSQL = `CASE WHEN t.booked THEN NOT EXISTS (SELECT 1 FROM ledger_transactions x
     JOIN ledger_entries e ON e.transaction_id = x.id WHERE x.chain_transfer_id = t.id
-    AND x.kind IN ('deposit', 'reopen') AND e.account = 'recipient_payable') OR i.payment_status = 'expired_partially_paid'
+    AND x.kind IN ('deposit', 'reopen', 'chosen') AND e.account = 'recipient_payable') OR i.payment_status = 'expired_partially_paid'
   ELSE t.block_time > i.closes_at OR i.payment_status IN ('paid', 'expired', 'expired_partially_paid', 'canceled')
     OR coalesce((SELECT m.chosen_id <> i.id FROM invoices m WHERE m.id = coalesce(i.main_id, i.id)), false) END`
 

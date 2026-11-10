@@ -362,7 +362,7 @@ describe("withOption", () => {
     ],
   };
 
-  it("lets no deposit under 1 USD choose an option, and the first to add up to it does", () => {
+  it("lets no deposit under a tenth of the amount (at most 1 USD) choose an option, and the first to reach it does", () => {
     const [main, other] = choosing.options;
     if (!main || !other) throw new Error("Missing fixture option");
     const big = { ...choosing, amount: "5000000" };
@@ -378,8 +378,18 @@ describe("withOption", () => {
     expect(firstPaymentOption(options([dust], [deposit("5000000")]))?.optionId).toBe(
       other.optionId,
     );
-    const parts = [deposit("600000"), deposit("600000", { logIndex: 1 })];
+    const parts = [deposit("300000"), deposit("300000", { logIndex: 1 })]; // 0.60 of 5.00: past its tenth
     expect(firstPaymentOption(options(parts, []))?.optionId).toBe(main.optionId);
+    // A 1.00 USD invoice: a first part short of the whole amount already chooses its option.
+    const small = {
+      ...choosing,
+      amount: "1000000",
+      options: [
+        { ...main, amount: "1000000", deposits: [] },
+        { ...other, amount: "1000000", deposits: [deposit("999973")] },
+      ],
+    };
+    expect(firstPaymentOption(small)?.optionId).toBe(other.optionId);
   });
 
   it("uses the selected option's totals instead of the main option's preview", () => {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 	"github.com/forwend/forwend/apps/backend/internal/history/historytest"
+	"github.com/jackc/pgx/v5"
 )
 
 // option adds an accepted option of invoice main (R-56): its own id and receive address, the main row's other terms.
@@ -157,6 +158,12 @@ type optionSim struct {
 
 func newOptionSim(t *testing.T) optionSim {
 	t.Helper()
+	return newOptionSimFor(t, 5000000)
+}
+
+// newOptionSimFor is newOptionSim for an invoice of amount base units.
+func newOptionSimFor(t *testing.T, amount int64) optionSim {
+	t.Helper()
 	s := newSim(t)
 	s.exec(`WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (2, 'evm', 'sim2', true)),
 		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
@@ -167,9 +174,9 @@ func newOptionSim(t *testing.T) optionSim {
 	s.exec(`INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at,
 		    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
 		    request_hash)
-		SELECT $1, id, 1, 'evm', $2, 5000000, 5000, 5000 + 86400, '0x1111111111111111111111111111111111111111',
+		SELECT $1, id, 1, 'evm', $2, $4, 5000, 5000 + 86400, '0x1111111111111111111111111111111111111111',
 		    'evm_create2', '0x2222222222222222222222222222222222222222', $3, $1, decode(repeat('00', 32), 'hex')
-		FROM profiles`, o.main, simToken, o.dust)
+		FROM profiles`, o.main, simToken, o.dust, amount)
 	s.answer[o.dust] = new(big.Int)
 	s.exec(`INSERT INTO invoices (id, main_id, profile_id, chain_id, chain_family, token_contract, amount, expires_at,
 		    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
@@ -334,34 +341,166 @@ func TestDustNeverChoosesItsOption(t *testing.T) {
 	}
 }
 
-// A payment sent in parts chooses its option once they add up to 1 USD; a part before the one that got there is the
-// payer's. Whether the parts were final in one worker round or in several, the ledger is the same.
+// A payment sent in parts counts in full once one part brings its option to a tenth of the amount (0.50 USDC here):
+// the parts before it pay the creator too, whether they were final in the same worker round or in earlier ones.
 func TestPaymentInSmallPartsChoosesItsOption(t *testing.T) {
 	for _, rounds := range []string{"one round", "rounds apart"} {
 		t.Run(rounds, func(t *testing.T) {
 			o := newOptionSim(t)
 			o.scanned(1, 2000)
 			o.scanned(2, 2000)
-			o.pay(o.option, 2, o.full, 600000, 1300)
+			o.pay(o.option, 2, o.full, 300000, 1300)
 			if rounds == "rounds apart" {
 				o.process(o.option)
 			}
-			o.pay(o.option, 2, o.full, 600000, 1310) // 1.20 USDC: this one chooses the option
+			o.pay(o.option, 2, o.full, 300000, 1310) // 0.60 USDC in all: this one chooses the option
 			if rounds == "rounds apart" {
 				o.process(o.option)
 			}
 			o.pay(o.option, 2, o.full, 4400000, 1320)
 			o.process(o.option)
-			if got, refund := o.payment(o.option); got != Paid || refund != "held" {
-				t.Fatalf("after 0.60 + 0.60 + 4.40 USDC: %s, refund %s; want paid with the first 0.60 held", got, refund)
+			a, err := ReadAmounts(context.Background(), o.pool, o.option)
+			if err != nil {
+				t.Fatal(err)
 			}
-			var held int64
-			if err := o.pool.QueryRow(context.Background(), `SELECT -sum(e.amount)::bigint FROM ledger_entries e
-				JOIN ledger_transactions x ON x.id = e.transaction_id WHERE x.invoice_id = $1 AND e.account = 'payer_held'`,
-				o.option).Scan(&held); err != nil || held != 600000 {
-				t.Fatalf("held %d (%v), want the first 0.60 USDC", held, err)
+			if got, refund := o.payment(o.option); got != Paid || refund != "none" || a.Held.Sign() != 0 ||
+				a.Payable.Int64() != 5000000 {
+				t.Fatalf("after 0.30 + 0.30 + 4.40 USDC: %s, refund %s, held %s, payable %s; want paid with nothing held",
+					got, refund, a.Held, a.Payable)
 			}
 		})
+	}
+}
+
+// A 1.00 USD payer-chooses invoice paid in two parts: the first part already counts, so the invoice is partly paid,
+// and the second completes it; only the surplus is the payer's.
+func TestFirstPartOfASmallInvoiceIsAPartialPayment(t *testing.T) {
+	o := newOptionSimFor(t, 1000000)
+	o.scanned(1, 2000)
+	o.scanned(2, 2000)
+	o.pay(o.option, 2, o.full, 999973, 1300)
+	o.process(o.option)
+	if got, refund := o.payment(o.option); got != PartiallyPaid || refund != "none" {
+		t.Fatalf("after 0.999973 of 1.00 USDC: %s, refund %s; want partially paid, nothing held", got, refund)
+	}
+	o.pay(o.option, 2, o.full, 999970, 1310)
+	o.process(o.option)
+	a, err := ReadAmounts(context.Background(), o.pool, o.option)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := o.payment(o.option); got != Paid || a.Held.Int64() != 999943 || a.Payable.Int64() != 1000000 {
+		t.Fatalf("after the second part: %s, held %s, payable %s; want paid, 0.999943 held as overpaid",
+			got, a.Held, a.Payable)
+	}
+}
+
+// A deposit the old 1.00 USD rule booked as held, on an invoice still open, chooses its option under the tenth rule
+// once it is past a tenth; it then pays the creator, so the invoice is never locked to an option its payment can't pay.
+func TestHeldDepositThatChoosesUnderTheTenthRulePaysTheCreator(t *testing.T) {
+	o := newOptionSimFor(t, 1000000)
+	ctx := context.Background()
+	o.scanned(1, 2000)
+	o.scanned(2, 2000)
+	o.pay(o.option, 2, o.full, 500000, 1300)
+	if err := pgx.BeginFunc(ctx, o.pool, func(tx pgx.Tx) error {
+		var id int64
+		if err := tx.QueryRow(ctx, "SELECT id FROM chain_transfers WHERE invoice_id = $1", o.option).Scan(&id); err != nil {
+			return err
+		}
+		held := big.NewInt(500000)
+		return book(ctx, tx, o.option, "deposit", &id, held, new(big.Int), held)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	o.process(o.option)
+	a, err := ReadAmounts(ctx, o.pool, o.option)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, refund := o.payment(o.option); got != PartiallyPaid || refund != "none" || a.Payable.Int64() != 500000 {
+		t.Fatalf("the held 0.50 of 1.00 USDC chose its option: %s, refund %s, payable %s; want partially paid with it paid",
+			got, refund, a.Payable)
+	}
+}
+
+// A part returned to its payer before the choice still has its held deposit row, as a refund names no deposit. Late
+// money held later on the open invoice must not go to the creator in that part's name.
+func TestReturnedPartNeverTakesLateMoneyForTheCreator(t *testing.T) {
+	o := newOptionSim(t)
+	o.scanned(1, 2000)
+	o.scanned(2, 2000)
+	o.pay(o.option, 2, o.full, 300000, 1300)
+	o.process(o.option)
+	o.exec(`INSERT INTO receiver_outflows (invoice_id, chain_id, receiver_address, token_contract, kind, destination,
+		amount, tx_hash, log_index, block_hash, block_number, block_time, verified_block, transfer_log_index)
+		VALUES ($1, 2, $2, $3, 'refund', '0x00000000000000000000000000000000000000ff', 300000,
+		'0x' || repeat('a', 64), 1, '0x' || repeat('b', 64), 1, 1305, 1000, 0)`, o.option, o.full, simToken)
+	o.answer[o.full].Sub(o.answer[o.full], big.NewInt(300000))
+	o.process(o.option)
+	o.pay(o.option, 2, o.full, 600000, 1310) // chooses the option: 0.60 of 5.00 paid
+	o.process(o.option)
+	o.pay(o.option, 2, o.full, 1000000, 5050)                 // late: held
+	o.answer[o.full].Add(o.answer[o.full], big.NewInt(50000)) // money no transfer explains keeps the invoice open
+	o.scanned(1, 5100)
+	o.scanned(2, 5100)
+	o.process(o.option)
+	o.process(o.option)
+	a, err := ReadAmounts(context.Background(), o.pool, o.option)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Payable.Int64() != 600000 || a.Held.Int64() != 1000000 {
+		t.Fatalf("payable %s, held %s; want the 0.60 paid and the late 1.00 held", a.Payable, a.Held)
+	}
+}
+
+// D-26: money that comes after a cancel stays the payer's, even a payment that chooses its option after it.
+func TestCanceledPayerChoosesInvoiceKeepsEarlierPartsHeld(t *testing.T) {
+	o := newOptionSim(t)
+	o.scanned(1, 2000)
+	o.scanned(2, 2000)
+	o.pay(o.option, 2, o.full, 300000, 1300)
+	o.process(o.option)
+	o.exec(`UPDATE invoices SET payment_status = 'canceled', canceled_at = now() WHERE coalesce(main_id, id) = $1`, o.main)
+	o.pay(o.option, 2, o.full, 300000, 1310) // 0.60 USDC in all: past the option's tenth
+	o.process(o.option)
+	a, err := ReadAmounts(context.Background(), o.pool, o.option)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Payable.Sign() != 0 || a.Held.Int64() != 600000 {
+		t.Fatalf("after a cancel: payable %s, held %s; want nothing payable, all 0.60 USDC held", a.Payable, a.Held)
+	}
+}
+
+// R-130: a reopen gives back what the expiry held, once: a part the choice already gave the creator is not given twice.
+func TestReopenAfterAChoiceGivesEachPartOnce(t *testing.T) {
+	o := newOptionSimFor(t, 1000000)
+	ctx := context.Background()
+	o.scanned(1, 2000)
+	o.scanned(2, 2000)
+	o.pay(o.option, 2, o.full, 50000, 1300) // under the tenth: held while nothing is chosen
+	o.process(o.option)
+	o.pay(o.option, 2, o.full, 100000, 1310) // chooses the option: both parts pay the creator
+	o.process(o.option)
+	o.scanned(1, 5100)
+	o.scanned(2, 5100)
+	o.process(o.option)
+	if got, _ := o.payment(o.option); got != ExpiredPartiallyPaid {
+		t.Fatalf("after the close: %s, want expired partly paid", got)
+	}
+	if err := pgx.BeginFunc(ctx, o.pool, func(tx pgx.Tx) error {
+		return Reopen(ctx, tx, o.option, 50000)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	a, err := ReadAmounts(ctx, o.pool, o.option)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Held.Sign() != 0 || a.Payable.Int64() != 150000 {
+		t.Fatalf("after the reopen: held %s, payable %s; want nothing held and the 0.15 received payable", a.Held, a.Payable)
 	}
 }
 
