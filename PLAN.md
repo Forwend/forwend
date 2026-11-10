@@ -223,6 +223,12 @@ The owner moved these out of the MVP on 2026-10-31:
   - A payer on a cheaper network, such as Arc or Tempo, pays more than its gas; the extra goes to the settler.
 - Code refactoring (owner request 2026-11-09): make the code cleaner and easier to scale.
   - Each refactor keeps behavior and public contracts, as the workflow's refactor rule asks.
+- Faster "paid" (owner request 2026-11-10): rethink the confirmation rule (D-45) after the MVP is done.
+  - Today a deposit is paid only at the chain's `finalized` block; on Base that is about 15 minutes.
+  - Option 1: "paid" at the `safe` block on L2s, once the block's data is posted to Ethereum.
+  - Option 2: a fixed number of confirmations per chain, perhaps fewer for small amounts.
+  - Either way the settle still waits for `finalized`, so a reorg can't move the merchant's money.
+  - Decide with measured times per chain, then change D-45, money-safety.md and the tests together.
 
 Mobile; optional BNB and non-EVM networks; HD-wallet receive methods; cross-chain sends; automatic wallet billing;
 full accounting page and Koinly export; opt-in escrow; bank/card on-ramp; public developer sandbox; custom checkout
