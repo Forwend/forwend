@@ -342,16 +342,19 @@ func (s *Service) refresh(ctx context.Context, out Send) (Send, error) {
 			return s.relayed(ctx, out)
 		}
 	case Failed:
-		// A transaction given up as dropped can still be mined: once the watcher records its transfer as final, the
-		// send was sent after all.
-		if out.Failure == nil || *out.Failure != "dropped" {
+		// A transaction given up as dropped can still be mined, and one that reverted in a block a reorg replaced can
+		// succeed in the new one: its receipt was read at the latest block, not a final one. Once the watcher records
+		// its transfer as final, the send was sent after all.
+		if out.Failure == nil || *out.Failure != "dropped" && *out.Failure != "reverted" {
 			return out, nil
 		}
 		if out.TxHash == nil {
 			return s.relayed(ctx, out)
 		}
-		if moved, next, _, err := s.rehash(ctx, out); moved || err != nil {
-			return next, err
+		if *out.Failure == "dropped" {
+			if moved, next, _, err := s.rehash(ctx, out); moved || err != nil {
+				return next, err
+			}
 		}
 	default:
 		return out, nil

@@ -504,7 +504,9 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
   - That is a deposit the scan missed, until `ops deposit` records it.
   - A payment's option `coverage.unprovedDeposits` is 1 in the same case.
 - The chain's scan reads each address's deposits from its creation until 30 days after its settle deadline.
+  - It reads them longer while a deposit to the address is still detected, until that deposit confirms.
   - A payment's option `coverage.historyComplete` is false after that: later deposits are not read.
+    - It stays false while the receiver's own events are read: those are not its deposits.
   - It reads the receiver's own events for as long as the receiver holds booked money.
 - Missing source evidence stays explicit; financial journals and immutable source records remain independently inspectable.
 - Every operation uses one repeatable-read database snapshot; CSV snapshot headers identify its cutoff.
@@ -1135,6 +1137,7 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
   - It refuses an invalid checksum, the zero address, any token contract and the sender's own wallet.
   - It reads the wallet's balance and dry-runs the token transfer from the wallet at the latest block.
   - A token revert is `transfer_refused`; a chain that can't be read is 503 `network_unavailable`.
+    - Its message adds only a decoded revert reason: a provider's error text can name its URL or key.
   - Warnings: `contract` (the recipient has code that isn't an EIP-7702 delegation) and `newRecipient`.
   - The wallet pays its fee from the token it sends (D-121). Only a `native_gas` or `fee_asset` token offers Send.
   - `networkFee.paidBy` says how: `wallet` for a `native_gas` token, `paymaster` for a `fee_asset` token.
@@ -1207,6 +1210,7 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
   - `sent` once it does: the transfer is in a block. `final` once that transfer is confirmed and can't change.
   - A reorged transfer goes back to `sending`; it is `sent` again when the transaction is mined again.
   - `failed` `reverted`: the receipt has no such transfer.
+    The receipt is read at the latest block, so a reorg can still mine it with the transfer: then it becomes `sent`.
   - The chain is asked for a send's receipt from 15 s after submit, at most once every 5 s per api process.
   - `failed` `dropped`: no receipt 30 minutes after submit, and the node no longer knows the transaction.
     A dropped send that is mined later becomes `sent`.

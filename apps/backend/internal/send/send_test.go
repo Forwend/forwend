@@ -2,7 +2,9 @@ package send
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"math/big"
 	"slices"
 	"strings"
@@ -196,6 +198,36 @@ func TestPrepareRefusesWhenTheTokenRefuses(t *testing.T) {
 	}
 	if _, err := e.prepare(t, outsider, "", 1_000_000); !errors.Is(err, ErrRefused) {
 		t.Errorf("err = %v, want ErrRefused", err)
+	}
+}
+
+type rpcError struct {
+	message string
+	data    any
+}
+
+func (e rpcError) Error() string  { return e.message }
+func (e rpcError) ErrorData() any { return e.data }
+
+// A provider's error text can name its URL or key: the client sees only a revert reason the data decodes to.
+func TestATokensRefusalShowsOnlyItsDecodedRevertReason(t *testing.T) {
+	blocked := "0x08c379a0" + fmt.Sprintf("%064x%064x", 32, 7) + hex.EncodeToString([]byte("blocked")) + strings.Repeat("0", 50)
+	for name, c := range map[string]struct {
+		err  error
+		want string
+	}{
+		"a revert with a reason": {rpcError{"execution reverted: blocked (https://rpc.example/v1/k3y)", blocked},
+			"the token refuses this transfer: blocked"},
+		"data that is no reason": {rpcError{"internal error at https://rpc.example/v1/k3y", "0x1234"},
+			"the token refuses this transfer"},
+		"a revert without data": {errors.New("execution reverted at https://rpc.example/v1/k3y"),
+			"the token refuses this transfer"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := refused(c.err); !errors.Is(err, ErrRefused) || err.Error() != c.want {
+				t.Errorf("refused = %v, want %q", err, c.want)
+			}
+		})
 	}
 }
 
@@ -590,6 +622,33 @@ func TestAnApprovedSendStillWaitingHoldsTheWallet(t *testing.T) {
 	if got, _ := e.sends.Get(ctx, e.profile, s.ID); got.Status != Submitted || got.TxHash == nil ||
 		*got.TxHash != strings.ToLower(hash) {
 		t.Errorf("once mined = %s %v, want submitted with %s", got.Status, got.TxHash, hash)
+	}
+}
+
+// A receipt read at the latest block can show a revert in a block a reorg then replaces; the same transaction can
+// succeed in the new one. Once the watcher records its transfer as final, the send is sent.
+func TestARevertedSendWhoseTransactionSucceedsAfterAReorgIsSent(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	s, err := e.prepare(t, outsider, "", 3_000_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.approve(t, s)
+	hash := e.anvil.Transfer(e.token, outsider, "3000000")
+	if _, err = e.sends.Submit(ctx, e.profile, s.ID, hash); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.pool.Exec(ctx, `UPDATE sends SET status = 'failed', failure = 'reverted', finished_at = now()
+		WHERE id = $1::uuid`, s.ID); err != nil {
+		t.Fatal(err)
+	}
+	e.anvil.Mine(2)
+	if err := e.watch.Scan(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := e.sends.Get(ctx, e.profile, s.ID); got.Status != Sent || got.Failure != nil {
+		t.Errorf("read as reverted, then final on chain = %s %v, want sent", got.Status, got.Failure)
 	}
 }
 

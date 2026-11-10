@@ -4199,7 +4199,7 @@ components:
       type: "object"
       required: ["historyComplete", "verifiedBlock", "verifiedHash", "verifiedTime", "observedBalance", "balanceDifference", "reconciliationError", "bookingError", "retryAt", "updatedAt", "chainFinalizedBlock", "pendingDeposits", "unbookedDeposits", "unprovedDeposits", "unbookedOutflows"]
       properties:
-        historyComplete: { type: "boolean", description: "False once the scan no longer reads the address's deposits: 30 days after its settle deadline." }
+        historyComplete: { type: "boolean", description: "False once the scan no longer reads the address's deposits: 30 days after its settle deadline, once no deposit to it is still detected." }
         verifiedBlock:
           anyOf:
             - type: "integer"

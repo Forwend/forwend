@@ -555,6 +555,12 @@ func TestPaymentReconciliationVerifiesOnlyReceiversWithNothingUnexplained(t *tes
 		coverage["historyComplete"] != false || coverage["unprovedDeposits"] != float64(1) {
 		t.Fatalf("a receiver holding a deposit the scan missed, past its watch window: %v, coverage %v", asset, coverage)
 	}
+	// The scan still reads it while a deposit to it is detected, until that deposit confirms.
+	e.exec(t, `INSERT INTO chain_transfers (chain_id,chain_family,token_contract,invoice_id,tx_hash,log_index,block_hash,block_number,block_time,from_address,to_address,amount,status)
+ SELECT chain_id,chain_family,token_contract,id,id,0,id,90,extract(epoch FROM now())::bigint,$2,receive_address,1,'detected' FROM invoices WHERE id = $1`, id, aliceWallet)
+	if _, coverage = read(); coverage["historyComplete"] != true {
+		t.Fatalf("past its watch window with a detected deposit: coverage %v, want historyComplete", coverage)
+	}
 }
 
 func TestPaymentSummaryOmitsUnusedOptionsWithoutCertifyingTheirHistory(t *testing.T) {

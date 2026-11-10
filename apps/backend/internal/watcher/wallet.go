@@ -92,7 +92,8 @@ func (c *Chain) walletLogs(ctx context.Context, lo, hi uint64, w wallets) ([]typ
 			out = append(out, l)
 		}
 	}
-	return nativeSends(out), nil
+	out, err := c.arcTwins(ctx, "wallet_transfers", out)
+	return nativeSends(out), err
 }
 
 // transfers marks each kept log in seen; a disabled token's log counts only when it is a detected row in open.

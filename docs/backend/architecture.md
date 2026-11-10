@@ -199,7 +199,9 @@ everything) 10,000 users gave p95 2.4 ms, 0 errors and 1,333 RPC calls/s (334 wh
 - The test sets `RPC_RATE_PER_SECOND=100000`, so the budget never slows it down.
   - With the default of 10, the api's share is 2 calls a second.
 - `/balances` needs the `ledger_transactions_invoice` index (migration 00011): 21.5 ms without it, 0.37 ms with it.
-- `/balances` and activity deposits find a profile's invoice rows through `invoices_profile` (migration 00088).
+- `/balances` finds a profile's invoice rows through `invoices_money_profile` (migration 00120).
+  - Activity deposits use `invoices_profile_created` or `invoices_profile_closes`, which start with `profile_id`.
+  - So `invoices_profile` (migration 00088) was redundant and is dropped (migration 00124).
   - With 220,000 invoices, a profile without payments read its balances in 0.05 ms, not 19 ms.
 - The RPC pool keeps up to 100 idle connections per host ([scaling](#scaling)).
 

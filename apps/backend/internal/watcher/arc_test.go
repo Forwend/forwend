@@ -14,6 +14,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/forwend/forwend/apps/backend/internal/chain"
+	"github.com/forwend/forwend/apps/backend/internal/database"
+	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
 )
 
 var (
@@ -86,23 +88,42 @@ func TestArcUSDCIsCreditedOncePerMovement(t *testing.T) {
 	}
 }
 
-// The deposit scan asks for Arc's system logs with the token's and counts a native send as the invoice's token.
-func TestArcDepositScanReadsNativeSends(t *testing.T) {
-	lookalike := common.HexToAddress("0x00000000000000000000000000000000000000c3")
-	var asked []common.Address
+// arcNode answers eth_getLogs with answer's logs for the addresses asked, and eth_getTransactionReceipt with mined's
+// logs of the transaction. It keeps the addresses last asked and counts the receipts read.
+type arcNode struct {
+	asked    []common.Address
+	receipts int
+}
+
+func arcChain(t *testing.T, answer func(asked []common.Address) []types.Log, mined []types.Log) (*Chain, *arcNode) {
+	t.Helper()
+	node := &arcNode{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			ID     json.RawMessage
-			Params []struct{ Address []common.Address }
+			Method string
+			Params []json.RawMessage
 		}
 		_ = json.NewDecoder(r.Body).Decode(&req)
-		asked = req.Params[0].Address
-		logs := []types.Log{
-			arcLog(arcPayer, arcEmitter, 1, 0, micro(4000000)),
-			arcLog(arcPayer, arcEmitter, 2, 0, micro(1000000)), arcLog(arcPayer, arcUSDC, 2, 1, big.NewInt(1000000)),
-			arcLog(arcPayer, lookalike, 3, 0, big.NewInt(9000000)),
+		var result any
+		if req.Method == "eth_getTransactionReceipt" {
+			node.receipts++
+			var tx common.Hash
+			_ = json.Unmarshal(req.Params[0], &tx)
+			logs := []types.Log{}
+			for _, l := range mined {
+				if l.TxHash == tx {
+					logs = append(logs, l)
+				}
+			}
+			result = map[string]any{"blockHash": common.Hash{0xbb}, "logs": logs}
+		} else {
+			var q struct{ Address []common.Address }
+			_ = json.Unmarshal(req.Params[0], &q)
+			node.asked = q.Address
+			result = answer(q.Address)
 		}
-		out, _ := json.Marshal(logs)
+		out, _ := json.Marshal(result)
 		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":%s}`, req.ID, out)
 	}))
 	t.Cleanup(server.Close)
@@ -111,13 +132,42 @@ func TestArcDepositScanReadsNativeSends(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(client.Close)
-	c := NewChain(nil, 5042002, client)
+	pool, err := database.Open(t.Context(), databasetest.Migrated(t, database.Migrate))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	return NewChain(pool, 5042002, client), node
+}
+
+// asked answers only the logs of the addresses asked for, as a node does.
+func asked(logs []types.Log) func([]common.Address) []types.Log {
+	return func(addresses []common.Address) []types.Log {
+		out := []types.Log{}
+		for _, l := range logs {
+			if slices.Contains(addresses, l.Address) {
+				out = append(out, l)
+			}
+		}
+		return out
+	}
+}
+
+// The deposit scan asks for Arc's system logs with the token's and counts a native send as the invoice's token.
+func TestArcDepositScanReadsNativeSends(t *testing.T) {
+	lookalike := common.HexToAddress("0x00000000000000000000000000000000000000c3")
+	mined := []types.Log{
+		arcLog(arcPayer, arcEmitter, 1, 0, micro(4000000)),
+		arcLog(arcPayer, arcEmitter, 2, 0, micro(1000000)), arcLog(arcPayer, arcUSDC, 2, 1, big.NewInt(1000000)),
+		arcLog(arcPayer, lookalike, 3, 0, big.NewInt(9000000)),
+	}
+	c, node := arcChain(t, func([]common.Address) []types.Log { return mined }, mined)
 	logs, err := c.logs(t.Context(), 1, 10, map[common.Address]receiver{arcReceiver: {"0x01", hexutil.Encode(arcUSDC[:])}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Contains(asked, arcEmitter) || !slices.Contains(asked, arcUSDC) {
-		t.Fatalf("asked for logs of %v, want the token and the system emitter", asked)
+	if !slices.Contains(node.asked, arcEmitter) || !slices.Contains(node.asked, arcUSDC) {
+		t.Fatalf("asked for logs of %v, want the token and the system emitter", node.asked)
 	}
 	if got := credited(logs); !slices.Equal(got, []string{"0x3600:0:4000000", "0x3600:1:1000000"}) {
 		t.Fatalf("credited %v; want the native send and the ERC-20 transfer once each, never the look-alike", got)
@@ -127,43 +177,45 @@ func TestArcDepositScanReadsNativeSends(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if slices.Contains(asked, arcEmitter) {
-		t.Fatalf("asked for the system emitter's logs for an invoice in another token: %v", asked)
+	if slices.Contains(node.asked, arcEmitter) {
+		t.Fatalf("asked for the system emitter's logs for an invoice in another token: %v", node.asked)
 	}
 	if got := credited(logs); !slices.Equal(got, []string{lookalike.Hex()[:6] + ":0:9000000"}) {
 		t.Fatalf("credited %v; want only the invoice's own token", got)
 	}
 }
 
-// The wallet scan reads Arc's system logs too, so a native send shows in activity once, as the ERC-20 transfer does.
-func TestArcWalletScanReadsNativeSends(t *testing.T) {
-	var asked []common.Address
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
-			ID     json.RawMessage
-			Params []struct{ Address []common.Address }
-		}
-		_ = json.NewDecoder(r.Body).Decode(&req)
-		asked = req.Params[0].Address
-		var logs []types.Log
-		for _, l := range []types.Log{
-			arcLog(arcPayer, arcEmitter, 1, 0, micro(4000000)),
-			arcLog(arcPayer, arcEmitter, 2, 0, micro(1000000)), arcLog(arcPayer, arcUSDC, 2, 1, big.NewInt(1000000)),
-		} {
-			if slices.Contains(asked, l.Address) {
-				logs = append(logs, l)
-			}
-		}
-		out, _ := json.Marshal(logs)
-		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":%s}`, req.ID, out)
-	}))
-	t.Cleanup(server.Close)
-	client, err := rpc.Dial(server.URL)
+// An answer with an ERC-20 transfer's system log but without its token log must not make it a second deposit, at
+// another log index: the receipt shows the token log, so the transfer counts at that index, as in a whole answer.
+func TestArcTransferMissingItsTokenLogCountsOnce(t *testing.T) {
+	system, token := arcLog(arcPayer, arcEmitter, 1, 4, micro(5000000)), arcLog(arcPayer, arcUSDC, 1, 5, big.NewInt(5000000))
+	c, node := arcChain(t, asked([]types.Log{system}), []types.Log{system, token})
+	invoices := map[common.Address]receiver{arcReceiver: {"0x01", hexutil.Encode(arcUSDC[:])}}
+	logs, err := c.logs(t.Context(), 1, 10, invoices)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(client.Close)
-	c := NewChain(nil, 5042002, client)
+	if got := credited(logs); !slices.Equal(got, []string{"0x3600:5:5000000"}) || node.receipts != 1 {
+		t.Fatalf("credited %v after %d receipts; want the ERC-20 transfer at its token log, from one receipt", got,
+			node.receipts)
+	}
+	logs, err = c.walletLogs(t.Context(), 1, 10, wallets{addresses: map[common.Address]bool{arcReceiver: true},
+		tokens: map[common.Address]bool{arcUSDC: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := credited(logs); !slices.Equal(got, []string{"0x3600:5:5000000"}) {
+		t.Fatalf("wallet scan recorded %v; want the ERC-20 transfer at its token log", got)
+	}
+}
+
+// The wallet scan reads Arc's system logs too, so a native send shows in activity once, as the ERC-20 transfer does.
+func TestArcWalletScanReadsNativeSends(t *testing.T) {
+	mined := []types.Log{
+		arcLog(arcPayer, arcEmitter, 1, 0, micro(4000000)),
+		arcLog(arcPayer, arcEmitter, 2, 0, micro(1000000)), arcLog(arcPayer, arcUSDC, 2, 1, big.NewInt(1000000)),
+	}
+	c, _ := arcChain(t, asked(mined), mined)
 	logs, err := c.walletLogs(t.Context(), 1, 10, wallets{addresses: map[common.Address]bool{arcReceiver: true},
 		tokens: map[common.Address]bool{arcUSDC: true}})
 	if err != nil {
