@@ -105,7 +105,7 @@ Every control comes from `@forwend/ui-web`; a link that looks like a button uses
   can't fit, the track scrolls sideways, fading at the edge that has more (a scroll-driven mask, so no script).
 - A longer choice (the status of invoices, requests and activity) is a select menu: a secondary button showing the
   choice with its icon (and the filter's name from small screens up), opening a menu of every option, each with the
-  icon its pill or bell event uses (Open a circle, Paid a check in a circle, In wallet a wallet, Expired a clock,
+  icon its pill or bell event uses (Open a circle, Paid a check in a circle, In wallet a wallet, Closed unpaid a clock,
   Canceled a ban).
 - A long list to choose from (a country, a saved client) is a search select (`ComboboxField`): the field looks like a
   select and opens a panel under it with a search box over the options; typing narrows them, ignoring letter case and
@@ -353,7 +353,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A failed read is one `LoadError` with Try again; an empty list says what fills it; a filter with no rows offers
     to clear it.
 - One status filter on every payment list (Payments, Invoices, Activity): `PaymentStateFilter`.
-  - All, then the D-114 states: Waiting for payment, Confirming, Partially paid, Paid, Overpaid, Expired, Canceled.
+  - All, then the D-114 states: Waiting for payment, Confirming, Partially paid, Paid, Overpaid, Closed unpaid, Canceled.
   - Each option has its status pill's label and icon. In wallet is a wallet state, so it is a column, not a status.
   - The URL keeps it as `state`, the same parameter on all three APIs.
   - The Source filter's options carry the source icons the tables show.
@@ -673,11 +673,18 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     invoice made, each invoice paid.
   - A change adds Change proposed (its title and amount) and its acceptance (with the client's email here).
   - Billed to follows Record, like an invoice's.
-- Invoices table: the client has a round initials avatar. Phone rows lead with the client (or a request's note) beside
-  that avatar carrying the network's logo, with the number and a short due date (no year within this year) under it,
-  and the amount over the status pill on the right. From small screens up (and for requests, which have no table) a
-  row is one line: the status in its own column before the amount. A request's note is no name, so its avatar keeps
-  the document icon.
+- Invoices table (R-253): one line per invoice, as the template's list draws it.
+  - Columns: Invoice, Client (an initials avatar and name), Title, Store, Due, Status, Amount, Network.
+  - A late invoice's due date is in the warning color; on hover it says how many days late.
+  - Closed checkouts read "Closed unpaid" or "Closed, partially paid", the history's words.
+  - From wide panels a copy button ends each row that can still be paid; it copies the pay link.
+    - It shows only while the checkout is open, as Copy link does on the invoice page.
+  - Needs attention sits above the search: what is left to pay in the late and partly paid invoices.
+    - From wide panels it is one card: the total, then the two most urgent invoices, each opening its page.
+    - Narrower, it is one warning-tinted strip that opens to every invoice it counts.
+    - Nothing shows while it loads or when nothing needs attention. Requests have none.
+  - Phone rows: "INV-0012 · Mara Ilić" over the status pill, and the amount over "Due Nov 20" on the right.
+    - No avatar. A request names its note after the number.
 - Activity rows name what happened, then who and what for: "Payment · Mara Ilić", "Invoice created · INV-0042",
   "Held for the payer · order-1042". A deposit split between the owner and the payer reads "Payment, extra held for
   the payer". Pages follow the API's cursor.
@@ -742,15 +749,23 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Every step stays mounted, so Back keeps what was typed and the last submit reads every field.
   - Continue checks only its step (a customer name or email; the amount or items). Create invoice checks
     everything and returns to the step that holds the first error.
-  - Review is a bordered list; each row has Edit, which opens the row's step.
+  - Customer checks a typed email's form on Continue; the email itself stays optional.
+  - Details, as the template draws it: Title beside PO or reference, then Note to the client.
+    - Dates: Due date at a field's width, then "Checkout closes after" (1 hour, 1 day, 7 days, 30 days, Custom).
+    - Every hint on the form is one short sentence.
+    - A step fades in from a slight lift; More options opens and closes by height; new lines fade in.
+    - A close before the due date's grace shows as a warning-tinted box with its icon.
+    - More options folds Return link, Supply date, reminders and the monthly repeat.
+    - It opens by itself when one of its fields has an error.
+  - Review is a bordered list; each row ends in a small Edit link that opens the row's step.
     - Customer shows the name and email; Items shows the count and total.
-    - Client pays shows the amount and network; You receive shows what is left after a fee the owner pays.
-    - Due date and Payment window end the list.
+    - Client pays shows the amount in bold and the network; You receive names a fee the owner pays.
+    - Due date, then Checkout closes: "7 days after it is created", or the custom day.
     - Under it a quiet note says what comes next: the pay link, and emailing it when the client has an email.
   - The footer holds Back (or Cancel), "Step 2 of 4" in the middle, then the main button at its end.
     - The main button names the next step: "Continue to Details". On Review it is Create invoice.
-    - When a check fails, the middle reads "1 field needs fixing" in the danger color.
-    - Pressing it opens the step that holds the first error and focuses it.
+    - A failed check shows its error under the field and focuses it; the footer never counts errors.
+    - Create opens the step that holds the first error and focuses that field.
     - Below extra-large screens a Preview button sits before the main button.
   - On a phone the form is the whole screen (R-252): the app's header and tab bar step aside.
     - Its own bar stays on top: Cancel (an X) on the first step, Back on the others, the page's name, "Step 2 of 4".
@@ -797,8 +812,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   the pay page) that a later payment would be held for the payer.
   The Items step reads like the invoice (R-252): How the client pays beside Network and token, then one bordered box.
   - The box holds the amount field, or the item rows; then the totals on a soft ground; then the agreed value.
-  - Add item (ghost, small; not on Request money) turns the amount into item rows (R-88).
-    - The amount typed so far becomes the first item's price. Removing the last item leaves its total as the amount.
+  - It opens on the amount; Add item turns it into the first row, the amount becoming its price (R-88).
+    - A row's price counts toward the subtotal at once; Continue asks for its description.
+    - Removing the last item leaves its total as the amount.
+  - The amount's hint is "Min 1 USD", or the token's symbol for one token.
+  - While the fee is priced, the fee, You receive and an unknown Client pays show placeholders, not words.
   - From small screens up the rows sit under one quiet header: Item, Qty, Price and Amount, each naming the unit.
     - The field labels are for screen readers only there, and an X at the row's end removes it.
   - On phones each item is a block: its description, Qty beside Price, then "Amount 1.00 USDC" and a red Remove.
@@ -825,6 +843,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - Under the invoice a quiet line says the page count and "Updates as you type".
     - The form's card takes 35rem here, so the page beside it stays readable.
   - Below extra-large screens the footer's Preview button opens it as a sheet over the form.
+    - In the sheet the three views span its width; zoom out, the level, zoom in and Fit sit on a row under them.
     - The sheet ends with "Back to Items, where you left it"; the form stays as it was.
 - Money actions are round icon buttons with the label underneath, on desktop and phones. Only the view's main
   action is filled with the lime; other working actions are surface circles, and coming ones are subtle.

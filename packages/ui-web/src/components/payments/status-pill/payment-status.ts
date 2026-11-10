@@ -32,8 +32,9 @@ export const PAYMENT_STATUSES = {
   partiallyPaid: { label: "Partially paid", tone: TONES.warning },
   overpaid: { label: "Overpaid", tone: TONES.warning },
   overdue: { label: "Overdue", tone: TONES.warning },
-  expired: { label: "Expired", tone: TONES.neutral },
-  expiredPartiallyPaid: { label: "Expired, partially paid", tone: TONES.warning },
+  // A checkout that closed, in the words the invoice's history uses.
+  expired: { label: "Closed unpaid", tone: TONES.neutral },
+  expiredPartiallyPaid: { label: "Closed, partially paid", tone: TONES.warning },
   canceled: { label: "Canceled", tone: TONES.neutral },
   settled: { label: "In wallet", tone: TONES.success },
   refundPending: { label: "Refund pending", tone: TONES.accent },

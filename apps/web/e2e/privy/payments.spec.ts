@@ -445,14 +445,14 @@ test("failed store loading blocks invoice creation until an explicit retry succe
   await expect(
     main.getByRole("alert").filter({ hasText: "We could not load stores" }),
   ).toBeVisible();
-  await expect(main.getByRole("button", { name: "Continue", exact: true })).toHaveCount(0);
+  await expect(main.getByRole("button", { name: /^Continue/ })).toHaveCount(0);
   failed = false;
   await main.getByRole("button", { name: "Try again", exact: true }).click();
   await main.getByRole("textbox", { name: "Legal name" }).fill("Store retry client");
-  await main.getByRole("button", { name: "Continue", exact: true }).click();
+  await main.getByRole("button", { name: /^Continue/ }).click();
   await main.getByLabel(/^Amount/).fill("1");
-  await main.getByRole("button", { name: "Continue", exact: true }).click();
-  await main.getByRole("button", { name: "Continue", exact: true }).click();
+  await main.getByRole("button", { name: /^Continue/ }).click();
+  await main.getByRole("button", { name: /^Continue/ }).click();
   await expect(main.getByRole("button", { name: "Create invoice", exact: true })).toBeVisible();
   await context.close();
 });
@@ -683,7 +683,7 @@ for (const width of [1440, 390]) {
         refund: "none",
         amount: "0",
         pending: "0",
-        label: "Expired",
+        label: "Closed unpaid",
       },
       {
         status: "expired_partially_paid",
@@ -691,7 +691,7 @@ for (const width of [1440, 390]) {
         refund: "refunded",
         amount: "1000000",
         pending: "0",
-        label: "Expired, partially paid",
+        label: "Closed, partially paid",
       },
     ]) {
       await page.unrouteAll({ behavior: "wait" });

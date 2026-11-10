@@ -21,7 +21,7 @@ import {
 import {
   ArrowLeft,
   ArrowRight,
-  CircleAlert,
+  ChevronDown,
   Eye,
   Mail,
   Plus,
@@ -80,6 +80,7 @@ import {
   invalidField,
   isReturnLink,
   lineErrorField,
+  lineFigure,
   lineUnits,
   offStoreOrigins,
   parseTokenAmount,
@@ -111,7 +112,9 @@ import {
   STEP_HEAD_CLASSES,
 } from "@/shared/components/step-form";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { EMAIL_PATTERN } from "@/shared/constants/email";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { ENTER } from "@/shared/constants/motion";
 import { chainName, TOKEN_SEARCH_FROM } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 
@@ -151,6 +154,19 @@ export interface NewInvoiceFormProps {
 }
 
 const NO_CLIENT: ClientBody = { name: "", email: "", address: "", country: "", taxId: "" };
+// The step on screen: its groups in a column, fading in from a slight lift each time it shows.
+const STEP_SHOWN =
+  "flex flex-col gap-8 motion-safe:animate-[fw-step-in_var(--fw-duration-base)_var(--fw-ease-out)]";
+// Folded under More options on Details; one of them in error opens it.
+const MORE_FIELDS = [
+  INVOICE_FIELDS.returnUrl,
+  INVOICE_FIELDS.supplyDate,
+  INVOICE_FIELDS.reminders,
+  INVOICE_FIELDS.repeat,
+  INVOICE_FIELDS.repeatEndDate,
+] as const;
+// An email is optional; one typed must look like one.
+const badEmail = (email: string) => email !== "" && !EMAIL_PATTERN.test(email);
 
 // On a phone the form is the whole screen (the shell's header and tab bar step aside for `data-phone-flow`): no card,
 // its own bar on top and its buttons along the bottom. From small screens it is a card beside its preview.
@@ -212,6 +228,8 @@ export function NewInvoiceForm({
   const remindersId = useId();
   const repeatId = useId();
   const filledReference = useRef(startClient?.reference ?? "");
+  const moreId = useId();
+  const [moreOpen, setMoreOpen] = useState(false);
   // D-80: who set the checkout's close. The due date sets it until the owner picks one of their own, which then stays.
   const [closeBy, setCloseBy] = useState<"default" | "due" | "owner">("default");
   const [errors, setErrors] = useState<Partial<Record<InvoiceField, string>>>({});
@@ -299,7 +317,7 @@ export function NewInvoiceForm({
   };
   const clear = (field: InvoiceField) => setErrors((shown) => ({ ...shown, [field]: undefined }));
   const itemsTotal = items.reduce((sum, item) => {
-    const line = lineUnits(item, decimals);
+    const line = lineFigure(item, decimals);
     return typeof line === "string" ? sum : sum + line.units;
   }, 0n);
   const typedUnits = items.length > 0 ? itemsTotal : parseTokenAmount(amount, decimals);
@@ -369,6 +387,7 @@ export function NewInvoiceForm({
     const units = askedUnits;
     const missingName = request && !text("senderName");
     const missingClient = !request && !text("clientName") && !text("clientEmail");
+    const wrongEmail = !request && badEmail(text("clientEmail"));
     const expiresIn =
       expiry === CUSTOM_EXPIRY
         ? customExpiresIn(closesOn ?? "", text("closesAt"), Date.now())
@@ -400,6 +419,7 @@ export function NewInvoiceForm({
       badRepeatEnd ||
       missingName ||
       missingClient ||
+      wrongEmail ||
       expiresIn === null ||
       badLink ||
       badOrigin
@@ -416,6 +436,9 @@ export function NewInvoiceForm({
         [INVOICE_FIELDS.amount]: askedError[INVOICE_FIELDS.amount],
         [INVOICE_FIELDS.lines]: badLines ? undefined : askedError[INVOICE_FIELDS.lines],
         [INVOICE_FIELDS.clientName]: missingClient ? NEW_INVOICE_COPY.missingClient : undefined,
+        [INVOICE_FIELDS.clientEmail]: wrongEmail
+          ? COPY.fieldErrors[INVOICE_FIELDS.clientEmail]
+          : undefined,
         [INVOICE_FIELDS.senderName]: missingName ? NEW_REQUEST_COPY.senderMissing : undefined,
         [INVOICE_FIELDS.expiresIn]: expiresIn === null ? COPY.customError : undefined,
         [INVOICE_FIELDS.returnUrl]: badLink
@@ -537,30 +560,33 @@ export function NewInvoiceForm({
     clear(INVOICE_FIELDS.expiresIn);
   };
 
-  const expiryField = (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1.5">
-        {/* The control's own legend names it for screen readers. */}
-        <p aria-hidden className="text-sm font-medium text-ink">
-          {COPY.expiryLabel}
-        </p>
-        <SegmentedControl
-          label={COPY.expiryLabel}
-          value={expiry}
-          onValueChange={(value) => {
-            setExpiry(value);
-            ownClose();
-          }}
-          className="self-start"
-          options={[...Object.keys(EXPIRY_CHOICES), CUSTOM_EXPIRY].map((value) => ({
-            value: value as Expiry,
-            label: COPY.expiry[value as Expiry],
-          }))}
-        />
-        {expiry === CUSTOM_EXPIRY ? null : <p className="text-sm text-muted">{COPY.expiryHint}</p>}
-      </div>
+  const closeChoice = (
+    <div className="flex min-w-0 flex-col gap-1.5">
+      {/* The control's own legend names it for screen readers. */}
+      <p aria-hidden className="text-sm font-medium text-ink">
+        {COPY.expiryLabel}
+      </p>
+      {/* The small size keeps all five choices beside the due date. */}
+      <SegmentedControl
+        size="sm"
+        label={COPY.expiryLabel}
+        value={expiry}
+        onValueChange={(value) => {
+          setExpiry(value);
+          ownClose();
+        }}
+        className="self-start max-sm:self-stretch"
+        options={[...Object.keys(EXPIRY_CHOICES), CUSTOM_EXPIRY].map((value) => ({
+          value: value as Expiry,
+          label: COPY.expiry[value as Expiry],
+        }))}
+      />
+    </div>
+  );
+  const expiryMore = (
+    <>
       {expiry === CUSTOM_EXPIRY ? (
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className={`grid gap-5 sm:grid-cols-2 ${ENTER}`}>
           <DatePicker
             label={COPY.closesOn}
             value={closesOn}
@@ -582,9 +608,11 @@ export function NewInvoiceForm({
         </div>
       ) : null}
       {/* Always mounted, so a screen reader hears the line when it appears or changes. */}
-      <div role="status" className="empty:sr-only">
+      <div role="status" className="empty:hidden">
         {closesEarly && dueTarget ? (
-          <p className="flex items-start gap-2 text-sm text-warning">
+          <p
+            className={`flex items-start gap-2.5 rounded-md bg-warning-soft px-3.5 py-2.5 text-sm text-warning ${ENTER}`}
+          >
             <TriangleAlert aria-hidden className="mt-0.5 size-[var(--fw-icon-sm)] shrink-0" />
             {/* Set by the due date and still short: only the 365-day limit can have cut it. */}
             {closeBy === "due"
@@ -592,10 +620,12 @@ export function NewInvoiceForm({
               : COPY.closesEarly(formatDueDate(dueTarget))}
           </p>
         ) : closeBy === "due" && closesOn ? (
-          <p className="text-sm text-muted">{COPY.followsDue(formatDueDate(closesOn))}</p>
+          <p className={`text-sm text-muted ${ENTER}`}>
+            {COPY.followsDue(formatDueDate(closesOn))}
+          </p>
         ) : null}
       </div>
-    </div>
+    </>
   );
 
   const returnOrigins = store ? returnLinkOrigins(store.allowedOrigins) : [];
@@ -678,7 +708,7 @@ export function NewInvoiceForm({
       ],
       title: typed.title,
       lines: items.map((item) => {
-        const line = lineUnits(item, decimals);
+        const line = lineFigure(item, decimals);
         return {
           description: item.description.trim() || COPY.preview.noItem,
           quantity: item.quantity.trim() || "—",
@@ -740,6 +770,9 @@ export function NewInvoiceForm({
     if (stepId === STEP_IDS.customer && !text("clientName") && !text("clientEmail")) {
       return stop({ [INVOICE_FIELDS.clientName]: NEW_INVOICE_COPY.missingClient });
     }
+    if (stepId === STEP_IDS.customer && badEmail(text("clientEmail"))) {
+      return stop({ [INVOICE_FIELDS.clientEmail]: COPY.fieldErrors[INVOICE_FIELDS.clientEmail] });
+    }
     if (stepId === STEP_IDS.items) {
       const problems: Record<string, LineFieldErrors> = {};
       for (const item of items) {
@@ -781,7 +814,11 @@ export function NewInvoiceForm({
     {
       step: STEP_IDS.items,
       term: COPY.review.clientPays,
-      value: COPY.review.clientPaysValue(due, preview.payer.network),
+      value: (
+        <>
+          <span className="font-semibold text-ink tabular-nums">{due}</span> {preview.payer.network}
+        </>
+      ),
     },
     ...(owed
       ? [
@@ -800,13 +837,17 @@ export function NewInvoiceForm({
       term: COPY.preview.due,
       value: dueDate ? formatDueDate(dueDate) : COPY.preview.noDue,
     },
-    { step: STEP_IDS.details, term: COPY.preview.closes, value: closes },
+    {
+      step: STEP_IDS.details,
+      term: COPY.review.closes,
+      value: expiry === CUSTOM_EXPIRY ? closes : COPY.review.afterCreated(closes),
+    },
   ];
-  // What Continue or Create found wrong, counted for the footer's line.
-  const problems =
-    Object.values(errors).filter(Boolean).length +
-    Object.values(lineErrors).reduce((n, line) => n + Object.keys(line).length, 0);
   const nextStep = steps[step + 1];
+  // An error in a folded field opens the section and keeps it open: fixing the error must not fold it away under
+  // the field being typed in. Set during render, so the field is reachable before Create moves focus to it.
+  if (!moreOpen && MORE_FIELDS.some((field) => errors[field])) setMoreOpen(true);
+  const moreShown = moreOpen;
   const previewPane = <NewInvoicePreview {...preview} />;
 
   return (
@@ -859,7 +900,7 @@ export function NewInvoiceForm({
               {request ? null : (
                 <div
                   data-step={STEP_IDS.customer}
-                  className={stepId === STEP_IDS.customer ? "contents" : "hidden"}
+                  className={stepId === STEP_IDS.customer ? STEP_SHOWN : "hidden"}
                 >
                   <FieldGroup title={COPY.client}>
                     {clientSearch?.any ? (
@@ -998,7 +1039,7 @@ export function NewInvoiceForm({
 
               <div
                 data-step={STEP_IDS.items}
-                className={stepId === STEP_IDS.items ? "contents" : "hidden"}
+                className={stepId === STEP_IDS.items ? STEP_SHOWN : "hidden"}
               >
                 <FieldGroup title={COPY.amountGroup}>
                   <div className="grid gap-5 empty:hidden sm:grid-cols-2">
@@ -1082,14 +1123,7 @@ export function NewInvoiceForm({
                               [INVOICE_FIELDS.amount]: amountError(amount),
                             }))
                           }
-                          hint={
-                            any
-                              ? COPY.payWithAnyHint(
-                                  [...new Set(tokens.map((t) => t.symbol))].join(" or "),
-                                  new Set(tokens.map((t) => t.chainId)).size,
-                                )
-                              : COPY.amountHint(token.symbol, network, token.decimals)
-                          }
+                          hint={COPY.minimumHint(unit)}
                           error={errors[INVOICE_FIELDS.amount]}
                         />
                         {request ? null : (
@@ -1185,7 +1219,7 @@ export function NewInvoiceForm({
 
               <div
                 data-step={STEP_IDS.details}
-                className={stepId === STEP_IDS.details ? "contents" : "hidden"}
+                className={stepId === STEP_IDS.details ? STEP_SHOWN : "hidden"}
               >
                 <FieldGroup title={COPY.detailsGroup}>
                   {stores && stores.length > 1 ? (
@@ -1253,26 +1287,12 @@ export function NewInvoiceForm({
                         error={errors[INVOICE_FIELDS.senderName]}
                         onChange={() => clear(INVOICE_FIELDS.senderName)}
                       />
-                      {returnField}
                     </div>
-                  ) : (
-                    returnField
-                  )}
+                  ) : null}
                 </FieldGroup>
 
                 <FieldGroup title={COPY.datesGroup}>
-                  <div className="grid gap-5 empty:hidden sm:grid-cols-2">
-                    {request ? null : (
-                      <DatePicker
-                        label={COPY.supplyLabel}
-                        name="supplyDate"
-                        value={supplyDate}
-                        onChange={setSupplyDate}
-                        clearLabel={COPY.supplyClear}
-                        hint={COPY.supplyHint}
-                        error={errors[INVOICE_FIELDS.supplyDate]}
-                      />
-                    )}
+                  <div className="grid gap-5 sm:grid-cols-2">
                     {request ? null : (
                       <DatePicker
                         label={COPY.dueLabel}
@@ -1281,101 +1301,145 @@ export function NewInvoiceForm({
                         onChange={pickDueDate}
                         min={today}
                         clearLabel={COPY.dueClear}
-                        hint={COPY.dueHint}
                         error={errors[INVOICE_FIELDS.dueDate]}
                       />
                     )}
                   </div>
-                  {expiryField}
-                  {request ? null : (
-                    <div className="flex flex-col">
-                      <Checkbox
-                        label={COPY.remindersLabel}
-                        checked={reminders}
-                        onChange={(event) => {
-                          setReminders(event.target.checked);
-                          clear(INVOICE_FIELDS.reminders);
-                        }}
-                        aria-invalid={errors[INVOICE_FIELDS.reminders] ? true : undefined}
-                        aria-describedby={remindersId}
+                  {closeChoice}
+                  {expiryMore}
+                  {/* What the template leaves out stays here, folded: it opens itself when one of its fields is wrong. */}
+                  <div className="flex flex-col gap-5">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-expanded={moreShown}
+                      aria-controls={moreId}
+                      onClick={() => setMoreOpen((open) => !open)}
+                      className="-ml-2 self-start"
+                    >
+                      <ChevronDown
+                        aria-hidden
+                        className={`size-[var(--fw-icon-sm)] transition-transform duration-[var(--fw-duration-fast)] ${moreShown ? "rotate-180" : ""}`}
                       />
-                      <p id={remindersId} className="text-sm text-muted">
-                        {errors[INVOICE_FIELDS.reminders] ? (
-                          <span className="text-danger">{errors[INVOICE_FIELDS.reminders]}</span>
-                        ) : (
-                          COPY.remindersHint
+                      {COPY.moreOptions}
+                    </Button>
+                    {/* Folded, not removed: the form reads every field on Create. */}
+                    <div
+                      id={moreId}
+                      inert={!moreShown}
+                      className={`grid transition-[grid-template-rows,opacity] duration-[var(--fw-duration-base)] ease-[var(--fw-ease-out)] ${moreShown ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+                    >
+                      <div className="flex min-h-0 flex-col gap-5 overflow-hidden">
+                        {returnField}
+                        {request ? null : (
+                          <div className="grid gap-5 sm:grid-cols-2">
+                            <DatePicker
+                              label={COPY.supplyLabel}
+                              name="supplyDate"
+                              value={supplyDate}
+                              onChange={setSupplyDate}
+                              clearLabel={COPY.supplyClear}
+                              hint={COPY.supplyHint}
+                              error={errors[INVOICE_FIELDS.supplyDate]}
+                            />
+                          </div>
                         )}
-                      </p>
-                    </div>
-                  )}
-                  {request ? null : (
-                    <div className="flex flex-col">
-                      <Checkbox
-                        label={COPY.repeatLabel}
-                        checked={repeat}
-                        onChange={(event) => {
-                          setRepeat(event.target.checked);
-                          clear(INVOICE_FIELDS.repeat);
-                          clear(INVOICE_FIELDS.repeatEndDate);
-                        }}
-                        aria-invalid={errors[INVOICE_FIELDS.repeat] ? true : undefined}
-                        aria-describedby={repeatId}
-                      />
-                      <p id={repeatId} className="text-sm text-muted">
-                        {errors[INVOICE_FIELDS.repeat] ? (
-                          <span className="text-danger">{errors[INVOICE_FIELDS.repeat]}</span>
-                        ) : (
-                          COPY.repeatHint
+                        {request ? null : (
+                          <div className="flex flex-col">
+                            <Checkbox
+                              label={COPY.remindersLabel}
+                              checked={reminders}
+                              onChange={(event) => {
+                                setReminders(event.target.checked);
+                                clear(INVOICE_FIELDS.reminders);
+                              }}
+                              aria-invalid={errors[INVOICE_FIELDS.reminders] ? true : undefined}
+                              aria-describedby={remindersId}
+                            />
+                            <p id={remindersId} className="text-sm text-muted">
+                              {errors[INVOICE_FIELDS.reminders] ? (
+                                <span className="text-danger">
+                                  {errors[INVOICE_FIELDS.reminders]}
+                                </span>
+                              ) : (
+                                COPY.remindersHint
+                              )}
+                            </p>
+                          </div>
                         )}
-                      </p>
+                        {request ? null : (
+                          <div className="flex flex-col">
+                            <Checkbox
+                              label={COPY.repeatLabel}
+                              checked={repeat}
+                              onChange={(event) => {
+                                setRepeat(event.target.checked);
+                                clear(INVOICE_FIELDS.repeat);
+                                clear(INVOICE_FIELDS.repeatEndDate);
+                              }}
+                              aria-invalid={errors[INVOICE_FIELDS.repeat] ? true : undefined}
+                              aria-describedby={repeatId}
+                            />
+                            <p id={repeatId} className="text-sm text-muted">
+                              {errors[INVOICE_FIELDS.repeat] ? (
+                                <span className="text-danger">{errors[INVOICE_FIELDS.repeat]}</span>
+                              ) : (
+                                COPY.repeatHint
+                              )}
+                            </p>
+                          </div>
+                        )}
+                        {repeat ? (
+                          <div className="grid gap-5 sm:grid-cols-2">
+                            <DatePicker
+                              label={COPY.repeatEndLabel}
+                              name="repeatEndDate"
+                              value={repeatEnd}
+                              onChange={(iso) => {
+                                setRepeatEnd(iso);
+                                clear(INVOICE_FIELDS.repeatEndDate);
+                              }}
+                              min={dueDate ?? today}
+                              clearLabel={COPY.repeatEndClear}
+                              hint={COPY.repeatEndHint}
+                              error={errors[INVOICE_FIELDS.repeatEndDate]}
+                            />
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
-                  )}
-                  {repeat ? (
-                    <div className="grid gap-5 sm:grid-cols-2">
-                      <DatePicker
-                        label={COPY.repeatEndLabel}
-                        name="repeatEndDate"
-                        value={repeatEnd}
-                        onChange={(iso) => {
-                          setRepeatEnd(iso);
-                          clear(INVOICE_FIELDS.repeatEndDate);
-                        }}
-                        min={dueDate ?? today}
-                        clearLabel={COPY.repeatEndClear}
-                        hint={COPY.repeatEndHint}
-                        error={errors[INVOICE_FIELDS.repeatEndDate]}
-                      />
-                    </div>
-                  ) : null}
+                  </div>
                 </FieldGroup>
               </div>
 
               {stepId === STEP_IDS.review ? (
-                <FieldGroup title={COPY.reviewGroup}>
-                  <DetailList className="rounded-md border border-line">
-                    {review.map((row) => (
-                      <DetailRow key={row.term} term={row.term}>
-                        <span className="flex items-center justify-end gap-3">
-                          <span className="min-w-0 break-words">{row.value || "—"}</span>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            aria-label={COPY.editStep(row.term)}
-                            onClick={() => setStep(steps.findIndex((s) => s.id === row.step))}
-                          >
-                            {COPY.edit}
-                          </Button>
-                        </span>
-                      </DetailRow>
-                    ))}
-                  </DetailList>
-                  <p className="flex items-start gap-2.5 rounded-md bg-surface-2 px-3.5 py-3 text-sm text-muted">
-                    <Mail aria-hidden className="mt-0.5 size-[var(--fw-icon-sm)] shrink-0" />
-                    {!request && typed.clientEmail
-                      ? COPY.review.afterCreateEmail(typed.clientEmail)
-                      : COPY.review.afterCreate}
-                  </p>
-                </FieldGroup>
+                <div className={STEP_SHOWN}>
+                  <FieldGroup title={COPY.reviewGroup}>
+                    <DetailList className="rounded-md border border-line">
+                      {review.map((row) => (
+                        <DetailRow key={row.term} term={row.term}>
+                          <span className="flex items-baseline justify-end gap-3">
+                            <span className="min-w-0 break-words">{row.value || "—"}</span>
+                            <Button
+                              variant="link"
+                              aria-label={COPY.editStep(row.term)}
+                              onClick={() => setStep(steps.findIndex((s) => s.id === row.step))}
+                              className="shrink-0 text-xs"
+                            >
+                              {COPY.edit}
+                            </Button>
+                          </span>
+                        </DetailRow>
+                      ))}
+                    </DetailList>
+                    <p className="flex items-start gap-2.5 rounded-md bg-surface-2 px-3.5 py-3 text-sm text-muted">
+                      <Mail aria-hidden className="mt-0.5 size-[var(--fw-icon-sm)] shrink-0" />
+                      {!request && typed.clientEmail
+                        ? COPY.review.afterCreateEmail(typed.clientEmail)
+                        : COPY.review.afterCreate}
+                    </p>
+                  </FieldGroup>
+                </div>
               ) : null}
             </FlatFieldGroups>
             <p role="alert" className="text-sm text-danger empty:hidden">
@@ -1401,22 +1465,8 @@ export function NewInvoiceForm({
                 {COPY.cancel}
               </Link>
             )}
-            {/* Where the owner is, or what stops them: the line leads to the first field to fix. */}
-            <p
-              className={`text-center text-sm text-muted sm:flex-1 ${problems > 0 ? "max-sm:order-first max-sm:basis-full" : "max-sm:hidden"}`}
-            >
-              {problems > 0 ? (
-                <button
-                  type="button"
-                  onClick={(event) => toFirstError(event.currentTarget.form)}
-                  className="inline-flex items-center gap-1.5 rounded-sm text-danger underline decoration-1 underline-offset-4 outline-none hover:decoration-2 focus-visible:outline-2 focus-visible:outline-focus"
-                >
-                  <CircleAlert aria-hidden className="size-[var(--fw-icon-sm)]" />
-                  {COPY.needsFixing(problems)}
-                </button>
-              ) : (
-                COPY.stepOf(step + 1, steps.length)
-              )}
+            <p className="flex-1 text-center text-sm text-muted max-sm:hidden">
+              {COPY.stepOf(step + 1, steps.length)}
             </p>
             <Button variant="secondary" className="xl:hidden" onClick={() => setPreviewOpen(true)}>
               <Eye aria-hidden className="size-[var(--fw-icon-sm)]" />
@@ -1457,7 +1507,9 @@ export function NewInvoiceForm({
       </aside>
       <Sheet open={previewOpen} onOpenChange={setPreviewOpen} title={COPY.preview.title} size="lg">
         <div className="flex flex-col gap-3 pb-5">
-          <div className="h-[62dvh]">{previewOpen ? previewPane : null}</div>
+          <div className="h-[64dvh]">
+            {previewOpen ? <NewInvoicePreview {...preview} inSheet /> : null}
+          </div>
           <Button variant="secondary" className="w-full" onClick={() => setPreviewOpen(false)}>
             {COPY.preview.backTo(steps[step]?.label ?? "")}
           </Button>

@@ -64,8 +64,12 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
   await pickStatus(page, "All");
   await search.fill("inv-0001");
   await expect(rows).toHaveCount(1);
-  await expect(rows).toContainText("Expired");
+  // A closed checkout reads in the history's words (R-253).
+  await expect(rows).toContainText("Closed unpaid");
   await search.fill("");
+  // Only an invoice that can still be paid offers its pay link from the row.
+  await expect(main.getByRole("button", { name: /^Copy the pay link of INV-/ })).toHaveCount(2);
+  await expect(main.getByRole("button", { name: "Copy the pay link of INV-0001" })).toHaveCount(0);
   expect(await blockingViolations(page)).toEqual([]);
 
   await rows.filter({ hasText: "INV-0004" }).click();
@@ -961,11 +965,14 @@ test("the invoice list and activity show a closed checkout as expired", async ({
   await mockApi(page, { invoices: [closed], activity: [activityItem(closed)], transfers: [] });
   const main = page.getByRole("main");
   await page.goto("/app/invoices");
-  await expect(main.locator("tbody tr").first().locator("[data-status]")).toHaveText("Expired", {
+  await expect(main.locator("tbody tr").first().locator("[data-status]")).toHaveText(
+    "Closed unpaid",
+    { timeout: 15_000 },
+  );
+  await page.goto("/app/activity");
+  await expect(main.locator("[data-status]").first()).toHaveText("Closed unpaid", {
     timeout: 15_000,
   });
-  await page.goto("/app/activity");
-  await expect(main.locator("[data-status]").first()).toHaveText("Expired", { timeout: 15_000 });
   await context.close();
 });
 

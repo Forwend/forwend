@@ -306,6 +306,10 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
       await store.click();
       await page.getByRole("option", { name: "E2E shop" }).click();
       await expect(page.getByRole("radio", { name: "7 days" })).toBeChecked();
+      // Return link, Supply date, reminders and repeat are folded under More options (R-252).
+      const more = page.getByRole("button", { name: "More options" });
+      await more.click();
+      await expect(more).toHaveAttribute("aria-expanded", "true");
       // A link that is not https.
       const link = page.getByRole("textbox", { name: "Return link (optional)" });
       await link.fill("http://shop.example/thanks");
@@ -337,14 +341,14 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
       await expect(
         page
           .getByRole("status")
-          .filter({ hasText: `Open until ${openUntil}, so a client who pays late` }),
+          .filter({ hasText: `Open until ${openUntil}, so a late payment still reaches you.` }),
       ).toBeVisible();
       await page.getByText("1 day", { exact: true }).click();
       await expect(page.getByRole("radio", { name: "1 day" })).toBeChecked();
       await expect(
         page
           .getByRole("status")
-          .filter({ hasText: `This closes before ${openUntil}, 60 days after the due date.` }),
+          .filter({ hasText: `Closes before ${openUntil}: a payment after that is held` }),
       ).toBeVisible();
       // R-99: a retainer; the test stops it below, so no run leaves one running (D-85).
       await page.getByRole("checkbox", { name: "Repeat every month" }).check();

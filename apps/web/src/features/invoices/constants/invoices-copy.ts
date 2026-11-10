@@ -2,7 +2,6 @@ import type { ClientKind } from "@/features/clients/types/clients";
 import {
   AMOUNT_ERRORS,
   type CUSTOM_EXPIRY,
-  DUE_GRACE_DAYS,
   EXPIRY_BOUNDS_S,
   EXPIRY_CHOICES,
   HISTORY_ACTORS,
@@ -76,6 +75,32 @@ export const INVOICES_COPY = {
   noClient: "No client",
   noDueDate: "No due date",
   due: (date: string) => `Due ${date}`,
+  // How far the due date is: said on hover over the date, and to screen readers once late (R-253).
+  dueIn: (days: number) =>
+    days === 0
+      ? "today"
+      : days > 0
+        ? `in ${days === 1 ? "1 day" : `${days} days`}`
+        : `${days === -1 ? "1 day" : `${-days} days`} late`,
+  copyLink: (number: string) => `Copy the pay link of ${number}`,
+  linkCopied: (number: string) => `Pay link of ${number} copied`,
+  copyFailed: "Copy failed",
+  actions: "Actions",
+  // The strip over the list: the invoices that need the owner now.
+  attention: {
+    title: "Needs attention",
+    count: (n: number) => (n === 1 ? "1 needs attention" : `${n} need attention`),
+    leftIn: (n: number) => `left to pay in ${n === 1 ? "1 invoice" : `${n} invoices`}`,
+    leftToPay: (total: string) => `${total} left to pay`,
+    left: "left to pay",
+    overdue: (late: string) => `Overdue, ${late}`,
+    partlyPaid: "Partially paid",
+    kinds: (overdue: number, partly: number) =>
+      [overdue > 0 ? `${overdue} overdue` : null, partly > 0 ? `${partly} partially paid` : null]
+        .filter(Boolean)
+        .join(", "),
+    dueDate: (date: string) => `due ${date}`,
+  },
   baseUnits: (token: string) => `base units of ${token}`,
 } as const;
 
@@ -107,21 +132,21 @@ export const NEW_INVOICE_COPY = {
     items: "Items",
     itemsValue: (n: number, total: string) => `${n === 1 ? "1 item" : `${n} items`} · ${total}`,
     clientPays: "Client pays",
-    clientPaysValue: (amount: string, where: string) => `${amount} ${where}`,
+    closes: "Checkout closes",
+    // A preset counts from the moment the invoice is created; a custom close is a day.
+    afterCreated: (span: string) => `${span} after it is created`,
     youReceive: "You receive",
     afterFee: (receives: string, fee: string, platform: boolean) =>
       `${receives} after the ${fee} ${platform ? "fees" : "network fee"}`,
-    afterCreate: "After you create it, you get the pay link to share.",
-    afterCreateEmail: (email: string) =>
-      `After you create it, you get the pay link to share and can email it to ${email}. See the Email tab in the preview.`,
+    afterCreate: "Next you get the pay link to share.",
+    afterCreateEmail: (email: string) => `Next you get the pay link to share or email to ${email}.`,
   },
   edit: "Edit",
   editStep: (term: string) => `Edit ${term.toLowerCase()}`,
   back: "Back",
   continueTo: (step: string) => `Continue to ${step}`,
   stepOf: (n: number, of: number) => `Step ${n} of ${of}`,
-  needsFixing: (n: number) => (n === 1 ? "1 field needs fixing" : `${n} fields need fixing`),
-  missingClient: "Enter a customer name or email. Use a payment link for an offer anyone can buy.",
+  missingClient: "Enter a customer name or email",
   title: "New invoice",
   intro: "The client pays this exact amount by link.",
   noTokens:
@@ -130,15 +155,13 @@ export const NEW_INVOICE_COPY = {
   amountGroup: "Items",
   payWithLabel: "How the client pays",
   payWith: { any: "Client chooses", fixed: "One token" } satisfies Record<PayWith, string>,
-  payWithAnyHint: (symbols: string, networks: number) =>
-    `At least 1.00 USD. The client pays in ${symbols}, on any of ${networks} networks, 1 USD each.`,
+  // R-56: the least a new payment asks. Which tokens and networks the client can use shows in the preview.
+  minimumHint: (unit: string) => `Min 1 ${unit}`,
   tokenLabel: "Network and token",
   searchTokens: "Search tokens",
   noTokenMatch: "No token matches",
   amountLabel: "Amount",
   amountUsdLabel: "Amount in USD",
-  amountHint: (symbol: string, network: string, decimals: number) =>
-    `At least 1.00 ${symbol} on ${network}, up to ${decimals} decimals.`,
   amountErrors: {
     [AMOUNT_ERRORS.format]: "Enter an amount with digits and a point, like 1250.50.",
     [AMOUNT_ERRORS.decimals]: (symbol: string, decimals: number) =>
@@ -149,24 +172,21 @@ export const NEW_INVOICE_COPY = {
   titleLabel: "Title (optional)",
   titlePlaceholder: "Website, October",
   referenceLabel: "PO or reference (optional)",
-  referenceHint:
-    "Your client's purchase order (PO) number or their reference. Shown on the invoice and its PDF.",
+  referenceHint: "Your client's purchase order number.",
   noteLabel: "Note to the client (optional)",
   detailsGroup: "Details",
+  moreOptions: "More options",
   returnLabel: "Return link (optional)",
-  returnHint: "Your site's https link. The client sees Back to it after paying.",
+  returnHint: "The client sees Back to it after paying.",
   returnError: "Enter an https link, like https://example.com/thanks.",
   // R-134: a merchant invoice's store.
   storeLabel: "Store",
-  returnOrigins: (origins: string) =>
-    `Your site's https link, starting with ${origins}. The client sees Back to it after paying.`,
-  returnNoOrigins:
-    "This store allows no return link yet. Add your site's origin to the store under Stores.",
+  returnOrigins: (origins: string) => `A link that starts with ${origins}.`,
+  returnNoOrigins: "Add your site to this store under Stores first.",
   returnOriginError: "Use a link that starts with one of this store's allowed origins.",
   agreed: {
     add: "Add agreed value",
-    addHint:
-      "The price you agreed in another currency. For reference; the client still pays the total above.",
+    addHint: "A price in another currency, for reference only.",
     group: "Agreed value",
     hint: "The price you agreed with the client in another currency. It shows on the invoice and its PDF; the client still pays the amount above.",
     currency: "Agreed in",
@@ -191,29 +211,26 @@ export const NEW_INVOICE_COPY = {
   },
   datesGroup: "Dates",
   supplyLabel: "Supply date (optional)",
-  supplyHint:
-    "The day the work was done or delivered, when it isn't today. EU and UK VAT invoices need it.",
+  supplyHint: "When the work was done, if not today.",
   supplyClear: "Clear supply date",
   dueLabel: "Due date (optional)",
-  dueHint: `Shown to the client. Picking one sets the checkout to close ${DUE_GRACE_DAYS} days after it.`,
   // Payment reminders (R-97): on at once when the invoice is made.
   remindersLabel: "Send payment reminders",
-  remindersHint:
-    "Emails the client 3 days before the due date, on it and 7 days after, until it is paid. Needs a due date and a client email.",
+  remindersHint: "Emails the client around the due date until it is paid.",
   // R-99.
   repeatLabel: "Repeat every month",
-  repeatHint: `Each month a new invoice is due on the due date's day (the last day in a shorter month) and emailed to the client ${RETAINER_LEAD_DAYS} days before. Needs a due date and a client email.`,
+  repeatHint: `A new invoice each month, emailed ${RETAINER_LEAD_DAYS} days before it is due.`,
   repeatEndLabel: "Last due date (optional)",
-  repeatEndHint: "No invoice is due after it. Leave it empty to repeat until you stop it.",
+  repeatEndHint: "Empty repeats until you stop it.",
   repeatEndClear: "Clear last due date",
   dueClear: "Clear due date",
   expiryLabel: "Checkout closes after",
-  expiryHint: "After this the pay link takes no more payments.",
-  followsDue: (day: string) => `Open until ${day}, so a client who pays late still pays you.`,
+  followsDue: (day: string) => `Open until ${day}, so a late payment still reaches you.`,
+  // D-80: a close before the due date plus the grace days holds a late payment for the client.
   closesEarly: (day: string) =>
-    `This closes before ${day}, ${DUE_GRACE_DAYS} days after the due date. A client who pays after the checkout closes sends money that is held for them, not paid to you.`,
+    `Closes before ${day}: a payment after that is held for the client.`,
   closesAtLimit: (day: string) =>
-    `A checkout stays open at most ${EXPIRY_BOUNDS_S.max / EXPIRY_CHOICES.day} days, so this one closes before ${day}, ${DUE_GRACE_DAYS} days after the due date. A client who pays after it closes sends money that is held for them, not paid to you.`,
+    `At most ${EXPIRY_BOUNDS_S.max / EXPIRY_CHOICES.day} days, so it closes before ${day}: later payments are held.`,
   expiry: {
     hour: "1 hour",
     day: "1 day",
@@ -301,6 +318,7 @@ export const NEW_INVOICE_COPY = {
     zoomOut: "Zoom out",
     zoomIn: "Zoom in",
     fit: "Fit page",
+    fitShort: "Fit",
     percent: (n: number) => `${n}%`,
     pages: (n: number) => (n === 1 ? "Page 1 of 1" : `${n} pages`),
     live: "Updates as you type",
@@ -343,9 +361,7 @@ export const NEW_REQUEST_COPY = {
   amountGroup: "Amount",
   payWithLabel: "How the payer pays",
   payWith: { any: "Payer chooses", fixed: "One token" } satisfies Record<PayWith, string>,
-  payWithAnyHint: (symbols: string, networks: number) =>
-    `The payer pays it in ${symbols}, on any of ${networks} networks, 1 USD each.`,
-  returnHint: "Your site's https link. The payer sees Back to it after paying.",
+  returnHint: "The payer sees Back to it after paying.",
   senderLabel: "Your name (shown to the payer)",
   senderMissing: "Enter the name the payer will see.",
   create: "Create request",

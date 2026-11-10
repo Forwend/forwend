@@ -4,15 +4,20 @@ import {
   Button,
   type ButtonSize,
   buttonClasses,
+  COPY_STATUS,
   EmptyState,
+  IconButton,
   SearchField,
   StatusPill,
+  useCopy,
 } from "@forwend/ui-web";
-import { FileText, Plus } from "lucide-react";
+import { Check, Copy, FileText, Plus } from "lucide-react";
 import Link from "next/link";
 import { useGetInvoicesInfiniteQuery } from "@/features/invoices/api/invoices-api";
 import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
+import { InvoicesAttention } from "@/features/invoices/components/invoices-attention";
 import { INVOICES_COPY, REQUESTS_COPY } from "@/features/invoices/constants/invoices-copy";
+import { canStillBePaid, daysUntilDue } from "@/features/invoices/lib/invoice-list";
 import {
   formatDueDate,
   formatDueDateShort,
@@ -34,7 +39,6 @@ import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { PAYMENT_STATE_FILTERS } from "@/shared/constants/payment-state";
 import { useListFilters } from "@/shared/hooks/use-list-filters";
-import { chainName } from "@/shared/lib/chains";
 
 function NewInvoiceLink({
   className = "",
@@ -88,6 +92,12 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
   const stale = !list.currentData && Boolean(data);
   const rows = data?.pages.flatMap((page) => page.items) ?? [];
   const noInvoices = !filters.filtered && list.currentData && rows.length === 0;
+  const now = new Date();
+  // How far the due date is, while the invoice can still be paid: negative once late.
+  const dueDays = (inv: InvoiceSummary) =>
+    inv.dueDate && canStillBePaid(inv, invoiceStatus(inv), now)
+      ? daysUntilDue(inv.dueDate, now)
+      : null;
 
   return (
     <section
@@ -108,6 +118,8 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
           <NewInvoiceLink size="sm" className="lg:hidden" onRequest={onRequest} />
         )}
       </div>
+      {/* A personal profile's requests have no due dates to be late on. */}
+      {onRequest || noInvoices ? null : <InvoicesAttention profileId={profileId} />}
       {!noInvoices ? (
         <ListToolbar
           search={
@@ -208,14 +220,25 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
                   key: "due",
                   header: COPY.columns.due,
                   className: "w-32",
-                  cell: (inv) =>
-                    inv.dueDate ? (
-                      <time dateTime={inv.dueDate} className="text-muted tabular-nums">
+                  // The row stays one line: how late it is shows as the date's color, and in words on hover.
+                  title: (inv) => {
+                    const days = dueDays(inv);
+                    return days === null ? null : COPY.dueIn(days);
+                  },
+                  cell: (inv) => {
+                    if (!inv.dueDate) return <span className="text-subtle">{COPY.noDueDate}</span>;
+                    const days = dueDays(inv);
+                    const late = days !== null && days < 0;
+                    return (
+                      <time
+                        dateTime={inv.dueDate}
+                        className={`tabular-nums ${late ? "font-medium text-warning" : "text-muted"}`}
+                      >
                         {formatDueDate(inv.dueDate)}
+                        {late ? <span className="sr-only">, {COPY.dueIn(days)}</span> : null}
                       </time>
-                    ) : (
-                      <span className="text-subtle">{COPY.noDueDate}</span>
-                    ),
+                    );
+                  },
                 },
                 {
                   key: "status",
@@ -250,29 +273,42 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
                       </span>
                     ),
                 },
+                {
+                  key: "copy",
+                  header: COPY.actions,
+                  headerHidden: true,
+                  className: "w-14",
+                  cell: (inv) =>
+                    inv.payToken && canStillBePaid(inv, invoiceStatus(inv), now) ? (
+                      <CopyLink payToken={inv.payToken} number={invoiceNumber(inv.number)} />
+                    ) : null,
+                },
               ] satisfies DataColumn<InvoiceSummary>[]
             ).filter((column) => !onRequest || !REQUEST_HIDDEN.has(column.key))}
+            // As the template's phone list: the number and who it is for, the status under them; the amount and
+            // the due day on the right.
             phone={(inv) => ({
-              // A request's note is no name, so its avatar keeps the document icon.
-              leading: (
-                <Avatar
-                  name={onRequest ? null : label(inv)}
-                  chainId={inv.optionCount > 1 ? null : inv.chainId}
-                />
+              title: (
+                <>
+                  {invoiceNumber(inv.number)}
+                  {label(inv) ? (
+                    <span className="font-normal text-muted"> · {label(inv)}</span>
+                  ) : null}
+                </>
               ),
-              title: label(inv) ?? invoiceNumber(inv.number),
-              detail: [
-                label(inv) ? invoiceNumber(inv.number) : null,
-                inv.dueDate ? COPY.due(formatDueDateShort(inv.dueDate, new Date())) : null,
-                inv.optionCount > 1 ? MONEY_COPY.anyNetwork : chainName(inv.chainId),
-                inv.store?.name,
-              ]
-                .filter(Boolean)
-                .join(" · "),
+              detail: (
+                <span className="mt-1 flex">
+                  <StatusPill status={invoiceStatus(inv)} />
+                </span>
+              ),
               value: (
                 <InvoiceAmount invoice={inv} tokens={tokens} className="flex-nowrap justify-end" />
               ),
-              meta: <StatusPill status={invoiceStatus(inv)} />,
+              meta: inv.dueDate ? (
+                <span className="text-xs text-muted">
+                  {COPY.due(formatDueDateShort(inv.dueDate, now))}
+                </span>
+              ) : undefined,
             })}
             footer={
               list.hasNextPage ? (
@@ -298,6 +334,36 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
         />
       ) : null}
     </section>
+  );
+}
+
+/** Copies an invoice's pay link from its row; it sits over the row's own link. */
+function CopyLink({ payToken, number }: { payToken: string; number: string }) {
+  const [status, copy] = useCopy(
+    typeof window === "undefined" ? "" : `${window.location.origin}/pay/${payToken}`,
+  );
+  const copied = status === COPY_STATUS.copied;
+  return (
+    <span className="relative z-[1] flex justify-end">
+      {/* xs keeps the row at its one-line height; its hit area is still 44px. */}
+      <IconButton
+        size="xs"
+        label={
+          copied
+            ? INVOICES_COPY.linkCopied(number)
+            : status === COPY_STATUS.failed
+              ? INVOICES_COPY.copyFailed
+              : INVOICES_COPY.copyLink(number)
+        }
+        onClick={() => void copy()}
+      >
+        {copied ? (
+          <Check aria-hidden className="size-[var(--fw-icon-sm)] text-success" />
+        ) : (
+          <Copy aria-hidden className="size-[var(--fw-icon-sm)]" />
+        )}
+      </IconButton>
+    </span>
   );
 }
 

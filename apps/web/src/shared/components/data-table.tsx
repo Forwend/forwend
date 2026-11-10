@@ -27,6 +27,8 @@ export interface DataColumn<T> {
   align?: "end";
   from?: keyof typeof COLUMN_FROM;
   className?: string;
+  /** The header is read, not shown: a column of row actions. */
+  headerHidden?: boolean;
 }
 
 export interface PhoneRow {
@@ -86,7 +88,11 @@ export function DataTable<T>({
                   column.className,
                 )}
               >
-                {column.header}
+                {column.headerHidden ? (
+                  <span className="sr-only">{column.header}</span>
+                ) : (
+                  column.header
+                )}
               </th>
             ))}
           </tr>

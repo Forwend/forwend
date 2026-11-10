@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 476,
+  "nextId": 479,
   "tasks": [
     {
       "id": "F332",
@@ -1110,27 +1110,125 @@
     {
       "id": "F464",
       "type": "feat",
-      "behavior": "Invoices, the invoice page, Jobs and Requests follow the redesigned list and detail layouts",
+      "behavior": "The Invoices list names what needs attention and copies a pay link from its row, and New invoice follows its template more closely",
       "acceptance": [
-        "These screens match the approved templates (Forwend Redesign Templates), Option A.",
-        "At 390px no screen of this step scrolls sideways, and each loading placeholder has the shape of what it replaces.",
-        "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
+        "The Invoices list keeps one-line rows on desktop; phone rows show the number and client over the status, and the amount over the due date, as the template's list draws them.",
+        "Needs attention totals late and partly paid invoices above the search; a row whose checkout is still open copies its pay link; Closed unpaid replaces Expired.",
+        "New invoice follows its template more closely: Items opens on the amount with Min 1 USD; fee placeholders while pricing; a typed client email is checked; Details and Review as drawn; More options folds the rest; hints are one short sentence; steps and sections animate; the phone preview's tabs span its width.",
+        "At 390px no screen of this step scrolls sideways.",
+        "Requests, money figures and existing behavior stay as they are unless R-252 or R-253 says otherwise."
       ],
-      "dependsOn": [
-        "F463"
-      ],
-      "state": "not_started",
+      "dependsOn": [],
+      "state": "passing",
       "verification": [
         "web-unit",
         "lint",
         "typecheck"
       ],
-      "refs": [],
+      "refs": [
+        "R-252",
+        "R-253",
+        "R-88"
+      ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-11-10 review fail by reviewer: One defect. After closesAt passes, the API keeps closed=false while an on-time payment still confirms (ClosedSQL, apps/backend/internal/invoice/list.go:23), so the status stays confirming or partially paid. For that row apps/web/src/features/invoices/lib/invoice-list.ts:39-41 clamps the time left to 0 and :65-71 closesSoon returns true, so invoices-table.tsx:127-135 says 'Checkout closes within the hour' for a checkout that already closed, and invoices-table.tsx:334-337 still offers the copy button. The invoice page hides Copy link in the same state (invoice-detail.tsx:174, 215: 'sharing it later only creates money held for a refund'). Fix: treat closesAt <= now as not payable in canStillBePaid, closesSoon and the 'closes' fact, and add a unit test. Everything else holds: day math matches paymentStatusOf (overdue exactly when days < 0), the copy link matches the existing action and does not open the row, rows without note and tables without twoLine render as before, no test or doc still expects 'Expired' for the pill. typecheck, lint, check-docs, web unit (416) and ui-web unit (29) pass. Notes: unused copy keys columns.store, columns.network and the requests' columns.title; no copy button on phone rows; the phone note is outside the row link's name; 'Checkout closed Nov 2' has no year; the strip total reads only the first page of /owed (accepted).",
+        "2026-11-10 review pass by reviewer: Re-review of the fix and three follow-ups. More options: the guarded render-phase setMoreOpen(true) (new-invoice-form.tsx:849) cannot loop and runs inside Create's flushSync(setErrors) re-render, so the section is open and not inert before toFirstError focuses the field; moreShown = moreOpen keeps it open after the error clears, and the toggle closes it once no folded field has an error (while one does, render reopens it, as before). The new unit test fails on the old moreShown = moreOpen || error logic at its post-fix aria-expanded check and checks the field is not inside [inert]; jsdom focus ignores inert, so the activeElement check alone proves less, but the expanded check covers it. invoices-table copy IconButton size xs is size-6 with before:-inset-2.5 always, a 44px hit area, and aria-label from label. invoices.spec.ts opens More options before Return link and Supply date and its warning texts match followsDue and the closes-before copy in invoices-copy.ts; DESIGN.md line 694 matches REQUEST_HIDDEN (client, due, store). pnpm --filter @forwend/web test: 72 files, 417 tests passed; typecheck 0, lint 0, check-docs 0 errors. e2e not run."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-10T21:44:59Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.6,
+            "log": ""
+          },
+          {
+            "id": "tokens-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 12.9,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 51.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "12560772e1294618",
+        "filesHash": "120bd844aa9f5c02",
+        "proof": {
+          "1": "web-unit: invoice-list.test.ts covers the late days and the rule that a pay link is offered only while the checkout is open; the signed-in navigation test asserts Closed unpaid and the copy buttons; checked by hand on the owner's Enspire profile at 1440 and 375 wide against the template's list",
+          "2": "web-unit: the signed-in navigation and invoices tests assert the Needs attention strip's absence on requests, the copy buttons and Closed unpaid; payments.test.tsx expects Closed unpaid",
+          "3": "web-unit: new-invoice-form.test.tsx (25 tests) covers Min 1 USD amount first, the live subtotal, the email check, no fields-need-fixing line, Create opening the step and More options, More options staying open while a field is fixed, Review rows and preview zoom; checked by hand on the real profile at 1440 and 375 wide",
+          "4": "web-unit: the full signed-in suite ran by hand: 80 passed; the loading, invoice creation and passkey tests then passed on rerun after the copy button fix and the More options test change; the 2 failures left are queued as F471 (links.spec:91, navigation empty lists); the phone tests check sideways scroll",
+          "5": "web-unit: submit body, idempotency keys, fee quote flow and validation are unchanged per review; all 417 web and 29 kit unit tests pass"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review of the fix and three follow-ups. More options: the guarded render-phase setMoreOpen(true) (new-invoice-form.tsx:849) cannot loop and runs inside Create's flushSync(setErrors) re-render, so the section is open and not inert before toFirstError focuses the field; moreShown = moreOpen keeps it open after the error clears, and the toggle closes it once no folded field has an error (while one does, render reopens it, as before). The new unit test fails on the old moreShown = moreOpen || error logic at its post-fix aria-expanded check and checks the field is not inside [inert]; jsdom focus ignores inert, so the activeElement check alone proves less, but the expanded check covers it. invoices-table copy IconButton size xs is size-6 with before:-inset-2.5 always, a 44px hit area, and aria-label from label. invoices.spec.ts opens More options before Return link and Supply date and its warning texts match followsDue and the closes-before copy in invoices-copy.ts; DESIGN.md line 694 matches REQUEST_HIDDEN (client, due, store). pnpm --filter @forwend/web test: 72 files, 417 tests passed; typecheck 0, lint 0, check-docs 0 errors. e2e not run.",
+          "at": "2026-11-10T21:47:21Z",
+          "filesHash": "120bd844aa9f5c02"
+        },
+        "commit": "8ef2af69",
+        "doneAt": "2026-11-10T21:47:50Z"
+      },
+      "branch": "feat/f464-invoices-the-invoice-page-jobs-and-reque",
+      "baseCommit": "78e3a040cf33a0ad4ff47c8ff4e6726d5b6b8b9b",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f464-invoices-the-invoice-page-jobs-and-reque",
+        "base": "main"
+      }
     },
     {
       "id": "F465",
@@ -1580,6 +1678,78 @@
       "refs": [
         "R-68"
       ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F476",
+      "type": "feat",
+      "behavior": "The owner's invoice page opens on the pay link and says the next step in one sentence",
+      "acceptance": [
+        "The page matches the approved template (The owner's invoice page, Proposed) in each state: just created, overdue, partially paid, paid, overpaid, closed part paid, canceled.",
+        "At 390px it does not scroll sideways; Copy link and Share stay at the bottom of the screen.",
+        "Existing behavior stays: Edit, Revise, Cancel, Reopen, Duplicate, View payment, Check status, reminders, the PDFs and the history."
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "lint",
+        "typecheck",
+        "docs-check"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F477",
+      "type": "feat",
+      "behavior": "Jobs, the job page, the job form and the client's quote follow the redesigned layouts",
+      "acceptance": [
+        "The screens match the approved template (Jobs, Proposed) on desktop and phone.",
+        "At 390px no screen scrolls sideways, and each loading placeholder has the shape of what it replaces.",
+        "Existing behavior stays as it is."
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "lint",
+        "typecheck",
+        "docs-check"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F478",
+      "type": "feat",
+      "behavior": "Request money and the Stop reminders page follow the redesigned layouts",
+      "acceptance": [
+        "The screens match the approved template (Requests, Proposed) on desktop and phone.",
+        "At 390px no screen scrolls sideways.",
+        "Existing behavior stays as it is."
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "lint",
+        "typecheck",
+        "docs-check"
+      ],
+      "refs": [],
       "keep": [],
       "review": true,
       "notes": [],

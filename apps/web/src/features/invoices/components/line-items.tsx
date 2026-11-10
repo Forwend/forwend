@@ -6,7 +6,7 @@ import { useRef } from "react";
 import { flushSync } from "react-dom";
 import { LINE_LIMITS } from "@/features/invoices/constants/invoices";
 import { NEW_INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
-import { lineUnits } from "@/features/invoices/lib/invoices";
+import { lineFigure } from "@/features/invoices/lib/invoices";
 import type { LineDraft, LineField } from "@/features/invoices/types/invoices";
 import { exactDigits } from "@/shared/lib/money";
 
@@ -33,7 +33,7 @@ export function LineItems({ id, items, onChange, decimals, unit, errors, error }
     list.current?.querySelectorAll("li")[row]?.querySelector("input")?.focus();
   const set = (itemId: string, field: LineField, value: string) =>
     onChange(items.map((item) => (item.id === itemId ? { ...item, [field]: value } : item)));
-  const amounts = items.map((item) => lineUnits(item, decimals));
+  const amounts = items.map((item) => lineFigure(item, decimals));
   const figure = (units: bigint) =>
     formatTokenAmount({ baseUnits: units, decimals, fractionDigits: exactDigits(units, decimals) });
   // From small screens the rows read as the invoice's own table. A phone has no room for five columns: there each

@@ -15,6 +15,8 @@ export interface NewInvoicePreviewProps {
   payer: { name: string; amount: string; network: string };
   /** The email the client gets when it is sent. */
   email: { subject: string; lead: string; details: readonly (readonly [string, string])[] };
+  /** Inside the phone's sheet: no panel of its own, the views across the full width, the zoom on a row under them. */
+  inSheet?: boolean;
 }
 
 const COPY = {
@@ -42,7 +44,12 @@ const GAP = 32;
 
 /** The three things the client will see, drawn from what the form holds now; switching keeps every typed value.
  * Fit shows a whole page; the levels zoom in to read it. */
-export function NewInvoicePreview({ document, payer, email }: NewInvoicePreviewProps) {
+export function NewInvoicePreview({
+  document,
+  payer,
+  email,
+  inSheet = false,
+}: NewInvoicePreviewProps) {
   const [view, setView] = useState<View>(VIEWS.invoice);
   const [zoom, setZoom] = useState<typeof FIT | (typeof ZOOMS)[number]>(FIT);
   const canvas = useRef<HTMLDivElement>(null);
@@ -75,11 +82,18 @@ export function NewInvoicePreview({ document, payer, email }: NewInvoicePreviewP
   return (
     <section
       aria-label={COPY.title}
-      className="fw-panel flex h-full min-h-0 flex-col overflow-hidden"
+      className={`flex h-full min-h-0 flex-col overflow-hidden ${inSheet ? "gap-2" : "fw-panel"}`}
     >
-      <div className="flex flex-wrap items-center gap-x-1 gap-y-2 border-b border-line p-2">
+      <div
+        className={
+          inSheet
+            ? "flex flex-col gap-2"
+            : "flex flex-wrap items-center gap-x-1 gap-y-2 border-b border-line p-2"
+        }
+      >
         <SegmentedControl
           size="sm"
+          className={inSheet ? "w-full" : undefined}
           label={COPY.show}
           value={view}
           onValueChange={setView}
@@ -116,7 +130,7 @@ export function NewInvoicePreview({ document, payer, email }: NewInvoicePreviewP
             onClick={() => setZoom(FIT)}
           >
             <Maximize aria-hidden className="size-[var(--fw-icon-sm)]" />
-            {COPY.fit}
+            {inSheet ? COPY.fitShort : COPY.fit}
           </Button>
         </div>
       </div>
@@ -124,7 +138,8 @@ export function NewInvoicePreview({ document, payer, email }: NewInvoicePreviewP
         ref={canvas}
         // biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users scroll a page zoomed past the pane
         tabIndex={0}
-        className="flex min-h-0 flex-1 overflow-auto overscroll-contain bg-sunken p-4 outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+        // A quiet line for keyboard focus: the whole canvas is the target, and lime around it reads as a selection.
+        className={`flex min-h-0 flex-1 overflow-auto overscroll-contain bg-sunken p-4 outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-inset ${inSheet ? "rounded-md" : ""}`}
       >
         {/* Sized by zoom, not a transform: the text stays sharp and the canvas scrolls by the real size. */}
         <div className="m-auto shrink-0" style={{ width, zoom: scale }}>
@@ -137,7 +152,7 @@ export function NewInvoicePreview({ document, payer, email }: NewInvoicePreviewP
           )}
         </div>
       </div>
-      {view === VIEWS.invoice ? (
+      {view === VIEWS.invoice && !inSheet ? (
         <p className="flex justify-between gap-3 border-t border-line px-3 py-2 text-xs text-muted">
           <span>{COPY.pages(pages)}</span>
           <span>{COPY.live}</span>

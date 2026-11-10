@@ -3,10 +3,11 @@
 import { Button, Form, TextField } from "@forwend/ui-web";
 import { type FormEvent, useState } from "react";
 import { flushSync } from "react-dom";
-import { ACCEPT_FIELDS, EMAIL_PATTERN } from "@/features/jobs/constants/jobs";
+import { ACCEPT_FIELDS } from "@/features/jobs/constants/jobs";
 import { QUOTE_COPY as COPY } from "@/features/jobs/constants/jobs-copy";
 import { namedField } from "@/features/jobs/lib/jobs";
 import type { AcceptField } from "@/features/jobs/types/jobs";
+import { EMAIL_PATTERN } from "@/shared/constants/email";
 
 const NOT_FOUND = 404;
 const INVALID_VALUE = 422;
