@@ -260,6 +260,10 @@ func TestSlowChainQuoteGetsALongerDeadline(t *testing.T) {
 // Anyone can make pay tokens from a public link, so 1Click calls made with Forwend's key share one budget across
 // invoices, prices apart from quotes. A kept price or quote spends none.
 func TestCrossChainCallsShareOneBudgetAcrossInvoices(t *testing.T) {
+	// No refill while the test runs, so a slow machine can't earn a token back between calls.
+	dryRate, quoteRate := invoiceapi.DryQuoteAllRate, invoiceapi.QuoteAllRate
+	invoiceapi.DryQuoteAllRate, invoiceapi.QuoteAllRate = 0, 0
+	t.Cleanup(func() { invoiceapi.DryQuoteAllRate, invoiceapi.QuoteAllRate = dryRate, quoteRate })
 	e, fake := crossChainEnv(t)
 	var pays []string
 	for i := range invoiceapi.QuoteAllBurst + 1 {
