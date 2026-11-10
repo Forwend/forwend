@@ -50,9 +50,11 @@ import { MarkIcon } from "@/shared/components/chains/token-mark";
 import { LineSkeleton } from "@/shared/components/rows-skeleton";
 import {
   BLOCKCHAIN_ICONS,
+  CHAINS,
   CROSS_CHAIN_STATUSES,
   CROSS_CHAIN_TARGET,
   CROSS_CHAIN_TOKEN_ICONS,
+  TOKEN_ICONS,
 } from "@/shared/constants/chains";
 import {
   blockchainName,
@@ -646,6 +648,15 @@ function CrossChainProgress({
   // Only 1Click's success says the USDC left for Base: an amount it names while converting is still its plan.
   const success = crossChain.status === CROSS_CHAIN_STATUSES.success;
   const base = success ? crossChain.destinationTxs[0] : undefined;
+  // The payer's own token and chain: what they sent, and what comes back to them.
+  const originMark = (
+    <MarkIcon
+      token={iconOf(CROSS_CHAIN_TOKEN_ICONS, crossChain.symbol)}
+      chain={iconOf(BLOCKCHAIN_ICONS, crossChain.blockchain)}
+      letter={crossChain.symbol.slice(0, 1)}
+      chainLogo={chainLogo(crossChain.blockchain)}
+    />
+  );
   return (
     <section
       aria-labelledby="pay-cross-progress"
@@ -674,7 +685,11 @@ function CrossChainProgress({
         ) : null}
       </div>
       <ul className="divide-y divide-line rounded-md border border-line">
-        <Fact label={COPY.sent} value={COPY.onChain(amountText(sent, crossChain), chain)}>
+        <Fact
+          mark={originMark}
+          label={COPY.sent}
+          value={COPY.onChain(amountText(sent, crossChain), chain)}
+        >
           {origin ? (
             <TxHash hash={origin.hash}>
               <ExplorerLink
@@ -687,6 +702,13 @@ function CrossChainProgress({
         </Fact>
         {success && crossChain.delivered ? (
           <Fact
+            mark={
+              <MarkIcon
+                token={TOKEN_ICONS[CROSS_CHAIN_TARGET.symbol]}
+                chain={CHAINS[CROSS_CHAIN_TARGET.chainId]?.icon}
+                letter={CROSS_CHAIN_TARGET.symbol.slice(0, 1)}
+              />
+            }
             label={COPY.arrived}
             value={amountText(BigInt(crossChain.delivered), CROSS_CHAIN_TARGET)}
           >
@@ -699,6 +721,7 @@ function CrossChainProgress({
         ) : null}
         {refunded > 0n ? (
           <Fact
+            mark={originMark}
             label={COPY.returned}
             value={amountText(refunded, crossChain)}
             detail={COPY.returnedTo(shortAddress(crossChain.refundTo))}
@@ -736,11 +759,14 @@ function CrossMark({ token }: { token: Shown["token"] }) {
 
 /** One line of what happened to the payer's money, with its transaction at the end. */
 function Fact({
+  mark,
   label,
   value,
   detail,
   children,
 }: {
+  /** The token with its network on the corner: which money this line is about, before it is read. */
+  mark: ReactNode;
   label: string;
   value: string;
   detail?: string;
@@ -748,10 +774,13 @@ function Fact({
 }) {
   return (
     <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2.5 text-sm">
-      <span className="flex min-w-0 flex-col">
-        <span className="text-xs text-muted">{label}</span>
-        <span className="break-words text-ink tabular-nums">{value}</span>
-        {detail ? <span className="text-xs text-muted">{detail}</span> : null}
+      <span className="flex min-w-0 items-center gap-3">
+        {mark}
+        <span className="flex min-w-0 flex-col">
+          <span className="text-xs text-muted">{label}</span>
+          <span className="break-words text-ink tabular-nums">{value}</span>
+          {detail ? <span className="text-xs text-muted">{detail}</span> : null}
+        </span>
       </span>
       {children}
     </li>

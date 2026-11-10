@@ -978,6 +978,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
       Confirming and Paid, and one status line (R-243).
       - On Base, Confirming shows the block count with its time-left hint and "Final around", as a direct payment.
       - A bordered list follows: You sent and Arrived on Base, each with its transaction link.
+      - Each line leads with its token's mark and the network on the corner: the payer's token, then USDC on Base.
       - Returned to you names the refund address: 1Click names no refund transaction.
       - Once final but not booked it says what the direct box says, such as "Awaiting confirmation."
       - The payer's chain links to a known explorer, else to 1Click's own https link.
