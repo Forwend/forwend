@@ -1,6 +1,7 @@
 import { Check } from "lucide-react";
 import type { ReactNode } from "react";
 import { cx } from "../../lib/cx";
+import { StepRing } from "../payments/payment-timeline";
 
 export const TIMELINE_STATES = {
   done: "done",
@@ -21,7 +22,13 @@ export interface TimelineEntry {
   state: TimelineState;
   /** When it happened, already formatted; an upcoming step may have none yet. */
   time?: string;
+  /** At the end of the title's line, such as the step's transaction. */
+  aside?: ReactNode;
   description?: ReactNode;
+  /** A current step that is running now, not waiting on anyone: its ring turns, or fills with `progress`. */
+  working?: boolean;
+  /** A working step's share done, 0 to 1; null or left out while none is known. */
+  progress?: number | null;
   /** Small label and value pairs under the entry, such as the network or a transaction. */
   chips?: readonly TimelineChip[];
 }
@@ -46,7 +53,7 @@ export function Timeline({ entries, label, className }: TimelineProps) {
             className="relative grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3"
           >
             <span className="relative flex justify-center">
-              <Marker state={entry.state} />
+              <Marker state={entry.state} working={entry.working} progress={entry.progress} />
               {last ? null : (
                 <span
                   aria-hidden
@@ -58,23 +65,29 @@ export function Timeline({ entries, label, className }: TimelineProps) {
               )}
             </span>
             <div className={cx("min-w-0", last ? "pb-0" : "pb-5")}>
-              <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                <span
-                  className={cx(
-                    "text-sm font-medium",
-                    entry.state === TIMELINE_STATES.upcoming ? "text-subtle" : "text-ink",
-                  )}
-                >
-                  {entry.title}
-                </span>
-                {entry.time ? (
-                  <span className="text-xs text-muted tabular-nums">{entry.time}</span>
-                ) : null}
-              </p>
-              {entry.description ? (
-                <p className="mt-1 text-sm text-muted [overflow-wrap:anywhere]">
-                  {entry.description}
+              <div className="flex items-start justify-between gap-x-3">
+                <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <span
+                    className={cx(
+                      "text-sm",
+                      entry.state === TIMELINE_STATES.upcoming
+                        ? "text-subtle"
+                        : "font-medium text-ink",
+                    )}
+                  >
+                    {entry.title}
+                  </span>
+                  {entry.time ? (
+                    <span className="text-xs text-muted tabular-nums">{entry.time}</span>
+                  ) : null}
                 </p>
+                {entry.aside}
+              </div>
+              {entry.description ? (
+                // A div: a description may hold a bar or a list, which a paragraph can't.
+                <div className="mt-1 text-sm text-muted [overflow-wrap:anywhere]">
+                  {entry.description}
+                </div>
               ) : null}
               {entry.chips?.length ? (
                 <p className="mt-2 flex flex-wrap gap-1.5">
@@ -97,12 +110,25 @@ export function Timeline({ entries, label, className }: TimelineProps) {
   );
 }
 
-function Marker({ state }: { state: TimelineState }) {
+function Marker({
+  state,
+  working,
+  progress,
+}: Pick<TimelineEntry, "state" | "working" | "progress">) {
   if (state === TIMELINE_STATES.done) {
     return (
-      <span className="relative z-1 mt-0.5 grid size-5 place-items-center rounded-pill bg-ink text-bg">
+      // A step that finishes while the page is open fades in where its ring was.
+      <span className="relative z-1 mt-0.5 grid size-5 place-items-center rounded-pill bg-ink text-bg transition-[opacity,scale] duration-[var(--fw-duration-base)] ease-[var(--fw-ease-out)] starting:scale-75 starting:opacity-0">
         <Check aria-hidden strokeWidth={3} className="size-3" />
         <span className="sr-only">Done: </span>
+      </span>
+    );
+  }
+  if (state === TIMELINE_STATES.current && working) {
+    return (
+      <span className="relative z-1 mt-0.5">
+        <StepRing progress={progress} />
+        <span className="sr-only">Now: </span>
       </span>
     );
   }

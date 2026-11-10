@@ -47,7 +47,12 @@ function Marker({ step }: { step: TimelineStep }) {
   if (step.state === STEP_STATES.upcoming) {
     return <span className="size-5 shrink-0 rounded-pill border border-line-strong bg-surface" />;
   }
-  const share = typeof step.progress === "number" ? Math.min(1, Math.max(0, step.progress)) : null;
+  return <StepRing progress={step.progress} />;
+}
+
+/** A step in progress: its share done as the ring's fill, or a turning ring while no share is known. */
+export function StepRing({ progress }: { progress?: number | null }) {
+  const share = typeof progress === "number" ? Math.min(1, Math.max(0, progress)) : null;
   return (
     <span className="relative grid size-5 shrink-0 place-items-center rounded-pill bg-surface">
       {share === null ? (

@@ -479,9 +479,9 @@ test.describe("pay page", () => {
     page,
   }) => {
     await openPay(page, CONFIRMING);
-    await expect(status(page)).toContainText("Confirming (6/12)");
+    await expect(status(page)).toContainText("6 of 12 blocks");
     await page.reload();
-    await expect(status(page)).toContainText("Confirming (6/12)");
+    await expect(status(page)).toContainText("6 of 12 blocks");
   });
 
   test("follows the payment from waiting to paid without a reload, and never shows Settled", async ({
@@ -502,17 +502,27 @@ test.describe("pay page", () => {
 
     // R-68: once the full amount is on its way, no address invites a second payment.
     await page.clock.runFor(POLL_MS);
-    await expect(status(page)).toContainText("Confirming (0/12)");
+    await expect(status(page)).toContainText("0 of 12 blocks · about 3 min left · final around ");
     await expect(page.getByText(RECEIVE)).toHaveCount(0);
     await expect(page.locator("[data-status]")).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "Paying with" })).toBeVisible();
+    // The answer to "do I need to do anything?" leads; the first step names the token and network, so no row repeats
+    // them.
+    await expect(page.getByText("Nothing more to do")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Paying with" })).toHaveCount(0);
     const steps = page.getByRole("list", { name: "Payment progress" });
-    await expect(steps.getByRole("listitem")).toHaveText([/^Detected/, /^Confirming/, /^Paid/]);
-    await expect(steps.locator("[aria-current=step]")).toHaveText("Confirming");
-    await expect(status(page).getByRole("button", { name: "About 3 min left" })).toBeVisible();
-    await expect(status(page).getByText("Confirming (0/12)", { exact: true })).toBeVisible();
-    const payment = page.getByRole("region", { name: "Payment progress" }).locator("ul > li");
-    await expect(payment).toContainText("1,250.00 USDC");
+    await expect(steps.getByRole("listitem")).toHaveText([
+      /We received your payment/,
+      /Base Sepolia is confirming the transfer/,
+      /Alice Design GmbH is paid/,
+    ]);
+    await expect(steps.locator("[aria-current=step]")).toContainText(
+      "Base Sepolia is confirming the transfer",
+    );
+    // No block has passed: the step's ring turns, and fills once a share is known.
+    const ring = steps.locator('[aria-current=step] [style*="--fw-share"]');
+    await expect(ring).toHaveCount(0);
+    const payment = steps.getByRole("listitem").first();
+    await expect(payment).toContainText("1,250.00 USDC on Base Sepolia");
     await expect(payment).toContainText("0x3333…3333");
     await expect(payment.getByRole("link", { name: /Basescan/ })).toHaveAttribute(
       "href",
@@ -520,7 +530,8 @@ test.describe("pay page", () => {
     );
 
     await page.clock.runFor(POLL_MS);
-    await expect(status(page)).toContainText("Confirming (6/12)");
+    await expect(status(page)).toContainText("6 of 12 blocks");
+    await expect(ring).toHaveAttribute("style", /--fw-share:\s*0\.5/);
 
     await page.clock.runFor(POLL_MS);
     await expect(page.getByRole("status").filter({ hasText: /^Paid$/ })).toBeVisible();
@@ -631,9 +642,6 @@ test.describe("pay page", () => {
     await page.getByRole("button", { name: "Email me a receipt" }).click();
     const field = page.getByLabel("Email me the receipt (optional)");
     await expect(field).toBeFocused();
-    await expect(
-      page.getByText("Used for this receipt only. Nothing else is sent to it."),
-    ).toBeVisible();
     await field.fill(" Payer@Example.com ");
     await field.press("Enter");
     await field.press("Enter");
@@ -907,17 +915,50 @@ test.describe("pay page", () => {
     // R-77
     await expect(page.getByText(/^Closes in/)).toBeVisible();
     const partlySteps = page.getByRole("list", { name: "Payment progress" });
-    await expect(partlySteps.getByText("Partially paid")).toHaveClass(/bg-warning-soft/);
     await expect(partlySteps.getByRole("listitem")).toHaveText([
-      /^Detected/,
-      /^Confirmed/,
-      /^Partially paid/,
+      /We received your payment/,
+      /Base Sepolia confirmed the transfer/,
+      /Partially paid/,
     ]);
+    // More is due, so nothing says the payer is done.
+    await expect(page.getByText("Nothing more to do")).toHaveCount(0);
     await page.clock.runFor(POLL_MS);
     await expect(status(page)).toContainText(
       "This payment is closed. Do not send money. If you already did, Need help says what to do.",
     );
     await expect(showAddress(page)).toHaveCount(0);
+  });
+
+  // No address shows while a part payment is checked, and the rest is still due.
+  test("a part payment being checked shows its steps, and never that nothing more is to do", async ({
+    page,
+  }) => {
+    const amounts = {
+      receiver: "250000000",
+      payable: "0",
+      held: "0",
+      settled: "0",
+      refunded: "0",
+      observedRefunded: "0",
+      lastReturnTxHash: null,
+      unreconciled: true,
+      hasPolicyException: false,
+      reconciliationStatus: "pending",
+    };
+    const deposits = [{ ...PARTIAL.deposits[0], paid: null }];
+    await openPay(page, {
+      ...PARTIAL,
+      paymentStatus: "detected",
+      deposits,
+      amounts,
+      options: [{ ...MAIN_OPTION, amounts, deposits }],
+    });
+    await expect(status(page)).toHaveText("Awaiting confirmation.");
+    await expect(showAddress(page)).toHaveCount(0);
+    await expect(
+      page.getByRole("list", { name: "Payment progress" }).getByRole("listitem").first(),
+    ).toContainText("250.00 USDC");
+    await expect(page.getByText("Nothing more to do")).toHaveCount(0);
   });
 
   // R-130: past the terms' expiry, a reopened invoice takes money until its new close.
@@ -1221,7 +1262,7 @@ test.describe("pay page", () => {
       await expect(page.getByText(RECEIVE)).toBeVisible();
       expect(await blocking()).toEqual([]);
       await page.clock.runFor(POLL_MS);
-      await expect(status(page)).toContainText(/Confirming/);
+      await expect(status(page)).toContainText(/blocks/);
       expect(await blocking()).toEqual([]);
       await mockInvoice(page, PAID);
       await page.reload();

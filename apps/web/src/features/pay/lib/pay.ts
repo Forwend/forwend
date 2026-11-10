@@ -60,6 +60,12 @@ export function overpaid(inv: Invoice): bigint {
   return extra;
 }
 
+/** Whether the whole amount came on time, so the page may tell the payer they are done (R-68). Money after the
+ * close is held and pays nothing: it never counts, though payState's `received` adds it once the checkout closed. */
+export function seenInFull(inv: Invoice): boolean {
+  return depositAmount(inv, false) >= BigInt(inv.amount);
+}
+
 // A last-moment transfer lands after the close and is held, not paid out; the browser clock may run behind.
 const CLOSE_EARLY_MS = 5 * 60_000;
 

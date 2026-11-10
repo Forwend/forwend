@@ -852,7 +852,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
       run along its foot at 70%, under one soft wash in the store's color or brand lime. Its content is at most 26rem
       and ends 4rem left of the center.
     - The payee row leads it, with the Testnet badge at its right; then the amount, the items as plain rows, the
-      reference, dates, note and PDF link. "Payments by Forwend · Need help?" sits at the half's foot.
+      reference, dates, note and PDF link. "Payments by Forwend" and "Need help?" sit at the half's foot.
+      - Muted text with Forwend's name in ink; a short vertical rule parts the links, never a dot.
     - Right half: "Closes in …" at its top right like a header while the checkout can take money (warning color in the
       last 30 minutes). The pay panel, at most 28rem and starting 4rem right of the center, stands in the middle of the
       screen's height.
@@ -866,6 +867,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - "Invoice INV-0001" under the name; a payment-link invoice before its first deposit reads "Invoice" alone (R-141).
     - A test-mode invoice (R-143) starts the column with a warning box: its testnet tokens have no value.
     - The amount (tabular figures, featured size) and "on <network>". USD until the payer picks.
+      - The token's small logo, its network on the corner, leads the "on <network>" line.
       - When the client pays fees, a muted line says "1,250.00 USD plus 0.05 USD network fee" (R-228).
       - Before a pick it holds the place "on <network>" takes, in USD; after a pick it sits under that line.
   - Left, then, as a hosted invoice page lists them:
@@ -909,13 +911,23 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - An icon tile, "Payment closed" or "Checkout closed", and the reason under it. No Pay with pickers.
     - It looks like an empty state, and it reuses the status line's live region, so it is announced.
   - Once money is seen:
-    - The panel keeps its place ("Paying with" while nothing more is due).
-    - With nothing more due, the status leads the panel: "Payment detected".
-      - Then the steps, one status line beside them, and "Don't pay again. This page updates on its own."
-      - The Paying with row follows, folded to one line.
-    - The steps are Detected, Confirming and Paid. Partially paid is tinted on Paid.
-      - Confirming stays current until the API books the money: final on chain but not booked is still Confirming.
+    - The panel keeps its place.
+    - Once the whole amount is seen on time, a soft box leads the panel: a shield icon, "Nothing more to do" and one line.
+      - It never shows while part is still due, even when no address shows (a part payment being checked).
+      - Money sent after the close is held and pays nothing, so it never counts toward that amount.
+      - The line is "Don't send again. You can close this page; it keeps updating if you stay."
+      - No Paying with row follows: the first step names the token and its network.
+    - Then the steps, as the kit `Timeline`: one sentence each, read top to bottom.
+      - "We received your payment": the token's logo, the amount, the network and the time, one step per transfer.
+      - Its short hash sits at the end of the title's line and links to the explorer.
+      - "Base is confirming the transfer", then "Base confirmed the transfer"; the network's own name shows.
+      - "<Payee> is paid" comes last. While more is due it reads "Partially paid" and waits with a still ring.
+    - The step in progress carries the one status line. A hidden live region that stays mounted announces it.
+      - Confirming shows "6 of 12 blocks · about 2 min left · final around 2:41 PM"; a part never breaks in two.
+      - Its ring fills as blocks pass, and turns until the first block passes. No bar repeats it.
+      - It stays current until the API books the money: final on chain but not booked is still confirming.
       - A delay changes the line, never the steps: "Confirmation is taking longer than usual." No time is promised.
+    - A step that finishes fades its check in where the ring was.
     - One line for what the steps can't say: the block count, "Awaiting confirmation.", or what is left to pay.
     - Money over the amount: "Overpaid by X", with How to get it back on its right.
       It shows under the payments while confirming and on the receipt once paid (D-24).
@@ -974,23 +986,25 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
       - The blurred part is inert, so its Copy buttons can't be reached.
       - A changed amount shows a warning strip "The price changed" with both amounts and Understood; the QR waits.
       - The same amount shows "New address. Send only to this one."
-    - Once 1Click saw the deposit: "Payment seen on Tron. Don't pay again.", the steps Detected, Converting,
-      Confirming and Paid, and one status line (R-243).
-      - On Base, Confirming shows the block count with its time-left hint and "Final around", as a direct payment.
-      - A bordered list follows: You sent and Arrived on Base, each with its transaction link.
-      - Each line leads with its token's mark and the network on the corner: the payer's token, then USDC on Base.
-      - Returned to you names the refund address: 1Click names no refund transaction.
+    - Once 1Click saw the deposit: "Nothing more to do", then four steps and Powered by NEAR Intents (R-243).
+      - "We received your payment": the payer's token logo, amount, chain and time, with the origin transaction.
+      - "Converting to USDC" draws the payer's token and USDC on Base with an arrow between them.
+        - Its line says "NEAR Intents is exchanging it." A short deposit shows only where the money is held.
+      - "Converted to USDC": the USDC logo, the amount that arrived on Base, the time and its transaction.
+        - A returned part shows under it with the refund address: 1Click names no refund transaction.
+      - "Base is confirming the transfer" shows the block line and the filling ring, as a direct payment.
       - Once final but not booked it says what the direct box says, such as "Awaiting confirmation."
       - The payer's chain links to a known explorer, else to 1Click's own https link.
-      - Less than needed keeps the steps; its status line asks for the rest at the same address before the deadline.
+      - Less than needed keeps the steps; its line says NEAR Intents holds the money, then returns it (Q-19).
+        - No "Nothing more to do" box then: the invoice is still unpaid.
+      - The box also stays away once the checkout closed, was canceled or is in review.
         - Past the deadline it says the money goes back to the refund address.
       - Refunded and failed leave one line above Pay with, with the quote ID for support, and the invoice can be paid
         again.
-    - The receipt adds a Paid with row: the amount sent and its chain.
+    - The receipt adds a Paid with row: the payer's token logo, the amount sent and its chain.
   - Receipt email, once money is seen and once paid:
     - The panel's last row is "Email me a receipt" with a mail icon.
-    - Pressing it opens the optional field there, with Send inside its row and a line that the address is used for this
-      receipt only (R-82).
+    - Pressing it opens the optional field there, with Send inside its row and no hint line (R-82).
     - Before any money the row is not there: there is nothing to send a receipt for.
   - Confirmed returns show their recorded amount, network and latest transaction beside the payment record.
   - Conflicting evidence and exceptional authority movements show a short review notice and block sending.
@@ -1000,6 +1014,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A closed option keeps the selector when another option remains available. Each address uses its own effective close.
   - Closed: one line that says so.
   - Paid: a left-aligned receipt replaces the panel.
+    - The Amount row leads with the token's small logo; the logo adds no height to the row.
     - The kit's `SuccessCheck` beside "Paid" and "You can close this page.": the circle draws, then the check.
     - Ruled label and value rows: Amount, Paid to, Date, and Transaction with a View transaction link to the explorer.
     - Download receipt, a full-width button. Primary; or secondary under a full-width primary Back to <host> when the
@@ -1029,7 +1044,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   always, the receipt PDF once paid.
 - While a payment confirms, the step label stays "Confirming"; one full-width row below the steps shows "Confirming (4/12)"
   and a small info icon whose tooltip says "About 19 min left". Keep the count out of the narrow
-  step columns on both payer and owner pages, including four-digit counts on phones. Its ring fills as blocks pass
+  step columns on owner pages, including four-digit counts on phones. The pay page shows its own line under the step. Its ring fills as blocks pass
   (a turning quarter until the first block passes); done, the step reads "Confirmed". The count is blocks passed of those the
   payment had to wait when first seen, from the API, so a reload keeps it (R-73). The live status announces the count; the estimate opens on hover, keyboard focus or tap.
   The owner's steps are Waiting, Detected, Confirming, Paid and In wallet.

@@ -36,7 +36,7 @@ export function NeedHelp({ trigger }: { trigger?: (open: () => void) => ReactNod
       title={COPY.help}
       closeLabel={COPY.close}
       triggerVariant={BUTTON_VARIANTS.ghost}
-      triggerClassName="h-auto! rounded-sm! px-0! text-xs! font-normal! text-subtle! hover:bg-transparent! hover:text-ink!"
+      triggerClassName="h-auto! rounded-sm! px-0! text-xs! font-normal! text-muted! hover:bg-transparent! hover:text-ink!"
       trigger={trigger}
     >
       <div className="flex flex-col divide-y divide-line text-sm leading-6">

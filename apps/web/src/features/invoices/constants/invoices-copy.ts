@@ -12,7 +12,6 @@ import {
   INVOICE_FIELDS,
   INVOICE_LIMITS,
   INVOICE_PDFS,
-  INVOICE_STEPS,
   LINE_LIMITS,
   OWED_KINDS,
   REMINDER_STEPS,
@@ -26,7 +25,6 @@ import type {
   HistoryFilter,
   HistoryKind,
   InvoicePdf,
-  InvoiceStep,
   OwedKind,
   PayWith,
   Recheck,
@@ -354,13 +352,6 @@ export const INVOICE_COPY = {
   billedTo: (name: string) => `Billed to ${name}`,
   dueOn: (date: string) => `Due ${date}`,
   progress: "Payment progress",
-  steps: {
-    [INVOICE_STEPS.waiting]: "Waiting",
-    [INVOICE_STEPS.detected]: "Detected",
-    [INVOICE_STEPS.confirming]: "Confirming",
-    [INVOICE_STEPS.paid]: "Paid",
-    [INVOICE_STEPS.settled]: "In wallet",
-  } satisfies Record<InvoiceStep, string>,
   confirmingCount: (done: number, total: number) =>
     total > 0
       ? `Confirming (${done.toLocaleString("en-US")}/${total.toLocaleString("en-US")})`
@@ -372,7 +363,6 @@ export const INVOICE_COPY = {
       .filter(Boolean)
       .join(" · ");
   },
-  confirmed: "Confirmed",
   // Why a paid invoice's money still waits (R-54); `at` is a short local time.
   settling: {
     [SETTLEMENT_WAITS.signing]: () => "Sending to your wallet",
