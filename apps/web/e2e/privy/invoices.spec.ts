@@ -722,10 +722,10 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
       await page.getByRole("textbox", { name: "Qty" }).fill("2");
       await expect(
         page
-          .getByRole("group", { name: "Amount", exact: true })
-          .getByText("Total", { exact: true })
+          .getByRole("group", { name: "Items", exact: true })
+          .getByText("Subtotal", { exact: true })
           .locator(".."),
-      ).toHaveText(choosing ? "Total1.00 USD" : "Total1.00 USDC");
+      ).toHaveText(choosing ? "Subtotal1.00 USD" : "Subtotal1.00 USDC");
       await page.getByRole("button", { name: "Add agreed value" }).click();
       await page.getByRole("button", { name: /^Agreed in/ }).click();
       await page.getByRole("combobox", { name: /Agreed in/ }).fill("pound");

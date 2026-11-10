@@ -102,17 +102,32 @@ export const NEW_INVOICE_COPY = {
     [STEP_IDS.review]: "Review",
   },
   reviewGroup: "Review",
+  // The review's rows: what the client is asked for and what the owner gets, each with a way back to its step.
+  review: {
+    items: "Items",
+    itemsValue: (n: number, total: string) => `${n === 1 ? "1 item" : `${n} items`} · ${total}`,
+    clientPays: "Client pays",
+    clientPaysValue: (amount: string, where: string) => `${amount} ${where}`,
+    youReceive: "You receive",
+    afterFee: (receives: string, fee: string, platform: boolean) =>
+      `${receives} after the ${fee} ${platform ? "fees" : "network fee"}`,
+    afterCreate: "After you create it, you get the pay link to share.",
+    afterCreateEmail: (email: string) =>
+      `After you create it, you get the pay link to share and can email it to ${email}. See the Email tab in the preview.`,
+  },
   edit: "Edit",
   editStep: (term: string) => `Edit ${term.toLowerCase()}`,
   back: "Back",
-  continue: "Continue",
+  continueTo: (step: string) => `Continue to ${step}`,
+  stepOf: (n: number, of: number) => `Step ${n} of ${of}`,
+  needsFixing: (n: number) => (n === 1 ? "1 field needs fixing" : `${n} fields need fixing`),
   missingClient: "Enter a customer name or email. Use a payment link for an offer anyone can buy.",
   title: "New invoice",
   intro: "The client pays this exact amount by link.",
   noTokens:
     "No networks are enabled yet, so there is nothing to bill in. You can't create an invoice yet.",
   tokensFailed: "We could not load the assets you can bill in.",
-  amountGroup: "Amount",
+  amountGroup: "Items",
   payWithLabel: "How the client pays",
   payWith: { any: "Client chooses", fixed: "One token" } satisfies Record<PayWith, string>,
   payWithAnyHint: (symbols: string, networks: number) =>
@@ -150,6 +165,8 @@ export const NEW_INVOICE_COPY = {
   returnOriginError: "Use a link that starts with one of this store's allowed origins.",
   agreed: {
     add: "Add agreed value",
+    addHint:
+      "The price you agreed in another currency. For reference; the client still pays the total above.",
     group: "Agreed value",
     hint: "The price you agreed with the client in another currency. It shows on the invoice and its PDF; the client still pays the amount above.",
     currency: "Agreed in",
@@ -227,14 +244,16 @@ export const NEW_INVOICE_COPY = {
     add: "Add item",
     item: (n: number) => `Item ${n}`,
     description: "Item",
+    descriptionPlaceholder: "What is this item?",
     quantity: "Qty",
     // The visible label first, then which item: each row's fields share their visible labels.
     quantityOf: (n: number) => `Qty, item ${n}`,
     price: (unit: string) => `Price (${unit})`,
     priceOf: (unit: string, n: number) => `Price (${unit}), item ${n}`,
     amount: "Amount",
+    amountIn: (unit: string) => `Amount (${unit})`,
     remove: (n: number) => `Remove item ${n}`,
-    total: "Total",
+    removeShort: "Remove",
     errors: {
       description: `Say what this item is, in at most ${LINE_LIMITS.description} characters.`,
       quantity: "Enter a quantity above 0, with up to 2 decimals.",
@@ -277,8 +296,15 @@ export const NEW_INVOICE_COPY = {
   invalid: "We could not create the invoice with these values. Check them and try again.",
   preview: {
     title: "Preview",
-    edit: "Edit",
-    switch: "Edit or preview",
+    // Which of the three things the client sees is drawn.
+    show: "What to preview",
+    zoomOut: "Zoom out",
+    zoomIn: "Zoom in",
+    fit: "Fit page",
+    percent: (n: number) => `${n}%`,
+    pages: (n: number) => (n === 1 ? "Page 1 of 1" : `${n} pages`),
+    live: "Updates as you type",
+    backTo: (step: string) => `Back to ${step}, where you left it`,
     draft: "Draft",
     waiting: "Waiting for payment",
     amountDue: "Amount due",
@@ -312,6 +338,9 @@ export const NEW_REQUEST_COPY = {
   noTokens: "No networks are enabled yet, so there is nothing to request in.",
   tokensFailed: "We could not load the assets you can request in.",
   noteLabel: "Note to the payer (optional)",
+  // A request has no items: its first step asks only for the amount.
+  stepLabels: { ...NEW_INVOICE_COPY.stepLabels, [STEP_IDS.items]: "Amount" },
+  amountGroup: "Amount",
   payWithLabel: "How the payer pays",
   payWith: { any: "Payer chooses", fixed: "One token" } satisfies Record<PayWith, string>,
   payWithAnyHint: (symbols: string, networks: number) =>
@@ -686,6 +715,12 @@ export const FEES_FORM_COPY = {
   fees: "Network and platform fees",
   clientTotal: "Your client pays",
   youReceive: "You receive",
+  // The invoice form's totals: the fee is one of their lines, with who pays it beside it.
+  whoPays: "Who pays the network fee",
+  paidBy: { owner: "You pay it", client: "Client pays it" },
+  clientPaysTotal: "Client pays",
+  feeAdded: (fee: string) => `+ ${fee}`,
+  feeTaken: (fee: string) => `− ${fee}`,
   pricing: "Pricing the network fee…",
   failed: "The network fee can't be priced right now. Try again in a moment.",
 } as const;

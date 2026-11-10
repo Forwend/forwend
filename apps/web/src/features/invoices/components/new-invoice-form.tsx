@@ -10,13 +10,24 @@ import {
   DetailRow,
   Form,
   formatTokenAmount,
+  IconButton,
   SegmentedControl,
   SelectField,
+  Sheet,
   Stepper,
   TextAreaField,
   TextField,
 } from "@forwend/ui-web";
-import { ArrowLeft, ArrowRight, Plus, TriangleAlert } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CircleAlert,
+  Eye,
+  Mail,
+  Plus,
+  TriangleAlert,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
@@ -95,12 +106,8 @@ import type { Store } from "@/features/stores/types/stores";
 import { AssetIcon } from "@/shared/components/chains/asset-icon";
 import { FieldGroup, FlatFieldGroups } from "@/shared/components/field-group";
 import {
-  SPLIT_ASIDE_CLASSES,
-  SPLIT_CLASSES,
   SPLIT_FIELDS_CLASSES,
   SPLIT_FORM_CLASSES,
-  STEP_CARD_CLASSES,
-  STEP_FOOTER_CLASSES,
   STEP_HEAD_CLASSES,
 } from "@/shared/components/step-form";
 import { APP_ROUTES } from "@/shared/config/routes";
@@ -144,6 +151,15 @@ export interface NewInvoiceFormProps {
 }
 
 const NO_CLIENT: ClientBody = { name: "", email: "", address: "", country: "", taxId: "" };
+
+// On a phone the form is the whole screen (the shell's header and tab bar step aside for `data-phone-flow`): no card,
+// its own bar on top and its buttons along the bottom. From small screens it is a card beside its preview.
+// The form's column is narrower than other step forms': the preview beside it needs room for a readable page.
+const SPLIT =
+  "grid grid-cols-[minmax(0,1fr)] items-start gap-6 xl:h-[calc(100dvh-11.5rem)] xl:min-h-[32rem] xl:grid-cols-[minmax(0,35rem)_minmax(0,1fr)] xl:items-stretch";
+const CARD = "flex min-w-0 flex-col max-sm:min-h-dvh sm:fw-panel xl:h-full xl:min-h-0";
+const FOOTER =
+  "sticky bottom-0 z-[1] flex flex-wrap items-center gap-2 border-t border-line bg-surface py-3 max-sm:-mx-4 max-sm:bg-bg max-sm:px-4 max-sm:pb-[calc(.75rem+env(safe-area-inset-bottom,0px))] sm:gap-3 sm:rounded-b-lg sm:px-5 sm:max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))]";
 
 // One idempotency key per filled-in form: a retry makes one invoice; changed values get a new key.
 // With `request` it is a personal profile's request (D-52), handed to onCreated.
@@ -201,8 +217,8 @@ export function NewInvoiceForm({
   const [errors, setErrors] = useState<Partial<Record<InvoiceField, string>>>({});
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
-  // Below the two-column width the form and its preview take turns; both stay mounted, so nothing typed is lost.
-  const [view, setView] = useState<"edit" | "preview">("edit");
+  // Below the two-column width the preview opens over the form, which stays as it was left.
+  const [previewOpen, setPreviewOpen] = useState(false);
   // One group of fields at a time. Every step stays mounted, so going back keeps what was typed, and the final
   // submit still reads every field.
   const steps = (request ? REQUEST_STEPS : INVOICE_STEP_IDS).map((id) => ({
@@ -239,6 +255,7 @@ export function NewInvoiceForm({
     title: start?.title ?? "",
     note: start?.note ?? "",
     client: request?.senderName ?? start?.client.name ?? "",
+    clientEmail: start?.client.email ?? startClient?.email ?? "",
     clientAddress: start?.client.address ?? startClient?.address ?? "",
     clientTaxId: start?.client.taxId ?? startClient?.taxId ?? "",
   });
@@ -306,6 +323,16 @@ export function NewInvoiceForm({
     const message = COPY.items.errors[error];
     return typeof message === "function" ? message(unit, decimals) : message;
   };
+  // Opens the step that holds the first error, then focuses it: a field, or an error that has none of its own.
+  const toFirstError = (formElement: HTMLFormElement | null | undefined) => {
+    const invalid = formElement?.querySelector<HTMLElement>(
+      '[aria-invalid="true"], [data-invalid]',
+    );
+    const at = invalid?.closest<HTMLElement>("[data-step]")?.dataset.step;
+    const index = steps.findIndex((s) => s.id === at);
+    if (index >= 0) flushSync(() => setStep(index));
+    invalid?.focus();
+  };
   const readTyped = (event: FormEvent<HTMLFormElement>) => {
     const form = new FormData(event.currentTarget);
     const text = (name: string) => String(form.get(name) ?? "").trim();
@@ -313,6 +340,7 @@ export function NewInvoiceForm({
       title: text("title"),
       note: text("note"),
       client: text(request ? "senderName" : "clientName"),
+      clientEmail: text("clientEmail"),
       clientAddress: text("clientAddress"),
       clientTaxId: text("clientTaxId"),
     });
@@ -327,11 +355,7 @@ export function NewInvoiceForm({
     const formElement = event.currentTarget;
     const showErrors = (shown: Partial<Record<InvoiceField, string>>) => {
       flushSync(() => setErrors(shown));
-      const invalid = formElement.querySelector<HTMLElement>('[aria-invalid="true"]');
-      const at = invalid?.closest<HTMLElement>("[data-step]")?.dataset.step;
-      const index = steps.findIndex((s) => s.id === at);
-      if (index >= 0) flushSync(() => setStep(index));
-      invalid?.focus();
+      toFirstError(formElement);
     };
     const form = new FormData(formElement);
     const text = (name: string) => String(form.get(name) ?? "").trim();
@@ -702,9 +726,16 @@ export function NewInvoiceForm({
     if (!formElement) return;
     const form = new FormData(formElement);
     const text = (name: string) => String(form.get(name) ?? "").trim();
+    // This step's first error: a field, or the items' own line when no single field is wrong.
+    const focusHere = () =>
+      formElement
+        .querySelector<HTMLElement>(
+          `[data-step="${stepId}"] :is([aria-invalid="true"], [data-invalid])`,
+        )
+        ?.focus();
     const stop = (shown: Partial<Record<InvoiceField, string>>) => {
       flushSync(() => setErrors((current) => ({ ...current, ...shown })));
-      formElement.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+      focusHere();
     };
     if (stepId === STEP_IDS.customer && !text("clientName") && !text("clientEmail")) {
       return stop({ [INVOICE_FIELDS.clientName]: NEW_INVOICE_COPY.missingClient });
@@ -718,7 +749,7 @@ export function NewInvoiceForm({
       }
       flushSync(() => setLineErrors(problems));
       if (Object.keys(problems).length > 0) {
-        formElement.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+        focusHere();
         return;
       }
       if (typeof askedUnits === "string") return stop(askedError);
@@ -729,10 +760,41 @@ export function NewInvoiceForm({
     setStep(step + 1);
     formElement.scrollIntoView?.({ block: "start" });
   };
+  const owed = feeFigures(quote, decimals, clientPays);
   const review = [
-    ...(request ? [] : [{ step: STEP_IDS.customer, term: COPY.client, value: typed.client }]),
-    { step: STEP_IDS.items, term: COPY.amountGroup, value: money(total) },
-    { step: STEP_IDS.items, term: COPY.preview.network, value: preview.payer.network },
+    ...(request
+      ? []
+      : [
+          {
+            step: STEP_IDS.customer,
+            term: COPY.client,
+            value: [typed.client, typed.clientEmail].filter(Boolean).join(" · "),
+          },
+        ]),
+    items.length > 0
+      ? {
+          step: STEP_IDS.items,
+          term: COPY.review.items,
+          value: COPY.review.itemsValue(items.length, money(total)),
+        }
+      : { step: STEP_IDS.items, term: COPY.items.amount, value: money(total) },
+    {
+      step: STEP_IDS.items,
+      term: COPY.review.clientPays,
+      value: COPY.review.clientPaysValue(due, preview.payer.network),
+    },
+    ...(owed
+      ? [
+          {
+            step: STEP_IDS.items,
+            term: COPY.review.youReceive,
+            value:
+              !clientPays && owed.fee > 0n
+                ? COPY.review.afterFee(money(owed.receives), money(owed.fee), owed.platform)
+                : money(owed.receives),
+          },
+        ]
+      : []),
     {
       step: STEP_IDS.details,
       term: COPY.preview.due,
@@ -740,29 +802,54 @@ export function NewInvoiceForm({
     },
     { step: STEP_IDS.details, term: COPY.preview.closes, value: closes },
   ];
+  // What Continue or Create found wrong, counted for the footer's line.
+  const problems =
+    Object.values(errors).filter(Boolean).length +
+    Object.values(lineErrors).reduce((n, line) => n + Object.keys(line).length, 0);
+  const nextStep = steps[step + 1];
+  const previewPane = <NewInvoicePreview {...preview} />;
 
   return (
-    <div className={SPLIT_CLASSES}>
-      <SegmentedControl
-        label={COPY.preview.switch}
-        value={view}
-        onValueChange={(value) => setView(value === "preview" ? "preview" : "edit")}
-        options={[
-          { value: "edit", label: COPY.preview.edit },
-          { value: "preview", label: COPY.preview.title },
-        ]}
-        className="xl:hidden"
-      />
-      <Form
-        onSubmit={submit}
-        onInput={readTyped}
-        className={`${SPLIT_FORM_CLASSES} ${view === "preview" ? "max-xl:hidden" : ""}`}
-      >
-        <div className={STEP_CARD_CLASSES}>
-          <div className={STEP_HEAD_CLASSES}>
+    <div data-phone-flow className={SPLIT}>
+      <Form onSubmit={submit} onInput={readTyped} className={SPLIT_FORM_CLASSES}>
+        <div className={CARD}>
+          {/* Phones: the way out or back, the page's name and how far along it is. */}
+          <div className="sticky top-0 z-[2] -mx-4 bg-bg pt-[env(safe-area-inset-top)] sm:hidden">
+            <div className="flex items-center gap-1 px-2 py-2">
+              {step > 0 ? (
+                <IconButton label={COPY.back} onClick={() => setStep(step - 1)}>
+                  <ArrowLeft aria-hidden className="size-[var(--fw-icon-md)]" />
+                </IconButton>
+              ) : (
+                <Link
+                  href={APP_ROUTES.invoices}
+                  aria-label={COPY.cancel}
+                  className={`${buttonClasses({ variant: "ghost" })} w-10 px-0!`}
+                >
+                  <X aria-hidden className="size-[var(--fw-icon-md)]" />
+                </Link>
+              )}
+              <p className="min-w-0 flex-1 truncate text-base font-semibold text-ink">
+                {COPY.title}
+              </p>
+              <p className="pr-2 text-sm text-muted">{COPY.stepOf(step + 1, steps.length)}</p>
+            </div>
+            <div
+              aria-hidden
+              className="grid auto-cols-fr grid-flow-col gap-1.5 border-b border-line px-4 pb-2.5"
+            >
+              {steps.map((s, i) => (
+                <span
+                  key={s.id}
+                  className={`h-1 rounded-pill transition-colors duration-[var(--fw-duration-base)] ${i <= step ? "bg-ink" : "bg-line"}`}
+                />
+              ))}
+            </div>
+          </div>
+          <div className={`${STEP_HEAD_CLASSES} max-sm:hidden`}>
             <Stepper label={COPY.stepsLabel} steps={steps} current={step} onStepClick={setStep} />
           </div>
-          <div className={SPLIT_FIELDS_CLASSES}>
+          <div className={`${SPLIT_FIELDS_CLASSES} max-sm:flex-1 max-sm:px-0`}>
             <FlatFieldGroups value>
               {unavailableToken ? (
                 <p role="alert" className="text-sm text-danger">
@@ -800,7 +887,11 @@ export function NewInvoiceForm({
                           setKind(clientKind(picked));
                           setReminders(picked.reminders);
                           clear(INVOICE_FIELDS.reminders);
-                          setTyped((shown) => ({ ...shown, client: values.name }));
+                          setTyped((shown) => ({
+                            ...shown,
+                            client: values.name,
+                            clientEmail: values.email,
+                          }));
                           setErrors((shown) => ({
                             ...shown,
                             [INVOICE_FIELDS.clientName]: undefined,
@@ -910,29 +1001,28 @@ export function NewInvoiceForm({
                 className={stepId === STEP_IDS.items ? "contents" : "hidden"}
               >
                 <FieldGroup title={COPY.amountGroup}>
-                  {tokens.length > 1 ? (
-                    <div className="flex flex-col gap-1.5">
-                      <p aria-hidden className="text-sm font-medium text-ink">
-                        {COPY.payWithLabel}
-                      </p>
-                      <SegmentedControl
-                        label={COPY.payWithLabel}
-                        value={payWith}
-                        onValueChange={(value) => {
-                          setPayWith(value);
-                          clear(INVOICE_FIELDS.amount);
-                          setLineErrors({});
-                        }}
-                        className="self-start"
-                        options={Object.values(PAY_WITH).map((value) => ({
-                          value,
-                          label: COPY.payWith[value],
-                        }))}
-                      />
-                    </div>
-                  ) : null}
-                  {/* Empty when items stand in for the amount on any token: then the row takes no room. */}
                   <div className="grid gap-5 empty:hidden sm:grid-cols-2">
+                    {tokens.length > 1 ? (
+                      <div className="flex flex-col gap-1.5">
+                        <p aria-hidden className="text-sm font-medium text-ink">
+                          {COPY.payWithLabel}
+                        </p>
+                        <SegmentedControl
+                          label={COPY.payWithLabel}
+                          value={payWith}
+                          onValueChange={(value) => {
+                            setPayWith(value);
+                            clear(INVOICE_FIELDS.amount);
+                            setLineErrors({});
+                          }}
+                          className="self-start max-sm:self-stretch"
+                          options={Object.values(PAY_WITH).map((value) => ({
+                            value,
+                            label: COPY.payWith[value],
+                          }))}
+                        />
+                      </div>
+                    ) : null}
                     {any ? null : (
                       // Past a handful of tokens the picker searches, so "usdc base" finds one among hundreds.
                       <TokenPick
@@ -952,126 +1042,144 @@ export function NewInvoiceForm({
                         }))}
                       />
                     )}
-                    {items.length > 0 ? null : (
-                      <TextField
-                        id={amountId}
-                        label={any ? COPY.amountUsdLabel : COPY.amountLabel}
-                        inputMode="decimal"
-                        autoComplete="off"
-                        placeholder="0.00"
-                        value={amount}
-                        onChange={(event) => {
-                          setAmount(event.target.value);
-                          clear(INVOICE_FIELDS.amount);
+                  </div>
+                  {/* One box that reads like the invoice: what is charged, then what the client pays and the
+                      owner receives. */}
+                  <div className="overflow-hidden rounded-lg border border-line">
+                    {items.length > 0 ? (
+                      <LineItems
+                        id={itemsId}
+                        items={items}
+                        onChange={(next) => {
+                          if (next.length === 0 && itemsTotal > 0n)
+                            setAmount(decimalText(itemsTotal, decimals));
+                          setItems(next);
+                          setLineErrors({});
+                          clear(INVOICE_FIELDS.lines);
                         }}
-                        onBlur={() =>
-                          amount.trim() &&
-                          setErrors((shown) => ({
-                            ...shown,
-                            [INVOICE_FIELDS.amount]: amountError(amount),
-                          }))
-                        }
-                        hint={
-                          any
-                            ? COPY.payWithAnyHint(
-                                [...new Set(tokens.map((t) => t.symbol))].join(" or "),
-                                new Set(tokens.map((t) => t.chainId)).size,
-                              )
-                            : COPY.amountHint(token.symbol, network, token.decimals)
-                        }
-                        error={errors[INVOICE_FIELDS.amount]}
+                        decimals={decimals}
+                        unit={unit}
+                        errors={lineErrors}
+                        error={errors[INVOICE_FIELDS.lines]}
                       />
+                    ) : (
+                      <div className="flex flex-col gap-2 p-4">
+                        <TextField
+                          id={amountId}
+                          label={any ? COPY.amountUsdLabel : COPY.amountLabel}
+                          inputMode="decimal"
+                          autoComplete="off"
+                          placeholder="0.00"
+                          value={amount}
+                          onChange={(event) => {
+                            setAmount(event.target.value);
+                            clear(INVOICE_FIELDS.amount);
+                          }}
+                          onBlur={() =>
+                            amount.trim() &&
+                            setErrors((shown) => ({
+                              ...shown,
+                              [INVOICE_FIELDS.amount]: amountError(amount),
+                            }))
+                          }
+                          hint={
+                            any
+                              ? COPY.payWithAnyHint(
+                                  [...new Set(tokens.map((t) => t.symbol))].join(" or "),
+                                  new Set(tokens.map((t) => t.chainId)).size,
+                                )
+                              : COPY.amountHint(token.symbol, network, token.decimals)
+                          }
+                          error={errors[INVOICE_FIELDS.amount]}
+                        />
+                        {request ? null : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="-ml-1 self-start"
+                            onClick={() => {
+                              setItems([
+                                {
+                                  id: crypto.randomUUID(),
+                                  description: "",
+                                  quantity: "1",
+                                  price: amount.trim(),
+                                },
+                              ]);
+                              clear(INVOICE_FIELDS.amount);
+                            }}
+                          >
+                            <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />
+                            {COPY.items.add}
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                    <div className="border-t border-line">
+                      <FeeSummary
+                        totals
+                        profileId={profileId}
+                        storeId={storeId || undefined}
+                        any={any}
+                        chainId={token.chainId}
+                        token={token.token}
+                        units={typeof typedUnits === "string" ? 0n : typedUnits}
+                        decimals={decimals}
+                        clientPays={clientPays}
+                        onClientPays={setClientPays}
+                        onQuote={setQuote}
+                        onPricing={setPricing}
+                        money={money}
+                      />
+                    </div>
+                    {request ? null : (
+                      <div className="border-t border-line px-4 py-3">
+                        {agreed ? (
+                          <AgreedValueFields
+                            id={agreedId}
+                            value={agreed}
+                            today={today}
+                            errors={{
+                              currency: errors[INVOICE_FIELDS.agreedCurrency],
+                              amount: errors[INVOICE_FIELDS.agreedAmount],
+                              date: errors[INVOICE_FIELDS.agreedDate],
+                            }}
+                            onChange={(next) => {
+                              // Remove takes away the button that had focus: it goes back to Add agreed value.
+                              flushSync(() => setAgreed(next));
+                              if (!next) document.getElementById(agreedId)?.focus();
+                              setErrors((shown) => ({
+                                ...shown,
+                                [INVOICE_FIELDS.agreedCurrency]: undefined,
+                                [INVOICE_FIELDS.agreedAmount]: undefined,
+                                [INVOICE_FIELDS.agreedDate]: undefined,
+                              }));
+                            }}
+                          />
+                        ) : (
+                          <div className="flex flex-col items-start gap-1">
+                            <Button
+                              id={agreedId}
+                              variant="ghost"
+                              size="sm"
+                              className="-ml-2"
+                              onClick={() => {
+                                // The button goes away: focus moves to the currency it asks for first.
+                                flushSync(() =>
+                                  setAgreed({ currency: "", amount: "", date: today }),
+                                );
+                                document.getElementById(agreedId)?.focus();
+                              }}
+                            >
+                              <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />
+                              {COPY.agreed.add}
+                            </Button>
+                            <p className="text-xs text-muted">{COPY.agreed.addHint}</p>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
-                  {items.length > 0 ? (
-                    <LineItems
-                      id={itemsId}
-                      items={items}
-                      onChange={(next) => {
-                        if (next.length === 0 && itemsTotal > 0n)
-                          setAmount(decimalText(itemsTotal, decimals));
-                        setItems(next);
-                        setLineErrors({});
-                        clear(INVOICE_FIELDS.lines);
-                      }}
-                      decimals={decimals}
-                      unit={unit}
-                      errors={lineErrors}
-                      error={errors[INVOICE_FIELDS.lines]}
-                    />
-                  ) : request ? null : (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="self-start"
-                      onClick={() => {
-                        setItems([
-                          {
-                            id: crypto.randomUUID(),
-                            description: "",
-                            quantity: "1",
-                            price: amount.trim(),
-                          },
-                        ]);
-                        clear(INVOICE_FIELDS.amount);
-                      }}
-                    >
-                      <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />
-                      {COPY.items.add}
-                    </Button>
-                  )}
-                  <FeeSummary
-                    profileId={profileId}
-                    storeId={storeId || undefined}
-                    any={any}
-                    chainId={token.chainId}
-                    token={token.token}
-                    units={typeof typedUnits === "string" ? 0n : typedUnits}
-                    decimals={decimals}
-                    clientPays={clientPays}
-                    onClientPays={setClientPays}
-                    onQuote={setQuote}
-                    onPricing={setPricing}
-                    money={money}
-                  />
-                  {request ? null : agreed ? (
-                    <AgreedValueFields
-                      id={agreedId}
-                      value={agreed}
-                      today={today}
-                      errors={{
-                        currency: errors[INVOICE_FIELDS.agreedCurrency],
-                        amount: errors[INVOICE_FIELDS.agreedAmount],
-                        date: errors[INVOICE_FIELDS.agreedDate],
-                      }}
-                      onChange={(next) => {
-                        // Remove takes away the button that had focus: it goes back to Add agreed value.
-                        flushSync(() => setAgreed(next));
-                        if (!next) document.getElementById(agreedId)?.focus();
-                        setErrors((shown) => ({
-                          ...shown,
-                          [INVOICE_FIELDS.agreedCurrency]: undefined,
-                          [INVOICE_FIELDS.agreedAmount]: undefined,
-                          [INVOICE_FIELDS.agreedDate]: undefined,
-                        }));
-                      }}
-                    />
-                  ) : (
-                    <Button
-                      id={agreedId}
-                      variant="secondary"
-                      size="sm"
-                      className="self-start"
-                      onClick={() => {
-                        // The button goes away: focus moves to the currency it asks for first.
-                        flushSync(() => setAgreed({ currency: "", amount: "", date: today }));
-                        document.getElementById(agreedId)?.focus();
-                      }}
-                    >
-                      <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />
-                      {COPY.agreed.add}
-                    </Button>
-                  )}
                 </FieldGroup>
               </div>
 
@@ -1143,6 +1251,7 @@ export function NewInvoiceForm({
                         defaultValue={request.senderName}
                         maxLength={INVOICE_LIMITS.senderName}
                         error={errors[INVOICE_FIELDS.senderName]}
+                        onChange={() => clear(INVOICE_FIELDS.senderName)}
                       />
                       {returnField}
                     </div>
@@ -1243,7 +1352,7 @@ export function NewInvoiceForm({
 
               {stepId === STEP_IDS.review ? (
                 <FieldGroup title={COPY.reviewGroup}>
-                  <DetailList>
+                  <DetailList className="rounded-md border border-line">
                     {review.map((row) => (
                       <DetailRow key={row.term} term={row.term}>
                         <span className="flex items-center justify-end gap-3">
@@ -1260,6 +1369,12 @@ export function NewInvoiceForm({
                       </DetailRow>
                     ))}
                   </DetailList>
+                  <p className="flex items-start gap-2.5 rounded-md bg-surface-2 px-3.5 py-3 text-sm text-muted">
+                    <Mail aria-hidden className="mt-0.5 size-[var(--fw-icon-sm)] shrink-0" />
+                    {!request && typed.clientEmail
+                      ? COPY.review.afterCreateEmail(typed.clientEmail)
+                      : COPY.review.afterCreate}
+                  </p>
                 </FieldGroup>
               ) : null}
             </FlatFieldGroups>
@@ -1268,21 +1383,54 @@ export function NewInvoiceForm({
             </p>
           </div>
 
-          <div className={STEP_FOOTER_CLASSES}>
+          <div className={FOOTER}>
             {step > 0 ? (
-              <Button variant="secondary" onClick={() => setStep(step - 1)}>
+              <Button
+                variant="secondary"
+                className="max-sm:hidden"
+                onClick={() => setStep(step - 1)}
+              >
                 <ArrowLeft aria-hidden className="size-[var(--fw-icon-sm)]" />
                 {COPY.back}
               </Button>
             ) : request ? null : (
-              <Link href={APP_ROUTES.invoices} className={buttonClasses({ variant: "ghost" })}>
+              <Link
+                href={APP_ROUTES.invoices}
+                className={`${buttonClasses({ variant: "ghost" })} max-sm:hidden`}
+              >
                 {COPY.cancel}
               </Link>
             )}
-            <span className="hidden flex-1 sm:block" />
+            {/* Where the owner is, or what stops them: the line leads to the first field to fix. */}
+            <p
+              className={`text-center text-sm text-muted sm:flex-1 ${problems > 0 ? "max-sm:order-first max-sm:basis-full" : "max-sm:hidden"}`}
+            >
+              {problems > 0 ? (
+                <button
+                  type="button"
+                  onClick={(event) => toFirstError(event.currentTarget.form)}
+                  className="inline-flex items-center gap-1.5 rounded-sm text-danger underline decoration-1 underline-offset-4 outline-none hover:decoration-2 focus-visible:outline-2 focus-visible:outline-focus"
+                >
+                  <CircleAlert aria-hidden className="size-[var(--fw-icon-sm)]" />
+                  {COPY.needsFixing(problems)}
+                </button>
+              ) : (
+                COPY.stepOf(step + 1, steps.length)
+              )}
+            </p>
+            <Button variant="secondary" className="xl:hidden" onClick={() => setPreviewOpen(true)}>
+              <Eye aria-hidden className="size-[var(--fw-icon-sm)]" />
+              {COPY.preview.title}
+            </Button>
             {/* Keys keep these two separate elements: reusing one would turn Continue into a submit mid-click. */}
-            {stepId === STEP_IDS.review ? (
-              <Button key="create" type="submit" loading={busy} disabled={unavailableToken}>
+            {stepId === STEP_IDS.review || !nextStep ? (
+              <Button
+                key="create"
+                type="submit"
+                loading={busy}
+                disabled={unavailableToken}
+                className="max-sm:flex-1"
+              >
                 {COPY.create}
               </Button>
             ) : (
@@ -1290,27 +1438,31 @@ export function NewInvoiceForm({
                 key="continue"
                 // What the client pays and the owner receives wait on the fee quote (R-227).
                 disabled={stepId === STEP_IDS.items && pricing}
+                className="max-sm:flex-1"
                 onClick={(event) => {
                   event.preventDefault();
                   next(event.currentTarget.form);
                 }}
               >
-                {COPY.continue}
+                {COPY.continueTo(nextStep.label)}
                 <ArrowRight aria-hidden className="size-[var(--fw-icon-sm)]" />
               </Button>
             )}
           </div>
         </div>
       </Form>
-      {/* Beside the form, scrolling on its own when the pages run longer than the screen. */}
-      <aside
-        aria-label={COPY.preview.title}
-        // biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users scroll pages longer than the screen
-        tabIndex={0}
-        className={`flex-col xl:flex ${SPLIT_ASIDE_CLASSES} ${view === "preview" ? "flex" : "hidden"}`}
-      >
-        <NewInvoicePreview {...preview} />
+      {/* Beside the form from the two-column width; below it, a sheet the Preview button opens. */}
+      <aside aria-label={COPY.preview.title} className="min-h-0 max-xl:hidden xl:h-full">
+        {previewPane}
       </aside>
+      <Sheet open={previewOpen} onOpenChange={setPreviewOpen} title={COPY.preview.title} size="lg">
+        <div className="flex flex-col gap-3 pb-5">
+          <div className="h-[62dvh]">{previewOpen ? previewPane : null}</div>
+          <Button variant="secondary" className="w-full" onClick={() => setPreviewOpen(false)}>
+            {COPY.preview.backTo(steps[step]?.label ?? "")}
+          </Button>
+        </div>
+      </Sheet>
     </div>
   );
 }

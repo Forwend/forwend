@@ -66,7 +66,7 @@ export function AppHeader({
       ? APP_ROUTES.payments
       : APP_ROUTES.transactions;
   return (
-    <header className="sticky top-0 z-[var(--fw-z-nav)] flex min-h-16 items-center gap-2 border-b border-line bg-[color-mix(in_oklab,var(--fw-bg)_88%,transparent)] fw-safe-x pt-[env(safe-area-inset-top)] backdrop-blur-md sm:gap-3">
+    <header className="max-sm:[body:has([data-phone-flow])_&]:hidden sticky top-0 z-[var(--fw-z-nav)] flex min-h-16 items-center gap-2 border-b border-line bg-[color-mix(in_oklab,var(--fw-bg)_88%,transparent)] fw-safe-x pt-[env(safe-area-inset-top)] backdrop-blur-md sm:gap-3">
       <div className="lg:hidden">
         <AccountMenu
           email={email}

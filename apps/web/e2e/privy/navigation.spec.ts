@@ -1212,7 +1212,6 @@ test("on a phone every panel is a card inside the page's margin, and no page scr
   for (const path of [
     "/app/invoices",
     `/app/invoices/${CONFIRMING_INVOICE.invoiceId}`,
-    "/app/invoices/new",
     "/app/activity",
     "/app/transactions",
     "/app/balances",

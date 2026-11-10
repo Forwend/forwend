@@ -1,6 +1,6 @@
 "use client";
 
-import { Switch } from "@forwend/ui-web";
+import { SegmentedControl, Switch } from "@forwend/ui-web";
 import { skipToken } from "@reduxjs/toolkit/query";
 import { useEffect, useState } from "react";
 import { useGetFeesQuery } from "@/features/invoices/api/invoices-api";
@@ -32,6 +32,8 @@ export interface FeeSummaryProps {
   money: (units: bigint) => string;
   /** Only the fee: the price is the payer's to choose, as on an open payment link. */
   feeOnly?: boolean;
+  /** As the totals under an invoice's items: subtotal, the fee with who pays it, then what each side gets. */
+  totals?: boolean;
 }
 
 /** R-227: who pays the network fee, and what the client pays and the owner receives, before the form saves. */
@@ -49,6 +51,7 @@ export function FeeSummary({
   onPricing,
   money,
   feeOnly,
+  totals,
 }: FeeSummaryProps) {
   const price =
     units > 0n
@@ -83,6 +86,65 @@ export function FeeSummary({
   const pricing = price !== "" && !current && !failed;
   useEffect(() => onPricing?.(pricing), [pricing, onPricing]);
   const figures = feeFigures(current, decimals, clientPays);
+  // A refused price says why in its own field; only a quote that can't be had now is said here.
+  const waiting =
+    price === "" || current
+      ? null
+      : failed
+        ? (quote.error as { status?: unknown }).status === UNAVAILABLE
+          ? COPY.failed
+          : null
+        : COPY.pricing;
+  if (totals) {
+    const ROW = "flex min-h-10 items-center justify-between gap-4 px-4 py-2";
+    const VALUE = "text-right font-medium whitespace-nowrap text-ink tabular-nums";
+    return (
+      <dl className="flex flex-col bg-surface-2 text-sm">
+        <div className={ROW}>
+          <dt className="text-muted">{COPY.subtotal}</dt>
+          <dd className={VALUE}>{money(units)}</dd>
+        </div>
+        <div className={ROW}>
+          <dt className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-muted">
+            {figures?.platform ? COPY.fees : COPY.networkFee}
+            <SegmentedControl
+              size="sm"
+              label={COPY.whoPays}
+              value={feesPaidBy}
+              onValueChange={(by) => onClientPays(by === FEES_PAID_BY.client)}
+              options={[
+                { value: FEES_PAID_BY.owner, label: COPY.paidBy.owner },
+                { value: FEES_PAID_BY.client, label: COPY.paidBy.client },
+              ]}
+              className="bg-line"
+            />
+          </dt>
+          <dd className="text-right text-muted tabular-nums">
+            {figures ? (
+              <span className="whitespace-nowrap">
+                {(clientPays ? COPY.feeAdded : COPY.feeTaken)(money(figures.fee))}
+              </span>
+            ) : waiting ? null : (
+              "—"
+            )}
+            {/* Always mounted, so a screen reader hears the line when it appears. */}
+            <span role="status">{figures ? null : waiting}</span>
+          </dd>
+        </div>
+        <div className={`${ROW} border-t border-line`}>
+          <dt className="font-semibold text-ink">{COPY.clientPaysTotal}</dt>
+          <dd className="text-right text-lg font-semibold whitespace-nowrap text-ink tabular-nums">
+            {/* With the fee on the client's side and no quote, what the client pays is not known yet. */}
+            {figures ? money(figures.pays) : clientPays && units > 0n ? "—" : money(units)}
+          </dd>
+        </div>
+        <div className={ROW}>
+          <dt className="text-muted">{COPY.youReceive}</dt>
+          <dd className={VALUE}>{figures ? money(figures.receives) : "—"}</dd>
+        </div>
+      </dl>
+    );
+  }
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-line p-3 sm:p-4">
       <Switch
@@ -109,13 +171,8 @@ export function FeeSummary({
           ))}
         </dl>
       ) : price === "" || current ? null : (
-        // A refused price says why in its own field; only a quote that can't be had now is said here.
         <p role="status" className="text-sm text-muted">
-          {failed
-            ? (quote.error as { status?: unknown }).status === UNAVAILABLE
-              ? COPY.failed
-              : null
-            : COPY.pricing}
+          {waiting}
         </p>
       )}
     </div>

@@ -1,8 +1,13 @@
-import { Tabs } from "@forwend/ui-web";
+"use client";
+
+import { Button, IconButton, SegmentedControl } from "@forwend/ui-web";
+import { Maximize, ZoomIn, ZoomOut } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import {
   InvoiceDocument,
   type InvoiceDocumentProps,
 } from "@/features/invoices/components/invoice-document";
+import { NEW_INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
 
 export interface NewInvoicePreviewProps {
   document: InvoiceDocumentProps;
@@ -13,7 +18,7 @@ export interface NewInvoicePreviewProps {
 }
 
 const COPY = {
-  label: "Preview",
+  ...NEW_INVOICE_COPY.preview,
   invoice: "Invoice",
   payer: "Payer page",
   email: "Email",
@@ -25,25 +30,120 @@ const COPY = {
   emailNote: "Sent from Forwend. Replies go to you.",
 } as const;
 
-/** The three things the client will see, drawn from what the form holds now; switching keeps every typed value. */
+const VIEWS = { invoice: "invoice", payer: "payer", email: "email" } as const;
+type View = (typeof VIEWS)[keyof typeof VIEWS];
+// Each view's width at 100%, in CSS pixels: an A4 page, the pay page's column, the email's card.
+const WIDTHS: Record<View, number> = { invoice: 794, payer: 420, email: 600 };
+const A4 = 297 / 210;
+const ZOOMS = [50, 75, 100, 125] as const;
+const FIT = "fit";
+// The canvas's padding on both sides, which a fitted page leaves free.
+const GAP = 32;
+
+/** The three things the client will see, drawn from what the form holds now; switching keeps every typed value.
+ * Fit shows a whole page; the levels zoom in to read it. */
 export function NewInvoicePreview({ document, payer, email }: NewInvoicePreviewProps) {
+  const [view, setView] = useState<View>(VIEWS.invoice);
+  const [zoom, setZoom] = useState<typeof FIT | (typeof ZOOMS)[number]>(FIT);
+  const canvas = useRef<HTMLDivElement>(null);
+  const [room, setRoom] = useState({ width: 0, height: 0 });
+  useEffect(() => {
+    const element = canvas.current;
+    if (!element || typeof ResizeObserver === "undefined") return;
+    const watch = new ResizeObserver(() =>
+      setRoom({ width: element.clientWidth, height: element.clientHeight }),
+    );
+    watch.observe(element);
+    return () => watch.disconnect();
+  }, []);
+  const width = WIDTHS[view];
+  // A page fits by both sides; the pay page and the email are as long as their content, so they fit by width.
+  const fitted =
+    room.width === 0
+      ? 0.5
+      : Math.min(
+          1.25,
+          (room.width - GAP) / width,
+          view === VIEWS.invoice ? (room.height - GAP) / (width * A4) : 1,
+        );
+  const scale = zoom === FIT ? fitted : zoom / 100;
+  const percent = Math.round(scale * 100);
+  const smaller = [...ZOOMS].reverse().find((level) => level < percent);
+  const larger = ZOOMS.find((level) => level > percent);
+  // Read from the last drawing: a new page shows in the count one keystroke later.
+  const pages = Math.max(1, canvas.current?.querySelectorAll("figure > div").length ?? 1);
   return (
-    <Tabs
-      label={COPY.label}
-      items={[
-        { value: "invoice", label: COPY.invoice, content: <InvoiceDocument {...document} /> },
-        {
-          value: "payer",
-          label: COPY.payer,
-          content: <PayerPage {...payer} document={document} />,
-        },
-        {
-          value: "email",
-          label: COPY.email,
-          content: <EmailPage {...email} amount={payer.amount} />,
-        },
-      ]}
-    />
+    <section
+      aria-label={COPY.title}
+      className="fw-panel flex h-full min-h-0 flex-col overflow-hidden"
+    >
+      <div className="flex flex-wrap items-center gap-x-1 gap-y-2 border-b border-line p-2">
+        <SegmentedControl
+          size="sm"
+          label={COPY.show}
+          value={view}
+          onValueChange={setView}
+          options={[
+            { value: VIEWS.invoice, label: COPY.invoice },
+            { value: VIEWS.payer, label: COPY.payer },
+            { value: VIEWS.email, label: COPY.email },
+          ]}
+        />
+        <div className="ml-auto flex items-center gap-1">
+          <IconButton
+            size="sm"
+            label={COPY.zoomOut}
+            disabled={!smaller}
+            onClick={() => smaller && setZoom(smaller)}
+          >
+            <ZoomOut aria-hidden className="size-[var(--fw-icon-sm)]" />
+          </IconButton>
+          <span className="min-w-10 text-center text-xs text-muted tabular-nums">
+            {COPY.percent(percent)}
+          </span>
+          <IconButton
+            size="sm"
+            label={COPY.zoomIn}
+            disabled={!larger}
+            onClick={() => larger && setZoom(larger)}
+          >
+            <ZoomIn aria-hidden className="size-[var(--fw-icon-sm)]" />
+          </IconButton>
+          <Button
+            size="sm"
+            variant={zoom === FIT ? "secondary" : "ghost"}
+            aria-pressed={zoom === FIT}
+            onClick={() => setZoom(FIT)}
+          >
+            <Maximize aria-hidden className="size-[var(--fw-icon-sm)]" />
+            {COPY.fit}
+          </Button>
+        </div>
+      </div>
+      <div
+        ref={canvas}
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users scroll a page zoomed past the pane
+        tabIndex={0}
+        className="flex min-h-0 flex-1 overflow-auto overscroll-contain bg-sunken p-4 outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+      >
+        {/* Sized by zoom, not a transform: the text stays sharp and the canvas scrolls by the real size. */}
+        <div className="m-auto shrink-0" style={{ width, zoom: scale }}>
+          {view === VIEWS.invoice ? (
+            <InvoiceDocument {...document} />
+          ) : view === VIEWS.payer ? (
+            <PayerPage {...payer} document={document} />
+          ) : (
+            <EmailPage {...email} amount={payer.amount} />
+          )}
+        </div>
+      </div>
+      {view === VIEWS.invoice ? (
+        <p className="flex justify-between gap-3 border-t border-line px-3 py-2 text-xs text-muted">
+          <span>{COPY.pages(pages)}</span>
+          <span>{COPY.live}</span>
+        </p>
+      ) : null}
+    </section>
   );
 }
 

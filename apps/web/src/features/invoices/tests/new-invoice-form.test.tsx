@@ -157,16 +157,15 @@ describe("new invoice form", () => {
       target: { value: "Mara Ilić" },
     });
     fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "100" } });
-    // The quote waits for typing to stop.
-    await form().findByText("Network fee", undefined, { timeout: 2000 });
+    // The quote waits for typing to stop. The fee is one line of the totals, taken from what the owner receives.
+    await form().findByText("− 0.05 USDC", undefined, { timeout: 2000 });
     const row = (term: string) => form().getByText(term).nextElementSibling?.textContent;
-    expect(row("Network fee")).toBe("0.05 USDC");
-    expect(row("Your client pays")).toBe("100.00 USDC");
+    expect(row("Subtotal")).toBe("100.00 USDC");
+    expect(row("Client pays")).toBe("100.00 USDC");
     expect(row("You receive")).toBe("99.95 USDC");
-    fireEvent.click(
-      form().getByRole("switch", { name: "Add the network fee to what your client pays" }),
-    );
-    expect(row("Your client pays")).toBe("100.05 USDC");
+    fireEvent.click(form().getByRole("radio", { name: "Client pays it" }));
+    expect(row("Network fee")).toBe("+ 0.05 USDC");
+    expect(row("Client pays")).toBe("100.05 USDC");
     expect(row("You receive")).toBe("100.00 USDC");
     await create();
     await settle();
@@ -265,7 +264,7 @@ describe("new invoice form", () => {
     };
 
     fill([TOKEN]);
-    expect(form().getByText("750.50 USDC")).toBeTruthy();
+    expect(form().getByText("Subtotal").nextElementSibling?.textContent).toBe("750.50 USDC");
     await create();
     await settle();
     expect(bodies[0]).toMatchObject({
@@ -349,7 +348,7 @@ describe("new invoice form", () => {
     fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "12.345" } });
     fireEvent.click(screen.getByRole("button", { name: "Add item" }));
     fireEvent.change(screen.getByLabelText("Item 1"), { target: { value: "Design" } });
-    expect(form().getByText("Total").parentElement?.textContent).toBe("Total12.345 USDC");
+    expect(form().getByText("Subtotal").parentElement?.textContent).toBe("Subtotal12.345 USDC");
     expect(screen.queryByText("12.34 USDC")).toBeNull();
   });
 
@@ -470,11 +469,12 @@ describe("new invoice form", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /^Continue/ }));
     fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "100" } });
-    await form().findByText("Network fee", undefined, { timeout: 2000 });
-    fireEvent.click(
-      form().getByRole("switch", { name: "Add the network fee to what your client pays" }),
+    await form().findByText("+ 0.05 USDC", undefined, { timeout: 2000 });
+    fireEvent.click(form().getByRole("radio", { name: "You pay it" }));
+    await waitFor(() =>
+      expect(form().getByText("Network fee").nextElementSibling?.textContent).toBe("—"),
     );
-    await waitFor(() => expect(form().queryByText("Network fee")).toBeNull());
+    expect(form().getByText("You receive").nextElementSibling?.textContent).toBe("—");
     expect(screen.getByRole("button", { name: /^Continue/ }).hasAttribute("disabled")).toBe(false);
   });
 
@@ -763,4 +763,131 @@ it("starts billed to the saved client a client page opened it for", () => {
   );
   expect(screen.queryByRole("textbox", { name: /Tax or VAT ID/ })).toBeNull();
   expect((screen.getByLabelText(/PO or reference/) as HTMLInputElement).value).toBe("PO-7");
+});
+
+it("names the next step, counts the steps and leads to the field that needs fixing", () => {
+  stubFetch(() => new Response("{}"));
+  render(
+    <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+      <NewInvoiceForm profileId={PROFILE} testnet tokens={[TOKEN]} />
+    </Provider>,
+  );
+  expect(form().getAllByText("Step 1 of 4").length).toBeGreaterThan(0);
+  fireEvent.click(screen.getByRole("button", { name: "Continue to Items" }));
+  // No customer yet: the footer says so and its line goes to the field.
+  const fixing = screen.getByRole("button", { name: "1 field needs fixing" });
+  fireEvent.click(fixing);
+  expect(document.activeElement).toBe(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }));
+  fireEvent.change(document.activeElement as HTMLElement, { target: { value: "Mara Ilić" } });
+  expect(screen.queryByRole("button", { name: /needs fixing/ })).toBeNull();
+});
+
+it("reviews who is billed, what the client pays and what the owner receives", async () => {
+  stubFetch(() => new Response("{}"));
+  render(
+    <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+      <NewInvoiceForm profileId={PROFILE} testnet tokens={[TOKEN]} />
+    </Provider>,
+  );
+  // The form reads what is typed on input, as a keyboard sends it.
+  fireEvent.input(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }), {
+    target: { value: "Mara Ilić" },
+  });
+  fireEvent.input(screen.getByRole("textbox", { name: /^Email/ }), {
+    target: { value: "mara@example.com" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Continue to Items" }));
+  fireEvent.click(screen.getByRole("button", { name: "Add item" }));
+  fireEvent.change(screen.getByLabelText("Item 1"), { target: { value: "Design" } });
+  fireEvent.change(screen.getByLabelText(/^Price/), { target: { value: "100" } });
+  const next = screen.getByRole("button", { name: "Continue to Details" });
+  await waitFor(() => expect(next.hasAttribute("disabled")).toBe(false), { timeout: 2000 });
+  fireEvent.click(next);
+  fireEvent.click(screen.getByRole("button", { name: "Continue to Review" }));
+  // The stepper, the step titles and the Items step's totals repeat these words: Review's rows come last.
+  const row = (term: string) =>
+    form()
+      .getAllByText(term)
+      .filter((element) => element.tagName === "DT")
+      .at(-1)?.nextElementSibling?.textContent;
+  expect(row("Customer")).toContain("Mara Ilić · mara@example.com");
+  expect(row("Items")).toContain("1 item · 100.00 USDC");
+  expect(row("Client pays")).toContain("100.00 USDC on Base Sepolia");
+  expect(row("You receive")).toContain("100.00 USDC");
+  expect(form().getByText(/can email it to mara@example.com/)).toBeTruthy();
+});
+
+it("zooms the preview by its levels and comes back to fit", () => {
+  stubFetch(() => new Response("{}"));
+  render(
+    <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+      <NewInvoiceForm profileId={PROFILE} testnet tokens={[TOKEN]} />
+    </Provider>,
+  );
+  const preview = within(screen.getByRole("complementary", { name: "Preview" }));
+  // No layout in this environment: fit stands at 50%, the lowest level.
+  expect(preview.getByText("50%")).toBeTruthy();
+  expect(preview.getByRole("button", { name: "Zoom out" }).hasAttribute("disabled")).toBe(true);
+  fireEvent.click(preview.getByRole("button", { name: "Zoom in" }));
+  expect(preview.getByText("75%")).toBeTruthy();
+  expect(preview.getByRole("button", { name: "Fit page" }).getAttribute("aria-pressed")).toBe(
+    "false",
+  );
+  fireEvent.click(preview.getByRole("button", { name: "Fit page" }));
+  expect(preview.getByText("50%")).toBeTruthy();
+  fireEvent.click(preview.getByRole("radio", { name: "Email" }));
+  expect(preview.queryByText("Page 1 of 1")).toBeNull();
+});
+
+it("the footer's line opens the step that holds the error and focuses it", async () => {
+  stubFetch(() => new Response("{}"));
+  render(
+    <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+      <NewInvoiceForm profileId={PROFILE} testnet tokens={[TOKEN]} />
+    </Provider>,
+  );
+  fireEvent.change(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }), {
+    target: { value: "Mara Ilić" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Continue to Items" }));
+  fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "100" } });
+  const toDetails = screen.getByRole("button", { name: "Continue to Details" });
+  await waitFor(() => expect(toDetails.hasAttribute("disabled")).toBe(false), { timeout: 2000 });
+  fireEvent.click(toDetails);
+  const link = screen.getByLabelText(/^Return link/) as HTMLInputElement;
+  fireEvent.change(link, { target: { value: "ftp://example.com" } });
+  fireEvent.click(screen.getByRole("button", { name: "Continue to Review" }));
+  // Create finds the link wrong and opens its step; going elsewhere, the line still leads back to it.
+  fireEvent.click(screen.getByRole("button", { name: "Create invoice" }));
+  const at = () => document.querySelector('[aria-current="step"]')?.textContent;
+  expect(at()).toContain("Details");
+  fireEvent.click(screen.getByRole("button", { name: /Customer/ }));
+  expect(at()).toContain("Customer");
+  fireEvent.click(screen.getByRole("button", { name: "1 field needs fixing" }));
+  expect(at()).toContain("Details");
+  expect(document.activeElement).toBe(link);
+});
+
+it("a request drops its name error once a name is typed, and names its first step Amount", async () => {
+  stubFetch(() => new Response("{}"));
+  render(
+    <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+      <NewInvoiceForm
+        profileId={PROFILE}
+        testnet
+        tokens={[TOKEN]}
+        request={{ senderName: "", onCreated: () => {} }}
+      />
+    </Provider>,
+  );
+  expect(document.querySelector('[aria-current="step"]')?.textContent).toContain("Amount");
+  fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "100" } });
+  // Continue waits for the fee quote of the typed price.
+  const next = screen.getByRole("button", { name: /^Continue/ });
+  await waitFor(() => expect(next.hasAttribute("disabled")).toBe(false), { timeout: 2000 });
+  fireEvent.click(next);
+  fireEvent.click(screen.getByRole("button", { name: /^Continue/ }));
+  expect(screen.getByRole("button", { name: "1 field needs fixing" })).toBeTruthy();
+  fireEvent.change(screen.getByLabelText(/^Your name/), { target: { value: "Mara" } });
+  expect(screen.queryByRole("button", { name: /needs fixing/ })).toBeNull();
 });

@@ -1013,21 +1013,92 @@
         "At 390px no screen of this step scrolls sideways, and each loading placeholder has the shape of what it replaces.",
         "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
       ],
-      "dependsOn": [
-        "F462"
-      ],
-      "state": "not_started",
+      "dependsOn": [],
+      "state": "verified",
       "verification": [
         "web-unit",
         "lint",
         "typecheck"
       ],
-      "refs": [],
+      "refs": [
+        "R-252",
+        "R-88",
+        "R-227"
+      ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-11-10 review fail by reviewer: Money, submit body, validation, idempotency keys and the fee quote flow are unchanged; the totals match feeFigures for both payers; the phone-flow variant compiles and data-phone-flow sits only on the form root; shared step-form constants and the link form's FeeSummary are intact; typecheck, lint, docs-check and 410 web unit tests pass. Fails on the footer's 'N fields need fixing' line (apps/web/src/features/invoices/components/new-invoice-form.tsx:793-795 and 1392-1404): it counts every entry of errors on all steps, but its button only calls focus() on the first [aria-invalid] in the form. (1) Request flow: Details with an empty 'Your name', Continue, type a name, Continue: the senderName error is never cleared on change (field at 1234-1241), so Review shows '1 field needs fixing' with nothing invalid and the button does nothing. (2) Errors on two steps after Create (empty 'Agreed in' on Items plus a bad return link on Details): after the first is fixed the button targets a field on a hidden step and does nothing. (3) Items that add up below the minimum: the error is a role=alert line with no aria-invalid field (line-items.tsx:147-151), so the button does nothing. This breaks R-252 'leads to a field that needs fixing'. Fix: let the button open the step of the first invalid field before focusing (the logic showErrors has at 346-353), clear senderName on change, and give the items-total error a focus target. Notes: preview page count is read from a ref during render (new-invoice-preview.tsx:73) and can be one render late or 0; 'Client pays' shows the subtotal as a firm figure when the client pays the fee and there is no quote (fee-summary.tsx:137); request flow still says Client and Items; max-sm:empty:hidden at 1391 never applies; the preview is mounted twice; a DESIGN.md Review bullet has 37 words.",
+        "2026-11-10 review pass by reviewer: The footer defect is fixed: toFirstError (new-invoice-form.tsx:327) opens the step of the first [aria-invalid=true] or [data-invalid] element and focuses it, showErrors and the footer button both use it, Continue focuses only inside its own step (:730), the sender name clears its error on change (:1254), and the items' error line is a focus target (line-items.tsx:149). Traced again: a request's name error goes away once a name is typed; with errors on two steps the footer button opens the hidden step and focuses its field; an items total below the minimum focuses its own line. Every errors key the form can set has a focusable marked element while it is set: text fields, text areas, date pickers and comboboxes mark their input or trigger, reminders and repeat mark their checkbox, lines marks its line, and each handler that removes a field also clears its error. A count with no target needs the API to refuse a field the form did not fill (expiresIn with a preset, memo, invoice-only fields in a request), which the form's own values do not cause. The fee row, the Client pays dash, the page count floor, the preview label, the sheet's copy, the request's Amount label and the phone footer line are sound. typecheck, lint, docs-check pass and web-unit passes 412 tests. Notes: no unit test covers the items-minimum line as a focus target; title, note, client address, supply date and due date keep a server error, and the count, until the next Create; reminders and repeat keep theirs after the due date or email is filled; the focused items line has no visible focus ring; the Preview aside and its section carry the same label."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-10T20:09:11Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.8,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 12.2,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 50.7,
+            "log": ""
+          }
+        ],
+        "taskHash": "6a6fd73c4cd3f80a",
+        "filesHash": "5eabf91def69e3ec",
+        "proof": {
+          "1": "web-unit: new-invoice-form.test.tsx covers the totals (Subtotal, fee with who pays it, Client pays, You receive), the footer (Step 1 of 4, Continue to Items, the fields-need-fixing line opening the step of the first error), the Review rows and the preview's zoom levels and Fit page; screenshots of every step at 1440 and 390 were compared with template Flow 4 Option A",
+          "2": "web-unit: the signed-in phone test 'on a phone a merchant creates and opens an invoice without sideways scrolling' passed by hand with no sideways scroll and no blocking axe violation on each step (node scripts/e2e.mjs --live e2e/privy/invoices.spec.ts); the loading placeholder has the card and preview columns",
+          "3": "web-unit: the 18 earlier form tests pass (idempotency, saved client, items, agreed value, reminders, refused quotes); 18 signed-in invoice and request tests passed by hand"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "The footer defect is fixed: toFirstError (new-invoice-form.tsx:327) opens the step of the first [aria-invalid=true] or [data-invalid] element and focuses it, showErrors and the footer button both use it, Continue focuses only inside its own step (:730), the sender name clears its error on change (:1254), and the items' error line is a focus target (line-items.tsx:149). Traced again: a request's name error goes away once a name is typed; with errors on two steps the footer button opens the hidden step and focuses its field; an items total below the minimum focuses its own line. Every errors key the form can set has a focusable marked element while it is set: text fields, text areas, date pickers and comboboxes mark their input or trigger, reminders and repeat mark their checkbox, lines marks its line, and each handler that removes a field also clears its error. A count with no target needs the API to refuse a field the form did not fill (expiresIn with a preset, memo, invoice-only fields in a request), which the form's own values do not cause. The fee row, the Client pays dash, the page count floor, the preview label, the sheet's copy, the request's Amount label and the phone footer line are sound. typecheck, lint, docs-check pass and web-unit passes 412 tests. Notes: no unit test covers the items-minimum line as a focus target; title, note, client address, supply date and due date keep a server error, and the count, until the next Create; reminders and repeat keep theirs after the due date or email is filled; the focused items line has no visible focus ring; the Preview aside and its section carry the same label.",
+          "at": "2026-11-10T20:13:16Z",
+          "filesHash": "5eabf91def69e3ec"
+        }
+      },
+      "branch": "feat/f463-new-invoice-reads-as-one-flow-of-custome",
+      "baseCommit": "e24c92c8f368cd05cf717cd6e42dca26e639406e",
+      "failedVerifies": 0
     },
     {
       "id": "F464",
