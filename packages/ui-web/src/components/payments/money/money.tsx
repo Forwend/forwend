@@ -6,13 +6,30 @@ export interface MoneyProps extends TokenAmountInput {
   token?: string;
   /** Set before the figures, such as + or − for money in or out. */
   sign?: string;
+  /** Keeps the figures and the token on one line, as a table cell needs. */
+  nowrap?: boolean;
   className?: string;
 }
 
-export function Money({ baseUnits, decimals, token, sign, fractionDigits, className }: MoneyProps) {
+export function Money({
+  baseUnits,
+  decimals,
+  token,
+  sign,
+  fractionDigits,
+  nowrap = false,
+  className,
+}: MoneyProps) {
   const groups = formatTokenAmount({ baseUnits, decimals, fractionDigits }).split(",");
   return (
-    <span data-money className={cx("inline-flex flex-wrap items-baseline gap-x-1.5", className)}>
+    <span
+      data-money
+      className={cx(
+        "inline-flex items-baseline gap-x-1.5",
+        nowrap ? "flex-nowrap whitespace-nowrap" : "flex-wrap",
+        className,
+      )}
+    >
       <span data-figures className="font-medium tabular-nums">
         {sign}
         {/* A huge amount wraps only after a group comma, never inside a group. */}

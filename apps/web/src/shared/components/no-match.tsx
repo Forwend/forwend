@@ -11,14 +11,26 @@ export interface NoMatchProps {
   page?: boolean;
   /** The button's words on a list with search alone. */
   clearLabel?: string;
+  /** Names the list: "No transactions match". */
+  title?: string;
+  /** What was searched and filtered, so the reader sees why nothing shows. */
+  description?: string;
 }
 
 /** A filtered list with no rows (R-75). */
-export function NoMatch({ onClear, compact, page, clearLabel = CLEAR }: NoMatchProps) {
+export function NoMatch({
+  onClear,
+  compact,
+  page,
+  clearLabel = CLEAR,
+  title = TITLE,
+  description,
+}: NoMatchProps) {
   return (
     <EmptyState
       icon={SearchX}
-      title={TITLE}
+      title={title}
+      description={description}
       compact={compact}
       page={page}
       action={

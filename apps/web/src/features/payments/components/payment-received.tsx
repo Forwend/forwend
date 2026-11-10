@@ -1,7 +1,11 @@
+import { Money } from "@forwend/ui-web";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
+import { PAYMENTS_COPY } from "@/features/payments/constants/payments-copy";
 import { leadOption, receivedAmount } from "@/features/payments/lib/payments";
 import type { Payment } from "@/features/payments/types/payments";
+import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { chainName } from "@/shared/lib/chains";
+import { exactDigits } from "@/shared/lib/money";
 
 const OVER =
   "More than requested; the extra is held for the customer, and Forwend support handles any return";
@@ -17,8 +21,10 @@ export interface PaymentReceivedProps {
     | "amount"
     | "optionId"
     | "optionLocked"
+    | "optionCount"
   >;
-  /** One line for a table row: the received total, or a dash when nothing arrived. */
+  /** One line for a list row: what arrived of what was asked ("0.50 of 1.23 USDC"), or what was asked alone while
+   * nothing arrived or both match. */
   compact?: boolean;
 }
 
@@ -32,20 +38,36 @@ export function PaymentReceived({ payment, compact }: PaymentReceivedProps) {
           decimals: payment.decimals,
           symbol: payment.symbol,
         };
-    if (!received || BigInt(received.received) === 0n) {
-      return <span className="text-subtle">—</span>;
-    }
-    // Every accepted token is priced 1:1 against the request, so the same decimals compare exactly.
-    const over =
-      received.decimals === payment.decimals && BigInt(received.received) > BigInt(payment.amount);
+    // Several accepted tokens share USD terms, so the requested amount is in USD.
+    const asked = (
+      <PaymentAmount
+        amount={payment.amount}
+        decimals={payment.decimals}
+        symbol={payment.optionCount > 1 ? MONEY_COPY.usd : payment.symbol}
+        nowrap
+      />
+    );
+    if (!received || BigInt(received.received) === 0n) return asked;
+    // Every accepted token is priced 1:1 against the request, so both compare once at the same decimals.
+    const got = BigInt(received.received) * 10n ** BigInt(payment.decimals);
+    const want = BigInt(payment.amount) * 10n ** BigInt(received.decimals);
+    if (got === want) return asked;
+    const units = BigInt(received.received);
     return (
-      <span title={over ? OVER : undefined}>
-        <PaymentAmount
-          amount={received.received}
-          decimals={received.decimals}
-          symbol={received.symbol}
-        />
-        {over ? <span className="sr-only"> ({OVER})</span> : null}
+      <span title={got > want ? OVER : undefined} className="whitespace-nowrap">
+        <span className="text-muted">
+          <Money
+            baseUnits={units}
+            decimals={received.decimals}
+            fractionDigits={exactDigits(units, received.decimals)}
+            // Asked in USD across tokens: what arrived names its token.
+            token={payment.optionCount > 1 ? received.symbol : undefined}
+            nowrap
+          />{" "}
+          {PAYMENTS_COPY.of}
+        </span>{" "}
+        {asked}
+        {got > want ? <span className="sr-only"> ({OVER})</span> : null}
       </span>
     );
   }

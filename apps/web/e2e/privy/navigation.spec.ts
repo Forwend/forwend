@@ -230,7 +230,8 @@ test("Invoices, Activity and Transactions filter and search on the API: a match 
   await expect(rows).toHaveCount(1);
   await pickStatus(page, "Paid");
   await expect(page).toHaveURL("/app/invoices?q=zephyr&state=paid");
-  await expect(main.getByText("Nothing matches", { exact: true })).toBeVisible();
+  await expect(main.getByText("No invoices match", { exact: true })).toBeVisible();
+  await expect(main.getByText("Search “zephyr”, status Paid.", { exact: true })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
   await main.getByRole("button", { name: "Clear filter and search" }).click();
   await expect(page).toHaveURL("/app/invoices");
@@ -273,9 +274,10 @@ test("Invoices, Activity and Transactions filter and search on the API: a match 
   );
   await main.getByRole("group", { name: "Direction" }).getByText("Out", { exact: true }).click();
   await expect(page).toHaveURL(`/app/transactions?q=${PAST_PAGE_PARTY}&direction=out`);
-  await expect(main.getByText("Nothing matches", { exact: true })).toBeVisible();
+  await expect(main.getByText("No transactions match", { exact: true })).toBeVisible();
   await page.reload();
-  await expect(main.getByText("Nothing matches", { exact: true })).toBeVisible();
+  await expect(main.getByText("No transactions match", { exact: true })).toBeVisible();
+  await expect(main.getByText(`Search “${PAST_PAGE_PARTY}”, direction Out.`)).toBeVisible();
   await main.getByRole("button", { name: "Clear filter and search" }).click();
   await expect(transfers).toHaveCount(20);
   await context.close();
@@ -1140,7 +1142,7 @@ test("empty and filtered-out lists say so in one centered block with an icon", a
     expect(await blockingViolations(page)).toEqual([]);
   }
   await page.goto("/app/transactions?q=zzzz");
-  await fills("Nothing matches");
+  await fills("No transactions match");
   await main.getByRole("button", { name: "Clear filter and search" }).click();
   await expect(main.getByText("No transactions yet", { exact: true })).toBeVisible();
   await context.close();

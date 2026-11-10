@@ -1,6 +1,5 @@
 import { Badge, StatusPill, WalletStateLabel } from "@forwend/ui-web";
 import type { ReactNode } from "react";
-import { PaymentAmount } from "@/features/payments/components/payment-amount";
 import { PaymentReceived } from "@/features/payments/components/payment-received";
 import { SOURCE_ICONS, SOURCE_LABELS } from "@/features/payments/constants/payments";
 import {
@@ -15,52 +14,54 @@ import {
   problemLabel,
 } from "@/features/payments/lib/payments";
 import type { Payment, PaymentProblem } from "@/features/payments/types/payments";
-import { type DataColumn, DataTable } from "@/shared/components/data-table";
+import { ChainBadge, hasChainBadge } from "@/shared/components/chains/chain-badge";
+import { NearIntents } from "@/shared/components/chains/near-intents";
+import { type DataColumn, DataTable, DataTableSkeleton } from "@/shared/components/data-table";
+import { SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { APP_ROUTES } from "@/shared/config/routes";
-import { shortDate } from "@/shared/lib/dates";
+import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { chainName } from "@/shared/lib/chains";
+import { dayTime, timeOfDay } from "@/shared/lib/dates";
 
 type Row = Payment & { problems?: PaymentProblem[] };
 
 export interface PaymentsTableProps {
   rows: readonly Row[];
-  /** Issues: the issue replaces the wallet column. */
+  /** Issues: the issue replaces the wallet and date columns. */
   attention?: boolean;
   /** A merchant with two or more stores sees which store each payment is for. */
   showStore?: boolean;
   footer?: ReactNode;
 }
 
-export function PaymentsTable({ rows, attention, showStore, footer }: PaymentsTableProps) {
-  const columns: DataColumn<Row>[] = [
+// The row icon names the source and the network; the payment page says both in words.
+function paymentColumns(attention?: boolean, showStore?: boolean): DataColumn<Row>[] {
+  return [
     {
       key: "payment",
       header: COPY.columns.payment,
-      className: "w-[22%]",
+      placeholder: "lead",
       title: paymentLabel,
       cell: (p) => (
-        <span className="flex min-w-0 items-center gap-2">
-          <span className="truncate font-medium text-ink">{paymentLabel(p)}</span>
+        <span className="flex min-w-0 items-center gap-3">
+          <PaymentIcon payment={p} />
+          <span className="truncate font-medium text-ink">
+            {paymentLabel(p)}
+            <PaymentWords payment={p} />
+          </span>
           {/* Quiet on every row, so it doesn't outshout the statuses that need action. */}
           {p.livemode ? null : <Badge tone="neutral">{COPY.testnet}</Badge>}
           {/* R-239: paid from another chain; the payment page says from which. */}
-          {p.crossChain ? <Badge tone="neutral">{PAYMENT_DETAIL_COPY.crossChain.tag}</Badge> : null}
+          {p.crossChain ? <ViaNearIntents /> : null}
         </span>
       ),
     },
     {
       key: "customer",
       header: COPY.columns.customer,
-      from: "lg",
+      className: "w-34",
       title: customer,
       cell: (p) => customer(p) ?? <span className="text-subtle">{COPY.noCustomer}</span>,
-    },
-    {
-      key: "source",
-      header: COPY.columns.source,
-      // The phone row and the payment page name the source; at mid widths the customer matters more.
-      from: "xl",
-      className: "w-36",
-      cell: (p) => <Source payment={p} />,
     },
     ...(showStore
       ? [
@@ -68,28 +69,32 @@ export function PaymentsTable({ rows, attention, showStore, footer }: PaymentsTa
             key: "store",
             header: COPY.columns.store,
             from: "xl",
+            className: "w-32",
             cell: (p: Row) => p.storeName ?? "—",
           } satisfies DataColumn<Row>,
         ]
       : []),
-    {
-      key: "amount",
-      header: COPY.columns.amount,
-      align: "end",
-      className: "whitespace-nowrap",
-      cell: (p) => <Requested payment={p} />,
-    },
-    {
-      key: "received",
-      header: COPY.columns.received,
-      align: "end",
-      from: "lg",
-      cell: (p) => <PaymentReceived payment={p} compact />,
-    },
+    // The issue needs the room in Issues; the payment's page has its date and wallet.
+    ...(attention
+      ? []
+      : [
+          {
+            key: "date",
+            header: COPY.columns.date,
+            from: "md",
+            fit: true,
+            cell: (p) => (
+              <time dateTime={p.createdAt} className="text-muted tabular-nums">
+                {dayTime(p.createdAt)}
+              </time>
+            ),
+          } satisfies DataColumn<Row>,
+        ]),
     {
       key: "status",
       header: COPY.columns.status,
-      className: "w-44",
+      placeholder: "pill",
+      fit: true,
       cell: (p) => <StatusPill status={paymentDisplayStatus(p)} />,
     },
     attention
@@ -104,26 +109,20 @@ export function PaymentsTable({ rows, attention, showStore, footer }: PaymentsTa
           key: "wallet",
           header: COPY.columns.wallet,
           from: "md",
-          className: "w-32",
+          className: "w-25",
           cell: (p) => <WalletStateLabel state={paymentWallet(p)} />,
         },
-    // The issue needs the room in Issues; the payment's page has its date.
-    ...(attention
-      ? []
-      : [
-          {
-            key: "date",
-            header: COPY.columns.date,
-            align: "end",
-            className: "w-24",
-            cell: (p) => (
-              <time dateTime={p.createdAt} className="text-muted">
-                {shortDate(p.createdAt)}
-              </time>
-            ),
-          } satisfies DataColumn<Row>,
-        ]),
+    {
+      key: "amount",
+      header: COPY.columns.amount,
+      align: "end",
+      className: "w-44",
+      cell: (p) => <PaymentReceived payment={p} compact />,
+    },
   ];
+}
+
+export function PaymentsTable({ rows, attention, showStore, footer }: PaymentsTableProps) {
   return (
     <DataTable
       label={COPY.table}
@@ -131,21 +130,54 @@ export function PaymentsTable({ rows, attention, showStore, footer }: PaymentsTa
       rowKey={(p) => p.paymentId}
       rowHref={(p) => `${APP_ROUTES.payments}/${p.paymentId}`}
       rowLabel={paymentLabel}
-      columns={columns}
+      columns={paymentColumns(attention, showStore)}
+      day={(p) => p.createdAt}
       phone={(p) => ({
-        title: paymentLabel(p),
-        detail: [
-          customer(p),
-          SOURCE_LABELS[p.source],
-          p.crossChain ? PAYMENT_DETAIL_COPY.crossChain.tag : null,
-          shortDate(p.createdAt),
-        ]
-          .filter(Boolean)
-          .join(" · "),
-        value: <Requested payment={p} />,
+        leading: <PaymentIcon payment={p} large />,
+        title: (
+          <>
+            {paymentLabel(p)}
+            <PaymentWords payment={p} />
+            {p.livemode ? null : (
+              <>
+                {" "}
+                <Badge tone="neutral">{COPY.testnet}</Badge>
+              </>
+            )}
+          </>
+        ),
+        time: <time dateTime={p.createdAt}>{timeOfDay(p.createdAt)}</time>,
+        value: <PaymentReceived payment={p} compact />,
+        detail: (
+          <>
+            {customer(p) ?? <span className="text-subtle">{COPY.noCustomer}</span>}
+            {p.crossChain ? (
+              <span className="ml-1.5 border-l border-line-strong pl-2">
+                <ViaNearIntents bare />
+              </span>
+            ) : null}
+          </>
+        ),
         meta: <StatusPill status={paymentDisplayStatus(p)} />,
       })}
       footer={footer}
+    />
+  );
+}
+
+/** The table's loading form: its real headers and each cell's shape, and phone rows under a day heading. */
+export function PaymentsTableSkeleton({
+  attention,
+  showStore,
+}: Pick<PaymentsTableProps, "attention" | "showStore">) {
+  return (
+    <DataTableSkeleton
+      columns={paymentColumns(attention, showStore)}
+      leading
+      days
+      status
+      count={SKELETON_ROWS}
+      className="fw-panel"
     />
   );
 }
@@ -154,24 +186,51 @@ function customer(p: Payment): string | null {
   return p.customerName || p.customerEmail || null;
 }
 
-function Source({ payment }: { payment: Payment }) {
+// Before the customer chooses among several tokens, the payment can arrive on any of their networks.
+const anyNetwork = (p: Payment) => p.optionCount > 1 && !p.optionLocked;
+
+/** The round icon that leads a row: the source, with the network's logo on its corner, as on Transactions. */
+function PaymentIcon({ payment, large = false }: { payment: Payment; large?: boolean }) {
   const Icon = SOURCE_ICONS[payment.source];
   return (
-    <span className="inline-flex items-center gap-2 text-muted">
-      <Icon aria-hidden className="size-[var(--fw-icon-sm)] shrink-0" />
-      {SOURCE_LABELS[payment.source]}
+    <span
+      className={`relative grid shrink-0 place-items-center rounded-pill bg-surface-2 text-muted ${large ? "size-9" : "size-7"}`}
+    >
+      <Icon aria-hidden className="size-[var(--fw-icon-sm)]" />
+      {anyNetwork(payment) ? null : <ChainBadge chainId={payment.chainId} />}
     </span>
   );
 }
 
-// Several accepted tokens share USD terms, so the requested amount is in USD.
-function Requested({ payment }: { payment: Payment }) {
+/** The icon's source and network in words for screen readers; the network shows only when no logo can carry it. */
+function PaymentWords({ payment }: { payment: Payment }) {
+  const network = anyNetwork(payment) ? MONEY_COPY.anyNetwork : chainName(payment.chainId);
   return (
-    <PaymentAmount
-      amount={payment.amount}
-      decimals={payment.decimals}
-      symbol={payment.optionCount > 1 ? "USD" : payment.symbol}
-    />
+    <>
+      <span className="sr-only">, {SOURCE_LABELS[payment.source]}</span>
+      {anyNetwork(payment) || hasChainBadge(payment.chainId) ? (
+        <span className="sr-only">, {network}</span>
+      ) : (
+        <span className="font-normal text-muted"> · {network}</span>
+      )}
+    </>
+  );
+}
+
+/** NEAR's mark and name in a quiet outline; bare inside a line that already sets it apart. */
+function ViaNearIntents({ bare = false }: { bare?: boolean }) {
+  return (
+    <span
+      title={PAYMENT_DETAIL_COPY.crossChain.title}
+      className={
+        bare
+          ? "text-xs"
+          : "inline-flex h-6 shrink-0 items-center rounded-sm border border-line px-1.5 text-xs"
+      }
+    >
+      <span className="sr-only">{PAYMENT_DETAIL_COPY.crossChain.via} </span>
+      <NearIntents />
+    </span>
   );
 }
 

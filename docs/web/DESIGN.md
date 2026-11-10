@@ -144,10 +144,13 @@ Every control comes from `@forwend/ui-web`; a link that looks like a button uses
   - Measured with 10,000 pairs: about 1,200 DOM nodes, search under 0.1 s in development mode.
 - Search is a soft filled field without an outline at rest, with a clear button once it holds text: the list search
   fields and both header search triggers.
-- A list's toolbar (Invoices or Requests, Activity, Transactions): the search on the left, the filter beside it, the
-  actions at the row's end. On phones the search fills the row up to a status menu at its end; Transactions' direction
-  takes the next row at full width with Export as its icon. The new invoice or request action sits beside the page
-  title there.
+- A list's toolbar (Invoices or Requests, Activity, Transactions, Payments): the search on the left, the filters beside
+  it, the actions at the row's end.
+- On phones a list's head reads like an app screen (`ListToolbar`, `ListFilters`).
+  - The title row carries the page's action: New invoice or request, or Export as an icon.
+  - The search fills its row. A segmented control (Transactions' direction, Payments' views) takes a full row.
+  - Filter menus fold into one Filters button with a count. It opens a sheet with each filter's choices as chips.
+  - A chip applies at once; Clear all resets every filter, and Done closes the sheet.
 - A form ends with its primary action, then Cancel or Skip as a ghost button. On phones both run the full width,
   primary first.
 - A setting that applies when flipped is a row in a panel: what it does on the left, the switch at the row's end and
@@ -352,23 +355,32 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Nothing in a column is a quiet dash on wide screens and no row at all on phones.
 - Invoices and Activity: the shared status filter (below) and a search; a row opens its
   invoice. An Activity row is a past-tense event ("Invoice created", "Payment received", "Held for the customer");
-  its status column is headed "Status now", because it is where the payment stands today, not what the event did. Activity and Transactions page through the API's cursor, so their history reaches its start.
+  its status column is headed Status, and the intro says it is where the payment stands now, not what the event did. Activity and Transactions page through the API's cursor, so their history reaches its start.
   Transactions has a direction filter (All, In, Out) and a search. The API filters and searches the whole list, and the
   URL keeps both. A confirmed transfer shows its status as a green dot and plain text; only one still confirming gets
-  a pill, and phone rows name a status only while it is still confirming. A filter or search with no rows says nothing matched, with a button to clear them. A transaction hash links to the chain's block explorer in a new tab (Transactions, Activity,
+  a pill. Transactions phone rows always name the status: a green dot and Confirmed, or a turning icon and the pending state. A filter or search with no rows says nothing matched, with a button to clear them. A transaction hash links to the chain's block explorer in a new tab (Transactions, Activity,
   invoice detail, pay page).
 - Record lists (Payments, Invoices, Payment links, Stores, Clients, Jobs) use one `DataTable` (`shared/components`).
   - Plain header labels in the small size over a hairline; rows 44px tall and one line, hairlines between rows, a tint
     on hover; the whole row opens the record.
   - Columns show by the panel's own width (container queries), not the screen's, so a collapsed sidebar shows more.
     A column that drops has its fact in the phone row or on the record's page.
-  - Narrower than 48rem the rows become two short lines: what it is, then details; the amount and status on the right.
+  - Headers are one or two short words, with no caption after them.
+  - An end column (an amount) is never cut: it takes its content's width, and the text columns give way.
+  - Narrower than 48rem the rows become two short lines, each with a part at its end.
+    - First what it is and the amount, then the details and the status.
+    - Only the title, time and details are cut.
   - A table never breaks into day bands: the date is a column.
-  - Loading shows `DataTableSkeleton`: the table's header and row heights, and the phone rows' height below.
-  - On the money lists its phone rows end in an amount over a status; Transactions adds its day heading.
-  - A failed read is one `LoadError` with Try again; an empty list says what fills it; a filter with no rows offers
-    to clear it.
-- One status filter on every payment list (Payments, Invoices, Activity): `PaymentStateFilter`.
+    - Activity and Payments write it "Today, 2:14 PM", as Transactions does.
+    - Their phone rows sit under day headings, with the time after the title.
+  - Loading shows `DataTableSkeleton` with the table's own columns where the list passes them (Activity, Payments,
+    Invoices); Transactions draws its own, the same way.
+    - The real headers stay, and each cell has its shape: a round icon and a bar, a pill, or an end bar.
+    - Phone rows have the real rows' two lines, with the icon and day heading where the list has them.
+  - A failed read is one `LoadError` with Try again; an empty list says what fills it and offers its next step.
+  - A filter with no rows names the list ("No payments match") and what narrowed it ("Search “mara”, status
+    Expired."), with a button to clear it.
+- One status filter on every payment list (Payments, Invoices, Activity): `paymentStateGroup`, shown by `ListFilters`.
   - All, then the D-114 states: Waiting for payment, Confirming, Partially paid, Paid, Overpaid, Closed unpaid, Canceled.
   - Each option has its status pill's label and icon. In wallet is a wallet state, so it is a column, not a status.
   - The URL keeps it as `state`, the same parameter on all three APIs.
@@ -403,11 +415,22 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Transactions table: a ruled table from 48rem of the list's own width, one line per transfer in 44px rows, with a
   Date column (Today or Yesterday, else the short date with the year only for another year, then the time, then the
   explorer link). The network has its own column from 64rem; narrower, its logo sits on the direction icon's corner.
-  The type select is 32px in a row with a fine pointer, so the row keeps one line. Phone rows sit under quiet day headings
-  (Today, Yesterday, then the weekday and date) and are two lines that never cut: the network is its logo on the
-  corner of the direction icon (and in words for screen readers), the time and the explorer link sit under the other
-  side, and the amount sits on the right.
-- Transactions' Type column (R-109) follows the Transaction column; on phones the type is a line under the row.
+  The type select is 32px in a row with a fine pointer, so the row keeps one line.
+  - A Fee column sits before Amount. The amount never includes the fee: money in shows what arrived, money out what
+    the other side got.
+  - The fee shows to its last digit; No fee where Forwend paid it; a dash where none was recorded.
+  - While rows load, the real headers stay and each cell has its own placeholder shape.
+  - Long amounts are never cut; the Transaction column gives way.
+  - No match says "No transactions match" with what was searched and the direction, then Clear filter and search.
+  - The empty page offers Receive.
+- Transactions on phones: rows sit under quiet day headings (Today, Yesterday, then the weekday and date).
+  - Each row is two lines: what it was and the amount, then the status and time. The fee is left to the opened row.
+  - The title names the invoice and client it paid, else "From", "To", "Payment from" or "Own transfer to" and the address.
+  - The network is its logo on the direction icon's corner, and in words for screen readers.
+  - A transfer with no type shows a Set type chip.
+  - A tap opens a sheet: the amount, a sum of the amount and its fee to the last digit, then status, date, the other
+    side's address, the transaction link, the records value and the type.
+- Transactions' Type column (R-109) follows the Transaction column; on phones the type is in the opened row.
   - An invoice payment is an underlined link: the invoice number, then the client after a middle dot.
   - Own transfer and Sent are quiet text.
   - A signed send no block holds yet is the first row, with the Sending status, until its transfer's row replaces it.
@@ -485,13 +508,19 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - One toolbar row: the search (order, invoice, customer or amount), then Status, Source and, with two or more
     stores, Store as select menus. Every filter stays in the URL.
   - `settlementStatus=pending` shows paid payments still moving to the wallet, under a line with Show all payments.
-  - Columns: Payment (the order reference, else the invoice number, else the title), Customer, Source, Store, Amount,
-    Received, Status, Wallet, Created. Issues shows the issue in place of Wallet and Created: a warning
-    dot, the problem in ink with its full text as the title, and "+n" for more.
-    - Source and Store show only on the widest tables; the phone row and the payment page still name them.
+  - Columns: Payment, Customer, Store, Date, Status, Wallet, Amount.
+    - Payment is the order reference, else the invoice number, else the title.
+    - Its round icon is the source (invoice, checkout, request, payment link), with the network's logo on its corner.
+    - Amount says what arrived of what was asked ("0.50 of 1.23 USDC") only when the two differ.
+    - Issues shows the issue in place of Wallet and Date: a warning dot, the problem in ink with its full text as
+      the title, and "+n" for more.
+    - Store shows only on the widest tables; the phone row and the payment page still name the store or source.
     - Testnet is a neutral badge on each row, so it never outshouts a status that needs action.
-    - "via NEAR Intents" is a neutral badge beside it on a payment the customer sent from another chain (R-239).
-      The phone row and the overview's latest payments say it too. A deposit 1Click returned gets none.
+    - A payment the customer sent from another chain shows NEAR's mark and name in a quiet outline (R-239).
+      The phone row says it too; the overview's latest payments say "via NEAR Intents". A deposit 1Click returned
+      gets none.
+  - A profile with no payments shows only the empty state, with New invoice and New payment link (New request on a
+    personal profile).
   - The payment status and the wallet transfer are separate (D-114): a status badge, then quiet wallet text
     (Pending, In wallet, Delayed, Needs review, or a dash before anything is due).
   - Unpaid attempts stay visible; requested amounts never imply received or settled money.
@@ -690,7 +719,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A change adds Change proposed (its title and amount) and its acceptance (with the client's email here).
   - Billed to follows Record, like an invoice's.
 - Invoices table (R-253): one line per invoice, as the template's list draws it.
-  - Columns: Invoice, Client (an initials avatar and name), Title, Store, Due, Status, Amount, Network.
+  - Columns: Invoice, Client (an initials avatar and name), Title, Store, Due, Status, Network, Amount.
+    - Amount is the last figure, as on the other money lists; the copy button follows it.
   - A late invoice's due date is in the warning color; on hover it says how many days late.
   - Closed checkouts read "Closed unpaid" or "Closed, partially paid", the history's words.
   - From wide panels a copy button ends each row that can still be paid; it copies the pay link.
@@ -701,16 +731,19 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - Nothing shows while it loads or when nothing needs attention. Requests have none.
   - Phone rows: "INV-0012 · Mara Ilić" over the status pill, and the amount over "Due Nov 20" on the right.
     - No avatar. A request names its note after the number.
-- Activity rows name what happened, then who and what for: "Payment · Mara Ilić", "Invoice created · INV-0042",
-  "Held for the payer · order-1042". A deposit split between the owner and the payer reads "Payment, extra held for
-  the payer". Pages follow the API's cursor.
-  - Activity is a one-line table like Payments and Transactions: Event, Network, When, Status, Amount.
-  - Narrower than the table, rows are two short lines; the whole row opens it.
+- Activity rows name what happened in Event, and who and what for in For ("Mara Ilić · INV-0012", "order-1042").
+  - So two invoices for one client never read the same.
+  - A deposit split between the owner and the payer reads "Payment received" with an "Extra held" label.
+  - Pages follow the API's cursor.
+  - Activity is a one-line table like Payments and Transactions: Event, For, Date, Status, Amount.
+  - The network is the logo on the row icon, at every width.
+  - Narrower than the table, rows are two short lines under day headings; the whole row opens it.
   - A deposit opens its payment, an invoice row its invoice.
   - Requests use the Invoices table without Client, Due and Store; the note fills the Title column.
   - Money held for the payer is theirs: its amount and icon stay ink, never the success green.
-- Activity on phones: one network rides on the row icon as its logo, so the detail line is only the time and never
-  cuts; a confirmed payment names no status, as on Transactions.
+- Activity on phones: the event, its time and the amount, then who it was for and the status.
+  - A confirmed payment names no status.
+  - An invoice in several tokens leaves out "Any network": its USD amount says so.
 - Invoice detail on phones: above a title the number is a small quiet label; with no title it is the heading, as on
   desktop. The invoice's actions wait in one More actions menu at the header's top right
   (see the invoice page under Checkout). Details are statement rows, the term on the left and its value on the right;
@@ -1263,7 +1296,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 ## Theme and behavior
 
 - An empty list, or one filtered to nothing, is one centered block in the list's place (R-75): an icon in a soft
-  circle, a title ("No invoices yet", "Nothing matches"), a line or the next step under it ("Clear filter and
+  circle, a title ("No invoices yet", "No invoices match"), a line or the next step under it ("Clear filter and
   search"), as wide as the list and at least about half the screen tall. Inside an overview card it drops its frame
   and most of its height.
 - A notice (`Notice`) is one short warning line across the view's full width.
