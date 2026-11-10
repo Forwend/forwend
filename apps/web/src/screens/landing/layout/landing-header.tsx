@@ -66,7 +66,7 @@ export function LandingHeader() {
           <Link
             prefetch={false}
             href={APP_ROUTES.signIn}
-            className={`${buttonClasses({ variant: "primary" })} ${styles.cta}`}
+            className={`${buttonClasses({ variant: "ghost" })} ${styles.cta}`}
           >
             Create account
           </Link>

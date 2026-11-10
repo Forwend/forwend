@@ -20,6 +20,8 @@ import {
   ShoppingCart,
   TrendingUp,
 } from "lucide-react";
+import type { CSSProperties } from "react";
+import { formatUsd } from "@/features/balances/lib/balances";
 import { OWED_COPY } from "@/features/invoices/constants/invoices-copy";
 import { PAYMENTS_COPY } from "@/features/payments/constants/payments-copy";
 import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
@@ -28,6 +30,11 @@ import { HERO_IMAGE } from "@/shared/assets/images";
 import { TOKEN_ICONS } from "@/shared/constants/chains";
 import { DASHBOARD } from "./constants/hero-dashboard";
 import styles from "./hero-dashboard.module.css";
+import { HeroReceivedChart } from "./hero-received-chart";
+
+const RECEIVED_TOTAL = formatUsd(
+  DASHBOARD.received.days.reduce<bigint>((sum, day) => sum + day, 0n),
+);
 
 const ACTIONS = [
   { label: "New invoice", icon: FilePlus2, primary: true },
@@ -89,7 +96,7 @@ export function HeroDashboard() {
               <span className={styles.bell}>
                 <Bell className="size-4" />
               </span>
-              <Button variant="soon" size="md" className={styles.headerButton}>
+              <Button variant="secondary" size="md" className={styles.headerButton}>
                 <Send className="size-4" />
                 Send
               </Button>
@@ -103,7 +110,7 @@ export function HeroDashboard() {
                 <Card className={styles.balance}>
                   <span
                     className={styles.balanceArt}
-                    style={{ backgroundImage: `url(${HERO_IMAGE.src})` }}
+                    style={{ "--balance-art": `url(${HERO_IMAGE.src})` } as CSSProperties}
                   />
                   <span className={styles.label}>Total balance</span>
                   <BigAmount
@@ -150,7 +157,7 @@ export function HeroDashboard() {
                   </ul>
                 </Card>
               </div>
-              <div className={styles.row}>
+              <div className={`${styles.row} ${styles.chartRow}`}>
                 <Card
                   className={styles.received}
                   title="Received"
@@ -165,32 +172,10 @@ export function HeroDashboard() {
                   }
                 >
                   <span className={styles.figure}>
-                    {DASHBOARD.received.total} <span className="text-sm text-muted">USD</span>
+                    {RECEIVED_TOTAL} <span className="text-sm text-muted">USD</span>
                   </span>
                   <span className={styles.sent}>Sent {DASHBOARD.received.sent} USD</span>
-                  {/* Drawn as the app's balance chart draws: one ink line that writes in, a pulsing end point. */}
-                  <svg className={styles.chart} viewBox="0 0 640 120" aria-hidden="true">
-                    <path
-                      d="M4 112 L 80 106 L 140 106 L 200 88 L 280 82 L 340 82 L 400 60 L 480 50 L 540 32 L 632 20"
-                      pathLength={1}
-                      fill="none"
-                      stroke="var(--fw-ink)"
-                      strokeWidth="2.5"
-                      strokeLinejoin="round"
-                      strokeLinecap="round"
-                      strokeDasharray="1"
-                      className="motion-safe:animate-[fw-draw-in_calc(var(--fw-duration-slower)*1.3)_var(--fw-ease-out)_1s_both]"
-                    />
-                    <circle
-                      cx="632"
-                      cy="20"
-                      r="5"
-                      fill="var(--fw-accent)"
-                      style={{ transformOrigin: "632px 20px" }}
-                      className="motion-safe:animate-[fw-halo_2.4s_var(--fw-ease-out)_2.2s_infinite]"
-                    />
-                    <circle cx="632" cy="20" r="5" fill="var(--fw-accent)" />
-                  </svg>
+                  <HeroReceivedChart className={styles.chart} />
                 </Card>
                 <Card title="My assets" className={styles.assets}>
                   <span className={styles.bar}>
@@ -220,7 +205,11 @@ export function HeroDashboard() {
                 </Card>
               </div>
               <div className={styles.row}>
-                <Card title={OWED_COPY.title} description={OWED_COPY.description}>
+                <Card
+                  title={OWED_COPY.title}
+                  description={OWED_COPY.description}
+                  className={styles.unpaid}
+                >
                   <ul className={styles.list}>
                     {DASHBOARD.unpaid.map((row) => (
                       <li key={row.client}>

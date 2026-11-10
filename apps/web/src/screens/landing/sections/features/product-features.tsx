@@ -2,6 +2,7 @@ import { ArrowRight, Check } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { docsPath } from "@/shared/config/docs-routes";
+import { CrossChainPayments } from "../cross-chain/cross-chain-payments";
 import { CheckoutVisual, InvoiceVisual, LinkVisual, StatusVisual } from "./feature-visuals";
 import styles from "./product-features.module.css";
 
@@ -63,36 +64,57 @@ const FEATURES: readonly {
   },
 ];
 
+type Feature = (typeof FEATURES)[number];
+
+function FeatureArticle({ feature, number }: { feature: Feature; number: number }) {
+  return (
+    <article
+      className={styles.feature}
+      aria-labelledby={`feature-${feature.id}`}
+      data-flip={FEATURES.indexOf(feature) % 2 === 1 || undefined}
+    >
+      <div className={`${styles.copy} fw-reveal`}>
+        <span className={styles.number}>{String(number).padStart(2, "0")}</span>
+        <h2 id={`feature-${feature.id}`}>{feature.title}</h2>
+        <p>{feature.body}</p>
+        <ul>
+          {feature.points.map((point) => (
+            <li key={point}>
+              <Check aria-hidden className={`${styles.check} size-4`} />
+              {point}
+            </li>
+          ))}
+        </ul>
+        <Link prefetch={false} href={docsPath(feature.link.slug)} className={styles.link}>
+          {feature.link.label} <ArrowRight aria-hidden className="size-4" />
+        </Link>
+      </div>
+      <div className={`${styles.visual} fw-reveal fw-reveal-late`} aria-hidden="true">
+        <span className={styles.ridge} />
+        {feature.visual}
+      </div>
+    </article>
+  );
+}
+
+// The ways to ask for money come first, then how a customer can pay any of them, then the money's way to the wallet.
+const ASKING = FEATURES.slice(0, 3);
+const FOLLOWING = FEATURES.slice(3);
+
 export function ProductFeatures() {
   return (
-    <section id="product" className={styles.features} aria-label="Product">
-      {FEATURES.map((feature, index) => (
-        <article
-          key={feature.id}
-          className={styles.feature}
-          aria-labelledby={`feature-${feature.id}`}
-        >
-          <div className={`${styles.copy} fw-reveal`}>
-            <span className={styles.number}>{String(index + 1).padStart(2, "0")}</span>
-            <h2 id={`feature-${feature.id}`}>{feature.title}</h2>
-            <p>{feature.body}</p>
-            <ul>
-              {feature.points.map((point) => (
-                <li key={point}>
-                  <Check aria-hidden className={`${styles.check} size-4`} />
-                  {point}
-                </li>
-              ))}
-            </ul>
-            <Link prefetch={false} href={docsPath(feature.link.slug)} className={styles.link}>
-              {feature.link.label} <ArrowRight aria-hidden className="size-4" />
-            </Link>
-          </div>
-          <div className={`${styles.visual} fw-reveal fw-reveal-late`} aria-hidden="true">
-            {feature.visual}
-          </div>
-        </article>
-      ))}
+    <section id="product" aria-label="Product">
+      <div className={styles.features}>
+        {ASKING.map((feature, index) => (
+          <FeatureArticle key={feature.id} feature={feature} number={index + 1} />
+        ))}
+      </div>
+      <CrossChainPayments number={String(ASKING.length + 1).padStart(2, "0")} />
+      <div className={styles.features}>
+        {FOLLOWING.map((feature, index) => (
+          <FeatureArticle key={feature.id} feature={feature} number={ASKING.length + 2 + index} />
+        ))}
+      </div>
     </section>
   );
 }

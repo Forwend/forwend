@@ -20,7 +20,12 @@ export function Faq() {
           {
             question: "Do my customers need a Forwend account?",
             answer:
-              "No. They open the payment page and pay from a wallet or exchange. The checkout shows the required token, network, address, and amount.",
+              "No. They open the payment page and pay from a wallet or exchange. The page shows the token, network, address and amount to send.",
+          },
+          {
+            question: "Can my customers pay with another token?",
+            answer:
+              "Yes, in live mode, when you accept USDC on Base. On the payment page they can choose a token on another chain, such as ETH on Arbitrum or USDT on Tron. NEAR Intents converts it, and exactly the amount due arrives as USDC on Base. The customer sees the fee before paying. Bitcoin and networks that need a memo are not offered.",
           },
           {
             question: "Where does the money go?",

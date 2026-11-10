@@ -131,6 +131,8 @@ for (const width of [320, 360, 390, 640, 768, 960, 1024, 1280, 1440, 1536]) {
     expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
     await page.locator("#product").scrollIntoViewIfNeeded();
     expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
+    await page.locator("#cross-chain").scrollIntoViewIfNeeded();
+    expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
     const roadmap = page.locator("#roadmap");
     await roadmap.scrollIntoViewIfNeeded();
     expect(await sidewaysScroll(page)).toBeLessThanOrEqual(0);
@@ -219,71 +221,4 @@ test("the hero dashboard and product sections work without JavaScript", async ({
   await expect(invoice.locator("[data-money]").last()).toHaveText("1,250.00 USDC");
   await expect(invoice).toContainText("Base");
   await context.close();
-});
-
-test("unavailable social controls explain themselves without navigating or opening windows", async ({
-  page,
-  context,
-}) => {
-  await page.goto("/");
-  const footer = page.getByRole("contentinfo");
-  await footer.scrollIntoViewIfNeeded();
-  await footer
-    .getByRole("navigation", { name: "Footer" })
-    .getByRole("link", { name: "Docs" })
-    .focus();
-  const initialUrl = page.url();
-  const initialPages = context.pages().length;
-
-  for (const name of ["X", "GitHub", "LinkedIn"]) {
-    const social = footer.getByRole("button", { name, exact: true });
-    await expect(social).toHaveAttribute("aria-disabled", "true");
-    expect(await social.getAttribute("disabled")).toBeNull();
-    await page.keyboard.press("Tab");
-    await expect(social).toBeFocused();
-    const hint = page.getByRole("tooltip");
-    await expect(hint).toHaveText("Soon...");
-    const hintId = await hint.getAttribute("id");
-    expect(hintId).toBeTruthy();
-    await expect(social).toHaveAttribute("aria-describedby", hintId ?? "");
-    await page.keyboard.press("Escape");
-    await expect(hint).toHaveCount(0);
-    await expect(social).toBeFocused();
-    await page.keyboard.press("Enter");
-    expect(page.url()).toBe(initialUrl);
-    expect(context.pages()).toHaveLength(initialPages);
-  }
-});
-
-test("social hints work on touch and close on an outside tap", async ({ browser, baseURL }) => {
-  const context = await browser.newContext({
-    baseURL,
-    hasTouch: true,
-    isMobile: true,
-    viewport: { width: 390, height: 844 },
-  });
-  const page = await context.newPage();
-  await page.goto("/");
-  const footer = page.getByRole("contentinfo");
-  const social = footer.getByRole("button", { name: "GitHub", exact: true });
-  // aria-disabled suppresses navigation but must still let a touch user discover the hint.
-  await social.tap({ force: true });
-  await expect(page.getByRole("tooltip")).toHaveText("Soon...");
-  await footer.getByRole("heading").tap();
-  await expect(page.getByRole("tooltip")).toHaveCount(0);
-  await expect(page).toHaveURL(/\/$/);
-  expect(context.pages()).toHaveLength(1);
-  await context.close();
-});
-
-test("social hints remain visible when the pointer moves onto them", async ({ page }) => {
-  await page.goto("/");
-  await page.getByRole("contentinfo").getByRole("button", { name: "X", exact: true }).hover();
-  const hint = page.getByRole("tooltip");
-  await expect(hint).toHaveText("Soon...");
-  const visibleHint = hint.locator("..");
-  await visibleHint.hover();
-  await expect(hint).toHaveText("Soon...");
-  await page.keyboard.press("Escape");
-  await expect(hint).toHaveCount(0);
 });

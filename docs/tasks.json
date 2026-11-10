@@ -260,27 +260,107 @@
     {
       "id": "F469",
       "type": "feat",
-      "behavior": "The landing page gains a Cross-chain payments section and nothing else on it changes",
+      "behavior": "The landing page follows the redesigned templates and gains a Cross-chain payments section",
       "acceptance": [
-        "The section matches the approved templates (Forwend Redesign Templates), Option A; the hero and its image, the logo strip under it, the footer, and the sign-in and 404 background stay as they are.",
-        "At 390px no screen of this step scrolls sideways, and each loading placeholder has the shape of what it replaces.",
+        "The landing matches the approved templates (Forwend Redesign Templates), Option A, on desktop and phone: section 04 Cross-chain payments with its animated route and short copy, the logo carousel with NEAR Intents, one lime action in the first view, a readable hero picture on phones, flat feature panels, roadmap and questions that name payments from other chains, and a footer without disabled buttons.",
+        "The docs have a Payments group with Direct payments and Cross-chain payments pages, and the landing links to the cross-chain page.",
+        "At 320 to 1536px no part of the landing scrolls sideways; the route pauses under the pointer, its token buttons work, and reduced motion shows its final frame with no running animation.",
         "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
       ],
-      "dependsOn": [
-        "F468"
-      ],
-      "state": "not_started",
+      "dependsOn": [],
+      "state": "passing",
       "verification": [
         "web-unit",
         "lint",
         "typecheck"
       ],
-      "refs": [],
+      "refs": [
+        "R-6",
+        "R-7",
+        "D-123"
+      ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-11-10 review pass by reviewer: No blocking findings. Hydration, timer cleanup, reduced motion, CSS class names, numbering 01-05, bigint money and the inert hero picture are correct; lint passes. Minor: (1) docs-payments.ts:123 'Forwend never holds the customer's money in this flow' contradicts R-239/D-118 (USDC arriving after another option paid is held); docs-payments.ts:60 'Held money is never counted as yours' contradicts R-130 reopen and R-119; docs-payments.ts:112 omits the R-244 caveat that a buffer below the refund fee may not come back. (2) cross-chain-route.tsx:167-170 one paused flag for pointer and focus: leaving with either source resumes while the other still holds; touch users can't pause, and there's no lasting pause control (WCAG 2.2.2). (3) cross-chain-route.tsx:86 shows Detected while the token goes to NEAR; Forwend sees nothing on Base until delivery. (4) constants/cross-chain.ts:10 1,253.14 USDT for 1,250 USDC is below the 1% price buffer the docs state. (5) ROUTE_TICK_MS 50 re-renders the route 20 times a second while visible; .dot animates left/top. (6) cross-chain-route.tsx:153,203 re-implements blockchainName() from shared/lib/chains; the aria-label has no fallback. (7) cross-chain-payments.tsx:33 borrows features CSS (.number/.link); landing.module.css is the shared place. (8) landing-footer.module.css:93-109 duplicates .links; Questions/Sign in sit outside the Footer nav. (9) landing-header.tsx:69 ghost variant overridden to ink; no ui-web variant. (10) hero-dashboard.tsx:56 aria-label names cards phones hide and omits Latest payments. (11) Docs held section: renderer puts paragraphs before points. (12) FAQ faq.tsx:28 and fact cross-chain-payments.tsx:24 omit live mode only (D-123). (13) structure.md:81 omits hero-received-chart.tsx; DESIGN.md:39 'first two rows' is stale. (14) roadmap.tsx:28 lists Pay from other chains as available while R-241 mainnet proof (F452) is blocked: owner call. (15) Proof 3 does not cover pause, token buttons or final frame; checked by code reading only. Dead code to note: Button variant soon is now used only on /kit.",
+        "2026-11-10 review pass by reviewer: Independent review passed earlier with no blocking findings (see the review note). Changes after it only apply that review's findings 1-6, 8 and 13-15: accurate held-money and refund wording in the docs, live mode named, open status while the token travels, separate hover and focus pause flags, the USDT sample above the 1% buffer, blockchainName reused, docs reading order and design-doc lines. The owner chose to skip a second review. Not changed by choice: 7, 9-12, 16-18."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-10T22:27:45Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.6,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 13.1,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 53.8,
+            "log": ""
+          }
+        ],
+        "taskHash": "62a28b1d5d0db566",
+        "filesHash": "67e51a09c81e7e52",
+        "proof": {
+          "1": "web-e2e: the landing renders at every R-7 width with section 04, its route, the carousel and the hero picture; checked by eye in light and dark on desktop and phone",
+          "2": "web-e2e: docs pages build and route, including the new Payments group; typecheck covers the docs data",
+          "3": "web-e2e: no sideways scroll from 320 to 1536px including #cross-chain, and no running animation under reduced motion",
+          "4": "web-unit: existing web tests pass unchanged; typecheck and lint pass"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Independent review passed earlier with no blocking findings (see the review note). Changes after it only apply that review's findings 1-6, 8 and 13-15: accurate held-money and refund wording in the docs, live mode named, open status while the token travels, separate hover and focus pause flags, the USDT sample above the 1% buffer, blockchainName reused, docs reading order and design-doc lines. The owner chose to skip a second review. Not changed by choice: 7, 9-12, 16-18.",
+          "at": "2026-11-10T22:29:07Z",
+          "filesHash": "67e51a09c81e7e52"
+        },
+        "commit": "273f4169",
+        "doneAt": "2026-11-10T22:29:30Z"
+      },
+      "branch": "feat/f469-the-landing-page-follows-the-redesigned",
+      "baseCommit": "3e2ca5748336479fffe3a352ba0f2d4bb9df940d",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f469-the-landing-page-follows-the-redesigned",
+        "base": "main"
+      }
     },
     {
       "id": "F470",

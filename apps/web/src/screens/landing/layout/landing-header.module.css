@@ -56,6 +56,16 @@
   background: color-mix(in oklab, var(--fw-ink) 6%, transparent);
 }
 
+/* Ink, not lime: the hero's Get started is the first view's one main action. */
+.cta {
+  background: var(--fw-primary);
+  color: var(--fw-on-primary);
+}
+
+.cta:hover {
+  background: color-mix(in oklab, var(--fw-primary) 86%, var(--fw-bg));
+}
+
 .menuButton {
   display: none;
 }

@@ -76,14 +76,16 @@ features/invoices/
 screens/landing/
   landing-screen.tsx
   landing.module.css                 page layout and section styles
-  layout/                            landing-header.tsx, landing-footer.tsx, footer-socials.tsx and the CSS modules
+  layout/                            landing-header.tsx, landing-footer.tsx and their CSS modules
   sections/
-    hero/                            landing-hero.tsx, hero-dashboard.tsx and its CSS module
+    hero/                            landing-hero.tsx, hero-dashboard.tsx, hero-received-chart.tsx and its CSS module
       constants/                     hero-content.ts (also used by the share image), hero-dashboard.ts
     example-payment/                 the sample transaction and its amount, shared by the product drawings
     supported-networks.tsx           the token and network logo strip
     supported-networks.module.css
     features/                        product-features.tsx, feature-visuals.tsx and their CSS module
+    cross-chain/                     section 04: cross-chain-payments.tsx, the animated cross-chain-route.tsx
+      constants/                     cross-chain.ts: the sample tokens and the route's timing
     roadmap.tsx                      the roadmap timeline
     roadmap.module.css
     faq.tsx                          questions and answers

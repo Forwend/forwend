@@ -17,6 +17,8 @@ const ITEMS: readonly { name: string; icon: BrandIconName }[] = [
     return icon ? [{ name: symbol, icon }] : [];
   }),
   ...Array.from(NETWORKS, ([icon, name]) => ({ name, icon })),
+  // Customers can also pay from other chains through it (D-123).
+  { name: "NEAR Intents", icon: "near" },
 ];
 
 function Row({ copy }: { copy?: boolean }) {

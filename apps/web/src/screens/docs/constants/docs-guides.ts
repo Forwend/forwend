@@ -498,6 +498,7 @@ export const GUIDE_PAGES: readonly DocsArticle[] = [
           "On a live invoice that accepts USDC on Base, a customer can pay with another token on another chain. NEAR Intents converts it and sends exactly the amount due to the invoice's Base address.",
           "Nothing changes for your server: paid still comes only from the USDC arriving on Base, and the same webhooks follow. Read crossChain to see what the customer sent.",
         ],
+        links: [{ label: "Cross-chain payments", slug: "payments/cross-chain" }],
         fields: [
           {
             name: "crossChain",

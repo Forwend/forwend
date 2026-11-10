@@ -31,18 +31,33 @@ Read only the sections your change touches. Any new control also needs
   - Its offset and height, the page gutter and the content width are the `--fw-page-*` and `--fw-site-bar-*` tokens.
   - The theme switch sits in it as a plain icon. The phone menu opens inside the bar.
 - The header's action says Create account; the hero's says Get started. Both open sign-in.
+  - Create account is ink, so Get started is the first view's one lime action.
 - An original valley landscape frames the centered headline, with a clear sky behind text.
   - The hero holds the headline, one sentence and two actions, then a still picture of the merchant overview.
-  - It is built from the app's own parts: the merchant sidebar groups, the header controls, `Card` and `ActionButton`.
-  - It shows the overview's first two rows: Total balance with its actions, Pending payments, Received and My assets.
+  - It is built from the app's own parts: the merchant sidebar groups, the header controls, `Card`, `ActionButton`
+    and the overview's Received chart, drawn from a sample month that ends today.
+  - Desktops show the overview's first two rows: Total balance with its actions, Pending payments, Received and My assets.
   - It is shrunk as one picture with CSS zoom, inert, and one image to assistive technology.
-  - Tablets drop the sidebar; phones stack the cards, as the phone app does.
-- A logo strip under the hero names the enabled test tokens and networks, without a heading.
+  - Tablets drop the sidebar.
+  - Phones show only Total balance and Latest payments, at 90% size, so the text stays readable.
+- A logo strip under the hero names the enabled tokens and networks, then NEAR Intents, without a heading.
   - It loops slowly and pauses on hover. With reduced motion it is a still, wrapped row.
-- Four numbered sections follow: invoices, payment links, checkout, payment status.
-  - Each has a heading, one paragraph, three checked points, a docs link and a drawn product fragment.
+- Five numbered sections follow: invoices, payment links, checkout, cross-chain payments, payment status.
+  - The ways to ask for money come first; cross-chain payments says how a customer can pay any of them.
+  - Each other section has a heading, one paragraph, three checked points, a docs link and a drawn product fragment.
+  - Drawings sit on a flat panel with the landscape's ridge at its foot; no lime glow.
+  - On phones the floating cards stay inside the panel.
   - Text and drawing alternate sides on desktop and stack on phones, text first.
   - The status section links to exact token and network pairings.
+- Cross-chain payments is a full-width band with a centered heading and "Powered by NEAR Intents" once under it.
+  - A sample route shows a token leaving the customer, NEAR Intents converting it and USDC on Base arriving.
+  - It carries an Example badge. Its three numbered steps light up in order; the received amount counts up once.
+  - It loops over ETH on Arbitrum, USDT on Tron and SOL on Solana, and its token buttons pick one.
+  - It pauses under the pointer or keyboard focus, and runs only while on screen.
+  - With reduced motion, and before scripts run, it shows its last frame: paid, the whole amount in.
+  - Below 60rem the route turns down the page.
+  - Three one-line facts and a link to the cross-chain docs page follow it.
+  - Its steps are titles only; the docs page holds the details.
 - The roadmap is a vertical timeline beside a sticky heading, as product changelogs show it.
   - The rail is solid ink from the done step to the current one, then dashed.
   - The current step has the olive node, which pulses; planned titles are muted.
@@ -50,8 +65,9 @@ Read only the sections your change touches. Any new control also needs
 - Motion runs only without reduced motion: the hero rises in, the dashboard tilts up and draws its chart,
   sections rise as they scroll in, floating cards settle, and anchor links scroll smoothly.
 - Payments is Done, Agentic payments is Coming next, and Bank withdrawals and Card and wallet payments are Planned.
+  - Done lists "Pay from other chains" with an olive edge, as the newest.
 - The footer places its final action above original rolling grassland artwork, with distinct light and dark compositions.
-- Social buttons remain visibly unavailable and expose Soon... on hover, keyboard focus and touch.
+- The footer shows no social buttons until the accounts exist; Questions and Sign in sit in their place.
 - Sign-in keeps all authentication behavior. Its form is centered in the space under the site bar, on every screen.
   - The form sits in the middle of the screen: the bottom padding matches the bar.
   - Large screens keep quiet terrain below the form; only its faded top may sit behind the last button.
