@@ -1,7 +1,9 @@
 package settlement
 
 import (
+	"bytes"
 	"context"
+	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1962,5 +1964,271 @@ func TestUnbookedMoneyAlertsButHoldsNeitherPaidNorTheSettle(t *testing.T) {
 	}
 	if held := e.balance(t, missedLater); held != 1000000+2000000 {
 		t.Fatalf("receiver keeps %d; want the 1000000 excess and the unbooked 2000000", held)
+	}
+}
+
+// "unknown account" is a send error to report, not the node holding the settle.
+func TestOnlyAlreadyKnownMeansTheNodeHoldsTheSettle(t *testing.T) {
+	for msg, want := range map[string]bool{"already known": true, "transaction already imported": true,
+		"AlreadyKnown": true, "unknown account": false, "unknown transaction type": false} {
+		if got := holds(errors.New(msg)); got != want {
+			t.Errorf("%q: holds %v, want %v", msg, got, want)
+		}
+	}
+}
+
+// A node that estimates at its pending state sees the stuck deploy's receiver as deployed and prices only that path.
+// The deploy that takes the stuck nonce must still pay for the whole deploy: one deploy and one settle, none reverted.
+func TestStuckDeployReplacementPaysForTheWholeDeploy(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, receive := e.paidInvoice(t)
+	before := e.nonce(t)
+	from, err := e.client.BlockNumber(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.anvilCall(t, "evm_setAutomine", false)
+	defer func() { _ = e.anvil.RPC.Call(nil, "evm_setAutomine", true) }()
+	for _, what := range []string{"the first deploy", "the deploy over it"} {
+		s := e.signer(t)
+		s.attemptTimeout = 2 * time.Second // the deploy waits in the mempool, as after a crash
+		if err := s.Run(ctx); err == nil {
+			t.Fatalf("%s was not mined, yet the run reported no error", what)
+		}
+		if pending, err := e.client.PendingNonceAt(ctx, common.HexToAddress(chaintest.Sender)); err != nil || pending != before+1 {
+			t.Fatalf("after %s: pending nonce %d (%v), want %d", what, pending, err, before+1)
+		}
+		e.dueNow(t)
+	}
+	e.anvilCall(t, "evm_setAutomine", true)
+	e.anvil.Mine(1)
+	s := e.signer(t)
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	e.final(t, s)
+	to, err := e.client.BlockNumber(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reverted := 0
+	for n := from + 1; n <= to; n++ {
+		var block struct {
+			Transactions []struct{ Hash, From string } `json:"transactions"`
+		}
+		if err := e.anvil.RPC.Call(&block, "eth_getBlockByNumber", hexutil.EncodeUint64(n), true); err != nil {
+			t.Fatal(err)
+		}
+		for _, tx := range block.Transactions {
+			r, err := e.client.TransactionReceipt(ctx, common.HexToHash(tx.Hash))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if strings.EqualFold(tx.From, chaintest.Sender) && r.Status == 0 {
+				reverted++
+			}
+		}
+	}
+	if sent := e.nonce(t) - before; sent != 2 || reverted != 0 {
+		t.Fatalf("executor sent %d transactions (want a deploy and a settle), %d reverted", sent, reverted)
+	}
+	if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" || e.balance(t, receive) != 1000000 {
+		t.Fatalf("intent %s, invoice %s, receiver keeps %d", status, settlement, e.balance(t, receive))
+	}
+}
+
+// A later nonce can't mine before the lowest, so only the lowest unmined settle waits for its receipt in a round.
+func TestOnlyTheLowestUnminedSettleWaitsForItsReceipt(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	first, _ := e.paidInvoice(t)
+	second, receive := e.pay(t, 8)
+	if _, err := e.pool.Exec(ctx, "UPDATE settlement_intents SET next_attempt_at = now() + interval '1 hour' WHERE invoice_id = $1",
+		second); err != nil {
+		t.Fatal(err)
+	}
+	saving := e.signer(t)
+	saving.stopAfter = "save"
+	if err := saving.Run(ctx); !errors.Is(err, errStopped) {
+		t.Fatalf("got %v", err)
+	}
+	_, raw := e.saved(t, first)
+	saved := new(types.Transaction)
+	if err := saved.UnmarshalBinary(raw); err != nil {
+		t.Fatal(err)
+	}
+	to := common.HexToAddress(receive)
+	later, err := types.SignTx(types.NewTx(&types.DynamicFeeTx{ChainID: saved.ChainId(), Nonce: saved.Nonce() + 1,
+		GasTipCap: saved.GasTipCap(), GasFeeCap: saved.GasFeeCap(), Gas: saved.Gas(), To: &to, Data: settleSelector}),
+		types.LatestSignerForChainID(saved.ChainId()), saving.key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	laterRaw, _ := later.MarshalBinary()
+	var secondID int64
+	if err := e.pool.QueryRow(ctx, `UPDATE settlement_intents SET status = 'sent', sender = $2, nonce = $3, tx_hash = $4,
+		raw_tx = $5, signed_at = now(), next_attempt_at = now() WHERE invoice_id = $1 RETURNING id`, second,
+		strings.ToLower(chaintest.Sender), int64(later.Nonce()), later.Hash().Hex(), laterRaw).Scan(&secondID); err != nil {
+		t.Fatal(err)
+	}
+	e.anvilCall(t, "evm_setAutomine", false)
+	defer func() { _ = e.anvil.RPC.Call(nil, "evm_setAutomine", true) }()
+	s := e.signer(t)
+	s.attemptTimeout = 2 * time.Second
+	err = s.Run(ctx)
+	if err == nil || strings.Contains(err.Error(), fmt.Sprintf("settlement intent %d:", secondID)) {
+		t.Fatalf("round: %v; want only the lowest nonce's settle to wait for its receipt", err)
+	}
+}
+
+// Out of gas money a higher fee changes nothing: the saved settle is sent again as it is until the executor is funded.
+func TestSavedSettleIsNotReplacedWhileTheExecutorCannotPayGas(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, _ := e.paidInvoice(t)
+	saving := e.signer(t)
+	saving.stopAfter = "save"
+	if err := saving.Run(ctx); !errors.Is(err, errStopped) {
+		t.Fatalf("got %v", err)
+	}
+	first, _ := e.saved(t, id)
+	var funds hexutil.Big
+	if err := e.anvil.RPC.Call(&funds, "eth_getBalance", chaintest.Sender, "latest"); err != nil {
+		t.Fatal(err)
+	}
+	e.anvilCall(t, "anvil_setBalance", chaintest.Sender, "0x0")
+	s := e.signer(t)
+	s.replaceAfter = 0
+	for range 2 {
+		if err := s.Run(ctx); err == nil || !strings.Contains(strings.ToLower(err.Error()), "insufficient funds") {
+			t.Fatalf("a send with no gas: %v", err)
+		}
+		e.dueNow(t)
+	}
+	if hash, _ := e.saved(t, id); hash != first {
+		t.Fatalf("saved settle %s replaced by %s while the executor had no gas money", first, hash)
+	}
+	e.anvilCall(t, "anvil_setBalance", chaintest.Sender, funds.String())
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	e.final(t, s)
+	if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" || e.balance(t, wallet) != 5000000 {
+		t.Fatalf("after funds arrived: intent %s, invoice %s, recipient %d", status, settlement, e.balance(t, wallet))
+	}
+}
+
+// The saved bytes and terms come from the database: a settle another key signed, or one to a receiver the terms don't
+// compute, is neither sent again nor replaced with the executor's key.
+func TestSavedSettleIsSentOnlyAsItsSendersSettleOfItsTerms(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, receive := e.paidInvoice(t)
+	saving := e.signer(t)
+	saving.stopAfter = "save"
+	if err := saving.Run(ctx); !errors.Is(err, errStopped) {
+		t.Fatalf("got %v", err)
+	}
+	_, raw := e.saved(t, id)
+	saved := new(types.Transaction)
+	if err := saved.UnmarshalBinary(raw); err != nil {
+		t.Fatal(err)
+	}
+	other, err := crypto.GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := e.signer(t)
+	s.replaceAfter = 0
+	cases := map[string]struct {
+		key *ecdsa.PrivateKey
+		to  string
+	}{"another key": {other, receive}, "another receiver": {s.key, "0x2222222222222222222222222222222222222222"}}
+	for name, c := range cases {
+		to := common.HexToAddress(c.to)
+		tx, err := types.SignTx(types.NewTx(&types.DynamicFeeTx{ChainID: saved.ChainId(), Nonce: saved.Nonce(),
+			GasTipCap: saved.GasTipCap(), GasFeeCap: saved.GasFeeCap(), Gas: 1_000_000, To: &to, Data: settleSelector}),
+			types.LatestSignerForChainID(saved.ChainId()), c.key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, _ := tx.MarshalBinary()
+		var intentID int64
+		if err := e.pool.QueryRow(ctx, `UPDATE settlement_intents SET tx_hash = $2, raw_tx = $3 WHERE invoice_id = $1
+			RETURNING id`, id, tx.Hash().Hex(), raw).Scan(&intentID); err != nil {
+			t.Fatal(err)
+		}
+		in, err := s.load(ctx, intentID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		in.receive = strings.ToLower(to.Hex())
+		before := e.nonce(t)
+		if err := s.reconcile(ctx, e.client, in); err == nil || e.nonce(t) != before {
+			t.Fatalf("%s: reconcile %v, executor sent %d; want an error and nothing sent", name, err, e.nonce(t)-before)
+		}
+	}
+}
+
+// A replacement never takes more gas than MaxSettleGas: over it, the saved settle is sent again as it is.
+func TestReplacementNeverPassesTheGasCap(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	s := e.signer(t)
+	tip, feeCap, err := Fees(ctx, e.client, chaintest.ChainID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	old, err := types.SignTx(types.NewTx(&types.DynamicFeeTx{ChainID: big.NewInt(chaintest.ChainID), GasTipCap: tip,
+		GasFeeCap: feeCap, Gas: MaxSettleGas + 1, To: &s.sender}), types.LatestSignerForChainID(big.NewInt(chaintest.ChainID)), s.key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.replace(ctx, e.client, intent{chainID: chaintest.ChainID, invoiceID: "0x01"}, old)
+	if err != nil || got.Hash() != old.Hash() {
+		t.Fatalf("replacing a settle over the gas cap: %v %v; want it sent again as it is", got, err)
+	}
+}
+
+// A settle dropped to sign again keeps its signed versions: every transaction the executor signed stays listed.
+func TestDroppedSettleKeepsItsSignedVersions(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, _ := e.paidInvoice(t)
+	saving := e.signer(t)
+	saving.stopAfter = "save"
+	if err := saving.Run(ctx); !errors.Is(err, errStopped) {
+		t.Fatalf("got %v", err)
+	}
+	hash, raw := e.saved(t, id)
+	replaced := "0x" + strings.Repeat("ab", 32)
+	var intentID int64
+	if err := e.pool.QueryRow(ctx, `UPDATE settlement_intents SET replaced_hashes = ARRAY[$2] WHERE invoice_id = $1
+		RETURNING id`, id, replaced).Scan(&intentID); err != nil {
+		t.Fatal(err)
+	}
+	s := e.signer(t)
+	in, err := s.load(ctx, intentID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.retry(ctx, in, "the saved settle's nonce was used by another transaction"); err != nil {
+		t.Fatal(err)
+	}
+	var sender, gotHash, reason string
+	var nonce int64
+	var gotRaw []byte
+	var gotReplaced []string
+	if err := e.pool.QueryRow(ctx, `SELECT sender, nonce, tx_hash, raw_tx, replaced_hashes, reason FROM settlement_dropped
+		WHERE intent_id = $1`, intentID).Scan(&sender, &nonce, &gotHash, &gotRaw, &gotReplaced, &reason); err != nil {
+		t.Fatal(err)
+	}
+	if sender != strings.ToLower(chaintest.Sender) || nonce != *in.nonce || gotHash != hash || !bytes.Equal(gotRaw, raw) ||
+		len(gotReplaced) != 1 || gotReplaced[0] != replaced || !strings.Contains(reason, "nonce was used") {
+		t.Fatalf("dropped %s nonce %d %s %v %q; want the saved settle", sender, nonce, gotHash, gotReplaced, reason)
+	}
+	if status, _, _ := e.intent(t, id); status != "pending" {
+		t.Fatalf("intent %s, want pending to sign again", status)
 	}
 }

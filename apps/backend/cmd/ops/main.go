@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"os"
 	"os/signal"
+	"os/user"
 	"regexp"
 	"strings"
 	"syscall"
@@ -64,6 +65,15 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return err
 	}
 	defer pool.Close()
+	// Who ran what, before anything changes: case can lock a stray transfer, return and release move held money.
+	// The OS user names a person when each operator logs in to the server as themselves.
+	who, err := user.Current()
+	if err != nil {
+		return fmt.Errorf("read who runs ops: %w", err)
+	}
+	if _, err := pool.Exec(ctx, "INSERT INTO ops_runs (operator, args) VALUES ($1, $2)", who.Username, args); err != nil {
+		return fmt.Errorf("record this run: %w", err)
+	}
 	options, err := settlement.CaseOptions(ctx, pool, flags.Arg(0))
 	// A transaction no invoice booked may be a stray transfer: case looks for it on every chain, release unlocks it.
 	stray := errors.Is(err, settlement.ErrNoCase) && hashShape.MatchString(strings.TrimSpace(flags.Arg(0))) &&

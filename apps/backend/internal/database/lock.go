@@ -11,6 +11,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// LockPing bounds Held's ping: a connection lost without a close would otherwise hang it until TCP gives up.
+const LockPing = 5 * time.Second
+
 // Lock is a session advisory lock on its own connection: Postgres frees it when the connection ends, even on a crash.
 type Lock struct {
 	mu   sync.Mutex
@@ -46,6 +49,8 @@ func TakeLock(ctx context.Context, pool *pgxpool.Pool, key int64, name string, e
 func (l *Lock) Held(ctx context.Context) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	ctx, cancel := context.WithTimeout(ctx, LockPing)
+	defer cancel()
 	if err := l.conn.Ping(ctx); err != nil {
 		return fmt.Errorf("lost the advisory lock's database connection: %w", err)
 	}

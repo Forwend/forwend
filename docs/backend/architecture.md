@@ -148,8 +148,9 @@ The worker and the signer each run as one copy. Before the checks each takes a P
 (`worker.LockKey`, `settlement.LockKey`) on a connection of its own and holds it for its lifetime. A second copy logs
 `another worker is running; waiting` (or signer) every `POLL_INTERVAL` and takes over once the first exits: Postgres
 frees the lock when its connection ends, a crash included. Before each round the holder pings that connection; if it
-is gone, so is the lock, and the process stops rather than run beside the copy that takes over. Waiting instead of
-exiting suits rolling deploys: the new copy starts as soon as the old one stops.
+is gone, so is the lock, and the process stops rather than run beside the copy that takes over. The ping gives up
+after `database.LockPing` (5 s): a connection broken without a close would otherwise hang it until TCP gives up.
+Waiting instead of exiting suits rolling deploys: the new copy starts as soon as the old one stops.
 
 Root `pnpm dev` (`apps/backend/scripts/dev.sh`) stops at once when `EXECUTOR_PRIVATE_KEY` is missing or empty in
 `apps/backend/.env`. It starts Postgres, builds the four binaries and starts the api. Once the api logs `api listening`
@@ -316,6 +317,9 @@ with a test.
 - `ledger_transactions` + `ledger_entries`: double-entry, append-only (below).
 - `settlement_intents` (unique per invoice): nonce and tx hash tracked, with the hashes a fee replacement replaced;
   reconcile before any retry.
+  - A settle dropped to sign again keeps its sender, nonce, hash, signed bytes, replaced hashes and reason in
+    `settlement_dropped`.
+- `ops_runs`: each `cmd/ops` run's OS user and arguments, written before the command does anything.
 - `receiver_outflows` preserves actual receiver events, exact outgoing transfer identity and once-only journal attribution.
   - The chain's scan records them; the signer also records its own settle from its receipt.
 - These records remain separate from signer intents, webhook delivery and merchant financial classification.
@@ -504,6 +508,8 @@ settlement intent (unique per invoice) in the same transaction. Every transactio
 signer:
 1. If a settle is already saved (`sent`), finishes it first, whatever changed since.
    - The saved bytes must decode to `settle()` on this receiver on this chain with the saved hash.
+   - They must be signed by the saved sender, and the terms must still compute the receive address.
+     - Else the attempt fails and sends nothing: the bytes and terms come from the database.
    - A receipt for the saved hash or any version it replaced (`replaced_hashes`, same nonce, so at most one mines)
      decides first. Status 1 with the receiver's `Settled` log is our settle. It keeps that hash and is never signed
      again, whatever a lagging node says about `settled()` at latest.
@@ -522,6 +528,11 @@ signer:
    - The new version is saved before it is sent, keeping the old hash.
    - A replacement that would pass `MaxFeeFactor` (2) times a new settle's fee cap, or the chain's ceiling, is not signed.
      - The saved bytes are sent again as they are.
+   - Nor is one that needs more gas than `MaxSettleGas` (3,000,000); the saved bytes are sent again too.
+   - When the node refuses the saved bytes for insufficient funds, no replacement is signed: a higher fee can't help.
+     - The attempt fails and the same bytes are sent again once the executor is funded.
+   - Only the settle at the executor's next mined nonce waits for its receipt in the attempt.
+     - A later one can't mine first. It is sent, and its receipt is read next round.
    - When the executor's next mined nonce has nothing pending and no saved settle holds it (a settle saved but never
      sent, then settled by the refund authority), a zero-value transfer to the executor fills it, so the settles after
      it can mine.
@@ -551,6 +562,8 @@ signer:
    - When a transaction we never saved waits at the executor's next mined nonce (an earlier deploy the fee left
      behind), the deploy takes that nonce.
      - It pays twice today's fee, up to the chain's ceiling, so later transactions don't queue behind it.
+     - Its gas is at least an estimate at latest plus a fifth.
+       A node estimating at its pending state (Anvil) sees the stuck deploy run and prices only the deployed path.
    - Then waits up to 10 s for the RPC to show the receiver's code at the deploy's block or later (else the attempt
      ends and is tried again). A node that has not seen the deploy estimates settle as a call to an empty address,
      which runs out of gas.

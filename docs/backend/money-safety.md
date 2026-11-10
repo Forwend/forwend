@@ -88,6 +88,8 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 
 Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no key and sends nothing.
 
+- Each run first writes the OS user and its arguments to `ops_runs`, a failing run too.
+  - It names a person only when each operator logs in to the server as themselves.
 - `ops case <pay link | receive address | payment transaction | invoice id>` prints each invoice option:
   - its held money and why it is held, from the ledger and its history;
   - each final payment: transaction, sender, amount and time;
