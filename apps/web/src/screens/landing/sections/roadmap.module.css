@@ -117,6 +117,9 @@
   background: var(--fw-surface);
   font-size: 0.875rem;
 }
+.shipped .added {
+  border-color: var(--fw-accent);
+}
 
 @media (prefers-reduced-motion: no-preference) {
   .next .dot {

@@ -74,25 +74,31 @@
   color: var(--fw-accent);
 }
 
-.feature:nth-child(even) .copy {
+.feature[data-flip] .copy {
   order: 2;
 }
 
-/* The drawn product fragments: decoration beside text that already says what each one does. */
+/* The drawn product fragments: decoration beside text that already says what each one does. Flat, since lime is
+   kept for the main action; the landscape's ridge sits at the panel's foot. */
 .visual {
+  position: relative;
   display: grid;
   place-items: center;
   min-height: 28rem;
   padding: clamp(2rem, 5vw, 4rem);
   border-radius: var(--fw-radius-xl);
-  background:
-    radial-gradient(
-      circle at 30% 20%,
-      color-mix(in oklab, var(--fw-brand) 18%, transparent),
-      transparent 55%
-    ),
-    var(--fw-surface-2);
+  background: var(--fw-surface-2);
   overflow: hidden;
+}
+.ridge {
+  position: absolute;
+  inset: auto 0 0;
+  height: 46%;
+  opacity: 0.85;
+  background:
+    radial-gradient(70% 70% at 14% 100%, var(--fw-art-ridge-near) 0 99.5%, transparent 100%),
+    radial-gradient(64% 86% at 82% 100%, var(--fw-art-ridge-mid) 0 99.5%, transparent 100%),
+    radial-gradient(90% 100% at 46% 100%, var(--fw-art-ridge-far) 0 99.5%, transparent 100%);
 }
 .stack {
   position: relative;
@@ -214,7 +220,7 @@
   font-size: 0.8125rem;
 }
 .floatTop {
-  top: -1.5rem;
+  top: -2.875rem;
   right: -2rem;
   flex-direction: row;
   align-items: center;
@@ -293,7 +299,7 @@
     grid-template-columns: minmax(0, 1fr);
     gap: 2.5rem;
   }
-  .feature:nth-child(even) .copy {
+  .feature[data-flip] .copy {
     order: 0;
   }
   .visual {
@@ -316,11 +322,11 @@
   }
   .floatTop {
     top: -2.75rem;
-    right: -0.5rem;
+    right: 0;
   }
   .floatCheckout,
   .floatBottom {
-    right: -0.5rem;
+    right: 0;
     bottom: -2.5rem;
     width: 11.5rem;
   }

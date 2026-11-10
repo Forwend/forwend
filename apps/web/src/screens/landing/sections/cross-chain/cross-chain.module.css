@@ -1,0 +1,452 @@
+.section {
+  padding-block: var(--landing-section-space);
+  background: var(--fw-surface-2);
+}
+.head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.head h2 {
+  margin-top: 1rem;
+  font-size: clamp(2.125rem, 4.2vw, 3.5rem);
+  line-height: 1.06;
+  letter-spacing: -0.04em;
+  font-weight: 500;
+  text-wrap: balance;
+}
+.powered {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  font-size: 1.0625rem;
+  line-height: 1.5rem;
+  color: var(--fw-muted);
+}
+.powered > span {
+  font-size: 1.25rem;
+}
+.lead {
+  max-width: 38.75rem;
+  margin-top: 1.25rem;
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: var(--fw-muted);
+  text-wrap: balance;
+}
+
+/* The sample route. --p moves the travelling token along the rail and --f fills the rail behind it. */
+.show {
+  --p: 0;
+  --f: 0;
+  --route-travel: calc(var(--fw-duration-slower) * 1.3);
+  position: relative;
+  margin-top: 3rem;
+  padding: 3.5rem 2.5rem 2.25rem;
+  border: 1px solid var(--fw-line);
+  border-radius: var(--fw-radius-xl);
+  background: var(--fw-bg);
+}
+.show[data-phase="1"],
+.show[data-phase="2"] {
+  --p: 0.5;
+  --f: 0.5;
+}
+.show[data-phase="3"],
+.show[data-phase="4"] {
+  --p: 1;
+  --f: 1;
+}
+.tags {
+  position: absolute;
+  top: 1rem;
+  inset-inline: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.paused {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--fw-muted);
+  opacity: 0;
+  transition: opacity var(--fw-duration-fast) var(--fw-ease-out);
+}
+.show[data-paused] .paused {
+  opacity: 1;
+}
+
+.route {
+  display: grid;
+  grid-template-columns: 21.25rem minmax(0, 1fr) 21.25rem;
+}
+.card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  min-width: 0;
+  padding: 1.25rem;
+  border: 1px solid var(--fw-line);
+  border-radius: var(--fw-radius-lg);
+  background: var(--fw-surface);
+}
+.kicker {
+  font-size: 0.8125rem;
+  color: var(--fw-muted);
+}
+.token {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  min-height: 3rem;
+}
+.token strong {
+  display: block;
+  font-size: 1.125rem;
+  line-height: 1.5rem;
+  font-weight: 600;
+}
+.token small {
+  font-size: 0.875rem;
+  color: var(--fw-muted);
+}
+.amount {
+  font-size: 2rem;
+  line-height: 2.375rem;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.amount[data-zero] [data-figures] {
+  color: var(--fw-subtle);
+}
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 2rem;
+  margin-top: auto;
+  font-size: 0.8125rem;
+  color: var(--fw-muted);
+  white-space: nowrap;
+}
+.picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+.picks button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 2rem;
+  padding: 0 0.625rem 0 0.375rem;
+  border-radius: var(--fw-radius-md);
+  background: var(--fw-surface);
+  box-shadow: inset 0 0 0 1px var(--fw-line);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fw-muted);
+  transition:
+    color var(--fw-duration-fast) var(--fw-ease-out),
+    background-color var(--fw-duration-fast) var(--fw-ease-out),
+    box-shadow var(--fw-duration-fast) var(--fw-ease-out);
+}
+.picks button:hover {
+  color: var(--fw-ink);
+}
+.picks button[aria-pressed="true"] {
+  color: var(--fw-ink);
+  background: var(--fw-surface-2);
+  box-shadow: inset 0 0 0 1.5px var(--fw-ink);
+}
+
+.rail {
+  position: relative;
+  min-width: 0;
+  min-height: 7.5rem;
+}
+.rail::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  border-top: 1px dashed var(--fw-line-strong);
+}
+.fill {
+  position: absolute;
+  inset-inline: 0;
+  top: calc(50% - 1px);
+  height: 2px;
+  background: var(--fw-ink);
+  transform-origin: left center;
+  transform: scaleX(var(--f));
+  transition: transform var(--route-travel) var(--fw-ease-in-out);
+}
+.dot {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: calc(18% + var(--p) * 64%);
+  translate: -50% -50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: max-content;
+  height: 2.5rem;
+  padding: 0 0.875rem 0 0.25rem;
+  border-radius: var(--fw-radius-pill);
+  background: var(--fw-surface);
+  box-shadow:
+    inset 0 0 0 1px var(--fw-line-strong),
+    var(--fw-shadow-md);
+  font-size: 0.875rem;
+  white-space: nowrap;
+  opacity: 0;
+  transition:
+    left var(--route-travel) var(--fw-ease-in-out),
+    top var(--route-travel) var(--fw-ease-in-out),
+    opacity var(--fw-duration-base) var(--fw-ease-out);
+}
+.dot > svg {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+}
+.show[data-phase="1"] .dot,
+.show[data-phase="3"] .dot {
+  opacity: 1;
+}
+/* A new run starts at the customer at once instead of sliding back. */
+.show[data-phase="0"] .fill,
+.show[data-phase="0"] .dot,
+.show[data-still] .fill,
+.show[data-still] .dot {
+  transition: none;
+}
+.node {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  margin: -2rem 0 0 -2rem;
+  border-radius: 50%;
+  background: var(--fw-surface);
+  box-shadow:
+    inset 0 0 0 1px var(--fw-line-strong),
+    0 0 0 6px var(--fw-bg);
+  color: var(--fw-ink);
+  overflow: hidden;
+}
+.node > svg {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+.ring {
+  position: absolute;
+  inset: 0;
+  border: 2px solid transparent;
+  border-top-color: var(--fw-accent);
+  border-radius: 50%;
+}
+.show[data-paused] .ring {
+  animation-play-state: paused;
+}
+.caption {
+  position: absolute;
+  top: calc(50% + 2.875rem);
+  left: 50%;
+  translate: -50% 0;
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--fw-muted);
+}
+.caption strong {
+  display: block;
+  font-weight: 500;
+  color: var(--fw-ink);
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: 21.25rem minmax(0, 1fr) 21.25rem;
+  margin-top: 2rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--fw-line);
+}
+.steps li {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+}
+.steps li:nth-child(2) {
+  justify-self: center;
+  max-width: 22.5rem;
+  padding-inline: 1.75rem;
+}
+.steps strong {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.stepNumber {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--fw-line-strong);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--fw-muted);
+  transition:
+    background-color var(--fw-duration-base) var(--fw-ease-out),
+    color var(--fw-duration-base) var(--fw-ease-out),
+    box-shadow var(--fw-duration-base) var(--fw-ease-out);
+}
+.steps [data-state="now"] .stepNumber {
+  color: var(--fw-accent);
+  box-shadow: inset 0 0 0 2px var(--fw-accent);
+}
+.steps [data-state="done"] .stepNumber {
+  background: var(--fw-primary);
+  color: var(--fw-on-primary);
+  box-shadow: none;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2rem;
+  margin-top: 2.5rem;
+}
+.facts li {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  gap: 0.875rem;
+  font-size: 0.9375rem;
+  line-height: 1.375rem;
+  color: var(--fw-muted);
+}
+.facts strong {
+  display: block;
+  margin-bottom: 0.125rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--fw-ink);
+}
+.tile {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--fw-radius-md);
+  background: var(--fw-bg);
+  box-shadow: inset 0 0 0 1px var(--fw-line);
+  color: var(--fw-ink);
+}
+
+.docs {
+  margin-top: 2rem;
+}
+
+@media (pointer: coarse) {
+  .picks button {
+    height: 2.75rem;
+    padding: 0 0.75rem 0 0.5rem;
+  }
+}
+
+/* Below the width that fits two cards and a rail, the route turns down the page. */
+@media (max-width: 60rem) {
+  .route,
+  .steps,
+  .facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rail {
+    min-height: 8.25rem;
+  }
+  .rail::before {
+    inset: 0 auto 0 2.5rem;
+    border-top: 0;
+    border-left: 1px dashed var(--fw-line-strong);
+  }
+  .fill {
+    inset: 0 auto 0 calc(2.5rem - 1px);
+    width: 2px;
+    height: auto;
+    transform-origin: center top;
+    transform: scaleY(var(--f));
+  }
+  .dot {
+    top: calc(16% + var(--p) * 68%);
+    left: 2.5rem;
+    padding: 0.25rem;
+  }
+  .dot > span {
+    display: none;
+  }
+  .node {
+    left: 2.5rem;
+    width: 3.5rem;
+    height: 3.5rem;
+    margin: -1.75rem 0 0 -1.75rem;
+  }
+  .caption {
+    top: 50%;
+    left: 5.25rem;
+    translate: 0 -50%;
+    text-align: start;
+  }
+  .steps {
+    gap: 1.25rem;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+  }
+  .steps li:nth-child(2) {
+    justify-self: stretch;
+    max-width: none;
+    padding-inline: 0;
+  }
+  .facts {
+    gap: 1.5rem;
+    margin-top: 2rem;
+  }
+}
+@media (max-width: 40rem) {
+  .head h2 {
+    font-size: 2.25rem;
+  }
+  .lead {
+    font-size: 1.0625rem;
+  }
+  .show {
+    margin-top: 2rem;
+    padding: 3.25rem 1rem 1.25rem;
+    border-radius: var(--fw-radius-lg);
+  }
+  .tags {
+    inset-inline: 1rem;
+  }
+  .amount {
+    font-size: 1.75rem;
+  }
+  .foot {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

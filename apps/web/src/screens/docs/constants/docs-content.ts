@@ -1,6 +1,7 @@
 import type { DocsArticle } from "../types/docs";
 import { API_PAGES } from "./docs-api";
 import { GUIDE_PAGES } from "./docs-guides";
+import { PAYMENT_PAGES } from "./docs-payments";
 import { REFERENCE_PAGES } from "./docs-reference";
 
 export const DOCS = {
@@ -13,6 +14,7 @@ export const DOCS = {
 export const DOCS_GROUPS = [
   "Start here",
   "Collect payments",
+  "Payments",
   "Integrate",
   "API reference",
   "Reference",
@@ -20,6 +22,7 @@ export const DOCS_GROUPS = [
 ] as const;
 export const DOCS_PAGES: readonly DocsArticle[] = [
   ...GUIDE_PAGES,
+  ...PAYMENT_PAGES,
   ...API_PAGES,
   ...REFERENCE_PAGES,
 ];

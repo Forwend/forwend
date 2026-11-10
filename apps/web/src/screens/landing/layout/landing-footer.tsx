@@ -1,7 +1,6 @@
 import { buttonClasses, Logo } from "@forwend/ui-web";
 import Link from "next/link";
 import { APP_ROUTES } from "@/shared/config/routes";
-import { FooterSocials } from "./footer-socials";
 import styles from "./landing-footer.module.css";
 
 export function LandingFooter() {
@@ -60,7 +59,12 @@ export function LandingFooter() {
             Docs
           </Link>
         </nav>
-        <FooterSocials />
+        <div className={styles.more}>
+          <a href="#questions">Questions</a>
+          <Link prefetch={false} href={APP_ROUTES.signIn}>
+            Sign in
+          </Link>
+        </div>
         <p className={styles.copyright}>© {new Date().getUTCFullYear()} Forwend</p>
       </div>
     </footer>

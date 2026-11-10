@@ -25,6 +25,7 @@ export function Roadmap() {
               <li>Payment links</li>
               <li>Hosted and embedded checkout</li>
               <li>Signed webhooks</li>
+              <li className={styles.added}>Pay from other chains</li>
             </ul>
           </li>
           <li className={styles.next}>

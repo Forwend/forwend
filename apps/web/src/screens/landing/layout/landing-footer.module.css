@@ -90,30 +90,22 @@
   color: var(--fw-muted);
   justify-self: end;
 }
-/* The icons' hit areas reach past their glyphs; the negative margin lines the first glyph up with the logo. */
-.socials {
+.more {
   display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+}
+.more a {
+  display: inline-flex;
   align-items: center;
-  margin-inline-start: -0.75rem;
+  min-height: 2.75rem;
+  font-size: 0.875rem;
   color: var(--fw-muted);
 }
-.socialButtons {
-  display: flex;
-  gap: 0.25rem;
-}
-.unavailable,
-.unavailable:hover,
-.unavailable:active,
-.unavailable[data-state="open"] {
-  width: 2.75rem;
-  height: 2.75rem;
-  cursor: default;
-  background: transparent;
-  color: var(--fw-muted);
-  opacity: 0.65;
-}
-.unavailable:focus-visible {
-  opacity: 1;
+.more a:hover {
+  color: var(--fw-ink);
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
 }
 @media (max-width: 40rem) {
   .garden {
