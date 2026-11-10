@@ -303,6 +303,43 @@ describe("new invoice form", () => {
     expect(bodies[1]).not.toHaveProperty("amount");
   });
 
+  // R-56: an item may cost under 1.00, but the items together must reach it, as a typed amount must.
+  it("stops on the items when they add up to less than 1.00, and sends nothing", async () => {
+    const send = vi.fn(async () => Response.json({}, { status: 201 }));
+    stubFetch(send);
+    render(
+      <Provider store={makeStore({ getAccessToken: async () => "token" })}>
+        <NewInvoiceForm profileId={PROFILE} testnet tokens={[TOKEN]} />
+      </Provider>,
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: /^(Legal|Full) name$/ }), {
+      target: { value: "Mara Ilić" },
+    });
+    fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: "0.3" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add item" }));
+    fireEvent.change(screen.getByLabelText("Item 1"), { target: { value: "Finance" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add item" }));
+    fireEvent.change(screen.getByLabelText("Item 2"), { target: { value: "Finance" } });
+    fireEvent.change(screen.getAllByLabelText(/^Price/)[1] as HTMLElement, {
+      target: { value: "0.3" },
+    });
+    await create();
+    await settle();
+    expect(document.querySelector('[aria-current="step"]')?.textContent).toContain("Items");
+    expect(screen.getAllByRole("alert").map((a) => a.textContent)).toContain(
+      "The items must add up to at least 1.00 USDC.",
+    );
+    expect(send).not.toHaveBeenCalled();
+
+    // An item under 1.00 is fine once the total reaches it.
+    fireEvent.change(screen.getAllByLabelText(/^Price/)[1] as HTMLElement, {
+      target: { value: "0.7" },
+    });
+    await create();
+    await settle();
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
   it("shows each item's amount and the total exactly, not cut to cents", () => {
     render(
       <Provider store={makeStore({ getAccessToken: async () => "token" })}>
