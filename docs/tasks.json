@@ -864,7 +864,7 @@
       "dependsOn": [
         "F460"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "lint",
@@ -966,11 +966,18 @@
           "summary": "Read the uncommitted diff over HEAD: the three progress lines keep the same label, value, detail and transaction link, and each now passes a mark; MarkIcon is aria-hidden, so the line's read text is unchanged, and the mark is fixed at 36px beside a min-w-0 text column that still wraps, so the line cannot push sideways at 390px. Imports are all used, DESIGN.md gains the one bullet, tasks.json holds only check evidence; pay unit tests pass (102). Note: the payer's token mark has no shipped-logo id on the invoice, so a token without a drawn icon shows its letter there, as on the merchant journey.",
           "at": "2026-11-10T18:10:05Z",
           "filesHash": "5ec24398127f00a1"
-        }
+        },
+        "commit": "416eeb96",
+        "doneAt": "2026-11-10T18:10:19Z"
       },
       "branch": "feat/f461-the-pay-box-shows-what-to-send-as-one-su",
       "baseCommit": "d23d0e01cf531006b2ca98e53cd681026fb9de76",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f461-the-pay-box-shows-what-to-send-as-one-su",
+        "base": "main"
+      }
     },
     {
       "id": "F462",
