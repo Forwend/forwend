@@ -405,6 +405,7 @@ Limits:
   - It is held for the payer while nothing is chosen.
   - Once its option is chosen, the held part of each on-time deposit goes to the creator, as a `chosen` booking.
     - Not after a cancel or a settle, nor while a return of it is queued: then it stays the payer's.
+    - Nor once the option has any refund: a refund names no deposit, so a held part may already be returned.
     - A later reopen gives back only what is still held, so no part reaches the creator twice.
   - So a payment sent in parts counts in full, however small its first part.
   - On-time dust on an open invoice is not announced to the owner; late money and money after a cancel always is.

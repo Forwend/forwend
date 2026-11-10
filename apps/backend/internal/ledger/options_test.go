@@ -424,6 +424,37 @@ func TestHeldDepositThatChoosesUnderTheTenthRulePaysTheCreator(t *testing.T) {
 	}
 }
 
+// A part returned to its payer before the choice still has its held deposit row, as a refund names no deposit. Late
+// money held later on the open invoice must not go to the creator in that part's name.
+func TestReturnedPartNeverTakesLateMoneyForTheCreator(t *testing.T) {
+	o := newOptionSim(t)
+	o.scanned(1, 2000)
+	o.scanned(2, 2000)
+	o.pay(o.option, 2, o.full, 300000, 1300)
+	o.process(o.option)
+	o.exec(`INSERT INTO receiver_outflows (invoice_id, chain_id, receiver_address, token_contract, kind, destination,
+		amount, tx_hash, log_index, block_hash, block_number, block_time, verified_block, transfer_log_index)
+		VALUES ($1, 2, $2, $3, 'refund', '0x00000000000000000000000000000000000000ff', 300000,
+		'0x' || repeat('a', 64), 1, '0x' || repeat('b', 64), 1, 1305, 1000, 0)`, o.option, o.full, simToken)
+	o.answer[o.full].Sub(o.answer[o.full], big.NewInt(300000))
+	o.process(o.option)
+	o.pay(o.option, 2, o.full, 600000, 1310) // chooses the option: 0.60 of 5.00 paid
+	o.process(o.option)
+	o.pay(o.option, 2, o.full, 1000000, 5050)                 // late: held
+	o.answer[o.full].Add(o.answer[o.full], big.NewInt(50000)) // money no transfer explains keeps the invoice open
+	o.scanned(1, 5100)
+	o.scanned(2, 5100)
+	o.process(o.option)
+	o.process(o.option)
+	a, err := ReadAmounts(context.Background(), o.pool, o.option)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Payable.Int64() != 600000 || a.Held.Int64() != 1000000 {
+		t.Fatalf("payable %s, held %s; want the 0.60 paid and the late 1.00 held", a.Payable, a.Held)
+	}
+}
+
 // D-26: money that comes after a cancel stays the payer's, even a payment that chooses its option after it.
 func TestCanceledPayerChoosesInvoiceKeepsEarlierPartsHeld(t *testing.T) {
 	o := newOptionSim(t)

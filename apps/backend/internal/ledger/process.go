@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
-	"slices"
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/history"
@@ -178,8 +177,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	if err != nil {
 		return err
 	}
-	// A refund waiting to be booked may return a held part: it books first, in chain order, and the move waits a round.
-	if applyEarlier && !slices.ContainsFunc(movements, func(m movement) bool { return m.Kind == "refund" }) {
+	if applyEarlier {
 		moved, err := applyHeldParts(ctx, tx, invoiceID, closesAt, new(big.Int).Sub(amount, owed))
 		if err != nil {
 			return err
@@ -423,6 +421,13 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 // applyHeldParts moves the held parts of option's on-time deposits, booked while no option was chosen, to the creator,
 // at most up to; each part names its transfer, so readers see which deposits paid the creator. It returns what moved.
 func applyHeldParts(ctx context.Context, tx pgx.Tx, option string, closesAt int64, up *big.Int) (*big.Int, error) {
+	// A refund names no deposit, so after one, booked or not, a held deposit row may be money already returned: nothing
+	// moves, and what is held stays the payer's.
+	var refunded bool
+	if err := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = $1 AND kind = 'refund')",
+		option).Scan(&refunded); err != nil || refunded {
+		return new(big.Int), err
+	}
 	held, err := accountBalance(ctx, tx, option, "payer_held")
 	if err != nil {
 		return nil, err
