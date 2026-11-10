@@ -1,6 +1,5 @@
 import {
   Badge,
-  BrandIcon,
   cx,
   PAYMENT_STATUS,
   StatusPill,
@@ -22,6 +21,7 @@ import type {
   PaymentOption,
 } from "@/features/payments/types/payments";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
+import { NearIntents } from "@/shared/components/chains/near-intents";
 import { MarkIcon } from "@/shared/components/chains/token-mark";
 import {
   BLOCKCHAIN_ICONS,
@@ -339,16 +339,6 @@ function rowOf(step: JourneyStep, payment: PaymentDetail): Row {
         tx: <TxLink hash={step.sent.txHash} chainId={step.option.chainId} />,
       };
   }
-}
-
-/** NEAR Intents by name: NEAR's mark, then the words. */
-function NearIntents() {
-  return (
-    <span className="inline-flex items-center gap-[0.4em] font-medium whitespace-nowrap text-ink">
-      <BrandIcon name="near" className="size-[1em]" />
-      NEAR Intents
-    </span>
-  );
 }
 
 function OptionMark({ option }: { option: PaymentOption }) {

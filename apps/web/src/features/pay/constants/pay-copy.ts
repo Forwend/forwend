@@ -39,6 +39,8 @@ export const PAY_COPY = {
   closesIn: (left: string) => `Closes in ${left}`,
   loading: "Loading payment",
   payWith: "Pay with",
+  // The two ways to pay, as tabs over the box.
+  ways: { label: "How to pay", direct: "Stablecoin", cross: "Any token" },
   payingWith: "Paying with",
   progress: "Payment progress",
   network: "Network",
@@ -61,7 +63,7 @@ export const PAY_COPY = {
   seen: "Payment detected",
   finalAround: (time: string) => `Final around ${time}`,
   nothingToDo: "Don't pay again. This page updates on its own.",
-  exactAmount: "Amount",
+  exactAmount: "You send",
   copyAmount: "Copy amount",
   amountCopied: "Amount copied",
   copyAmountFailed: "Copy failed: type the amount instead",
@@ -173,8 +175,6 @@ export const PAY_COPY = {
   newTab: " (opens in a new tab)",
   // D-123: paying from another chain and token through NEAR Intents, which delivers USDC on Base.
   crossChain: {
-    other: "Pay with another token",
-    otherHint: "From any chain, converted to USDC on Base by NEAR Intents",
     pickerTitle: "Pay with another token",
     chains: "Chains",
     searchChains: "Search chains",
@@ -185,35 +185,37 @@ export const PAY_COPY = {
     loadingTokens: "Loading tokens",
     choose: "Choose a token",
     change: "Change",
-    direct: "Pay directly instead",
     estimate: (amount: string) => `About ${amount}`,
     // D-126: a token whose minimum is above what is due can't be picked.
     needsAtLeast: (amount: string) => `Needs at least ${amount}`,
     tooSmall: (due: string) =>
       `Greyed tokens need more than this payment of ${due}. NEAR Intents sets the minimum for each.`,
     youSend: "You send",
+    // What You send is made of, one line each (R-244).
+    conversionFee: "Conversion and network fee",
+    feeApprox: (usd: string) => `≈ ${usd} USD`,
+    // R-244: the 1% You send adds for a moving price; the refund field says where the unused part goes.
+    buffer: (percent: number) => `Price buffer of ${percent}%`,
+    bufferBack: "Unused part returns to you",
+    // Never a promise the refund fee would break: the warning under the lines says why.
+    bufferUnderFee: "Less than the refund fee",
+    arrivesIn: "Arrives in",
+    arrives: (minutes: number) => (minutes <= 1 ? "About a minute" : `About ${minutes} minutes`),
+    refundFeeRow: "Refund fee",
     gettingPrice: "Getting a price",
-    fee: "Fee",
     feeHint: "NEAR Intents fee + network fee",
-    feeValue: (usd: string) => `${usd} USD`,
-    // R-244: what You send adds; the refund field says where the unused part goes.
-    slippage: (percent: number) => `Slippage ${percent}%`,
-    time: (minutes: number) =>
-      minutes <= 1 ? "Arrives in about a minute" : `Arrives in about ${minutes} minutes`,
     refund: (chain: string) => `Refund address on ${chain}`,
     refundHint:
-      "Unused slippage comes back here, less the refund fee. Use your own wallet, not an exchange.",
+      "The unused buffer comes back here, less the refund fee. Use your own wallet, not an exchange.",
     // 1Click's spec doesn't say whether a refund at or under its fee is sent at all.
-    refundFee: (amount: string) => `Refund fee ${amount}`,
-    slippageUnderFee: "The unused slippage is less than the refund fee, so it may not come back.",
+    slippageUnderFee: "The unused buffer is less than the refund fee, so it may not come back.",
     refundNeeded: "Enter your address on this chain.",
     showAddress: "Show address",
     sendOnly: (symbol: string, chain: string) => `Send only ${symbol} on ${chain}.`,
     sendTo: (symbol: string, chain: string) => `Send ${symbol} on ${chain} to`,
-    priceHeld: (left: string) => `Price held ${left}`,
-    extraBack: (fee: string) =>
-      `Sent more? The extra goes back to your refund address, less the refund fee of ${fee}.`,
-    refundsTo: (address: string) => `Refunds go to ${address}`,
+    // Beside the address, one line each: how long the price holds, and where extra money returns.
+    priceHeldRow: "Price held",
+    refundsTo: "Refunds go to",
     expired: "This price expired",
     expiredNote:
       "Don't send to this address. Already sent? Wait here: this page updates on its own.",

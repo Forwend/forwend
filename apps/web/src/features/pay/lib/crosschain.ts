@@ -9,6 +9,7 @@ import {
   QUOTE_ADDRESS_LEAST_MS,
   QUOTE_PRICE_WINDOW_MS,
 } from "@/features/pay/constants/crosschain";
+import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import { withOption } from "@/features/pay/lib/pay";
 import { checkedReceiveAddress } from "@/features/pay/lib/receive-address";
 import { CROSS_CHAIN_TARGET } from "@/shared/constants/chains";
@@ -311,4 +312,11 @@ export function fromBase58(text: string): Uint8Array<ArrayBuffer> {
     bytes.unshift(0);
   }
   return new Uint8Array(bytes);
+}
+
+/** What the price buffer's line says: the unused part returns, unless 1Click's refund fee is at least as large. */
+export function bufferLine(send: bigint, minAmountIn: bigint, refundFee: bigint): string {
+  return slippageCoversRefundFee(send, minAmountIn, refundFee)
+    ? PAY_COPY.crossChain.bufferBack
+    : PAY_COPY.crossChain.bufferUnderFee;
 }

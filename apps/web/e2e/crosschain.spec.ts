@@ -102,8 +102,16 @@ async function routeCrossChain(page: Page, quotes: object[]) {
   );
 }
 
+const anotherToken = (page: Page) => page.getByRole("radio", { name: "Any token" });
+/** The value on one line of what the amount to send covers, by the line's name. */
+const covers = (page: Page, term: string) =>
+  page
+    .locator("dl > div")
+    .filter({ has: page.getByText(term, { exact: true }) })
+    .locator("dd");
+
 async function pickTronUSDT(page: Page) {
-  await page.getByRole("button", { name: "Pay with another token" }).click();
+  await anotherToken(page).click();
   await page.getByRole("button", { name: "Choose a token" }).click();
   const picker = page.getByRole("dialog", { name: "Pay with another token" });
   await expect(picker.getByRole("button", { name: "Ethereum", exact: true })).toHaveAttribute(
@@ -115,13 +123,13 @@ async function pickTronUSDT(page: Page) {
   await expect(picker).toBeHidden();
   await expect(page.getByText("1,263.00 USDT", { exact: true })).toBeVisible();
   // The fee is the least 1Click converts over what arrives; the slippage on top is refunded (R-244).
-  await expect(page.getByText("2.00 USD", { exact: true })).toBeVisible();
+  await expect(covers(page, "Conversion and network fee")).toHaveText(/^≈ 2\.00 USD/);
   await expect(page.getByRole("button", { name: "NEAR Intents fee + network fee" })).toBeVisible();
-  await expect(page.getByText("Slippage 1%", { exact: true })).toBeVisible();
-  await expect(page.getByText("Arrives in about a minute")).toBeVisible();
+  await expect(covers(page, "Price buffer of 1%")).toHaveText("Unused part returns to you");
+  await expect(covers(page, "Arrives in")).toHaveText("About a minute");
   await expect(
     page.getByText(
-      "Unused slippage comes back here, less the refund fee. Use your own wallet, not an exchange.",
+      "The unused buffer comes back here, less the refund fee. Use your own wallet, not an exchange.",
     ),
   ).toBeVisible();
   await page.getByLabel("Refund address on Tron").fill(REFUND);
@@ -150,7 +158,10 @@ test.describe("pay with another token (R-236 to R-238)", () => {
       /^1,263\.00\s*USDT$/,
     );
     await expect(page.getByText("Send only USDT on Tron.")).toBeVisible();
-    await expect(page.getByText("Price held 15:00")).toBeVisible();
+    await expect(covers(page, "Price held")).toHaveText("15:00");
+    // Where extra money returns and what that costs, each on its own line.
+    await expect(covers(page, "Refunds go to")).toHaveText(/^TJRabP/);
+    await expect(covers(page, "Refund fee")).toHaveText("0.0053 USDT");
     expect(await sidewaysScroll(page)).toBe(0);
     expect(await blockingViolations(page)).toEqual([]);
 
@@ -189,7 +200,7 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     ] as const) {
       await page.setViewportSize({ width, height: 860 });
       await page.goto(`/pay/${PAY}`);
-      await page.getByRole("button", { name: "Pay with another token" }).click();
+      await anotherToken(page).click();
       await page.getByRole("button", { name: "Choose a token" }).click();
       const picker = page.getByRole("dialog", { name: "Pay with another token" });
       const chains = picker.getByRole("region", { name: "Chains" }).getByRole("list");
@@ -230,7 +241,7 @@ test.describe("pay with another token (R-236 to R-238)", () => {
       }),
     );
     await page.goto(`/pay/${PAY}`);
-    await page.getByRole("button", { name: "Pay with another token" }).click();
+    await anotherToken(page).click();
     await page.getByRole("button", { name: "Choose a token" }).click();
     const picker = page.getByRole("dialog", { name: "Pay with another token" });
     // Ethereum's ETH needs exactly what is due, so it fits: nothing is greyed, so no note.
@@ -271,7 +282,7 @@ test.describe("pay with another token (R-236 to R-238)", () => {
       }),
     );
     await page.goto(`/pay/${PAY}`);
-    await page.getByRole("button", { name: "Pay with another token" }).click();
+    await anotherToken(page).click();
     await page.getByRole("button", { name: "Choose a token" }).click();
     const picker = page.getByRole("dialog", { name: "Pay with another token" });
     await picker.getByRole("button", { name: "Tron", exact: true }).click();
@@ -496,18 +507,25 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await expect(page.getByText(/^Final around /)).toHaveCount(0);
   });
 
-  test("once an address shows, Change and Pay directly instead take two presses (R-243, R-68)", async ({
+  test("once an address shows, Change takes two presses and goes back to the price, where the Stablecoin tab is offered (R-243, R-68)", async ({
     page,
   }) => {
     await page.clock.install({ time: NOW });
     await mockInvoice(page, LIVE);
     await routeCrossChain(page, [quote("1263000000")]);
     await page.goto(`/pay/${PAY}`);
+    const direct = page.getByRole("radio", { name: "Stablecoin" });
+    const choose = page.getByRole("button", { name: "Choose a token" });
     // Before an address, the way back takes one press.
-    await page.getByRole("button", { name: "Pay with another token" }).click();
-    await page.getByRole("button", { name: "Pay directly instead" }).click();
-    await expect(page.getByRole("button", { name: "Pay with another token" })).toBeVisible();
-    await page.getByRole("button", { name: "Pay with another token" }).click();
+    await anotherToken(page).click();
+    await expect(choose).toBeVisible();
+    // Each box draws its own tabs: the one that appears takes the focus, so the arrow keys keep working.
+    await expect(anotherToken(page)).toBeFocused();
+    await direct.click();
+    await expect(direct).toBeChecked();
+    await expect(direct).toBeFocused();
+    await expect(choose).toHaveCount(0);
+    await anotherToken(page).click();
     await page.getByRole("button", { name: "Choose a token" }).click();
     const picker = page.getByRole("dialog", { name: "Pay with another token" });
     await picker.getByRole("button", { name: "Tron", exact: true }).click();
@@ -519,6 +537,8 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await page.getByLabel("Refund address on Tron").fill(REFUND);
     await page.getByRole("button", { name: "Show address" }).click();
     await expect(page.getByText(DEPOSIT_ADDRESS)).toBeVisible();
+    // With an address on screen the tabs are gone: only the two-press Change leaves it.
+    await expect(direct).toHaveCount(0);
     const change = page.getByRole("button", { name: "Change", exact: true });
     await change.click();
     await expect(picker).toHaveCount(0);
@@ -530,7 +550,14 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await expect(page.getByText(DEPOSIT_ADDRESS)).toBeVisible();
     await change.click();
     await confirm.click();
-    await expect(picker).toBeVisible();
+    // Back a step, not to the picker: the token, its price and the refund address, with the Stablecoin tab one press away.
+    await expect(page.getByText(DEPOSIT_ADDRESS)).toHaveCount(0);
+    await expect(picker).toHaveCount(0);
+    await expect(page.getByText("1,263.00 USDT", { exact: true })).toBeVisible();
+    await expect(page.getByLabel("Refund address on Tron")).toHaveValue(REFUND);
+    await direct.click();
+    await expect(direct).toBeChecked();
+    await expect(page.getByLabel("Refund address on Tron")).toHaveCount(0);
   });
 
   test("is not offered when the payee turned it off (R-240)", async ({ page }) => {
@@ -538,7 +565,7 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await mockInvoice(page, { ...LIVE, crossChainOn: false });
     await page.goto(`/pay/${PAY}`);
     await expect(page.getByRole("button", { name: "Show address" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Pay with another token" })).toHaveCount(0);
+    await expect(anotherToken(page)).toHaveCount(0);
   });
 
   test("is not offered on a test-mode invoice", async ({ page }) => {
@@ -546,7 +573,7 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await mockInvoice(page, OPEN);
     await page.goto(`/pay/${PAY}`);
     await expect(page.getByRole("button", { name: "Show address" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Pay with another token" })).toHaveCount(0);
+    await expect(anotherToken(page)).toHaveCount(0);
   });
 
   test("a returned payment leaves one line, and the invoice can be paid again", async ({
@@ -571,8 +598,9 @@ test.describe("pay with another token (R-236 to R-238)", () => {
       await expect(page.getByText("Don't pay again")).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Show address" })).toBeVisible();
       // Another token again: a price for the kept token, then the refund address.
-      await page.getByRole("button", { name: "Pay with another token" }).click();
-      await expect(page.getByText("You send")).toBeVisible();
+      await anotherToken(page).click();
+      await expect(page.getByText("1,263.00 USDT", { exact: true })).toBeVisible();
+      await expect(page.getByLabel("Refund address on Tron")).toBeVisible();
     }
   });
 
@@ -719,22 +747,26 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await page.goto(`/pay/${PAY}`);
     await expect(page.getByText(DEPOSIT_ADDRESS)).toBeVisible();
     // Once its price ends, a new one is refused: the payer is told to pay directly, not to try again.
-    await page.route(`**/api/v1/invoices/${PAY}/crosschain/quotes`, (route) =>
-      route.fulfill({
-        status: 422,
-        json: { error: { code: "crosschain_unavailable", message: "the payee turned it off" } },
-      }),
-    );
+    const off = {
+      status: 422,
+      json: { error: { code: "crosschain_unavailable", message: "the payee turned it off" } },
+    };
+    await page.route(`**/api/v1/invoices/${PAY}/crosschain/quotes`, (route) => route.fulfill(off));
     await page.clock.runFor(15 * 60_000);
     await page.getByRole("button", { name: "Get new price" }).click();
     await expect(
       page.getByRole("alert").filter({ hasText: "isn't available for this payment now" }),
     ).toBeVisible();
-    // Back to the Base option, the switch offers no new quote. An address showed: leaving takes two presses (R-68).
-    await page.getByRole("button", { name: "Pay directly instead" }).click();
+    // An address showed: leaving takes two presses (R-68). They go back a step, which asks for a price again.
+    await page.route(/\/crosschain\/price/, (route) => route.fulfill(off));
+    await page.getByRole("button", { name: "Change", exact: true }).click();
     await expect(page.getByText(DEPOSIT_ADDRESS)).toBeVisible();
     await page.getByRole("button", { name: "Confirm change" }).click();
-    await expect(page.getByRole("button", { name: "Pay with another token" })).toHaveCount(0);
+    await expect(page.getByText(DEPOSIT_ADDRESS)).toHaveCount(0);
+    // Back to the Base option, the switch offers no new quote.
+    await page.getByRole("radio", { name: "Stablecoin" }).click();
+    await expect(page.getByRole("button", { name: "Show address" })).toBeVisible();
+    await expect(anotherToken(page)).toHaveCount(0);
   });
 
   test("a new tab doesn't open a kept quote once the payee turned new quotes off (R-240)", async ({
@@ -749,9 +781,9 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await page.goto(`/pay/${PAY}`);
     await expect(page.getByRole("button", { name: "Show address" })).toBeVisible();
     // The other-token box stays shut: it would ask for a price this tab can't get.
-    await expect(page.getByRole("button", { name: "Pay directly instead" })).toHaveCount(0);
+    await expect(page.getByLabel("Refund address on Tron")).toHaveCount(0);
     await expect(page.getByText(DEPOSIT_ADDRESS)).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Pay with another token" })).toHaveCount(0);
+    await expect(anotherToken(page)).toHaveCount(0);
   });
 
   test("a reload shows no kept quote for another token than this tab asked for", async ({

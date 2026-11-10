@@ -7,11 +7,13 @@ import {
   PaymentTimeline,
   QrCode,
   ReceiveAddress,
+  Skeleton,
   STEP_STATES,
   shortAddress,
   TextField,
   type TimelineStep,
   Tooltip,
+  TruncatedAddress,
 } from "@forwend/ui-web";
 import { CircleHelp, TriangleAlert } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
@@ -25,12 +27,15 @@ import {
 } from "@/features/pay/api/crosschain-api";
 import { CrossChainPicker } from "@/features/pay/components/crosschain-picker";
 import { ExactAmount } from "@/features/pay/components/exact-amount";
+import { PayWays } from "@/features/pay/components/pay-ways";
+import { AmountRows, YouSend } from "@/features/pay/components/you-send";
 import { ONECLICK_SLIPPAGE_BPS } from "@/features/pay/constants/crosschain";
-import { ENTER } from "@/features/pay/constants/pay";
+import { ENTER, PAY_WAYS } from "@/features/pay/constants/pay";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import { CLOCK, useFinalTime } from "@/features/pay/hooks/use-final-time";
 import {
   amountText,
+  bufferLine,
   crossChainFeeUsd,
   sendUnits,
   signedDeposit,
@@ -40,8 +45,16 @@ import {
 } from "@/features/pay/lib/crosschain";
 import type { CrossQuote, CrossToken } from "@/features/pay/types/crosschain";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
-import { CROSS_CHAIN_STATUSES, CROSS_CHAIN_TARGET } from "@/shared/constants/chains";
-import { blockchainName, blockchainTxLink, crossChainEnded } from "@/shared/lib/chains";
+import { PoweredByNearIntents } from "@/shared/components/chains/near-intents";
+import { MarkIcon } from "@/shared/components/chains/token-mark";
+import { LineSkeleton } from "@/shared/components/rows-skeleton";
+import {
+  BLOCKCHAIN_ICONS,
+  CROSS_CHAIN_STATUSES,
+  CROSS_CHAIN_TARGET,
+  CROSS_CHAIN_TOKEN_ICONS,
+} from "@/shared/constants/chains";
+import { blockchainName, blockchainTxLink, crossChainEnded, iconOf } from "@/shared/lib/chains";
 
 const COPY = PAY_COPY.crossChain;
 type CrossChain = NonNullable<Invoice["crossChain"]>;
@@ -73,6 +86,9 @@ export interface CrossChainPayProps {
   stateLine: string;
   /** Back to the tokens the invoice takes directly. */
   onDirect: () => void;
+  /** The payer opened this box by the tabs, so its tabs take the focus, once. */
+  viaTabs?: boolean;
+  onTabsFocused?: () => void;
 }
 
 const left = (ms: number) => {
@@ -91,6 +107,8 @@ export function CrossChainPay({
   confirming,
   stateLine,
   onDirect,
+  viaTabs = false,
+  onTabsFocused,
 }: CrossChainPayProps) {
   const kept = invoice.crossChain ?? null;
   const [picking, setPicking] = useState(false);
@@ -141,6 +159,14 @@ export function CrossChainPay({
       current = false;
     };
   }, [shown, receive, due]);
+
+  // Opened by the tabs onto a kept quote: this step draws no tabs, so its heading takes the focus they would.
+  const addressShown = shown !== null;
+  useEffect(() => {
+    if (!viaTabs || !addressShown) return;
+    heading.current?.focus();
+    onTabsFocused?.();
+  }, [viaTabs, addressShown, onTabsFocused]);
 
   const ask = async (renewing: boolean) => {
     if (!token) return;
@@ -197,27 +223,62 @@ export function CrossChainPay({
   const expired = shown !== null && now >= shown.shownUntil;
   return (
     <section aria-labelledby="pay-cross" className={`flex flex-col gap-4 p-4 sm:p-5 ${ENTER}`}>
-      <h2
-        id="pay-cross"
-        ref={heading}
-        tabIndex={-1}
-        className="text-sm font-medium text-ink outline-none"
-      >
-        {COPY.other}
-      </h2>
-      {token ? (
-        <div className="flex items-center justify-between gap-3 rounded-md border border-line px-3 py-2">
-          <span className="flex min-w-0 flex-col">
-            <span className="font-medium text-ink">{token.symbol}</span>
-            <span className="text-xs text-muted">{chain}</span>
-          </span>
-          <TwoPress needed={shown !== null} label={COPY.change} onPress={() => setPicking(true)} />
-        </div>
-      ) : (
-        <Button variant="secondary" size="lg" className="w-full" onClick={() => setPicking(true)}>
-          {COPY.choose}
-        </Button>
-      )}
+      {/* One heading in both steps, so the focus a step moves to it survives the step. */}
+      <div className={shown ? "flex min-h-10 items-center gap-3" : "flex flex-col gap-4"}>
+        <h2
+          id="pay-cross"
+          ref={heading}
+          tabIndex={-1}
+          className={`text-sm outline-none ${shown ? "w-20 shrink-0 text-muted" : "font-medium text-ink"}`}
+        >
+          {PAY_COPY.payWith}
+        </h2>
+        {shown ? (
+          // The address shows: the token folds into one row, as a direct payment's does. Change goes back a step.
+          <>
+            <CrossMark token={shown.token} />
+            <TwoPress
+              label={COPY.change}
+              onPress={() => {
+                setShown(null);
+                // What belonged to that quote goes with it: the price says its own.
+                setProblem(null);
+                setChangedFrom(null);
+                setRenewed(false);
+                heading.current?.focus();
+              }}
+              className="ml-auto"
+            />
+          </>
+        ) : (
+          <>
+            <PayWays
+              way={PAY_WAYS.cross}
+              onChange={onDirect}
+              focused={viaTabs}
+              onFocused={onTabsFocused}
+            />
+            {token ? (
+              <div className="flex items-center justify-between gap-3 rounded-md border border-line px-3 py-2">
+                <CrossMark token={token} />
+                {/* The same quiet button as a direct payment's Change. */}
+                <Button variant="ghost" size="sm" onClick={() => setPicking(true)}>
+                  {COPY.change}
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="secondary"
+                size="lg"
+                className="w-full"
+                onClick={() => setPicking(true)}
+              >
+                {COPY.choose}
+              </Button>
+            )}
+          </>
+        )}
+      </div>
       <CrossChainPicker
         open={picking}
         onOpenChange={setPicking}
@@ -228,6 +289,8 @@ export function CrossChainPay({
           setToken(picked);
           setShown(null);
           setProblem(null);
+          setChangedFrom(null);
+          setRenewed(false);
           heading.current?.focus();
         }}
       />
@@ -258,6 +321,19 @@ export function CrossChainPay({
             {COPY.showAddress}
           </Button>
         </>
+      ) : null}
+      {shown && deposit === null ? (
+        <div aria-hidden className="flex flex-col gap-4">
+          <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 sm:gap-4">
+            <Skeleton className="size-26 sm:size-32" />
+            <div className="flex flex-col gap-2">
+              <LineSkeleton size="text-xs" className="w-16" />
+              <Skeleton className="h-11 w-full" />
+              <LineSkeleton size="text-xs" className="w-40 max-w-full" />
+            </div>
+          </div>
+          <Skeleton className="h-18 w-full" />
+        </div>
       ) : null}
       {shown && deposit === false ? (
         <Notice
@@ -318,15 +394,14 @@ export function CrossChainPay({
           {problem}
         </p>
       ) : null}
-      <TwoPress
-        needed={shown !== null}
-        label={COPY.direct}
-        onPress={onDirect}
-        className="self-start"
-      />
     </section>
   );
 }
+
+// The price's usual lines: the fee, the buffer, the refund fee and the time.
+const PRICE_LINES = ["fee", "buffer", "refund", "time"] as const;
+// A loaded part takes its placeholder's place, so it only fades: a rise would move what sits under it.
+const FADE = "motion-safe:animate-[fw-fade-in_var(--fw-duration-base)_var(--fw-ease-out)]";
 
 function PricePreview({
   price,
@@ -347,10 +422,26 @@ function PricePreview({
     );
   }
   if (!price || loading) {
+    // The price's own shape, so the refund field and the button under it stay about where they are.
     return (
-      <p role="status" className="text-sm text-muted">
-        {COPY.gettingPrice}
-      </p>
+      <div className="flex flex-col gap-3">
+        <span role="status" className="sr-only">
+          {COPY.gettingPrice}
+        </span>
+        <div aria-hidden className="flex flex-col gap-1">
+          <LineSkeleton size="text-xs" className="w-16" />
+          <LineSkeleton size="text-3xl" className="w-48 max-w-full" />
+        </div>
+        <div aria-hidden className="flex flex-col gap-2 border-y border-line py-3">
+          {PRICE_LINES.map((line) => (
+            <div key={line} className="flex justify-between gap-4">
+              <LineSkeleton size="text-sm" className="w-36" />
+              <LineSkeleton size="text-sm" className="w-24" />
+            </div>
+          ))}
+        </div>
+        <LineSkeleton size="text-xs" className="mx-auto w-40" />
+      </div>
     );
   }
   const amountIn = BigInt(price.amountIn);
@@ -361,37 +452,46 @@ function PricePreview({
     usdPerToken(price.amountInUsd, amountIn, token.decimals),
   );
   const refundFee = /^\d+$/.test(price.refundFee) ? BigInt(price.refundFee) : 0n;
+  const minutes = Math.max(1, Math.round(price.timeEstimate / 60));
   return (
-    <div className="flex flex-col gap-1 rounded-md bg-surface-2 px-3 py-2.5">
-      <span className="text-xs text-muted">{COPY.youSend}</span>
-      <span className="text-base font-semibold text-ink tabular-nums">
-        {amountText(sends, token)}
-      </span>
-      <span className="flex flex-wrap items-center gap-x-1 text-xs text-muted">
-        <span className="inline-flex items-center">
-          {COPY.fee}
-          <Tooltip content={COPY.feeHint}>
-            <IconButton label={COPY.feeHint} size="xs">
-              <CircleHelp aria-hidden className="size-3.5" />
-            </IconButton>
-          </Tooltip>
-        </span>
-        <span className="tabular-nums">{COPY.feeValue(crossChainFeeUsd(price).toFixed(2))}</span>
-        <span aria-hidden>·</span>
-        <span>{COPY.slippage(ONECLICK_SLIPPAGE_BPS / 100)}</span>
-        <span aria-hidden>·</span>
-        <span>{COPY.time(Math.max(1, Math.round(price.timeEstimate / 60)))}</span>
-        {refundFee > 0n ? (
-          <>
-            <span aria-hidden>·</span>
-            <span className="tabular-nums">{COPY.refundFee(amountText(refundFee, token))}</span>
-          </>
-        ) : null}
-      </span>
+    <YouSend
+      className={FADE}
+      amount={
+        // The figure leads and its token follows quieter, as every amount on the page does.
+        <>
+          {amountText(sends, token).slice(0, -token.symbol.length - 1)}{" "}
+          <span className="text-unit text-muted">{token.symbol}</span>
+        </>
+      }
+      rows={[
+        {
+          term: COPY.conversionFee,
+          value: (
+            <span className="inline-flex items-center">
+              {COPY.feeApprox(crossChainFeeUsd(price).toFixed(2))}
+              <Tooltip content={COPY.feeHint}>
+                <IconButton label={COPY.feeHint} size="xs">
+                  <CircleHelp aria-hidden className="size-3.5" />
+                </IconButton>
+              </Tooltip>
+            </span>
+          ),
+        },
+        {
+          term: COPY.buffer(ONECLICK_SLIPPAGE_BPS / 100),
+          value: bufferLine(sends, BigInt(price.minAmountIn), refundFee),
+        },
+        ...(refundFee > 0n
+          ? [{ term: COPY.refundFeeRow, value: amountText(refundFee, token) }]
+          : []),
+        { term: COPY.arrivesIn, value: COPY.arrives(minutes) },
+      ]}
+    >
       {slippageCoversRefundFee(sends, BigInt(price.minAmountIn), refundFee) ? null : (
         <span className="text-xs text-warning">{COPY.slippageUnderFee}</span>
       )}
-    </div>
+      <PoweredByNearIntents />
+    </YouSend>
   );
 }
 
@@ -415,7 +515,7 @@ function Send({
   onRenew: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-4">
+    <div className={`flex flex-col gap-4 ${FADE}`}>
       {renewed && !expired ? (
         <p role="status" className="text-sm font-medium text-ink">
           {COPY.newAddress}
@@ -445,13 +545,6 @@ function Send({
             address={deposit.depositAddress}
             label={COPY.sendTo(shown.token.symbol, chain)}
           />
-          <p className="text-xs text-muted">
-            {slippageCoversRefundFee(deposit.send, deposit.minAmountIn, deposit.refundFee)
-              ? null
-              : `${COPY.slippageUnderFee} `}
-            {COPY.extraBack(amountText(deposit.refundFee, shown.token))}{" "}
-            {COPY.refundsTo(shortAddress(shown.refundTo))}
-          </p>
         </div>
         {expired ? (
           <div className="absolute inset-0 grid place-items-center">
@@ -468,11 +561,33 @@ function Send({
           </div>
         ) : null}
       </div>
-      {expired ? null : (
-        <p className="text-sm text-muted tabular-nums" aria-live="off">
-          {COPY.priceHeld(left(shown.shownUntil - now))}
+      <AmountRows
+        className="border-t border-line pt-3"
+        rows={[
+          ...(expired
+            ? []
+            : [
+                {
+                  term: COPY.priceHeldRow,
+                  // The timer ticks each second: a screen reader hears the line once, not every tick.
+                  value: <span aria-live="off">{left(shown.shownUntil - now)}</span>,
+                },
+              ]),
+          {
+            term: COPY.refundsTo,
+            // Short in the line; hovering, focusing or tapping it shows the whole address.
+            value: <TruncatedAddress address={shown.refundTo} className="text-xs" />,
+          },
+          { term: COPY.refundFeeRow, value: amountText(deposit.refundFee, shown.token) },
+        ]}
+      />
+      {slippageCoversRefundFee(deposit.send, deposit.minAmountIn, deposit.refundFee) ? null : (
+        <p role="note" className="flex items-start gap-1.5 text-xs font-medium text-warning">
+          <TriangleAlert aria-hidden className="mt-px size-3.5 shrink-0" />
+          {COPY.slippageUnderFee}
         </p>
       )}
+      <PoweredByNearIntents />
     </div>
   );
 }
@@ -591,6 +706,23 @@ export function shortDepositLine(c: CrossChain, now: number): string {
   return now < deadline ? COPY.incomplete(CLOCK.format(deadline)) : COPY.incompleteLate;
 }
 
+/** The payer's token with its chain's logo on the corner, then both names. */
+function CrossMark({ token }: { token: Shown["token"] }) {
+  return (
+    <span className="flex min-w-0 items-center gap-3">
+      <MarkIcon
+        token={iconOf(CROSS_CHAIN_TOKEN_ICONS, token.symbol)}
+        chain={iconOf(BLOCKCHAIN_ICONS, token.blockchain)}
+        letter={token.symbol.slice(0, 1)}
+      />
+      <span className="flex min-w-0 flex-col">
+        <span className="truncate text-sm font-medium text-ink">{token.symbol}</span>
+        <span className="truncate text-xs text-muted">{blockchainName(token.blockchain)}</span>
+      </span>
+    </span>
+  );
+}
+
 /** One line of what happened to the payer's money, with its transaction at the end. */
 function Fact({
   label,
@@ -629,12 +761,10 @@ function TxHash({ hash, children }: { hash: string; children: ReactNode }) {
 /** Once an address shows, leaving it takes two presses, so a payer who sent can't switch by accident and pay twice
  * (R-68). One button whose label changes keeps focus between them. */
 function TwoPress({
-  needed,
   label,
   onPress,
   className,
 }: {
-  needed: boolean;
   label: string;
   onPress: () => void;
   className?: string;
@@ -642,12 +772,12 @@ function TwoPress({
   const [asking, setAsking] = useState(false);
   return (
     <Button
-      variant={asking ? "secondary" : "link"}
+      variant={asking ? "secondary" : "ghost"}
       size="sm"
       className={className}
       onBlur={() => setAsking(false)}
       onClick={() => {
-        if (needed && !asking) return setAsking(true);
+        if (!asking) return setAsking(true);
         setAsking(false);
         onPress();
       }}

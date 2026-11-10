@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   invoicesApi,
   useCountViewMutation,
@@ -70,12 +70,13 @@ import {
 import { ExactAmount } from "@/features/pay/components/exact-amount";
 import { NeedHelp } from "@/features/pay/components/need-help";
 import { type Choice, OptionPicker } from "@/features/pay/components/option-picker";
+import { PayWays } from "@/features/pay/components/pay-ways";
 import { Payee } from "@/features/pay/components/payee";
 import { ReceiptEmail } from "@/features/pay/components/receipt-email";
 import { TestnetBadge } from "@/features/pay/components/testnet-badge";
 import { CROSS_CHAIN_LEAST_MS } from "@/features/pay/constants/crosschain";
 import { EMBED_LAYOUTS } from "@/features/pay/constants/embed";
-import { ENTER, LEFT_PAD, PAY_STATES, RIGHT_PAD } from "@/features/pay/constants/pay";
+import { ENTER, LEFT_PAD, PAY_STATES, PAY_WAYS, RIGHT_PAD } from "@/features/pay/constants/pay";
 import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
 import { useFinalTime } from "@/features/pay/hooks/use-final-time";
 import { type CrossChainTarget, crossChainTarget } from "@/features/pay/lib/crosschain";
@@ -615,6 +616,9 @@ function PayBox({
       (invoice.crossChainOn !== false ||
         readAsked(invoice.invoiceId)?.assetId === crossKept.assetId),
   );
+  // The payer switched the way to pay by its tabs: the box that appears focuses its own.
+  const [viaTabs, setViaTabs] = useState(false);
+  const tabsFocused = useCallback(() => setViaTabs(false), []);
   const sending = (shown ?? kept) === optionId && !picking;
   const seen =
     pay.state === PAY_STATES.confirming ||
@@ -666,7 +670,12 @@ function PayBox({
             readAt={readAt}
             confirming={pay.state === PAY_STATES.confirming}
             stateLine={COPY.states[pay.state](values(invoice, pay, money))}
-            onDirect={() => setCrossOpen(false)}
+            viaTabs={viaTabs}
+            onTabsFocused={tabsFocused}
+            onDirect={() => {
+              setViaTabs(true);
+              setCrossOpen(false);
+            }}
           />
         ) : (
           <>
@@ -707,6 +716,17 @@ function PayBox({
                 >
                   {COPY.payWith}
                 </h2>
+                {crossOffered ? (
+                  <PayWays
+                    way={PAY_WAYS.direct}
+                    focused={viaTabs}
+                    onFocused={tabsFocused}
+                    onChange={() => {
+                      setViaTabs(true);
+                      setCrossOpen(true);
+                    }}
+                  />
+                ) : null}
                 {choice ? (
                   <OptionPicker {...choice} />
                 ) : (
@@ -720,14 +740,6 @@ function PayBox({
                     </Button>
                   </div>
                 )}
-                {crossOffered ? (
-                  <div className="flex flex-col items-start gap-0.5 border-t border-line pt-3">
-                    <Button variant="link" size="sm" onClick={() => setCrossOpen(true)}>
-                      {COPY.crossChain.other}
-                    </Button>
-                    <span className="text-xs text-muted">{COPY.crossChain.otherHint}</span>
-                  </div>
-                ) : null}
               </section>
             ) : null}
             {pay.canSend && sending ? (
