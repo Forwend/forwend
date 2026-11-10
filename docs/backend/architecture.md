@@ -54,6 +54,8 @@ Read only the sections your task touches:
   - Only tests set `ECB_RATES_URL`: the e2e gate points the worker at a fake ECB.
   - It keeps NEAR Intents 1Click's token list in `intents_tokens` (`internal/intents`, R-232): at start, every 10
     minutes, 2 minutes after a failure. A token 1Click drops is removed. Only tests set `ONECLICK_API_URL`.
+    - It leaves out a token whose symbol 1Click marks deprecated, as `USDC(DEPRECATED)`.
+    - It keeps each token's CoinGecko id from 1Click's `coingeckoId` in `intents_tokens.coingecko_id` (R-250).
   - On a loop of its own it reads the 1Click status of each quote due for a check (R-234).
     - Up to 64 a round, 8 at once, each answer within 5 s. Deposits 1Click saw go first.
     - It writes what changed to `crosschain_quotes` and the history; it never decides paid.
@@ -313,6 +315,9 @@ with a test.
 - `ecb_rates` (R-110, D-82): the ECB's daily euro reference rates, units per 1 EUR, one per currency and day.
   - A rate the ECB corrects replaces the kept one.
 - `coin_prices` (R-178, D-115): CoinGecko's USD price per coin, with its source time and the worker's read time.
+- `intents_tokens.coingecko_id` (R-250) is the token's CoinGecko id from 1Click's list, or null.
+  - Only lowercase letters, digits and hyphens, at most 64 characters, are kept; any other id is null.
+  - The id only lets the web pick a logo file it ships; the api stores and serves no image.
 - `profiles.records_currency` is the profile's other records currency (R-110), null for none.
 - `profiles.fees_paid_by` is who pays new invoices' fees unless one says otherwise (D-122); `payment_links.fees_paid_by`
   overrides it for a link's invoices, null keeping the profile's.

@@ -6,6 +6,7 @@ import { ONECLICK_KEY } from "@/features/pay/constants/crosschain";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import {
   base58,
+  bufferLine,
   crossChainFeeUsd,
   crossChainKey,
   fromBase58,
@@ -202,9 +203,6 @@ describe("signedDeposit", () => {
 // What comes back pays 1Click's refund fee first: the page says so, and warns when the unused slippage is under it.
 describe("the refund fee", () => {
   it("is named wherever money is said to come back", () => {
-    expect(PAY_COPY.crossChain.extraBack("0.0053 USDC")).toContain(
-      "less the refund fee of 0.0053 USDC",
-    );
     expect(PAY_COPY.crossChain.refundHint).toContain("less the refund fee");
   });
 
@@ -212,6 +210,9 @@ describe("the refund fee", () => {
     // 2.53 USDC sent, at least 2.502697 converted: up to 0.027303 comes back.
     expect(slippageCoversRefundFee(2_530_000n, 2_502_697n, 5300n)).toBe(true);
     expect(slippageCoversRefundFee(2_530_000n, 2_502_697n, 27_303n)).toBe(false);
+    // The buffer's own line never promises what the warning under it takes back.
+    expect(bufferLine(2_530_000n, 2_502_697n, 5300n)).toBe("Unused part returns to you");
+    expect(bufferLine(2_530_000n, 2_502_697n, 27_303n)).toBe("Less than the refund fee");
   });
 });
 

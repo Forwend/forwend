@@ -58,3 +58,13 @@ Source: the owner's hand-drawn draft (2026-10-08). Steps used to make the files:
    - `apps/web/src/app/favicon.ico` (16, 32, 48), `apps/web/src/app/apple-icon.png` (180, square)
    - `apps/web/public/icon-192.png`, `icon-512.png`, `icon-maskable-512.png` (mark at 50% for the
      maskable safe zone)
+
+## Token and network logos
+
+- Token and network logos are not here: they live in `apps/web/public/logos/`, outside this folder's check (D-128).
+- `logos/tokens/<CoinGecko id>.webp`, 72 px wide; `logos/chains/<1Click chain code>.webp`, 48 px wide.
+- They were fetched once by hand from CoinGecko's large images and converted with `cwebp -q 82`.
+- No code fetches them. To add one, save the image, convert it the same way, and add its name to
+  `apps/web/src/shared/constants/logos.ts`.
+- The networks `miden`, `prl` and `qtc` have no file: CoinGecko lists none. They show a letter.
+- So do the tokens with the ids `abg`, `gnear`, `itlx`, `noear` and `testnebula`, and the few 1Click gives no id.

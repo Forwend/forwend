@@ -31,6 +31,9 @@ type Token struct {
 	Minimum string
 	// NoLiquidity: the last dry quote found no liquidity for it, so payers aren't offered it (R-245).
 	NoLiquidity bool
+	// CoingeckoID is the coin's id at CoinGecko, by which the web finds a logo file it ships; "" when 1Click names
+	// none, or one that is no plain id.
+	CoingeckoID string
 }
 
 // TokensEvery is how often the worker reads the list; retry, the wait after a failed read.
@@ -39,9 +42,14 @@ const (
 	retry       = 2 * time.Minute
 )
 
-var blockchain = regexp.MustCompile(`^[a-z0-9_-]{1,32}$`)
+var (
+	blockchain = regexp.MustCompile(`^[a-z0-9_-]{1,32}$`)
+	// The web builds a logo file's path from the id, so only a plain one is kept.
+	coinID = regexp.MustCompile(`^[a-z0-9-]{1,64}$`)
+)
 
-// Tokens reads 1Click's list. A malformed entry is left out; a list without any usable entry fails.
+// Tokens reads 1Click's list. A malformed entry is left out, and so is a token 1Click is phasing out, which it marks
+// in the symbol, as USDC(DEPRECATED); a list without any usable entry fails.
 func (c *Client) Tokens(ctx context.Context) ([]Token, error) {
 	answer, err := c.call(ctx, "GET", "/v0/tokens", nil)
 	if err != nil {
@@ -51,6 +59,8 @@ func (c *Client) Tokens(ctx context.Context) ([]Token, error) {
 		AssetID, Blockchain, Symbol, ContractAddress string
 		Decimals                                     int
 		Price                                        json.Number
+		// Any JSON value: an id that is no text only loses the token its logo.
+		CoingeckoID any
 	}
 	if err := json.Unmarshal(answer, &list); err != nil {
 		return nil, fmt.Errorf("%w: token list: %v", errUnavailable, err)
@@ -59,7 +69,8 @@ func (c *Client) Tokens(ctx context.Context) ([]Token, error) {
 	seen := map[string]bool{}
 	for _, t := range list {
 		if seen[t.AssetID] || t.AssetID == "" || len(t.AssetID) > 200 || !blockchain.MatchString(t.Blockchain) ||
-			t.Symbol == "" || len(t.Symbol) > 32 || t.Decimals < 0 || t.Decimals > 36 || len(t.ContractAddress) > 200 {
+			t.Symbol == "" || len(t.Symbol) > 32 || t.Decimals < 0 || t.Decimals > 36 || len(t.ContractAddress) > 200 ||
+			strings.Contains(strings.ToUpper(t.Symbol), "DEPRECATED") {
 			continue
 		}
 		seen[t.AssetID] = true // twice in one list would fail the upsert of the whole list
@@ -67,8 +78,12 @@ func (c *Client) Tokens(ctx context.Context) ([]Token, error) {
 		if evmAddress.MatchString(contract) { // other chains' contracts, as Tron's, are case-sensitive
 			contract = strings.ToLower(contract)
 		}
+		coin, _ := t.CoingeckoID.(string)
+		if !coinID.MatchString(coin) {
+			coin = ""
+		}
 		out = append(out, Token{AssetID: t.AssetID, Blockchain: t.Blockchain, Symbol: t.Symbol, Decimals: t.Decimals,
-			Contract: contract, USD: usd(t.Price)})
+			Contract: contract, USD: usd(t.Price), CoingeckoID: coin})
 	}
 	if len(out) == 0 {
 		return nil, fmt.Errorf("%w: empty token list", errUnavailable)
@@ -114,6 +129,7 @@ func (k *Keeper) refresh(ctx context.Context, now time.Time) error {
 	}
 	ids, chains, symbols, contracts, usd := make([]string, len(tokens)), make([]string, len(tokens)),
 		make([]string, len(tokens)), make([]*string, len(tokens)), make([]*string, len(tokens))
+	coins := make([]*string, len(tokens))
 	decimals := make([]int32, len(tokens))
 	for i, t := range tokens {
 		ids[i], chains[i], symbols[i], decimals[i] = t.AssetID, t.Blockchain, t.Symbol, int32(t.Decimals)
@@ -123,13 +139,19 @@ func (k *Keeper) refresh(ctx context.Context, now time.Time) error {
 		if t.USD != "" {
 			usd[i] = &tokens[i].USD
 		}
+		if t.CoingeckoID != "" {
+			coins[i] = &tokens[i].CoingeckoID
+		}
 	}
 	return pgx.BeginFunc(ctx, k.Pool, func(tx pgx.Tx) error {
-		if _, err := tx.Exec(ctx, `INSERT INTO intents_tokens (asset_id, blockchain, symbol, decimals, contract, usd, fetched_at)
-			SELECT * , $7::timestamptz FROM unnest($1::text[], $2::text[], $3::text[], $4::int[], $5::text[], $6::numeric[])
+		if _, err := tx.Exec(ctx, `INSERT INTO intents_tokens (asset_id, blockchain, symbol, decimals, contract, usd, coingecko_id,
+			    fetched_at)
+			SELECT * , $8::timestamptz
+			FROM unnest($1::text[], $2::text[], $3::text[], $4::int[], $5::text[], $6::numeric[], $7::text[])
 			ON CONFLICT (asset_id) DO UPDATE SET blockchain = excluded.blockchain, symbol = excluded.symbol,
-			    decimals = excluded.decimals, contract = excluded.contract, usd = excluded.usd, fetched_at = excluded.fetched_at`,
-			ids, chains, symbols, decimals, contracts, usd, now); err != nil {
+			    decimals = excluded.decimals, contract = excluded.contract, usd = excluded.usd,
+			    coingecko_id = excluded.coingecko_id, fetched_at = excluded.fetched_at`,
+			ids, chains, symbols, decimals, contracts, usd, coins, now); err != nil {
 			return fmt.Errorf("store 1Click tokens: %w", err)
 		}
 		if _, err := tx.Exec(ctx, "DELETE FROM intents_tokens WHERE NOT asset_id = ANY($1)", ids); err != nil {
@@ -144,7 +166,7 @@ func List(ctx context.Context, db interface {
 	Query(context.Context, string, ...any) (pgx.Rows, error)
 }) ([]Token, error) {
 	rows, err := db.Query(ctx, `SELECT asset_id, blockchain, symbol, decimals, coalesce(contract, ''), coalesce(usd::text, ''),
-		    coalesce(minimum::text, ''), no_liquidity_at IS NOT NULL
+		    coalesce(minimum::text, ''), no_liquidity_at IS NOT NULL, coalesce(coingecko_id, '')
 		FROM intents_tokens ORDER BY coalesce(usd BETWEEN 0.98 AND 1.02, false) DESC, symbol, blockchain, asset_id`)
 	if err != nil {
 		return nil, fmt.Errorf("list 1Click tokens: %w", err)
@@ -152,7 +174,7 @@ func List(ctx context.Context, db interface {
 	list, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (Token, error) {
 		var t Token
 		return t, row.Scan(&t.AssetID, &t.Blockchain, &t.Symbol, &t.Decimals, &t.Contract, &t.USD, &t.Minimum,
-			&t.NoLiquidity)
+			&t.NoLiquidity, &t.CoingeckoID)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list 1Click tokens: %w", err)

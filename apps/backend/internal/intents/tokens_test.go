@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -74,6 +76,86 @@ func TestKeeperKeepsTheListAndDropsWhat1ClickDropped(t *testing.T) {
 	}
 	if list, _ := intents.List(ctx, pool); len(list) != 1 || list[0].AssetID != intents.BaseUSDCAsset {
 		t.Fatalf("after 1Click dropped tokens: %+v", list)
+	}
+}
+
+func TestTokensLeaveOutWhat1ClickMarksDeprecated(t *testing.T) {
+	fake := intentstest.New(t)
+	fake.Tokens = nil
+	for asset, symbol := range map[string]string{"live": "USDC", "old": "USDC(DEPRECATED)", "underscore": "XPL_(DEPRECATED)",
+		"lower": "avax(deprecated)", "omni": "BTC(OMNI)"} {
+		fake.Tokens = append(fake.Tokens, map[string]any{"assetId": asset, "blockchain": "eth", "symbol": symbol,
+			"decimals": 6, "price": 1})
+	}
+	list, err := fake.Client().Tokens(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, tok := range list {
+		got = append(got, tok.AssetID)
+	}
+	slices.Sort(got)
+	if !slices.Equal(got, []string{"live", "omni"}) {
+		t.Fatalf("kept %v, want the live USDC and BTC(OMNI) only", got)
+	}
+}
+
+// R-250: the worker keeps the CoinGecko id 1Click names for a token, and only a plain one: the web builds a file's path
+// from it.
+func TestKeeperKeepsOnlyAPlainCoingeckoID(t *testing.T) {
+	ctx := context.Background()
+	pool, err := database.Open(ctx, databasetest.Migrated(t, database.Migrate))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	fake := intentstest.New(t)
+	given := map[string]any{"usd-coin": "usd-coin", "aster-2": "aster-2", "custom": "custom:qtc", "capital": "Usd-Coin",
+		"path": "../ping", "query": "tether?x=1", "empty": "", "long": strings.Repeat("a", 65), "number": 7, "null": nil}
+	want := map[string]string{"usd-coin": "usd-coin", "aster-2": "aster-2"}
+	fake.Tokens = []map[string]any{{"assetId": "missing", "blockchain": "eth", "symbol": "T", "decimals": 6, "price": 1}}
+	for asset, id := range given {
+		fake.Tokens = append(fake.Tokens, map[string]any{"assetId": asset, "blockchain": "eth", "symbol": "T", "decimals": 6,
+			"price": 1, "coingeckoId": id})
+	}
+	keeper := &intents.Keeper{Pool: pool, Client: fake.Client(), Every: intents.TokensEvery}
+	start := time.Now()
+	kept := func() map[string]string {
+		t.Helper()
+		list, err := intents.List(ctx, pool)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := map[string]string{}
+		for _, tok := range list {
+			got[tok.AssetID] = tok.CoingeckoID
+		}
+		return got
+	}
+	if err := keeper.Tick(ctx, start); err != nil {
+		t.Fatal(err)
+	}
+	got := kept()
+	if len(got) != len(given)+1 {
+		t.Fatalf("%d tokens, want %d: an id that is no plain one loses the token nothing else", len(got), len(given)+1)
+	}
+	for asset, id := range got {
+		if id != want[asset] {
+			t.Errorf("%s: id %q, want %q", asset, id, want[asset])
+		}
+	}
+
+	// The next read replaces a kept id, with none too.
+	fake.Tokens = []map[string]any{
+		{"assetId": "usd-coin", "blockchain": "eth", "symbol": "T", "decimals": 6, "price": 1},
+		{"assetId": "aster-2", "blockchain": "eth", "symbol": "T", "decimals": 6, "price": 1, "coingeckoId": "aster"},
+	}
+	if err := keeper.Tick(ctx, start.Add(intents.TokensEvery)); err != nil {
+		t.Fatal(err)
+	}
+	if got := kept(); len(got) != 2 || got["usd-coin"] != "" || got["aster-2"] != "aster" {
+		t.Fatalf("after 1Click changed the ids: %v", got)
 	}
 }
 

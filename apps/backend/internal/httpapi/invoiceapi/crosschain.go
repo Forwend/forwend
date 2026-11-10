@@ -44,11 +44,13 @@ type crossTokenJSON struct {
 	Estimate   *string `json:"estimate"` // in the list only
 	// In the list only: the Base USDC base units 1Click needs at least from it (D-126).
 	Minimum *string `json:"minimum"`
+	// The web finds a logo file it ships by it; payers never see it (R-250).
+	CoingeckoID *string `json:"coingeckoId"`
 }
 
 func toCrossToken(t intents.Token) crossTokenJSON {
 	return crossTokenJSON{AssetID: t.AssetID, Blockchain: t.Blockchain, Symbol: t.Symbol, Decimals: t.Decimals,
-		Contract: httpio.OrNull(t.Contract), PriceUSD: t.USD}
+		Contract: httpio.OrNull(t.Contract), PriceUSD: t.USD, CoingeckoID: httpio.OrNull(t.CoingeckoID)}
 }
 
 type crossQuoteJSON struct {

@@ -1,6 +1,5 @@
 import {
   Badge,
-  BrandIcon,
   cx,
   PAYMENT_STATUS,
   StatusPill,
@@ -22,6 +21,7 @@ import type {
   PaymentOption,
 } from "@/features/payments/types/payments";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
+import { NearIntents } from "@/shared/components/chains/near-intents";
 import { MarkIcon } from "@/shared/components/chains/token-mark";
 import {
   BLOCKCHAIN_ICONS,
@@ -36,7 +36,13 @@ import {
   API_PAYMENT_STATUSES,
   API_SETTLEMENT_STATUSES,
 } from "@/shared/constants/payment-state";
-import { blockchainName, blockchainTxLink, chainName, iconOf } from "@/shared/lib/chains";
+import {
+  blockchainName,
+  blockchainTxLink,
+  chainLogo,
+  chainName,
+  iconOf,
+} from "@/shared/lib/chains";
 import { timeNear } from "@/shared/lib/dates";
 
 export interface PaymentJourneyProps {
@@ -162,6 +168,7 @@ function rowOf(step: JourneyStep, payment: PaymentDetail): Row {
               token={iconOf(CROSS_CHAIN_TOKEN_ICONS, c.symbol)}
               chain={iconOf(BLOCKCHAIN_ICONS, c.blockchain)}
               letter={c.symbol.slice(0, 1)}
+              chainLogo={chainLogo(c.blockchain)}
             />
           </span>
         ),
@@ -339,16 +346,6 @@ function rowOf(step: JourneyStep, payment: PaymentDetail): Row {
         tx: <TxLink hash={step.sent.txHash} chainId={step.option.chainId} />,
       };
   }
-}
-
-/** NEAR Intents by name: NEAR's mark, then the words. */
-function NearIntents() {
-  return (
-    <span className="inline-flex items-center gap-[0.4em] font-medium whitespace-nowrap text-ink">
-      <BrandIcon name="near" className="size-[1em]" />
-      NEAR Intents
-    </span>
-  );
 }
 
 function OptionMark({ option }: { option: PaymentOption }) {

@@ -173,6 +173,8 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   - `GET .../crosschain/tokens` (R-232): 1Click's tokens from `intents_tokens`, without memo chains, Bitcoin (D-127), unpriced tokens,
     Base USDC or the invoice's other direct options; stablecoins first. Each has an `estimate` at its listed price.
     - The `estimate` adds 1Click's 1% slippage, as a quote's `amountIn` does (R-244).
+    - A token 1Click marks deprecated in its symbol, as `USDC(DEPRECATED)`, is left out, as left-out chains are.
+      - The worker never stores it, so it can't be priced or quoted either.
     - A token whose last check 1Click answered "No liquidity" is left out until a check is answered (R-245).
     - A payer's price or quote 1Click refuses for no liquidity is 422 `no_liquidity`: the token's, not the refund address's.
     - Each has the `minimum` 1Click last needed from it, in Base USDC base units, or null (D-126).
@@ -181,6 +183,9 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
     - A named minimum is asked again at that amount, up to three asks in all: a higher limit can sit behind it.
     - A refusal naming no minimum keeps the token's minimum, or the one this round named, and is logged.
     - A check 1Click can't answer keeps it too and waits 2 minutes. Either way the next token follows.
+    - Each has a `coingeckoId`: the token's CoinGecko id, as `usd-coin`, or null when 1Click names none (R-250).
+      - The id only lets the web pick a logo file it ships; the api stores and serves no image.
+      - A price's and a quote's `token` carry it too.
   - `GET .../crosschain/price?originAsset=` (R-232): a dry quote, kept 30 s per token and amount in each replica.
     - A quote carries `amountInUsd` and `amountOutUsd` at 1Click's prices; the pay page's fee comes from them (R-244).
   - `POST .../crosschain/quotes` (R-231, R-233): a quote with a deposit address, kept in `crosschain_quotes`.

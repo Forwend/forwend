@@ -37,3 +37,6 @@ export const RIGHT_PAD = "lg:pr-[max(2.5rem,calc(50vw-32rem))]";
  * once. Tailwind's translate-y sets `translate`, so that is the property that transitions. */
 export const ENTER =
   "transition-[opacity,translate] duration-[var(--fw-duration-base)] ease-out starting:translate-y-1 starting:opacity-0";
+
+/** The two ways to pay: a token the invoice takes itself, or another one through NEAR Intents (R-236). */
+export const PAY_WAYS = { direct: "direct", cross: "cross" } as const;
