@@ -207,7 +207,7 @@ describe("cross-chain payment views", () => {
     // The sum names it once; the list shows the customer's own transfer and who converted it.
     expect(screen.getByText("Customer sent 101.62 USDT on Tron")).toBeTruthy();
     expect(screen.getByText("NEAR Intents")).toBeTruthy();
-    expect(screen.getByText("0.50 USDT returned to the customer's refund address")).toBeTruthy();
+    expect(screen.getByText("Returned to the customer")).toBeTruthy();
     expect(screen.getByRole("link", { name: /View transaction on Tron$/ })).toBeTruthy();
     cleanup();
     await show({ ...crossChain, status: "REFUNDED" });

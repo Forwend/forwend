@@ -41,6 +41,18 @@ export function crossChainOf(payment: PaymentDetail): CrossChainPayment | null {
     : null;
 }
 
+const OVER: readonly string[] = [
+  PAYMENT_STATUS.canceled,
+  PAYMENT_STATUS.expired,
+  PAYMENT_STATUS.expiredPartiallyPaid,
+];
+
+/** The checkout takes no more money: closed, or its status says expired or canceled. The API's state can say expired
+ * before its closed flag does, and the page must not wait for a payment its own badge calls expired. */
+export function checkoutOver(payment: PaymentDetail): boolean {
+  return payment.closed || OVER.includes(paymentDisplayStatus(payment));
+}
+
 /** The options with money, else the one the payment is recorded on. */
 function usedOptions(payment: PaymentDetail): PaymentOption[] {
   const funded = payment.options.filter(
@@ -69,6 +81,7 @@ export function paymentMoney(payment: PaymentDetail): PaymentMoney {
   const fees = paidWith ? optionFees(paidWith) : null;
   const paid = payment.paymentStatus === API_PAYMENT_STATUSES.paid;
   const canceled = payment.paymentStatus === API_PAYMENT_STATUSES.canceled;
+  const over = checkoutOver(payment);
   const settled = paidWith?.settlementStatus === API_SETTLEMENT_STATUSES.settled;
   const cell = (
     id: SumCell["id"],
@@ -90,16 +103,11 @@ export function paymentMoney(payment: PaymentDetail): PaymentMoney {
     const refunded = BigInt(lead.amounts.refunded);
     if (refunded > 0n) cells.push(cell(SUM_CELLS.returned, refunded, lead));
     if (figures.extra > 0n) cells.push(cell(SUM_CELLS.held, figures.extra, lead));
-    else if (
-      figures.due > 0n &&
-      figures.received > 0n &&
-      !payment.closed &&
-      paymentDisplayStatus(payment) !== PAYMENT_STATUS.canceled
-    )
+    else if (figures.due > 0n && figures.received > 0n && !over)
       cells.push(cell(SUM_CELLS.due, figures.due, lead));
   }
   // The owner receives nothing of a payment canceled or closed unpaid.
-  const owed = !canceled && !(payment.closed && !paid);
+  const owed = !canceled && !(over && !paid);
   if (paidWith && fees && owed) {
     if (fees.network > 0n) cells.push(cell(SUM_CELLS.networkFee, fees.network, paidWith));
     if (fees.platform > 0n) cells.push(cell(SUM_CELLS.platformFee, fees.platform, paidWith));
@@ -118,7 +126,14 @@ export function paymentMoney(payment: PaymentDetail): PaymentMoney {
     first.symbol === end.symbol &&
     first.decimals === end.decimals &&
     first.units - taken.reduce((sum, c) => sum + c.units, 0n) === end.units;
-  return { lead, paidWith, cells, adds, settled };
+  // The API's paid, never a guess from the figures: money held for the payer counts toward nothing.
+  const moving =
+    paid &&
+    !settled &&
+    end?.id === SUM_CELLS.wallet &&
+    paidWith?.settlement?.status !== "refused" &&
+    !paidWith?.settlement?.wait;
+  return { lead, paidWith, cells, adds, settled, moving };
 }
 
 /** R-248: every movement of the payment's money in order, from the facts the API gave: never a step ahead of them. */
@@ -128,8 +143,7 @@ export function paymentJourney(payment: PaymentDetail, money: PaymentMoney): Jou
     .flatMap((option) => option.deposits.map((deposit) => ({ deposit, option })))
     .sort((x, y) => x.deposit.blockTime.localeCompare(y.deposit.blockTime));
   const paid = payment.paymentStatus === API_PAYMENT_STATUSES.paid;
-  const ended =
-    !paid && (payment.closed || payment.paymentStatus === API_PAYMENT_STATUSES.canceled);
+  const ended = !paid && checkoutOver(payment);
   // The customer's own transfer and its conversion (R-239). They stay when money on another option paid the payment
   // first: the customer still sent it, and its USDC is held for them. A deposit 1Click returned moved nothing here.
   const sent = paidThroughIntents(payment.crossChain) ? payment.crossChain : null;
@@ -163,6 +177,10 @@ export function paymentJourney(payment: PaymentDetail, money: PaymentMoney): Jou
       converted < 0 ? moved.length : converted,
       0,
       { id: JOURNEY_KINDS.origin, kind: JOURNEY_KINDS.origin, cross: sent, state: done },
+      // The part of it 1Click sent back to the customer.
+      ...(sent.refunded && BigInt(sent.refunded) > 0n
+        ? [{ id: JOURNEY_KINDS.surplus, kind: JOURNEY_KINDS.surplus, cross: sent, state: done }]
+        : []),
       {
         id: JOURNEY_KINDS.converting,
         kind: JOURNEY_KINDS.converting,

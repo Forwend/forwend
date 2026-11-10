@@ -8,14 +8,13 @@ import {
   TIMELINE_STATES,
   TONES,
 } from "@forwend/ui-web";
-import { Minus, Repeat, Undo2, Wallet } from "lucide-react";
+import { LoaderCircle, Minus, Repeat, Undo2, Wallet } from "lucide-react";
 import { type ReactNode, useId } from "react";
 import { ConfirmingHint, ConfirmingStatus } from "@/features/invoices/components/invoice-progress";
 import { optionFees } from "@/features/invoices/lib/invoices";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
 import { JOURNEY_KINDS } from "@/features/payments/constants/payments";
 import { PAYMENT_DETAIL_COPY as COPY } from "@/features/payments/constants/payments-copy";
-import { crossMoney } from "@/features/payments/lib/payment-journey";
 import type {
   JourneyStep,
   PaymentDeposit,
@@ -38,7 +37,7 @@ import {
   API_SETTLEMENT_STATUSES,
 } from "@/shared/constants/payment-state";
 import { blockchainName, blockchainTxLink, chainName, iconOf } from "@/shared/lib/chains";
-import { dateTime } from "@/shared/lib/dates";
+import { timeNear } from "@/shared/lib/dates";
 
 export interface PaymentJourneyProps {
   payment: PaymentDetail;
@@ -69,7 +68,7 @@ export function PaymentJourney({ payment, steps }: PaymentJourneyProps) {
               <span className="relative z-10 grid size-9 place-items-center">{row.node}</span>
               {/* The amount sits beside the text while both fit; a long one moves under it and may break. */}
               <span className="flex min-w-0 flex-wrap items-center justify-end gap-x-4 gap-y-1">
-                <span className="flex min-w-36 flex-1 flex-col items-start gap-0.5">
+                <span className="flex min-w-28 flex-1 flex-col items-start gap-0.5">
                   <span
                     className={cx(
                       "flex flex-wrap items-center gap-x-2 gap-y-1 text-sm",
@@ -123,6 +122,8 @@ const DISC = "grid place-items-center rounded-pill ring-4 ring-surface";
 const NOTE = `${DISC} size-6 border border-line-strong bg-surface text-muted [&_svg]:size-3`;
 
 function rowOf(step: JourneyStep, payment: PaymentDetail): Row {
+  // The header shows the day the payment was made; a row on that day shows its time alone.
+  const at = (iso: string) => timeNear(iso, payment.createdAt);
   const upcoming = step.state === TIMELINE_STATES.upcoming;
   switch (step.kind) {
     case JOURNEY_KINDS.created:
@@ -130,14 +131,14 @@ function rowOf(step: JourneyStep, payment: PaymentDetail): Row {
         quiet: true,
         node: <span className={`${DOT} bg-ink`} />,
         title: COPY.journey.created,
-        sub: dateTime(payment.createdAt),
+        sub: at(payment.createdAt),
       };
     case JOURNEY_KINDS.closed:
       return {
         quiet: true,
         node: <span className={`${DOT} bg-ink`} />,
         title: COPY.closed,
-        sub: dateTime(payment.closesAt),
+        sub: at(payment.closesAt),
       };
     case JOURNEY_KINDS.awaiting: {
       // 1Click delivered and the scan has not booked it yet: its Base transaction is already known.
@@ -154,7 +155,6 @@ function rowOf(step: JourneyStep, payment: PaymentDetail): Row {
     case JOURNEY_KINDS.origin: {
       const c = step.cross;
       const tx = c.originTxs[0];
-      const refunded = c.refunded ? BigInt(c.refunded) : 0n;
       return {
         node: (
           <span className="rounded-pill bg-surface ring-4 ring-surface">
@@ -166,16 +166,9 @@ function rowOf(step: JourneyStep, payment: PaymentDetail): Row {
           </span>
         ),
         title: COPY.journey.sent,
-        sub: (
-          <>
-            {COPY.journey.on(
-              blockchainName(c.blockchain),
-              c.depositSeenAt ? dateTime(c.depositSeenAt) : null,
-            )}
-            {refunded > 0n ? (
-              <span className="block">{COPY.crossChain.refunded(crossMoney(refunded, c))}</span>
-            ) : null}
-          </>
+        sub: COPY.journey.on(
+          blockchainName(c.blockchain),
+          c.depositSeenAt ? at(c.depositSeenAt) : null,
         ),
         amount: (
           <PaymentAmount
@@ -187,6 +180,26 @@ function rowOf(step: JourneyStep, payment: PaymentDetail): Row {
         tx: tx ? <TxLink hash={tx.hash} link={blockchainTxLink(c.blockchain, tx)} /> : null,
       };
     }
+    case JOURNEY_KINDS.surplus:
+      return {
+        quiet: true,
+        node: (
+          <span className={NOTE}>
+            <Undo2 aria-hidden />
+          </span>
+        ),
+        title: COPY.journey.surplus,
+        amount: (
+          <>
+            −{" "}
+            <PaymentAmount
+              amount={step.cross.refunded ?? "0"}
+              decimals={step.cross.decimals}
+              symbol={step.cross.symbol}
+            />
+          </>
+        ),
+      };
     case JOURNEY_KINDS.converting:
       return {
         quiet: true,
@@ -203,7 +216,7 @@ function rowOf(step: JourneyStep, payment: PaymentDetail): Row {
             <NearIntents />
           </>
         ),
-        sub: step.cross.convertedAt ? dateTime(step.cross.convertedAt) : undefined,
+        sub: step.cross.convertedAt ? at(step.cross.convertedAt) : undefined,
       };
     case JOURNEY_KINDS.deposit: {
       const { deposit, option } = step;
@@ -215,7 +228,7 @@ function rowOf(step: JourneyStep, payment: PaymentDetail): Row {
             {step.paid ? <StatusPill status={PAYMENT_STATUS.paid} /> : null}
           </>
         ),
-        sub: COPY.journey.on(chainName(option.chainId), dateTime(deposit.blockTime)),
+        sub: COPY.journey.on(chainName(option.chainId), at(deposit.blockTime)),
         status: <DepositState deposit={deposit} />,
         amount: (
           <PaymentAmount
@@ -284,7 +297,7 @@ function rowOf(step: JourneyStep, payment: PaymentDetail): Row {
         title: settled ? COPY.sum.cells.wallet : COPY.toWallet,
         sub: COPY.journey.on(
           chainName(option.chainId),
-          settlement?.signedAt ? dateTime(settlement.signedAt) : null,
+          settlement?.signedAt ? at(settlement.signedAt) : null,
         ),
         status: settled ? null : (
           <span role="status" className="mt-1 inline-flex items-center gap-1">
@@ -312,7 +325,7 @@ function rowOf(step: JourneyStep, payment: PaymentDetail): Row {
           </span>
         ),
         title: COPY.returned,
-        sub: COPY.journey.on(chainName(step.option.chainId), dateTime(step.sent.blockTime)),
+        sub: COPY.journey.on(chainName(step.option.chainId), at(step.sent.blockTime)),
         amount: (
           <>
             −{" "}
@@ -372,7 +385,12 @@ function DepositState({ deposit }: { deposit: PaymentDeposit }) {
     );
   if (deposit.status === API_DEPOSIT_STATUSES.detected)
     return (
-      <span className="mt-1">
+      <span className="mt-1 inline-flex items-center gap-1.5 rounded-sm bg-surface-2 py-0.5 pr-1 pl-2 whitespace-nowrap [&_span]:text-xs">
+        <LoaderCircle
+          aria-hidden
+          data-motion="essential"
+          className="size-3.5 animate-[fw-spin_var(--fw-duration-slower)_linear_infinite] text-muted"
+        />
         <ConfirmingStatus
           blocks={deposit.blocksLeft}
           total={deposit.blocksTotal}

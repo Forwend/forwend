@@ -1,5 +1,5 @@
 import { cx } from "@forwend/ui-web";
-import { CircleCheck } from "lucide-react";
+import { CircleCheck, LoaderCircle } from "lucide-react";
 import type { ReactNode } from "react";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
 import { SUM_CELLS } from "@/features/payments/constants/payments";
@@ -8,6 +8,7 @@ import { crossChainOf, crossMoney } from "@/features/payments/lib/payment-journe
 import type { PaymentDetail, PaymentMoney, SumCell } from "@/features/payments/types/payments";
 import { AssetStack } from "@/shared/components/chains/asset-stack";
 import { blockchainName, chainName } from "@/shared/lib/chains";
+import { timeNear } from "@/shared/lib/dates";
 
 export interface PaymentSumProps {
   payment: PaymentDetail;
@@ -17,7 +18,7 @@ export interface PaymentSumProps {
 /** R-248: the payment's money as one sum. A row of figures on wide screens; on narrow ones the last figure is the
  * headline and the others are lines under it. */
 export function PaymentSum({ payment, money }: PaymentSumProps) {
-  const { cells, adds, lead, paidWith, settled } = money;
+  const { cells, adds, lead, paidWith, settled, moving } = money;
   const headline = cells.find((cell) => cell.id === SUM_CELLS.wallet) ?? cells[0];
   const cross = crossChainOf(payment);
   const place = paidWith ? COPY.sum.on(paidWith.symbol, chainName(paidWith.chainId)) : null;
@@ -32,6 +33,7 @@ export function PaymentSum({ payment, money }: PaymentSumProps) {
     lead && cells[0]?.id === SUM_CELLS.paid && cells[0].units !== BigInt(lead.amount)
       ? COPY.sum.ofRequested(crossMoney(BigInt(lead.amount), lead))
       : null;
+  const signedAt = paidWith?.settlement?.signedAt;
   const notes: Partial<Record<SumCell["id"], ReactNode>> = {
     paid: (
       <>
@@ -43,11 +45,24 @@ export function PaymentSum({ payment, money }: PaymentSumProps) {
     requested: sent ? COPY.sum.sent(...sent) : place ? COPY.sum.payingWith(place) : null,
     networkFee: COPY.sum.feeNote,
     platformFee: COPY.sum.feeNote,
-    wallet: place,
+    wallet:
+      settled && signedAt && place ? (
+        COPY.sum.at(place, timeNear(signedAt, payment.createdAt))
+      ) : moving && paidWith ? (
+        <>
+          <span className="lg:hidden">{COPY.sum.expectedOnce(chainName(paidWith.chainId))}</span>
+          <span className="max-lg:hidden">{place}</span>
+        </>
+      ) : (
+        place
+      ),
   };
   const dense = cells.length > 3;
   return (
-    <section aria-label={COPY.amount} className="fw-panel overflow-hidden">
+    <section
+      aria-label={COPY.amount}
+      className="overflow-hidden rounded-lg border border-line bg-surface"
+    >
       <dl className="flex flex-col lg:flex-row">
         {cells.map((cell, i) => {
           const end = cell.id === SUM_CELLS.wallet;
@@ -57,10 +72,10 @@ export function PaymentSum({ payment, money }: PaymentSumProps) {
             <div
               key={cell.id}
               className={cx(
-                "relative flex min-w-0 gap-x-4 gap-y-1.5 px-4 sm:px-5 lg:flex-1 lg:flex-col lg:border-l lg:border-line lg:px-6 lg:py-5 lg:first:border-l-0",
+                "relative flex min-w-0 gap-x-4 gap-y-1.5 lg:flex-1 lg:flex-col lg:border-l lg:border-line lg:px-6 lg:py-5 lg:first:border-l-0",
                 top
-                  ? "flex-col py-4 max-lg:order-first"
-                  : "border-line py-3 max-lg:items-baseline max-lg:justify-between max-lg:border-t",
+                  ? "flex-col px-4 py-4 max-lg:order-first"
+                  : "border-line py-3 max-lg:mx-4 max-lg:items-baseline max-lg:justify-between max-lg:border-t",
                 end && "lg:flex-[1.25] lg:bg-surface-2",
               )}
             >
@@ -76,11 +91,27 @@ export function PaymentSum({ payment, money }: PaymentSumProps) {
                     {sign}
                   </span>
                 ) : null}
-                <span>
-                  {COPY.sum.cells[cell.id === SUM_CELLS.wallet && !settled ? "expected" : cell.id]}
-                </span>
+                {end && moving ? (
+                  // On a narrow screen the headline says the money is moving; the row of figures names what it will be.
+                  <>
+                    <span className="lg:hidden">{COPY.sum.onItsWay}</span>
+                    <span className="max-lg:hidden">{COPY.sum.cells.expected}</span>
+                  </>
+                ) : (
+                  <span>{COPY.sum.cells[end && !settled ? "expected" : cell.id]}</span>
+                )}
                 {end && settled ? (
-                  <CircleCheck aria-hidden className="size-[var(--fw-icon-sm)] text-success" />
+                  <CircleCheck
+                    aria-hidden
+                    className="size-[var(--fw-icon-sm)] text-success max-lg:order-first"
+                  />
+                ) : null}
+                {end && moving ? (
+                  <LoaderCircle
+                    aria-hidden
+                    data-motion="essential"
+                    className="order-first size-[var(--fw-icon-sm)] animate-[fw-spin_var(--fw-duration-slower)_linear_infinite] text-muted lg:hidden"
+                  />
                 ) : null}
               </dt>
               <dd
@@ -120,7 +151,7 @@ export function PaymentSum({ payment, money }: PaymentSumProps) {
         })}
         {paidWith ? null : (
           // Before any money it says what the customer may pay with.
-          <div className="flex min-w-0 items-center justify-between gap-x-4 gap-y-1.5 border-line px-4 py-3 max-lg:border-t sm:px-5 lg:flex-1 lg:flex-col lg:items-start lg:justify-start lg:border-l lg:px-6 lg:py-5">
+          <div className="flex min-w-0 items-center justify-between gap-x-4 gap-y-1.5 border-line py-3 max-lg:mx-4 max-lg:border-t lg:flex-1 lg:flex-col lg:items-start lg:justify-start lg:border-l lg:px-6 lg:py-5">
             <dt className="text-sm text-muted">{COPY.accepts}</dt>
             <dd className="min-w-0 text-sm text-ink">
               <AssetStack assets={payment.options} label={COPY.options(payment.optionCount)} />

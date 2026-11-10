@@ -11,7 +11,7 @@ import {
   Tooltip,
   WalletStateLabel,
 } from "@forwend/ui-web";
-import { ExternalLink, FileDown } from "lucide-react";
+import { ExternalLink, FileDown, ReceiptText } from "lucide-react";
 import { type ReactNode, useId, useRef } from "react";
 import { InvoiceLines } from "@/features/invoices/components/invoice-lines";
 import { invoiceNumber, invoicePdfUrl, linesFigures } from "@/features/invoices/lib/invoices";
@@ -22,7 +22,11 @@ import { PaymentProblems } from "@/features/payments/components/payment-problems
 import { PaymentSum } from "@/features/payments/components/payment-sum";
 import { SOURCE_ICONS, SOURCE_LABELS } from "@/features/payments/constants/payments";
 import { PAYMENT_DETAIL_COPY as COPY } from "@/features/payments/constants/payments-copy";
-import { paymentJourney, paymentMoney } from "@/features/payments/lib/payment-journey";
+import {
+  checkoutOver,
+  paymentJourney,
+  paymentMoney,
+} from "@/features/payments/lib/payment-journey";
 import {
   heldHint,
   paymentDisplayStatus,
@@ -37,6 +41,7 @@ import { LineSkeleton } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
 import { dateTime } from "@/shared/lib/dates";
 
 const NOT_FOUND = 404;
@@ -80,9 +85,10 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
   // Items are in the base units of the option whose id is the payment's.
   const main = payment.options.find((option) => option.optionId === payment.paymentId);
   const money = paymentMoney(payment);
+  const paid = payment.paymentStatus === API_PAYMENT_STATUSES.paid;
   const SourceIcon = SOURCE_ICONS[payment.source];
   return (
-    <div className="flex flex-col gap-6">
+    <div className={PAGE}>
       <DetailHeader
         back={{ href: APP_ROUTES.payments, label: COPY.back }}
         icon={<SourceIcon aria-hidden />}
@@ -115,35 +121,52 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
             {payment.storeName ? ` · ${payment.storeName}` : ""} · {dateTime(payment.createdAt)}
           </>
         }
-        actions={
-          <>
-            {payment.hostedUrl ? (
-              <a
-                href={`${payment.hostedUrl}?preview=1`}
-                target="_blank"
-                rel="noopener"
-                className={buttonClasses({ variant: "secondary" })}
-              >
-                {payment.paymentStatus === "paid" ? COPY.viewReceipt : COPY.viewCheckout}
-                <ExternalLink aria-hidden className="size-[var(--fw-icon-sm)]" />
-              </a>
-            ) : null}
-            <ExportPayments profileId={profileId} paymentId={paymentId} />
-            {actions?.(payment, () => title.current?.focus())}
-          </>
-        }
       />
-      {read.error ? (
-        <LoadError
-          inline
-          message={COPY.stale}
-          onRetry={() => void read.refetch()}
-          retrying={read.isFetching}
-        />
-      ) : null}
-      <PaymentProblems problems={payment.problems} />
-      <div className="flex flex-col gap-6 motion-safe:animate-[fw-fade-in_var(--fw-duration-base)_var(--fw-ease-out)]">
+      <div className="flex flex-col gap-6 empty:hidden lg:col-span-2">
+        {read.error ? (
+          <LoadError
+            inline
+            message={COPY.stale}
+            onRetry={() => void read.refetch()}
+            retrying={read.isFetching}
+          />
+        ) : null}
+        <PaymentProblems problems={payment.problems} />
+      </div>
+      <div className={`${FADE} lg:col-span-2`}>
         <PaymentSum payment={payment} money={money} />
+      </div>
+      <div className={ACTIONS}>
+        {payment.hostedUrl ? (
+          <a
+            href={`${payment.hostedUrl}?preview=1`}
+            target="_blank"
+            rel="noopener"
+            className={buttonClasses({ variant: "secondary" })}
+          >
+            {paid ? (
+              <ReceiptText aria-hidden className="size-[var(--fw-icon-sm)]" />
+            ) : (
+              <ExternalLink aria-hidden className="size-[var(--fw-icon-sm)]" />
+            )}
+            <span className="lg:hidden">{paid ? COPY.receipt : COPY.checkout}</span>
+            <span className="max-lg:hidden">{paid ? COPY.viewReceipt : COPY.viewCheckout}</span>
+          </a>
+        ) : null}
+        {payToken && payment.documentKind !== "none" ? (
+          // Details has this link too; on a narrow screen it is far below.
+          <a
+            href={invoicePdfUrl(payToken, "invoice")}
+            className={`${buttonClasses({ variant: "secondary" })} lg:hidden`}
+          >
+            <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />
+            {COPY.invoiceShort}
+          </a>
+        ) : null}
+        <ExportPayments profileId={profileId} paymentId={paymentId} />
+        {actions?.(payment, () => title.current?.focus())}
+      </div>
+      <div className={`${FADE} lg:col-span-2`}>
         <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(24rem,2fr)] xl:items-start">
           <div className="flex min-w-0 flex-col gap-6">
             <PaymentJourney payment={payment} steps={paymentJourney(payment, money)} />
@@ -195,7 +218,7 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
                     <span className="block break-all text-muted">{payment.customer.email}</span>
                   ) : null}
                 </DetailRow>
-                <DetailRow term={payment.closed ? COPY.closed : COPY.closes}>
+                <DetailRow term={checkoutOver(payment) ? COPY.closed : COPY.closes}>
                   {dateTime(payment.closesAt)}
                 </DetailRow>
                 {Object.entries(payment.metadata).map(([key, value]) => (
@@ -231,6 +254,13 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
   );
 }
 
+// One column on narrow screens, in the order written: header, notices, the sum, the actions, the rest. From large
+// screens the grid puts the actions beside the header. They stay one element, so a dialog they open is drawn once.
+const PAGE = "grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start";
+const ACTIONS =
+  "flex flex-wrap items-center gap-2 max-lg:*:flex-1 lg:col-start-2 lg:row-start-1 lg:justify-end";
+const FADE = "motion-safe:animate-[fw-fade-in_var(--fw-duration-base)_var(--fw-ease-out)]";
+
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   const id = useId();
   return (
@@ -254,7 +284,7 @@ function PdfLink({ href, children }: { href: string; children: ReactNode }) {
 
 function DetailSkeleton() {
   return (
-    <div aria-busy className="flex flex-col gap-6">
+    <div aria-busy className={PAGE}>
       <span className="sr-only" role="status">
         {COPY.loading}
       </span>
@@ -262,17 +292,21 @@ function DetailSkeleton() {
         back={{ href: APP_ROUTES.payments, label: COPY.back }}
         // The source's icon is not known yet: an empty tile.
         icon={<span />}
+        actions={null}
       />
-      <div aria-hidden className="fw-panel flex flex-col overflow-hidden lg:flex-row">
+      <div
+        aria-hidden
+        className="flex flex-col overflow-hidden rounded-lg border border-line bg-surface lg:col-span-2 lg:flex-row"
+      >
         {SKELETON_CELLS.map((cell, i) => (
           // On narrow screens the first is the headline and the others are lines under it, as in the sum.
           <div
             key={cell}
             className={cx(
-              "flex flex-1 gap-1.5 border-line px-4 sm:px-5 lg:flex-col lg:border-l lg:px-6 lg:py-5 lg:first:border-l-0",
+              "flex flex-1 gap-1.5 border-line lg:flex-col lg:border-l lg:px-6 lg:py-5 lg:first:border-l-0",
               i === 0
-                ? "flex-col py-4"
-                : "py-3 max-lg:items-center max-lg:justify-between max-lg:border-t",
+                ? "flex-col px-4 py-4"
+                : "py-3 max-lg:mx-4 max-lg:items-center max-lg:justify-between max-lg:border-t",
             )}
           >
             <LineSkeleton size="text-sm" className="w-24" />
@@ -286,7 +320,11 @@ function DetailSkeleton() {
           </div>
         ))}
       </div>
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(24rem,2fr)] xl:items-start">
+      <div aria-hidden className={ACTIONS}>
+        <Skeleton className="h-10 w-36" />
+        <Skeleton className="h-10 w-24" />
+      </div>
+      <div className="grid gap-6 lg:col-span-2 xl:grid-cols-[minmax(0,3fr)_minmax(24rem,2fr)] xl:items-start">
         <div aria-hidden className="fw-panel overflow-hidden">
           <div className="fw-panel-head">
             <LineSkeleton size="text-base" className="w-44" />

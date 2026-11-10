@@ -66,6 +66,7 @@ export const SUM_CELLS = {
 export const JOURNEY_KINDS = {
   created: "created",
   origin: "origin",
+  surplus: "surplus",
   converting: "converting",
   awaiting: "awaiting",
   deposit: "deposit",

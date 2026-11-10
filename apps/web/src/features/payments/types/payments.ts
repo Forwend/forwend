@@ -53,12 +53,17 @@ export interface PaymentMoney {
   /** The first figure less every one after it equals the last: only then the page draws the sum's signs. */
   adds: boolean;
   settled: boolean;
+  /** Paid and on its way: the wallet transfer is neither done, refused nor waiting. */
+  moving: boolean;
 }
 /** One row of How the money moved: a fact the API gave, or the next thing to happen. */
 export type JourneyStep = { id: string; state: TimelineState } & (
   | { kind: typeof JOURNEY_KINDS.created | typeof JOURNEY_KINDS.closed }
   | {
-      kind: typeof JOURNEY_KINDS.origin | typeof JOURNEY_KINDS.converting;
+      kind:
+        | typeof JOURNEY_KINDS.origin
+        | typeof JOURNEY_KINDS.surplus
+        | typeof JOURNEY_KINDS.converting;
       cross: CrossChainPayment;
     }
   /** With the NEAR Intents payment whose USDC it waits for. */

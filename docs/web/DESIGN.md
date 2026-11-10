@@ -477,26 +477,34 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The payment status and the wallet transfer are separate (D-114): a status badge, then quiet wallet text
     (Pending, In wallet, Delayed, Needs review, or a dash before anything is due).
   - Unpaid attempts stay visible; requested amounts never imply received or settled money.
-  - Payment details use `DetailHeader` with the source's icon tile, the status and wallet badges by the title, and
-    Open checkout or Open receipt and Export (both 40px). The header has no figure: the sum under it is the figure.
+  - Payment details use `DetailHeader` with the source's icon tile and the status and wallet badges by the title.
+    - The header has no figure: the sum under it is the figure.
+    - Open checkout or Open receipt and Export (both 40px) sit beside the header from large screens.
+    - Below large screens they sit under the sum, each as wide as the others: Receipt or Checkout, Invoice, Export.
+    - Invoice opens the invoice PDF and shows only there; Details keeps the same link. Each button leads with its icon.
+    - They are one element after the sum in the page, placed beside the header by the page's grid from large screens.
   - A notice under the header names each problem no other part shows, once (R-192).
     - Payment records to review, an unexpected transfer, a webhook that fails.
     - The wallet transfer and what is still due are never repeated.
   - Under the header, the money is one sum (R-248): Customer paid, each amount taken from it, In your wallet.
     - The figures taken are Returned to the payer, Held for the customer, Network fee and Platform fee, each only above 0.
-    - The last figure is In your wallet once settled, with a success check, else Expected in your wallet.
+    - The last figure is In your wallet once settled, with a success check and the transfer's time, else Expected in your wallet.
+    - Paid, with a transfer not refused or waiting, the narrow headline reads "On its way to your wallet" with a
+      spinner and "Expected once Base confirms it". Anything else not settled keeps Expected in your wallet.
     - From large screens the figures sit in a row; the last one is larger, on the tinted surface.
     - A round sign sits on each divider: minus before each amount taken, equals before the last figure.
     - The signs show only when the first figure less the others equals the last. A part payment shows Still due and no signs.
     - Each figure has one quiet note: the token and network, "Sent as 0.00035 ETH on Arbitrum" through NEAR Intents,
       or "Taken before your wallet" for a fee.
     - Customer paid adds "of 1.23 USDC requested" when the money that came differs from the request.
+    - The sum is a bordered card with the large radius on every width; it never bleeds to the screen's edge.
     - Below large screens the last figure is the headline, and the others are lines under it with a minus sign.
     - Before money the first figure is Requested. Its note is "Paying with" and the token once the customer locked one.
     - Until then a last cell reads Accepts: an `AssetStack` and "4 options, the customer picks".
     - The owner sees no fee or wallet figure on a payment canceled or closed unpaid.
   - How the money moved (R-248) is one list for every movement, in place of a transfers table and a timeline.
     - A row has a node on one connecting line, a title, where and when under it, the amount, and the explorer link.
+    - A row made the day the payment was shows its time alone; another day adds the date (`timeNear`).
     - Order: Created, deposits by time, fees, the wallet transfer or Checkout closed, then returns by time.
     - The amount sits beside the text while both fit; a long one moves under it and may break.
     - Money rows show the token's logo with its network: Customer sent, To your wallet or In your wallet (a filled
@@ -504,14 +512,17 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - Notes between them are smaller and muted: Created, Network fee with its amount, Checkout closed.
     - The explorer link shows the short hash from small screens and the icon alone on phones.
     - The deposit that paid the payment carries the Paid badge. A booked deposit shows no other state.
-    - A deposit still confirming shows "Confirming (n/m)" with the time left in an info tooltip, or "being verified".
+    - A deposit still confirming shows a soft box with a spinner, "Confirming (n/m)" and the time left in an info
+      tooltip, or "being verified".
     - A late deposit shows a neutral Held for the customer badge.
     - A wallet transfer not yet settled shows one badge: Preparing, Confirming, Delayed, Daily limit reached,
       Check the transaction or Needs review.
     - What has not happened yet is in subtle text with an outlined node: Waiting for the payment, To your wallet.
+    - A payment whose status is expired or canceled ends with Checkout closed, also before the API's closed flag.
     - The first row not done is the current step (`aria-current="step"`); a fee line never is.
   - A payment through NEAR Intents (R-239) adds two rows before the Base deposit.
-    - Customer sent: the customer's token and chain logos, the amount, any part 1Click returned, and its transaction.
+    - Customer sent: the customer's token and chain logos, the amount and its transaction.
+    - Returned to the customer, a quiet line under it, when 1Click sent part of it back.
     - Converted by NEAR Intents, or Converting through NEAR Intents until 1Click delivered or its money paid the payment.
     - NEAR Intents is NEAR's mark and the words, never a wordmark image.
     - The Base deposit 1Click delivered reads "Converted to USDC"; any other deposit reads Customer sent.

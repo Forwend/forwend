@@ -123,7 +123,7 @@ export const SAMPLE_PAYMENTS: readonly { title: string; payment: PaymentDetail }
     payment: payment({
       options: [settledOption("1230000")],
       receipts: receipt("1230000"),
-      crossChain,
+      crossChain: { ...crossChain, deposited: "588120000000000", refunded: "4688999911008" },
     }),
   },
   {

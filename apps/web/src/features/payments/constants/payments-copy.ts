@@ -67,10 +67,13 @@ export const PAYMENT_DETAIL_COPY = {
   loading: "Loading payment",
   viewReceipt: "Open receipt",
   viewCheckout: "Open checkout",
+  // The same two on a narrow screen, where three buttons share a row.
+  receipt: "Receipt",
+  checkout: "Checkout",
+  invoiceShort: "Invoice",
   amount: "Amount",
   // R-239: what the customer sent on its own chain, which NEAR Intents converted.
   crossChain: {
-    refunded: (amount: string) => `${amount} returned to the customer's refund address`,
     tag: "via NEAR Intents",
   },
   // R-248: the payment's money as one sum, then every movement of it.
@@ -92,6 +95,9 @@ export const PAYMENT_DETAIL_COPY = {
     payingWith: (place: string) => `Paying with ${place}`,
     ofRequested: (money: string) => `of ${money} requested`,
     feeNote: "Taken before your wallet",
+    onItsWay: "On its way to your wallet",
+    expectedOnce: (chain: string) => `Expected once ${chain} confirms it`,
+    at: (place: string, when: string) => `${place} · ${when}`,
   },
   journey: {
     title: "How the money moved",
@@ -99,6 +105,7 @@ export const PAYMENT_DETAIL_COPY = {
     awaiting: "Waiting for the payment",
     awaitingBase: "USDC arrives on Base",
     sent: "Customer sent",
+    surplus: "Returned to the customer",
     converted: (symbol: string) => `Converted to ${symbol}`,
     convertedBy: "Converted by",
     converting: "Converting through",

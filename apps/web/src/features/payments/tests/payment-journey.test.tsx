@@ -168,6 +168,38 @@ describe("payment sum", () => {
     expect(sum(canceled).cells).toEqual([["paid", 500000n]]);
   });
 
+  it("calls the money on its way only once paid in full with a transfer that is not stuck", () => {
+    const settling = (settlement: object) =>
+      paymentMoney(
+        payment({
+          ...paid,
+          options: [
+            option({
+              amounts: { ...amounts, payable: "1230000" },
+              settlement,
+              deposits: [deposit(BASE_TX, "1230000")],
+            }),
+          ],
+        }),
+      ).moving;
+    expect(settling({ status: "sent", wait: null })).toBe(true);
+    expect(settling({ status: "refused", wait: null })).toBe(false);
+    expect(settling({ status: "pending", wait: "cap" })).toBe(false);
+    const part = payment({
+      optionLocked: true,
+      options: [option({ deposits: [deposit(BASE_TX, "500000")] })],
+      receipts: receipt("500000"),
+    });
+    expect(paymentMoney(part).moving).toBe(false);
+    // A small deposit held for the payer shows no Still due figure, and still pays nothing.
+    const dust = payment({
+      optionCount: 2,
+      options: [option({ deposits: [deposit(BASE_TX, "50000")] })],
+      receipts: receipt("50000", { held: "50000" }),
+    });
+    expect(paymentMoney(dust).moving).toBe(false);
+  });
+
   it("leaves out a fee of 0", () => {
     const free = option({
       networkFee: "0",
@@ -354,6 +386,12 @@ describe("payment journey", () => {
   it("ends a payment closed unpaid with Checkout closed, and no wallet step", () => {
     expect(kinds(payment({ closed: true })).map(([kind]) => kind)).toEqual(["created", "closed"]);
   });
+
+  it("ends a payment the API calls expired before its closed flag says so", () => {
+    const expired = payment({ state: "expired" });
+    expect(kinds(expired).map(([kind]) => kind)).toEqual(["created", "closed"]);
+    expect(sum(expired).cells).toEqual([["requested", 1230000n]]);
+  });
 });
 
 describe("PaymentJourney", () => {
@@ -370,7 +408,8 @@ describe("PaymentJourney", () => {
     );
     expect(markup).toContain("On Tron");
     expect(markup).toContain("101.62");
-    expect(markup).toContain("0.50 USDT returned to the customer&#x27;s refund address");
+    expect(markup).toContain("Returned to the customer");
+    expect(markup).toContain("0.50");
     expect(markup).toContain('href="https://tronscan.org/#/transaction/abc"');
     expect(markup).toContain("Converted by");
   });
