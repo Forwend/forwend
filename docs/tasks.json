@@ -140,7 +140,7 @@
         "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "lint",
@@ -240,11 +240,18 @@
           "summary": "Re-review: the three blockers are fixed. (1) transactions-table.tsx reads the live row by openedKey with a snapshot fallback; transaction-sheet.tsx keys SheetBody by transactionKey(t). (2) records.spec.ts finds the EUR button in the opened row's dialog; R-111 updated and in refs. (3) Acceptance 1 matches the code: Invoices/Requests have no day headings. Minor, left by choice: duplicated no-match sentence, TableSkeleton vs DataTableSkeleton, typeName, ListFilters outside ui-web, Invoices skeleton Store column. List e2e is live-only (e2e/privy); its proof needs check live-e2e.",
           "at": "2026-11-10T23:31:28Z",
           "filesHash": "ae89fdc726b50580"
-        }
+        },
+        "commit": "d07b49dd",
+        "doneAt": "2026-11-10T23:39:33Z"
       },
       "branch": "feat/f462-transactions-activity-and-payments-show",
       "baseCommit": "254ad6224f9e4421ad94761b83a9ad4a0ab82de4",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f462-transactions-activity-and-payments-show",
+        "base": "main"
+      }
     },
     {
       "id": "F465",
