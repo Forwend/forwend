@@ -183,3 +183,71 @@ func TestAlertsNameCrossChainPaymentsThatHoldMoney(t *testing.T) {
 		}
 	}
 }
+
+// A delivery alert ends once the option holds a deposit of at least what 1Click delivers, also when 1Click names its
+// transaction in another form, or a week after the deposit was seen. The newest alerts come first, so twenty old ones
+// can't hide a new one.
+func TestCrossChainAlertsEndAndTheNewestComeFirst(t *testing.T) {
+	ctx := context.Background()
+	pool, err := database.Open(ctx, databasetest.Migrated(t, database.Migrate))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	if _, err := pool.Exec(ctx, `
+		WITH u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:alice') RETURNING id),
+		     p AS (INSERT INTO profiles (user_id, kind) SELECT id, 'freelancer' FROM u RETURNING id)
+		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
+		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
+		SELECT '0x' || lpad(n::text, 64, '0'), id, 8453, 'evm', '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', 5000000,
+		    extract(epoch FROM now())::bigint + 600, extract(epoch FROM now())::bigint + 3600,
+		    '0x1111111111111111111111111111111111111111', 'evm_create2', '0x2222222222222222222222222222222222222222',
+		    '0x' || lpad(n::text, 40, '0'), 'key-' || n, decode(repeat('00', 32), 'hex') FROM p, generate_series(1, 23) n;
+		INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index, block_hash,
+		    block_number, block_time, from_address, to_address, amount, status)
+		VALUES (8453, 'evm', '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', '0x' || lpad('1', 64, '0'), '0x' || repeat('0b', 32), 0,
+		    '0x' || repeat('08', 32), 95, 1, '0x00000000000000000000000000000000000000ff', '0x' || lpad('1', 40, '0'),
+		    5000000, 'confirmed');
+		INSERT INTO crosschain_quotes (invoice_id, option_id, origin_asset, refund_to, deposit_address, amount_in,
+		    min_amount_in, amount_out, time_estimate, shown_until, deadline, signed, status, deposit_seen_at, converted_at,
+		    destination_txs, created_at, next_check_at)
+		SELECT '0x' || lpad(n::text, 64, '0'), '0x' || lpad(n::text, 64, '0'), 'nep141:x', 'x', a, 1, 1, 5000000, 0,
+		    now() - d, now() - d, '{}', s, now() - d, conv, '[{"hash": "0xffff"}]'::jsonb, now() - d, NULL::timestamptz
+		FROM (VALUES ('other-form-addr', 'SUCCESS', interval '2 hours', now() - interval '1 hour', 1),
+		             ('new-failed-addr', 'FAILED', interval '1 hour', NULL, 2),
+		             ('week-old-addr', 'SUCCESS', interval '8 days', now() - interval '8 days', 3)) AS q (a, s, d, conv, n)
+		UNION ALL
+		SELECT '0x' || lpad(n::text, 64, '0'), '0x' || lpad(n::text, 64, '0'), 'nep141:x', 'x', 'lost-' || n, 1, 1, 5000000, 0,
+		    now() - interval '3 days', now() - interval '3 days', '{}', 'SUCCESS', now() - interval '3 days',
+		    now() - interval '3 days', '[{"hash": "0xffff"}]', now() - interval '3 days', NULL
+		FROM generate_series(4, 23) n`); err != nil {
+		t.Fatal(err)
+	}
+	ids := map[string]string{}
+	rows, err := pool.Query(ctx, "SELECT deposit_address, id::text FROM crosschain_quotes")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for rows.Next() {
+		var a, id string
+		if err := rows.Scan(&a, &id); err != nil {
+			t.Fatal(err)
+		}
+		ids[a] = id
+	}
+	rows.Close()
+	var logs bytes.Buffer
+	defer slog.SetDefault(slog.Default())
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	if err := New(pool, nil, 1).alertCrossChain(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(logs.String(), ids["new-failed-addr"]) {
+		t.Fatalf("the newest alert is missing:\n%s", logs.String())
+	}
+	for _, quiet := range []string{"other-form-addr", "week-old-addr"} {
+		if strings.Contains(logs.String(), ids[quiet]) {
+			t.Fatalf("%s alerts:\n%s", quiet, logs.String())
+		}
+	}
+}

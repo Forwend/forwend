@@ -57,8 +57,15 @@ func (c *Client) Quote(ctx context.Context, ask Ask, dry bool) (Quote, error) {
 	if err != nil {
 		return Quote{}, err
 	}
-	return Check(answer, ask, dry, c.Signer)
+	return Check(answer, ask, dry, c.Signer, time.Now())
 }
+
+// A signed quote is shown only while fresh (D-124): signed within PriceWindow of now, and its address takes deposits for
+// AddressLeast more. An older one replayed could send a payer's money to an address 1Click no longer serves.
+const (
+	PriceWindow  = 15 * time.Minute
+	AddressLeast = time.Hour
+)
 
 func request(ask Ask, dry bool) map[string]any {
 	refundTo, refundType := ask.RefundTo, "ORIGIN_CHAIN"
@@ -77,9 +84,10 @@ func request(ask Ask, dry bool) map[string]any {
 var ErrMismatch = errors.New("1Click quote is not the one asked for")
 
 // Check verifies answer's signature by key, then that its signed request is ask's and its quote delivers exactly the
-// amount (D-124). The pay page runs the same checks before it shows the address. A real quote's request deadline is not
-// signed (1Click signs the address's own deadline in its place), so it is checked as 1Click's echo of what was asked.
-func Check(answer []byte, ask Ask, dry bool, key string) (Quote, error) {
+// amount (D-124), and that it is fresh at now. The pay page runs the same checks before it shows the address. A real
+// quote's request deadline is not signed (1Click signs the address's own deadline in its place), so it is checked as
+// 1Click's echo of what was asked.
+func Check(answer []byte, ask Ask, dry bool, key string, now time.Time) (Quote, error) {
 	a, err := verified(answer, key)
 	if err != nil {
 		return Quote{}, err
@@ -118,7 +126,12 @@ func Check(answer []byte, ask Ask, dry bool, key string) (Quote, error) {
 	}
 	q.MinAmountIn, ok2 = new(big.Int).SetString(text(a.quote, "minAmountIn"), 10)
 	q.AmountOut, ok3 = new(big.Int).SetString(text(a.quote, "amountOut"), 10)
+	signedAt, err := time.Parse(time.RFC3339, text(a.top, "timestamp"))
 	switch {
+	case err != nil || now.Sub(signedAt) > PriceWindow:
+		return Quote{}, fmt.Errorf("%w: signed at %q, over %s ago", ErrMismatch, text(a.top, "timestamp"), PriceWindow)
+	case !dry && (q.AddressDeadline == nil || q.AddressDeadline.Before(now.Add(AddressLeast))):
+		return Quote{}, fmt.Errorf("%w: its address takes deposits for under %s", ErrMismatch, AddressLeast)
 	case !ok1 || !ok2 || !ok3 || q.AmountIn.Sign() <= 0 || q.MinAmountIn.Sign() <= 0 || q.MinAmountIn.Cmp(q.AmountIn) > 0:
 		return Quote{}, fmt.Errorf("%w: amounts", ErrMismatch)
 	case q.AmountOut.Cmp(ask.Amount) != 0 || text(a.quote, "minAmountOut") != ask.Amount.String():

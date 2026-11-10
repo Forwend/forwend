@@ -7,6 +7,7 @@ import {
   firstPaymentOption,
   overpaid,
   payerNoticeOptions,
+  payFinal,
   payState,
   payToken,
   receiptDeposits,
@@ -40,6 +41,11 @@ const invoice: Invoice = {
   livemode: false,
   token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
   amount: "1000",
+  networkFee: "0",
+  platformFee: "0",
+  feesPaidBy: "owner",
+  purpose: "invoice",
+  documentKind: "invoice",
   recipient: `0x${"4".repeat(40)}`,
   factory: `0x${FACTORY}`,
   receiveAddress: `0x${"2".repeat(40)}`,
@@ -277,6 +283,35 @@ describe("payState", () => {
   });
 });
 
+describe("payFinal", () => {
+  it("stops asking once settled, or closed for good with nothing still confirming", () => {
+    expect(payFinal(invoice)).toBe(false);
+    expect(payFinal({ ...invoice, paymentStatus: "paid" })).toBe(false);
+    expect(payFinal({ ...invoice, paymentStatus: "paid", settlementStatus: "settled" })).toBe(true);
+    for (const paymentStatus of ["expired", "expired_partially_paid", "canceled"]) {
+      expect(payFinal({ ...invoice, paymentStatus }), paymentStatus).toBe(true);
+    }
+    const expired = { ...invoice, paymentStatus: "expired" };
+    expect(payFinal({ ...expired, confirming: true })).toBe(false);
+    expect(
+      payFinal({ ...expired, deposits: [deposit("1000", { status: "detected", late: true })] }),
+    ).toBe(false);
+    expect(payFinal({ ...expired, deposits: [deposit("1000", { late: true })] })).toBe(true);
+    // A cross-chain payment 1Click still converts can yet arrive.
+    const crossChain = (status: string) => ({ status }) as Invoice["crossChain"];
+    for (const status of [
+      "PENDING_DEPOSIT",
+      "KNOWN_DEPOSIT_TX",
+      "PROCESSING",
+      "INCOMPLETE_DEPOSIT",
+      "SUCCESS",
+    ]) {
+      expect(payFinal({ ...expired, crossChain: crossChain(status) }), status).toBe(false);
+    }
+    expect(payFinal({ ...expired, crossChain: crossChain("REFUNDED") })).toBe(true);
+  });
+});
+
 describe("receiptDeposits", () => {
   it("names only the payments that paid the creator (R-121)", () => {
     const paid = deposit("1000");
@@ -304,6 +339,9 @@ describe("withOption", () => {
     symbol: "USDC",
     decimals: 6,
     amount: "1000",
+    networkFee: "0",
+    platformFee: "0",
+    feesPaidBy: "owner" as const,
     deposits: [],
   };
   const choosing: Invoice = {
@@ -454,6 +492,9 @@ it("formats public return notices with build-owned token metadata and rejects un
     symbol: "FAKE",
     decimals: 18,
     amount: invoice.amount,
+    networkFee: "0",
+    platformFee: "0",
+    feesPaidBy: "owner",
     receiveAddress: invoice.receiveAddress,
     network: "base-sepolia",
     deposits: [],

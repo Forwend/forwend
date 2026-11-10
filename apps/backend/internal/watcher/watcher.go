@@ -378,13 +378,17 @@ func (c *Chain) invoices(ctx context.Context) (map[common.Address]receiver, erro
 
 var watchedAfterDeadline = 30 * 24 * time.Hour
 
+// mayHoldMoneySQL is ledger.MayHoldMoneySQL, the invoices_money_chain index's predicate; a test keeps them equal. The
+// watcher can't import ledger: the ledger's tests run the watcher.
+const mayHoldMoneySQL = `refund_status IN ('held', 'refund_pending') OR settlement_status <> 'settled' AND payment_status <> 'expired'`
+
 // holding adds to the watched invoices the receivers past the watch window that still hold booked money: the refund
 // authority may still settle, refund or recover it (R-183). Settled ones can hold only money held for the payer, and
 // expired ones only late money, which is held too: the status filter keeps the ledger sums off most old invoices.
 func (c *Chain) holding(ctx context.Context, invoices map[common.Address]receiver) (map[common.Address]receiver, error) {
 	rows, err := c.pool.Query(ctx, `SELECT receive_address, id, token_contract FROM invoices i
 		WHERE chain_id = $1 AND settle_deadline <= extract(epoch FROM now())::bigint - $2
-		  AND (refund_status IN ('held', 'refund_pending') OR settlement_status <> 'settled' AND payment_status <> 'expired')
+		  AND (`+mayHoldMoneySQL+`)
 		  AND (SELECT coalesce(sum(e.amount), 0) FROM ledger_entries e JOIN ledger_transactions t ON t.id = e.transaction_id
 		       WHERE t.invoice_id = i.id AND e.account = 'receiver') > 0`,
 		c.chainID, int64(watchedAfterDeadline/time.Second))
@@ -494,10 +498,12 @@ func (c *Chain) logs(ctx context.Context, lo, hi uint64, invoices map[common.Add
 		}
 		logs = append(logs, found...)
 	}
-	return invoiceLogs(logs, invoices), nil
+	logs, err := c.arcTwins(ctx, "chain_transfers", invoiceLogs(logs, invoices))
+	return nativeSends(logs), err
 }
 
-// invoiceLogs keeps the non-zero Transfer logs of each invoice's own token to its receive address.
+// invoiceLogs keeps the non-zero Transfer logs of each invoice's own token to its receive address, Arc's system logs
+// still unconverted (nativeSends).
 func invoiceLogs(logs []types.Log, invoices map[common.Address]receiver) []types.Log {
 	var out []types.Log
 	for _, l := range logs {
@@ -511,7 +517,7 @@ func invoiceLogs(logs []types.Log, invoices map[common.Address]receiver) []types
 			out = append(out, l)
 		}
 	}
-	return nativeSends(out)
+	return out
 }
 
 // table is chain_transfers or wallet_transfers.

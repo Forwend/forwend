@@ -20,6 +20,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -549,6 +550,23 @@ func TestReceiverWithAQueuedReturnStaysWatchedPastTheWindow(t *testing.T) {
 	if err := e.pool.QueryRow(ctx, "SELECT count(*) FROM receiver_outflows WHERE receiver_address = $1 AND kind = 'refund'",
 		held).Scan(&refunds); err != nil || refunds != 1 {
 		t.Fatalf("the queued return's refund: %d recorded, %v", refunds, err)
+	}
+}
+
+// The receivers past the window are read from the invoices_money_chain partial index: its predicate is
+// ledger.MayHoldMoneySQL, which holding uses as it is.
+func TestReceiversHoldingMoneyAreReadFromTheirIndex(t *testing.T) {
+	if mayHoldMoneySQL != ledger.MayHoldMoneySQL {
+		t.Fatalf("holding reads %q, the ledger %q", mayHoldMoneySQL, ledger.MayHoldMoneySQL)
+	}
+	url := databasetest.Migrated(t, database.Migrate)
+	plans := databasetest.Plans(t, url, func(pool *pgxpool.Pool) {
+		if _, err := NewChain(pool, 1, nil).holding(context.Background(), nil); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(plans, "invoices_money_chain ") {
+		t.Errorf("holding doesn't use invoices_money_chain:\n%s", plans)
 	}
 }
 

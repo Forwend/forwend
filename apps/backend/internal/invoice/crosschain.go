@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"regexp"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -23,7 +24,7 @@ const (
 	// price shows for crossChainShown, ending at least 5 minutes before that deadline.
 	crossChainDeadline    = time.Hour
 	crossChainBeforeClose = 10 * time.Minute
-	crossChainShown       = 15 * time.Minute
+	crossChainShown       = intents.PriceWindow
 	// A slow chain's deposit can take an hour to mine (intents.SlowChains): its deadline is crossChainSlowDeadline,
 	// bounded by the close the same way, and a token is offered only while that leaves crossChainSlowLeast.
 	crossChainSlowDeadline = 2 * time.Hour
@@ -44,6 +45,8 @@ var (
 	ErrProvider = errors.New("cross-chain provider unavailable")
 	// ErrNoLiquidity: 1Click has no liquidity for the token now (R-245); another token may convert.
 	ErrNoLiquidity = errors.New("1Click has no liquidity for this token now")
+	// ErrQuoteRefused: 1Click refused a quote for a reason that names neither a minimum, liquidity nor the refund address.
+	ErrQuoteRefused = errors.New("NEAR Intents refused this quote")
 )
 
 // CrossToken is a token a payer can pay with through 1Click; Estimate is about what they send, in its base units, at
@@ -72,8 +75,8 @@ type CrossQuote struct {
 	Signed         []byte // 1Click's answer byte for byte, so the pay page can check it (D-124)
 }
 
-// SetCrossChain lets payers pay through 1Click; nil leaves cross-chain off.
-func (s *Service) SetCrossChain(c *intents.Client) { s.crossChain = c }
+// SetCrossChain lets payers pay through 1Click; nil turns cross-chain off.
+func (s *Service) SetCrossChain(c *intents.Client) { s.crossChain, s.crossChainOff = c, c == nil }
 
 // crossTarget is what a payer pays into from another chain: the invoice's open Base USDC option, the amount still due
 // on it and its close.
@@ -295,7 +298,7 @@ func (s *Service) openQuote(ctx context.Context, target crossTarget, token inten
 	}
 	// The kept answer is checked again as the pay page checks it, so a changed row can't reach a payer.
 	quote, err := intents.Check([]byte(signed), intents.Ask{Origin: origin, Amount: target.due,
-		Recipient: target.option.ReceiveAddress, RefundTo: refundTo, Deadline: *deadline}, false, s.crossChain.Signer)
+		Recipient: target.option.ReceiveAddress, RefundTo: refundTo, Deadline: *deadline}, false, s.crossChain.Signer, now)
 	if err != nil {
 		return CrossQuote{}, providerError(err, target.invoice.ID, false)
 	}
@@ -333,10 +336,16 @@ func providerError(err error, invoiceID string, dry bool) error {
 		return err
 	case errors.Is(err, intents.ErrNoLiquidity): // the token's, never the refund address's
 		return ErrNoLiquidity
-	case errors.Is(err, intents.ErrRefused) && dry:
-		return fmt.Errorf("%w: originAsset: 1Click can't convert this token now", ErrInvalid)
 	case errors.Is(err, intents.ErrRefused):
-		return fmt.Errorf("%w: refundTo: 1Click refused the quote; check this is your address on the token's chain", ErrInvalid)
+		// 1Click's refusals are free text: its words show in the log when it rewords one the patterns read.
+		slog.Warn("1Click refused a quote", "invoice", invoiceID, "dry", dry, "err", err)
+		switch {
+		case dry:
+			return fmt.Errorf("%w: originAsset: 1Click can't convert this token now", ErrInvalid)
+		case strings.Contains(err.Error(), "refundTo"):
+			return fmt.Errorf("%w: refundTo: 1Click refused the quote; check this is your address on the token's chain", ErrInvalid)
+		}
+		return ErrQuoteRefused
 	case errors.Is(err, intents.ErrSignature) || errors.Is(err, intents.ErrMismatch):
 		slog.Error("ALERT cross-chain quote failed its checks", "invoice", invoiceID, "err", err)
 	default:

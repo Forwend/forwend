@@ -270,4 +270,11 @@ func TestOneClickSignerKeyOnlyForAFakeOnLoopback(t *testing.T) {
 	if w, err := config.LoadWorker(); err != nil || w.OneClick.URL != config.DefaultOneClickURL || w.OneClick.Signer != "" {
 		t.Fatalf("default: %+v, %v", w.OneClick, err)
 	}
+	if a, err := config.LoadAPI(); err != nil || a.CrossChainOff {
+		t.Fatalf("default: cross-chain off %v, %v", a.CrossChainOff, err)
+	}
+	t.Setenv("CROSSCHAIN_OFF", "1")
+	if a, err := config.LoadAPI(); err != nil || !a.CrossChainOff {
+		t.Fatalf("CROSSCHAIN_OFF=1: cross-chain off %v, %v", a.CrossChainOff, err)
+	}
 }

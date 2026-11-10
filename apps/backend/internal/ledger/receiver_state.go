@@ -11,7 +11,7 @@ import (
 // ReceiverState is what the chain's scan has verified for a receive address. The scan reads every watched address
 // together, so its coverage is the chain's finalized cursor; a balance the ledger can't explain has a balance alert.
 // HistoryComplete holds while the scan still reads the address's deposits: until 30 days after its settle deadline
-// (watcher.watchedAfterDeadline). UnprovedDeposits is 1 while the chain holds money no recorded deposit explains.
+// (watcher.watchedAfterDeadline), or while a deposit to it is detected. UnprovedDeposits is 1 while the chain holds money no recorded deposit explains.
 type ReceiverState struct {
 	InvoiceID                                                                            string
 	PaymentStatus, SettlementStatus, RefundStatus                                        string
@@ -57,6 +57,8 @@ func ReadReceiverStates(ctx context.Context, db interface {
 			&state.HistoryComplete); err != nil {
 			return nil, err
 		}
+		// As watcher.invoices: past the window, a receiver with a detected deposit is still read until it confirms.
+		state.HistoryComplete = state.HistoryComplete || state.PendingDeposits > 0
 		state.ChainFinalizedBlock = state.VerifiedBlock
 		if at != nil {
 			value := time.Unix(*at, 0).UTC()

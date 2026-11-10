@@ -75,6 +75,11 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 	} else if err != nil {
 		return false, fmt.Errorf("claim email event: %w", err)
 	}
+	// A read that fails rolls back to here, so the claim's transaction can still record the failed try.
+	sp, err := tx.Begin(ctx)
+	if err != nil {
+		return false, fmt.Errorf("deliver email: %w", err)
+	}
 	var (
 		v     view
 		to    *string
@@ -85,18 +90,18 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 	case outbox.Welcome:
 		// About the account, not a profile's invoices: the profile's email setting doesn't apply (R-84).
 		on, scope, v = true, "user-"+user, welcome(site.WebURL+"/app")
-		if err := tx.QueryRow(ctx, "SELECT login_email FROM users WHERE id = $1", user).Scan(&to); err != nil {
-			return false, fmt.Errorf("read email event %d user: %w", id, err)
+		if err = sp.QueryRow(ctx, "SELECT login_email FROM users WHERE id = $1", user).Scan(&to); err != nil {
+			err = fmt.Errorf("read email event %d user: %w", id, err)
 		}
 	case outbox.Change:
 		scope = "job-" + job
-		if v, to, on, err = changeEmail(ctx, tx, job, payload, site.WebURL); err != nil {
-			return false, fmt.Errorf("read email event %d: %w", id, err)
+		if v, to, on, err = changeEmail(ctx, sp, job, payload, site.WebURL); err != nil {
+			err = fmt.Errorf("read email event %d: %w", id, err)
 		}
 	case outbox.Invite:
 		scope = "invite-" + invite
-		if v, to, on, err = inviteEmail(ctx, tx, invite, payload, site.WebURL); err != nil {
-			return false, fmt.Errorf("read email event %d: %w", id, err)
+		if v, to, on, err = inviteEmail(ctx, sp, invite, payload, site.WebURL); err != nil {
+			err = fmt.Errorf("read email event %d: %w", id, err)
 		}
 	case outbox.WalletOutflow:
 		// About the owner's money: the profile's email setting doesn't apply.
@@ -104,13 +109,14 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 		var symbol, counterparty, hash, amount string
 		var decimals int
 		var chainID uint64
-		if err := tx.QueryRow(ctx, `SELECT u.login_email, t.symbol, t.decimals, w.chain_id, w.counterparty, w.tx_hash,
+		if err = sp.QueryRow(ctx, `SELECT u.login_email, t.symbol, t.decimals, w.chain_id, w.counterparty, w.tx_hash,
 			    w.amount::text
 			FROM wallet_transfers w JOIN profile_wallets pw ON pw.address = w.wallet_address
 			JOIN profiles p ON p.id = pw.profile_id JOIN users u ON u.id = p.user_id
 			JOIN tokens t ON t.chain_id = w.chain_id AND t.contract = w.token_contract WHERE w.id = $1`, transfer).
 			Scan(&to, &symbol, &decimals, &chainID, &counterparty, &hash, &amount); err != nil {
-			return false, fmt.Errorf("read email event %d transfer: %w", id, err)
+			err = fmt.Errorf("read email event %d transfer: %w", id, err)
+			break
 		}
 		units, _ := new(big.Int).SetString(amount, 10)
 		v = outflow(document.Amount(units, decimals, symbol), counterparty, document.NetworkName(chainID),
@@ -118,20 +124,45 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 	case outbox.SettleWaiting:
 		// About the account's settlements, so the profile's email setting doesn't apply.
 		on, scope, v = true, "waiting-"+invoice, waiting(site.WebURL+"/app/transactions")
-		if err := tx.QueryRow(ctx, `SELECT u.login_email FROM invoices i JOIN profiles p ON p.id = i.profile_id
+		if err = sp.QueryRow(ctx, `SELECT u.login_email FROM invoices i JOIN profiles p ON p.id = i.profile_id
 			JOIN users u ON u.id = p.user_id WHERE i.id = $1`, invoice).Scan(&to); err != nil {
-			return false, fmt.Errorf("read email event %d owner: %w", id, err)
+			err = fmt.Errorf("read email event %d owner: %w", id, err)
 		}
+	case outbox.RetainerFailed:
+		// About the owner's own billing, so the profile's email setting doesn't apply.
+		on, scope = true, "retainer-"+invoice
+		var number int64
+		var client string
+		if err = sp.QueryRow(ctx, `SELECT u.login_email, i.number, coalesce(i.client_name, i.client_email, '')
+			FROM invoices i JOIN profiles p ON p.id = i.profile_id JOIN users u ON u.id = p.user_id WHERE i.id = $1`,
+			invoice).Scan(&to, &number, &client); err != nil {
+			err = fmt.Errorf("read email event %d invoice: %w", id, err)
+			break
+		}
+		var p outbox.Payload
+		if err = json.Unmarshal(payload, &p); err != nil {
+			break
+		}
+		v = retainerFailed(document.Number(number), client, document.DateText(p.Due), site.WebURL+"/app/invoices/"+invoice)
 	case outbox.WebhookDisabled:
 		scope = "endpoint-" + endpoint
-		if v, to, on, err = disabledEmail(ctx, tx, endpoint, payload, site.WebURL); err != nil {
-			return false, fmt.Errorf("read email event %d: %w", id, err)
+		if v, to, on, err = disabledEmail(ctx, sp, endpoint, payload, site.WebURL); err != nil {
+			err = fmt.Errorf("read email event %d: %w", id, err)
 		}
 	default:
 		scope = invoice
-		if v, to, on, err = invoiceEmail(ctx, tx, kind, invoice, payload, site.WebURL); err != nil {
-			return false, fmt.Errorf("read email event %d: %w", id, err)
+		if v, to, on, err = invoiceEmail(ctx, sp, kind, invoice, payload, site.WebURL); err != nil {
+			err = fmt.Errorf("read email event %d: %w", id, err)
 		}
+	}
+	if err != nil {
+		if err := sp.Rollback(ctx); err != nil {
+			return false, fmt.Errorf("deliver email: %w", err)
+		}
+		return failed(ctx, tx, id, kind, invoice, payload, attempts, err, true)
+	}
+	if err := sp.Commit(ctx); err != nil {
+		return false, fmt.Errorf("deliver email: %w", err)
 	}
 	if !on || to == nil || *to == "" {
 		// Email off for this profile, or no login email ('' when the account has none; NULL when it was never read):
@@ -147,31 +178,16 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 	// invoice edited between two tries changes it.
 	m, err := message(site, v)
 	if err != nil {
-		return false, fmt.Errorf("render email event %d: %w", id, err)
+		err = fmt.Errorf("render email event %d: %w", id, err)
+		return failed(ctx, tx, id, kind, invoice, payload, attempts, err, true)
 	}
 	m.To = *to
 	sum := sha256.Sum256(fmt.Appendf(nil, "%q|%q|%q|%q|%q|%q", m.To, m.Subject, m.Text, m.HTML, m.ReplyTo, m.Unsubscribe))
 	m.Key = fmt.Sprintf("forwend-%s-%d-%x", scope, id, sum[:8])
 	if sent := sender.Send(ctx, m); sent != nil {
-		attempts++
-		if attempts >= MaxAttempts {
-			slog.Error("email given up", "event", id, "kind", kind, "attempts", attempts, "err", sent)
-			_, err = tx.Exec(ctx, "UPDATE outbox_events SET attempts = $2, failed_at = now(), "+dropToken+" WHERE id = $1",
-				id, attempts)
-			if err == nil {
-				err = addHistory(ctx, tx, kind, invoice, payload, true)
-			}
-		} else {
-			slog.Warn("email failed; trying again later", "event", id, "kind", kind, "attempt", attempts, "err", sent)
-			_, err = tx.Exec(ctx, "UPDATE outbox_events SET attempts = $2, next_attempt_at = now() + $3 WHERE id = $1",
-				id, attempts, Backoff(attempts))
-		}
-		if err != nil {
-			return false, fmt.Errorf("record email event %d failure: %w", id, err)
-		}
-		// A refused message goes on to the next: one bad address must not hold up every email behind it (R-115). Any
-		// other failure stops the round, so a failing or hanging Resend doesn't hold up the worker's chain rounds.
-		return errors.Is(sent, email.ErrRefused), tx.Commit(ctx)
+		// Any send failure other than a refusal stops the round, so a failing or hanging Resend doesn't hold up the
+		// worker's chain rounds.
+		return failed(ctx, tx, id, kind, invoice, payload, attempts, sent, errors.Is(sent, email.ErrRefused))
 	}
 	if _, err := tx.Exec(ctx, "UPDATE outbox_events SET attempts = attempts + 1, published_at = now(), "+dropToken+
 		" WHERE id = $1", id); err != nil {
@@ -181,6 +197,30 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 		return false, err
 	}
 	return true, tx.Commit(ctx)
+}
+
+// failed counts a failed try with Backoff and gives up after MaxAttempts; next says whether the round goes on. A refused
+// message or an event that can't be read or rendered must not hold up every email behind it (R-115).
+func failed(ctx context.Context, tx pgx.Tx, id int64, kind, invoice string, payload []byte, attempts int, cause error,
+	next bool) (bool, error) {
+	attempts++
+	var err error
+	if attempts >= MaxAttempts {
+		slog.Error("email given up", "event", id, "kind", kind, "attempts", attempts, "err", cause)
+		_, err = tx.Exec(ctx, "UPDATE outbox_events SET attempts = $2, failed_at = now(), "+dropToken+" WHERE id = $1",
+			id, attempts)
+		if err == nil {
+			err = addHistory(ctx, tx, kind, invoice, payload, true)
+		}
+	} else {
+		slog.Warn("email failed; trying again later", "event", id, "kind", kind, "attempt", attempts, "err", cause)
+		_, err = tx.Exec(ctx, "UPDATE outbox_events SET attempts = $2, next_attempt_at = now() + $3 WHERE id = $1",
+			id, attempts, Backoff(attempts))
+	}
+	if err != nil {
+		return false, fmt.Errorf("record email event %d failure: %w", id, err)
+	}
+	return next, tx.Commit(ctx)
 }
 
 // The client's and payer's emails go in the invoice's history (R-126): sent, or failed once given up.
@@ -499,6 +539,18 @@ func waiting(link string) view {
 		Lead: []string{why, "The money is safe. If payments keep coming at this pace, contact support so a payment " +
 			"isn't left waiting past its settle deadline."},
 		Reason: "You get this email because payments to your profiles are waiting to settle."}
+}
+
+// retainerFailed tells the owner a retainer's month failed RetainerFailuresTold times in a row, so its client got no
+// invoice yet (R-98).
+func retainerFailed(number, client, due, link string) view {
+	why := "Forwend could not make the invoice due " + due + " that repeats " + number + " for " + client + "."
+	return view{Subject: "Repeating invoice not made: " + number, Preheader: why, Badge: "Not made", Tone: "warning",
+		Title: "A repeating invoice was not made", Button: button{"View invoice", link},
+		Lead: []string{why, "Forwend keeps trying until the due date, then skips this month. Check the tokens and " +
+			"billing details of the profile, or stop the repeat on the invoice page."},
+		Details: []row{{Label: "Invoice", Value: number}, {Label: "Client", Value: client}, {Label: "Due", Value: due}},
+		Reason:  "You get this email because a repeating invoice of your profile could not be made."}
 }
 
 // disabled names only the endpoint's host: its path or query may hold the receiver's own token.

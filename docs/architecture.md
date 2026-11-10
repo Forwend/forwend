@@ -11,8 +11,9 @@ Requirements and decisions: [PROJECT.md](PROJECT.md).
 |---|---|---|---|
 | Web app (Next.js) | Landing, dashboard, hosted checkout, private `/kit` | No | [web](web/architecture.md) |
 | API | Signed-in users create invoices and read state; payers read checkout state | No | [backend](backend/architecture.md) |
-| Worker | Watches chains, keeps the append-only ledger, runs the invoice state machine; webhooks come in PLAN 11.5 | No | [backend](backend/architecture.md) |
+| Worker | Watches chains, keeps the append-only ledger, runs the invoice state machine | No | [backend](backend/architecture.md) |
 | Signer | Turns typed intents ("settle invoice X") into transactions with the executor key | Executor key | [backend](backend/architecture.md) |
+| Webhooks sender | Signs invoice events and posts them to the URLs owners register | Webhook secret key only | [backend](backend/architecture.md) |
 | Postgres | Profiles, invoices, chain transfers, ledger, intents | No | [backend](backend/architecture.md) |
 | Invoice receiver contracts | One receiver per invoice at an address known in advance; can only pay the invoice amount to its recipient or return money through the refund authority | No | [contracts](contracts/architecture.md) |
 | Refund-authority Safe | Multisig. Refunds, recoveries and late settles wait 24–48 h; pause and executor change are immediate | Owner hardware keys | [contracts operations](contracts/operations.md) |
@@ -25,6 +26,8 @@ Requirements and decisions: [PROJECT.md](PROJECT.md).
   a receiver: the receiver only pays its fixed recipient, or returns money through the Safe.
 - The signer has no public routes and no user sessions. It re-reads the ledger and the chain before signing, and the
   executor key can only settle to the recipient written in the terms. A leaked executor key is replaced by the Safe.
+- The webhooks sender is the one part that calls URLs users choose. It holds no money, Privy, email or RPC key, and
+  sends only to public addresses, checked after DNS.
 - Refunds and recoveries never go through the signer: an approved claim becomes a proposed Safe transaction that
   owners sign, then waits in the delay so an honest owner can cancel it.
 - The receive address is computed locally from the factory address and init-code hash compiled into the backend,

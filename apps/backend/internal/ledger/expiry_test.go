@@ -231,11 +231,30 @@ func TestPaidInvoiceWithUnbookedMoneyAlerts(t *testing.T) {
 func TestDustNoTransferExplainsDoesNotDelayExpiry(t *testing.T) {
 	s := newSim(t)
 	id, receive := s.invoice()
-	s.answer[receive] = big.NewInt(DustExcess - 1)
+	s.answer[receive] = new(big.Int).Sub(DustExcess(6), big.NewInt(1))
 	s.finalizedAt(simExpires + 1)
 	s.process(id)
 	if payment, _ := s.payment(id); payment != Expired {
 		t.Fatalf("with dust on chain: %s, want expired", payment)
+	}
+}
+
+// Dust is 0.01 of the invoice's own token, whatever its decimals: just under it expires, that much is a missed deposit.
+func TestDustFollowsTheTokensDecimals(t *testing.T) {
+	s := newSim(t)
+	s.exec("UPDATE tokens SET decimals = 18")
+	dust, receive := s.invoice()
+	s.answer[receive] = big.NewInt(1e16 - 1)
+	missed, receive := s.invoice()
+	s.answer[receive] = big.NewInt(1e16)
+	s.finalizedAt(simExpires + 1)
+	s.process(dust)
+	s.process(missed)
+	if payment, _ := s.payment(dust); payment != Expired {
+		t.Errorf("under 0.01 of an 18-decimal token on chain: %s, want expired", payment)
+	}
+	if payment, _ := s.payment(missed); payment == Expired {
+		t.Errorf("0.01 of an 18-decimal token on chain: %s, want not expired", payment)
 	}
 }
 
@@ -351,7 +370,7 @@ func TestUnexplainedBalanceWaitsLongerEachTime(t *testing.T) {
 	var stuck []string
 	for range 20 {
 		id, receive := s.invoice()
-		s.answer[receive] = big.NewInt(DustExcess)
+		s.answer[receive] = DustExcess(6)
 		stuck = append(stuck, id)
 	}
 	honest, receive := s.invoice()

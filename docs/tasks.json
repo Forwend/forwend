@@ -616,23 +616,111 @@
       "type": "fix",
       "behavior": "The low findings of the 2026-11-09 audit worth fixing are fixed",
       "acceptance": [
-        "Each low finding marked FIXED in the local audit report has a test or a check that proves it; the rest are listed for the owner to consider",
-        "Existing backend, web and contract checks pass unchanged"
+        "Signer and ops: dropped settles and operators are recorded, saved settles are re-sent only as the executor's settle of their own terms with a gas cap, stuck deploys get enough gas, only the lowest unmined settle waits, the lock ping and session give up fast, only real already-known errors count, and no fee bump while out of gas (audit A1-10, A2-05, A3-07, A3-08, A3-14, A3-16, A3-17)",
+        "Ledger, watcher, sends: an Arc transfer counts once, a reorged revert can become sent, dust follows the token's decimals, raw provider errors stay out of answers, holding reads use one predicate, and historyComplete matches what the scan reads (audit A1-07, A1-09, A1-11, A1-12, A2-06)",
+        "Cross-chain: an unfinished quote frees the invoice, a different delivered amount alerts, the refund fee shows, other refusals don't blame the refund address, a platform switch and a 401 alert exist, old signed quotes are refused, and delivery alerts end (audit A3-15, A4-08, A4-09, A4-10, A4-11, A4-12, A4-13)",
+        "Queues, contract and docs: one bad email or retainer month blocks nothing, webhook claims read through an index, every API error code is in the spec, reserved idempotency prefixes are refused, workflow actions are pinned, and the docs describe what runs (audit A3-12, A3-13, A5-09, A5-13, A2-07, A2-09, A5-10, A5-17, A3-19, A2-08)",
+        "Web: invoices carry state and wallet and require their fee fields, shared limits and tokens can't drift, dead code is gone, money pages have error boundaries and stop needless polling, and invoice changes refresh payments (audit A5-14, A5-15, A5-16, A5-18)"
       ],
       "dependsOn": [
         "F458"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "unit",
-        "docs-check"
+        "docs-check",
+        "e2e"
       ],
       "refs": [],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-10 review pass by reviewer: Independent review, two rounds. Round 1 PASS with two should-fix items, both fixed: the saved-settle sender and terms checks moved from the top of reconcile into unmined just before any send, so a mined settle confirms whatever changed (TestMinedSettleIsConfirmedEvenWhenItsTermsNoLongerCompute fails on the old placement); payFinal keeps polling for PENDING_DEPOSIT and SUCCESS. A replacement over MaxSettleGas now ALERTs. Round 2 PASS. Checked: key rotation and wallet change still finish a sent settle; unmined's lowest-nonce wait skips no receipt for good; settlement_dropped writes can't fail on their own; DustExcess(decimals) at all three callers; arcTwins can't double count; migrations 00123-00126 run in order and dropping invoices_profile is covered by the two new profile indexes; webhook LATERAL claim keeps one request per endpoint; reserved idempotency prefixes don't touch internal creators; fee fields are always sent so the stricter web schema is safe; CROSSCHAIN_OFF leaves tracking working; the 401 alert flag is safe. Lead also fixed: lock session TCP keepalives, and a timing flake in the shared 1Click budget test. Left for the owner: see the audit report's consider list."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-10T00:16:23Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 81.7,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 7.3,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 49.5,
+            "log": ""
+          }
+        ],
+        "taskHash": "ca492f6828f35a78",
+        "filesHash": "bc6a976f692398cc",
+        "proof": {
+          "1": "unit",
+          "2": "unit",
+          "3": "unit",
+          "4": "unit",
+          "5": "unit"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Independent review, two rounds. Round 1 PASS with two should-fix items, both fixed: the saved-settle sender and terms checks moved from the top of reconcile into unmined just before any send, so a mined settle confirms whatever changed (TestMinedSettleIsConfirmedEvenWhenItsTermsNoLongerCompute fails on the old placement); payFinal keeps polling for PENDING_DEPOSIT and SUCCESS. A replacement over MaxSettleGas now ALERTs. Round 2 PASS. Checked: key rotation and wallet change still finish a sent settle; unmined's lowest-nonce wait skips no receipt for good; settlement_dropped writes can't fail on their own; DustExcess(decimals) at all three callers; arcTwins can't double count; migrations 00123-00126 run in order and dropping invoices_profile is covered by the two new profile indexes; webhook LATERAL claim keeps one request per endpoint; reserved idempotency prefixes don't touch internal creators; fee fields are always sent so the stricter web schema is safe; CROSSCHAIN_OFF leaves tracking working; the 401 alert flag is safe. Lead also fixed: lock session TCP keepalives, and a timing flake in the shared 1Click budget test. Left for the owner: see the audit report's consider list.",
+          "at": "2026-11-10T00:19:19Z",
+          "filesHash": "bc6a976f692398cc"
+        },
+        "commit": "c2ee5431",
+        "doneAt": "2026-11-10T00:19:20Z"
+      },
+      "branch": "fix/f459-the-low-findings-of-the-2026-11-09-audit",
+      "baseCommit": "869c4e1932752cb7b52a307c6c720a4661c0088b",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f459-the-low-findings-of-the-2026-11-09-audit",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {

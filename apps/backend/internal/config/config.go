@@ -54,6 +54,9 @@ type API struct {
 	WebhookKey []byte
 	Fees       Fees
 	OneClick   OneClick
+	// CrossChainOff stops new cross-chain quotes on the whole platform (R-240), as for an incident at NEAR Intents. The
+	// worker still reads the open ones.
+	CrossChainOff bool
 }
 
 // OneClick is NEAR Intents' 1Click API for cross-chain payments (D-123). URL is its root, DefaultOneClickURL when unset.
@@ -183,7 +186,8 @@ func LoadAPI() (API, error) {
 		TrustProxyHeader:  r.flag("TRUST_PROXY_HEADER"),
 		CodesPerHour:      r.count("API_CODES_PER_HOUR"),
 		EnableTestnetUSDC: r.flag("ENABLE_TESTNET_USDC"), EnableMainnets: r.chainIDs("ENABLE_MAINNETS"),
-		WebhookKey: r.base64Key("WEBHOOK_SECRET_KEY"), Email: email(), Fees: r.fees(), OneClick: r.oneClick()}
+		WebhookKey: r.base64Key("WEBHOOK_SECRET_KEY"), Email: email(), Fees: r.fees(), OneClick: r.oneClick(),
+		CrossChainOff: r.flag("CROSSCHAIN_OFF")}
 	c.Email.PublicWebURL = c.PublicWebURL
 	return c, r.err()
 }

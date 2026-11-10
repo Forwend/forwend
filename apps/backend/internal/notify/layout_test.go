@@ -35,6 +35,7 @@ func samples() map[string]view {
 		"invite":          invitation("Alice Shop", "Developer", "alice@example.com", web+"/invite/"+strings.Repeat("ef", 32)),
 		"webhook-failing": disabled("shop.example.com", webhook.Failing, web+"/app/developers"),
 		"webhook-gone":    disabled("shop.example.com", webhook.Gone, web+"/app/developers"),
+		"retainer-failed": retainerFailed("INV-0008", "Bob Ltd", "28 Feb 2027", link),
 	}
 }
 

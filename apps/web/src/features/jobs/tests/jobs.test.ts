@@ -2,21 +2,20 @@ import { describe, expect, it } from "vitest";
 import { JOBS_COPY, QUOTE_COPY } from "@/features/jobs/constants/jobs-copy";
 import {
   apiCents,
-  centsText,
   dueDays,
   invalidJobField,
   jobRecord,
+  paymentCents,
   paymentStep,
-  usdCents,
 } from "@/features/jobs/lib/jobs";
 
 describe("job amounts", () => {
   // R-100.
   it("reads typed USD as exact cents, refusing what the API refuses", () => {
-    expect(usdCents("300")).toBe(30000n);
-    expect(usdCents(" 700.5 ")).toBe(70050n);
-    expect(usdCents("1")).toBe(100n);
-    expect(usdCents("9999999999.99")).toBe(999999999999n);
+    expect(paymentCents("300")).toBe(30000n);
+    expect(paymentCents(" 700.5 ")).toBe(70050n);
+    expect(paymentCents("1")).toBe(100n);
+    expect(paymentCents("9999999999.99")).toBe(999999999999n);
     for (const bad of [
       "",
       "0",
@@ -29,9 +28,8 @@ describe("job amounts", () => {
       ".5",
       "1e3",
     ]) {
-      expect(usdCents(bad)).toBeNull();
+      expect(paymentCents(bad)).toBeNull();
     }
-    expect(centsText(30005n)).toBe("300.05");
     expect(apiCents("1000.50")).toBe(100050n);
   });
 

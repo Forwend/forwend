@@ -5,10 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math/big"
 	"strings"
 
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -204,17 +206,27 @@ func checkOnChain(ctx context.Context, client *ethclient.Client, out *Send) erro
 	return nil
 }
 
-// refused tells a token's revert from any other failed read, such as a rate limit or a node behind.
+// refused tells a token's revert from any other failed read, such as a rate limit or a node behind. The client sees
+// only a decoded revert reason: the provider's error text can name its URL, key or internals.
 func refused(err error) error {
 	if err == nil {
 		return nil
 	}
 	// Every JSON-RPC error has ErrorData; a revert's carries the revert data.
-	if dataErr := rpc.DataError(nil); errors.As(err, &dataErr) && dataErr.ErrorData() != nil ||
-		strings.Contains(strings.ToLower(err.Error()), "revert") {
-		return fmt.Errorf("%w: %s", ErrRefused, err.Error())
+	dataErr := rpc.DataError(nil)
+	hasData := errors.As(err, &dataErr) && dataErr.ErrorData() != nil
+	if !hasData && !strings.Contains(strings.ToLower(err.Error()), "revert") {
+		return errors.Join(ErrUnavailable, err)
 	}
-	return errors.Join(ErrUnavailable, err)
+	slog.Warn("token refused a send's dry run", "err", chain.Redact(err))
+	if hasData {
+		if text, _ := dataErr.ErrorData().(string); text != "" {
+			if reason, err := abi.UnpackRevert(common.FromHex(text)); err == nil {
+				return fmt.Errorf("%w: %.200s", ErrRefused, reason)
+			}
+		}
+	}
+	return ErrRefused
 }
 
 // keep cancels the wallet's unsigned send on the chain and saves this one in its place.

@@ -35,12 +35,11 @@ import {
 } from "@/shared/schemas/api";
 import type { CrossChainStatus } from "@/shared/types/chains";
 
-/** An option's fees, in its contract terms, and who pays them (R-228). An answer without them has none: read them
- * with optionFees. */
+/** An option's fees, in its contract terms, and who pays them (R-228). */
 export const optionFeesShape = {
-  networkFee: baseUnits.optional(),
-  platformFee: baseUnits.optional(),
-  feesPaidBy: z.enum(FEES_PAID_BY).optional(),
+  networkFee: baseUnits,
+  platformFee: baseUnits,
+  feesPaidBy: z.enum(FEES_PAID_BY),
 };
 
 export const invoiceClientSchema = z.object({
@@ -88,8 +87,8 @@ export const agreedValueSchema = z.object({
 
 /** openapi.yaml, InvoiceSummary. */
 export const invoiceSummarySchema = z.object({
-  purpose: z.enum(PAYMENT_PURPOSES).optional(),
-  documentKind: z.enum(DOCUMENT_KINDS).optional(),
+  purpose: z.enum(PAYMENT_PURPOSES),
+  documentKind: z.enum(DOCUMENT_KINDS),
   linkId: z.guid().optional(),
   // keccak256 of payToken; the chain shows it, so it opens no public route (D-86).
   invoiceId: hash32,
@@ -145,6 +144,9 @@ export const invoiceSummarySchema = z.object({
   settleDeadline: apiTime,
   paymentStatus: openEnum<ApiPaymentStatus>(),
   settlementStatus: openEnum<ApiSettlementStatus>(),
+  // The payment and wallet states the list filters by (D-114), in the owner's answers only.
+  state: z.string().optional(),
+  wallet: z.string().optional(),
   settlementTxHash: hash32.nullable(),
   createdAt: apiTime,
 });

@@ -259,7 +259,7 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 	}
 	// More on chain than every recorded payment: a deposit the scan missed. Until it is booked, the ledger would book
 	// this refund against the wrong payer's money.
-	if new(big.Int).Sub(h.Balance, h.Booked).Cmp(big.NewInt(ledger.DustExcess)) >= 0 {
+	if new(big.Int).Sub(h.Balance, h.Booked).Cmp(ledger.DustExcess(h.Decimals)) >= 0 {
 		return Return{}, ErrMissedDeposit
 	}
 	var paid *Payment

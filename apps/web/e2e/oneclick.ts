@@ -19,6 +19,8 @@ export function signedQuote(q: {
   originAsset: string;
   refundTo: string;
   depositAddress: string;
+  /** When 1Click signed it: the page shows a quote only within its 15-minute price window. */
+  timestamp?: string;
 }) {
   const answer: Record<string, unknown> = {
     quote: {
@@ -50,7 +52,7 @@ export function signedQuote(q: {
       recipientType: "DESTINATION_CHAIN",
       deadline: "2026-10-10T13:00:00.000Z",
     },
-    timestamp: "2026-10-10T12:00:00.000Z",
+    timestamp: q.timestamp ?? "2026-10-10T12:00:00.000Z",
     correlationId: "e2e",
   };
   const signature = sign(null, Buffer.from(quoteMessage(answer)), PRIVATE);

@@ -47,7 +47,12 @@ export function SendProgress({
   onHolding,
   onDone,
 }: SendProgressProps) {
-  const read = useGetSendQuery({ profileId, sendId: initial.sendId });
+  // Each read can cost the api a chain call: none while the tab is hidden, none once the send is over.
+  const [polling, setPolling] = useState(true);
+  const read = useGetSendQuery(
+    { profileId, sendId: initial.sendId },
+    { pollingInterval: polling ? SEND_POLL_MS : 0, skipPollingIfUnfocused: true },
+  );
   const send = read.currentData ?? initial;
   const readAt = read.fulfilledTimeStamp;
   // A refusal (not a lost connection) won't change on the next try: the sheet may close, and the watcher still shows
@@ -63,12 +68,7 @@ export function SendProgress({
     send.status === SEND_STATUSES.failed ||
     unsent ||
     (send.status === SEND_STATUSES.sent && send.final);
-  const { refetch } = read;
-  useEffect(() => {
-    if (settled) return;
-    const timer = setInterval(refetch, SEND_POLL_MS);
-    return () => clearInterval(timer);
-  }, [settled, refetch]);
+  useEffect(() => setPolling(!settled), [settled]);
   // A hash the server doesn't have yet is reported again on every read: the server must know it to follow the money.
   // It takes the hash for a send whose approval ended meanwhile too.
   const [submit] = useSubmitSendMutation();

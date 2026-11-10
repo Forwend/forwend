@@ -31,6 +31,7 @@ Routes: `apps/backend/api/openapi.yaml`; each module mounts its own in `internal
 - Lists: `?limit=` (max 100) and `?cursor=`; response `{ "items": [...], "nextCursor": "…" }`.
 - Invoices and activity also take `?state=`, the Payments list's D-114 states (waiting | confirming | partially_paid |
   paid | overpaid | expired | canceled); a deposit takes its payment's state. Another value is 422.
+  - The owner's invoice reads carry `state` and `wallet`, as payments do; the pay page's read has neither.
 - The owner's invoice, activity and transaction lists also take a filter (`?status=` open | confirming | paid | settled | expired |
   canceled on invoices and activity, where a closed checkout (`closed`, R-77) counts as expired, `?direction=` in | out on transactions) and `?q=`, a search of 1–100 characters (blank or
   longer: 422). Both narrow the list before paging, so `nextCursor` continues the filtered list. A field matches when
@@ -140,6 +141,7 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   LOCKED`; a failed send is retried after 1 min doubling to 1 h, given up after 10 tries.
   - A failed send ends that round, except when Resend refused the message as sent (400 or 422, such as a bad
     address). Then the round goes on, so one bad address can't hold up the other emails (R-115).
+  - An event that can't be read or rendered counts as a failed try too, and the round goes on.
 - The watcher queues `wallet.outflow` when money leaves a profile wallet with no approved send (D-49).
   - It goes to the owner whatever the email setting: it may be a theft.
 - The signer queues `settlement.waiting` while the daily settle cap holds paid money back: one email a day per user.
@@ -186,9 +188,13 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
       - A slow chain's (`intents.SlowChains`) is two hours. Its token is listed only while that leaves 90 minutes.
     - It is kept only when 1Click's signature and the signed fields check out (D-124); otherwise 503
       `provider_unavailable`, and an `ALERT` is logged.
+      - So is a quote signed over 15 minutes ago, or whose address takes deposits for under an hour more.
+    - A refusal naming `refundTo` is 422 `invalid_value`; another is 422 `quote_refused`, which blames no address.
+      - Each refusal is logged at Warn with 1Click's first 200 characters, so a reworded message shows.
     - The same token, refund address and amount get the open quote back while 5 minutes of its window are left.
     - Twenty quotes an invoice an hour (429 `too_many_quotes`); a quote 1Click is converting makes it 409 `pick_locked`.
       - So does a short deposit 1Click holds (`INCOMPLETE_DEPOSIT`): the rest may still convert it.
+      - A delivered quote counts until its Base deposit came in. Any quote stops an hour past its deadline or deposit.
     - A route's minimum above the amount is 422 `below_minimum`, whose error also carries `minimum`.
     - It keeps the Base option as the payer's pick (R-57).
   - The worker reads each quote's 1Click status (R-234, `invoice/crosschain_track.go`).
@@ -203,6 +209,7 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
     - History: `crosschain.deposit_seen`, `crosschain.converted`, `crosschain.refunded`, `crosschain.failed`.
       - Each once. Its `txHash` is a Base transaction; the payer's chain's own is in `crossChain`.
     - A seen deposit moves the pick to the Base option. While it converts, pick and cancel are 409 and edit is refused.
+    - A delivery of another amount than the quote logs an `ALERT`.
   - Reads (R-235): the invoice's own reads, the payment's read and webhooks carry `crossChain`.
     - It is the newest quote 1Click saw a deposit for, else the newest: status, what was sent and refunded, both chains'
       transactions and the signed answer.
@@ -215,6 +222,8 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   - A profile turns it off with `crossChain: false` on `PUT /v1/profiles/{id}/tokens` (R-240); `GET` returns it.
     - Off, new quotes for its invoices, links and checkouts are 422 `crosschain_unavailable`; an open quote finishes.
     - The invoice read's `crossChainOn` tells the pay page whether to offer it.
+  - The api's `CROSSCHAIN_OFF=1` turns new quotes off for every profile: 422 `crosschain_unavailable`, `crossChainOn` false.
+    - The worker still reads open quotes. Webhooks carry the profile's own switch.
 - Payment reminders (R-96): `invoice.QueueReminders` queues `invoice.reminder` rows.
   - It runs on the worker's loop beside the chain rounds, at the same interval.
   - Steps: `before` 3 days before the due date, `due` on it, `after` 7 days after, in UTC days.
@@ -244,6 +253,8 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   - In the same transaction it queues one `invoice.sent` row, so the client gets it as from Send to client.
   - That send counts toward the client email cap (R-116); past it the month is made without its email.
   - One month per retainer per round; a stop that lands first makes nothing (a row lock on the retainer).
+  - A month that fails waits 1 min, doubling to 1 h, before its next try; a month made clears the wait.
+  - The third failure in a row queues one `retainer.failed` email to the owner, whatever the email setting.
 - Client email cap (R-116): a user's profiles queue at most 20 emails to clients in any 24 hours, all kinds together.
   - It counts `invoice.sent` (Send to client and retainer months), `invoice.reminder` and `job.change` rows.
   - `outbox.ClientEmailsLeft` counts them under a lock on the user's row, so two profiles can't both pass it.
@@ -494,7 +505,9 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
   - That is a deposit the scan missed, until `ops deposit` records it.
   - A payment's option `coverage.unprovedDeposits` is 1 in the same case.
 - The chain's scan reads each address's deposits from its creation until 30 days after its settle deadline.
+  - It reads them longer while a deposit to the address is still detected, until that deposit confirms.
   - A payment's option `coverage.historyComplete` is false after that: later deposits are not read.
+    - It stays false while the receiver's own events are read: those are not its deposits.
   - It reads the receiver's own events for as long as the receiver holds booked money.
 - Missing source evidence stays explicit; financial journals and immutable source records remain independently inspectable.
 - Every operation uses one repeatable-read database snapshot; CSV snapshot headers identify its cutoff.
@@ -1125,6 +1138,7 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
   - It refuses an invalid checksum, the zero address, any token contract and the sender's own wallet.
   - It reads the wallet's balance and dry-runs the token transfer from the wallet at the latest block.
   - A token revert is `transfer_refused`; a chain that can't be read is 503 `network_unavailable`.
+    - Its message adds only a decoded revert reason: a provider's error text can name its URL or key.
   - Warnings: `contract` (the recipient has code that isn't an EIP-7702 delegation) and `newRecipient`.
   - The wallet pays its fee from the token it sends (D-121). Only a `native_gas` or `fee_asset` token offers Send.
   - `networkFee.paidBy` says how: `wallet` for a `native_gas` token, `paymaster` for a `fee_asset` token.
@@ -1197,6 +1211,7 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
   - `sent` once it does: the transfer is in a block. `final` once that transfer is confirmed and can't change.
   - A reorged transfer goes back to `sending`; it is `sent` again when the transaction is mined again.
   - `failed` `reverted`: the receipt has no such transfer.
+    The receipt is read at the latest block, so a reorg can still mine it with the transfer: then it becomes `sent`.
   - The chain is asked for a send's receipt from 15 s after submit, at most once every 5 s per api process.
   - `failed` `dropped`: no receipt 30 minutes after submit, and the node no longer knows the transaction.
     A dropped send that is mined later becomes `sent`.
@@ -1218,6 +1233,7 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
 - Keys are unique per profile (per user for `POST /v1/profiles`), 1–255 bytes of UTF-8; a missing or longer key is 400. The server stores a SHA-256 of the
   normalized values, never the body, so field order, spacing and address letter case don't matter. A request that
   fails validation stores nothing. Two requests with one key at once get one resource.
+- A key starting `job:`, `link:` or `retainer:` is 400: Forwend makes invoices under those keys in the profile's key space.
 
 ## Auth
 
@@ -1283,8 +1299,9 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
 ## Errors
 
 - One shape: `{ "error": { "code": "invoice_not_found", "message": "…" } }`. Codes are snake_case and listed in the spec.
+  - `TestOpenAPIErrorCodesMatchTheAPI` keeps the spec's `Error.code` enum to the codes the API writes.
 - 400 malformed, 401 no or bad token, 403 not yours, 404 missing, 409 conflict, 422 invalid value, 429 too many
-  requests, 503 a network the worker has not scanned yet (`network_not_ready` on invoice create, `network_unavailable` when a recheck cannot read it), 500 anything else.
+  requests, 503 a network the worker has not scanned yet (`network_not_ready` on invoice create, `network_unavailable` when a recheck cannot read it), or a network fee that can't be priced (`network_fee_unavailable`), 500 anything else.
   A profile has at most 1,000 invoices open for payment at once and creates at most 500 a day: 422 above.
   Invoices payers make on its payment links, and its checkout sessions, have the same limits, each counted apart, so
   that traffic never blocks the owner (R-188). A link checkout or session that expired unpaid leaves the day's count.

@@ -28,7 +28,6 @@ import type {
   invoiceClientSchema,
   invoiceEventSchema,
   invoiceHistoryEventSchema,
-  invoiceIssuerSchema,
   invoiceLineSchema,
   invoiceOptionSchema,
   invoiceRemindersSchema,
@@ -37,13 +36,11 @@ import type {
   invoiceSendSchema,
   invoiceSummarySchema,
   invoicesPageSchema,
-  invoiceUpdateSchema,
   invoiceViewsSchema,
   owedListSchema,
   owedSchema,
   recheckSchema,
   revisionSchema,
-  settlementWaitSchema,
   stoppedRemindersSchema,
 } from "@/features/invoices/schemas/invoices";
 import type { FeesPaidBy } from "@/features/profiles/types/profile";
@@ -52,9 +49,9 @@ export type PayWith = (typeof PAY_WITH)[keyof typeof PAY_WITH];
 /** An option's amount and the fees in its terms (R-228). */
 export interface FeeTerms {
   amount: string;
-  networkFee?: string;
-  platformFee?: string;
-  feesPaidBy?: FeesPaidBy;
+  networkFee: string;
+  platformFee: string;
+  feesPaidBy: FeesPaidBy;
 }
 /** Settlement pays the fees out of the amount; the owner receives net. */
 export interface OptionFees {
@@ -81,7 +78,6 @@ export type HistoryCategory = (typeof HISTORY_CATEGORIES)[keyof typeof HISTORY_C
 export type HistoryFilter = (typeof HISTORY_FILTERS)[keyof typeof HISTORY_FILTERS];
 export type InvoiceHistoryEvent = z.infer<typeof invoiceHistoryEventSchema>;
 export type InvoiceViews = z.infer<typeof invoiceViewsSchema>;
-export type InvoiceUpdate = z.infer<typeof invoiceUpdateSchema>;
 export type Revision = z.infer<typeof revisionSchema>;
 export type InvoiceExceptionKind = (typeof INVOICE_EXCEPTIONS)[keyof typeof INVOICE_EXCEPTIONS];
 
@@ -145,14 +141,10 @@ export type LineField = Exclude<keyof LineDraft, "id">;
 
 export type LineError = (typeof LINE_ERRORS)[keyof typeof LINE_ERRORS];
 
-export type InvoiceIssuer = z.infer<typeof invoiceIssuerSchema>;
-
 export type Deposit = z.infer<typeof depositSchema>;
 
 export type InvoiceSummary = z.infer<typeof invoiceSummarySchema>;
 export type SettlementWaitKind = (typeof SETTLEMENT_WAITS)[keyof typeof SETTLEMENT_WAITS];
-
-export type SettlementWait = z.infer<typeof settlementWaitSchema>;
 
 export type InvoiceOption = z.infer<typeof invoiceOptionSchema>;
 

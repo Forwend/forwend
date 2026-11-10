@@ -75,6 +75,7 @@ function quote(amountIn: string, address = DEPOSIT_ADDRESS, shownUntil = "2026-1
       originAsset: TRON_USDT,
       refundTo: REFUND,
       depositAddress: address,
+      timestamp: new Date(Date.parse(shownUntil) - 15 * 60_000).toISOString(),
     }),
   };
 }
@@ -119,7 +120,9 @@ async function pickTronUSDT(page: Page) {
   await expect(page.getByText("Slippage 1%", { exact: true })).toBeVisible();
   await expect(page.getByText("Arrives in about a minute")).toBeVisible();
   await expect(
-    page.getByText("Unused slippage is refunded here. Use your own wallet, not an exchange."),
+    page.getByText(
+      "Unused slippage comes back here, less the refund fee. Use your own wallet, not an exchange.",
+    ),
   ).toBeVisible();
   await page.getByLabel("Refund address on Tron").fill(REFUND);
   await page.getByRole("button", { name: "Show address" }).click();

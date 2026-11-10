@@ -534,3 +534,79 @@ func TestProfileTurnsCrossChainOff(t *testing.T) {
 		t.Fatalf("open quote status %v", got)
 	}
 }
+
+// An api started with CROSSCHAIN_OFF has no 1Click: the pay page isn't offered it, and new quotes are refused.
+func TestAnAPIWithout1ClickOffersNoCrossChain(t *testing.T) {
+	e := invoiceAPICrossChain(t, 0, webhookKey, nil, invoice.Pricing{}, nil)
+	e.exec(t, `UPDATE chains SET enabled = true WHERE chain_id IN (8453, 42161)`)
+	e.exec(t, `INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block) VALUES (8453, 0, 0), (42161, 0, 0)`)
+	e.exec(t, `UPDATE profiles SET livemode = true WHERE id = $1`, e.aliceProfile)
+	pay, _ := liveInvoice(t, e, "key-1", 86400)
+	if got := e.get(t, pay).body["crossChainOn"]; got != false {
+		t.Fatalf("invoice read crossChainOn %v", got)
+	}
+	r := e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "`+refundTo+`"}`)
+	if r.status != 422 || errorCode(r) != "crosschain_unavailable" {
+		t.Fatalf("quote: %d %v", r.status, r.body)
+	}
+}
+
+// A deposit 1Click never finishes holds the invoice only until an hour past its deadline, when its alert fires: then
+// the owner can cancel it.
+func TestADeposit1ClickNeverFinishesStopsHoldingTheInvoice(t *testing.T) {
+	e, fake, worker, pay, quote := tracked(t)
+	id := quote["quoteId"].(string)
+	fake.SetStatus(quote["depositAddress"].(string), intents.Processing, map[string]any{"depositedAmount": "101120000",
+		"originChainTxHashes": []any{}, "destinationChainTxHashes": []any{}})
+	checkAt(t, e, worker, id, time.Now())
+	main := e.get(t, pay).body["invoiceId"].(string)
+	cancel := func() reply {
+		return e.call(t, "POST", "/v1/profiles/"+e.aliceProfile+"/invoices/"+main+"/cancel", "did:privy:alice", "", "")
+	}
+	e.exec(t, `UPDATE crosschain_quotes SET shown_until = now() - interval '70 minutes', deadline = now() - interval '50 minutes',
+		deposit_seen_at = now() - interval '50 minutes' WHERE id = $1`, id)
+	if r := cancel(); r.status == http.StatusOK {
+		t.Fatalf("canceled under an hour past the deadline: %v", r.body)
+	}
+	e.exec(t, `UPDATE crosschain_quotes SET shown_until = now() - interval '90 minutes', deadline = now() - interval '61 minutes',
+		deposit_seen_at = now() - interval '61 minutes' WHERE id = $1`, id)
+	if r := cancel(); r.status != http.StatusOK {
+		t.Fatalf("cancel an hour past the deadline: %d %v", r.status, r.body)
+	}
+}
+
+// 1Click delivering another amount than its quote alerts. Once that delivery is booked on Base, the quote no longer
+// holds the invoice: the rest can be paid from another chain too.
+func TestADeliveryOfAnotherAmountAlertsAndLeavesTheRestPayable(t *testing.T) {
+	e, fake, worker, pay, quote := tracked(t)
+	id := quote["quoteId"].(string)
+	baseTx := "0x" + originTx
+	fake.SetStatus(quote["depositAddress"].(string), intents.Success, map[string]any{"depositedAmount": "101120000",
+		"amountOut": "99000000", "originChainTxHashes": []any{},
+		"destinationChainTxHashes": []any{map[string]any{"hash": baseTx}}})
+	var logs bytes.Buffer
+	defer slog.SetDefault(slog.Default())
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	checkAt(t, e, worker, id, time.Now())
+	if !strings.Contains(logs.String(), "ALERT cross-chain swap delivered another amount than its quote") ||
+		!strings.Contains(logs.String(), id) {
+		t.Fatalf("logs lack the alert:\n%s", logs.String())
+	}
+	another := func() reply {
+		return e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "",
+			`{"originAsset": "`+ethAsset+`", "refundTo": "0x6fd1c6b3f0b7a5b4e5d6a3c2b1a0f9e8d7c6b5a4"}`)
+	}
+	if r := another(); r.status != http.StatusConflict || errorCode(r) != "pick_locked" {
+		t.Fatalf("a quote before the delivery is booked: %d %v", r.status, r.body)
+	}
+	var base string
+	for _, o := range e.get(t, pay).body["options"].([]any) {
+		if option := o.(map[string]any); option["chainId"] == float64(intents.BaseChainID) {
+			base = option["optionId"].(string)
+		}
+	}
+	baseTransfer(t, e, base, baseTx, "99000000")
+	if r := another(); r.status != http.StatusCreated || r.body["amountOut"] != "1000000" {
+		t.Fatalf("a quote for the rest: %d %v", r.status, r.body)
+	}
+}

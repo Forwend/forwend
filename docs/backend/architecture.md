@@ -4,7 +4,9 @@ The Go backend in `apps/backend`. Code rules: [rules.md](rules.md).
 Requirements: the task's rows in [PROJECT.md](../PROJECT.md). Whole system: [architecture.md](../architecture.md).
 
 Built: signup and profiles API, billing details, saved clients, balances, activity, wallet transactions and balance history API, invoice API, invoice and receipt PDFs (`internal/document`, drawn in Go from the stored invoice), Privy auth, watcher, ledger and signer, run by `api`, `worker` and `signer`; the gate
-(`apps/backend/e2e`, R-23) runs the whole loop. Not built yet: refunds, webhooks, merchants.
+(`apps/backend/e2e`, R-23) runs the whole loop. Merchant profiles, stores, teams, API keys, payment links and checkout
+sessions are built; `webhooks` sends their webhooks. Support returns held money with `cmd/ops` (PLAN 11.10). Not built
+yet: refund claims by payers.
 
 Read only the sections your task touches:
 
@@ -146,8 +148,11 @@ The worker and the signer each run as one copy. Before the checks each takes a P
 (`worker.LockKey`, `settlement.LockKey`) on a connection of its own and holds it for its lifetime. A second copy logs
 `another worker is running; waiting` (or signer) every `POLL_INTERVAL` and takes over once the first exits: Postgres
 frees the lock when its connection ends, a crash included. Before each round the holder pings that connection; if it
-is gone, so is the lock, and the process stops rather than run beside the copy that takes over. Waiting instead of
-exiting suits rolling deploys: the new copy starts as soon as the old one stops.
+is gone, so is the lock, and the process stops rather than run beside the copy that takes over. The ping gives up
+after `database.LockPing` (5 s): a connection broken without a close would otherwise hang it until TCP gives up.
+The lock's session sets TCP keepalives (30 s idle, 3 probes 10 s apart), so Postgres frees a lock whose client vanished
+in about a minute, not two hours.
+Waiting instead of exiting suits rolling deploys: the new copy starts as soon as the old one stops.
 
 Root `pnpm dev` (`apps/backend/scripts/dev.sh`) stops at once when `EXECUTOR_PRIVATE_KEY` is missing or empty in
 `apps/backend/.env`. It starts Postgres, builds the four binaries and starts the api. Once the api logs `api listening`
@@ -175,9 +180,13 @@ Redis is the next step when more than a few replicas run: the cache sits behind 
 - The RPC pool keeps up to 100 idle connections per host. With net/http's default of 2, each call beyond 2 at once
   opened a new connection (and TLS session), and under load the api ran out of local ports ([load test](#load-test)).
 - Postgres: `pool_max_conns` in `DATABASE_URL` sets each process's pool (without it pgxpool takes the larger of 4 and
-  the CPU count; `.env.example` sets 20). Keep the replicas' pools plus the worker's and signer's (each one more for
-  its lock) under Postgres `max_connections` (100 by default). `database.Migrate` parses the URL as the pool does,
-  so `pool_` parameters never reach Postgres as settings.
+  the CPU count; `.env.example` sets 20). `database.Migrate` parses the URL as the pool does, so `pool_` parameters
+  never reach Postgres as settings.
+  - Each api replica, the worker and the signer also open a 2-connection pool for the RPC budget.
+  - The worker and the signer each hold one more connection for their lock.
+  - Keep every process's connections under Postgres `max_connections` (100 by default).
+  - At 20 each, one api, worker, signer and webhooks use 22 + 23 + 23 + 20 = 88.
+  - A second api replica would make 110. Lower each replica's pool first (12 each: 94), or raise `max_connections`.
 - Rate limits per user; public routes are limited at the edge: [api.md](api.md#rate-limits). On 429 the web waits and backs off.
 
 ## Load test
@@ -193,7 +202,9 @@ everything) 10,000 users gave p95 2.4 ms, 0 errors and 1,333 RPC calls/s (334 wh
 - The test sets `RPC_RATE_PER_SECOND=100000`, so the budget never slows it down.
   - With the default of 10, the api's share is 2 calls a second.
 - `/balances` needs the `ledger_transactions_invoice` index (migration 00011): 21.5 ms without it, 0.37 ms with it.
-- `/balances` and activity deposits find a profile's invoice rows through `invoices_profile` (migration 00088).
+- `/balances` finds a profile's invoice rows through `invoices_money_profile` (migration 00120).
+  - Activity deposits use `invoices_profile_created` or `invoices_profile_closes`, which start with `profile_id`.
+  - So `invoices_profile` (migration 00088) was redundant and is dropped (migration 00124).
   - With 220,000 invoices, a profile without payments read its balances in 0.05 ms, not 19 ms.
 - The RPC pool keeps up to 100 idle connections per host ([scaling](#scaling)).
 
@@ -308,6 +319,9 @@ with a test.
 - `ledger_transactions` + `ledger_entries`: double-entry, append-only (below).
 - `settlement_intents` (unique per invoice): nonce and tx hash tracked, with the hashes a fee replacement replaced;
   reconcile before any retry.
+  - A settle dropped to sign again keeps its sender, nonce, hash, signed bytes, replaced hashes and reason in
+    `settlement_dropped`.
+- `ops_runs`: each `cmd/ops` run's OS user and arguments, written before the command does anything.
 - `receiver_outflows` preserves actual receiver events, exact outgoing transfer identity and once-only journal attribution.
   - The chain's scan records them; the signer also records its own settle from its receipt.
 - These records remain separate from signer intents, webhook delivery and merchant financial classification.
@@ -322,6 +336,7 @@ with a test.
   after welcome emails existed.
   - `wallet.outflow` rows name a `wallet_transfer_id`: money left a profile wallet with no approved send (D-49).
   - `settlement.waiting` rows name one invoice the daily settle cap holds back: one email a day per user (SEC-03).
+  - `retainer.failed` rows name a retainer's first invoice and carry the failing month's `due` (R-98).
 - `history_events` (R-123, D-92): what happened to each invoice, one row per change.
   - `history.Add` writes it in the transaction that makes the change.
   - A row has the main invoice, `kind`, `actor` (`owner`, `payer` or `system`), `at` and small `data`.
@@ -339,8 +354,9 @@ with a test.
   Each payment row gets its `invoice_id` once that invoice is made.
 - `retainers` (R-98): an invoice that repeats every month, with the create `request` as JSON, `first_due`, `end_date`
   and `stopped_at`. `retainer_invoices` numbers each month's invoice from 0, so each month is made once.
-- Planned (PLAN 11.5, 11.10): `refund_intents` (one per approved claim), `refund_claims`, `support_cases` (wrong chain,
-  late), `webhook_endpoints`, `webhook_deliveries`.
+  - `failures` counts a month's failed tries in a row; `retry_at` is when the next try may run.
+- Planned (PLAN 11.10): `refund_intents` (one per approved claim), `refund_claims`, `support_cases` (wrong chain,
+  late).
 - `chain_cursors(chain_id, last_scanned_block, last_finalized_block)`.
 
 Rules:
@@ -494,6 +510,8 @@ settlement intent (unique per invoice) in the same transaction. Every transactio
 signer:
 1. If a settle is already saved (`sent`), finishes it first, whatever changed since.
    - The saved bytes must decode to `settle()` on this receiver on this chain with the saved hash.
+   - They must be signed by the saved sender, and the terms must still compute the receive address.
+     - Else the attempt fails and sends nothing: the bytes and terms come from the database.
    - A receipt for the saved hash or any version it replaced (`replaced_hashes`, same nonce, so at most one mines)
      decides first. Status 1 with the receiver's `Settled` log is our settle. It keeps that hash and is never signed
      again, whatever a lagging node says about `settled()` at latest.
@@ -512,6 +530,11 @@ signer:
    - The new version is saved before it is sent, keeping the old hash.
    - A replacement that would pass `MaxFeeFactor` (2) times a new settle's fee cap, or the chain's ceiling, is not signed.
      - The saved bytes are sent again as they are.
+   - Nor is one that needs more gas than `MaxSettleGas` (3,000,000); the saved bytes are sent again too.
+   - When the node refuses the saved bytes for insufficient funds, no replacement is signed: a higher fee can't help.
+     - The attempt fails and the same bytes are sent again once the executor is funded.
+   - Only the settle at the executor's next mined nonce waits for its receipt in the attempt.
+     - A later one can't mine first. It is sent, and its receipt is read next round.
    - When the executor's next mined nonce has nothing pending and no saved settle holds it (a settle saved but never
      sent, then settled by the refund authority), a zero-value transfer to the executor fills it, so the settles after
      it can mine.
@@ -541,6 +564,8 @@ signer:
    - When a transaction we never saved waits at the executor's next mined nonce (an earlier deploy the fee left
      behind), the deploy takes that nonce.
      - It pays twice today's fee, up to the chain's ceiling, so later transactions don't queue behind it.
+     - Its gas is at least an estimate at latest plus a fifth.
+       A node estimating at its pending state (Anvil) sees the stuck deploy run and prices only the deployed path.
    - Then waits up to 10 s for the RPC to show the receiver's code at the deploy's block or later (else the attempt
      ends and is tried again). A node that has not seen the deploy estimates settle as a call to an empty address,
      which runs out of gas.

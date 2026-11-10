@@ -7,8 +7,9 @@ import { flushSync } from "react-dom";
 import { useProposeChangeMutation } from "@/features/jobs/api/jobs-api";
 import { CHANGE_ERRORS, JOB_LIMITS } from "@/features/jobs/constants/jobs";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
-import { centsText, dueDays, usdCents } from "@/features/jobs/lib/jobs";
+import { dueDays, paymentCents } from "@/features/jobs/lib/jobs";
 import type { PaymentField } from "@/features/jobs/types/jobs";
+import { usdFromCents } from "@/shared/lib/money";
 
 const COPY = JOBS_COPY.detail;
 const FORM = JOBS_COPY.form;
@@ -34,7 +35,7 @@ export function ProposeChange({ profileId, jobId, onProposed }: ProposeChangePro
   const [error, setError] = useState("");
 
   const confirm = async () => {
-    const cents = usdCents(amount);
+    const cents = paymentCents(amount);
     const due = dueDays(days);
     const shown = {
       title: title.trim() ? undefined : FORM.errors.required,
@@ -47,7 +48,7 @@ export function ProposeChange({ profileId, jobId, onProposed }: ProposeChangePro
     });
     document.querySelector<HTMLElement>('dialog[open] [aria-invalid="true"]')?.focus();
     if (cents === null || due === null || !title.trim()) return;
-    const body = { title: title.trim(), amountUsd: centsText(cents), dueDays: due };
+    const body = { title: title.trim(), amountUsd: usdFromCents(cents), dueDays: due };
     const values = JSON.stringify(body);
     const key = keys.current.get(values) ?? crypto.randomUUID();
     keys.current.set(values, key);

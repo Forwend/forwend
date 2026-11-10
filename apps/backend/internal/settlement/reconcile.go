@@ -109,12 +109,25 @@ func (s *Signer) unmined(ctx context.Context, client *ethclient.Client, in inten
 	if err != nil || settled || int64(mined) > *in.nonce {
 		return nil, err // settled, or the nonce used, after the finalized block: decided once that is final
 	}
+	// The bytes and terms come from the database: never send again, or re-sign with our key, a settle its sender didn't
+	// sign or one to an address the terms don't compute. Reading receipts and confirming above need neither.
+	if from, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx); err != nil ||
+		from != common.HexToAddress(*in.sender) {
+		return nil, fmt.Errorf("saved transaction %s is not signed by its sender", *in.txHash)
+	}
+	if _, reason := receiverTerms(in); reason != "" {
+		return nil, fmt.Errorf("saved transaction %s: %s", *in.txHash, reason)
+	}
 	if sender == s.sender && int64(mined) < *in.nonce {
 		if err := s.fillGap(ctx, client, in.chainID, mined); err != nil {
 			return nil, err
 		}
 	}
 	if sender == s.sender && time.Since(in.signedAt) >= s.replaceAfter {
+		// Out of gas money a higher fee changes nothing: this version is kept until the executor is funded.
+		if err := client.SendTransaction(ctx, tx); err != nil && strings.Contains(strings.ToLower(err.Error()), "insufficient funds") {
+			return nil, fmt.Errorf("send settle: %w", err)
+		}
 		if tx, err = s.replace(ctx, client, in, tx); err != nil {
 			return nil, err
 		}
@@ -125,13 +138,22 @@ func (s *Signer) unmined(ctx context.Context, client *ethclient.Client, in inten
 	if s.stopAfter == "send" {
 		return nil, errStopped
 	}
+	if int64(mined) < *in.nonce {
+		return nil, nil // a lower nonce mines first: waiting here would hold up the chain's other settles
+	}
 	return s.await(ctx, client, tx.Hash())
 }
 
-// "already known" on most nodes, "transaction already imported" on Anvil.
+// "already known" on geth and reth, "AlreadyKnown" on Nethermind, "transaction already imported" on Anvil. Not just
+// "known": "unknown account" is a real error.
 func holds(err error) bool {
 	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "known") || strings.Contains(msg, "already imported")
+	for _, known := range []string{"already known", "alreadyknown", "already imported"} {
+		if strings.Contains(msg, known) {
+			return true
+		}
+	}
+	return false
 }
 
 // fillGap sends a zero-value self-transfer at nonce when nothing else will use it (a settle saved but never sent,
@@ -266,10 +288,16 @@ func (s *Signer) retry(ctx context.Context, in intent, reason string) error {
 
 func (s *Signer) postpone(ctx context.Context, in intent, wait, reason string) error {
 	slog.Warn("settlement waits", "invoice", in.invoiceID, "reason", reason)
-	// Only from the status this attempt loaded: a stale attempt never moves an intent that went on.
-	_, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET status = 'pending', sender = NULL, nonce = NULL,
+	// Only from the status this attempt loaded: a stale attempt never moves an intent that went on. A dropped settle's
+	// versions are kept in settlement_dropped: the executor signed them, and one may still have cost gas.
+	_, err := s.pool.Exec(ctx, `WITH old AS (SELECT sender, nonce, tx_hash, raw_tx, replaced_hashes FROM settlement_intents
+		    WHERE id = $1 AND status = $3 FOR UPDATE),
+		moved AS (UPDATE settlement_intents SET status = 'pending', sender = NULL, nonce = NULL,
 		tx_hash = NULL, raw_tx = NULL, replaced_hashes = '{}', signed_at = NULL, receipt_tx_hash = NULL, receipt_block = NULL, receipt_time = NULL, reason = $2, wait = $4,
-		attempts = attempts + 1, updated_at = now(), next_attempt_at = `+backoff+` WHERE id = $1 AND status = $3`,
+		attempts = attempts + 1, updated_at = now(), next_attempt_at = `+backoff+` WHERE id = $1 AND status = $3 RETURNING id)
+		INSERT INTO settlement_dropped (intent_id, sender, nonce, tx_hash, raw_tx, replaced_hashes, reason)
+		SELECT $1, old.sender, old.nonce, old.tx_hash, old.raw_tx, old.replaced_hashes, $2 FROM old, moved
+		WHERE old.tx_hash IS NOT NULL`,
 		in.id, reason, in.status, wait)
 	return err
 }

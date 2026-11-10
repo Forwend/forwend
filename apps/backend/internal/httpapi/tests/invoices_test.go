@@ -315,7 +315,7 @@ func TestCreateInvoice(t *testing.T) {
 	}
 	for k, v := range b {
 		ownerOnly := k == "client" || k == "sends" || k == "reminders" || k == "history" || k == "views" ||
-			k == "reopenUntil" || k == "metadata"
+			k == "reopenUntil" || k == "metadata" || k == "state" || k == "wallet"
 		if !reflect.DeepEqual(got.body[k], v) && !ownerOnly {
 			t.Fatalf("GET %s = %v, POST gave %v", k, got.body[k], v)
 		}
@@ -525,6 +525,9 @@ func TestCreateInvoiceErrors(t *testing.T) {
 		{"chainId above 2^63-1", "did:privy:alice", e.aliceProfile, "k20", `{"chainId": 9223372036854775808, "token": "` + usdc + `", "amount": "1000000"}`, 422, "invalid_value"},
 		{"amount longer than 78 digits", "did:privy:alice", e.aliceProfile, "k21", body(`"amount": "` + strings.Repeat("9", 79) + `"`), 422, "invalid_value"},
 		{"Idempotency-Key not UTF-8", "did:privy:alice", e.aliceProfile, "k\xff", body(`"amount": "1000000"`), 400, "malformed_request"},
+		{"Idempotency-Key a job's", "did:privy:alice", e.aliceProfile, "job:00000000-0000-0000-0000-000000000000:0", body(`"amount": "1000000"`), 400, "malformed_request"},
+		{"Idempotency-Key a link's", "did:privy:alice", e.aliceProfile, "link:00000000-0000-0000-0000-000000000000:k", body(`"amount": "1000000"`), 400, "malformed_request"},
+		{"Idempotency-Key a retainer's", "did:privy:alice", e.aliceProfile, "retainer:00000000-0000-0000-0000-000000000000:1", body(`"amount": "1000000"`), 400, "malformed_request"},
 		{"longest texts", "did:privy:alice", e.aliceProfile, "k22", body(`"amount": "1000000", "title": "` + strings.Repeat("é", 200) +
 			`", "note": "` + strings.Repeat("n", 2000) + `", "client": {"name": "` + strings.Repeat("c", 200) +
 			`", "email": "` + strings.Repeat("e", 242) + `@example.com", "address": "` + strings.Repeat("a", 500) +

@@ -8,6 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/forwend/forwend/apps/backend/internal/address"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
@@ -122,20 +123,19 @@ func (w *Worker) alert(ctx context.Context) error {
 // alertCrossChain logs an ALERT for a cross-chain payment that holds a payer's money (R-234): 1Click failed it in the
 // last week, a deposit it saw is unfinished an hour past the deadline, it delivered and no Base deposit with its
 // transaction came in 30 minutes, or in the last week another quote of the invoice saw a deposit too: each delivers
-// all that is due, so one is held for its payer.
+// all that is due, so one is held for its payer. Only a quote seen in the last week or still read alerts, so indexes
+// find them without reading every quote; the newest come first.
 func (w *Worker) alertCrossChain(ctx context.Context) error {
-	rows, err := w.pool.Query(ctx, `SELECT q.id::text, q.invoice_id, q.status, twice FROM crosschain_quotes q,
-		    LATERAL (SELECT coalesce(q.deposit_seen_at > now() - interval '7 days', false)
-		        AND q.status NOT IN ('REFUNDED', 'FAILED') AND EXISTS (SELECT 1 FROM crosschain_quotes o WHERE o.invoice_id = q.invoice_id AND o.id <> q.id
+	rows, err := w.pool.Query(ctx, `SELECT c.id::text, c.invoice_id, c.status, twice FROM crosschain_quotes c,
+		    LATERAL (SELECT coalesce(c.deposit_seen_at > now() - interval '7 days', false)
+		        AND c.status NOT IN ('REFUNDED', 'FAILED') AND EXISTS (SELECT 1 FROM crosschain_quotes o WHERE o.invoice_id = c.invoice_id AND o.id <> c.id
 		            AND o.deposit_seen_at IS NOT NULL AND o.status NOT IN ('REFUNDED', 'FAILED')) AS twice) t
-		WHERE twice OR (q.status = 'FAILED' AND q.created_at > now() - interval '7 days')
-		   OR (q.deposit_seen_at IS NOT NULL AND q.status NOT IN ('SUCCESS', 'REFUNDED', 'FAILED')
-		       AND q.deadline < now() - $1 * interval '1 second')
-		   OR (q.status = 'SUCCESS' AND q.converted_at < now() - $2 * interval '1 second'
-		       AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(q.destination_txs) d
-		           JOIN chain_transfers t ON t.tx_hash = lower(d->>'hash') AND t.invoice_id = q.option_id
-		           WHERE t.status <> 'reorged'))
-		ORDER BY q.created_at LIMIT 20`, int64(time.Hour/time.Second), int64(UnsettledAfter/time.Second))
+		WHERE (c.deposit_seen_at > now() - interval '7 days' OR c.next_check_at IS NOT NULL)
+		  AND (twice OR (c.status = 'FAILED' AND c.created_at > now() - interval '7 days')
+		   OR (c.deposit_seen_at IS NOT NULL AND c.status NOT IN ('SUCCESS', 'REFUNDED', 'FAILED')
+		       AND c.deadline < now() - $1 * interval '1 second')
+		   OR (c.status = 'SUCCESS' AND c.converted_at < now() - $2 * interval '1 second' AND NOT `+invoice.DeliveredSQL+`))
+		ORDER BY c.created_at DESC LIMIT 20`, int64(time.Hour/time.Second), int64(UnsettledAfter/time.Second))
 	if err != nil {
 		return fmt.Errorf("read cross-chain quotes to alert on: %w", err)
 	}

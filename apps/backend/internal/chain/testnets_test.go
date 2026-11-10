@@ -1,8 +1,13 @@
 package chain
 
 import (
+	"cmp"
 	"context"
+	"os"
+	"regexp"
 	"slices"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/forwend/forwend/apps/backend/internal/database"
@@ -73,6 +78,51 @@ func TestEnableTestnetTokens(t *testing.T) {
 				t.Fatalf("Tempo settings: chain %v, token %v, %v; want %v", chainEnabled, tokenEnabled, err, true)
 			}
 		})
+	}
+}
+
+// The pay page names a token by the symbol and decimals built into it and refuses any other token, so every token the
+// migrations and EnableTestnetTokens make must be in its PAY_TOKENS, alike.
+func TestPayTokensMatchTheWeb(t *testing.T) {
+	src, err := os.ReadFile("../../../web/src/features/pay/constants/pay.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	block := regexp.MustCompile(`(?s)PAY_TOKENS: .*? = \{(.*?)\n\};`).FindSubmatch(src)
+	if block == nil {
+		t.Fatal("no PAY_TOKENS in apps/web/src/features/pay/constants/pay.ts")
+	}
+	var web []Asset
+	for _, m := range regexp.MustCompile(`"(\d+):(0x[0-9a-f]{40})": \{ symbol: "(\w+)", decimals: (\d+) \}`).
+		FindAllSubmatch(block[1], -1) {
+		id, _ := strconv.ParseUint(string(m[1]), 10, 64)
+		decimals, _ := strconv.Atoi(string(m[4]))
+		web = append(web, Asset{id, string(m[2]), string(m[3]), decimals})
+	}
+	ctx := context.Background()
+	db, err := database.Open(ctx, databasetest.Migrated(t, database.Migrate))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := EnableTestnetTokens(ctx, db); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := db.Query(ctx, `SELECT chain_id, contract, symbol, decimals FROM tokens`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	api, err := pgx.CollectRows(rows, pgx.RowToStructByPos[Asset])
+	if err != nil {
+		t.Fatal(err)
+	}
+	order := func(a, b Asset) int {
+		return cmp.Or(cmp.Compare(a.ChainID, b.ChainID), strings.Compare(a.Token, b.Token))
+	}
+	slices.SortFunc(web, order)
+	slices.SortFunc(api, order)
+	if !slices.Equal(web, api) {
+		t.Errorf("PAY_TOKENS in apps/web/src/features/pay/constants/pay.ts differ from the tokens table:\n%v\n%v", web, api)
 	}
 }
 

@@ -13,6 +13,15 @@ import (
 
 const ProfileConcurrency = 2
 
+// endpointDue is each enabled endpoint e with no request in flight, joined to its first due delivery d. Each endpoint
+// reads its own pending index, so a claim costs the profile's endpoints, not the whole backlog.
+const endpointDue = `webhook_endpoints e CROSS JOIN LATERAL (SELECT * FROM webhook_deliveries d
+   WHERE d.endpoint_id=e.id AND d.status='pending' AND d.next_attempt_at<=now()
+     AND (d.leased_until IS NULL OR d.leased_until<=now())
+   ORDER BY d.next_attempt_at,d.event_id LIMIT 1) d
+ WHERE e.enabled AND NOT EXISTS (
+   SELECT 1 FROM webhook_deliveries active WHERE active.endpoint_id=e.id AND active.leased_until>now())`
+
 func (s *Service) claim(ctx context.Context) (*delivery, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -23,10 +32,7 @@ func (s *Service) claim(ctx context.Context) (*delivery, error) {
 	err = tx.QueryRow(ctx, `SELECT p.profile_id::text FROM webhook_delivery_profiles p
  WHERE (SELECT count(*) FROM webhook_deliveries d JOIN webhook_endpoints e ON e.id=d.endpoint_id
         WHERE e.profile_id=p.profile_id AND d.leased_until>now()) < $1
- AND EXISTS (SELECT 1 FROM webhook_deliveries d JOIN webhook_endpoints e ON e.id=d.endpoint_id
-   WHERE e.profile_id=p.profile_id AND e.enabled AND d.status='pending' AND d.next_attempt_at<=now()
-     AND (d.leased_until IS NULL OR d.leased_until<=now()) AND NOT EXISTS (
-       SELECT 1 FROM webhook_deliveries active WHERE active.endpoint_id=e.id AND active.leased_until>now()))
+ AND EXISTS (SELECT 1 FROM `+endpointDue+` AND e.profile_id=p.profile_id)
  ORDER BY p.last_claimed_at,p.profile_id LIMIT 1 FOR UPDATE OF p SKIP LOCKED`, ProfileConcurrency).Scan(&profile)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -45,10 +51,7 @@ func (s *Service) claim(ctx context.Context) (*delivery, error) {
 	}
 	d := &delivery{profileID: profile}
 	err = tx.QueryRow(ctx, `SELECT d.endpoint_id::text,d.event_id,e.url,coalesce(d.body,''),d.attempts,d.updated_at
- FROM webhook_deliveries d JOIN webhook_endpoints e ON e.id=d.endpoint_id
- WHERE e.profile_id=$1 AND e.enabled AND d.status='pending' AND d.next_attempt_at<=now()
-   AND (d.leased_until IS NULL OR d.leased_until<=now()) AND NOT EXISTS (
-     SELECT 1 FROM webhook_deliveries active WHERE active.endpoint_id=e.id AND active.leased_until>now())
+ FROM `+endpointDue+` AND e.profile_id=$1
  ORDER BY d.next_attempt_at,d.event_id LIMIT 1 FOR UPDATE OF d SKIP LOCKED`, profile).
 		Scan(&d.endpointID, &d.eventID, &d.url, &d.body, &d.attempts, &d.updatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {

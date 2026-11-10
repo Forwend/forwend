@@ -1,5 +1,3 @@
-export type SampleStep = (typeof SAMPLE_STEPS)[number];
-
 export interface SampleInvoice {
   id: string;
   client: string;

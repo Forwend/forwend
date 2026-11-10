@@ -251,6 +251,41 @@ func TestDeliverGoesOnPastARefusedEmail(t *testing.T) {
 	}
 }
 
+func TestDeliverGoesOnPastAnEventItCannotRead(t *testing.T) {
+	pool, id := setup(t, "owner@example.com")
+	exec(t, pool, `INSERT INTO outbox_events (kind, invoice_id, payload) VALUES ('invoice.paid', $1, '{"option": "gone"}')`,
+		id)
+	queue(t, pool, outbox.Paid, id, nil)
+	f := &fake{}
+	if err := Deliver(context.Background(), pool, f, site); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.sent) != 1 || count(t, pool, `id = 1 AND attempts = 1 AND failed_at IS NULL
+		AND next_attempt_at > now() + interval '50 seconds'`) != 1 {
+		t.Fatalf("sent %d, want the next email sent and the unreadable event waiting its backoff", len(f.sent))
+	}
+}
+
+// R-98.
+func TestDeliverTellsTheOwnerARetainerMonthFailed(t *testing.T) {
+	pool, id := setup(t, "owner@example.com")
+	exec(t, pool, "UPDATE profiles SET email_notifications = false")
+	exec(t, pool, `INSERT INTO outbox_events (kind, invoice_id, payload) VALUES ('retainer.failed', $1, '{"due": "2027-02-28"}')`,
+		id)
+	f := &fake{}
+	if err := Deliver(context.Background(), pool, f, site); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.sent) != 1 {
+		t.Fatalf("%d emails, want one", len(f.sent))
+	}
+	m := f.sent[0]
+	if m.To != "owner@example.com" || m.Subject != "Repeating invoice not made: INV-0001" ||
+		!strings.Contains(m.Text, "due 28 Feb 2027") || !strings.Contains(m.Text, web+"/app/invoices/"+id) {
+		t.Fatalf("email %+v", m)
+	}
+}
+
 func TestRetryKeepsTheIdempotencyKey(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	queue(t, pool, outbox.Paid, id, nil)

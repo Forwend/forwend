@@ -337,8 +337,8 @@ export interface ListCheckoutSessions {
 /** An invoice as its owner reads it. The fields a server most often needs are typed; the rest stay as sent. */
 export interface Invoice extends OptionFees {
   amounts?: PaymentAmounts;
-  purpose?: PaymentPurpose;
-  documentKind?: DocumentKind;
+  purpose: PaymentPurpose;
+  documentKind: DocumentKind;
   linkId?: string;
   invoiceId: string;
   /** Null for a payment-link invoice before its first deposit. */
@@ -351,6 +351,9 @@ export interface Invoice extends OptionFees {
   paymentStatus: PaymentStatus;
   settlementStatus: SettlementStatus;
   refundStatus: RefundStatus;
+  /** The list's state filter matches it. */
+  state: PaymentState;
+  wallet: WalletState;
   reference: string | null;
   returnUrl: string | null;
   expiresAt: string;

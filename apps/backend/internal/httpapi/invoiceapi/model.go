@@ -95,6 +95,8 @@ type invoiceJSON struct {
 	PaymentStatus    string  `json:"paymentStatus"`
 	SettlementStatus string  `json:"settlementStatus"`
 	RefundStatus     string  `json:"refundStatus"`
+	State            string  `json:"state,omitempty"`  // owner routes only (D-114)
+	Wallet           string  `json:"wallet,omitempty"` // owner routes only (D-114)
 	SettlementTxHash *string `json:"settlementTxHash"`
 	CreatedAt        string  `json:"createdAt"`
 }
@@ -330,6 +332,7 @@ func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 	}
 	if withClient {
 		out.LinkID = httpio.OrNull(inv.LinkID)
+		out.State, out.Wallet = inv.State, inv.Wallet
 		// The owner's only (R-151): the pay page's answer has no metadata at all.
 		metadata := inv.Metadata
 		if metadata == nil {

@@ -52,6 +52,10 @@ const SponsoredPerDay = 50
 // Caps a replacement's fee cap at this many times a new settle's, so repeated bumps can't grow without end.
 const MaxFeeFactor = 2
 
+// MaxSettleGas caps a replacement's gas limit: about four Tempo settles (TempoSettleGasFloor plus a fifth), with room
+// for Arbitrum's L1 data gas.
+const MaxSettleGas = 3_000_000
+
 func (s *Signer) settle(ctx context.Context, id int64, release func()) error {
 	in, err := s.load(ctx, id)
 	if err != nil {
@@ -238,6 +242,11 @@ func check(in intent) (address.Terms, string) {
 	case in.wallet == nil || !strings.EqualFold(*in.wallet, in.recipient):
 		return address.Terms{}, "recipient is not the profile wallet"
 	}
+	return receiverTerms(in)
+}
+
+// receiverTerms are the invoice's terms when they compute its stored receive address with a Forwend factory.
+func receiverTerms(in intent) (address.Terms, string) {
 	factory, known := address.KnownFactory(in.factory)
 	if !known {
 		return address.Terms{}, "invoice factory is not a Forwend factory"
@@ -305,7 +314,8 @@ func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uin
 }
 
 // replace raises tip and fee cap by at least an eighth (geth wants a tenth) and to at least today's fees, saved before
-// it is sent with old's hash kept, since either may be mined. Over MaxFeeFactor it returns old, to be sent again as is.
+// it is sent with old's hash kept, since either may be mined. Over MaxFeeFactor or MaxSettleGas it returns old, to be
+// sent again as is.
 func (s *Signer) replace(ctx context.Context, client *ethclient.Client, in intent, old *types.Transaction) (*types.Transaction, error) {
 	tip, feeCap, err := Fees(ctx, client, in.chainID)
 	if err != nil {
@@ -324,6 +334,11 @@ func (s *Signer) replace(ctx context.Context, client *ethclient.Client, in inten
 	gas := old.Gas()
 	if est, err := client.EstimateGas(ctx, ethereum.CallMsg{From: s.sender, To: old.To(), Data: old.Data()}); err == nil {
 		gas = max(gas, est+est/5)
+	}
+	if gas > MaxSettleGas {
+		slog.Error("ALERT stuck settle needs more than the max gas; sending it again, not replacing it", "invoice", in.invoiceID, "tx",
+			old.Hash().Hex(), "gas", gas)
+		return old, nil
 	}
 	tx, err := types.SignTx(types.NewTx(&types.DynamicFeeTx{ChainID: old.ChainId(), Nonce: old.Nonce(), GasTipCap: tip,
 		GasFeeCap: feeCap, Gas: gas, To: old.To(), Data: old.Data()}), types.LatestSignerForChainID(old.ChainId()), s.key)
@@ -370,10 +385,16 @@ func (s *Signer) overStuck(ctx context.Context, client *ethclient.Client, chainI
 	}
 	two, ceiling := big.NewInt(2), maxFeePerGas[chainID]
 	tip, feeCap := minBig(new(big.Int).Mul(tx.GasTipCap(), two), ceiling), minBig(new(big.Int).Mul(tx.GasFeeCap(), two), ceiling)
+	// The stuck transaction may be this receiver's deploy: a node that estimates at its pending state (Anvil) then
+	// prices only the "already deployed" path. At latest it hasn't run, so the estimate covers the whole deploy.
+	gas := tx.Gas()
+	if est, err := client.EstimateGasAtBlock(ctx, ethereum.CallMsg{From: s.sender, To: tx.To(), Data: tx.Data()}, nil); err == nil {
+		gas = max(gas, est+est/5)
+	}
 	slog.Warn("deploy replaces a stuck transaction", "chain", chainID, "nonce", mined)
 	return types.SignTx(types.NewTx(&types.DynamicFeeTx{ChainID: tx.ChainId(), Nonce: mined,
 		GasTipCap: tip, GasFeeCap: feeCap,
-		Gas: tx.Gas(), To: tx.To(), Data: tx.Data()}), types.LatestSignerForChainID(tx.ChainId()), s.key)
+		Gas: gas, To: tx.To(), Data: tx.Data()}), types.LatestSignerForChainID(tx.ChainId()), s.key)
 }
 
 func bigMax(a, b *big.Int) *big.Int {

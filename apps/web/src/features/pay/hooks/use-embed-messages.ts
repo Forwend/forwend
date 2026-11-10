@@ -1,7 +1,6 @@
 import { type RefObject, useEffect, useRef } from "react";
-import { useGetInvoiceQuery } from "@/features/invoices/api/invoices-api";
+import { invoicesApi } from "@/features/invoices/api/invoices-api";
 import { EMBED_EVENTS, EMBED_MESSAGE } from "@/features/pay/constants/embed";
-import { LIVE_QUERY } from "@/shared/config/refresh";
 
 /** R-168: tells the page that frames the checkout its height and payment status, posted to that page's origin only.
  * ready comes once the invoice is drawn; then resize and status say only what changed. */
@@ -10,7 +9,8 @@ export function useEmbedMessages(
   linkToken: string,
   origin: string,
 ): void {
-  const { data } = useGetInvoiceQuery(linkToken, LIVE_QUERY);
+  // The checkout inside reads and polls the invoice; a poll here too would keep it going once the payment is final.
+  const { data } = invoicesApi.endpoints.getInvoice.useQueryState(linkToken);
   const invoiceId = data?.invoiceId;
   const paymentStatus = data?.paymentStatus;
   // What the page last heard. It outlives the effect, which runs again on each status.

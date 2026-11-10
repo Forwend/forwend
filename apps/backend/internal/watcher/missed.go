@@ -45,7 +45,7 @@ func (c *Chain) RecordDeposits(ctx context.Context, txHash common.Hash, invoiceI
 	if receipt == nil {
 		return 0, ErrNoDeposit
 	}
-	logs := invoiceLogs(receipt.Logs, invoices)
+	logs := nativeSends(invoiceLogs(receipt.Logs, invoices))
 	if len(logs) == 0 {
 		return 0, ErrNoDeposit
 	}

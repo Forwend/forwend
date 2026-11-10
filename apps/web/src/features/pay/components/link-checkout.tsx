@@ -25,8 +25,9 @@ import { Payee } from "@/features/pay/components/payee";
 import { TestnetBadge } from "@/features/pay/components/testnet-badge";
 import { LEFT_PAD, RIGHT_PAD } from "@/features/pay/constants/pay";
 import { LINK_PAY_COPY as COPY, PAY_COPY } from "@/features/pay/constants/pay-copy";
-import { purchaseSearch, readPurchase, usdCents, usdFromCents } from "@/features/pay/lib/link-pay";
+import { purchaseSearch, readPurchase } from "@/features/pay/lib/link-pay";
 import type { LinkPurchase } from "@/features/pay/types/link-pay";
+import { usdCents, usdFromCents } from "@/shared/lib/money";
 
 const NOT_FOUND = 404;
 const TOO_MANY = 429;

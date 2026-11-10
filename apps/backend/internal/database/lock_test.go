@@ -3,6 +3,7 @@ package database_test
 import (
 	"context"
 	"log/slog"
+	"net"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // Each worker has its own pool, as a separate process would.
@@ -109,6 +111,55 @@ func TestLockRunsOneWorkerAtATime(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("the worker kept running after its lock's connection ended")
 	}
+}
+
+// A connection that stops answering without closing (a network break) is reported lost at once, not when TCP gives up
+// hours later: until then no round starts.
+func TestHeldGivesUpOnASilentConnection(t *testing.T) {
+	ctx := context.Background()
+	cfg, err := pgxpool.ParseConfig(databasetest.New(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var silent atomic.Bool
+	cfg.ConnConfig.DialFunc = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		c, err := (&net.Dialer{}).DialContext(ctx, network, addr)
+		return silencedConn{c, &silent}, err
+	}
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	lock, err := database.TakeLock(ctx, pool, 43, "worker", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	silent.Store(true)
+	done := make(chan error, 1)
+	go func() { done <- lock.Held(ctx) }()
+	select {
+	case err := <-done:
+		lock.Close()
+		if err == nil || !strings.Contains(err.Error(), "lost the advisory lock") {
+			t.Fatalf("on a silent connection: %v, want the lock reported lost", err)
+		}
+	case <-time.After(3 * database.LockPing):
+		t.Fatal("Held still waits on a connection that stopped answering")
+	}
+}
+
+// silencedConn drops what it is given to write once silent, so the server never answers: a half-open connection.
+type silencedConn struct {
+	net.Conn
+	silent *atomic.Bool
+}
+
+func (c silencedConn) Write(b []byte) (int, error) {
+	if c.silent.Load() {
+		return len(b), nil
+	}
+	return c.Conn.Write(b)
 }
 
 type syncWriter struct {

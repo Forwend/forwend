@@ -8,10 +8,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"math/big"
 	"net/http"
 	"regexp"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/outbound"
@@ -41,6 +43,8 @@ type Client struct {
 	URL    string
 	Key    string
 	Signer string
+	// rejected: 1Click's last answer refused Key, so its alert is logged once, not at every call.
+	rejected atomic.Bool
 }
 
 // NewClient refuses non-public addresses, as every client to a third party does; allowLoopback is for a test's fake.
@@ -89,6 +93,13 @@ func (c *Client) call(ctx context.Context, method, path string, body any) ([]byt
 	answer, err := io.ReadAll(io.LimitReader(res.Body, maxAnswer+1))
 	if err != nil || len(answer) > maxAnswer {
 		return nil, fmt.Errorf("%w: answer unreadable or over %d bytes", errUnavailable, maxAnswer)
+	}
+	if res.StatusCode == http.StatusUnauthorized {
+		if c.rejected.CompareAndSwap(false, true) {
+			slog.Error("ALERT 1Click rejected the API key: no payer can get a quote")
+		}
+	} else {
+		c.rejected.Store(false)
 	}
 	switch {
 	case res.StatusCode == http.StatusOK || res.StatusCode == http.StatusCreated:

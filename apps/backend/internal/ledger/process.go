@@ -442,14 +442,17 @@ func (s *Service) funded(ctx context.Context, tx pgx.Tx, invoiceID string, chain
 // settle: settle pays out only the amount, and the rest stays held for its payer. A balance read at a block the scan
 // hasn't reached yet can show a deposit it will still record, so it says nothing.
 func Unbooked(ctx context.Context, tx pgx.Tx, invoiceID string, booked, onChain *big.Int, block uint64) error {
-	if new(big.Int).Sub(onChain, booked).Cmp(big.NewInt(DustExcess)) < 0 {
+	if onChain.Cmp(booked) <= 0 {
 		return nil
 	}
 	var missed bool
+	var decimals int
 	if err := tx.QueryRow(ctx, `SELECT c.last_finalized_block >= $2 AND NOT EXISTS (SELECT 1 FROM chain_transfers t
-		    WHERE t.invoice_id = i.id AND t.status <> 'reorged' AND NOT t.booked)
-		FROM invoices i JOIN chain_cursors c ON c.chain_id = i.chain_id WHERE i.id = $1`, invoiceID, int64(block)).
-		Scan(&missed); err != nil || !missed {
+		    WHERE t.invoice_id = i.id AND t.status <> 'reorged' AND NOT t.booked), tk.decimals
+		FROM invoices i JOIN chain_cursors c ON c.chain_id = i.chain_id
+		JOIN tokens tk ON tk.chain_id = i.chain_id AND tk.contract = i.token_contract WHERE i.id = $1`, invoiceID,
+		int64(block)).Scan(&missed, &decimals); err != nil || !missed ||
+		new(big.Int).Sub(onChain, booked).Cmp(DustExcess(decimals)) < 0 {
 		return err
 	}
 	slog.Error("ALERT receive address holds money with no booked transfer", "invoice", invoiceID,
@@ -458,10 +461,12 @@ func Unbooked(ctx context.Context, tx pgx.Tx, invoiceID string, booked, onChain 
 	return alertAgainLater(ctx, tx, invoiceID, true)
 }
 
-// DustExcess: an unexplained balance under this many base units (0.01 of a 6-decimal token) doesn't stop expiry. Arc
-// floors each native transfer but balanceOf floors their sum, so sub-micro sends leave dust no transfer explains,
-// and anyone could send some to keep an invoice open for good. The dust stays in the receiver for the Safe.
-const DustExcess = 10_000
+// DustExcess: an unexplained balance under 0.01 of a token with these decimals (one base unit when it has fewer than
+// 2) doesn't stop expiry. Arc floors each native transfer but balanceOf floors their sum, so sub-micro sends leave dust
+// no transfer explains, and anyone could send some to keep an invoice open for good. The dust stays for the Safe.
+func DustExcess(decimals int) *big.Int {
+	return new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(max(decimals-2, 0))), nil)
+}
 
 // balanced asks the selected RPC whether the receive address holds exactly what is booked.
 func (s *Service) balanced(ctx context.Context, tx pgx.Tx, invoiceID string, chainID, finalized uint64, token, receive string) (bool, error) {
@@ -474,7 +479,15 @@ func (s *Service) balanced(ctx context.Context, tx pgx.Tx, invoiceID string, cha
 	if err != nil || onChain == nil {
 		return false, err
 	}
-	if excess := new(big.Int).Sub(onChain, booked); excess.Cmp(big.NewInt(DustExcess)) >= 0 {
+	excess := new(big.Int).Sub(onChain, booked)
+	var decimals int
+	if excess.Sign() > 0 {
+		if err := tx.QueryRow(ctx, "SELECT decimals FROM tokens WHERE chain_id = $1 AND contract = $2", int64(chainID),
+			token).Scan(&decimals); err != nil {
+			return false, fmt.Errorf("read invoice %s token decimals: %w", invoiceID, err)
+		}
+	}
+	if excess.Cmp(DustExcess(decimals)) >= 0 {
 		// A deposit the watcher never saw: an operator records it, then returns it (money-safety.md).
 		slog.Error("ALERT receive address holds money with no booked transfer; not expiring", "invoice", invoiceID,
 			"booked", booked.String(), "onChain", onChain.String(),

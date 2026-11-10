@@ -12,9 +12,3 @@ export interface TokenAmount {
   baseUnits: bigint;
   decimals: number;
 }
-
-/** The latest read of any price, null when none has one, and whether a coin's price can't be shown now. */
-export interface PricesStatus {
-  updatedAt: string | null;
-  stale: boolean;
-}

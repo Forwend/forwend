@@ -67,7 +67,10 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
   - So a late refund-authority settle or refund is still recorded and booked; a late recovery is recorded.
 - The signer records a receipt's events only when its block is the canonical one at that height.
 - A receiver event that is not a movement of its own invoice logs an `ALERT` and is skipped; the scan goes on.
-- A movement found after later ones were booked is refused for review, never booked against today's balances.
+- A receiver event found after later movements were booked is refused for review (`historical_order`).
+  - Booked, it would take today's balances instead of its own.
+  - A deposit found that late is booked: refused, its money could never be booked or returned.
+    - See the deposit the scan missed, below: its total is right, its D-27 order may not be.
 - The ledger books deposits and receiver events together, in chain order, against the balances at that point.
   - A movement waits while an earlier deposit is still detected.
   - Refunds take held money first, then payable; settlements and fees take payable first, then held.
@@ -85,6 +88,8 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 
 Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no key and sends nothing.
 
+- Each run first writes the OS user and its arguments to `ops_runs`, a failing run too.
+  - It names a person only when each operator logs in to the server as themselves.
 - `ops case <pay link | receive address | payment transaction | invoice id>` prints each invoice option:
   - its held money and why it is held, from the ledger and its history;
   - each final payment: transaction, sender, amount and time;
@@ -180,9 +185,11 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
   - The scan reads both. A system log with a `0x3600` twin one or two logs later (same from, to, amount) is the same transfer.
   - Each `0x3600` log takes at most one twin, so every transfer counts once.
   - A system log without a twin is a native send: it counts as `0x3600` money, floored to 6 decimals.
+    - Before it is first recorded, the scan reads its transaction's receipt and takes the twin from there.
+    - So an answer that lacks the `0x3600` log can't record the same transfer again at another log index.
   - Under one micro-USDC is no deposit: `balanceOf` truncates it too.
   - Several native sends with sub-micro parts can book less than `balanceOf` shows; paid still holds.
-    - Expiry ignores such dust: an excess under `ledger.DustExcess` (0.01 of a 6-decimal token) stays for the Safe.
+    - Expiry ignores such dust: an excess under `ledger.DustExcess` (0.01 of the token, from its decimals) stays for the Safe.
     - Otherwise anyone could send two sub-micro amounts and keep an invoice open for good.
   - No contract can emit from the system emitter: it has no code.
 - When the selected RPC's `balanceOf` holds at least `ledger.DustExcess` more than is booked, the invoice never expires.
@@ -196,7 +203,7 @@ Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no k
     - A refund mined before a recorded deposit can't have returned it, so it books first.
     - Any recorded deposit after it lifts the wait, even another payer's.
     - So a Safe refund sent outside `ops return` before the missed deposit is recorded can still take the wrong money.
-  - A missed deposit recorded after later money was booked is booked against today's balances.
+  - A deposit recorded after later money was booked, by `ops deposit` or a recovery sweep, is booked against today's balances.
     - The total is right, but the earliest-payer order of D-27 may not hold for it.
   - The ledger only re-checks an option that can still expire. On a paid or settled one, `ops return` refuses instead.
   - The same check runs when an invoice turns paid, and in the signer before it signs a settle.
@@ -249,6 +256,8 @@ D-123: NEAR Intents 1Click converts a payer's token on another chain into USDC o
   - its signed request names the Base option's receive address, Base USDC, `EXACT_OUTPUT`, the due amount and `refundTo`;
   - it delivers exactly that amount, has a deposit address and needs no memo.
   - every value is read with exact keys: Go's struct decoding would let a `DepositAddress` key replace `depositAddress`.
+  - it is fresh: signed in the last 15 minutes (`intents.PriceWindow`), its address taking deposits an hour more.
+    - An old quote replayed by a hacked api could send money to an address 1Click no longer serves.
   - The request's deadline is not signed in a real quote; 1Click signs the address's own deadline in its place.
     - So the D-125 deadline is 1Click's echo of what was asked. A wrong one can only make money late and held for the
       payer, never send it elsewhere: the recipient is signed.
@@ -257,12 +266,21 @@ D-123: NEAR Intents 1Click converts a payer's token on another chain into USDC o
 - The worker reads each quote's status from 1Click only to show progress (R-234). Paid still comes from the Base balance.
   - While 1Click converts a deposit, the pick, an edit and a cancel wait as for money seen (`invoice.ConvertingSQL`).
     - A short deposit waits too: 1Click holds it until the deadline, and the rest may still convert it (Q-19).
+    - A delivery stops waiting once it came in on Base (`invoice.DeliveredSQL`): the ledger holds it from then.
+    - Any quote stops waiting an hour past its deadline or seen deposit, when its alert fires.
+      - One 1Click never finishes would otherwise hold the invoice for good.
   - An unpaid quote is read until 1Click's own address deadline (`quote.deadline`, about 72 hours): a late deposit still
     converts or is refunded.
   - A read that fails never ends tracking. Only a read that 1Click answers can: a deposit made meanwhile is not lost.
   - It logs an `ALERT` for a failed swap, a seen deposit unfinished an hour past its deadline, and a delivery with no
     Base transfer of its transaction 30 minutes later.
   - It also alerts on a status it doesn't know, and on two quotes of one invoice that both saw deposits.
+  - It alerts when 1Click delivers another amount than the quote: the invoice is then short or overpaid.
+  - A delivery alert ends once the option holds a deposit of at least that amount, made after the quote.
+    - That covers a transaction 1Click names in another form than the Base transfer's hash.
+  - Alerts read only quotes seen in the last week or still read, newest first.
+- The api's `CROSSCHAIN_OFF=1` turns new quotes off on the whole platform; the worker still reads open ones.
+- A partner key 1Click rejects (401) logs one `ALERT` until a call works again.
 - Test mode has no cross-chain: 1Click has no testnet.
 
 ## Money out of a profile wallet
@@ -376,6 +394,11 @@ Limits:
   the recipient.
 - Testnet invoices are never shown to real payers: the testnet refund key could `recover` real money at the same
   address on mainnet.
+- The development factory on Base, Arbitrum, Arc and Tempo mainnet has one test EOA as its refund authority, not the
+  Safe ([operations](../contracts/operations.md#development-mainnet-deploys)).
+  - That key can pause, change the executor, refund after a deadline and recover, and it gets every platform fee.
+  - A leak of it would let its holder take the money waiting in mainnet receivers.
+  - So live mode takes no real volume until the Safe factory is deployed.
 - A payer-chooses invoice picks its option as soon as that option's final payments add up to 1.00 USD (R-119); no
   other chain is waited for.
   - A smaller deposit chooses nothing, so a stranger with the pay link can't decide the option with dust.

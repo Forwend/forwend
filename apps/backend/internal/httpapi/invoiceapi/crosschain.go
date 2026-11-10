@@ -21,9 +21,12 @@ const (
 	CrossTokensRate, CrossTokensBurst = 0.5, 10
 	DryQuoteRate, DryQuoteBurst       = 1, 20
 	QuoteRate, QuoteBurst             = 0.1, 5
-	DryQuoteAllRate, DryQuoteAllBurst = 1, 20
-	QuoteAllRate, QuoteAllBurst       = 0.2, 10
+	DryQuoteAllBurst                  = 20
+	QuoteAllBurst                     = 10
 )
+
+// The shared budgets' refill per second; a variable only so a test can stop the refill and count a burst exactly.
+var DryQuoteAllRate, QuoteAllRate = 1.0, 0.2
 
 type crossTokensJSON struct {
 	Due      string           `json:"due"`

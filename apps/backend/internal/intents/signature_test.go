@@ -54,7 +54,7 @@ func TestVerifyAcceptsOnlyWhat1ClickSigned(t *testing.T) {
 	// A key in another case beside a signed one must not take its place: Go's struct decoding would read either.
 	for _, extra := range []string{`"DepositAddress":"0xEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",`, `"DepositMemo":"1",`, `"AmountIn":"1",`} {
 		changed := bytes.Replace(signed, []byte(`"quote":{`), []byte(`"quote":{`+extra), 1)
-		q, err := Check(changed, quoteAsk(), false, ManagerKey)
+		q, err := Check(changed, quoteAsk(), false, ManagerKey, signedAt)
 		if err != nil {
 			t.Fatalf("%s: %v", extra, err)
 		}
@@ -68,6 +68,9 @@ func TestVerifyAcceptsOnlyWhat1ClickSigned(t *testing.T) {
 	}
 }
 
+// signedAt is a minute after 1Click signed testdata/quote.json.
+var signedAt = time.Date(2026, 11, 9, 2, 12, 34, 0, time.UTC)
+
 // quoteAsk is what testdata/quote.json answers.
 func quoteAsk() Ask {
 	deadline, _ := time.Parse(time.RFC3339, "2026-11-09T02:41:33Z")
@@ -79,7 +82,7 @@ func quoteAsk() Ask {
 func TestCheckRefusesAQuoteForAnotherPaymentThanAsked(t *testing.T) {
 	ask := quoteAsk()
 	deadline := ask.Deadline
-	q, err := Check(fixture(t, "quote.json"), ask, false, ManagerKey)
+	q, err := Check(fixture(t, "quote.json"), ask, false, ManagerKey, signedAt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,14 +100,14 @@ func TestCheckRefusesAQuoteForAnotherPaymentThanAsked(t *testing.T) {
 	} {
 		other := quoteAsk()
 		change(&other)
-		if _, err := Check(fixture(t, "quote.json"), other, false, ManagerKey); !errors.Is(err, ErrMismatch) {
+		if _, err := Check(fixture(t, "quote.json"), other, false, ManagerKey, signedAt); !errors.Is(err, ErrMismatch) {
 			t.Fatalf("%s: %v, want ErrMismatch", name, err)
 		}
 	}
 	// A dry quote is checked as dry: it has no address, and its refund goes to 1Click's own ledger.
 	dry := quoteAsk()
 	dry.RefundTo = ""
-	if _, err := Check(fixture(t, "quote-dry.json"), dry, true, ManagerKey); !errors.Is(err, ErrMismatch) {
+	if _, err := Check(fixture(t, "quote-dry.json"), dry, true, ManagerKey, signedAt); !errors.Is(err, ErrMismatch) {
 		t.Fatalf("a dry quote refunding to the payer's address is not what Quote asks for: %v", err)
 	}
 }

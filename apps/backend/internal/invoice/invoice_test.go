@@ -6,10 +6,13 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/address"
+	"github.com/forwend/forwend/apps/backend/internal/profile"
 )
 
 // Mirrors InvoiceTypes.sol safeToSettle.
@@ -77,6 +80,47 @@ func TestAgreedCurrenciesMatchTheWeb(t *testing.T) {
 	}
 	if !reflect.DeepEqual(web, AgreedCurrencies) {
 		t.Fatalf("the web offers %v, the API takes %v", web, AgreedCurrencies)
+	}
+}
+
+// The invoice form refuses what the API refuses, no more and no less.
+func TestLimitsMatchTheWeb(t *testing.T) {
+	var read func(file, name string) map[string]int64
+	read = func(file, name string) map[string]int64 {
+		src, err := os.ReadFile("../../../web/src/features/" + file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		block := regexp.MustCompile(`(?s)` + name + ` = \{(.*?)\}`).FindSubmatch(src)
+		if block == nil {
+			t.Fatalf("no %s in %s", name, file)
+		}
+		out := map[string]int64{}
+		for _, m := range regexp.MustCompile(`(\w+): ([0-9_]+|CLIENT_LIMITS\.\w+)`).FindAllSubmatch(block[1], -1) {
+			out[string(m[1])], _ = strconv.ParseInt(strings.ReplaceAll(string(m[2]), "_", ""), 10, 64)
+			if ref, ok := strings.CutPrefix(string(m[2]), "CLIENT_LIMITS."); ok {
+				out[string(m[1])] = read("clients/constants/clients.ts", "CLIENT_LIMITS")[ref]
+			}
+		}
+		return out
+	}
+	for _, c := range []struct {
+		file, name string
+		want       map[string]int64
+	}{
+		{"invoices/constants/invoices.ts", "INVOICE_LIMITS", map[string]int64{"title": MaxTitle, "note": MaxNote,
+			"clientName": profile.MaxClientName, "clientEmail": profile.MaxClientEmail,
+			"clientAddress": profile.MaxClientAddress, "clientTaxId": profile.MaxClientTaxID,
+			"reference": profile.MaxClientReference, "senderName": MaxSenderName, "returnUrl": MaxReturnURL,
+			"memo": MaxMemo}},
+		{"invoices/constants/invoices.ts", "LINE_LIMITS", map[string]int64{"count": MaxLines,
+			"description": MaxLineDescription, "quantityMax": MaxLineQuantity}},
+		{"invoices/constants/invoices.ts", "EXPIRY_BOUNDS_S", map[string]int64{
+			"min": int64(MinExpiresIn.Seconds()), "max": int64(MaxExpiresIn.Seconds())}},
+	} {
+		if got := read(c.file, c.name); !reflect.DeepEqual(got, c.want) {
+			t.Errorf("%s: the web has %v, the API %v", c.name, got, c.want)
+		}
 	}
 }
 
