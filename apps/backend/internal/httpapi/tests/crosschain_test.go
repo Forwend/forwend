@@ -681,3 +681,26 @@ func TestCrossChainQuoteRefusedForAnotherReasonDoesNotBlameTheRefundAddress(t *t
 		t.Fatalf("logs lack 1Click's refusal:\n%s", logs.String())
 	}
 }
+
+// R-250: a token carries the CoinGecko id 1Click names for it, by which the web finds a logo file it ships.
+func TestCrossChainTokensCarryTheirCoingeckoID(t *testing.T) {
+	e, _ := crossChainEnv(t)
+	pay, _ := liveInvoice(t, e, "key-1", 86400)
+	e.exec(t, `UPDATE intents_tokens SET coingecko_id = 'tether' WHERE asset_id = $1`, tronUSDT)
+
+	r := e.call(t, "GET", crossPath+pay+"/crosschain/tokens", "", "", "")
+	if r.status != http.StatusOK {
+		t.Fatalf("tokens: %d %v", r.status, r.body)
+	}
+	for _, tok := range r.body["tokens"].([]any) {
+		token := tok.(map[string]any)
+		id, listed := token["coingeckoId"]
+		if want := any(nil); !listed || token["assetId"] != tronUSDT && id != want || token["assetId"] == tronUSDT && id != "tether" {
+			t.Errorf("%v: coingeckoId %v (listed %v), want tether for Tron's USDT and null for the rest", token["assetId"], id, listed)
+		}
+	}
+	price := e.call(t, "GET", crossPath+pay+"/crosschain/price?originAsset="+url.QueryEscape(tronUSDT), "", "", "")
+	if token, _ := price.body["token"].(map[string]any); price.status != http.StatusOK || token["coingeckoId"] != "tether" {
+		t.Fatalf("price: %d %v", price.status, price.body)
+	}
+}

@@ -270,9 +270,8 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await anotherToken(page).click();
     await page.getByRole("button", { name: "Choose a token" }).click();
     const picker = page.getByRole("dialog", { name: "Pay with any token" });
-    // Ethereum's ETH needs exactly what is due, so it fits: nothing is greyed, so no note.
+    // Ethereum's ETH needs exactly what is due, so it fits.
     await expect(picker.getByRole("button", { name: /ETH/ })).toBeEnabled();
-    await expect(picker.getByText(/Greyed tokens/)).toHaveCount(0);
     await picker.getByRole("button", { name: "Tron", exact: true }).click();
     const rows = picker.getByRole("region", { name: "Tokens on Tron" }).getByRole("listitem");
     // The token that fits comes first; the other stays listed with what it needs.
@@ -280,11 +279,6 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     const usdt = rows.nth(1).getByRole("button");
     await expect(usdt).toContainText("Tron · Needs at least 2,000.00 USDC");
     await expect(usdt).toBeDisabled();
-    await expect(
-      picker.getByText(
-        "Greyed tokens need more than this payment of 1,250.00 USDC. NEAR Intents sets the minimum for each.",
-      ),
-    ).toBeVisible();
     await rows.nth(0).getByRole("button").click();
     await expect(picker).toHaveCount(0);
     await expect(page.getByLabel("Refund address on Tron")).toBeVisible();

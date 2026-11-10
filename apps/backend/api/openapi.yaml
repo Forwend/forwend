@@ -6419,7 +6419,7 @@ components:
         paidBy: { type: string, enum: [forwend, wallet, paymaster] }
     CrossChainToken:
       type: object
-      required: [assetId, blockchain, symbol, decimals, contract, priceUsd, estimate, minimum]
+      required: [assetId, blockchain, symbol, decimals, contract, priceUsd, estimate, minimum, coingeckoId]
       properties:
         assetId: { type: string, description: "1Click's id of the token, as nep141:tron-….omft.near." }
         blockchain: { type: string, description: "1Click's name of its chain, as tron, eth or sol." }
@@ -6437,6 +6437,13 @@ components:
           description: |
             D-126. In the tokens list, the Base USDC base units 1Click last needed at least from this token; null when it
             named none, and in a quote. A token whose minimum is above `due` can't be quoted.
+        coingeckoId:
+          type: [string, "null"]
+          pattern: "^[a-z0-9-]{1,64}$"
+          example: usd-coin
+          description: |
+            R-250. The token's CoinGecko id, or null when 1Click names none. The web uses it to find a logo file it
+            ships; it is not shown to payers.
     CrossChainQuote:
       type: object
       required: [quoteId, token, depositAddress, amountIn, minAmountIn, amountOut, amountInUsd, amountOutUsd, refundFee,

@@ -5,6 +5,7 @@ import {
   CROSS_CHAIN_STATUSES,
   CROSS_CHAIN_TARGET,
 } from "@/shared/constants/chains";
+import { CHAIN_LOGOS, TOKEN_LOGOS } from "@/shared/constants/logos";
 import { foldText } from "@/shared/lib/search";
 
 export function chainName(chainId: number): string {
@@ -89,4 +90,14 @@ export function blockchainTxLink(
 /** A map's own entry for a name from outside data: "constructor" must not find Object's own property. */
 export function iconOf<T>(icons: Readonly<Record<string, T>>, name: string): T | undefined {
   return Object.hasOwn(icons, name) ? icons[name] : undefined;
+}
+
+/** The logo file the web ships for a token, by the CoinGecko id the api names (R-250); null without one. */
+export function tokenLogo(coingeckoId: string | null | undefined): string | null {
+  return coingeckoId && TOKEN_LOGOS.has(coingeckoId) ? `/logos/tokens/${coingeckoId}.webp` : null;
+}
+
+/** The logo file the web ships for a network 1Click names, where Forwend draws none itself; null without one. */
+export function chainLogo(blockchain: string): string | null {
+  return CHAIN_LOGOS.has(blockchain) ? `/logos/chains/${blockchain}.webp` : null;
 }

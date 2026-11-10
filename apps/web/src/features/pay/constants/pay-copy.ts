@@ -193,8 +193,6 @@ export const PAY_COPY = {
     estimate: (amount: string) => `About ${amount}`,
     // D-126: a token whose minimum is above what is due can't be picked.
     needsAtLeast: (amount: string) => `Needs at least ${amount}`,
-    tooSmall: (due: string) =>
-      `Greyed tokens need more than this payment of ${due}. NEAR Intents sets the minimum for each.`,
     youSend: "You send",
     // What You send is made of, one line each (R-244).
     conversionFee: "Conversion and network fee",

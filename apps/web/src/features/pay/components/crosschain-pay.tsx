@@ -54,7 +54,14 @@ import {
   CROSS_CHAIN_TARGET,
   CROSS_CHAIN_TOKEN_ICONS,
 } from "@/shared/constants/chains";
-import { blockchainName, blockchainTxLink, crossChainEnded, iconOf } from "@/shared/lib/chains";
+import {
+  blockchainName,
+  blockchainTxLink,
+  chainLogo,
+  crossChainEnded,
+  iconOf,
+  tokenLogo,
+} from "@/shared/lib/chains";
 
 const COPY = PAY_COPY.crossChain;
 type CrossChain = NonNullable<Invoice["crossChain"]>;
@@ -63,7 +70,7 @@ type CrossChain = NonNullable<Invoice["crossChain"]>;
  * from the signed answer once it verifies, never from the api's own fields. */
 interface Shown {
   quoteId: string;
-  token: Pick<CrossToken, "assetId" | "blockchain" | "symbol" | "decimals">;
+  token: Pick<CrossToken, "assetId" | "blockchain" | "symbol" | "decimals" | "coingeckoId">;
   refundTo: string;
   shownUntil: number;
   signed: unknown;
@@ -716,6 +723,8 @@ function CrossMark({ token }: { token: Shown["token"] }) {
         token={iconOf(CROSS_CHAIN_TOKEN_ICONS, token.symbol)}
         chain={iconOf(BLOCKCHAIN_ICONS, token.blockchain)}
         letter={token.symbol.slice(0, 1)}
+        logo={tokenLogo(token.coingeckoId)}
+        chainLogo={chainLogo(token.blockchain)}
       />
       <span className="flex min-w-0 flex-col">
         <span className="truncate text-sm font-medium text-ink">{token.symbol}</span>

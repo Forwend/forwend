@@ -14,8 +14,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import { amountText, orderBlockchains, sendUnits } from "@/features/pay/lib/crosschain";
 import type { CrossToken } from "@/features/pay/types/crosschain";
+import { StoredLogo } from "@/shared/components/chains/stored-logo";
 import { BLOCKCHAIN_ICONS, CROSS_CHAIN_TOKEN_ICONS } from "@/shared/constants/chains";
-import { blockchainName, iconOf } from "@/shared/lib/chains";
+import { blockchainName, chainLogo, iconOf, tokenLogo } from "@/shared/lib/chains";
 
 const COPY = PAY_COPY.crossChain;
 
@@ -90,7 +91,6 @@ export function CrossChainPicker({
         : t.blockchain === chain,
     )
     .sort((a, b) => Number(minimumOver(a) !== null) - Number(minimumOver(b) !== null));
-  const someTooSmall = due !== undefined && shownTokens.some((t) => minimumOver(t) !== null);
   // On a phone: the networks until one is tapped; a search shows its tokens from every network at once.
   const tokensOnPhone = step === STEPS.tokens || tokenQuery !== "";
   return (
@@ -140,7 +140,11 @@ export function CrossChainPicker({
                       }}
                       className="flex min-h-12 w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm text-ink outline-none transition-colors hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-focus sm:min-h-0 sm:gap-2 sm:aria-pressed:bg-surface-2"
                     >
-                      <Mark text={blockchainName(c)} icon={iconOf(BLOCKCHAIN_ICONS, c)} />
+                      <Mark
+                        text={blockchainName(c)}
+                        icon={iconOf(BLOCKCHAIN_ICONS, c)}
+                        logo={chainLogo(c)}
+                      />
                       <span className="min-w-0 flex-1 truncate">{blockchainName(c)}</span>
                       {/* A hint for the eye: the button's name stays the network's alone. */}
                       <span
@@ -214,6 +218,7 @@ export function CrossChainPicker({
                           <Mark
                             text={t.symbol}
                             icon={iconOf(CROSS_CHAIN_TOKEN_ICONS, t.symbol)}
+                            logo={tokenLogo(t.coingeckoId)}
                             greyed={minimum !== null}
                           />
                           <span className="flex min-w-0 flex-1 flex-col">
@@ -242,14 +247,6 @@ export function CrossChainPicker({
               )}
             </section>
           </div>
-          {someTooSmall ? (
-            <p
-              // It explains greyed tokens: on a phone's networks step none is on screen.
-              className={`border-t border-line pt-3 text-xs text-muted ${tokensOnPhone ? "" : "max-sm:hidden"}`}
-            >
-              {COPY.tooSmall(usdc(due))}
-            </p>
-          ) : null}
         </div>
       )}
     </Sheet>
@@ -259,19 +256,23 @@ export function CrossChainPicker({
 // The usual first screen of rows, so the sheet opens at about the height it will keep.
 const LOADING_ROWS = ["a", "b", "c", "d", "e", "f"] as const;
 
-// 1Click's list names no logos, and Forwend draws only the popular ones: any other shows its first letter in the place
-// a logo takes (R-246). A token that can't be picked greys its logo as its row does (R-242).
+// Forwend draws the popular logos itself (R-246); any other token or network shows the logo file the web ships
+// (R-250), and one without either shows its first letter in the place a logo takes. A token that can't be picked greys its logo as its
+// row does (R-242).
 function Mark({
   text,
   icon,
+  logo,
   greyed = false,
 }: {
   text: string;
   icon: BrandIconName | undefined;
+  logo?: string | null;
   greyed?: boolean;
 }) {
-  if (icon)
-    return <BrandIcon name={icon} className={`size-6 ${greyed ? "opacity-50 grayscale" : ""}`} />;
+  const dim = greyed ? "opacity-50 grayscale" : "";
+  if (icon) return <BrandIcon name={icon} className={`size-6 ${dim}`} />;
+  if (logo) return <StoredLogo src={logo} letter={text.slice(0, 1)} className={`size-6 ${dim}`} />;
   return (
     <span
       aria-hidden

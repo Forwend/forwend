@@ -938,11 +938,14 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
         - A list that takes another's place fades in from a slight blur (`fw-step-in`); nothing slides.
       - While the tokens load, the sheet shows a search bar and six rows of its own shape.
       - Each row shows its logo, the symbol over the chain, and "About …" at the right (R-246).
-        - Popular chains and their own tokens have logos; any other shows its first letter in the logo's place.
+        - Popular chains and their own tokens show the logos Forwend draws.
+        - Any other token or network shows the logo file the web ships (R-250, `StoredLogo`), from Forwend's own origin.
+        - The files are small WebP images in `apps/web/public/logos/`, named by CoinGecko id or by 1Click's chain code.
+        - One with neither, or whose image fails to load, shows its first letter in the logo's place.
         - "About" rounds up as You send does and adds 1Click's 1% slippage, so the two read alike (R-244).
       - A token NEAR Intents needs more from than is due is greyed and can't be picked (R-242).
         - Its row says "Tron · Needs at least 100.00 USDC" and drops "About …"; it sits under the tokens that fit.
-        - A note at the sheet's foot says greyed tokens need more than this payment, and that NEAR Intents sets it.
+        - The row's own line is the whole explanation: no note under the list repeats it.
     - A price NEAR Intents refuses says it can't convert this token now; a refund-address line is only for a quote.
     - After a pick: the token row with Change, You send, the refund address field, then Show address.
       - The token row shows the token's logo with its chain's on the corner, then both names.
