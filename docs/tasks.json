@@ -1014,7 +1014,7 @@
         "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "lint",
@@ -1094,11 +1094,18 @@
           "summary": "The footer defect is fixed: toFirstError (new-invoice-form.tsx:327) opens the step of the first [aria-invalid=true] or [data-invalid] element and focuses it, showErrors and the footer button both use it, Continue focuses only inside its own step (:730), the sender name clears its error on change (:1254), and the items' error line is a focus target (line-items.tsx:149). Traced again: a request's name error goes away once a name is typed; with errors on two steps the footer button opens the hidden step and focuses its field; an items total below the minimum focuses its own line. Every errors key the form can set has a focusable marked element while it is set: text fields, text areas, date pickers and comboboxes mark their input or trigger, reminders and repeat mark their checkbox, lines marks its line, and each handler that removes a field also clears its error. A count with no target needs the API to refuse a field the form did not fill (expiresIn with a preset, memo, invoice-only fields in a request), which the form's own values do not cause. The fee row, the Client pays dash, the page count floor, the preview label, the sheet's copy, the request's Amount label and the phone footer line are sound. typecheck, lint, docs-check pass and web-unit passes 412 tests. Notes: no unit test covers the items-minimum line as a focus target; title, note, client address, supply date and due date keep a server error, and the count, until the next Create; reminders and repeat keep theirs after the due date or email is filled; the focused items line has no visible focus ring; the Preview aside and its section carry the same label.",
           "at": "2026-11-10T20:13:16Z",
           "filesHash": "5eabf91def69e3ec"
-        }
+        },
+        "commit": "8d7d4bf2",
+        "doneAt": "2026-11-10T20:13:52Z"
       },
       "branch": "feat/f463-new-invoice-reads-as-one-flow-of-custome",
       "baseCommit": "e24c92c8f368cd05cf717cd6e42dca26e639406e",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f463-new-invoice-reads-as-one-flow-of-custome",
+        "base": "main"
+      }
     },
     {
       "id": "F464",
