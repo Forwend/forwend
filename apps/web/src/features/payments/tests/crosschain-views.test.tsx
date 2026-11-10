@@ -4,12 +4,9 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { LatestPayments } from "@/features/payments/components/latest-payments";
-import {
-  CrossChainFigure,
-  PaymentDetail,
-  paidThroughIntents,
-} from "@/features/payments/components/payment-detail";
+import { PaymentDetail } from "@/features/payments/components/payment-detail";
 import { PaymentsTable } from "@/features/payments/components/payments-table";
+import { paidThroughIntents } from "@/features/payments/lib/payment-journey";
 import type { PaymentDetail as Detail, Payment } from "@/features/payments/types/payments";
 import { makeStore } from "@/store/store";
 
@@ -135,7 +132,7 @@ describe("cross-chain payment views", () => {
     expect(await screen.findByText("via NEAR Intents")).toBeTruthy();
   });
 
-  it("shows what was sent through NEAR Intents on the payment page, and nothing for a deposit 1Click returned", async () => {
+  it("shows what was sent and that NEAR Intents converted it on the payment page, and neither for a deposit 1Click returned", async () => {
     const AT = "2026-10-10T12:05:00Z";
     const base = row({ crossChain });
     const detail = (c: CrossChain) => ({
@@ -204,76 +201,18 @@ describe("cross-chain payment views", () => {
           </TooltipProvider>
         </Provider>,
       );
-      await screen.findByText("Timeline");
+      await screen.findByText("How the money moved");
     };
     await show(crossChain);
-    const sentThrough = screen.getByRole("img", { name: "NEAR Intents" }).closest("dt");
-    expect(sentThrough?.textContent).toBe("Sent through");
-    expect(sentThrough?.nextElementSibling?.textContent).toContain("101.62 USDT on Tron");
+    // The sum names it once; the list shows the customer's own transfer and who converted it.
+    expect(screen.getByText("Customer sent 101.62 USDT on Tron")).toBeTruthy();
+    expect(screen.getByText("NEAR Intents")).toBeTruthy();
+    expect(screen.getByText("Returned to the customer")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /View transaction on Tron$/ })).toBeTruthy();
     cleanup();
     await show({ ...crossChain, status: "REFUNDED" });
-    expect(screen.queryByRole("img", { name: "NEAR Intents" })).toBeNull();
-  });
-
-  it("names what was sent, the part returned and both transactions in Details", () => {
-    render(
-      <dl>
-        <CrossChainFigure crossChain={crossChain} />
-      </dl>,
-    );
-    expect(screen.getByText("101.62 USDT on Tron")).toBeTruthy();
-    expect(screen.getByText("0.50 USDT returned to the customer's refund address")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Customer's transaction" }).getAttribute("href")).toBe(
-      crossChain.originTxs[0]?.explorerUrl,
-    );
-    expect(screen.getByRole("link", { name: "Base transaction" }).getAttribute("href")).toBe(
-      `https://basescan.org/tx/0x${"9".repeat(64)}`,
-    );
-  });
-
-  // R-243: where 1Click gives no link, the owner gets the same known explorer as the payer.
-  it("links the customer's transaction on a known explorer when 1Click gives none", () => {
-    const solana =
-      "4jBcpDL3KfBipWFqRBT5gVwZZoGogMBv5FWi6hi6a45CmPg6CcPJmD5Pr8jTxJGehtDrh3vmq8Tr7Q1UU6GLxoxj";
-    render(
-      <dl>
-        <CrossChainFigure
-          crossChain={{
-            ...crossChain,
-            blockchain: "sol",
-            originTxs: [{ hash: solana, explorerUrl: "" }],
-          }}
-        />
-      </dl>,
-    );
-    expect(screen.getByRole("link", { name: "Customer's transaction" }).getAttribute("href")).toBe(
-      `https://solscan.io/tx/${solana}`,
-    );
-  });
-
-  // jsdom has no layout: the class is what lets a long 18-decimal amount wrap in a half-width card on a phone.
-  it("wraps a long amount instead of clipping it", () => {
-    render(
-      <CrossChainFigure
-        crossChain={{
-          ...crossChain,
-          decimals: 18,
-          symbol: "ETH",
-          blockchain: "eth",
-          deposited: "1263123456789012345678",
-        }}
-      />,
-    );
-    expect(screen.getByText("1,263.123456789012345678 ETH on Ethereum").className).toContain(
-      "break-words",
-    );
-  });
-
-  it("shows no Details figure for a deposit 1Click returned", () => {
-    const { container } = render(
-      <CrossChainFigure crossChain={{ ...crossChain, status: "REFUNDED" }} />,
-    );
-    expect(container.textContent).toBe("");
+    expect(screen.queryByText("NEAR Intents")).toBeNull();
+    expect(screen.queryByText(/USDT on Tron/)).toBeNull();
   });
 
   it("counts a deposit 1Click converts or converted, and none it returned", () => {

@@ -138,3 +138,34 @@ export const BLOCKCHAIN_EXPLORERS: Record<string, { name: string; url: string }>
   btc: { name: "mempool.space", url: "https://mempool.space/tx/" },
   near: { name: "NearBlocks", url: "https://nearblocks.io/txns/" },
 };
+
+/** Logos for 1Click's popular chains (R-246): its list names none, so any other chain shows its first letter. */
+export const BLOCKCHAIN_ICONS: Readonly<Record<string, BrandIconName>> = {
+  eth: "ethereum",
+  sol: "solana",
+  tron: "tron",
+  arb: "arbitrum",
+  base: "base",
+  bsc: "bnbChain",
+  pol: "polygon",
+  btc: "bitcoin",
+  op: "optimism",
+  avax: "avalanche",
+  near: "near",
+};
+
+/** Logos for 1Click's tokens by symbol: those chains' own tokens, USDC and USDT (R-246). */
+export const CROSS_CHAIN_TOKEN_ICONS: Readonly<Record<string, BrandIconName>> = {
+  USDC: "usdc",
+  USDT: "usdt",
+  ETH: "ethereum",
+  SOL: "solana",
+  TRX: "tron",
+  ARB: "arbitrum",
+  BNB: "bnbChain",
+  POL: "polygon",
+  BTC: "bitcoin",
+  OP: "optimism",
+  AVAX: "avalanche",
+  NEAR: "near",
+};

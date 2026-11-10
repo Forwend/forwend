@@ -1,5 +1,6 @@
 "use client";
 import { Button, DateRangePicker, Dialog } from "@forwend/ui-web";
+import { Download } from "lucide-react";
 import { useRef, useState } from "react";
 import { useLazyExportPaymentsQuery } from "@/features/payments/api/payments-api";
 import { RECONCILIATION_COPY } from "@/features/payments/constants/payments-copy";
@@ -65,6 +66,7 @@ export function ExportPayments({
             open();
           }}
         >
+          <Download aria-hidden className="size-[var(--fw-icon-sm)]" />
           Export
         </Button>
       )}

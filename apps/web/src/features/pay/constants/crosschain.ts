@@ -1,7 +1,5 @@
 // Paying from another chain through NEAR Intents 1Click (D-123).
 
-import type { BrandIconName } from "@forwend/ui-web";
-
 /** The ed25519 key 1Click signs its quotes with, as its SDK pins it (D-124). */
 export const ONECLICK_KEY = "ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc";
 
@@ -32,34 +30,3 @@ export const POPULAR_BLOCKCHAINS = [
   "op",
   "avax",
 ] as const;
-
-/** Logos for 1Click's popular chains (R-246): its list names none, so any other chain shows its first letter. */
-export const BLOCKCHAIN_ICONS: Readonly<Record<string, BrandIconName>> = {
-  eth: "ethereum",
-  sol: "solana",
-  tron: "tron",
-  arb: "arbitrum",
-  base: "base",
-  bsc: "bnbChain",
-  pol: "polygon",
-  btc: "bitcoin",
-  op: "optimism",
-  avax: "avalanche",
-  near: "near",
-};
-
-/** Logos for 1Click's tokens by symbol: those chains' own tokens, USDC and USDT (R-246). */
-export const CROSS_CHAIN_TOKEN_ICONS: Readonly<Record<string, BrandIconName>> = {
-  USDC: "usdc",
-  USDT: "usdt",
-  ETH: "ethereum",
-  SOL: "solana",
-  TRX: "tron",
-  ARB: "arbitrum",
-  BNB: "bnbChain",
-  POL: "polygon",
-  BTC: "bitcoin",
-  OP: "optimism",
-  AVAX: "avalanche",
-  NEAR: "near",
-};

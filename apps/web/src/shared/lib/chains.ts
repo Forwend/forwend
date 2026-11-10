@@ -85,3 +85,8 @@ export function blockchainTxLink(
     ? { name: blockchainName(blockchain), href: tx.explorerUrl }
     : null;
 }
+
+/** A map's own entry for a name from outside data: "constructor" must not find Object's own property. */
+export function iconOf<T>(icons: Readonly<Record<string, T>>, name: string): T | undefined {
+  return Object.hasOwn(icons, name) ? icons[name] : undefined;
+}

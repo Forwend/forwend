@@ -51,3 +51,27 @@ export const HELD_REASONS = {
   other_option: "paid with an option the customer didn't choose",
 } as const;
 export const PAYMENT_PAGE_SIZE = 25;
+/** The figures of a payment page's sum (R-248), in the order it reads: what came in, what was taken, what is left. */
+export const SUM_CELLS = {
+  requested: "requested",
+  paid: "paid",
+  returned: "returned",
+  held: "held",
+  due: "due",
+  networkFee: "networkFee",
+  platformFee: "platformFee",
+  wallet: "wallet",
+} as const;
+/** The rows of How the money moved (R-248). */
+export const JOURNEY_KINDS = {
+  created: "created",
+  origin: "origin",
+  surplus: "surplus",
+  converting: "converting",
+  awaiting: "awaiting",
+  deposit: "deposit",
+  fee: "fee",
+  wallet: "wallet",
+  closed: "closed",
+  returned: "returned",
+} as const;

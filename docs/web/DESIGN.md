@@ -477,34 +477,68 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The payment status and the wallet transfer are separate (D-114): a status badge, then quiet wallet text
     (Pending, In wallet, Delayed, Needs review, or a dash before anything is due).
   - Unpaid attempts stay visible; requested amounts never imply received or settled money.
-  - Payment details use `DetailHeader` with the source's icon tile, the status and wallet badges by the title, and
-    the requested amount as the header's figure beside Open checkout or Open receipt and Export (both 40px).
+  - Payment details use `DetailHeader` with the source's icon tile and the status and wallet badges by the title.
+    - The header has no figure: the sum under it is the figure.
+    - Open checkout or Open receipt and Export (both 40px) sit beside the header from large screens.
+    - Below large screens they sit under the sum, each as wide as the others: Receipt or Checkout, Invoice, Export.
+    - Invoice opens the invoice PDF and shows only there; Details keeps the same link. Each button leads with its icon.
+    - They are one element after the sum in the page, placed beside the header by the page's grid from large screens.
   - A notice under the header names each problem no other part shows, once (R-192).
     - Payment records to review, an unexpected transfer, a webhook that fails.
     - The wallet transfer and what is still due are never repeated.
-  - A payment through NEAR Intents (R-239): the Amount card adds "Sent through" with NEAR Intents' logo (R-246).
-    - It shows the amount and chain, any refund, and links to the customer's and the Base transaction.
-    - Its Timeline reads Created, Payment detected on the customer's chain, Converting via NEAR Intents, Paid
-      with the Base transaction, and In your wallet.
-    - Converting is done once 1Click delivered or the payment is paid. A returned deposit leaves a direct payment's steps.
-    - So does money booked first on another option; 1Click's USDC is then held. The Base link always opens Basescan.
+  - Under the header, the money is one sum (R-248): Customer paid, each amount taken from it, In your wallet.
+    - The figures taken are Returned to the payer, Held for the customer, Network fee and Platform fee, each only above 0.
+    - The last figure is In your wallet once settled, with a success check and the transfer's time, else Expected in your wallet.
+    - Paid, with a transfer not refused or waiting, the narrow headline reads "On its way to your wallet" with a
+      spinner and "Expected once Base confirms it". Anything else not settled keeps Expected in your wallet.
+    - From large screens the figures sit in a row; the last one is larger, on the tinted surface.
+    - A round sign sits on each divider: minus before each amount taken, equals before the last figure.
+    - The signs show only when the first figure less the others equals the last. A part payment shows Still due and no signs.
+    - Each figure has one quiet note: the token and network, "Sent as 0.00035 ETH on Arbitrum" through NEAR Intents,
+      or "Taken before your wallet" for a fee.
+    - Customer paid adds "of 1.23 USDC requested" when the money that came differs from the request.
+    - The sum is a bordered card with the large radius on every width; it never bleeds to the screen's edge.
+    - Below large screens the last figure is the headline, and the others are lines under it with a minus sign.
+    - Before money the first figure is Requested. Its note is "Paying with" and the token once the customer locked one.
+    - Until then a last cell reads Accepts: an `AssetStack` and "4 options, the customer picks".
+    - The owner sees no fee or wallet figure on a payment canceled or closed unpaid.
+  - How the money moved (R-248) is one list for every movement, in place of a transfers table and a timeline.
+    - A row has a node on one connecting line, a title, where and when under it, the amount, and the explorer link.
+    - A row made the day the payment was shows its time alone; another day adds the date (`timeNear`).
+    - Order: Created, deposits by time, fees, the wallet transfer or Checkout closed, then returns by time.
+    - The amount sits beside the text while both fit; a long one moves under it and may break.
+    - Money rows show the token's logo with its network: Customer sent, To your wallet or In your wallet (a filled
+      wallet disc), Returned to the payer (a quiet disc, the amount with a minus sign).
+    - Notes between them are smaller and muted: Created, Network fee with its amount, Checkout closed.
+    - The explorer link shows the short hash from small screens and the icon alone on phones.
+    - The deposit that paid the payment carries the Paid badge. A booked deposit shows no other state.
+    - A deposit still confirming shows a soft box with a spinner, "Confirming (n/m)" and the time left in an info
+      tooltip, or "being verified".
+    - A late deposit shows a neutral Held for the customer badge.
+    - A wallet transfer not yet settled shows one badge: Preparing, Confirming, Delayed, Daily limit reached,
+      Check the transaction or Needs review.
+    - What has not happened yet is in subtle text with an outlined node: Waiting for the payment, To your wallet.
+    - A payment whose status is expired or canceled ends with Checkout closed, also before the API's closed flag.
+    - The first row not done is the current step (`aria-current="step"`); a fee line never is.
+  - A payment through NEAR Intents (R-239) adds two rows before the Base deposit.
+    - Customer sent: the customer's token and chain logos, the amount and its transaction.
+    - Returned to the customer, a quiet line under it, when 1Click sent part of it back.
+    - Converted by NEAR Intents, or Converting through NEAR Intents until 1Click delivered or its money paid the payment.
+    - NEAR Intents is NEAR's mark and the words, never a wordmark image.
+    - The Base deposit 1Click delivered reads "Converted to USDC"; any other deposit reads Customer sent.
+    - A returned deposit leaves a direct payment's rows.
+    - Money booked first on another option keeps the customer's rows; the sum's note then names no other chain.
+    - Once 1Click delivered, "USDC arrives on Base" follows with its Base transaction until the scan books the deposit.
   - Held money is the customer's, not the owner's problem: no notice, no warning color (D-118).
     - Hovering or tapping the status badge shows one sentence per held amount: how much, why, and who handles any return.
     - Example: "0.50 USDC over the amount is held for the customer, and Forwend support handles any return."
     - The owner has no return button.
   - The body is two columns from extra-large screens: three fifths for the main column, two fifths (at least 24rem) beside it.
-    - Main: Amount (Received, Returned to the payer once refunded, Held for the customer or Still due while the
-      checkout is open, and Paid with), Transfers, and the items. Figures carry no note under them.
+    - Main: How the money moved, then the items. Side: Details (reference, invoice, link, store, customer, checkout
+      close, metadata, PDFs).
     - Held is the ledger's held money once booked, so it is gone after the return.
-    - Before money arrives the last figure is Accepts: an `AssetStack` and "4 options, the customer picks", or
-      "Paying with" and the token once the customer locked one. "Paid with" only follows money.
-    - Transfers is one table: Transfer (From customer, To your wallet or Returned to the payer, its time under it),
-      State, Amount and the explorer link. Network shows from 2xl screens; on phones the state sits under the time.
-    - State is a badge: Confirmed, "Confirming (n/m)" with the time left in an info tooltip, Confirming with
-      "being verified", In wallet, or a neutral Held for the customer. Amounts stay on one line.
-    - Side: Details (reference, invoice, link, store, customer, checkout close, metadata, PDFs) and a Timeline:
-      Created, Payment detected, Paid, In your wallet (or Checkout closed), done or current or next by the API's facts.
-      After a return it ends with Returned to the payer and the return's transaction.
+  - While it loads, placeholders keep the page's shape: the header, the sum's three cells, four rows, the details.
+    The loaded body fades in once (`fw-fade-in`, base duration); reduced motion shows it at once.
   - No ledger table or contract panel: a webhook that fails shows as a notice whose action opens Developers.
   - Issues names held money with its reason; the cell's title is the status badge's sentence.
   - A list's Received amount over the request keeps the ink color; its title says the extra is held for the customer.
@@ -514,7 +548,6 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Desktop rows stay on one line; phone rows show the same payment and wallet states in a compact stack.
   - The used token and network appear first; transaction links stay beside received amounts.
   - Payment detail uses "Confirming (9/599)" for each pending deposit; an info icon opens the estimated time remaining.
-  - Wallet transfers use one compact state: Preparing transfer, Confirming or In your wallet.
   - Settlement transaction links remain visible while pending and after completion.
   - Finality estimates use observed receipt blocks and chain time; missing evidence never produces a countdown.
   - Normal confirmation waits never repeat as payment problems. Actual failures keep their required action.
@@ -632,7 +665,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Scope follows Payments when there is one.
   - Client's link (right) is the shared `CopyValue`: the quote address with Open (a new tab) and Copy at its end, and
     who has to accept or who accepted as its note.
-  - Record (R-104) follows Client's link as the kit `Timeline`, as on the payment and invoice pages: one done entry per
+  - Record (R-104) follows Client's link as the kit `Timeline`, as on the invoice page: one done entry per
     event, oldest first, with its time.
   - Its events: Quote made, Accepted by (with the email here), each step marked done with its Delivery link, each
     invoice made, each invoice paid.
