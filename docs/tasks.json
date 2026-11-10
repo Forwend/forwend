@@ -1392,7 +1392,7 @@
         "Before review, every page is looked at on the real app at 390 wide."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "lint",
@@ -1472,11 +1472,18 @@
           "summary": "Third independent review of the uncommitted F474 diff, scoped to the three edits made after the second review: no defect found. The removed boxed prop of AssetSelection has no reference left in docs, apps/web/src or packages (the one grep hit, landing-header.module.css:33, is the plain word). No doc or comment still describes panels as full-bleed or edge to edge on phones: the remaining edge wording in docs/web/DESIGN.md (266-267, 502), globals.css:32, e2e/sideways.ts and R-251 all state the new rule, and DESIGN.md:734 'full-width panel' means the form column, not the screen. The kit wrapper in screens/kit/payments-showcase.tsx:50 losing 'px-4 sm:px-0' is harmless: the kit page's main already has px-4 (kit-screen.tsx:21) and the padding only existed to absorb the old -1rem panel margin. python3 scripts/check-docs.py reports 0 errors; each new DESIGN.md bullet and the R-251 row hold one fact in sentences of at most 19 words. I did not rerun e2e or re-read the CSS and tests beyond the diff; the two earlier reviews covered those.",
           "at": "2026-11-10T19:39:49Z",
           "filesHash": "6f530fa83e670283"
-        }
+        },
+        "commit": "62ed128e",
+        "doneAt": "2026-11-10T19:40:11Z"
       },
       "branch": "feat/f474-on-a-phone-panels-are-rounded-cards-with",
       "baseCommit": "471088f4392bfc28a6db15d5c5a39e59d5f03ccf",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f474-on-a-phone-panels-are-rounded-cards-with",
+        "base": "main"
+      }
     },
     {
       "id": "F475",
