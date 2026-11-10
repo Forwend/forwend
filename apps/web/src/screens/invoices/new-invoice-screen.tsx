@@ -84,7 +84,8 @@ export function NewInvoiceScreen() {
   const COPY = request ? NEW_REQUEST_COPY : NEW_INVOICE_COPY;
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
+      {/* On a phone the form's own bar names the page once the form is there. */}
+      <div className="flex flex-col gap-2 max-sm:[body:has([data-phone-flow])_&]:sr-only">
         {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
         <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">{COPY.title}</h1>
         <p className="text-muted">{COPY.intro}</p>
@@ -123,7 +124,11 @@ export function NewInvoiceScreen() {
           </Button>
         </div>
       ) : !tokens || loadingStart || loadingBilling || loadingStores ? (
-        <Skeleton className="h-96" />
+        // The form's card and, from the two-column width, the preview beside it.
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,35rem)_minmax(0,1fr)]">
+          <Skeleton className="h-96 rounded-lg xl:h-[calc(100dvh-11.5rem)] xl:min-h-[32rem]" />
+          <Skeleton className="rounded-lg max-xl:hidden xl:h-[calc(100dvh-11.5rem)] xl:min-h-[32rem]" />
+        </div>
       ) : billingNeeded ? (
         <EmptyState
           page

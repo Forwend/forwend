@@ -742,8 +742,20 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Every step stays mounted, so Back keeps what was typed and the last submit reads every field.
   - Continue checks only its step (a customer name or email; the amount or items). Create invoice checks
     everything and returns to the step that holds the first error.
-  - Review lists the customer, amount, network, due date and payment window, each with Edit.
-  - The footer holds Back (or Cancel), then Continue or Create invoice at its end.
+  - Review is a bordered list; each row has Edit, which opens the row's step.
+    - Customer shows the name and email; Items shows the count and total.
+    - Client pays shows the amount and network; You receive shows what is left after a fee the owner pays.
+    - Due date and Payment window end the list.
+    - Under it a quiet note says what comes next: the pay link, and emailing it when the client has an email.
+  - The footer holds Back (or Cancel), "Step 2 of 4" in the middle, then the main button at its end.
+    - The main button names the next step: "Continue to Details". On Review it is Create invoice.
+    - When a check fails, the middle reads "1 field needs fixing" in the danger color.
+    - Pressing it opens the step that holds the first error and focuses it.
+    - Below extra-large screens a Preview button sits before the main button.
+  - On a phone the form is the whole screen (R-252): the app's header and tab bar step aside.
+    - Its own bar stays on top: Cancel (an X) on the first step, Back on the others, the page's name, "Step 2 of 4".
+    - One short bar per step under it fills as the steps pass. The stepper itself shows from small screens up.
+    - The footer stays at the bottom of the screen with Preview and the main button.
 - New invoice, clients, stores, payment links and jobs share the step form layout (`StepForm`, `SPLIT_CLASSES`):
   - The form is one card: the stepper in its head, the step's fields, the footer with its buttons at its foot.
   - Inside it a field group is a titled section, not a panel of its own (`FlatFieldGroups`).
@@ -783,12 +795,18 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   Picking a due date switches Checkout closes after to Custom on the due date plus 60 days (D-80), with one quiet line
   saying why; a close the owner picks before that day stays allowed, with a warning line (icon and warning text, as on
   the pay page) that a later payment would be held for the payer.
-  Add item (secondary, small, under the amount; not on Request money) turns the amount into item rows (R-88), the
-  amount typed so far becoming the first item's price: Item, Qty, Price (in the amount's unit) and the line's amount,
-  with a remove button. From small screens up the rows line up under one header row and the field labels are for
-  screen readers only; on phones each item stacks (description, then Qty and Price with the remove button, then its
-  amount). A ruled footer holds Add item and the Total, which is the invoice's amount; a line the token can't hold
-  shows its error under the field it belongs to. Removing the last item leaves its total as the amount.
+  The Items step reads like the invoice (R-252): How the client pays beside Network and token, then one bordered box.
+  - The box holds the amount field, or the item rows; then the totals on a soft ground; then the agreed value.
+  - Add item (ghost, small; not on Request money) turns the amount into item rows (R-88).
+    - The amount typed so far becomes the first item's price. Removing the last item leaves its total as the amount.
+  - From small screens up the rows sit under one quiet header: Item, Qty, Price and Amount, each naming the unit.
+    - The field labels are for screen readers only there, and an X at the row's end removes it.
+  - On phones each item is a block: its description, Qty beside Price, then "Amount 1.00 USDC" and a red Remove.
+  - A line the token can't hold shows its error under the field it belongs to.
+  - The totals are Subtotal, Network fee, Client pays (larger, ruled above) and You receive.
+    - Network fee carries a small switch, "You pay it" or "Client pays it", and reads "− 0.06 USDC" or "+ 0.06 USDC".
+    - While the fee is priced a quiet line says so; without a quote the fee and You receive read "—".
+  - Add agreed value is a ghost button with one quiet line under it; pressed, its three fields take its place.
   The invoice page lists the items in an Items panel: each row the description with "qty × unit price" quietly under
   it and the line's amount on the right, then Total, Received and Still due, the same on every width.
   - Without items the panel is Summary, with those three rows only. Received counts money sent before the close.
@@ -802,7 +820,12 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - When the payer picks the token, Pay this invoice says "Pay <amount> in one of the available options." and how
     to pick; it never lists the networks. A fixed token says the exact amount, network and contract.
   - Payer page shows the pay page's first screen; Email shows the invoice email's layout.
-  - Narrower screens switch between Edit and Preview with a segmented control; the form stays mounted.
+  - The preview is one panel: the three views as a small switch, then Zoom out, the level, Zoom in and Fit page.
+    - Fit page shows a whole A4 page; the levels are 50, 75, 100 and 125%. The page sits on a sunken canvas that scrolls.
+    - Under the invoice a quiet line says the page count and "Updates as you type".
+    - The form's card takes 35rem here, so the page beside it stays readable.
+  - Below extra-large screens the footer's Preview button opens it as a sheet over the form.
+    - The sheet ends with "Back to Items, where you left it"; the form stays as it was.
 - Money actions are round icon buttons with the label underneath, on desktop and phones. Only the view's main
   action is filled with the lime; other working actions are surface circles, and coming ones are subtle.
 - Personal overview actions: Receive (lime, the QR icon), Request, Send, Transfer, Withdraw, in one row with a narrow

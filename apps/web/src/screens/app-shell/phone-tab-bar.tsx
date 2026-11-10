@@ -71,7 +71,7 @@ export function PhoneTabBar({ pathname, active, onProfiles }: PhoneTabBarProps) 
     <>
       <nav
         aria-label={TAB_COPY.nav}
-        className="fixed inset-x-0 bottom-0 z-[var(--fw-z-nav)] border-t border-line bg-surface pl-[max(.5rem,env(safe-area-inset-left))] pr-[max(.5rem,env(safe-area-inset-right))] pt-2 pb-[calc(.5rem+env(safe-area-inset-bottom,0px))] lg:hidden"
+        className="max-sm:[body:has([data-phone-flow])_&]:hidden fixed inset-x-0 bottom-0 z-[var(--fw-z-nav)] border-t border-line bg-surface pl-[max(.5rem,env(safe-area-inset-left))] pr-[max(.5rem,env(safe-area-inset-right))] pt-2 pb-[calc(.5rem+env(safe-area-inset-bottom,0px))] lg:hidden"
       >
         <ul className="mx-auto grid max-w-lg grid-cols-4 gap-1">
           {tabs.map(({ href, label, icon: Icon }) => {
