@@ -2171,6 +2171,33 @@ func TestSavedSettleIsSentOnlyAsItsSendersSettleOfItsTerms(t *testing.T) {
 	}
 }
 
+// A settle already mined is confirmed whatever changed since: the sender and terms checks guard only a send.
+func TestMinedSettleIsConfirmedEvenWhenItsTermsNoLongerCompute(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, _ := e.paidInvoice(t)
+	s := e.signer(t)
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	e.anvil.Mine(2)
+	var intentID int64
+	if err := e.pool.QueryRow(ctx, "SELECT id FROM settlement_intents WHERE invoice_id = $1", id).Scan(&intentID); err != nil {
+		t.Fatal(err)
+	}
+	in, err := s.load(ctx, intentID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	in.amount = new(big.Int).Add(in.amount, big.NewInt(1)) // the stored terms no longer compute the receive address
+	if err := s.reconcile(ctx, e.client, in); err != nil {
+		t.Fatalf("reconcile of a mined settle: %v", err)
+	}
+	if status, settlement, reason := e.intent(t, id); status != "confirmed" || settlement != "settled" {
+		t.Fatalf("intent %s, settlement %s (%s); want confirmed, settled", status, settlement, reason)
+	}
+}
+
 // A replacement never takes more gas than MaxSettleGas: over it, the saved settle is sent again as it is.
 func TestReplacementNeverPassesTheGasCap(t *testing.T) {
 	e := setup(t)

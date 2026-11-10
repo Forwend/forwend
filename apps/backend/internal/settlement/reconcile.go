@@ -30,15 +30,6 @@ func (s *Signer) reconcile(ctx context.Context, client *ethclient.Client, in int
 		!bytes.Equal(tx.Data(), settleSelector) || tx.ChainId().Uint64() != in.chainID {
 		return fmt.Errorf("saved transaction %s is not this receiver's settle on chain %d", *in.txHash, in.chainID)
 	}
-	// The bytes and terms come from the database: never send again, or re-sign with our key, a settle its sender didn't
-	// sign or one to an address the terms don't compute.
-	if from, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx); err != nil || in.sender == nil ||
-		from != common.HexToAddress(*in.sender) {
-		return fmt.Errorf("saved transaction %s is not signed by its sender", *in.txHash)
-	}
-	if _, reason := receiverTerms(in); reason != "" {
-		return fmt.Errorf("saved transaction %s: %s", *in.txHash, reason)
-	}
 	var r *types.Receipt
 	for _, h := range append([]string{*in.txHash}, in.replaced...) { // one nonce: at most one of them is mined
 		got, err := client.TransactionReceipt(ctx, common.HexToHash(h))
@@ -117,6 +108,15 @@ func (s *Signer) unmined(ctx context.Context, client *ethclient.Client, in inten
 	settled, err := receiverSettled(ctx, client, receive, nil)
 	if err != nil || settled || int64(mined) > *in.nonce {
 		return nil, err // settled, or the nonce used, after the finalized block: decided once that is final
+	}
+	// The bytes and terms come from the database: never send again, or re-sign with our key, a settle its sender didn't
+	// sign or one to an address the terms don't compute. Reading receipts and confirming above need neither.
+	if from, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx); err != nil ||
+		from != common.HexToAddress(*in.sender) {
+		return nil, fmt.Errorf("saved transaction %s is not signed by its sender", *in.txHash)
+	}
+	if _, reason := receiverTerms(in); reason != "" {
+		return nil, fmt.Errorf("saved transaction %s: %s", *in.txHash, reason)
 	}
 	if sender == s.sender && int64(mined) < *in.nonce {
 		if err := s.fillGap(ctx, client, in.chainID, mined); err != nil {

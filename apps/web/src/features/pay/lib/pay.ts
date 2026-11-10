@@ -173,7 +173,10 @@ const FINAL_STATUSES: readonly string[] = [
   API_PAYMENT_STATUSES.expired,
   API_PAYMENT_STATUSES.expiredPartiallyPaid,
 ];
+// 1Click's address takes deposits past the invoice's close, and a delivery can be on its way to Base after SUCCESS.
 const CROSS_CHAIN_MOVING: readonly string[] = [
+  CROSS_CHAIN_STATUSES.pending,
+  CROSS_CHAIN_STATUSES.success,
   CROSS_CHAIN_STATUSES.knownDeposit,
   CROSS_CHAIN_STATUSES.incomplete,
   CROSS_CHAIN_STATUSES.processing,

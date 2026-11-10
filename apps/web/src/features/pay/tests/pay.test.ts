@@ -299,7 +299,15 @@ describe("payFinal", () => {
     expect(payFinal({ ...expired, deposits: [deposit("1000", { late: true })] })).toBe(true);
     // A cross-chain payment 1Click still converts can yet arrive.
     const crossChain = (status: string) => ({ status }) as Invoice["crossChain"];
-    expect(payFinal({ ...expired, crossChain: crossChain("PROCESSING") })).toBe(false);
+    for (const status of [
+      "PENDING_DEPOSIT",
+      "KNOWN_DEPOSIT_TX",
+      "PROCESSING",
+      "INCOMPLETE_DEPOSIT",
+      "SUCCESS",
+    ]) {
+      expect(payFinal({ ...expired, crossChain: crossChain(status) }), status).toBe(false);
+    }
     expect(payFinal({ ...expired, crossChain: crossChain("REFUNDED") })).toBe(true);
   });
 });

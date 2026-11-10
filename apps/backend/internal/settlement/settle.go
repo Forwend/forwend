@@ -336,7 +336,7 @@ func (s *Signer) replace(ctx context.Context, client *ethclient.Client, in inten
 		gas = max(gas, est+est/5)
 	}
 	if gas > MaxSettleGas {
-		slog.Warn("stuck settle needs more than the max gas; sending it again", "invoice", in.invoiceID, "tx",
+		slog.Error("ALERT stuck settle needs more than the max gas; sending it again, not replacing it", "invoice", in.invoiceID, "tx",
 			old.Hash().Hex(), "gas", gas)
 		return old, nil
 	}
