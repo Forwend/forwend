@@ -13,8 +13,9 @@ export interface StoredLogoProps {
 /** A token or network logo from the files the web ships, so the page asks no other site for it. Decorative: the text
  * beside it names what it marks. An image that fails gives its place to the letter, never to a broken picture. */
 export function StoredLogo({ src, letter, className = "" }: StoredLogoProps) {
-  const [failed, setFailed] = useState(false);
-  if (failed)
+  // Remembered by file: another file's failure says nothing of this one.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (failedSrc === src)
     return (
       <span
         aria-hidden
@@ -30,9 +31,10 @@ export function StoredLogo({ src, letter, className = "" }: StoredLogoProps) {
       alt=""
       loading="lazy"
       decoding="async"
-      onError={() => setFailed(true)}
-      // Many logos are a dark mark on nothing: in the dark theme a light disc keeps them readable.
-      className={`shrink-0 rounded-pill object-cover dark:bg-ink ${className}`}
+      onError={() => setFailedSrc(src)}
+      // Many logos are a dark mark on nothing: in the dark theme a light disc keeps them readable. A logo that is not
+      // square shows whole, never cropped.
+      className={`shrink-0 rounded-pill object-contain dark:bg-ink ${className}`}
     />
   );
 }

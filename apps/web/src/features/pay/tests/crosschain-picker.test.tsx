@@ -54,7 +54,8 @@ function open(tokens: readonly CrossToken[] = TOKENS) {
 
 const row = (name: RegExp) => screen.getByRole("button", { name });
 
-// R-246: 1Click names no logos; popular chains and their own tokens get ours, the rest a first letter.
+// R-246, R-250: popular chains and their own tokens get the logos Forwend draws, others a file the web ships, the
+// rest a first letter.
 describe("CrossChainPicker", () => {
   it("shows drawn logos for popular chains and tokens, shipped files for others, and a first letter for the rest", () => {
     open([...TOKENS, token({ blockchain: "qtc", symbol: "QTC" })]);

@@ -66,4 +66,5 @@ Source: the owner's hand-drawn draft (2026-10-08). Steps used to make the files:
 - They were fetched once by hand from CoinGecko's large images and converted with `cwebp -q 82`.
 - No code fetches them. To add one, save the image, convert it the same way, and add its name to
   `apps/web/src/shared/constants/logos.ts`.
-- `miden`, `prl` and `qtc` have no file: CoinGecko lists none. They show a letter.
+- The networks `miden`, `prl` and `qtc` have no file: CoinGecko lists none. They show a letter.
+- So do the tokens with the ids `abg`, `gnear`, `itlx`, `noear` and `testnebula`, and the few 1Click gives no id.

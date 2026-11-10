@@ -885,19 +885,20 @@
         "2026-11-10 review fail by reviewer: Findings 1 and 3 are fixed: bufferLine and the warning read the same three values (crosschain-pay.tsx:474, 482). Finding 2 is fixed only where the opened box has tabs. Path left: Any token, Show address, Change, Confirm change, Stablecoin, wait for the invoice poll, Any token. CrossChainPay then mounts with the kept quote shown (crosschain-pay.tsx:123), draws no PayWays (228), so focus drops to the page body and viaTabs stays true (pay-invoice.tsx:620); the next two-press Change puts focus on the Any token tab, not the Pay with heading. Keyboard focus only: amounts, warnings and the two-press guard are intact. Fix: in CrossChainPay, an effect that, when viaTabs and shown are both set, focuses the heading and calls onTabsFocused.",
         "2026-11-10 review pass by reviewer: Read the uncommitted diff over HEAD: the phone picker's two steps, the refund reset, StepTransition around the pay box, the Paid check, tests and docs; pay unit tests pass (100). Every token stays reachable, greyed tokens stay disabled in both steps and in search, the refund address clears only on a pick of another chain, Tooltip and SelectField are portaled, phase is stable across polls, and Paid is still read from its status text. Follow-ups, none blocking: ComboboxField (past 10 options) is not portaled and would be cut by the box's clip; StepTransition can take focus on a poll-driven change, also inside an embed; a leftover network search can empty the phone's first step; DESIGN.md nests the Paid rows under the transition bullet; the refund reset has no test.",
         "2026-11-10 review pass by reviewer: Read the uncommitted diff over HEAD (picker, crosschain e2e, DESIGN.md; tasks.json holds only check evidence): a pick clears the network search, the greyed-token note hides only on a phone's networks step, the new phone assertions use locators the wide run proves, and the Price held pattern still pins m:ss within 10 seconds of 15:00 with expiry after 15 minutes; pay unit tests pass (100). Follow-up, not blocking: DESIGN.md's note line does not say the note is hidden on a phone's networks step.",
-        "2026-11-10 review pass by reviewer: Read the uncommitted diff over HEAD and the untracked files: the id pattern is the same in Go, the column CHECK and the web schema, so a bad id is stored as NULL and cannot fail the list's upsert; the deprecated filter drops only 1Click's (DEPRECATED) symbols and kept quotes hold their own token fields; a logo path comes only from a fixed set of names under /logos on the page's own origin, and the 94 token and 25 network WebP files match logos.ts exactly. Pay unit tests pass (102) and go vet is clean; left as follow-ups: a kept quote after a reload and the owner's payment journey still show the token's letter, since the invoice's crossChain carries no id."
+        "2026-11-10 review pass by reviewer: Read the uncommitted diff over HEAD and the untracked files: the id pattern is the same in Go, the column CHECK and the web schema, so a bad id is stored as NULL and cannot fail the list's upsert; the deprecated filter drops only 1Click's (DEPRECATED) symbols and kept quotes hold their own token fields; a logo path comes only from a fixed set of names under /logos on the page's own origin, and the 94 token and 25 network WebP files match logos.ts exactly. Pay unit tests pass (102) and go vet is clean; left as follow-ups: a kept quote after a reload and the owner's payment journey still show the token's letter, since the invoice's crossChain carries no id.",
+        "2026-11-10 review pass by reviewer: Read the uncommitted diff over HEAD: StoredLogo remembers the failed file, so a failed image still shows the letter and a new src is tried again, and object-contain shows a logo whole; the merchant journey's Customer sent mark passes chainLogo, which returns a path only for the 25 shipped network files, and the drawn icon still wins in MarkIcon. The rest is comments, the images doc and check evidence; pay and payments unit tests pass (102). Not covered by a unit test: the retry on a changed src and the journey's corner logo."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-10T17:47:19Z",
+        "at": "2026-11-10T17:54:30Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 6.0,
+            "seconds": 5.2,
             "log": ""
           },
           {
@@ -911,40 +912,41 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.4,
+            "seconds": 0.2,
             "log": ""
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.8,
+            "seconds": 1.6,
             "log": ""
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 54.7,
+            "seconds": 53.2,
             "log": ""
           },
           {
             "id": "backend-affected",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 98.6,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "web-unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 10.6,
+            "seconds": 10.2,
             "log": ""
           }
         ],
         "taskHash": "dfd31a076b9f7467",
-        "filesHash": "92fae21e87eea22f",
+        "filesHash": "2f166c16951fd0fc",
         "proof": {
           "1": "e2e: crosschain.spec.ts opens any token by its tab, returns by Stablecoin with the focus on the new tab, and asserts the tab is absent where it is not offered and while an address shows; pay.spec.ts passes unchanged from main, so the direct box repeats nothing",
           "2": "e2e: crosschain.spec.ts pickTronUSDT reads 1,263.00 USDT, then the fee, buffer and time rows; crosschain.test.ts checks the buffer's line promises no return when the refund fee would take it; the loading placeholder and fade were looked at in a held-price run",
@@ -953,15 +955,15 @@
           "5": "e2e: pay.spec.ts passes with the state transition around the box, including its focus checks after Show address and Change; the Paid check and the picker steps were captured at 390",
           "6": "e2e: crosschain.spec.ts and pay.spec.ts run the pay box and the picker at phone width with their sideways checks; all 66 tests pass with every earlier amount, address, warning and guard assertion kept",
           "7": "e2e: loading, price, address, picker and paid states were captured on the real pay page at 390, and the boxes at 1280, with the specs' fixtures, and looked at beside the page's summary",
-          "8": "web-unit: crosschain-picker.test.tsx shows a shipped file for a token and a network without a drawing, a letter for one without a file or whose image fails, and takes the id only in CoinGecko's form; the backend's TestCrossChainTokensCarryTheirCoingeckoID runs in backend-affected; a contact sheet of all 119 files was looked at",
-          "9": "backend-affected: TestTokensLeaveOutWhat1ClickMarksDeprecated passes; price and quote read tokens only from the stored list"
+          "8": "web-unit: crosschain-picker.test.tsx shows a shipped file for a token and a network without a drawing, a letter for one without a file or whose image fails, and takes the id only in CoinGecko's form; the backend tests of the id passed in the commit before this one; a contact sheet of all 119 files was looked at",
+          "9": "web-unit: the deprecated-token rule is backend code unchanged since its backend-affected run passed in the commit before this one; this change touches only the web's logo drawing"
         },
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "Read the uncommitted diff over HEAD and the untracked files: the id pattern is the same in Go, the column CHECK and the web schema, so a bad id is stored as NULL and cannot fail the list's upsert; the deprecated filter drops only 1Click's (DEPRECATED) symbols and kept quotes hold their own token fields; a logo path comes only from a fixed set of names under /logos on the page's own origin, and the 94 token and 25 network WebP files match logos.ts exactly. Pay unit tests pass (102) and go vet is clean; left as follow-ups: a kept quote after a reload and the owner's payment journey still show the token's letter, since the invoice's crossChain carries no id.",
-          "at": "2026-11-10T17:53:22Z",
-          "filesHash": "92fae21e87eea22f"
+          "summary": "Read the uncommitted diff over HEAD: StoredLogo remembers the failed file, so a failed image still shows the letter and a new src is tried again, and object-contain shows a logo whole; the merchant journey's Customer sent mark passes chainLogo, which returns a path only for the 25 shipped network files, and the drawn icon still wins in MarkIcon. The rest is comments, the images doc and check evidence; pay and payments unit tests pass (102). Not covered by a unit test: the retry on a changed src and the journey's corner logo.",
+          "at": "2026-11-10T17:56:39Z",
+          "filesHash": "2f166c16951fd0fc"
         }
       },
       "branch": "feat/f461-the-pay-box-shows-what-to-send-as-one-su",

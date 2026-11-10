@@ -36,7 +36,13 @@ import {
   API_PAYMENT_STATUSES,
   API_SETTLEMENT_STATUSES,
 } from "@/shared/constants/payment-state";
-import { blockchainName, blockchainTxLink, chainName, iconOf } from "@/shared/lib/chains";
+import {
+  blockchainName,
+  blockchainTxLink,
+  chainLogo,
+  chainName,
+  iconOf,
+} from "@/shared/lib/chains";
 import { timeNear } from "@/shared/lib/dates";
 
 export interface PaymentJourneyProps {
@@ -162,6 +168,7 @@ function rowOf(step: JourneyStep, payment: PaymentDetail): Row {
               token={iconOf(CROSS_CHAIN_TOKEN_ICONS, c.symbol)}
               chain={iconOf(BLOCKCHAIN_ICONS, c.blockchain)}
               letter={c.symbol.slice(0, 1)}
+              chainLogo={chainLogo(c.blockchain)}
             />
           </span>
         ),

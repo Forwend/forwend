@@ -257,8 +257,8 @@ export function CrossChainPicker({
 const LOADING_ROWS = ["a", "b", "c", "d", "e", "f"] as const;
 
 // Forwend draws the popular logos itself (R-246); any other token or network shows the logo file the web ships
-// (R-250), and one without either shows its first letter in the place a logo takes. A token that can't be picked greys its logo as its
-// row does (R-242).
+// (R-250), and one without either shows its first letter in the place a logo takes. A token that can't be picked
+// greys its logo as its row does (R-242).
 function Mark({
   text,
   icon,
