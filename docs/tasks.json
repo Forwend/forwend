@@ -430,14 +430,16 @@
         "Merged and dropped tasks move from docs/tasks.json to the local archive; unfinished tasks stay."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check"
       ],
       "refs": [],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-11-10 review pass by reviewer: Only docs/tasks.json changed. 12 tasks left the queue: 11 passing and 1 dropped; none was not_started, active, verified or blocked. The 18 tasks left are 3 blocked, 14 not_started and F479 (verified). Kept tasks are unchanged; nextId 479 to 480."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
@@ -456,11 +458,25 @@
         "filesHash": "120bd844aa9f5c02",
         "proof": {
           "1": "docs-check: archive moved 12 merged or dropped tasks to docs/archive; 18 unfinished tasks stay in docs/tasks.json"
-        }
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Only docs/tasks.json changed. 12 tasks left the queue: 11 passing and 1 dropped; none was not_started, active, verified or blocked. The 18 tasks left are 3 blocked, 14 not_started and F479 (verified). Kept tasks are unchanged; nextId 479 to 480.",
+          "at": "2026-11-10T21:49:25Z",
+          "filesHash": "120bd844aa9f5c02"
+        },
+        "commit": "f0e99c68",
+        "doneAt": "2026-11-10T21:49:34Z"
       },
       "branch": "docs/f479-finished-tasks-leave-the-queue",
       "baseCommit": "a976988296faddcb65f71ed21256ea3da62de8f4",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f479-finished-tasks-leave-the-queue",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
