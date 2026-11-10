@@ -10,11 +10,11 @@ import {
   Skeleton,
 } from "@forwend/ui-web";
 import { useMemo, useState } from "react";
-import { BLOCKCHAIN_ICONS, CROSS_CHAIN_TOKEN_ICONS } from "@/features/pay/constants/crosschain";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import { amountText, orderBlockchains, sendUnits } from "@/features/pay/lib/crosschain";
 import type { CrossToken } from "@/features/pay/types/crosschain";
-import { blockchainName } from "@/shared/lib/chains";
+import { BLOCKCHAIN_ICONS, CROSS_CHAIN_TOKEN_ICONS } from "@/shared/constants/chains";
+import { blockchainName, iconOf } from "@/shared/lib/chains";
 
 const COPY = PAY_COPY.crossChain;
 
@@ -175,10 +175,6 @@ export function CrossChainPicker({
     </Sheet>
   );
 }
-
-// 1Click's names are outside data: "constructor" must not find Object's own property.
-const iconOf = (icons: Readonly<Record<string, BrandIconName>>, name: string) =>
-  Object.hasOwn(icons, name) ? icons[name] : undefined;
 
 // 1Click's list names no logos, and Forwend draws only the popular ones: any other shows its first letter in the place
 // a logo takes (R-246). A token that can't be picked greys its logo as its row does (R-242).

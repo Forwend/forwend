@@ -2,7 +2,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
 import { PaymentProblems } from "@/features/payments/components/payment-problems";
-import { ReturnRow } from "@/features/payments/components/return-row";
 import {
   heldHint,
   leadOption,
@@ -12,7 +11,6 @@ import {
   problemLabel,
   receivedAmount,
 } from "@/features/payments/lib/payments";
-import type { PaymentDetail } from "@/features/payments/types/payments";
 
 describe("merchant payment money", () => {
   it("keeps large base units, negative changes and subcent precision exact", () => {
@@ -176,33 +174,5 @@ describe("payment page problems", () => {
   it("leaves held money to the status hint: no warning strip", () => {
     const held = problem("held_funds", "review_funds", { amount: "2000000", asset });
     expect(renderToStaticMarkup(<PaymentProblems problems={[held]} />)).toBe("");
-  });
-});
-
-describe("ReturnRow", () => {
-  it("shows a return to the payer as a transfer with its amount, network and transaction", () => {
-    const option = {
-      chainId: 42431,
-      decimals: 6,
-      symbol: "OUSD",
-    } as unknown as PaymentDetail["options"][number];
-    const markup = renderToStaticMarkup(
-      <table>
-        <tbody>
-          <ReturnRow
-            option={option}
-            sent={{
-              txHash: `0x${"84".repeat(32)}`,
-              to: `0x${"e1".repeat(20)}`,
-              amount: "900000",
-              blockTime: "2026-10-31T16:02:00Z",
-            }}
-          />
-        </tbody>
-      </table>,
-    );
-    expect(markup).toContain("Returned to the payer");
-    expect(markup).toContain("0.90");
-    expect(markup).toContain(`0x${"84".repeat(32)}`);
   });
 });

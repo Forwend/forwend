@@ -27,6 +27,10 @@ import {
   WalletStateLabel,
 } from "@forwend/ui-web";
 import { ExternalLink } from "lucide-react";
+import { PaymentJourney } from "@/features/payments/components/payment-journey";
+import { PaymentSum } from "@/features/payments/components/payment-sum";
+import { paymentJourney, paymentMoney } from "@/features/payments/lib/payment-journey";
+import { SAMPLE_PAYMENTS } from "@/screens/kit/constants/sample-payments";
 import { KitGroup } from "@/screens/kit/kit-section";
 import { SAMPLE_INVOICE } from "@/shared/examples/sample-invoice";
 
@@ -39,6 +43,17 @@ export function PaymentsShowcase() {
   return (
     <div className="flex flex-col gap-10">
       <p className="text-sm text-subtle">All amounts, addresses and names below are sample data.</p>
+      {SAMPLE_PAYMENTS.map(({ title, payment }) => {
+        const money = paymentMoney(payment);
+        return (
+          <KitGroup key={title} title={`Payment page, sum and movements: ${title}`}>
+            <div className="flex w-full flex-col gap-6 px-4 sm:px-0">
+              <PaymentSum payment={payment} money={money} />
+              <PaymentJourney payment={payment} steps={paymentJourney(payment, money)} />
+            </div>
+          </KitGroup>
+        );
+      })}
       <KitGroup title="Money">
         <Money
           baseUnits={SAMPLE_INVOICE.baseUnits}

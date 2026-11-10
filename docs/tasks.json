@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 460,
+  "nextId": 472,
   "tasks": [
     {
       "id": "F332",
@@ -721,10 +721,394 @@
         "branch": "fix/f459-the-low-findings-of-the-2026-11-09-audit",
         "base": "main"
       }
+    },
+    {
+      "id": "F460",
+      "type": "feat",
+      "behavior": "A payment's page shows its money as one sum and one list of movements, with the wallet amount first on a phone",
+      "acceptance": [
+        "A paid payment shows Customer paid, each amount taken from it and In your wallet as one sum; the signs show only when the figures add up.",
+        "How the money moved lists every deposit, conversion, fee, wallet transfer and return once, with amount, network, time and transaction; Transfers and Timeline are gone.",
+        "A NEAR Intents payment lists the customer's token and chain, Converted by NEAR Intents and the Base USDC; a returned deposit lists a direct payment's steps.",
+        "At 390px the wallet amount is the first figure and the page has no sideways scroll; the loading placeholder has the page's shape."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "web-unit",
+        "lint",
+        "typecheck",
+        "e2e"
+      ],
+      "refs": [
+        "R-248"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-11-10 review pass by reviewer: Read the full diff and traced paymentMoney and paymentJourney through direct, part, overpaid, returned, canceled, closed and NEAR Intents states; the eight earlier findings are fixed, figures and signs are exact, and the two unit files pass (23 tests). Suggestions: also show the delivered Base transaction when another deposit exists or the payment is already paid or closed (DESIGN.md states it without that condition), name the not-begun wallet row To your wallet, and add constants for the settlement status and wait literals.",
+        "2026-11-10 review pass by reviewer: Re-read paymentMoney and paymentJourney and checked the three follow-up edits: the awaiting row for a 1Click delivery not yet booked (place after Converting, unique ids, current step, no duplicate, none once the converted deposit is listed), the To your wallet title for a transfer not begun, and the matching DESIGN.md lines. Payments unit tests (37) and docs-check pass; no wrong figure or state found.",
+        "2026-11-10 F460 verified, reviewed and committed on its branch; not pushed. Next: owner's go-ahead for done F460, then start F461 (pay box, Option B)."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-10T14:58:44Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.6,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 50.4,
+            "log": ""
+          },
+          {
+            "id": "tokens-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 10.3,
+            "log": ""
+          }
+        ],
+        "taskHash": "539d03f11c8dbcea",
+        "filesHash": "6f1d1e0e516f7fd4",
+        "proof": {
+          "1": "web-unit: payment-journey.test.tsx 'payment sum' covers the sum adding up with a fee, a return and held money, no signs for a part payment, no fee or wallet figure once canceled, no line for a fee of 0, and the requested note on a part payment closed unpaid",
+          "2": "web-unit: payment-journey.test.tsx lists each row kind in order (created, deposits by time, fee, wallet, closed, returned), keeps the fee line from being the current step, and renders a return with amount, network and transaction; the page no longer has Transfers or Timeline",
+          "3": "web-unit: payment-journey.test.tsx R-239 cases and crosschain-views.test.tsx: the customer's chain and token, Converted by NEAR Intents, the Base deposit or its row while unbooked, and a direct payment's rows for a returned deposit",
+          "4": "e2e: the kit page renders the sum and the list in six states for the axe scan. Run by hand, not a harness check: node scripts/e2e.mjs --live e2e/privy/payments.spec.ts, 12 passed, which opens the real page at 390px with no sideways scroll and no axe violations; loading and loaded screenshots at 390 and 1440 were compared with the template. The full live-e2e check has two failures this change does not touch (links.spec.ts:91, navigation.spec.ts:1089), queued as F471"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-read paymentMoney and paymentJourney and checked the three follow-up edits: the awaiting row for a 1Click delivery not yet booked (place after Converting, unique ids, current step, no duplicate, none once the converted deposit is listed), the To your wallet title for a transfer not begun, and the matching DESIGN.md lines. Payments unit tests (37) and docs-check pass; no wrong figure or state found.",
+          "at": "2026-11-10T15:02:04Z",
+          "filesHash": "6f1d1e0e516f7fd4"
+        }
+      },
+      "branch": "feat/f460-a-payment-s-page-shows-its-money-as-one",
+      "baseCommit": "f663b63d1350afa24ec4b0341359ff468e14c405",
+      "failedVerifies": 0
+    },
+    {
+      "id": "F461",
+      "type": "feat",
+      "behavior": "The pay box shows what to send as one summary with token, network, amount and fee, the token picker groups networks, and NEAR Intents is named under it",
+      "acceptance": [
+        "Pay with, the token and network picker and payment progress match the approved templates: Pay with is Option B, progress is Option A.",
+        "At 390px no screen of this step scrolls sideways, and each loading placeholder has the shape of what it replaces.",
+        "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
+      ],
+      "dependsOn": [
+        "F460"
+      ],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "lint",
+        "typecheck"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F462",
+      "type": "feat",
+      "behavior": "Transactions, Activity and Payments show the fee beside each amount and fit a phone",
+      "acceptance": [
+        "The three lists match the approved templates (Forwend Redesign Templates), Option A: a Fee column on desktop, and amount, fee and status in each phone row.",
+        "At 390px no screen of this step scrolls sideways, and each loading placeholder has the shape of what it replaces.",
+        "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
+      ],
+      "dependsOn": [
+        "F461"
+      ],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "lint",
+        "typecheck"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F463",
+      "type": "feat",
+      "behavior": "New invoice reads as one flow of Customer, Items, Details and Review beside a full-page preview that zooms",
+      "acceptance": [
+        "New invoice and its preview match the approved templates (Forwend Redesign Templates), Option A: zoom in, out and fit; Invoice, Payer page and Email previews stay.",
+        "At 390px no screen of this step scrolls sideways, and each loading placeholder has the shape of what it replaces.",
+        "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
+      ],
+      "dependsOn": [
+        "F462"
+      ],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "lint",
+        "typecheck"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F464",
+      "type": "feat",
+      "behavior": "Invoices, the invoice page, Jobs and Requests follow the redesigned list and detail layouts",
+      "acceptance": [
+        "These screens match the approved templates (Forwend Redesign Templates), Option A.",
+        "At 390px no screen of this step scrolls sideways, and each loading placeholder has the shape of what it replaces.",
+        "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
+      ],
+      "dependsOn": [
+        "F463"
+      ],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "lint",
+        "typecheck"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F465",
+      "type": "feat",
+      "behavior": "Overview, My assets, Send and Receive follow the redesigned layouts",
+      "acceptance": [
+        "These screens match the approved templates (Forwend Redesign Templates), Option A.",
+        "At 390px no screen of this step scrolls sideways, and each loading placeholder has the shape of what it replaces.",
+        "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
+      ],
+      "dependsOn": [
+        "F464"
+      ],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "lint",
+        "typecheck"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F466",
+      "type": "feat",
+      "behavior": "Payment links, Stores, in-person Checkout and Clients follow the redesigned layouts",
+      "acceptance": [
+        "These screens match the approved templates (Forwend Redesign Templates), Option A; the in-person checkout hides its QR code while a payment confirms.",
+        "At 390px no screen of this step scrolls sideways, and each loading placeholder has the shape of what it replaces.",
+        "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
+      ],
+      "dependsOn": [
+        "F465"
+      ],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "lint",
+        "typecheck"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F467",
+      "type": "feat",
+      "behavior": "Settings, Team and Developers follow the redesigned layouts",
+      "acceptance": [
+        "These screens match the approved templates (Forwend Redesign Templates), Option A.",
+        "At 390px no screen of this step scrolls sideways, and each loading placeholder has the shape of what it replaces.",
+        "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
+      ],
+      "dependsOn": [
+        "F466"
+      ],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "lint",
+        "typecheck"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F468",
+      "type": "feat",
+      "behavior": "The app shell keeps one lime action per page, and shared placeholders, errors and motion match the templates",
+      "acceptance": [
+        "The header, sidebar, phone tab bar, search and shared components match the approved templates (Forwend Redesign Templates), Option A; motion respects reduced motion.",
+        "At 390px no screen of this step scrolls sideways, and each loading placeholder has the shape of what it replaces.",
+        "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
+      ],
+      "dependsOn": [
+        "F467"
+      ],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "lint",
+        "typecheck"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F469",
+      "type": "feat",
+      "behavior": "The landing page gains a Cross-chain payments section and nothing else on it changes",
+      "acceptance": [
+        "The section matches the approved templates (Forwend Redesign Templates), Option A; the hero and its image, the logo strip under it, the footer, and the sign-in and 404 background stay as they are.",
+        "At 390px no screen of this step scrolls sideways, and each loading placeholder has the shape of what it replaces.",
+        "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
+      ],
+      "dependsOn": [
+        "F468"
+      ],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "lint",
+        "typecheck"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F470",
+      "type": "feat",
+      "behavior": "Invoice and receipt PDFs and the emails follow the redesigned documents",
+      "acceptance": [
+        "The PDFs and the 16 emails match the approved templates (Forwend Redesign Templates), Option A; email text reads with images hidden.",
+        "At 390px no screen of this step scrolls sideways, and each loading placeholder has the shape of what it replaces.",
+        "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
+      ],
+      "dependsOn": [
+        "F469"
+      ],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "lint",
+        "typecheck"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
+    },
+    {
+      "id": "F471",
+      "type": "fix",
+      "behavior": "The signed-in browser tests for payment links and empty lists pass again",
+      "acceptance": [
+        "links.spec.ts:91 passes: the saved link body it expects matches what the form sends, feesPaidBy included, or the form is fixed if it should not send it.",
+        "navigation.spec.ts:1089 passes: an empty list's block sits within 24px of the middle of the space under the header, with the developer mode strip shown."
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "live-e2e"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {
-    "at": "2026-11-09T20:42:13Z",
+    "at": "2026-11-10T15:02:33Z",
     "clean": false,
     "problems": [
       "F332: depends on unknown task F335",
@@ -732,6 +1116,6 @@
       "F439: depends on unknown task F438",
       "F452: depends on unknown task F451"
     ],
-    "note": "F455 merged in #464; next: start F435"
+    "note": "F460 verified, reviewed and committed on its branch; not pushed. Next: owner's go-ahead for done F460, then start F461 (pay box, Option B)."
   }
 }

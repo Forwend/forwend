@@ -365,7 +365,7 @@ test("merchant separates payment, held funds, delivery and store records", async
   await page.screenshot({ path: "../../docs/runs/f336-payment-detail-1440.png", fullPage: true });
   // No raw ledger or contract panel: a failed webhook shows as a problem with its way to Developers.
   await expect(main.getByRole("button", { name: "Technical details", exact: true })).toHaveCount(0);
-  await expect(main.getByRole("region", { name: "Timeline" })).toBeVisible();
+  await expect(main.getByRole("region", { name: "How the money moved" })).toBeVisible();
   await expect(main.getByRole("link", { name: /^INV-/ })).toHaveCount(0);
   expect(await blockingViolations(page)).toEqual([]);
   expect(await sidewaysScroll(page)).toBeLessThanOrEqual(1);
@@ -623,7 +623,7 @@ test("uncredited payment shows the funded option and pending records", async ({ 
   await expect(main.getByText("1.00", { exact: true })).toHaveCount(3);
   await expect(main.locator('[data-status="paid"]')).toHaveCount(0);
   await expect(main.getByText("Awaiting customer payment", { exact: true })).toHaveCount(0);
-  await expect(main.getByRole("table", { name: "Transfers" })).toBeVisible();
+  await expect(main.getByRole("region", { name: "How the money moved" })).toBeVisible();
   await expect(main.getByText("Transfer records incomplete. Contact support.")).toHaveCount(0);
   await expect(main.getByText("Complete", { exact: true })).toHaveCount(0);
   await page.evaluate(() => window.scrollTo(0, 0));
@@ -985,7 +985,10 @@ test("payment detail tracks settlement finality and keeps its transaction link",
     }),
   );
   await page.goto(`/app/payments/${payment.paymentId}`);
-  const transfer = page.getByRole("main").getByRole("row").filter({ hasText: "To your wallet" });
+  const transfer = page
+    .getByRole("main")
+    .getByRole("listitem")
+    .filter({ hasText: /(To|In) your wallet/ });
   const state = transfer.locator("[data-status]").filter({ visible: true });
   await expect(state).toHaveText("Confirming");
   const estimate = transfer.getByRole("button", {
@@ -1051,10 +1054,10 @@ test("payment detail tracks settlement finality and keeps its transaction link",
   blocksLeft = 0;
   await page.reload();
   await expect(state).toHaveText("Confirming");
-  await expect(transfer).not.toContainText("In wallet");
+  await expect(transfer).not.toContainText("In your wallet");
   settled = true;
   await page.reload();
-  await expect(transfer).toContainText("In wallet");
+  await expect(transfer).toContainText("In your wallet");
   await expect(transfer.getByRole("link")).toHaveAttribute(
     "href",
     `https://sepolia.basescan.org/tx/${hash("8")}`,
