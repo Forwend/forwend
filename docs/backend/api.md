@@ -169,7 +169,7 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   on another chain into exactly what is due on the invoice's Base USDC option.
   - Only a live invoice with an open Base USDC option that closes in 20 minutes or more; otherwise 422
     `crosschain_unavailable` with the reason. A payment still confirming refuses it too: what is due isn't known.
-  - `GET .../crosschain/tokens` (R-232): 1Click's tokens from `intents_tokens`, without memo chains, unpriced tokens,
+  - `GET .../crosschain/tokens` (R-232): 1Click's tokens from `intents_tokens`, without memo chains, Bitcoin (D-127), unpriced tokens,
     Base USDC or the invoice's other direct options; stablecoins first. Each has an `estimate` at its listed price.
     - The `estimate` adds 1Click's 1% slippage, as a quote's `amountIn` does (R-244).
     - A token whose last check 1Click answered "No liquidity" is left out until a check is answered (R-245).

@@ -27,7 +27,7 @@ var (
 	errUnavailable = errors.New("1Click unavailable")
 	// ErrRefused: 1Click refused the request, as for a refund address it can't use.
 	ErrRefused = errors.New("1Click refused the quote")
-	// ErrNoLiquidity: a refusal for want of liquidity on the token's route (R-245); it is an ErrRefused too.
+	// ErrNoLiquidity: a refusal for want of a route or liquidity for the token (R-245); it is an ErrRefused too.
 	ErrNoLiquidity = errors.New("no liquidity")
 )
 
@@ -60,8 +60,9 @@ var (
 	minimum = regexp.MustCompile(`try at least ([0-9]{1,78})`)
 	// 1Click's temporary limits name dollars; the destination is Base USDC (D-123), a dollar for each 10^6 units.
 	minimumUSD = regexp.MustCompile(`minimum swap amount is \$([0-9][0-9,]{0,30}(?:\.[0-9]{1,6})?)`)
-	// 1Click's answer when no solver quotes the route: "No liquidity available".
-	noLiquidity = regexp.MustCompile(`(?i)no liquidity`)
+	// 1Click's answers when it has no route to Base USDC now: "No liquidity available", or "Quoting for this pair is
+	// not available".
+	noLiquidity = regexp.MustCompile(`(?i)no liquidity|pair is not available`)
 )
 
 // call sends body (nil for a GET) and returns the answer's bytes, exactly as 1Click sent them.

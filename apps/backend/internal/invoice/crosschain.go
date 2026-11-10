@@ -152,7 +152,7 @@ func (s *Service) CrossChainTokens(ctx context.Context, payToken string) (due *b
 }
 
 func offered(t intents.Token, target crossTarget, now time.Time) bool {
-	if _, fits := crossDeadline(t, target.option.ClosesAt, now); intents.MemoChains[t.Blockchain] || t.USD == "" || !fits {
+	if _, fits := crossDeadline(t, target.option.ClosesAt, now); intents.MemoChains[t.Blockchain] || intents.LeftOutChains[t.Blockchain] || t.USD == "" || !fits {
 		return false
 	}
 	return !slices.ContainsFunc(target.invoice.Options, func(o Option) bool {
@@ -315,8 +315,16 @@ func crossQuote(quote intents.Quote, token intents.Token, refundTo string) Cross
 		Signed: quote.Signed}
 }
 
-// learnMinimum keeps a minimum 1Click just named, so the picker shows it to the next payer at once (D-126).
+// learnMinimum keeps what 1Click just said of a route, so the picker shows it to the next payer at once: a minimum
+// it named (D-126), or that it has no route now (R-245).
 func (s *Service) learnMinimum(ctx context.Context, origin string, err error, now time.Time) {
+	// A payer's price or quote refused for want of a route hides the token at once, not at the worker's next check.
+	if errors.Is(err, intents.ErrNoLiquidity) {
+		if err := intents.SetNoLiquidity(ctx, s.pool, origin, now); err != nil {
+			slog.Warn("keep 1Click's no liquidity", "err", err)
+		}
+		return
+	}
 	var below *intents.BelowMinimum
 	if !errors.As(err, &below) {
 		return

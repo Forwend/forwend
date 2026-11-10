@@ -177,17 +177,17 @@ var probeRecipient = func() string {
 }()
 
 // Probe asks one dry quote for the token whose minimum was checked longest ago, so payers see which tokens fit before
-// they pick (D-126). Base USDC, memo chains and unpriced tokens are never offered, so never checked.
+// they pick (D-126). Base USDC, memo and left-out chains and unpriced tokens are never offered, so never checked.
 func (k *Keeper) Probe(ctx context.Context, now time.Time) error {
 	if now.Before(k.probeDue) {
 		return nil
 	}
 	k.probeDue = now.Add(ProbeGap)
-	memo := slices.Collect(maps.Keys(MemoChains))
+	skipped := slices.Concat(slices.Collect(maps.Keys(MemoChains)), slices.Collect(maps.Keys(LeftOutChains)))
 	var asset string
 	err := k.Pool.QueryRow(ctx, `SELECT asset_id FROM intents_tokens WHERE asset_id <> $1 AND usd IS NOT NULL
 		    AND NOT blockchain = ANY($2) AND (minimum_checked_at IS NULL OR minimum_checked_at <= $3)
-		ORDER BY minimum_checked_at NULLS FIRST, asset_id LIMIT 1`, BaseUSDCAsset, memo, now.Add(-ProbeEvery)).Scan(&asset)
+		ORDER BY minimum_checked_at NULLS FIRST, asset_id LIMIT 1`, BaseUSDCAsset, skipped, now.Add(-ProbeEvery)).Scan(&asset)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil
 	}
@@ -214,11 +214,7 @@ func (k *Keeper) Probe(ctx context.Context, now time.Time) error {
 		return SetMinimum(ctx, k.Pool, asset, minimum, now)
 	}
 	if errors.Is(err, ErrNoLiquidity) { // R-245: an answer of its own, not a fault to log
-		if _, err := k.Pool.Exec(ctx, "UPDATE intents_tokens SET no_liquidity_at = $2, minimum_checked_at = $2 WHERE asset_id = $1",
-			asset, now); err != nil {
-			return fmt.Errorf("keep 1Click's no liquidity for %s: %w", asset, err)
-		}
-		return nil
+		return SetNoLiquidity(ctx, k.Pool, asset, now)
 	}
 	// Any other answer keeps the token's minimum, or the one this round named, and is returned to be logged: a refusal
 	// naming none can be our own request's fault, as a recipient 1Click stops taking. The token waits its next turn, so
@@ -251,6 +247,21 @@ func SetMinimum(ctx context.Context, db interface {
 	}
 	return nil
 }
+
+// SetNoLiquidity keeps that 1Click has no route for asset now, so payers aren't offered it until a later dry quote is
+// answered (R-245).
+func SetNoLiquidity(ctx context.Context, db interface {
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+}, asset string, at time.Time) error {
+	if _, err := db.Exec(ctx, "UPDATE intents_tokens SET no_liquidity_at = $2, minimum_checked_at = $2 WHERE asset_id = $1",
+		asset, at); err != nil {
+		return fmt.Errorf("keep 1Click's no liquidity for %s: %w", asset, err)
+	}
+	return nil
+}
+
+// LeftOutChains are not offered to payers (D-127).
+var LeftOutChains = map[string]bool{"btc": true}
 
 // MemoChains need a memo beside the address, which a payer can forget and lose the money; they are left out (D-123).
 var MemoChains = map[string]bool{"stellar": true, "xrp": true, "ton": true}
