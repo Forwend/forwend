@@ -880,20 +880,22 @@
         "2026-11-10 review fail by reviewer: 1) Keyboard: the Direct / Another token tabs drop focus to the page body when a tab is picked, because each box mounts its own PayWays (pay-invoice.tsx:712, crosschain-pay.tsx:238); an arrow key on the radio group swaps the box and the payer can't arrow back. Move focus to the new box's Pay with heading or its checked tab after the switch, and assert it in e2e. 2) crosschain.spec.ts: nothing asserts that Direct is absent while an address shows, the guard that replaced the two-press Pay directly instead; add one assertion after the address shows. Money facts, warnings, verifyQuote, the two-press Change, the expired block and the docs match the code. Cleanup: AmountRows export and className in you-send.tsx have one user; a p sits inside a span at crosschain-pay.tsx:519.",
         "2026-11-10 review fail by reviewer: 1) crosschain-pay.tsx:464 with 471-473: when the unused slippage is not above the refund fee, the price step says 'Price buffer of 1%: Unused part returns to you' and, right under it, 'The unused slippage is less than the refund fee, so it may not come back'. The row must not promise the return in that case (and should use one word for buffer/slippage). No test covers this case. 2) Not blocking: PayWays takes the focus again on every later mount once the tabs were used (viaTabs is never cleared), so Change at the address lands on the Any token tab, not the heading it focuses (crosschain-pay.tsx:237,244). 3) Not blocking: the price placeholder has four lines but the price has three when the refund fee is 0, so the comment at crosschain-pay.tsx:409 and DESIGN.md 'do not move' overstate; NearIntents has a className prop no caller passes; the spec title at crosschain.spec.ts:507 still says Direct; no e2e assertion for the Refunds go to and Refund fee lines. Guards, verifyQuote, the expired overlay and the footer rows outside the inert block are intact; pay unit tests pass (100).",
         "2026-11-10 review fail by reviewer: Findings 1 and 3 are fixed: bufferLine and the warning read the same three values (crosschain-pay.tsx:474, 482). Finding 2 is fixed only where the opened box has tabs. Path left: Any token, Show address, Change, Confirm change, Stablecoin, wait for the invoice poll, Any token. CrossChainPay then mounts with the kept quote shown (crosschain-pay.tsx:123), draws no PayWays (228), so focus drops to the page body and viaTabs stays true (pay-invoice.tsx:620); the next two-press Change puts focus on the Any token tab, not the Pay with heading. Keyboard focus only: amounts, warnings and the two-press guard are intact. Fix: in CrossChainPay, an effect that, when viaTabs and shown are both set, focuses the heading and calls onTabsFocused.",
-        "2026-11-10 review pass by reviewer: Read the uncommitted diff over HEAD: the phone picker's two steps, the refund reset, StepTransition around the pay box, the Paid check, tests and docs; pay unit tests pass (100). Every token stays reachable, greyed tokens stay disabled in both steps and in search, the refund address clears only on a pick of another chain, Tooltip and SelectField are portaled, phase is stable across polls, and Paid is still read from its status text. Follow-ups, none blocking: ComboboxField (past 10 options) is not portaled and would be cut by the box's clip; StepTransition can take focus on a poll-driven change, also inside an embed; a leftover network search can empty the phone's first step; DESIGN.md nests the Paid rows under the transition bullet; the refund reset has no test."
+        "2026-11-10 review pass by reviewer: Read the uncommitted diff over HEAD: the phone picker's two steps, the refund reset, StepTransition around the pay box, the Paid check, tests and docs; pay unit tests pass (100). Every token stays reachable, greyed tokens stay disabled in both steps and in search, the refund address clears only on a pick of another chain, Tooltip and SelectField are portaled, phase is stable across polls, and Paid is still read from its status text. Follow-ups, none blocking: ComboboxField (past 10 options) is not portaled and would be cut by the box's clip; StepTransition can take focus on a poll-driven change, also inside an embed; a leftover network search can empty the phone's first step; DESIGN.md nests the Paid rows under the transition bullet; the refund reset has no test.",
+        "2026-11-10 review pass by reviewer: Read the uncommitted diff over HEAD (picker, crosschain e2e, DESIGN.md; tasks.json holds only check evidence): a pick clears the network search, the greyed-token note hides only on a phone's networks step, the new phone assertions use locators the wide run proves, and the Price held pattern still pins m:ss within 10 seconds of 15:00 with expiry after 15 minutes; pay unit tests pass (100). Follow-up, not blocking: DESIGN.md's note line does not say the note is hidden on a phone's networks step."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-10T16:48:53Z",
+        "at": "2026-11-10T17:00:52Z",
         "checks": [
           {
             "id": "harness",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 5.8,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "docs-check",
@@ -913,30 +915,30 @@
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 1.5,
+            "seconds": 1.7,
             "log": ""
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 51.3,
+            "seconds": 52.4,
             "log": ""
           },
           {
             "id": "web-unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 10.1,
+            "seconds": 10.4,
             "log": ""
           }
         ],
         "taskHash": "b053497ceabbee3b",
-        "filesHash": "7534309a4a3a7d4f",
+        "filesHash": "c873d0670f5b0988",
         "proof": {
           "1": "e2e: crosschain.spec.ts opens any token by its tab, returns by Stablecoin with the focus on the new tab, and asserts the tab is absent where it is not offered and while an address shows; pay.spec.ts passes unchanged from main, so the direct box repeats nothing",
           "2": "e2e: crosschain.spec.ts pickTronUSDT reads 1,263.00 USDT, then the fee, buffer and time rows; crosschain.test.ts checks the buffer's line promises no return when the refund fee would take it; the loading placeholder and fade were looked at in a held-price run",
-          "3": "e2e: crosschain.spec.ts checks that Change takes two presses and goes back to the price, and reads Price held 15:00, Refunds go to and Refund fee as lines under the address",
+          "3": "e2e: crosschain.spec.ts checks that Change takes two presses and goes back to the price, and reads the 15-minute Price held countdown, Refunds go to and Refund fee as lines under the address",
           "4": "e2e: crosschain.spec.ts 'a phone lists the networks, then the chosen one's tokens with a way back; a large screen shows both' with focus on Back and on the network; the R-242 greyed-token test passes unchanged; crosschain-picker.test.tsx passes",
           "5": "e2e: pay.spec.ts passes with the state transition around the box, including its focus checks after Show address and Change; the Paid check and the picker steps were captured at 390",
           "6": "e2e: crosschain.spec.ts and pay.spec.ts run the pay box and the picker at phone width with their sideways checks; all 66 tests pass with every earlier amount, address, warning and guard assertion kept",
@@ -945,9 +947,9 @@
         "review": {
           "result": "pass",
           "by": "reviewer",
-          "summary": "Read the uncommitted diff over HEAD: the phone picker's two steps, the refund reset, StepTransition around the pay box, the Paid check, tests and docs; pay unit tests pass (100). Every token stays reachable, greyed tokens stay disabled in both steps and in search, the refund address clears only on a pick of another chain, Tooltip and SelectField are portaled, phase is stable across polls, and Paid is still read from its status text. Follow-ups, none blocking: ComboboxField (past 10 options) is not portaled and would be cut by the box's clip; StepTransition can take focus on a poll-driven change, also inside an embed; a leftover network search can empty the phone's first step; DESIGN.md nests the Paid rows under the transition bullet; the refund reset has no test.",
-          "at": "2026-11-10T16:58:15Z",
-          "filesHash": "7534309a4a3a7d4f"
+          "summary": "Read the uncommitted diff over HEAD (picker, crosschain e2e, DESIGN.md; tasks.json holds only check evidence): a pick clears the network search, the greyed-token note hides only on a phone's networks step, the new phone assertions use locators the wide run proves, and the Price held pattern still pins m:ss within 10 seconds of 15:00 with expiry after 15 minutes; pay unit tests pass (100). Follow-up, not blocking: DESIGN.md's note line does not say the note is hidden on a phone's networks step.",
+          "at": "2026-11-10T17:03:15Z",
+          "filesHash": "c873d0670f5b0988"
         }
       },
       "branch": "feat/f461-the-pay-box-shows-what-to-send-as-one-su",

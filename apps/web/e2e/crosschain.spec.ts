@@ -158,7 +158,8 @@ test.describe("pay with another token (R-236 to R-238)", () => {
       /^1,263\.00\s*USDT$/,
     );
     await expect(page.getByText("Send only USDT on Tron.")).toBeVisible();
-    await expect(covers(page, "Price held")).toHaveText("15:00");
+    // A 15-minute price, counting down: the clock runs while the steps before this one are taken.
+    await expect(covers(page, "Price held")).toHaveText(/^(15:00|14:5\d)$/);
     // Where extra money returns and what that costs, each on its own line.
     await expect(covers(page, "Refunds go to")).toHaveText(/^TJRabP/);
     await expect(covers(page, "Refund fee")).toHaveText("0.0053 USDT");
@@ -205,9 +206,13 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     const networks = phone.getByRole("region", { name: "Networks" });
     const tron = networks.getByRole("button", { name: "Tron", exact: true });
     const usdt = phone.getByRole("button", { name: /USDT.*Tron/ });
-    // First the networks alone: no token list under them.
+    // First the networks alone: not even the first network's tokens under them.
     await expect(tron).toBeVisible();
     await expect(usdt).toBeHidden();
+    await expect(
+      phone.getByRole("region", { name: "Tokens on Ethereum" }).getByRole("list"),
+    ).toBeHidden();
+    await expect(phone.getByRole("searchbox", { name: "Search networks" })).toBeHidden();
     await expect(networks.getByRole("list")).toHaveCSS("flex-direction", "column");
     expect(await sidewaysScroll(page)).toBe(0);
     // A tap opens that network's tokens, with the way back holding the focus.

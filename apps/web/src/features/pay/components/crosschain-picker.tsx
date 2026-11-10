@@ -208,6 +208,7 @@ export function CrossChainPicker({
                             // The next opening starts at the networks again.
                             setStep(STEPS.chains);
                             setTokenQuery("");
+                            setChainQuery("");
                           }}
                         >
                           <Mark
@@ -242,7 +243,10 @@ export function CrossChainPicker({
             </section>
           </div>
           {someTooSmall ? (
-            <p className="border-t border-line pt-3 text-xs text-muted">
+            <p
+              // It explains greyed tokens: on a phone's networks step none is on screen.
+              className={`border-t border-line pt-3 text-xs text-muted ${tokensOnPhone ? "" : "max-sm:hidden"}`}
+            >
               {COPY.tooSmall(usdc(due))}
             </p>
           ) : null}

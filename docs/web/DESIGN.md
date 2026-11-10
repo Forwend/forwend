@@ -930,7 +930,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
       - That Change takes two presses (R-68) and goes back to the price, where the tabs are.
     - Choose a token opens a wide sheet: chains on the left with a search, the chosen chain's tokens on the right.
       - The first chain is chosen; popular chains come first. A token search looks across every chain.
-      - A phone has no room for both, so its sheet is two steps (R-249):
+      - A phone has no room for both, so its sheet is two steps (R-236):
         - First the networks, one full row each: logo, name, how many tokens, a chevron.
         - A tap shows that network's tokens under a Back row with the network's logo and name.
         - Back takes the focus on the way in; the network's row takes it on the way out.
@@ -996,14 +996,14 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A closed option keeps the selector when another option remains available. Each address uses its own effective close.
   - Closed: one line that says so.
   - Paid: a left-aligned receipt replaces the panel.
-  - One state takes another's place softly (the kit's `StepTransition`): choosing, the address, any token,
-    converting, money seen, paid. The new state fades in where it is and the box's height follows it.
-    - A change within a state, such as a new block count, is no new state and does not animate.
-    - Reduced motion shows each state at once.
     - The kit's `SuccessCheck` beside "Paid" and "You can close this page.": the circle draws, then the check.
     - Ruled label and value rows: Amount, Paid to, Date, and Transaction with a View transaction link to the explorer.
     - Download receipt, a full-width button. Primary; or secondary under a full-width primary Back to <host> when the
       invoice has a return link.
+  - One state takes another's place softly (the kit's `StepTransition`): choosing, the address, any token,
+    converting, money seen, paid. The new state fades in where it is and the box's height follows it.
+    - A change within a state, such as a new block count, is no new state and does not animate.
+    - Reduced motion shows each state at once.
   - The payer never sees the wallet transfer or status badges.
   - Held money gets one short line, such as "Overpaid by X", with How to get it back on its right. It opens Need help
     (PLAN 11.10.1).
