@@ -733,7 +733,7 @@
         "At 390px the wallet amount is the first figure and the page has no sideways scroll; the loading placeholder has the page's shape."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "lint",
@@ -833,11 +833,18 @@
           "summary": "Checked the sum's moving flag in paymentMoney against every state (paid and settling, refused, waiting, part payment, held dust, overpaid, confirming, settled, closed with money) and against the backend's option lock; payment-sum.tsx reads only money.moving for label, spinner and note, and DESIGN.md matches. Payments tests pass (39).",
           "at": "2026-11-10T15:35:38Z",
           "filesHash": "86762c37ac9cc0dc"
-        }
+        },
+        "commit": "ce43ed50",
+        "doneAt": "2026-11-10T15:35:57Z"
       },
       "branch": "feat/f460-a-payment-s-page-shows-its-money-as-one",
       "baseCommit": "f663b63d1350afa24ec4b0341359ff468e14c405",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f460-a-payment-s-page-shows-its-money-as-one",
+        "base": "main"
+      }
     },
     {
       "id": "F461",
