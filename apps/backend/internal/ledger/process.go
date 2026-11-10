@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
+	"slices"
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/history"
@@ -146,21 +147,10 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 			}
 		}
 		noneChosen = chosen == nil
-		if chosen != nil && *chosen == invoiceID {
-			// The deposit that brought this option to its least amount. The parts before it were held while nothing was
-			// chosen; they pay the creator once, in the round that books it.
-			var booked bool
-			err := tx.QueryRow(ctx, `SELECT booked FROM (`+optionTotals+`
-				AND t.status = 'confirmed') s WHERE invoice_id = $2 AND total >= least
-				ORDER BY block_time, block_number, log_index LIMIT 1`, group, invoiceID).Scan(&booked)
-			switch {
-			case err == nil:
-				// Not once it takes no more money (a cancel, D-26) or a return of it is under way.
-				applyEarlier = !booked && refund != "refund_pending" && !Final(current) && settlementState != "settled"
-			case !errors.Is(err, pgx.ErrNoRows): // none: an option chosen by its first payment, before this rule
-				return fmt.Errorf("read invoice %s choosing payment: %w", invoiceID, err)
-			}
-		}
+		// The chosen option's parts held while nothing was chosen pay the creator (applyHeldParts), unless it takes no
+		// more money (a cancel, D-26) or a return of it is under way.
+		applyEarlier = chosen != nil && *chosen == invoiceID && refund != "refund_pending" && !Final(current) &&
+			settlementState != "settled"
 		if chosen == nil && finalizedTime > closesAt {
 			// A payment made before the close may still come on an option chain not final past it.
 			if err := tx.QueryRow(ctx, `SELECT NOT EXISTS (SELECT 1 FROM invoices o
@@ -180,13 +170,6 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		return err
 	}
 	owed.Neg(owed) // credit balances are negative
-	if applyEarlier {
-		moved, err := applyHeldParts(ctx, tx, invoiceID, closesAt, new(big.Int).Sub(amount, owed))
-		if err != nil {
-			return err
-		}
-		owed.Add(owed, moved)
-	}
 
 	if err := attachLegacySettlement(ctx, tx, invoiceID); err != nil {
 		return err
@@ -194,6 +177,14 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	movements, more, err := pendingMovements(ctx, tx, invoiceID)
 	if err != nil {
 		return err
+	}
+	// A refund waiting to be booked may return a held part: it books first, in chain order, and the move waits a round.
+	if applyEarlier && !slices.ContainsFunc(movements, func(m movement) bool { return m.Kind == "refund" }) {
+		moved, err := applyHeldParts(ctx, tx, invoiceID, closesAt, new(big.Int).Sub(amount, owed))
+		if err != nil {
+			return err
+		}
+		owed.Add(owed, moved)
 	}
 	depositsBooked := 0
 	// A return support queued (PLAN 11.10.3) holds the money until a refund lands.
@@ -437,12 +428,14 @@ func applyHeldParts(ctx context.Context, tx pgx.Tx, option string, closesAt int6
 		return nil, err
 	}
 	left := minInt(new(big.Int).Set(up), held.Neg(held)) // a part already returned to its payer stays returned
-	rows, err := tx.Query(ctx, `SELECT x.chain_transfer_id, (-e.amount)::text
+	// Each deposit's held part net of what a reopen already gave the creator; one with a chosen booking is done.
+	rows, err := tx.Query(ctx, `SELECT x.chain_transfer_id, (-sum(e.amount))::text
 		FROM ledger_transactions x JOIN ledger_entries e ON e.transaction_id = x.id AND e.account = 'payer_held'
 		JOIN chain_transfers t ON t.id = x.chain_transfer_id
-		WHERE x.invoice_id = $1 AND x.kind = 'deposit' AND t.block_time <= $2 AND e.amount < 0
+		WHERE x.invoice_id = $1 AND x.kind IN ('deposit', 'reopen') AND t.block_time <= $2
 		  AND NOT EXISTS (SELECT 1 FROM ledger_transactions c WHERE c.chain_transfer_id = x.chain_transfer_id
 		                  AND c.kind = 'chosen')
+		GROUP BY x.chain_transfer_id, t.block_number, t.log_index HAVING sum(e.amount) < 0
 		ORDER BY t.block_number, t.log_index`, option, closesAt)
 	if err != nil {
 		return nil, fmt.Errorf("read invoice %s held parts: %w", option, err)

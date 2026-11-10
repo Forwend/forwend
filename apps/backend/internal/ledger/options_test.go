@@ -395,6 +395,35 @@ func TestFirstPartOfASmallInvoiceIsAPartialPayment(t *testing.T) {
 	}
 }
 
+// A deposit the old 1.00 USD rule booked as held, on an invoice still open, chooses its option under the tenth rule
+// once it is past a tenth; it then pays the creator, so the invoice is never locked to an option its payment can't pay.
+func TestHeldDepositThatChoosesUnderTheTenthRulePaysTheCreator(t *testing.T) {
+	o := newOptionSimFor(t, 1000000)
+	ctx := context.Background()
+	o.scanned(1, 2000)
+	o.scanned(2, 2000)
+	o.pay(o.option, 2, o.full, 500000, 1300)
+	if err := pgx.BeginFunc(ctx, o.pool, func(tx pgx.Tx) error {
+		var id int64
+		if err := tx.QueryRow(ctx, "SELECT id FROM chain_transfers WHERE invoice_id = $1", o.option).Scan(&id); err != nil {
+			return err
+		}
+		held := big.NewInt(500000)
+		return book(ctx, tx, o.option, "deposit", &id, held, new(big.Int), held)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	o.process(o.option)
+	a, err := ReadAmounts(ctx, o.pool, o.option)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, refund := o.payment(o.option); got != PartiallyPaid || refund != "none" || a.Payable.Int64() != 500000 {
+		t.Fatalf("the held 0.50 of 1.00 USDC chose its option: %s, refund %s, payable %s; want partially paid with it paid",
+			got, refund, a.Payable)
+	}
+}
+
 // D-26: money that comes after a cancel stays the payer's, even a payment that chooses its option after it.
 func TestCanceledPayerChoosesInvoiceKeepsEarlierPartsHeld(t *testing.T) {
 	o := newOptionSim(t)
