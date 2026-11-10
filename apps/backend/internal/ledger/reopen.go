@@ -29,10 +29,12 @@ func Reopen(ctx context.Context, tx pgx.Tx, option string, until int64) error {
 		return fmt.Errorf("read invoice %s amount: %w", option, err)
 	}
 	left, _ := new(big.Int).SetString(amountText, 10)
-	rows, err := tx.Query(ctx, `SELECT x.chain_transfer_id, (-e.amount)::text
+	// A deposit's held part is net of what a choice already gave the creator (chosen, D-76).
+	rows, err := tx.Query(ctx, `SELECT x.chain_transfer_id, (-sum(e.amount))::text
 		FROM ledger_transactions x JOIN ledger_entries e ON e.transaction_id = x.id AND e.account = 'payer_held'
 		LEFT JOIN chain_transfers t ON t.id = x.chain_transfer_id
-		WHERE x.invoice_id = $1 AND x.kind IN ('expiry', 'deposit')
+		WHERE x.invoice_id = $1 AND x.kind IN ('expiry', 'deposit', 'chosen')
+		GROUP BY x.chain_transfer_id, t.block_number, t.log_index HAVING sum(e.amount) < 0
 		ORDER BY t.block_number NULLS FIRST, t.log_index`, option)
 	if err != nil {
 		return fmt.Errorf("read invoice %s held: %w", option, err)

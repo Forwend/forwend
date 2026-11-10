@@ -404,6 +404,8 @@ Limits:
   - A smaller deposit chooses nothing, so a stranger with the pay link can't decide the option with dust.
   - It is held for the payer while nothing is chosen.
   - Once its option is chosen, the held part of each on-time deposit goes to the creator, as a `chosen` booking.
+    - Not after a cancel or a settle, nor while a return of it is queued: then it stays the payer's.
+    - A later reopen gives back only what is still held, so no part reaches the creator twice.
   - So a payment sent in parts counts in full, however small its first part.
   - On-time dust on an open invoice is not announced to the owner; late money and money after a cancel always is.
   - Dust never makes the invoice confirming or partly paid, and never stops the owner canceling or editing it.

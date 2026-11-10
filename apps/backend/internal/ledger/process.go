@@ -155,7 +155,8 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 				ORDER BY block_time, block_number, log_index LIMIT 1`, group, invoiceID).Scan(&booked)
 			switch {
 			case err == nil:
-				applyEarlier = !booked && refund != "refund_pending"
+				// Not once it takes no more money (a cancel, D-26) or a return of it is under way.
+				applyEarlier = !booked && refund != "refund_pending" && !Final(current) && settlementState != "settled"
 			case !errors.Is(err, pgx.ErrNoRows): // none: an option chosen by its first payment, before this rule
 				return fmt.Errorf("read invoice %s choosing payment: %w", invoiceID, err)
 			}
@@ -440,6 +441,8 @@ func applyHeldParts(ctx context.Context, tx pgx.Tx, option string, closesAt int6
 		FROM ledger_transactions x JOIN ledger_entries e ON e.transaction_id = x.id AND e.account = 'payer_held'
 		JOIN chain_transfers t ON t.id = x.chain_transfer_id
 		WHERE x.invoice_id = $1 AND x.kind = 'deposit' AND t.block_time <= $2 AND e.amount < 0
+		  AND NOT EXISTS (SELECT 1 FROM ledger_transactions c WHERE c.chain_transfer_id = x.chain_transfer_id
+		                  AND c.kind = 'chosen')
 		ORDER BY t.block_number, t.log_index`, option, closesAt)
 	if err != nil {
 		return nil, fmt.Errorf("read invoice %s held parts: %w", option, err)

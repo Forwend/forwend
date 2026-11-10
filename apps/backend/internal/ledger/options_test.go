@@ -10,6 +10,7 @@ import (
 
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 	"github.com/forwend/forwend/apps/backend/internal/history/historytest"
+	"github.com/jackc/pgx/v5"
 )
 
 // option adds an accepted option of invoice main (R-56): its own id and receive address, the main row's other terms.
@@ -391,6 +392,55 @@ func TestFirstPartOfASmallInvoiceIsAPartialPayment(t *testing.T) {
 	if got, _ := o.payment(o.option); got != Paid || a.Held.Int64() != 999943 || a.Payable.Int64() != 1000000 {
 		t.Fatalf("after the second part: %s, held %s, payable %s; want paid, 0.999943 held as overpaid",
 			got, a.Held, a.Payable)
+	}
+}
+
+// D-26: money that comes after a cancel stays the payer's, even a payment that chooses its option after it.
+func TestCanceledPayerChoosesInvoiceKeepsEarlierPartsHeld(t *testing.T) {
+	o := newOptionSim(t)
+	o.scanned(1, 2000)
+	o.scanned(2, 2000)
+	o.pay(o.option, 2, o.full, 300000, 1300)
+	o.process(o.option)
+	o.exec(`UPDATE invoices SET payment_status = 'canceled', canceled_at = now() WHERE coalesce(main_id, id) = $1`, o.main)
+	o.pay(o.option, 2, o.full, 300000, 1310) // 0.60 USDC in all: past the option's tenth
+	o.process(o.option)
+	a, err := ReadAmounts(context.Background(), o.pool, o.option)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Payable.Sign() != 0 || a.Held.Int64() != 600000 {
+		t.Fatalf("after a cancel: payable %s, held %s; want nothing payable, all 0.60 USDC held", a.Payable, a.Held)
+	}
+}
+
+// R-130: a reopen gives back what the expiry held, once: a part the choice already gave the creator is not given twice.
+func TestReopenAfterAChoiceGivesEachPartOnce(t *testing.T) {
+	o := newOptionSimFor(t, 1000000)
+	ctx := context.Background()
+	o.scanned(1, 2000)
+	o.scanned(2, 2000)
+	o.pay(o.option, 2, o.full, 50000, 1300) // under the tenth: held while nothing is chosen
+	o.process(o.option)
+	o.pay(o.option, 2, o.full, 100000, 1310) // chooses the option: both parts pay the creator
+	o.process(o.option)
+	o.scanned(1, 5100)
+	o.scanned(2, 5100)
+	o.process(o.option)
+	if got, _ := o.payment(o.option); got != ExpiredPartiallyPaid {
+		t.Fatalf("after the close: %s, want expired partly paid", got)
+	}
+	if err := pgx.BeginFunc(ctx, o.pool, func(tx pgx.Tx) error {
+		return Reopen(ctx, tx, o.option, 50000)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	a, err := ReadAmounts(ctx, o.pool, o.option)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Held.Sign() != 0 || a.Payable.Int64() != 150000 {
+		t.Fatalf("after the reopen: held %s, payable %s; want nothing held and the 0.15 received payable", a.Held, a.Payable)
 	}
 }
 
