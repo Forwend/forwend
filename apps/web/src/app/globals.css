@@ -29,17 +29,11 @@
 
 @source "../../../../packages/ui-web/src";
 
-/* On phones a full-bleed section over the page's 1rem gutter, not a card inside a card; a card from sm up. */
+/* A card at every width: on a phone it keeps the page's 1rem gutter and never touches the screen's edge. */
 @utility fw-panel {
   background-color: var(--fw-surface);
-  margin-inline: -1rem;
-  border-block: 1px solid var(--fw-line);
-
-  @variant sm {
-    margin-inline: 0;
-    border: 1px solid var(--fw-line);
-    border-radius: var(--fw-radius-lg);
-  }
+  border: 1px solid var(--fw-line);
+  border-radius: var(--fw-radius-lg);
 }
 
 @utility fw-panel-head {
@@ -47,16 +41,16 @@
   min-height: 3rem;
   align-items: center;
   gap: 0.75rem;
-  padding: 1rem 1rem 0.25rem;
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--fw-line);
 
   @variant sm {
-    padding: 0.875rem 1.25rem;
-    border-bottom: 1px solid var(--fw-line);
+    padding-inline: 1.25rem;
   }
 }
 
-/* The app's and checkout's gutter, which fw-panel bleeds over on phones. Its own variable: the public pages'
-   --fw-page-gutter is wider on phones and would leave every panel short of the screen's edge. */
+/* The app's and checkout's gutter. Its own variable: the public pages' --fw-page-gutter is wider on phones and
+   would leave every panel too narrow there. */
 @utility fw-safe-x {
   --fw-safe-gutter: 1rem;
   padding-left: max(var(--fw-safe-gutter), env(safe-area-inset-left));

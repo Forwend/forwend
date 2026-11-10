@@ -261,9 +261,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   motion removes the movement. Behind a modal the page darkens with the `scrim` token in both themes.
   - A sheet's header stays put; its body is the one part that scrolls, so a tall step shows one scrollbar.
 - Panels are solid surface with a hairline border, large corners and no shadow; a panel's header row is ruled off.
-  Figure strips and tables use hairline rules between cells and rows, not separate cards. On phones a panel is a
-  full-width section between top and bottom hairlines (no side border or corners, no box inside a box), its title
-  unruled above the rows, as in banking apps; panels become cards from small screens up (`fw-panel`, `fw-panel-head`).
+  Figure strips and tables use hairline rules between cells and rows, not separate cards.
+  - A panel is a card at every width (`fw-panel`, `fw-panel-head`): on a phone it keeps the page's 1rem margin.
+  - It never touches the screen's edge there (R-251).
+  - A personal profile's Overview balance is the one edge-to-edge block.
+  - A panel's header row is ruled off on phones too, with the rows' own side padding.
 - Holdings across tokens (the total balance, the pending parts, On hold) are USD at market prices
   (D-115). An info icon after "USD" says so in a tooltip. Pages name no price provider.
   - A value uses the latest known price, even an old one: stablecoins move little.
@@ -701,7 +703,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Back shows on every step after the first. After the save, the details stay editable and save again as billing details.
   - Once the save made the profiles, Back stops at the first details step: the uses can't change.
   - Passkey and Ready are centered; on phones their content sits in the middle of the space above the footer.
-  - Getting paid boxes `AssetSelection` (`boxed`), so the list keeps the page's side margins on phones.
+  - Getting paid shows `AssetSelection` as a card: the list keeps the page's side margins on phones.
   - Use: four choice cards (any number) in two columns, the profile each sets up as a badge by its mark.
     Phones drop the hints so all four fit. Skip setup sits at the footer's left.
   - Details, once per new freelancer or business profile: name, contact email (the sign-in email first), country and

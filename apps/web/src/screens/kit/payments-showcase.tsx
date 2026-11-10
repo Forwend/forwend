@@ -47,7 +47,7 @@ export function PaymentsShowcase() {
         const money = paymentMoney(payment);
         return (
           <KitGroup key={title} title={`Payment page, sum and movements: ${title}`}>
-            <div className="flex w-full flex-col gap-6 px-4 sm:px-0">
+            <div className="flex w-full flex-col gap-6">
               <PaymentSum payment={payment} money={money} />
               <PaymentJourney payment={payment} steps={paymentJourney(payment, money)} />
             </div>

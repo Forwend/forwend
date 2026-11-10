@@ -13,8 +13,7 @@ export const SPLIT_CLASSES =
   "grid grid-cols-[minmax(0,1fr)] items-start gap-6 xl:h-[calc(100dvh-11.5rem)] xl:min-h-[32rem] xl:grid-cols-[minmax(0,40rem)_minmax(0,1fr)] xl:items-stretch xl:gap-10";
 export const SPLIT_FORM_CLASSES = "min-h-0 xl:h-full";
 /** The form is one card: the steps in its head, the fields between, the footer at its foot. */
-export const STEP_CARD_CLASSES =
-  "fw-panel flex min-w-0 flex-col sm:rounded-lg xl:h-full xl:min-h-0";
+export const STEP_CARD_CLASSES = "fw-panel flex min-w-0 flex-col xl:h-full xl:min-h-0";
 export const STEP_HEAD_CLASSES = "border-b border-line px-4 py-3.5 sm:px-5";
 export const SPLIT_FIELDS_CLASSES =
   "flex min-w-0 flex-col gap-8 p-4 sm:p-5 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-contain";

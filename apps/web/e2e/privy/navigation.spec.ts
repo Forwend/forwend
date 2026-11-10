@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { sidewaysScroll } from "../sideways";
+import { panelsOffMargin, sidewaysScroll } from "../sideways";
 import { blockingViolations } from "./axe";
 import {
   activityItem,
@@ -1197,4 +1197,40 @@ test("a freelancer can reach invoices, activity and billing from the mobile menu
   await page.setViewportSize({ width: 1200, height: 800 });
   await expect(more).toBeHidden();
   await context.close();
+});
+
+test("on a phone every panel is a card inside the page's margin, and no page scrolls sideways", async ({
+  browser,
+}) => {
+  const phone = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    storageState: session,
+  });
+  const page = await phone.newPage();
+  await mockApi(page);
+  for (const path of [
+    "/app/invoices",
+    `/app/invoices/${CONFIRMING_INVOICE.invoiceId}`,
+    "/app/invoices/new",
+    "/app/activity",
+    "/app/transactions",
+    "/app/balances",
+    "/app/stores",
+    "/app/checkout",
+    "/app/developers",
+    "/app/settings",
+    "/app/notifications",
+    "/app/billing-details",
+    "/app/networks",
+    "/app/developer-mode",
+  ]) {
+    await page.goto(path);
+    // Each of these pages has a panel: without one the check below would pass on nothing.
+    await expect(page.locator("main .fw-panel").first(), path).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    expect(await panelsOffMargin(page), path).toBe(0);
+    expect(await sidewaysScroll(page), path).toBeLessThanOrEqual(0);
+  }
+  await phone.close();
 });

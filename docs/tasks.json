@@ -1392,19 +1392,91 @@
         "Before review, every page is looked at on the real app at 390 wide."
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "web-unit",
         "lint",
         "typecheck",
         "e2e"
       ],
-      "refs": [],
+      "refs": [
+        "R-251"
+      ],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-11-10 review pass by reviewer: Independent review of the uncommitted F474 diff: no defect found. From sm up the fw-panel and fw-panel-head rules compute to the same values as before (the removed margin-inline: 0 had no user that sets a side margin). All fw-panel users were read by family: no child relies on the old phone bleed, no panel sits in a sheet or dialog, the -mx-4 users are inside Card or the balance hero and are untouched, and no dashboard file is in the diff. Ran typecheck, lint, check-docs, web unit tests (407 passed), the deterministic pay, link-pay, job-quote and stop-reminders e2e (63 passed) and the signed-in phone panel test (passed). Notes, none blocking: the personal Overview's Recent transactions panel is fw-panel through TransactionsTable, so it becomes a card on phones as R-251 says; the signed-in test passes without checking anything on paths that render no panel under the merchant mock and does not visit the Overview; AssetSelection has no overflow-hidden, so an open last group tints the bottom corners, now on phones too; stale comments in stop-reminders-screen.tsx and pay-invoice.tsx; the docs say the Overview balance is edge to edge, which holds only for the personal overview.",
+        "2026-11-10 review fail by reviewer: Second independent review of the uncommitted F474 diff. One defect: docs/web/DESIGN.md:706 still says Getting paid boxes AssetSelection with the boxed prop, but this change deleted that prop (asset-selection.tsx, tokens-step.tsx), so the design doc names code that no longer exists; reword or remove that bullet. Everything else holds. From sm up fw-panel and fw-panel-head compute to the same values as before; no fw-panel user sets a side margin. All fw-panel users were read: none relies on the old phone bleed, the -mx-4 users sit inside Card or the balance hero, and the step form sticky footer behaves on phones as it already did from sm. overflow-hidden on AssetSelection clips nothing: its kit parts (SearchField, SegmentedControl, Checkbox, IconButton, Button, NoMatch) render no tooltip, menu or popover, and every focus ring sits inside the 1rem row padding. The tests check what they claim: panelsOffMargin fails on a panel at x=0 or with square corners, the pay test has the pay panel in both states, and the signed-in test now waits for a visible panel on each of the 14 paths. Ran typecheck, lint, check-docs (0 errors), web unit tests (407 passed), pay and link-pay e2e (57 passed) and the signed-in phone panel test (passed). Notes, not blocking: screens/kit/payments-showcase.tsx:50 keeps px-4 sm:px-0, a leftover of the old bleed that now insets the kit panels twice on phones; on the store form the AssetSelection is a card inside the step card, about 322 px wide at 390, so long network names may truncate (not measured); the fourth new DESIGN.md bullet starts with Its right after the Overview balance bullet and reads as the balance header; panelsOffMargin checks margin and corner radius, not the border.",
+        "2026-11-10 review pass by reviewer: Third independent review of the uncommitted F474 diff, scoped to the three edits made after the second review: no defect found. The removed boxed prop of AssetSelection has no reference left in docs, apps/web/src or packages (the one grep hit, landing-header.module.css:33, is the plain word). No doc or comment still describes panels as full-bleed or edge to edge on phones: the remaining edge wording in docs/web/DESIGN.md (266-267, 502), globals.css:32, e2e/sideways.ts and R-251 all state the new rule, and DESIGN.md:734 'full-width panel' means the form column, not the screen. The kit wrapper in screens/kit/payments-showcase.tsx:50 losing 'px-4 sm:px-0' is harmless: the kit page's main already has px-4 (kit-screen.tsx:21) and the padding only existed to absorb the old -1rem panel margin. python3 scripts/check-docs.py reports 0 errors; each new DESIGN.md bullet and the R-251 row hold one fact in sentences of at most 19 words. I did not rerun e2e or re-read the CSS and tests beyond the diff; the two earlier reviews covered those."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-10T19:37:54Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 50.9,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 14.4,
+            "log": ""
+          }
+        ],
+        "taskHash": "5b85269cbb53715a",
+        "filesHash": "6f530fa83e670283",
+        "proof": {
+          "1": "e2e: pay.spec 'fits a 390 px phone' asserts panelsOffMargin is 0 on the pay page; a personal profile's Overview balance (balance-hero.tsx) does not use fw-panel and is unchanged",
+          "2": "e2e: the signed-in test 'on a phone every panel is a card inside the page's margin' passed by hand over 14 app pages that each show a panel (node scripts/e2e.mjs --live e2e/privy/navigation.spec.ts: 2 passed), checking the margin, corners and no sideways scroll",
+          "3": "e2e: at 375 wide in the real app (payments, settings, wallet, networks, transactions, assets, invoice, new invoice) and in 390 screenshots of the merchant pages and the pay page, each panel was looked at; no row sticks out of its panel"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Third independent review of the uncommitted F474 diff, scoped to the three edits made after the second review: no defect found. The removed boxed prop of AssetSelection has no reference left in docs, apps/web/src or packages (the one grep hit, landing-header.module.css:33, is the plain word). No doc or comment still describes panels as full-bleed or edge to edge on phones: the remaining edge wording in docs/web/DESIGN.md (266-267, 502), globals.css:32, e2e/sideways.ts and R-251 all state the new rule, and DESIGN.md:734 'full-width panel' means the form column, not the screen. The kit wrapper in screens/kit/payments-showcase.tsx:50 losing 'px-4 sm:px-0' is harmless: the kit page's main already has px-4 (kit-screen.tsx:21) and the padding only existed to absorb the old -1rem panel margin. python3 scripts/check-docs.py reports 0 errors; each new DESIGN.md bullet and the R-251 row hold one fact in sentences of at most 19 words. I did not rerun e2e or re-read the CSS and tests beyond the diff; the two earlier reviews covered those.",
+          "at": "2026-11-10T19:39:49Z",
+          "filesHash": "6f530fa83e670283"
+        }
+      },
+      "branch": "feat/f474-on-a-phone-panels-are-rounded-cards-with",
+      "baseCommit": "471088f4392bfc28a6db15d5c5a39e59d5f03ccf",
+      "failedVerifies": 0
     },
     {
       "id": "F475",

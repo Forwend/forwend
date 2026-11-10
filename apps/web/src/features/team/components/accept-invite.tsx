@@ -27,9 +27,8 @@ const status = (error: unknown) => (error as { status?: unknown } | undefined)?.
 const code = (error: unknown) =>
   (error as { data?: { error?: { code?: string } } } | undefined)?.data?.error?.code;
 
-// A framed card at every width: centered on its own page, fw-panel's phone bleed would leave its lines short of the
-// edges. Its padding matches DetailRow's, so the facts line up with the heading.
-const PANEL = "w-full max-w-md overflow-hidden rounded-lg border border-line bg-surface";
+// Its padding matches DetailRow's, so the facts line up with the heading.
+const PANEL = "fw-panel w-full max-w-md overflow-hidden";
 const SECTION = "flex flex-col gap-3 px-4 py-5 sm:px-5";
 const ACTION = "w-full sm:w-auto sm:self-start";
 
