@@ -150,6 +150,8 @@ The worker and the signer each run as one copy. Before the checks each takes a P
 frees the lock when its connection ends, a crash included. Before each round the holder pings that connection; if it
 is gone, so is the lock, and the process stops rather than run beside the copy that takes over. The ping gives up
 after `database.LockPing` (5 s): a connection broken without a close would otherwise hang it until TCP gives up.
+The lock's session sets TCP keepalives (30 s idle, 3 probes 10 s apart), so Postgres frees a lock whose client vanished
+in about a minute, not two hours.
 Waiting instead of exiting suits rolling deploys: the new copy starts as soon as the old one stops.
 
 Root `pnpm dev` (`apps/backend/scripts/dev.sh`) stops at once when `EXECUTOR_PRIVATE_KEY` is missing or empty in

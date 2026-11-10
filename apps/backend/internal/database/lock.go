@@ -26,6 +26,12 @@ func TakeLock(ctx context.Context, pool *pgxpool.Pool, key int64, name string, e
 		return nil, fmt.Errorf("connect for the %s lock: %w", name, err)
 	}
 	conn := c.Hijack() // out of the pool: the lock lives as long as this connection
+	// Postgres frees the lock only once it sees the connection is gone. Without keepalives a client lost without a
+	// close keeps it held for about two hours, and no other worker or signer can start.
+	if _, err := conn.Exec(ctx, "SET tcp_keepalives_idle = 30; SET tcp_keepalives_interval = 10; SET tcp_keepalives_count = 3"); err != nil {
+		_ = conn.Close(context.Background())
+		return nil, fmt.Errorf("set the %s lock's keepalives: %w", name, err)
+	}
 	for {
 		var got bool
 		if err := conn.QueryRow(ctx, "SELECT pg_try_advisory_lock($1)", key).Scan(&got); err != nil {
