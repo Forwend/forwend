@@ -17,7 +17,7 @@ reason; it joins the plan once the owner agrees.
 | 8 | Done: first payment through the UI on Base USDC, then Arbitrum, Arc and Tempo | Sasha's Base Sepolia run; then enable other planned pairs individually |
 | 9 | Done: payment exceptions, cancel and notifications | On Anvil: partial → top-up → paid; expired partial → held; late → held; cancel → later deposit held; each email sent once |
 | 10 | Done: freelancer work | One freelancer runs quote → accepted → deposit → milestone → final invoice paid on testnet; the final invoice shows the earlier payments and the records export matches the chain |
-| 11 | Merchant stores, developer tools, history log and refunds of held money | Sample merchant uses SDK, pays and verifies an invoice.settled webhook; on Anvil overpay → claim → refund and expired partial → claim → refund |
+| 11 | Done: merchant stores, developer tools, history log and refunds of held money; only 11.8 onboarding (F332) is still open | Sample merchant uses SDK, pays and verifies an invoice.settled webhook; on Anvil overpay → claim → refund and expired partial → claim → refund |
 | 12 | Account security, send and handles | Send works on a fork |
 | 13 | Security review and personal mainnet trials | Full testnet exception suite, then 20 tiny personal mainnet invoices with zero reconciliation difference |
 
@@ -223,6 +223,12 @@ The owner moved these out of the MVP on 2026-10-31:
   - A payer on a cheaper network, such as Arc or Tempo, pays more than its gas; the extra goes to the settler.
 - Code refactoring (owner request 2026-11-09): make the code cleaner and easier to scale.
   - Each refactor keeps behavior and public contracts, as the workflow's refactor rule asks.
+- Faster "paid" (owner request 2026-11-10): rethink the confirmation rule (D-45) after the MVP is done.
+  - Today a deposit is paid only at the chain's `finalized` block; on Base that is about 15 minutes.
+  - Option 1: "paid" at the `safe` block on L2s, once the block's data is posted to Ethereum.
+  - Option 2: a fixed number of confirmations per chain, perhaps fewer for small amounts.
+  - Either way the settle still waits for `finalized`, so a reorg can't move the merchant's money.
+  - Decide with measured times per chain, then change D-45, money-safety.md and the tests together.
 
 Mobile; optional BNB and non-EVM networks; HD-wallet receive methods; cross-chain sends; automatic wallet billing;
 full accounting page and Koinly export; opt-in escrow; bank/card on-ramp; public developer sandbox; custom checkout
