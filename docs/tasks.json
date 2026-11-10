@@ -268,7 +268,7 @@
         "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "lint",
@@ -349,11 +349,18 @@
           "summary": "Independent review passed earlier with no blocking findings (see the review note). Changes after it only apply that review's findings 1-6, 8 and 13-15: accurate held-money and refund wording in the docs, live mode named, open status while the token travels, separate hover and focus pause flags, the USDT sample above the 1% buffer, blockchainName reused, docs reading order and design-doc lines. The owner chose to skip a second review. Not changed by choice: 7, 9-12, 16-18.",
           "at": "2026-11-10T22:29:07Z",
           "filesHash": "67e51a09c81e7e52"
-        }
+        },
+        "commit": "273f4169",
+        "doneAt": "2026-11-10T22:29:30Z"
       },
       "branch": "feat/f469-the-landing-page-follows-the-redesigned",
       "baseCommit": "3e2ca5748336479fffe3a352ba0f2d4bb9df940d",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f469-the-landing-page-follows-the-redesigned",
+        "base": "main"
+      }
     },
     {
       "id": "F470",
