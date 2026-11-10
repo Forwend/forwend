@@ -286,6 +286,22 @@ export function NewInvoiceForm({
     return typeof line === "string" ? sum : sum + line.units;
   }, 0n);
   const typedUnits = items.length > 0 ? itemsTotal : parseTokenAmount(amount, decimals);
+  // R-56: what the invoice asks for, the items' total or the typed amount, is at least 1.00; one item may cost less.
+  const askedUnits = atLeastMinimum(
+    items.length > 0 ? (itemsTotal > 0n ? itemsTotal : AMOUNT_ERRORS.zero) : typedUnits,
+    decimals,
+  );
+  const askedError =
+    typeof askedUnits !== "string"
+      ? {}
+      : items.length > 0
+        ? {
+            [INVOICE_FIELDS.lines]:
+              askedUnits === AMOUNT_ERRORS.min
+                ? COPY.items.errors.min(unit)
+                : COPY.items.errors.zero,
+          }
+        : { [INVOICE_FIELDS.amount]: amountError(amount) };
   const lineMessage = (error: LineError) => {
     const message = COPY.items.errors[error];
     return typeof message === "function" ? message(unit, decimals) : message;
@@ -326,14 +342,7 @@ export function NewInvoiceForm({
         problems[item.id] = { [lineErrorField(line)]: lineMessage(line) };
       return line;
     });
-    const units = atLeastMinimum(
-      items.length > 0
-        ? itemsTotal > 0n
-          ? itemsTotal
-          : AMOUNT_ERRORS.zero
-        : parseTokenAmount(amount, decimals),
-      decimals,
-    );
+    const units = askedUnits;
     const missingName = request && !text("senderName");
     const missingClient = !request && !text("clientName") && !text("clientEmail");
     const expiresIn =
@@ -380,12 +389,8 @@ export function NewInvoiceForm({
             : undefined,
         [INVOICE_FIELDS.agreedDate]:
           badAgreed && !agreed?.date ? COPY.agreed.errors.date : undefined,
-        [INVOICE_FIELDS.amount]:
-          typeof units === "string" && items.length === 0 ? amountError(amount) : undefined,
-        [INVOICE_FIELDS.lines]:
-          typeof units === "string" && items.length > 0 && !badLines
-            ? COPY.items.errors.zero
-            : undefined,
+        [INVOICE_FIELDS.amount]: askedError[INVOICE_FIELDS.amount],
+        [INVOICE_FIELDS.lines]: badLines ? undefined : askedError[INVOICE_FIELDS.lines],
         [INVOICE_FIELDS.clientName]: missingClient ? NEW_INVOICE_COPY.missingClient : undefined,
         [INVOICE_FIELDS.senderName]: missingName ? NEW_REQUEST_COPY.senderMissing : undefined,
         [INVOICE_FIELDS.expiresIn]: expiresIn === null ? COPY.customError : undefined,
@@ -716,13 +721,7 @@ export function NewInvoiceForm({
         formElement.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
         return;
       }
-      if (typeof typedUnits === "string" || typedUnits === 0n) {
-        return stop(
-          items.length > 0
-            ? { [INVOICE_FIELDS.lines]: COPY.items.errors.zero }
-            : { [INVOICE_FIELDS.amount]: amountError(amount) },
-        );
-      }
+      if (typeof askedUnits === "string") return stop(askedError);
     }
     if (stepId === STEP_IDS.details && request && !text("senderName")) {
       return stop({ [INVOICE_FIELDS.senderName]: NEW_REQUEST_COPY.senderMissing });

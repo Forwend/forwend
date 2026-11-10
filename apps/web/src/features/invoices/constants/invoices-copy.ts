@@ -244,6 +244,7 @@ export const NEW_INVOICE_COPY = {
         `Enter a price in ${unit}, with up to ${decimals} decimals.`,
       exact: (unit: string) => `Qty × price needs more decimals than ${unit} has.`,
       zero: "Give at least one item a price.",
+      min: (unit: string) => `The items must add up to at least 1.00 ${unit}.`,
     },
   },
   create: "Create invoice",
