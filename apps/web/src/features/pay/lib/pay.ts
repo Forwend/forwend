@@ -221,8 +221,9 @@ export function shortDuration(ms: number): string {
   return parts.join(" ") || "0 s";
 }
 
-/** The option a payer-chooses invoice takes (R-56, R-119): the first whose on-time deposits add up to 1.00 USD, one
- * whole stablecoin (D-75), or an older invoice's whole amount when that is smaller. A smaller deposit chooses nothing. */
+/** The option a payer-chooses invoice takes (R-56, R-119): the first whose on-time deposits add up to a tenth of the
+ * amount, at most 1.00 USD, one whole stablecoin (D-75, D-76), as the ledger's leastAmount. A smaller deposit chooses
+ * nothing. */
 export function firstPaymentOption(inv: Invoice): Invoice["options"][number] | undefined {
   type Crossing = { option: Invoice["options"][number]; deposit: Invoice["deposits"][number] };
   const earlier = (a: Crossing, b: Crossing) =>
@@ -233,7 +234,8 @@ export function firstPaymentOption(inv: Invoice): Invoice["options"][number] | u
   let first: Crossing | undefined;
   for (const option of inv.options) {
     const whole = 10n ** BigInt(option.decimals);
-    const least = BigInt(option.amount) < whole ? BigInt(option.amount) : whole;
+    const tenth = BigInt(option.amount) / 10n > 0n ? BigInt(option.amount) / 10n : 1n;
+    const least = tenth < whole ? tenth : whole;
     let total = 0n;
     for (const deposit of option.deposits
       .filter((d) => !d.late)

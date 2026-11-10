@@ -270,7 +270,7 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 	if err := tx.QueryRow(ctx, `SELECT p.email_notifications, u.login_email, m.payer_email, m.number,
 		    coalesce(m.issuer_name, ''), coalesce(m.sender_name, ''), t.symbol, t.decimals, o.chain_id, o.amount::text,
 		    coalesce((SELECT d.tx_hash FROM chain_transfers d
-		              JOIN ledger_transactions x ON x.chain_transfer_id = d.id AND x.kind IN ('deposit', 'reopen')
+		              JOIN ledger_transactions x ON x.chain_transfer_id = d.id AND x.kind IN ('deposit', 'reopen', 'chosen')
 		              JOIN ledger_entries e ON e.transaction_id = x.id AND e.account = 'recipient_payable'
 		              WHERE d.invoice_id = o.id ORDER BY d.block_number DESC, d.log_index DESC LIMIT 1), ''),
 		    coalesce(m.client_email, ''), coalesce(m.issuer_email, ''), coalesce(m.due_date::text, ''),
