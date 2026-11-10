@@ -1119,7 +1119,7 @@
         "Requests, money figures and existing behavior stay as they are unless R-252 or R-253 says otherwise."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "lint",
@@ -1217,11 +1217,18 @@
           "summary": "Re-review of the fix and three follow-ups. More options: the guarded render-phase setMoreOpen(true) (new-invoice-form.tsx:849) cannot loop and runs inside Create's flushSync(setErrors) re-render, so the section is open and not inert before toFirstError focuses the field; moreShown = moreOpen keeps it open after the error clears, and the toggle closes it once no folded field has an error (while one does, render reopens it, as before). The new unit test fails on the old moreShown = moreOpen || error logic at its post-fix aria-expanded check and checks the field is not inside [inert]; jsdom focus ignores inert, so the activeElement check alone proves less, but the expanded check covers it. invoices-table copy IconButton size xs is size-6 with before:-inset-2.5 always, a 44px hit area, and aria-label from label. invoices.spec.ts opens More options before Return link and Supply date and its warning texts match followsDue and the closes-before copy in invoices-copy.ts; DESIGN.md line 694 matches REQUEST_HIDDEN (client, due, store). pnpm --filter @forwend/web test: 72 files, 417 tests passed; typecheck 0, lint 0, check-docs 0 errors. e2e not run.",
           "at": "2026-11-10T21:47:21Z",
           "filesHash": "120bd844aa9f5c02"
-        }
+        },
+        "commit": "8ef2af69",
+        "doneAt": "2026-11-10T21:47:50Z"
       },
       "branch": "feat/f464-invoices-the-invoice-page-jobs-and-reque",
       "baseCommit": "78e3a040cf33a0ad4ff47c8ff4e6726d5b6b8b9b",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f464-invoices-the-invoice-page-jobs-and-reque",
+        "base": "main"
+      }
     },
     {
       "id": "F465",
