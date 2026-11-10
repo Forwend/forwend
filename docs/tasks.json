@@ -1268,7 +1268,7 @@
       "dependsOn": [
         "F461"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "lint",
@@ -1369,11 +1369,18 @@
           "summary": "PASS: no state found where 'Nothing more to do' shows while the payer still owes. Direct (pay-invoice.tsx:1140, pay.ts:65): the box needs state confirming/checking, canSend false and on-time deposits >= the shown option's amount; traced payer-chooses (under and over the tenth, two options), client-paid fees, part plus late money, review, canceled, overpaid, a cut deposit list and a reopened invoice against payState, withOption and the ledger (on-time is block_time <= closes_at, expiry waits for booked transfers). Cross-chain (crosschain-pay.tsx:752, pay-invoice.tsx:715): hidden for a short deposit, a closed or canceled checkout and review; a short delivery on Base is reachable only if 1Click breaks exact-output. web-unit 407, ui-unit 29, typecheck, lint (one old warning at pay.ts:244), check-docs and e2e crosschain+pay 67 passed. Notes, not defects: the cross-chain box could also hide when money is on Base and canSend is true; the box shows at KNOWN_DEPOSIT_TX before 1Click checks the amount; onBase counts any deposit; a closed checkout with only late money reads 'Base is confirming the transfer' (F475); useLastSteps tests sit in pay.test.ts.",
           "at": "2026-11-10T19:10:14Z",
           "filesHash": "dbd3a0987b662946"
-        }
+        },
+        "commit": "773b09b7",
+        "doneAt": "2026-11-10T19:10:56Z"
       },
       "branch": "feat/f473-payment-progress-reads-as-a-list-of-step",
       "baseCommit": "9fcabbfc700914362d8a61f284bfb1cf173e979e",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f473-payment-progress-reads-as-a-list-of-step",
+        "base": "main"
+      }
     },
     {
       "id": "F474",
