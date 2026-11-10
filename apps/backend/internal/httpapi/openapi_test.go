@@ -142,7 +142,7 @@ func TestOpenAPIErrorCodesMatchTheAPI(t *testing.T) {
 	}
 }
 
-// D-114: the spec's state and wallet enums, on the filters and on Payment, are the values the API filters and returns.
+// D-114: the spec's state and wallet enums, on the filters, Payment and InvoiceSummary, are the values the API filters and returns.
 func TestOpenAPIPaymentStatesMatchTheAPI(t *testing.T) {
 	spec, err := os.ReadFile("../../api/openapi.yaml")
 	if err != nil {
@@ -159,8 +159,8 @@ func TestOpenAPIPaymentStatesMatchTheAPI(t *testing.T) {
 				}
 			}
 		}
-		if found != 2 {
-			t.Errorf("openapi.yaml has %d enums like %v, want the filter's and Payment's", found, want)
+		if found != 3 {
+			t.Errorf("openapi.yaml has %d enums like %v, want the filter's, Payment's and InvoiceSummary's", found, want)
 		}
 	}
 }

@@ -68,6 +68,7 @@ export function invoiceStatus(inv: InvoiceSummary): PaymentStatus {
     paymentStatus: inv.paymentStatus,
     confirming: inv.confirming,
     closed: inv.closed,
+    state: inv.state,
     dueDate: inv.dueDate,
   });
 }
@@ -286,8 +287,8 @@ const EXCEPTIONS: Partial<Record<PaymentStatus, InvoiceException["kind"]>> = {
 
 /** An option's fees and what the owner receives of its amount (R-228): the amount less both fees. */
 export function optionFees(o: FeeTerms): OptionFees {
-  const network = BigInt(o.networkFee ?? "0");
-  const platform = BigInt(o.platformFee ?? "0");
+  const network = BigInt(o.networkFee);
+  const platform = BigInt(o.platformFee);
   return {
     network,
     platform,
@@ -412,7 +413,7 @@ export function restartFrom(
         })),
     title: inv.title ?? "",
     note: inv.note ?? "",
-    feesPaidBy: inv.feesPaidBy ?? FEES_PAID_BY.owner,
+    feesPaidBy: inv.feesPaidBy,
     returnUrl: inv.returnUrl ?? "",
     reference: inv.reference ?? "",
     // The price agreed for the whole amount (R-93): it does not describe the rest.

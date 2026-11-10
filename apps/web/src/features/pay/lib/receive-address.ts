@@ -74,8 +74,8 @@ export function checkedReceiveAddress(inv: Invoice, payToken: string): string | 
       expiresAt: unixSeconds(inv.expiresAt),
       settleDeadline: unixSeconds(inv.settleDeadline),
       intendedChainId: BigInt(inv.chainId),
-      networkFee: BigInt(inv.networkFee ?? "0"),
-      platformFee: BigInt(inv.platformFee ?? "0"),
+      networkFee: BigInt(inv.networkFee),
+      platformFee: BigInt(inv.platformFee),
     };
     const recipient = terms.recipient.toLowerCase().replace(/^0x/, "");
     // The invoice's own factory, which must be one Forwend deployed: the API can't name another.

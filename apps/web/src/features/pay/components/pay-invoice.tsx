@@ -32,6 +32,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
+  invoicesApi,
   useCountViewMutation,
   useGetInvoiceQuery,
   usePickOptionMutation,
@@ -84,6 +85,7 @@ import {
   firstPaymentOption,
   overpaid,
   payerNoticeOptions,
+  payFinal,
   payState,
   payToken,
   receiptDeposits,
@@ -133,8 +135,10 @@ export interface PayInvoiceProps {
 export function PayInvoice({ linkToken, option, preview = false, embed }: PayInvoiceProps) {
   // The checkout shares the link page's store, so Back then Forward finds an older read: read it again once it is
   // older than one refresh. Pay's own read, a moment old, opens the checkout without a second request.
+  const cached = invoicesApi.endpoints.getInvoice.useQueryState(linkToken);
   const invoice = useGetInvoiceQuery(linkToken, {
     ...LIVE_QUERY,
+    pollingInterval: cached.data && payFinal(cached.data) ? 0 : REFRESH_MS,
     refetchOnMountOrArgChange: REFRESH_MS / 1000,
   });
   const [countView] = useCountViewMutation();

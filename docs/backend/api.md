@@ -31,6 +31,7 @@ Routes: `apps/backend/api/openapi.yaml`; each module mounts its own in `internal
 - Lists: `?limit=` (max 100) and `?cursor=`; response `{ "items": [...], "nextCursor": "…" }`.
 - Invoices and activity also take `?state=`, the Payments list's D-114 states (waiting | confirming | partially_paid |
   paid | overpaid | expired | canceled); a deposit takes its payment's state. Another value is 422.
+  - The owner's invoice reads carry `state` and `wallet`, as payments do; the pay page's read has neither.
 - The owner's invoice, activity and transaction lists also take a filter (`?status=` open | confirming | paid | settled | expired |
   canceled on invoices and activity, where a closed checkout (`closed`, R-77) counts as expired, `?direction=` in | out on transactions) and `?q=`, a search of 1–100 characters (blank or
   longer: 422). Both narrow the list before paging, so `nextCursor` continues the filtered list. A field matches when

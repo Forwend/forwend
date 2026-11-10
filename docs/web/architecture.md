@@ -73,6 +73,7 @@ features own product behavior, and shared UI components are grouped by purpose. 
     - Every enabled chain is in `PrivyProvider` `supportedChains` (`features/auth/constants/privy-chains.ts`); a
       missing one never returns.
     - The hash or the signature goes to the api, and the sheet reads the send every 1.5 s until the watcher says Sent.
+      It skips those reads while the tab is not in view.
   - Receive's choice is keyed by chain family (`features/receive/lib/receive-choice.ts`), so non-EVM families fit
     later; the address never shows without its exact network and token warning.
   - Balances and activity are read again every 15 s while the tab is visible and when it comes back. Money sent
@@ -106,6 +107,8 @@ features own product behavior, and shared UI components are grouped by purpose. 
   user: when the user changes or the session ends, the next render gets a fresh, empty store. Amounts stay
   strings in the cache and become `bigint` only for display.
   - A request with no answer in 30 s (the api's write timeout) fails, so the page offers Try again.
+  - Payment reads also carry the Invoices tag: an invoice change reads the Payments list and detail again.
+- A render error shows the group's `error.tsx` (`(app)`, `(checkout)`): Try again, and that money is not affected.
 - The browser calls the backend same-origin at `/api/v1/…`; `next.config.ts` forwards it to `API_URL`, so the api needs
   no CORS. The rewrite is fixed at `next build`, so `API_URL` must be set when building; Turbo hashes `.env*` and
   these variables for the web build. Requests and responses are Zod schemas written from `apps/backend/api/openapi.yaml`
@@ -123,6 +126,7 @@ features own product behavior, and shared UI components are grouped by purpose. 
   transactions; transactions → invoices (the bell's invoice events, R-81, the invoice numbers on Transactions, R-109, and the ECB currencies, R-111); transactions → profiles (the statement's way back from billing details, R-113). No cycles ([structure.md](structure.md)); money helpers and words that several features show live in
   `shared/lib/money.ts` and `shared/constants/money-copy.ts`. Add no new edge without listing it here.
 - Payments imports invoice purpose, document and money schemas, plus its compact confirmation component and activity status constants.
+  - It also imports the invoices cache tag.
 - Shared financial representation stays with its existing owner.
 - Payment verification classification lives with invoice money readers; checkout reuses it without changing financial safety gates.
 - Payments owns operational queries, snapshots, problems, exports and reconciliation; link screens compose payments alongside offer details.
@@ -156,7 +160,7 @@ features own product behavior, and shared UI components are grouped by purpose. 
   - The embed listens to no message from its page.
 - Checkout `/pay/<token>` (R-45) sits outside the `(app)` group: no Privy, no sign-in, `noindex`. A malformed token
   (an on-chain id too, D-86) is a 404; a token the API does not know shows the 404 page. It reads the public
-  `GET /v1/invoices/{payToken}` every 15 s through a
+  `GET /v1/invoices/{payToken}` every 15 s (until settled, or closed with nothing confirming: `payFinal`) through a
   store whose requests carry no token (`providers/public-store-provider.tsx`). The browser recomputes the receive
   address from the terms with the factory and implementation built into the page (`features/pay/lib/receive-address.ts`,
   keccak256 from `@noble/hashes`, tested against the R-15 vectors) and shows no address on a mismatch. The terms'

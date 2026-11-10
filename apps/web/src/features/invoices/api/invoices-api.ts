@@ -24,7 +24,7 @@ import type { FeesPaidBy } from "@/features/profiles/types/profile";
 import { apiSlice } from "@/shared/api/api-slice";
 import type { ApiPaymentState } from "@/shared/types/payment-state";
 
-const INVOICES_TAG = "Invoices";
+export const INVOICES_TAG = "Invoices";
 
 const profileInvoices = (profileId: string) =>
   `/v1/profiles/${encodeURIComponent(profileId)}/invoices`;

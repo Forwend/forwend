@@ -203,6 +203,7 @@ var minUSD = big.NewRat(MinUSDCents, 100)
 const (
 	MaxLines           = 100
 	MaxLineDescription = 200
+	MaxLineQuantity    = 1_000_000
 )
 
 type line struct {
@@ -465,8 +466,9 @@ func checkLines(in []LineRequest, usd bool, total *big.Rat) ([]line, error) {
 		if quantity.MatchString(l.Quantity) {
 			q, _ = new(big.Rat).SetString(l.Quantity)
 		}
-		if q == nil || q.Sign() == 0 || q.Cmp(big.NewRat(1_000_000, 1)) > 0 {
-			return nil, fmt.Errorf("%w: lines need a quantity above 0 and at most 1000000, with up to 2 decimals", ErrInvalid)
+		if q == nil || q.Sign() == 0 || q.Cmp(big.NewRat(MaxLineQuantity, 1)) > 0 {
+			return nil, fmt.Errorf("%w: lines need a quantity above 0 and at most %d, with up to 2 decimals", ErrInvalid,
+				MaxLineQuantity)
 		}
 		if (usd && usdAmount.MatchString(l.UnitPrice)) || (!usd && len(l.UnitPrice) <= 78 && digits.MatchString(l.UnitPrice)) {
 			p, _ = new(big.Rat).SetString(l.UnitPrice)

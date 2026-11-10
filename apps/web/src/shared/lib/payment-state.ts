@@ -49,9 +49,13 @@ const RAW: Readonly<Record<string, PaymentStatus>> = {
 /** One payment status for every list, detail, activity row and toast (D-114). Unknown values read Detected, never
  * as arrived money; a closed payment that can no longer complete reads expired (R-77). */
 export function paymentStatusOf(facts: PaymentFacts, today = new Date()): PaymentStatus {
-  const status = facts.state
-    ? (STATE_STATUS[facts.state as ApiPaymentState] ?? rawStatus(facts))
-    : rawStatus(facts);
+  const raw = rawStatus(facts);
+  const state = facts.state ? STATE_STATUS[facts.state as ApiPaymentState] : undefined;
+  // Expired, partly paid is a kind of expired: it names money the merchant keeps, and lets an invoice reopen (R-130).
+  const status =
+    state && !(state === PAYMENT_STATUS.expired && raw === PAYMENT_STATUS.expiredPartiallyPaid)
+      ? state
+      : raw;
   if (status === PAYMENT_STATUS.paid && facts.held && BigInt(facts.held) > 0n) {
     return PAYMENT_STATUS.overpaid;
   }

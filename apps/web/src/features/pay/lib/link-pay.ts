@@ -1,11 +1,6 @@
 import { USD_PATTERN } from "@/features/links/constants/links";
 import type { LinkPurchase } from "@/features/pay/types/link-pay";
-
-/** USD cents of a decimal like "25" or "25.50", which USD_PATTERN has checked. */
-export function usdCents(amount: string): bigint {
-  const [whole = "0", fraction = ""] = amount.split(".");
-  return BigInt(whole) * 100n + BigInt(`${fraction}00`.slice(0, 2));
-}
+import { usdCents } from "@/shared/lib/money";
 
 const purchaseKey = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:([0-9]{1,14})$/;
 
@@ -39,8 +34,4 @@ export function purchaseSearch(current: string, purchase: LinkPurchase | null): 
     if (purchase.offerVersion !== null) params.set("offer", purchase.offerVersion);
   }
   return params.toString();
-}
-
-export function usdFromCents(cents: bigint): string {
-  return `${cents / 100n}.${(cents % 100n).toString().padStart(2, "0")}`;
 }

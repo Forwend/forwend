@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Invoices, payments and their options carry networkFee, platformFee, netAmount and feesPaidBy.
+- Invoices carry state and wallet, as payments do; purpose and documentKind are typed as always sent.
 - Payment amounts carry fees: what settlement paid the settler and Forwend. settled is what reached the wallet.
 - Invoice and checkout session creates take feesPaidBy.
 - An invoice's and a payment's own read, and webhooks, carry crossChain: a payment through NEAR Intents, with 1Click's

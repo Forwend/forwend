@@ -3,15 +3,20 @@ import { TooltipProvider } from "@forwend/ui-web";
 import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SendProgress } from "@/features/send/components/send-progress";
+import { SEND_POLL_MS } from "@/features/send/constants/send";
 import type { Send } from "@/features/send/types/send";
 
 const api = vi.hoisted(() => ({
   submit: vi.fn(async (_body?: unknown): Promise<unknown> => ({})),
   read: { currentData: undefined as unknown, fulfilledTimeStamp: 1, error: undefined as unknown },
+  options: undefined as unknown,
 }));
 vi.mock("@/features/send/api/send-api", () => ({
   useSubmitSendMutation: () => [(body: unknown) => ({ unwrap: () => api.submit(body) })],
-  useGetSendQuery: () => ({ ...api.read, refetch: () => {} }),
+  useGetSendQuery: (_args: unknown, options: unknown) => {
+    api.options = options;
+    return { ...api.read, refetch: () => {} };
+  },
 }));
 
 const send = {
@@ -144,6 +149,24 @@ describe("the send sheet's lock (R-214)", () => {
       expect(api.submit).toHaveBeenCalledWith(expect.objectContaining({ txHash: "0xhash" })),
     );
     expect(view.queryByText("Not sent")).toBeNull();
+  });
+
+  it("reads the send only while the tab is in view, and stops once it is final", async () => {
+    const props = {
+      profileId: "p1",
+      initial: { ...send, status: "sending", txHash: "0xhash" } as Send,
+      option,
+      recipient,
+      onSent: () => {},
+      onHolding: () => {},
+      onDone: () => {},
+    };
+    api.read.currentData = { ...send, status: "sent", txHash: "0xhash", final: false };
+    const view = render(<SendProgress {...props} />, { wrapper: TooltipProvider });
+    expect(api.options).toEqual({ pollingInterval: SEND_POLL_MS, skipPollingIfUnfocused: true });
+    api.read.currentData = { ...send, status: "sent", txHash: "0xhash", final: true };
+    view.rerender(<SendProgress {...props} />);
+    await waitFor(() => expect(api.options).toMatchObject({ pollingInterval: 0 }));
   });
 
   it("sends a signature once at a time, however often the send is read", async () => {

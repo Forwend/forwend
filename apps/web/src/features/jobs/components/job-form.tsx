@@ -25,7 +25,7 @@ import {
   PAYMENT_FIELDS,
 } from "@/features/jobs/constants/jobs";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
-import { centsText, dueDays, invalidJobField, usdCents } from "@/features/jobs/lib/jobs";
+import { dueDays, invalidJobField, paymentCents } from "@/features/jobs/lib/jobs";
 import type {
   CreateJobBody,
   JobField,
@@ -36,6 +36,7 @@ import { FieldGroup } from "@/shared/components/field-group";
 import { FormPreview, StepForm, useFormSteps } from "@/shared/components/step-form";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { usdFromCents } from "@/shared/lib/money";
 
 const COPY = JOBS_COPY.form;
 const STEPS = { work: "work", client: "client", payments: "payments" } as const;
@@ -94,7 +95,7 @@ export function JobForm({ profileId, clientSearch }: JobFormProps) {
     setPaymentErrors((shown) => ({ ...shown, [id]: { ...shown[id], [field]: undefined } }));
   };
   const clear = (field: JobField) => setErrors((shown) => ({ ...shown, [field]: undefined }));
-  const total = payments.reduce((sum, p) => sum + (usdCents(p.amount) ?? 0n), 0n);
+  const total = payments.reduce((sum, p) => sum + (paymentCents(p.amount) ?? 0n), 0n);
   const flow = useFormSteps([
     { id: STEPS.work, label: COPY.workGroup },
     { id: STEPS.client, label: COPY.clientGroup },
@@ -120,7 +121,7 @@ export function JobForm({ profileId, clientSearch }: JobFormProps) {
     for (const p of payments) {
       const row: Partial<Record<PaymentField, string>> = {};
       if (!p.title.trim()) row[PAYMENT_FIELDS.title] = COPY.errors.required;
-      if (usdCents(p.amount) === null) row[PAYMENT_FIELDS.amount] = COPY.errors.amount;
+      if (paymentCents(p.amount) === null) row[PAYMENT_FIELDS.amount] = COPY.errors.amount;
       if (dueDays(p.dueDays) === null) row[PAYMENT_FIELDS.dueDays] = COPY.errors.dueDays;
       if (Object.keys(row).length > 0) rows[p.id] = row;
     }
@@ -151,7 +152,7 @@ export function JobForm({ profileId, clientSearch }: JobFormProps) {
       },
       payments: payments.map((p, i) => ({
         title: p.title.trim(),
-        amountUsd: centsText(usdCents(p.amount) ?? 0n),
+        amountUsd: usdFromCents(paymentCents(p.amount) ?? 0n),
         dueDays: dueDays(p.dueDays) ?? 0,
         onAccept: i === 0 && deposit,
       })),
@@ -221,7 +222,7 @@ export function JobForm({ profileId, clientSearch }: JobFormProps) {
             </div>
             <ol className="divide-y divide-line border-t border-line">
               {payments.map((p, i) => {
-                const cents = usdCents(p.amount);
+                const cents = paymentCents(p.amount);
                 return (
                   <li key={p.id} className="flex items-start justify-between gap-4 py-2.5">
                     <span className="min-w-0">

@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { exactDigits } from "@/shared/lib/money";
+import { exactDigits, usdCents, usdFromCents } from "@/shared/lib/money";
+
+describe("USD cents", () => {
+  it("reads a USD decimal as exact cents and writes cents back with 2 decimals", () => {
+    expect(usdCents("25")).toBe(2500n);
+    expect(usdCents("25.5")).toBe(2550n);
+    expect(usdCents("1000000.05")).toBe(100000005n);
+    expect(usdFromCents(30005n)).toBe("300.05");
+    expect(usdFromCents(7n)).toBe("0.07");
+  });
+});
 
 describe("exactDigits", () => {
   it("shows every decimal an amount has, and at least 2", () => {

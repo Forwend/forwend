@@ -1,3 +1,4 @@
+import { INVOICES_TAG } from "@/features/invoices/api/invoices-api";
 import { PAYMENT_PAGE_SIZE } from "@/features/payments/constants/payments";
 import {
   attentionPageSchema,
@@ -22,7 +23,7 @@ interface Query {
 }
 export const PAYMENTS_TAG = "Payments";
 export const paymentsApi = apiSlice
-  .enhanceEndpoints({ addTagTypes: [PAYMENTS_TAG] })
+  .enhanceEndpoints({ addTagTypes: [PAYMENTS_TAG, INVOICES_TAG] })
   .injectEndpoints({
     endpoints: (build) => ({
       getPayments: build.infiniteQuery<
@@ -43,7 +44,8 @@ export const paymentsApi = apiSlice
           },
         }),
         responseSchema: paymentsPageSchema,
-        providesTags: [PAYMENTS_TAG],
+        // An invoice is a payment too: canceling, reopening or editing one changes its row here.
+        providesTags: [PAYMENTS_TAG, INVOICES_TAG],
       }),
       getPaymentAttention: build.infiniteQuery<AttentionPage, Query, string | null>({
         infiniteQueryOptions: {
@@ -67,7 +69,7 @@ export const paymentsApi = apiSlice
           params: { view: "summary" },
         }),
         responseSchema: paymentDetailSchema,
-        providesTags: [PAYMENTS_TAG],
+        providesTags: [PAYMENTS_TAG, INVOICES_TAG],
       }),
       getPaymentReconciliation: build.query<PaymentReconciliation, Query & PaymentPeriod>({
         query: ({ profileId, filters, ...period }) => ({

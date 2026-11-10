@@ -126,6 +126,11 @@ describe("checkedReceiveAddress", () => {
     replacedBy: null,
     lines: [],
     options: [],
+    networkFee: "0",
+    platformFee: "0",
+    feesPaidBy: "owner",
+    purpose: "invoice",
+    documentKind: "invoice",
     receiveAddress: receiveAddress({
       ...terms,
       amount: 1_250_000_000n,
@@ -228,8 +233,8 @@ describe("checkedReceiveAddress", () => {
     });
     const ceiling = withFees(100_000_000n, 25_000_000n);
     expect(checkedReceiveAddress(ceiling, payToken)).toBe(ceiling.receiveAddress);
-    // The same address with the fees the API left out, or changed, computes to another one.
-    expect(checkedReceiveAddress({ ...ceiling, networkFee: undefined }, payToken)).toBeNull();
+    // The same address with other fees computes to another one.
+    expect(checkedReceiveAddress({ ...ceiling, networkFee: "0" }, payToken)).toBeNull();
     expect(checkedReceiveAddress({ ...ceiling, platformFee: "25000001" }, payToken)).toBeNull();
     // One base unit over a tenth: settle() would refuse it, so money sent there could only be refunded.
     expect(checkedReceiveAddress(withFees(100_000_000n, 25_000_001n), payToken)).toBeNull();

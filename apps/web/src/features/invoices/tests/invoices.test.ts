@@ -17,6 +17,7 @@ import {
   restartFrom,
   tokensOn,
 } from "@/features/invoices/lib/invoices";
+import { invoiceSummarySchema } from "@/features/invoices/schemas/invoices";
 import type { Deposit, Invoice, Owed } from "@/features/invoices/types/invoices";
 import { FACTORY } from "@/features/pay/constants/receive-address";
 
@@ -68,6 +69,11 @@ const open: Invoice = {
   livemode: false,
   token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
   amount: "5000000",
+  networkFee: "0",
+  platformFee: "0",
+  feesPaidBy: "owner",
+  purpose: "invoice",
+  documentKind: "invoice",
   recipient: `0x${"4".repeat(40)}`,
   factory: `0x${FACTORY}`,
   receiveAddress: `0x${"2".repeat(40)}`,
@@ -136,6 +142,18 @@ describe("invoiceProgress", () => {
     );
   });
 
+  it("reads the owner's state, the one the list filters by (D-114)", () => {
+    expect(invoiceStatus({ ...open, paymentStatus: "paid", state: "overpaid" })).toBe(
+      PAYMENT_STATUS.overpaid,
+    );
+    expect(invoiceStatus({ ...open, paymentStatus: "canceled", state: "expired" })).toBe(
+      PAYMENT_STATUS.expired,
+    );
+    expect(
+      invoiceStatus({ ...open, paymentStatus: "partially_paid", closed: true, state: "expired" }),
+    ).toBe(PAYMENT_STATUS.expiredPartiallyPaid);
+  });
+
   it("keeps confirming a deposit that is final on chain until the ledger books it", () => {
     const unbooked = {
       ...open,
@@ -173,6 +191,22 @@ describe("invoiceProgress", () => {
     };
     expect(invoiceProgress(expired)).toMatchObject({ done: 0, current: null });
     expect(invoiceStatus(expired)).toBe(PAYMENT_STATUS.expired);
+  });
+});
+
+describe("invoiceSummarySchema", () => {
+  it("refuses an answer without the fees, purpose or document kind the API always sends", () => {
+    expect(invoiceSummarySchema.safeParse(open).success).toBe(true);
+    for (const field of [
+      "networkFee",
+      "platformFee",
+      "feesPaidBy",
+      "purpose",
+      "documentKind",
+    ] as const) {
+      const { [field]: _, ...without } = open;
+      expect(invoiceSummarySchema.safeParse(without).success, field).toBe(false);
+    }
   });
 });
 
@@ -310,6 +344,9 @@ describe("restartFrom", () => {
     symbol: "USDC",
     decimals: 6,
     amount: open.amount,
+    networkFee: "0",
+    platformFee: "0",
+    feesPaidBy: "owner" as const,
     receiveAddress: open.receiveAddress,
     deposits: [],
   };

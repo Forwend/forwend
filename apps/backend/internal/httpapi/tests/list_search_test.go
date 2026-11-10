@@ -136,6 +136,20 @@ func TestListInvoicesFilterAndSearch(t *testing.T) {
 		{"status=paid&q=kettle", []any{3.0}},
 	})
 	checkListErrors(t, e, path, "status=all", "status=refunded", "state=open")
+
+	// Each row names the state and wallet transfer its filters use (D-114); the pay page's answer has neither.
+	want := map[float64][2]any{1: {"expired", "none"}, 2: {"paid", "pending"}, 3: {"paid", "in_wallet"},
+		4: {"confirming", "none"}, 5: {"expired", "none"}}
+	items, _ := e.call(t, "GET", path, "did:privy:alice", "", "").body["items"].([]any)
+	for _, it := range items {
+		row := it.(map[string]any)
+		if got := [2]any{row["state"], row["wallet"]}; got != want[row["number"].(float64)] {
+			t.Errorf("INV-%v: state and wallet %v, want %v", row["number"], got, want[row["number"].(float64)])
+		}
+	}
+	if r := e.get(t, ids[3]); r.status != http.StatusOK || r.body["state"] != nil || r.body["wallet"] != nil {
+		t.Errorf("the public read: %d, state %v, wallet %v", r.status, r.body["state"], r.body["wallet"])
+	}
 }
 
 // R-77.

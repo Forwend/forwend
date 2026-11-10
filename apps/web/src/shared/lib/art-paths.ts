@@ -85,27 +85,3 @@ export function smoothPath(points: readonly Point[]): string {
   }
   return d;
 }
-
-/** For each point after the first, the share of smoothPath's length drawn when the line reaches it. */
-export function smoothPathShares(points: readonly Point[]): number[] {
-  const lengths = smoothSegments(points).map(([p1, c1, c2, p2]) => {
-    let length = 0;
-    let prev = p1;
-    for (let i = 1; i <= 32; i++) {
-      const t = i / 32;
-      const u = 1 - t;
-      const at = (k: 0 | 1) =>
-        u * u * u * p1[k] + 3 * u * u * t * c1[k] + 3 * u * t * t * c2[k] + t * t * t * p2[k];
-      const next: Point = [at(0), at(1)];
-      length += Math.hypot(next[0] - prev[0], next[1] - prev[1]);
-      prev = next;
-    }
-    return length;
-  });
-  const total = lengths.reduce((a, b) => a + b, 0);
-  let drawn = 0;
-  return lengths.map((length) => {
-    drawn += length;
-    return drawn / total;
-  });
-}

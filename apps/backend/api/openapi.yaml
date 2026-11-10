@@ -6285,6 +6285,18 @@ components:
         refundStatus:
           type: string
           enum: [none, held, refund_pending, refunded]
+        state:
+          type: string
+          enum: [waiting, confirming, partially_paid, paid, overpaid, expired, canceled]
+          description: |
+            The merchant's payment state (D-114), the one the list's state filter tests; paymentStatus keeps its raw
+            value. Only in the owner's responses.
+        wallet:
+          type: string
+          enum: [none, pending, in_wallet, delayed, refused]
+          description: |
+            The wallet transfer state (D-114), as on a payment; settlementStatus keeps its raw value. Only in the
+            owner's responses.
         settlementTxHash:
           type: [string, "null"]
           pattern: "^0x[0-9a-f]{64}$"

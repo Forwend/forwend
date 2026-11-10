@@ -12,12 +12,12 @@ import type {
   PublicJob,
   RecordEvent,
 } from "@/features/jobs/types/jobs";
+import { usdCents } from "@/shared/lib/money";
 
-/** Exact, as the API takes it (R-100); null when it isn't one or is 0. */
-export function usdCents(text: string): bigint | null {
-  const match = /^(\d{1,10})(?:\.(\d{1,2}))?$/.exec(text.trim());
-  if (!match) return null;
-  const cents = BigInt((match[1] ?? "") + (match[2] ?? "").padEnd(2, "0"));
+/** A typed payment's USD cents, exact as the API takes it (R-100); null when it isn't one or is under 1.00. */
+export function paymentCents(text: string): bigint | null {
+  if (!/^\d{1,10}(?:\.\d{1,2})?$/.test(text.trim())) return null;
+  const cents = usdCents(text.trim());
   // R-56: each payment's invoice asks for at least 1.00 USD.
   return cents < 100n ? null : cents;
 }
@@ -25,10 +25,6 @@ export function usdCents(text: string): bigint | null {
 export function dueDays(text: string): number | null {
   const days = /^\d{1,2}$/.test(text.trim()) ? Number(text.trim()) : Number.NaN;
   return days >= 0 && days <= JOB_LIMITS.dueDays ? days : null;
-}
-
-export function centsText(cents: bigint): string {
-  return `${cents / 100n}.${String(cents % 100n).padStart(2, "0")}`;
 }
 
 /** The API always sends 2 decimals ("300.00"), so dropping the point gives cents. */

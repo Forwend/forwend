@@ -315,7 +315,7 @@ func TestCreateInvoice(t *testing.T) {
 	}
 	for k, v := range b {
 		ownerOnly := k == "client" || k == "sends" || k == "reminders" || k == "history" || k == "views" ||
-			k == "reopenUntil" || k == "metadata"
+			k == "reopenUntil" || k == "metadata" || k == "state" || k == "wallet"
 		if !reflect.DeepEqual(got.body[k], v) && !ownerOnly {
 			t.Fatalf("GET %s = %v, POST gave %v", k, got.body[k], v)
 		}

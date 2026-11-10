@@ -3,6 +3,7 @@ import { depositAmount, tokenKey } from "@/features/invoices/lib/invoices";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import { PAY_STATES, PAY_TOKENS } from "@/features/pay/constants/pay";
 import type { PayState } from "@/features/pay/types/pay";
+import { CROSS_CHAIN_STATUSES } from "@/shared/constants/chains";
 import {
   API_DEPOSIT_STATUSES,
   API_PAYMENT_STATUSES,
@@ -164,6 +165,29 @@ export function clockRuns(inv: Invoice): boolean {
   return (
     state === PAY_STATES.checking ||
     (!closed && state !== PAY_STATES.paid && state !== PAY_STATES.settled)
+  );
+}
+
+const FINAL_STATUSES: readonly string[] = [
+  API_PAYMENT_STATUSES.canceled,
+  API_PAYMENT_STATUSES.expired,
+  API_PAYMENT_STATUSES.expiredPartiallyPaid,
+];
+const CROSS_CHAIN_MOVING: readonly string[] = [
+  CROSS_CHAIN_STATUSES.knownDeposit,
+  CROSS_CHAIN_STATUSES.incomplete,
+  CROSS_CHAIN_STATUSES.processing,
+];
+
+/** Whether the payer's page can stop asking: settled, or closed for good with no transfer still confirming. A focus
+ * still reads it again. */
+export function payFinal(inv: Invoice): boolean {
+  if (inv.settlementStatus === API_SETTLEMENT_STATUSES.settled) return true;
+  return (
+    FINAL_STATUSES.includes(inv.paymentStatus) &&
+    !inv.confirming &&
+    !inv.deposits.some((d) => d.status !== API_DEPOSIT_STATUSES.confirmed) &&
+    !CROSS_CHAIN_MOVING.includes(inv.crossChain?.status ?? "")
   );
 }
 
