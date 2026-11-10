@@ -15,11 +15,6 @@ export const TRANSACTION_FILTERS = {
   ...TRANSACTION_DIRECTIONS,
 } as const;
 
-export const RELATIVE_DAYS = {
-  today: "today",
-  yesterday: "yesterday",
-} as const;
-
 /** The API's code for days with more transactions than one export or statement holds (R-118). */
 export const TOO_MANY_TRANSACTIONS = "too_many_transactions";
 

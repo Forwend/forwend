@@ -1,5 +1,6 @@
 import {
   PAYMENT_STATUS,
+  PAYMENT_STATUSES,
   type PaymentStatus,
   WALLET_STATE,
   type WalletState,
@@ -9,8 +10,10 @@ import {
   API_PAYMENT_STATUSES,
   API_SETTLEMENT_STATUSES,
   API_WALLET_STATES,
+  PAYMENT_STATE_FILTERS,
 } from "@/shared/constants/payment-state";
-import type { ApiPaymentState } from "@/shared/types/payment-state";
+import { PAYMENT_STATE_COPY } from "@/shared/constants/payment-state-copy";
+import type { ApiPaymentState, PaymentStateFilter } from "@/shared/types/payment-state";
 
 /** The facts a payment record carries, whichever list or detail read it came from. */
 export interface PaymentFacts {
@@ -104,4 +107,23 @@ export function walletStateOf({ settlementStatus, wallet }: WalletFacts): Wallet
 
 function isoDay(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+/** What a payment list with no rows was searched and filtered by, as one sentence: "Search “mara”, status Expired.".
+ * Further filters, already worded ("source Invoice") or null when unset, follow. Undefined when nothing narrowed it. */
+export function narrowedBy(
+  query: string | undefined,
+  state: PaymentStateFilter,
+  ...more: (string | null)[]
+): string | undefined {
+  const text = [
+    query ? PAYMENT_STATE_COPY.searched(query) : null,
+    state === PAYMENT_STATE_FILTERS.all
+      ? null
+      : PAYMENT_STATE_COPY.statusIs(PAYMENT_STATUSES[STATE_STATUS[state]].label),
+    ...more,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  return text ? `${text.charAt(0).toUpperCase()}${text.slice(1)}.` : undefined;
 }

@@ -110,7 +110,8 @@ export function ClientInvoices({ profileId, client }: ClientInvoicesProps) {
                 <InvoiceAmount
                   invoice={inv}
                   tokens={tokens.currentData ?? (tokens.isError ? [] : null)}
-                  className="flex-nowrap justify-end text-ink"
+                  nowrap
+                  className="justify-end text-ink"
                 />
               ),
             },
@@ -127,7 +128,8 @@ export function ClientInvoices({ profileId, client }: ClientInvoicesProps) {
               <InvoiceAmount
                 invoice={inv}
                 tokens={tokens.currentData ?? (tokens.isError ? [] : null)}
-                className="flex-nowrap justify-end"
+                nowrap
+                className="justify-end"
               />
             ),
             meta: <StatusPill status={invoiceStatus(inv)} />,

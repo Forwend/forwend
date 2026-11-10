@@ -1,6 +1,5 @@
 import type { z } from "zod";
 import type {
-  RELATIVE_DAYS,
   TRANSACTION_CLASSES,
   TRANSACTION_DIRECTIONS,
   TRANSACTION_LABELS,
@@ -13,8 +12,6 @@ import type {
 
 export type TransactionDirection =
   (typeof TRANSACTION_DIRECTIONS)[keyof typeof TRANSACTION_DIRECTIONS];
-
-export type RelativeDay = (typeof RELATIVE_DAYS)[keyof typeof RELATIVE_DAYS];
 
 export type TransactionClass = (typeof TRANSACTION_CLASSES)[keyof typeof TRANSACTION_CLASSES];
 

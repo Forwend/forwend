@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Badge,
   Button,
   EmptyState,
   Money,
@@ -9,69 +10,137 @@ import {
   StatusPill,
 } from "@forwend/ui-web";
 import { ArrowDownLeft, FileText, History } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { useGetActivityInfiniteQuery } from "@/features/activity/api/activity-api";
 import { ACTIVITY_KINDS } from "@/features/activity/constants/activity";
 import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
 import { activityStatus } from "@/features/activity/lib/activity";
 import type { ActivityItem } from "@/features/activity/types/activity";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
-import { ChainBadge } from "@/shared/components/chains/chain-badge";
+import { ChainBadge, hasChainBadge } from "@/shared/components/chains/chain-badge";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
-import { NetworkName } from "@/shared/components/chains/network-name";
-import { DataTable, DataTableSkeleton } from "@/shared/components/data-table";
+import { type DataColumn, DataTable, DataTableSkeleton } from "@/shared/components/data-table";
+import { ListFilters } from "@/shared/components/list-filters";
 import { ListToolbar } from "@/shared/components/list-toolbar";
 import { LoadError } from "@/shared/components/load-error";
 import { NoMatch } from "@/shared/components/no-match";
-import { PaymentStateFilter } from "@/shared/components/payment-state-filter";
 import { SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
-import { CHAINS } from "@/shared/constants/chains";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { PAYMENT_STATE_FILTERS } from "@/shared/constants/payment-state";
 import { useListFilters, useShownData } from "@/shared/hooks/use-list-filters";
 import { chainName } from "@/shared/lib/chains";
+import { dayTime, timeOfDay } from "@/shared/lib/dates";
 import { exactDigits } from "@/shared/lib/money";
+import { narrowedBy } from "@/shared/lib/payment-state";
+import { paymentStateGroup } from "@/shared/lib/payment-state-filter";
 
 const STATES = Object.values(PAYMENT_STATE_FILTERS);
-const TIME = new Intl.DateTimeFormat(undefined, {
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-});
 
 interface ActivityListProps {
   profileId: string;
+  /** The empty page's next step, such as New invoice. */
+  emptyAction?: ReactNode;
 }
 
-/** What happened, then who and what for, so two rows on one day never read the same. */
+interface Row {
+  item: ActivityItem;
+  key: string;
+}
+
+const isDeposit = (item: ActivityItem) => item.kind === ACTIVITY_KINDS.deposit;
+// The owner got part of the deposit; the rest is held for the payer.
+const isSplit = (item: ActivityItem) =>
+  isDeposit(item) &&
+  !item.held &&
+  Boolean(item.heldAmount && item.merchantAmount && BigInt(item.heldAmount) > 0n);
+// An invoice the client may pay in several tokens reads in USD on any of their networks.
+const anyOption = (item: ActivityItem) => !isDeposit(item) && item.optionCount > 1;
+
+/** What happened. A split deposit says its extra in a label beside it. */
+function eventName(item: ActivityItem): string {
+  if (!isDeposit(item)) return ACTIVITY_COPY.invoice;
+  return item.held ? ACTIVITY_COPY.held : ACTIVITY_COPY.deposit;
+}
+
+/** Who and what for: the client, then the order reference or invoice number, so two rows never read the same. */
+function forParts(item: ActivityItem): { who: string | null; ref: string | null } {
+  return {
+    who: item.clientName ?? null,
+    ref: item.reference ?? (item.number ? invoiceNumber(item.number) : null) ?? item.title ?? null,
+  };
+}
+
+/** The whole event in words: the row link's name and the event's hover. */
 function rowTitle(item: ActivityItem): string {
-  const deposit = item.kind === ACTIVITY_KINDS.deposit;
-  const split = Boolean(item.heldAmount && item.merchantAmount && BigInt(item.heldAmount) > 0n);
-  const what = deposit
-    ? item.held
-      ? ACTIVITY_COPY.held
-      : split
-        ? ACTIVITY_COPY.partHeld
-        : ACTIVITY_COPY.deposit
-    : ACTIVITY_COPY.invoice;
-  const who =
-    item.clientName ?? item.reference ?? (item.number ? invoiceNumber(item.number) : item.title);
-  return who ? `${what} · ${who}` : what;
+  const { who, ref } = forParts(item);
+  const what = isSplit(item) ? ACTIVITY_COPY.partHeld : eventName(item);
+  return [what, who, ref].filter(Boolean).join(" · ");
 }
 
 // A deposit opens its payment, an invoice row its invoice.
 const rowHref = (item: ActivityItem) =>
-  `${item.kind === ACTIVITY_KINDS.deposit ? APP_ROUTES.payments : APP_ROUTES.invoices}/${item.invoiceId}`;
+  `${isDeposit(item) ? APP_ROUTES.payments : APP_ROUTES.invoices}/${item.invoiceId}`;
+
+const COLUMNS: DataColumn<Row>[] = [
+  {
+    key: "event",
+    header: ACTIVITY_COPY.columns.event,
+    placeholder: "lead",
+    title: ({ item }) => rowTitle(item),
+    cell: ({ item }) => (
+      <span className="flex min-w-0 items-center gap-3">
+        <Lead item={item} />
+        <span className="truncate font-medium text-ink">
+          {eventName(item)}
+          <NetworkWords item={item} />
+        </span>
+        {isSplit(item) ? <Badge tone="neutral">{ACTIVITY_COPY.extraHeld}</Badge> : null}
+      </span>
+    ),
+  },
+  {
+    key: "for",
+    header: ACTIVITY_COPY.columns.for,
+    className: "w-48",
+    title: ({ item }) => Object.values(forParts(item)).filter(Boolean).join(" · ") || null,
+    cell: ({ item }) => <For item={item} />,
+  },
+  {
+    key: "date",
+    header: ACTIVITY_COPY.columns.date,
+    from: "md",
+    fit: true,
+    cell: ({ item }) => (
+      <span className="inline-flex items-center gap-1 text-muted tabular-nums">
+        <time dateTime={item.at}>{dayTime(item.at)}</time>
+        {item.txHash ? <ExplorerLink chainId={item.chainId} txHash={item.txHash} /> : null}
+      </span>
+    ),
+  },
+  {
+    key: "status",
+    header: ACTIVITY_COPY.columns.status,
+    placeholder: "pill",
+    fit: true,
+    cell: ({ item }) => <StatusPill quiet status={activityStatus(item)} />,
+  },
+  {
+    key: "amount",
+    header: ACTIVITY_COPY.columns.amount,
+    align: "end",
+    className: "w-40",
+    cell: ({ item }) => <Amount item={item} />,
+  },
+];
 
 // A new list per profile: the rows shown while more load are always this profile's.
 export function ActivityList(props: ActivityListProps) {
   return <ProfileActivity key={props.profileId} {...props} />;
 }
 
-function ProfileActivity({ profileId }: ActivityListProps) {
+function ProfileActivity({ profileId, emptyAction }: ActivityListProps) {
   const filters = useListFilters("state", STATES, PAYMENT_STATE_FILTERS.all);
   // Polling refetches every loaded page, so the list stays live only while it shows its first page.
   const [pages, setPages] = useState(1);
@@ -82,7 +151,7 @@ function ProfileActivity({ profileId }: ActivityListProps) {
   const data = useShownData(filters.key, list.currentData, list.data);
   if ((data?.pages.length ?? 1) !== pages) setPages(data?.pages.length ?? 1);
   // The same transaction can pay two invoices, and one invoice can get two payments in it: the position completes the key.
-  const rows = (data?.pages.flatMap((page) => page.items) ?? []).map((item, i) => ({
+  const rows: Row[] = (data?.pages.flatMap((page) => page.items) ?? []).map((item, i) => ({
     item,
     key: `${item.kind}:${item.invoiceId}:${item.txHash ?? ""}:${i}`,
   }));
@@ -116,7 +185,7 @@ function ProfileActivity({ profileId }: ActivityListProps) {
               className="flex-1"
             />
           }
-          filter={<PaymentStateFilter value={filters.filter} onValueChange={filters.setFilter} />}
+          filter={<ListFilters groups={[paymentStateGroup(filters.filter, filters.setFilter)]} />}
         />
       ) : null}
       {list.isError && !data ? (
@@ -127,81 +196,43 @@ function ProfileActivity({ profileId }: ActivityListProps) {
           retrying={list.isFetching}
         />
       ) : !data ? (
-        <DataTableSkeleton status count={skeletonRows} className="fw-panel overflow-hidden" />
+        <DataTableSkeleton
+          columns={COLUMNS}
+          leading
+          days
+          status
+          count={skeletonRows}
+          className="fw-panel overflow-hidden"
+        />
       ) : noActivity ? (
         <EmptyState
           page
           icon={History}
           title={ACTIVITY_COPY.emptyTitle}
           description={ACTIVITY_COPY.emptyText}
+          action={emptyAction}
         />
       ) : rows.length === 0 ? (
-        <NoMatch page onClear={filters.clear} />
+        <NoMatch
+          page
+          onClear={filters.clear}
+          title={ACTIVITY_COPY.noMatchTitle}
+          description={narrowedBy(filters.apiQuery, filters.filter)}
+        />
       ) : (
         <div
           className={
             stale ? "opacity-60 transition-opacity duration-[var(--fw-duration-fast)]" : undefined
           }
         >
-          {/* A feed of events, not records with columns: two short lines at every width. */}
           <DataTable
             label={ACTIVITY_COPY.activity}
             rows={rows}
-            columns={[
-              {
-                key: "event",
-                header: ACTIVITY_COPY.columns.event,
-                title: ({ item }) => rowTitle(item),
-                cell: ({ item }) => (
-                  <span className="flex min-w-0 items-center gap-3">
-                    <Lead item={item} />
-                    <span className="truncate font-medium text-ink">{rowTitle(item)}</span>
-                  </span>
-                ),
-              },
-              {
-                key: "network",
-                header: ACTIVITY_COPY.columns.network,
-                from: "lg",
-                className: "w-40",
-                cell: ({ item }) => (
-                  <span className="text-muted">
-                    {item.kind !== ACTIVITY_KINDS.deposit && item.optionCount > 1 ? (
-                      MONEY_COPY.anyNetwork
-                    ) : (
-                      <NetworkName chainId={item.chainId} />
-                    )}
-                  </span>
-                ),
-              },
-              {
-                key: "when",
-                header: ACTIVITY_COPY.columns.when,
-                from: "md",
-                className: "w-40",
-                cell: ({ item }) => (
-                  <time dateTime={item.at} className="text-muted">
-                    {TIME.format(new Date(item.at))}
-                  </time>
-                ),
-              },
-              {
-                key: "status",
-                header: ACTIVITY_COPY.columns.status,
-                className: "w-48",
-                cell: ({ item }) => <Status item={item} />,
-              },
-              {
-                key: "amount",
-                header: ACTIVITY_COPY.columns.amount,
-                align: "end",
-                className: "w-36 whitespace-nowrap",
-                cell: ({ item }) => <Amount item={item} />,
-              },
-            ]}
+            columns={COLUMNS}
             rowKey={(row) => row.key}
             rowHref={(row) => rowHref(row.item)}
             rowLabel={(row) => rowTitle(row.item)}
+            day={(row) => row.item.at}
             phone={({ item }) => phoneRow(item)}
             footer={
               list.hasNextPage ? (
@@ -230,67 +261,84 @@ function ProfileActivity({ profileId }: ActivityListProps) {
   );
 }
 
-const networkOf = (item: ActivityItem) =>
-  item.kind !== ACTIVITY_KINDS.deposit && item.optionCount > 1
-    ? MONEY_COPY.anyNetwork
-    : chainName(item.chainId);
-
-function Lead({ item, badge }: { item: ActivityItem; badge?: boolean }) {
-  const deposit = item.kind === ACTIVITY_KINDS.deposit;
+/** The round icon that leads a row: what happened, with the network's logo on its corner, as on Transactions. */
+function Lead({ item, large = false }: { item: ActivityItem; large?: boolean }) {
+  const deposit = isDeposit(item);
   const Icon = deposit ? ArrowDownLeft : FileText;
   return (
     <span
-      className={`relative grid size-8 shrink-0 place-items-center rounded-pill ${deposit && !item.held ? "bg-success-soft text-success" : "bg-surface-2 text-muted"}`}
+      className={`relative grid shrink-0 place-items-center rounded-pill ${large ? "size-9" : "size-7"} ${deposit && !item.held ? "bg-success-soft text-success" : "bg-surface-2 text-muted"}`}
     >
       <Icon aria-hidden className="size-[var(--fw-icon-sm)]" />
-      {badge ? <ChainBadge chainId={item.chainId} className="sm:hidden" /> : null}
+      {anyOption(item) ? null : <ChainBadge chainId={item.chainId} />}
     </span>
+  );
+}
+
+/** The network in words for screen readers; shown only when no logo can carry it. An invoice in several tokens says
+ * so by its USD amount. */
+function NetworkWords({ item }: { item: ActivityItem }) {
+  if (anyOption(item)) return <span className="sr-only">, {MONEY_COPY.anyNetwork}</span>;
+  return hasChainBadge(item.chainId) ? (
+    <span className="sr-only">, {chainName(item.chainId)}</span>
+  ) : (
+    <span className="font-normal text-muted"> · {chainName(item.chainId)}</span>
+  );
+}
+
+function For({ item }: { item: ActivityItem }) {
+  const { who, ref } = forParts(item);
+  if (!who && !ref) return <span className="text-subtle">—</span>;
+  return who ? (
+    <>
+      <span className="text-ink">{who}</span>
+      {ref ? <span className="text-muted"> · {ref}</span> : null}
+    </>
+  ) : (
+    <span className="text-ink">{ref}</span>
   );
 }
 
 // An invoice is a request, so its amount has no sign; only a payment shows "+". Money held for the payer is
 // theirs, so it never reads as income.
 function Amount({ item }: { item: ActivityItem }) {
-  const deposit = item.kind === ACTIVITY_KINDS.deposit;
-  const anyOption = !deposit && item.optionCount > 1;
+  const deposit = isDeposit(item);
   const amount = BigInt(item.amount);
   return (
     <span className={deposit && !item.held ? "text-success" : "text-ink"}>
       <Money
         baseUnits={amount}
         decimals={item.decimals}
-        token={anyOption ? MONEY_COPY.usd : item.symbol}
+        token={anyOption(item) ? MONEY_COPY.usd : item.symbol}
         fractionDigits={exactDigits(amount, item.decimals)}
         sign={deposit ? "+" : ""}
+        nowrap
       />
     </span>
   );
 }
 
-function Status({ item }: { item: ActivityItem }) {
-  const status = activityStatus(item);
-  return (
-    <span className="flex items-center gap-1">
-      <StatusPill quiet status={status} />
-      {item.txHash ? <ExplorerLink chainId={item.chainId} txHash={item.txHash} /> : null}
-    </span>
-  );
-}
-
+// Under its day's heading: the event and its time, then who it was for. A confirmed payment names no status.
 function phoneRow(item: ActivityItem) {
-  const badge =
-    (item.kind === ACTIVITY_KINDS.deposit || item.optionCount <= 1) &&
-    Boolean(CHAINS[item.chainId]?.icon);
-  const time = TIME.format(new Date(item.at));
+  const status = activityStatus(item);
+  const { who, ref } = forParts(item);
   return {
-    leading: <Lead item={item} badge={badge} />,
-    title: rowTitle(item),
-    // Phones show the network as a logo on the icon, so the time never gets cut.
-    detail: badge ? time : `${networkOf(item)} · ${time}`,
+    leading: <Lead item={item} large />,
+    title: (
+      <>
+        {eventName(item)}
+        <NetworkWords item={item} />
+      </>
+    ),
+    time: <time dateTime={item.at}>{timeOfDay(item.at)}</time>,
     value: <Amount item={item} />,
-    meta:
-      activityStatus(item) === PAYMENT_STATUS.confirmed ? undefined : (
-        <StatusPill status={activityStatus(item)} />
-      ),
+    detail:
+      who || ref ? (
+        <>
+          <For item={item} />
+          {isSplit(item) ? ` · ${ACTIVITY_COPY.extraHeldNote}` : null}
+        </>
+      ) : undefined,
+    meta: status === PAYMENT_STATUS.confirmed ? undefined : <StatusPill status={status} />,
   };
 }

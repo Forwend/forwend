@@ -1,14 +1,11 @@
-import { formatTokenAmount, PAYMENT_STATUS, type PaymentStatus } from "@forwend/ui-web";
+import { PAYMENT_STATUS, type PaymentStatus } from "@forwend/ui-web";
 import type { Send } from "@/features/send/types/send";
 import {
-  RELATIVE_DAYS,
   TRANSACTION_CLASSES,
   TRANSACTION_DIRECTIONS,
   TRANSACTION_STATUSES,
 } from "@/features/transactions/constants/transactions";
-import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transactions-copy";
-import type { RelativeDay, Transaction } from "@/features/transactions/types/transactions";
-import { exactDigits } from "@/shared/lib/money";
+import type { Transaction } from "@/features/transactions/types/transactions";
 
 /** A transfer is "Confirming" until its block is final; unknown values never claim it is final. */
 export function transactionStatus(t: Transaction): PaymentStatus {
@@ -19,19 +16,11 @@ export function transactionStatus(t: Transaction): PaymentStatus {
       : PAYMENT_STATUS.confirming;
 }
 
-/** R-224: the fee the wallet paid for the send behind the transfer, to the last digit; R-228: for a settlement, the fees
- *  it paid out of the payment. Null where there is none to show, as for a transfer no send made, or one Forwend paid. */
-export function feeText(t: Transaction): string | null {
+/** R-224: the gas the wallet paid for the send behind an outgoing transfer; R-228: for a settlement, what it paid out
+ * of the payment before the rest reached the wallet. In the token's base units; null where none was recorded. */
+export function transactionFee(t: Transaction): bigint | null {
   const fee = t.feePaid ?? t.payment?.fees;
-  if (!fee) return null;
-  const units = BigInt(fee);
-  if (units === 0n) return null;
-  const amount = `${formatTokenAmount({
-    baseUnits: units,
-    decimals: t.decimals,
-    fractionDigits: exactDigits(units, t.decimals),
-  })} ${t.symbol}`;
-  return t.feePaid ? TRANSACTIONS_COPY.fee(amount) : TRANSACTIONS_COPY.settlementFees(amount);
+  return fee == null ? null : BigInt(fee);
 }
 
 /** A signed send no block holds yet, as a row (R-215). Its transfer's own row takes its place once recorded; it has
@@ -70,7 +59,8 @@ export function sendingRows(sends: Send[], recorded: Transaction[]): Transaction
 export interface DayGroup<T> {
   /** The local calendar day, YYYY-MM-DD. */
   day: string;
-  when: RelativeDay | Date;
+  /** Its first item's time, which names the day. */
+  at: string;
   items: T[];
 }
 
@@ -78,25 +68,13 @@ const localDay = (time: Date) =>
   `${time.getFullYear()}-${String(time.getMonth() + 1).padStart(2, "0")}-${String(time.getDate()).padStart(2, "0")}`;
 
 /** Keeps the items' order: runs of the same local day, not sorted. */
-export function groupByDay<T extends { at: string }>(
-  items: readonly T[],
-  now: Date,
-): DayGroup<T>[] {
-  const today = localDay(now);
-  const yesterday = localDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+export function groupByDay<T extends { at: string }>(items: readonly T[]): DayGroup<T>[] {
   const groups: DayGroup<T>[] = [];
   for (const item of items) {
-    const time = new Date(item.at);
-    const day = localDay(time);
+    const day = localDay(new Date(item.at));
     const last = groups.at(-1);
     if (last?.day === day) last.items.push(item);
-    else
-      groups.push({
-        day,
-        when:
-          day === today ? RELATIVE_DAYS.today : day === yesterday ? RELATIVE_DAYS.yesterday : time,
-        items: [item],
-      });
+    else groups.push({ day, at: item.at, items: [item] });
   }
   return groups;
 }

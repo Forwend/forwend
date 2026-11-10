@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
 import { PaymentProblems } from "@/features/payments/components/payment-problems";
+import { PaymentReceived } from "@/features/payments/components/payment-received";
 import {
   heldHint,
   leadOption,
@@ -35,6 +36,50 @@ describe("merchant payment money", () => {
       paymentState({ paymentStatus: "paid", closed: false, amounts: { held: "1" } as never }),
     ).toBe("Overpaid");
     expect(paymentState({ paymentStatus: "partially_paid", closed: true })).not.toBe("Paid");
+  });
+});
+
+describe("a payment row's amount", () => {
+  const payment = {
+    amount: "1230000",
+    decimals: 6,
+    symbol: "USDC",
+    optionCount: 1,
+    optionId: "a",
+    optionLocked: false,
+    paymentStatus: "partially_paid",
+    receipts: [
+      {
+        optionId: "a",
+        chainId: 8453,
+        token: "0x",
+        symbol: "USDC",
+        decimals: 6,
+        received: "500000",
+        pending: "0",
+      },
+    ],
+    amounts: {} as never,
+  };
+  const text = (p: typeof payment) =>
+    renderToStaticMarkup(<PaymentReceived payment={p} compact />).replace(/<[^>]+>/g, "");
+
+  it("says what arrived of what was asked, and only the asked amount while they match", () => {
+    expect(text(payment)).toBe("0.50 of 1.23 USDC");
+    const paid = { ...payment, receipts: [{ ...payment.receipts[0], received: "1230000" }] };
+    expect(text(paid as typeof payment)).toBe("1.23 USDC");
+  });
+
+  it("compares a USD request with a token of other decimals at their own scale", () => {
+    const usd = {
+      ...payment,
+      decimals: 2,
+      amount: "123",
+      optionCount: 2,
+      receipts: [{ ...payment.receipts[0], received: "1230000" }],
+    };
+    expect(text(usd as typeof payment)).toBe("1.23 USD");
+    expect(text({ ...usd, amount: "100" } as typeof payment)).toMatch(/^1\.23 USDC of 1\.00 USD/);
   });
 });
 

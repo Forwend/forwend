@@ -20,15 +20,15 @@ export const PAYMENTS_COPY = {
   columns: {
     payment: "Payment",
     customer: "Customer",
-    source: "Source",
     store: "Store",
     amount: "Amount",
-    received: "Received",
     status: "Status",
     wallet: "Wallet",
     issue: "Issue",
-    date: "Created",
+    date: "Date",
   },
+  // The amount cell: what arrived "of" what was asked.
+  of: "of",
   table: "Payments",
   noCustomer: "No customer",
   testnet: "Testnet",
@@ -37,6 +37,9 @@ export const PAYMENTS_COPY = {
   more: "Show more",
   shown: (n: number) => `${n} shown`,
   emptyTitle: "No payments yet",
+  noMatchTitle: "No payments match",
+  sourceIs: (label: string) => `source ${label}`,
+  storeIs: (name: string) => `store ${name}`,
   emptyText:
     "A payment appears when you send an invoice or a customer opens checkout or a payment link.",
   attentionEmptyTitle: "No issues",
@@ -75,6 +78,9 @@ export const PAYMENT_DETAIL_COPY = {
   // R-239: what the customer sent on its own chain, which NEAR Intents converted.
   crossChain: {
     tag: "via NEAR Intents",
+    // The list's lockup: NEAR's mark and name, read as "via NEAR Intents".
+    via: "via",
+    title: "Paid from another chain through NEAR Intents",
   },
   // R-248: the payment's money as one sum, then every movement of it.
   sum: {

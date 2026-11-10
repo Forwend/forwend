@@ -58,16 +58,19 @@ export function ExportPayments({
       title="Export payment records"
       triggerLabel="Export payments"
       trigger={(open) => (
+        // Phones show only the icon, so the accessible name says what it does.
         <Button
           disabled={disabled}
           variant="secondary"
+          aria-label="Export"
           onClick={() => {
             setError("");
             open();
           }}
+          className="max-sm:w-10 max-sm:px-0 max-sm:pointer-coarse:before:left-1/2 max-sm:pointer-coarse:before:w-11 max-sm:pointer-coarse:before:-translate-x-1/2"
         >
           <Download aria-hidden className="size-[var(--fw-icon-sm)]" />
-          Export
+          <span className="max-sm:sr-only">Export</span>
         </Button>
       )}
     >

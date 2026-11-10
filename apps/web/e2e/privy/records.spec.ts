@@ -45,8 +45,8 @@ test("transactions show their type, take a label, and export the days chosen; it
       readsAfterLabel++;
   });
   await page.goto("/app/transactions");
-  // R-224: a send that paid its own gas shows the fee under its amount, to the last digit.
-  await expect(page.getByText("Network fee 0.003908 USDC").first()).toBeVisible({
+  // R-224: a send that paid its own gas shows the fee in its own column, to the last digit.
+  await expect(page.getByRole("cell", { name: "0.003908 USDC" }).first()).toBeVisible({
     timeout: 30_000,
   });
   const main = page.getByRole("main");
@@ -102,17 +102,23 @@ test("transactions show their type, take a label, and export the days chosen; it
   await expect(page.getByRole("tooltip")).toContainText("At the ECB rate of Oct 16, 2026");
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(
-    main.getByRole("combobox", { name: /^Type of [\d.,]+ USDC in from 0x01/ }),
-  ).toBeVisible();
-  await expect(
-    main
-      .getByRole("listitem")
-      .getByRole("button", { name: /^€[\d,]+\.\d{2}, At the ECB rate of/ })
-      .first(),
-  ).toBeVisible();
   await expect.poll(() => sidewaysScroll(page)).toBeLessThanOrEqual(0);
   expect(await blockingViolations(page)).toEqual([]);
+  // On a phone a row opens a sheet, which holds the type and the records value.
+  await main
+    .getByRole("listitem")
+    .getByRole("button", { name: /^From 0x01/ })
+    .first()
+    .click();
+  const sheet = page.getByRole("dialog");
+  await expect(
+    sheet.getByRole("combobox", { name: /^Type of [\d.,]+ USDC in from 0x01/ }),
+  ).toBeVisible();
+  await expect(
+    sheet.getByRole("button", { name: /^€[\d,]+\.\d{2}, At the ECB rate of/ }),
+  ).toBeVisible();
+  expect(await blockingViolations(page)).toEqual([]);
+  await sheet.getByRole("button", { name: "Close" }).click();
 
   // R-113
   await page.route("**/statement.pdf?*", (route) =>
@@ -160,11 +166,14 @@ test("transactions show their type, take a label, and export the days chosen; it
   await phone.getByRole("combobox", { name: "Records currency" }).click();
   await phone.getByRole("option", { name: "EUR · Euro" }).click();
   await phone.getByRole("button", { name: "Cancel" }).click();
-  const tap = phone
+  // On a phone the records value is in the row's sheet.
+  await phone
     .getByRole("main")
     .getByRole("listitem")
-    .getByRole("button", { name: /^€/ })
-    .first();
+    .getByRole("button", { name: /^From 0x01/ })
+    .first()
+    .click();
+  const tap = phone.getByRole("dialog").getByRole("button", { name: /^€/ });
   await expect(tap).toBeVisible();
   expect(await tap.evaluate((el) => getComputedStyle(el, "::before").height)).toBe("44px");
   await touch.close();
