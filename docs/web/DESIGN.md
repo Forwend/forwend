@@ -930,7 +930,13 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
       - That Change takes two presses (R-68) and goes back to the price, where the tabs are.
     - Choose a token opens a wide sheet: chains on the left with a search, the chosen chain's tokens on the right.
       - The first chain is chosen; popular chains come first. A token search looks across every chain.
-      - On phones the chains are one scrolling row of chips above the tokens.
+      - A phone has no room for both, so its sheet is two steps (R-249):
+        - First the networks, one full row each: logo, name, how many tokens, a chevron.
+        - A tap shows that network's tokens under a Back row with the network's logo and name.
+        - Back takes the focus on the way in; the network's row takes it on the way out.
+        - The token search sits on top at both steps and looks across every network.
+        - A list that takes another's place fades in from a slight blur (`fw-step-in`); nothing slides.
+      - While the tokens load, the sheet shows a search bar and six rows of its own shape.
       - Each row shows its logo, the symbol over the chain, and "About …" at the right (R-246).
         - Popular chains and their own tokens have logos; any other shows its first letter in the logo's place.
         - "About" rounds up as You send does and adds 1Click's 1% slippage, so the two read alike (R-244).
@@ -948,6 +954,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
       - Both Change buttons are the quiet ghost button a direct payment's Change is.
       - The question icon's tooltip says "NEAR Intents fee + network fee".
       - "Powered by NEAR Intents" follows, centered and muted: NEAR's mark and the words (`PoweredByNearIntents`).
+      - Picking a token on another chain clears the refund address: one chain's address is not another's.
       - The refund field's hint: "The unused buffer comes back here, less the refund fee. Use your own wallet, not an exchange."
       - Amounts a payer sends round up: a stablecoin to the cent, another token to 5 significant digits.
     - The deposit address shows as the direct one does: QR, You send, "Send only USDT on Tron.", the address.
@@ -989,7 +996,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A closed option keeps the selector when another option remains available. Each address uses its own effective close.
   - Closed: one line that says so.
   - Paid: a left-aligned receipt replaces the panel.
-    - A check that scales in, beside "Paid" and "You can close this page."
+  - One state takes another's place softly (the kit's `StepTransition`): choosing, the address, any token,
+    converting, money seen, paid. The new state fades in where it is and the box's height follows it.
+    - A change within a state, such as a new block count, is no new state and does not animate.
+    - Reduced motion shows each state at once.
+    - The kit's `SuccessCheck` beside "Paid" and "You can close this page.": the circle draws, then the check.
     - Ruled label and value rows: Amount, Paid to, Date, and Transaction with a View transaction link to the explorer.
     - Download receipt, a full-width button. Primary; or secondary under a full-width primary Back to <host> when the
       invoice has a return link.

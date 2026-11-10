@@ -39,6 +39,8 @@ export const PAY_COPY = {
   closesIn: (left: string) => `Closes in ${left}`,
   loading: "Loading payment",
   payWith: "Pay with",
+  // The pay box as a whole, named for a screen reader when its step changes.
+  payBox: "Payment",
   // The two ways to pay, as tabs over the box.
   ways: { label: "How to pay", direct: "Stablecoin", cross: "Any token" },
   payingWith: "Paying with",
@@ -175,9 +177,12 @@ export const PAY_COPY = {
   newTab: " (opens in a new tab)",
   // D-123: paying from another chain and token through NEAR Intents, which delivers USDC on Base.
   crossChain: {
-    pickerTitle: "Pay with another token",
-    chains: "Chains",
-    searchChains: "Search chains",
+    pickerTitle: "Pay with any token",
+    chains: "Networks",
+    searchChains: "Search networks",
+    // On a phone the picker is two steps: a network, then its tokens, with a way back.
+    backToChains: "Networks",
+    tokenCount: (n: number) => (n === 1 ? "1 token" : `${n} tokens`),
     searchTokens: "Search tokens",
     tokensOn: (chain: string) => `Tokens on ${chain}`,
     noMatch: "No match",

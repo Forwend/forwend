@@ -57,10 +57,12 @@ const row = (name: RegExp) => screen.getByRole("button", { name });
 describe("CrossChainPicker", () => {
   it("shows logos for popular chains and their tokens, and a first letter for any other", () => {
     open();
-    expect(screen.getByRole("button", { name: "Ethereum" }).querySelector("svg")).not.toBeNull();
+    // A logo is a brand drawing; the row's chevron is an interface icon and says nothing of the network.
+    const logo = "svg:not(.lucide)";
+    expect(screen.getByRole("button", { name: "Ethereum" }).querySelector(logo)).not.toBeNull();
     const abstract = screen.getByRole("button", { name: "Abstract" });
-    expect(abstract.querySelector("svg")).toBeNull();
-    expect(abstract.textContent).toBe("AAbstract");
+    expect(abstract.querySelector(logo)).toBeNull();
+    expect(abstract.textContent?.startsWith("AAbstract")).toBe(true);
     expect(row(/^ETH/).querySelector("svg")).not.toBeNull();
     fireEvent.click(abstract);
     expect(row(/^FOO/).querySelector("svg")).toBeNull();

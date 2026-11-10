@@ -12,12 +12,13 @@ import {
   QrCode,
   ReceiveAddress,
   Skeleton,
+  StepTransition,
+  SuccessCheck,
   shortAddress,
 } from "@forwend/ui-web";
 import {
   Ban,
   CalendarDays,
-  Check,
   Clock,
   ExternalLink,
   FileDown,
@@ -577,6 +578,11 @@ function PayBox({
   useEffect(() => {
     if (presses > 0) sendHeading.current?.focus();
   }, [presses]);
+  // Change brings the selects back as a new step, with a new heading: the focus moves to it once it is there.
+  const [restarts, setRestarts] = useState(0);
+  useEffect(() => {
+    if (restarts > 0) beforeHeading.current?.focus();
+  }, [restarts]);
   // Found money takes away the Check status just pressed: focus waits on the address heading, not the page. The
   // heading is clipped off-screen, so focusing it must not scroll the found line away.
   useEffect(() => {
@@ -602,7 +608,7 @@ function PayBox({
       // Storage may be off: nothing was kept.
     }
     choice?.onPick(undefined);
-    beforeHeading.current?.focus();
+    setRestarts((n) => n + 1);
   };
   const money = (units: bigint) => formatMoney(units, token);
   const done = pay.state === PAY_STATES.paid || pay.state === PAY_STATES.settled;
@@ -641,6 +647,19 @@ function PayBox({
   const folded = choice ? sending : sending || !pay.canSend;
   // Nothing more to send: what was seen leads the panel, and the option it went to follows.
   const statusFirst = seen && !pay.canSend;
+  // What the box is showing, for the change from one to the next. A change within a state, such as a new block
+  // count, is no new state.
+  const phase = done
+    ? "paid"
+    : crossing
+      ? crossSeen
+        ? "converting"
+        : "any-token"
+      : statusFirst
+        ? "seen"
+        : folded
+          ? "send"
+          : "choose";
   const received = seen ? (
     <Received
       invoice={invoice}
@@ -658,164 +677,172 @@ function PayBox({
     <div className="flex min-w-0 flex-col gap-4">
       <div className={PANEL}>
         {crossEnded && crossKept && !done ? <CrossChainEnded crossChain={crossKept} /> : null}
-        {done ? (
-          <Paid invoice={invoice} linkToken={linkToken} token={token} embed={embed} />
-        ) : crossing && crossTarget ? (
-          <CrossChainPay
-            invoice={invoice}
-            linkToken={linkToken}
-            receive={crossTarget.receive}
-            due={crossTarget.due}
-            now={now}
-            readAt={readAt}
-            confirming={pay.state === PAY_STATES.confirming}
-            stateLine={COPY.states[pay.state](values(invoice, pay, money))}
-            viaTabs={viaTabs}
-            onTabsFocused={tabsFocused}
-            onDirect={() => {
-              setViaTabs(true);
-              setCrossOpen(false);
-            }}
-          />
-        ) : (
-          <>
-            {statusFirst ? received : null}
-            {(pay.canSend || seen || canChoose) && folded ? (
-              <section
-                aria-labelledby="pay-before"
-                className={`flex min-h-16 items-center gap-3 px-4 py-3 sm:px-5 ${ENTER} ${statusFirst ? "border-t border-line" : ""}`}
-              >
-                <h2
-                  id="pay-before"
-                  ref={beforeHeading}
-                  tabIndex={-1}
-                  className="w-20 shrink-0 text-sm text-muted outline-none"
+        {/* One state takes another's place softly: it fades in where it is, and the box's height follows it. */}
+        <StepTransition
+          step={phase}
+          label={COPY.payBox}
+          // The box already reaches the panel's edge: a wider band would scroll the page sideways on a phone.
+          className="mx-0 px-0"
+        >
+          {done ? (
+            <Paid invoice={invoice} linkToken={linkToken} token={token} embed={embed} />
+          ) : crossing && crossTarget ? (
+            <CrossChainPay
+              invoice={invoice}
+              linkToken={linkToken}
+              receive={crossTarget.receive}
+              due={crossTarget.due}
+              now={now}
+              readAt={readAt}
+              confirming={pay.state === PAY_STATES.confirming}
+              stateLine={COPY.states[pay.state](values(invoice, pay, money))}
+              viaTabs={viaTabs}
+              onTabsFocused={tabsFocused}
+              onDirect={() => {
+                setViaTabs(true);
+                setCrossOpen(false);
+              }}
+            />
+          ) : (
+            <>
+              {statusFirst ? received : null}
+              {(pay.canSend || seen || canChoose) && folded ? (
+                <section
+                  aria-labelledby="pay-before"
+                  className={`flex min-h-16 items-center gap-3 px-4 py-3 sm:px-5 ${ENTER} ${statusFirst ? "border-t border-line" : ""}`}
                 >
-                  {pay.canSend || canChoose ? COPY.payWith : COPY.payingWith}
-                </h2>
-                {choice && found === 0n ? (
-                  <PickedOption
-                    chainId={invoice.chainId}
-                    symbol={token.symbol}
-                    onStartOver={startOver}
-                  />
-                ) : (
-                  <TokenMark chainId={invoice.chainId} symbol={token.symbol} />
-                )}
-              </section>
-            ) : pay.canSend || canChoose ? (
-              <section
-                aria-labelledby="pay-before"
-                className={`flex flex-col gap-4 p-4 sm:p-5 ${ENTER}`}
-              >
-                <h2
-                  id="pay-before"
-                  ref={beforeHeading}
-                  tabIndex={-1}
-                  className="text-sm font-medium text-ink outline-none"
+                  <h2
+                    id="pay-before"
+                    ref={beforeHeading}
+                    tabIndex={-1}
+                    className="w-20 shrink-0 text-sm text-muted outline-none"
+                  >
+                    {pay.canSend || canChoose ? COPY.payWith : COPY.payingWith}
+                  </h2>
+                  {choice && found === 0n ? (
+                    <PickedOption
+                      chainId={invoice.chainId}
+                      symbol={token.symbol}
+                      onStartOver={startOver}
+                    />
+                  ) : (
+                    <TokenMark chainId={invoice.chainId} symbol={token.symbol} />
+                  )}
+                </section>
+              ) : pay.canSend || canChoose ? (
+                <section
+                  aria-labelledby="pay-before"
+                  className={`flex flex-col gap-4 p-4 sm:p-5 ${ENTER}`}
                 >
-                  {COPY.payWith}
-                </h2>
-                {crossOffered ? (
-                  <PayWays
-                    way={PAY_WAYS.direct}
-                    focused={viaTabs}
-                    onFocused={tabsFocused}
-                    onChange={() => {
-                      setViaTabs(true);
-                      setCrossOpen(true);
-                    }}
-                  />
-                ) : null}
-                {choice ? (
-                  <OptionPicker {...choice} />
-                ) : (
-                  <TokenMark chainId={invoice.chainId} symbol={token.symbol} />
-                )}
-                {!pay.canSend || picking ? null : (
-                  // After a pick it appears on its own; without one it comes with the section, which already rises.
-                  <div className={choice ? ENTER : undefined}>
-                    <Button size="lg" className="w-full" onClick={show}>
-                      {COPY.showAddress}
-                    </Button>
+                  <h2
+                    id="pay-before"
+                    ref={beforeHeading}
+                    tabIndex={-1}
+                    className="text-sm font-medium text-ink outline-none"
+                  >
+                    {COPY.payWith}
+                  </h2>
+                  {crossOffered ? (
+                    <PayWays
+                      way={PAY_WAYS.direct}
+                      focused={viaTabs}
+                      onFocused={tabsFocused}
+                      onChange={() => {
+                        setViaTabs(true);
+                        setCrossOpen(true);
+                      }}
+                    />
+                  ) : null}
+                  {choice ? (
+                    <OptionPicker {...choice} />
+                  ) : (
+                    <TokenMark chainId={invoice.chainId} symbol={token.symbol} />
+                  )}
+                  {!pay.canSend || picking ? null : (
+                    // After a pick it appears on its own; without one it comes with the section, which already rises.
+                    <div className={choice ? ENTER : undefined}>
+                      <Button size="lg" className="w-full" onClick={show}>
+                        {COPY.showAddress}
+                      </Button>
+                    </div>
+                  )}
+                </section>
+              ) : null}
+              {pay.canSend && sending ? (
+                <section
+                  aria-labelledby="pay-send"
+                  className={`flex flex-col gap-4 border-t border-line p-4 sm:p-5 ${ENTER}`}
+                >
+                  <h2 id="pay-send" ref={sendHeading} tabIndex={-1} className="sr-only">
+                    {COPY.sendTo(token.symbol, network)}
+                  </h2>
+                  <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 sm:gap-4">
+                    <QrCode
+                      value={address}
+                      label={COPY.qr}
+                      className="w-26 border border-line p-1 sm:w-32"
+                    />
+                    <div className="flex min-w-0 flex-col gap-2">
+                      <ExactAmount amount={pay.remaining} token={token} />
+                      <p
+                        role="note"
+                        className="flex flex-col gap-0.5 text-xs font-medium text-warning"
+                      >
+                        <span className="flex items-start gap-1.5">
+                          <TriangleAlert aria-hidden className="mt-px size-3.5 shrink-0" />
+                          {COPY.sendOnly(token.symbol, network)}
+                        </span>
+                        {/* The space keeps the two sentences apart when read aloud; the flex column drops it on screen. */}
+                        {lookalike ? " " : null}
+                        {lookalike ? (
+                          <span className="pl-5">{COPY.notLookalike(token.symbol, lookalike)}</span>
+                        ) : null}
+                      </p>
+                    </div>
                   </div>
-                )}
-              </section>
-            ) : null}
-            {pay.canSend && sending ? (
-              <section
-                aria-labelledby="pay-send"
-                className={`flex flex-col gap-4 border-t border-line p-4 sm:p-5 ${ENTER}`}
-              >
-                <h2 id="pay-send" ref={sendHeading} tabIndex={-1} className="sr-only">
-                  {COPY.sendTo(token.symbol, network)}
-                </h2>
-                <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 sm:gap-4">
-                  <QrCode
-                    value={address}
-                    label={COPY.qr}
-                    className="w-26 border border-line p-1 sm:w-32"
-                  />
-                  <div className="flex min-w-0 flex-col gap-2">
-                    <ExactAmount amount={pay.remaining} token={token} />
-                    <p
-                      role="note"
-                      className="flex flex-col gap-0.5 text-xs font-medium text-warning"
-                    >
-                      <span className="flex items-start gap-1.5">
-                        <TriangleAlert aria-hidden className="mt-px size-3.5 shrink-0" />
-                        {COPY.sendOnly(token.symbol, network)}
-                      </span>
-                      {/* The space keeps the two sentences apart when read aloud; the flex column drops it on screen. */}
-                      {lookalike ? " " : null}
-                      {lookalike ? (
-                        <span className="pl-5">{COPY.notLookalike(token.symbol, lookalike)}</span>
-                      ) : null}
+                  <ReceiveAddress address={address} label={COPY.sendTo(token.symbol, network)} />
+                  {contract ? (
+                    <p className="text-xs text-muted">
+                      {COPY.contract(token.symbol)}{" "}
+                      <a
+                        href={contract.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-ink underline decoration-line-strong decoration-1 underline-offset-4 hover:decoration-2"
+                      >
+                        {shortAddress(invoice.token)}
+                        {/* Never the full contract address here: next to the one to pay, it could be copied instead. */}
+                        <span className="sr-only">{` on ${contract.name}${COPY.newTab}`}</span>
+                      </a>
                     </p>
-                  </div>
-                </div>
-                <ReceiveAddress address={address} label={COPY.sendTo(token.symbol, network)} />
-                {contract ? (
+                  ) : null}
                   <p className="text-xs text-muted">
-                    {COPY.contract(token.symbol)}{" "}
-                    <a
-                      href={contract.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-mono text-ink underline decoration-line-strong decoration-1 underline-offset-4 hover:decoration-2"
-                    >
-                      {shortAddress(invoice.token)}
-                      {/* Never the full contract address here: next to the one to pay, it could be copied instead. */}
-                      <span className="sr-only">{` on ${contract.name}${COPY.newTab}`}</span>
-                    </a>
+                    {checkoutClosesAt(invoice) - now < CLOSING_SOON_MS
+                      ? `${COPY.closingSoon} `
+                      : null}
+                    {COPY.exchange(money(pay.remaining), network)}
                   </p>
-                ) : null}
-                <p className="text-xs text-muted">
-                  {checkoutClosesAt(invoice) - now < CLOSING_SOON_MS
-                    ? `${COPY.closingSoon} `
-                    : null}
-                  {COPY.exchange(money(pay.remaining), network)}
-                </p>
-              </section>
-            ) : null}
-            {seen ? (
-              statusFirst ? null : (
-                received
-              )
-            ) : pay.state === PAY_STATES.waiting && !sending ? null : (
-              // Waiting means something only once there is an address to pay.
-              <StatusLine
-                invoice={invoice}
-                linkToken={linkToken}
-                pay={pay}
-                money={money}
-                network={network}
-                bordered={pay.canSend}
-                choosable={canChoose}
-              />
-            )}
-          </>
-        )}
+                </section>
+              ) : null}
+              {seen ? (
+                statusFirst ? null : (
+                  received
+                )
+              ) : pay.state === PAY_STATES.waiting && !sending ? null : (
+                // Waiting means something only once there is an address to pay.
+                <StatusLine
+                  invoice={invoice}
+                  linkToken={linkToken}
+                  pay={pay}
+                  money={money}
+                  network={network}
+                  bordered={pay.canSend}
+                  choosable={canChoose}
+                />
+              )}
+            </>
+          )}
+        </StepTransition>
         {/* From the first money seen, so a payer can leave before the final check (R-82). */}
         {seen || done ? <ReceiptEmail linkToken={linkToken} paid={done} /> : null}
       </div>
@@ -1153,8 +1180,9 @@ function Paid({
   return (
     <div className="flex flex-col">
       <div className="flex items-center gap-3 p-4 sm:p-5">
-        <span className="grid size-10 shrink-0 place-items-center rounded-pill bg-success-soft text-success transition-[opacity,scale] duration-[var(--fw-duration-base)] ease-out starting:scale-90 starting:opacity-0">
-          <Check aria-hidden className="size-5" />
+        {/* The circle draws, then the check: the one moment the page celebrates. The text beside it says Paid. */}
+        <span aria-hidden className="shrink-0">
+          <SuccessCheck className="size-11" />
         </span>
         <div className="min-w-0">
           <p role="status" className="text-lg font-semibold text-ink">

@@ -286,6 +286,8 @@ export function CrossChainPay({
         due={tokens.data ? BigInt(tokens.data.due) : undefined}
         dueDecimals={tokens.data?.decimals ?? CROSS_CHAIN_TARGET.decimals}
         onPick={(picked) => {
+          // An address on one chain is no address on another: the payer types the new chain's.
+          if (picked.blockchain !== token?.blockchain) setRefundTo("");
           setToken(picked);
           setShown(null);
           setProblem(null);

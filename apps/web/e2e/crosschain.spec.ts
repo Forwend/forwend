@@ -113,7 +113,7 @@ const covers = (page: Page, term: string) =>
 async function pickTronUSDT(page: Page) {
   await anotherToken(page).click();
   await page.getByRole("button", { name: "Choose a token" }).click();
-  const picker = page.getByRole("dialog", { name: "Pay with another token" });
+  const picker = page.getByRole("dialog", { name: "Pay with any token" });
   await expect(picker.getByRole("button", { name: "Ethereum", exact: true })).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -188,28 +188,49 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await expect(page.getByText(second)).toHaveCount(0);
   });
 
-  test("lists chains as chips on a phone and beside the tokens on a large screen", async ({
+  test("a phone lists the networks, then the chosen one's tokens with a way back; a large screen shows both", async ({
     page,
   }) => {
     await page.clock.install({ time: NOW });
     await mockInvoice(page, LIVE);
     await routeCrossChain(page, [quote("1263000000")]);
-    for (const [width, direction, search] of [
-      [390, "row", false],
-      [1280, "column", true],
-    ] as const) {
+    const open = async (width: number) => {
       await page.setViewportSize({ width, height: 860 });
       await page.goto(`/pay/${PAY}`);
       await anotherToken(page).click();
       await page.getByRole("button", { name: "Choose a token" }).click();
-      const picker = page.getByRole("dialog", { name: "Pay with another token" });
-      const chains = picker.getByRole("region", { name: "Chains" }).getByRole("list");
-      await expect(chains).toHaveCSS("flex-direction", direction);
-      await expect(picker.getByRole("searchbox", { name: "Search chains" })).toBeVisible({
-        visible: search,
-      });
-      expect(await sidewaysScroll(page)).toBe(0);
-    }
+      return page.getByRole("dialog", { name: "Pay with any token" });
+    };
+    const phone = await open(390);
+    const networks = phone.getByRole("region", { name: "Networks" });
+    const tron = networks.getByRole("button", { name: "Tron", exact: true });
+    const usdt = phone.getByRole("button", { name: /USDT.*Tron/ });
+    // First the networks alone: no token list under them.
+    await expect(tron).toBeVisible();
+    await expect(usdt).toBeHidden();
+    await expect(networks.getByRole("list")).toHaveCSS("flex-direction", "column");
+    expect(await sidewaysScroll(page)).toBe(0);
+    // A tap opens that network's tokens, with the way back holding the focus.
+    await tron.click();
+    await expect(networks).toBeHidden();
+    await expect(usdt).toBeVisible();
+    const back = phone.getByRole("button", { name: "Networks: Tron" });
+    await expect(back).toBeFocused();
+    expect(await sidewaysScroll(page)).toBe(0);
+    await back.click();
+    await expect(tron).toBeFocused();
+    await expect(usdt).toBeHidden();
+    // A search names a token on any network, from the first step.
+    await phone.getByRole("searchbox", { name: "Search tokens" }).fill("usdt");
+    await expect(usdt).toBeVisible();
+    await expect(networks).toBeHidden();
+
+    const wide = await open(1280);
+    await expect(wide.getByRole("region", { name: "Networks" })).toBeVisible();
+    await expect(wide.getByRole("searchbox", { name: "Search networks" })).toBeVisible();
+    await expect(wide.getByRole("region", { name: "Tokens on Ethereum" })).toBeVisible();
+    await expect(wide.getByRole("button", { name: "Networks: Ethereum" })).toHaveCount(0);
+    expect(await sidewaysScroll(page)).toBe(0);
   });
 
   test("greys a token that needs more than is due, with its minimum, and it can't be picked (R-242)", async ({
@@ -243,7 +264,7 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await page.goto(`/pay/${PAY}`);
     await anotherToken(page).click();
     await page.getByRole("button", { name: "Choose a token" }).click();
-    const picker = page.getByRole("dialog", { name: "Pay with another token" });
+    const picker = page.getByRole("dialog", { name: "Pay with any token" });
     // Ethereum's ETH needs exactly what is due, so it fits: nothing is greyed, so no note.
     await expect(picker.getByRole("button", { name: /ETH/ })).toBeEnabled();
     await expect(picker.getByText(/Greyed tokens/)).toHaveCount(0);
@@ -284,7 +305,7 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await page.goto(`/pay/${PAY}`);
     await anotherToken(page).click();
     await page.getByRole("button", { name: "Choose a token" }).click();
-    const picker = page.getByRole("dialog", { name: "Pay with another token" });
+    const picker = page.getByRole("dialog", { name: "Pay with any token" });
     await picker.getByRole("button", { name: "Tron", exact: true }).click();
     await picker.getByRole("button", { name: /USDT.*Tron/ }).click();
     await expect(
@@ -527,7 +548,7 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await expect(choose).toHaveCount(0);
     await anotherToken(page).click();
     await page.getByRole("button", { name: "Choose a token" }).click();
-    const picker = page.getByRole("dialog", { name: "Pay with another token" });
+    const picker = page.getByRole("dialog", { name: "Pay with any token" });
     await picker.getByRole("button", { name: "Tron", exact: true }).click();
     await picker.getByRole("button", { name: /USDT.*Tron/ }).click();
     // Before an address, one press opens the picker.
